@@ -1,5 +1,6 @@
-use libc::{S_IFBLK, S_IFCHR, S_IFDIR, S_IFIFO, S_IFLNK, S_IFREG, S_IFSOCK};
 use log::debug;
+#[cfg(unix)]
+use nix::sys::stat::{mode_t, Mode, SFlag};
 use std::fs::{set_permissions, Permissions};
 use std::io::Result;
 use std::path::Path;
@@ -49,7 +50,7 @@ pub fn chmod_if_possible<P: AsRef<Path>>(path: P, permissions: Permissions) -> R
 
 #[cfg(unix)]
 pub fn copy_ownership_from_path<P: AsRef<Path>>(dst: P, src: Option<&Path>) -> Result<()> {
-    use libc::{chown, gid_t, uid_t};
+    use nix::unistd::{chown, Gid, Uid};
     use std::os::unix::ffi::OsStrExt;
     use std::os::unix::fs::MetadataExt;
 
@@ -66,19 +67,17 @@ pub fn copy_ownership_from_path<P: AsRef<Path>>(dst: P, src: Option<&Path>) -> R
     let uid = s.uid();
     let gid = s.gid();
 
-    if unsafe {
-        chown(
-            dst.as_ref().as_os_str().as_bytes().as_ptr() as *const i8,
-            uid as uid_t,
-            gid as gid_t,
-        )
-    } != 0
-    {
+    if let Err(err) = chown(
+        dst.as_ref(),
+        Some(Uid::from_raw(uid)),
+        Some(Gid::from_raw(gid)),
+    ) {
         debug!(
             "Unable to copy ownership from \"{}\" to \"{}\". \
-               You may want to set it manually.",
+               You may want to set it manually. {}",
             src.display(),
-            dst.as_ref().display()
+            dst.as_ref().display(),
+            err
         );
     }
     Ok(())
@@ -176,19 +175,19 @@ const SYMLINK: &str = "symlink";
 const SOCKET: &str = "socket";
 const UNKNOWN: &str = "unknown";
 
-const FORMATS: [(u32, &str); 7] = [
-    (S_IFDIR, DIRECTORY),
-    (S_IFCHR, CHARDEV),
-    (S_IFBLK, BLOCK),
-    (S_IFREG, FILE),
-    (S_IFIFO, FIFO),
-    (S_IFLNK, SYMLINK),
-    (S_IFSOCK, SOCKET),
+const FORMATS: [(SFlag, &str); 7] = [
+    (SFlag::S_IFDIR, DIRECTORY),
+    (SFlag::S_IFCHR, CHARDEV),
+    (SFlag::S_IFBLK, BLOCK),
+    (SFlag::S_IFREG, FILE),
+    (SFlag::S_IFIFO, FIFO),
+    (SFlag::S_IFLNK, SYMLINK),
+    (SFlag::S_IFSOCK, SOCKET),
 ];
 
-pub fn kind_from_mode(mode: u32) -> &'static str {
+pub fn kind_from_mode(mode: SFlag) -> &'static str {
     for (format_mode, format_kind) in FORMATS.iter() {
-        if mode & 0o170000 == *format_mode {
+        if mode.contains(*format_mode) {
             return format_kind;
         }
     }
