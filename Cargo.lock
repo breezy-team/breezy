@@ -78,7 +78,7 @@ dependencies = [
  "breezy-osutils",
  "libc",
  "log",
- "sha1 0.6.1",
+ "sha1",
  "tempfile",
 ]
 
@@ -153,7 +153,7 @@ dependencies = [
  "path-clean",
  "rand",
  "regex",
- "sha1 0.10.5",
+ "sha1",
  "unicode-normalization",
  "walkdir",
 ]
@@ -174,7 +174,6 @@ name = "breezy-urlutils"
 version = "3.3.3"
 dependencies = [
  "breezy-osutils",
- "encoding_rs",
  "lazy_static",
  "percent-encoding",
  "regex",
@@ -373,15 +372,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "encoding_rs"
-version = "0.8.32"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "071a31f4ee85403370b58aca746f01041ede6f0da2730960ad001edc2b71b394"
-dependencies = [
- "cfg-if",
-]
-
-[[package]]
 name = "errno"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -448,12 +438,6 @@ checksum = "a9c384f161156f5260c24a097c56119f9be8c798586aecc13afbcbe7b7e26bf8"
 dependencies = [
  "percent-encoding",
 ]
-
-[[package]]
-name = "fs_extra"
-version = "1.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42703706b716c37f96a77aea830392ad231f44c9e9a67872fa5548707e11b11c"
 
 [[package]]
 name = "generic-array"
@@ -730,7 +714,6 @@ name = "osutils-py"
 version = "3.3.3"
 dependencies = [
  "breezy-osutils",
- "fs_extra",
  "memchr",
  "pyo3",
  "pyo3-file",
@@ -1041,15 +1024,6 @@ dependencies = [
 
 [[package]]
 name = "sha1"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c1da05c97445caa12d05e848c4a4fcbbea29e748ac28f7e80e9b010392063770"
-dependencies = [
- "sha1_smol",
-]
-
-[[package]]
-name = "sha1"
 version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f04293dc80c3993519f2d7f6f511707ee7094fe0c6d3406feb330cdb3540eba3"
@@ -1058,12 +1032,6 @@ dependencies = [
  "cpufeatures",
  "digest",
 ]
-
-[[package]]
-name = "sha1_smol"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae1a47186c03a32177042e55dbc5fd5aee900b8e0069a8d70fba96a9375cd012"
 
 [[package]]
 name = "skeptic"
