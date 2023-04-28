@@ -660,7 +660,7 @@ fn unpack_highres_date(date: &str) -> PyResult<(f64, i32)> {
 #[pyfunction]
 #[cfg(unix)]
 fn get_umask() -> PyResult<u32> {
-    Ok(breezy_osutils::get_umask())
+    Ok(breezy_osutils::get_umask().bits())
 }
 
 #[pyfunction]
@@ -790,9 +790,11 @@ fn win32_abspath(path: PathBuf) -> PyResult<PathBuf> {
     breezy_osutils::path::win32::abspath(path.as_path()).map_err(|e| e.into())
 }
 
+#[cfg(unix)]
 #[pyfunction]
 fn kind_from_mode(mode: u32) -> &'static str {
-    breezy_osutils::file::kind_from_mode(mode)
+    use nix::sys::stat::SFlag;
+    breezy_osutils::file::kind_from_mode(SFlag::from_bits_truncate(mode))
 }
 
 #[pyfunction]
@@ -934,6 +936,7 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_submodule(posixm)?;
     #[cfg(unix)]
     m.add_wrapped(wrap_pyfunction!(get_umask))?;
+    #[cfg(unix)]
     m.add_wrapped(wrap_pyfunction!(kind_from_mode))?;
     m.add_wrapped(wrap_pyfunction!(delete_any))?;
     m.add_wrapped(wrap_pyfunction!(get_host_name))?;
