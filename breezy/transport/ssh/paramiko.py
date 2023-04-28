@@ -24,8 +24,7 @@ from typing import Dict
 import paramiko
 
 from ... import bedding, config, errors, osutils, trace, ui
-from . import SSHVendor, SSHConnection
-
+from . import SSHConnection, SSHVendor
 
 SYSTEM_HOSTKEYS: Dict[str, Dict[str, str]] = {}
 BRZ_HOSTKEYS: Dict[str, Dict[str, str]] = {}
@@ -185,7 +184,8 @@ class ParamikoVendor(SSHVendor):
     def _connect(self, username, password, host, port):
         global SYSTEM_HOSTKEYS, BRZ_HOSTKEYS
 
-        from .paramiko import load_host_keys, save_host_keys, _paramiko_auth, _ssh_host_keys_config_dir
+        from .paramiko import (_paramiko_auth, _ssh_host_keys_config_dir,
+                               load_host_keys, save_host_keys)
 
         load_host_keys()
 
