@@ -27,7 +27,7 @@ import sys
 from binascii import hexlify
 from typing import Dict, Optional, Set, Tuple, Type
 
-from ... import bedding, config, errors, osutils, trace, ui
+from ... import bedding, config, errors, osutils, registry, trace, ui
 
 try:
     import paramiko
@@ -47,7 +47,7 @@ SYSTEM_HOSTKEYS: Dict[str, Dict[str, str]] = {}
 BRZ_HOSTKEYS: Dict[str, Dict[str, str]] = {}
 
 
-class SSHVendorManager:
+class SSHVendorManager(registry.Registry[str, "SSHVendor"]):
     """Manager for manage SSH vendors."""
 
     # Note, although at first sign the class interface seems similar to
@@ -56,17 +56,13 @@ class SSHVendorManager:
     # Registry's "get(key)".
 
     def __init__(self):
-        self._ssh_vendors = {}
+        super(SSHVendorManager, self).__init__()
         self._cached_ssh_vendor = None
         self._default_ssh_vendor = None
 
     def register_default_vendor(self, vendor):
         """Register default SSH vendor."""
         self._default_ssh_vendor = vendor
-
-    def register_vendor(self, name, vendor):
-        """Register new SSH vendor by name."""
-        self._ssh_vendors[name] = vendor
 
     def clear_cache(self):
         """Clear previously cached lookup result."""
@@ -76,7 +72,7 @@ class SSHVendorManager:
         vendor_name = config.GlobalStack().get('ssh')
         if vendor_name is not None:
             try:
-                vendor = self._ssh_vendors[vendor_name]
+                vendor = self.get(vendor_name)
             except KeyError:
                 vendor = self._get_vendor_from_path(vendor_name)
                 if vendor is None:
@@ -159,7 +155,7 @@ class SSHVendorManager:
 _ssh_vendor_manager = SSHVendorManager()
 _get_ssh_vendor = _ssh_vendor_manager.get_vendor
 register_default_ssh_vendor = _ssh_vendor_manager.register_default_vendor
-register_ssh_vendor = _ssh_vendor_manager.register_vendor
+register_ssh_vendor = _ssh_vendor_manager.register
 
 
 def _ignore_signals():

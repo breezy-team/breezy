@@ -36,12 +36,12 @@ class TestSSHVendorManager(SSHVendorManager):
 
 class SSHVendorManagerTests(TestCaseWithTransport):
 
-    def test_register_vendor(self):
+    def test_register(self):
         manager = TestSSHVendorManager()
         self.overrideEnv('BRZ_SSH', None)
         self.assertRaises(SSHVendorNotFound, manager.get_vendor)
         vendor = object()
-        manager.register_vendor("vendor", vendor)
+        manager.register("vendor", vendor)
         self.overrideEnv('BRZ_SSH', 'vendor')
         self.assertIs(manager.get_vendor(), vendor)
 
@@ -60,7 +60,7 @@ class SSHVendorManagerTests(TestCaseWithTransport):
         self.overrideEnv('BRZ_SSH', 'vendor')
         self.assertRaises(UnknownSSH, manager.get_vendor)
         vendor = object()
-        manager.register_vendor("vendor", vendor)
+        manager.register("vendor", vendor)
         self.assertIs(manager.get_vendor(), vendor)
 
     def test_get_vendor_by_config(self):
@@ -70,7 +70,7 @@ class SSHVendorManagerTests(TestCaseWithTransport):
         config.GlobalStack().set('ssh', 'vendor')
         self.assertRaises(UnknownSSH, manager.get_vendor)
         vendor = object()
-        manager.register_vendor("vendor", vendor)
+        manager.register("vendor", vendor)
         self.assertIs(manager.get_vendor(), vendor)
 
     def test_get_vendor_by_inspection_openssh(self):
@@ -110,7 +110,7 @@ class SSHVendorManagerTests(TestCaseWithTransport):
         self.overrideEnv('BRZ_SSH', None)
         self.assertRaises(SSHVendorNotFound, manager.get_vendor)
         vendor = object()
-        manager.register_vendor("vendor", vendor)
+        manager.register("vendor", vendor)
         self.assertRaises(SSHVendorNotFound, manager.get_vendor)
         # Once the vendor is found the result is cached (mainly because of the
         # 'get_vendor' sometimes can be an expensive operation) and later
@@ -154,7 +154,7 @@ class SSHVendorManagerTests(TestCaseWithTransport):
         # the vendor name
         manager.clear_cache()
         vendor = object()
-        manager.register_vendor("vendor", vendor)
+        manager.register("vendor", vendor)
         self.overrideEnv('BRZ_SSH', 'vendor')
         self.assertIs(manager.get_vendor(), vendor)
 
