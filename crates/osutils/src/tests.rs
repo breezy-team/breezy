@@ -28,16 +28,16 @@ fn test_is_inside() {
     fn is_inside(path: &str, dir: &str) -> bool {
         crate::path::is_inside(Path::new(path), Path::new(dir))
     }
-    assert_eq!(is_inside("a", "a"), true);
-    assert_eq!(is_inside("a", "b"), false);
-    assert_eq!(is_inside("a", "a/b"), true);
-    assert_eq!(is_inside("b", "a/b"), false);
-    assert_eq!(is_inside("a/b", "a/b"), true);
-    assert_eq!(is_inside("a/b", "a/c"), false);
-    assert_eq!(is_inside("a/b", "a/b/c"), true);
-    assert_eq!(is_inside("a/b/c", "a/b"), false);
-    assert_eq!(is_inside("", "a"), true);
-    assert_eq!(is_inside("a", ""), false);
+    assert!(is_inside("a", "a"));
+    assert!(!is_inside("a", "b"));
+    assert!(is_inside("a", "a/b"));
+    assert!(!is_inside("b", "a/b"));
+    assert!(is_inside("a/b", "a/b"));
+    assert!(!is_inside("a/b", "a/c"));
+    assert!(is_inside("a/b", "a/b/c"));
+    assert!(!is_inside("a/b/c", "a/b"));
+    assert!(is_inside("", "a"));
+    assert!(!is_inside("a", ""));
 }
 
 #[test]
@@ -46,19 +46,19 @@ fn test_is_inside_any() {
         let dirs = dirs.iter().map(Path::new).collect::<Vec<&Path>>();
         crate::path::is_inside_any(dirs.as_slice(), Path::new(path))
     }
-    assert_eq!(is_inside_any("a", &["a"]), true);
-    assert_eq!(is_inside_any("a", &["b"]), false);
-    assert_eq!(is_inside_any("a/b", &["a"]), true);
-    assert_eq!(is_inside_any("a/b", &["b"]), false);
-    assert_eq!(is_inside_any("a/b", &["a/b"]), true);
-    assert_eq!(is_inside_any("a/b", &["a/c"]), false);
-    assert_eq!(is_inside_any("a/b", &["a/b/c"]), false);
-    assert_eq!(is_inside_any("a/b/c", &["a/b"]), true);
-    assert_eq!(is_inside_any("", &["a"]), false);
-    assert_eq!(is_inside_any("a", &[""]), true);
-    assert_eq!(is_inside_any("a", &["a", "b"]), true);
-    assert_eq!(is_inside_any("a", &["b", "a"]), true);
-    assert_eq!(is_inside_any("a", &["b", "c"]), false);
+    assert!(is_inside_any("a", &["a"]));
+    assert!(!is_inside_any("a", &["b"]));
+    assert!(is_inside_any("a/b", &["a"]));
+    assert!(!is_inside_any("a/b", &["b"]));
+    assert!(is_inside_any("a/b", &["a/b"]));
+    assert!(!is_inside_any("a/b", &["a/c"]));
+    assert!(!is_inside_any("a/b", &["a/b/c"]));
+    assert!(is_inside_any("a/b/c", &["a/b"]));
+    assert!(!is_inside_any("", &["a"]));
+    assert!(is_inside_any("a", &[""]));
+    assert!(is_inside_any("a", &["a", "b"]));
+    assert!(is_inside_any("a", &["b", "a"]));
+    assert!(!is_inside_any("a", &["b", "c"]));
 }
 
 #[test]
@@ -67,21 +67,21 @@ fn test_is_inside_or_parent_of_any() {
         let dirs = dirs.iter().map(Path::new).collect::<Vec<&Path>>();
         crate::path::is_inside_or_parent_of_any(dirs.as_slice(), Path::new(path))
     }
-    assert_eq!(is_inside_or_parent_of_any("a", &["a"]), true);
-    assert_eq!(is_inside_or_parent_of_any("a", &["b"]), false);
-    assert_eq!(is_inside_or_parent_of_any("a/b", &["a"]), true);
-    assert_eq!(is_inside_or_parent_of_any("a/b", &["b"]), false);
-    assert_eq!(is_inside_or_parent_of_any("a/b", &["a/b"]), true);
-    assert_eq!(is_inside_or_parent_of_any("a/b", &["a/c"]), false);
-    assert_eq!(is_inside_or_parent_of_any("a/b", &["a/b/c"]), true);
-    assert_eq!(is_inside_or_parent_of_any("a/b/c", &["a/b"]), true);
-    assert_eq!(is_inside_or_parent_of_any("", &["a"]), true);
-    assert_eq!(is_inside_or_parent_of_any("a", &[""]), true);
-    assert_eq!(is_inside_or_parent_of_any("a", &["a", "b"]), true);
-    assert_eq!(is_inside_or_parent_of_any("a", &["b", "a"]), true);
-    assert_eq!(is_inside_or_parent_of_any("a", &["b", "c"]), false);
-    assert_eq!(is_inside_or_parent_of_any("a/b", &["a", "b"]), true);
-    assert_eq!(is_inside_or_parent_of_any("a/b", &["b", "a"]), true);
+    assert!(is_inside_or_parent_of_any("a", &["a"]));
+    assert!(!is_inside_or_parent_of_any("a", &["b"]));
+    assert!(is_inside_or_parent_of_any("a/b", &["a"]));
+    assert!(!is_inside_or_parent_of_any("a/b", &["b"]));
+    assert!(is_inside_or_parent_of_any("a/b", &["a/b"]));
+    assert!(!is_inside_or_parent_of_any("a/b", &["a/c"]));
+    assert!(is_inside_or_parent_of_any("a/b", &["a/b/c"]));
+    assert!(is_inside_or_parent_of_any("a/b/c", &["a/b"]));
+    assert!(is_inside_or_parent_of_any("", &["a"]));
+    assert!(is_inside_or_parent_of_any("a", &[""]));
+    assert!(is_inside_or_parent_of_any("a", &["a", "b"]));
+    assert!(is_inside_or_parent_of_any("a", &["b", "a"]));
+    assert!(!is_inside_or_parent_of_any("a", &["b", "c"]));
+    assert!(is_inside_or_parent_of_any("a/b", &["a", "b"]));
+    assert!(is_inside_or_parent_of_any("a/b", &["b", "a"]));
 }
 
 #[test]

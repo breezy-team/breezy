@@ -99,13 +99,7 @@ impl<'a, R: BufRead> Iterator for RioReaderIter<'a, R> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.reader.read_stanza() {
-            Ok(stanza) => {
-                if let Some(s) = stanza {
-                    Some(Ok(Some(s)))
-                } else {
-                    None
-                }
-            }
+            Ok(stanza) => stanza.map(|s| Ok(Some(s))),
             Err(e) => Some(Err(e)),
         }
     }
@@ -338,7 +332,7 @@ pub fn rio_iter(
 ) -> impl Iterator<Item = Vec<u8>> {
     let mut lines = Vec::new();
     if let Some(header) = header {
-        let mut header = header.clone();
+        let mut header = header;
         header.push(b'\n');
         lines.push(header);
     }

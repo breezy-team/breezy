@@ -1,8 +1,8 @@
 [package]
-name = "bazaar-dirstate"
+name = "breezy-transport"
 version = "3.3.3"
 edition = "2018"
-description = "The dirstate format used by Bazaar"
+description = "Transport layer for Breezy"
 license = "GPL-2.0+"
 repository = "https://code.launchpad.net/brz"
 homepage = "https://www.breezy-vcs.org/"
@@ -10,9 +10,3 @@ documentation = "https://www.breezy-vcs.org/doc/"
 authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@jelmer.uk>"]
 
 [lib]
-
-[dependencies]
-breezy-osutils = { path = "../osutils" }
-base64 = "0.13.0"
-lazy_static = "1.4.0"
-maplit = "1.0.2"

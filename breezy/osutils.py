@@ -243,7 +243,8 @@ rename = _rename_wrap_exception(os.rename)
 # Default is to just use the python builtins, but these can be rebound on
 # particular platforms.
 abspath = _osutils_rs.abspath
-realpath = os.path.realpath
+realpath = _osutils_rs.realpath
+normalizepath = _osutils_rs.normalizepath
 pathjoin = os.path.join
 normpath = _osutils_rs.normpath
 _get_home_dir = partial(os.path.expanduser, '~')
@@ -357,18 +358,6 @@ def get_terminal_encoding(trace=False):
         output_encoding = get_user_encoding()
 
     return output_encoding
-
-
-def normalizepath(f):
-    if getattr(os.path, 'realpath', None) is not None:
-        F = realpath
-    else:
-        F = abspath
-    [p, e] = os.path.split(f)
-    if e == "" or e == "." or e == "..":
-        return F(f)
-    else:
-        return pathjoin(F(p), e)
 
 
 def isdir(f):

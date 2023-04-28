@@ -418,10 +418,10 @@ def _translate_error(err):
         return (b'IncompatibleRepositories', str(err.source), str(err.target),
                 str(err.details))
     elif isinstance(err, errors.ShortReadvError):
-        return (b'ShortReadvError', err.path.encode('utf-8'),
-                str(err.offset).encode('ascii'),
-                str(err.length).encode('ascii'),
-                str(err.actual).encode('ascii'))
+        return (b'ShortReadvError', err.path.encode('utf-8') if err.path is not None else None,
+                str(err.offset).encode('ascii') if err.offset is not None else None,
+                str(err.length).encode('ascii') if err.length is not None else None,
+                str(err.actual).encode('ascii') if err.actual is not None else None)
     elif isinstance(err, errors.RevisionNotPresent):
         return (b'RevisionNotPresent', err.revision_id, err.file_id)
     elif isinstance(err, errors.UnstackableRepositoryFormat):

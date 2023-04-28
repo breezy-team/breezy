@@ -23,6 +23,7 @@ except ModuleNotFoundError as e:
     sys.stderr.write("[ERROR] Please install setuptools_rust (%s)\n" % e)
     sys.exit(1)
 
+from setuptools.command.build import build
 
 try:
     import setuptools_gettext
@@ -30,11 +31,15 @@ except ModuleNotFoundError as e:
     sys.stderr.write("[ERROR] Please install setuptools_gettext (%s)\n" % e)
     sys.exit(1)
 
-I18N_FILES = []
-for filepath in glob.glob("breezy/locale/*/LC_MESSAGES/*.mo"):
-    langfile = filepath[len("breezy/locale/"):]
-    targetpath = os.path.dirname(os.path.join("share/locale", langfile))
-    I18N_FILES.append((targetpath, [filepath]))
+if setuptools_gettext.__version__ <= (0, 1, 3):
+    build.sub_commands.append(('build_mo', lambda _: True))
+    I18N_FILES = []
+    for filepath in glob.glob("breezy/locale/*/LC_MESSAGES/*.mo"):
+        langfile = filepath[len("breezy/locale/"):]
+        targetpath = os.path.dirname(os.path.join("share/locale", langfile))
+        I18N_FILES.append((targetpath, [filepath]))
+else:
+    I18N_FILES = []
 
 
 from setuptools import setup
@@ -96,10 +101,6 @@ class build_man(Command):
 ########################
 ## Setup
 ########################
-
-from setuptools.command.build import build
-
-build.sub_commands.append(('build_mo', lambda _: True))
 
 command_classes = {
     'build_man': build_man,
@@ -232,10 +233,12 @@ rust_extensions = [
     RustExtension("breezy.bzr.hashcache", "crates/hashcache-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy.bzr._chk_map_rs", "crates/chk-map-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy.bzr._groupcompress_rs", "crates/groupcompress-py/Cargo.toml", binding=Binding.PyO3),
+    RustExtension("breezy._cmd_rs", "crates/cmd-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy._osutils_rs", "crates/osutils-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy._graph_rs", "crates/graph-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy._patch_rs", "crates/patch-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy.zlib_util", "crates/zlib-util-py/Cargo.toml", binding=Binding.PyO3),
+    RustExtension("breezy._transport_rs", "crates/transport-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy._urlutils_rs", "crates/urlutils-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy._bzr_rs", "crates/bazaar-py/Cargo.toml", binding=Binding.PyO3),
 ]

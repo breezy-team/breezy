@@ -1,5 +1,3 @@
-#[cfg(unix)]
-use libc;
 use memchr::memchr;
 use rand::Rng;
 use std::fs::File;
@@ -30,8 +28,8 @@ where
                     }
                 } else {
                     if let Some(next_chunk) = chunks.next() {
-                        if next_chunk.is_err() {
-                            return Some(Err(next_chunk.unwrap_err()));
+                        if let Err(e) = next_chunk {
+                            return Some(Err(e));
                         }
                         chunk.extend_from_slice(next_chunk.unwrap());
                     } else {
@@ -43,19 +41,17 @@ where
                         tail = Some(chunk);
                     }
                 }
-            } else {
-                if let Some(next_chunk) = chunks.next() {
-                    if next_chunk.is_err() {
-                        return Some(Err(next_chunk.unwrap_err()));
-                    }
-                    let next_chunk = next_chunk.unwrap();
-                    if !next_chunk.is_empty() {
-                        tail = Some(next_chunk.to_vec());
-                    }
-                } else {
-                    // We've reached the end of the chunks, so return None
-                    return None;
+            } else if let Some(next_chunk) = chunks.next() {
+                if let Err(e) = next_chunk {
+                    return Some(Err(e));
                 }
+                let next_chunk = next_chunk.unwrap();
+                if !next_chunk.is_empty() {
+                    tail = Some(next_chunk.to_vec());
+                }
+            } else {
+                // We've reached the end of the chunks, so return None
+                return None;
             }
         }
     })
@@ -69,8 +65,8 @@ pub fn set_or_unset_env(
     let ret: Option<String>;
     if let Err(std::env::VarError::NotPresent) = orig_val {
         ret = None;
-        if value.is_some() {
-            std::env::set_var(env_variable, value.unwrap());
+        if let Some(value) = value {
+            std::env::set_var(env_variable, value);
         }
     } else if let Err(e) = orig_val {
         return Err(e);
@@ -98,15 +94,16 @@ pub fn rand_chars(num: usize) -> String {
 }
 
 #[cfg(unix)]
-pub fn get_umask() -> u32 {
+use nix::sys::stat::{umask, Mode};
+
+#[cfg(unix)]
+pub fn get_umask() -> Mode {
     // Assume that people aren't messing with the umask while running
     // XXX: This is not thread safe, but there is no way to get the
     //      umask without setting it
-    let umask = unsafe { libc::umask(0) };
-    unsafe {
-        libc::umask(umask);
-    }
-    umask
+    let mask = umask(Mode::empty());
+    umask(mask);
+    mask
 }
 
 pub fn kind_marker(kind: &str) -> &str {

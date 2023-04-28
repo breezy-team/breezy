@@ -54,11 +54,9 @@ pub fn split(url: &str, exclude_trailing_slash: bool) -> (String, String) {
                     (head, tail)
                 }
             });
-            if split.is_none() {
-                return (String::new(), url.to_string());
-            } else {
-                let (head, tail) = split.unwrap();
-                return (head.to_string(), tail.to_string());
+            match split {
+                None => return (String::new(), url.to_string()),
+                Some((head, tail)) => return (head.to_string(), tail.to_string()),
             }
         } else {
             // Scheme with no path
@@ -89,11 +87,9 @@ pub fn split(url: &str, exclude_trailing_slash: bool) -> (String, String) {
             (head, tail)
         }
     });
-    if split.is_none() {
-        (url_base.to_string(), path.to_string())
-    } else {
-        let (head, tail) = split.unwrap();
-        (url_base.to_string() + head, tail.to_string())
+    match split {
+        None => (url_base.to_string(), path.to_string()),
+        Some((head, tail)) => (url_base.to_string() + head, tail.to_string()),
     }
 }
 
@@ -180,7 +176,7 @@ pub fn strip_trailing_slash(url: &str) -> &str {
 /// for combining paths of URLs.
 pub fn joinpath(base: &str, args: &[&str]) -> Result<String> {
     let mut path = base.split('/').collect::<Vec<&str>>();
-    if path.len() > 1 && path[path.len() - 1] == "" {
+    if path.len() > 1 && path[path.len() - 1].is_empty() {
         // If the path ends in a trailing /, remove it.
         path.pop();
     }
@@ -251,7 +247,7 @@ pub fn join<'a>(mut base: &'a str, args: &[&'a str]) -> Result<String> {
         return Ok(base.to_string());
     }
 
-    let (mut scheme_end, path_start) = find_scheme_and_separator(base);
+    let (scheme_end, path_start) = find_scheme_and_separator(base);
     let mut path_start = if scheme_end.is_none() && path_start.is_none() {
         0
     } else if path_start.is_none() {
@@ -274,7 +270,6 @@ pub fn join<'a>(mut base: &'a str, args: &[&'a str]) -> Result<String> {
         if arg_scheme_end.is_some() {
             base = arg;
             path = arg[arg_path_start..].to_string();
-            scheme_end = arg_scheme_end;
             path_start = arg_path_start;
         } else {
             path = joinpath(path.as_str(), vec![*arg].as_slice())?;
@@ -519,7 +514,7 @@ pub fn combine_paths(base_path: &str, relpath: &str) -> String {
         match p {
             ".." => {
                 if let Some(last) = base_parts.last() {
-                    if *last != "" {
+                    if !last.is_empty() {
                         base_parts.pop();
                     }
                 }
@@ -558,7 +553,7 @@ pub fn normalize_url(url: &str) -> Result<String> {
     let (scheme_end, path_start) = find_scheme_and_separator(url);
 
     if scheme_end.is_none() {
-        local_path_to_url(url).map_err(|e| Error::IoError(e))
+        local_path_to_url(url).map_err(Error::IoError)
     } else {
         let prefix = &url[..path_start.unwrap()];
         let path = &url[path_start.unwrap()..];
@@ -706,14 +701,14 @@ pub fn local_path_to_url<P: AsRef<Path>>(path: P) -> std::io::Result<String> {
     #[cfg(target_os = "win32")]
     return Ok(win32::local_path_to_url(path)?);
     #[cfg(unix)]
-    return Ok(posix::local_path_to_url(path)?);
+    return posix::local_path_to_url(path);
 }
 
 pub fn local_path_from_url(url: &str) -> Result<PathBuf> {
     #[cfg(target_os = "win32")]
     return Ok(win32::local_path_from_url(url)?);
     #[cfg(unix)]
-    return Ok(posix::local_path_from_url(url)?);
+    return posix::local_path_from_url(url);
 }
 
 /// Derive a TO_LOCATION given a FROM_LOCATION.
@@ -753,7 +748,7 @@ pub fn file_relpath(base: &str, path: &str) -> Result<String> {
     let base: PathBuf = breezy_osutils::path::normpath(local_path_from_url(base)?);
     let path: PathBuf = breezy_osutils::path::normpath(local_path_from_url(path)?);
 
-    let relpath = breezy_osutils::path::relpath(path.as_path(), base.as_path());
+    let relpath = breezy_osutils::path::relpath(base.as_path(), path.as_path());
     if relpath.is_none() {
         return Err(Error::PathNotChild(
             path.display().to_string(),

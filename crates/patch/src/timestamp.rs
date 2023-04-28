@@ -1,9 +1,5 @@
-use chrono::{FixedOffset, NaiveDateTime, TimeZone};
+use breezy_osutils::time::{format_date, Timezone};
 use lazy_static::lazy_static;
-use std::error::Error;
-use std::fmt::Formatter;
-
-use breezy_osutils::time::{format_date, unpack_highres_date, Timezone};
 
 #[derive(Debug)]
 pub enum ParsePatchDateError {

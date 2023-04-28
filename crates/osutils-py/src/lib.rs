@@ -1,5 +1,4 @@
 #![allow(non_snake_case)]
-use memchr;
 use pyo3::create_exception;
 use pyo3::exceptions::{PyIOError, PyTypeError, PyValueError};
 use pyo3::import_exception;
@@ -164,7 +163,7 @@ fn sha_string(py: Python, string: &[u8]) -> PyResult<PyObject> {
 fn sha_strings(py: Python, strings: &PyAny) -> PyResult<PyObject> {
     let iter = strings.iter()?;
     let digest =
-        breezy_osutils::sha::sha_chunks(iter.map(|x| x.unwrap().extract::<Vec<u8>>().unwrap()));
+        breezy_osutils::sha::sha_chunks(iter.map(|x| x.unwrap().extract::<&[u8]>().unwrap()));
     Ok(PyBytes::new(py, digest.as_bytes()).into_py(py))
 }
 
@@ -200,7 +199,7 @@ fn normalized_filename(filename: &PyAny) -> PyResult<(PathBuf, bool)> {
 
 #[pyfunction]
 fn _inaccessible_normalized_filename(filename: &PyAny) -> PyResult<(PathBuf, bool)> {
-    let filename = extract_path(&filename)?;
+    let filename = extract_path(filename)?;
     if let Some(filename) =
         breezy_osutils::path::inaccessible_normalized_filename(filename.as_path())
     {
@@ -212,7 +211,7 @@ fn _inaccessible_normalized_filename(filename: &PyAny) -> PyResult<(PathBuf, boo
 
 #[pyfunction]
 fn _accessible_normalized_filename(filename: &PyAny) -> PyResult<(PathBuf, bool)> {
-    let filename = extract_path(&filename)?;
+    let filename = extract_path(filename)?;
     if let Some(filename) = breezy_osutils::path::accessible_normalized_filename(filename.as_path())
     {
         Ok(filename)
@@ -505,7 +504,7 @@ fn IterableFile(py_iterable: PyObject) -> PyResult<PyObject> {
                                     err.to_string(),
                                 )))
                             }
-                            Ok(bytes) => Some(Ok(bytes.as_bytes().to_vec().into())),
+                            Ok(bytes) => Some(Ok(bytes.as_bytes().to_vec())),
                         },
                     },
                 )
@@ -613,7 +612,7 @@ fn format_date(
         if let Ok(offset) = offset.extract::<f64>(py) {
             Some(offset as i64)
         } else if let Ok(offset) = offset.extract::<i64>(py) {
-            Some(offset as i64)
+            Some(offset)
         } else {
             return Err(PyValueError::new_err("offset must be a float or int"));
         }
@@ -655,14 +654,13 @@ fn format_highres_date(py: Python, t: PyObject, offset: Option<PyObject>) -> PyR
 
 #[pyfunction]
 fn unpack_highres_date(date: &str) -> PyResult<(f64, i32)> {
-    breezy_osutils::time::unpack_highres_date(date)
-        .map_err(|e| PyValueError::new_err(e.to_string()))
+    breezy_osutils::time::unpack_highres_date(date).map_err(PyValueError::new_err)
 }
 
 #[pyfunction]
 #[cfg(unix)]
 fn get_umask() -> PyResult<u32> {
-    Ok(breezy_osutils::get_umask())
+    Ok(breezy_osutils::get_umask().bits())
 }
 
 #[pyfunction]
@@ -714,7 +712,7 @@ fn quotefn(filename: &str) -> String {
 fn copy_ownership_from_path(dst: PathBuf, src: Option<PathBuf>) -> PyResult<()> {
     Ok(breezy_osutils::file::copy_ownership_from_path(
         dst,
-        src.as_ref().map(|p| p.as_path()),
+        src.as_deref(),
     )?)
 }
 
@@ -779,28 +777,24 @@ fn copy_tree(from_path: PathBuf, to_path: PathBuf) -> PyResult<()> {
 
 #[pyfunction]
 fn abspath(path: PathBuf) -> PyResult<PathBuf> {
-    breezy_osutils::path::abspath(path.as_path())
-        .map_err(|e| e.into())
-        .map(|p| p.into())
+    breezy_osutils::path::abspath(path.as_path()).map_err(|e| e.into())
 }
 
 #[pyfunction(name = "abspath")]
 fn posix_abspath(path: PathBuf) -> PyResult<PathBuf> {
-    breezy_osutils::path::posix::abspath(path.as_path())
-        .map_err(|e| e.into())
-        .map(|p| p.into())
+    breezy_osutils::path::posix::abspath(path.as_path()).map_err(|e| e.into())
 }
 
 #[pyfunction(name = "abspath")]
 fn win32_abspath(path: PathBuf) -> PyResult<PathBuf> {
-    breezy_osutils::path::win32::abspath(path.as_path())
-        .map_err(|e| e.into())
-        .map(|p| p.into())
+    breezy_osutils::path::win32::abspath(path.as_path()).map_err(|e| e.into())
 }
 
+#[cfg(unix)]
 #[pyfunction]
 fn kind_from_mode(mode: u32) -> &'static str {
-    breezy_osutils::file::kind_from_mode(mode)
+    use nix::sys::stat::SFlag;
+    breezy_osutils::file::kind_from_mode(SFlag::from_bits_truncate(mode))
 }
 
 #[pyfunction]
@@ -833,11 +827,11 @@ fn pumpfile(from_file: PyObject, to_file: PyObject, read_size: Option<u64>) -> P
 #[pyfunction]
 fn contains_whitespace(py: Python, text: PyObject) -> PyResult<bool> {
     if let Ok(s) = text.extract::<&str>(py) {
-        return Ok(breezy_osutils::contains_whitespace(s));
+        Ok(breezy_osutils::contains_whitespace(s))
     } else if let Ok(s) = text.extract::<&[u8]>(py) {
-        return Ok(breezy_osutils::contains_whitespace_bytes(s));
+        Ok(breezy_osutils::contains_whitespace_bytes(s))
     } else {
-        return Err(PyTypeError::new_err("text must be str or bytes"));
+        Err(PyTypeError::new_err("text must be str or bytes"))
     }
 }
 
@@ -845,18 +839,18 @@ fn contains_whitespace(py: Python, text: PyObject) -> PyResult<bool> {
 fn relpath(path: PathBuf, start: PathBuf) -> PyResult<PathBuf> {
     match breezy_osutils::path::relpath(path.as_path(), start.as_path()) {
         None => Err(PathNotChild::new_err((start, path))),
-        Some(p) => Ok(p.into()),
+        Some(p) => Ok(p),
     }
 }
 
 #[pyfunction(name = "normpath")]
 fn posix_normpath(path: PathBuf) -> PyResult<PathBuf> {
-    Ok(breezy_osutils::path::posix::normpath(path.as_path()).into())
+    Ok(breezy_osutils::path::posix::normpath(path.as_path()))
 }
 
 #[pyfunction(name = "normpath")]
 fn win32_normpath(path: PathBuf) -> PyResult<PathBuf> {
-    Ok(breezy_osutils::path::win32::normpath(path.as_path()).into())
+    Ok(breezy_osutils::path::win32::normpath(path.as_path()))
 }
 
 #[pyfunction]
@@ -866,7 +860,17 @@ fn contains_linebreaks(text: &str) -> bool {
 
 #[pyfunction]
 fn normpath(path: PathBuf) -> PyResult<PathBuf> {
-    Ok(breezy_osutils::path::normpath(path.as_path()).into())
+    Ok(breezy_osutils::path::normpath(path.as_path()))
+}
+
+#[pyfunction]
+fn realpath(path: PathBuf) -> PyResult<PathBuf> {
+    Ok(breezy_osutils::path::realpath(path.as_path())?)
+}
+
+#[pyfunction]
+fn normalizepath(path: PathBuf) -> PyResult<PathBuf> {
+    Ok(breezy_osutils::path::normalizepath(path.as_path())?)
 }
 
 #[pyfunction]
@@ -942,6 +946,7 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_submodule(posixm)?;
     #[cfg(unix)]
     m.add_wrapped(wrap_pyfunction!(get_umask))?;
+    #[cfg(unix)]
     m.add_wrapped(wrap_pyfunction!(kind_from_mode))?;
     m.add_wrapped(wrap_pyfunction!(delete_any))?;
     m.add_wrapped(wrap_pyfunction!(get_host_name))?;
@@ -952,6 +957,8 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(relpath))?;
     m.add_wrapped(wrap_pyfunction!(normpath))?;
     m.add_wrapped(wrap_pyfunction!(pump_string_file))?;
+    m.add_wrapped(wrap_pyfunction!(realpath))?;
+    m.add_wrapped(wrap_pyfunction!(normalizepath))?;
     m.add(
         "MIN_ABS_PATHLENGTH",
         breezy_osutils::path::MIN_ABS_PATHLENGTH,

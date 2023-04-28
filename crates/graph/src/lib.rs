@@ -56,9 +56,9 @@ pub fn invert_parent_map<'a, K: Hash + Eq>(
 /// Args:
 ///   parent_map: A dictionary mapping children to their parents
 /// REturns: Another dictionary with 'linear' chains collapsed
-pub fn collapse_linear_regions<'a, K: Hash + Eq>(
-    parent_map: &'a HashMap<impl Borrow<K>, Vec<impl Borrow<K>>>,
-) -> HashMap<&'a K, Vec<&'a K>> {
+pub fn collapse_linear_regions<K: Hash + Eq>(
+    parent_map: &HashMap<impl Borrow<K>, Vec<impl Borrow<K>>>,
+) -> HashMap<&K, Vec<&K>> {
     // Note: this isn't a strictly minimal collapse. For example:
     //   A
     //  / \
@@ -86,12 +86,9 @@ pub fn collapse_linear_regions<'a, K: Hash + Eq>(
     // 'uninteresting' linear D->B and E->C
     let mut children: HashMap<&K, Vec<&K>> = HashMap::new();
     for (child, parents) in parent_map.iter() {
-        children.entry(child.borrow()).or_insert(Vec::new());
+        children.entry(child.borrow()).or_default();
         for p in parents.iter() {
-            children
-                .entry(p.borrow())
-                .or_insert(Vec::new())
-                .push(child.borrow());
+            children.entry(p.borrow()).or_default().push(child.borrow());
         }
     }
 
@@ -150,7 +147,7 @@ impl RevnoVec {
         let mut ret = self.clone();
         let last_index = ret.0.len() - 1;
         ret.0[last_index] += 1;
-        return ret;
+        ret
     }
 
     pub fn new_branch(&self, branch_count: usize) -> Self {

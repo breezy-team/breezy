@@ -13,8 +13,8 @@ pub fn read_mtab<P: AsRef<Path>>(path: P) -> impl Iterator<Item = (PathBuf, Stri
     reader
         .lines()
         .filter_map(|line| line.ok())
-        .filter(|line| !line.starts_with("#"))
-        .map(|line| {
+        .filter(|line| !line.starts_with('#'))
+        .filter_map(|line| {
             let cols: Vec<Vec<u8>> = line
                 .split_whitespace()
                 .map(|s| s.as_bytes().to_vec())
@@ -27,7 +27,6 @@ pub fn read_mtab<P: AsRef<Path>>(path: P) -> impl Iterator<Item = (PathBuf, Stri
                 None
             }
         })
-        .filter_map(|x| x)
 }
 
 fn load_mounts() -> Vec<(PathBuf, String)> {
@@ -40,7 +39,7 @@ fn load_mounts() -> Vec<(PathBuf, String)> {
 #[test]
 fn test_load_mounts() {
     let mounts = load_mounts();
-    assert!(mounts.len() > 0);
+    assert!(!mounts.is_empty());
     assert!(mounts[0].0 == PathBuf::from("/"));
 }
 
@@ -59,11 +58,7 @@ pub fn get_fs_type<P: AsRef<Path>>(path: P) -> Option<String> {
 }
 
 pub fn supports_hardlinks<P: AsRef<Path>>(path: P) -> Option<bool> {
-    let fs_type = get_fs_type(path.as_ref());
-    if fs_type.is_none() {
-        return None;
-    }
-    let fs_type = fs_type.unwrap();
+    let fs_type = get_fs_type(path.as_ref())?;
     match fs_type.as_str() {
         "ext2" | "ext3" | "ext4" | "btrfs" | "xfs" | "jfs" | "reiserfs" | "zfs" => Some(true),
         "vfat" | "ntfs" => Some(false),
@@ -75,11 +70,7 @@ pub fn supports_hardlinks<P: AsRef<Path>>(path: P) -> Option<bool> {
 }
 
 pub fn supports_executable<P: AsRef<Path>>(path: P) -> Option<bool> {
-    let fs_type = get_fs_type(path.as_ref());
-    if fs_type.is_none() {
-        return None;
-    }
-    let fs_type = fs_type.unwrap();
+    let fs_type = get_fs_type(path.as_ref())?;
     match fs_type.as_str() {
         "vfat" | "ntfs" => Some(false),
         "ext2" | "ext3" | "ext4" | "btrfs" | "xfs" | "jfs" | "reiserfs" | "zfs" => Some(true),
@@ -91,11 +82,7 @@ pub fn supports_executable<P: AsRef<Path>>(path: P) -> Option<bool> {
 }
 
 pub fn supports_symlinks<P: AsRef<Path>>(path: P) -> Option<bool> {
-    let fs_type = get_fs_type(path.as_ref());
-    if fs_type.is_none() {
-        return None;
-    }
-    let fs_type = fs_type.unwrap();
+    let fs_type = get_fs_type(path.as_ref())?;
     match fs_type.as_str() {
         "vfat" | "ntfs" => Some(false), // Maybe?
         "ext2" | "ext3" | "ext4" | "btrfs" | "xfs" | "jfs" | "reiserfs" | "zfs" => Some(true),

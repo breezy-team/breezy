@@ -342,7 +342,8 @@ class TestCommandHelpI18n(tests.TestCase):
 
     def setUp(self):
         super().setUp()
-        self.overrideAttr(i18n, '_translations', ZzzTranslationsForDoc())
+        self.overrideAttr(i18n, 'gettext', ZzzTranslationsForDoc().gettext)
+        self.overrideAttr(i18n, 'ngettext', ZzzTranslationsForDoc().ngettext)
 
     def assertCmdHelp(self, expected, cmd):
         self.assertEqualDiff(textwrap.dedent(expected), cmd.get_help_text())
