@@ -157,13 +157,14 @@ class SFTPNonServerTest(TestCase):
     def test_get_paramiko_vendor(self):
         """Test that if no 'ssh' is available we get builtin paramiko"""
         from breezy.transport import ssh
+        from breezy.transport.ssh.paramiko import ParamikoVendor
 
         # set '.' as the only location in the path, forcing no 'ssh' to exist
         self.overrideAttr(ssh, '_ssh_vendor_manager')
         self.overrideEnv('PATH', '.')
         ssh._ssh_vendor_manager.clear_cache()
         vendor = ssh._get_ssh_vendor()
-        self.assertIsInstance(vendor, ssh.ParamikoVendor)
+        self.assertIsInstance(vendor, ParamikoVendor)
 
     def test_abspath_root_sibling_server(self):
         server = stub_sftp.SFTPSiblingAbsoluteServer()
@@ -238,7 +239,8 @@ class SSHVendorConnection(TestCaseWithSFTPServer):
 
     def test_connection_paramiko(self):
         from breezy.transport import ssh
-        self.set_vendor(ssh.ParamikoVendor())
+        from breezy.transport.ssh.paramiko import ParamikoVendor
+        self.set_vendor(ParamikoVendor())
         t = self.get_transport()
         self.assertEqual(b'foobar\n', t.get('a_file').read())
 
@@ -281,7 +283,8 @@ class SSHVendorBadConnection(TestCaseWithTransport):
     def test_bad_connection_paramiko(self):
         """Test that a real connection attempt raises the right error"""
         from breezy.transport import ssh
-        self.set_vendor(ssh.ParamikoVendor())
+        from breezy.transport.ssh.paramiko import ParamikoVendor
+        self.set_vendor(ParamikoVendor())
         t = _mod_transport.get_transport_from_url(self.bogus_url)
         self.assertRaises(errors.ConnectionError, t.get, 'foobar')
 

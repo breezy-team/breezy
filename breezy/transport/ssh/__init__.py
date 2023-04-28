@@ -43,26 +43,12 @@ class StrangeHostname(errors.BzrError):
     _fmt = "Refusing to connect to strange SSH hostname %(hostname)s"
 
 
-SYSTEM_HOSTKEYS: Dict[str, Dict[str, str]] = {}
-BRZ_HOSTKEYS: Dict[str, Dict[str, str]] = {}
-
-
 class SSHVendorManager(registry.Registry[str, "SSHVendor"]):
     """Manager for manage SSH vendors."""
-
-    # Note, although at first sign the class interface seems similar to
-    # breezy.registry.Registry it is not possible/convenient to directly use
-    # the Registry because the class just has "get()" interface instead of the
-    # Registry's "get(key)".
 
     def __init__(self):
         super(SSHVendorManager, self).__init__()
         self._cached_ssh_vendor = None
-        self._default_ssh_vendor = None
-
-    def register_default_vendor(self, vendor):
-        """Register default SSH vendor."""
-        self._default_ssh_vendor = vendor
 
     def clear_cache(self):
         """Clear previously cached lookup result."""
@@ -145,17 +131,17 @@ class SSHVendorManager(registry.Registry[str, "SSHVendor"]):
                 vendor = self._get_vendor_by_inspection()
                 if vendor is None:
                     trace.mutter('falling back to default implementation')
-                    vendor = self._default_ssh_vendor
-                    if vendor is None:
+                    if self.default_key is None:
                         raise errors.SSHVendorNotFound()
+                    vendor = self.get()
             self._cached_ssh_vendor = vendor
         return self._cached_ssh_vendor
 
 
 _ssh_vendor_manager = SSHVendorManager()
 _get_ssh_vendor = _ssh_vendor_manager.get_vendor
-register_default_ssh_vendor = _ssh_vendor_manager.register_default_vendor
 register_ssh_vendor = _ssh_vendor_manager.register
+register_lazy_ssh_vendor = _ssh_vendor_manager.register_lazy
 
 
 def _ignore_signals():
@@ -254,83 +240,12 @@ class LoopbackVendor(SSHVendor):
 register_ssh_vendor('loopback', LoopbackVendor())
 
 
-class ParamikoVendor(SSHVendor):
-    """Vendor that uses paramiko."""
-
-    def _hexify(self, s):
-        return hexlify(s).upper()
-
-    def _connect(self, username, password, host, port):
-        global SYSTEM_HOSTKEYS, BRZ_HOSTKEYS
-
-        load_host_keys()
-
-        try:
-            t = paramiko.Transport((host, port or 22))
-            t.set_log_channel('bzr.paramiko')
-            t.start_client()
-        except (paramiko.SSHException, OSError) as e:
-            self._raise_connection_error(host, port=port, orig_error=e)
-
-        server_key = t.get_remote_server_key()
-        server_key_hex = self._hexify(server_key.get_fingerprint())
-        keytype = server_key.get_name()
-        if host in SYSTEM_HOSTKEYS and keytype in SYSTEM_HOSTKEYS[host]:
-            our_server_key = SYSTEM_HOSTKEYS[host][keytype]
-            our_server_key_hex = self._hexify(our_server_key.get_fingerprint())
-        elif host in BRZ_HOSTKEYS and keytype in BRZ_HOSTKEYS[host]:
-            our_server_key = BRZ_HOSTKEYS[host][keytype]
-            our_server_key_hex = self._hexify(our_server_key.get_fingerprint())
-        else:
-            trace.warning('Adding %s host key for %s: %s'
-                          % (keytype, host, server_key_hex))
-            add = getattr(BRZ_HOSTKEYS, 'add', None)
-            if add is not None:  # paramiko >= 1.X.X
-                BRZ_HOSTKEYS.add(host, keytype, server_key)
-            else:
-                BRZ_HOSTKEYS.setdefault(host, {})[keytype] = server_key
-            our_server_key = server_key
-            our_server_key_hex = self._hexify(our_server_key.get_fingerprint())
-            save_host_keys()
-        if server_key != our_server_key:
-            filename1 = os.path.expanduser('~/.ssh/known_hosts')
-            filename2 = _ssh_host_keys_config_dir()
-            raise errors.TransportError(
-                'Host keys for %s do not match!  %s != %s' %
-                (host, our_server_key_hex, server_key_hex),
-                ['Try editing {} or {}'.format(filename1, filename2)])
-
-        _paramiko_auth(username, password, host, port, t)
-        return t
-
-    def connect_sftp(self, username, password, host, port):
-        t = self._connect(username, password, host, port)
-        try:
-            return t.open_sftp_client()
-        except paramiko.SSHException as e:
-            self._raise_connection_error(host, port=port, orig_error=e,
-                                         msg='Unable to start sftp client')
-
-    def connect_ssh(self, username, password, host, port, command):
-        t = self._connect(username, password, host, port)
-        try:
-            channel = t.open_session()
-            cmdline = ' '.join(command)
-            channel.exec_command(cmdline)
-            return _ParamikoSSHConnection(channel)
-        except paramiko.SSHException as e:
-            self._raise_connection_error(host, port=port, orig_error=e,
-                                         msg='Unable to invoke remote bzr')
-
-
 _ssh_connection_errors: Tuple[Type[Exception], ...] = (EOFError, OSError, IOError, socket.error)
 if paramiko is not None:
-    vendor = ParamikoVendor()
-    register_ssh_vendor('paramiko', vendor)
-    register_ssh_vendor('none', vendor)
-    register_default_ssh_vendor(vendor)
+    register_lazy_ssh_vendor('paramiko', 'breezy.transport.ssh.paramiko', 'paramiko_vendor')
+    register_lazy_ssh_vendor('none', 'breezy.transport.ssh.paramiko', 'paramiko_vendor')
+    _ssh_vendor_manager.default_key = 'paramiko'
     _ssh_connection_errors += (paramiko.SSHException,)
-    del vendor
 
 
 class SubprocessVendor(SSHVendor):
@@ -489,151 +404,6 @@ class PLinkSubprocessVendor(SubprocessVendor):
 register_ssh_vendor('plink', PLinkSubprocessVendor())
 
 
-def _paramiko_auth(username, password, host, port, paramiko_transport):
-    auth = config.AuthenticationConfig()
-    # paramiko requires a username, but it might be none if nothing was
-    # supplied.  If so, use the local username.
-    if username is None:
-        username = auth.get_user('ssh', host, port=port,
-                                 default=getpass.getuser())
-    agent = paramiko.Agent()
-    for key in agent.get_keys():
-        trace.mutter('Trying SSH agent key %s'
-                     % hexlify(key.get_fingerprint()).upper())
-        try:
-            paramiko_transport.auth_publickey(username, key)
-            return
-        except paramiko.SSHException as e:
-            pass
-
-    # okay, try finding id_rsa or id_dss?  (posix only)
-    if _try_pkey_auth(paramiko_transport, paramiko.RSAKey, username, 'id_rsa'):
-        return
-    if _try_pkey_auth(paramiko_transport, paramiko.DSSKey, username, 'id_dsa'):
-        return
-
-    # If we have gotten this far, we are about to try for passwords, do an
-    # auth_none check to see if it is even supported.
-    supported_auth_types = []
-    try:
-        # Note that with paramiko <1.7.5 this logs an INFO message:
-        #    Authentication type (none) not permitted.
-        # So we explicitly disable the logging level for this action
-        old_level = paramiko_transport.logger.level
-        paramiko_transport.logger.setLevel(logging.WARNING)
-        try:
-            paramiko_transport.auth_none(username)
-        finally:
-            paramiko_transport.logger.setLevel(old_level)
-    except paramiko.BadAuthenticationType as e:
-        # Supported methods are in the exception
-        supported_auth_types = e.allowed_types
-    except paramiko.SSHException as e:
-        # Don't know what happened, but just ignore it
-        pass
-    # We treat 'keyboard-interactive' and 'password' auth methods identically,
-    # because Paramiko's auth_password method will automatically try
-    # 'keyboard-interactive' auth (using the password as the response) if
-    # 'password' auth is not available.  Apparently some Debian and Gentoo
-    # OpenSSH servers require this.
-    # XXX: It's possible for a server to require keyboard-interactive auth that
-    # requires something other than a single password, but we currently don't
-    # support that.
-    if ('password' not in supported_auth_types and
-            'keyboard-interactive' not in supported_auth_types):
-        raise errors.ConnectionError('Unable to authenticate to SSH host as'
-                                     '\n  %s@%s\nsupported auth types: %s'
-                                     % (username, host, supported_auth_types))
-
-    if password:
-        try:
-            paramiko_transport.auth_password(username, password)
-            return
-        except paramiko.SSHException as e:
-            pass
-
-    # give up and ask for a password
-    password = auth.get_password('ssh', host, username, port=port)
-    # get_password can still return None, which means we should not prompt
-    if password is not None:
-        try:
-            paramiko_transport.auth_password(username, password)
-        except paramiko.SSHException as e:
-            raise errors.ConnectionError(
-                'Unable to authenticate to SSH host as'
-                '\n  %s@%s\n' % (username, host), e)
-    else:
-        raise errors.ConnectionError('Unable to authenticate to SSH host as'
-                                     '  %s@%s' % (username, host))
-
-
-def _try_pkey_auth(paramiko_transport, pkey_class, username, filename):
-    filename = os.path.expanduser('~/.ssh/' + filename)
-    try:
-        key = pkey_class.from_private_key_file(filename)
-        paramiko_transport.auth_publickey(username, key)
-        return True
-    except paramiko.PasswordRequiredException:
-        password = ui.ui_factory.get_password(
-            prompt='SSH %(filename)s password',
-            filename=os.fsdecode(filename))
-        try:
-            key = pkey_class.from_private_key_file(filename, password)
-            paramiko_transport.auth_publickey(username, key)
-            return True
-        except paramiko.SSHException:
-            trace.mutter('SSH authentication via %s key failed.'
-                         % (os.path.basename(filename),))
-    except paramiko.SSHException:
-        trace.mutter('SSH authentication via %s key failed.'
-                     % (os.path.basename(filename),))
-    except OSError:
-        pass
-    return False
-
-
-def _ssh_host_keys_config_dir():
-    return osutils.pathjoin(bedding.config_dir(), 'ssh_host_keys')
-
-
-def load_host_keys():
-    """
-    Load system host keys (probably doesn't work on windows) and any
-    "discovered" keys from previous sessions.
-    """
-    global SYSTEM_HOSTKEYS, BRZ_HOSTKEYS
-    try:
-        SYSTEM_HOSTKEYS = paramiko.util.load_host_keys(
-            os.path.expanduser('~/.ssh/known_hosts'))
-    except OSError as e:
-        trace.mutter('failed to load system host keys: ' + str(e))
-    brz_hostkey_path = _ssh_host_keys_config_dir()
-    try:
-        BRZ_HOSTKEYS = paramiko.util.load_host_keys(brz_hostkey_path)
-    except OSError as e:
-        trace.mutter('failed to load brz host keys: ' + str(e))
-        save_host_keys()
-
-
-def save_host_keys():
-    """
-    Save "discovered" host keys in $(config)/ssh_host_keys/.
-    """
-    global SYSTEM_HOSTKEYS, BRZ_HOSTKEYS
-    bzr_hostkey_path = _ssh_host_keys_config_dir()
-    bedding.ensure_config_dir_exists()
-
-    try:
-        with open(bzr_hostkey_path, 'w') as f:
-            f.write('# SSH host keys collected by bzr\n')
-            for hostname, keys in BRZ_HOSTKEYS.items():
-                for keytype, key in keys.items():
-                    f.write('%s %s %s\n' %
-                            (hostname, keytype, key.get_base64()))
-    except OSError as e:
-        trace.mutter('failed to save bzr host keys: ' + str(e))
-
-
 def os_specific_subprocess_params():
     """Get O/S specific subprocess parameters."""
     if sys.platform == 'win32':
@@ -751,16 +521,3 @@ class SSHSubprocessConnection(SSHConnection):
             return 'socket', self._sock
         else:
             return 'pipes', (self.proc.stdout, self.proc.stdin)
-
-
-class _ParamikoSSHConnection(SSHConnection):
-    """An SSH connection via paramiko."""
-
-    def __init__(self, channel):
-        self.channel = channel
-
-    def get_sock_or_pipes(self):
-        return ('socket', self.channel)
-
-    def close(self):
-        return self.channel.close()

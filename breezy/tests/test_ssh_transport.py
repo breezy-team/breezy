@@ -50,7 +50,8 @@ class SSHVendorManagerTests(TestCaseWithTransport):
         self.overrideEnv('BRZ_SSH', None)
         self.assertRaises(SSHVendorNotFound, manager.get_vendor)
         vendor = object()
-        manager.register_default_vendor(vendor)
+        manager.register('object', vendor)
+        manager.default_key = 'object'
         self.assertIs(manager.get_vendor(), vendor)
 
     def test_get_vendor_by_environment(self):
@@ -142,7 +143,8 @@ class SSHVendorManagerTests(TestCaseWithTransport):
 
         # If the default vendor is registered it will be returned
         default_vendor = object()
-        manager.register_default_vendor(default_vendor)
+        manager.register('object', default_vendor)
+        manager.default_key = 'object'
         self.assertIs(manager.get_vendor(), default_vendor)
 
         # If the known vendor is found in the system it will be returned
