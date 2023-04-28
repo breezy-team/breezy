@@ -29,6 +29,7 @@ import paramiko
 
 from .. import osutils, trace, urlutils
 from ..transport import ssh
+from ..transport.ssh.paramiko import ParamikoVendor
 from . import test_server
 
 
@@ -453,7 +454,7 @@ class SFTPServer(test_server.TestingTCPServerInAThread):
                                          TestingSFTPServer,
                                          TestingSFTPConnectionHandler)
         self._original_vendor = None
-        self._vendor = ssh.ParamikoVendor()
+        self._vendor = ParamikoVendor()
         self._server_interface = server_interface
         self._host_key = None
         self.logs = []
