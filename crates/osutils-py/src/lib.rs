@@ -890,6 +890,11 @@ fn win32_fixdrive(path: PathBuf) -> PathBuf {
     breezy_osutils::path::win32::fixdrive(path.as_path())
 }
 
+#[pyfunction(name="getcwd")]
+fn win32_getcwd() -> PyResult<PathBuf> {
+    Ok(breezy_osutils::path::win32::getcwd()?)
+}
+
 #[pymodule]
 fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -948,6 +953,7 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     win32m.add_wrapped(wrap_pyfunction!(win32_normpath))?;
     win32m.add_wrapped(wrap_pyfunction!(win32_fix_separators))?;
     win32m.add_wrapped(wrap_pyfunction!(win32_fixdrive))?;
+    win32m.add_wrapped(wrap_pyfunction!(win32_getcwd))?;
     m.add_submodule(win32m)?;
     let posixm = PyModule::new(py, "posix")?;
     posixm.add_wrapped(wrap_pyfunction!(posix_abspath))?;

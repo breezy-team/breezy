@@ -171,8 +171,7 @@ def _win32_pathjoin(*args):
     return _win32_fix_separators(ntpath.join(*args))
 
 
-def _win32_getcwd():
-    return _win32_fixdrive(_win32_fix_separators(os.getcwd()))
+_win32_getcwd = _osutils_rs.win32.getcwd
 
 
 def _win32_rename(old, new):
