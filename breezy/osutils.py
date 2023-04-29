@@ -1254,11 +1254,6 @@ def dereference_path(path):
     return pathjoin(realpath(pathjoin('.', parent)), base)
 
 
-def supports_mapi():
-    """Return True if we can use MAPI to launch a mail client."""
-    return sys.platform == "win32"
-
-
 def resource_string(package, resource_name):
     """Load a resource from a package and return it as a string.
 
