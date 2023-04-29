@@ -302,7 +302,13 @@ class FileFileStream(FileStream):
         osutils.fdatasync(fileno)
 
     def write(self, bytes):
-        osutils.pump_string_file(bytes, self.file_handle)
+        class F(object):
+            def __init__(self, f):
+                self.f = f
+            def write(self, b):
+                self.f.write(b)
+                return len(b)
+        osutils.pump_string_file(bytes, F(self.file_handle))
         return len(bytes)
 
 

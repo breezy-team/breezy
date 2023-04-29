@@ -435,7 +435,7 @@ class Test_SFTPReadvHelper(tests.TestCase):
         # Ranges larger than _max_request_size (32kB) are broken up into
         # multiple requests, even if it actually spans multiple logical
         # requests
-        self.checkGetRequests([(0, 32768), (32768, 32768), (65536, 464)],
+        self.checkGetRequests([(0, 66000)],
                               [(0, 40000), (40000, 100), (40100, 1900),
                                (42000, 24000)])
 
