@@ -895,6 +895,38 @@ fn win32_getcwd() -> PyResult<PathBuf> {
     Ok(breezy_osutils::path::win32::getcwd()?)
 }
 
+#[pyclass]
+struct FileIterator {
+    input_file: PyObject,
+    read_size: usize,
+}
+
+#[pymethods]
+impl FileIterator {
+    #[new]
+    fn new(input_file: PyObject, read_size: Option<usize>) -> Self {
+        FileIterator {
+            input_file,
+            read_size: read_size.unwrap_or(32768),
+        }
+    }
+
+    fn __next__(&mut self, py: Python) -> PyResult<Option<PyObject>> {
+        let result = self.input_file.call_method1(py, "read", (self.read_size,));
+        match result {
+            Ok(buf) if buf.is_none(py) => Ok(None),
+            Ok(buf) => Ok(Some(buf)),
+            Err(e) => Err(e),
+        }
+    }
+}
+
+#[pyfunction]
+fn file_iterator(py: Python, input_file: PyObject, read_size: Option<usize>) -> PyResult<PyObject> {
+    let iterator = FileIterator::new(input_file, read_size);
+    Ok(iterator.into_py(py))
+}
+
 #[pymodule]
 fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -925,6 +957,7 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(check_text_path))?;
     m.add_wrapped(wrap_pyfunction!(check_text_lines))?;
     m.add_wrapped(wrap_pyfunction!(format_delta))?;
+    m.add_wrapped(wrap_pyfunction!(file_iterator))?;
     m.add_wrapped(wrap_pyfunction!(
         format_date_with_offset_in_original_timezone
     ))?;

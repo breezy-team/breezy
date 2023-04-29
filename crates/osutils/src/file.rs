@@ -4,6 +4,7 @@ use log::debug;
 use nix::sys::stat::SFlag;
 use std::fs::{set_permissions, Permissions};
 use std::io::Result;
+use std::io::{BufRead, Read};
 use std::path::Path;
 use walkdir::WalkDir;
 
@@ -210,4 +211,18 @@ pub fn delete_any<P: AsRef<Path>>(path: P) -> std::io::Result<()> {
         }
         Err(e) => Err(e),
     }
+}
+
+pub fn file_iterator<F: Read>(
+    input_file: F,
+    readsize: Option<usize>,
+) -> impl Iterator<Item = Vec<u8>> {
+    let readsize = readsize.unwrap_or(32768);
+    let mut buffer = vec![0; readsize];
+    let mut reader = std::io::BufReader::new(input_file);
+    std::iter::from_fn(move || match reader.read(&mut buffer) {
+        Ok(0) => None,
+        Ok(n) => Some(buffer[..n].to_vec()),
+        Err(_) => None,
+    })
 }

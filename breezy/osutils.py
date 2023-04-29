@@ -387,14 +387,7 @@ def pump_string_file(bytes, file_handle, segment_size=None):
         write(view[offset:offset + segment_size])
 
 
-def file_iterator(input_file, readsize=32768):
-    while True:
-        b = input_file.read(readsize)
-        if len(b) == 0:
-            break
-        yield b
-
-
+file_iterator = _osutils_rs.file_iterator
 sha_file = _osutils_rs.sha_file
 size_sha_file = _osutils_rs.size_sha_file
 sha_file_by_name = _osutils_rs.sha_file_by_name
