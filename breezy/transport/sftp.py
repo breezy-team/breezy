@@ -34,7 +34,7 @@ import time
 
 from .. import config, debug, errors, urlutils
 from ..errors import LockError, ParamikoNotPresent, PathError, TransportError
-from ..osutils import fancy_rename
+from ..osutils import fancy_rename, pumpfile
 from ..trace import mutter, warning
 from ..transport import (ConnectedTransport, FileExists, FileFileStream,
                          NoSuchFile, _file_streams, ssh)
@@ -88,12 +88,15 @@ else:
     _bad_asbytes.__code__ = _asbytes_for_broken_paramiko.__code__
 
 
-def _patch_write(fout):
-    orig_write = fout.write
-    def write_with_len(data):
-        orig_write(data)
+
+class WriteStream(object):
+
+    def __init__(self, f):
+        self.f = f
+
+    def write(self, data):
+        self.f.write(data)
         return len(data)
-    fout.write = write_with_len
 
 
 class SFTPLock:
@@ -133,9 +136,6 @@ class SFTPLock:
 class _SFTPReadvHelper:
     """A class to help with managing the state of a readv request."""
 
-    # See _get_requests for an explanation.
-    _max_request_size = 32768
-
     def __init__(self, original_offsets, relpath, _report_activity):
         """Create a new readv helper.
 
@@ -168,17 +168,10 @@ class _SFTPReadvHelper:
         sorted_offsets = sorted(self.original_offsets)
         coalesced = list(ConnectedTransport._coalesce_offsets(sorted_offsets,
                                                               limit=0, fudge_factor=0))
-        requests = []
-        for c_offset in coalesced:
-            start = c_offset.start
-            size = c_offset.length
+        requests = [
+            (c_offset.start, c_offset.length)
+            for c_offset in coalesced]
 
-            # Break this up into 32kB requests
-            while size > 0:
-                next_size = min(size, self._max_request_size)
-                requests.append((start, next_size))
-                size -= next_size
-                start += next_size
         if 'sftp' in debug.debug_flags:
             mutter('SFTP.readv(%s) %s offsets => %s coalesced => %s requests',
                    self.relpath, len(sorted_offsets), len(coalesced),
@@ -339,12 +332,8 @@ class SFTPTransport(ConnectedTransport):
     # 8KiB had good performance for both local and remote network operations
     _bytes_to_read_before_seek = 8192
 
-    # The sftp spec says that implementations SHOULD allow reads
-    # to be at least 32K. paramiko.readv() does an async request
-    # for the chunks. So we need to keep it within a single request
-    # size for paramiko <= 1.6.1. paramiko 1.6.2 will probably chop
-    # up the request itself, rather than us having to worry about it
-    _max_request_size = 32768
+    def _pump(self, infile, outfile):
+        return pumpfile(infile, WriteStream(outfile))
 
     def _remote_path(self, relpath):
         """Return the path to be passed along the sftp protocol for relpath.
@@ -493,7 +482,6 @@ class SFTPTransport(ConnectedTransport):
         tmp_abspath = '%s.tmp.%.9f.%d.%d' % (abspath, time.time(),
                                              os.getpid(), random.randint(0, 0x7FFFFFFF))
         fout = self._sftp_open_exclusive(tmp_abspath, mode=mode)
-        _patch_write(fout)
         closed = False
         try:
             try:
@@ -553,7 +541,6 @@ class SFTPTransport(ConnectedTransport):
             try:
                 try:
                     fout = self._get_sftp().file(abspath, mode='wb')
-                    _patch_write(fout)
 
                     fout.set_pipelined(True)
                     writer(fout)
@@ -738,7 +725,6 @@ class SFTPTransport(ConnectedTransport):
             fout = self._get_sftp().file(path, 'ab')
             if mode is not None:
                 self._get_sftp().chmod(path, mode)
-            _patch_write(fout)
             result = fout.tell()
             self._pump(f, fout)
             return result

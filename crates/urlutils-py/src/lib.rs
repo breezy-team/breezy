@@ -64,6 +64,9 @@ fn map_urlutils_error_to_pyerr(e: breezy_urlutils::Error) -> PyErr {
         breezy_urlutils::Error::InvalidWin32LocalUrl(url) => {
             InvalidURL::new_err(("Invalid Win32 local URL", url))
         }
+        breezy_urlutils::Error::InvalidWin32Path(path) => {
+            InvalidURL::new_err(("Invalid Win32 path", path))
+        }
         breezy_urlutils::Error::PathNotChild(path, start) => PathNotChild::new_err((path, start)),
         breezy_urlutils::Error::UrlTooShort(url) => PyValueError::new_err(("URL too short", url)),
     }
@@ -187,6 +190,18 @@ fn win32_local_path_from_url(url: &str) -> PyResult<PathBuf> {
     breezy_urlutils::win32::local_path_from_url(url).map_err(map_urlutils_error_to_pyerr)
 }
 
+/// On win32 the drive letter needs to be added to the url base.
+#[pyfunction(name = "extract_drive_letter")]
+fn win32_extract_drive_letter(url_base: &str, path: &str) -> PyResult<(String, String)> {
+    breezy_urlutils::win32::extract_drive_letter(url_base, path)
+        .map_err(map_urlutils_error_to_pyerr)
+}
+
+#[pyfunction(name = "strip_local_trailing_slash")]
+fn win32_strip_local_trailing_slash(url: &str) -> String {
+    breezy_urlutils::win32::strip_local_trailing_slash(url)
+}
+
 #[pyfunction(name = "local_path_from_url")]
 fn posix_local_path_from_url(url: &str) -> PyResult<PathBuf> {
     breezy_urlutils::posix::local_path_from_url(url).map_err(map_urlutils_error_to_pyerr)
@@ -234,6 +249,8 @@ fn _urlutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     let win32m = PyModule::new(py, "win32")?;
     win32m.add_function(wrap_pyfunction!(win32_local_path_to_url, win32m)?)?;
     win32m.add_function(wrap_pyfunction!(win32_local_path_from_url, win32m)?)?;
+    win32m.add_function(wrap_pyfunction!(win32_extract_drive_letter, win32m)?)?;
+    win32m.add_function(wrap_pyfunction!(win32_strip_local_trailing_slash, win32m)?)?;
     m.add_submodule(win32m)?;
     let posixm = PyModule::new(py, "posix")?;
     posixm.add_function(wrap_pyfunction!(posix_local_path_to_url, posixm)?)?;
