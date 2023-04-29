@@ -15,26 +15,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import os
-import sys
+from . import _osutils_rs
 
-__docformat__ = "restructuredtext"
-__doc__ = "Terminal control functionality"
+has_ansi_colors = _osutils_rs.has_ansi_colors
 
-def has_ansi_colors():
-    # XXX The whole color handling should be rewritten to use terminfo
-    # XXX before we get there, checking for setaf capability should do.
-    # XXX See terminfo(5) for all the gory details.
-    if sys.platform == "win32":
-        return False
-    if not sys.stdout.isatty():
-        return False
-    import curses
-    try:
-        curses.setupterm()
-    except curses.error:
-        return False
-    return bool(curses.tigetstr('setaf'))
 
 colors = {
     "black": b"0",
@@ -113,7 +97,3 @@ class BG:
 
 def color_string(s, fg, bg=''):
     return fg + bg + s + FG.NONE
-
-
-def re_color_string(compiled_pattern, s, fg):
-    return compiled_pattern.sub(fg + r'\1' + FG.NONE, s)

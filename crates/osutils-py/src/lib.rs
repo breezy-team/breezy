@@ -908,6 +908,11 @@ fn terminal_size() -> PyResult<(u16, u16)> {
     Ok(breezy_osutils::terminal::terminal_size()?)
 }
 
+#[pyfunction]
+fn has_ansi_colors() -> bool {
+    breezy_osutils::terminal::has_ansi_colors()
+}
+
 #[pymodule]
 fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -987,6 +992,7 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(realpath))?;
     m.add_wrapped(wrap_pyfunction!(normalizepath))?;
     m.add_wrapped(wrap_pyfunction!(terminal_size))?;
+    m.add_wrapped(wrap_pyfunction!(has_ansi_colors))?;
     m.add(
         "MIN_ABS_PATHLENGTH",
         breezy_osutils::path::MIN_ABS_PATHLENGTH,
