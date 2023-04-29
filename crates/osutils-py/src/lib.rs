@@ -911,6 +911,10 @@ impl FileIterator {
         }
     }
 
+    fn __iter__(slf: PyRef<Self>) -> Py<Self> {
+        slf.into()
+    }
+
     fn __next__(&mut self, py: Python) -> PyResult<Option<PyObject>> {
         let result = self.input_file.call_method1(py, "read", (self.read_size,));
         match result {
