@@ -51,43 +51,6 @@ else:
     from paramiko.sftp_file import SFTPFile
 
 
-# GZ 2017-05-25: Some dark hackery to monkeypatch out issues with paramiko's
-# Python 3 compatibility code. Replace broken b() and asbytes() code.
-try:
-    from paramiko.common import asbytes as _bad_asbytes
-    from paramiko.py3compat import b as _bad
-except ImportError:
-    pass
-else:
-    def _b_for_broken_paramiko(s, encoding='utf8'):
-        """Hacked b() that does not raise TypeError."""
-        # https://github.com/paramiko/paramiko/issues/967
-        if not isinstance(s, bytes):
-            encode = getattr(s, 'encode', None)
-            if encode is not None:
-                return encode(encoding)
-            # Would like to pass buffer objects along, but have to realise.
-            tobytes = getattr(s, 'tobytes', None)
-            if tobytes is not None:
-                return tobytes()
-        return s
-
-    def _asbytes_for_broken_paramiko(s):
-        """Hacked asbytes() that does not raise Exception."""
-        # https://github.com/paramiko/paramiko/issues/968
-        if not isinstance(s, bytes):
-            encode = getattr(s, 'encode', None)
-            if encode is not None:
-                return encode('utf8')
-            asbytes = getattr(s, 'asbytes', None)
-            if asbytes is not None:
-                return asbytes()
-        return s
-
-    _bad.__code__ = _b_for_broken_paramiko.__code__
-    _bad_asbytes.__code__ = _asbytes_for_broken_paramiko.__code__
-
-
 def _patch_write(fout):
     orig_write = fout.write
     def write_with_len(data):
