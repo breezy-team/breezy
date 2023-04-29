@@ -367,24 +367,7 @@ is_inside = _osutils_rs.is_inside
 is_inside_any = _osutils_rs.is_inside_any
 is_inside_or_parent_of_any = _osutils_rs.is_inside_or_parent_of_any
 pumpfile = _osutils_rs.pumpfile
-
-
-def pump_string_file(bytes, file_handle, segment_size=None):
-    """Write bytes to file_handle in many smaller writes.
-
-    :param bytes: The string to write.
-    :param file_handle: The file to write to.
-    """
-    # Write data in chunks rather than all at once, because very large
-    # writes fail on some platforms (e.g. Windows with SMB  mounted
-    # drives).
-    if not segment_size:
-        segment_size = 5242880  # 5MB
-    offsets = range(0, len(bytes), segment_size)
-    view = memoryview(bytes)
-    write = file_handle.write
-    for offset in offsets:
-        write(view[offset:offset + segment_size])
+pump_string_file = _osutils_rs.pump_string_file
 
 
 def file_iterator(input_file, readsize=32768):
