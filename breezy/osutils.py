@@ -158,27 +158,8 @@ def fancy_rename(old, new, rename_func, unlink_func):
 
 _posix_normpath = _osutils_rs.posix.normpath
 _win32_normpath = _osutils_rs.win32.normpath
-
-
-def _win32_fixdrive(path):
-    """Force drive letters to be consistent.
-
-    win32 is inconsistent whether it returns lower or upper case
-    and even if it was consistent the user might type the other
-    so we force it to uppercase
-    running python.exe under cmd.exe return capital C:\\
-    running win32 python inside a cygwin shell returns lowercase c:\\
-    """
-    drive, path = ntpath.splitdrive(path)
-    return drive.upper() + path
-
-def _win32_fix_separators(path):
-    """Return path with directory separators changed to forward slashes"""
-    if isinstance(path, bytes):
-        return path.replace(b'\\', b'/')
-    else:
-        return path.replace('\\', '/')
-
+_win32_fixdrive = _osutils_rs.win32.fixdrive
+_win32_fix_separators = _osutils_rs.win32.fix_separators
 _win32_abspath = _osutils_rs.win32.abspath
 
 def _win32_realpath(path):
@@ -190,8 +171,7 @@ def _win32_pathjoin(*args):
     return _win32_fix_separators(ntpath.join(*args))
 
 
-def _win32_getcwd():
-    return _win32_fixdrive(_win32_fix_separators(os.getcwd()))
+_win32_getcwd = _osutils_rs.win32.getcwd
 
 
 def _win32_rename(old, new):

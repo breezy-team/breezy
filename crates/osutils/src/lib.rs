@@ -92,15 +92,16 @@ pub fn rand_chars(num: usize) -> String {
 }
 
 #[cfg(unix)]
-pub fn get_umask() -> u32 {
+use nix::sys::stat::{umask, Mode};
+
+#[cfg(unix)]
+pub fn get_umask() -> Mode {
     // Assume that people aren't messing with the umask while running
     // XXX: This is not thread safe, but there is no way to get the
     //      umask without setting it
-    let umask = unsafe { libc::umask(0) };
-    unsafe {
-        libc::umask(umask);
-    }
-    umask
+    let mask = umask(Mode::empty());
+    umask(mask);
+    mask
 }
 
 pub fn kind_marker(kind: &str) -> &str {

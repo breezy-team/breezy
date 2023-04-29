@@ -1,6 +1,7 @@
 use bazaar::filters::{ContentFilter, ContentFilterProvider, ContentFilterStack};
 use breezy_osutils::sha::sha_string;
 use log::{debug, info};
+use nix::sys::stat::SFlag;
 use std::collections::HashMap;
 use std::fs;
 use std::fs::{File, Metadata, Permissions};
@@ -202,8 +203,8 @@ impl HashCache {
         } else {
             self.miss_count += 1;
 
-            match file_fp.mode & libc::S_IFMT {
-                libc::S_IFREG => {
+            match SFlag::from_bits_truncate(file_fp.mode) {
+                SFlag::S_IFREG => {
                     let filters: Box<dyn ContentFilter> =
                         if let Some(filter_provider) = self.filter_provider.as_ref() {
                             filter_provider(path, file_fp.ctime as u64)
@@ -241,7 +242,7 @@ impl HashCache {
 
                     Ok(digest)
                 }
-                libc::S_IFLNK => {
+                SFlag::S_IFLNK => {
                     let target = fs::read_link(&abspath)?;
                     let digest = sha_string(target.to_string_lossy().as_bytes());
                     self.cache

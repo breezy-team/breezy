@@ -22,4 +22,4 @@ num_cpus = "1.13.0"
 path-clean = "1"
 
 [target.'cfg(unix)'.dependencies]
-libc = "0.2.101"
+nix = ">=0.26"
