@@ -356,7 +356,9 @@ pub mod win32 {
     }
 
     pub fn getcwd() -> std::io::Result<PathBuf> {
-        Ok(fixdrive(fix_separators(std::env::current_dir()?.as_path()).as_path()))
+        Ok(fixdrive(
+            fix_separators(std::env::current_dir()?.as_path()).as_path(),
+        ))
     }
 }
 

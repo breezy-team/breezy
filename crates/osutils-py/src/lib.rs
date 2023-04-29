@@ -874,7 +874,7 @@ fn normalizepath(path: PathBuf) -> PyResult<PathBuf> {
 }
 
 /// Return path with directory separators changed to forward slashes
-#[pyfunction(name="fix_separators")]
+#[pyfunction(name = "fix_separators")]
 fn win32_fix_separators(path: PathBuf) -> PathBuf {
     breezy_osutils::path::win32::fix_separators(path.as_path())
 }
@@ -885,12 +885,12 @@ fn win32_fix_separators(path: PathBuf) -> PathBuf {
 /// and even if it was consistent the user might type the other
 /// so we force it to uppercase running python.exe under cmd.exe return capital C:\\ running win32
 /// python inside a cygwin shell returns lowercase c:\\
-#[pyfunction(name="fixdrive")]
+#[pyfunction(name = "fixdrive")]
 fn win32_fixdrive(path: PathBuf) -> PathBuf {
     breezy_osutils::path::win32::fixdrive(path.as_path())
 }
 
-#[pyfunction(name="getcwd")]
+#[pyfunction(name = "getcwd")]
 fn win32_getcwd() -> PyResult<PathBuf> {
     Ok(breezy_osutils::path::win32::getcwd()?)
 }
