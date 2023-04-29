@@ -1158,14 +1158,18 @@ class GitTreeTransform(DiskTreeTransform):
         try:
             limbodir = urlutils.local_path_from_url(
                 tree._transport.abspath('limbo'))
-            osutils.ensure_empty_directory_exists(
-                limbodir,
-                errors.ExistingLimbo)
+            try:
+                osutils.ensure_empty_directory_exists(
+                    limbodir)
+            except errors.DirectoryNotEmpty:
+                raise errors.ExistingLimbo(limbodir)
             deletiondir = urlutils.local_path_from_url(
                 tree._transport.abspath('pending-deletion'))
-            osutils.ensure_empty_directory_exists(
-                deletiondir,
-                errors.ExistingPendingDeletion)
+            try:
+                osutils.ensure_empty_directory_exists(
+                    deletiondir)
+            except errors.DirectoryNotEmpty:
+                raise errors.ExistingPendingDeletion(deletiondir)
         except BaseException:
             tree.unlock()
             raise

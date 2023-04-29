@@ -1365,21 +1365,7 @@ def fdatasync(fileno):
                 raise
 
 
-def ensure_empty_directory_exists(path, exception_class):
-    """Make sure a local directory exists and is empty.
-
-    If it does not exist, it is created.  If it exists and is not empty, an
-    instance of exception_class is raised.
-    """
-    try:
-        os.mkdir(path)
-    except OSError as e:
-        if e.errno != errno.EEXIST:
-            raise
-        if os.listdir(path) != []:
-            raise exception_class(path)
-
-
+ensure_empty_directory_exists = _osutils_rs.ensure_empty_directory_exists
 read_mtab = _osutils_rs.read_mtab
 get_fs_type = _osutils_rs.get_fs_type
 perf_counter = time.perf_counter

@@ -23,6 +23,7 @@ create_exception!(
 
 import_exception!(breezy.errors, IllegalPath);
 import_exception!(breezy.errors, PathNotChild);
+import_exception!(breezy.errors, DirectoryNotEmpty);
 
 #[pyclass]
 struct PyChunksToLinesIterator {
@@ -913,6 +914,23 @@ fn has_ansi_colors() -> bool {
     breezy_osutils::terminal::has_ansi_colors()
 }
 
+/// Make sure a local directory exists and is empty.
+///
+/// If it does not exist, it is created.  If it exists and is not empty,
+/// DirectoryNotEmpty is raised.
+#[pyfunction]
+fn ensure_empty_directory_exists(path: PathBuf) -> PyResult<()> {
+    match breezy_osutils::file::ensure_empty_directory_exists(path.as_path()) {
+        Ok(()) => Ok(()),
+        Err(ref e)
+            if e.kind() == std::io::ErrorKind::Other && e.to_string().contains(" not empty") =>
+        {
+            Err(DirectoryNotEmpty::new_err(path))
+        }
+        Err(e) => Err(e.into()),
+    }
+}
+
 #[pymodule]
 fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -993,6 +1011,7 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(normalizepath))?;
     m.add_wrapped(wrap_pyfunction!(terminal_size))?;
     m.add_wrapped(wrap_pyfunction!(has_ansi_colors))?;
+    m.add_wrapped(wrap_pyfunction!(ensure_empty_directory_exists))?;
     m.add(
         "MIN_ABS_PATHLENGTH",
         breezy_osutils::path::MIN_ABS_PATHLENGTH,
