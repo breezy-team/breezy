@@ -99,24 +99,8 @@ def _unescape_safe_chars(matchobj):
         return matchobj.group(0).upper()
 
 
-def _win32_extract_drive_letter(url_base, path):
-    """On win32 the drive letter needs to be added to the url base."""
-    # Strip off the drive letter
-    # path is currently /C:/foo
-    if len(path) < 4 or path[2] not in ':|' or path[3] != '/':
-        raise InvalidURL(url_base + path,
-                         'win32 file:/// paths need a drive letter')
-    url_base += path[0:3]  # file:// + /C:
-    path = path[3:]  # /foo
-    return url_base, path
-
-
-def _win32_strip_local_trailing_slash(url):
-    """Strip slashes after the drive letter"""
-    if len(url) > WIN32_MIN_ABS_FILEURL_LENGTH:
-        return url[:-1]
-    else:
-        return url
+_win32_extract_drive_letter = win32_rs.extract_drive_letter
+_win32_strip_local_trailing_slash = win32_rs.strip_local_trailing_slash
 
 
 # These are characters that if escaped, should stay that way
