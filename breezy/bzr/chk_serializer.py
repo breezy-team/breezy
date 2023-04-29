@@ -16,8 +16,6 @@
 
 """Serializer object for CHK based inventory storage."""
 
-from io import BytesIO
-
 import fastbencode as bencode
 
 from .. import lazy_import
@@ -25,11 +23,10 @@ from .. import lazy_import
 lazy_import.lazy_import(globals(),
                         """
 from breezy.bzr import (
-    serializer,
     xml_serializer,
     )
 """)
-from .. import cache_utf8, errors
+from .. import cache_utf8
 from .. import revision as _mod_revision
 from . import serializer
 
@@ -47,11 +44,12 @@ def _is_format_10(value):
     return 10
 
 
-class BEncodeRevisionSerializer1:
+class BEncodeRevisionSerializer1(serializer.RevisionSerializer):
     """Simple revision serializer based around bencode.
     """
 
     squashes_xml_invalid_characters = False
+    format_num = b'10'
 
     # Maps {key:(Revision attribute, bencode_type, validator)}
     # This tells us what kind we expect bdecode to create, what variable on
@@ -137,15 +135,14 @@ class BEncodeRevisionSerializer1:
         return self.read_revision_from_string(f.read())
 
 
-class CHKSerializer(serializer.Serializer):
+class CHKSerializer(serializer.InventorySerializer):
     """A CHKInventory based serializer with 'plain' behaviour."""
 
-    format_num = b'9'
-    revision_format_num = None
     support_altered_by_hack = False
     supported_kinds = {'file', 'directory', 'symlink', 'tree-reference'}
 
-    def __init__(self, node_size, search_key_name):
+    def __init__(self, format_num, node_size, search_key_name):
+        self.format_num = format_num
         self.maximum_size = node_size
         self.search_key_name = search_key_name
 
@@ -232,13 +229,8 @@ class CHKSerializer(serializer.Serializer):
         return output
 
 
-chk_serializer_255_bigpage = CHKSerializer(65536, b'hash-255-way')
+inventory_chk_serializer_255_bigpage_9 = CHKSerializer(b'9', 65536, b'hash-255-way')
 
-
-class CHKBEncodeSerializer(BEncodeRevisionSerializer1, CHKSerializer):
-    """A CHKInventory and BEncode based serializer with 'plain' behaviour."""
-
-    format_num = b'10'
-
-
-chk_bencode_serializer = CHKBEncodeSerializer(65536, b'hash-255-way')
+# A CHKInventory and BEncode based serializer with 'plain' behaviour.
+revision_bencode_serializer = BEncodeRevisionSerializer1()
+inventory_chk_serializer_255_bigpage_10 = CHKSerializer(b'10', 65536, b'hash-255-way')

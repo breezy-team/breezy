@@ -25,7 +25,6 @@ import itertools
 
 from breezy import (
     config as _mod_config,
-    debug,
     fifo_cache,
     gpg,
     graph,
@@ -51,7 +50,7 @@ from breezy.i18n import gettext
 from breezy.bzr.testament import Testament
 """)
 
-from .. import errors
+from .. import debug, errors
 from ..decorators import only_raises
 from ..repository import (CommitBuilder, FetchResult, InterRepository,
                           Repository, RepositoryFormat, WriteGroup)
@@ -682,7 +681,7 @@ class VersionedFileRepository(Repository):
 
         :seealso: add_inventory, for the contract.
         """
-        inv_lines = self._serializer.write_inventory_to_lines(inv)
+        inv_lines = self._inventory_serializer.write_inventory_to_lines(inv)
         return self._inventory_add_lines(revision_id, parents,
                                          inv_lines, check_content=False)
 
@@ -765,7 +764,7 @@ class VersionedFileRepository(Repository):
         self._add_revision(rev)
 
     def _add_revision(self, revision):
-        lines = self._serializer.write_revision_to_lines(revision)
+        lines = self._revision_serializer.write_revision_to_lines(revision)
         key = (revision.revision_id,)
         parents = tuple((parent,) for parent in revision.parent_ids)
         self.revisions.add_lines(key, parents, lines)
@@ -1108,7 +1107,7 @@ class VersionedFileRepository(Repository):
                     yield (revid, None)
                 else:
                     text = record.get_bytes_as('fulltext')
-                    rev = self._serializer.read_revision_from_string(text)
+                    rev = self._revision_serializer.read_revision_from_string(text)
                     yield (revid, rev)
 
     def add_signature_text(self, revision_id, signature):
@@ -1165,7 +1164,7 @@ class VersionedFileRepository(Repository):
         revision_keys = self.revisions.keys()
         w = self.inventories
         with ui.ui_factory.nested_progress_bar() as pb:
-            return self._serializer._find_text_key_references(
+            return self._inventory_serializer._find_text_key_references(
                 w.iter_lines_added_or_present_in_keys(revision_keys, pb=pb))
 
     def _inventory_xml_lines_for_keys(self, keys):
@@ -1201,9 +1200,9 @@ class VersionedFileRepository(Repository):
             revision_ids. Each altered file-ids has the exact revision_ids that
             altered it listed explicitly.
         """
-        seen = set(self._serializer._find_text_key_references(line_iterator))
+        seen = set(self._inventory_serializer._find_text_key_references(line_iterator))
         parent_keys = self._find_parent_keys_of_revisions(revision_keys)
-        parent_seen = set(self._serializer._find_text_key_references(
+        parent_seen = set(self._inventory_serializer._find_text_key_references(
             self._inventory_xml_lines_for_keys(parent_keys)))
         new_keys = seen - parent_seen
         result = {}
@@ -1504,7 +1503,7 @@ class VersionedFileRepository(Repository):
         :param revision_id: The expected revision id of the inventory.
         :param xml: A serialised inventory.
         """
-        result = self._serializer.read_inventory_from_lines(
+        result = self._inventory_serializer.read_inventory_from_lines(
             xml, revision_id, entry_cache=self._inventory_entry_cache,
             return_from_cache=self._safe_to_return_from_cache)
         if result.revision_id != revision_id:
@@ -1513,7 +1512,7 @@ class VersionedFileRepository(Repository):
         return result
 
     def get_serializer_format(self):
-        return self._serializer.format_num
+        return self._inventory_serializer.format_num
 
     def _get_inventory_xml(self, revision_id):
         """Get serialized inventory as a string."""
@@ -1749,10 +1748,10 @@ class StreamSink:
                     write_group_tokens = self.target_repo.suspend_write_group()
                     return write_group_tokens, missing_keys
                 hint = self.target_repo.commit_write_group()
-                to_serializer = self.target_repo._format._serializer
-                src_serializer = src_format._serializer
-                if (to_serializer != src_serializer
-                        and self.target_repo._format.pack_compresses):
+                dest_format = self.target_repo._format
+                if ((dest_format._revision_serializer != src_format._revision_serializer or
+                        dest_format._inventory_serializer != src_format._inventory_serializer)
+                            and self.target_repo._format.pack_compresses):
                     self.target_repo.pack(hint=hint)
                 return [], set()
             except:
@@ -1777,10 +1776,10 @@ class StreamSink:
             raise errors.ObjectNotLocked(self)
         if not self.target_repo.is_in_write_group():
             raise errors.BzrError('you must already be in a write group')
-        to_serializer = self.target_repo._format._serializer
-        src_serializer = src_format._serializer
+        dest_format = self.target_repo._format
         new_pack = None
-        if to_serializer == src_serializer:
+        if (src_format._revision_serializer == dest_format._revision_serializer
+                and src_format._inventory_serializer == dest_format._inventory_serializer):
             # If serializers match and the target is a pack repository, set the
             # write cache size on the new pack.  This avoids poor performance
             # on transports where append is unbuffered (such as
@@ -1804,15 +1803,15 @@ class StreamSink:
             if substream_type == 'texts':
                 self.target_repo.texts.insert_record_stream(substream)
             elif substream_type == 'inventories':
-                if src_serializer == to_serializer:
+                if src_format._inventory_serializer == dest_format._inventory_serializer:
                     self.target_repo.inventories.insert_record_stream(
                         substream)
                 else:
                     self._extract_and_insert_inventories(
-                        substream, src_serializer)
+                        substream, src_format._inventory_serializer)
             elif substream_type == 'inventory-deltas':
                 self._extract_and_insert_inventory_deltas(
-                    substream, src_serializer)
+                    substream, src_format._inventory_serializer)
             elif substream_type == 'chk_bytes':
                 # XXX: This doesn't support conversions, as it assumes the
                 #      conversion was done in the fetch code.
@@ -1820,12 +1819,13 @@ class StreamSink:
             elif substream_type == 'revisions':
                 # This may fallback to extract-and-insert more often than
                 # required if the serializers are different only in terms of
-                # the inventory.
-                if src_serializer == to_serializer:
+                # the inventory, since we also need to update the .inventory_sha1 field
+                if (src_format._revision_serializer == dest_format._revision_serializer
+                        and src_format._inventory_serializer == dest_format._inventory_serializer):
                     self.target_repo.revisions.insert_record_stream(substream)
                 else:
                     self._extract_and_insert_revisions(substream,
-                                                       src_serializer)
+                                                       src_format._revision_serializer)
             elif substream_type == 'signatures':
                 self.target_repo.signatures.insert_record_stream(substream)
             else:
@@ -1932,10 +1932,11 @@ class StreamSource:
 
         That is on revisions and signatures.
         """
-        src_serializer = self.from_repository._format._serializer
-        target_serializer = self.to_format._serializer
+        src_format = self.from_repository._format
+        dest_format = self.to_format
         return (self.to_format._fetch_uses_deltas
-                and src_serializer == target_serializer)
+                and src_format._revision_serializer == dest_format._revision_serializer
+                and src_format._inventory_serializer == dest_format._inventory_serializer)
 
     def _fetch_revision_texts(self, revs):
         # fetch signatures first and then the revision texts
@@ -2082,7 +2083,8 @@ class StreamSource:
             return self._get_simple_inventory_stream(revision_ids,
                                                      missing=missing)
         elif (not from_format.supports_chks and not self.to_format.supports_chks and
-                from_format._serializer == self.to_format._serializer):
+                from_format._revision_serializer == self.to_format._revision_serializer and
+                from_format._inventory_serializer == self.to_format._inventory_serializer):
             # Essentially the same format.
             return self._get_simple_inventory_stream(revision_ids,
                                                      missing=missing)
@@ -2423,7 +2425,7 @@ class InterVersionedFileRepository(InterRepository):
 class InterDifferingSerializer(InterVersionedFileRepository):
 
     @classmethod
-    def _get_repo_format_to_test(self):
+    def _get_repo_format_to_test(cls):
         return None
 
     @staticmethod
@@ -2573,7 +2575,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
             # Determine which texts are in present in this revision but not in
             # any of the available parents.
             texts_possibly_new_in_tree = set()
-            for old_path, new_path, file_id, entry in delta:
+            for _old_path, new_path, file_id, entry in delta:
                 if new_path is None:
                     # This file_id isn't present in the new rev
                     continue

@@ -40,10 +40,26 @@ class UnsupportedInventoryKind(errors.BzrError):
         self.kind = kind
 
 
-class Serializer:
-    """Inventory and revision serialization/deserialization."""
+class RevisionSerializer:
+    """Revision serialization/deserialization."""
 
     squashes_xml_invalid_characters = False
+
+    def write_revision_to_string(self, rev):
+        raise NotImplementedError(self.write_revision_to_string)
+
+    def write_revision_to_lines(self, rev):
+        raise NotImplementedError(self.write_revision_to_lines)
+
+    def read_revision(self, f):
+        raise NotImplementedError(self.read_revision)
+
+    def read_revision_from_string(self, xml_string):
+        raise NotImplementedError(self.read_revision_from_string)
+
+
+class InventorySerializer:
+    """Inventory serialization/deserialization."""
 
     def write_inventory(self, inv, f):
         """Write inventory to a file.
@@ -103,29 +119,23 @@ class Serializer:
         """See read_inventory_from_lines."""
         raise NotImplementedError(self.read_inventory)
 
-    def write_revision_to_string(self, rev):
-        raise NotImplementedError(self.write_revision_to_string)
-
-    def write_revision_to_lines(self, rev):
-        raise NotImplementedError(self.write_revision_to_lines)
-
-    def read_revision(self, f):
-        raise NotImplementedError(self.read_revision)
-
-    def read_revision_from_string(self, xml_string):
-        raise NotImplementedError(self.read_revision_from_string)
-
 
 class SerializerRegistry(registry.Registry):
     """Registry for serializer objects"""
 
 
-format_registry = SerializerRegistry()
-format_registry.register_lazy('5', 'breezy.bzr.xml5', 'serializer_v5')
-format_registry.register_lazy('6', 'breezy.bzr.xml6', 'serializer_v6')
-format_registry.register_lazy('7', 'breezy.bzr.xml7', 'serializer_v7')
-format_registry.register_lazy('8', 'breezy.bzr.xml8', 'serializer_v8')
-format_registry.register_lazy('9', 'breezy.bzr.chk_serializer',
-                              'chk_serializer_255_bigpage')
-format_registry.register_lazy('10', 'breezy.bzr.chk_serializer',
-                              'chk_bencode_serializer')
+revision_format_registry = SerializerRegistry()
+revision_format_registry.register_lazy('5', 'breezy.bzr.xml5', 'revision_serializer_v5')
+revision_format_registry.register_lazy('8', 'breezy.bzr.xml8', 'revision_serializer_v8')
+revision_format_registry.register_lazy('10', 'breezy.bzr.chk_serializer', 'revision_bencode_serializer')
+
+
+inventory_format_registry = SerializerRegistry()
+inventory_format_registry.register_lazy('5', 'breezy.bzr.xml5', 'inventory_serializer_v5')
+inventory_format_registry.register_lazy('6', 'breezy.bzr.xml6', 'inventory_serializer_v6')
+inventory_format_registry.register_lazy('7', 'breezy.bzr.xml7', 'inventory_serializer_v7')
+inventory_format_registry.register_lazy('8', 'breezy.bzr.xml8', 'inventory_serializer_v8')
+inventory_format_registry.register_lazy('9', 'breezy.bzr.chk_serializer',
+                              'inventory_chk_serializer_255_bigpage_9')
+inventory_format_registry.register_lazy('10', 'breezy.bzr.chk_serializer',
+                              'inventory_chk_serializer_255_bigpage_10')
