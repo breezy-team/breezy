@@ -1870,7 +1870,7 @@ class TestTerminalWidth(tests.TestCase):
         self.overrideEnv('BRZ_COLUMNS', None)
         self.overrideEnv('COLUMNS', None)
 
-        def terminal_size(w, h):
+        def terminal_size():
             return 42, 42
 
         self.set_fake_tty()

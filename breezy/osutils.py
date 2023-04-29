@@ -805,7 +805,7 @@ def terminal_width():
         return None
 
     # Query the OS
-    width, height = os_size = _terminal_size(None, None)
+    width, height = os_size = _terminal_size()
     global _first_terminal_size, _terminal_size_state
     if _terminal_size_state == 'no_data':
         _first_terminal_size = os_size
@@ -835,40 +835,7 @@ def terminal_width():
     return None
 
 
-def _win32_terminal_size(width, height):
-    width, height = win32utils.get_console_size(
-        defaultx=width, defaulty=height)
-    return width, height
-
-
-def _ioctl_terminal_size(width, height):
-    try:
-        import fcntl
-        import struct
-        import termios
-        s = struct.pack('HHHH', 0, 0, 0, 0)
-        x = fcntl.ioctl(1, termios.TIOCGWINSZ, s)
-        height, width = struct.unpack('HHHH', x)[0:2]
-    except (OSError, AttributeError):
-        pass
-    return width, height
-
-
-_terminal_size = None
-"""Returns the terminal size as (width, height).
-
-:param width: Default value for width.
-:param height: Default value for height.
-
-This is defined specifically for each OS and query the size of the controlling
-terminal. If any error occurs, the provided default values should be returned.
-"""
-if sys.platform == 'win32':
-    _terminal_size = _win32_terminal_size
-else:
-    _terminal_size = _ioctl_terminal_size
-
-
+_terminal_size = _osutils_rs.terminal_size
 supports_executable = _osutils_rs.supports_executable
 supports_hardlinks = _osutils_rs.supports_hardlinks
 supports_symlinks = _osutils_rs.supports_symlinks

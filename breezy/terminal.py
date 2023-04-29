@@ -73,13 +73,3 @@ def colorstring(text, fgcolor=None, bgcolor=None):
         code.append(b'4' + colors[bgcolor])
 
     return b"".join((b"\033[", b';'.join(code), b"m", text, b"\033[0m"))
-
-
-def term_title(title):
-    term = os.environ.get('TERM', '')
-    if term.startswith('xterm') or term == 'dtterm':
-        return "\033]0;%s\007" % title
-    return ''
-
-
-# arch-tag: a79b9993-146e-4a51-8bae-a13791703ddd

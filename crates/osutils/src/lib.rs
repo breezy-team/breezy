@@ -198,3 +198,5 @@ pub mod mounts;
 
 #[cfg(test)]
 mod tests;
+
+pub mod terminal;

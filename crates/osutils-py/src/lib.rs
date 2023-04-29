@@ -895,6 +895,19 @@ fn win32_getcwd() -> PyResult<PathBuf> {
     Ok(breezy_osutils::path::win32::getcwd()?)
 }
 
+/// Returns the terminal size as (width, height).
+///
+/// Args:
+///   width: Default value for width.
+///   height: Default value for height.
+///
+/// This is defined specifically for each OS and query the size of the controlling
+/// terminal. If any error occurs, the provided default values should be returned.
+#[pyfunction]
+fn terminal_size() -> PyResult<(u16, u16)> {
+    Ok(breezy_osutils::terminal::terminal_size()?)
+}
+
 #[pymodule]
 fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -973,6 +986,7 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(normpath))?;
     m.add_wrapped(wrap_pyfunction!(realpath))?;
     m.add_wrapped(wrap_pyfunction!(normalizepath))?;
+    m.add_wrapped(wrap_pyfunction!(terminal_size))?;
     m.add(
         "MIN_ABS_PATHLENGTH",
         breezy_osutils::path::MIN_ABS_PATHLENGTH,
