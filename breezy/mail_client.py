@@ -633,7 +633,7 @@ class DefaultMail(MailClient):
 
     def _mail_client(self):
         """Determine the preferred mail client for this platform"""
-        if osutils.supports_mapi():
+        if sys.platform == "win32":
             return MAPIClient(self.config)
         else:
             return XDGEmail(self.config)

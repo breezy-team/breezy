@@ -10,7 +10,7 @@ use pyo3_file::PyFileLikeObject;
 use std::collections::HashSet;
 use std::ffi::OsString;
 use std::fs::Permissions;
-use std::io::{BufRead, Read};
+use std::io::{BufRead, Read, Write};
 use std::iter::Iterator;
 use std::os::unix::ffi::OsStringExt;
 use std::path::{Path, PathBuf};
@@ -873,6 +873,16 @@ fn normalizepath(path: PathBuf) -> PyResult<PathBuf> {
     Ok(breezy_osutils::path::normalizepath(path.as_path())?)
 }
 
+#[pyfunction]
+fn pump_string_file(data: &[u8], file: PyObject, segment_size: Option<usize>) -> PyResult<()> {
+    let mut file = PyFileLikeObject::with_requirements(file, false, true, false)?;
+    Ok(breezy_osutils::pump_string_file(
+        data,
+        &mut file,
+        segment_size,
+    )?)
+}
+
 /// Return path with directory separators changed to forward slashes
 #[pyfunction(name = "fix_separators")]
 fn win32_fix_separators(path: PathBuf) -> PathBuf {
@@ -971,6 +981,7 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(contains_linebreaks))?;
     m.add_wrapped(wrap_pyfunction!(relpath))?;
     m.add_wrapped(wrap_pyfunction!(normpath))?;
+    m.add_wrapped(wrap_pyfunction!(pump_string_file))?;
     m.add_wrapped(wrap_pyfunction!(realpath))?;
     m.add_wrapped(wrap_pyfunction!(normalizepath))?;
     m.add(
