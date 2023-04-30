@@ -386,7 +386,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         tree = self.make_branch_and_tree('.')
         a = tree.commit(message, allow_pointless=True)
         rev = tree.branch.repository.get_revision(a)
-        serializer = getattr(tree.branch.repository, "_serializer", None)
+        serializer = getattr(tree.branch.repository, "_revision_serializer", None)
         if serializer is not None and serializer.squashes_xml_invalid_characters:
             # we have to manually escape this as we dont try to
             # roundtrip xml invalid characters in the xml-based serializers.

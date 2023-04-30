@@ -59,8 +59,12 @@ class AllInOneRepository(VersionedFileRepository):
     """Legacy support - the repository behaviour for all-in-one branches."""
 
     @property
-    def _serializer(self):
-        return xml5.serializer_v5
+    def _revision_serializer(self):
+        return xml5.revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        return xml5.inventory_serializer_v5
 
     def _escape(self, file_or_path):
         if not isinstance(file_or_path, str):
@@ -178,7 +182,8 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
     def __init__(self, _format, a_controldir, control_files):
         super().__init__(
             _format, a_controldir, control_files)
-        self._serializer = _format._serializer
+        self._revision_serializer = _format._revision_serializer
+        self._inventory_serializer = _format._inventory_serializer
 
     def _all_possible_ids(self):
         """Return all the possible revisions that we could find."""
@@ -352,9 +357,9 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
         return None
 
     def _get_revisions(self, repo_transport, repo):
-        from .xml4 import serializer_v4
+        from .xml4 import revision_serializer_v4
         return RevisionTextStore(repo_transport.clone('revision-store'),
-                                 serializer_v4, True, versionedfile.PrefixMapper(),
+                                 revision_serializer_v4, True, versionedfile.PrefixMapper(),
                                  repo.is_locked, repo.is_write_locked)
 
     def _get_signatures(self, repo_transport, repo):
@@ -380,8 +385,12 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
     supports_funky_characters = False
 
     @property
-    def _serializer(self):
-        return xml5.serializer_v5
+    def _revision_serializer(self):
+        return xml5.revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        return xml5.inventory_serializer_v5
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -398,7 +407,7 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
 
     def _get_revisions(self, repo_transport, repo):
         return RevisionTextStore(repo_transport.clone('revision-store'),
-                                 xml5.serializer_v5, False, versionedfile.PrefixMapper(),
+                                 xml5.revision_serializer_v5, False, versionedfile.PrefixMapper(),
                                  repo.is_locked, repo.is_write_locked)
 
     def _get_signatures(self, repo_transport, repo):
@@ -427,8 +436,12 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
     supports_funky_characters = False
 
     @property
-    def _serializer(self):
-        return xml5.serializer_v5
+    def _revision_serializer(self):
+        return xml5.revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        return xml5.inventory_serializer_v5
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -445,7 +458,7 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
 
     def _get_revisions(self, repo_transport, repo):
         return RevisionTextStore(repo_transport.clone('revision-store'),
-                                 xml5.serializer_v5, False, versionedfile.HashPrefixMapper(),
+                                 xml5.revision_serializer_v5, False, versionedfile.HashPrefixMapper(),
                                  repo.is_locked, repo.is_write_locked)
 
     def _get_signatures(self, repo_transport, repo):
@@ -483,8 +496,12 @@ class RepositoryFormat7(MetaDirVersionedFileRepositoryFormat):
     fast_deltas = False
 
     @property
-    def _serializer(self):
-        return xml5.serializer_v5
+    def _revision_serializer(self):
+        return xml5.revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        return xml5.inventory_serializer_v5
 
     @classmethod
     def get_format_string(cls):
@@ -502,7 +519,7 @@ class RepositoryFormat7(MetaDirVersionedFileRepositoryFormat):
 
     def _get_revisions(self, repo_transport, repo):
         return RevisionTextStore(repo_transport.clone('revision-store'),
-                                 xml5.serializer_v5, True, versionedfile.HashPrefixMapper(),
+                                 xml5.revision_serializer_v5, True, versionedfile.HashPrefixMapper(),
                                  repo.is_locked, repo.is_write_locked)
 
     def _get_signatures(self, repo_transport, repo):
@@ -655,13 +672,13 @@ class RevisionTextStore(TextVersionedFiles):
         """Create a RevisionTextStore at transport with serializer."""
         TextVersionedFiles.__init__(self, transport, compressed, mapper,
                                     is_locked, can_write)
-        self._serializer = serializer
+        self._revision_serializer = serializer
 
     def _load_text_parents(self, key):
         text = self._load_text(key)
         if text is None:
             return None, None
-        parents = self._serializer.read_revision_from_string(text).parent_ids
+        parents = self._revision_serializer.read_revision_from_string(text).parent_ids
         return text, tuple((parent,) for parent in parents)
 
     def get_parent_map(self, keys):

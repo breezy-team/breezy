@@ -43,7 +43,7 @@ from .. import errors
 from .. import transport as _mod_transport
 from ..repository import InterRepository, IsInWriteGroupError, Repository
 from .repository import RepositoryFormatMetaDir
-from .serializer import Serializer
+from .serializer import InventorySerializer, RevisionSerializer
 from .vf_repository import (InterSameDataRepository,
                             MetaDirVersionedFileRepository,
                             MetaDirVersionedFileRepositoryFormat,
@@ -115,14 +115,16 @@ class KnitRepository(MetaDirVersionedFileRepository):
     # them, or a subclass fails to call the constructor, that an error will
     # occur rather than the system working but generating incorrect data.
     _commit_builder_class: Type[VersionedFileCommitBuilder]
-    _serializer: Serializer
+    _revision_serializer: RevisionSerializer
+    _inventory_serializer: InventorySerializer
 
     def __init__(self, _format, a_controldir, control_files, _commit_builder_class,
-                 _serializer):
+                 _revision_serializer, _inventory_serializer):
         super().__init__(
             _format, a_controldir, control_files)
         self._commit_builder_class = _commit_builder_class
-        self._serializer = _serializer
+        self._revision_serializer = _revision_serializer
+        self._inventory_serializer = _inventory_serializer
         self._reconcile_fixes_text_parents = True
 
     def _all_revision_ids(self):
@@ -236,8 +238,12 @@ class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
     # repository objects will have passed to their constructor.
 
     @property
-    def _serializer(self):
-        return xml5.serializer_v5
+    def _revision_serializer(self):
+        return xml5.revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        return xml5.inventory_serializer_v5
     # Knit based repositories handle ghosts reasonably well.
     supports_ghosts = True
     # External lookups are not supported in this format.
@@ -333,7 +339,8 @@ class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
                                      a_controldir=a_controldir,
                                      control_files=control_files,
                                      _commit_builder_class=self._commit_builder_class,
-                                     _serializer=self._serializer)
+                                     _revision_serializer=self._revision_serializer,
+                                     _inventory_serializer=self._inventory_serializer)
         repo.revisions = self._get_revisions(repo_transport, repo)
         repo.signatures = self._get_signatures(repo_transport, repo)
         repo.inventories = self._get_inventories(repo_transport, repo)
@@ -363,8 +370,12 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
     _commit_builder_class = VersionedFileCommitBuilder
 
     @property
-    def _serializer(self):
-        return xml5.serializer_v5
+    def _revision_serializer(self):
+        return xml5.revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        return xml5.inventory_serializer_v5
 
     def __ne__(self, other):
         return self.__class__ is not other.__class__
@@ -402,8 +413,12 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
     supports_tree_reference = True
 
     @property
-    def _serializer(self):
-        return xml7.serializer_v7
+    def _revision_serializer(self):
+        return xml5.revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        return xml7.inventory_serializer_v7
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir('dirstate-with-subtree')
@@ -446,8 +461,12 @@ class RepositoryFormatKnit4(RepositoryFormatKnit):
     supports_tree_reference = False
 
     @property
-    def _serializer(self):
-        return xml6.serializer_v6
+    def _revision_serializer(self):
+        return xml5.revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        return xml6.inventory_serializer_v6
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir('rich-root')
@@ -472,7 +491,7 @@ class InterKnitRepo(InterSameDataRepository):
     """Optimised code paths between Knit based repositories."""
 
     @classmethod
-    def _get_repo_format_to_test(self):
+    def _get_repo_format_to_test(cls):
         return RepositoryFormatKnit1()
 
     @staticmethod

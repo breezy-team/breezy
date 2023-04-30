@@ -17,7 +17,7 @@
 from . import xml6
 
 
-class Serializer_v7(xml6.Serializer_v6):
+class InventorySerializer_v7(xml6.InventorySerializer_v6):
     """A Serializer that supports tree references"""
 
     # this format is used by BzrBranch6
@@ -26,4 +26,4 @@ class Serializer_v7(xml6.Serializer_v6):
     format_num = b'7'
 
 
-serializer_v7 = Serializer_v7()
+inventory_serializer_v7 = InventorySerializer_v7()

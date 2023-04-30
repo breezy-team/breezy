@@ -132,7 +132,7 @@ class TestRepository(TestCaseWithRepository):
     def test_get_serializer_format(self):
         repo = self.make_repository('.')
         format = repo.get_serializer_format()
-        self.assertEqual(repo._serializer.format_num, format)
+        self.assertEqual(repo._inventory_serializer.format_num, format)
 
     def test_add_revision_inventory_sha1(self):
         inv = inventory.Inventory(revision_id=b'A')

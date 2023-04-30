@@ -546,7 +546,8 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
             return False
         if (to_format.supports_chks
             and from_format.repository_class is to_format.repository_class
-                and from_format._serializer == to_format._serializer):
+                and from_format._revision_serializer == to_format._revision_serializer
+                and from_format._inventory_serializer == to_format._inventory_serializer):
             # Source is CHK, but target matches: that's ok
             # (e.g. 2a->2a, or CHK2->2a)
             return False
