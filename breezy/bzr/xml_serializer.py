@@ -23,7 +23,7 @@
 # ElementTree bits
 
 import re
-from typing import Dict, Union, Optional
+from typing import Dict, Optional, Union
 from xml.etree.ElementTree import (Element, ElementTree, ParseError,
                                    SubElement, fromstring, fromstringlist,
                                    tostring, tostringlist)

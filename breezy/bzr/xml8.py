@@ -21,10 +21,11 @@ from .. import revision as _mod_revision
 from .. import trace
 from ..errors import BzrError
 from ..revision import Revision
-from .xml_serializer import (Element, SubElement, XMLInventorySerializer, XMLRevisionSerializer,
-                             encode_and_escape, escape_invalid_chars,
-                             get_utf8_or_ascii, serialize_inventory_flat,
-                             unpack_inventory_entry, unpack_inventory_flat)
+from .xml_serializer import (Element, SubElement, XMLInventorySerializer,
+                             XMLRevisionSerializer, encode_and_escape,
+                             escape_invalid_chars, get_utf8_or_ascii,
+                             serialize_inventory_flat, unpack_inventory_entry,
+                             unpack_inventory_flat)
 
 _xml_unescape_map = {
     b'apos': b"'",

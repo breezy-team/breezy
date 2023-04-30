@@ -19,8 +19,7 @@ from typing import List
 from ...bzr import inventory
 from ...bzr.inventory import ROOT_ID, Inventory
 from ...bzr.xml_serializer import (Element, SubElement, XMLInventorySerializer,
-                                   XMLRevisionSerializer,
-                                   escape_invalid_chars)
+                                   XMLRevisionSerializer, escape_invalid_chars)
 from ...errors import BzrError
 from ...revision import Revision
 

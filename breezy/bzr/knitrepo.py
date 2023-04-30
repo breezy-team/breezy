@@ -43,7 +43,7 @@ from .. import errors
 from .. import transport as _mod_transport
 from ..repository import InterRepository, IsInWriteGroupError, Repository
 from .repository import RepositoryFormatMetaDir
-from .serializer import RevisionSerializer, InventorySerializer
+from .serializer import InventorySerializer, RevisionSerializer
 from .vf_repository import (InterSameDataRepository,
                             MetaDirVersionedFileRepository,
                             MetaDirVersionedFileRepositoryFormat,
