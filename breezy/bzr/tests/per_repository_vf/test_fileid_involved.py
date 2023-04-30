@@ -51,6 +51,7 @@ class FileIdInvolvedWGhosts(TestCaseWithRepository):
                                          committer='Joe Foo <joe@foo.com>',
                                          properties={},
                                          parent_ids=(b'A-id', b'ghost-id'),
+                                         inventory_sha1=None,
                                          )
         b.lock_write()
         self.addCleanup(b.unlock)

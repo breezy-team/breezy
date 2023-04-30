@@ -104,10 +104,11 @@ class TestsNeedingReweave(TestReconcile):
             rev = breezy.revision.Revision(timestamp=0,
                                            timezone=None,
                                            committer="Foo Bar <foo@example.com>",
+                                           properties={},
                                            message="Message",
                                            inventory_sha1=sha1,
+                                           parent_ids=parent_ids,
                                            revision_id=revision_id)
-            rev.parent_ids = parent_ids
             repo.add_revision(revision_id, rev)
             repo.commit_write_group()
             repo.unlock()
@@ -299,7 +300,10 @@ class TestsNeedingReweave(TestReconcile):
         rev = breezy.revision.Revision(timestamp=0,
                                        timezone=None,
                                        committer="Foo Bar <foo@example.com>",
+                                       properties={},
                                        message="Message",
+                                       parent_ids=[],
+                                       inventory_sha1=None,
                                        revision_id=b'final-revid')
         with repo.lock_write():
             repo.start_write_group()
@@ -368,12 +372,13 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
             repo.texts.add_lines((root_id, b'wrong-first-parent'), [], [])
         sha1 = repo.add_inventory(b'wrong-first-parent', inv, [b'2', b'1'])
         rev = Revision(timestamp=0,
-                       timezone=None,
+                       timezone=0,
                        committer="Foo Bar <foo@example.com>",
                        message="Message",
                        inventory_sha1=sha1,
+                       properties={},
+                       parent_ids=[b'1', b'2'],
                        revision_id=b'wrong-first-parent')
-        rev.parent_ids = [b'1', b'2']
         repo.add_revision(b'wrong-first-parent', rev)
         repo.commit_write_group()
         repo.unlock()
@@ -394,8 +399,9 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
                        committer="Foo Bar <foo@example.com>",
                        message="Message",
                        inventory_sha1=sha1,
+                       parent_ids=[b'1', b'2', b'3'],
+                       properties={},
                        revision_id=b'wrong-secondary-parent')
-        rev.parent_ids = [b'1', b'2', b'3']
         repo.add_revision(b'wrong-secondary-parent', rev)
         repo.commit_write_group()
         repo.unlock()

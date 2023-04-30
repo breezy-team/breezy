@@ -1057,12 +1057,17 @@ class TestLogFormatter(tests.TestCase):
 
     def setUp(self):
         super().setUp()
-        self.rev = revision.Revision(b'a-id')
+        self.rev = revision.Revision(
+            b'a-id', parent_ids=[], properties={}, message='', committer='',
+            timestamp=0, timezone=0, inventory_sha1=None)
         self.lf = log.LogFormatter(None)
 
     def test_short_committer(self):
         def assertCommitter(expected, committer):
-            self.rev.committer = committer
+            self.rev = revision.Revision(
+                b'a-id', parent_ids=[], properties={}, message='',
+                committer=committer,
+                timestamp=0, timezone=0, inventory_sha1=None)
             self.assertEqual(expected, self.lf.short_committer(self.rev))
 
         assertCommitter('John Doe', 'John Doe <jdoe@example.com>')
@@ -1074,7 +1079,9 @@ class TestLogFormatter(tests.TestCase):
 
     def test_short_author(self):
         def assertAuthor(expected, author):
-            self.rev.properties['author'] = author
+            self.rev = revision.Revision(
+                b'a-id', parent_ids=[], properties={'author': author}, message='', committer='',
+                timestamp=0, timezone=0, inventory_sha1=None)
             self.assertEqual(expected, self.lf.short_author(self.rev))
 
         assertAuthor('John Smith', 'John Smith <jsmith@example.com>')
@@ -1084,12 +1091,19 @@ class TestLogFormatter(tests.TestCase):
         assertAuthor('John Smith', 'John Smith jsmith@example.com')
 
     def test_short_author_from_committer(self):
-        self.rev.committer = 'John Doe <jdoe@example.com>'
+        self.rev = revision.Revision(
+            b'a-id', parent_ids=[], properties={}, message='',
+            committer='John Doe <jdoe@example.com>', timestamp=0, timezone=0,
+            inventory_sha1=None)
         self.assertEqual('John Doe', self.lf.short_author(self.rev))
 
     def test_short_author_from_authors(self):
-        self.rev.properties['authors'] = ('John Smith <jsmith@example.com>\n'
-                                          'Jane Rey <jrey@example.com>')
+        self.rev = revision.Revision(
+            b'a-id', parent_ids=[],
+            properties={'authors': 'John Smith <jsmith@example.com>\nJane Rey <jrey@example.com>'},
+            message='', committer='',
+            timestamp=0, timezone=0,
+            inventory_sha1=None)
         self.assertEqual('John Smith', self.lf.short_author(self.rev))
 
 

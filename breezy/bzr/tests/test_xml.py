@@ -18,7 +18,8 @@ from io import BytesIO
 
 import breezy.bzr.xml5
 
-from ... import errors, fifo_cache
+from ... import fifo_cache
+from ...revision import Revision
 from .. import inventory, serializer, xml6, xml7, xml8
 from ..inventory import Inventory
 from . import TestCase
@@ -355,7 +356,15 @@ class TestSerializer(TestCase):
         s_v5 = breezy.bzr.xml5.revision_serializer_v5
         rev = s_v5.read_revision_from_string(_revision_v5)
         props = {'empty': '', 'one': 'one'}
-        rev.properties = props
+        rev = Revision(
+            revision_id=rev.revision_id,
+            timestamp=rev.timestamp,
+            timezone=rev.timezone,
+            committer=rev.committer,
+            message=rev.message,
+            parent_ids=rev.parent_ids,
+            inventory_sha1=rev.inventory_sha1,
+            properties=props)
         txt = b''.join(s_v5.write_revision_to_lines(rev))
         new_rev = s_v5.read_revision_from_string(txt)
         self.assertEqual(props, new_rev.properties)

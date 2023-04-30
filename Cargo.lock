@@ -43,6 +43,7 @@ name = "bazaar"
 version = "3.3.3"
 dependencies = [
  "breezy-osutils",
+ "chrono",
  "fancy-regex",
  "lazy_static",
  "regex",
@@ -86,6 +87,7 @@ name = "bazaar-py"
 version = "3.3.3"
 dependencies = [
  "bazaar",
+ "chrono",
  "pyo3",
 ]
 

@@ -57,6 +57,7 @@ class TestCaseWithBrokenRevisionIndex(TestCaseWithRepository):
             revision = _mod_revision.Revision(b'revision-id',
                                               committer='jrandom@example.com', timestamp=0,
                                               inventory_sha1=inv_sha1, timezone=0, message='message',
+                                              properties={},
                                               parent_ids=[])
             # Manually add the revision text using the RevisionStore API, with
             # bad parents.

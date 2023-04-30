@@ -298,6 +298,7 @@ class CommitHandler(processor.CommitHandler):
             message=message,
             revision_id=self.revision_id,
             properties=rev_props,
+            inventory_sha1=None,
             parent_ids=self.parents)
 
     def _legal_revision_properties(self, props):

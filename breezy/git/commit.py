@@ -186,7 +186,7 @@ class GitCommitBuilder(CommitBuilder):
         c.author = fix_person_identifier(author.encode(encoding))
         bugstext = self._revprops.pop('bugs', None)
         if bugstext is not None:
-            for url, status in bugtracker.decode_bug_urls(bugstext):
+            for url, status in bugtracker.decode_bug_urls(bugstext.splitlines()):
                 if status == bugtracker.FIXED:
                     pseudoheaders.append(("Fixes: %s" % url).encode(encoding))
                 elif status == bugtracker.RELATED:

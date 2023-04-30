@@ -58,16 +58,7 @@ class RevisionInfo:
         return pprint.pformat(self.__dict__)
 
     def as_revision(self):
-        rev = Revision(revision_id=self.revision_id,
-                       committer=self.committer,
-                       timestamp=float(self.timestamp),
-                       timezone=int(self.timezone),
-                       inventory_sha1=self.inventory_sha1,
-                       message='\n'.join(self.message))
-
-        if self.parent_ids:
-            rev.parent_ids.extend(self.parent_ids)
-
+        properties = {}
         if self.properties:
             for property in self.properties:
                 key_end = property.find(': ')
@@ -79,9 +70,16 @@ class RevisionInfo:
                 else:
                     key = str(property[:key_end])
                     value = property[key_end + 2:]
-                rev.properties[key] = value
+                properties[key] = value
 
-        return rev
+        return Revision(revision_id=self.revision_id,
+                        committer=self.committer,
+                        timestamp=float(self.timestamp),
+                        timezone=int(self.timezone),
+                        inventory_sha1=self.inventory_sha1,
+                        message='\n'.join(self.message),
+                        parent_ids=self.parent_ids or [],
+                        properties=properties)
 
     @staticmethod
     def from_revision(revision):

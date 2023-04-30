@@ -426,13 +426,13 @@ def encode_fixes_bug_urls(bug_urls):
     return '\n'.join(lines)
 
 
-def decode_bug_urls(bug_text):
+def decode_bug_urls(bug_lines):
     """Decode a bug property text.
 
-    :param bug_text: Contents of a bugs property
+    :param bug_lines: Contents of a bugs property
     :return: iterator over (url, status) tuples
     """
-    for line in bug_text.splitlines():
+    for line in bug_lines:
         try:
             url, status = line.split(None, 2)
         except ValueError as exc:

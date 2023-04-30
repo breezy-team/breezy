@@ -314,7 +314,7 @@ class TestSerializer(TestCase):
         eq(rev.committer,
            "Martin Pool <mbp@sourcefrog.net>")
         eq(rev.inventory_id,
-           "mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9")
+           b"mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9")
         eq(len(rev.parent_ids), 1)
         eq(rev.parent_ids[0],
-           "mbp@sourcefrog.net-20050905063503-43948f59fa127d92")
+           b"mbp@sourcefrog.net-20050905063503-43948f59fa127d92")

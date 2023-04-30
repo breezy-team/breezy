@@ -859,9 +859,9 @@ class TestWithBrokenRepo(TestCaseWithTransport):
             repo.texts.add_lines((inv.root.file_id, b'rev1a'), [], [])
             repo.add_inventory(b'rev1a', inv, [])
             revision = _mod_revision.Revision(
-                b'rev1a',
+                b'rev1a', properties={},
                 committer='jrandom@example.com', timestamp=0,
-                inventory_sha1='', timezone=0, message='foo', parent_ids=[])
+                inventory_sha1=None, timezone=0, message='foo', parent_ids=[])
             repo.add_revision(b'rev1a', revision, inv)
 
             # make rev1b, which has no Revision, but has an Inventory, and
@@ -902,8 +902,8 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         repo.add_inventory(revision_id, inv, parent_ids)
         revision = _mod_revision.Revision(
             revision_id,
-            committer='jrandom@example.com', timestamp=0, inventory_sha1='',
-            timezone=0, message='foo', parent_ids=parent_ids)
+            committer='jrandom@example.com', timestamp=0, inventory_sha1=None,
+            timezone=0, message='foo', parent_ids=parent_ids, properties={})
         repo.add_revision(revision_id, revision, inv)
 
     def add_file(self, repo, inv, filename, revision, parents):
