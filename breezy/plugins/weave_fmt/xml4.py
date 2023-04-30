@@ -182,7 +182,7 @@ class _Serializer_v4(XMLSerializer):
         if pelts:
             for p in pelts:
                 parent_ids.append(p.get('revision_id').encode('utf-8'))
-                parent_sha1s.append(p.get('revision_sha1').encode('utf-8'))
+                parent_sha1s.append(p.get('revision_sha1').encode('utf-8') if p.get('revision_sha1') else None)
             if precursor:
                 # must be consistent
                 prec_parent = parent_ids[0]

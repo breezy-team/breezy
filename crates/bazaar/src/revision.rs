@@ -2,7 +2,7 @@ use crate::RevisionId;
 use chrono::NaiveDateTime;
 use std::collections::HashMap;
 
-pub fn validate_properties(properties: &HashMap<String, String>) -> bool {
+pub fn validate_properties(properties: &HashMap<String, Vec<u8>>) -> bool {
     for (key, _value) in properties.iter() {
         if breezy_osutils::contains_whitespace(key.as_str()) {
             return false;
@@ -17,7 +17,7 @@ pub struct Revision {
     pub parent_ids: Vec<RevisionId>,
     pub committer: Option<String>,
     pub message: String,
-    pub properties: HashMap<String, String>,
+    pub properties: HashMap<String, Vec<u8>>,
     pub inventory_sha1: Option<Vec<u8>>,
     pub timestamp: f64,
     pub timezone: Option<i32>,
@@ -29,7 +29,7 @@ impl Revision {
         parent_ids: Vec<RevisionId>,
         committer: Option<String>,
         message: String,
-        properties: HashMap<String, String>,
+        properties: HashMap<String, Vec<u8>>,
         inventory_sha1: Option<Vec<u8>>,
         timestamp: f64,
         timezone: Option<i32>,
@@ -68,6 +68,12 @@ impl Revision {
         }
     }
 
+    fn get_property_as_str(&self, key: &str) -> Option<String> {
+        self.properties
+            .get(key)
+            .map(|x| String::from_utf8_lossy(x).to_string())
+    }
+
     /// Return the apparent authors of this revision.
     ///
     /// If the revision properties contain the names of the authors,
@@ -75,14 +81,14 @@ impl Revision {
     ///
     /// The return value will be a list containing at least one element.
     pub fn get_apparent_authors(&self) -> Vec<String> {
-        let authors = match self.properties.get("authors") {
+        let authors = match self.get_property_as_str("authors") {
             Some(authors) => {
                 let authors = authors.split('\n').collect::<Vec<&str>>();
                 authors.iter().map(|x| x.to_string()).collect()
             }
-            None => self.properties.get("author").map_or(
+            None => self.get_property_as_str("author").map_or(
                 self.committer.clone().map_or(vec![], |v| vec![v]),
-                |author| vec![author.clone()],
+                |author| vec![author],
             ),
         };
 
@@ -90,7 +96,7 @@ impl Revision {
     }
 
     pub fn bug_urls(&self) -> Vec<String> {
-        self.properties.get("bugs").map_or(vec![], |bugs| {
+        self.get_property_as_str("bugs").map_or(vec![], |bugs| {
             bugs.split('\n').map(|x| x.to_string()).collect()
         })
     }

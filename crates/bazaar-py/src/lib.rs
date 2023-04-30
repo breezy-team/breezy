@@ -1,9 +1,9 @@
 use bazaar::RevisionId;
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::NaiveDateTime;
 use pyo3::class::basic::CompareOp;
 use pyo3::exceptions::{PyNotImplementedError, PyTypeError, PyValueError};
 use pyo3::prelude::*;
-use pyo3::types::{PyBytes, PyDict, PyList};
+use pyo3::types::{PyBytes, PyList, PyString};
 use std::collections::HashMap;
 
 /// Create a new file id suffix that is reasonably unique.
@@ -150,13 +150,28 @@ impl Revision {
         parent_ids: Vec<&PyBytes>,
         committer: Option<String>,
         message: String,
-        properties: Option<HashMap<String, String>>,
+        properties: Option<HashMap<String, PyObject>>,
         inventory_sha1: Option<Vec<u8>>,
         timestamp: f64,
         timezone: Option<i32>,
     ) -> PyResult<Self> {
-        let properties = properties.unwrap_or(HashMap::new());
-        if !bazaar::revision::validate_properties(&properties) {
+        let mut cproperties: HashMap<String, Vec<u8>> = HashMap::new();
+        for (k, v) in properties.unwrap_or(HashMap::new()) {
+            if let Ok(s) = v.extract::<&PyBytes>(py) {
+                cproperties.insert(k, s.as_bytes().to_vec());
+            } else if let Ok(s) = v.extract::<&PyString>(py) {
+                let s = s
+                    .call_method1("encode", ("utf-8", "surrogateescape"))?
+                    .extract::<&PyBytes>()?;
+                cproperties.insert(k, s.as_bytes().to_vec());
+            } else {
+                return Err(PyTypeError::new_err(
+                    "properties must be a dictionary of strings",
+                ));
+            }
+        }
+
+        if !bazaar::revision::validate_properties(&cproperties) {
             return Err(PyValueError::new_err(
                 "properties must be a dictionary of strings",
             ));
@@ -169,7 +184,7 @@ impl Revision {
                 .collect(),
             committer,
             message,
-            properties,
+            properties: cproperties,
             inventory_sha1,
             timestamp,
             timezone,
@@ -219,7 +234,11 @@ impl Revision {
 
     #[getter]
     fn properties(&self) -> HashMap<String, String> {
-        self.0.properties.clone()
+        self.0
+            .properties
+            .iter()
+            .map(|(k, v)| (k.clone(), String::from_utf8_lossy(v).into()))
+            .collect()
     }
 
     #[getter]
