@@ -267,8 +267,6 @@ class TestCommit(TestCaseWithWorkingTree):
         rev_id = wt.commit('commit against a ghost first parent.')
         rev = wt.branch.repository.get_revision(rev_id)
         self.assertEqual(rev.parent_ids, [b'non:existent@rev--ision--0--2'])
-        # parent_sha1s is not populated now, WTF. rbc 20051003
-        self.assertEqual(len(rev.parent_sha1s), 0)
 
     def test_record_two_ghosts(self):
         """The working tree should preserve all the parents during commit."""

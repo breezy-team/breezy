@@ -155,7 +155,7 @@ class TestRepository(TestCaseWithRepository):
         repo.texts.add_lines((b'fixed-root', b'A'), [], [])
         repo.add_revision(b'A', _mod_revision.Revision(
             b'A', committer='B', timestamp=0,
-            timezone=0, message='C'), inv=inv)
+            timezone=0, message='C', parent_ids=[], properties={}, inventory_sha1=None), inv=inv)
         repo.commit_write_group()
         repo.unlock()
         repo.lock_read()
@@ -393,8 +393,8 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         sha1 = repo.add_inventory(b'ghost', inv, [])
         rev = _mod_revision.Revision(
             timestamp=0, timezone=None, committer="Foo Bar <foo@example.com>",
-            message="Message", inventory_sha1=sha1, revision_id=b'ghost')
-        rev.parent_ids = [b'the_ghost']
+            message="Message", inventory_sha1=sha1, revision_id=b'ghost',
+            parent_ids=[b'the_ghost'], properties={})
         try:
             repo.add_revision(b'ghost', rev)
         except (errors.NoSuchRevision, errors.RevisionNotPresent):
@@ -409,8 +409,9 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         sha1 = repo.add_inventory(b'the_ghost', inv, [])
         rev = _mod_revision.Revision(
             timestamp=0, timezone=None, committer="Foo Bar <foo@example.com>",
-            message="Message", inventory_sha1=sha1, revision_id=b'the_ghost')
-        rev.parent_ids = []
+            message="Message", inventory_sha1=sha1, revision_id=b'the_ghost',
+            properties={},
+            parent_ids=[])
         repo.add_revision(b'the_ghost', rev)
         # check its setup usefully
         inv_weave = repo.inventories

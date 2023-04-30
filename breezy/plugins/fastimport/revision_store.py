@@ -375,7 +375,7 @@ class RevisionStore:
             builder.inv_sha1, builder.new_inventory = builder.inv_sha1
         # This is a duplicate of Builder.commit() since we already have the
         # Revision object, and we *don't* want to call commit_write_group()
-        rev.inv_sha1 = builder.inv_sha1
+        rev.inventory_sha1 = builder.inv_sha1
         config = builder._config_stack
         builder.repository.add_revision(builder._new_revision_id, rev,
                                         builder.revision_tree().root_inventory)

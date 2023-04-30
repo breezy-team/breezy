@@ -24,11 +24,11 @@ from ..pseudonyms import extract_foreign_revids
 class ExtractForeignRevidTests(TestCase):
 
     def test_no_foreign_revid(self):
-        x = Revision(b"myrevid")
+        x = Revision(b"myrevid", parent_ids=[], committer='', properties={}, message='', timestamp=0, timezone=0, inventory_sha1=None)
         self.assertEqual(set(), extract_foreign_revids(x))
 
     def test_cscvs(self):
-        x = Revision(b"myrevid")
+        x = Revision(b"myrevid", parent_ids=[], committer='', properties={}, message='', timestamp=0, timezone=0, inventory_sha1=None)
         x.properties = {
             "cscvs-svn-repository-uuid": "someuuid",
             "cscvs-svn-revision-number": "4",

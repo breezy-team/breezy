@@ -160,8 +160,8 @@ class VersionedFileCommitBuilder(CommitBuilder):
             message=message,
             inventory_sha1=self.inv_sha1,
             revision_id=self._new_revision_id,
+            parent_ids=self.parents,
             properties=self._revprops)
-        rev.parent_ids = self.parents
         create_signatures = self._config_stack.get('create_signatures')
         if create_signatures in (
                 _mod_config.SIGN_ALWAYS, _mod_config.SIGN_WHEN_POSSIBLE):

@@ -37,9 +37,17 @@ from breezy.bzr import (
     xml5,
     )
 """)
-from ... import debug, errors, lockable_files, lockdir, osutils, trace
-from ... import transport as _mod_transport
-from ... import urlutils
+from ... import (
+    debug,
+    errors,
+    lockable_files,
+    lockdir,
+    osutils,
+    revision as _mod_revision,
+    trace,
+    transport as _mod_transport,
+    urlutils,
+)
 from ...bzr import tuned_gzip, versionedfile, weave, weavefile
 from ...bzr.repository import RepositoryFormatMetaDir
 from ...bzr.versionedfile import (AbsentContentFactory, FulltextContentFactory,

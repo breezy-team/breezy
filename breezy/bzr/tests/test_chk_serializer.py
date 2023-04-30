@@ -87,12 +87,12 @@ class TestBEncodeSerializer1(TestCase):
         self.assertEqual(orig_rev, new_rev)
 
     def test_roundtrips_non_ascii(self):
-        rev = Revision(b"revid1")
-        rev.message = "\n\xe5me"
-        rev.committer = 'Erik B\xe5gfors'
-        rev.timestamp = 1242385452
-        rev.inventory_sha1 = b"4a2c7fb50e077699242cf6eb16a61779c7b680a7"
-        rev.timezone = 3600
+        rev = Revision(
+            b"revid1", message="\n\xe5me",
+            committer='Erik B\xe5gfors', timestamp=1242385452,
+            inventory_sha1=b"4a2c7fb50e077699242cf6eb16a61779c7b680a7",
+            parent_ids=[], properties={},
+            timezone=3600)
         self.assertRoundTrips(chk_bencode_serializer, rev)
 
     def test_roundtrips_xml_invalid_chars(self):

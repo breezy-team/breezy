@@ -121,7 +121,8 @@ def apply_inventory_WT(self, basis, delta, invalid_delta=True):
 def _create_repo_revisions(repo, basis, delta, invalid_delta):
     with repository.WriteGroup(repo):
         rev = revision.Revision(b'basis', timestamp=0, timezone=None,
-                                message="", committer="foo@example.com")
+                                message="", committer="foo@example.com",
+                                parent_ids=[], properties={}, inventory_sha1=None)
         basis.revision_id = b'basis'
         create_texts_for_inv(repo, basis)
         repo.add_revision(b'basis', rev, basis)
@@ -136,7 +137,8 @@ def _create_repo_revisions(repo, basis, delta, invalid_delta):
             create_texts_for_inv(repo, result_inv)
             target_entries = list(result_inv.iter_entries_by_dir())
         rev = revision.Revision(b'result', timestamp=0, timezone=None,
-                                message="", committer="foo@example.com")
+                                message="", committer="foo@example.com",
+                                parent_ids=[], properties={}, inventory_sha1=None)
         repo.add_revision(b'result', rev, result_inv)
     return target_entries
 
@@ -227,7 +229,8 @@ def apply_inventory_Repository_add_inventory_by_delta(self, basis, delta,
     with repo.lock_write(), repository.WriteGroup(repo):
         rev = revision.Revision(
             b'basis', timestamp=0, timezone=None, message="",
-            committer="foo@example.com")
+            committer="foo@example.com",
+            parent_ids=[], properties={}, inventory_sha1=None)
         basis.revision_id = b'basis'
         create_texts_for_inv(repo, basis)
         repo.add_revision(b'basis', rev, basis)

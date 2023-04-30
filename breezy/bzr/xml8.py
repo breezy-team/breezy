@@ -225,29 +225,34 @@ class Serializer_v8(XMLSerializer):
                 raise BzrError("invalid format version %r on revision"
                                % format)
         get_cached = get_utf8_or_ascii
-        rev = Revision(committer=elt.get('committer'),
-                       timestamp=float(elt.get('timestamp')),
-                       revision_id=get_cached(elt.get('revision_id')),
-                       inventory_sha1=elt.get('inventory_sha1').encode('ascii')
-                       )
         parents = elt.find('parents')
         if parents is not None:
-            for p in parents:
-                rev.parent_ids.append(get_cached(p.get('revision_id')))
-        self._unpack_revision_properties(elt, rev)
+            parent_ids = [get_cached(p.get('revision_id')) for p in parents]
+        else:
+            parent_ids = []
         v = elt.get('timezone')
         if v is None:
-            rev.timezone = 0
+            timezone = 0
         else:
-            rev.timezone = int(v)
-        rev.message = elt.findtext('message')  # text of <message>
-        return rev
+            timezone = int(v)
 
-    def _unpack_revision_properties(self, elt, rev):
+        message = elt.findtext('message')  # text of <message>
+        return Revision(committer=elt.get('committer'),
+                       timestamp=float(elt.get('timestamp')),
+                       revision_id=get_cached(elt.get('revision_id')),
+                       inventory_sha1=elt.get('inventory_sha1').encode('ascii'),
+                       parent_ids=parent_ids,
+                       timezone=timezone,
+                       message=message,
+                       properties=self._unpack_revision_properties(elt)
+                       )
+
+    def _unpack_revision_properties(self, elt):
         """Unpack properties onto a revision."""
         props_elt = elt.find('properties')
         if props_elt is None:
-            return
+            return {}
+        properties = {}
         for prop_elt in props_elt:
             if prop_elt.tag != 'property':
                 raise AssertionError(
@@ -259,9 +264,10 @@ class Serializer_v8(XMLSerializer):
             # properties have string values
             if value is None:
                 value = ''
-            if name in rev.properties:
+            if name in properties:
                 raise AssertionError("repeated property %r" % name)
-            rev.properties[name] = value
+            properties[name] = value
+        return properties
 
     def _find_text_key_references(self, line_iterator):
         """Core routine for extracting references to texts from inventories.

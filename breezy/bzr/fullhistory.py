@@ -98,7 +98,7 @@ class FullHistoryBzrBranch(BzrBranch):
                 new_history = new_history[:new_history.index(revision_id) + 1]
             except ValueError:
                 rev = self.repository.get_revision(revision_id)
-                new_history = rev.get_history(self.repository)[1:]
+                new_history = _mod_revision.get_history(self.repository, rev)[1:]
         destination._set_revision_history(new_history)
 
     def generate_revision_history(self, revision_id, last_rev=None,

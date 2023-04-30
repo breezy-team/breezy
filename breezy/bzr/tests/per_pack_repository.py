@@ -238,8 +238,10 @@ class TestPackRepository(TestCaseWithTransport):
                     repo.texts.add_lines((inv.root.file_id, revid), [], [])
                     rev = _mod_revision.Revision(timestamp=0, timezone=None,
                                                  committer="Foo Bar <foo@example.com>", message="Message",
+                                                 parent_ids=[],
+                                                 properties={},
+                                                 inventory_sha1=None,
                                                  revision_id=revid)
-                    rev.parent_ids = ()
                     repo.add_revision(revid, rev, inv=inv)
                 except:
                     repo.abort_write_group()
@@ -628,10 +630,11 @@ class TestPackRepository(TestCaseWithTransport):
             rev = _mod_revision.Revision(timestamp=0,
                                          timezone=None,
                                          committer="Foo Bar <foo@example.com>",
+                                         properties={},
                                          message="Message",
                                          inventory_sha1=sha1,
+                                         parent_ids=parent_ids,
                                          revision_id=revision_id)
-            rev.parent_ids = parent_ids
             repo.add_revision(revision_id, rev)
             repo.commit_write_group()
             repo.unlock()

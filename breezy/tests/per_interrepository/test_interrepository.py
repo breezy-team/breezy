@@ -192,9 +192,10 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
                                            timezone=None,
                                            committer="Foo Bar <foo@example.com>",
                                            message="Message",
+                                           properties={},
                                            inventory_sha1=sha1,
+                                           parent_ids=parent_ids,
                                            revision_id=revision_id)
-            rev.parent_ids = parent_ids
             repo.add_revision(revision_id, rev)
             repo.commit_write_group()
             repo.unlock()

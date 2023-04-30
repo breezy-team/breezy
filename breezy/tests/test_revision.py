@@ -20,7 +20,7 @@ import warnings
 from breezy import bugtracker, revision
 from breezy.tests import TestCase, TestCaseWithTransport
 
-from ..revision import NULL_REVISION
+from ..revision import NULL_REVISION, iter_bugs, get_history
 from .matchers import MatchesAncestry
 
 # We're allowed to test deprecated interfaces
@@ -169,13 +169,13 @@ class TestCommonAncestor(TestCaseWithTransport):
         tree.commit('2', rev_id=b'2', allow_pointless=True)
         tree.commit('3', rev_id=b'3', allow_pointless=True)
         rev = tree.branch.repository.get_revision(b'1')
-        history = rev.get_history(tree.branch.repository)
+        history = get_history(tree.branch.repository, rev)
         self.assertEqual([None, b'1'], history)
         rev = tree.branch.repository.get_revision(b'2')
-        history = rev.get_history(tree.branch.repository)
+        history = get_history(tree.branch.repository, rev)
         self.assertEqual([None, b'1', b'2'], history)
         rev = tree.branch.repository.get_revision(b'3')
-        history = rev.get_history(tree.branch.repository)
+        history = get_history(tree.branch.repository, rev)
         self.assertEqual([None, b'1', b'2', b'3'], history)
 
 
@@ -195,7 +195,7 @@ class TestReservedId(TestCase):
 class TestRevisionMethods(TestCase):
 
     def test_get_summary(self):
-        r = revision.Revision('1')
+        r = revision.Revision('1', parent_ids=[], committer='', message='', timestamp=0, timezone=0, inventory_sha1=None, properties={})
         r.message = 'a'
         self.assertEqual('a', r.get_summary())
         r.message = 'a\nb'
@@ -206,7 +206,7 @@ class TestRevisionMethods(TestCase):
         self.assertEqual('', r.get_summary())
 
     def test_get_apparent_authors(self):
-        r = revision.Revision('1')
+        r = revision.Revision('1', parent_ids=[], committer='', message='', timestamp=0, timezone=0, inventory_sha1=None, properties={})
         r.committer = 'A'
         self.assertEqual(['A'], r.get_apparent_authors())
         r.properties['author'] = 'B'
@@ -215,7 +215,7 @@ class TestRevisionMethods(TestCase):
         self.assertEqual(['C', 'D'], r.get_apparent_authors())
 
     def test_get_apparent_authors_no_committer(self):
-        r = revision.Revision('1')
+        r = revision.Revision('1', parent_ids=[], committer='', message='', timestamp=0, timezone=0, inventory_sha1=None, properties={})
         self.assertEqual([], r.get_apparent_authors())
 
 
@@ -223,33 +223,42 @@ class TestRevisionBugs(TestCase):
     """Tests for getting the bugs that a revision is linked to."""
 
     def test_no_bugs(self):
-        r = revision.Revision('1')
-        self.assertEqual([], list(r.iter_bugs()))
+        r = revision.Revision(b'1', parent_ids=[], committer='', message='', timestamp=0,
+            timezone=0, inventory_sha1=None, properties={})
+        self.assertEqual([], list(iter_bugs(r)))
 
     def test_some_bugs(self):
         r = revision.Revision(
-            '1', properties={
+            b'1', properties={
                 'bugs': bugtracker.encode_fixes_bug_urls(
                     [('http://example.com/bugs/1', 'fixed'),
-                     ('http://launchpad.net/bugs/1234', 'fixed')])})
+                     ('http://launchpad.net/bugs/1234', 'fixed')])},
+            parent_ids=[], committer='', message='', timestamp=0,
+            timezone=0, inventory_sha1=None)
         self.assertEqual(
             [('http://example.com/bugs/1', bugtracker.FIXED),
              ('http://launchpad.net/bugs/1234', bugtracker.FIXED)],
-            list(r.iter_bugs()))
+            list(iter_bugs(r)))
 
     def test_no_status(self):
         r = revision.Revision(
-            '1', properties={'bugs': 'http://example.com/bugs/1'})
+            b'1', properties={'bugs': 'http://example.com/bugs/1'},
+            parent_ids=[], committer='', message='', timestamp=0,
+            timezone=0, inventory_sha1=None)
         self.assertRaises(bugtracker.InvalidLineInBugsProperty, list,
-                          r.iter_bugs())
+                          iter_bugs(r))
 
     def test_too_much_information(self):
         r = revision.Revision(
-            '1', properties={'bugs': 'http://example.com/bugs/1 fixed bar'})
+            b'1', properties={'bugs': 'http://example.com/bugs/1 fixed bar'},
+            parent_ids=[], committer='', message='', timestamp=0,
+            timezone=0, inventory_sha1=None)
         self.assertRaises(bugtracker.InvalidLineInBugsProperty, list,
-                          r.iter_bugs())
+                          iter_bugs(r))
 
     def test_invalid_status(self):
         r = revision.Revision(
-            '1', properties={'bugs': 'http://example.com/bugs/1 faxed'})
-        self.assertRaises(bugtracker.InvalidBugStatus, list, r.iter_bugs())
+            b'1', properties={'bugs': 'http://example.com/bugs/1 faxed'},
+            parent_ids=[], committer='', message='', timestamp=0,
+            timezone=0, inventory_sha1=None)
+        self.assertRaises(bugtracker.InvalidBugStatus, list, iter_bugs(r))
