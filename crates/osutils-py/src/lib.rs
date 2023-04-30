@@ -23,6 +23,7 @@ create_exception!(
 
 import_exception!(breezy.errors, IllegalPath);
 import_exception!(breezy.errors, PathNotChild);
+import_exception!(breezy.errors, DirectoryNotEmpty);
 
 #[pyclass]
 struct PyChunksToLinesIterator {
@@ -905,6 +906,41 @@ fn win32_getcwd() -> PyResult<PathBuf> {
     Ok(breezy_osutils::path::win32::getcwd()?)
 }
 
+/// Returns the terminal size as (width, height).
+///
+/// Args:
+///   width: Default value for width.
+///   height: Default value for height.
+///
+/// This is defined specifically for each OS and query the size of the controlling
+/// terminal. If any error occurs, the provided default values should be returned.
+#[pyfunction]
+fn terminal_size() -> PyResult<(u16, u16)> {
+    Ok(breezy_osutils::terminal::terminal_size()?)
+}
+
+#[pyfunction]
+fn has_ansi_colors() -> bool {
+    breezy_osutils::terminal::has_ansi_colors()
+}
+
+/// Make sure a local directory exists and is empty.
+///
+/// If it does not exist, it is created.  If it exists and is not empty,
+/// DirectoryNotEmpty is raised.
+#[pyfunction]
+fn ensure_empty_directory_exists(path: PathBuf) -> PyResult<()> {
+    match breezy_osutils::file::ensure_empty_directory_exists(path.as_path()) {
+        Ok(()) => Ok(()),
+        Err(ref e)
+            if e.kind() == std::io::ErrorKind::Other && e.to_string().contains(" not empty") =>
+        {
+            Err(DirectoryNotEmpty::new_err(path))
+        }
+        Err(e) => Err(e.into()),
+    }
+}
+
 #[pymodule]
 fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -984,6 +1020,9 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(pump_string_file))?;
     m.add_wrapped(wrap_pyfunction!(realpath))?;
     m.add_wrapped(wrap_pyfunction!(normalizepath))?;
+    m.add_wrapped(wrap_pyfunction!(terminal_size))?;
+    m.add_wrapped(wrap_pyfunction!(has_ansi_colors))?;
+    m.add_wrapped(wrap_pyfunction!(ensure_empty_directory_exists))?;
     m.add(
         "MIN_ABS_PATHLENGTH",
         breezy_osutils::path::MIN_ABS_PATHLENGTH,

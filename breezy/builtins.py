@@ -6936,7 +6936,7 @@ class cmd_grep(Command):
             files_without_match=False, color=None, diff=False):
         import re
 
-        from breezy import _termcolor
+        from breezy import terminal
 
         from . import grep
         if path_list is None:
@@ -6998,7 +6998,7 @@ class cmd_grep(Command):
         elif color == 'never':
             show_color = False
         elif color == 'auto':
-            show_color = _termcolor.allow_color()
+            show_color = terminal.has_ansi_colors()
 
         opts = grep.GrepOptions()
 

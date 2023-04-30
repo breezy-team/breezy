@@ -20,7 +20,7 @@ import warnings
 from breezy import bugtracker, revision
 from breezy.tests import TestCase, TestCaseWithTransport
 
-from ..revision import NULL_REVISION, iter_bugs, get_history
+from ..revision import NULL_REVISION, get_history, iter_bugs
 from .matchers import MatchesAncestry
 
 # We're allowed to test deprecated interfaces
