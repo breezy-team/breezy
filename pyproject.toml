@@ -54,7 +54,7 @@ doc = [
 ]
 pgp = ["gpg"]
 github = ["github"]
-paramiko = ["paramiko"]
+paramiko = ["paramiko>=1.6.2"]
 subunit = ["python-subunit"]
 dev = [
     "testtools",
