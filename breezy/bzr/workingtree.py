@@ -189,11 +189,11 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         # it.  mbp 20070306
 
     def _serialize(self, inventory, out_file):
-        xml5.serializer_v5.write_inventory(
+        xml5.inventory_serializer_v5.write_inventory(
             self._inventory, out_file, working=True)
 
     def _deserialize(selt, in_file):
-        return xml5.serializer_v5.read_inventory(in_file)
+        return xml5.inventory_serializer_v5.read_inventory(in_file)
 
     def break_lock(self):
         """Break a lock if one is present from another instance.
@@ -549,7 +549,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             firstline = lines[0]
             if (b'revision_id="' not in firstline
                     or b'format="7"' not in firstline):
-                inv = self.branch.repository._serializer.read_inventory_from_lines(
+                inv = self.branch.repository._inventory_serializer.read_inventory_from_lines(
                     lines, new_revision)
                 lines = self._create_basis_xml_from_inventory(new_revision, inv)
             self._write_basis_inventory(lines)
@@ -562,7 +562,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     def _create_basis_xml_from_inventory(self, revision_id, inventory):
         """Create the text that will be saved in basis-inventory"""
         inventory.revision_id = revision_id
-        return xml7.serializer_v7.write_inventory_to_lines(inventory)
+        return xml7.inventory_serializer_v7.write_inventory_to_lines(inventory)
 
     def set_conflicts(self, conflicts):
         conflict_list = _mod_bzr_conflicts.ConflictList(conflicts)
@@ -845,7 +845,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 pass
             else:
                 try:
-                    inv = xml7.serializer_v7.read_inventory_from_lines(xml_lines)
+                    inv = xml7.inventory_serializer_v7.read_inventory_from_lines(xml_lines)
                     # dont use the repository revision_tree api because we want
                     # to supply the inventory.
                     if inv.revision_id == revision_id:

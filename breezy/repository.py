@@ -1578,14 +1578,18 @@ class InterRepository(InterObject[Repository]):
         if source.supports_rich_root() != target.supports_rich_root():
             raise errors.IncompatibleRepositories(source, target,
                                                   "different rich-root support")
-        if not hasattr(source, '_serializer') or not hasattr(target, '_serializer'):
+        if not hasattr(source, '_revision_serializer') or not hasattr(target, '_revision_serializer'):
             if source != target:
                 raise errors.IncompatibleRepositories(source, target, "different formats")
             return
 
-        if source._serializer != target._serializer:
+        if source._inventory_serializer != target._inventory_serializer:
             raise errors.IncompatibleRepositories(source, target,
-                                                  "different serializers")
+                                                  "different inventory serializers")
+
+        if source._revision_serializer != target._revision_serializer:
+            raise errors.IncompatibleRepositories(source, target,
+                                                  "different revision serializers")
 
 
 class CopyConverter:

@@ -22,7 +22,7 @@ from ...bzr import generate_ids, inventory, serializer
 from ...trace import mutter, note, warning
 from .helpers import mode_to_kind
 
-_serializer_handles_escaping = hasattr(serializer.Serializer,
+_serializer_handles_escaping = hasattr(serializer.RevisionSerializer,
                                        'squashes_xml_invalid_characters')
 
 

@@ -23,7 +23,7 @@
 # ElementTree bits
 
 import re
-from typing import Dict, Union
+from typing import Dict, Optional, Union
 from xml.etree.ElementTree import (Element, ElementTree, ParseError,
                                    SubElement, fromstring, fromstringlist,
                                    tostring, tostringlist)
@@ -32,10 +32,29 @@ from .. import errors, lazy_regex
 from . import inventory, serializer
 
 
-class XMLSerializer(serializer.Serializer):
+class XMLRevisionSerializer(serializer.RevisionSerializer):
     """Abstract XML object serialize/deserialize"""
 
     squashes_xml_invalid_characters = True
+
+    def _unpack_revision(self, element):
+        raise NotImplementedError(self._unpack_revision)
+
+    def write_revision_to_string(self, rev):
+        return b''.join(self.write_revision_to_lines(rev))
+
+    def read_revision(self, f):
+        return self._unpack_revision(self._read_element(f))
+
+    def read_revision_from_string(self, xml_string):
+        return self._unpack_revision(fromstring(xml_string))
+
+    def _read_element(self, f):
+        return ElementTree().parse(f)
+
+
+class XMLInventorySerializer(serializer.InventorySerializer):
+    """Abstract XML object serialize/deserialize"""
 
     def read_inventory_from_lines(self, lines, revision_id=None,
                                   entry_cache=None, return_from_cache=False):
@@ -64,6 +83,9 @@ class XMLSerializer(serializer.Serializer):
         except ParseError as e:
             raise serializer.UnexpectedInventoryFormat(str(e))
 
+    def _unpack_inventory(self, element, revision_id: Optional[bytes] = None, entry_cache=None, return_from_cache=False):
+        raise NotImplementedError(self._unpack_inventory)
+
     def read_inventory(self, f, revision_id=None):
         try:
             try:
@@ -73,15 +95,6 @@ class XMLSerializer(serializer.Serializer):
                 f.close()
         except ParseError as e:
             raise serializer.UnexpectedInventoryFormat(str(e))
-
-    def write_revision_to_string(self, rev):
-        return b''.join(self.write_revision_to_lines(rev))
-
-    def read_revision(self, f):
-        return self._unpack_revision(self._read_element(f))
-
-    def read_revision_from_string(self, xml_string):
-        return self._unpack_revision(fromstring(xml_string))
 
     def _read_element(self, f):
         return ElementTree().parse(f)

@@ -45,7 +45,7 @@ from .. import (RemoteBzrProber, bzrdir, groupcompress_repo, inventory,
                 inventory_delta, knitpack_repo, remote, versionedfile,
                 vf_search)
 from ..bzrdir import BzrDir, BzrDirFormat
-from ..chk_serializer import chk_bencode_serializer
+from ..chk_serializer import revision_bencode_serializer
 from ..remote import (RemoteBranch, RemoteBranchFormat, RemoteBzrDir,
                       RemoteBzrDirFormat, RemoteRepository,
                       RemoteRepositoryFormat, UnknownErrorFromSmartServer)
@@ -2822,7 +2822,7 @@ class TestRepositoryGetRevisions(TestRemoteRepository):
             parent_ids=[],
             message="Message",
             properties={})
-        body = zlib.compress(b''.join(chk_bencode_serializer.write_revision_to_lines(
+        body = zlib.compress(b''.join(revision_bencode_serializer.write_revision_to_lines(
             somerev1)))
         # Split up body into two bits to make sure the zlib compression object
         # gets data fed twice.
@@ -3497,7 +3497,7 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
 
         def inventories_substream():
             # An empty inventory fulltext.  This will be streamed normally.
-            chunks = fmt._serializer.write_inventory_to_lines(inv)
+            chunks = fmt._inventory_serializer.write_inventory_to_lines(inv)
             yield versionedfile.ChunkedContentFactory(
                 (b'rev1',), (), None, chunks, chunks_are_lines=True)
 

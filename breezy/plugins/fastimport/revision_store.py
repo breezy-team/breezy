@@ -200,9 +200,9 @@ class RevisionStore:
 
         # Get the creation parameters
         chk_store = self.repo.chk_bytes
-        serializer = self.repo._format._serializer
-        search_key_name = serializer.search_key_name
-        maximum_size = serializer.maximum_size
+        inventory_serializer = self.repo._format._inventory_serializer
+        search_key_name = inventory_serializer.search_key_name
+        maximum_size = inventory_serializer.maximum_size
 
         # Maybe the rest of this ought to be part of the CHKInventory API?
         inv = inventory.CHKInventory(search_key_name)

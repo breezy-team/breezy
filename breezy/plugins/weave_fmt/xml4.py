@@ -18,8 +18,8 @@ from typing import List
 
 from ...bzr import inventory
 from ...bzr.inventory import ROOT_ID, Inventory
-from ...bzr.xml_serializer import (Element, SubElement, XMLSerializer,
-                                   escape_invalid_chars)
+from ...bzr.xml_serializer import (Element, SubElement, XMLInventorySerializer,
+                                   XMLRevisionSerializer, escape_invalid_chars)
 from ...errors import BzrError
 from ... import revision as _mod_revision
 
@@ -35,94 +35,15 @@ class Revision(_mod_revision.Revision):
         return self
 
 
-class _Serializer_v4(XMLSerializer):
+class _RevisionSerializer_v4(XMLRevisionSerializer):
     """Version 0.0.4 serializer
 
-    You should use the serializer_v4 singleton.
+    You should use the revision_serializer_v4 singleton.
 
     v4 serialisation is no longer supported, only deserialisation.
     """
 
     __slots__: List[str] = []
-
-    def _pack_entry(self, ie):
-        """Convert InventoryEntry to XML element"""
-        e = Element('entry')
-        e.set('name', ie.name)
-        e.set('file_id', ie.file_id.decode('ascii'))
-        e.set('kind', ie.kind)
-
-        if ie.text_size is not None:
-            e.set('text_size', '%d' % ie.text_size)
-
-        for f in ['text_id', 'text_sha1', 'symlink_target']:
-            v = getattr(ie, f)
-            if v is not None:
-                e.set(f, v)
-
-        # to be conservative, we don't externalize the root pointers
-        # for now, leaving them as null in the xml form.  in a future
-        # version it will be implied by nested elements.
-        if ie.parent_id != ROOT_ID:
-            e.set('parent_id', ie.parent_id)
-
-        e.tail = '\n'
-
-        return e
-
-    def _unpack_inventory(self, elt, revision_id=None, entry_cache=None,
-                          return_from_cache=False):
-        """Construct from XML Element
-
-        :param revision_id: Ignored parameter used by xml5.
-        """
-        root_id = elt.get('file_id')
-        root_id = (root_id.encode('ascii') if root_id else ROOT_ID)
-        inv = Inventory(root_id)
-        for e in elt:
-            ie = self._unpack_entry(e, entry_cache=entry_cache,
-                                    return_from_cache=return_from_cache)
-            if ie.parent_id == ROOT_ID:
-                ie.parent_id = root_id
-            inv.add(ie)
-        return inv
-
-    def _unpack_entry(self, elt, entry_cache=None, return_from_cache=False):
-        # original format inventories don't have a parent_id for
-        # nodes in the root directory, but it's cleaner to use one
-        # internally.
-        parent_id = elt.get('parent_id')
-        parent_id = (parent_id.encode('ascii') if parent_id else ROOT_ID)
-
-        file_id = elt.get('file_id').encode('ascii')
-        kind = elt.get('kind')
-        if kind == 'directory':
-            ie = inventory.InventoryDirectory(file_id,
-                                              elt.get('name'),
-                                              parent_id)
-        elif kind == 'file':
-            ie = inventory.InventoryFile(file_id,
-                                         elt.get('name'),
-                                         parent_id)
-            ie.text_id = elt.get('text_id')
-            if ie.text_id is not None:
-                ie.text_id = ie.text_id.encode('utf-8')
-            ie.text_sha1 = elt.get('text_sha1')
-            if ie.text_sha1 is not None:
-                ie.text_sha1 = ie.text_sha1.encode('ascii')
-            v = elt.get('text_size')
-            ie.text_size = v and int(v)
-        elif kind == 'symlink':
-            ie = inventory.InventoryLink(file_id,
-                                         elt.get('name'),
-                                         parent_id)
-            ie.symlink_target = elt.get('symlink_target')
-        else:
-            raise BzrError("unknown kind %r" % kind)
-
-        ## mutter("read inventoryentry: %r", elt.attrib)
-
-        return ie
 
     def _pack_revision(self, rev):
         """Revision object -> xml tree"""
@@ -206,5 +127,92 @@ class _Serializer_v4(XMLSerializer):
                 )
 
 
-"""singleton instance"""
-serializer_v4 = _Serializer_v4()
+class _InventorySerializer_v4(XMLInventorySerializer):
+    """Version 0.0.4 serializer
+
+    You should use the inventory_serializer_v4 singleton.
+
+    v4 serialisation is no longer supported, only deserialisation.
+    """
+
+    def _pack_entry(self, ie):
+        """Convert InventoryEntry to XML element"""
+        e = Element('entry')
+        e.set('name', ie.name)
+        e.set('file_id', ie.file_id.decode('ascii'))
+        e.set('kind', ie.kind)
+
+        if ie.text_size is not None:
+            e.set('text_size', '%d' % ie.text_size)
+
+        for f in ['text_id', 'text_sha1', 'symlink_target']:
+            v = getattr(ie, f)
+            if v is not None:
+                e.set(f, v)
+
+        # to be conservative, we don't externalize the root pointers
+        # for now, leaving them as null in the xml form.  in a future
+        # version it will be implied by nested elements.
+        if ie.parent_id != ROOT_ID:
+            e.set('parent_id', ie.parent_id)
+
+        e.tail = '\n'
+
+        return e
+
+    def _unpack_inventory(self, elt, revision_id=None, entry_cache=None,
+                          return_from_cache=False):
+        """Construct from XML Element
+
+        :param revision_id: Ignored parameter used by xml5.
+        """
+        root_id = elt.get('file_id')
+        root_id = (root_id.encode('ascii') if root_id else ROOT_ID)
+        inv = Inventory(root_id)
+        for e in elt:
+            ie = self._unpack_entry(e, entry_cache=entry_cache,
+                                    return_from_cache=return_from_cache)
+            if ie.parent_id == ROOT_ID:
+                ie.parent_id = root_id
+            inv.add(ie)
+        return inv
+
+    def _unpack_entry(self, elt, entry_cache=None, return_from_cache=False):
+        # original format inventories don't have a parent_id for
+        # nodes in the root directory, but it's cleaner to use one
+        # internally.
+        parent_id = elt.get('parent_id')
+        parent_id = (parent_id.encode('ascii') if parent_id else ROOT_ID)
+
+        file_id = elt.get('file_id').encode('ascii')
+        kind = elt.get('kind')
+        if kind == 'directory':
+            ie = inventory.InventoryDirectory(file_id,
+                                              elt.get('name'),
+                                              parent_id)
+        elif kind == 'file':
+            ie = inventory.InventoryFile(file_id,
+                                         elt.get('name'),
+                                         parent_id)
+            ie.text_id = elt.get('text_id')
+            if ie.text_id is not None:
+                ie.text_id = ie.text_id.encode('utf-8')
+            ie.text_sha1 = elt.get('text_sha1')
+            if ie.text_sha1 is not None:
+                ie.text_sha1 = ie.text_sha1.encode('ascii')
+            v = elt.get('text_size')
+            ie.text_size = v and int(v)
+        elif kind == 'symlink':
+            ie = inventory.InventoryLink(file_id,
+                                         elt.get('name'),
+                                         parent_id)
+            ie.symlink_target = elt.get('symlink_target')
+        else:
+            raise BzrError("unknown kind %r" % kind)
+
+        ## mutter("read inventoryentry: %r", elt.attrib)
+
+        return ie
+
+revision_serializer_v4 = _RevisionSerializer_v4()
+inventory_serializer_v4 = _InventorySerializer_v4()

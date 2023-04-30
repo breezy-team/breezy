@@ -216,7 +216,7 @@ class TestShowLog(tests.TestCaseWithTransport):
         lf = LogCatcher()
         log.show_log(wt.branch, lf, verbose=True)
         committed_msg = lf.revisions[0].rev.message
-        if wt.branch.repository._serializer.squashes_xml_invalid_characters:
+        if wt.branch.repository._revision_serializer.squashes_xml_invalid_characters:
             self.assertNotEqual(msg, committed_msg)
             self.assertGreater(len(committed_msg), len(msg))
         else:

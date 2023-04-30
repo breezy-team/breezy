@@ -61,7 +61,7 @@ class TestCaseWithBrokenRevisionIndex(TestCaseWithRepository):
                                               parent_ids=[])
             # Manually add the revision text using the RevisionStore API, with
             # bad parents.
-            lines = repo._serializer.write_revision_to_lines(revision)
+            lines = repo._revision_serializer.write_revision_to_lines(revision)
             repo.revisions.add_lines((revision.revision_id,),
                                      [(b'incorrect-parent',)],
                                      lines)

@@ -31,7 +31,7 @@ from ..inventory import (Inventory, InventoryDirectory, InventoryFile,
                          InventoryLink)
 from ..inventorytree import InventoryTree
 from ..testament import StrictTestament
-from ..xml5 import serializer_v5
+from ..xml5 import inventory_serializer_v5
 from . import apply_bundle
 
 
@@ -264,7 +264,7 @@ class BundleInfo:
         so build up an inventory, and make sure the hashes match.
         """
         # Now we should have a complete inventory entry.
-        cs = serializer_v5.write_inventory_to_chunks(inv)
+        cs = inventory_serializer_v5.write_inventory_to_chunks(inv)
         sha1 = sha_strings(cs)
         # Target revision is the last entry in the real_revisions list
         rev = self.get_revision(revision_id)
