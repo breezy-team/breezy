@@ -1,4 +1,5 @@
 #![allow(non_snake_case)]
+use breezy_osutils::Kind;
 use pyo3::create_exception;
 use pyo3::exceptions::{PyIOError, PyTypeError, PyValueError};
 use pyo3::import_exception;
@@ -666,7 +667,13 @@ fn get_umask() -> PyResult<u32> {
 
 #[pyfunction]
 fn kind_marker(kind: &str) -> &str {
-    breezy_osutils::kind_marker(kind)
+    breezy_osutils::kind_marker(match kind {
+        "file" => Kind::File,
+        "directory" => Kind::Directory,
+        "symlink" => Kind::Symlink,
+        "tree-reference" => Kind::TreeReference,
+        _ => return "unknown",
+    })
 }
 
 #[pyfunction]
