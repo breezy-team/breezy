@@ -808,10 +808,7 @@ def terminal_width():
     try:
         width, _height = os_size = _terminal_size()
     except OSError as e:
-        if e.errno == errno.ENOTTY:
-            pass
-        else:
-            raise
+        width = os_size = None
     global _first_terminal_size, _terminal_size_state
     if _terminal_size_state == 'no_data':
         _first_terminal_size = os_size

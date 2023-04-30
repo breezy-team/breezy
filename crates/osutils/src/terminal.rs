@@ -1,5 +1,5 @@
 use std::io::stdout;
-use termion::{is_tty, AsyncReader};
+use termion::is_tty;
 
 pub fn terminal_size() -> std::io::Result<(u16, u16)> {
     termion::terminal_size()
