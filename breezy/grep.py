@@ -22,7 +22,7 @@ from .lazy_import import lazy_import
 lazy_import(globals(), """
 from fnmatch import fnmatch
 
-from breezy._termcolor import color_string, FG
+from breezy.terminal import color_string, FG
 
 from breezy import (
     diff,
