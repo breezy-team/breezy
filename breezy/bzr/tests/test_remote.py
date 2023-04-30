@@ -2814,12 +2814,14 @@ class TestRepositoryGetRevisions(TestRemoteRepository):
     def test_hpss_get_single_revision(self):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
-        somerev1 = Revision(b"somerev1")
-        somerev1.committer = "Joe Committer <joe@example.com>"
-        somerev1.timestamp = 1321828927
-        somerev1.timezone = -60
-        somerev1.inventory_sha1 = b"691b39be74c67b1212a75fcb19c433aaed903c2b"
-        somerev1.message = "Message"
+        somerev1 = Revision(b"somerev1",
+            committer="Joe Committer <joe@example.com>",
+            timestamp=1321828927,
+            timezone=-60,
+            inventory_sha1=b"691b39be74c67b1212a75fcb19c433aaed903c2b",
+            parent_ids=[],
+            message="Message",
+            properties={})
         body = zlib.compress(b''.join(chk_bencode_serializer.write_revision_to_lines(
             somerev1)))
         # Split up body into two bits to make sure the zlib compression object

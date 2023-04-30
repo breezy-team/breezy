@@ -195,7 +195,7 @@ class TestReservedId(TestCase):
 class TestRevisionMethods(TestCase):
 
     def test_get_summary(self):
-        r = revision.Revision('1', parent_ids=[], committer='', message='', timestamp=0, timezone=0, inventory_sha1=None, properties={})
+        r = revision.Revision(b'1', parent_ids=[], committer='', message='', timestamp=0, timezone=0, inventory_sha1=None, properties={})
         r.message = 'a'
         self.assertEqual('a', r.get_summary())
         r.message = 'a\nb'
@@ -206,7 +206,7 @@ class TestRevisionMethods(TestCase):
         self.assertEqual('', r.get_summary())
 
     def test_get_apparent_authors(self):
-        r = revision.Revision('1', parent_ids=[], committer='', message='', timestamp=0, timezone=0, inventory_sha1=None, properties={})
+        r = revision.Revision(b'1', parent_ids=[], committer='', message='', timestamp=0, timezone=0, inventory_sha1=None, properties={})
         r.committer = 'A'
         self.assertEqual(['A'], r.get_apparent_authors())
         r.properties['author'] = 'B'
@@ -215,7 +215,7 @@ class TestRevisionMethods(TestCase):
         self.assertEqual(['C', 'D'], r.get_apparent_authors())
 
     def test_get_apparent_authors_no_committer(self):
-        r = revision.Revision('1', parent_ids=[], committer='', message='', timestamp=0, timezone=0, inventory_sha1=None, properties={})
+        r = revision.Revision(b'1', parent_ids=[], committer='', message='', timestamp=0, timezone=0, inventory_sha1=None, properties={})
         self.assertEqual([], r.get_apparent_authors())
 
 

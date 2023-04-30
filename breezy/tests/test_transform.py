@@ -365,10 +365,11 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         self.assertEqual(['Author1 <author1@example.com>',
                           'Author2 <author2@example.com>'],
                          revision.get_apparent_authors())
-        del revision.properties['authors']
+        properties = dict(revision.properties)
+        del properties['authors']
         self.assertEqual({'foo': 'bar',
                           'branch-nick': 'tree'},
-                         revision.properties)
+                         properties)
 
     def test_no_explicit_revprops(self):
         branch, tt = self.get_branch_and_transform()

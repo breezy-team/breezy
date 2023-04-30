@@ -150,7 +150,11 @@ impl Revision {
         match self.properties.get("authors") {
             Some(authors) => {
                 let authors = authors.split('\n').collect::<Vec<&str>>();
-                authors.iter().map(|x| x.to_string()).collect()
+                authors
+                    .iter()
+                    .filter(|x| !x.is_empty())
+                    .map(|x| x.to_string())
+                    .collect()
             }
             None => self.properties.get("author").map_or(
                 self.committer.clone().map_or(vec![], |v| vec![v]),
