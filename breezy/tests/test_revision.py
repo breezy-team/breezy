@@ -195,23 +195,21 @@ class TestReservedId(TestCase):
 class TestRevisionMethods(TestCase):
 
     def test_get_summary(self):
+        r = revision.Revision(b'1', parent_ids=[], committer='', message='a', timestamp=0, timezone=0, inventory_sha1=None, properties={})
+        self.assertEqual('a', r.get_summary())
+        r = revision.Revision(b'1', parent_ids=[], committer='', message='a\nb', timestamp=0, timezone=0, inventory_sha1=None, properties={})
+        self.assertEqual('a', r.get_summary())
+        r = revision.Revision(b'1', parent_ids=[], committer='', message='\na\nb', timestamp=0, timezone=0, inventory_sha1=None, properties={})
+        self.assertEqual('a', r.get_summary())
         r = revision.Revision(b'1', parent_ids=[], committer='', message='', timestamp=0, timezone=0, inventory_sha1=None, properties={})
-        r.message = 'a'
-        self.assertEqual('a', r.get_summary())
-        r.message = 'a\nb'
-        self.assertEqual('a', r.get_summary())
-        r.message = '\na\nb'
-        self.assertEqual('a', r.get_summary())
-        r.message = None
         self.assertEqual('', r.get_summary())
 
     def test_get_apparent_authors(self):
-        r = revision.Revision(b'1', parent_ids=[], committer='', message='', timestamp=0, timezone=0, inventory_sha1=None, properties={})
-        r.committer = 'A'
+        r = revision.Revision(b'1', parent_ids=[], committer='A', message='', timestamp=0, timezone=0, inventory_sha1=None, properties={})
         self.assertEqual(['A'], r.get_apparent_authors())
-        r.properties['author'] = 'B'
+        r = revision.Revision(b'1', parent_ids=[], committer='A', message='', timestamp=0, timezone=0, inventory_sha1=None, properties={'author': 'B'})
         self.assertEqual(['B'], r.get_apparent_authors())
-        r.properties['authors'] = 'C\nD'
+        r = revision.Revision(b'1', parent_ids=[], committer='A', message='', timestamp=0, timezone=0, inventory_sha1=None, properties={'author': 'B', 'authors': 'C\nD'})
         self.assertEqual(['C', 'D'], r.get_apparent_authors())
 
     def test_get_apparent_authors_no_committer(self):

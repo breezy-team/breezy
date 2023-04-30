@@ -126,7 +126,7 @@ impl Replacer {
 }
 
 #[pyclass(subclass)]
-struct Revision(bazaar::Revision);
+struct Revision(bazaar::revision::Revision);
 
 /// Single revision on a branch.
 ///
@@ -156,12 +156,12 @@ impl Revision {
         timezone: Option<i32>,
     ) -> PyResult<Self> {
         let properties = properties.unwrap_or(HashMap::new());
-        if !bazaar::validate_properties(&properties) {
+        if !bazaar::revision::validate_properties(&properties) {
             return Err(PyValueError::new_err(
                 "properties must be a dictionary of strings",
             ));
         }
-        Ok(Self(bazaar::Revision {
+        Ok(Self(bazaar::revision::Revision {
             revision_id: bazaar::RevisionId::from(revision_id.as_bytes().to_vec()),
             parent_ids: parent_ids
                 .iter()
@@ -254,7 +254,7 @@ impl Revision {
         self.0.timezone
     }
 
-    fn datetime(&self) -> PyResult<DateTime<Utc>> {
+    fn datetime(&self) -> PyResult<NaiveDateTime> {
         Ok(self.0.datetime())
     }
 
