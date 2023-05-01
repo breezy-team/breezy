@@ -59,7 +59,8 @@ impl From<RevisionId> for Vec<u8> {
     }
 }
 
-const NULL_REVISION: &[u8] = b"null:";
+pub const NULL_REVISION: &[u8] = b"null:";
+pub const CURRENT_REVISION: &[u8] = b"current:";
 
 impl RevisionId {
     pub fn is_null(&self) -> bool {
@@ -72,5 +73,9 @@ impl RevisionId {
 
     pub fn bytes(&self) -> &[u8] {
         &self.0
+    }
+
+    pub fn is_reserved(&self) -> bool {
+        self.0.ends_with(b":")
     }
 }
