@@ -78,4 +78,10 @@ impl RevisionId {
     pub fn is_reserved(&self) -> bool {
         self.0.ends_with(b":")
     }
+
+    pub fn expect_not_reserved(&self) {
+        if self.is_reserved() {
+            panic!("Expected non-reserved revision id, got {:?}", self);
+        }
+    }
 }
