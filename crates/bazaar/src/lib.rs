@@ -4,6 +4,7 @@ pub mod filters;
 pub mod gen_ids;
 pub mod globbing;
 pub mod revision;
+pub mod serializer;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct FileId(Vec<u8>);

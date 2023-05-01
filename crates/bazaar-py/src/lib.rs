@@ -1,9 +1,10 @@
 use bazaar::RevisionId;
 use chrono::NaiveDateTime;
 use pyo3::class::basic::CompareOp;
-use pyo3::exceptions::{PyNotImplementedError, PyTypeError, PyValueError};
+use pyo3::exceptions::{PyNotImplementedError, PyRuntimeError, PyTypeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyList, PyString};
+use pyo3_file::PyFileLikeObject;
 use std::collections::HashMap;
 
 /// Create a new file id suffix that is reasonably unique.
@@ -295,6 +296,61 @@ impl Revision {
 
     fn bug_urls(&self) -> Vec<String> {
         self.0.bug_urls()
+    }
+}
+
+fn serializer_err_to_py_err(e: bazaar::serializer::Error) -> PyErr {
+    PyRuntimeError::new_err(format!("serializer error"))
+}
+
+#[pyclass(subclass)]
+struct RevisionSerializer(Box<dyn bazaar::serializer::RevisionSerializer>);
+
+#[pymethods]
+impl RevisionSerializer {
+    #[getter]
+    fn format_num(&self, py: Python) -> PyResult<&PyBytes> {
+        Ok(PyBytes::new(py, self.0.format_name().as_bytes()))
+    }
+
+    fn read_revision(&self, file: PyObject) -> PyResult<Revision> {
+        let file = PyFileLikeObject::with_requirements(file, true, false, false)?;
+        Ok(Revision(
+            self.0
+                .read_revision(file)
+                .map_err(serializer_err_to_py_err)?,
+        ))
+    }
+
+    fn write_revision_to_string(&self, py: Python, revision: &Revision) -> PyResult<&PyBytes> {
+        Ok(PyBytes::new(
+            py,
+            self.0
+                .write_revision_to_string(&revision.0)
+                .map_err(serializer_err_to_py_err)?
+                .as_slice(),
+        ))
+    }
+
+    fn write_revision_to_lines(&self, py: Python, revision: &Revision) -> PyResult<Vec<&PyBytes>> {
+        self.0
+            .write_revision_to_lines(&revision.0)
+            .into_iter()
+            .map(|s| -> PyResult<&PyBytes> {
+                Ok(PyBytes::new(
+                    py,
+                    s.map_err(serializer_err_to_py_err)?.as_slice(),
+                ))
+            })
+            .collect::<PyResult<Vec<&PyBytes>>>()
+    }
+
+    fn read_revision_from_string(&self, string: &[u8]) -> PyResult<Revision> {
+        Ok(Revision(
+            self.0
+                .read_revision_from_string(string)
+                .map_err(serializer_err_to_py_err)?,
+        ))
     }
 }
 
