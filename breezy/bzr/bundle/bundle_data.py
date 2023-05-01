@@ -31,7 +31,7 @@ from ..inventory import (Inventory, InventoryDirectory, InventoryFile,
                          InventoryLink)
 from ..inventorytree import InventoryTree
 from ..testament import StrictTestament
-from ..xml5 import serializer_v5
+from ..xml5 import inventory_serializer_v5
 from . import apply_bundle
 
 
@@ -58,16 +58,7 @@ class RevisionInfo:
         return pprint.pformat(self.__dict__)
 
     def as_revision(self):
-        rev = Revision(revision_id=self.revision_id,
-                       committer=self.committer,
-                       timestamp=float(self.timestamp),
-                       timezone=int(self.timezone),
-                       inventory_sha1=self.inventory_sha1,
-                       message='\n'.join(self.message))
-
-        if self.parent_ids:
-            rev.parent_ids.extend(self.parent_ids)
-
+        properties = {}
         if self.properties:
             for property in self.properties:
                 key_end = property.find(': ')
@@ -79,9 +70,16 @@ class RevisionInfo:
                 else:
                     key = str(property[:key_end])
                     value = property[key_end + 2:]
-                rev.properties[key] = value
+                properties[key] = value
 
-        return rev
+        return Revision(revision_id=self.revision_id,
+                        committer=self.committer,
+                        timestamp=float(self.timestamp),
+                        timezone=int(self.timezone),
+                        inventory_sha1=self.inventory_sha1,
+                        message='\n'.join(self.message),
+                        parent_ids=self.parent_ids or [],
+                        properties=properties)
 
     @staticmethod
     def from_revision(revision):
@@ -266,7 +264,7 @@ class BundleInfo:
         so build up an inventory, and make sure the hashes match.
         """
         # Now we should have a complete inventory entry.
-        cs = serializer_v5.write_inventory_to_chunks(inv)
+        cs = inventory_serializer_v5.write_inventory_to_chunks(inv)
         sha1 = sha_strings(cs)
         # Target revision is the last entry in the real_revisions list
         rev = self.get_revision(revision_id)

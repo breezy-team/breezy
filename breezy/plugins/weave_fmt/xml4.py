@@ -16,23 +16,124 @@
 
 from typing import List
 
+from ... import revision as _mod_revision
 from ...bzr import inventory
 from ...bzr.inventory import ROOT_ID, Inventory
-from ...bzr.xml_serializer import (Element, SubElement, XMLSerializer,
-                                   escape_invalid_chars)
+from ...bzr.xml_serializer import (Element, SubElement, XMLInventorySerializer,
+                                   XMLRevisionSerializer, escape_invalid_chars)
 from ...errors import BzrError
-from ...revision import Revision
 
 
-class _Serializer_v4(XMLSerializer):
+class Revision(_mod_revision.Revision):
+
+    def __new__(cls, *args, **kwargs):
+        inventory_id = kwargs.pop("inventory_id", None)
+        parent_sha1s = kwargs.pop("parent_sha1s", None)
+        self = _mod_revision.Revision.__new__(cls, *args, **kwargs)
+        self.inventory_id = inventory_id
+        self.parent_sha1s = parent_sha1s
+        return self
+
+
+class _RevisionSerializer_v4(XMLRevisionSerializer):
     """Version 0.0.4 serializer
 
-    You should use the serializer_v4 singleton.
+    You should use the revision_serializer_v4 singleton.
 
     v4 serialisation is no longer supported, only deserialisation.
     """
 
     __slots__: List[str] = []
+
+    def _pack_revision(self, rev):
+        """Revision object -> xml tree"""
+        root = Element('revision',
+                       committer=rev.committer,
+                       timestamp='%.9f' % rev.timestamp,
+                       revision_id=rev.revision_id,
+                       inventory_id=rev.inventory_id,
+                       inventory_sha1=rev.inventory_sha1,
+                       )
+        if rev.timezone:
+            root.set('timezone', str(rev.timezone))
+        root.text = '\n'
+
+        msg = SubElement(root, 'message')
+        msg.text = escape_invalid_chars(rev.message)[0]
+        msg.tail = '\n'
+
+        if rev.parents:
+            pelts = SubElement(root, 'parents')
+            pelts.tail = pelts.text = '\n'
+            for i, parent_id in enumerate(rev.parents):
+                p = SubElement(pelts, 'revision_ref')
+                p.tail = '\n'
+                p.set('revision_id', parent_id)
+                if i < len(rev.parent_sha1s):
+                    p.set('revision_sha1', rev.parent_sha1s[i])
+        return root
+
+    def write_revision_to_string(self, rev):
+        return tostring(self._pack_revision(rev)) + b'\n'
+
+    def _write_element(self, elt, f):
+        ElementTree(elt).write(f, 'utf-8')
+        f.write(b'\n')
+
+    def _unpack_revision(self, elt):
+        """XML Element -> Revision object"""
+
+        # <changeset> is deprecated...
+        if elt.tag not in ('revision', 'changeset'):
+            raise BzrError("unexpected tag in revision file: %r" % elt)
+
+        v = elt.get('timezone')
+        timezone = v and int(v)
+
+        message = elt.findtext('message')  # text of <message>
+
+        precursor = elt.get('precursor')
+        precursor_sha1 = elt.get('precursor_sha1')
+
+        pelts = elt.find('parents')
+
+        parent_ids = []
+        parent_sha1s = []
+
+        if pelts:
+            for p in pelts:
+                parent_ids.append(p.get('revision_id').encode('utf-8'))
+                parent_sha1s.append(p.get('revision_sha1').encode('utf-8') if p.get('revision_sha1') else None)
+            if precursor:
+                # must be consistent
+                prec_parent = parent_ids[0]
+        elif precursor:
+            # revisions written prior to 0.0.5 have a single precursor
+            # give as an attribute
+            parent_ids.append(precursor)
+            parent_sha1s.append(precursor_sha1)
+
+        return Revision(
+                committer=elt.get('committer'),
+                timestamp=float(elt.get('timestamp')),
+                revision_id=elt.get('revision_id').encode('utf-8'),
+                inventory_id=elt.get('inventory_id').encode('utf-8'),
+                inventory_sha1=elt.get('inventory_sha1').encode('utf-8'),
+                timezone=timezone,
+                message=message,
+                parent_ids=parent_ids,
+                parent_sha1s=parent_sha1s,
+                properties={},
+                )
+
+
+class _InventorySerializer_v4(XMLInventorySerializer):
+    """Version 0.0.4 serializer
+
+    You should use the inventory_serializer_v4 singleton.
+
+    v4 serialisation is no longer supported, only deserialisation.
+    """
 
     def _pack_entry(self, ie):
         """Convert InventoryEntry to XML element"""
@@ -113,79 +214,5 @@ class _Serializer_v4(XMLSerializer):
 
         return ie
 
-    def _pack_revision(self, rev):
-        """Revision object -> xml tree"""
-        root = Element('revision',
-                       committer=rev.committer,
-                       timestamp='%.9f' % rev.timestamp,
-                       revision_id=rev.revision_id,
-                       inventory_id=rev.inventory_id,
-                       inventory_sha1=rev.inventory_sha1,
-                       )
-        if rev.timezone:
-            root.set('timezone', str(rev.timezone))
-        root.text = '\n'
-
-        msg = SubElement(root, 'message')
-        msg.text = escape_invalid_chars(rev.message)[0]
-        msg.tail = '\n'
-
-        if rev.parents:
-            pelts = SubElement(root, 'parents')
-            pelts.tail = pelts.text = '\n'
-            for i, parent_id in enumerate(rev.parents):
-                p = SubElement(pelts, 'revision_ref')
-                p.tail = '\n'
-                p.set('revision_id', parent_id)
-                if i < len(rev.parent_sha1s):
-                    p.set('revision_sha1', rev.parent_sha1s[i])
-        return root
-
-    def write_revision_to_string(self, rev):
-        return tostring(self._pack_revision(rev)) + b'\n'
-
-    def _write_element(self, elt, f):
-        ElementTree(elt).write(f, 'utf-8')
-        f.write(b'\n')
-
-    def _unpack_revision(self, elt):
-        """XML Element -> Revision object"""
-
-        # <changeset> is deprecated...
-        if elt.tag not in ('revision', 'changeset'):
-            raise BzrError("unexpected tag in revision file: %r" % elt)
-
-        rev = Revision(committer=elt.get('committer'),
-                       timestamp=float(elt.get('timestamp')),
-                       revision_id=elt.get('revision_id'),
-                       inventory_id=elt.get('inventory_id'),
-                       inventory_sha1=elt.get('inventory_sha1')
-                       )
-
-        precursor = elt.get('precursor')
-        precursor_sha1 = elt.get('precursor_sha1')
-
-        pelts = elt.find('parents')
-
-        if pelts:
-            for p in pelts:
-                rev.parent_ids.append(p.get('revision_id'))
-                rev.parent_sha1s.append(p.get('revision_sha1'))
-            if precursor:
-                # must be consistent
-                prec_parent = rev.parent_ids[0]
-        elif precursor:
-            # revisions written prior to 0.0.5 have a single precursor
-            # give as an attribute
-            rev.parent_ids.append(precursor)
-            rev.parent_sha1s.append(precursor_sha1)
-
-        v = elt.get('timezone')
-        rev.timezone = v and int(v)
-
-        rev.message = elt.findtext('message')  # text of <message>
-        return rev
-
-
-"""singleton instance"""
-serializer_v4 = _Serializer_v4()
+revision_serializer_v4 = _RevisionSerializer_v4()
+inventory_serializer_v4 = _InventorySerializer_v4()

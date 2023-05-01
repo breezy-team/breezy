@@ -944,7 +944,7 @@ def _match_filter(searchRE, rev):
         'message': (rev.message,),
         'committer': (rev.committer,),
         'author': (rev.get_apparent_authors()),
-        'bugs': list(rev.iter_bugs())
+        'bugs': list(_mod_revision.iter_bugs(rev))
         }
     strings[''] = [item for inner_list in strings.values()
                    for item in inner_list]
@@ -2194,7 +2194,7 @@ properties_handler_registry = registry.Registry[str, Callable[[Dict[str, str]], 
 def _bugs_properties_handler(revision):
     fixed_bug_urls = []
     related_bug_urls = []
-    for bug_url, status in revision.iter_bugs():
+    for bug_url, status in _mod_revision.iter_bugs(revision):
         if status == 'fixed':
             fixed_bug_urls.append(bug_url)
         elif status == 'related':

@@ -293,10 +293,10 @@ class ConvertBzrDir4To5(Converter):
         self.controldir.transport.delete_tree('text-store')
 
     def _convert_working_inv(self):
-        inv = xml4.serializer_v4.read_inventory(
+        inv = xml4.inventory_serializer_v4.read_inventory(
             self.branch._transport.get('inventory'))
         f = BytesIO()
-        xml5.serializer_v5.write_inventory(inv, f, working=True)
+        xml5.inventory_serializer_v5.write_inventory(inv, f, working=True)
         self.branch._transport.put_bytes('inventory', f.getvalue(),
                                          mode=self.controldir._get_file_mode())
 
@@ -327,16 +327,16 @@ class ConvertBzrDir4To5(Converter):
         self.controldir.transport.mkdir('revision-store')
         revision_transport = self.controldir.transport.clone('revision-store')
         # TODO permissions
-        from ...bzr.xml5 import serializer_v5
+        from ...bzr.xml5 import revision_serializer_v5
         from .repository import RevisionTextStore
         revision_store = RevisionTextStore(revision_transport,
-                                           serializer_v5, False, versionedfile.PrefixMapper(),
+                                           revision_serializer_v5, False, versionedfile.PrefixMapper(),
                                            lambda: True, lambda: True)
         try:
             for i, rev_id in enumerate(self.converted_revs):
                 self.pb.update(gettext('write revision'), i,
                                len(self.converted_revs))
-                lines = serializer_v5.write_revision_to_lines(
+                lines = revision_serializer_v5.write_revision_to_lines(
                     self.revisions[rev_id])
                 key = (rev_id,)
                 revision_store.add_lines(key, None, lines)
@@ -366,14 +366,14 @@ class ConvertBzrDir4To5(Converter):
 
     def _load_old_inventory(self, rev_id):
         with self.branch.repository.inventory_store.get(rev_id) as f:
-            inv = xml4.serializer_v4.read_inventory(f)
+            inv = xml4.inventory_serializer_v4.read_inventory(f)
         inv.revision_id = rev_id
         rev = self.revisions[rev_id]
         return inv
 
     def _load_updated_inventory(self, rev_id):
         inv_xml = self.inv_weave.get_lines(rev_id)
-        inv = xml5.serializer_v5.read_inventory_from_lines(inv_xml, rev_id)
+        inv = xml5.inventory_serializer_v5.read_inventory_from_lines(inv_xml, rev_id)
         return inv
 
     def _convert_one_rev(self, rev_id):
@@ -387,7 +387,7 @@ class ConvertBzrDir4To5(Converter):
         self.converted_revs.add(rev_id)
 
     def _store_new_inv(self, rev, inv, present_parents):
-        new_inv_xml = xml5.serializer_v5.write_inventory_to_lines(inv)
+        new_inv_xml = xml5.inventory_serializer_v5.write_inventory_to_lines(inv)
         new_inv_sha1 = osutils.sha_strings(new_inv_xml)
         self.inv_weave.add_lines(rev.revision_id,
                                  present_parents,

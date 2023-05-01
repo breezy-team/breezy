@@ -1,8 +1,9 @@
-pub mod filters;
 use std::fmt::{Debug, Error, Formatter};
 
+pub mod filters;
 pub mod gen_ids;
 pub mod globbing;
+pub mod revision;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct FileId(Vec<u8>);
@@ -40,6 +41,12 @@ impl Debug for RevisionId {
     }
 }
 
+impl std::fmt::Display for RevisionId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", String::from_utf8(self.0.clone()).unwrap())
+    }
+}
+
 impl From<Vec<u8>> for RevisionId {
     fn from(v: Vec<u8>) -> Self {
         RevisionId(v)
@@ -61,5 +68,9 @@ impl RevisionId {
 
     pub fn generate(username: &str, timestamp: Option<u64>) -> Self {
         Self::from(gen_ids::gen_revision_id(username, timestamp))
+    }
+
+    pub fn bytes(&self) -> &[u8] {
+        &self.0
     }
 }

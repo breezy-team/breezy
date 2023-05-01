@@ -15,26 +15,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import os
-import sys
+from . import _osutils_rs
 
-__docformat__ = "restructuredtext"
-__doc__ = "Terminal control functionality"
+has_ansi_colors = _osutils_rs.has_ansi_colors
 
-def has_ansi_colors():
-    # XXX The whole color handling should be rewritten to use terminfo
-    # XXX before we get there, checking for setaf capability should do.
-    # XXX See terminfo(5) for all the gory details.
-    if sys.platform == "win32":
-        return False
-    if not sys.stdout.isatty():
-        return False
-    import curses
-    try:
-        curses.setupterm()
-    except curses.error:
-        return False
-    return bool(curses.tigetstr('setaf'))
 
 colors = {
     "black": b"0",
@@ -75,11 +59,41 @@ def colorstring(text, fgcolor=None, bgcolor=None):
     return b"".join((b"\033[", b';'.join(code), b"m", text, b"\033[0m"))
 
 
-def term_title(title):
-    term = os.environ.get('TERM', '')
-    if term.startswith('xterm') or term == 'dtterm':
-        return "\033]0;%s\007" % title
-    return ''
+class FG:
+    """Unix terminal foreground color codes (16-color)."""
+    RED = '\033[31m'
+    GREEN = '\033[32m'
+    YELLOW = '\033[33m'
+    BLUE = '\033[34m'
+    MAGENTA = '\033[35m'
+    CYAN = '\033[36m'
+    WHITE = '\033[37m'
+
+    # Bold Foreground
+    BOLD_RED = '\033[1;31m'
+    BOLD_GREEN = '\033[1;32m'
+    BOLD_YELLOW = '\033[1;33m'
+    BOLD_BLUE = '\033[1;34m'
+    BOLD_MAGENTA = '\033[1;35m'
+    BOLD_CYAN = '\033[1;36m'
+    BOLD_WHITE = '\033[1;37m'
+
+    NONE = '\033[0m'
 
 
-# arch-tag: a79b9993-146e-4a51-8bae-a13791703ddd
+class BG:
+    """Unix terminal background color codes (16-color)."""
+    BLACK = '\033[40m'
+    RED = '\033[41m'
+    GREEN = '\033[42m'
+    YELLOW = '\033[43m'
+    BLUE = '\033[44m'
+    MAGENTA = '\033[45m'
+    CYAN = '\033[46m'
+    WHITE = '\033[47m'
+
+    NONE = '\033[0m'
+
+
+def color_string(s, fg, bg=''):
+    return fg + bg + s + FG.NONE

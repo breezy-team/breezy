@@ -1,5 +1,7 @@
 use memchr::memchr;
 use rand::Rng;
+use std::fs::File;
+use std::io::Write;
 
 pub fn chunks_to_lines<'a, I, E>(mut chunks: I) -> impl Iterator<Item = Result<Vec<u8>, E>>
 where
@@ -104,13 +106,19 @@ pub fn get_umask() -> Mode {
     mask
 }
 
-pub fn kind_marker(kind: &str) -> &str {
+pub enum Kind {
+    File,
+    Directory,
+    Symlink,
+    TreeReference,
+}
+
+pub fn kind_marker(kind: Kind) -> &'static str {
     match kind {
-        "file" => "",
-        "directory" => "/",
-        "symlink" => "@",
-        "tree-reference" => "+",
-        _ => "",
+        Kind::File => "",
+        Kind::Directory => "/",
+        Kind::Symlink => "@",
+        Kind::TreeReference => "+",
     }
 }
 
@@ -150,6 +158,24 @@ pub fn pumpfile(
     } else {
         std::io::copy(&mut reader, &mut writer)?
     })
+}
+
+pub fn pump_string_file(
+    data: &[u8],
+    mut file_handle: impl std::io::Write,
+    segment_size: Option<usize>,
+) -> std::io::Result<()> {
+    // Write data in chunks rather than all at once, because very large
+    // writes fail on some platforms (e.g. Windows with SMB mounted
+    // drives).
+    let segment_size = segment_size.unwrap_or(5_242_880); // 5MB
+    let chunks = data.chunks(segment_size);
+
+    for chunk in chunks {
+        file_handle.write_all(chunk)?;
+    }
+
+    Ok(())
 }
 
 pub fn contains_whitespace(s: &str) -> bool {
@@ -198,3 +224,5 @@ pub mod mounts;
 
 #[cfg(test)]
 mod tests;
+
+pub mod terminal;

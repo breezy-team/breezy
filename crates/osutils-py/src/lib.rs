@@ -1,4 +1,5 @@
 #![allow(non_snake_case)]
+use breezy_osutils::Kind;
 use pyo3::create_exception;
 use pyo3::exceptions::{PyIOError, PyTypeError, PyValueError};
 use pyo3::import_exception;
@@ -10,7 +11,7 @@ use pyo3_file::PyFileLikeObject;
 use std::collections::HashSet;
 use std::ffi::OsString;
 use std::fs::Permissions;
-use std::io::{BufRead, Read};
+use std::io::{BufRead, Read, Write};
 use std::iter::Iterator;
 use std::os::unix::ffi::OsStringExt;
 use std::path::{Path, PathBuf};
@@ -23,6 +24,7 @@ create_exception!(
 
 import_exception!(breezy.errors, IllegalPath);
 import_exception!(breezy.errors, PathNotChild);
+import_exception!(breezy.errors, DirectoryNotEmpty);
 
 #[pyclass]
 struct PyChunksToLinesIterator {
@@ -665,7 +667,13 @@ fn get_umask() -> PyResult<u32> {
 
 #[pyfunction]
 fn kind_marker(kind: &str) -> &str {
-    breezy_osutils::kind_marker(kind)
+    breezy_osutils::kind_marker(match kind {
+        "file" => Kind::File,
+        "directory" => Kind::Directory,
+        "symlink" => Kind::Symlink,
+        "tree-reference" => Kind::TreeReference,
+        _ => return "",
+    })
 }
 
 #[pyfunction]
@@ -873,6 +881,16 @@ fn normalizepath(path: PathBuf) -> PyResult<PathBuf> {
     Ok(breezy_osutils::path::normalizepath(path.as_path())?)
 }
 
+#[pyfunction]
+fn pump_string_file(data: &[u8], file: PyObject, segment_size: Option<usize>) -> PyResult<()> {
+    let mut file = PyFileLikeObject::with_requirements(file, false, true, false)?;
+    Ok(breezy_osutils::pump_string_file(
+        data,
+        &mut file,
+        segment_size,
+    )?)
+}
+
 /// Return path with directory separators changed to forward slashes
 #[pyfunction(name = "fix_separators")]
 fn win32_fix_separators(path: PathBuf) -> PathBuf {
@@ -929,6 +947,41 @@ impl FileIterator {
 fn file_iterator(py: Python, input_file: PyObject, read_size: Option<usize>) -> PyResult<PyObject> {
     let iterator = FileIterator::new(input_file, read_size);
     Ok(iterator.into_py(py))
+}
+
+/// Returns the terminal size as (width, height).
+///
+/// Args:
+///   width: Default value for width.
+///   height: Default value for height.
+///
+/// This is defined specifically for each OS and query the size of the controlling
+/// terminal. If any error occurs, the provided default values should be returned.
+#[pyfunction]
+fn terminal_size() -> PyResult<(u16, u16)> {
+    Ok(breezy_osutils::terminal::terminal_size()?)
+}
+
+#[pyfunction]
+fn has_ansi_colors() -> bool {
+    breezy_osutils::terminal::has_ansi_colors()
+}
+
+/// Make sure a local directory exists and is empty.
+///
+/// If it does not exist, it is created.  If it exists and is not empty,
+/// DirectoryNotEmpty is raised.
+#[pyfunction]
+fn ensure_empty_directory_exists(path: PathBuf) -> PyResult<()> {
+    match breezy_osutils::file::ensure_empty_directory_exists(path.as_path()) {
+        Ok(()) => Ok(()),
+        Err(ref e)
+            if e.kind() == std::io::ErrorKind::Other && e.to_string().contains(" not empty") =>
+        {
+            Err(DirectoryNotEmpty::new_err(path))
+        }
+        Err(e) => Err(e.into()),
+    }
 }
 
 #[pymodule]
@@ -1008,8 +1061,12 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(contains_linebreaks))?;
     m.add_wrapped(wrap_pyfunction!(relpath))?;
     m.add_wrapped(wrap_pyfunction!(normpath))?;
+    m.add_wrapped(wrap_pyfunction!(pump_string_file))?;
     m.add_wrapped(wrap_pyfunction!(realpath))?;
     m.add_wrapped(wrap_pyfunction!(normalizepath))?;
+    m.add_wrapped(wrap_pyfunction!(terminal_size))?;
+    m.add_wrapped(wrap_pyfunction!(has_ansi_colors))?;
+    m.add_wrapped(wrap_pyfunction!(ensure_empty_directory_exists))?;
     m.add(
         "MIN_ABS_PATHLENGTH",
         breezy_osutils::path::MIN_ABS_PATHLENGTH,

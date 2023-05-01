@@ -226,3 +226,26 @@ pub fn file_iterator<F: Read>(
         Err(_) => None,
     })
 }
+
+pub fn ensure_empty_directory_exists(path: &Path) -> std::io::Result<()> {
+    match std::fs::create_dir(path) {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            if e.kind() != std::io::ErrorKind::AlreadyExists {
+                Err(e)
+            } else {
+                let dir_entries = std::fs::read_dir(path)?;
+                if dir_entries.count() > 0 {
+                    Err(std::io::Error::new(
+                        // TODO(jelmer): Switch to DirectoryNotEmpty once available:
+                        // std::io::ErrorKind::DirectoryNotEmpty,
+                        std::io::ErrorKind::Other,
+                        format!("Directory {:?} is not empty", path),
+                    ))
+                } else {
+                    Ok(())
+                }
+            }
+        }
+    }
+}

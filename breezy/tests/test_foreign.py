@@ -396,8 +396,10 @@ class ForeignRevisionTests(tests.TestCase):
     def test_create(self):
         mapp = DummyForeignVcsMapping(DummyForeignVcs())
         rev = foreign.ForeignRevision((b"a", b"foreign", b"revid"),
-                                      mapp, b"roundtripped-revid")
-        self.assertEqual(b"", rev.inventory_sha1)
+                                      mapp, b"roundtripped-revid", parent_ids=[],
+                                      message="", committer="", properties={},
+                                      timestamp=0, timezone=0)
+        self.assertIs(None, rev.inventory_sha1)
         self.assertEqual((b"a", b"foreign", b"revid"), rev.foreign_revid)
         self.assertEqual(mapp, rev.mapping)
 
