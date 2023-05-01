@@ -241,7 +241,7 @@ impl Transport for LocalTransport {
         offsets: Vec<(u64, usize)>,
         adjust_for_latency: bool,
         upper_limit: Option<u64>,
-    ) -> Box<dyn Iterator<Item = Result<(u64, Vec<u8>)>> + 'a> {
+    ) -> Box<dyn Iterator<Item = Result<(u64, Vec<u8>)>> + Send + 'a> {
         let offsets = if adjust_for_latency {
             crate::readv::sort_expand_and_combine(
                 offsets,

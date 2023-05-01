@@ -393,7 +393,7 @@ impl Transport for PyTransport {
         offsets: Vec<(u64, usize)>,
         adjust_for_latency: bool,
         upper_limit: Option<u64>,
-    ) -> Box<dyn Iterator<Item = Result<(u64, Vec<u8>)>>> {
+    ) -> Box<dyn Iterator<Item = Result<(u64, Vec<u8>)>> + Send> {
         let iter = Python::with_gil(|py| {
             self.0
                 .call_method1(

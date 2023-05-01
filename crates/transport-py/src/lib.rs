@@ -105,19 +105,20 @@ struct PyWriteStream(Box<dyn WriteStream + Sync + Send>);
 
 #[pymethods]
 impl PyWriteStream {
-    fn write(&mut self, data: &PyBytes) -> PyResult<usize> {
-        self.0.write(data.as_bytes()).map_err(|e| e.into())
+    fn write(&mut self, py: Python, data: &[u8]) -> PyResult<usize> {
+        py.allow_threads(|| self.0.write(data))
+            .map_err(|e| e.into())
     }
 
-    fn close(&mut self, want_fdatasync: Option<bool>) -> PyResult<()> {
+    fn close(&mut self, py: Python, want_fdatasync: Option<bool>) -> PyResult<()> {
         if want_fdatasync.unwrap_or(false) {
-            self.fdatasync()?;
+            self.fdatasync(py)?;
         }
         Ok(())
     }
 
-    fn fdatasync(&mut self) -> PyResult<()> {
-        self.0.sync_all().map_err(|e| e.into())
+    fn fdatasync(&mut self, py: Python) -> PyResult<()> {
+        py.allow_threads(|| self.0.sync_all()).map_err(|e| e.into())
     }
 
     fn __enter__(slf: PyRef<Self>) -> Py<Self> {
@@ -133,13 +134,13 @@ impl PyWriteStream {
         Ok(false)
     }
 
-    fn flush(&mut self) -> PyResult<()> {
-        self.0.flush().map_err(|e| e.into())
+    fn flush(&mut self, py: Python) -> PyResult<()> {
+        py.allow_threads(|| self.0.flush()).map_err(|e| e.into())
     }
 
-    fn writelines(&mut self, lines: &PyList) -> PyResult<()> {
+    fn writelines(&mut self, py: Python, lines: &PyList) -> PyResult<()> {
         for line in lines.iter() {
-            self.write(line.downcast::<PyBytes>().unwrap())?;
+            self.write(py, line.extract::<&[u8]>().unwrap())?;
         }
         Ok(())
     }
@@ -163,27 +164,26 @@ impl PyFile {
     fn read(&mut self, py: Python, size: Option<usize>) -> PyResult<PyObject> {
         if let Some(size) = size {
             let mut buf = vec![0; size];
-            let ret = self.0.read(&mut buf).map_err(|e| -> PyErr { e.into() })?;
+            let ret = py
+                .allow_threads(|| self.0.read(&mut buf))
+                .map_err(|e| -> PyErr { e.into() })?;
             Ok(PyBytes::new(py, &buf[..ret]).to_object(py))
         } else {
             let mut buf = Vec::new();
-            self.0
-                .read_to_end(&mut buf)
+            py.allow_threads(|| self.0.read_to_end(&mut buf))
                 .map_err(|e| -> PyErr { e.into() })?;
             Ok(PyBytes::new(py, &buf).to_object(py))
         }
     }
 
-    fn write(&mut self, data: &PyBytes) -> PyResult<usize> {
-        self.0
-            .get_mut()
-            .write(data.as_bytes())
+    fn write(&mut self, py: Python, data: &[u8]) -> PyResult<usize> {
+        py.allow_threads(|| self.0.get_mut().write(data))
             .map_err(|e| e.into())
     }
 
     fn readline(&mut self, py: Python) -> PyResult<PyObject> {
         let mut buf = vec![];
-        let ret = self.0.read_until(b'\n', &mut buf)?;
+        let ret = py.allow_threads(|| self.0.read_until(b'\n', &mut buf))?;
         buf.truncate(ret);
         Ok(PyBytes::new(py, &buf).to_object(py).to_object(py))
     }
@@ -194,9 +194,8 @@ impl PyFile {
 
     fn __next__(&mut self, py: Python) -> PyResult<Option<PyObject>> {
         let mut buf = vec![];
-        let ret = self
-            .0
-            .read_until(b'\n', &mut buf)
+        let ret = py
+            .allow_threads(|| self.0.read_until(b'\n', &mut buf))
             .map_err(|e| -> PyErr { e.into() })?;
         if ret == 0 {
             return Ok(None);
@@ -245,22 +244,23 @@ impl PyFile {
         self.0.get_mut().flush().map_err(|e| e.into())
     }
 
-    fn writelines(&mut self, lines: &PyList) -> PyResult<()> {
+    fn writelines(&mut self, py: Python, lines: &PyList) -> PyResult<()> {
         for line in lines.iter() {
-            self.write(line.downcast::<PyBytes>().unwrap())?;
+            self.write(py, line.extract::<&[u8]>().unwrap())?;
         }
         Ok(())
     }
 
-    fn truncate(&mut self, size: Option<u64>) -> PyResult<()> {
-        let size = size.map_or_else(|| self.tell().map(|s| s), Ok)?;
-        self.0.get_mut().set_len(size).map_err(|e| e.into())
+    fn truncate(&mut self, py: Python, size: Option<u64>) -> PyResult<()> {
+        let size = size.map_or_else(|| py.allow_threads(|| self.tell()), Ok)?;
+        py.allow_threads(|| self.0.get_mut().set_len(size))
+            .map_err(|e| e.into())
     }
 
     #[cfg(unix)]
-    fn fileno(&self) -> PyResult<i32> {
+    fn fileno(&self, py: Python) -> PyResult<i32> {
         use std::os::unix::io::AsRawFd;
-        Ok(self.0.get_ref().as_raw_fd())
+        Ok(py.allow_threads(|| self.0.get_ref().as_raw_fd()))
     }
 }
 
@@ -290,15 +290,13 @@ impl PyBufReadStream {
     fn read(&mut self, py: Python, size: Option<usize>) -> PyResult<PyObject> {
         if let Some(size) = size {
             let mut buf = vec![0; size];
-            let ret = self
-                .f
-                .read(&mut buf)
+            let ret = py
+                .allow_threads(|| self.f.read(&mut buf))
                 .map_err(|e| self.map_io_err_to_py_err(e))?;
             Ok(PyBytes::new(py, &buf[..ret]).to_object(py))
         } else {
             let mut buf = Vec::new();
-            self.f
-                .read_to_end(&mut buf)
+            py.allow_threads(|| self.f.read_to_end(&mut buf))
                 .map_err(|e| self.map_io_err_to_py_err(e))?;
             Ok(PyBytes::new(py, &buf).to_object(py))
         }
@@ -308,7 +306,7 @@ impl PyBufReadStream {
         true
     }
 
-    fn seek(&mut self, offset: i64, whence: Option<i8>) -> PyResult<u64> {
+    fn seek(&mut self, py: Python, offset: i64, whence: Option<i8>) -> PyResult<u64> {
         let seekfrom = match whence.unwrap_or(0) {
             0 => std::io::SeekFrom::Start(offset as u64),
             1 => std::io::SeekFrom::Current(offset),
@@ -316,22 +314,19 @@ impl PyBufReadStream {
             _ => return Err(PyValueError::new_err("Invalid whence")),
         };
 
-        self.f
-            .seek(seekfrom)
+        py.allow_threads(|| self.f.seek(seekfrom))
             .map_err(|e| self.map_io_err_to_py_err(e))
     }
 
-    fn tell(&mut self) -> PyResult<u64> {
-        self.f
-            .stream_position()
+    fn tell(&mut self, py: Python) -> PyResult<u64> {
+        py.allow_threads(|| self.f.stream_position())
             .map_err(|e| self.map_io_err_to_py_err(e))
     }
 
     fn readline(&mut self, py: Python) -> PyResult<PyObject> {
         let mut buf = vec![];
-        let ret = self
-            .f
-            .read_until(b'\n', &mut buf)
+        let ret = py
+            .allow_threads(|| self.f.read_until(b'\n', &mut buf))
             .map_err(|e| self.map_io_err_to_py_err(e))?;
         buf.truncate(ret);
         Ok(PyBytes::new(py, &buf).to_object(py).to_object(py))
@@ -343,9 +338,8 @@ impl PyBufReadStream {
 
     fn __next__(&mut self, py: Python) -> PyResult<Option<PyObject>> {
         let mut buf = vec![];
-        let ret = self
-            .f
-            .read_until(b'\n', &mut buf)
+        let ret = py
+            .allow_threads(|| self.f.read_until(b'\n', &mut buf))
             .map_err(|e| self.map_io_err_to_py_err(e))?;
         if ret == 0 {
             return Ok(None);
@@ -381,8 +375,8 @@ impl PyBufReadStream {
 }
 
 impl Transport {
-    fn map_to_py_err(slf: &PyCell<Self>, py: Python, e: Error, p: Option<&str>) -> PyErr {
-        let obj = slf.borrow().into_py(py);
+    fn map_to_py_err(slf: PyRef<Self>, py: Python, e: Error, p: Option<&str>) -> PyErr {
+        let obj = slf.into_py(py);
         map_transport_err_to_py_err(e, Some(obj), p)
     }
 }
@@ -402,15 +396,18 @@ impl Transport {
     }
 
     fn get_bytes(slf: &PyCell<Self>, py: Python, path: &str) -> PyResult<PyObject> {
-        let ret = slf.borrow().0.get_bytes(path).map_err(|e| match e {
-            Error::IsADirectoryError(_) => {
-                ReadError::new_err((path.to_string(), "Is a directory".to_string()))
-            }
-            Error::NotADirectoryError(_) => {
-                NoSuchFile::new_err((path.to_string(), "Not a directory".to_string()))
-            }
-            e => map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)),
-        })?;
+        let t = &slf.borrow().0;
+        let ret = py
+            .allow_threads(|| t.get_bytes(path))
+            .map_err(|e| match e {
+                Error::IsADirectoryError(_) => {
+                    ReadError::new_err((path.to_string(), "Is a directory".to_string()))
+                }
+                Error::NotADirectoryError(_) => {
+                    NoSuchFile::new_err((path.to_string(), "Not a directory".to_string()))
+                }
+                e => map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)),
+            })?;
 
         Ok(PyBytes::new(py, &ret).to_object(py).to_object(py))
     }
@@ -420,40 +417,38 @@ impl Transport {
         Ok(self.0.base().to_string())
     }
 
-    fn has(&self, path: &str) -> PyResult<bool> {
-        self.0
-            .has(path)
+    fn has(&self, py: Python, path: &str) -> PyResult<bool> {
+        py.allow_threads(|| self.0.has(path))
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
     }
 
-    fn has_any(&self, paths: Vec<&str>) -> PyResult<bool> {
-        self.0
-            .has_any(paths.as_slice())
+    fn has_any(&self, py: Python, paths: Vec<&str>) -> PyResult<bool> {
+        py.allow_threads(|| self.0.has_any(paths.as_slice()))
             .map_err(|e| map_transport_err_to_py_err(e, None, None))
     }
 
     fn mkdir(slf: &PyCell<Self>, py: Python, path: &str, mode: Option<PyObject>) -> PyResult<()> {
-        slf.borrow()
-            .0
-            .mkdir(path, mode.map(perms_from_py_object))
+        let mode = mode.map(perms_from_py_object);
+        let t = &slf.borrow().0;
+        py.allow_threads(|| t.mkdir(path, mode))
             .map_err(|e| map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)))?;
         Ok(())
     }
 
-    fn ensure_base(&self, mode: Option<PyObject>) -> PyResult<bool> {
-        self.0
-            .ensure_base(mode.map(perms_from_py_object))
+    fn ensure_base(&self, py: Python, mode: Option<PyObject>) -> PyResult<bool> {
+        let mode = mode.map(perms_from_py_object);
+        py.allow_threads(|| self.0.ensure_base(mode))
             .map_err(|e| map_transport_err_to_py_err(e, None, None))
     }
 
     fn local_abspath(&self, py: Python, path: &str) -> PyResult<PathBuf> {
-        self.0
-            .local_abspath(path)
+        py.allow_threads(|| self.0.local_abspath(path))
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
     }
 
     fn get(slf: PyRef<Self>, py: Python, path: &str) -> PyResult<PyObject> {
-        let ret = slf.0.get(path).map_err(|e| match e {
+        let t = &slf.0;
+        let ret = py.allow_threads(|| t.get(path)).map_err(|e| match e {
             Error::IsADirectoryError(_) => {
                 ReadError::new_err((path.to_string(), "Is a directory".to_string()))
             }
@@ -469,15 +464,15 @@ impl Transport {
         slf.borrow()
             .0
             .get_smart_medium()
-            .map_err(|e| Transport::map_to_py_err(slf, py, e, None))?;
+            .map_err(|e| Transport::map_to_py_err(slf.borrow(), py, e, None))?;
         // TODO(jelmer)
         Ok(py.None())
     }
 
     fn stat(&self, py: Python, path: &str) -> PyResult<PyObject> {
-        let stat = self
-            .0
-            .stat(path)
+        let t = &self.0;
+        let stat = py
+            .allow_threads(|| t.stat(path))
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))?;
         Ok(PyStat {
             st_size: stat.size,
@@ -510,9 +505,9 @@ impl Transport {
         data: &[u8],
         mode: Option<PyObject>,
     ) -> PyResult<()> {
-        slf.borrow()
-            .0
-            .put_bytes(path, data, mode.map(perms_from_py_object))
+        let mode = mode.map(perms_from_py_object);
+        let t = &slf.borrow().0;
+        py.allow_threads(|| t.put_bytes(path, data, mode))
             .map_err(|e| map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)))?;
         Ok(())
     }
@@ -526,16 +521,18 @@ impl Transport {
         create_parent_dir: Option<bool>,
         dir_mode: Option<PyObject>,
     ) -> PyResult<()> {
-        slf.borrow()
-            .0
-            .put_bytes_non_atomic(
+        let t = &slf.borrow().0;
+
+        py.allow_threads(|| {
+            t.put_bytes_non_atomic(
                 path,
                 data,
                 mode.map(perms_from_py_object),
                 create_parent_dir,
                 dir_mode.map(perms_from_py_object),
             )
-            .map_err(|e| map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)))?;
+        })
+        .map_err(|e| map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)))?;
         Ok(())
     }
 
@@ -546,11 +543,10 @@ impl Transport {
         file: PyObject,
         mode: Option<PyObject>,
     ) -> PyResult<u64> {
+        let t = &slf.borrow().0;
         let mut file = PyFileLikeObject::with_requirements(file, true, false, false)?;
-        let ret = slf
-            .borrow()
-            .0
-            .put_file(path, &mut file, mode.map(perms_from_py_object))
+        let ret = py
+            .allow_threads(|| t.put_file(path, &mut file, mode.map(perms_from_py_object)))
             .map_err(|e| map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)))?;
         Ok(ret)
     }
@@ -564,80 +560,91 @@ impl Transport {
         create_parent_dir: Option<bool>,
         dir_mode: Option<PyObject>,
     ) -> PyResult<()> {
+        let t = &slf.borrow().0;
         let mut file = PyFileLikeObject::with_requirements(file, true, false, false)?;
-        slf.borrow()
-            .0
-            .put_file_non_atomic(
+        py.allow_threads(|| {
+            t.put_file_non_atomic(
                 path,
                 &mut file,
                 mode.map(perms_from_py_object),
                 create_parent_dir,
                 dir_mode.map(perms_from_py_object),
             )
-            .map_err(|e| map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)))?;
+        })
+        .map_err(|e| map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)))?;
         Ok(())
     }
 
-    fn delete(&self, path: &str) -> PyResult<()> {
-        self.0
-            .delete(path)
+    fn delete(&self, py: Python, path: &str) -> PyResult<()> {
+        let t = &self.0;
+        py.allow_threads(|| t.delete(path))
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))?;
         Ok(())
     }
 
-    fn rmdir(&self, path: &str) -> PyResult<()> {
-        self.0
-            .rmdir(path)
+    fn rmdir(&self, py: Python, path: &str) -> PyResult<()> {
+        let t = &self.0;
+
+        py.allow_threads(|| t.rmdir(path))
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))?;
         Ok(())
     }
 
-    fn rename(&self, from: &str, to: &str) -> PyResult<()> {
-        self.0
-            .rename(from, to)
+    fn rename(&self, py: Python, from: &str, to: &str) -> PyResult<()> {
+        let t = &self.0;
+
+        py.allow_threads(|| t.rename(from, to))
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(from)))?;
         Ok(())
     }
 
-    fn set_segment_parameter(&mut self, name: &str, value: Option<&str>) -> PyResult<()> {
-        self.0
-            .set_segment_parameter(name, value)
+    fn set_segment_parameter(
+        &mut self,
+        py: Python,
+        name: &str,
+        value: Option<&str>,
+    ) -> PyResult<()> {
+        py.allow_threads(|| self.0.set_segment_parameter(name, value))
             .map_err(|e| map_transport_err_to_py_err(e, None, None))?;
         Ok(())
     }
 
-    fn get_segment_parameters(&self) -> PyResult<HashMap<String, String>> {
-        self.0
-            .get_segment_parameters()
+    fn get_segment_parameters(&self, py: Python) -> PyResult<HashMap<String, String>> {
+        let t = &self.0;
+
+        py.allow_threads(|| t.get_segment_parameters())
             .map_err(|e| map_transport_err_to_py_err(e, None, None))
     }
 
-    fn create_prefix(&self, mode: Option<PyObject>) -> PyResult<()> {
-        self.0
-            .create_prefix(mode.map(perms_from_py_object))
+    fn create_prefix(&self, py: Python, mode: Option<PyObject>) -> PyResult<()> {
+        let t = &self.0;
+
+        py.allow_threads(|| t.create_prefix(mode.map(perms_from_py_object)))
             .map_err(|e| map_transport_err_to_py_err(e, None, None))
     }
 
-    fn lock_write(&self, path: &str) -> PyResult<Lock> {
-        self.0
-            .lock_write(path)
+    fn lock_write(&self, py: Python, path: &str) -> PyResult<Lock> {
+        let t = &self.0;
+
+        py.allow_threads(|| t.lock_write(path))
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
             .map(Lock::from)
     }
 
-    fn lock_read(&self, path: &str) -> PyResult<Lock> {
-        self.0
-            .lock_read(path)
+    fn lock_read(&self, py: Python, path: &str) -> PyResult<Lock> {
+        let t = &self.0;
+
+        py.allow_threads(|| t.lock_read(path))
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
             .map(Lock::from)
     }
 
-    fn recommended_page_size(&self) -> usize {
-        self.0.recommended_page_size()
+    fn recommended_page_size(&self, py: Python) -> usize {
+        py.allow_threads(|| self.0.recommended_page_size())
     }
 
-    fn is_readonly(&self) -> bool {
-        self.0.is_readonly()
+    fn is_readonly(&self, py: Python) -> bool {
+        py.allow_threads(|| self.0.is_readonly())
     }
 
     fn _readv(
@@ -651,7 +658,8 @@ impl Transport {
         if offsets.is_empty() {
             return Ok(PyList::empty(py).into_py(py));
         }
-        let ret = slf.borrow().0.get(path).map_err(|e| match e {
+        let t = &slf.borrow().0;
+        let ret = py.allow_threads(|| t.get(path)).map_err(|e| match e {
             Error::IsADirectoryError(_) => {
                 ReadError::new_err((path.to_string(), "Is a directory".to_string()))
             }
@@ -681,14 +689,16 @@ impl Transport {
         adjust_for_latency: Option<bool>,
         upper_limit: Option<u64>,
     ) -> PyResult<PyObject> {
-        let buffered = self
-            .0
-            .readv(
-                path,
-                offsets,
-                adjust_for_latency.unwrap_or(false),
-                upper_limit,
-            )
+        let t = &self.0;
+        let buffered = py
+            .allow_threads(|| {
+                t.readv(
+                    path,
+                    offsets,
+                    adjust_for_latency.unwrap_or(false),
+                    upper_limit,
+                )
+            })
             .map(|r| {
                 r.map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
                     .map(|(o, r)| (o, PyBytes::new(py, &r).into_py(py)))
@@ -698,36 +708,53 @@ impl Transport {
         Ok(PyIterator::from_object(py, list)?.to_object(py))
     }
 
-    fn listable(&self) -> bool {
-        self.0.listable()
+    fn listable(&self, py: Python) -> bool {
+        py.allow_threads(|| self.0.listable())
     }
 
-    fn list_dir(&self, path: &str) -> PyResult<Vec<String>> {
-        self.0
-            .list_dir(path)
-            .map(|r| r.map_err(|e| map_transport_err_to_py_err(e, None, Some(path))))
-            .collect::<PyResult<Vec<_>>>()
+    fn list_dir(&self, py: Python, path: &str) -> PyResult<Vec<String>> {
+        py.allow_threads(|| {
+            self.0
+                .list_dir(path)
+                .map(|r| r.map_err(|e| map_transport_err_to_py_err(e, None, Some(path))))
+                .collect::<PyResult<Vec<_>>>()
+        })
     }
 
-    fn append_bytes(&self, path: &str, bytes: &[u8], mode: Option<PyObject>) -> PyResult<u64> {
-        self.0
-            .append_bytes(path, bytes, mode.map(perms_from_py_object))
+    fn append_bytes(
+        &self,
+        py: Python,
+        path: &str,
+        bytes: &[u8],
+        mode: Option<PyObject>,
+    ) -> PyResult<u64> {
+        let mode = mode.map(perms_from_py_object);
+        py.allow_threads(|| self.0.append_bytes(path, bytes, mode))
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
     }
 
-    fn append_file(&self, path: &str, file: PyObject, mode: Option<PyObject>) -> PyResult<u64> {
+    fn append_file(
+        &self,
+        py: Python,
+        path: &str,
+        file: PyObject,
+        mode: Option<PyObject>,
+    ) -> PyResult<u64> {
         let mut file = PyFileLikeObject::with_requirements(file, true, false, false)?;
-        self.0
-            .append_file(path, &mut file, mode.map(perms_from_py_object))
+        let mode = mode.map(perms_from_py_object);
+        py.allow_threads(|| self.0.append_file(path, &mut file, mode))
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
     }
 
     fn iter_files_recursive(&self, py: Python) -> PyResult<PyObject> {
-        let iter = self.0.iter_files_recursive().map(|r| {
-            r.map_err(|e| map_transport_err_to_py_err(e, None, Some(".")))
-                .map(|o| o.to_object(py))
-        });
-        iter.collect::<PyResult<Vec<_>>>().map(|v| v.to_object(py))
+        self.0
+            .iter_files_recursive()
+            .map(|r| {
+                r.map_err(|e| map_transport_err_to_py_err(e, None, Some(".")))
+                    .map(|o| o.to_object(py))
+            })
+            .collect::<PyResult<Vec<_>>>()
+            .map(|v| v.to_object(py))
     }
 
     fn open_write_stream(
@@ -736,59 +763,51 @@ impl Transport {
         path: &str,
         mode: Option<PyObject>,
     ) -> PyResult<PyWriteStream> {
-        slf.borrow()
-            .0
-            .open_write_stream(path, mode.map(perms_from_py_object))
-            .map_err(|e| Transport::map_to_py_err(slf, py, e, Some(path)))
+        let t = &slf.borrow().0;
+        py.allow_threads(|| t.open_write_stream(path, mode.map(perms_from_py_object)))
+            .map_err(|e| Transport::map_to_py_err(slf.borrow(), py, e, Some(path)))
             .map(|w| PyWriteStream(w))
     }
 
-    fn delete_tree(&self, path: &str) -> PyResult<()> {
-        self.0
-            .delete_tree(path)
+    fn delete_tree(&self, py: Python, path: &str) -> PyResult<()> {
+        py.allow_threads(|| self.0.delete_tree(path))
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
     }
 
-    fn r#move(&self, from: &str, to: &str) -> PyResult<()> {
-        self.0
-            .r#move(from, to)
+    fn r#move(&self, py: Python, from: &str, to: &str) -> PyResult<()> {
+        py.allow_threads(|| self.0.r#move(from, to))
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(from)))
     }
 
-    fn copy_tree(&self, from: &str, to: &str) -> PyResult<()> {
-        self.0
-            .copy_tree(from, to)
+    fn copy_tree(&self, py: Python, from: &str, to: &str) -> PyResult<()> {
+        py.allow_threads(|| self.0.copy_tree(from, to))
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(from)))
     }
 
     fn copy_tree_to_transport(&self, py: Python, to_transport: PyObject) -> PyResult<()> {
         if let Ok(t) = to_transport.clone_ref(py).extract::<PyRef<Transport>>(py) {
-            self.0
-                .copy_tree_to_transport(t.0.as_ref())
+            let t = t.0.as_ref();
+            py.allow_threads(|| self.0.copy_tree_to_transport(t))
                 .map_err(|e| map_transport_err_to_py_err(e, None, Some(".")))
         } else {
             let t = Box::new(breezy_transport::pyo3::PyTransport::from(to_transport));
-            self.0
-                .copy_tree_to_transport(t.as_ref())
+            py.allow_threads(|| self.0.copy_tree_to_transport(t.as_ref()))
                 .map_err(|e| map_transport_err_to_py_err(e, None, Some(".")))
         }
     }
 
-    fn hardlink(&self, from: &str, to: &str) -> PyResult<()> {
-        self.0
-            .hardlink(from, to)
+    fn hardlink(&self, py: Python, from: &str, to: &str) -> PyResult<()> {
+        py.allow_threads(|| self.0.hardlink(from, to))
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(from)))
     }
 
-    fn symlink(&self, from: &str, to: &str) -> PyResult<()> {
-        self.0
-            .symlink(from, to)
+    fn symlink(&self, py: Python, from: &str, to: &str) -> PyResult<()> {
+        py.allow_threads(|| self.0.symlink(from, to))
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(from)))
     }
 
-    fn readlink(&self, path: &str) -> PyResult<String> {
-        self.0
-            .readlink(path)
+    fn readlink(&self, py: Python, path: &str) -> PyResult<String> {
+        py.allow_threads(|| self.0.readlink(path))
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
     }
 
@@ -806,22 +825,26 @@ impl Transport {
             .collect::<PyResult<Vec<_>>>()?;
 
         if let Ok(t) = to_transport.clone_ref(py).downcast::<PyCell<Transport>>(py) {
-            self.0
-                .copy_to(
-                    relpaths.as_slice(),
-                    t.borrow().0.as_ref(),
-                    mode.map(perms_from_py_object),
-                )
-                .map_err(|e| map_transport_err_to_py_err(e, None, None))
-        } else {
-            let t = Box::new(breezy_transport::pyo3::PyTransport::from(to_transport));
-            self.0
-                .copy_to(
+            let t = &t.borrow().0;
+            py.allow_threads(|| {
+                self.0.copy_to(
                     relpaths.as_slice(),
                     t.as_ref(),
                     mode.map(perms_from_py_object),
                 )
-                .map_err(|e| map_transport_err_to_py_err(e, None, None))
+            })
+            .map_err(|e| map_transport_err_to_py_err(e, None, None))
+        } else {
+            let t = Box::new(breezy_transport::pyo3::PyTransport::from(to_transport));
+            py.allow_threads(|| {
+                self.0
+                    .copy_to(
+                        relpaths.as_slice(),
+                        t.as_ref(),
+                        mode.map(perms_from_py_object),
+                    )
+                    .map_err(|e| map_transport_err_to_py_err(e, None, None))
+            })
         }
     }
 
@@ -829,9 +852,8 @@ impl Transport {
         self.0.can_roundtrip_unix_modebits()
     }
 
-    fn copy(&self, from: &str, to: &str) -> PyResult<()> {
-        self.0
-            .copy(from, to)
+    fn copy(&self, py: Python, from: &str, to: &str) -> PyResult<()> {
+        py.allow_threads(|| self.0.copy(from, to))
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(from)))
     }
 }
@@ -931,15 +953,18 @@ fn seek_and_read(
     path: Option<&str>,
 ) -> PyResult<Vec<(usize, PyObject)>> {
     let f = PyFileLikeObject::with_requirements(file, true, false, true)?;
-    let data = breezy_transport::readv::seek_and_read(
-        f,
-        offsets,
-        max_readv_combine.unwrap_or(DEFAULT_MAX_READV_COMBINE),
-        bytes_to_read_before_seek.unwrap_or(DEFAULT_BYTES_TO_READ_BEFORE_SEEK),
-    )
-    .map_err(|e| -> PyErr { e.into() })?;
+    let mut data = py
+        .allow_threads(|| {
+            breezy_transport::readv::seek_and_read(
+                f,
+                offsets,
+                max_readv_combine.unwrap_or(DEFAULT_MAX_READV_COMBINE),
+                bytes_to_read_before_seek.unwrap_or(DEFAULT_BYTES_TO_READ_BEFORE_SEEK),
+            )
+        })
+        .map_err(|e| -> PyErr { e.into() })?;
 
-    data.into_iter()
+    std::iter::from_fn(move || py.allow_threads(|| data.next()))
         .map(|e| {
             e.map(|(offset, data)| (offset, PyBytes::new(py, data.as_slice()).into()))
                 .map_err(|(e, offset, length, actual)| match e.kind() {
