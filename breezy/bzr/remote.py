@@ -38,7 +38,7 @@ from ..errors import NoSuchRevision, SmartProtocolError
 from ..i18n import gettext
 from ..lockable_files import LockableFiles
 from ..repository import RepositoryWriteLockResult, _LazyListJoin
-from ..revision import NULL_REVISION
+from ..revision import NULL_REVISION, RevisionID
 from ..trace import log_exception_quietly, mutter, note, warning
 from . import branch as bzrbranch
 from . import bzrdir as _mod_bzrdir
@@ -1506,7 +1506,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         self._ensure_real()
         return self._real_repository._generate_text_key_index()
 
-    def _get_revision_graph(self, revision_id):
+    def _get_revision_graph(self, revision_id: RevisionID):
         """Private method for using with old (< 1.2) servers to fallback."""
         if revision_id is None:
             revision_id = b''

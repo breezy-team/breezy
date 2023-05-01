@@ -2903,7 +2903,7 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
             client._calls)
 
     def test_unexpected_error(self):
-        revid = '123'
+        revid = b'123'
         transport_path = 'sinhala'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_error_response(b'AnUnexpectedError')

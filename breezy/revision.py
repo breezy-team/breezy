@@ -22,12 +22,10 @@ __docformat__ = "google"
 from typing import Dict, List, Tuple
 
 from . import errors
-from ._bzr_rs import Revision
+from ._bzr_rs import (CURRENT_REVISION, NULL_REVISION, Revision,
+                      check_not_reserved_id, is_null, is_reserved_id)
 
 RevisionID = bytes
-
-NULL_REVISION = b"null:"
-CURRENT_REVISION = b"current:"
 
 
 def iter_bugs(rev):
@@ -90,34 +88,3 @@ def find_present_ancestors(revision_id: RevisionID, revision_source) -> Dict[Rev
         if anc_id not in found_ancestors:
             found_ancestors[anc_id] = (anc_order, anc_distance)
     return found_ancestors
-
-
-def __get_closest(intersection):
-    intersection.sort()
-    matches = []
-    for entry in intersection:
-        if entry[0] == intersection[0][0]:
-            matches.append(entry[2])
-    return matches
-
-
-def is_reserved_id(revision_id: RevisionID) -> bool:
-    """Determine whether a revision id is reserved
-
-    Returns:
-      True if the revision is reserved, False otherwise
-    """
-    return isinstance(revision_id, bytes) and revision_id.endswith(b':')
-
-
-def check_not_reserved_id(revision_id: RevisionID) -> None:
-    """Raise ReservedId if the supplied revision_id is reserved"""
-    if is_reserved_id(revision_id):
-        raise errors.ReservedId(revision_id)
-
-
-def is_null(revision_id: RevisionID) -> bool:
-    if revision_id is None:
-        raise ValueError('NULL_REVISION should be used for the null'
-                         ' revision instead of None.')
-    return (revision_id == NULL_REVISION)
