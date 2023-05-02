@@ -33,13 +33,14 @@ import sys
 import time
 
 from .. import config, debug, errors, urlutils
-from .._transport_rs import (SFTP_FLAG_CREAT, SFTP_FLAG_EXCL, SFTP_FLAG_TRUNC,
-                             SFTP_FLAG_WRITE, SFTPAttributes, SFTPError)
+from .._transport_rs import sftp as _sftp_rs
 from ..errors import LockError, PathError
 from ..osutils import fancy_rename, pumpfile
 from ..trace import mutter, warning
 from ..transport import (ConnectedTransport, FileExists, FileFileStream,
                          NoSuchFile, _file_streams, ssh)
+
+SFTPError = _sftp_rs.SFTPError
 
 
 class WriteStream(object):
@@ -823,12 +824,12 @@ class SFTPTransport(ConnectedTransport):
         :param abspath: The remote absolute path where the file should be opened
         :param mode: The mode permissions bits for the new file
         """
-        attr = SFTPAttributes()
+        attr = _sftp_rs.SFTPAttributes()
         if mode is not None:
             attr.st_mode = mode | stat.S_IFREG
         else:
             attr.st_mode = stat.S_IFREG | 0o644
-        flags = SFTP_FLAG_WRITE | SFTP_FLAG_CREAT | SFTP_FLAG_EXCL | SFTP_FLAG_TRUNC
+        flags = _sftp_rs.SFTP_FLAG_WRITE | _sftp_rs.SFTP_FLAG_CREAT | _sftp_rs.SFTP_FLAG_EXCL | _sftp_rs.SFTP_FLAG_TRUNC
         try:
             return self._get_sftp().open(abspath, flags, attr)
         except (SFTPError, OSError) as e:
