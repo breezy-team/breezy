@@ -18,17 +18,16 @@
 """Foundation SSH support for SFTP and smart server."""
 
 import errno
-import getpass
-import logging
 import os
 import socket
 import subprocess
 import sys
-from binascii import hexlify
-from typing import Dict, Optional, Set, Tuple, Type
+from typing import Set, Tuple, Type
 
-from ... import bedding, config, errors, osutils, registry, trace, ui
-from ..._transport_rs import SFTPClient
+from ... import bedding, config, errors, osutils, registry, trace
+from ..._transport_rs import sftp as _sftp_rs
+
+SFTPClient = _sftp_rs.SFTPClient
 
 try:
     import paramiko
