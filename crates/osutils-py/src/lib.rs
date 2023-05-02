@@ -937,6 +937,7 @@ impl FileIterator {
         let result = self.input_file.call_method1(py, "read", (self.read_size,));
         match result {
             Ok(buf) if buf.is_none(py) => Ok(None),
+            Ok(buf) if buf.as_ref(py).len()? == 0 => Ok(None),
             Ok(buf) => Ok(Some(buf)),
             Err(e) => Err(e),
         }
