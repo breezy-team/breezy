@@ -802,7 +802,8 @@ class TestFileParentReconciliation(TestCaseWithRepository):
             repo.texts.add_lines((root_id, revision_id), [], [])
         repo.add_inventory(revision_id, inv, parent_ids)
         revision = Revision(revision_id, committer='jrandom@example.com',
-                            timestamp=0, inventory_sha1='', timezone=0, message='foo',
+                            timestamp=0, inventory_sha1=b'', timezone=0, message='foo',
+                            properties={},
                             parent_ids=parent_ids)
         repo.add_revision(revision_id, revision, inv)
 

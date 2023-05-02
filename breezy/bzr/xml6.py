@@ -17,7 +17,7 @@
 from . import xml8
 
 
-class Serializer_v6(xml8.Serializer_v8):
+class InventorySerializer_v6(xml8.InventorySerializer_v8):
     """This serialiser supports rich roots.
 
     While its inventory format number is 6, its revision format is 5.
@@ -26,8 +26,6 @@ class Serializer_v6(xml8.Serializer_v8):
     """
 
     format_num = b'6'
-    # Format 6 & 7 reported their revision format as 5.
-    revision_format_num = b'5'
 
 
-serializer_v6 = Serializer_v6()
+inventory_serializer_v6 = InventorySerializer_v6()

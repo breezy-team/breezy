@@ -98,12 +98,13 @@ class ForeignRevision(Revision):
 
     """
 
-    def __init__(self, foreign_revid, mapping, *args, **kwargs):
+    def __new__(cls, foreign_revid, mapping, *args, **kwargs):
         if "inventory_sha1" not in kwargs:
-            kwargs["inventory_sha1"] = b""
-        super().__init__(*args, **kwargs)
+            kwargs["inventory_sha1"] = None
+        self = Revision.__new__(cls, *args, **kwargs)
         self.foreign_revid = foreign_revid
         self.mapping = mapping
+        return self
 
 
 class ForeignVcs:

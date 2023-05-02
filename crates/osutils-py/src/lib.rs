@@ -1,4 +1,5 @@
 #![allow(non_snake_case)]
+use breezy_osutils::Kind;
 use pyo3::create_exception;
 use pyo3::exceptions::{PyIOError, PyTypeError, PyValueError};
 use pyo3::import_exception;
@@ -23,6 +24,7 @@ create_exception!(
 
 import_exception!(breezy.errors, IllegalPath);
 import_exception!(breezy.errors, PathNotChild);
+import_exception!(breezy.errors, DirectoryNotEmpty);
 
 #[pyclass]
 struct PyChunksToLinesIterator {
@@ -665,7 +667,13 @@ fn get_umask() -> PyResult<u32> {
 
 #[pyfunction]
 fn kind_marker(kind: &str) -> &str {
-    breezy_osutils::kind_marker(kind)
+    breezy_osutils::kind_marker(match kind {
+        "file" => Kind::File,
+        "directory" => Kind::Directory,
+        "symlink" => Kind::Symlink,
+        "tree-reference" => Kind::TreeReference,
+        _ => return "",
+    })
 }
 
 #[pyfunction]
@@ -905,6 +913,78 @@ fn win32_getcwd() -> PyResult<PathBuf> {
     Ok(breezy_osutils::path::win32::getcwd()?)
 }
 
+#[pyclass]
+struct FileIterator {
+    input_file: PyObject,
+    read_size: usize,
+}
+
+#[pymethods]
+impl FileIterator {
+    #[new]
+    fn new(input_file: PyObject, read_size: Option<usize>) -> Self {
+        FileIterator {
+            input_file,
+            read_size: read_size.unwrap_or(32768),
+        }
+    }
+
+    fn __iter__(slf: PyRef<Self>) -> Py<Self> {
+        slf.into()
+    }
+
+    fn __next__(&mut self, py: Python) -> PyResult<Option<PyObject>> {
+        let result = self.input_file.call_method1(py, "read", (self.read_size,));
+        match result {
+            Ok(buf) if buf.is_none(py) => Ok(None),
+            Ok(buf) if buf.as_ref(py).len()? == 0 => Ok(None),
+            Ok(buf) => Ok(Some(buf)),
+            Err(e) => Err(e),
+        }
+    }
+}
+
+#[pyfunction]
+fn file_iterator(py: Python, input_file: PyObject, read_size: Option<usize>) -> PyResult<PyObject> {
+    let iterator = FileIterator::new(input_file, read_size);
+    Ok(iterator.into_py(py))
+}
+
+/// Returns the terminal size as (width, height).
+///
+/// Args:
+///   width: Default value for width.
+///   height: Default value for height.
+///
+/// This is defined specifically for each OS and query the size of the controlling
+/// terminal. If any error occurs, the provided default values should be returned.
+#[pyfunction]
+fn terminal_size() -> PyResult<(u16, u16)> {
+    Ok(breezy_osutils::terminal::terminal_size()?)
+}
+
+#[pyfunction]
+fn has_ansi_colors() -> bool {
+    breezy_osutils::terminal::has_ansi_colors()
+}
+
+/// Make sure a local directory exists and is empty.
+///
+/// If it does not exist, it is created.  If it exists and is not empty,
+/// DirectoryNotEmpty is raised.
+#[pyfunction]
+fn ensure_empty_directory_exists(path: PathBuf) -> PyResult<()> {
+    match breezy_osutils::file::ensure_empty_directory_exists(path.as_path()) {
+        Ok(()) => Ok(()),
+        Err(ref e)
+            if e.kind() == std::io::ErrorKind::Other && e.to_string().contains(" not empty") =>
+        {
+            Err(DirectoryNotEmpty::new_err(path))
+        }
+        Err(e) => Err(e.into()),
+    }
+}
+
 #[pymodule]
 fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -935,6 +1015,7 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(check_text_path))?;
     m.add_wrapped(wrap_pyfunction!(check_text_lines))?;
     m.add_wrapped(wrap_pyfunction!(format_delta))?;
+    m.add_wrapped(wrap_pyfunction!(file_iterator))?;
     m.add_wrapped(wrap_pyfunction!(
         format_date_with_offset_in_original_timezone
     ))?;
@@ -984,6 +1065,9 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(pump_string_file))?;
     m.add_wrapped(wrap_pyfunction!(realpath))?;
     m.add_wrapped(wrap_pyfunction!(normalizepath))?;
+    m.add_wrapped(wrap_pyfunction!(terminal_size))?;
+    m.add_wrapped(wrap_pyfunction!(has_ansi_colors))?;
+    m.add_wrapped(wrap_pyfunction!(ensure_empty_directory_exists))?;
     m.add(
         "MIN_ABS_PATHLENGTH",
         breezy_osutils::path::MIN_ABS_PATHLENGTH,

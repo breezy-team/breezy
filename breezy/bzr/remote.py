@@ -38,23 +38,21 @@ from ..errors import NoSuchRevision, SmartProtocolError
 from ..i18n import gettext
 from ..lockable_files import LockableFiles
 from ..repository import RepositoryWriteLockResult, _LazyListJoin
-from ..revision import NULL_REVISION
+from ..revision import NULL_REVISION, RevisionID
 from ..trace import log_exception_quietly, mutter, note, warning
 from . import branch as bzrbranch
 from . import bzrdir as _mod_bzrdir
 from . import inventory_delta
-from . import repository as bzrrepository
 from . import testament as _mod_testament
 from . import vf_repository, vf_search
 from .branch import BranchReferenceFormat
 from .inventory import Inventory
 from .inventorytree import InventoryRevisionTree
-from .serializer import format_registry as serializer_format_registry
+from .serializer import revision_format_registry
 from .smart import client
 from .smart import repository as smart_repo
 from .smart import vfs
 from .smart.client import _SmartClient
-from .versionedfile import FulltextContentFactory
 
 _DEFAULT_SEARCH_DEPTH = 100
 
@@ -1238,9 +1236,14 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
         return self._custom_format.pack_compresses
 
     @property
-    def _serializer(self):
+    def _revision_serializer(self):
         self._ensure_real()
-        return self._custom_format._serializer
+        return self._custom_format._revision_serializer
+
+    @property
+    def _inventory_serializer(self):
+        self._ensure_real()
+        return self._custom_format._inventory_serializer
 
 
 class RemoteRepository(_mod_repository.Repository, _RpcHelper,
@@ -1503,7 +1506,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         self._ensure_real()
         return self._real_repository._generate_text_key_index()
 
-    def _get_revision_graph(self, revision_id):
+    def _get_revision_graph(self, revision_id: RevisionID):
         """Private method for using with old (< 1.2) servers to fallback."""
         if revision_id is None:
             revision_id = b''
@@ -2046,7 +2049,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
     def _add_revision(self, rev):
         if self._real_repository is not None:
             return self._real_repository._add_revision(rev)
-        lines = self._serializer.write_revision_to_lines(rev)
+        lines = self._revision_serializer.write_revision_to_lines(rev)
         key = (rev.revision_id,)
         parents = tuple((parent,) for parent in rev.parent_ids)
         self._write_group_tokens, missing_keys = self._get_sink().insert_stream(
@@ -2738,7 +2741,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         if response_tuple[0] != b"ok":
             raise errors.UnexpectedSmartServerResponse(response_tuple)
         serializer_format = response_tuple[1].decode('ascii')
-        serializer = serializer_format_registry.get(serializer_format)
+        serializer = revision_format_registry.get(serializer_format)
         byte_stream = response_handler.read_streamed_body()
         decompressor = zlib.decompressobj()
         chunks = []
@@ -2783,8 +2786,12 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         return self._format.rich_root_data
 
     @property
-    def _serializer(self):
-        return self._format._serializer
+    def _revision_serializer(self):
+        return self._format._revision_serializer
+
+    @property
+    def _inventory_serializer(self):
+        return self._format._inventory_serializer
 
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
         with self.lock_write():
@@ -3200,7 +3207,7 @@ class RemoteStreamSource(vf_repository.StreamSource):
         :param search: The overall search to satisfy with streams.
         :param sources: A list of Repository objects to query.
         """
-        self.from_serialiser = self.from_repository._format._serializer
+        self.from_revision_serialiser = self.from_repository._format._revision_serializer
         self.seen_revs = set()
         self.referenced_revs = set()
         # If there are heads in the search, or the key count is > 0, we are not
@@ -3223,7 +3230,7 @@ class RemoteStreamSource(vf_repository.StreamSource):
     def missing_parents_rev_handler(self, substream):
         for content in substream:
             revision_bytes = content.get_bytes_as('fulltext')
-            revision = self.from_serialiser.read_revision_from_string(
+            revision = self.from_revision_serialiser.read_revision_from_string(
                 revision_bytes)
             self.seen_revs.add(content.key[-1])
             self.referenced_revs.update(revision.parent_ids)

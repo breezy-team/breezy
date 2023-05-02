@@ -1,6 +1,13 @@
-use pyo3::exceptions::{PyTypeError, PyValueError};
+use bazaar::RevisionId;
+use chrono::NaiveDateTime;
+use pyo3::class::basic::CompareOp;
+use pyo3::exceptions::{PyNotImplementedError, PyTypeError, PyValueError};
+use pyo3::import_exception;
 use pyo3::prelude::*;
-use pyo3::types::PyBytes;
+use pyo3::types::{PyBytes, PyList, PyString};
+use std::collections::HashMap;
+
+import_exception!(breezy.errors, ReservedId);
 
 /// Create a new file id suffix that is reasonably unique.
 ///
@@ -121,6 +128,206 @@ impl Replacer {
     }
 }
 
+#[pyclass(subclass)]
+struct Revision(bazaar::revision::Revision);
+
+/// Single revision on a branch.
+///
+/// Revisions may know their revision_hash, but only once they've been
+/// written out.  This is not stored because you cannot write the hash
+/// into the file it describes.
+///
+/// Attributes:
+///   parent_ids: List of parent revision_ids
+///
+///   properties:
+///     Dictionary of revision properties.  These are attached to the
+///     revision as extra metadata.  The name must be a single
+///     word; the value can be an arbitrary string.
+#[pymethods]
+impl Revision {
+    #[new]
+    fn new(
+        py: Python,
+        revision_id: &PyBytes,
+        parent_ids: Vec<&PyBytes>,
+        committer: Option<String>,
+        message: String,
+        properties: Option<HashMap<String, PyObject>>,
+        inventory_sha1: Option<Vec<u8>>,
+        timestamp: f64,
+        timezone: Option<i32>,
+    ) -> PyResult<Self> {
+        let mut cproperties: HashMap<String, Vec<u8>> = HashMap::new();
+        for (k, v) in properties.unwrap_or(HashMap::new()) {
+            if let Ok(s) = v.extract::<&PyBytes>(py) {
+                cproperties.insert(k, s.as_bytes().to_vec());
+            } else if let Ok(s) = v.extract::<&PyString>(py) {
+                let s = s
+                    .call_method1("encode", ("utf-8", "surrogateescape"))?
+                    .extract::<&PyBytes>()?;
+                cproperties.insert(k, s.as_bytes().to_vec());
+            } else {
+                return Err(PyTypeError::new_err(
+                    "properties must be a dictionary of strings",
+                ));
+            }
+        }
+
+        if !bazaar::revision::validate_properties(&cproperties) {
+            return Err(PyValueError::new_err(
+                "properties must be a dictionary of strings",
+            ));
+        }
+        Ok(Self(bazaar::revision::Revision {
+            revision_id: bazaar::RevisionId::from(revision_id.as_bytes().to_vec()),
+            parent_ids: parent_ids
+                .iter()
+                .map(|id| bazaar::RevisionId::from(id.as_bytes().to_vec()))
+                .collect(),
+            committer,
+            message,
+            properties: cproperties,
+            inventory_sha1,
+            timestamp,
+            timezone,
+        }))
+    }
+
+    fn __richcmp__(&self, other: &Self, op: CompareOp) -> PyResult<bool> {
+        match op {
+            CompareOp::Eq => Ok(self.0 == other.0),
+            CompareOp::Ne => Ok(self.0 != other.0),
+            _ => Err(PyNotImplementedError::new_err(
+                "only == and != are supported",
+            )),
+        }
+    }
+
+    fn __repr__(self_: PyRef<Self>) -> String {
+        format!("<Revision id {:?}>", self_.0.revision_id)
+    }
+
+    #[getter]
+    fn revision_id(&self, py: Python) -> PyObject {
+        PyBytes::new(py, self.0.revision_id.bytes()).into_py(py)
+    }
+
+    #[getter]
+    fn parent_ids(&self, py: Python) -> PyObject {
+        PyList::new(
+            py,
+            self.0
+                .parent_ids
+                .iter()
+                .map(|id| PyBytes::new(py, id.bytes())),
+        )
+        .into_py(py)
+    }
+
+    #[getter]
+    fn committer(&self) -> Option<String> {
+        self.0.committer.clone()
+    }
+
+    #[getter]
+    fn message(&self) -> String {
+        self.0.message.clone()
+    }
+
+    #[getter]
+    fn properties(&self) -> HashMap<String, String> {
+        self.0
+            .properties
+            .iter()
+            .map(|(k, v)| (k.clone(), String::from_utf8_lossy(v).into()))
+            .collect()
+    }
+
+    #[getter]
+    fn get_inventory_sha1(&self, py: Python) -> PyObject {
+        if let Some(sha1) = &self.0.inventory_sha1 {
+            PyBytes::new(py, sha1).into_py(py)
+        } else {
+            py.None()
+        }
+    }
+
+    #[setter]
+    fn set_inventory_sha1(&mut self, py: Python, value: PyObject) -> PyResult<()> {
+        if let Ok(value) = value.extract::<&PyBytes>(py) {
+            self.0.inventory_sha1 = Some(value.as_bytes().to_vec());
+            Ok(())
+        } else if value.is_none(py) {
+            self.0.inventory_sha1 = None;
+            Ok(())
+        } else {
+            Err(PyTypeError::new_err("expected bytes or None"))
+        }
+    }
+
+    #[getter]
+    fn timestamp(&self) -> f64 {
+        self.0.timestamp
+    }
+
+    #[getter]
+    fn timezone(&self) -> Option<i32> {
+        self.0.timezone
+    }
+
+    fn datetime(&self) -> PyResult<NaiveDateTime> {
+        Ok(self.0.datetime())
+    }
+
+    fn check_properties(&self) -> PyResult<()> {
+        if self.0.check_properties() {
+            Ok(())
+        } else {
+            Err(PyValueError::new_err("invalid properties"))
+        }
+    }
+
+    fn get_summary(&self) -> String {
+        self.0.get_summary()
+    }
+
+    fn get_apparent_authors(&self) -> Vec<String> {
+        self.0.get_apparent_authors()
+    }
+
+    fn bug_urls(&self) -> Vec<String> {
+        self.0.bug_urls()
+    }
+}
+
+#[pyfunction(name = "is_null")]
+fn is_null_revision(revision_id: &PyBytes) -> bool {
+    bazaar::RevisionId::from(revision_id.as_bytes().to_vec()).is_null()
+}
+
+#[pyfunction(name = "is_reserved_id")]
+fn is_reserved_revision_id(revision_id: &PyBytes) -> bool {
+    bazaar::RevisionId::from(revision_id.as_bytes().to_vec()).is_reserved()
+}
+
+#[pyfunction(name = "check_not_reserved_id")]
+fn check_not_reserved_id(py: Python, revision_id: PyObject) -> PyResult<()> {
+    if revision_id.is_none(py) {
+        return Ok(());
+    }
+    if let Ok(revision_id) = revision_id.extract::<&PyBytes>(py) {
+        if bazaar::RevisionId::from(revision_id.as_bytes().to_vec()).is_reserved() {
+            Err(ReservedId::new_err((revision_id.as_bytes().into_py(py),)))
+        } else {
+            Ok(())
+        }
+    } else {
+        // For now, just ignore other types..
+        Ok(())
+    }
+}
+
 #[pymodule]
 fn _bzr_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(_next_id_suffix))?;
@@ -131,5 +338,11 @@ fn _bzr_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m_globbing.add_wrapped(wrap_pyfunction!(normalize_pattern))?;
     m_globbing.add_class::<Replacer>()?;
     m.add_submodule(m_globbing)?;
+    m.add_class::<Revision>()?;
+    m.add("CURRENT_REVISION", bazaar::CURRENT_REVISION)?;
+    m.add("NULL_REVISION", bazaar::NULL_REVISION)?;
+    m.add_wrapped(wrap_pyfunction!(is_null_revision))?;
+    m.add_wrapped(wrap_pyfunction!(is_reserved_revision_id))?;
+    m.add_wrapped(wrap_pyfunction!(check_not_reserved_id))?;
     Ok(())
 }

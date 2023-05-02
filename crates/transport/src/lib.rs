@@ -526,3 +526,5 @@ pub mod filelock;
 pub mod lock;
 
 pub mod readv;
+
+pub mod sftp;

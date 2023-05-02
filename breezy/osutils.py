@@ -370,14 +370,7 @@ pumpfile = _osutils_rs.pumpfile
 pump_string_file = _osutils_rs.pump_string_file
 
 
-def file_iterator(input_file, readsize=32768):
-    while True:
-        b = input_file.read(readsize)
-        if len(b) == 0:
-            break
-        yield b
-
-
+file_iterator = _osutils_rs.file_iterator
 sha_file = _osutils_rs.sha_file
 size_sha_file = _osutils_rs.size_sha_file
 sha_file_by_name = _osutils_rs.sha_file_by_name
@@ -788,7 +781,10 @@ def terminal_width():
         return None
 
     # Query the OS
-    width, height = os_size = _terminal_size(None, None)
+    try:
+        width, _height = os_size = _terminal_size()
+    except OSError as e:
+        width = os_size = None
     global _first_terminal_size, _terminal_size_state
     if _terminal_size_state == 'no_data':
         _first_terminal_size = os_size
@@ -818,40 +814,7 @@ def terminal_width():
     return None
 
 
-def _win32_terminal_size(width, height):
-    width, height = win32utils.get_console_size(
-        defaultx=width, defaulty=height)
-    return width, height
-
-
-def _ioctl_terminal_size(width, height):
-    try:
-        import fcntl
-        import struct
-        import termios
-        s = struct.pack('HHHH', 0, 0, 0, 0)
-        x = fcntl.ioctl(1, termios.TIOCGWINSZ, s)
-        height, width = struct.unpack('HHHH', x)[0:2]
-    except (OSError, AttributeError):
-        pass
-    return width, height
-
-
-_terminal_size = None
-"""Returns the terminal size as (width, height).
-
-:param width: Default value for width.
-:param height: Default value for height.
-
-This is defined specifically for each OS and query the size of the controlling
-terminal. If any error occurs, the provided default values should be returned.
-"""
-if sys.platform == 'win32':
-    _terminal_size = _win32_terminal_size
-else:
-    _terminal_size = _ioctl_terminal_size
-
-
+_terminal_size = _osutils_rs.terminal_size
 supports_executable = _osutils_rs.supports_executable
 supports_hardlinks = _osutils_rs.supports_hardlinks
 supports_symlinks = _osutils_rs.supports_symlinks
@@ -1376,21 +1339,7 @@ def fdatasync(fileno):
                 raise
 
 
-def ensure_empty_directory_exists(path, exception_class):
-    """Make sure a local directory exists and is empty.
-
-    If it does not exist, it is created.  If it exists and is not empty, an
-    instance of exception_class is raised.
-    """
-    try:
-        os.mkdir(path)
-    except OSError as e:
-        if e.errno != errno.EEXIST:
-            raise
-        if os.listdir(path) != []:
-            raise exception_class(path)
-
-
+ensure_empty_directory_exists = _osutils_rs.ensure_empty_directory_exists
 read_mtab = _osutils_rs.read_mtab
 get_fs_type = _osutils_rs.get_fs_type
 perf_counter = time.perf_counter

@@ -106,13 +106,19 @@ pub fn get_umask() -> Mode {
     mask
 }
 
-pub fn kind_marker(kind: &str) -> &str {
+pub enum Kind {
+    File,
+    Directory,
+    Symlink,
+    TreeReference,
+}
+
+pub fn kind_marker(kind: Kind) -> &'static str {
     match kind {
-        "file" => "",
-        "directory" => "/",
-        "symlink" => "@",
-        "tree-reference" => "+",
-        _ => "",
+        Kind::File => "",
+        Kind::Directory => "/",
+        Kind::Symlink => "@",
+        Kind::TreeReference => "+",
     }
 }
 
@@ -218,3 +224,5 @@ pub mod mounts;
 
 #[cfg(test)]
 mod tests;
+
+pub mod terminal;

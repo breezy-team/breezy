@@ -1096,10 +1096,12 @@ impl WriteLock {
     }
 }
 
+mod sftp;
+
 #[pymodule]
-fn _transport_rs(_py: Python, m: &PyModule) -> PyResult<()> {
+fn _transport_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<Transport>()?;
-    let localm = PyModule::new(_py, "local")?;
+    let localm = PyModule::new(py, "local")?;
     localm.add_class::<LocalTransport>()?;
     m.add_submodule(localm)?;
     m.add_class::<ReadLock>()?;
@@ -1109,6 +1111,10 @@ fn _transport_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(seek_and_read))?;
     m.add_wrapped(wrap_pyfunction!(coalesce_offsets))?;
     m.add_wrapped(wrap_pyfunction!(sort_expand_and_combine))?;
+
+    let sftpm = PyModule::new(py, "sftp")?;
+    sftp::_sftp_rs(py, sftpm)?;
+    m.add_submodule(sftpm)?;
 
     Ok(())
 }

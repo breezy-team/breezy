@@ -58,9 +58,9 @@ from .pack_repo import (NewPack, PackCommitBuilder, Packer, PackRepository,
 class KnitPackRepository(PackRepository, KnitRepository):
 
     def __init__(self, _format, a_controldir, control_files, _commit_builder_class,
-                 _serializer):
+                 _revision_serializer, _inventory_serializer):
         PackRepository.__init__(self, _format, a_controldir, control_files,
-                                _commit_builder_class, _serializer)
+                                _commit_builder_class, _revision_serializer, _inventory_serializer)
         if self._format.supports_chks:
             raise AssertionError("chk not supported")
         index_transport = self._transport.clone('indices')
@@ -133,8 +133,13 @@ class RepositoryFormatKnitPack1(RepositoryFormatPack):
     _commit_builder_class = PackCommitBuilder
 
     @property
-    def _serializer(self):
-        return xml5.serializer_v5
+    def _revision_serializer(self):
+        return xml5.revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        return xml5.inventory_serializer_v5
+
     # What index classes to use
     index_builder_class = InMemoryGraphIndex
     index_class = GraphIndex
@@ -175,8 +180,13 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
     supports_tree_reference = True
 
     @property
-    def _serializer(self):
-        return xml7.serializer_v7
+    def _revision_serializer(self):
+        return xml5.revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        return xml7.inventory_serializer_v7
+
     # What index classes to use
     index_builder_class = InMemoryGraphIndex
     index_class = GraphIndex
@@ -216,8 +226,13 @@ class RepositoryFormatKnitPack4(RepositoryFormatPack):
     supports_tree_reference = False
 
     @property
-    def _serializer(self):
-        return xml6.serializer_v6
+    def _revision_serializer(self):
+        return xml5.revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        return xml6.inventory_serializer_v6
+
     # What index classes to use
     index_builder_class = InMemoryGraphIndex
     index_class = GraphIndex
@@ -258,8 +273,12 @@ class RepositoryFormatKnitPack5(RepositoryFormatPack):
     index_class = GraphIndex
 
     @property
-    def _serializer(self):
-        return xml5.serializer_v5
+    def _revision_serializer(self):
+        return xml5.revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        return xml5.inventory_serializer_v5
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir('1.6')
@@ -297,8 +316,12 @@ class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
     index_class = GraphIndex
 
     @property
-    def _serializer(self):
-        return xml6.serializer_v6
+    def _revision_serializer(self):
+        return xml5.revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        return xml6.inventory_serializer_v6
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir(
@@ -341,8 +364,12 @@ class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
     index_class = GraphIndex
 
     @property
-    def _serializer(self):
-        return xml7.serializer_v7
+    def _revision_serializer(self):
+        return xml5.revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        return xml7.inventory_serializer_v7
 
     def _get_matching_bzrdir(self):
         matching = controldir.format_registry.make_controldir(
@@ -384,8 +411,12 @@ class RepositoryFormatKnitPack6(RepositoryFormatPack):
     index_class = btree_index.BTreeGraphIndex
 
     @property
-    def _serializer(self):
-        return xml5.serializer_v5
+    def _revision_serializer(self):
+        return xml5.revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        return xml5.inventory_serializer_v5
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir('1.9')
@@ -422,8 +453,12 @@ class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
     index_class = btree_index.BTreeGraphIndex
 
     @property
-    def _serializer(self):
-        return xml6.serializer_v6
+    def _revision_serializer(self):
+        return xml5.revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        return xml6.inventory_serializer_v6
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir(
@@ -464,8 +499,12 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
     index_class = btree_index.BTreeGraphIndex
 
     @property
-    def _serializer(self):
-        return xml7.serializer_v7
+    def _revision_serializer(self):
+        return xml5.revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        return xml7.inventory_serializer_v7
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir(
@@ -510,7 +549,7 @@ class KnitPackStreamSource(StreamSource):
         from_repo = self.from_repository
         parent_ids = from_repo._find_parent_ids_of_revisions(revision_ids)
         parent_keys = [(p,) for p in parent_ids]
-        find_text_keys = from_repo._serializer._find_text_key_references
+        find_text_keys = from_repo._inventory_serializer._find_text_key_references
         parent_text_keys = set(find_text_keys(
             from_repo._inventory_xml_lines_for_keys(parent_keys)))
         content_text_keys = set()
@@ -958,7 +997,7 @@ class KnitReconcilePacker(KnitPacker):
     def _process_inventory_lines(self, inv_lines):
         """Generate a text key reference map rather for reconciling with."""
         repo = self._pack_collection.repo
-        refs = repo._serializer._find_text_key_references(inv_lines)
+        refs = repo._inventory_serializer._find_text_key_references(inv_lines)
         self._text_refs = refs
         # during reconcile we:
         #  - convert unreferenced texts to full texts

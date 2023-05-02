@@ -22,7 +22,7 @@ from ...bzr import generate_ids, inventory, serializer
 from ...trace import mutter, note, warning
 from .helpers import mode_to_kind
 
-_serializer_handles_escaping = hasattr(serializer.Serializer,
+_serializer_handles_escaping = hasattr(serializer.RevisionSerializer,
                                        'squashes_xml_invalid_characters')
 
 
@@ -298,6 +298,7 @@ class CommitHandler(processor.CommitHandler):
             message=message,
             revision_id=self.revision_id,
             properties=rev_props,
+            inventory_sha1=None,
             parent_ids=self.parents)
 
     def _legal_revision_properties(self, props):

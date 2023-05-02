@@ -69,7 +69,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         """
         sio = BytesIO()
         inv = inventory.Inventory()
-        xml5.serializer_v5.write_inventory(inv, sio, working=True)
+        xml5.inventory_serializer_v5.write_inventory(inv, sio, working=True)
         sio.seek(0)
         transport.put_file('inventory', sio, file_mode)
         transport.put_bytes('pending-merges', b'', file_mode)

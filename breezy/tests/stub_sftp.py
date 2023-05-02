@@ -422,15 +422,6 @@ class TestingSFTPWithoutSSHConnectionHandler(TestingSFTPConnectionHandler):
                 pass
             else:
                 raise
-        except Exception as e:
-            # This typically seems to happen during interpreter shutdown, so
-            # most of the useful ways to report this error won't work.
-            # Writing the exception type, and then the text of the exception,
-            # seems to be the best we can do.
-            # FIXME: All interpreter shutdown errors should have been related
-            # to daemon threads, cleanup needed -- vila 20100623
-            sys_stderr.write('\nEXCEPTION {!r}: '.format(e.__class__))
-            sys_stderr.write('{}\n\n'.format(e))
 
     def finish(self):
         self.sftp_server.finish_subsystem()

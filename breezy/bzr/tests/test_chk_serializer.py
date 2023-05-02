@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from ...revision import Revision
-from ..chk_serializer import chk_bencode_serializer
+from ..chk_serializer import revision_bencode_serializer
 from . import TestCase
 
 _working_revision_bencode1 = (b'l'
@@ -55,7 +55,7 @@ class TestBEncodeSerializer1(TestCase):
 
     def test_unpack_revision(self):
         """Test unpacking a revision"""
-        rev = chk_bencode_serializer.read_revision_from_string(
+        rev = revision_bencode_serializer.read_revision_from_string(
             _working_revision_bencode1)
         self.assertEqual(rev.committer,
                          "Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>")
@@ -71,13 +71,13 @@ class TestBEncodeSerializer1(TestCase):
         self.assertEqual(3600, rev.timezone)
 
     def test_written_form_matches(self):
-        rev = chk_bencode_serializer.read_revision_from_string(
+        rev = revision_bencode_serializer.read_revision_from_string(
             _working_revision_bencode1)
-        as_str = chk_bencode_serializer.write_revision_to_string(rev)
+        as_str = revision_bencode_serializer.write_revision_to_string(rev)
         self.assertEqualDiff(_working_revision_bencode1, as_str)
 
     def test_unpack_revision_no_timezone(self):
-        rev = chk_bencode_serializer.read_revision_from_string(
+        rev = revision_bencode_serializer.read_revision_from_string(
             _working_revision_bencode1_no_timezone)
         self.assertEqual(None, rev.timezone)
 
@@ -87,19 +87,14 @@ class TestBEncodeSerializer1(TestCase):
         self.assertEqual(orig_rev, new_rev)
 
     def test_roundtrips_non_ascii(self):
-        rev = Revision(b"revid1")
-        rev.message = "\n\xe5me"
-        rev.committer = 'Erik B\xe5gfors'
-        rev.timestamp = 1242385452
-        rev.inventory_sha1 = b"4a2c7fb50e077699242cf6eb16a61779c7b680a7"
-        rev.timezone = 3600
-        self.assertRoundTrips(chk_bencode_serializer, rev)
+        rev = Revision(
+            b"revid1", message="\n\xe5me",
+            committer='Erik B\xe5gfors', timestamp=1242385452,
+            inventory_sha1=b"4a2c7fb50e077699242cf6eb16a61779c7b680a7",
+            parent_ids=[], properties={},
+            timezone=3600)
+        self.assertRoundTrips(revision_bencode_serializer, rev)
 
     def test_roundtrips_xml_invalid_chars(self):
-        rev = Revision(b"revid1")
-        rev.message = "\t\ue000"
-        rev.committer = 'Erik B\xe5gfors'
-        rev.timestamp = 1242385452
-        rev.timezone = 3600
-        rev.inventory_sha1 = b"4a2c7fb50e077699242cf6eb16a61779c7b680a7"
-        self.assertRoundTrips(chk_bencode_serializer, rev)
+        rev = Revision(b"revid1", properties={}, parent_ids=[], message="\t\ue000", committer='Erik B\xe5gfors', timestamp=1242385452, timezone=3600, inventory_sha1=b"4a2c7fb50e077699242cf6eb16a61779c7b680a7")
+        self.assertRoundTrips(revision_bencode_serializer, rev)

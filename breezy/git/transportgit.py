@@ -239,7 +239,7 @@ class TransportRefsContainer(RefsContainer):
                 return None
             if header == SYMREF:
                 # Read only the first line
-                return header + next(iter(f)).rstrip(b"\r\n")
+                return header + f.read().splitlines()[0].rstrip(b"\r\n")
             else:
                 # Read only the first 40 bytes
                 return header + f.read(40 - len(SYMREF))

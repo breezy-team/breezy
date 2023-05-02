@@ -733,10 +733,10 @@ class Transport:
         :return: yield (pos, data) tuples for each request
         """
         try:
-            for (pos, data) in _transport_rs.seek_and_read(fp, offsets,
-                                                           max_readv_combine=self._max_readv_combine,
-                                                           bytes_to_read_before_seek=self._bytes_to_read_before_seek, path=relpath):
-                yield (pos, data)
+            yield from _transport_rs.seek_and_read(
+                fp, offsets, max_readv_combine=self._max_readv_combine,
+                bytes_to_read_before_seek=self._bytes_to_read_before_seek,
+                path=relpath)
         finally:
             fp.close()
 

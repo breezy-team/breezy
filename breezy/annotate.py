@@ -72,15 +72,18 @@ def annotate_file_tree(tree, path, to_file, verbose=False, full=False,
         # Create a virtual revision to represent the current tree state.
         # Should get some more pending commit attributes, like pending tags,
         # bugfixes etc.
-        current_rev = Revision(CURRENT_REVISION)
-        current_rev.parent_ids = tree.get_parent_ids()
         try:
-            current_rev.committer = branch.get_config_stack().get('email')
+            committer = branch.get_config_stack().get('email')
         except errors.NoWhoami:
-            current_rev.committer = 'local user'
-        current_rev.message = "?"
-        current_rev.timestamp = round(time.time(), 3)
-        current_rev.timezone = osutils.local_time_offset()
+            committer = 'local user'
+        current_rev = Revision(
+                CURRENT_REVISION,
+                parent_ids=tree.get_parent_ids(),
+                committer=committer, message="?",
+                properties={},
+                inventory_sha1=None,
+                timestamp=round(time.time(), 3),
+                timezone=osutils.local_time_offset())
     else:
         current_rev = None
     annotation = list(_expand_annotations(

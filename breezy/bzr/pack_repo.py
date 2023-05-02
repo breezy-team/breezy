@@ -48,7 +48,7 @@ from ..lock import LogicalLockResult
 from ..repository import RepositoryWriteLockResult, _LazyListJoin
 from ..trace import mutter, note, warning
 from .repository import MetaDirRepository, RepositoryFormatMetaDir
-from .serializer import Serializer
+from .serializer import InventorySerializer, RevisionSerializer
 from .vf_repository import (MetaDirVersionedFileRepository,
                             MetaDirVersionedFileRepositoryFormat,
                             VersionedFileCommitBuilder)
@@ -1705,13 +1705,15 @@ class PackRepository(MetaDirVersionedFileRepository):
     # them, or a subclass fails to call the constructor, that an error will
     # occur rather than the system working but generating incorrect data.
     _commit_builder_class: Type[VersionedFileCommitBuilder]
-    _serializer: Serializer
+    _revision_serializer: RevisionSerializer
+    _inventory_serializer: InventorySerializer
 
     def __init__(self, _format, a_controldir, control_files, _commit_builder_class,
-                 _serializer):
+                 _revision_serializer, _inventory_serializer):
         MetaDirRepository.__init__(self, _format, a_controldir, control_files)
         self._commit_builder_class = _commit_builder_class
-        self._serializer = _serializer
+        self._revision_serializer = _revision_serializer
+        self._inventory_serializer = _inventory_serializer
         self._reconcile_fixes_text_parents = True
         if self._format.supports_external_lookups:
             self._unstacked_provider = graph.CachingParentsProvider(
@@ -1902,7 +1904,8 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
     _commit_builder_class: Type[VersionedFileCommitBuilder]
     # Set this attribute in derived clases to control the _serializer that the
     # repository objects will have passed to their constructor.
-    _serializer: Serializer
+    _revision_serializer: RevisionSerializer
+    _inventory_serializer: InventorySerializer
     # Packs are not confused by ghosts.
     supports_ghosts: bool = True
     # External references are not supported in pack repositories yet.
@@ -1956,7 +1959,8 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
                                      a_controldir=a_controldir,
                                      control_files=control_files,
                                      _commit_builder_class=self._commit_builder_class,
-                                     _serializer=self._serializer)
+                                     _revision_serializer=self._revision_serializer,
+                                     _inventory_serializer=self._inventory_serializer)
 
 
 class RetryPackOperations(RetryWithNewPacks):

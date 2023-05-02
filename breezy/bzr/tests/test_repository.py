@@ -338,7 +338,8 @@ class DummyRepository:
     """A dummy repository for testing."""
 
     _format = None
-    _serializer = None
+    _revision_serializer = None
+    _inventory_serializer = None
 
     def supports_rich_root(self):
         if self._format is not None:
@@ -410,13 +411,15 @@ class TestInterRepository(TestCaseWithTransport):
         dummy_b._format = RepositoryFormat()
         repo = self.make_repository('.')
         # hack dummies to look like repo somewhat.
-        dummy_a._serializer = repo._serializer
+        dummy_a._revision_serializer = repo._revision_serializer
+        dummy_a._inventory_serializer = repo._inventory_serializer
         dummy_a._format.supports_tree_reference = (
             repo._format.supports_tree_reference)
         dummy_a._format.rich_root_data = repo._format.rich_root_data
         dummy_a._format.supports_full_versioned_files = (
             repo._format.supports_full_versioned_files)
-        dummy_b._serializer = repo._serializer
+        dummy_b._revision_serializer = repo._revision_serializer
+        dummy_b._inventory_serializer = repo._inventory_serializer
         dummy_b._format.supports_tree_reference = (
             repo._format.supports_tree_reference)
         dummy_b._format.rich_root_data = repo._format.rich_root_data
@@ -856,9 +859,9 @@ class TestWithBrokenRepo(TestCaseWithTransport):
             repo.texts.add_lines((inv.root.file_id, b'rev1a'), [], [])
             repo.add_inventory(b'rev1a', inv, [])
             revision = _mod_revision.Revision(
-                b'rev1a',
+                b'rev1a', properties={},
                 committer='jrandom@example.com', timestamp=0,
-                inventory_sha1='', timezone=0, message='foo', parent_ids=[])
+                inventory_sha1=None, timezone=0, message='foo', parent_ids=[])
             repo.add_revision(b'rev1a', revision, inv)
 
             # make rev1b, which has no Revision, but has an Inventory, and
@@ -899,8 +902,8 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         repo.add_inventory(revision_id, inv, parent_ids)
         revision = _mod_revision.Revision(
             revision_id,
-            committer='jrandom@example.com', timestamp=0, inventory_sha1='',
-            timezone=0, message='foo', parent_ids=parent_ids)
+            committer='jrandom@example.com', timestamp=0, inventory_sha1=None,
+            timezone=0, message='foo', parent_ids=parent_ids, properties={})
         repo.add_revision(revision_id, revision, inv)
 
     def add_file(self, repo, inv, filename, revision, parents):
