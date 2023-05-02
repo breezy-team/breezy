@@ -28,6 +28,7 @@ from binascii import hexlify
 from typing import Dict, Optional, Set, Tuple, Type
 
 from ... import bedding, config, errors, osutils, registry, trace, ui
+from ..._transport_rs import SFTPClient
 
 try:
     import paramiko
@@ -35,8 +36,6 @@ except ModuleNotFoundError as e:
     # If we have an ssh subprocess, we don't strictly need paramiko for all ssh
     # access
     paramiko = None  # type: ignore
-else:
-    from paramiko.sftp_client import SFTPClient
 
 
 class StrangeHostname(errors.BzrError):
@@ -234,7 +233,7 @@ class LoopbackVendor(SSHVendor):
             sock.connect((host, port))
         except OSError as e:
             self._raise_connection_error(host, port=port, orig_error=e)
-        return SFTPClient(SocketAsChannelAdapter(sock))
+        return SFTPClient(sock.detach())
 
 
 register_ssh_vendor('loopback', LoopbackVendor())
@@ -289,7 +288,7 @@ class SubprocessVendor(SSHVendor):
             argv = self._get_vendor_specific_argv(username, host, port,
                                                   subsystem='sftp')
             sock = self._connect(argv)
-            return SFTPClient(SocketAsChannelAdapter(sock))
+            return SFTPClient(sock._sock.detach())
         except _ssh_connection_errors as e:
             self._raise_connection_error(host, port=port, orig_error=e)
 
