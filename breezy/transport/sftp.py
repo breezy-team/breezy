@@ -40,7 +40,6 @@ from ..trace import mutter, warning
 from ..transport import (ConnectedTransport, FileExists, FileFileStream,
                          NoSuchFile, _file_streams, ssh)
 
-
 SFTPError = _sftp_rs.SFTPError
 
 
