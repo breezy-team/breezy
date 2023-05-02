@@ -865,9 +865,11 @@ fn read_raw_packet(channel: &mut dyn Channel) -> std::io::Result<(u8, Vec<u8>)> 
 }
 
 fn write_raw_packet(channel: &mut dyn Channel, kind: u8, buf: &[u8]) -> std::io::Result<()> {
+    let mut channel = std::io::BufWriter::new(channel);
     channel.write_u32::<BigEndian>(buf.len() as u32 + 1)?;
     channel.write_u8(kind)?;
     channel.write_all(buf)?;
+    channel.flush()?;
     Ok(())
 }
 

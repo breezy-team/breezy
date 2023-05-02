@@ -253,7 +253,7 @@ impl SFTPFile {
 
             fn __next__(&mut self, py: Python) -> PyResult<Option<PyObject>> {
                 if let Some((offset, length)) = self.offsets.pop_front() {
-                    match self.sftp.pread(&self.file, offset, length) {
+                    match py.allow_threads(|| self.sftp.pread(&self.file, offset, length)) {
                         Ok(data) => Ok(Some(PyBytes::new(py, &data).into())),
                         Err(breezy_transport::sftp::Error::Eof(_, _)) => {
                             Ok(Some(PyBytes::new(py, &[]).into()))
