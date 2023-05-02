@@ -520,7 +520,7 @@ class GraphIndex:
                          self._transport.abspath(self._name))
         if stream is None:
             stream = self._transport.get(self._name)
-            if self._base_offset != 0:
+            if self._base_offset != 0 or not hasattr(stream, "readline"):
                 # This is wasteful, but it is better than dealing with
                 # adjusting all the offsets, etc.
                 stream = BytesIO(stream.read()[self._base_offset:])

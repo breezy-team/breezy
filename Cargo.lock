@@ -181,6 +181,9 @@ dependencies = [
 [[package]]
 name = "breezy-transport"
 version = "3.3.3"
+dependencies = [
+ "byteorder",
+]
 
 [[package]]
 name = "breezy-urlutils"
@@ -211,6 +214,12 @@ name = "bytecount"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2c676a478f63e9fa2dd5368a42f28bba0d6c560b775f38583c8bbaa7fcd67c9c"
+
+[[package]]
+name = "byteorder"
+version = "1.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "14c189c53d098945499cdfa7ecc63567cf3886b3332b312a5b4585d8d3a6a610"
 
 [[package]]
 name = "camino"
