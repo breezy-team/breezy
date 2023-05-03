@@ -1,5 +1,7 @@
+use log::Log;
 use pyo3::import_exception;
 use pyo3::prelude::*;
+use pyo3_file::PyFileLikeObject;
 use std::io::Write;
 use std::path::PathBuf;
 
@@ -154,6 +156,68 @@ fn get_brz_log_filename() -> PyResult<Option<PathBuf>> {
     Ok(breezy::trace::get_brz_log_filename())
 }
 
+#[pyclass]
+struct BreezyTraceHandler(
+    Box<std::sync::Arc<breezy::trace::BreezyTraceLogger<Box<dyn Write + Send>>>>,
+);
+
+#[pymethods]
+impl BreezyTraceHandler {
+    #[new]
+    fn new(f: PyObject) -> PyResult<Self> {
+        let f = PyFileLikeObject::with_requirements(f, false, true, false)?;
+        Ok(Self(Box::new(std::sync::Arc::new(
+            breezy::trace::BreezyTraceLogger::new(Box::new(f)),
+        ))))
+    }
+
+    #[getter]
+    fn get_level(&self) -> PyResult<u32> {
+        Ok(20) // DEBUG
+    }
+
+    fn close(&mut self) -> PyResult<()> {
+        // TODO(jelmer): close underlying file?
+        Ok(())
+    }
+
+    fn handle(&self, py: Python, pyr: PyObject) -> PyResult<()> {
+        let formatted = pyr
+            .getattr(py, "msg")?
+            .call_method1(py, "format", (pyr.getattr(py, "args")?,))?
+            .extract::<String>(py)?;
+
+        let mut rb = log::Record::builder();
+        let mut r = &mut rb;
+
+        if let Ok(level) = pyr.getattr(py, "levelno") {
+            r = r.level(match level.extract::<u32>(py)? {
+                10 => log::Level::Debug,
+                20 => log::Level::Info,
+                30 => log::Level::Warn,
+                40 => log::Level::Error,
+                50 => log::Level::Error, // CRITICAL
+                _ => log::Level::Trace,  // UNKNOWN
+            });
+        }
+
+        if let Ok(path) = pyr.as_ref(py).getattr("pathname") {
+            r = r.file(Some(path.extract::<&str>()?));
+        }
+
+        if let Ok(func) = pyr.getattr(py, "lineno") {
+            r = r.line(Some(func.extract::<u32>(py)?));
+        }
+
+        if let Ok(module) = pyr.as_ref(py).getattr("module") {
+            r = r.module_path(Some(module.extract::<&str>()?));
+        }
+
+        self.0.log(&r.args(format_args!("{}", formatted)).build());
+        Ok(())
+    }
+}
+
 #[pymodule]
 fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     let i18n = PyModule::new(_py, "i18n")?;
@@ -183,6 +247,7 @@ fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(open_brz_log, m)?)?;
     m.add_function(wrap_pyfunction!(set_brz_log_filename, m)?)?;
     m.add_function(wrap_pyfunction!(get_brz_log_filename, m)?)?;
+    m.add_class::<BreezyTraceHandler>()?;
 
     Ok(())
 }

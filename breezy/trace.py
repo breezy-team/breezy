@@ -198,10 +198,7 @@ def enable_default_logging():
     brz_log_file = _open_brz_log()
     if brz_log_file is not None:
         brz_log_file.write(start_time.encode('utf-8') + b'\n')
-    memento = push_log_file(
-        brz_log_file,
-        r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s',
-        r'%Y-%m-%d %H:%M:%S')
+    memento = push_log_file(brz_log_file)
     # after hooking output into brz_log, we also need to attach a stderr
     # handler, writing only at level info and with encoding
     stderr_handler = logging.StreamHandler(stream=sys.stderr)
@@ -209,7 +206,7 @@ def enable_default_logging():
     return memento
 
 
-def push_log_file(to_file, log_format=None, date_format=None):
+def push_log_file(to_file):
     """Intercept log and trace messages and send them to a file.
 
     :param to_file: A file-like object to which messages will be sent.
@@ -219,10 +216,7 @@ def push_log_file(to_file, log_format=None, date_format=None):
     """
     global _trace_file
     # make a new handler
-    new_handler = EncodedStreamHandler(to_file, "utf-8", level=logging.DEBUG)
-    if log_format is None:
-        log_format = '%(levelname)8s  %(message)s'
-    new_handler.setFormatter(logging.Formatter(log_format, date_format))
+    new_handler = _cmd_rs.BreezyTraceHandler(to_file)
     # save and remove any existing log handlers
     brz_logger = logging.getLogger('brz')
     old_handlers = brz_logger.handlers[:]

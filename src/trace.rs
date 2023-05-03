@@ -175,7 +175,7 @@ impl<F: Write + Send> log::Log for BreezyTraceLogger<F> {
                 .unwrap()
                 .write_all(
                     format!(
-                        "[{:5}] {}.{:03} {}: {}",
+                        "[{:5}] {}.{:03} {}: {}\n",
                         std::process::id(),
                         now.format("%Y-%m-%d %H:%M:%S"),
                         now.timestamp_subsec_millis(),
