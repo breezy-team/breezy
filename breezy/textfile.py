@@ -16,9 +16,10 @@
 
 """Utilities for distinguishing binary files from text files"""
 
+from itertools import chain
+
 from . import _osutils_rs
 from .errors import BinaryFile
-from itertools import chain
 
 check_text_lines = _osutils_rs.check_text_lines
 check_text_path = _osutils_rs.check_text_path
