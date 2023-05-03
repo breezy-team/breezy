@@ -73,7 +73,7 @@ from breezy import (
     ui,
     )
 """)
-from . import errors
+from . import errors, _cmd_rs
 
 # global verbosity for breezy; controls the log level for stderr; 0=normal; <0
 # is quiet; >0 is verbose.
@@ -189,16 +189,7 @@ def _rollover_trace_maybe(trace_fname):
         return
 
 
-def _get_brz_log_filename():
-    """Return the brz log filename.
-
-    :return: A path to the log file
-    :raise EnvironmentError: If the cache directory could not be created
-    """
-    brz_log = os.environ.get('BRZ_LOG')
-    if brz_log:
-        return brz_log
-    return os.path.join(bedding.cache_dir(), 'brz.log')
+_get_brz_log_filename = _cmd_rs.get_brz_log_filename
 
 
 def _open_brz_log():

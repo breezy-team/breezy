@@ -107,6 +107,11 @@ fn auto_user_id() -> PyResult<(Option<String>, Option<String>)> {
     Ok(breezy::bedding::auto_user_id()?)
 }
 
+#[pyfunction]
+fn get_brz_log_filename() -> PyResult<PathBuf> {
+    Ok(breezy::trace::get_brz_log_filename()?)
+}
+
 #[pymodule]
 fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     let i18n = PyModule::new(_py, "i18n")?;
@@ -130,6 +135,7 @@ fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(get_default_mail_domain, m)?)?;
     m.add_function(wrap_pyfunction!(default_email, m)?)?;
     m.add_function(wrap_pyfunction!(auto_user_id, m)?)?;
+    m.add_function(wrap_pyfunction!(get_brz_log_filename, m)?)?;
 
     Ok(())
 }
