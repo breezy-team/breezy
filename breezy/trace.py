@@ -73,7 +73,7 @@ from breezy import (
     ui,
     )
 """)
-from . import errors, _cmd_rs
+from . import _cmd_rs, errors
 
 # global verbosity for breezy; controls the log level for stderr; 0=normal; <0
 # is quiet; >0 is verbose.
