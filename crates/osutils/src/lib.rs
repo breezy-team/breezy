@@ -1,3 +1,4 @@
+use log::warn;
 use memchr::memchr;
 use rand::Rng;
 use std::fs::File;
@@ -205,6 +206,36 @@ pub fn contains_linebreaks(s: &str) -> bool {
         }
     }
     false
+}
+
+pub fn get_home_dir() -> Option<std::path::PathBuf> {
+    dirs::home_dir()
+}
+
+fn _get_user_encoding() -> Option<String> {
+    unsafe {
+        let codeset = nix::libc::nl_langinfo(nix::libc::CODESET);
+        if codeset.is_null() {
+            return None;
+        }
+        let codeset_str = std::ffi::CStr::from_ptr(codeset);
+        Some(codeset_str.to_string_lossy().to_string())
+    }
+}
+
+pub fn get_user_encoding() -> Option<String> {
+    let encoding = _get_user_encoding()?;
+
+    match encoding_rs::Encoding::for_label(encoding.as_bytes()) {
+        Some(enc) => Some(enc.name().to_string()),
+        _ => {
+            warn!(
+                "brz: warning: unknown encoding {}. Defaulting to ASCII.",
+                encoding
+            );
+            Some("ASCII".to_string())
+        }
+    }
 }
 
 pub mod file;
