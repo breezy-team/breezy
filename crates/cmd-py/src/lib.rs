@@ -56,6 +56,26 @@ fn bazaar_config_dir() -> PyResult<PathBuf> {
     Ok(breezy::bedding::bazaar_config_dir()?.to_path_buf())
 }
 
+#[pyfunction]
+fn config_path() -> PyResult<PathBuf> {
+    Ok(breezy::bedding::config_path()?.to_path_buf())
+}
+
+#[pyfunction]
+fn locations_config_path() -> PyResult<PathBuf> {
+    Ok(breezy::bedding::locations_config_path()?.to_path_buf())
+}
+
+#[pyfunction]
+fn authentication_config_path() -> PyResult<PathBuf> {
+    Ok(breezy::bedding::authentication_config_path()?.to_path_buf())
+}
+
+#[pyfunction]
+fn user_ignore_config_path() -> PyResult<PathBuf> {
+    Ok(breezy::bedding::user_ignore_config_path()?.to_path_buf())
+}
+
 #[pymodule]
 fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     let i18n = PyModule::new(_py, "i18n")?;
@@ -70,6 +90,10 @@ fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(config_dir, m)?)?;
     m.add_function(wrap_pyfunction!(bazaar_config_dir, m)?)?;
     m.add_function(wrap_pyfunction!(_config_dir, m)?)?;
+    m.add_function(wrap_pyfunction!(config_path, m)?)?;
+    m.add_function(wrap_pyfunction!(locations_config_path, m)?)?;
+    m.add_function(wrap_pyfunction!(authentication_config_path, m)?)?;
+    m.add_function(wrap_pyfunction!(user_ignore_config_path, m)?)?;
 
     Ok(())
 }

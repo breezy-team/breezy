@@ -157,3 +157,26 @@ pub fn _config_dir() -> std::io::Result<(PathBuf, ConfigDirKind)> {
 pub fn config_dir() -> std::io::Result<PathBuf> {
     Ok(_config_dir()?.0)
 }
+
+pub fn config_path() -> std::io::Result<PathBuf> {
+    let (path, kind) = _config_dir()?;
+    Ok(match kind {
+        ConfigDirKind::Breezy => path.join("breezy.conf"),
+        ConfigDirKind::Bazaar => path.join("bazaar.conf"),
+    })
+}
+
+/// Return per-user configuration ini file filename.
+pub fn locations_config_path() -> std::io::Result<PathBuf> {
+    Ok(config_dir()?.join("locations.conf"))
+}
+
+/// Return per-user authentication ini file filename.
+pub fn authentication_config_path() -> std::io::Result<PathBuf> {
+    Ok(config_dir()?.join("authentication.conf"))
+}
+
+/// Return per-user authentication ini file filename.
+pub fn user_ignore_config_path() -> std::io::Result<PathBuf> {
+    Ok(config_dir()?.join("ignore"))
+}

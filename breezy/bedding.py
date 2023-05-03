@@ -36,30 +36,10 @@ ensure_config_dir_exists = _cmd_rs.ensure_config_dir_exists
 bazaar_config_dir = _cmd_rs.bazaar_config_dir
 config_dir = _cmd_rs.config_dir
 _config_dir = _cmd_rs._config_dir
-
-
-def config_path():
-    """Return per-user configuration ini file filename."""
-    path, kind = _config_dir()
-    if kind == 'bazaar':
-        return osutils.pathjoin(path, 'bazaar.conf')
-    else:
-        return osutils.pathjoin(path, 'breezy.conf')
-
-
-def locations_config_path():
-    """Return per-user configuration ini file filename."""
-    return osutils.pathjoin(config_dir(), 'locations.conf')
-
-
-def authentication_config_path():
-    """Return per-user authentication ini file filename."""
-    return osutils.pathjoin(config_dir(), 'authentication.conf')
-
-
-def user_ignore_config_path():
-    """Return per-user authentication ini file filename."""
-    return osutils.pathjoin(config_dir(), 'ignore')
+config_path = _cmd_rs.config_path
+locations_config_path = _cmd_rs.locations_config_path
+authentication_config_path = _cmd_rs.authentication_config_path
+user_ignore_config_path = _cmd_rs.user_ignore_config_path
 
 
 def crash_dir():
