@@ -140,6 +140,7 @@ name = "breezy"
 version = "3.3.3"
 dependencies = [
  "breezy-osutils",
+ "chrono",
  "gettext-rs",
  "log",
  "nix",
@@ -298,7 +299,9 @@ version = "3.3.3"
 dependencies = [
  "breezy",
  "gettext-rs",
+ "log",
  "pyo3",
+ "pyo3-file",
 ]
 
 [[package]]

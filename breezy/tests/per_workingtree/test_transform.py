@@ -1689,7 +1689,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         foo_trans_id = tt.trans_id_tree_path("foo")
         tt.delete_contents(foo_trans_id)
         log = BytesIO()
-        trace.push_log_file(log)
+        trace.push_log_file(log, short=True)
         tt.create_symlink("bar", foo_trans_id)
         tt.apply()
         self.assertContainsRe(

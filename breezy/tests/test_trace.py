@@ -276,10 +276,10 @@ class TestTrace(TestCase):
         tmp1 = tempfile.NamedTemporaryFile()
         tmp2 = tempfile.NamedTemporaryFile()
         try:
-            memento1 = push_log_file(tmp1)
+            memento1 = push_log_file(tmp1, short=True)
             mutter("comment to file1")
             try:
-                memento2 = push_log_file(tmp2)
+                memento2 = push_log_file(tmp2, short=True)
                 try:
                     mutter("comment to file2")
                 finally:
@@ -399,24 +399,13 @@ class TestLogging(TestCase):
         logging.getLogger("brz").debug("%s", "\xa7")
         self.assertEqual("   DEBUG  \xa7\n", self.get_log())
 
-    def test_log_utf8_msg(self):
-        logging.getLogger("brz").debug(b"\xc2\xa7")
-        self.assertEqual("   DEBUG  \xa7\n", self.get_log())
-
     def test_log_utf8_arg(self):
-        logging.getLogger("brz").debug(b"%s", b"\xc2\xa7")
+        logging.getLogger("brz").debug("%s", b"\xc2\xa7")
         expected = "   DEBUG  b'\\xc2\\xa7'\n"
         self.assertEqual(expected, self.get_log())
 
-    def test_log_bytes_msg(self):
-        logging.getLogger("brz").debug(b"\xa7")
-        log = self.get_log()
-        self.assertContainsString(log, "UnicodeDecodeError: ")
-        self.assertContainsRe(
-            log, "Logging record unformattable: b?'\\\\xa7' % \\(\\)\n")
-
     def test_log_bytes_arg(self):
-        logging.getLogger("brz").debug(b"%s", b"\xa7")
+        logging.getLogger("brz").debug("%s", b"\xa7")
         log = self.get_log()
         self.assertEqual("   DEBUG  b'\\xa7'\n", self.get_log())
 

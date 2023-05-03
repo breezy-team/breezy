@@ -198,10 +198,7 @@ def enable_default_logging():
     brz_log_file = _open_brz_log()
     if brz_log_file is not None:
         brz_log_file.write(start_time.encode('utf-8') + b'\n')
-    memento = push_log_file(
-        brz_log_file,
-        r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s',
-        r'%Y-%m-%d %H:%M:%S')
+    memento = push_log_file(brz_log_file, short=False)
     # after hooking output into brz_log, we also need to attach a stderr
     # handler, writing only at level info and with encoding
     stderr_handler = logging.StreamHandler(stream=sys.stderr)
@@ -209,7 +206,7 @@ def enable_default_logging():
     return memento
 
 
-def push_log_file(to_file, log_format=None, date_format=None):
+def push_log_file(to_file, short=True):
     """Intercept log and trace messages and send them to a file.
 
     :param to_file: A file-like object to which messages will be sent.
@@ -219,10 +216,7 @@ def push_log_file(to_file, log_format=None, date_format=None):
     """
     global _trace_file
     # make a new handler
-    new_handler = EncodedStreamHandler(to_file, "utf-8", level=logging.DEBUG)
-    if log_format is None:
-        log_format = '%(levelname)8s  %(message)s'
-    new_handler.setFormatter(logging.Formatter(log_format, date_format))
+    new_handler = _cmd_rs.BreezyTraceHandler(to_file, short=short)
     # save and remove any existing log handlers
     brz_logger = logging.getLogger('brz')
     old_handlers = brz_logger.handlers[:]
@@ -484,52 +478,6 @@ def _flush_trace():
     global _trace_file
     if _trace_file:
         _trace_file.flush()
-
-
-class EncodedStreamHandler(logging.Handler):
-    """Robustly write logging events to a stream using the specified encoding
-
-    Messages are expected to be formatted to unicode, but UTF-8 byte strings
-    are also accepted. An error during formatting or a str message in another
-    encoding will be quitely noted as an error in the Bazaar log file.
-
-    The stream is not closed so sys.stdout or sys.stderr may be passed.
-    """
-
-    def __init__(self, stream, encoding=None, errors='strict', level=0):
-        logging.Handler.__init__(self, level)
-        self.stream = stream
-        if encoding is None:
-            encoding = getattr(stream, "encoding", "ascii")
-        self.encoding = encoding
-        self.errors = errors
-
-    def flush(self):
-        flush = getattr(self.stream, "flush", None)
-        if flush is not None:
-            flush()
-
-    def emit(self, record):
-        try:
-            if not isinstance(record.msg, str):
-                msg = record.msg.decode("utf-8")
-                record.msg = msg
-            line = self.format(record)
-            if not isinstance(line, str):
-                line = line.decode("utf-8")
-            self.stream.write(line.encode(self.encoding, self.errors) + b"\n")
-        except Exception:
-            log_exception_quietly()
-            # Try saving the details that would have been logged in some form
-            msg = args = "<Unformattable>"
-            try:
-                msg = repr(record.msg)
-                args = repr(record.args)
-            except Exception:
-                pass
-            # Using mutter() bypasses the logging module and writes directly
-            # to the file so there's no danger of getting into a loop here.
-            mutter("Logging record unformattable: %s %% %s", msg, args)
 
 
 class Config:

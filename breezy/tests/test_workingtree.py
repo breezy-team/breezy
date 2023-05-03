@@ -455,7 +455,7 @@ class TestAutoResolve(TestCaseWithTransport):
         self.build_tree_contents([('this/hello', 'Hello')])
         this.commit('commit 2')
         log = BytesIO()
-        trace.push_log_file(log)
+        trace.push_log_file(log, short=True)
         os_symlink = getattr(os, 'symlink', None)
         os.symlink = None
         self.overrideAttr(osutils, "supports_symlinks", lambda x: False)
