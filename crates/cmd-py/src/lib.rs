@@ -302,6 +302,11 @@ impl BreezyTraceHandler {
     }
 }
 
+#[pyfunction]
+fn debug_memory_proc(message: &str, short: bool) -> () {
+    breezy::trace::debug_memory_proc(message, short)
+}
+
 #[pymodule]
 fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     let i18n = PyModule::new(_py, "i18n")?;
@@ -332,6 +337,7 @@ fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_brz_log_filename, m)?)?;
     m.add_function(wrap_pyfunction!(get_brz_log_filename, m)?)?;
     m.add_class::<BreezyTraceHandler>()?;
+    m.add_function(wrap_pyfunction!(debug_memory_proc, m)?)?;
 
     Ok(())
 }

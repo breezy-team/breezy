@@ -1,4 +1,6 @@
+use log::info;
 use std::fs::{File, OpenOptions};
+use std::io::Read;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -136,7 +138,7 @@ impl<F: Write> BreezyTraceLogger<F> {
                 None,
                 breezy_osutils::time::Timezone::Local,
                 None,
-                false,
+                true,
             );
             file.write_all((start_time + "\n").as_bytes())
                 .expect("failed to write to trace file");
@@ -243,5 +245,31 @@ impl log::Log for BreezyStderrLogger {
 
     fn flush(&self) {
         std::io::stderr().flush().ok();
+    }
+}
+
+const SHORT_FIELDS: [&str; 3] = ["VmPeak", "VmSize", "VmRSS"];
+
+#[cfg(unix)]
+pub fn debug_memory_proc(message: &str, short: bool) {
+    if let Ok(mut status_file) = File::open(format!("/proc/{}/status", std::process::id())) {
+        let mut status = String::new();
+        if status_file.read_to_string(&mut status).is_ok() {
+            if !message.is_empty() {
+                info!("{}", message);
+            }
+            for line in status.lines() {
+                if !short {
+                    info!("{}", line);
+                } else {
+                    for field in &SHORT_FIELDS {
+                        if line.starts_with(field) {
+                            info!("{}", line);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
     }
 }
