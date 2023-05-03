@@ -1,5 +1,8 @@
+use pyo3::import_exception;
 use pyo3::prelude::*;
 use std::path::PathBuf;
+
+import_exception!(breezy.errors, NoWhoami);
 
 #[pyfunction(name = "disable_i18n")]
 fn i18n_disable_i18n() {
@@ -35,6 +38,75 @@ fn i18n_ngettext(msgid: &str, msgid_plural: &str, n: u32) -> PyResult<String> {
     Ok(breezy::i18n::ngettext(msgid, msgid_plural, n))
 }
 
+#[pyfunction]
+fn ensure_config_dir_exists(path: Option<PathBuf>) -> PyResult<()> {
+    breezy::bedding::ensure_config_dir_exists(path.as_ref().map(|p| p.as_path()))?;
+    Ok(())
+}
+
+#[pyfunction]
+fn config_dir() -> PyResult<PathBuf> {
+    Ok(breezy::bedding::config_dir()?)
+}
+
+#[pyfunction]
+fn _config_dir() -> PyResult<(PathBuf, String)> {
+    Ok(breezy::bedding::_config_dir().map(|(p, k)| (p, k.to_string()))?)
+}
+
+#[pyfunction]
+fn bazaar_config_dir() -> PyResult<PathBuf> {
+    Ok(breezy::bedding::bazaar_config_dir()?)
+}
+
+#[pyfunction]
+fn config_path() -> PyResult<PathBuf> {
+    Ok(breezy::bedding::config_path()?)
+}
+
+#[pyfunction]
+fn locations_config_path() -> PyResult<PathBuf> {
+    Ok(breezy::bedding::locations_config_path()?)
+}
+
+#[pyfunction]
+fn authentication_config_path() -> PyResult<PathBuf> {
+    Ok(breezy::bedding::authentication_config_path()?)
+}
+
+#[pyfunction]
+fn user_ignore_config_path() -> PyResult<PathBuf> {
+    Ok(breezy::bedding::user_ignore_config_path()?)
+}
+
+#[pyfunction]
+fn crash_dir() -> PyResult<PathBuf> {
+    Ok(breezy::bedding::crash_dir())
+}
+
+#[pyfunction]
+fn cache_dir() -> PyResult<PathBuf> {
+    Ok(breezy::bedding::cache_dir()?)
+}
+
+#[pyfunction]
+fn get_default_mail_domain(mailname_file: Option<PathBuf>) -> Option<String> {
+    breezy::bedding::get_default_mail_domain(mailname_file.as_deref())
+}
+
+#[pyfunction]
+fn default_email() -> PyResult<String> {
+    match breezy::bedding::default_email() {
+        Some(email) => Ok(email),
+        None => Err(NoWhoami::new_err(())),
+    }
+}
+
+#[pyfunction]
+fn auto_user_id() -> PyResult<(Option<String>, Option<String>)> {
+    Ok(breezy::bedding::auto_user_id()?)
+}
+
 #[pymodule]
 fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     let i18n = PyModule::new(_py, "i18n")?;
@@ -45,6 +117,19 @@ fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     i18n.add_function(wrap_pyfunction!(i18n_disable_i18n, i18n)?)?;
     i18n.add_function(wrap_pyfunction!(i18n_dgettext, i18n)?)?;
     m.add_submodule(i18n)?;
+    m.add_function(wrap_pyfunction!(ensure_config_dir_exists, m)?)?;
+    m.add_function(wrap_pyfunction!(config_dir, m)?)?;
+    m.add_function(wrap_pyfunction!(bazaar_config_dir, m)?)?;
+    m.add_function(wrap_pyfunction!(_config_dir, m)?)?;
+    m.add_function(wrap_pyfunction!(config_path, m)?)?;
+    m.add_function(wrap_pyfunction!(locations_config_path, m)?)?;
+    m.add_function(wrap_pyfunction!(authentication_config_path, m)?)?;
+    m.add_function(wrap_pyfunction!(user_ignore_config_path, m)?)?;
+    m.add_function(wrap_pyfunction!(crash_dir, m)?)?;
+    m.add_function(wrap_pyfunction!(cache_dir, m)?)?;
+    m.add_function(wrap_pyfunction!(get_default_mail_domain, m)?)?;
+    m.add_function(wrap_pyfunction!(default_email, m)?)?;
+    m.add_function(wrap_pyfunction!(auto_user_id, m)?)?;
 
     Ok(())
 }

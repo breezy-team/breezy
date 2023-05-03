@@ -208,6 +208,10 @@ pub fn contains_linebreaks(s: &str) -> bool {
     false
 }
 
+pub fn get_home_dir() -> Option<std::path::PathBuf> {
+    dirs::home_dir()
+}
+
 fn _get_user_encoding() -> Option<String> {
     unsafe {
         let codeset = nix::libc::nl_langinfo(nix::libc::CODESET);

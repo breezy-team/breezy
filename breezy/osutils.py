@@ -227,7 +227,7 @@ realpath = _osutils_rs.realpath
 normalizepath = _osutils_rs.normalizepath
 pathjoin = os.path.join
 normpath = _osutils_rs.normpath
-_get_home_dir = partial(os.path.expanduser, '~')
+_get_home_dir = _osutils_rs.get_home_dir
 
 def getuser_unicode():
     import getpass
@@ -280,7 +280,6 @@ if sys.platform == 'win32':
         """Replacer for shutil.rmtree: could remove readonly dirs/files"""
         return shutil.rmtree(path, ignore_errors, onerror)
 
-    _get_home_dir = win32utils.get_home_location
     getuser_unicode = win32utils.get_user_name
 
 elif sys.platform == 'darwin':

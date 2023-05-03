@@ -289,7 +289,7 @@ pub fn minimum_path_selection(paths: &PyAny) -> PyResult<HashSet<String>> {
 
 #[pyfunction]
 fn set_or_unset_env(key: &str, value: Option<&str>) -> PyResult<Py<PyAny>> {
-    // Note that we're not calling out to breey_osutils::set_or_unset_env here, because it doesn't
+    // Note that we're not calling out to breezy_osutils::set_or_unset_env here, because it doesn't
     // change the environment in Python.
     Python::with_gil(|py| {
         let os = py.import("os")?;
@@ -297,11 +297,13 @@ fn set_or_unset_env(key: &str, value: Option<&str>) -> PyResult<Py<PyAny>> {
         let old = environ.call_method1("get", (key, py.None()))?;
         if let Some(value) = value {
             environ.set_item(key, value)?;
+            std::env::set_var(key, value);
         } else {
             if old.is_none() {
                 return Ok(py.None());
             }
             environ.del_item(key)?;
+            std::env::remove_var(key);
         }
         Ok(old.into_py(py))
     })
@@ -986,6 +988,11 @@ fn ensure_empty_directory_exists(path: PathBuf) -> PyResult<()> {
 }
 
 #[pyfunction]
+fn get_home_dir() -> PyResult<Option<PathBuf>> {
+    Ok(breezy_osutils::get_home_dir())
+}
+
+#[pyfunction]
 fn get_user_encoding() -> Option<String> {
     breezy_osutils::get_user_encoding()
 }
@@ -1082,5 +1089,6 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
         "UnsupportedTimezoneFormat",
         py.get_type::<UnsupportedTimezoneFormat>(),
     )?;
+    m.add_wrapped(wrap_pyfunction!(get_home_dir))?;
     Ok(())
 }
