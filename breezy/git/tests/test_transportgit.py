@@ -40,11 +40,11 @@ class TransportObjectStoreTests(PackBasedObjectStoreTests, TestCaseWithTransport
         self.store.pack_loose_objects()
         self.assertEqual(1, len(self.store.packs), self.store.packs)
         packname = list(self.store.packs)[0].name()
-        self.assertEqual({'pack-%s' % packname.decode('ascii')},
+        self.assertEqual({f"pack-{packname.decode('ascii')}"},
                          set(self.store._pack_names()))
         self.store.transport.put_bytes_non_atomic('info/packs',
                                                   b'P foo-pack.pack\n')
-        self.assertEqual({'pack-%s' % packname.decode('ascii')},
+        self.assertEqual({f"pack-{packname.decode('ascii')}"},
                          set(self.store._pack_names()))
 
     def test_remembers_packs(self):

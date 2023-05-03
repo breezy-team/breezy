@@ -66,7 +66,7 @@ class TestRevert(TestCaseWithTransport):
         mutter('cd dir\n')
 
         self.assertEqual('1\n', self.run_bzr('revno')[0])
-        self.run_bzr('revert %s file' % param)
+        self.run_bzr(f'revert {param} file')
         with open('file', 'rb') as f:
             self.assertEqual(b'spam', f.read())
 

@@ -39,8 +39,7 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
                                  default=getpass.getuser())
     agent = paramiko.Agent()
     for key in agent.get_keys():
-        trace.mutter('Trying SSH agent key %s'
-                     % hexlify(key.get_fingerprint()).upper())
+        trace.mutter(f'Trying SSH agent key {hexlify(key.get_fingerprint()).upper()}')
         try:
             paramiko_transport.auth_publickey(username, key)
             return
@@ -101,8 +100,7 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
             paramiko_transport.auth_password(username, password)
         except paramiko.SSHException as e:
             raise errors.ConnectionError(
-                'Unable to authenticate to SSH host as'
-                '\n  %s@%s\n' % (username, host), e)
+                f'Unable to authenticate to SSH host as\n  {username}@{host}\n', e)
     else:
         raise errors.ConnectionError('Unable to authenticate to SSH host as'
                                      '  %s@%s' % (username, host))
@@ -126,8 +124,7 @@ def _try_pkey_auth(paramiko_transport, pkey_class, username, filename):
             trace.mutter('SSH authentication via %s key failed.'
                          % (os.path.basename(filename),))
     except paramiko.SSHException:
-        trace.mutter('SSH authentication via %s key failed.'
-                     % (os.path.basename(filename),))
+        trace.mutter(f'SSH authentication via {os.path.basename(filename)} key failed.')
     except OSError:
         pass
     return False
@@ -169,8 +166,7 @@ def save_host_keys():
             f.write('# SSH host keys collected by bzr\n')
             for hostname, keys in BRZ_HOSTKEYS.items():
                 for keytype, key in keys.items():
-                    f.write('%s %s %s\n' %
-                            (hostname, keytype, key.get_base64()))
+                    f.write(f'{hostname} {keytype} {key.get_base64()}\n')
     except OSError as e:
         trace.mutter('failed to save bzr host keys: ' + str(e))
 
@@ -206,8 +202,7 @@ class ParamikoVendor(SSHVendor):
             our_server_key = BRZ_HOSTKEYS[host][keytype]
             our_server_key_hex = self._hexify(our_server_key.get_fingerprint())
         else:
-            trace.warning('Adding %s host key for %s: %s'
-                          % (keytype, host, server_key_hex))
+            trace.warning(f'Adding {keytype} host key for {host}: {server_key_hex}')
             add = getattr(BRZ_HOSTKEYS, 'add', None)
             if add is not None:  # paramiko >= 1.X.X
                 BRZ_HOSTKEYS.add(host, keytype, server_key)
@@ -222,7 +217,7 @@ class ParamikoVendor(SSHVendor):
             raise errors.TransportError(
                 'Host keys for %s do not match!  %s != %s' %
                 (host, our_server_key_hex, server_key_hex),
-                ['Try editing {} or {}'.format(filename1, filename2)])
+                [f'Try editing {filename1} or {filename2}'])
 
         _paramiko_auth(username, password, host, port, t)
         return t

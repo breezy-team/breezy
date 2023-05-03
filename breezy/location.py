@@ -94,7 +94,7 @@ def parse_cvs_location(location):
     try:
         path = parts[3]
     except IndexError:
-        raise ValueError('no path element in CVS location %s' % location)
+        raise ValueError(f'no path element in CVS location {location}')
     return (scheme, hostname, username, path)
 
 

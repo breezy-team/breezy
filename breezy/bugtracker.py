@@ -347,7 +347,7 @@ class URLParametrizedBugTracker(BugTracker):
     def get(self, abbreviation, branch):
         config = branch.get_config()
         url = config.get_user_option(
-            "{}_{}_url".format(self.type_name, abbreviation), expand=False)
+            f"{self.type_name}_{abbreviation}_url", expand=False)
         if url is None:
             return None
         self._base_url = url
@@ -422,7 +422,7 @@ def encode_fixes_bug_urls(bug_urls):
     for (url, tag) in bug_urls:
         if ' ' in url:
             raise InvalidBugUrl(url)
-        lines.append('{} {}'.format(url, tag))
+        lines.append(f'{url} {tag}')
     return '\n'.join(lines)
 
 

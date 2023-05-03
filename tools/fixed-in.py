@@ -140,7 +140,7 @@ def main():
         bug = None
         msg_re = re.compile(opts.msg_re)
     elif len(args) != 1:
-        opt_parser.error('Expected a single bug number, got %r' % args)
+        opt_parser.error(f'Expected a single bug number, got {args!r}')
     else:
         bug = args[0]
 
@@ -159,12 +159,11 @@ def main():
             elif msg_re.search(entry) is not None:
                 found = True
             if found:
-                print('Bug {} was fixed in brz-{}/{} by {}:'.format(
-                    number, release, date, authors))
+                print(f'Bug {number} was fixed in brz-{release}/{date} by {authors}:')
                 print(entry)
             seen += 1
     finally:
-        print('{} bugs seen'.format(seen))
+        print(f'{seen} bugs seen')
         news.close()
 
 

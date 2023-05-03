@@ -207,7 +207,7 @@ brz: ERROR: No changes to commit.\
         out, err = self.run_bzr('commit -m renamed')
         self.assertEqual('', out)
         self.assertEqual({
-            'Committing to: %s/' % osutils.getcwd(),
+            f'Committing to: {osutils.getcwd()}/',
             'added subdir',
             'renamed hello.txt => subdir/hello.txt',
             'Committed revision 2.',
@@ -247,10 +247,9 @@ brz: ERROR: No changes to commit.\
         a_tree.commit(message='Initial message')
 
         b_tree = a_tree.branch.create_checkout('b')
-        expected = "{}/".format(osutils.abspath('a'))
+        expected = f"{osutils.abspath('a')}/"
         out, err = self.run_bzr('commit -m blah --unchanged', working_dir='b')
-        self.assertEqual(err, 'Committing to: %s\n'
-                         'Committed revision 2.\n' % expected)
+        self.assertEqual(err, f'Committing to: {expected}\nCommitted revision 2.\n')
 
     def test_commit_sanitizes_CR_in_message(self):
         # See bug #433779, basically Emacs likes to pass '\r\n' style line
@@ -320,7 +319,7 @@ brz: ERROR: No changes to commit.\
         out, err = self.run_bzr('commit -m added', working_dir='this')
         self.assertEqual('', out)
         self.assertEqual({
-            'Committing to: %s/' % osutils.pathjoin(osutils.getcwd(), 'this'),
+            f"Committing to: {osutils.pathjoin(osutils.getcwd(), 'this')}/",
             'modified filetomodify',
             'added newdir',
             'added newfile',
@@ -632,7 +631,7 @@ altered in u2
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
         self.run_bzr_error(
-            ["Unrecognized bug %s. Commit refused." % 'xxx:123'],
+            [f"Unrecognized bug {'xxx:123'}. Commit refused."],
             'commit -m add-b --fixes=xxx:123',
             working_dir='tree')
 

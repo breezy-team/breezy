@@ -950,7 +950,7 @@ class HashPrefixMapper(URLEscapeMapper):
     def _map(self, key):
         """See KeyMapper.map()."""
         prefix = self._escape(key[0])
-        return "{:02x}/{}".format(adler32(prefix) & 0xff, prefix.decode('utf-8'))
+        return f"{adler32(prefix) & 255:02x}/{prefix.decode('utf-8')}"
 
     def _escape(self, prefix):
         """No escaping needed here."""
@@ -983,7 +983,7 @@ class HashEscapedPrefixMapper(HashPrefixMapper):
         # @ does not get escaped. This is because it is a valid
         # filesystem character we use all the time, and it looks
         # a lot better than seeing %40 all the time.
-        r = [(c in self._safe) and chr(c) or ('%%%02x' % c)
+        r = [(c in self._safe) and chr(c) or (f'%{c:02x}')
              for c in bytearray(prefix)]
         return ''.join(r).encode('ascii')
 
@@ -1798,7 +1798,7 @@ class PlanWeaveMerge(TextMerge):
                     # It seems that having the line 2 times is better than
                     # having it omitted. (Easier to manually delete than notice
                     # it needs to be added.)
-                    raise AssertionError('Unknown state: {}'.format(state))
+                    raise AssertionError(f'Unknown state: {state}')
         return base_lines
 
 

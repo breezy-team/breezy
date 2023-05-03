@@ -302,11 +302,11 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
         for char in 'abc':
             name = char * 10000
             file_adds.append(
-                ('add', ('file-' + name, ('file-%s-id' % name).encode(), 'file',
-                         ('content %s\n' % name).encode())))
+                ('add', ('file-' + name, (f'file-{name}-id').encode(), 'file',
+                         f'content {name}\n'.encode())))
             file_modifies.append(
                 ('modify', ('file-' + name,
-                            ('new content %s\n' % name).encode())))
+                            f'new content {name}\n'.encode())))
         builder.build_snapshot(None, [
             ('add', ('', b'root-id', 'directory', None))] +
             file_adds,

@@ -121,7 +121,7 @@ class LocalGitProber(Prober):
 
 def user_agent_for_github():
     # GitHub requires we lie. https://github.com/dulwich/dulwich/issues/562
-    return "git/Breezy/%s" % breezy_version
+    return f"git/Breezy/{breezy_version}"
 
 
 def is_github_url(url):

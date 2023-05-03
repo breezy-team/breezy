@@ -354,15 +354,14 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 elif kind == 'tree-reference':
                     inv_entry.reference_revision = link_or_sha1 or None
                 elif kind != 'symlink':
-                    raise AssertionError("unknown kind %r" % kind)
+                    raise AssertionError(f"unknown kind {kind!r}")
                 # These checks cost us around 40ms on a 55k entry tree
                 if file_id in inv_byid:
                     raise AssertionError(
                         'file_id %s already in'
                         ' inventory as %s' % (file_id, inv_byid[file_id]))
                 if name_unicode in parent_ie.children:
-                    raise AssertionError('name %r already in parent'
-                                         % (name_unicode,))
+                    raise AssertionError(f'name {name_unicode!r} already in parent')
                 inv_byid[file_id] = inv_entry
                 parent_ie.children[name_unicode] = inv_entry
         self._inventory = inv
@@ -1711,8 +1710,7 @@ class DirStateRevisionTree(InventoryTree):
             False)
 
     def __repr__(self):
-        return "<%s of %s in %s>" % \
-            (self.__class__.__name__, self._revision_id, self._dirstate)
+        return f"<{self.__class__.__name__} of {self._revision_id} in {self._dirstate}>"
 
     def annotate_iter(self, path,
                       default_revision=_mod_revision.CURRENT_REVISION):
@@ -1888,16 +1886,14 @@ class DirStateRevisionTree(InventoryTree):
                     inv_entry.reference_revision = fingerprint or None
                 else:
                     raise AssertionError(
-                        "cannot convert entry %r into an InventoryEntry"
-                        % entry)
+                        f"cannot convert entry {entry!r} into an InventoryEntry")
                 # These checks cost us around 40ms on a 55k entry tree
                 if file_id in inv_byid:
                     raise AssertionError(
                         'file_id %s already in'
                         ' inventory as %s' % (file_id, inv_byid[file_id]))
                 if name_unicode in parent_ie.children:
-                    raise AssertionError('name %r already in parent'
-                                         % (name_unicode,))
+                    raise AssertionError(f'name {name_unicode!r} already in parent')
                 inv_byid[file_id] = inv_entry
                 parent_ie.children[name_unicode] = inv_entry
         self._inventory = inv
@@ -2173,8 +2169,7 @@ class InterDirStateTree(InterInventoryTree):
     def __init__(self, source, target):
         super().__init__(source, target)
         if not InterDirStateTree.is_compatible(source, target):
-            raise Exception("invalid source %r and target %r" %
-                            (source, target))
+            raise Exception(f"invalid source {source!r} and target {target!r}")
 
     @staticmethod
     def make_source_parent_tree(source, target):

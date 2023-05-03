@@ -79,7 +79,7 @@ class BzrDirFormatAllInOne(BzrDirFormat):
     @classmethod
     def from_string(cls, format_string):
         if format_string != cls.get_format_string():
-            raise AssertionError("unexpected format string %r" % format_string)
+            raise AssertionError(f"unexpected format string {format_string!r}")
         return cls()
 
 
@@ -620,7 +620,7 @@ class ConvertBzrDir6ToMeta(Converter):
         """Make a lock for the new control dir name."""
         self.step(gettext('Make %s lock') % name)
         ld = lockdir.LockDir(self.controldir.transport,
-                             '%s/lock' % name,
+                             f'{name}/lock',
                              file_modebits=self.file_mode,
                              dir_modebits=self.dir_mode)
         ld.create()
@@ -631,13 +631,13 @@ class ConvertBzrDir6ToMeta(Converter):
         mandatory = entry[1]
         self.step(gettext('Moving %s') % name)
         try:
-            self.controldir.transport.move(name, '{}/{}'.format(new_dir, name))
+            self.controldir.transport.move(name, f'{new_dir}/{name}')
         except NoSuchFile:
             if mandatory:
                 raise
 
     def put_format(self, dirname, format):
-        self.controldir.transport.put_bytes('%s/format' % dirname,
+        self.controldir.transport.put_bytes(f'{dirname}/format',
                                             format.get_format_string(),
                                             self.file_mode)
 
@@ -703,7 +703,7 @@ class BzrDirFormat4(BzrDirFormat):
     @classmethod
     def from_string(cls, format_string):
         if format_string != cls.get_format_string():
-            raise AssertionError("unexpected format string %r" % format_string)
+            raise AssertionError(f"unexpected format string {format_string!r}")
         return cls()
 
 
@@ -756,7 +756,7 @@ class BzrDirPreSplitOut(BzrDir):
         """See ControlDir.create_branch."""
         if repository is not None:
             raise NotImplementedError(
-                "create_branch(repository=<not None>) on {!r}".format(self))
+                f"create_branch(repository=<not None>) on {self!r}")
         return self._format.get_branch_format().initialize(self, name=name,
                                                            append_revisions_only=append_revisions_only)
 
@@ -790,8 +790,7 @@ class BzrDirPreSplitOut(BzrDir):
         # happens for creating checkouts, which cannot be
         # done on this format anyway. So - acceptable wart.
         if hardlink:
-            warning("can't support hardlinked working trees in %r"
-                    % (self,))
+            warning(f"can't support hardlinked working trees in {self!r}")
         try:
             result = self.open_workingtree(recommend_upgrade=False)
         except NoSuchFile:

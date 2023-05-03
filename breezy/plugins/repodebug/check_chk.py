@@ -56,8 +56,7 @@ class cmd_check_chk(commands.Command):
                     key_width=inv.id_to_entry._root_node._key_width,
                     search_key_func=inv.id_to_entry._search_key_func)
                 if inv.id_to_entry.key() != test_key:
-                    trace.warning('Failed for id_to_entry inv: %s'
-                                  % (inv.revision_id,))
+                    trace.warning(f'Failed for id_to_entry inv: {inv.revision_id}')
                 pid = inv.parent_id_basename_to_file_id
                 d = dict(pid.iteritems())
                 test_key = chk_map.CHKMap.from_dict(

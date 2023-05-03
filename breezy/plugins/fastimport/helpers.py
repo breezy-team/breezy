@@ -100,7 +100,7 @@ def open_destination_directory(location, format=None, verbose=True):
             os.mkdir(location)
         except OSError as ex:
             raise errors.CommandError(
-                "Unable to create {}: {}".format(location, ex))
+                f"Unable to create {location}: {ex}")
 
     # Create a repository for the nominated format.
     trace.note("Creating destination repository ...")
@@ -123,7 +123,7 @@ def kind_to_mode(kind, executable):
         elif executable is False:
             return stat.S_IFREG | 0o644
         else:
-            raise AssertionError("Executable %r invalid" % executable)
+            raise AssertionError(f"Executable {executable!r} invalid")
     elif kind == "symlink":
         return stat.S_IFLNK
     elif kind == "directory":
@@ -131,7 +131,7 @@ def kind_to_mode(kind, executable):
     elif kind == "tree-reference":
         return 0o160000
     else:
-        raise AssertionError("Unknown file kind '%s'" % kind)
+        raise AssertionError(f"Unknown file kind '{kind}'")
 
 
 def mode_to_kind(mode):
@@ -147,7 +147,7 @@ def mode_to_kind(mode):
     elif mode == 0o160000:
         return 'tree-reference', False
     else:
-        raise AssertionError("invalid mode %o" % mode)
+        raise AssertionError(f"invalid mode {mode:o}")
 
 
 def binary_stream(stream):

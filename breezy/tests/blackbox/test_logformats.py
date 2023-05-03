@@ -34,7 +34,7 @@ class TestLogFormats(tests.TestCaseWithTransport):
         if os.path.isfile(conf_path):
             # Something is wrong in environment,
             # we risk overwriting users config
-            self.fail("%s exists" % conf_path)
+            self.fail(f"{conf_path} exists")
 
         bedding.ensure_config_dir_exists()
         with open(conf_path, 'wb') as f:

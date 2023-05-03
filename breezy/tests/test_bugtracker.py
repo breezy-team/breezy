@@ -26,7 +26,7 @@ class ErrorsTest(TestCaseWithMemoryTransport):
         branch = self.make_branch('some_branch')
         error = bugtracker.UnknownBugTrackerAbbreviation('xxx', branch)
         self.assertEqual(
-            "Cannot find registered bug tracker called xxx on %s" % branch,
+            f"Cannot find registered bug tracker called xxx on {branch}",
             str(error))
 
     def test_malformed_bug_identifier(self):
@@ -61,7 +61,7 @@ class TestGetBugURL(TestCaseWithMemoryTransport):
 
         def get_bug_url(self, bug_id):
             self.log.append(('get_bug_url', bug_id))
-            return "http://bugs.example.com/%s" % bug_id
+            return f"http://bugs.example.com/{bug_id}"
 
     def setUp(self):
         super().setUp()

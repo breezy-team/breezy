@@ -333,7 +333,7 @@ class ZzzTranslationsForDoc(ZzzTranslations):
         if m is None:
             m = self._indent_pat.match(s)
         if m:
-            return '{}zz{{{{{}}}}}'.format(m.group(0), s[m.end():])
+            return f'{m.group(0)}zz{{{{{s[m.end():]}}}}}'
         return 'zz{{%s}}' % s
 
 

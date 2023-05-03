@@ -80,7 +80,7 @@ class TestCaseWithStore(tests.TestCaseWithMemoryTransport):
         stream = chk_bytes.get_record_stream([key], 'unordered', True)
         record = next(stream)
         if record.storage_kind == 'absent':
-            self.fail('Store does not contain the key {}'.format(key))
+            self.fail(f'Store does not contain the key {key}')
         return record.get_bytes_as("fulltext")
 
     def to_dict(self, node, *args):
@@ -1105,13 +1105,13 @@ class TestMap(TestCaseWithStore):
 
         def get_record_stream(keys, order, fulltext):
             if (b'sha1:1adf7c0d1b9140ab5f33bb64c6275fa78b1580b7',) in keys:
-                raise AssertionError("'aaa' pointer was followed %r" % keys)
+                raise AssertionError(f"'aaa' pointer was followed {keys!r}")
             return basis_get(keys, order, fulltext)
         basis._store.get_record_stream = get_record_stream
         result = sorted(list(target.iter_changes(basis)))
         for change in result:
             if change[0] == (b'aaa',):
-                self.fail("Found unexpected change: %s" % change)
+                self.fail(f"Found unexpected change: {change}")
 
     def test_iter_changes_unchanged_keys_in_multi_key_leafs_ignored(self):
         # Within a leaf there are no hash's to exclude keys, make sure multi
@@ -2833,7 +2833,7 @@ class TestSearchKeys(tests.TestCase):
 
     def assertSearchKey255(self, expected, key):
         actual = _search_key_255(key)
-        self.assertEqual(expected, actual, 'actual: {!r}'.format(actual))
+        self.assertEqual(expected, actual, f'actual: {actual!r}')
 
     def test_simple_16(self):
         self.assertSearchKey16(b'8C736521', stuple(b'foo',))

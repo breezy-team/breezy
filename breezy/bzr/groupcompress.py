@@ -87,7 +87,7 @@ class DecompressCorruption(errors.BzrError):
 
     def __init__(self, orig_error=None):
         if orig_error is not None:
-            self.orig_error = ", {}".format(orig_error)
+            self.orig_error = f", {orig_error}"
         else:
             self.orig_error = ""
         errors.BzrError.__init__(self)
@@ -176,8 +176,7 @@ class GroupCompressBlock:
                     if not self._z_content_decompressor.unconsumed_tail:
                         self._z_content_decompressor = None
             else:
-                raise AssertionError('Unknown compressor: %r'
-                                     % self._compressor_name)
+                raise AssertionError(f'Unknown compressor: {self._compressor_name!r}')
         # Any bytes remaining to be decompressed will be in the decompressors
         # 'unconsumed_tail'
 
@@ -249,7 +248,7 @@ class GroupCompressBlock:
         elif header == cls.GCB_LZ_HEADER:
             out._compressor_name = 'lzma'
         else:
-            raise ValueError('unknown compressor: {!r}'.format(header))
+            raise ValueError(f'unknown compressor: {header!r}')
         out._parse_bytes(bytes, 6)
         return out
 
@@ -272,8 +271,7 @@ class GroupCompressBlock:
             type = 'fulltext'
         else:
             if c != b'd':
-                raise ValueError('Unknown content control code: %s'
-                                 % (c,))
+                raise ValueError(f'Unknown content control code: {c}')
             type = 'delta'
         content_len, len_len = decode_base128_int(
             self._content[start + 1:start + 6])
@@ -356,7 +354,7 @@ class GroupCompressBlock:
             kind = self._content[pos:pos + 1]
             pos += 1
             if kind not in (b'f', b'd'):
-                raise ValueError('invalid kind character: {!r}'.format(kind))
+                raise ValueError(f'invalid kind character: {kind!r}')
             content_len, len_len = decode_base128_int(
                 self._content[pos:pos + 5])
             pos += len_len
@@ -442,8 +440,7 @@ class _LazyGroupCompressFactory:
         self._end = end
 
     def __repr__(self):
-        return '{}({}, first={})'.format(self.__class__.__name__,
-                                     self.key, self._first)
+        return f'{self.__class__.__name__}({self.key}, first={self._first})'
 
     def _extract_bytes(self):
         # Grab and cache the raw bytes for this entry
@@ -705,7 +702,7 @@ class _LazyGroupContentManager:
         elif action == 'rebuild':
             self._rebuild_block()
         else:
-            raise ValueError('unknown rebuild action: {!r}'.format(action))
+            raise ValueError(f'unknown rebuild action: {action!r}')
 
     def _wire_bytes(self):
         """Return a byte stream suitable for transmitting over the wire."""
@@ -764,7 +761,7 @@ class _LazyGroupContentManager:
          block_len, rest) = bytes.split(b'\n', 4)
         del bytes
         if storage_kind != b'groupcompress-block':
-            raise ValueError('Unknown storage kind: {}'.format(storage_kind))
+            raise ValueError(f'Unknown storage kind: {storage_kind}')
         z_header_len = int(z_header_len)
         if len(rest) < z_header_len:
             raise ValueError('Compressed header len shorter than all bytes')
@@ -810,7 +807,7 @@ class _LazyGroupContentManager:
 
 def network_block_to_records(storage_kind, bytes, line_end):
     if storage_kind != 'groupcompress-block':
-        raise ValueError('Unknown storage kind: {}'.format(storage_kind))
+        raise ValueError(f'Unknown storage kind: {storage_kind}')
     manager = _LazyGroupContentManager.from_bytes(bytes)
     return manager.get_record_stream()
 
@@ -914,7 +911,7 @@ class _CommonGroupCompressor:
             data = [stored_bytes[offset + 1:]]
         else:
             if kind != b'd':
-                raise ValueError('Unknown content kind, bytes claim %s' % kind)
+                raise ValueError(f'Unknown content kind, bytes claim {kind}')
             # XXX: This is inefficient at best
             source = b''.join(self.chunks[:start_chunk])
             delta_len, offset = decode_base128_int(stored_bytes[1:10])
@@ -1951,8 +1948,7 @@ class _GCBuildDetails:
          self._delta_end) = position_info
 
     def __repr__(self):
-        return '{}({}, {})'.format(self.__class__.__name__,
-                               self.index_memo, self._parents)
+        return f'{self.__class__.__name__}({self.index_memo}, {self._parents})'
 
     @property
     def index_memo(self):
@@ -2058,7 +2054,7 @@ class _GCGraphIndex:
                 node_refs = static_tuple.as_tuples(node_refs)
                 passed = static_tuple.as_tuples(keys[key])
                 if node_refs != passed[1]:
-                    details = '{} {} {}'.format(key, (value, node_refs), passed)
+                    details = f'{key} {value, node_refs} {passed}'
                     if self._inconsistency_fatal:
                         raise knit.KnitCorrupt(self, "inconsistent details"
                                                " in add_records: %s" %

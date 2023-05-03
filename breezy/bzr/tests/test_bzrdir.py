@@ -1193,7 +1193,7 @@ class TestHTTPRedirections(TestHTTPRedirectionsBase,
     _transport = HttpTransport
 
     def _qualified_url(self, host, port):
-        result = 'http://{}:{}'.format(host, port)
+        result = f'http://{host}:{port}'
         self.permit_url(result)
         return result
 
@@ -1205,7 +1205,7 @@ class TestHTTPRedirections_nosmart(TestHTTPRedirectionsBase,
     _transport = NoSmartTransportDecorator
 
     def _qualified_url(self, host, port):
-        result = 'nosmart+http://{}:{}'.format(host, port)
+        result = f'nosmart+http://{host}:{port}'
         self.permit_url(result)
         return result
 
@@ -1217,7 +1217,7 @@ class TestHTTPRedirections_readonly(TestHTTPRedirectionsBase,
     _transport = ReadonlyTransportDecorator
 
     def _qualified_url(self, host, port):
-        result = 'readonly+http://{}:{}'.format(host, port)
+        result = f'readonly+http://{host}:{port}'
         self.permit_url(result)
         return result
 
@@ -1232,8 +1232,7 @@ class TestDotBzrHidden(TestCaseWithTransport):
         f = subprocess.Popen(self.ls, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE)
         out, err = f.communicate()
-        self.assertEqual(0, f.returncode, 'Calling %s failed: %s'
-                         % (self.ls, err))
+        self.assertEqual(0, f.returncode, f'Calling {self.ls} failed: {err}')
         return out.splitlines()
 
     def test_dot_bzr_hidden(self):

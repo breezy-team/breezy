@@ -235,8 +235,7 @@ def signature_policy_from_unicode(signature_string):
         return CHECK_NEVER
     if signature_string.lower() == 'require':
         return CHECK_ALWAYS
-    raise ValueError("Invalid signatures policy '%s'"
-                     % signature_string)
+    raise ValueError(f"Invalid signatures policy '{signature_string}'")
 
 
 def signing_policy_from_unicode(signature_string):
@@ -249,8 +248,7 @@ def signing_policy_from_unicode(signature_string):
         return SIGN_ALWAYS
     if signature_string.lower() == 'when-possible':
         return SIGN_WHEN_POSSIBLE
-    raise ValueError("Invalid signing policy '%s'"
-                     % signature_string)
+    raise ValueError(f"Invalid signing policy '{signature_string}'")
 
 
 def _has_triplequote_bug():
@@ -596,7 +594,7 @@ class Config:
             if oname.startswith('bzr.mergetool.'):
                 tool_name = oname[len('bzr.mergetool.'):]
                 tools[tool_name] = self.get_user_option(oname, False)
-        trace.mutter('loaded merge tools: %r' % tools)
+        trace.mutter(f'loaded merge tools: {tools!r}')
         return tools
 
     def find_merge_tool(self, name):
@@ -606,7 +604,7 @@ class Config:
         # be found in the known_merge_tools if it's not found in the config.
         # This should be done through the proposed config defaults mechanism
         # when it becomes available in the future.
-        command_line = (self.get_user_option('bzr.mergetool.%s' % name,
+        command_line = (self.get_user_option(f'bzr.mergetool.{name}',
                                              expand=False) or
                         known_merge_tools.get(name, None))
         return command_line
@@ -866,7 +864,7 @@ class IniBasedConfig(Config):
                     value = urlutils.join(value, extra_path)
                 return value
             else:
-                raise AssertionError('Unexpected config policy %r' % policy)
+                raise AssertionError(f'Unexpected config policy {policy!r}')
         else:
             return None
 
@@ -1225,8 +1223,7 @@ class LocationConfig(LockableConfig):
         if store not in [STORE_LOCATION,
                          STORE_LOCATION_NORECURSE,
                          STORE_LOCATION_APPENDPATH]:
-            raise ValueError('bad storage policy %r for %r' %
-                             (store, option))
+            raise ValueError(f'bad storage policy {store!r} for {option!r}')
         with self.lock_write():
             self.reload()
             location = self.location
@@ -1584,8 +1581,7 @@ class AuthenticationConfig:
         credentials = None
         for auth_def_name, auth_def in self._get_config().iteritems():
             if not isinstance(auth_def, configobj.Section):
-                raise ValueError("%s defined outside a section" %
-                                 auth_def_name)
+                raise ValueError(f"{auth_def_name} defined outside a section")
 
             a_scheme, a_host, a_user, a_path = map(
                 auth_def.get, ['scheme', 'host', 'user', 'path'])
@@ -1595,14 +1591,14 @@ class AuthenticationConfig:
             except KeyError:
                 a_port = None
             except ValueError:
-                raise ValueError("'port' not numeric in %s" % auth_def_name)
+                raise ValueError(f"'port' not numeric in {auth_def_name}")
             try:
                 a_verify_certificates = auth_def.as_bool('verify_certificates')
             except KeyError:
                 a_verify_certificates = True
             except ValueError:
                 raise ValueError(
-                    "'verify_certificates' not boolean in %s" % auth_def_name)
+                    f"'verify_certificates' not boolean in {auth_def_name}")
 
             # Attempt matching
             if a_scheme is not None and scheme != a_scheme:
@@ -1718,7 +1714,7 @@ class AuthenticationConfig:
             if ask:
                 if prompt is None:
                     # Create a default prompt suitable for most cases
-                    prompt = '{}'.format(scheme.upper()) + ' %(host)s username'
+                    prompt = f'{scheme.upper()}' + ' %(host)s username'
                 # Special handling for optional fields in the prompt
                 if port is not None:
                     prompt_host = '%s:%d' % (host, port)
@@ -1759,8 +1755,7 @@ class AuthenticationConfig:
         if password is None:
             if prompt is None:
                 # Create a default prompt suitable for most cases
-                prompt = ('%s' %
-                          scheme.upper() + ' %(user)s@%(host)s password')
+                prompt = (f'{scheme.upper()}' + ' %(user)s@%(host)s password')
             # Special handling for optional fields in the prompt
             if port is not None:
                 prompt_host = '%s:%d' % (host, port)
@@ -1774,7 +1769,7 @@ class AuthenticationConfig:
         try:
             cs = credential_store_registry.get_credential_store(encoding)
         except KeyError:
-            raise ValueError('%r is not a known password_encoding' % encoding)
+            raise ValueError(f'{encoding!r} is not a known password_encoding')
         credentials['password'] = cs.decode_password(credentials)
         return credentials
 
@@ -1926,8 +1921,7 @@ class BzrDirConfig:
         for those under repositories.
         """
         if self._config is None:
-            raise errors.BzrError("Cannot set configuration in %s"
-                                  % self._bzrdir)
+            raise errors.BzrError(f"Cannot set configuration in {self._bzrdir}")
         if value is None:
             self._config.set_option('', 'default_stack_on')
         else:
@@ -2119,19 +2113,18 @@ class Option:
             self.default = ','
         elif isinstance(default, (bytes, str, bool, int, float)):
             # Rely on python to convert strings, booleans and integers
-            self.default = '{}'.format(default)
+            self.default = f'{default}'
         elif callable(default):
             self.default = default
         else:
             # other python objects are not expected
-            raise AssertionError('%r is not supported as a default value'
-                                 % (default,))
+            raise AssertionError(f'{default!r} is not supported as a default value')
         self.default_from_env = default_from_env
         self._help = help
         self.from_unicode = from_unicode
         self.unquote = unquote
         if invalid and invalid not in ('warning', 'error'):
-            raise AssertionError("{} not supported for 'invalid'".format(invalid))
+            raise AssertionError(f"{invalid} not supported for 'invalid'")
         self.invalid = invalid
 
     @property
@@ -2184,8 +2177,7 @@ class Option:
                 value = self.default()
                 if not isinstance(value, str):
                     raise AssertionError(
-                        "Callable default value for '%s' should be unicode"
-                        % (self.name))
+                        f"Callable default value for '{self.name}' should be unicode")
             else:
                 value = self.default
         return value
@@ -2273,7 +2265,7 @@ class ListOption(Option):
         # value from configobj, so values that need to be quoted are already
         # properly quoted.
         _list_converter_config.reset()
-        _list_converter_config._parse(["list={}".format(unicode_str)])
+        _list_converter_config._parse([f"list={unicode_str}"])
         maybe_list = _list_converter_config['list']
         if isinstance(maybe_list, str):
             if maybe_list:
@@ -2321,7 +2313,7 @@ class RegistryOption(Option):
     def help(self):
         ret = [self._help, "\n\nThe following values are supported:\n"]
         for key in self.registry.keys():
-            ret.append(" {} - {}\n".format(key, self.registry.get_help(key)))
+            ret.append(f" {key} - {self.registry.get_help(key)}\n")
         return "".join(ret)
 
 
@@ -2712,7 +2704,7 @@ class Section:
 
     def __repr__(self):
         # Mostly for debugging use
-        return "<config.{} id={}>".format(self.__class__.__name__, self.id)
+        return f"<config.{self.__class__.__name__} id={self.id}>"
 
 
 _NewlyCreatedOption = object()
@@ -2897,8 +2889,7 @@ class Store:
 
     def __repr__(self):
         # Mostly for debugging use
-        return "<config.{}({})>".format(self.__class__.__name__,
-                                    self.external_url())
+        return f"<config.{self.__class__.__name__}({self.external_url()})>"
 
 
 class CommandLineStore(Store):
@@ -2992,7 +2983,7 @@ class IniFileStore(Store):
           bytes: A string representing the file content.
         """
         if self.is_loaded():
-            raise AssertionError('Already loaded: {!r}'.format(self._config_obj))
+            raise AssertionError(f'Already loaded: {self._config_obj!r}')
         co_input = BytesIO(bytes)
         try:
             # The config files are always stored utf8-encoded
@@ -3618,7 +3609,7 @@ class Stack:
 
     def __repr__(self):
         # Mostly for debugging use
-        return "<config.{}({})>".format(self.__class__.__name__, id(self))
+        return f"<config.{self.__class__.__name__}({id(self)})>"
 
     def _get_overrides(self):
         if breezy._global_state is not None:
@@ -3992,7 +3983,7 @@ class cmd_config(commands.Command):
         if value is not None:
             # Quote the value appropriately
             value = self._quote_multiline(value)
-            self.outf.write('{}\n'.format(value))
+            self.outf.write(f'{value}\n')
         else:
             raise NoSuchConfigOption(name)
 
@@ -4010,18 +4001,18 @@ class cmd_config(commands.Command):
                 if name.search(oname):
                     if cur_store_id != store.id:
                         # Explain where the options are defined
-                        self.outf.write('{}:\n'.format(store.id))
+                        self.outf.write(f'{store.id}:\n')
                         cur_store_id = store.id
                         cur_section = None
                     if (section.id is not None and cur_section != section.id):
                         # Display the section id as it appears in the store
                         # (None doesn't appear by definition)
-                        self.outf.write('  [{}]\n'.format(section.id))
+                        self.outf.write(f'  [{section.id}]\n')
                         cur_section = section.id
                     value = section.get(oname, expand=False)
                     # Quote the value appropriately
                     value = self._quote_multiline(value)
-                    self.outf.write('  {} = {}\n'.format(oname, value))
+                    self.outf.write(f'  {oname} = {value}\n')
 
     def _set_config_option(self, name, value, directory, scope):
         conf = self._get_stack(directory, scope, write_access=True)

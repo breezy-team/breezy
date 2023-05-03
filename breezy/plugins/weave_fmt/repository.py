@@ -606,7 +606,7 @@ class TextVersionedFiles(VersionedFiles):
         if not self._can_write():
             raise errors.ReadOnlyError(self)
         if b'/' in key[-1]:
-            raise ValueError('bad idea to put / in {!r}'.format(key))
+            raise ValueError(f'bad idea to put / in {key!r}')
         chunks = lines
         if self._compressed:
             chunks = tuned_gzip.chunks_to_gzip(chunks)

@@ -76,8 +76,7 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         (out, err) = self.run_bzr(
             ['upgrade', self.get_readonly_url("old_format_branch")], retcode=3)
         err_msg = 'Upgrade URL cannot work with readonly URLs.'
-        self.assertEqualDiff('conversion error: %s\nbrz: ERROR: %s\n'
-                             % (err_msg, err_msg),
+        self.assertEqualDiff(f'conversion error: {err_msg}\nbrz: ERROR: {err_msg}\n',
                              err)
 
     def test_upgrade_up_to_date(self):
@@ -139,13 +138,13 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         backup_dir = 'backup.bzr.~1~'
         (out, err) = self.run_bzr(
             ['upgrade', '--format=2a', url])
-        self.assertEqualDiff("""Upgrading branch {}/ ...
-starting upgrade of {}/
-making backup of {}/.bzr
-  to {}/{}
+        self.assertEqualDiff(f"""Upgrading branch {display_url}/ ...
+starting upgrade of {display_url}/
+making backup of {display_url}/.bzr
+  to {display_url}/{backup_dir}
 starting upgrade from old test format to 2a
 finished
-""".format(display_url, display_url, display_url, display_url, backup_dir), out)
+""", out)
         self.assertEqualDiff("", err)
         self.assertIsInstance(
             controldir.ControlDir.open(self.get_url(path))._format,
@@ -163,14 +162,14 @@ finished
         backup_dir = 'backup.bzr.~1~'
         (out, err) = self.run_bzr(
             ['upgrade', '--format=pack-0.92', url])
-        self.assertEqualDiff("""Upgrading branch {}/ ...
-starting upgrade of {}/
-making backup of {}/.bzr
-  to {}/{}
+        self.assertEqualDiff(f"""Upgrading branch {display_url}/ ...
+starting upgrade of {display_url}/
+making backup of {display_url}/.bzr
+  to {display_url}/{backup_dir}
 starting repository conversion
 repository converted
 finished
-""".format(display_url, display_url, display_url, display_url, backup_dir),
+""",
             out)
         self.assertEqualDiff("", err)
         converted_dir = controldir.ControlDir.open(self.get_url('branch'))
@@ -191,7 +190,7 @@ finished
         # Confirm that an option is legal. (Lower level tests are
         # expected to validate the actual functionality.)
         self.run_bzr('init --format=pack-0.92 branch-foo')
-        self.run_bzr('upgrade --format=2a branch-foo {}'.format(option_str))
+        self.run_bzr(f'upgrade --format=2a branch-foo {option_str}')
 
     def assertBranchFormat(self, dir, format):
         branch = controldir.ControlDir.open_tree_or_branch(self.get_url(dir))[
@@ -234,14 +233,14 @@ finished
         t.mkdir(backup_dir1)
         (out, err) = self.run_bzr(
             ['upgrade', '--format=2a', url])
-        self.assertEqualDiff("""Upgrading branch {}/ ...
-starting upgrade of {}/
-making backup of {}/.bzr
-  to {}/{}
+        self.assertEqualDiff(f"""Upgrading branch {display_url}/ ...
+starting upgrade of {display_url}/
+making backup of {display_url}/.bzr
+  to {display_url}/{backup_dir2}
 starting repository conversion
 repository converted
 finished
-""".format(display_url, display_url, display_url, display_url, backup_dir2), out)
+""", out)
         self.assertEqualDiff("", err)
         self.assertIsInstance(
             controldir.ControlDir.open(
@@ -262,14 +261,14 @@ class SFTPTests(TestCaseWithSFTPServer):
                                                     'utf-8')
         out, err = self.run_bzr(['upgrade', '--format=2a', url])
         backup_dir = 'backup.bzr.~1~'
-        self.assertEqualDiff("""Upgrading branch {} ...
-starting upgrade of {}
-making backup of {}.bzr
-  to {}{}
+        self.assertEqualDiff(f"""Upgrading branch {display_url} ...
+starting upgrade of {display_url}
+making backup of {display_url}.bzr
+  to {display_url}{backup_dir}
 starting repository conversion
 repository converted
 finished
-""".format(display_url, display_url, display_url, display_url, backup_dir), out)
+""", out)
         self.assertEqual('', err)
 
 
@@ -288,7 +287,7 @@ class UpgradeRecommendedTests(TestCaseWithTransport):
         self.run_bzr('init --format=knit a')
         out, err = self.run_bzr('revno a')
         if err.find('upgrade') > -1:
-            self.fail("message shouldn't suggest upgrade:\n%s" % err)
+            self.fail(f"message shouldn't suggest upgrade:\n{err}")
 
     def test_upgrade_shared_repo(self):
         repo = self.make_repository('repo', format='2a', shared=True)

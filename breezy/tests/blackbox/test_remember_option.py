@@ -141,12 +141,12 @@ class TestPushRemember(script.TestCaseWithTransportAndScript,
         # Do a first push that remembers the location
         self.do_command(*self.first_use_args)
         # Now create some new content
-        self.run_script('''
-            $ cd {working_dir}
+        self.run_script(f'''
+            $ cd {self.working_dir}
             $ echo new content > file
             $ brz commit -m 'new content'
             $ cd ..
-            '''.format(working_dir=self.working_dir),
+            ''',
             null_output_matches_anything=True)
 
     def assertLocations(self, expected_locations):
@@ -170,15 +170,15 @@ class TestPullRemember(script.TestCaseWithTransportAndScript,
 
     def setUp(self):
         super().setUp()
-        self.run_script('''
+        self.run_script(f'''
             $ brz init parent
             $ cd parent
             $ echo parent > file
             $ brz add
             $ brz commit -m 'initial commit'
             $ cd ..
-            $ brz init {working_dir}
-            '''.format(working_dir=self.working_dir),
+            $ brz init {self.working_dir}
+            ''',
             null_output_matches_anything=True)
 
     def setup_next_uses(self):

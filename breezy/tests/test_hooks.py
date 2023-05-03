@@ -240,8 +240,7 @@ class TestHook(tests.TestCase):
         hook.hook(callback, "my callback")
         callback_repr = repr(callback)
         self.assertEqual(
-            '<HookPoint(foo), callbacks=[%s(my callback)]>' %
-            callback_repr, repr(hook))
+            f'<HookPoint(foo), callbacks=[{callback_repr}(my callback)]>', repr(hook))
 
 
 class TestHookRegistry(tests.TestCase):
@@ -254,7 +253,7 @@ class TestHookRegistry(tests.TestCase):
         # isolation and prevent tests failing spuriously.
         for key, factory in known_hooks.items():
             self.assertTrue(callable(factory),
-                            "The factory({!r}) for {!r} is not callable".format(factory, key))
+                            f"The factory({factory!r}) for {key!r} is not callable")
             obj = known_hooks_key_to_object(key)
             self.assertIsInstance(obj, Hooks)
             new_hooks = factory()

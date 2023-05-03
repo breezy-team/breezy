@@ -60,7 +60,7 @@ class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
         self.send_header("Content-type", "application/octet-stream")
         if not self.path.endswith('.bzr/smart'):
             raise AssertionError(
-                'POST to path not ending in .bzr/smart: {!r}'.format(self.path))
+                f'POST to path not ending in .bzr/smart: {self.path!r}')
         t = chrooted_transport.clone(self.path[:-len('.bzr/smart')])
         # if this fails, we should return 400 bad request, but failure is
         # failure for now - RBC 20060919
@@ -326,7 +326,7 @@ class BasicAuthRequestHandler(AuthRequestHandler):
     def send_header_auth_reqed(self):
         tcs = self.server.test_case_server
         self.send_header(tcs.auth_header_sent,
-                         'Basic realm="%s"' % tcs.auth_realm)
+                         f'Basic realm="{tcs.auth_realm}"')
 
 
 # FIXME: We could send an Authentication-Info header too when
@@ -356,9 +356,8 @@ class DigestAuthRequestHandler(AuthRequestHandler):
 
     def send_header_auth_reqed(self):
         tcs = self.server.test_case_server
-        header = 'Digest realm="%s", ' % tcs.auth_realm
-        header += 'nonce="{}", algorithm="{}", qop="auth"'.format(tcs.auth_nonce,
-                                                              'MD5')
+        header = f'Digest realm="{tcs.auth_realm}", '
+        header += f"nonce=\"{tcs.auth_nonce}\", algorithm=\"MD5\", qop=\"auth\""
         self.send_header(tcs.auth_header_sent, header)
 
 
@@ -373,10 +372,9 @@ class DigestAndBasicAuthRequestHandler(DigestAuthRequestHandler):
     def send_header_auth_reqed(self):
         tcs = self.server.test_case_server
         self.send_header(tcs.auth_header_sent,
-                         'Basic realm="%s"' % tcs.auth_realm)
-        header = 'Digest realm="%s", ' % tcs.auth_realm
-        header += 'nonce="{}", algorithm="{}", qop="auth"'.format(tcs.auth_nonce,
-                                                              'MD5')
+                         f'Basic realm="{tcs.auth_realm}"')
+        header = f'Digest realm="{tcs.auth_realm}", '
+        header += f"nonce=\"{tcs.auth_nonce}\", algorithm=\"MD5\", qop=\"auth\""
         self.send_header(tcs.auth_header_sent, header)
 
 
@@ -455,21 +453,21 @@ class DigestAuthServer(AuthServer):
 
         # Recalculate the response_digest to compare with the one
         # sent by the client
-        A1 = ('{}:{}:{}'.format(user, realm, password)).encode('utf-8')
-        A2 = ('{}:{}'.format(command, auth['uri'])).encode('utf-8')
+        A1 = f'{user}:{realm}:{password}'.encode('utf-8')
+        A2 = f"{command}:{auth['uri']}".encode('utf-8')
 
         def H(x):
             return hashlib.md5(x).hexdigest()
 
         def KD(secret, data):
-            return H(("{}:{}".format(secret, data)).encode('utf-8'))
+            return H(f"{secret}:{data}".encode('utf-8'))
 
         nonce_count = int(auth['nc'], 16)
 
-        ncvalue = '%08x' % nonce_count
+        ncvalue = f'{nonce_count:08x}'
 
         cnonce = auth['cnonce']
-        noncebit = '{}:{}:{}:{}:{}'.format(nonce, ncvalue, cnonce, qop, H(A2))
+        noncebit = f'{nonce}:{ncvalue}:{cnonce}:{qop}:{H(A2)}'
         response_digest = KD(H(A1), noncebit)
 
         return response_digest == auth['response']
