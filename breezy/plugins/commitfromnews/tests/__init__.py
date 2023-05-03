@@ -23,5 +23,5 @@ def load_tests(loader, basic_tests, pattern):
         'test_msgeditor',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["{}.{}".format(__name__, tmn) for tmn in testmod_names]))
+        [f"{__name__}.{tmn}" for tmn in testmod_names]))
     return basic_tests

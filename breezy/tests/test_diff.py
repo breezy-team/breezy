@@ -72,8 +72,7 @@ class StubO:
     def check_types(self, testcase, expected_type):
         testcase.assertFalse(
             any(not isinstance(o, expected_type) for o in self.write_record),
-            "Not all writes of type {}: {!r}".format(
-                expected_type.__name__, self.write_record))
+            f"Not all writes of type {expected_type.__name__}: {self.write_record!r}")
 
 
 class TestDiffOptions(tests.TestCase):
@@ -95,8 +94,8 @@ class TestDiffOptionsScenarios(tests.TestCase):
     def test_unified_not_added(self):
         # Verify that for all valid style options, '-u' is not
         # appended to option list.
-        ret_opts = diff.default_style_unified(diff_opts=["{}".format(self.style)])
-        self.assertEqual(["{}".format(self.style)], ret_opts)
+        ret_opts = diff.default_style_unified(diff_opts=[f"{self.style}"])
+        self.assertEqual([f"{self.style}"], ret_opts)
 
 
 class TestDiff(tests.TestCase):

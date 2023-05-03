@@ -102,8 +102,7 @@ class TestSource(TestSourceHelper):
         # Avoid the case when breezy is packaged in a zip file
         if not os.path.isdir(source_dir):
             raise TestSkipped(
-                'Cannot find breezy source directory. Expected %s'
-                % source_dir)
+                f'Cannot find breezy source directory. Expected {source_dir}')
         return source_dir
 
     def get_source_files(self, extensions=None):
@@ -185,7 +184,7 @@ class TestSource(TestSourceHelper):
             if not match:
                 match = copyright_re.search(text)
                 if match:
-                    incorrect.append((fname, 'found: {}'.format(match.group())))
+                    incorrect.append((fname, f'found: {match.group()}'))
                 else:
                     incorrect.append((fname, 'no copyright line found\n'))
             else:
@@ -260,7 +259,7 @@ class TestSource(TestSourceHelper):
             dict_[fname].append(line_no)
 
     def _format_message(self, dict_, message):
-        files = sorted(["{}: {}".format(f, ', '.join([str(i + 1) for i in lines]))
+        files = sorted([f"{f}: {', '.join([str(i + 1) for i in lines])}"
                         for f, lines in dict_.items()])
         return message + '\n\n    %s' % ('\n    '.join(files))
 
@@ -371,7 +370,7 @@ class TestSource(TestSourceHelper):
                 'The following functions had "cannot raise" comments'
                 ' but did have an except clause set:')
             for fname, func in both_exc_and_no_exc:
-                error_msg.append('{}:{}'.format(fname, func))
+                error_msg.append(f'{fname}:{func}')
             error_msg.extend(('', ''))
         if missing_except:
             error_msg.append(
@@ -380,7 +379,7 @@ class TestSource(TestSourceHelper):
             error_msg.append(
                 'Either add an except or append "# cannot_raise".')
             for fname, func in missing_except:
-                error_msg.append('{}:{}'.format(fname, func))
+                error_msg.append(f'{fname}:{func}')
             error_msg.extend(('', ''))
         if error_msg:
             self.fail('\n'.join(error_msg))

@@ -123,7 +123,7 @@ def _print_annotations(annotation, verbose, to_file, full, encoding):
         # GZ 2017-05-21: Writing both unicode annotation and bytes from file
         # which the given to_file must cope with.
         to_file.write(anno)
-        to_file.write('| {}\n'.format(text.decode(encoding)))
+        to_file.write(f'| {text.decode(encoding)}\n')
         prevanno = anno
 
 

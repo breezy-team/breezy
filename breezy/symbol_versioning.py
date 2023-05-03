@@ -77,11 +77,9 @@ def deprecation_string(a_callable, deprecation_version):
                                a_callable.__self__.__class__.__name__,
                                a_callable.__name__)
     elif getattr(a_callable, '__qualname__', None) is not None and '<' not in a_callable.__qualname__:
-        symbol = "{}.{}".format(a_callable.__module__,
-                            a_callable.__qualname__)
+        symbol = f"{a_callable.__module__}.{a_callable.__qualname__}"
     else:
-        symbol = "{}.{}".format(a_callable.__module__,
-                            a_callable.__name__)
+        symbol = f"{a_callable.__module__}.{a_callable.__name__}"
     return deprecation_version % symbol
 
 
@@ -123,9 +121,7 @@ def deprecated_method(deprecation_version):
             """This is the decorated method."""
             from . import trace
             if callable.__name__ == '__init__':
-                symbol = "{}.{}".format(self.__class__.__module__,
-                                    self.__class__.__name__,
-                                    )
+                symbol = f"{self.__class__.__module__}.{self.__class__.__name__}"
             else:
                 symbol = "{}.{}.{}".format(self.__class__.__module__,
                                        self.__class__.__name__,
@@ -195,7 +191,7 @@ def _populate_decorated(callable, deprecation_version, label,
 def _dict_deprecation_wrapper(wrapped_method):
     """Returns a closure that emits a warning and calls the superclass"""
     def cb(dep_dict, *args, **kwargs):
-        msg = 'access to {}'.format(dep_dict._variable_name)
+        msg = f'access to {dep_dict._variable_name}'
         msg = dep_dict._deprecation_version % (msg,)
         if dep_dict._advice:
             msg += ' ' + dep_dict._advice
@@ -250,7 +246,7 @@ def deprecated_list(deprecation_version, variable_name,
     :param extra: Extra info to print when printing a warning
     """
 
-    subst_text = 'Modifying {}'.format(variable_name)
+    subst_text = f'Modifying {variable_name}'
     msg = deprecation_version % (subst_text,)
     if extra:
         msg += ' ' + extra
@@ -265,23 +261,23 @@ def deprecated_list(deprecation_version, variable_name,
             return func(self, *args, **kwargs)
 
         def append(self, obj):
-            """appending to {} is deprecated""".format(variable_name)
+            f"""appending to {variable_name} is deprecated"""
             return self._warn_deprecated(list.append, obj)
 
         def insert(self, index, obj):
-            """inserting to {} is deprecated""".format(variable_name)
+            f"""inserting to {variable_name} is deprecated"""
             return self._warn_deprecated(list.insert, index, obj)
 
         def extend(self, iterable):
-            """extending {} is deprecated""".format(variable_name)
+            f"""extending {variable_name} is deprecated"""
             return self._warn_deprecated(list.extend, iterable)
 
         def remove(self, value):
-            """removing from {} is deprecated""".format(variable_name)
+            f"""removing from {variable_name} is deprecated"""
             return self._warn_deprecated(list.remove, value)
 
         def pop(self, index=None):
-            """pop'ing from {} is deprecated""".format(variable_name)
+            f"""pop'ing from {variable_name} is deprecated"""
             if index:
                 return self._warn_deprecated(list.pop, index)
             else:

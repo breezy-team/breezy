@@ -60,7 +60,7 @@ class ContentFilter:
         self.writer = writer
 
     def __repr__(self):
-        return "reader: {}, writer: {}".format(self.reader, self.writer)
+        return f"reader: {self.reader}, writer: {self.writer}"
 
 
 Preferences = List[Tuple[str, str]]

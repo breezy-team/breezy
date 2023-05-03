@@ -525,7 +525,7 @@ class Branch(ControlComponent):
             if direction == 'forward':
                 return reversed(list(filtered))
             else:
-                raise ValueError('invalid direction %r' % direction)
+                raise ValueError(f'invalid direction {direction!r}')
 
     def _filter_merge_sorted_revisions(self, merge_sorted_revisions,
                                        start_revision_id, stop_revision_id,
@@ -601,7 +601,7 @@ class Branch(ControlComponent):
                             reached_stop_revision_id = True
                             revision_id_whitelist.extend(rev.parent_ids)
         else:
-            raise ValueError('invalid stop_rule %r' % stop_rule)
+            raise ValueError(f'invalid stop_rule {stop_rule!r}')
 
     def _filter_start_non_ancestors(self, rev_iter):
         # If we started from a dotted revno, we want to consider it as a tip
@@ -1380,7 +1380,7 @@ class Branch(ControlComponent):
         elif relation == 'a_descends_from_b':
             return False
         else:
-            raise AssertionError("invalid relation: {!r}".format(relation))
+            raise AssertionError(f"invalid relation: {relation!r}")
 
     def _revision_relations(self, revision_a, revision_b, graph):
         """Determine the relationship between two revisions.
@@ -1396,7 +1396,7 @@ class Branch(ControlComponent):
         elif heads == {revision_a}:
             return 'a_descends_from_b'
         else:
-            raise AssertionError("invalid heads: {!r}".format(heads))
+            raise AssertionError(f"invalid heads: {heads!r}")
 
     def heads_to_fetch(self):
         """Return the heads that must and that should be fetched to copy this
@@ -1768,7 +1768,7 @@ class BranchInitHookParams:
         return self.__dict__ == other.__dict__
 
     def __repr__(self):
-        return "<{} of {}>".format(self.__class__.__name__, self.branch)
+        return f"<{self.__class__.__name__} of {self.branch}>"
 
 
 class SwitchHookParams:
@@ -1853,7 +1853,7 @@ class BranchWriteLockResult(LogicalLockResult):
     """
 
     def __repr__(self):
-        return "BranchWriteLockResult({!r}, {!r})".format(self.unlock, self.token)
+        return f"BranchWriteLockResult({self.unlock!r}, {self.token!r})"
 
 
 ######################################################################
@@ -1867,7 +1867,7 @@ class _Result:
             return
         to_file.write('Conflicting tags:\n')
         for name, value1, value2 in self.tag_conflicts:
-            to_file.write('    {}\n'.format(name))
+            to_file.write(f'    {name}\n')
 
 
 class PullResult(_Result):
@@ -1905,7 +1905,7 @@ class PullResult(_Result):
             if self.old_revid != self.new_revid:
                 to_file.write('Now on revision %d.\n' % self.new_revno)
             if tag_updates:
-                to_file.write('%d tag(s) updated.\n' % len(tag_updates))
+                to_file.write(f'{len(tag_updates)} tag(s) updated.\n')
             if self.old_revid == self.new_revid and not tag_updates:
                 if not tag_conflicts:
                     to_file.write('No revisions or tags to pull.\n')

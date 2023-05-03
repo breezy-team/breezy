@@ -123,7 +123,7 @@ class VersionedFileCheck(Check):
                         existences.add(value)
                     else:
                         raise AssertionError(
-                            'unknown ref kind for ref %s' % ref)
+                            f'unknown ref kind for ref {ref}')
                 node_distances = repo.get_graph().find_lefthand_distances(distances)
                 for key, distance in node_distances.items():
                     refs[('lefthand-distance', key)] = distance

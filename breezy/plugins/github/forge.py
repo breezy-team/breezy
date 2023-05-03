@@ -110,7 +110,7 @@ class GitHubMergeProposal(MergeProposal):
         self._pr = pr
 
     def __repr__(self):
-        return "<{} at {!r}>".format(type(self).__name__, self.url)
+        return f"<{type(self).__name__} at {self.url!r}>"
 
     name = 'GitHub'
 
@@ -396,7 +396,7 @@ class GitHub(Forge):
     def _graphql_request(self, body, **kwargs):
         headers = {}
         if self._token:
-            headers['Authorization'] = 'token %s' % self._token
+            headers['Authorization'] = f'token {self._token}'
         url = urlutils.join(self.transport.base, 'graphql')
         response = self.transport.request(
             'POST', url,
@@ -417,7 +417,7 @@ class GitHub(Forge):
             'Content-Type': 'application/json',
             'Accept': 'application/vnd.github.v3+json'}
         if self._token:
-            headers['Authorization'] = 'token %s' % self._token
+            headers['Authorization'] = f'token {self._token}'
         try:
             response = self.transport.request(
                 method, urlutils.join(self.transport.base, path),
@@ -432,7 +432,7 @@ class GitHub(Forge):
         return response
 
     def _get_repo(self, owner, repo):
-        path = 'repos/{}/{}'.format(owner, repo)
+        path = f'repos/{owner}/{repo}'
         response = self._api_request('GET', path)
         if response.status == 404:
             raise NoSuchProject(path)
@@ -448,7 +448,7 @@ class GitHub(Forge):
             params['head'] = head
         if state is not None:
             params['state'] = state
-        path += ';'.join(['{}={}'.format(k, urlutils.quote(v))
+        path += ';'.join([f'{k}={urlutils.quote(v)}'
                          for k, v in params.items()])
         response = self._api_request('GET', path)
         if response.status == 404:
@@ -484,20 +484,20 @@ class GitHub(Forge):
         return json.loads(response.text)
 
     def _get_user_by_email(self, email):
-        path = 'search/users?q=%s+in:email' % email
+        path = f'search/users?q={email}+in:email'
         response = self._api_request('GET', path)
         if response.status != 200:
             raise UnexpectedHttpStatus(path, response.status, headers=response.getheaders())
         ret = json.loads(response.text)
         if ret['total_count'] == 0:
-            raise KeyError('no user with email %s' % email)
+            raise KeyError(f'no user with email {email}')
         elif ret['total_count'] > 1:
-            raise ValueError('more than one result for email %s' % email)
+            raise ValueError(f'more than one result for email {email}')
         return ret['items'][0]
 
     def _get_user(self, username=None):
         if username:
-            path = 'users/%s' % username
+            path = f'users/{username}'
         else:
             path = 'user'
         response = self._api_request('GET', path)
@@ -506,7 +506,7 @@ class GitHub(Forge):
         return json.loads(response.text)
 
     def _get_organization(self, name):
-        path = 'orgs/%s' % name
+        path = f'orgs/{name}'
         response = self._api_request('GET', path)
         if response.status != 200:
             raise UnexpectedHttpStatus(path, response.status, headers=response.getheaders())
@@ -524,7 +524,7 @@ class GitHub(Forge):
             parameters['page'] = str(page)
             response = self._api_request(
                 'GET', path + '?' +
-                ';'.join(['{}={}'.format(k, urlutils.quote(v))
+                ';'.join([f'{k}={urlutils.quote(v)}'
                           for (k, v) in parameters.items()]))
             if response.status != 200:
                 raise UnexpectedHttpStatus(path, response.status, headers=response.getheaders())
@@ -543,7 +543,7 @@ class GitHub(Forge):
 
     def _create_fork(self, path, owner=None):
         if owner and owner != self.current_user['login']:
-            path += '?organization=%s' % owner
+            path += f'?organization={owner}'
         response = self._api_request('POST', path)
         if response.status != 202:
             raise UnexpectedHttpStatus(path, response.status, headers=response.getheaders())
@@ -626,7 +626,7 @@ class GitHub(Forge):
         try:
             remote_repo = self._get_repo(owner, project)
         except NoSuchProject:
-            raise errors.NotBranchError('{}/{}/{}'.format(WEB_GITHUB_URL, owner, project))
+            raise errors.NotBranchError(f'{WEB_GITHUB_URL}/{owner}/{project}')
         if preferred_schemes is None:
             preferred_schemes = DEFAULT_PREFERRED_SCHEMES
         for scheme in preferred_schemes:
@@ -713,7 +713,7 @@ class GitHub(Forge):
             query.append('is:merged')
         if author is None:
             author = self.current_user['login']
-        query.append('author:%s' % author)
+        query.append(f'author:{author}')
         for issue in self._search_issues(query=' '.join(query)):
             def retrieve_full():
                 response = self._api_request('GET', issue['pull_request']['url'])
@@ -727,8 +727,7 @@ class GitHub(Forge):
             (owner, repo, pr_id) = parse_github_pr_url(url)
         except NotGitHubUrl as e:
             raise UnsupportedForge(url) from e
-        api_url = 'https://api.github.com/repos/{}/{}/pulls/{}'.format(
-            owner, repo, pr_id)
+        api_url = f'https://api.github.com/repos/{owner}/{repo}/pulls/{pr_id}'
         response = self._api_request('GET', api_url)
         if response.status != 200:
             raise UnexpectedHttpStatus(api_url, response.status, headers=response.getheaders())
@@ -737,7 +736,7 @@ class GitHub(Forge):
 
     def iter_my_forks(self, owner=None):
         if owner:
-            path = '/users/%s/repos' % owner
+            path = f'/users/{owner}/repos'
         else:
             path = '/user/repos'
         for page in self._list_paged(path, per_page=DEFAULT_PER_PAGE):
@@ -803,8 +802,8 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         info.append("Merge {} into {}:{}\n".format(
             self.source_branch_name, self.target_owner,
             self.target_branch_name))
-        info.append("Source: %s\n" % self.source_branch.user_url)
-        info.append("Target: %s\n" % self.target_branch.user_url)
+        info.append(f"Source: {self.source_branch.user_url}\n")
+        info.append(f"Target: {self.target_branch.user_url}\n")
         return ''.join(info)
 
     def get_initial_body(self):
@@ -847,7 +846,7 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
             pull_request = self.gh._create_pull(
                 strip_optional(target_repo['pulls_url']),
                 title=title, body=description,
-                head="{}:{}".format(self.source_owner, self.source_branch_name),
+                head=f"{self.source_owner}:{self.source_branch_name}",
                 base=self.target_branch_name,
                 labels=labels, assignee=assignees,
                 draft=work_in_progress,

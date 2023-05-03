@@ -73,13 +73,13 @@ def ref_to_branch_name(ref):
         return ref
     if ref.startswith(LOCAL_BRANCH_PREFIX):
         return ref[len(LOCAL_BRANCH_PREFIX):].decode('utf-8')
-    raise ValueError("unable to map ref %s back to branch name" % ref)
+    raise ValueError(f"unable to map ref {ref} back to branch name")
 
 
 def ref_to_tag_name(ref):
     if ref.startswith(LOCAL_TAG_PREFIX):
         return ref[len(LOCAL_TAG_PREFIX):].decode("utf-8")
-    raise ValueError("unable to map ref %s back to tag name" % ref)
+    raise ValueError(f"unable to map ref {ref} back to tag name")
 
 
 class BazaarRefsContainer(RefsContainer):

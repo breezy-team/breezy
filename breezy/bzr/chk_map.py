@@ -130,7 +130,7 @@ class CHKMap:
         existing_new = list(self.iteritems(key_filter=new_items))
         if existing_new:
             raise errors.InconsistentDeltaDelta(delta,
-                                                "New items are already in the map %r." % existing_new)
+                                                f"New items are already in the map {existing_new!r}.")
         # Now apply changes.
         for old, new, value in delta:
             if old is not None and old != new:
@@ -192,11 +192,10 @@ class CHKMap:
         else:
             node_key = node.key()
             if node_key is not None:
-                key_str = ' {}'.format(decode(node_key[0]))
+                key_str = f' {decode(node_key[0])}'
             else:
                 key_str = ' None'
-        result.append('{}{!r} {}{}'.format(indent, decode(prefix), node.__class__.__name__,
-                                     key_str))
+        result.append(f'{indent}{decode(prefix)!r} {node.__class__.__name__}{key_str}')
         if isinstance(node, InternalNode):
             # Trigger all child nodes to get loaded
             list(node._iter_nodes(self._store))
@@ -233,8 +232,7 @@ class CHKMap:
                                           maximum_size=maximum_size, key_width=key_width,
                                           search_key_func=search_key_func)
         if not isinstance(root_key, StaticTuple):
-            raise AssertionError('we got a %s instead of a StaticTuple'
-                                 % (type(root_key),))
+            raise AssertionError(f'we got a {type(root_key)} instead of a StaticTuple')
         return root_key
 
     @classmethod
@@ -486,7 +484,7 @@ class CHKMap:
                             basis_pending)
                         if self_prefix != basis_prefix:
                             raise AssertionError(
-                                '{!r} != {!r}'.format(self_prefix, basis_prefix))
+                                f'{self_prefix!r} != {basis_prefix!r}')
                         process_common_prefix_nodes(
                             self_node, self_path,
                             basis_node, basis_path)
@@ -876,7 +874,7 @@ class LeafNode(Node):
             return self._split(store)
         else:
             if self._search_prefix is _unknown:
-                raise AssertionError('%r must be known' % self._search_prefix)
+                raise AssertionError(f'{self._search_prefix!r} must be known')
             return self._search_prefix, [(b"", self)]
 
     _serialise_key = b'\x00'.join
@@ -1729,12 +1727,10 @@ def _check_key(key):
     to debug problems.
     """
     if not isinstance(key, StaticTuple):
-        raise TypeError('key {!r} is not StaticTuple but {}'.format(key, type(key)))
+        raise TypeError(f'key {key!r} is not StaticTuple but {type(key)}')
     if len(key) != 1:
-        raise ValueError('key %r should have length 1, not %d' %
-                         (key, len(key),))
+        raise ValueError(f'key {key!r} should have length 1, not {len(key)}')
     if not isinstance(key[0], str):
-        raise TypeError('key %r should hold a str, not %r'
-                        % (key, type(key[0])))
+        raise TypeError(f'key {key!r} should hold a str, not {type(key[0])!r}')
     if not key[0].startswith('sha1:'):
-        raise ValueError('key {!r} should point to a sha1:'.format(key))
+        raise ValueError(f'key {key!r} should point to a sha1:')

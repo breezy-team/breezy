@@ -41,8 +41,7 @@ class cmd_chk_used_by(Command):
         for inv in repo.iter_inventories(all_invs):
             if inv.id_to_entry.key() in key_list:
                 self.outf.write(
-                    'id_to_entry of %s -> %s\n' %
-                    (inv.revision_id, inv.id_to_entry.key(),))
+                    f'id_to_entry of {inv.revision_id} -> {inv.id_to_entry.key()}\n')
             if inv.parent_id_basename_to_file_id.key() in key_list:
                 self.outf.write(
                     'parent_id_basename_to_file_id of %s -> %s\n' %

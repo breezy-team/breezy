@@ -273,7 +273,7 @@ class TestRemoteGitBranch(TestCaseWithTransport):
     def setUp(self):
         TestCaseWithTransport.setUp(self)
         self.remote_real = GitRepo.init('remote', mkdir=True)
-        self.remote_url = 'git://%s/' % os.path.abspath(self.remote_real.path)
+        self.remote_url = f'git://{os.path.abspath(self.remote_real.path)}/'
         self.permit_url(self.remote_url)
 
     def test_set_last_revision_info(self):
@@ -308,7 +308,7 @@ class FetchFromRemoteTestBase:
     def setUp(self):
         TestCaseWithTransport.setUp(self)
         self.remote_real = GitRepo.init('remote', mkdir=True)
-        self.remote_url = 'git://%s/' % os.path.abspath(self.remote_real.path)
+        self.remote_url = f'git://{os.path.abspath(self.remote_real.path)}/'
         self.permit_url(self.remote_url)
 
     def test_sprout_simple(self):
@@ -495,7 +495,7 @@ class PushToRemoteBase:
     def setUp(self):
         TestCaseWithTransport.setUp(self)
         self.remote_real = GitRepo.init('remote', mkdir=True)
-        self.remote_url = 'git://%s/' % os.path.abspath(self.remote_real.path)
+        self.remote_url = f'git://{os.path.abspath(self.remote_real.path)}/'
         self.permit_url(self.remote_url)
 
     def test_push_branch_new(self):
@@ -681,7 +681,7 @@ class RemoteControlDirTests(TestCaseWithTransport):
     def setUp(self):
         TestCaseWithTransport.setUp(self)
         self.remote_real = GitRepo.init('remote', mkdir=True)
-        self.remote_url = 'git://%s/' % os.path.abspath(self.remote_real.path)
+        self.remote_url = f'git://{os.path.abspath(self.remote_real.path)}/'
         self.permit_url(self.remote_url)
 
     def test_remove_branch(self):
@@ -866,7 +866,7 @@ class RemoteRevisionTreeTests(TestCaseWithTransport):
     def setUp(self):
         TestCaseWithTransport.setUp(self)
         self.remote_real = GitRepo.init('remote', mkdir=True)
-        self.remote_url = 'git://%s/' % os.path.abspath(self.remote_real.path)
+        self.remote_url = f'git://{os.path.abspath(self.remote_real.path)}/'
         self.permit_url(self.remote_url)
         c1 = self.remote_real.do_commit(
             message=b'message',

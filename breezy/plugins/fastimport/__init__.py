@@ -83,4 +83,4 @@ for name in [
         "fast_export",
         ]:
     plugin_cmds.register_lazy(
-        "cmd_%s" % name, [], "breezy.plugins.fastimport.cmds")
+        f"cmd_{name}", [], "breezy.plugins.fastimport.cmds")

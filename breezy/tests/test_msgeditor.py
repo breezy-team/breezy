@@ -153,7 +153,7 @@ added:
         See <https://bugs.launchpad.net/bzr/+bug/220331>
         """
         self.overrideEnv('BRZ_EDITOR',
-                         '"%s"' % self.make_do_nothing_editor('name with spaces'))
+                         f"\"{self.make_do_nothing_editor('name with spaces')}\"")
         self.assertEqual(True, msgeditor._run_editor('a_filename'))
 
     def make_fake_editor(self, message='test message from fed\n'):
@@ -165,31 +165,29 @@ added:
         if not isinstance(message, bytes):
             message = message.encode('utf-8')
         with open('fed.py', 'w') as f:
-            f.write('#!%s\n' % sys.executable)
-            f.write("""\
-# coding=utf-8
+            f.write(f'#!{sys.executable}\n')
+            f.write(f"""# coding=utf-8
 import sys
 if len(sys.argv) == 2:
     fn = sys.argv[1]
     with open(fn, 'rb') as f:
         s = f.read()
     with open(fn, 'wb') as f:
-        f.write({!r})
+        f.write({message!r})
         f.write(s)
-""".format(message))
+""")
         if sys.platform == "win32":
             # [win32] make batch file and set BRZ_EDITOR
             with open('fed.bat', 'w') as f:
-                f.write("""\
-@echo off
-"%s" fed.py %%1
-""" % sys.executable)
+                f.write(f"""@echo off
+"{sys.executable}" fed.py %1
+""")
             self.overrideEnv('BRZ_EDITOR', 'fed.bat')
         else:
             # [non-win32] make python script executable and set BRZ_EDITOR
             os.chmod('fed.py', 0o755)
-            mutter('Setting BRZ_EDITOR to %r', '%s ./fed.py' % sys.executable)
-            self.overrideEnv('BRZ_EDITOR', '%s ./fed.py' % sys.executable)
+            mutter('Setting BRZ_EDITOR to %r', f'{sys.executable} ./fed.py')
+            self.overrideEnv('BRZ_EDITOR', f'{sys.executable} ./fed.py')
 
     def test_edit_commit_message_without_infotext(self):
         self.make_uncommitted_tree()

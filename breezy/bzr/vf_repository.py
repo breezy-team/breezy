@@ -532,7 +532,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         self._add_file_to_weave(
                             change.file_id, BytesIO(), heads, None, size=0)
                 else:
-                    raise AssertionError('unknown kind %r' % kind)
+                    raise AssertionError(f'unknown kind {kind!r}')
                 if not carried_over:
                     entry.revision = modified_rev
                 else:
@@ -663,7 +663,7 @@ class VersionedFileRepository(Repository):
             repository format specific) of the serialized inventory.
         """
         if not self.is_in_write_group():
-            raise AssertionError("{!r} not in write group".format(self))
+            raise AssertionError(f"{self!r} not in write group")
         _mod_revision.check_not_reserved_id(revision_id)
         if not (inv.revision_id is None or inv.revision_id == revision_id):
             raise AssertionError(
@@ -714,7 +714,7 @@ class VersionedFileRepository(Repository):
             resulting inventory.
         """
         if not self.is_in_write_group():
-            raise AssertionError("{!r} not in write group".format(self))
+            raise AssertionError(f"{self!r} not in write group")
         _mod_revision.check_not_reserved_id(new_revision_id)
         basis_tree = self.revision_tree(basis_revision_id)
         with basis_tree.lock_read():
@@ -790,7 +790,7 @@ class VersionedFileRepository(Repository):
         # Accumulate current checks.
         for key in current_keys:
             if key[0] != 'inventories' and key[0] not in kinds:
-                checker._report_items.append('unknown key type {!r}'.format(key))
+                checker._report_items.append(f'unknown key type {key!r}')
             keys[key[0]].add(key[1:])
         if keys['inventories']:
             # NB: output order *should* be roughly sorted - topo or
@@ -802,7 +802,7 @@ class VersionedFileRepository(Repository):
             for record in self.inventories.check(keys=keys['inventories']):
                 if record.storage_kind == 'absent':
                     checker._report_items.append(
-                        'Missing inventory {{{}}}'.format(record.key))
+                        f'Missing inventory {{{record.key}}}')
                 else:
                     last_object = self._check_record('inventories', record,
                                                      checker, last_object,
@@ -820,7 +820,7 @@ class VersionedFileRepository(Repository):
             for key in current_keys:
                 if key[0] not in kinds:
                     checker._report_items.append(
-                        'unknown key type {!r}'.format(key))
+                        f'unknown key type {key!r}')
                 keys[key[0]].add(key[1:])
             # Check the outermost kind only - inventories || chk_bytes || texts
             for kind in kinds:
@@ -829,7 +829,7 @@ class VersionedFileRepository(Repository):
                     for record in getattr(self, kind).check(keys=keys[kind]):
                         if record.storage_kind == 'absent':
                             checker._report_items.append(
-                                'Missing {} {{{}}}'.format(kind, record.key))
+                                f'Missing {kind} {{{record.key}}}')
                         else:
                             last_object = self._check_record(kind, record,
                                                              checker, last_object, current_keys[(kind,) + record.key])
@@ -856,12 +856,12 @@ class VersionedFileRepository(Repository):
         elif kind == 'chk_bytes':
             # No code written to check chk_bytes for this repo format.
             checker._report_items.append(
-                'unsupported key type chk_bytes for {}'.format(record.key))
+                f'unsupported key type chk_bytes for {record.key}')
         elif kind == 'texts':
             self._check_text(record, checker, item_data)
         else:
             checker._report_items.append(
-                'unknown key type {} for {}'.format(kind, record.key))
+                f'unknown key type {kind} for {record.key}')
 
     def _check_text(self, record, checker, item_data):
         """Check a single text."""
@@ -955,7 +955,7 @@ class VersionedFileRepository(Repository):
         if (fetch_spec is not None
                 and not getattr(inter, "supports_fetch_spec", False)):
             raise errors.UnsupportedOperation(
-                "fetch_spec not supported for %r" % inter)
+                f"fetch_spec not supported for {inter!r}")
         return inter.fetch(revision_id=revision_id,
                            find_ghosts=find_ghosts, fetch_spec=fetch_spec,
                            lossy=lossy)
@@ -1829,7 +1829,7 @@ class StreamSink:
             elif substream_type == 'signatures':
                 self.target_repo.signatures.insert_record_stream(substream)
             else:
-                raise AssertionError('kaboom! {}'.format(substream_type))
+                raise AssertionError(f'kaboom! {substream_type}')
         # Done inserting data, and the missing_keys calculations will try to
         # read back from the inserted data, so flush the writes to the new pack
         # (if this is pack format).
@@ -1909,7 +1909,7 @@ class StreamSink:
             revision_id = record.key[0]
             rev = serializer.read_revision_from_string(bytes)
             if rev.revision_id != revision_id:
-                raise AssertionError('wtf: {} != {}'.format(rev, revision_id))
+                raise AssertionError(f'wtf: {rev} != {revision_id}')
             self.target_repo.add_revision(revision_id, rev)
 
     def finished(self):
@@ -2008,7 +2008,7 @@ class StreamSource:
             elif knit_kind == "revisions":
                 yield from self._fetch_revision_texts(revs)
             else:
-                raise AssertionError("Unknown knit kind %r" % knit_kind)
+                raise AssertionError(f"Unknown knit kind {knit_kind!r}")
 
     def get_stream_for_missing_keys(self, missing_keys):
         # missing keys can only occur when we are byte copying and not
@@ -2027,8 +2027,7 @@ class StreamSource:
             # copying a revision without copying its required texts: a
             # violation of the requirements for repository integrity.
             raise AssertionError(
-                'cannot copy revisions to fill in missing deltas {}'.format(
-                    keys['revisions']))
+                f"cannot copy revisions to fill in missing deltas {keys['revisions']}")
         for substream_kind, keys in keys.items():
             vf = getattr(self.from_repository, substream_kind)
             if vf is None and keys:

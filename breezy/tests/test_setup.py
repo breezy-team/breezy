@@ -63,7 +63,7 @@ class TestSetup(tests.TestCaseInTempDir):
             self.skipTest(
                 'You must have distutils installed to run this test.'
                 ' Usually this can be found by installing "python-dev"')
-        self.log('test_build running from %s' % self.source_dir)
+        self.log(f'test_build running from {self.source_dir}')
         build_dir = os.path.join(self.test_dir, "build")
         install_dir = os.path.join(self.test_dir, "install")
         self.run_setup([
@@ -88,7 +88,7 @@ class TestSetup(tests.TestCaseInTempDir):
         self.log('stdout: %r', stdout)
         self.log('stderr: %r', stderr)
         self.assertEqual(0, p.returncode,
-                         'invocation of %r failed' % args)
+                         f'invocation of {args!r} failed')
 
 
 class TestDistutilsVersion(tests.TestCase):

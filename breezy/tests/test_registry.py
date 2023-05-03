@@ -101,7 +101,7 @@ class TestRegistry(tests.TestCase):
 
         def generic_help(reg, key):
             help_calls.append(key)
-            return 'generic help for {}'.format(key)
+            return f'generic help for {key}'
         a_registry.register('three', 3, help=generic_help)
         a_registry.register_lazy('four', 'nonexistent_module', 'member2',
                                  help=generic_help)
@@ -293,7 +293,7 @@ class TestRegistryWithDirs(tests.TestCaseInTempDir):
         are sure that it doesn't start in the plugin path.
         """
         os.mkdir('tmp')
-        plugin_name = 'bzr_plugin_a_{}'.format(osutils.rand_chars(4))
+        plugin_name = f'bzr_plugin_a_{osutils.rand_chars(4)}'
         with open('tmp/' + plugin_name + '.py', 'wb') as f:
             f.write(contents)
         return plugin_name

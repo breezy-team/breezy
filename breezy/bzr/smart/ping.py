@@ -47,9 +47,9 @@ class cmd_ping(Command):
         # we can see the response headers (if any) via the handler object.
         response, handler = client.call_expecting_body(b'hello')
         handler.cancel_read_body()
-        self.outf.write('Response: {!r}\n'.format(response))
+        self.outf.write(f'Response: {response!r}\n')
         if getattr(handler, 'headers', None) is not None:
             headers = {
                 k.decode('utf-8'): v.decode('utf-8')
                 for (k, v) in handler.headers.items()}
-            self.outf.write('Headers: {!r}\n'.format(headers))
+            self.outf.write(f'Headers: {headers!r}\n')

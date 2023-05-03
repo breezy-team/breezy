@@ -305,8 +305,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         return WorkingTree.open(path, _unsupported=True)
 
     def __repr__(self):
-        return "<{} of {}>".format(self.__class__.__name__,
-                               getattr(self, 'basedir', None))
+        return f"<{self.__class__.__name__} of {getattr(self, 'basedir', None)}>"
 
     def abspath(self, filename):
         return osutils.pathjoin(self.basedir, filename)

@@ -159,7 +159,7 @@ def parse_git_error(url, message):
         return PermissionDenied(url, message)
     m = re.match(r'Permission to ([^ ]+) denied to ([^ ]+)\.', message)
     if m:
-        return PermissionDenied(m.group(1), 'denied to %s' % m.group(2))
+        return PermissionDenied(m.group(1), f'denied to {m.group(2)}')
     if message == 'Host key verification failed.':
         return TransportError('Host key verification failed')
     if message == '[Errno 104] Connection reset by peer':
@@ -284,7 +284,7 @@ class DulwichSSHVendor(dulwich.client.SSHVendor):
         if kind == 'socket':
             return SSHSocketWrapper(io_object)
         else:
-            raise AssertionError("Unknown io object kind %r'" % kind)
+            raise AssertionError(f"Unknown io object kind {kind!r}'")
 
 
 # dulwich.client.get_ssh_vendor = DulwichSSHVendor
@@ -570,7 +570,7 @@ class RemoteGitDir(GitDir):
             return self._refs
         result = self.fetch_pack(lambda x: None, None,
                                  lambda x: None,
-                                 lambda x: trace.mutter("git: %s" % x))
+                                 lambda x: trace.mutter(f"git: {x}"))
         self._refs = remote_refs_dict_to_container(
             result.refs, result.symrefs)
         return self._refs

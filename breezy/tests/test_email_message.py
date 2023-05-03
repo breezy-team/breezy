@@ -23,13 +23,12 @@ from ..email_message import EmailMessage
 from ..errors import BzrBadParameterNotUnicode
 from ..smtp_connection import SMTPConnection
 
-EMPTY_MESSAGE = '''\
-From: from@from.com
+EMPTY_MESSAGE = f'''From: from@from.com
 Subject: subject
 To: to@to.com
-User-Agent: Bazaar (%s)
+User-Agent: Bazaar ({_breezy_version})
 
-''' % _breezy_version
+'''
 
 _SIMPLE_MESSAGE = '''\
 MIME-Version: 1.0
@@ -68,7 +67,7 @@ body
 
 
 def simple_multipart_message():
-    msg = _MULTIPART_HEAD + '--%s--\n' % BOUNDARY
+    msg = _MULTIPART_HEAD + f'--{BOUNDARY}--\n'
     return msg
 
 

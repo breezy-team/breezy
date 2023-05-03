@@ -470,7 +470,7 @@ class TestGraphBase(tests.TestCase):
         def get_parent_map(keys):
             bad_keys = set(keys).intersection(break_on)
             if bad_keys:
-                self.fail('key(s) {} was accessed'.format(sorted(bad_keys)))
+                self.fail(f'key(s) {sorted(bad_keys)} was accessed')
             return orig_parent_map(keys)
         g.get_parent_map = get_parent_map
         return g

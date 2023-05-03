@@ -141,15 +141,10 @@ class _PotExporter:
         if comment is None:
             comment = ''
         else:
-            comment = "# %s\n" % comment
+            comment = f"# {comment}\n"
         mutter("Exporting msg %r at line %d in %r", s[:20], lineno, path)
         line = (
-            "#: {path}:{lineno}\n"
-            "{comment}"
-            "msgid {msg}\n"
-            "msgstr \"\"\n"
-            "\n".format(
-                path=path, lineno=lineno, comment=comment, msg=_normalize(s)))
+            f"#: {path}:{lineno}\n{comment}msgid {_normalize(s)}\nmsgstr \"\"\n\n")
         self.outf.write(line)
 
     def poentry_in_context(self, context, string, comment=None):
@@ -247,7 +242,7 @@ def _command_helps(exporter, plugin_name=None):
 
     plugins = _mod_plugin.plugins()
     if plugin_name is not None and plugin_name not in plugins:
-        raise errors.BzrError(gettext('Plugin %s is not loaded' % plugin_name))
+        raise errors.BzrError(gettext(f'Plugin {plugin_name} is not loaded'))
     core_plugins = {
         name for name in plugins
         if plugins[name].path().startswith(breezy.__path__[0])}

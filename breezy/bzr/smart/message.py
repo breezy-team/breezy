@@ -117,10 +117,10 @@ class ConventionalRequestHandler(MessageHandler):
                 self.expecting = 'error'
             else:
                 raise errors.SmartProtocolError(
-                    'Non-success status byte in request body: {!r}'.format(byte))
+                    f'Non-success status byte in request body: {byte!r}')
         else:
             raise errors.SmartProtocolError(
-                'Unexpected message part: byte({!r})'.format(byte))
+                f'Unexpected message part: byte({byte!r})')
 
     def structure_part_received(self, structure):
         if self.expecting == 'args':
@@ -129,7 +129,7 @@ class ConventionalRequestHandler(MessageHandler):
             self._error_received(structure)
         else:
             raise errors.SmartProtocolError(
-                'Unexpected message part: structure({!r})'.format(structure))
+                f'Unexpected message part: structure({structure!r})')
 
     def _args_received(self, args):
         self.expecting = 'body'
@@ -149,7 +149,7 @@ class ConventionalRequestHandler(MessageHandler):
             self.request_handler.accept_body(bytes)
         else:
             raise errors.SmartProtocolError(
-                'Unexpected message part: bytes({!r})'.format(bytes))
+                f'Unexpected message part: bytes({bytes!r})')
 
     def end_received(self):
         if self.expecting not in ['body', 'end']:
@@ -227,16 +227,16 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
             raise TypeError(byte)
         if byte not in [b'E', b'S']:
             raise errors.SmartProtocolError(
-                'Unknown response status: {!r}'.format(byte))
+                f'Unknown response status: {byte!r}')
         if self._body_started:
             if self._body_stream_status is not None:
                 raise errors.SmartProtocolError(
-                    'Unexpected byte part received: {!r}'.format(byte))
+                    f'Unexpected byte part received: {byte!r}')
             self._body_stream_status = byte
         else:
             if self.status is not None:
                 raise errors.SmartProtocolError(
-                    'Unexpected byte part received: {!r}'.format(byte))
+                    f'Unexpected byte part received: {byte!r}')
             self.status = byte
 
     def bytes_part_received(self, bytes):
@@ -246,7 +246,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
     def structure_part_received(self, structure):
         if not isinstance(structure, tuple):
             raise errors.SmartProtocolError(
-                'Args structure is not a sequence: {!r}'.format(structure))
+                f'Args structure is not a sequence: {structure!r}')
         if not self._body_started:
             if self.args is not None:
                 raise errors.SmartProtocolError(
@@ -256,8 +256,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         else:
             if self._body_stream_status != b'E':
                 raise errors.SmartProtocolError(
-                    'Unexpected structure received after body: %r'
-                    % (structure,))
+                    f'Unexpected structure received after body: {structure!r}')
             self._body_error_args = structure
 
     def _wait_for_response_args(self):

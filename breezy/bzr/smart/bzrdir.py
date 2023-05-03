@@ -465,7 +465,7 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
             return False
         if arg == b'True':
             return True
-        raise AssertionError("invalid arg %r" % arg)
+        raise AssertionError(f"invalid arg {arg!r}")
 
     def parse_NoneBytestring(self, arg):
         return arg or None

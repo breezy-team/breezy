@@ -1333,7 +1333,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                     (S_IFGITLINK, 0, 0, 0, 0, 0, 0, 0, 0, 0))
             stat_val = os.stat_result((S_IFGITLINK, ) + stat_val[1:])
         else:
-            raise AssertionError("unknown kind '%s'" % kind)
+            raise AssertionError(f"unknown kind '{kind}'")
         # Add an entry to the index or update the existing entry
         ensure_normalized_path(path)
         encoded_path = encode_git_path(path)

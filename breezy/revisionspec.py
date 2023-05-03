@@ -251,8 +251,7 @@ class RevisionSpec:
 
     def __repr__(self):
         # this is mostly for helping with testing
-        return '<{} {}>'.format(self.__class__.__name__,
-                            self.user_spec)
+        return f'<{self.__class__.__name__} {self.user_spec}>'
 
     def needs_branch(self):
         """Whether this revision spec needs a branch.
@@ -908,7 +907,7 @@ class RevisionSpec_annotate(RevisionIDSpec):
     def _raise_invalid(self, numstring, context_branch):
         raise InvalidRevisionSpec(
             self.user_spec, context_branch,
-            'No such line: %s' % numstring)
+            f'No such line: {numstring}')
 
     def _as_revision_id(self, context_branch):
         path, numstring = self.spec.rsplit(':', 1)
@@ -921,7 +920,7 @@ class RevisionSpec_annotate(RevisionIDSpec):
             if not tree.has_filename(file_path):
                 raise InvalidRevisionSpec(
                     self.user_spec, context_branch,
-                    "File '%s' is not versioned." % file_path)
+                    f"File '{file_path}' is not versioned.")
             revision_ids = [r for (r, l) in tree.annotate_iter(file_path)]
         try:
             revision_id = revision_ids[index]
@@ -930,7 +929,7 @@ class RevisionSpec_annotate(RevisionIDSpec):
         if revision_id == revision.CURRENT_REVISION:
             raise InvalidRevisionSpec(
                 self.user_spec, context_branch,
-                'Line %s has not been committed.' % numstring)
+                f'Line {numstring} has not been committed.')
         return revision_id
 
 

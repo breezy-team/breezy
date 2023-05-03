@@ -118,7 +118,7 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
         kind_changed = changes.kind_changed
         if expected_renamed is not None:
             self.assertEqual(len(renamed), len(expected_renamed),
-                              "{} is renamed, expected {}".format(renamed, expected_renamed))
+                              f"{renamed} is renamed, expected {expected_renamed}")
             renamed_files = [(item.path[0], item.path[1]) for item in renamed]
             for expected_renamed_entry in expected_renamed:
                 expected_renamed_entry = (
@@ -127,12 +127,11 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
                 self.assertIn(
                     expected_renamed_entry,
                     renamed_files,
-                    "{} is not renamed, {} are".format(expected_renamed_entry,
-                                                               renamed_files)
+                    f"{expected_renamed_entry} is not renamed, {renamed_files} are"
                 )
         if expected_added is not None:
             self.assertEqual(len(added), len(expected_added),
-                              "%s is added" % str(added))
+                              f"{str(added)} is added")
             added_files = [(item.path[1],) for item in added]
             for expected_added_entry in expected_added:
                 expected_added_entry = (
@@ -140,12 +139,11 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
                 self.assertIn(
                     expected_added_entry,
                     added_files,
-                    "{} is not added, {} are".format(expected_added_entry,
-                                                             added_files)
+                    f"{expected_added_entry} is not added, {added_files} are"
                 )
         if expected_removed is not None:
             self.assertEqual(len(removed), len(expected_removed),
-                              "%s is removed" % str(removed))
+                              f"{str(removed)} is removed")
             removed_files = [(item.path[0],) for item in removed]
             for expected_removed_entry in expected_removed:
                 expected_removed_entry = (
@@ -153,12 +151,11 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
                 self.assertIn(
                     expected_removed_entry,
                     removed_files,
-                    "{} is not removed, {} are".format(expected_removed_entry,
-                                                               removed_files)
+                    f"{expected_removed_entry} is not removed, {removed_files} are"
                 )
         if expected_modified is not None:
             self.assertEqual(len(modified), len(expected_modified),
-                              "%s is modified" % str(modified))
+                              f"{str(modified)} is modified")
             modified_files = [(item.path[1],) for item in modified]
             for expected_modified_entry in expected_modified:
                 expected_modified_entry = (
@@ -166,8 +163,7 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
                 self.assertIn(
                     expected_modified_entry,
                     modified_files,
-                    "{} is not modified, {} are".format(
-                                    expected_modified_entry, modified_files)
+                    f"{expected_modified_entry} is not modified, {modified_files} are"
                 )
         if expected_kind_changed is not None:
             self.assertEqual(len(kind_changed), len(expected_kind_changed),

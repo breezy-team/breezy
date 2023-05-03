@@ -121,7 +121,7 @@ class TransportRefsContainer(RefsContainer):
         self._peeled_refs = None
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self.transport)
+        return f"{self.__class__.__name__}({self.transport!r})"
 
     def _ensure_dir_exists(self, path):
         self.transport.clone(posixpath.dirname(path)).create_prefix()
@@ -543,7 +543,7 @@ class TransportRepo(BaseRepo):
         return StackedConfig(backends, writable=writable)
 
     def __repr__(self):
-        return "<{} for {!r}>".format(self.__class__.__name__, self.transport)
+        return f"<{self.__class__.__name__} for {self.transport!r}>"
 
     @classmethod
     def init(cls, transport, bare=False):
@@ -612,7 +612,7 @@ class TransportObjectStore(PackBasedObjectStore):
         return self.transport == other.transport
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self.transport)
+        return f"{self.__class__.__name__}({self.transport!r})"
 
     @property
     def alternates(self):

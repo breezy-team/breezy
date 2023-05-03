@@ -38,7 +38,7 @@ load_plugins()
 
 def get_filename(options):
     """Provides name of manpage"""
-    return "%s.1" % (options.brz_name)
+    return f"{options.brz_name}.1"
 
 
 def infogen(options, outfile):
@@ -91,10 +91,10 @@ def getcommand_list(params):
         if cmd_help:
             firstline = cmd_help.split('\n', 1)[0]
             usage = cmd_object._usage()
-            tmp = '.TP\n.B "{}"\n{}\n'.format(usage, firstline)
+            tmp = f'.TP\n.B "{usage}"\n{firstline}\n'
             output = output + tmp
         else:
-            raise RuntimeError("Command '%s' has no help text" % (cmd_name))
+            raise RuntimeError(f"Command '{cmd_name}' has no help text")
     return output
 
 
@@ -116,8 +116,8 @@ def getcommand_help(params):
 
 def format_command(params, cmd):
     """Provides long help for each public command"""
-    subsection_header = '.SS "%s"\n' % (cmd._usage())
-    doc = "%s\n" % (cmd.__doc__)
+    subsection_header = f'.SS "{cmd._usage()}\"\n'
+    doc = f"{cmd.__doc__}\n"
     doc = breezy.help_topics.help_as_plain_text(cmd.help())
 
     # A dot at the beginning of a line is interpreted as a macro.
@@ -165,8 +165,8 @@ def format_command(params, cmd):
 
 
 def format_alias(params, alias, cmd_name):
-    help = '.SS "brz %s"\n' % alias
-    help += 'Alias for "{}", see "brz {}".\n'.format(cmd_name, cmd_name)
+    help = f'.SS "brz {alias}\"\n'
+    help += f'Alias for "{cmd_name}", see "brz {cmd_name}".\n'
     return help
 
 
@@ -176,7 +176,7 @@ def environment_variables():
     from breezy.help_topics import known_env_variables
     for k, desc in known_env_variables:
         yield ".TP\n"
-        yield ".I \"%s\"\n" % k
+        yield f".I \"{k}\"\n"
         yield man_escape(desc) + "\n"
 
 

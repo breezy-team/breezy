@@ -181,11 +181,11 @@ class TestViewTreeOperations(tests.TestCaseWithTransport):
         self.run_bzr("bind ../tree_1", working_dir='tree_2')
         out, err = self.run_bzr('update', working_dir='tree_2')
         self.assertEqualDiff(
-            """Operating on whole tree but only reporting on 'my' view.
+            f"""Operating on whole tree but only reporting on 'my' view.
  M  a
 All changes applied successfully.
-Updated to revision 2 of branch %s
-""" % osutils.pathjoin(self.test_dir, 'tree_1'),
+Updated to revision 2 of branch {osutils.pathjoin(self.test_dir, 'tree_1')}
+""",
             err)
         self.assertEqual("", out)
 
