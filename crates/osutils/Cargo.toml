@@ -21,6 +21,7 @@ hostname = "0.3.1"
 num_cpus = "1.13.0"
 path-clean = "1"
 termion = "2"
+encoding_rs = ">=0.8"
 
 [target.'cfg(unix)'.dependencies]
 nix = ">=0.26"
