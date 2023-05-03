@@ -249,20 +249,26 @@ pub fn cache_dir() -> std::io::Result<PathBuf> {
 }
 
 pub fn default_email() -> Option<String> {
-    let brz_email = env::var("BRZ_EMAIL").ok();
-    env::var("EMAIL")
-        .ok()
-        .or(brz_email)
-        .ok()
-        .or_else(|_| {
-            let (name, email) = auto_user_id()?;
-            if let (Some(name), Some(email)) = (name, email) {
-                Some(format!("{} <{}>", name, email))
-            } else {
-                Some(email)
-            }
-        })
-        .unwrap_or_else(|_| None)
+    let brz_email = env::var("BRZ_EMAIL");
+    if let Ok(email) = brz_email {
+        return Some(email);
+    }
+
+    let email = env::var("EMAIL");
+    if let Ok(email) = email {
+        return Some(email);
+    }
+
+    match env::var("BRZ_DISABLE_AUTO_USER_ID") {
+        Ok(e) if e == "1" => return None,
+        _ => {}
+    }
+
+    match auto_user_id() {
+        Ok((Some(name), Some(email))) => Some(format!("{} <{}>", name, email)),
+        Ok((None, Some(email))) => Some(email),
+        _ => None,
+    }
 }
 
 /// Calculate automatic user identification.
@@ -279,8 +285,11 @@ pub fn default_email() -> Option<String> {
 /// slow, and it doesn't use the hostname alone because that's not normally
 /// a reasonable address.
 #[cfg(not(windows))]
-pub fn auto_user_id() -> Result<(Option<String>, Option<String>)> {
-    let default_mail_domain = get_default_mail_domain(None)?;
+pub fn auto_user_id() -> std::io::Result<(Option<String>, Option<String>)> {
+    let default_mail_domain = match get_default_mail_domain(None) {
+        Some(domain) => domain,
+        None => return Ok((None, None)),
+    };
     let uid = nix::unistd::getuid();
 
     let w = match nix::unistd::User::from_uid(uid) {
@@ -297,17 +306,8 @@ pub fn auto_user_id() -> Result<(Option<String>, Option<String>)> {
         }
     };
 
-    let gecos = w.pw_gecos();
-    let username = w.pw_name().to_str().unwrap().to_string();
-    let encoding = match std::str::from_utf8(&gecos) {
-        Ok(_) => "utf-8",
-        Err(_) => {
-            let encoding = breezy_osutils::get_user_encoding()?;
-            encoding.to_str().unwrap()
-        }
-    };
-
-    let realname = match gecos.to_str() {
+    let username = w.name;
+    let realname = match w.gecos.to_str() {
         Ok(gecos_str) => {
             let comma = gecos_str.find(',');
             if let Some(comma) = comma {
@@ -317,7 +317,7 @@ pub fn auto_user_id() -> Result<(Option<String>, Option<String>)> {
             }
         }
         Err(_) => {
-            debug!("cannot decode passwd entry {:?}", w);
+            debug!("cannot decode passwd entry {:?}", w.gecos.to_str());
             None
         }
     };

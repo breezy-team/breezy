@@ -17,20 +17,7 @@
 
 """Functions for deriving user configuration from system environment."""
 
-import os
-import sys
-
-from .lazy_import import lazy_import
-
-lazy_import(globals(), """
-from breezy import (
-    osutils,
-    trace,
-    win32utils,
-    )
-""")
-from . import errors, _cmd_rs
-
+from . import _cmd_rs
 
 ensure_config_dir_exists = _cmd_rs.ensure_config_dir_exists
 bazaar_config_dir = _cmd_rs.bazaar_config_dir
@@ -42,6 +29,6 @@ authentication_config_path = _cmd_rs.authentication_config_path
 user_ignore_config_path = _cmd_rs.user_ignore_config_path
 crash_dir = _cmd_rs.crash_dir
 cache_dir = _cmd_rs.cache_dir
-get_default_mail_domain = _cmd_rs.get_default_mail_domain
+_get_default_mail_domain = _cmd_rs.get_default_mail_domain
 default_email = _cmd_rs.default_email
-auto_user_id = _cmd_rs.auto_user_id
+_auto_user_id = _cmd_rs.auto_user_id

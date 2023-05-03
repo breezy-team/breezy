@@ -1,5 +1,8 @@
+use pyo3::import_exception;
 use pyo3::prelude::*;
 use std::path::PathBuf;
+
+import_exception!(breezy.errors, NoWhoami);
 
 #[pyfunction(name = "disable_i18n")]
 fn i18n_disable_i18n() {
@@ -87,15 +90,16 @@ fn cache_dir() -> PyResult<PathBuf> {
 }
 
 #[pyfunction]
-fn get_default_mail_domain(mailname_file: Option<PathBuf>) -> PyResult<String> {
-    Ok(breezy::bedding::get_default_mail_domain(
-        mailname_file.map(|p| p.as_path()),
-    )?)
+fn get_default_mail_domain(mailname_file: Option<PathBuf>) -> Option<String> {
+    breezy::bedding::get_default_mail_domain(mailname_file.as_deref())
 }
 
 #[pyfunction]
 fn default_email() -> PyResult<String> {
-    Ok(breezy::bedding::default_email()?)
+    match breezy::bedding::default_email() {
+        Some(email) => Ok(email),
+        None => Err(NoWhoami::new_err(())),
+    }
 }
 
 #[pyfunction]

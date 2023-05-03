@@ -645,7 +645,7 @@ def _get_stream_encoding(stream):
     if encoding is None:
         encoding = getattr(stream, "encoding", None)
     if encoding is None:
-        encoding = osutils.get_terminal_encoding(trace=True)
+        encoding = osutils.get_terminal_encoding()
     return encoding
 
 
