@@ -202,7 +202,7 @@ def generate_simple_plan(todo_set, start_revid, stop_revid, onto_revid, graph,
     :return: replace map
     """
     assert start_revid is None or start_revid in todo_set, \
-        "invalid start revid({!r}), todo_set({!r})".format(start_revid, todo_set)
+        f"invalid start revid({start_revid!r}), todo_set({todo_set!r})"
     assert stop_revid is None or stop_revid in todo_set, "invalid stop_revid"
     replace_map = {}
     parent_map = graph.get_parent_map(todo_set)
@@ -221,7 +221,7 @@ def generate_simple_plan(todo_set, start_revid, stop_revid, onto_revid, graph,
     # by the heads cache? RBC 20080719
     for oldrevid in todo:
         oldparents = parent_map[oldrevid]
-        assert isinstance(oldparents, tuple), "not tuple: %r" % oldparents
+        assert isinstance(oldparents, tuple), f"not tuple: {oldparents!r}"
         parents = []
         # Left parent:
         if heads_cache.heads((oldparents[0], onto_revid)) == {onto_revid}:
@@ -250,8 +250,8 @@ def generate_simple_plan(todo_set, start_revid, stop_revid, onto_revid, graph,
                 continue
         parents = tuple(parents)
         newrevid = generate_revid(oldrevid, parents)
-        assert newrevid != oldrevid, "old and newrevid equal (%r)" % newrevid
-        assert isinstance(parents, tuple), "parents not tuple: %r" % parents
+        assert newrevid != oldrevid, f"old and newrevid equal ({newrevid!r})"
+        assert isinstance(parents, tuple), f"parents not tuple: {parents!r}"
         replace_map[oldrevid] = (newrevid, parents)
     return replace_map
 
@@ -309,7 +309,7 @@ def generate_transpose_plan(ancestry, renames, graph, generate_revid):
                 else:
                     parents = parent_map[c]
                 assert isinstance(parents, tuple), \
-                    "Expected tuple of parents, got: %r" % parents
+                    f"Expected tuple of parents, got: {parents!r}"
                 # replace r in parents with replace_map[r][0]
                 if not replace_map[r][0] in parents:
                     parents = list(parents)
@@ -359,7 +359,7 @@ def rebase(repository, replace_map, revision_rewriter):
         for i, revid in enumerate(todo):
             pb.update('rebase revisions', i, len(todo))
             (newrevid, newparents) = replace_map[revid]
-            assert isinstance(newparents, tuple), "Expected tuple for %r" % newparents
+            assert isinstance(newparents, tuple), f"Expected tuple for {newparents!r}"
             if repository.has_revision(newrevid):
                 # Was already converted, no need to worry about it again
                 continue
@@ -406,7 +406,7 @@ class CommitBuilderRevisionRewriter:
         :param newrevid: Revision id of the revision to create.
         :param new_parents: Revision ids of the new parent revisions.
         """
-        assert isinstance(new_parents, tuple), "CommitBuilderRevisionRewriter: Expected tuple for %r" % new_parents
+        assert isinstance(new_parents, tuple), f"CommitBuilderRevisionRewriter: Expected tuple for {new_parents!r}"
         mutter('creating copy %r of %r with new parents %r',
                newrevid, oldrevid, new_parents)
         oldrev = self.repository.get_revision(oldrevid)
@@ -536,7 +536,7 @@ class WorkingTreeRevisionRewriter:
 
         :param oldrev: Revision info of new revision to commit.
         :param newrevid: New revision id."""
-        assert oldrev.revision_id != newrevid, "Invalid revid %r" % newrevid
+        assert oldrev.revision_id != newrevid, f"Invalid revid {newrevid!r}"
         revprops = dict(oldrev.properties)
         revprops[REVPROP_REBASE_OF] = oldrev.revision_id.decode('utf-8')
         committer = self.wt.branch.get_config().username()

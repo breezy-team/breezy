@@ -28,7 +28,7 @@ class GitBranchConfig(config.BranchConfig):
         self.option_sources = self.option_sources[0], self.option_sources[2]
 
     def __repr__(self):
-        return "<{} of {!r}>".format(self.__class__.__name__, self.branch)
+        return f"<{self.__class__.__name__} of {self.branch!r}>"
 
     def set_user_option(self, name, value, store=config.STORE_BRANCH,
                         warn_masked=False):
@@ -60,7 +60,7 @@ class GitConfigSectionDefault(config.Section):
                 name = self._config.get((b'user', ), b'name')
             except KeyError:
                 return email.decode()
-            return '{} <{}>'.format(name.decode(), email.decode())
+            return f'{name.decode()} <{email.decode()}>'
         if name == 'gpg_signing_key':
             try:
                 key = self._config.get((b'user', ), b'signingkey')

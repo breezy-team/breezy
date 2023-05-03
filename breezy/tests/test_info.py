@@ -84,8 +84,8 @@ class TestInfo(tests.TestCaseWithTransport):
 
     def assertTreeDescription(self, format):
         """Assert a tree's format description matches expectations"""
-        self.make_branch_and_tree('%s_tree' % format, format=format)
-        tree = workingtree.WorkingTree.open('%s_tree' % format)
+        self.make_branch_and_tree(f'{format}_tree', format=format)
+        tree = workingtree.WorkingTree.open(f'{format}_tree')
         self.assertEqual(format, info.describe_format(tree.controldir,
                                                       tree.branch.repository, tree.branch, tree))
 
@@ -93,18 +93,18 @@ class TestInfo(tests.TestCaseWithTransport):
         """Assert a checkout's format description matches expectations"""
         if expected is None:
             expected = format
-        branch = self.make_branch('%s_cobranch' % format, format=format)
+        branch = self.make_branch(f'{format}_cobranch', format=format)
         # this ought to be easier...
-        branch.create_checkout('%s_co' % format,
+        branch.create_checkout(f'{format}_co',
                                lightweight=True).controldir.destroy_workingtree()
-        control = controldir.ControlDir.open('%s_co' % format)
+        control = controldir.ControlDir.open(f'{format}_co')
         old_format = control._format.workingtree_format
         try:
             control._format.workingtree_format = \
                 controldir.format_registry.make_controldir(
                     format).workingtree_format
             control.create_workingtree()
-            tree = workingtree.WorkingTree.open('%s_co' % format)
+            tree = workingtree.WorkingTree.open(f'{format}_co')
             format_description = info.describe_format(tree.controldir,
                                                       tree.branch.repository, tree.branch, tree)
             self.assertEqual(expected, format_description,
@@ -117,8 +117,8 @@ class TestInfo(tests.TestCaseWithTransport):
         """Assert branch's format description matches expectations"""
         if expected is None:
             expected = format
-        self.make_branch('%s_branch' % format, format=format)
-        branch = _mod_branch.Branch.open('%s_branch' % format)
+        self.make_branch(f'{format}_branch', format=format)
+        branch = _mod_branch.Branch.open(f'{format}_branch')
         self.assertEqual(expected, info.describe_format(branch.controldir,
                                                         branch.repository, branch, None))
 
@@ -126,8 +126,8 @@ class TestInfo(tests.TestCaseWithTransport):
         """Assert repository's format description matches expectations"""
         if expected is None:
             expected = format
-        self.make_repository('%s_repo' % format, format=format)
-        repo = _mod_repository.Repository.open('%s_repo' % format)
+        self.make_repository(f'{format}_repo', format=format)
+        repo = _mod_repository.Repository.open(f'{format}_repo')
         self.assertEqual(expected, info.describe_format(repo.controldir,
                                                         repo, None, None))
 

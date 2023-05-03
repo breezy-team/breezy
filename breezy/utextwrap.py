@@ -158,7 +158,7 @@ class UTextWrapper(textwrap.TextWrapper):
     def _wrap_chunks(self, chunks):
         lines = []
         if self.width <= 0:
-            raise ValueError("invalid width %r (must be > 0)" % self.width)
+            raise ValueError(f"invalid width {self.width!r} (must be > 0)")
         if self.max_lines is not None:
             if self.max_lines > 1:
                 indent = self.subsequent_indent

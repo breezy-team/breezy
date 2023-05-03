@@ -144,7 +144,7 @@ class TestLogRevSpecs(TestLogWithLogCatcher):
         tree = self.make_branch_and_tree('.')
         # We want more commits than our batch size starts at
         for pos in range(10):
-            tree.commit("%s" % pos)
+            tree.commit(f"{pos}")
         self.assertLogRevnos(['--limit', '2'], ['10', '9'])
 
     def test_log_limit_short(self):

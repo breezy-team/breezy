@@ -229,7 +229,7 @@ class TestGitBlackBox(ExternalBase):
         self.assertIn(
             '<The commit message>',
             output,
-            "Commit message was not found in output:\n{}".format(output)
+            f"Commit message was not found in output:\n{output}"
         )
 
     def test_log_verbose(self):
@@ -553,11 +553,10 @@ class SwitchTests(ExternalBase):
         orig = self.make_branch_and_tree('source', format='git')
         subtree = self.make_branch_and_tree('source/subtree', format='git')
         self.build_tree(['source/subtree/a'])
-        self.build_tree_contents([('source/.gitmodules', """\
-[submodule "subtree"]
+        self.build_tree_contents([('source/.gitmodules', f"""[submodule "subtree"]
     path = subtree
-    url = %s
-""" % subtree.user_url)])
+    url = {subtree.user_url}
+""")])
         subtree.add(['a'])
         subtree.commit('add subtree contents')
         orig.add_reference(subtree)
@@ -659,7 +658,7 @@ class GitObjectsTests(ExternalBase):
         self.assertEqual([40, 40], [len(s) for s in shas])
         self.assertEqual(error, '')
 
-        output, error = self.run_bzr('git-object %s' % shas[0])
+        output, error = self.run_bzr(f'git-object {shas[0]}')
         self.assertEqual('', error)
 
     def test_in_native(self):

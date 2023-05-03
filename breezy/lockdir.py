@@ -176,9 +176,7 @@ class LockDir(lock.Lock):
         self._warned_about_lock_holder = None
 
     def __repr__(self):
-        return '{}({}{})'.format(self.__class__.__name__,
-                             self.transport.base,
-                             self.path)
+        return f'{self.__class__.__name__}({self.transport.base}{self.path})'
 
     is_held = property(lambda self: self._lock_held)
 
@@ -224,7 +222,7 @@ class LockDir(lock.Lock):
                     FileExists, ResourceBusy) as e:
                 self._trace("... contention, %s", e)
                 other_holder = self.peek()
-                self._trace("other holder is %r" % other_holder)
+                self._trace(f"other holder is {other_holder!r}")
                 try:
                     self._handle_lock_contention(other_holder)
                 except BaseException:
@@ -298,7 +296,7 @@ class LockDir(lock.Lock):
             note(gettext("error removing pending lock: %s"), e)
 
     def _create_pending_dir(self):
-        tmpname = '{}/{}.tmp'.format(self.path, rand_chars(10))
+        tmpname = f'{self.path}/{rand_chars(10)}.tmp'
         try:
             self.transport.mkdir(tmpname)
         except NoSuchFile:
@@ -337,7 +335,7 @@ class LockDir(lock.Lock):
             # whole tree
             start_time = time.time()
             self._trace("unlocking")
-            tmpname = '{}/releasing.{}.tmp'.format(self.path, rand_chars(20))
+            tmpname = f'{self.path}/releasing.{rand_chars(20)}.tmp'
             # gotta own it to unlock
             self.confirm()
             self.transport.rename(self._held_dir, tmpname)
@@ -375,7 +373,7 @@ class LockDir(lock.Lock):
             holder_info = self.peek()
         except LockCorrupt as e:
             # The lock info is corrupt.
-            if ui.ui_factory.get_boolean("Break (corrupt {!r})".format(self)):
+            if ui.ui_factory.get_boolean(f"Break (corrupt {self!r})"):
                 self.force_break_corrupt(e.file_data)
             return
         if holder_info is not None:
@@ -385,7 +383,7 @@ class LockDir(lock.Lock):
                     dict(lock_info=str(holder_info))):
                 result = self.force_break(holder_info)
                 ui.ui_factory.show_message(
-                    "Broke lock %s" % result.lock_url)
+                    f"Broke lock {result.lock_url}")
 
     def force_break(self, dead_holder_info):
         """Release a lock held by another process.
@@ -407,7 +405,7 @@ class LockDir(lock.Lock):
         :returns: LockResult for the broken lock.
         """
         if not isinstance(dead_holder_info, LockHeldInfo):
-            raise ValueError("dead_holder_info: %r" % dead_holder_info)
+            raise ValueError(f"dead_holder_info: {dead_holder_info!r}")
         self._check_not_locked()
         current_info = self.peek()
         if current_info is None:
@@ -415,7 +413,7 @@ class LockDir(lock.Lock):
             return
         if current_info != dead_holder_info:
             raise LockBreakMismatch(self, current_info, dead_holder_info)
-        tmpname = '{}/broken.{}.tmp'.format(self.path, rand_chars(20))
+        tmpname = f'{self.path}/broken.{rand_chars(20)}.tmp'
         self.transport.rename(self._held_dir, tmpname)
         # check that we actually broke the right lock, not someone else;
         # there's a small race window between checking it and doing the
@@ -445,7 +443,7 @@ class LockDir(lock.Lock):
         # XXX: this copes with unparseable info files, but what about missing
         # info files?  Or missing lock dirs?
         self._check_not_locked()
-        tmpname = '{}/broken.{}.tmp'.format(self.path, rand_chars(20))
+        tmpname = f'{self.path}/broken.{rand_chars(20)}.tmp'
         self.transport.rename(self._held_dir, tmpname)
         # check that we actually broke the right lock, not someone else;
         # there's a small race window between checking it and doing the
@@ -464,7 +462,7 @@ class LockDir(lock.Lock):
     def _check_not_locked(self):
         """If the lock is held by this instance, raise an error."""
         if self._lock_held:
-            raise AssertionError("can't break own lock: %r" % self)
+            raise AssertionError(f"can't break own lock: {self!r}")
 
     def confirm(self):
         """Make sure that the lock is still held by this locker.
@@ -702,7 +700,7 @@ class LockHeldInfo:
 
     def __repr__(self):
         """Return a debugging representation of this object."""
-        return "{}({!r})".format(self.__class__.__name__, self.info_dict)
+        return f"{self.__class__.__name__}({self.info_dict!r})"
 
     def __str__(self):
         """Return a user-oriented description of this object."""
@@ -822,13 +820,12 @@ class LockHeldInfo:
             return False
         pid_str = self.info_dict.get('pid', None)
         if not pid_str:
-            mutter("no pid recorded in {!r}".format(self))
+            mutter(f"no pid recorded in {self!r}")
             return False
         try:
             pid = int(pid_str)
         except ValueError:
-            mutter("can't parse pid %r from %r"
-                   % (pid_str, self))
+            mutter(f"can't parse pid {pid_str!r} from {self!r}")
             return False
         return osutils.is_local_pid_dead(pid)
 

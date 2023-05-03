@@ -288,10 +288,10 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
         self.builder = builder
 
     def _get_actions(self, name):
-        return getattr(self, 'do_%s' % name)
+        return getattr(self, f'do_{name}')
 
     def _get_check(self, name):
-        return getattr(self, 'check_%s' % name)
+        return getattr(self, f'check_{name}')
 
     def _merge_other_into_this(self):
         b = self.builder.get_branch()

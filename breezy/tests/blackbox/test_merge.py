@@ -280,7 +280,7 @@ class TestMerge(tests.TestCaseWithTransport):
         tree_b.commit('commit e')
         out, err = self.run_bzr('merge', working_dir='branch_b')
         self.assertStartsWith(
-            err, 'Merging from remembered submit location {}\n'.format(base))
+            err, f'Merging from remembered submit location {base}\n')
         # re-open tree as external run_brz modified it
         tree_b = branch_b.controldir.open_workingtree()
         tree_b.commit('merge branch_a')

@@ -280,7 +280,7 @@ def _convert_items(items, format, clean_up, dry_run, label=None):
                 succeeded.append(control_dir)
                 continue
             except Exception as ex:
-                trace.warning('conversion error: %s' % ex)
+                trace.warning(f'conversion error: {ex}')
                 exceptions.append(ex)
                 continue
 

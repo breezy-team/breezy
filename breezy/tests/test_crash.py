@@ -50,7 +50,7 @@ class TestApportReporting(tests.TestCaseInTempDir):
 
         # message explaining the crash
         self.assertContainsRe(stderr.getvalue(),
-                              "    apport-bug %s" % crash_filename)
+                              f"    apport-bug {crash_filename}")
 
         with open(crash_filename) as crash_file:
             report = crash_file.read()

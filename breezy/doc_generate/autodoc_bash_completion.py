@@ -23,7 +23,7 @@ from breezy.doc_generate import get_autodoc_datetime
 
 
 def get_filename(options):
-    return "%s.bash_completion" % (options.brz_name)
+    return f"{options.brz_name}.bash_completion"
 
 
 def infogen(options, outfile):

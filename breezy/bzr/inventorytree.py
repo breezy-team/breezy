@@ -54,7 +54,7 @@ class InventoryTreeChange(TreeChange):
             name=name, kind=kind, executable=executable, copied=copied)
 
     def __repr__(self):
-        return "{}{!r}".format(self.__class__.__name__, self._as_tuple())
+        return f"{self.__class__.__name__}{self._as_tuple()!r}"
 
     def _as_tuple(self):
         return (self.file_id, self.path, self.changed_content, self.versioned,
@@ -133,7 +133,7 @@ class InventoryTree(Tree):
         if isinstance(file_id, tuple):
             if len(file_id) != 1:
                 raise ValueError(
-                    "nested trees not yet supported: %r" % file_id)
+                    f"nested trees not yet supported: {file_id!r}")
             file_id = file_id[0]
         return self.root_inventory, file_id
 
@@ -848,7 +848,7 @@ class _SmartAddHelper:
                               abspath, kind)
                 continue
             if illegalpath_re.search(directory):
-                trace.warning("skipping %r (contains \\n or \\r)" % abspath)
+                trace.warning(f"skipping {abspath!r} (contains \\n or \\r)")
                 continue
             if directory in self.conflicts_related:
                 # If the file looks like one generated for a conflict, don't

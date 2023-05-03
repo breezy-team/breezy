@@ -288,7 +288,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 elif kind == 'symlink':
                     inv.add(InventoryLink(file_id, name, parent))
                 else:
-                    raise errors.BzrError("unknown kind %r" % kind)
+                    raise errors.BzrError(f"unknown kind {kind!r}")
             self._write_inventory(inv)
 
     def _write_basis_inventory(self, xml):
@@ -438,8 +438,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 backup_name = self.controldir._available_backup_name(
                     file_to_backup)
                 osutils.rename(abs_path, self.abspath(backup_name))
-                return "removed {} (but kept a copy: {})".format(file_to_backup,
-                                                             backup_name)
+                return f"removed {file_to_backup} (but kept a copy: {backup_name})"
 
             # Build inv_delta and delete files where applicable,
             # do this before any modifications to meta data.
@@ -447,7 +446,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 fid = self.path2id(f)
                 message = None
                 if not fid:
-                    message = "{} is not versioned.".format(f)
+                    message = f"{f} is not versioned."
                 else:
                     if verbose:
                         # having removed it, it must be either ignored or
@@ -463,7 +462,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                             new_status + '       ' + f + kind_ch + '\n')
                     # Unversion file
                     inv_delta.append((f, None, fid, None))
-                    message = "removed {}".format(f)
+                    message = f"removed {f}"
 
                 if not keep_files:
                     abs_path = self.abspath(f)
@@ -472,7 +471,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                                 and len(os.listdir(abs_path)) > 0):
                             if force:
                                 osutils.rmtree(abs_path)
-                                message = "deleted {}".format(f)
+                                message = f"deleted {f}"
                             else:
                                 message = backup(f)
                         else:
@@ -480,10 +479,10 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                                 message = backup(f)
                             else:
                                 osutils.delete_any(abs_path)
-                                message = "deleted {}".format(f)
+                                message = f"deleted {f}"
                     elif message is not None:
                         # Only care if we haven't done anything yet.
-                        message = "{} does not exist.".format(f)
+                        message = f"{f} does not exist."
 
                 # Print only one message (if any) per file.
                 if message is not None:

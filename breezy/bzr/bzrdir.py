@@ -219,7 +219,7 @@ class BzrDir(controldir.ControlDir):
                 result_repo.unlock()
         else:
             if result_repo is not None:
-                raise AssertionError('result_repo not None(%r)' % result_repo)
+                raise AssertionError(f'result_repo not None({result_repo!r})')
         # 1 if there is a branch present
         #   make sure its content is available in the target repository
         #   clone it.
@@ -427,7 +427,7 @@ class BzrDir(controldir.ControlDir):
                 result_branch = source_branch.sprout(
                     result, revision_id=revision_id,
                     repository_policy=repository_policy, repository=result_repo)
-            mutter("created new branch {!r}".format(result_branch))
+            mutter(f"created new branch {result_branch!r}")
 
             # Create/update the result working tree
             if (create_tree_if_local and not result.has_workingtree()
@@ -777,7 +777,7 @@ class BzrDir(controldir.ControlDir):
             base, format=format, possible_transports=possible_transports))
 
     def __repr__(self):
-        return "<{} at {!r}>".format(self.__class__.__name__, self.user_url)
+        return f"<{self.__class__.__name__} at {self.user_url!r}>"
 
     def update_feature_flags(self, updated_flags):
         """Update the features required by this bzrdir.
@@ -1182,7 +1182,7 @@ class BzrFormat:
         format_string = cls.get_format_string()
         if not text.startswith(format_string):
             raise AssertionError(
-                "Invalid format header {!r} for {!r}".format(text, cls))
+                f"Invalid format header {text!r} for {cls!r}")
         lines = text[len(format_string):].splitlines()
         ret = cls()
         for lineno, line in enumerate(lines):
@@ -1711,7 +1711,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
         self._workingtree_format = wt_format
 
     def __repr__(self):
-        return "<{!r}>".format(self.__class__.__name__)
+        return f"<{self.__class__.__name__!r}>"
 
     workingtree_format = property(__get_workingtree_format,
                                   __set_workingtree_format)

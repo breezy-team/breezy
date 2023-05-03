@@ -78,7 +78,7 @@ class FakeVFATTransportDecorator(decorator.TransportDecorator):
         error if there are invalid characters in the name.
         """
         if re.search(r'[?*:;<>]', name):
-            raise ValueError("illegal characters for VFAT filename: %r" % name)
+            raise ValueError(f"illegal characters for VFAT filename: {name!r}")
         return name.lower()
 
     def get(self, relpath):

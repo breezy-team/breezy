@@ -544,7 +544,7 @@ class Merger:
             if self._is_criss_cross:
                 trace.warning('Warning: criss-cross merge encountered.  See bzr'
                               ' help criss-cross.')
-                trace.mutter('Criss-cross lcas: %r' % lcas)
+                trace.mutter(f'Criss-cross lcas: {lcas!r}')
                 if self.base_rev_id in lcas:
                     trace.mutter('Unable to find unique lca. '
                                  'Fallback %r as best option.'
@@ -565,7 +565,7 @@ class Merger:
                 self.base_tree = self.revision_tree(self.base_rev_id)
         self.base_is_ancestor = True
         self.base_is_other_ancestor = True
-        trace.mutter('Base revid: %r' % self.base_rev_id)
+        trace.mutter(f'Base revid: {self.base_rev_id!r}')
 
     def set_base(self, base_revision):
         """Set the base revision to use for the merge.
@@ -1040,7 +1040,7 @@ class Merge3Merger:
                         # Nothing interesting
                         continue
                 else:
-                    raise AssertionError('unhandled kind: %s' % other_ie.kind)
+                    raise AssertionError(f'unhandled kind: {other_ie.kind}')
 
             # If we have gotten this far, that means something has changed
             yield (file_id, content_changed,
@@ -1341,7 +1341,7 @@ class Merge3Merger:
             # further action needed here.
             pass
         else:
-            raise AssertionError('unknown hook_status: {!r}'.format(hook_status))
+            raise AssertionError(f'unknown hook_status: {hook_status!r}')
         if not this_path and result == "modified":
             self.tt.version_file(trans_id, file_id=file_id)
         if not keep_this:

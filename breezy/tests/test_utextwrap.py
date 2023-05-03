@@ -77,7 +77,7 @@ class TestUTextFill(tests.TestCase):
 
     def test_fill_simple(self):
         # Test only can call fill() because it's just '\n'.join(wrap(text)).
-        self.assertEqual("{}\n{}".format(_str_D[:2], _str_D[2:]),
+        self.assertEqual(f"{_str_D[:2]}\n{_str_D[2:]}",
                          utextwrap.fill(_str_D, 4))
 
     def test_fill_with_breaks(self):

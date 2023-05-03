@@ -421,7 +421,7 @@ class SqliteGitShaMap(GitShaMap):
             pass  # Column already exists.
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self.path)
+        return f"{self.__class__.__name__}({self.path!r})"
 
     def lookup_commit(self, revid):
         cursor = self.db.execute("select sha1 from commits where revid = ?",
@@ -490,7 +490,7 @@ class SqliteGitShaMap(GitShaMap):
     def sha1s(self):
         """List the SHA1s."""
         for table in ("blobs", "commits", "trees"):
-            for (sha,) in self.db.execute("select sha1 from %s" % table):
+            for (sha,) in self.db.execute(f"select sha1 from {table}"):
                 yield sha.encode('ascii')
 
 
@@ -622,13 +622,13 @@ class TdbGitShaMap(GitShaMap):
         self.db.transaction_cancel()
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self.path)
+        return f"{self.__class__.__name__}({self.path!r})"
 
     def lookup_commit(self, revid):
         try:
             return sha_to_hex(self.db[b"commit\0" + revid][:20])
         except KeyError:
-            raise KeyError("No cache entry for %r" % revid)
+            raise KeyError(f"No cache entry for {revid!r}")
 
     def lookup_blob_id(self, fileid, revision):
         return sha_to_hex(self.db[b"\0".join((b"blob", fileid, revision))])
@@ -657,7 +657,7 @@ class TdbGitShaMap(GitShaMap):
             elif type_name in ("tree", "blob"):
                 yield (type_name, tuple(data[1:]))
             else:
-                raise AssertionError("unknown type %r" % type_name)
+                raise AssertionError(f"unknown type {type_name!r}")
 
     def missing_revisions(self, revids):
         ret = set()
@@ -800,9 +800,9 @@ class IndexGitShaMap(GitShaMap):
 
     def __repr__(self):
         if self._transport is not None:
-            return "{}({!r})".format(self.__class__.__name__, self._transport.base)
+            return f"{self.__class__.__name__}({self._transport.base!r})"
         else:
-            return "%s()" % (self.__class__.__name__)
+            return f"{self.__class__.__name__}()"
 
     def repack(self):
         if self._builder is not None:

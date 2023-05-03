@@ -80,9 +80,8 @@ class BaseTestPlugins(tests.TestCaseInTempDir):
 
     def create_plugin(self, name, source=None, dir='.', file_name=None):
         if source is None:
-            source = '''\
-"""This is the doc for %s"""
-''' % (name)
+            source = f'''""\"This is the doc for {name}""\"
+'''
         if file_name is None:
             file_name = name + '.py'
         # 'source' must not fail to load
@@ -94,10 +93,9 @@ class BaseTestPlugins(tests.TestCaseInTempDir):
         if dir is None:
             dir = name
         if source is None:
-            source = '''\
-"""This is the doc for {}"""
-dir_source = '{}'
-'''.format(name, dir)
+            source = f'''""\"This is the doc for {name}""\"
+dir_source = '{dir}'
+'''
         os.makedirs(dir)
         self.create_plugin(name, source, dir,
                            file_name='__init__.py')
@@ -143,7 +141,7 @@ dir_source = '{}'
     def assertPluginKnown(self, name):
         self.assertIsNotNone(
             getattr(self.module, name, None),
-            'plugins known: %r' % dir(self.module)
+            f'plugins known: {dir(self.module)!r}'
         )
         self.assertIn(self.module_prefix + name, sys.modules)
 
@@ -222,9 +220,9 @@ class TestLoadingPlugins(BaseTestPlugins):
             self.assertPluginUnknown('pluginone')
             self.assertPluginUnknown('plugintwo')
             self.update_module_paths(['first', 'second'])
-            exec("import %spluginone" % self.module_prefix)
+            exec(f"import {self.module_prefix}pluginone")
             self.assertEqual(['first'], self.activeattributes[tempattribute])
-            exec("import %splugintwo" % self.module_prefix)
+            exec(f"import {self.module_prefix}plugintwo")
             self.assertEqual(['first', 'second'],
                              self.activeattributes[tempattribute])
         finally:
@@ -880,13 +878,12 @@ from . import test_bar
         plugin_dir = 'non-standard-dir'
         plugin_file_name = 'iamtestfoo.py'
         plugin_path = osutils.pathjoin(plugin_dir, plugin_file_name)
-        source = '''\
-"""This is the doc for {}"""
-dir_source = '{}'
-'''.format('test_foo', plugin_path)
+        source = f'''""\"This is the doc for test_foo""\"
+dir_source = '{plugin_path}'
+'''
         self.create_plugin('test_foo', source=source,
                            dir=plugin_dir, file_name=plugin_file_name)
-        self.overrideEnv('BRZ_PLUGINS_AT', 'test_foo@%s' % plugin_path)
+        self.overrideEnv('BRZ_PLUGINS_AT', f'test_foo@{plugin_path}')
         self.load_with_paths(['standard'])
         self.assertTestFooLoadedFrom(plugin_path)
 

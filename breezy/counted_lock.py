@@ -35,8 +35,7 @@ class CountedLock:
         self._lock_count = 0
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__,
-                           self._real_lock)
+        return f"{self.__class__.__name__}({self._real_lock!r})"
 
     def break_lock(self):
         self._real_lock.break_lock()

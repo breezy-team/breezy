@@ -106,10 +106,10 @@ _win32_strip_local_trailing_slash = win32_rs.strip_local_trailing_slash
 # These are characters that if escaped, should stay that way
 _no_decode_chars = ';/?:@&=+$,#'
 _no_decode_ords = [ord(c) for c in _no_decode_chars]
-_no_decode_hex = (['%02x' % o for o in _no_decode_ords]
-                  + ['%02X' % o for o in _no_decode_ords])
-_hex_display_map = dict([('%02x' % o, bytes([o])) for o in range(256)]
-                         + [('%02X' % o, bytes([o])) for o in range(256)])
+_no_decode_hex = ([f'{o:02x}' for o in _no_decode_ords]
+                  + [f'{o:02X}' for o in _no_decode_ords])
+_hex_display_map = dict([(f'{o:02x}', bytes([o])) for o in range(256)]
+                         + [(f'{o:02X}', bytes([o])) for o in range(256)])
 # These entries get mapped to themselves
 _hex_display_map.update((hex, b'%' + hex.encode('ascii'))
                         for hex in _no_decode_hex)
@@ -314,8 +314,7 @@ class URL:
                 try:
                     port = int(port)
                 except ValueError:
-                    raise InvalidURL('invalid port number %s in url:\n%s' %
-                                     (port, url))
+                    raise InvalidURL(f'invalid port number {port} in url:\n{url}')
             else:
                 port = None
         if host != "" and host[0] == '[' and host[-1] == ']':  # IPv6
@@ -326,12 +325,12 @@ class URL:
     def __str__(self):
         netloc = self.quoted_host
         if ":" in netloc:
-            netloc = "[%s]" % netloc
+            netloc = f"[{netloc}]"
         if self.quoted_user is not None:
             # Note that we don't put the password back even if we
             # have one so that it doesn't get accidentally
             # exposed.
-            netloc = '{}@{}'.format(self.quoted_user, netloc)
+            netloc = f'{self.quoted_user}@{netloc}'
         if self.port is not None:
             netloc = '%s:%d' % (netloc, self.port)
         return urlparse.urlunparse(

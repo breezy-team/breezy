@@ -56,11 +56,7 @@ class ZshCodeGen:
         lines = []
         for (long, short, help) in self.data.global_options:
             lines.append(
-                '      \'({}{}){}[{}]\''.format(
-                    (short + ' ') if short else '',
-                    long,
-                    long,
-                    help))
+                f"      '({short + ' ' if short else ''}{long}){long}[{help}]'")
 
         return "\n".join(lines)
 
@@ -101,7 +97,7 @@ class PluginData:
     def __str__(self):
         if self.version == 'unknown':
             return self.name
-        return '{} {}'.format(self.name, self.version)
+        return f'{self.name} {self.version}'
 
 
 class OptionData:
@@ -199,7 +195,7 @@ class DataCollector:
         optswitches.clear()
         opt.add_option(parser, opt.short_name())
         if isinstance(opt, option.RegistryOption) and opt.enum_switch:
-            enum_switch = '--%s' % opt.name
+            enum_switch = f'--{opt.name}'
             enum_data = optswitches.get(enum_switch)
             if enum_data:
                 try:

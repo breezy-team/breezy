@@ -3148,7 +3148,7 @@ class TestMergeIntoBase(tests.TestCaseWithTransport):
                 for elem in shape]
             wt.add(shape, ids=ids)
         rev_id = b'r1-%s' % (relpath.encode('utf-8'),)
-        wt.commit("Initial commit of {}".format(relpath), rev_id=rev_id)
+        wt.commit(f"Initial commit of {relpath}", rev_id=rev_id)
         self.assertEqual(root_id, wt.path2id(''))
         return wt
 

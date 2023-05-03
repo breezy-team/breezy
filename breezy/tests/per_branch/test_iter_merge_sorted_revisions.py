@@ -38,7 +38,7 @@ class TestIterMergeSortedRevisionsSimpleGraph(per_branch.TestCaseWithBranch):
             parents = [self.revids[name] for name in parents]
             files = []
         self.revids[revid_name] = builder.build_snapshot(
-            parents, files, message="Revision %s" % revid_name)
+            parents, files, message=f"Revision {revid_name}")
 
     def make_builder_with_merges(self, relpath):
         try:
@@ -167,7 +167,7 @@ class TestIterMergeSortedRevisionsBushyGraph(per_branch.TestCaseWithBranch):
             parents = [self.revids[name] for name in parents]
             files = []
         self.revids[revid_name] = builder.build_snapshot(
-            parents, files, message="Revision %s" % revid_name)
+            parents, files, message=f"Revision {revid_name}")
 
     def make_branch_with_embedded_merges(self, relpath='.'):
         builder = self.make_branch_builder(relpath)

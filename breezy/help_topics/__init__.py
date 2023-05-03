@@ -133,7 +133,7 @@ def _load_from_file(topic_name):
 
     Topics are expected to be txt files in breezy.help_topics.
     """
-    resource_name = osutils.pathjoin("en", "{}.txt".format(topic_name))
+    resource_name = osutils.pathjoin("en", f"{topic_name}.txt")
     return osutils.resource_string('breezy.help_topics', resource_name)
 
 
@@ -196,8 +196,8 @@ The keywords used as revision selection methods are the following:
 
         # Note: The leading : here are HACKs to get reStructuredText
         # 'field' formatting - we know that the prefix ends in a ':'.
-        out.append(":{}\n\t{}".format(i.prefix, summary))
-        details.append(":{}\n{}".format(i.prefix, doc))
+        out.append(f":{i.prefix}\n\t{summary}")
+        details.append(f":{i.prefix}\n{doc}")
 
     return '\n'.join(out + details)
 
@@ -265,7 +265,7 @@ See :doc:`location-alias-help` and :doc:`url-special-chars-help`.
 
 
 _basic_help = \
-    """Breezy %s -- a free distributed version-control tool
+    f"""Breezy {breezy.__version__} -- a free distributed version-control tool
 https://www.breezy-vcs.org/
 
 Basic commands:
@@ -289,7 +289,7 @@ Basic commands:
   brz help init      more help on e.g. init command
   brz help commands  list all commands
   brz help topics    list all help topics
-""" % breezy.__version__
+"""
 
 
 _global_options = \

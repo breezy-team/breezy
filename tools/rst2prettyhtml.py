@@ -42,7 +42,7 @@ def safe_open(filename, mode):
     try:
         return open(filename, mode + 'b')
     except FileNotFoundError:
-        sys.stderr.write('file not found: %s\n' % sys.argv[2])
+        sys.stderr.write(f'file not found: {sys.argv[2]}\n')
         sys.exit(3)
 
 

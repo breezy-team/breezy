@@ -271,7 +271,7 @@ def unpack_inventory_entry(elt, entry_cache=None, return_from_cache=False):
 
     kind = elt.tag
     if not inventory.InventoryEntry.versionable_kind(kind):
-        raise AssertionError('unsupported entry kind %s' % kind)
+        raise AssertionError(f'unsupported entry kind {kind}')
 
     file_id = get_utf8_or_ascii(file_id)
     if revision is not None:
@@ -333,11 +333,11 @@ def unpack_inventory_flat(elt, format_num, unpack_entry,
         encountered
     """
     if elt.tag != 'inventory':
-        raise serializer.UnexpectedInventoryFormat('Root tag is %r' % elt.tag)
+        raise serializer.UnexpectedInventoryFormat(f'Root tag is {elt.tag!r}')
     format = elt.get('format')
     if ((format is None and format_num is not None) or
             format.encode() != format_num):
-        raise serializer.UnexpectedInventoryFormat('Invalid format version %r' % format)
+        raise serializer.UnexpectedInventoryFormat(f'Invalid format version {format!r}')
     revision_id = elt.get('revision_id')
     if revision_id is not None:
         revision_id = revision_id.encode('utf-8')

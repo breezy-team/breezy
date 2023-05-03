@@ -279,13 +279,11 @@ class UIFactory:
     def _progress_finished(self, task):
         """Called by the ProgressTask when it finishes"""
         if not self._task_stack:
-            warnings.warn("%r finished but nothing is active"
-                          % (task,))
+            warnings.warn(f"{task!r} finished but nothing is active")
         if task in self._task_stack:
             self._task_stack.remove(task)
         else:
-            warnings.warn("%r is not in active stack %r"
-                          % (task, self._task_stack))
+            warnings.warn(f"{task!r} is not in active stack {self._task_stack!r}")
         if not self._task_stack:
             self._progress_all_finished()
 
@@ -312,15 +310,14 @@ class UIFactory:
         try:
             template = self._user_warning_templates[warning_id]
         except KeyError:
-            fail = "brz warning: {!r}, {!r}".format(warning_id, message_args)
+            fail = f"brz warning: {warning_id!r}, {message_args!r}"
             warnings.warn("no template for warning: "
                           + fail)   # so tests will fail etc
             return str(fail)
         try:
             return str(template) % message_args
         except ValueError as e:
-            fail = "brz unprintable warning: {!r}, {!r}, {}".format(
-                warning_id, message_args, e)
+            fail = f"brz unprintable warning: {warning_id!r}, {message_args!r}, {e}"
             warnings.warn(fail)   # so tests will fail etc
             return str(fail)
 
@@ -456,7 +453,7 @@ class NoninteractiveUIFactory(UIFactory):
         return True
 
     def __repr__(self):
-        return '{}()'.format(self.__class__.__name__)
+        return f'{self.__class__.__name__}()'
 
 
 class SilentUIFactory(NoninteractiveUIFactory):
@@ -498,7 +495,7 @@ class CannedInputUIFactory(SilentUIFactory):
         self.responses = responses
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self.responses)
+        return f"{self.__class__.__name__}({self.responses!r})"
 
     def confirm_action(self, prompt, confirmation_id, args):
         return self.get_boolean(prompt % args)
@@ -517,8 +514,7 @@ class CannedInputUIFactory(SilentUIFactory):
 
     def assert_all_input_consumed(self):
         if self.responses:
-            raise AssertionError("expected all input in %r to be consumed"
-                                 % (self,))
+            raise AssertionError(f"expected all input in {self!r} to be consumed")
 
 
 ui_factory = SilentUIFactory()

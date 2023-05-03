@@ -247,7 +247,7 @@ class BaseMergeDirective:
             except errors.NoSuchRevision:
                 revno = ['merge']
         nick = re.sub('(\\W+)', '-', branch.nick).strip('-')
-        return '{}-{}'.format(nick, '.'.join(str(n) for n in revno))
+        return f"{nick}-{'.'.join(str(n) for n in revno)}"
 
     @staticmethod
     def _generate_diff(repository, revision_id, ancestor_id):

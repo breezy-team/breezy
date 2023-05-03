@@ -127,21 +127,21 @@ class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
         return TextUIFactory('')
 
     def _check_note(self, note_text):
-        self.assertEqual("%s\n" % note_text,
+        self.assertEqual(f"{note_text}\n",
                          self.stdout.getvalue())
 
     def _check_show_error(self, msg):
-        self.assertEqual("bzr: error: %s\n" % msg,
+        self.assertEqual(f"bzr: error: {msg}\n",
                          self.stderr.getvalue())
         self.assertEqual("", self.stdout.getvalue())
 
     def _check_show_message(self, msg):
-        self.assertEqual("%s\n" % msg,
+        self.assertEqual(f"{msg}\n",
                          self.stdout.getvalue())
         self.assertEqual("", self.stderr.getvalue())
 
     def _check_show_warning(self, msg):
-        self.assertEqual("bzr: warning: %s\n" % msg,
+        self.assertEqual(f"bzr: warning: {msg}\n",
                          self.stderr.getvalue())
         self.assertEqual("", self.stdout.getvalue())
 

@@ -79,7 +79,7 @@ class _ChooseUI:
             name = c.replace('&', '').lower()
             choice = (name, index)
             if name in self.alternatives:
-                raise ValueError("duplicated choice: %s" % name)
+                raise ValueError(f"duplicated choice: {name}")
             self.alternatives[name] = choice
             shortcut = c.find('&')
             if -1 != shortcut and (shortcut + 1) < len(c):
@@ -90,10 +90,10 @@ class _ChooseUI:
             else:
                 c = c.replace('&', '')
                 shortcut = c[0]
-                help = '[{}]{}'.format(shortcut, c[1:])
+                help = f'[{shortcut}]{c[1:]}'
             shortcut = shortcut.lower()
             if shortcut in self.alternatives:
-                raise ValueError("duplicated shortcut: %s" % shortcut)
+                raise ValueError(f"duplicated shortcut: {shortcut}")
             self.alternatives[shortcut] = choice
             # Add redirections for default.
             if index == default:
@@ -102,7 +102,7 @@ class _ChooseUI:
             help_list.append(help)
             index += 1
 
-        self.prompt = '{} ({}): '.format(msg, ', '.join(help_list))
+        self.prompt = f"{msg} ({', '.join(help_list)}): "
 
     def _getline(self):
         line = self.ui.stdin.readline()
@@ -316,7 +316,7 @@ class TextUIFactory(UIFactory):
             to allow UIs to reformat the prompt.
         """
         if not isinstance(prompt, str):
-            raise ValueError("prompt %r not a unicode string" % prompt)
+            raise ValueError(f"prompt {prompt!r} not a unicode string")
         if kwargs:
             # See <https://launchpad.net/bugs/365891>
             prompt = prompt % kwargs
@@ -342,21 +342,20 @@ class TextUIFactory(UIFactory):
 
     def show_error(self, msg):
         self.clear_term()
-        self.stderr.write("bzr: error: %s\n" % msg)
+        self.stderr.write(f"bzr: error: {msg}\n")
 
     def show_message(self, msg):
         self.note(msg)
 
     def show_warning(self, msg):
         self.clear_term()
-        self.stderr.write("bzr: warning: %s\n" % msg)
+        self.stderr.write(f"bzr: warning: {msg}\n")
 
     def _progress_updated(self, task):
         """A task has been updated and wants to be displayed.
         """
         if not self._task_stack:
-            warnings.warn("%r updated but no tasks are active" %
-                          (task,))
+            warnings.warn(f"{task!r} updated but no tasks are active")
         elif task != self._task_stack[-1]:
             # We used to check it was the top task, but it's hard to always
             # get this right and it's not necessarily useful: any actual
@@ -625,9 +624,7 @@ class TextProgressView:
                   self._bytes_by_direction['write'] / 1000.,
                   ))
         if self._bytes_by_direction['unknown'] > 0:
-            msg += ' u:%.0fkB)' % (
-                self._bytes_by_direction['unknown'] / 1000.
-                )
+            msg += f" u:{self._bytes_by_direction['unknown'] / 1000.0:.0f}kB)"
         else:
             msg += ')'
         return msg

@@ -40,8 +40,7 @@ class BisectTestCase(TestCaseWithTransport):
         if content != rev_contents[rev]:
             rev_ids = {rev_contents[k]: k for k in rev_contents}
             found_rev = rev_ids[content]
-            raise AssertionError("expected rev %0.1f, found rev %0.1f"
-                                 % (rev, found_rev))
+            raise AssertionError(f"expected rev {rev:0.1f}, found rev {found_rev:0.1f}")
 
     def setUp(self):
         """Set up tests."""

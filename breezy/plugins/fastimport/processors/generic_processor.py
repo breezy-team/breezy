@@ -487,11 +487,11 @@ class GenericProcessor(processor.ImportProcessor):
         try:
             handler.process()
         except:
-            print("ABORT: exception occurred processing commit %s" % (cmd.id))
+            print(f"ABORT: exception occurred processing commit {cmd.id}")
             raise
         self.cache_mgr.add_mark(mark, handler.revision_id)
         self._revision_count += 1
-        self.report_progress("(%s)" % cmd.id.lstrip(b':'))
+        self.report_progress(f"({cmd.id.lstrip(b':')})")
 
         if cmd.ref.startswith(b'refs/tags/'):
             tag_name = cmd.ref[len(b'refs/tags/'):]
@@ -517,18 +517,17 @@ class GenericProcessor(processor.ImportProcessor):
             revisions_added = self._revision_count - self.skip_total
             rate = revisions_added * 1.0 / minutes
             if rate > 10:
-                rate_str = "at %.0f/minute " % rate
+                rate_str = f"at {rate:.0f}/minute "
             else:
-                rate_str = "at %.1f/minute " % rate
-            self.note("%s commits processed %s%s" %
-                      (counts, rate_str, details))
+                rate_str = f"at {rate:.1f}/minute "
+            self.note(f"{counts} commits processed {rate_str}{details}")
 
     def progress_handler(self, cmd):
         """Process a ProgressCommand."""
         # Most progress messages embedded in streams are annoying.
         # Ignore them unless in verbose mode.
         if self.verbose:
-            self.note("progress {}".format(cmd.message))
+            self.note(f"progress {cmd.message}")
 
     def reset_handler(self, cmd):
         """Process a ResetCommand."""
@@ -537,8 +536,7 @@ class GenericProcessor(processor.ImportProcessor):
             if cmd.from_ is not None:
                 self._set_tag(tag_name, cmd.from_)
             elif self.verbose:
-                self.warning("ignoring reset refs/tags/%s - no from clause"
-                             % tag_name)
+                self.warning(f"ignoring reset refs/tags/{tag_name} - no from clause")
             return
 
         if cmd.from_ is not None:
@@ -549,7 +547,7 @@ class GenericProcessor(processor.ImportProcessor):
         if cmd.from_ is not None:
             self._set_tag(cmd.id, cmd.from_)
         else:
-            self.warning("ignoring tag %s - no from clause" % cmd.id)
+            self.warning(f"ignoring tag {cmd.id} - no from clause")
 
     def _set_tag(self, name, from_):
         """Define a tag given a name and import 'from' reference."""
@@ -566,15 +564,15 @@ class GenericProcessor(processor.ImportProcessor):
     def debug(self, msg, *args):
         """Output a debug message if the appropriate -D option was given."""
         if "fast-import" in debug.debug_flags:
-            msg = "{} DEBUG: {}".format(self._time_of_day(), msg)
+            msg = f"{self._time_of_day()} DEBUG: {msg}"
             mutter(msg, *args)
 
     def note(self, msg, *args):
         """Output a note but timestamp it."""
-        msg = "{} {}".format(self._time_of_day(), msg)
+        msg = f"{self._time_of_day()} {msg}"
         note(msg, *args)
 
     def warning(self, msg, *args):
         """Output a warning but timestamp it."""
-        msg = "{} WARNING: {}".format(self._time_of_day(), msg)
+        msg = f"{self._time_of_day()} WARNING: {msg}"
         warning(msg, *args)

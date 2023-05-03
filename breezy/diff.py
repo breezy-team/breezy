@@ -727,10 +727,8 @@ class DiffText(DiffPath):
             new_date = self.EPOCH_DATE
         else:
             return self.CANNOT_DIFF
-        from_label = '{}{}\t{}'.format(
-            self.old_label, old_path or new_path, old_date)
-        to_label = '{}{}\t{}'.format(
-            self.new_label, new_path or old_path, new_date)
+        from_label = f'{self.old_label}{old_path or new_path}\t{old_date}'
+        to_label = f'{self.new_label}{new_path or old_path}\t{new_date}'
         return self.diff_text(old_path, new_path, from_label, to_label)
 
     def diff_text(self, from_path, to_path, from_label, to_label):

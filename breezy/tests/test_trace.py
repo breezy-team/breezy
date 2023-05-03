@@ -92,7 +92,7 @@ class TestTrace(TestCase):
             msg = _format_exception()
         # Linux seems to give "No such file" but Windows gives "The system
         # cannot find the file specified".
-        self.assertEqual('brz: ERROR: {}\n'.format(e_str), msg)
+        self.assertEqual(f'brz: ERROR: {e_str}\n', msg)
 
     def test_format_io_error(self):
         try:
@@ -153,7 +153,7 @@ class TestTrace(TestCase):
         except ImportError:
             msg = _format_exception()
         else:
-            self.fail("somehow succeeded in importing %r" % ImaginaryModule)
+            self.fail(f"somehow succeeded in importing {ImaginaryModule!r}")
         self.assertContainsRe(
             msg,
             "^brz: ERROR: No module named '?ImaginaryModule'?\n"

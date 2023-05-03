@@ -129,8 +129,7 @@ def get_merge_type(typestring):
         templ = '%s%%7s: %%s' % (' ' * 12)
         lines = [templ % (f[0], f[1][1]) for f in merge_types.items()]
         type_list = '\n'.join(lines)
-        msg = "No known merge type %s. Supported types are:\n%s" %\
-            (typestring, type_list)
+        msg = f"No known merge type {typestring}. Supported types are:\n{type_list}"
         raise errors.CommandError(msg)
 
 
@@ -205,9 +204,9 @@ class Option:
 
     def add_option(self, parser, short_name):
         """Add this option to an Optparse parser"""
-        option_strings = ['--%s' % self.name]
+        option_strings = [f'--{self.name}']
         if short_name is not None:
-            option_strings.append('-%s' % short_name)
+            option_strings.append(f'-{short_name}')
         if self.hidden:
             help = optparse.SUPPRESS_HELP
         else:
@@ -219,7 +218,7 @@ class Option:
                               callback_args=(True,),
                               help=help,
                               *option_strings)
-            negation_strings = ['--%s' % self.get_negation_name()]
+            negation_strings = [f'--{self.get_negation_name()}']
             parser.add_option(action='callback',
                               callback=self._optparse_bool_callback,
                               callback_args=(False,),
@@ -242,7 +241,7 @@ class Option:
             v = self.type(value)
         except ValueError as e:
             raise optparse.OptionValueError(
-                'invalid value for option {}: {}'.format(option, value))
+                f'invalid value for option {option}: {value}')
         setattr(parser.values, self._param_name, v)
         if self.custom_callback is not None:
             self.custom_callback(option, self.name, v, parser)
@@ -274,9 +273,9 @@ class ListOption(Option):
 
     def add_option(self, parser, short_name):
         """Add this option to an Optparse parser."""
-        option_strings = ['--%s' % self.name]
+        option_strings = [f'--{self.name}']
         if short_name is not None:
-            option_strings.append('-%s' % short_name)
+            option_strings.append(f'-{short_name}')
         parser.add_option(action='callback',
                           callback=self._optparse_callback,
                           type='string', metavar=self.argname.upper(),
@@ -395,7 +394,7 @@ class RegistryOption(Option):
                 if key in self.registry.aliases():
                     continue
                 option_strings = [
-                    ('--%s' % name)
+                    f'--{name}'
                     for name in [key] +
                     [alias for alias in alias_map.get(key, [])
                         if not self.is_hidden(alias)]]
@@ -405,8 +404,7 @@ class RegistryOption(Option):
                     help = self.registry.get_help(key)
                 if (self.short_value_switches and
                         key in self.short_value_switches):
-                    option_strings.append('-%s' %
-                                          self.short_value_switches[key])
+                    option_strings.append(f'-{self.short_value_switches[key]}')
                 parser.add_option(action='callback',
                                   callback=self._optparse_value_callback(key),
                                   help=help,

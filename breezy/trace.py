@@ -137,7 +137,7 @@ def mutter(fmt, *args):
     else:
         out = fmt
     now = time.time()
-    out = '{:0.3f}  {}\n'.format(now - _brz_log_start_time, out)
+    out = f'{now - _brz_log_start_time:0.3f}  {out}\n'
     _trace_file.write(out.encode('utf-8'))
     # there's no explicit flushing; the file is typically line buffered.
 
@@ -317,7 +317,7 @@ def _dump_memory_usage(err_file):
             dump_file = os.fdopen(fd, 'w')
             from meliae import scanner
             scanner.dump_gc_objects(dump_file)
-            err_file.write("Memory dumped to %s\n" % name)
+            err_file.write(f"Memory dumped to {name}\n")
         except ImportError:
             err_file.write("Dumping memory requires meliae module.\n")
             log_exception_quietly()
@@ -342,7 +342,7 @@ def _qualified_exception_name(eclass, unqualified_breezy_errors=False):
     if module_name in ("builtins", "exceptions", "__main__") or (
             unqualified_breezy_errors and module_name == "breezy.errors"):
         return class_name
-    return "{}.{}".format(module_name, class_name)
+    return f"{module_name}.{class_name}"
 
 
 def report_exception(exc_info, err_file):
@@ -393,8 +393,7 @@ def report_exception(exc_info, err_file):
 def print_exception(exc_info, err_file):
     import traceback
     exc_type, exc_object, exc_tb = exc_info
-    err_file.write("brz: ERROR: {}: {}\n".format(
-        _qualified_exception_name(exc_type), exc_object))
+    err_file.write(f"brz: ERROR: {_qualified_exception_name(exc_type)}: {exc_object}\n")
     err_file.write('\n')
     traceback.print_exception(exc_type, exc_object, exc_tb, file=err_file)
 
@@ -409,9 +408,9 @@ def report_user_error(exc_info, err_file, advice=None):
     :param advice: Extra advice to the user to be printed following the
         exception.
     """
-    err_file.write("brz: ERROR: {}\n".format(str(exc_info[1])))
+    err_file.write(f"brz: ERROR: {str(exc_info[1])}\n")
     if advice:
-        err_file.write("%s\n" % advice)
+        err_file.write(f"{advice}\n")
 
 
 def report_bug(exc_info, err_file):

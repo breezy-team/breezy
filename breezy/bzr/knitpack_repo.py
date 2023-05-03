@@ -899,7 +899,7 @@ class KnitPacker(Packer):
         # this makes a significant difference on sftp pushes.
         new_pack.set_write_cache_size(1024 * 1024)
         if 'pack' in debug.debug_flags:
-            plain_pack_list = ['{}{}'.format(a_pack.pack_transport.base, a_pack.name)
+            plain_pack_list = [f'{a_pack.pack_transport.base}{a_pack.name}'
                                for a_pack in self.packs]
             if self.revision_ids is not None:
                 rev_count = len(self.revision_ids)

@@ -258,7 +258,7 @@ class TestErrors(tests.TestCase):
         # An exception object can be passed rather than a string
         orig_error = ValueError('bad value')
         self.assertSocketConnectionError(
-            'Failed to connect to ahost; {}'.format(str(orig_error)),
+            f'Failed to connect to ahost; {str(orig_error)}',
             host='ahost', orig_error=orig_error)
 
         # And we can supply a custom failure message
@@ -426,7 +426,7 @@ class TestErrorsUsingTransport(tests.TestCaseWithMemoryTransport):
         error = errors.NoPublicBranch(b)
         url = urlutils.unescape_for_display(b.base, 'ascii')
         self.assertEqualDiff(
-            'There is no public branch set for "%s".' % url, str(error))
+            f'There is no public branch set for "{url}".', str(error))
 
     def test_no_repo(self):
         dir = controldir.ControlDir.create(self.get_url())

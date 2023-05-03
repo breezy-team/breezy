@@ -121,7 +121,7 @@ def _script_to_commands(text, file_name=None):
             # if the prompt has leading whitespace
             if output is None:
                 if cmd_cur is None:
-                    raise SyntaxError('No command for line {!r}'.format(line),
+                    raise SyntaxError(f'No command for line {line!r}',
                                       (file_name, lineno, 1, orig))
                 output = []
             output.append(line + '\n')
@@ -212,7 +212,7 @@ class ScriptRunner:
         mname = 'do_' + cmd[0]
         method = getattr(self, mname, None)
         if method is None:
-            raise SyntaxError('Command not found "{}"'.format(cmd[0]),
+            raise SyntaxError(f'Command not found "{cmd[0]}"',
                               (None, 1, 1, ' '.join(cmd)))
         if input is None:
             str_input = ''
@@ -225,15 +225,14 @@ class ScriptRunner:
         try:
             self._check_output(output, actual_output, test_case)
         except AssertionError as e:
-            raise AssertionError(str(e) + " in stdout of command %s" % cmd)
+            raise AssertionError(str(e) + f" in stdout of command {cmd}")
         try:
             self._check_output(error, actual_error, test_case)
         except AssertionError as e:
             raise AssertionError(str(e)
-                                 + " in stderr of running command %s" % cmd)
+                                 + f" in stderr of running command {cmd}")
         if retcode and not error and actual_error:
-            test_case.fail('In \n\t%s\nUnexpected error: %s'
-                           % (' '.join(cmd), actual_error))
+            test_case.fail(f"In \n\t{' '.join(cmd)}\nUnexpected error: {actual_error}")
         return retcode, actual_output, actual_error
 
     def _check_output(self, expected, actual, test_case):
@@ -243,8 +242,7 @@ class ScriptRunner:
             elif expected == '...\n':
                 return
             else:
-                test_case.fail('expected output: %r, but found nothing'
-                               % (expected,))
+                test_case.fail(f'expected output: {expected!r}, but found nothing')
 
         null_output_matches_anything = getattr(
             self, 'null_output_matches_anything', False)
@@ -347,7 +345,7 @@ class ScriptRunner:
                 # Some filenames are illegal on Windows and generate EINVAL
                 # rather than just saying the filename doesn't exist
                 return (1, None,
-                        '{}: No such file or directory\n'.format(in_name))
+                        f'{in_name}: No such file or directory\n')
         # Basically cat copy input to output
         output = ''.join(inputs)
         # Handle output redirections
@@ -356,7 +354,7 @@ class ScriptRunner:
         except (FileNotFoundError, ValueError):
             # If out_name cannot be created, we may get 'ENOENT', however if
             # out_name is something like '', we can get EINVAL
-            return 1, None, '{}: No such file or directory\n'.format(out_name)
+            return 1, None, f'{out_name}: No such file or directory\n'
         return 0, output, None
 
     def do_echo(self, test_case, input, args):
@@ -373,7 +371,7 @@ class ScriptRunner:
         try:
             output = self._write_output(output, out_name, out_mode)
         except (FileNotFoundError, ValueError):
-            return 1, None, '{}: No such file or directory\n'.format(out_name)
+            return 1, None, f'{out_name}: No such file or directory\n'
         return 0, output, None
 
     def _get_jail_root(self, test_case):
@@ -382,7 +380,7 @@ class ScriptRunner:
     def _ensure_in_jail(self, test_case, path):
         jail_root = self._get_jail_root(test_case)
         if not osutils.is_inside(jail_root, osutils.normalizepath(path)):
-            raise ValueError('{} is not inside {}'.format(path, jail_root))
+            raise ValueError(f'{path} is not inside {jail_root}')
 
     def do_cd(self, test_case, input, args):
         if len(args) > 1:
@@ -408,7 +406,7 @@ class ScriptRunner:
         err = None
 
         def error(msg, path):
-            return "rm: cannot remove '{}': {}\n".format(path, msg)
+            return f"rm: cannot remove '{path}': {msg}\n"
 
         force, recursive = False, False
         opts = None
@@ -447,7 +445,7 @@ class ScriptRunner:
         err = None
 
         def error(msg, src, dst):
-            return "mv: cannot move {} to {}: {}\n".format(src, dst, msg)
+            return f"mv: cannot move {src} to {dst}: {msg}\n"
 
         if not args or len(args) != 2:
             raise SyntaxError("Usage: mv path1 path2")

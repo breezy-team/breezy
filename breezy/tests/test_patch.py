@@ -74,7 +74,7 @@ class PatchesTester(TestCase):
             patched_file = IterableFile(iter_patched)
             count = 0
             for patch_line in patched_file:
-                self.assertEqual(patch_line, mod_lines[count], 'for file %s' % diff)
+                self.assertEqual(patch_line, mod_lines[count], f'for file {diff}')
                 count += 1
             self.assertEqual(count, len(mod_lines))
 

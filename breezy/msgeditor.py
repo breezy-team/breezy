@@ -188,7 +188,7 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
         del msg[lastline:]
         # add a newline at the end, if needed
         if not msg[-1].endswith("\n"):
-            return "{}{}".format("".join(msg), "\n")
+            return f"{''.join(msg)}\n"
         else:
             return "".join(msg)
     finally:

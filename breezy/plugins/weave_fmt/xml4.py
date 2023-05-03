@@ -49,7 +49,7 @@ class _RevisionSerializer_v4(XMLRevisionSerializer):
         """Revision object -> xml tree"""
         root = Element('revision',
                        committer=rev.committer,
-                       timestamp='%.9f' % rev.timestamp,
+                       timestamp=f'{rev.timestamp:.9f}',
                        revision_id=rev.revision_id,
                        inventory_id=rev.inventory_id,
                        inventory_sha1=rev.inventory_sha1,
@@ -85,7 +85,7 @@ class _RevisionSerializer_v4(XMLRevisionSerializer):
 
         # <changeset> is deprecated...
         if elt.tag not in ('revision', 'changeset'):
-            raise BzrError("unexpected tag in revision file: %r" % elt)
+            raise BzrError(f"unexpected tag in revision file: {elt!r}")
 
         v = elt.get('timezone')
         timezone = v and int(v)
@@ -208,7 +208,7 @@ class _InventorySerializer_v4(XMLInventorySerializer):
                                          parent_id)
             ie.symlink_target = elt.get('symlink_target')
         else:
-            raise BzrError("unknown kind %r" % kind)
+            raise BzrError(f"unknown kind {kind!r}")
 
         ## mutter("read inventoryentry: %r", elt.attrib)
 

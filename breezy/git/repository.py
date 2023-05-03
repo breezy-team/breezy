@@ -293,7 +293,7 @@ class LocalGitRepository(GitRepository):
                     elif obj.type_name == b"blob":
                         yield (identifier, obj.chunked)
                     else:
-                        raise AssertionError("file text resolved to %r" % obj)
+                        raise AssertionError(f"file text resolved to {obj!r}")
 
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
@@ -521,7 +521,7 @@ class LocalGitRepository(GitRepository):
     def revision_tree(self, revision_id):
         """See Repository.revision_tree."""
         if revision_id is None:
-            raise ValueError('invalid revision id %s' % revision_id)
+            raise ValueError(f'invalid revision id {revision_id}')
         return GitRevisionTree(self, revision_id)
 
     def set_make_working_trees(self, trees):

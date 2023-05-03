@@ -172,7 +172,7 @@ class TestLockDir(TestCaseWithTransport):
             self.assertLessEqual(
                 after - before,
                 8.0,
-                "took %f seconds to detect lock contention" % (after - before)
+                f"took {after - before:f} seconds to detect lock contention"
             )
         finally:
             lf1.unlock()

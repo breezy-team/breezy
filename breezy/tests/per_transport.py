@@ -56,7 +56,7 @@ def transport_test_permutations():
             permutations = get_transport_test_permutations(
                 pyutils.get_named_object(module))
             for (klass, server_factory) in permutations:
-                scenario = ('{},{}'.format(klass.__name__, server_factory.__name__),
+                scenario = (f'{klass.__name__},{server_factory.__name__}',
                             {"transport_class": klass,
                              "transport_server": server_factory})
                 result.append(scenario)
@@ -988,7 +988,7 @@ class TransportTests(TestTransportImplementation):
 
             st = t.stat(link_name)
             self.assertTrue(S_ISLNK(st.st_mode),
-                            "expected symlink, got mode %o" % st.st_mode)
+                            f"expected symlink, got mode {st.st_mode:o}")
         except TransportNotPossible:
             raise TestSkipped("Transport %s does not support symlinks." %
                               self._server.__class__)
@@ -1675,7 +1675,7 @@ class TransportTests(TestTransportImplementation):
         transport = self.get_transport("foo")
         orig_base = transport.base
         transport.set_segment_parameter("arm", "board")
-        self.assertEqual("%s,arm=board" % orig_base, transport.base)
+        self.assertEqual(f"{orig_base},arm=board", transport.base)
         self.assertEqual({"arm": "board"}, transport.get_segment_parameters())
         transport.set_segment_parameter("arm", None)
         transport.set_segment_parameter("nonexistant", None)

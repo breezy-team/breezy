@@ -43,7 +43,7 @@ class TestPathContentSummary(per_tree.TestCaseWithTree):
                 and returned_size is None):
             pass
         else:
-            self.fail("invalid size in summary: {!r}".format(returned_size))
+            self.fail(f"invalid size in summary: {returned_size!r}")
 
     def test_symlink_content_summary(self):
         self.requireFeature(SymlinkFeature(self.test_dir))
