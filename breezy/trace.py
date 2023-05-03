@@ -182,11 +182,7 @@ def enable_default_logging():
 
     :return: A memento from push_log_file for restoring the log state.
     """
-    start_time = osutils.format_local_date(_brz_log_start_time,
-                                           timezone='local')
     brz_log_file = _open_brz_log()
-    if brz_log_file is not None:
-        brz_log_file.write(start_time.encode('utf-8') + b'\n')
     memento = push_log_file(brz_log_file, short=False)
     # after hooking output into brz_log, we also need to attach a stderr
     # handler, writing only at level info and with encoding

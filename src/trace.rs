@@ -138,7 +138,7 @@ impl<F: Write> BreezyTraceLogger<F> {
                 None,
                 breezy_osutils::time::Timezone::Local,
                 None,
-                false,
+                true,
             );
             file.write_all((start_time + "\n").as_bytes())
                 .expect("failed to write to trace file");
