@@ -41,11 +41,11 @@ class StubServer(paramiko.ServerInterface):
 
     def check_auth_password(self, username, password):
         # all are allowed
-        self.log('sftpserver - authorizing: {}'.format(username))
+        self.log(f'sftpserver - authorizing: {username}')
         return paramiko.AUTH_SUCCESSFUL
 
     def check_channel_request(self, kind, chanid):
-        self.log('sftpserver - channel request: {}, {}'.format(kind, chanid))
+        self.log(f'sftpserver - channel request: {kind}, {chanid}')
         return paramiko.OPEN_SUCCEEDED
 
 
@@ -80,8 +80,7 @@ class StubSFTPServer(paramiko.SFTPServerInterface):
         else:
             if not home.startswith(self.root):
                 raise AssertionError(
-                    "home must be a subdirectory of root (%s vs %s)"
-                    % (home, root))
+                    f"home must be a subdirectory of root ({home} vs {root})")
             self.home = home[len(self.root):]
         if self.home.startswith('/'):
             self.home = self.home[1:]
@@ -318,8 +317,7 @@ class SocketDelay:
     def __getattr__(self, attr):
         if attr in SocketDelay._proxied_arguments:
             return getattr(self.sock, attr)
-        raise AttributeError("'SocketDelay' object has no attribute %r" %
-                             attr)
+        raise AttributeError(f"'SocketDelay' object has no attribute {attr!r}")
 
     def dup(self):
         return SocketDelay(self.sock.dup(), self.latency, self.time_per_byte,
@@ -456,7 +454,7 @@ class SFTPServer(test_server.TestingTCPServerInAThread):
 
     def _get_sftp_url(self, path):
         """Calculate an sftp url to this server for path."""
-        return "sftp://foo:bar@{}:{}/{}".format(self.host, self.port, path)
+        return f"sftp://foo:bar@{self.host}:{self.port}/{path}"
 
     def log(self, message):
         """StubServer uses this to log when a new server is created."""

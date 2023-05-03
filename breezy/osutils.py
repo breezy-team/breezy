@@ -208,8 +208,7 @@ def _rename_wrap_exception(rename_func):
             rename_func(old, new)
         except OSError as e:
             detailed_error = OSError(e.errno, e.strerror +
-                                     " [occurred when renaming '%s' to '%s']" %
-                                     (old, new))
+                                     f" [occurred when renaming '{old}' to '{new}']")
             detailed_error.old_filename = old
             detailed_error.new_filename = new
             raise detailed_error
@@ -499,7 +498,7 @@ def failed_to_load_extension(exception):
     # with 10 warnings.
     exception_str = str(exception)
     if exception_str not in _extension_load_failures:
-        trace.mutter("failed to load compiled extension: %s" % exception_str)
+        trace.mutter(f"failed to load compiled extension: {exception_str}")
         _extension_load_failures.append(exception_str)
 
 
@@ -1106,8 +1105,7 @@ def send_all(sock, bytes, report_activity=None):
                 raise
         else:
             if sent == 0:
-                raise errors.ConnectionReset('Sending to %s returned 0 bytes'
-                                             % (sock,))
+                raise errors.ConnectionReset(f'Sending to {sock} returned 0 bytes')
             sent_total += sent
             if report_activity is not None:
                 report_activity(sent, 'write')
@@ -1170,7 +1168,7 @@ def resource_string(package, resource_name):
         package = package[len("breezy."):].replace('.', os.sep)
         resource_relpath = pathjoin(package, resource_name)
     else:
-        raise errors.BzrError('resource package %s not in breezy' % package)
+        raise errors.BzrError(f'resource package {package} not in breezy')
 
     # Map the resource to a file and read its contents
     base = dirname(breezy.__file__)
@@ -1285,7 +1283,7 @@ def fdatasync(fileno):
             # raise ENOTSUP. However, we are calling fdatasync to be helpful
             # and reduce the chance of corruption-on-powerloss situations. It
             # is not a mandatory call, so it is ok to suppress failures.
-            trace.mutter("ignoring error calling fdatasync: {}".format(e))
+            trace.mutter(f"ignoring error calling fdatasync: {e}")
             if getattr(e, 'errno', None) not in _fdatasync_ignored:
                 raise
 

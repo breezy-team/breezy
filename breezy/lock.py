@@ -109,8 +109,7 @@ class LockResult:
         return self.lock_url == other.lock_url and self.details == other.details
 
     def __repr__(self):
-        return '{}({}, {})'.format(self.__class__.__name__,
-                               self.lock_url, self.details)
+        return f'{self.__class__.__name__}({self.lock_url}, {self.details})'
 
 
 class LogicalLockResult:
@@ -124,7 +123,7 @@ class LogicalLockResult:
         self.token = token
 
     def __repr__(self):
-        return "LogicalLockResult(%s)" % (self.unlock)
+        return f"LogicalLockResult({self.unlock})"
 
     def __enter__(self):
         return self
@@ -150,7 +149,7 @@ def cant_unlock_not_held(locked_object):
     # here.  You can use -Werror to make it fatal.  It should possibly also
     # raise LockNotHeld.
     if 'unlock' in debug.debug_flags:
-        warnings.warn("{!r} is already unlocked".format(locked_object),
+        warnings.warn(f"{locked_object!r} is already unlocked",
                       stacklevel=3)
     else:
         raise errors.LockNotHeld(locked_object)
@@ -299,8 +298,7 @@ if have_fcntl:
             :return: A token which can be used to switch back to a read lock.
             """
             if self.filename in _fcntl_WriteLock._open_locks:
-                raise AssertionError('file already locked: %r'
-                                     % (self.filename,))
+                raise AssertionError(f'file already locked: {self.filename!r}')
             try:
                 wlock = _fcntl_TemporaryWriteLock(self)
             except errors.LockError:
@@ -326,8 +324,7 @@ if have_fcntl:
                 raise errors.LockContention(self.filename)
 
             if self.filename in _fcntl_WriteLock._open_locks:
-                raise AssertionError('file already locked: %r'
-                                     % (self.filename,))
+                raise AssertionError(f'file already locked: {self.filename!r}')
 
             # See if we can open the file for writing. Another process might
             # have a read lock. We don't use self._open() because we don't want

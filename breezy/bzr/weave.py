@@ -301,7 +301,7 @@ class Weave(VersionedFile):
         self._allow_reserved = allow_reserved
 
     def __repr__(self):
-        return "Weave(%r)" % self._weave_name
+        return f"Weave({self._weave_name!r})"
 
     def _check_write_ok(self):
         """Is the versioned file marked as 'finished' ? Raise if it is."""
@@ -596,7 +596,7 @@ class Weave(VersionedFile):
             try:
                 self._parents[i]
             except IndexError:
-                raise IndexError("invalid version number %r" % i)
+                raise IndexError(f"invalid version number {i!r}")
 
     def _compatible_parents(self, my_parents, other_parents):
         """During join check that other_parents are joinable with my_parents.
@@ -649,7 +649,7 @@ class Weave(VersionedFile):
                 elif c == b']':
                     dset.remove(self._names[v])
                 else:
-                    raise WeaveFormatError('unexpected instruction %r' % v)
+                    raise WeaveFormatError(f'unexpected instruction {v!r}')
             else:
                 yield lineno, istack[-1], frozenset(dset), l
             lineno += 1
@@ -659,7 +659,7 @@ class Weave(VersionedFile):
                                    "at end of weave: %s" % istack)
         if dset:
             raise WeaveFormatError(
-                "unclosed deletion blocks at end of weave: %s" % dset)
+                f"unclosed deletion blocks at end of weave: {dset}")
 
     def plan_merge(self, ver_a, ver_b):
         """Return pseudo-annotation indicating how the two versions merge.
@@ -784,7 +784,7 @@ class Weave(VersionedFile):
                                    "at end of weave: %s" % istack)
         if dset:
             raise WeaveFormatError(
-                "unclosed deletion blocks at end of weave: %s" % dset)
+                f"unclosed deletion blocks at end of weave: {dset}")
         return result
 
     def _maybe_lookup(self, name_or_index):
@@ -856,8 +856,7 @@ class Weave(VersionedFile):
 
             if new_inc != self.get_ancestry(name):
                 raise AssertionError(
-                    'failed %s != %s'
-                    % (new_inc, self.get_ancestry(name)))
+                    f'failed {new_inc} != {self.get_ancestry(name)}')
             inclusions[name] = new_inc
 
         nlines = len(self._weave)
@@ -865,7 +864,7 @@ class Weave(VersionedFile):
         update_text = 'checking weave'
         if self._weave_name:
             short_name = os.path.basename(self._weave_name)
-            update_text = 'checking {}'.format(short_name)
+            update_text = f'checking {short_name}'
             update_text = update_text[:25]
 
         for lineno, insert, deleteset, line in self._walk_internal():

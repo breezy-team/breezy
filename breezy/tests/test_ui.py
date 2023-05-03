@@ -330,11 +330,11 @@ class UITests(tests.TestCase):
             uif = _mod_ui.make_ui_for_terminal(stdin, stdout, stderr)
             self.assertIsInstance(
                 uif, _mod_ui_text.TextUIFactory,
-                "TERM={} BRZ_PROGRESS_BAR={} uif={!r}".format(term, pb, uif))
+                f"TERM={term} BRZ_PROGRESS_BAR={pb} uif={uif!r}")
             self.assertIsInstance(
                 uif.make_progress_view(),
                 expected_pb_class,
-                "TERM={} BRZ_PROGRESS_BAR={} uif={!r}".format(term, pb, uif))
+                f"TERM={term} BRZ_PROGRESS_BAR={pb} uif={uif!r}")
 
     def test_text_ui_non_terminal(self):
         """Even on non-ttys, make_ui_for_terminal gives a text ui."""
@@ -343,7 +343,7 @@ class UITests(tests.TestCase):
             self.overrideEnv('TERM', term_type)
             uif = _mod_ui.make_ui_for_terminal(stdin, stdout, stderr)
             self.assertIsInstance(uif, _mod_ui_text.TextUIFactory,
-                                  'TERM={!r}'.format(term_type))
+                                  f'TERM={term_type!r}')
 
 
 class SilentUITests(tests.TestCase):

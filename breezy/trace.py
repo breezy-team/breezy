@@ -67,7 +67,6 @@ from .lazy_import import lazy_import
 
 lazy_import(globals(), """
 from breezy import (
-    bedding,
     debug,
     osutils,
     ui,
@@ -121,16 +120,6 @@ def show_error(*args, **kwargs):
     _brz_logger.error(*args, **kwargs)
 
 
-class _Bytes(str):
-    """Compat class for displaying bytes on Python 2."""
-
-    def __repr__(self):
-        return 'b' + str.__repr__(self)
-
-    def __unicode__(self):
-        return self.decode('ascii', 'replace')
-
-
 def mutter(fmt, *args):
     if _trace_file is None:
         return
@@ -148,7 +137,7 @@ def mutter(fmt, *args):
     else:
         out = fmt
     now = time.time()
-    out = '{:0.3f}  {}\n'.format(now - _brz_log_start_time, out)
+    out = f'{now - _brz_log_start_time:0.3f}  {out}\n'
     _trace_file.write(out.encode('utf-8'))
     # there's no explicit flushing; the file is typically line buffered.
 
@@ -193,11 +182,7 @@ def enable_default_logging():
 
     :return: A memento from push_log_file for restoring the log state.
     """
-    start_time = osutils.format_local_date(_brz_log_start_time,
-                                           timezone='local')
     brz_log_file = _open_brz_log()
-    if brz_log_file is not None:
-        brz_log_file.write(start_time.encode('utf-8') + b'\n')
     memento = push_log_file(brz_log_file, short=False)
     # after hooking output into brz_log, we also need to attach a stderr
     # handler, writing only at level info and with encoding
@@ -321,28 +306,7 @@ def debug_memory(message='', short=True):
         _debug_memory_proc(message=message, short=short)
 
 
-_short_fields = ('VmPeak', 'VmSize', 'VmRSS')
-
-
-def _debug_memory_proc(message='', short=True):
-    try:
-        status_file = open('/proc/%s/status' % os.getpid(), 'rb')
-    except OSError:
-        return
-    try:
-        status = status_file.read()
-    finally:
-        status_file.close()
-    if message:
-        note(message)
-    for line in status.splitlines():
-        if not short:
-            note(line)
-        else:
-            for field in _short_fields:
-                if line.startswith(field):
-                    note(line)
-                    break
+_debug_memory_proc = _cmd_rs.debug_memory_proc
 
 
 def _dump_memory_usage(err_file):
@@ -353,7 +317,7 @@ def _dump_memory_usage(err_file):
             dump_file = os.fdopen(fd, 'w')
             from meliae import scanner
             scanner.dump_gc_objects(dump_file)
-            err_file.write("Memory dumped to %s\n" % name)
+            err_file.write(f"Memory dumped to {name}\n")
         except ImportError:
             err_file.write("Dumping memory requires meliae module.\n")
             log_exception_quietly()
@@ -378,7 +342,7 @@ def _qualified_exception_name(eclass, unqualified_breezy_errors=False):
     if module_name in ("builtins", "exceptions", "__main__") or (
             unqualified_breezy_errors and module_name == "breezy.errors"):
         return class_name
-    return "{}.{}".format(module_name, class_name)
+    return f"{module_name}.{class_name}"
 
 
 def report_exception(exc_info, err_file):
@@ -429,8 +393,7 @@ def report_exception(exc_info, err_file):
 def print_exception(exc_info, err_file):
     import traceback
     exc_type, exc_object, exc_tb = exc_info
-    err_file.write("brz: ERROR: {}: {}\n".format(
-        _qualified_exception_name(exc_type), exc_object))
+    err_file.write(f"brz: ERROR: {_qualified_exception_name(exc_type)}: {exc_object}\n")
     err_file.write('\n')
     traceback.print_exception(exc_type, exc_object, exc_tb, file=err_file)
 
@@ -445,9 +408,9 @@ def report_user_error(exc_info, err_file, advice=None):
     :param advice: Extra advice to the user to be printed following the
         exception.
     """
-    err_file.write("brz: ERROR: {}\n".format(str(exc_info[1])))
+    err_file.write(f"brz: ERROR: {str(exc_info[1])}\n")
     if advice:
-        err_file.write("%s\n" % advice)
+        err_file.write(f"{advice}\n")
 
 
 def report_bug(exc_info, err_file):

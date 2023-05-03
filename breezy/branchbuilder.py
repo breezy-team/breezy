@@ -240,7 +240,7 @@ class BranchBuilder:
                     self._flush_pending(tree, pending)
                     pending = _PendingActions()
                 else:
-                    raise ValueError('Unknown build action: "{}"'.format(action))
+                    raise ValueError(f'Unknown build action: "{action}"')
             self._flush_pending(tree, pending)
             return self._do_commit(
                 tree, message=message, rev_id=revision_id,

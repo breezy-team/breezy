@@ -65,7 +65,7 @@ class _TestLockableFiles_mixin:
         except NotImplementedError:
             # this lock cannot be broken
             self.lockable.unlock()
-            raise TestNotApplicable("{!r} is not breakable".format(self.lockable))
+            raise TestNotApplicable(f"{self.lockable!r} is not breakable")
         l2 = self.get_lockable()
         orig_factory = breezy.ui.ui_factory
         # silent ui - no need for stdout
@@ -87,7 +87,7 @@ class _TestLockableFiles_mixin:
         if token is not None:
             # This test does not apply, because this lockable supports
             # tokens.
-            raise TestNotApplicable("{!r} uses tokens".format(self.lockable))
+            raise TestNotApplicable(f"{self.lockable!r} uses tokens")
         self.assertRaises(errors.TokenLockingNotSupported,
                           self.lockable.lock_write, token='token')
 

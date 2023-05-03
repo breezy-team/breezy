@@ -131,9 +131,8 @@ class CommandRegistry(registry.Registry):
             registry.Registry.register(self, k_unsquished, cmd,
                                        override_existing=decorate, info=info)
         except KeyError:
-            trace.warning('Two plugins defined the same command: %r' % k)
-            trace.warning('Not loading the one in %r' %
-                          sys.modules[cmd.__module__])
+            trace.warning(f'Two plugins defined the same command: {k!r}')
+            trace.warning(f'Not loading the one in {sys.modules[cmd.__module__]!r}')
             trace.warning('Previously this command was registered from %r' %
                           sys.modules[previous.__module__])
         for a in cmd.aliases:
@@ -213,7 +212,7 @@ def all_command_names():
         names = hook(names)
         if names is None:
             raise AssertionError(
-                'hook %s returned None' % Command.hooks.get_hook_name(hook))
+                f'hook {Command.hooks.get_hook_name(hook)} returned None')
     return names
 
 
@@ -622,7 +621,7 @@ class Command:
             if sections:
                 for label in order:
                     if label in sections:
-                        result += ':{}:\n{}\n'.format(label, sections[label])
+                        result += f':{label}:\n{sections[label]}\n'
                 result += '\n'
         else:
             result += (i18n.gettext("See brz help %s for more details and examples.\n\n")
@@ -822,8 +821,7 @@ class Command:
             def run(self, files=None):
                 pass
         """
-        raise NotImplementedError('no implementation of command %r'
-                                  % self.name())
+        raise NotImplementedError(f'no implementation of command {self.name()!r}')
 
     def help(self):
         """Return help message for this class."""
@@ -1281,7 +1279,7 @@ def _specified_or_unicode_argv(argv):
         # ensure all arguments are unicode strings
         for a in argv:
             if not isinstance(a, str):
-                raise ValueError('not native str or unicode: {!r}'.format(a))
+                raise ValueError(f'not native str or unicode: {a!r}')
             new_argv.append(a)
     except (ValueError, UnicodeDecodeError):
         raise errors.BzrError("argv should be list of unicode strings.")

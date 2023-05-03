@@ -21,7 +21,7 @@ from breezy.doc_generate.conf import *
 brz_locale = 'en'
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
-html_short_title = "Developer Document Catalog ({})".format(release)
+html_short_title = f"Developer Document Catalog ({release})"
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.

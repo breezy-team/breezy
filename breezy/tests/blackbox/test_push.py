@@ -603,7 +603,7 @@ class RedirectingMemoryServer(memory.MemoryServer):
         self._dirs = {'/': None}
         self._files = {}
         self._locks = {}
-        self._scheme = 'redirecting-memory+%s:///' % id(self)
+        self._scheme = f'redirecting-memory+{id(self)}:///'
         transport.register_transport(self._scheme, self._memory_factory)
 
     def _memory_factory(self, url):
@@ -649,8 +649,7 @@ class TestPushRedirect(tests.TestCaseWithTransport):
         """
         destination_url = self.memory_server.get_url() + 'infinite-loop'
         out, err = self.run_bzr_error(
-            ['Too many redirections trying to make %s\\.\n'
-             % re.escape(destination_url)],
+            [f'Too many redirections trying to make {re.escape(destination_url)}\\.\n'],
             ['push', '-d', 'tree', destination_url], retcode=3)
         self.assertEqual('', out)
 

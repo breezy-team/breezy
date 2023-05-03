@@ -307,7 +307,7 @@ class ImportProcessor:
         :param import_str: The import string to process
         """
         if not import_str.startswith('import '):
-            raise ValueError('bad import string {!r}'.format(import_str))
+            raise ValueError(f'bad import string {import_str!r}')
         import_str = import_str[len('import '):]
 
         for path in import_str.split(','):
@@ -357,7 +357,7 @@ class ImportProcessor:
         :param from_str: The import string to process
         """
         if not from_str.startswith('from '):
-            raise ValueError('bad from/import %r' % from_str)
+            raise ValueError(f'bad from/import {from_str!r}')
         from_str = from_str[len('from '):]
 
         from_module, import_list = from_str.split(' import ')

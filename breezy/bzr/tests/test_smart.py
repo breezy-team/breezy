@@ -2457,7 +2457,7 @@ class TestSmartServerPackRepositoryAutopack(tests.TestCaseWithTransport):
         # monkey-patch the pack collection to disable autopacking
         repo._pack_collection._max_pack_count = lambda count: count
         for x in range(10):
-            tree.commit('commit %s' % x)
+            tree.commit(f'commit {x}')
         self.assertEqual(10, len(repo._pack_collection.names()))
         del repo._pack_collection._max_pack_count
         return repo
@@ -2480,7 +2480,7 @@ class TestSmartServerPackRepositoryAutopack(tests.TestCaseWithTransport):
         repo.lock_write()
         self.addCleanup(repo.unlock)
         for x in range(9):
-            tree.commit('commit %s' % x)
+            tree.commit(f'commit {x}')
         backing = self.get_transport()
         request = smart_packrepo.SmartServerPackRepositoryAutopack(
             backing)
@@ -2523,7 +2523,7 @@ class TestHandlers(tests.TestCase):
             try:
                 item = smart_req.request_handlers.get(key)
             except AttributeError as e:
-                raise AttributeError('failed to get {}: {}'.format(key, e))
+                raise AttributeError(f'failed to get {key}: {e}')
 
     def assertHandlerEqual(self, verb, handler):
         self.assertEqual(smart_req.request_handlers.get(verb), handler)

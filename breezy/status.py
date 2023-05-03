@@ -173,7 +173,7 @@ def show_tree_status(wt,
                 else:
                     prefix = 'I  '
                 for ignored_file in ignored_files:
-                    to_file.write("{} {}\n".format(prefix, ignored_file))
+                    to_file.write(f"{prefix} {ignored_file}\n")
 
             # show the new conflicts only for now. XXX: get them from the
             # delta.
@@ -188,7 +188,7 @@ def show_tree_status(wt,
                     prefix = 'C  '
                 else:
                     prefix = ' '
-                to_file.write("{} {}\n".format(prefix, conflict.describe()))
+                to_file.write(f"{prefix} {conflict.describe()}\n")
             # Show files that were requested but don't exist (and are
             # not versioned).  We don't involve delta in this; these
             # paths are really the province of just the status
@@ -204,7 +204,7 @@ def show_tree_status(wt,
                     prefix = 'X  '
                 else:
                     prefix = ' '
-                to_file.write("{} {}\n".format(prefix, nonexistent))
+                to_file.write(f"{prefix} {nonexistent}\n")
             if (new_is_working_tree and show_pending):
                 show_pending_merges(new, to_file, short, verbose=verbose)
             if nonexistents:

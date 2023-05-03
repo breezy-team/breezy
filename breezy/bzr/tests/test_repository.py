@@ -692,7 +692,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
                 for record in substream:
                     full_chk_records.add(record.key)
             else:
-                self.fail('Should not be getting a stream of {}'.format(vf_name))
+                self.fail(f'Should not be getting a stream of {vf_name}')
         # We have 257 records now. This is because we have 1 root page, and 256
         # leaf pages in a complete listing.
         self.assertEqual(257, len(full_chk_records))
@@ -1028,10 +1028,10 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         packs._remove_pack_from_memory(pack)
         # Simulate a concurrent update by renaming the .pack file and one of
         # the indices
-        packs.transport.rename('packs/{}.pack'.format(names[0]),
-                               'obsolete_packs/{}.pack'.format(names[0]))
-        packs.transport.rename('indices/{}.iix'.format(names[0]),
-                               'obsolete_packs/{}.iix'.format(names[0]))
+        packs.transport.rename(f'packs/{names[0]}.pack',
+                               f'obsolete_packs/{names[0]}.pack')
+        packs.transport.rename(f'indices/{names[0]}.iix',
+                               f'obsolete_packs/{names[0]}.iix')
         # Now trigger the obsoletion, and ensure that all the remaining files
         # are still renamed
         packs._obsolete_packs([pack])

@@ -355,7 +355,7 @@ class HookPoint:
             if entry_label == label:
                 entries_to_remove.append(entry)
         if entries_to_remove == []:
-            raise KeyError("No entry with label %r" % label)
+            raise KeyError(f"No entry with label {label!r}")
         for entry in entries_to_remove:
             self._callbacks.remove(entry)
 
@@ -367,7 +367,7 @@ class HookPoint:
 
     def __repr__(self):
         strings = []
-        strings.append("<%s(" % type(self).__name__)
+        strings.append(f"<{type(self).__name__}(")
         strings.append(self.name)
         strings.append("), callbacks=[")
         callbacks = self._callbacks

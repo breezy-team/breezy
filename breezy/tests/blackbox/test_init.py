@@ -55,7 +55,7 @@ class TestInit(TestCaseWithTransport):
         """Smoke test for constructing a format with the 'bzr' alias."""
         out, err = self.run_bzr('init --format=bzr')
         self.assertEqual(
-            "Created a standalone tree (format: %s)\n" % self._default_label,
+            f"Created a standalone tree (format: {self._default_label})\n",
             out)
         self.assertEqual('', err)
 

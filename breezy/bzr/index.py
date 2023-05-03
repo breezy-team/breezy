@@ -504,8 +504,7 @@ class GraphIndex:
         return hash((type(self), self._transport, self._name, self._size))
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__,
-                           self._transport.abspath(self._name))
+        return f"{self.__class__.__name__}({self._transport.abspath(self._name)!r})"
 
     def _buffer_all(self, stream=None):
         """Buffer all the index data.
@@ -1143,7 +1142,7 @@ class GraphIndex:
                 # must be at the end
                 if self._size:
                     if not (self._size == pos + 1):
-                        raise AssertionError("{} {}".format(self._size, pos))
+                        raise AssertionError(f"{self._size} {pos}")
                 trailers += 1
                 continue
             elements = line.split(b'\0')
@@ -1314,9 +1313,7 @@ class CombinedGraphIndex:
         self._index_names = [None] * len(self._indices)
 
     def __repr__(self):
-        return "{}({})".format(
-            self.__class__.__name__,
-            ', '.join(map(repr, self._indices)))
+        return f"{self.__class__.__name__}({', '.join(map(repr, self._indices))})"
 
     def clear_cache(self):
         """See GraphIndex.clear_cache()"""

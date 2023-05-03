@@ -56,7 +56,7 @@ class _KnitParentsProvider:
         self._knit = knit
 
     def __repr__(self):
-        return 'KnitParentsProvider(%r)' % self._knit
+        return f'KnitParentsProvider({self._knit!r})'
 
     def get_parent_map(self, keys):
         """See graph.StackedParentsProvider.get_parent_map"""
@@ -87,7 +87,7 @@ class _KnitsParentsProvider:
         self._prefix = prefix
 
     def __repr__(self):
-        return 'KnitsParentsProvider(%r)' % self._knit
+        return f'KnitsParentsProvider({self._knit!r})'
 
     def get_parent_map(self, keys):
         """See graph.StackedParentsProvider.get_parent_map"""

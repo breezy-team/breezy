@@ -38,7 +38,7 @@ class QuiltError(errors.BzrError):
         self.retcode = retcode
         self.stderr = stderr
         if stdout is not None:
-            self.extra = "\n\n%s" % stdout
+            self.extra = f"\n\n{stdout}"
         else:
             self.extra = ""
         self.stdout = stdout
@@ -84,7 +84,7 @@ def run_quilt(
     command = [quilt_path] + args
     trace.mutter("running: %r", command)
     if not os.path.isdir(working_dir):
-        raise AssertionError("%s is not a valid directory" % working_dir)
+        raise AssertionError(f"{working_dir} is not a valid directory")
     try:
         proc = subprocess.Popen(
             command, cwd=working_dir, env=env,

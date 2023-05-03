@@ -31,7 +31,7 @@ class TestHelp(tests.TestCaseWithTransport):
             output = self.run_bzr(cmd)[0]
             line1 = output.split('\n')[0]
             if not line1.startswith('Breezy'):
-                self.fail("bad output from brz {}:\n{!r}".format(cmd, output))
+                self.fail(f"bad output from brz {cmd}:\n{output!r}")
         # see https://launchpad.net/products/bzr/+bug/35940, -h doesn't work
 
     def test_help_topics(self):

@@ -43,7 +43,7 @@ def _read_dirblocks(state):
     trailing = fields.pop()
     if trailing != b'':
         raise DirstateCorrupt(state,
-                              'trailing garbage: {!r}'.format(trailing))
+                              f'trailing garbage: {trailing!r}')
     # consider turning fields into a tuple.
 
     # skip the first field which is the trailing null from the header.
@@ -118,7 +118,7 @@ def _read_dirblocks(state):
                 ])
             trailing = next()
             if trailing != b'\n':
-                raise ValueError("trailing garbage in dirstate: %r" % trailing)
+                raise ValueError(f"trailing garbage in dirstate: {trailing!r}")
             # append the entry to the current block
             append_entry(entry)
         state._split_root_dirblock_into_contents()

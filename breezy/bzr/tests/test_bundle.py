@@ -120,7 +120,7 @@ class MockTree(InventoryTree):
         elif kind == 'symlink':
             ie = InventoryLink(file_id, name, parent_id)
         else:
-            raise errors.BzrError('unknown kind %r' % kind)
+            raise errors.BzrError(f'unknown kind {kind!r}')
         return ie
 
     def add_dir(self, file_id, path):
@@ -486,8 +486,7 @@ class BundleTester:
                 # Check that there aren't any inventory level changes
                 delta = new.changes_from(old)
                 self.assertFalse(delta.has_changed(),
-                                 'Revision %s not copied correctly.'
-                                 % (ancestor,))
+                                 f'Revision {ancestor} not copied correctly.')
 
                 # Now check that the file contents are all correct
                 for path in old.all_versioned_paths():
@@ -502,7 +501,7 @@ class BundleTester:
             tree.update()
             delta = tree.changes_from(self.b1.repository.revision_tree(rev_id))
             self.assertFalse(delta.has_changed(),
-                             'Working tree has modifications: %s' % delta)
+                             f'Working tree has modifications: {delta}')
         return tree
 
     def valid_apply_bundle(self, base_rev_id, info, checkout_dir=None):

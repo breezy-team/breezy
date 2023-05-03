@@ -144,7 +144,7 @@ class Registry(Generic[K, V]):
         """
         if not override_existing:
             if key in self._dict:
-                raise KeyError('Key %r already registered' % key)
+                raise KeyError(f'Key {key!r} already registered')
         self._dict[key] = _ObjectGetter[V](obj)
         self._add_help_and_info(key, help=help, info=info)
 
@@ -168,7 +168,7 @@ class Registry(Generic[K, V]):
         """
         if not override_existing:
             if key in self._dict:
-                raise KeyError('Key %r already registered' % key)
+                raise KeyError(f'Key {key!r} already registered')
         self._dict[key] = _LazyObjectGetter[V](module_name, member_name)
         self._add_help_and_info(key, help=help, info=info)
 
@@ -179,7 +179,7 @@ class Registry(Generic[K, V]):
         :param target: Target key name
         """
         if key in self._dict and key not in self._aliases:
-            raise KeyError('Key %r already registered and not an alias' % key)
+            raise KeyError(f'Key {key!r} already registered and not an alias')
         self._dict[key] = self._dict[target]
         self._aliases[key] = target
         if info is None:
@@ -274,7 +274,7 @@ class Registry(Generic[K, V]):
 
     def _set_default_key(self, key):
         if key not in self._dict:
-            raise KeyError('No object registered under key %s.' % key)
+            raise KeyError(f'No object registered under key {key}.')
         else:
             self._default_key = key
 

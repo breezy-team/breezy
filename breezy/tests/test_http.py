@@ -149,7 +149,7 @@ class RecordingServer:
         self.scheme = scheme
 
     def get_url(self):
-        return '{}://{}:{}/'.format(self.scheme, self.host, self.port)
+        return f'{self.scheme}://{self.host}:{self.port}/'
 
     def start_server(self):
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -160,7 +160,7 @@ class RecordingServer:
             sync_event=self._ready, target=self._accept_read_and_reply)
         self._thread.start()
         if 'threads' in tests.selftest_debug_flags:
-            sys.stderr.write('Thread started: {}\n'.format(self._thread.ident))
+            sys.stderr.write(f'Thread started: {self._thread.ident}\n')
         self._ready.wait()
 
     def _accept_read_and_reply(self):
@@ -190,7 +190,7 @@ class RecordingServer:
         self.port = None
         self._thread.join()
         if 'threads' in tests.selftest_debug_flags:
-            sys.stderr.write('Thread  joined: {}\n'.format(self._thread.ident))
+            sys.stderr.write(f'Thread  joined: {self._thread.ident}\n')
 
 
 class TestAuthHeader(tests.TestCase):
@@ -379,7 +379,7 @@ class TestHttpTransportUrls(tests.TestCase):
         server.start_server()
         try:
             url = server.get_url()
-            self.assertTrue(url.startswith('%s://' % self._url_protocol))
+            self.assertTrue(url.startswith(f'{self._url_protocol}://'))
         finally:
             server.stop_server()
 
@@ -422,8 +422,7 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
         self.assertEqual(len(server.logs), 1)
         self.assertGreater(
             server.logs[0].find(
-            '"GET /foo/bar HTTP/1.1" 200 - "-" "Breezy/%s'
-            % breezy.__version__),
+            f'"GET /foo/bar HTTP/1.1" 200 - "-" "Breezy/{breezy.__version__}'),
             -1
         )
 
@@ -449,7 +448,7 @@ class TestHttpTransportRegistration(tests.TestCase):
 
     def test_http_registered(self):
         t = transport.get_transport_from_url(
-            '%s://foo.com/' % self._url_protocol)
+            f'{self._url_protocol}://foo.com/')
         self.assertIsInstance(t, transport.Transport)
         self.assertIsInstance(t, self._transport)
 
@@ -870,7 +869,7 @@ class MultipleRangeWithoutContentLengthRequestHandler(
         # yet the tests pass -- mbp 2010-10-11 bug 658773
         boundary = "%d" % random.randint(0, 0x7FFFFFFF)
         self.send_header("Content-Type",
-                         "multipart/byteranges; boundary=%s" % boundary)
+                         f"multipart/byteranges; boundary={boundary}")
         self.end_headers()
         for (start, end) in ranges:
             self.wfile.write(b"--%s\r\n" % boundary.encode('ascii'))
@@ -905,7 +904,7 @@ class TruncatedMultipleRangeRequestHandler(
         self.send_header('Accept-Ranges', 'bytes')
         boundary = 'tagada'
         self.send_header('Content-Type',
-                         'multipart/byteranges; boundary=%s' % boundary)
+                         f'multipart/byteranges; boundary={boundary}')
         boundary_line = b'--%s\r\n' % boundary.encode('ascii')
         # Calculate the Content-Length
         content_length = 0
@@ -978,7 +977,7 @@ class TruncatedBeforeBoundaryRequestHandler(
         self.send_header('Accept-Ranges', 'bytes')
         boundary = 'tagada'
         self.send_header('Content-Type',
-                         'multipart/byteranges; boundary=%s' % boundary)
+                         f'multipart/byteranges; boundary={boundary}')
         boundary_line = b'--%s\r\n' % boundary.encode('ascii')
         # Calculate the Content-Length
         content_length = 0
@@ -1382,8 +1381,7 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
 
     def test_one_redirection(self):
         t = self.get_old_transport()
-        new_prefix = 'http://{}:{}'.format(self.new_server.host,
-                                       self.new_server.port)
+        new_prefix = f'http://{self.new_server.host}:{self.new_server.port}'
         self.old_server.redirections = \
             [('(.*)', r'%s/1\1' % (new_prefix), 301), ]
         self.assertEqual(
@@ -1392,10 +1390,8 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
 
     def test_five_redirections(self):
         t = self.get_old_transport()
-        old_prefix = 'http://{}:{}'.format(self.old_server.host,
-                                       self.old_server.port)
-        new_prefix = 'http://{}:{}'.format(self.new_server.host,
-                                       self.new_server.port)
+        old_prefix = f'http://{self.old_server.host}:{self.old_server.port}'
+        new_prefix = f'http://{self.new_server.host}:{self.new_server.port}'
         self.old_server.redirections = [
             ('/1(.*)', r'%s/2\1' % (old_prefix), 302),
             ('/2(.*)', r'%s/3\1' % (old_prefix), 303),
@@ -1511,13 +1507,13 @@ class TestAuth(http_utils.TestCaseWithWebserver):
 
     def get_user_url(self, user, password):
         """Build an url embedding user and password"""
-        url = '%s://' % self.server._url_protocol
+        url = f'{self.server._url_protocol}://'
         if user is not None:
             url += user
             if password is not None:
                 url += ':' + password
             url += '@'
-        url += '{}:{}/'.format(self.server.host, self.server.port)
+        url += f'{self.server.host}:{self.server.port}/'
         return url
 
     def get_user_transport(self, user, password):
@@ -1685,10 +1681,10 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         # Since the authentification succeeded, there should be a corresponding
         # debug line
         sent_auth_headers = [line for line in self.mutters
-                             if line.startswith('> {}'.format(self._auth_header))]
+                             if line.startswith(f'> {self._auth_header}')]
         self.assertLength(1, sent_auth_headers)
         self.assertStartsWith(sent_auth_headers[0],
-                              '> {}: <masked>'.format(self._auth_header))
+                              f'> {self._auth_header}: <masked>')
 
 
 class TestProxyAuth(TestAuth):
@@ -2167,8 +2163,7 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
                                   ('1/',),
                                   ('1/a', b'redirected once'),
                                   ],)
-        new_prefix = 'http://{}:{}'.format(self.new_server.host,
-                                       self.new_server.port)
+        new_prefix = f'http://{self.new_server.host}:{self.new_server.port}'
         self.old_server.redirections = [
             ('(.*)', r'%s/1\1' % (new_prefix), 301), ]
         self.old_transport = self.get_old_transport()
@@ -2206,8 +2201,7 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
         self.new_server.add_user('joe', 'foo')
         ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n')
         t = self.old_transport
-        new_prefix = 'http://{}:{}'.format(self.new_server.host,
-                                       self.new_server.port)
+        new_prefix = f'http://{self.new_server.host}:{self.new_server.port}'
         self.old_server.redirections = [
             ('(.*)', r'%s/1\1' % (new_prefix), 301), ]
         self.assertEqual(

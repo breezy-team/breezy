@@ -73,7 +73,7 @@ class SFTPLock:
             abspath = transport._remote_path(self.lock_path)
             self.lock_file = transport._sftp_open_exclusive(abspath)
         except FileExists:
-            raise LockError('File {!r} already locked'.format(self.path))
+            raise LockError(f'File {self.path!r} already locked')
 
     def unlock(self):
         if not self.lock_file:
@@ -552,7 +552,7 @@ class SFTPTransport(ConnectedTransport):
                              dir_mode=None):
         if not isinstance(raw_bytes, bytes):
             raise TypeError(
-                'raw_bytes must be a plain string, not %s' % type(raw_bytes))
+                f'raw_bytes must be a plain string, not {type(raw_bytes)}')
 
         def writer(fout):
             fout.write(raw_bytes)
@@ -689,7 +689,7 @@ class SFTPTransport(ConnectedTransport):
                                     self._remote_path(rel_to))
         except (OSError, SFTPError) as e:
             self._translate_io_exception(e, rel_from,
-                                         ': unable to rename to %r' % (rel_to))
+                                         f': unable to rename to {rel_to!r}')
 
     def _rename_and_overwrite(self, abs_from, abs_to):
         """Do a fancy rename on the remote server.
@@ -703,7 +703,7 @@ class SFTPTransport(ConnectedTransport):
                          unlink_func=sftp.remove)
         except (OSError, SFTPError) as e:
             self._translate_io_exception(e, abs_from,
-                                         ': unable to rename to %r' % (abs_to))
+                                         f': unable to rename to {abs_to!r}')
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
@@ -775,7 +775,7 @@ class SFTPTransport(ConnectedTransport):
             sftp_retval = conn.symlink(source, self._remote_path(link_name))
         except (OSError, SFTPError) as e:
             self._translate_io_exception(e, link_name,
-                                         ': unable to create symlink to %r' % (source))
+                                         f': unable to create symlink to {source!r}')
 
     def lock_read(self, relpath):
         """

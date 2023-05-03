@@ -104,7 +104,7 @@ class ExecuteRemoteHelperTests(TestCaseWithTransport):
             stderr=subprocess.PIPE, env=env)
         (out, err) = p.communicate(b'capabilities\n')
         lines = out.splitlines()
-        self.assertIn(b'push', lines, "no 'push' in {!r}, error: {!r}".format(lines, err))
+        self.assertIn(b'push', lines, f"no 'push' in {lines!r}, error: {err!r}")
         self.assertEqual(
             b"git-remote-bzr is experimental and has not been optimized "
             b"for performance. Use 'brz fast-export' and 'git fast-import' "

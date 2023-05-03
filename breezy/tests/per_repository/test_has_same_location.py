@@ -32,9 +32,9 @@ class TestHasSameLocation(TestCaseWithRepository):
         `has_same_location` methods give the same results.
         """
         self.assertTrue(a.has_same_location(b),
-                        "{!r} is not the same repository as {!r}".format(a, b))
+                        f"{a!r} is not the same repository as {b!r}")
         self.assertTrue(b.has_same_location(a),
-                        "{!r} is the same as {!r}, but not vice versa".format(a, b))
+                        f"{a!r} is the same as {b!r}, but not vice versa")
 
     def assertDifferentRepo(self, a, b):
         """Asserts that two objects are the not same repository.
@@ -46,9 +46,9 @@ class TestHasSameLocation(TestCaseWithRepository):
         :seealso: assertDifferentRepo
         """
         self.assertFalse(a.has_same_location(b),
-                         "{!r} is not the same repository as {!r}".format(a, b))
+                         f"{a!r} is not the same repository as {b!r}")
         self.assertFalse(b.has_same_location(a),
-                         "{!r} is the same as {!r}, but not vice versa".format(a, b))
+                         f"{a!r} is the same as {b!r}, but not vice versa")
 
     def test_same_repo_instance(self):
         """A repository object is the same repository as itself."""

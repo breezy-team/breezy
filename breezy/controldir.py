@@ -1496,7 +1496,7 @@ class ControlDirFormatRegistry(registry.Registry[str, ControlDirFormat]):
                                                    subsequent_indent='    ',
                                                    break_long_words=False))
         if default_realkey is not None:
-            output += wrapped(default_realkey, '(default) %s' % default_help,
+            output += wrapped(default_realkey, f'(default) {default_help}',
                               self.get_info('default'))
         deprecated_pairs = []
         experimental_pairs = []
@@ -1568,11 +1568,9 @@ class RepoInitHookParams:
 
     def __repr__(self):
         if self.repository:
-            return "<{} for {}>".format(self.__class__.__name__,
-                                    self.repository)
+            return f"<{self.__class__.__name__} for {self.repository}>"
         else:
-            return "<{} for {}>".format(self.__class__.__name__,
-                                    self.controldir)
+            return f"<{self.__class__.__name__} for {self.controldir}>"
 
 
 def is_control_filename(filename):

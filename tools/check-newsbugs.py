@@ -36,16 +36,16 @@ if len(args) == 1:
 def report_notmarked(bug, task, section):
     print()
     print("Bug %d was mentioned in NEWS but is not marked fix released:" % (bug.id, ))
-    print("Launchpad title: %s" % bug.title)
+    print(f"Launchpad title: {bug.title}")
     print("NEWS summary: ")
     print(section)
     if "--launchpad" in options or "-l" in options:
         print("  bug %d" % bug.id)
-        print("  affects %s" % task.bug_target_name)
+        print(f"  affects {task.bug_target_name}")
         print("  status fixreleased")
     if "--webbrowser" in options or "-w" in options:
         import webbrowser
-        webbrowser.open('http://pad.lv/{}>'.format(bug.id))
+        webbrowser.open(f'http://pad.lv/{bug.id}>')
 
 
 def read_news_bugnos(path):
@@ -76,7 +76,7 @@ def read_news_bugnos(path):
 
 
 def print_bug_url(bugno):
-    print('<URL:http://pad.lv/{}>'.format(bugno))
+    print(f'<URL:http://pad.lv/{bugno}>')
 
 launchpad = hydrazine.create_session()
 bugnos = read_news_bugnos(args[1])
@@ -87,7 +87,7 @@ for bugno, section in bugnos:
         if e.response.status == 401:
             print_bug_url(bugno)
             # Private, we can't access the bug content
-            print('{} is private and cannot be accessed'.format(bugno))
+            print(f'{bugno} is private and cannot be accessed')
             continue
         raise
 

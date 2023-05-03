@@ -59,7 +59,7 @@ class TestCat(tests.TestCaseWithTransport):
 
         self.assertEqual(
             'baz\n', self.run_bzr(
-                ['cat', 'a', '-r', 'revid:%s' % rev_id.decode('utf-8')],
+                ['cat', 'a', '-r', f"revid:{rev_id.decode('utf-8')}"],
                 working_dir='branch')[0])
 
         self.assertEqual('foo\n',
