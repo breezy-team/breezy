@@ -985,6 +985,11 @@ fn ensure_empty_directory_exists(path: PathBuf) -> PyResult<()> {
     }
 }
 
+#[pyfunction]
+fn get_user_encoding() -> Option<String> {
+    breezy_osutils::get_user_encoding()
+}
+
 #[pymodule]
 fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -1068,6 +1073,7 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(terminal_size))?;
     m.add_wrapped(wrap_pyfunction!(has_ansi_colors))?;
     m.add_wrapped(wrap_pyfunction!(ensure_empty_directory_exists))?;
+    m.add_wrapped(wrap_pyfunction!(get_user_encoding))?;
     m.add(
         "MIN_ABS_PATHLENGTH",
         breezy_osutils::path::MIN_ABS_PATHLENGTH,
