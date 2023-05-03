@@ -35,6 +35,27 @@ fn i18n_ngettext(msgid: &str, msgid_plural: &str, n: u32) -> PyResult<String> {
     Ok(breezy::i18n::ngettext(msgid, msgid_plural, n))
 }
 
+#[pyfunction]
+fn ensure_config_dir_exists(path: Option<PathBuf>) -> PyResult<()> {
+    breezy::bedding::ensure_config_dir_exists(path.as_ref().map(|p| p.as_path()))?;
+    Ok(())
+}
+
+#[pyfunction]
+fn config_dir() -> PyResult<PathBuf> {
+    Ok(breezy::bedding::config_dir()?.to_path_buf())
+}
+
+#[pyfunction]
+fn _config_dir() -> PyResult<(PathBuf, String)> {
+    Ok(breezy::bedding::_config_dir().map(|(p, k)| (p.to_path_buf(), k.to_string()))?)
+}
+
+#[pyfunction]
+fn bazaar_config_dir() -> PyResult<PathBuf> {
+    Ok(breezy::bedding::bazaar_config_dir()?.to_path_buf())
+}
+
 #[pymodule]
 fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     let i18n = PyModule::new(_py, "i18n")?;
@@ -45,6 +66,10 @@ fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     i18n.add_function(wrap_pyfunction!(i18n_disable_i18n, i18n)?)?;
     i18n.add_function(wrap_pyfunction!(i18n_dgettext, i18n)?)?;
     m.add_submodule(i18n)?;
+    m.add_function(wrap_pyfunction!(ensure_config_dir_exists, m)?)?;
+    m.add_function(wrap_pyfunction!(config_dir, m)?)?;
+    m.add_function(wrap_pyfunction!(bazaar_config_dir, m)?)?;
+    m.add_function(wrap_pyfunction!(_config_dir, m)?)?;
 
     Ok(())
 }

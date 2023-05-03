@@ -207,6 +207,10 @@ pub fn contains_linebreaks(s: &str) -> bool {
     false
 }
 
+pub fn get_home_dir() -> Option<std::path::PathBuf> {
+    dirs::home_dir()
+}
+
 pub mod file;
 pub mod iterablefile;
 pub mod path;

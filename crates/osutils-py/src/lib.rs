@@ -985,6 +985,11 @@ fn ensure_empty_directory_exists(path: PathBuf) -> PyResult<()> {
     }
 }
 
+#[pyfunction]
+fn get_home_dir() -> PyResult<Option<PathBuf>> {
+    Ok(breezy_osutils::get_home_dir())
+}
+
 #[pymodule]
 fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -1076,5 +1081,6 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
         "UnsupportedTimezoneFormat",
         py.get_type::<UnsupportedTimezoneFormat>(),
     )?;
+    m.add_wrapped(wrap_pyfunction!(get_home_dir))?;
     Ok(())
 }

@@ -29,103 +29,13 @@ from breezy import (
     win32utils,
     )
 """)
-from . import errors
+from . import errors, _cmd_rs
 
 
-def ensure_config_dir_exists(path=None):
-    """Make sure a configuration directory exists.
-
-    This makes sure that the directory exists.
-    On windows, since configuration directories are 2 levels deep,
-    it makes sure both the directory and the parent directory exists.
-    """
-    if path is None:
-        path = config_dir()
-    if not os.path.isdir(path):
-        parent_dir = os.path.dirname(path)
-        if not os.path.isdir(parent_dir):
-            trace.mutter(
-                'creating config parent directory: %r', parent_dir)
-            os.mkdir(parent_dir)
-            osutils.copy_ownership_from_path(parent_dir)
-        trace.mutter('creating config directory: %r', path)
-        os.mkdir(path)
-        osutils.copy_ownership_from_path(path)
-
-
-def bazaar_config_dir():
-    """Return per-user configuration directory as unicode string
-
-    By default this is %APPDATA%/bazaar/2.0 on Windows, ~/.bazaar on Mac OS X
-    and Linux.  On Mac OS X and Linux, if there is a $XDG_CONFIG_HOME/bazaar
-    directory, that will be used instead
-
-    TODO: Global option --config-dir to override this.
-    """
-    base = os.environ.get('BZR_HOME')
-    if sys.platform == 'win32':
-        if base is None:
-            base = win32utils.get_appdata_location()
-        if base is None:
-            base = win32utils.get_home_location()
-        return osutils.pathjoin(base, 'bazaar', '2.0')
-    if base is None:
-        xdg_dir = os.environ.get('XDG_CONFIG_HOME')
-        if xdg_dir is None:
-            xdg_dir = osutils.pathjoin(osutils._get_home_dir(), ".config")
-        xdg_dir = osutils.pathjoin(xdg_dir, 'bazaar')
-        if osutils.isdir(xdg_dir):
-            trace.mutter(
-                "Using configuration in XDG directory %s." % xdg_dir)
-            return xdg_dir
-        base = osutils._get_home_dir()
-    return osutils.pathjoin(base, ".bazaar")
-
-
-def _config_dir():
-    """Return per-user configuration directory as unicode string
-
-    By default this is %APPDATA%/breezy on Windows, $XDG_CONFIG_HOME/breezy on
-    Mac OS X and Linux. If the breezy config directory doesn't exist but
-    the bazaar one (see bazaar_config_dir()) does, use that instead.
-    """
-    # TODO: Global option --config-dir to override this.
-    base = os.environ.get('BRZ_HOME')
-    if sys.platform == 'win32':
-        if base is None:
-            base = win32utils.get_appdata_location()
-        if base is None:
-            # Assume that AppData location is ALWAYS DEFINED,
-            # and don't look for %HOME%, as we aren't sure about
-            # where the files should be stored in %HOME%:
-            # on other platforms the directory is ~/.config/,
-            # but that would be incompatible with older Bazaar versions.
-            raise RuntimeError('Unable to determine AppData location')
-
-    if base is None:
-        base = os.environ.get('XDG_CONFIG_HOME')
-        if base is None:
-            base = osutils.pathjoin(osutils._get_home_dir(), ".config")
-    breezy_dir = osutils.pathjoin(base, 'breezy')
-    if osutils.isdir(breezy_dir):
-        return (breezy_dir, 'breezy')
-    # If the breezy directory doesn't exist, but the bazaar one does, use that:
-    bazaar_dir = bazaar_config_dir()
-    if osutils.isdir(bazaar_dir):
-        trace.mutter(
-            "Using Bazaar configuration directory (%s)", bazaar_dir)
-        return (bazaar_dir, 'bazaar')
-    return (breezy_dir, 'breezy')
-
-
-def config_dir():
-    """Return per-user configuration directory as unicode string
-
-    By default this is %APPDATA%/breezy on Windows, $XDG_CONFIG_HOME/breezy on
-    Mac OS X and Linux. If the breezy config directory doesn't exist but
-    the bazaar one (see bazaar_config_dir()) does, use that instead.
-    """
-    return _config_dir()[0]
+ensure_config_dir_exists = _cmd_rs.ensure_config_dir_exists
+bazaar_config_dir = _cmd_rs.bazaar_config_dir
+config_dir = _cmd_rs.config_dir
+_config_dir = _cmd_rs._config_dir
 
 
 def config_path():
