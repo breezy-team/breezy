@@ -80,7 +80,7 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
             config_dir = config_dir.decode(osutils.get_user_encoding())
         to_file.write("  Breezy configuration: {}\n".format(config_dir))
         to_file.write("  Breezy log file: ")
-        to_file.write(trace._brz_log_filename + '\n')
+        to_file.write(trace.get_brz_log_filename() + '\n')
     if show_copyright:
         to_file.write('\n')
         to_file.write(breezy.__copyright__ + '\n')
