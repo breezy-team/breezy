@@ -142,6 +142,7 @@ dependencies = [
  "breezy-osutils",
  "gettext-rs",
  "log",
+ "nix",
  "pyo3",
 ]
 

@@ -1,6 +1,10 @@
 use log::debug;
 use std::env;
+use std::ffi::{OsStr, OsString};
 use std::fs::create_dir;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 
 // TODO(jelmer): Rely on the directories crate instead
@@ -242,4 +246,107 @@ pub fn cache_dir() -> std::io::Result<PathBuf> {
         .map_err(|e| std::io::Error::new(e.kind(), format!("{}: {}", e, cache_dir.display())))?;
 
     Ok(cache_dir)
+}
+
+pub fn default_email() -> Option<String> {
+    let brz_email = env::var("BRZ_EMAIL").ok();
+    env::var("EMAIL")
+        .ok()
+        .or(brz_email)
+        .ok()
+        .or_else(|_| {
+            let (name, email) = auto_user_id()?;
+            if let (Some(name), Some(email)) = (name, email) {
+                Some(format!("{} <{}>", name, email))
+            } else {
+                Some(email)
+            }
+        })
+        .unwrap_or_else(|_| None)
+}
+
+/// Calculate automatic user identification.
+///
+/// Returns a tuple of `(realname, email)`, either of which may be `None` if they can't be
+/// determined.
+///
+/// Only used when none is set in the environment or the id file.
+///
+/// This only returns an email address if we can be fairly sure the
+/// address is reasonable, ie if /etc/mailname is set on unix.
+///
+/// This doesn't use the FQDN as the default domain because that may be
+/// slow, and it doesn't use the hostname alone because that's not normally
+/// a reasonable address.
+#[cfg(not(windows))]
+pub fn auto_user_id() -> Result<(Option<String>, Option<String>)> {
+    let default_mail_domain = get_default_mail_domain(None)?;
+    let uid = nix::unistd::getuid();
+
+    let w = match nix::unistd::User::from_uid(uid) {
+        Ok(Some(w)) => w,
+        Ok(None) => {
+            debug!("no passwd entry for uid {}?", uid);
+            return Ok((None, None));
+        }
+        Err(_) => {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("cannot get passwd entry for uid {}", uid),
+            ))
+        }
+    };
+
+    let gecos = w.pw_gecos();
+    let username = w.pw_name().to_str().unwrap().to_string();
+    let encoding = match std::str::from_utf8(&gecos) {
+        Ok(_) => "utf-8",
+        Err(_) => {
+            let encoding = breezy_osutils::get_user_encoding()?;
+            encoding.to_str().unwrap()
+        }
+    };
+
+    let realname = match gecos.to_str() {
+        Ok(gecos_str) => {
+            let comma = gecos_str.find(',');
+            if let Some(comma) = comma {
+                Some(gecos_str[..comma].trim().to_string())
+            } else {
+                Some(gecos_str.trim().to_string())
+            }
+        }
+        Err(_) => {
+            debug!("cannot decode passwd entry {:?}", w);
+            None
+        }
+    };
+
+    let email = Some(format!("{}@{}", username, default_mail_domain));
+
+    Ok((realname, email))
+}
+
+/// If possible, return the assumed default email domain.
+///
+/// Returns `Some(domain)` if the default mail domain can be read from the
+/// specified `mailname_file`, otherwise `None`.
+///
+/// Args:
+///   mailname_file: path to the mailname file to read, or `None` to use the default path
+/// Returns: string mail domain, or None.
+#[cfg(not(windows))]
+pub fn get_default_mail_domain(mailname_file: Option<&Path>) -> Option<String> {
+    let mailname_file = mailname_file.unwrap_or(Path::new("/etc/mailname"));
+
+    if let Ok(file) = std::fs::File::open(mailname_file) {
+        let reader = std::io::BufReader::new(file);
+        if let Some(Ok(domain)) = reader.lines().next() {
+            Some(domain.trim().to_string())
+        } else {
+            None
+        }
+    } else {
+        None
+    }
 }

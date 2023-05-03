@@ -86,6 +86,23 @@ fn cache_dir() -> PyResult<PathBuf> {
     Ok(breezy::bedding::cache_dir()?)
 }
 
+#[pyfunction]
+fn get_default_mail_domain(mailname_file: Option<PathBuf>) -> PyResult<String> {
+    Ok(breezy::bedding::get_default_mail_domain(
+        mailname_file.map(|p| p.as_path()),
+    )?)
+}
+
+#[pyfunction]
+fn default_email() -> PyResult<String> {
+    Ok(breezy::bedding::default_email()?)
+}
+
+#[pyfunction]
+fn auto_user_id() -> PyResult<(Option<String>, Option<String>)> {
+    Ok(breezy::bedding::auto_user_id()?)
+}
+
 #[pymodule]
 fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     let i18n = PyModule::new(_py, "i18n")?;
@@ -106,6 +123,9 @@ fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(user_ignore_config_path, m)?)?;
     m.add_function(wrap_pyfunction!(crash_dir, m)?)?;
     m.add_function(wrap_pyfunction!(cache_dir, m)?)?;
+    m.add_function(wrap_pyfunction!(get_default_mail_domain, m)?)?;
+    m.add_function(wrap_pyfunction!(default_email, m)?)?;
+    m.add_function(wrap_pyfunction!(auto_user_id, m)?)?;
 
     Ok(())
 }
