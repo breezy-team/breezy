@@ -70,12 +70,12 @@ class TestVersionUnicodeOutput(TestCaseInTempDir):
         # and therefore pretty safe,
         # but we run these tests in separate temp dir
         # with relative unicoded path
-        old_trace_file = trace._brz_log_filename
-        trace._brz_log_filename = '\u1234/.brz.log'
+        old_trace_file = trace.get_brz_log_filename()
+        trace.set_brz_log_filename('\u1234/.brz.log')
         try:
             out = self.run_bzr(args)[0]
         finally:
-            trace._brz_log_filename = old_trace_file
+            trace.set_brz_log_filename(old_trace_file)
         self.assertGreater(len(out), 0)
         self.assertContainsRe(out, r'(?m)^  Breezy log file:.*brz\.log')
 

@@ -309,7 +309,8 @@ class TestTrace(TestCase):
         self.overrideAttr(sys, 'stderr', StringIO())
         # Set the log file to something that cannot exist
         self.overrideEnv('BRZ_LOG', '/no-such-dir/brz.log')
-        self.overrideAttr(trace, '_brz_log_filename')
+        old_brz_log_filename = trace.get_brz_log_filename()
+        self.addCleanup(trace.set_brz_log_filename, old_brz_log_filename)
         logf = trace._open_brz_log()
         if os.path.isdir('/no-such-dir'):
             raise TestSkipped('directory creation succeeded')
@@ -327,7 +328,8 @@ class TestTrace(TestCase):
         self.overrideEnv('BRZ_LOG', None)
         self.overrideEnv('BRZ_HOME', '/no-such-dir')
         self.overrideEnv('XDG_CACHE_HOME', '/no-such-dir')
-        self.overrideAttr(trace, '_brz_log_filename')
+        old_brz_log_filename = trace.get_brz_log_filename()
+        self.addCleanup(trace.set_brz_log_filename, old_brz_log_filename)
         logf = trace._open_brz_log()
         if os.path.isdir('/no-such-dir'):
             raise TestSkipped('directory creation succeeded')
@@ -440,15 +442,16 @@ class TestTraceConfiguration(TestCaseInTempDir):
 
     def test_default_config(self):
         config = trace.DefaultConfig()
-        self.overrideAttr(trace, "_brz_log_filename", None)
-        trace._brz_log_filename = None
-        expected_filename = trace._get_brz_log_filename()
-        self.assertEqual(None, trace._brz_log_filename)
+        old_brz_log_filename = trace.get_brz_log_filename()
+        self.addCleanup(trace.set_brz_log_filename, old_brz_log_filename)
+        trace.set_brz_log_filename(None)
+        expected_filename = trace._initialize_brz_log_filename()
+        self.assertEqual(None, trace.get_brz_log_filename())
         config.__enter__()
         try:
             # Should have entered and setup a default filename.
-            self.assertEqual(expected_filename, trace._brz_log_filename)
+            self.assertEqual(expected_filename, trace.get_brz_log_filename())
         finally:
             config.__exit__(None, None, None)
             # Should have exited and cleaned up.
-            self.assertEqual(None, trace._brz_log_filename)
+            self.assertEqual(None, trace.get_brz_log_filename())

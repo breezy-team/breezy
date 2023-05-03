@@ -219,7 +219,7 @@ def _write_apport_report_to_file(exc_info):
 
 def _attach_log_tail(pr):
     try:
-        brz_log = open(trace._get_brz_log_filename())
+        brz_log = open(trace.get_brz_log_filename())
     except OSError as e:
         pr['BrzLogTail'] = repr(e)
         return

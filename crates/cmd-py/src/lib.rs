@@ -1,5 +1,6 @@
 use pyo3::import_exception;
 use pyo3::prelude::*;
+use std::io::Write;
 use std::path::PathBuf;
 
 import_exception!(breezy.errors, NoWhoami);
@@ -108,8 +109,49 @@ fn auto_user_id() -> PyResult<(Option<String>, Option<String>)> {
 }
 
 #[pyfunction]
-fn get_brz_log_filename() -> PyResult<PathBuf> {
-    Ok(breezy::trace::get_brz_log_filename()?)
+fn initialize_brz_log_filename() -> PyResult<PathBuf> {
+    Ok(breezy::trace::initialize_brz_log_filename()?)
+}
+
+#[pyfunction]
+fn rollover_trace_maybe(path: PathBuf) -> PyResult<()> {
+    Ok(breezy::trace::rollover_trace_maybe(path.as_path())?)
+}
+
+#[pyclass]
+struct PyLogFile(std::fs::File);
+
+#[pymethods]
+impl PyLogFile {
+    fn write(&mut self, data: &[u8]) -> PyResult<usize> {
+        Ok(self.0.write(data)?)
+    }
+
+    fn flush(&mut self) -> PyResult<()> {
+        Ok(self.0.flush()?)
+    }
+}
+
+#[pyfunction]
+fn open_or_create_log_file(path: PathBuf) -> PyResult<PyLogFile> {
+    Ok(PyLogFile(breezy::trace::open_or_create_log_file(
+        path.as_path(),
+    )?))
+}
+
+#[pyfunction]
+fn open_brz_log() -> PyResult<Option<PyLogFile>> {
+    Ok(breezy::trace::open_brz_log().map(PyLogFile))
+}
+
+#[pyfunction]
+fn set_brz_log_filename(path: Option<PathBuf>) -> PyResult<()> {
+    Ok(breezy::trace::set_brz_log_filename(path.as_deref()))
+}
+
+#[pyfunction]
+fn get_brz_log_filename() -> PyResult<Option<PathBuf>> {
+    Ok(breezy::trace::get_brz_log_filename())
 }
 
 #[pymodule]
@@ -135,6 +177,11 @@ fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(get_default_mail_domain, m)?)?;
     m.add_function(wrap_pyfunction!(default_email, m)?)?;
     m.add_function(wrap_pyfunction!(auto_user_id, m)?)?;
+    m.add_function(wrap_pyfunction!(initialize_brz_log_filename, m)?)?;
+    m.add_function(wrap_pyfunction!(rollover_trace_maybe, m)?)?;
+    m.add_function(wrap_pyfunction!(open_or_create_log_file, m)?)?;
+    m.add_function(wrap_pyfunction!(open_brz_log, m)?)?;
+    m.add_function(wrap_pyfunction!(set_brz_log_filename, m)?)?;
     m.add_function(wrap_pyfunction!(get_brz_log_filename, m)?)?;
 
     Ok(())

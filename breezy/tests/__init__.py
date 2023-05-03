@@ -2218,7 +2218,7 @@ class TestCase(testtools.TestCase):
             cleanup_environment()
             # Include the subprocess's log file in the test details, in case
             # the test fails due to an error in the subprocess.
-            self._add_subprocess_log(trace._get_brz_log_filename())
+            self._add_subprocess_log(trace._initialize_brz_log_filename())
             command = self.get_brz_command()
             if not allow_plugins:
                 command.append('--no-plugins')
