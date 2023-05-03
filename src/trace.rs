@@ -1,6 +1,7 @@
 use std::fs::{File, OpenOptions};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 
 use std::fs::{metadata, rename};
 
@@ -120,4 +121,104 @@ pub fn open_brz_log() -> Option<File> {
     }
 
     Some(brz_log_file)
+}
+
+pub struct BreezyTraceLogger<F> {
+    file: Mutex<F>,
+}
+
+impl<F: Write> BreezyTraceLogger<F> {
+    pub fn new(mut file: F) -> Self {
+        let start_time = breezy_osutils::time::format_local_date(
+            chrono::Local::now().timestamp(),
+            None,
+            breezy_osutils::time::Timezone::Local,
+            None,
+            false,
+        );
+        file.write_all((start_time + "\n").as_bytes())
+            .expect("failed to write to trace file");
+        Self {
+            file: Mutex::new(file),
+        }
+    }
+}
+
+impl Default for BreezyTraceLogger<File> {
+    fn default() -> Self {
+        let file = open_brz_log();
+        Self::new(file.unwrap_or_else(|| panic!("failed to open trace file")))
+    }
+}
+
+impl Default for BreezyTraceLogger<Box<dyn Write + Send>> {
+    fn default() -> Self {
+        let file = open_brz_log();
+        Self::new(Box::new(
+            file.unwrap_or_else(|| panic!("failed to open trace file")),
+        ))
+    }
+}
+
+impl<F: Write + Send> log::Log for BreezyTraceLogger<F> {
+    fn enabled(&self, metadata: &log::Metadata) -> bool {
+        metadata.level() <= log::Level::Debug
+    }
+
+    fn log(&self, record: &log::Record) {
+        if self.enabled(record.metadata()) {
+            // Mimic the python log format:
+            // r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s'
+            let now = chrono::Local::now();
+            self.file
+                .lock()
+                .unwrap()
+                .write_all(
+                    format!(
+                        "[{:5}] {}.{:03} {}: {}",
+                        std::process::id(),
+                        now.format("%Y-%m-%d %H:%M:%S"),
+                        now.timestamp_subsec_millis(),
+                        record.level(),
+                        record.args()
+                    )
+                    .as_bytes(),
+                )
+                .expect("failed to write to trace file");
+        }
+    }
+
+    fn flush(&self) {
+        self.file.lock().unwrap().flush().ok();
+    }
+}
+
+struct BreezyStderrLogger {}
+
+impl BreezyStderrLogger {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Default for BreezyStderrLogger {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl log::Log for BreezyStderrLogger {
+    fn enabled(&self, metadata: &log::Metadata) -> bool {
+        metadata.level() <= log::Level::Info
+    }
+
+    fn log(&self, record: &log::Record) {
+        if self.enabled(record.metadata()) {
+            eprintln!("{}", record.args());
+        }
+    }
+
+    fn flush(&self) {
+        std::io::stderr().flush().ok();
+    }
 }
