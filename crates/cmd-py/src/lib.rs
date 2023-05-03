@@ -43,37 +43,47 @@ fn ensure_config_dir_exists(path: Option<PathBuf>) -> PyResult<()> {
 
 #[pyfunction]
 fn config_dir() -> PyResult<PathBuf> {
-    Ok(breezy::bedding::config_dir()?.to_path_buf())
+    Ok(breezy::bedding::config_dir()?)
 }
 
 #[pyfunction]
 fn _config_dir() -> PyResult<(PathBuf, String)> {
-    Ok(breezy::bedding::_config_dir().map(|(p, k)| (p.to_path_buf(), k.to_string()))?)
+    Ok(breezy::bedding::_config_dir().map(|(p, k)| (p, k.to_string()))?)
 }
 
 #[pyfunction]
 fn bazaar_config_dir() -> PyResult<PathBuf> {
-    Ok(breezy::bedding::bazaar_config_dir()?.to_path_buf())
+    Ok(breezy::bedding::bazaar_config_dir()?)
 }
 
 #[pyfunction]
 fn config_path() -> PyResult<PathBuf> {
-    Ok(breezy::bedding::config_path()?.to_path_buf())
+    Ok(breezy::bedding::config_path()?)
 }
 
 #[pyfunction]
 fn locations_config_path() -> PyResult<PathBuf> {
-    Ok(breezy::bedding::locations_config_path()?.to_path_buf())
+    Ok(breezy::bedding::locations_config_path()?)
 }
 
 #[pyfunction]
 fn authentication_config_path() -> PyResult<PathBuf> {
-    Ok(breezy::bedding::authentication_config_path()?.to_path_buf())
+    Ok(breezy::bedding::authentication_config_path()?)
 }
 
 #[pyfunction]
 fn user_ignore_config_path() -> PyResult<PathBuf> {
-    Ok(breezy::bedding::user_ignore_config_path()?.to_path_buf())
+    Ok(breezy::bedding::user_ignore_config_path()?)
+}
+
+#[pyfunction]
+fn crash_dir() -> PyResult<PathBuf> {
+    Ok(breezy::bedding::crash_dir())
+}
+
+#[pyfunction]
+fn cache_dir() -> PyResult<PathBuf> {
+    Ok(breezy::bedding::cache_dir()?)
 }
 
 #[pymodule]
@@ -94,6 +104,8 @@ fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(locations_config_path, m)?)?;
     m.add_function(wrap_pyfunction!(authentication_config_path, m)?)?;
     m.add_function(wrap_pyfunction!(user_ignore_config_path, m)?)?;
+    m.add_function(wrap_pyfunction!(crash_dir, m)?)?;
+    m.add_function(wrap_pyfunction!(cache_dir, m)?)?;
 
     Ok(())
 }

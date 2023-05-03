@@ -40,45 +40,8 @@ config_path = _cmd_rs.config_path
 locations_config_path = _cmd_rs.locations_config_path
 authentication_config_path = _cmd_rs.authentication_config_path
 user_ignore_config_path = _cmd_rs.user_ignore_config_path
-
-
-def crash_dir():
-    """Return the directory name to store crash files.
-
-    This doesn't implicitly create it.
-
-    On Windows it's in the config directory; elsewhere it's /var/crash
-    which may be monitored by apport.  It can be overridden by
-    $APPORT_CRASH_DIR.
-    """
-    if sys.platform == 'win32':
-        return osutils.pathjoin(config_dir(), 'Crash')
-    else:
-        # XXX: hardcoded in apport_python_hook.py; therefore here too -- mbp
-        # 2010-01-31
-        return os.environ.get('APPORT_CRASH_DIR', '/var/crash')
-
-
-def cache_dir():
-    """Return the cache directory to use."""
-    base = os.environ.get('BRZ_HOME')
-    if sys.platform in "win32":
-        if base is None:
-            base = win32utils.get_local_appdata_location()
-        if base is None:
-            base = win32utils.get_home_location()
-    else:
-        base = os.environ.get('XDG_CACHE_HOME')
-        if base is None:
-            base = osutils.pathjoin(osutils._get_home_dir(), ".cache")
-
-    cache_dir = osutils.pathjoin(base, "breezy")
-
-    # GZ 2019-06-15: Move responsibility for ensuring dir exists elsewhere?
-    if not os.path.exists(cache_dir):
-        os.makedirs(cache_dir)
-
-    return cache_dir
+crash_dir = _cmd_rs.crash_dir
+cache_dir = _cmd_rs.cache_dir
 
 
 def _get_default_mail_domain(mailname_file='/etc/mailname'):

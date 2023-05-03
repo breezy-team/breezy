@@ -180,3 +180,66 @@ pub fn authentication_config_path() -> std::io::Result<PathBuf> {
 pub fn user_ignore_config_path() -> std::io::Result<PathBuf> {
     Ok(config_dir()?.join("ignore"))
 }
+
+pub fn crash_dir() -> PathBuf {
+    // Return the directory name to store crash files.
+    // This doesn't implicitly create it.
+    //
+    // On Windows it's in the config directory; elsewhere it's /var/crash
+    // which may be monitored by apport. It can be overridden by
+    // $APPORT_CRASH_DIR.
+
+    #[cfg(windows)]
+    {
+        config_dir().join("Crash")
+    }
+
+    #[cfg(not(windows))]
+    {
+        // XXX: hardcoded in apport_python_hook.py; therefore here too -- mbp
+        // 2010-01-31
+        match env::var("APPORT_CRASH_DIR") {
+            Ok(val) => PathBuf::from(val),
+            Err(_) => Path::new("/var/crash").to_path_buf(),
+        }
+    }
+}
+
+pub fn cache_dir() -> std::io::Result<PathBuf> {
+    // Return the cache directory to use.
+    let mut base: Option<PathBuf> = env::var("BRZ_HOME").ok().map(PathBuf::from);
+
+    #[cfg(windows)]
+    {
+        if base.is_none() {
+            base = win32utils::get_local_appdata_location();
+        }
+        if base.is_none() {
+            base = win32utils::get_home_location();
+        }
+    }
+
+    #[cfg(not(windows))]
+    {
+        if let Ok(xdg_cache_home) = env::var("XDG_CACHE_HOME") {
+            base = Some(PathBuf::from(xdg_cache_home));
+        } else {
+            base = None;
+        }
+        if base.is_none() {
+            base = Some(
+                breezy_osutils::get_home_dir()
+                    .expect("no home directory")
+                    .join(".cache"),
+            );
+        }
+    }
+
+    let cache_dir = base.unwrap().join("breezy");
+
+    // GZ 2019-06-15: Move responsibility for ensuring dir exists elsewhere?
+    std::fs::create_dir_all(&cache_dir)
+        .map_err(|e| std::io::Error::new(e.kind(), format!("{}: {}", e, cache_dir.display())))?;
+
+    Ok(cache_dir)
+}

@@ -334,7 +334,7 @@ class TestTrace(TestCase):
         self.assertIs(None, logf)
         self.assertContainsRe(
             sys.stderr.getvalue(),
-            "failed to open trace file: .* '/no-such-dir'$")
+            "failed to open trace file: .* /no-such-dir.*$")
 
 
 class TestVerbosityLevel(TestCase):
