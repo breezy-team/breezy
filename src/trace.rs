@@ -125,21 +125,25 @@ pub fn open_brz_log() -> Option<File> {
 
 pub struct BreezyTraceLogger<F> {
     file: Mutex<F>,
+    short: bool,
 }
 
 impl<F: Write> BreezyTraceLogger<F> {
-    pub fn new(mut file: F) -> Self {
-        let start_time = breezy_osutils::time::format_local_date(
-            chrono::Local::now().timestamp(),
-            None,
-            breezy_osutils::time::Timezone::Local,
-            None,
-            false,
-        );
-        file.write_all((start_time + "\n").as_bytes())
-            .expect("failed to write to trace file");
+    pub fn new(mut file: F, short: bool) -> Self {
+        if !short {
+            let start_time = breezy_osutils::time::format_local_date(
+                chrono::Local::now().timestamp(),
+                None,
+                breezy_osutils::time::Timezone::Local,
+                None,
+                false,
+            );
+            file.write_all((start_time + "\n").as_bytes())
+                .expect("failed to write to trace file");
+        }
         Self {
             file: Mutex::new(file),
+            short,
         }
     }
 }
@@ -147,16 +151,20 @@ impl<F: Write> BreezyTraceLogger<F> {
 impl Default for BreezyTraceLogger<File> {
     fn default() -> Self {
         let file = open_brz_log();
-        Self::new(file.unwrap_or_else(|| panic!("failed to open trace file")))
+        Self::new(
+            file.unwrap_or_else(|| panic!("failed to open trace file")),
+            false,
+        )
     }
 }
 
 impl Default for BreezyTraceLogger<Box<dyn Write + Send>> {
     fn default() -> Self {
         let file = open_brz_log();
-        Self::new(Box::new(
-            file.unwrap_or_else(|| panic!("failed to open trace file")),
-        ))
+        Self::new(
+            Box::new(file.unwrap_or_else(|| panic!("failed to open trace file"))),
+            false,
+        )
     }
 }
 
@@ -170,21 +178,36 @@ impl<F: Write + Send> log::Log for BreezyTraceLogger<F> {
             // Mimic the python log format:
             // r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s'
             let now = chrono::Local::now();
-            self.file
-                .lock()
-                .unwrap()
-                .write_all(
-                    format!(
-                        "[{:5}] {}.{:03} {}: {}\n",
-                        std::process::id(),
-                        now.format("%Y-%m-%d %H:%M:%S"),
-                        now.timestamp_subsec_millis(),
-                        record.level(),
-                        record.args()
+            let level = match record.level() {
+                log::Level::Error => "ERROR",
+                log::Level::Warn => "WARNING",
+                log::Level::Info => "INFO",
+                log::Level::Debug => "DEBUG",
+                log::Level::Trace => "TRACE",
+            };
+            if self.short {
+                self.file
+                    .lock()
+                    .unwrap()
+                    .write_all(format!("{:>8}  {}\n", level, record.args()).as_bytes())
+                    .expect("failed to write to trace file");
+            } else {
+                self.file
+                    .lock()
+                    .unwrap()
+                    .write_all(
+                        format!(
+                            "[{:5}] {}.{:03} {}: {}\n",
+                            std::process::id(),
+                            now.format("%Y-%m-%d %H:%M:%S"),
+                            now.timestamp_subsec_millis(),
+                            level,
+                            record.args()
+                        )
+                        .as_bytes(),
                     )
-                    .as_bytes(),
-                )
-                .expect("failed to write to trace file");
+                    .expect("failed to write to trace file");
+            }
         }
     }
 

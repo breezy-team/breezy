@@ -1662,11 +1662,11 @@ class TestCase(testtools.TestCase):
             return [pseudo_log_file.getvalue().decode(
                 "utf-8", "replace").encode("utf-8")]
         self.addDetail(
-            "log", content.Content(
+            'log', content.Content(
                 content.ContentType("text", "plain", {"charset": "utf8"}),
                 _get_log_contents_for_weird_testtools_api))
         self._log_file = pseudo_log_file
-        self._log_memento = trace.push_log_file(self._log_file)
+        self._log_memento = trace.push_log_file(self._log_file, short=True)
         self.addCleanup(self._finishLogFile)
 
     @contextlib.contextmanager
