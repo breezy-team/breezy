@@ -89,6 +89,7 @@ dependencies = [
  "bazaar",
  "chrono",
  "pyo3",
+ "pyo3-file",
 ]
 
 [[package]]

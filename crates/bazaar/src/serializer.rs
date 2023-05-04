@@ -9,14 +9,14 @@ pub struct Error {
 pub trait RevisionSerializer: Send + Sync {
     fn format_name(&self) -> &'static str;
 
-    fn read_revision(&mut self, file: &dyn Read) -> Result<Revision, Error>;
+    fn read_revision(&self, file: &dyn Read) -> Result<Revision, Error>;
 
-    fn write_revision_to_string(&mut self, revision: &Revision) -> Result<Vec<u8>, Error>;
+    fn write_revision_to_string(&self, revision: &Revision) -> Result<Vec<u8>, Error>;
 
     fn write_revision_to_lines(
-        &mut self,
+        &self,
         revision: &Revision,
-    ) -> dyn Iterator<Item = Result<Vec<u8>, Error>>;
+    ) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>>>;
 
-    fn read_revision_from_string(&mut self, string: &[u8]) -> Result<Revision, Error>;
+    fn read_revision_from_string(&self, string: &[u8]) -> Result<Revision, Error>;
 }

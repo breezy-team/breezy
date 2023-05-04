@@ -309,40 +309,38 @@ struct RevisionSerializer(Box<dyn bazaar::serializer::RevisionSerializer>);
 #[pymethods]
 impl RevisionSerializer {
     #[getter]
-    fn format_num(&self, py: Python) -> PyResult<&PyBytes> {
-        Ok(PyBytes::new(py, self.0.format_name().as_bytes()))
+    fn format_name(&self) -> String {
+        self.0.format_name().to_string()
     }
 
     fn read_revision(&self, file: PyObject) -> PyResult<Revision> {
         let file = PyFileLikeObject::with_requirements(file, true, false, false)?;
         Ok(Revision(
             self.0
-                .read_revision(file)
+                .read_revision(&file)
                 .map_err(serializer_err_to_py_err)?,
         ))
     }
 
-    fn write_revision_to_string(&self, py: Python, revision: &Revision) -> PyResult<&PyBytes> {
+    fn write_revision_to_string(&self, py: Python, revision: &Revision) -> PyResult<PyObject> {
         Ok(PyBytes::new(
             py,
             self.0
                 .write_revision_to_string(&revision.0)
                 .map_err(serializer_err_to_py_err)?
                 .as_slice(),
-        ))
+        )
+        .into_py(py))
     }
 
-    fn write_revision_to_lines(&self, py: Python, revision: &Revision) -> PyResult<Vec<&PyBytes>> {
+    fn write_revision_to_lines(&self, py: Python, revision: &Revision) -> PyResult<Vec<PyObject>> {
         self.0
             .write_revision_to_lines(&revision.0)
             .into_iter()
-            .map(|s| -> PyResult<&PyBytes> {
-                Ok(PyBytes::new(
-                    py,
-                    s.map_err(serializer_err_to_py_err)?.as_slice(),
-                ))
+            .map(|s| -> PyResult<PyObject> {
+                Ok(PyBytes::new(py, s.map_err(serializer_err_to_py_err)?.as_slice()).into_py(py))
             })
-            .collect::<PyResult<Vec<&PyBytes>>>()
+            .collect::<PyResult<Vec<PyObject>>>()
     }
 
     fn read_revision_from_string(&self, string: &[u8]) -> PyResult<Revision> {
@@ -365,5 +363,6 @@ fn _bzr_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m_globbing.add_class::<Replacer>()?;
     m.add_submodule(m_globbing)?;
     m.add_class::<Revision>()?;
+    m.add_class::<RevisionSerializer>()?;
     Ok(())
 }
