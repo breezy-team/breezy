@@ -5,6 +5,7 @@ use pyo3::types::{PyString, PyTuple};
 use pyo3_file::PyFileLikeObject;
 use std::io::Write;
 use std::path::PathBuf;
+use std::time::{Duration, SystemTime};
 
 import_exception!(breezy.errors, NoWhoami);
 
@@ -303,6 +304,11 @@ impl BreezyTraceHandler {
 }
 
 #[pyfunction]
+fn str_tdelta(delt: Option<f64>) -> PyResult<String> {
+    Ok(breezy::progress::str_tdelta(delt))
+}
+
+#[pyfunction]
 fn debug_memory_proc(message: &str, short: bool) -> () {
     breezy::trace::debug_memory_proc(message, short)
 }
@@ -337,6 +343,7 @@ fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_brz_log_filename, m)?)?;
     m.add_function(wrap_pyfunction!(get_brz_log_filename, m)?)?;
     m.add_class::<BreezyTraceHandler>()?;
+    m.add_function(wrap_pyfunction!(str_tdelta, m)?)?;
     m.add_function(wrap_pyfunction!(debug_memory_proc, m)?)?;
 
     Ok(())
