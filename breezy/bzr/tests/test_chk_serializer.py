@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from ...revision import Revision
-from ..chk_serializer import revision_bencode_serializer
+from ..._bzr_rs import revision_bencode_serializer
 from . import TestCase
 
 _working_revision_bencode1 = (b'l'

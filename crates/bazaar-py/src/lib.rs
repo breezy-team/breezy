@@ -300,11 +300,27 @@ impl Revision {
 }
 
 fn serializer_err_to_py_err(e: bazaar::serializer::Error) -> PyErr {
-    PyRuntimeError::new_err(format!("serializer error"))
+    PyRuntimeError::new_err(format!("serializer error: {:?}", e))
 }
 
 #[pyclass(subclass)]
 struct RevisionSerializer(Box<dyn bazaar::serializer::RevisionSerializer>);
+
+#[pyclass(subclass,extends=RevisionSerializer)]
+struct BEncodeRevisionSerializerv1;
+
+#[pymethods]
+impl BEncodeRevisionSerializerv1 {
+    #[new]
+    fn new() -> (Self, RevisionSerializer) {
+        (
+            Self {},
+            RevisionSerializer(Box::new(
+                bazaar::bencode_serializer::BEncodeRevisionSerializer1,
+            )),
+        )
+    }
+}
 
 #[pymethods]
 impl RevisionSerializer {
@@ -314,10 +330,10 @@ impl RevisionSerializer {
     }
 
     fn read_revision(&self, file: PyObject) -> PyResult<Revision> {
-        let file = PyFileLikeObject::with_requirements(file, true, false, false)?;
+        let mut file = PyFileLikeObject::with_requirements(file, true, false, false)?;
         Ok(Revision(
             self.0
-                .read_revision(&file)
+                .read_revision(&mut file)
                 .map_err(serializer_err_to_py_err)?,
         ))
     }
@@ -364,5 +380,10 @@ fn _bzr_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_submodule(m_globbing)?;
     m.add_class::<Revision>()?;
     m.add_class::<RevisionSerializer>()?;
+    m.add_class::<BEncodeRevisionSerializerv1>()?;
+    m.add(
+        "revision_bencode_serializer",
+        m.getattr("BEncodeRevisionSerializerv1")?.call0()?,
+    )?;
     Ok(())
 }

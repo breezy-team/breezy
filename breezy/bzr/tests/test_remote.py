@@ -45,7 +45,7 @@ from .. import (RemoteBzrProber, bzrdir, groupcompress_repo, inventory,
                 inventory_delta, knitpack_repo, remote, versionedfile,
                 vf_search)
 from ..bzrdir import BzrDir, BzrDirFormat
-from ..chk_serializer import revision_bencode_serializer
+from ..._bzr_rs import revision_bencode_serializer
 from ..remote import (RemoteBranch, RemoteBranchFormat, RemoteBzrDir,
                       RemoteBzrDirFormat, RemoteRepository,
                       RemoteRepositoryFormat, UnknownErrorFromSmartServer)

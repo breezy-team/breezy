@@ -1,15 +1,17 @@
 use crate::revision::Revision;
-use std::collections::HashMap;
 use std::io::{Read, Write};
 
-pub struct Error {
-    pub message: String,
+#[derive(Debug)]
+pub enum Error {
+    DecodeError(String),
+    EncodeError(String),
+    IOError(std::io::Error),
 }
 
 pub trait RevisionSerializer: Send + Sync {
     fn format_name(&self) -> &'static str;
 
-    fn read_revision(&self, file: &dyn Read) -> Result<Revision, Error>;
+    fn read_revision(&self, file: &mut dyn Read) -> Result<Revision, Error>;
 
     fn write_revision_to_string(&self, revision: &Revision) -> Result<Vec<u8>, Error>;
 

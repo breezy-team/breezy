@@ -22,6 +22,7 @@ import time
 from .. import controldir, debug, errors, osutils
 from .. import revision as _mod_revision
 from .. import trace, ui
+from .. import _bzr_rs
 from ..bzr import chk_map, chk_serializer
 from ..bzr import index as _mod_index
 from ..bzr import inventory, pack, versionedfile
@@ -1341,7 +1342,7 @@ class RepositoryFormat2a(RepositoryFormatPack):
     supports_chks = True
     _commit_builder_class = PackCommitBuilder
     rich_root_data = True
-    _revision_serializer = chk_serializer.revision_bencode_serializer
+    _revision_serializer = _bzr_rs.revision_bencode_serializer
     _inventory_serializer = chk_serializer.inventory_chk_serializer_255_bigpage_10
     _commit_inv_deltas = True
     # What index classes to use

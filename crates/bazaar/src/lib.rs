@@ -54,6 +54,12 @@ impl From<Vec<u8>> for RevisionId {
     }
 }
 
+impl From<&[u8]> for RevisionId {
+    fn from(v: &[u8]) -> Self {
+        RevisionId(v.to_vec())
+    }
+}
+
 impl From<RevisionId> for Vec<u8> {
     fn from(v: RevisionId) -> Self {
         v.0
@@ -75,3 +81,5 @@ impl RevisionId {
         &self.0
     }
 }
+
+pub mod bencode_serializer;
