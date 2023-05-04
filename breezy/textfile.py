@@ -23,8 +23,8 @@ from .errors import BinaryFile
 
 check_text_lines = _osutils_rs.check_text_lines
 check_text_path = _osutils_rs.check_text_path
-IterableFile= _osutils_rs.IterableFile
-file_iterator= _osutils_rs.file_iterator
+IterableFile = _osutils_rs.IterableFile
+file_iterator = _osutils_rs.file_iterator
 
 
 def text_file(input):
