@@ -797,7 +797,7 @@ class TestUpstreamVersionAddRevision(TestCaseWithTransport):
         return (self.revnos[revid], )
 
     def get_revision(self, revid):
-        rev = Revision(revid)
+        rev = Revision(revid, parent_ids=[], properties={}, committer='', timestamp=0, timezone=0)
         if revid in self.svn_revnos:
             self.requireFeature(svn_plugin)
             # Fake a bzr-svn revision
@@ -981,30 +981,30 @@ class TestUpstreamTagVersion(TestCase):
 class GenericPristineTarSourceTests(TestCase):
 
     def test_pristine_tar_format_gz(self):
-        rev = Revision("myrevid")
+        rev = Revision(b"myrevid", parent_ids=[], properties={}, committer='', timestamp=0, timezone=0)
         rev.properties["deb-pristine-delta"] = "1"
         self.assertEqual("gz", revision_pristine_tar_format(rev))
 
     def test_pristine_tar_format_bz2(self):
-        rev = Revision("myrevid")
+        rev = Revision(b"myrevid", parent_ids=[], properties={}, committer='', timestamp=0, timezone=0)
         rev.properties["deb-pristine-delta-bz2"] = "1"
         self.assertEqual("bz2", revision_pristine_tar_format(rev))
 
     def test_pristine_tar_format_xz(self):
-        rev = Revision("myrevid")
+        rev = Revision(b"myrevid", parent_ids=[], properties={}, committer='', timestamp=0, timezone=0)
         rev.properties["deb-pristine-delta-xz"] = "1"
         self.assertEqual("xz", revision_pristine_tar_format(rev))
 
     def test_pristine_tar_format_unknown(self):
-        rev = Revision("myrevid")
+        rev = Revision(b"myrevid", parent_ids=[], properties={}, committer='', timestamp=0, timezone=0)
         self.assertRaises(AssertionError, revision_pristine_tar_format, rev)
 
     def test_pristine_tar_delta_unknown(self):
-        rev = Revision("myrevid")
+        rev = Revision(b"myrevid", parent_ids=[], properties={}, committer='', timestamp=0, timezone=0)
         self.assertRaises(AssertionError, revision_pristine_tar_delta, rev)
 
     def test_pristine_tar_delta_gz(self):
-        rev = Revision("myrevid")
+        rev = Revision(b"myrevid", parent_ids=[], properties={}, committer='', timestamp=0, timezone=0)
         rev.properties["deb-pristine-delta"] = standard_b64encode(b"bla")
         self.assertEqual(b"bla", revision_pristine_tar_delta(rev))
 
