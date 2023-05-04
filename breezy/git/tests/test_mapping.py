@@ -121,7 +121,7 @@ class TestImportCommit(tests.TestCase):
         mapping = BzrGitMappingv1()
         rev, roundtrip_revid, verifiers = mapping.import_commit(
             c, mapping.revision_id_foreign_to_bzr)
-        self.assertIs(rev.message, None)
+        self.assertEqual(rev.message, '')
 
     def test_unknown_encoding(self):
         c = Commit()

@@ -335,8 +335,12 @@ class BzrGitMapping(foreign.VcsMapping):
         if 'git-gpg-signature' in rev.properties:
             commit.gpgsig = rev.properties['git-gpg-signature'].encode(
                 'utf-8', 'surrogateescape')
-        commit.message = self._encode_commit_message(rev, rev.message,
-                                                     encoding)
+        if 'git-missing-message' in rev.properties:
+            assert commit.message == ''
+            commit.message = None
+        else:
+            commit.message = self._encode_commit_message(rev, rev.message,
+                                                         encoding)
         if not isinstance(commit.message, bytes):
             raise TypeError(commit.message)
         if metadata is not None:
@@ -503,6 +507,10 @@ class BzrGitMapping(foreign.VcsMapping):
                 [f.decode('ascii', 'replace') for f in unknown_extra_fields])
         if extra_lines:
             properties['git-extra'] = ''.join(extra_lines)
+
+        if message is None:
+            properties['git-missing-message'] = 'true'
+            message = ''
 
         rev = ForeignRevision(
             foreign_revid=commit.id, mapping=self,
