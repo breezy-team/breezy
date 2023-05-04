@@ -336,7 +336,8 @@ class BzrGitMapping(foreign.VcsMapping):
             commit.gpgsig = rev.properties['git-gpg-signature'].encode(
                 'utf-8', 'surrogateescape')
         if 'git-missing-message' in rev.properties:
-            assert commit.message == ''
+            if commit.message != '':
+                raise AssertionError('git-missing-message set but message is not empty')
             commit.message = None
         else:
             commit.message = self._encode_commit_message(rev, rev.message,
