@@ -189,6 +189,7 @@ name = "breezy-transport"
 version = "3.3.3"
 dependencies = [
  "byteorder",
+ "sftp",
 ]
 
 [[package]]
@@ -1226,6 +1227,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "sftp"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "254e8eb4372522deb9a1c77e56a5cfd415410f0914cfa157c2954b646b8a5f84"
+dependencies = [
+ "byteorder",
+]
+
+[[package]]
 name = "sha1"
 version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1384,6 +1394,7 @@ dependencies = [
  "breezy-transport",
  "pyo3",
  "pyo3-file",
+ "sftp",
 ]
 
 [[package]]
