@@ -215,6 +215,11 @@ impl BreezyTraceHandler {
         ))))
     }
 
+    fn mutter(&self, msg: &str) -> PyResult<()> {
+        self.0.mutter(msg);
+        Ok(())
+    }
+
     #[getter]
     fn get_level(&self) -> PyResult<u32> {
         Ok(10) // DEBUG

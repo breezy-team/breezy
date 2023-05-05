@@ -78,19 +78,10 @@ from . import _cmd_rs, errors
 # is quiet; >0 is verbose.
 _verbosity_level = 0
 
-# File-like object where mutter/debug output is currently sent.  Can be
-# changed by _push_log_file etc.  This is directly manipulated by some
-# external code; maybe there should be functions to do that more precisely
-# than push/pop_log_file.
-_trace_file = None
-
-# The time the first message was written to the trace file, so that we can
-# show relative times since startup.
-_brz_log_start_time = breezy._start_time
-
-
 # held in a global for quick reference
 _brz_logger = logging.getLogger('brz')
+
+_trace_handler = None
 
 
 def note(*args, **kwargs):
@@ -121,11 +112,8 @@ def show_error(*args, **kwargs):
 
 
 def mutter(fmt, *args):
-    if _trace_file is None:
-        return
-    # XXX: Don't check this every time; instead anyone who closes the file
-    # ought to deregister it.  We can tolerate None.
-    if (getattr(_trace_file, 'closed', None) is not None) and _trace_file.closed:
+    global _trace_handler
+    if _trace_handler is None:
         return
 
     # Let format strings be specified as ascii bytes to help Python 2
@@ -136,10 +124,8 @@ def mutter(fmt, *args):
         out = fmt % args
     else:
         out = fmt
-    now = time.time()
-    out = f'{now - _brz_log_start_time:0.3f}  {out}\n'
-    _trace_file.write(out.encode('utf-8'))
-    # there's no explicit flushing; the file is typically line buffered.
+
+    _trace_handler.mutter(out)
 
 
 def mutter_callsite(stacklevel, fmt, *args):
@@ -199,9 +185,10 @@ def push_log_file(to_file, short=True):
     :returns: A memento that should be passed to _pop_log_file to restore the
         previously active logging.
     """
-    global _trace_file
+    global _trace_handler
     # make a new handler
-    new_handler = _cmd_rs.BreezyTraceHandler(to_file, short=short)
+    old_trace_handler = _trace_handler
+    _trace_handler = new_handler = _cmd_rs.BreezyTraceHandler(to_file, short=short)
     # save and remove any existing log handlers
     brz_logger = logging.getLogger('brz')
     old_handlers = brz_logger.handlers[:]
@@ -214,12 +201,7 @@ def push_log_file(to_file, short=True):
     # TODO: also probably need to save and restore the level on brz_logger.
     # but maybe we can avoid setting the logger level altogether, and just set
     # the level on the handler?
-    #
-    # save the old trace file
-    old_trace_file = _trace_file
-    # send traces to the new one
-    _trace_file = to_file
-    return ('log_memento', old_handlers, new_handler, old_trace_file, to_file)
+    return ('log_memento', old_handlers, new_handler, old_trace_handler)
 
 
 def pop_log_file(entry):
@@ -229,17 +211,15 @@ def pop_log_file(entry):
     in it is output.
 
     Takes the memento returned from _push_log_file."""
-    (magic, old_handlers, new_handler, old_trace_file, new_trace_file) = entry
-    global _trace_file
-    _trace_file = old_trace_file
+    (magic, old_handlers, new_handler, old_trace_handler) = entry
+    global _trace_handler
+    _trace_handler = old_trace_handler
     brz_logger = logging.getLogger('brz')
     brz_logger.removeHandler(new_handler)
     # must be closed, otherwise logging will try to close it at exit, and the
     # file will likely already be closed underneath.
     new_handler.close()
     brz_logger.handlers = old_handlers
-    if new_trace_file is not None:
-        new_trace_file.flush()
 
 
 def log_exception_quietly():
@@ -438,9 +418,9 @@ def _flush_stdout_stderr():
 
 def _flush_trace():
     # called from the breezy library finalizer returned by breezy.initialize()
-    global _trace_file
-    if _trace_file:
-        _trace_file.flush()
+    global _trace_handler
+    if _trace_handler:
+        _trace_handler.flush()
 
 
 class Config:
