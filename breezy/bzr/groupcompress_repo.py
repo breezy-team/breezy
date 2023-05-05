@@ -19,10 +19,9 @@
 import hashlib
 import time
 
-from .. import controldir, debug, errors, osutils
+from .. import _bzr_rs, controldir, debug, errors, osutils
 from .. import revision as _mod_revision
 from .. import trace, ui
-from .. import _bzr_rs
 from ..bzr import chk_map, chk_serializer
 from ..bzr import index as _mod_index
 from ..bzr import inventory, pack, versionedfile

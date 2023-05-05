@@ -14,8 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from ...revision import Revision
 from ..._bzr_rs import revision_bencode_serializer
+from ...revision import Revision
 from . import TestCase
 
 _working_revision_bencode1 = (b'l'

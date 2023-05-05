@@ -34,6 +34,7 @@ import fastbencode as bencode
 from ... import branch, config, controldir, errors, repository, tests
 from ... import transport as _mod_transport
 from ... import treebuilder
+from ..._bzr_rs import revision_bencode_serializer
 from ...branch import Branch
 from ...revision import NULL_REVISION, Revision
 from ...tests import test_server
@@ -45,7 +46,6 @@ from .. import (RemoteBzrProber, bzrdir, groupcompress_repo, inventory,
                 inventory_delta, knitpack_repo, remote, versionedfile,
                 vf_search)
 from ..bzrdir import BzrDir, BzrDirFormat
-from ..._bzr_rs import revision_bencode_serializer
 from ..remote import (RemoteBranch, RemoteBranchFormat, RemoteBzrDir,
                       RemoteBzrDirFormat, RemoteRepository,
                       RemoteRepositoryFormat, UnknownErrorFromSmartServer)
