@@ -40,9 +40,9 @@ from breezy.bzr.index import (
     CombinedGraphIndex,
     )
 """)
-from .. import errors, lockable_files, lockdir
+from .. import errors, lockdir
 from .. import transport as _mod_transport
-from ..bzr import btree_index, index
+from ..bzr import btree_index, index, lockable_files
 from ..decorators import only_raises
 from ..lock import LogicalLockResult
 from ..repository import RepositoryWriteLockResult, _LazyListJoin

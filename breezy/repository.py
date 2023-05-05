@@ -462,8 +462,6 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         some other way, and need to synchronise this object's state with that
         fact.
 
-        XXX: this docstring is duplicated in many places, e.g. lockable_files.py
-
         Args:
           token: if this is already locked, then lock_write will fail
             unless the token matches the existing lock.

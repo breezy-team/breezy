@@ -18,7 +18,8 @@
 
 from io import BytesIO
 
-from ... import errors, lockable_files
+from ... import errors
+from ...bzr import lockable_files
 from ...bzr.bzrdir import BzrDir, BzrDirFormat, BzrDirMetaFormat1
 from ...controldir import (ControlDir, Converter, MustHaveWorkingTree,
                            NoColocatedBranchSupport, format_registry)
