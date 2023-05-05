@@ -337,20 +337,21 @@ impl RevisionSerializer {
         self.0.squashes_xml_invalid_characters()
     }
 
-    fn read_revision(&self, file: PyObject) -> PyResult<Revision> {
-        let mut file = PyFileLikeObject::with_requirements(file, true, false, false)?;
-        Ok(Revision(
-            self.0
-                .read_revision(&mut file)
-                .map_err(serializer_err_to_py_err)?,
-        ))
+    fn read_revision(&self, py: Python, file: PyObject) -> PyResult<Revision> {
+        py.allow_threads(|| {
+            let mut file = PyFileLikeObject::with_requirements(file, true, false, false)?;
+            Ok(Revision(
+                self.0
+                    .read_revision(&mut file)
+                    .map_err(serializer_err_to_py_err)?,
+            ))
+        })
     }
 
     fn write_revision_to_string(&self, py: Python, revision: &Revision) -> PyResult<PyObject> {
         Ok(PyBytes::new(
             py,
-            self.0
-                .write_revision_to_string(&revision.0)
+            py.allow_threads(|| self.0.write_revision_to_string(&revision.0))
                 .map_err(serializer_err_to_py_err)?
                 .as_slice(),
         )
@@ -360,17 +361,15 @@ impl RevisionSerializer {
     fn write_revision_to_lines(&self, py: Python, revision: &Revision) -> PyResult<Vec<PyObject>> {
         self.0
             .write_revision_to_lines(&revision.0)
-            .into_iter()
             .map(|s| -> PyResult<PyObject> {
                 Ok(PyBytes::new(py, s.map_err(serializer_err_to_py_err)?.as_slice()).into_py(py))
             })
             .collect::<PyResult<Vec<PyObject>>>()
     }
 
-    fn read_revision_from_string(&self, string: &[u8]) -> PyResult<Revision> {
+    fn read_revision_from_string(&self, py: Python, string: &[u8]) -> PyResult<Revision> {
         Ok(Revision(
-            self.0
-                .read_revision_from_string(string)
+            py.allow_threads(|| self.0.read_revision_from_string(string))
                 .map_err(serializer_err_to_py_err)?,
         ))
     }
