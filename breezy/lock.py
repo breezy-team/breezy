@@ -37,11 +37,10 @@ import contextlib
 import warnings
 from typing import Optional
 
-from . import debug, errors, trace
+from . import _transport_rs, debug, errors, trace
 from .hooks import Hooks
 from .i18n import gettext
 from .transport import Transport
-from . import _transport_rs
 
 have_fcntl = True
 
