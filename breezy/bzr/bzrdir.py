@@ -34,7 +34,6 @@ from ..lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     branch as _mod_branch,
-    lockable_files,
     osutils,
     repository,
     revision as _mod_revision,
@@ -47,6 +46,7 @@ from breezy.bzr import (
     fetch,
     fullhistory as fullhistorybranch,
     knitpack_repo,
+    lockable_files,
     remote,
     vf_search,
     workingtree_3,

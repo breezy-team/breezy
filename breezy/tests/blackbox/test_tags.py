@@ -17,8 +17,9 @@
 """Tests for commands related to tags"""
 
 from breezy import branch as _mod_branch
-from breezy import errors, lockable_files, lockdir, tag
+from breezy import errors, lockdir, tag
 from breezy.bzr import branch as bzrbranch
+from breezy.bzr import lockable_files
 from breezy.bzr import bzrdir
 from breezy.tests import TestCaseWithTransport, script
 

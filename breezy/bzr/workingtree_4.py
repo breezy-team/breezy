@@ -51,7 +51,6 @@ from breezy.bzr import (
 from .. import errors
 from .. import revision as _mod_revision
 from ..lock import LogicalLockResult
-from ..lockable_files import LockableFiles
 from ..lockdir import LockDir
 from ..mutabletree import BadReferenceTarget, MutableTree
 from ..osutils import isdir, pathjoin, realpath, safe_unicode
@@ -63,6 +62,7 @@ from . import dirstate
 from .inventory import ROOT_ID, Inventory, entry_factory
 from .inventorytree import (InterInventoryTree, InventoryRevisionTree,
                             InventoryTree)
+from .lockable_files import LockableFiles
 from .workingtree import InventoryWorkingTree, WorkingTreeFormatMetaDir
 
 

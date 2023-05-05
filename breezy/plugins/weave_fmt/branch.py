@@ -17,9 +17,10 @@
 """Weave-era branch implementations."""
 
 from ... import controldir as _mod_controldir
-from ... import errors, lockable_files
+from ... import errors
 from ...branch import BindingUnsupported, BranchFormat, BranchWriteLockResult
 from ...bzr.fullhistory import FullHistoryBzrBranch
+from ...bzr import lockable_files
 from ...decorators import only_raises
 from ...lock import LogicalLockResult
 from ...trace import mutter

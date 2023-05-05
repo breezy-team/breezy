@@ -23,7 +23,6 @@ import itertools
 
 from breezy import (
     controldir,
-    lockable_files,
     lockdir,
     osutils,
     revision as _mod_revision,
@@ -32,6 +31,7 @@ from breezy import (
     )
 from breezy.bzr import (
     knit as _mod_knit,
+    lockable_files,
     versionedfile,
     serializer,
     xml5,

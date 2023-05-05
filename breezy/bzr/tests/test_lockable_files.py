@@ -15,14 +15,15 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import breezy
+import breezy.branch
 
-from .. import errors, lockdir, osutils, transport
-from ..bzr.tests.test_smart import TestCaseWithSmartMedium
+from ... import errors, lockdir, osutils, transport
+from .test_smart import TestCaseWithSmartMedium
 from ..lockable_files import LockableFiles, TransportLock
-from ..transactions import (PassThroughTransaction, ReadOnlyTransaction,
-                            WriteTransaction)
-from . import TestCaseInTempDir, TestNotApplicable
-from .test_transactions import DummyWeave
+from ...transactions import (PassThroughTransaction, ReadOnlyTransaction,
+                             WriteTransaction)
+from ...tests import TestCaseInTempDir, TestNotApplicable
+from ...tests.test_transactions import DummyWeave
 
 
 # these tests are applied in each parameterized suite for LockableFiles
