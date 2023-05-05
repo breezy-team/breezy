@@ -966,6 +966,7 @@ dependencies = [
  "nix",
  "pyo3",
  "pyo3-file",
+ "termion",
 ]
 
 [[package]]

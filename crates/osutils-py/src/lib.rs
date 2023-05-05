@@ -15,6 +15,7 @@ use std::io::{BufRead, Read, Write};
 use std::iter::Iterator;
 use std::os::unix::ffi::OsStringExt;
 use std::path::{Path, PathBuf};
+use termion::color::Color;
 
 create_exception!(
     breezy_osutils,
@@ -1006,6 +1007,48 @@ fn get_user_encoding() -> Option<String> {
     breezy_osutils::get_user_encoding()
 }
 
+fn string_to_color(name: &str) -> PyResult<&dyn Color> {
+    match name {
+        "darkblack" => Ok(&termion::color::Black),
+        "darkred" => Ok(&termion::color::Red),
+        "darkgreen" => Ok(&termion::color::Green),
+        "darkyellow" => Ok(&termion::color::Yellow),
+        "darkblue" => Ok(&termion::color::Blue),
+        "darkmagenta" => Ok(&termion::color::Magenta),
+        "darkcyan" => Ok(&termion::color::Cyan),
+        "darkwhite" => Ok(&termion::color::White),
+        "yellow" => Ok(&termion::color::LightYellow),
+        "black" => Ok(&termion::color::LightBlack),
+        "red" => Ok(&termion::color::LightRed),
+        "green" => Ok(&termion::color::LightGreen),
+        "blue" => Ok(&termion::color::LightBlue),
+        "magenta" => Ok(&termion::color::LightMagenta),
+        "cyan" => Ok(&termion::color::LightCyan),
+        "white" => Ok(&termion::color::LightWhite),
+        _ => Err(PyValueError::new_err(format!(
+            "Invalid color name: {}",
+            name
+        ))),
+    }
+}
+
+#[pyfunction]
+fn colorstring(
+    py: Python,
+    text: &[u8],
+    fgcolor: Option<&str>,
+    bgcolor: Option<&str>,
+) -> PyResult<PyObject> {
+    let fgcolor = fgcolor.map(string_to_color).transpose()?;
+    let bgcolor = bgcolor.map(string_to_color).transpose()?;
+
+    Ok(PyBytes::new(
+        py,
+        &breezy_osutils::terminal::colorstring(text, fgcolor, bgcolor),
+    )
+    .into_py(py))
+}
+
 #[pymodule]
 fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -1099,5 +1142,6 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
         py.get_type::<UnsupportedTimezoneFormat>(),
     )?;
     m.add_wrapped(wrap_pyfunction!(get_home_dir))?;
+    m.add_wrapped(wrap_pyfunction!(colorstring))?;
     Ok(())
 }
