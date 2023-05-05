@@ -61,23 +61,23 @@ class CommitHandler(processor.CommitHandler):
 
     def mutter(self, msg, *args):
         """Output a mutter but add context."""
-        msg = "{} ({})".format(msg, self.command.id)
+        msg = f"{msg} ({self.command.id})"
         mutter(msg, *args)
 
     def debug(self, msg, *args):
         """Output a mutter if the appropriate -D option was given."""
         if "fast-import" in debug.debug_flags:
-            msg = "{} ({})".format(msg, self.command.id)
+            msg = f"{msg} ({self.command.id})"
             mutter(msg, *args)
 
     def note(self, msg, *args):
         """Output a note but add context."""
-        msg = "{} ({})".format(msg, self.command.id)
+        msg = f"{msg} ({self.command.id})"
         note(msg, *args)
 
     def warning(self, msg, *args):
         """Output a warning but add context."""
-        msg = "{} ({})".format(msg, self.command.id)
+        msg = f"{msg} ({self.command.id})"
         warning(msg, *args)
 
     def pre_process_files(self):
@@ -237,8 +237,7 @@ class CommitHandler(processor.CommitHandler):
         except UnicodeDecodeError:
             # The spec says fields are *typically* utf8 encoded
             # but that isn't enforced by git-fast-export (at least)
-            self.warning("%s not in utf8 - replacing unknown "
-                         "characters" % (field,))
+            self.warning(f"{field} not in utf8 - replacing unknown characters")
             return value.decode('utf-8', 'replace')
 
     def _decode_path(self, path):
@@ -247,17 +246,16 @@ class CommitHandler(processor.CommitHandler):
         except UnicodeDecodeError:
             # The spec says fields are *typically* utf8 encoded
             # but that isn't enforced by git-fast-export (at least)
-            self.warning("path %r not in utf8 - replacing unknown "
-                         "characters" % (path,))
+            self.warning(f"path {path!r} not in utf8 - replacing unknown characters")
             return path.decode('utf-8', 'replace')
 
     def _format_name_email(self, section, name, email):
         """Format name & email as a string."""
-        name = self._utf8_decode("%s name" % section, name)
-        email = self._utf8_decode("%s email" % section, email)
+        name = self._utf8_decode(f"{section} name", name)
+        email = self._utf8_decode(f"{section} email", email)
 
         if email:
-            return "{} <{}>".format(name, email)
+            return f"{name} <{email}>"
         else:
             return name
 
@@ -309,8 +307,7 @@ class CommitHandler(processor.CommitHandler):
             for name, value in props.items():
                 if value is None:
                     self.warning(
-                        "converting None to empty string for property %s"
-                        % (name,))
+                        f"converting None to empty string for property {name}")
                     result[name] = ''
                 else:
                     result[name] = value
@@ -343,8 +340,7 @@ class CommitHandler(processor.CommitHandler):
             # We don't warn about directories because it's fine for them
             # to be created already by a previous rename
             if kind != 'directory':
-                self.warning("%s already added in this commit - ignoring" %
-                             (path,))
+                self.warning(f"{path} already added in this commit - ignoring")
             return
 
         # Create the new InventoryEntry
@@ -381,8 +377,7 @@ class CommitHandler(processor.CommitHandler):
             except:
                 print("failed to add path '%s' with entry '%s' in command %s"
                       % (path, ie, self.command.id))
-                print("parent's children are:\n%r\n" %
-                      (ie.parent_id.children,))
+                print(f"parent's children are:\n{ie.parent_id.children!r}\n")
                 raise
         else:
             if old_ie.kind == 'directory':
@@ -592,7 +587,7 @@ class CommitHandler(processor.CommitHandler):
             if len(ie.children) == 0:
                 result.append((dir, file_id))
                 if self.verbose:
-                    self.note("pruning empty directory {}".format(dir))
+                    self.note(f"pruning empty directory {dir}")
         return result
 
     def _get_proposed_inventory(self, delta):
@@ -646,8 +641,7 @@ class CommitHandler(processor.CommitHandler):
             # This is a delete cancelling a previous add
             del self._delta_entries_by_fileid[file_id]
             parent_dir = osutils.dirname(existing[1])
-            self.mutter("cancelling add of %s with parent %s" %
-                        (existing[1], parent_dir))
+            self.mutter(f"cancelling add of {existing[1]} with parent {parent_dir}")
             if parent_dir:
                 self._dirs_that_might_become_empty.add(parent_dir)
             return

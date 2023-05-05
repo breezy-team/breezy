@@ -25,6 +25,7 @@ create_exception!(
 import_exception!(breezy.errors, IllegalPath);
 import_exception!(breezy.errors, PathNotChild);
 import_exception!(breezy.errors, DirectoryNotEmpty);
+import_exception!(breezy.errors, BinaryFile);
 
 #[pyclass]
 struct PyChunksToLinesIterator {
@@ -289,7 +290,7 @@ pub fn minimum_path_selection(paths: &PyAny) -> PyResult<HashSet<String>> {
 
 #[pyfunction]
 fn set_or_unset_env(key: &str, value: Option<&str>) -> PyResult<Py<PyAny>> {
-    // Note that we're not calling out to breey_osutils::set_or_unset_env here, because it doesn't
+    // Note that we're not calling out to breezy_osutils::set_or_unset_env here, because it doesn't
     // change the environment in Python.
     Python::with_gil(|py| {
         let os = py.import("os")?;
@@ -297,11 +298,13 @@ fn set_or_unset_env(key: &str, value: Option<&str>) -> PyResult<Py<PyAny>> {
         let old = environ.call_method1("get", (key, py.None()))?;
         if let Some(value) = value {
             environ.set_item(key, value)?;
+            std::env::set_var(key, value);
         } else {
             if old.is_none() {
                 return Ok(py.None());
             }
             environ.del_item(key)?;
+            std::env::remove_var(key);
         }
         Ok(old.into_py(py))
     })
@@ -524,13 +527,17 @@ fn IterableFile(py_iterable: PyObject) -> PyResult<PyObject> {
 }
 
 #[pyfunction]
-fn check_text_path(path: &PyAny) -> PyResult<bool> {
+fn check_text_path(path: &PyAny) -> PyResult<()> {
     let path = extract_path(path)?;
-    Ok(breezy_osutils::textfile::check_text_path(path.as_path())?)
+    if !breezy_osutils::textfile::check_text_path(path.as_path())? {
+        Err(BinaryFile::new_err(()))
+    } else {
+        Ok(())
+    }
 }
 
 #[pyfunction]
-fn check_text_lines(py: Python, lines: &PyAny) -> PyResult<bool> {
+fn check_text_lines(py: Python, lines: &PyAny) -> PyResult<()> {
     let mut py_iter = lines.iter()?;
     let line_iter = std::iter::from_fn(|| {
         let line = py_iter.next();
@@ -548,7 +555,11 @@ fn check_text_lines(py: Python, lines: &PyAny) -> PyResult<bool> {
     if PyErr::occurred(py) {
         return Err(PyErr::fetch(py));
     }
-    Ok(result)
+    if !result {
+        Err(BinaryFile::new_err(()))
+    } else {
+        Ok(())
+    }
 }
 
 #[pyfunction]
@@ -913,6 +924,43 @@ fn win32_getcwd() -> PyResult<PathBuf> {
     Ok(breezy_osutils::path::win32::getcwd()?)
 }
 
+#[pyclass]
+struct FileIterator {
+    input_file: PyObject,
+    read_size: usize,
+}
+
+#[pymethods]
+impl FileIterator {
+    #[new]
+    fn new(input_file: PyObject, read_size: Option<usize>) -> Self {
+        FileIterator {
+            input_file,
+            read_size: read_size.unwrap_or(32768),
+        }
+    }
+
+    fn __iter__(slf: PyRef<Self>) -> Py<Self> {
+        slf.into()
+    }
+
+    fn __next__(&mut self, py: Python) -> PyResult<Option<PyObject>> {
+        let result = self.input_file.call_method1(py, "read", (self.read_size,));
+        match result {
+            Ok(buf) if buf.is_none(py) => Ok(None),
+            Ok(buf) if buf.as_ref(py).len()? == 0 => Ok(None),
+            Ok(buf) => Ok(Some(buf)),
+            Err(e) => Err(e),
+        }
+    }
+}
+
+#[pyfunction]
+fn file_iterator(py: Python, input_file: PyObject, read_size: Option<usize>) -> PyResult<PyObject> {
+    let iterator = FileIterator::new(input_file, read_size);
+    Ok(iterator.into_py(py))
+}
+
 /// Returns the terminal size as (width, height).
 ///
 /// Args:
@@ -948,6 +996,16 @@ fn ensure_empty_directory_exists(path: PathBuf) -> PyResult<()> {
     }
 }
 
+#[pyfunction]
+fn get_home_dir() -> PyResult<Option<PathBuf>> {
+    Ok(breezy_osutils::get_home_dir())
+}
+
+#[pyfunction]
+fn get_user_encoding() -> Option<String> {
+    breezy_osutils::get_user_encoding()
+}
+
 #[pymodule]
 fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -978,6 +1036,7 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(check_text_path))?;
     m.add_wrapped(wrap_pyfunction!(check_text_lines))?;
     m.add_wrapped(wrap_pyfunction!(format_delta))?;
+    m.add_wrapped(wrap_pyfunction!(file_iterator))?;
     m.add_wrapped(wrap_pyfunction!(
         format_date_with_offset_in_original_timezone
     ))?;
@@ -1030,6 +1089,7 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(terminal_size))?;
     m.add_wrapped(wrap_pyfunction!(has_ansi_colors))?;
     m.add_wrapped(wrap_pyfunction!(ensure_empty_directory_exists))?;
+    m.add_wrapped(wrap_pyfunction!(get_user_encoding))?;
     m.add(
         "MIN_ABS_PATHLENGTH",
         breezy_osutils::path::MIN_ABS_PATHLENGTH,
@@ -1038,5 +1098,6 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
         "UnsupportedTimezoneFormat",
         py.get_type::<UnsupportedTimezoneFormat>(),
     )?;
+    m.add_wrapped(wrap_pyfunction!(get_home_dir))?;
     Ok(())
 }

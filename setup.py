@@ -14,13 +14,13 @@ import sys
 try:
     import setuptools
 except ModuleNotFoundError as e:
-    sys.stderr.write("[ERROR] Please install setuptools (%s)\n" % e)
+    sys.stderr.write(f"[ERROR] Please install setuptools ({e})\n")
     sys.exit(1)
 
 try:
     from setuptools_rust import Binding, RustExtension, Strip
 except ModuleNotFoundError as e:
-    sys.stderr.write("[ERROR] Please install setuptools_rust (%s)\n" % e)
+    sys.stderr.write(f"[ERROR] Please install setuptools_rust ({e})\n")
     sys.exit(1)
 
 from setuptools.command.build import build
@@ -28,7 +28,7 @@ from setuptools.command.build import build
 try:
     import setuptools_gettext
 except ModuleNotFoundError as e:
-    sys.stderr.write("[ERROR] Please install setuptools_gettext (%s)\n" % e)
+    sys.stderr.write(f"[ERROR] Please install setuptools_gettext ({e})\n")
     sys.exit(1)
 
 if setuptools_gettext.__version__ <= (0, 1, 3):

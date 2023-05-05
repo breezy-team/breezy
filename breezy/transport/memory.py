@@ -291,8 +291,7 @@ class MemoryTransport(transport.Transport):
         for i in cwd_parts + rel_parts:
             if i == '..':
                 if not r:
-                    raise ValueError("illegal relpath %r under %r"
-                                     % (relpath, self._cwd))
+                    raise ValueError(f"illegal relpath {relpath!r} under {self._cwd!r}")
                 r = r[:-1]
             elif i == '.' or i == '':
                 pass
@@ -316,7 +315,7 @@ class _MemoryLock:
         self.path = path
         self.transport = transport
         if self.path in self.transport._locks:
-            raise LockError('File {!r} already locked'.format(self.path))
+            raise LockError(f'File {self.path!r} already locked')
         self.transport._locks[self.path] = self
 
     def unlock(self):
@@ -332,7 +331,7 @@ class MemoryServer(transport.Server):
         self._files = {}
         self._symlinks = {}
         self._locks = {}
-        self._scheme = "memory+%s:///" % id(self)
+        self._scheme = f"memory+{id(self)}:///"
 
         def memory_factory(url):
             from . import memory

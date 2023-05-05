@@ -291,7 +291,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                 stop_revisions = [(None, revid) for revid in recipe[1]]
             else:
                 raise AssertionError(
-                    "Unsupported search result type %s" % recipe[0])
+                    f"Unsupported search result type {recipe[0]}")
         else:
             stop_revisions = [(None, revid)
                               for revid in self.source.all_revision_ids()]
@@ -344,7 +344,7 @@ class InterToRemoteGitRepository(InterToGitRepository):
             for ref, error in result.ref_status.items():
                 if error:
                     raise RemoteGitError(
-                        'unable to update ref {!r}: {}'.format(ref, error))
+                        f'unable to update ref {ref!r}: {error}')
             new_refs = result.refs
         # FIXME: revidmap?
         return revidmap, self.old_refs, new_refs
@@ -501,8 +501,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
             if recipe[0] in ("search", "proxy-search"):
                 interesting_heads = recipe[1]
             else:
-                raise AssertionError("Unsupported search result type %s" %
-                                     recipe[0])
+                raise AssertionError(f"Unsupported search result type {recipe[0]}")
         else:
             interesting_heads = None
 
@@ -659,7 +658,7 @@ class InterGitGitRepository(InterFromGitRepository):
                 heads = recipe[1]
             else:
                 raise AssertionError(
-                    "Unsupported search result type %s" % recipe[0])
+                    f"Unsupported search result type {recipe[0]}")
             args = heads
         if branches is not None:
             determine_wants = self.get_determine_wants_branches(

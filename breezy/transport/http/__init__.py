@@ -30,7 +30,7 @@ from ... import version_string as breezy_version
 
 
 def default_user_agent():
-    return 'Breezy/%s' % breezy_version
+    return f'Breezy/{breezy_version}'
 
 
 # Note for packagers: if there is no package providing certs for your platform,
@@ -67,7 +67,7 @@ def default_ca_certs():
 
 def ca_certs_from_store(path):
     if not os.path.exists(path):
-        raise ValueError("ca certs path %s does not exist" % path)
+        raise ValueError(f"ca certs path {path} does not exist")
     return path
 
 
@@ -77,7 +77,7 @@ def cert_reqs_from_store(unicode_str):
         return {"required": ssl.CERT_REQUIRED,
                 "none": ssl.CERT_NONE}[unicode_str]
     except KeyError:
-        raise ValueError("invalid value %s" % unicode_str)
+        raise ValueError(f"invalid value {unicode_str}")
 
 
 def default_ca_reqs():

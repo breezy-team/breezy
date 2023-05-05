@@ -276,7 +276,7 @@ class FileStream:
             flush to disk.
         """
         raise errors.TransportNotPossible(
-            "{} cannot fdatasync".format(self.transport))
+            f"{self.transport} cannot fdatasync")
 
 
 class FileFileStream(FileStream):
@@ -371,7 +371,7 @@ class Transport:
             if e.errno in (errno.ENOENT, errno.ENOTDIR):
                 raise NoSuchFile(path, extra=e)
             elif e.errno == errno.EINVAL:
-                mutter("EINVAL returned on path {}: {!r}".format(path, e))
+                mutter(f"EINVAL returned on path {path}: {e!r}")
                 raise NoSuchFile(path, extra=e)
             # I would rather use errno.EFOO, but there doesn't seem to be
             # any matching for 267
@@ -406,8 +406,7 @@ class Transport:
             new_transport = cur_transport.clone('..')
             if new_transport.base == cur_transport.base:
                 raise errors.CommandError(
-                    "Failed to create path prefix for %s."
-                    % cur_transport.base)
+                    f"Failed to create path prefix for {cur_transport.base}.")
             try:
                 new_transport.mkdir('.', mode=mode)
             except NoSuchFile:
@@ -727,10 +726,10 @@ class Transport:
         :return: yield (pos, data) tuples for each request
         """
         try:
-            for (pos, data) in _transport_rs.seek_and_read(fp, offsets,
-                                                           max_readv_combine=self._max_readv_combine,
-                                                           bytes_to_read_before_seek=self._bytes_to_read_before_seek, path=relpath):
-                yield (pos, data)
+            yield from _transport_rs.seek_and_read(
+                fp, offsets, max_readv_combine=self._max_readv_combine,
+                bytes_to_read_before_seek=self._bytes_to_read_before_seek,
+                path=relpath)
         finally:
             fp.close()
 
@@ -788,7 +787,7 @@ class Transport:
         """
         if not isinstance(raw_bytes, bytes):
             raise TypeError(
-                'raw_bytes must be a plain string, not %s' % type(raw_bytes))
+                f'raw_bytes must be a plain string, not {type(raw_bytes)}')
         return self.put_file(relpath, BytesIO(raw_bytes), mode=mode)
 
     def put_bytes_non_atomic(self, relpath, raw_bytes: bytes, mode=None,
@@ -811,7 +810,7 @@ class Transport:
         """
         if not isinstance(raw_bytes, bytes):
             raise TypeError(
-                'raw_bytes must be a plain string, not %s' % type(raw_bytes))
+                f'raw_bytes must be a plain string, not {type(raw_bytes)}')
         self.put_file_non_atomic(relpath, BytesIO(raw_bytes), mode=mode,
                                  create_parent_dir=create_parent_dir,
                                  dir_mode=dir_mode)
@@ -906,7 +905,7 @@ class Transport:
         """
         if not isinstance(data, bytes):
             raise TypeError(
-                'bytes must be a plain string, not %s' % type(data))
+                f'bytes must be a plain string, not {type(data)}')
         return self.append_file(relpath, BytesIO(data), mode=mode)
 
     def copy(self, rel_from, rel_to):
@@ -1033,7 +1032,7 @@ class Transport:
         self.rmdir(relpath)
 
     def __repr__(self):
-        return "<{}.{} url={}>".format(self.__module__, self.__class__.__name__, self.base)
+        return f"<{self.__module__}.{self.__class__.__name__} url={self.base}>"
 
     def stat(self, relpath):
         """Return the stat information for a file.
@@ -1054,17 +1053,17 @@ class Transport:
     def readlink(self, relpath):
         """Return a string representing the path to which the symbolic link points."""
         raise errors.TransportNotPossible(
-            "Dereferencing symlinks is not supported on %s" % self)
+            f"Dereferencing symlinks is not supported on {self}")
 
     def hardlink(self, source, link_name):
         """Create a hardlink pointing to source named link_name."""
         raise errors.TransportNotPossible(
-            "Hard links are not supported on %s" % self)
+            f"Hard links are not supported on {self}")
 
     def symlink(self, source, link_name):
         """Create a symlink pointing to source named link_name."""
         raise errors.TransportNotPossible(
-            "Symlinks are not supported on %s" % self)
+            f"Symlinks are not supported on {self}")
 
     def listable(self):
         """Return True if this store supports listing."""
@@ -1093,7 +1092,7 @@ class Transport:
         :return: A lock object, which should contain an unlock() function.
         """
         raise errors.TransportNotPossible(
-            "transport locks not supported on %s" % self)
+            f"transport locks not supported on {self}")
 
     def lock_write(self, relpath):
         """Lock the given file for exclusive (write) access.
@@ -1107,7 +1106,7 @@ class Transport:
         :return: A lock object, which should contain an unlock() function.
         """
         raise errors.TransportNotPossible(
-            "transport locks not supported on %s" % self)
+            f"transport locks not supported on {self}")
 
     def is_readonly(self):
         """Return true if this connection cannot be written to."""
@@ -1277,7 +1276,7 @@ class ConnectedTransport(Transport):
             # Note that we don't put the password back even if we
             # have one so that it doesn't get accidentally
             # exposed.
-            netloc = '{}@{}'.format(urlutils.quote(user), netloc)
+            netloc = f'{urlutils.quote(user)}@{netloc}'
         if port is not None:
             netloc = '%s:%d' % (netloc, port)
         path = urlutils.escape(path)
@@ -1501,8 +1500,7 @@ def _try_transport_factories(base, factory_list):
         try:
             return factory.get_obj()(base), None
         except errors.DependencyNotPresent as e:
-            mutter("failed to instantiate transport %r for %r: %r" %
-                   (factory, base, e))
+            mutter(f"failed to instantiate transport {factory!r} for {base!r}: {e!r}")
             last_err = e
             continue
     return None, last_err

@@ -144,7 +144,7 @@ class TestLogRevSpecs(TestLogWithLogCatcher):
         tree = self.make_branch_and_tree('.')
         # We want more commits than our batch size starts at
         for pos in range(10):
-            tree.commit("%s" % pos)
+            tree.commit(f"{pos}")
         self.assertLogRevnos(['--limit', '2'], ['10', '9'])
 
     def test_log_limit_short(self):
@@ -744,7 +744,7 @@ class TestLogEncodings(tests.TestCaseInTempDir):
 
     def setUp(self):
         super().setUp()
-        self.overrideAttr(osutils, '_cached_user_encoding')
+        self.overrideAttr(osutils, 'get_user_encoding')
 
     def create_branch(self):
         brz = self.run_bzr
@@ -762,12 +762,12 @@ class TestLogEncodings(tests.TestCaseInTempDir):
         else:
             encoded_msg = self._message.encode(encoding)
 
-        old_encoding = osutils._cached_user_encoding
+        old_encoding = osutils.get_user_encoding
         # This test requires that 'run_bzr' uses the current
         # breezy, because we override user_encoding, and expect
         # it to be used
         try:
-            osutils._cached_user_encoding = 'ascii'
+            osutils.get_user_encoding = lambda: 'ascii'
             # We should be able to handle any encoding
             out, err = brz('log', encoding=encoding)
             if not fail:
@@ -776,7 +776,7 @@ class TestLogEncodings(tests.TestCaseInTempDir):
             else:
                 self.assertNotEqual(-1, out.find('Message with ?'))
         finally:
-            osutils._cached_user_encoding = old_encoding
+            osutils.get_user_encoding = old_encoding
 
     def test_log_handles_encoding(self):
         self.create_branch()
@@ -792,7 +792,7 @@ class TestLogEncodings(tests.TestCaseInTempDir):
 
     def test_stdout_encoding(self):
         brz = self.run_bzr
-        osutils._cached_user_encoding = "cp1251"
+        osutils.get_user_encoding = lambda: "cp1251"
 
         brz('init')
         self.build_tree(['a'])

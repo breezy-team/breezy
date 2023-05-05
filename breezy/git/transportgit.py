@@ -121,7 +121,7 @@ class TransportRefsContainer(RefsContainer):
         self._peeled_refs = None
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self.transport)
+        return f"{self.__class__.__name__}({self.transport!r})"
 
     def _ensure_dir_exists(self, path):
         self.transport.clone(posixpath.dirname(path)).create_prefix()
@@ -240,7 +240,7 @@ class TransportRefsContainer(RefsContainer):
                 return None
             if header == SYMREF:
                 # Read only the first line
-                return header + next(iter(f)).rstrip(b"\r\n")
+                return header + f.read().splitlines()[0].rstrip(b"\r\n")
             else:
                 # Read only the first 40 bytes
                 return header + f.read(40 - len(SYMREF))
@@ -487,6 +487,13 @@ class TransportRepo(BaseRepo):
             return False
         return True
 
+    def _determine_symlinks(self):
+        try:
+            return osutils.supports_symlinks(self.path)
+        except NotLocalUrl:
+            # Assume yes?
+            return True
+
     def get_named_file(self, path):
         """Get a file from the control dir with a specific name.
 
@@ -543,7 +550,7 @@ class TransportRepo(BaseRepo):
         return StackedConfig(backends, writable=writable)
 
     def __repr__(self):
-        return "<{} for {!r}>".format(self.__class__.__name__, self.transport)
+        return f"<{self.__class__.__name__} for {self.transport!r}>"
 
     @classmethod
     def init(cls, transport, bare=False):
@@ -612,7 +619,7 @@ class TransportObjectStore(PackBasedObjectStore):
         return self.transport == other.transport
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self.transport)
+        return f"{self.__class__.__name__}({self.transport!r})"
 
     @property
     def alternates(self):

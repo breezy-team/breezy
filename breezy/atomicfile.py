@@ -62,7 +62,7 @@ class AtomicFile:
         if mode == 'wb':
             flags |= osutils.O_BINARY
         elif mode != 'wt':
-            raise ValueError("invalid AtomicFile mode %r" % mode)
+            raise ValueError(f"invalid AtomicFile mode {mode!r}")
 
         if new_mode is not None:
             local_mode = new_mode
@@ -81,8 +81,7 @@ class AtomicFile:
                 osutils.chmod_if_possible(self.tmpfilename, new_mode)
 
     def __repr__(self):
-        return '{}({!r})'.format(self.__class__.__name__,
-                           self.realfilename)
+        return f'{self.__class__.__name__}({self.realfilename!r})'
 
     def write(self, data):
         """Write some data to the file. Like file.write()"""

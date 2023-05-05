@@ -11,6 +11,8 @@ pub enum Error {
 pub trait RevisionSerializer: Send + Sync {
     fn format_name(&self) -> &'static str;
 
+    fn squashes_xml_invalid_characters(&self) -> bool;
+
     fn read_revision(&self, file: &mut dyn Read) -> Result<Revision, Error>;
 
     fn write_revision_to_string(&self, revision: &Revision) -> Result<Vec<u8>, Error>;

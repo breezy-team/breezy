@@ -13,6 +13,10 @@ impl RevisionSerializer for BEncodeRevisionSerializer1 {
         "10"
     }
 
+    fn squashes_xml_invalid_characters(&self) -> bool {
+        false
+    }
+
     fn write_revision_to_string(&self, rev: &Revision) -> std::result::Result<Vec<u8>, Error> {
         let mut e = Encoder::new();
         e.emit_list(|e| {
@@ -38,7 +42,10 @@ impl RevisionSerializer for BEncodeRevisionSerializer1 {
             e.emit_list(|e| {
                 e.emit_bytes(b"properties")?;
                 e.emit_dict(|mut e| {
-                    for (k, v) in rev.properties.iter() {
+                    let mut keys = rev.properties.keys().collect::<Vec<&String>>();
+                    keys.sort_by_key(|k| k.as_bytes());
+                    for k in keys {
+                        let v = rev.properties.get(k).unwrap();
                         e.emit_pair_with(k.as_bytes(), |e| {
                             e.emit_bytes(v)?;
                             Ok(())
@@ -99,12 +106,22 @@ impl RevisionSerializer for BEncodeRevisionSerializer1 {
 
         let buf = buf.unwrap();
 
-        let lines: Vec<Vec<u8>> = buf
-            .split(|&c| c == b'\n')
-            .map(|l| l.to_vec())
-            .collect::<Vec<Vec<u8>>>();
+        let mut cursor = std::io::Cursor::new(buf);
 
-        Box::new(lines.into_iter().map(Ok))
+        Box::new(std::iter::from_fn(move || {
+            let mut buf = Vec::new();
+            if let Err(e) = cursor.read_until(b'\n', &mut buf) {
+                return Some(Err(Error::EncodeError(format!(
+                    "failed to encode revision: {}",
+                    e
+                ))));
+            }
+            if buf.is_empty() {
+                None
+            } else {
+                Some(Ok(buf))
+            }
+        }))
     }
 
     fn read_revision_from_string(&self, text: &[u8]) -> std::result::Result<Revision, Error> {

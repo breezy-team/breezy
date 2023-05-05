@@ -2,10 +2,13 @@ use bazaar::RevisionId;
 use chrono::NaiveDateTime;
 use pyo3::class::basic::CompareOp;
 use pyo3::exceptions::{PyNotImplementedError, PyRuntimeError, PyTypeError, PyValueError};
+use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyList, PyString};
 use pyo3_file::PyFileLikeObject;
 use std::collections::HashMap;
+
+import_exception!(breezy.errors, ReservedId);
 
 /// Create a new file id suffix that is reasonably unique.
 ///
@@ -329,6 +332,11 @@ impl RevisionSerializer {
         self.0.format_name().to_string()
     }
 
+    #[getter]
+    fn squashes_xml_invalid_characters(&self) -> bool {
+        self.0.squashes_xml_invalid_characters()
+    }
+
     fn read_revision(&self, file: PyObject) -> PyResult<Revision> {
         let mut file = PyFileLikeObject::with_requirements(file, true, false, false)?;
         Ok(Revision(
@@ -368,6 +376,33 @@ impl RevisionSerializer {
     }
 }
 
+#[pyfunction(name = "is_null")]
+fn is_null_revision(revision_id: &PyBytes) -> bool {
+    bazaar::RevisionId::from(revision_id.as_bytes().to_vec()).is_null()
+}
+
+#[pyfunction(name = "is_reserved_id")]
+fn is_reserved_revision_id(revision_id: &PyBytes) -> bool {
+    bazaar::RevisionId::from(revision_id.as_bytes().to_vec()).is_reserved()
+}
+
+#[pyfunction(name = "check_not_reserved_id")]
+fn check_not_reserved_id(py: Python, revision_id: PyObject) -> PyResult<()> {
+    if revision_id.is_none(py) {
+        return Ok(());
+    }
+    if let Ok(revision_id) = revision_id.extract::<&PyBytes>(py) {
+        if bazaar::RevisionId::from(revision_id.as_bytes().to_vec()).is_reserved() {
+            Err(ReservedId::new_err((revision_id.as_bytes().into_py(py),)))
+        } else {
+            Ok(())
+        }
+    } else {
+        // For now, just ignore other types..
+        Ok(())
+    }
+}
+
 #[pymodule]
 fn _bzr_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(_next_id_suffix))?;
@@ -385,5 +420,10 @@ fn _bzr_rs(py: Python, m: &PyModule) -> PyResult<()> {
         "revision_bencode_serializer",
         m.getattr("BEncodeRevisionSerializerv1")?.call0()?,
     )?;
+    m.add("CURRENT_REVISION", bazaar::CURRENT_REVISION)?;
+    m.add("NULL_REVISION", bazaar::NULL_REVISION)?;
+    m.add_wrapped(wrap_pyfunction!(is_null_revision))?;
+    m.add_wrapped(wrap_pyfunction!(is_reserved_revision_id))?;
+    m.add_wrapped(wrap_pyfunction!(check_not_reserved_id))?;
     Ok(())
 }

@@ -211,7 +211,7 @@ class PathBasedViews(_Views):
         """Convert view keywords and a view dictionary into a stream."""
         lines = [_VIEWS_FORMAT1_MARKER]
         for key in keywords:
-            line = "{}={}\n".format(key, keywords[key])
+            line = f"{key}={keywords[key]}\n"
             lines.append(line.encode('utf-8'))
         if view_dict:
             lines.append(b"views:\n")
@@ -233,7 +233,7 @@ class PathBasedViews(_Views):
                 "format marker missing from top of views file")
         elif match.group(1) != b'1':
             raise ValueError(
-                "cannot decode views format %s" % match.group(1))
+                f"cannot decode views format {match.group(1)}")
         try:
             keywords = {}
             views = {}

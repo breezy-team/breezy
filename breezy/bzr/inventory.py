@@ -237,7 +237,7 @@ class InventoryEntry:
 
     def kind_character(self):
         """Return a short kind indicator useful for appending to names."""
-        raise errors.BzrError('unknown kind %r' % self.kind)
+        raise errors.BzrError(f'unknown kind {self.kind!r}')
 
     known_kinds = ('file', 'directory', 'symlink')
 
@@ -269,7 +269,7 @@ class InventoryEntry:
     def _check(self, checker, rev_id):
         """Check this inventory entry for kind specific errors."""
         checker._report_items.append(
-            'unknown entry kind {!r} in revision {{{}}}'.format(self.kind, rev_id))
+            f'unknown entry kind {self.kind!r} in revision {{{rev_id}}}')
 
     def copy(self):
         """Clone this inventory entry."""
@@ -1043,7 +1043,7 @@ class Inventory(CommonInventory):
         contents = repr(self._byid)
         if len(contents) > max_len:
             contents = contents[:(max_len - len(closing))] + closing
-        return "<Inventory object at {:x}, contents={!r}>".format(id(self), contents)
+        return f"<Inventory object at {id(self):x}, contents={contents!r}>"
 
     def apply_delta(self, delta):
         """Apply a delta to this inventory.
@@ -1111,7 +1111,7 @@ class Inventory(CommonInventory):
                 children[file_id] = file_id_children
             if self.id2path(file_id) != old_path:
                 raise errors.InconsistentDelta(old_path, file_id,
-                                               "Entry was at wrong other path %r." % self.id2path(file_id))
+                                               f"Entry was at wrong other path {self.id2path(file_id)!r}.")
             # Remove file_id and the unaltered children. If file_id is not
             # being deleted it will be reinserted back later.
             self.remove_recursive_id(file_id)
@@ -1393,7 +1393,7 @@ class Inventory(CommonInventory):
         """
         new_name = ensure_normalized_name(new_name)
         if not is_valid_name(new_name):
-            raise errors.BzrError("not an acceptable filename: %r" % new_name)
+            raise errors.BzrError(f"not an acceptable filename: {new_name!r}")
 
         new_parent = self._byid[new_parent_id]
         if new_name in new_parent.children:
@@ -1503,7 +1503,7 @@ class CHKInventory(CommonInventory):
                 entry.file_id, parent_str, name_str, entry.revision,
                 entry.reference_revision)
         else:
-            raise ValueError("unknown kind %r" % entry.kind)
+            raise ValueError(f"unknown kind {entry.kind!r}")
 
     def _expand_fileids_to_parents_and_children(self, file_ids):
         """Give a more wholistic view starting with the given file_ids.
@@ -1651,7 +1651,7 @@ class CHKInventory(CommonInventory):
                                    sections[1])
             result.reference_revision = sections[4]
         else:
-            raise ValueError("Not a serialised entry %r" % bytes)
+            raise ValueError(f"Not a serialised entry {bytes!r}")
         result.file_id = result.file_id
         result.revision = sections[3]
         if result.parent_id == b'':
@@ -1826,7 +1826,7 @@ class CHKInventory(CommonInventory):
                                                "Parent is not present in resulting inventory.")
             if result.path2id(parent_path) != parent:
                 raise errors.InconsistentDelta(parent_path, parent,
-                                               "Parent has wrong path %r." % result.path2id(parent_path))
+                                               f"Parent has wrong path {result.path2id(parent_path)!r}.")
         return result
 
     @classmethod
@@ -1842,7 +1842,7 @@ class CHKInventory(CommonInventory):
         if not lines[-1].endswith(b'\n'):
             raise ValueError("last line should have trailing eol\n")
         if lines[0] != b'chkinventory:\n':
-            raise ValueError("not a serialised CHKInventory: %r" % bytes)
+            raise ValueError(f"not a serialised CHKInventory: {bytes!r}")
         info = {}
         allowed_keys = frozenset((b'root_id', b'revision_id',
                                   b'parent_id_basename_to_file_id',
@@ -1850,11 +1850,9 @@ class CHKInventory(CommonInventory):
         for line in lines[1:]:
             key, value = line.rstrip(b'\n').split(b': ', 1)
             if key not in allowed_keys:
-                raise errors.BzrError('Unknown key in inventory: %r\n%r'
-                                      % (key, bytes))
+                raise errors.BzrError(f'Unknown key in inventory: {key!r}\n{bytes!r}')
             if key in info:
-                raise errors.BzrError('Duplicate key in inventory: %r\n%r'
-                                      % (key, bytes))
+                raise errors.BzrError(f'Duplicate key in inventory: {key!r}\n{bytes!r}')
             info[key] = value
         revision_id = info[b'revision_id']
         root_id = info[b'root_id']
@@ -1866,8 +1864,7 @@ class CHKInventory(CommonInventory):
                              ' key not %r' % (parent_id_basename_to_file_id,))
         id_to_entry = info[b'id_to_entry']
         if not id_to_entry.startswith(b'sha1:'):
-            raise ValueError('id_to_entry should be a sha1'
-                             ' key not %r' % (id_to_entry,))
+            raise ValueError(f'id_to_entry should be a sha1 key not {id_to_entry!r}')
 
         result = CHKInventory(search_key_name)
         result.revision_id = revision_id
@@ -2404,10 +2401,10 @@ def _check_delta_ids_are_valid(delta):
         entry = item[3]
         if item[2] is None:
             raise errors.InconsistentDelta(item[0] or item[1], item[2],
-                                           "entry with file_id None %r" % entry)
+                                           f"entry with file_id None {entry!r}")
         if not isinstance(item[2], bytes):
             raise errors.InconsistentDelta(item[0] or item[1], item[2],
-                                           "entry with non bytes file_id %r" % entry)
+                                           f"entry with non bytes file_id {entry!r}")
         yield item
 
 
@@ -2421,7 +2418,7 @@ def _check_delta_ids_match_entry(delta):
         if entry is not None:
             if entry.file_id != item[2]:
                 raise errors.InconsistentDelta(item[0] or item[1], item[2],
-                                               "mismatched id with %r" % entry)
+                                               f"mismatched id with {entry!r}")
         yield item
 
 

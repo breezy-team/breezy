@@ -247,19 +247,19 @@ class SmartServerStreamMedium(SmartMedium):
                 server_protocol = self._build_protocol()
                 self._serve_one_request(server_protocol)
         except errors.ConnectionTimeout as e:
-            trace.note('{}'.format(e))
+            trace.note(f'{e}')
             trace.log_exception_quietly()
             self._disconnect_client()
             # We reported it, no reason to make a big fuss.
             return
         except Exception as e:
-            stderr.write("{} terminating on exception {}\n".format(self, e))
+            stderr.write(f"{self} terminating on exception {e}\n")
             raise
         self._disconnect_client()
 
     def _stop_gracefully(self):
         """When we finish this message, stop looking for more."""
-        trace.mutter('Stopping {}'.format(self))
+        trace.mutter(f'Stopping {self}')
         self.finished = True
 
     def _disconnect_client(self):
@@ -380,7 +380,7 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
             self._client_info = '<unknown>'
 
     def __str__(self):
-        return '{}(client={})'.format(self.__class__.__name__, self._client_info)
+        return f'{self.__class__.__name__}(client={self._client_info})'
 
     def __repr__(self):
         return '{}.{}(client={})'.format(self.__module__, self.__class__.__name__,
@@ -990,11 +990,11 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         if self._ssh_params.port is None:
             maybe_port = ''
         else:
-            maybe_port = ':%s' % self._ssh_params.port
+            maybe_port = f':{self._ssh_params.port}'
         if self._ssh_params.username is None:
             maybe_user = ''
         else:
-            maybe_user = '%s@' % self._ssh_params.username
+            maybe_user = f'{self._ssh_params.username}@'
         return "{}({}://{}{}{}/)".format(
             self.__class__.__name__,
             self._scheme,
@@ -1039,8 +1039,7 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
                 read_from, write_to, self.base)
         else:
             raise AssertionError(
-                "Unexpected io_kind %r from %r"
-                % (io_kind, self._ssh_connection))
+                f"Unexpected io_kind {io_kind!r} from {self._ssh_connection!r}")
         for hook in transport.Transport.hooks["post_connect"]:
             hook(self)
 
@@ -1129,7 +1128,7 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
             raise errors.ConnectionError("failed to lookup %s:%d: %s" %
                                          (self._host, port, err_msg))
         # Initialize err in case there are no addresses returned:
-        last_err = socket.error("no address found for %s" % self._host)
+        last_err = socket.error(f"no address found for {self._host}")
         for (family, socktype, proto, canonname, sockaddr) in sockaddrs:
             try:
                 self._socket = socket.socket(family, socktype, proto)

@@ -34,8 +34,7 @@ class TestGitDir(tests.TestCaseInTempDir):
 
         gd = controldir.ControlDir.open('.')
         self.assertEqual(
-            "%s,branch=master" %
-            urlutils.local_path_to_url(os.path.abspath(".")),
+            f"{urlutils.local_path_to_url(os.path.abspath('.'))},branch=master",
             gd.get_branch_reference())
 
     def test_get_reference_loop(self):

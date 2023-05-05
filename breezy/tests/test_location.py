@@ -33,11 +33,11 @@ class TestLocationToUrl(tests.TestCase):
     def get_base_location(self):
         path = osutils.abspath('/foo/bar')
         if path.startswith('/'):
-            url = 'file://{}'.format(path)
+            url = f'file://{path}'
         else:
             # On Windows, abspaths start with the drive letter, so we have to
             # add in the extra '/'
-            url = 'file:///{}'.format(path)
+            url = f'file:///{path}'
         return path, url
 
     def test_regular_url(self):

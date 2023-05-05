@@ -106,8 +106,7 @@ class UploadUtilsMixin:
         if expected_mode == mode:
             return
         raise AssertionError(
-            'For path %s, mode is %s not %s' %
-            (full_path, oct(mode), oct(expected_mode)))
+            f'For path {full_path}, mode is {oct(mode)} not {oct(expected_mode)}')
 
     def assertUpPathDoesNotExist(self, path, base=upload_dir):
         self.assertPathDoesNotExist(osutils.pathjoin(base, path))
@@ -122,34 +121,34 @@ class UploadUtilsMixin:
     def add_file(self, path, content, base=branch_dir):
         self.set_file_content(path, content, base)
         self.tree.add(path)
-        self.tree.commit('add file %s' % path)
+        self.tree.commit(f'add file {path}')
 
     def modify_file(self, path, content, base=branch_dir):
         self.set_file_content(path, content, base)
-        self.tree.commit('modify file %s' % path)
+        self.tree.commit(f'modify file {path}')
 
     def chmod_file(self, path, mode, base=branch_dir):
         full_path = osutils.pathjoin(base, path)
         os.chmod(full_path, mode)
-        self.tree.commit('change file {} mode to {}'.format(path, oct(mode)))
+        self.tree.commit(f'change file {path} mode to {oct(mode)}')
 
     def delete_any(self, path, base=branch_dir):
         self.tree.remove([path], keep_files=False)
-        self.tree.commit('delete %s' % path)
+        self.tree.commit(f'delete {path}')
 
     def add_dir(self, path, base=branch_dir):
         os.mkdir(osutils.pathjoin(base, path))
         self.tree.add(path)
-        self.tree.commit('add directory %s' % path)
+        self.tree.commit(f'add directory {path}')
 
     def rename_any(self, old_path, new_path):
         self.tree.rename_one(old_path, new_path)
-        self.tree.commit('rename {} into {}'.format(old_path, new_path))
+        self.tree.commit(f'rename {old_path} into {new_path}')
 
     def transform_dir_into_file(self, path, content, base=branch_dir):
         osutils.delete_any(osutils.pathjoin(base, path))
         self.set_file_content(path, content, base)
-        self.tree.commit('change %s from dir to file' % path)
+        self.tree.commit(f'change {path} from dir to file')
 
     def transform_file_into_dir(self, path, base=branch_dir):
         # bzr can't handle that kind change in a single commit without an
@@ -157,20 +156,20 @@ class UploadUtilsMixin:
         self.tree.remove([path], keep_files=False)
         os.mkdir(osutils.pathjoin(base, path))
         self.tree.add(path)
-        self.tree.commit('change %s from file to dir' % path)
+        self.tree.commit(f'change {path} from file to dir')
 
     def add_symlink(self, path, target, base=branch_dir):
         self.requireFeature(features.SymlinkFeature(self.test_dir))
         os.symlink(target, osutils.pathjoin(base, path))
         self.tree.add(path)
-        self.tree.commit('add symlink {} -> {}'.format(path, target))
+        self.tree.commit(f'add symlink {path} -> {target}')
 
     def modify_symlink(self, path, target, base=branch_dir):
         self.requireFeature(features.SymlinkFeature(self.test_dir))
         full_path = osutils.pathjoin(base, path)
         os.unlink(full_path)
         os.symlink(target, full_path)
-        self.tree.commit('modify symlink {} -> {}'.format(path, target))
+        self.tree.commit(f'modify symlink {path} -> {target}')
 
     def _get_cmd_upload(self):
         cmd = cmds.cmd_upload()
@@ -223,7 +222,7 @@ class TestUploadMixin(UploadUtilsMixin):
         self.make_branch_and_working_tree()
         self.do_full_upload()
         self.add_dir(dir_name)
-        fpath = '{}/{}'.format(dir_name, file_name)
+        fpath = f'{dir_name}/{file_name}'
         self.add_file(fpath, b'baz')
 
         self.assertUpPathDoesNotExist(fpath)
@@ -340,7 +339,7 @@ class TestUploadMixin(UploadUtilsMixin):
         self.add_file(file_name, b'foo')
         self.do_full_upload()
         self.transform_file_into_dir(file_name)
-        fpath = '{}/{}'.format(file_name, 'file')
+        fpath = f"{file_name}/file"
         self.add_file(fpath, b'bar')
 
         self.assertUpFileEqual(b'foo', file_name)
@@ -722,7 +721,7 @@ class TestBranchUploadLocations(per_branch.TestCaseWithBranch):
         fn = bedding.locations_config_path()
         b = self.get_branch()
         with open(fn, 'w') as f:
-            f.write("[%s]\n" "upload_location=foo\n" % b.base.rstrip("/"))
+            f.write(f"[{b.base.rstrip('/')}]\nupload_location=foo\n")
         self.assertEqual("foo", b.get_config_stack().get('upload_location'))
 
     def test_set_push_location(self):

@@ -590,7 +590,7 @@ class RemoteTests:
         self.run_bzr('add branch/file')[0]
         self.run_bzr('commit -m foo branch')[0]
         url = self.get_readonly_url('branch/file')
-        output = self.run_bzr('log %s' % url)[0]
+        output = self.run_bzr(f'log {url}')[0]
         self.assertEqual(8, len(output.split('\n')))
 
     def test_check(self):

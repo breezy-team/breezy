@@ -220,7 +220,7 @@ class FakeClient(_SmartClient):
         try:
             response_tuple = self.responses.pop(0)
         except IndexError:
-            raise AssertionError("{!r} didn't expect any more calls".format(self))
+            raise AssertionError(f"{self!r} didn't expect any more calls")
         if response_tuple[0] == b'unknown':
             raise errors.UnknownSmartMethod(response_tuple[1])
         elif response_tuple[0] == b'error':
@@ -2903,7 +2903,7 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
             client._calls)
 
     def test_unexpected_error(self):
-        revid = '123'
+        revid = b'123'
         transport_path = 'sinhala'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_error_response(b'AnUnexpectedError')

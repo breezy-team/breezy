@@ -44,7 +44,7 @@ except ModuleNotFoundError:
 if sys.platform == 'win32':
     def quote(c):
         if ' ' in c:
-            return '"%s"' % c # work around spawn lamosity on windows
+            return f'"{c}"' # work around spawn lamosity on windows
         else:
             return c
 else:

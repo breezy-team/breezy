@@ -59,7 +59,7 @@ class TestModified(TestCaseWithTransport):
         check_modified('')
 
         # after commit, not modified
-        tree.commit(message='add %s' % output)
+        tree.commit(message=f'add {output}')
         check_modified('')
 
         # modify the file
@@ -70,7 +70,7 @@ class TestModified(TestCaseWithTransport):
         check_modified(name + '\0', null=True)
 
         # now commit the file and it's no longer modified
-        tree.commit(message='modified %s' % (name))
+        tree.commit(message=f'modified {name}')
         check_modified('')
 
     def test_modified_directory(self):

@@ -774,7 +774,7 @@ class TestStatusEncodings(TestCaseWithTransport):
         return working_tree
 
     def test_stdout_ascii(self):
-        self.overrideAttr(osutils, '_cached_user_encoding', 'ascii')
+        self.overrideAttr(osutils, 'get_user_encoding', lambda: 'ascii')
         working_tree = self.make_uncommitted_tree()
         stdout, stderr = self.run_bzr("status")
 
@@ -784,7 +784,7 @@ added:
 """)
 
     def test_stdout_latin1(self):
-        self.overrideAttr(osutils, '_cached_user_encoding', 'latin-1')
+        self.overrideAttr(osutils, 'get_user_encoding', lambda: 'latin-1')
         working_tree = self.make_uncommitted_tree()
         stdout, stderr = self.run_bzr('status')
 

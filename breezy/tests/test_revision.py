@@ -189,7 +189,7 @@ class TestReservedId(TestCase):
         self.assertEqual(False, revision.is_reserved_id(b'null'))
         self.assertEqual(False, revision.is_reserved_id(
             b'arch:a@example.com/c--b--v--r'))
-        self.assertEqual(False, revision.is_reserved_id(None))
+        self.assertRaises(TypeError, revision.is_reserved_id, None)
 
 
 class TestRevisionMethods(TestCase):

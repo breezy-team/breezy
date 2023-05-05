@@ -207,7 +207,7 @@ def display_info(info, to_file, gather_class_stats=None):
                 if fname == '':
                     to_file.write("''\n")
                 else:
-                    to_file.write("{}\n".format(fname))
+                    to_file.write(f"{fname}\n")
         if len(sorted_emails) > 1:
             to_file.write('     Other email addresses:\n')
             for count, email in sorted_emails:
@@ -215,15 +215,14 @@ def display_info(info, to_file, gather_class_stats=None):
                 if email == '':
                     to_file.write("''\n")
                 else:
-                    to_file.write("{}\n".format(email))
+                    to_file.write(f"{email}\n")
         if gather_class_stats is not None:
             to_file.write('     Contributions:\n')
             classes, total = gather_class_stats(revs)
             for name, count in sorted(classes.items(), key=classify_key):
                 if name is None:
                     name = "Unknown"
-                to_file.write("     %4.0f%% %s\n" %
-                              ((float(count) / total) * 100.0, name))
+                to_file.write(f"     {float(count) / total * 100.0:4.0f}% {name}\n")
 
 
 class cmd_committer_statistics(commands.Command):
@@ -326,9 +325,9 @@ def display_credits(credits, to_file):
     def print_section(name, lst):
         if len(lst) == 0:
             return
-        to_file.write("%s:\n" % name)
+        to_file.write(f"{name}:\n")
         for name in lst:
-            to_file.write("%s\n" % name)
+            to_file.write(f"{name}\n")
         to_file.write('\n')
     print_section("Code", coders)
     print_section("Documentation", documenters)

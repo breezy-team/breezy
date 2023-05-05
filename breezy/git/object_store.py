@@ -131,15 +131,13 @@ def _check_expected_sha(expected_sha, object):
         return
     if len(expected_sha) == 40:
         if expected_sha != object.sha().hexdigest().encode('ascii'):
-            raise AssertionError("Invalid sha for {!r}: {}".format(object,
-                                                             expected_sha))
+            raise AssertionError(f"Invalid sha for {object!r}: {expected_sha}")
     elif len(expected_sha) == 20:
         if expected_sha != object.sha().digest():
             raise AssertionError("Invalid sha for {!r}: {}".format(
                 object, sha_to_hex(expected_sha)))
     else:
-        raise AssertionError("Unknown length %d for %r" % (len(expected_sha),
-                                                           expected_sha))
+        raise AssertionError(f"Unknown length {len(expected_sha)} for {expected_sha!r}")
 
 
 def directory_to_tree(path, children, lookup_ie_sha1, unusual_modes,
@@ -560,7 +558,7 @@ class BazaarObjectStore(BaseObjectStore):
                 # FIXME: Make sure the file id is the root id
                 return self._lookup_revision_sha1(entry.reference_revision)
             else:
-                raise AssertionError("unknown entry kind '%s'" % entry.kind)
+                raise AssertionError(f"unknown entry kind '{entry.kind}'")
         path = bzr_tree.id2path(fileid)
         tree = directory_to_tree(
             path,
@@ -616,7 +614,7 @@ class BazaarObjectStore(BaseObjectStore):
                     if self.repository.has_revision(type_data[1]):
                         return True
                 else:
-                    raise AssertionError("Unknown object type '%s'" % type)
+                    raise AssertionError(f"Unknown object type '{type}'")
             else:
                 return False
         except KeyError:
@@ -706,7 +704,7 @@ class BazaarObjectStore(BaseObjectStore):
                     except errors.NoSuchRevision:
                         raise KeyError(sha)
                 else:
-                    raise AssertionError("Unknown object type '%s'" % kind)
+                    raise AssertionError(f"Unknown object type '{kind}'")
             else:
                 raise KeyError(sha)
 
@@ -733,7 +731,7 @@ class BazaarObjectStore(BaseObjectStore):
             try:
                 for (type, type_data) in ret[commit_sha]:
                     if type != "commit":
-                        raise AssertionError("Type was %s, not commit" % type)
+                        raise AssertionError(f"Type was {type}, not commit")
                     processed.add(type_data[0])
             except KeyError:
                 trace.mutter("unable to find remote ref %s", commit_sha)
@@ -744,7 +742,7 @@ class BazaarObjectStore(BaseObjectStore):
             try:
                 for (type, type_data) in ret[commit_sha]:
                     if type != "commit":
-                        raise AssertionError("Type was %s, not commit" % type)
+                        raise AssertionError(f"Type was {type}, not commit")
                     pending.add(type_data[0])
             except KeyError:
                 pass
@@ -753,7 +751,7 @@ class BazaarObjectStore(BaseObjectStore):
             try:
                 for (type, type_data) in ret[commit_sha]:
                     if type != "commit":
-                        raise AssertionError("Type was %s, not commit" % type)
+                        raise AssertionError(f"Type was {type}, not commit")
                     shallows.add(type_data[0])
             except KeyError:
                 pass

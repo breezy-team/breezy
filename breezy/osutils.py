@@ -208,8 +208,7 @@ def _rename_wrap_exception(rename_func):
             rename_func(old, new)
         except OSError as e:
             detailed_error = OSError(e.errno, e.strerror +
-                                     " [occurred when renaming '%s' to '%s']" %
-                                     (old, new))
+                                     f" [occurred when renaming '{old}' to '{new}']")
             detailed_error.old_filename = old
             detailed_error.new_filename = new
             raise detailed_error
@@ -227,7 +226,7 @@ realpath = _osutils_rs.realpath
 normalizepath = _osutils_rs.normalizepath
 pathjoin = os.path.join
 normpath = _osutils_rs.normpath
-_get_home_dir = partial(os.path.expanduser, '~')
+_get_home_dir = _osutils_rs.get_home_dir
 
 def getuser_unicode():
     import getpass
@@ -280,7 +279,6 @@ if sys.platform == 'win32':
         """Replacer for shutil.rmtree: could remove readonly dirs/files"""
         return shutil.rmtree(path, ignore_errors, onerror)
 
-    _get_home_dir = win32utils.get_home_location
     getuser_unicode = win32utils.get_user_name
 
 elif sys.platform == 'darwin':
@@ -370,14 +368,7 @@ pumpfile = _osutils_rs.pumpfile
 pump_string_file = _osutils_rs.pump_string_file
 
 
-def file_iterator(input_file, readsize=32768):
-    while True:
-        b = input_file.read(readsize)
-        if len(b) == 0:
-            break
-        yield b
-
-
+file_iterator = _osutils_rs.file_iterator
 sha_file = _osutils_rs.sha_file
 size_sha_file = _osutils_rs.size_sha_file
 sha_file_by_name = _osutils_rs.sha_file_by_name
@@ -507,7 +498,7 @@ def failed_to_load_extension(exception):
     # with 10 warnings.
     exception_str = str(exception)
     if exception_str not in _extension_load_failures:
-        trace.mutter("failed to load compiled extension: %s" % exception_str)
+        trace.mutter(f"failed to load compiled extension: {exception_str}")
         _extension_load_failures.append(exception_str)
 
 
@@ -1021,55 +1012,7 @@ class UnicodeDirReader(DirReader):
 
 copy_ownership_from_path = _osutils_rs.copy_ownership_from_path
 copy_tree = _osutils_rs.copy_tree
-
-_cached_user_encoding = None
-
-
-def get_user_encoding():
-    """Find out what the preferred user encoding is.
-
-    This is generally the encoding that is used for command line parameters
-    and file contents. This may be different from the terminal encoding
-    or the filesystem encoding.
-
-    :return: A string defining the preferred user encoding
-    """
-    global _cached_user_encoding
-    if _cached_user_encoding is not None:
-        return _cached_user_encoding
-
-    if os.name == 'posix' and getattr(locale, 'CODESET', None) is not None:
-        # Use the existing locale settings and call nl_langinfo directly
-        # rather than going through getpreferredencoding. This avoids
-        # <http://bugs.python.org/issue6202> on OSX Python 2.6 and the
-        # possibility of the setlocale call throwing an error.
-        user_encoding = locale.nl_langinfo(locale.CODESET)
-    else:
-        # GZ 2011-12-19: On windows could call GetACP directly instead.
-        user_encoding = locale.getpreferredencoding(False)
-
-    try:
-        user_encoding = codecs.lookup(user_encoding).name
-    except LookupError:
-        if user_encoding not in ("", "cp0"):
-            sys.stderr.write('brz: warning:'
-                             ' unknown encoding %s.'
-                             ' Continuing with ascii encoding.\n'
-                             % user_encoding
-                             )
-        user_encoding = 'ascii'
-    else:
-        # Get 'ascii' when setlocale has not been called or LANG=C or unset.
-        if user_encoding == 'ascii':
-            if sys.platform == 'darwin':
-                # OSX is special-cased in Python to have a UTF-8 filesystem
-                # encoding and previously had LANG set here if not present.
-                user_encoding = 'utf-8'
-            # GZ 2011-12-19: Maybe UTF-8 should be the default in this case
-            #                for some other posix platforms as well.
-
-    _cached_user_encoding = user_encoding
-    return user_encoding
+get_user_encoding = _osutils_rs.get_user_encoding
 
 
 def get_diff_header_encoding():
@@ -1162,8 +1105,7 @@ def send_all(sock, bytes, report_activity=None):
                 raise
         else:
             if sent == 0:
-                raise errors.ConnectionReset('Sending to %s returned 0 bytes'
-                                             % (sock,))
+                raise errors.ConnectionReset(f'Sending to {sock} returned 0 bytes')
             sent_total += sent
             if report_activity is not None:
                 report_activity(sent, 'write')
@@ -1226,7 +1168,7 @@ def resource_string(package, resource_name):
         package = package[len("breezy."):].replace('.', os.sep)
         resource_relpath = pathjoin(package, resource_name)
     else:
-        raise errors.BzrError('resource package %s not in breezy' % package)
+        raise errors.BzrError(f'resource package {package} not in breezy')
 
     # Map the resource to a file and read its contents
     base = dirname(breezy.__file__)
@@ -1341,7 +1283,7 @@ def fdatasync(fileno):
             # raise ENOTSUP. However, we are calling fdatasync to be helpful
             # and reduce the chance of corruption-on-powerloss situations. It
             # is not a mandatory call, so it is ok to suppress failures.
-            trace.mutter("ignoring error calling fdatasync: {}".format(e))
+            trace.mutter(f"ignoring error calling fdatasync: {e}")
             if getattr(e, 'errno', None) not in _fdatasync_ignored:
                 raise
 

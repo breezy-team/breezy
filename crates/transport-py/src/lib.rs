@@ -3,7 +3,6 @@ use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use pyo3_file::PyFileLikeObject;
-use std::io::{Read, Seek};
 
 import_exception!(breezy.errors, ShortReadvError);
 
@@ -77,10 +76,17 @@ fn sort_expand_and_combine(
     )
 }
 
+mod sftp;
+
 #[pymodule]
-fn _transport_rs(_py: Python, m: &PyModule) -> PyResult<()> {
+fn _transport_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(seek_and_read))?;
     m.add_wrapped(wrap_pyfunction!(coalesce_offsets))?;
     m.add_wrapped(wrap_pyfunction!(sort_expand_and_combine))?;
+
+    let sftpm = PyModule::new(py, "sftp")?;
+    sftp::_sftp_rs(py, sftpm)?;
+    m.add_submodule(sftpm)?;
+
     Ok(())
 }

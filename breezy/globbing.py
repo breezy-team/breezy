@@ -160,8 +160,8 @@ class Globster:
     def _add_patterns(self, patterns, translator, prefix=''):
         while patterns:
             grouped_rules = [
-                '(%s)' % translator(pat) for pat in patterns[:99]]
-            joined_rule = '{}(?:{})$'.format(prefix, '|'.join(grouped_rules))
+                f'({translator(pat)})' for pat in patterns[:99]]
+            joined_rule = f"{prefix}(?:{'|'.join(grouped_rules)})$"
             # Explicitly use lazy_compile here, because we count on its
             # nicer error reporting.
             self._regex_patterns.append((
@@ -191,7 +191,7 @@ class Globster:
             for _, patterns in self._regex_patterns:
                 for p in patterns:
                     if not Globster.is_pattern_valid(p):
-                        bad_patterns += ('\n  %s' % p)
+                        bad_patterns += f'\n  {p}'
             e.msg += bad_patterns
             raise e
         return None
@@ -222,7 +222,7 @@ class Globster:
         result = True
         translator = Globster.pattern_info[Globster.identify(
             pattern)]["translator"]
-        tpattern = '(%s)' % translator(pattern)
+        tpattern = f'({translator(pattern)})'
         try:
             re_obj = lazy_regex.lazy_compile(tpattern, re.UNICODE)
             re_obj.search("")  # force compile
@@ -260,7 +260,7 @@ class ExceptionGlobster:
         """
         double_neg = self._ignores[2].match(filename)
         if double_neg:
-            return "!!%s" % double_neg
+            return f"!!{double_neg}"
         elif self._ignores[1].match(filename):
             return None
         else:

@@ -50,7 +50,7 @@ class LocalTransport(transport.Transport):
     def __init__(self, base):
         """Set the base path where files will be stored."""
         if not base.startswith('file://'):
-            raise AssertionError("not a file:// url: %r" % base)
+            raise AssertionError(f"not a file:// url: {base!r}")
         if base[-1] != '/':
             base = base + '/'
 
@@ -192,7 +192,7 @@ class LocalTransport(transport.Transport):
         from ..atomicfile import AtomicFile
         if not isinstance(raw_bytes, bytes):
             raise TypeError(
-                'raw_bytes must be bytes, not %s' % type(raw_bytes))
+                f'raw_bytes must be bytes, not {type(raw_bytes)}')
         path = relpath
         try:
             path = self._abspath(relpath)

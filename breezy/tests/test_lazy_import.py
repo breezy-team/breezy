@@ -1051,7 +1051,7 @@ class TestLazyImportProcessor(ImportReplacerHelper):
         else:
             self.fail('root6 was not supposed to exist yet')
 
-        text = 'import {} as root6'.format(self.root_name)
+        text = f'import {self.root_name} as root6'
         proc = lazy_import.ImportProcessor(InstrumentedImportReplacer)
         proc.lazy_import(scope=globals(), text=text)
 
@@ -1111,7 +1111,7 @@ import %(root_name)s.%(sub_name)s.%(submoda_name)s as submoda7
         else:
             self.fail('root8 was not supposed to exist yet')
         lazy_import.lazy_import(globals(),
-                                'import {} as root8'.format(self.root_name),
+                                f'import {self.root_name} as root8',
                                 lazy_import_class=InstrumentedImportReplacer)
 
         self.assertEqual(InstrumentedImportReplacer,

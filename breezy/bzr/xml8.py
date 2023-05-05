@@ -262,8 +262,7 @@ class RevisionSerializer_v8(XMLRevisionSerializer):
         format_num = self.format_num
         if format is not None:
             if format.encode() != format_num:
-                raise BzrError("invalid format version %r on revision"
-                               % format)
+                raise BzrError(f"invalid format version {format!r} on revision")
         get_cached = get_utf8_or_ascii
         parents = elt.find('parents')
         if parents is not None:
@@ -296,7 +295,7 @@ class RevisionSerializer_v8(XMLRevisionSerializer):
         for prop_elt in props_elt:
             if prop_elt.tag != 'property':
                 raise AssertionError(
-                    "bad tag under properties list: %r" % prop_elt.tag)
+                    f"bad tag under properties list: {prop_elt.tag!r}")
             name = prop_elt.get('name')
             value = prop_elt.text
             # If a property had an empty value ('') cElementTree reads
@@ -305,7 +304,7 @@ class RevisionSerializer_v8(XMLRevisionSerializer):
             if value is None:
                 value = ''
             if name in properties:
-                raise AssertionError("repeated property %r" % name)
+                raise AssertionError(f"repeated property {name!r}")
             properties[name] = value
         return properties
 

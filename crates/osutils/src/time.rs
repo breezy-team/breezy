@@ -1,5 +1,4 @@
 use chrono::{DateTime, FixedOffset, Local, NaiveDateTime, TimeZone, Utc};
-use std::time::UNIX_EPOCH;
 
 const DEFAULT_DATE_FORMAT: &str = "%a %Y-%m-%d %H:%M:%S";
 
@@ -115,11 +114,7 @@ pub fn format_date_with_offset_in_original_timezone(t: i64, offset: i64) -> Stri
     let offset_hours = offset / 3600;
     let offset_minutes = (offset % 3600) / 60;
 
-    let dt = DateTime::<Utc>::from(
-        UNIX_EPOCH
-            + std::time::Duration::from_secs(t as u64)
-            + std::time::Duration::from_secs(offset as u64),
-    );
+    let dt = Utc.timestamp(t + offset, 0);
     let date_str = dt.format(DEFAULT_DATE_FORMAT).to_string();
     let offset_str = format!(" {:+03}{:02}", offset_hours, offset_minutes);
 
@@ -247,7 +242,7 @@ pub fn unpack_highres_date(date: &str) -> Result<(f64, i32), String> {
 }
 
 pub fn compact_date(when: u64) -> String {
-    let system_time = UNIX_EPOCH + std::time::Duration::from_secs(when);
+    let system_time = Utc.timestamp(when as i64, 0);
     let date_time: DateTime<Utc> = DateTime::from(system_time);
     date_time.format("%Y%m%d%H%M%S").to_string()
 }

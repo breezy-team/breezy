@@ -109,7 +109,7 @@ class Conflict(BaseConflict):
 
         :param tree: The tree passed as a parameter to the method.
         """
-        meth = getattr(self, 'action_%s' % action, None)
+        meth = getattr(self, f'action_{action}', None)
         if meth is None:
             raise NotImplementedError(self.__class__.__name__ + '.' + action)
         meth(tree)
@@ -196,9 +196,9 @@ class ConflictList(BaseConflictList):
         if ignore_misses is not True:
             for path in [p for p in paths if p not in selected_paths]:
                 if not os.path.exists(tree.abspath(path)):
-                    print("%s does not exist" % path)
+                    print(f"{path} does not exist")
                 else:
-                    print("%s is not conflicted" % path)
+                    print(f"{path} is not conflicted")
         return new_conflicts, selected_conflicts
 
 
@@ -253,7 +253,7 @@ class PathConflict(Conflict):
                 revid = tt._tree.get_parent_ids()[-1]
         else:
             # Programmer error
-            raise AssertionError('bad winner: {!r}'.format(winner))
+            raise AssertionError(f'bad winner: {winner!r}')
         if path_to_create is not None:
             tid = tt.trans_id_tree_path(path_to_create)
             tree = self._revision_tree(tt._tree, revid)

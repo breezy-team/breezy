@@ -251,7 +251,7 @@ class ExtendedTestResult(testtools.TextTestResult):
             else:
                 # XXX: If there's no branch, what should we do?
                 revision_id = b''
-            bench_history.write("--date {} {}\n".format(time.time(), revision_id))
+            bench_history.write(f"--date {time.time()} {revision_id}\n")
         self._bench_history = bench_history
         self.ui = ui.ui_factory
         self.num_tests = 0
@@ -519,16 +519,15 @@ class ExtendedTestResult(testtools.TextTestResult):
         elif whence == SUBUNIT_SEEK_CUR:
             self.num_tests += offset
         else:
-            raise errors.BzrError("Unknown whence %r" % whence)
+            raise errors.BzrError(f"Unknown whence {whence!r}")
 
     def report_tests_starting(self):
         """Display information before the test run begins"""
         bzr_path = osutils.realpath(sys.argv[0])
         self.stream.write(
-            'brz selftest: {}\n'.format(bzr_path))
+            f'brz selftest: {bzr_path}\n')
         self.stream.write(
-            '   {}\n'.format(
-                breezy.__path__[0]))
+            f'   {breezy.__path__[0]}\n')
         self.stream.write(
             '   bzr-{} python-{} {}\n'.format(
                 breezy.version_string,
@@ -626,16 +625,10 @@ class TextTestResult(ExtendedTestResult):
         return self._shortened_test_description(test)
 
     def report_error(self, test, err):
-        self.stream.write('ERROR: {}\n    {}\n'.format(
-            self._test_description(test),
-            err[1],
-            ))
+        self.stream.write(f'ERROR: {self._test_description(test)}\n    {err[1]}\n')
 
     def report_failure(self, test, err):
-        self.stream.write('FAIL: {}\n    {}\n'.format(
-            self._test_description(test),
-            err[1],
-            ))
+        self.stream.write(f'FAIL: {self._test_description(test)}\n    {err[1]}\n')
 
     def report_known_failure(self, test, err):
         pass
@@ -687,7 +680,7 @@ class VerboseTestResult(ExtendedTestResult):
 
     def _error_summary(self, err):
         indent = ' ' * 4
-        return '{}{}'.format(indent, err[1])
+        return f'{indent}{err[1]}'
 
     def report_error(self, test, err):
         self.stream.write('ERROR %s\n%s\n'
@@ -711,7 +704,7 @@ class VerboseTestResult(ExtendedTestResult):
                              reason))
 
     def report_success(self, test):
-        self.stream.write('   OK %s\n' % self._testTimeString(test))
+        self.stream.write(f'   OK {self._testTimeString(test)}\n')
         for bench_called, stats in getattr(test, '_benchcalls', []):
             self.stream.write('LSProf output for %s(%s, %s)\n' % bench_called)
             stats.pprint(file=self.stream)
@@ -720,12 +713,10 @@ class VerboseTestResult(ExtendedTestResult):
         self.stream.flush()
 
     def report_skip(self, test, reason):
-        self.stream.write(' SKIP %s\n%s\n'
-                          % (self._testTimeString(test), reason))
+        self.stream.write(f' SKIP {self._testTimeString(test)}\n{reason}\n')
 
     def report_not_applicable(self, test, reason):
-        self.stream.write('  N/A %s\n    %s\n'
-                          % (self._testTimeString(test), reason))
+        self.stream.write(f'  N/A {self._testTimeString(test)}\n    {reason}\n')
 
     def report_unsupported(self, test, feature):
         """test cannot be run because feature is missing."""
@@ -806,8 +797,7 @@ def iter_suite_tests(suite):
         for item in suite:
             yield from iter_suite_tests(item)
     else:
-        raise Exception('unknown type %r for object %r'
-                        % (type(suite), suite))
+        raise Exception(f'unknown type {type(suite)!r} for object {suite!r}')
 
 
 from testtools.testcase import TestSkipped
@@ -832,7 +822,7 @@ def _clever_some_str(value):
         try:
             return repr(value).replace('\\n', '\n')
         except BaseException:
-            return '<unprintable %s object>' % type(value).__name__
+            return f'<unprintable {type(value).__name__} object>'
 
 
 traceback._some_str = _clever_some_str  # type: ignore
@@ -998,8 +988,7 @@ class TestCase(testtools.TestCase):
         if counter_name is None:
             counter_name = name
         if counter_name in _counters:
-            raise AssertionError('%s is already used as a counter name'
-                                 % (counter_name,))
+            raise AssertionError(f'{counter_name} is already used as a counter name')
         _counters[counter_name] = 0
         self.addDetail(counter_name, content.Content(
             content.UTF8_TEXT,
@@ -1007,7 +996,7 @@ class TestCase(testtools.TestCase):
 
         def increment_counter(*args, **kwargs):
             _counters[counter_name] += 1
-        label = 'count {} calls'.format(counter_name)
+        label = f'count {counter_name} calls'
         hooks.install_named_hook(name, increment_counter, label)
         self.addCleanup(hooks.uninstall_named_hook, name, label)
 
@@ -1017,7 +1006,7 @@ class TestCase(testtools.TestCase):
         """
         for hook_name in ('get', 'set', 'remove', 'load', 'save'):
             self.install_counter_hook(config.ConfigHooks, hook_name,
-                                      'config.{}'.format(hook_name))
+                                      f'config.{hook_name}')
 
         # The OldConfigHooks are private and need special handling to protect
         # against recursive tests (tests that run other tests), so we just do
@@ -1026,7 +1015,7 @@ class TestCase(testtools.TestCase):
         self.overrideAttr(config, 'OldConfigHooks', config._OldConfigHooks())
         for hook_name in ('get', 'set', 'remove', 'load', 'save'):
             self.install_counter_hook(config.OldConfigHooks, hook_name,
-                                      'old_config.{}'.format(hook_name))
+                                      f'old_config.{hook_name}')
 
     def _clear_debug_flags(self):
         """Prevent externally set debug flags affecting tests.
@@ -1096,7 +1085,7 @@ class TestCase(testtools.TestCase):
                 (acquired_locks, released_locks, broken_locks))
             if not self._lock_check_thorough:
                 # Rather than fail, just warn
-                print("Broken test {}: {}".format(self, message))
+                print(f"Broken test {self}: {message}")
                 return
             self.fail(message)
 
@@ -1308,7 +1297,7 @@ class TestCase(testtools.TestCase):
 
     def assertEqualMode(self, mode, mode_test):
         self.assertEqual(mode, mode_test,
-                         'mode mismatch {:o} != {:o}'.format(mode, mode_test))
+                         f'mode mismatch {mode:o} != {mode_test:o}')
 
     def assertEqualStat(self, expected, actual):
         """assert that expected and actual are the same stat result.
@@ -1366,22 +1355,22 @@ class TestCase(testtools.TestCase):
 
     def assertPositive(self, val):
         """Assert that val is greater than 0."""
-        self.assertTrue(val > 0, 'expected a positive value, but got %s' % val)
+        self.assertTrue(val > 0, f'expected a positive value, but got {val}')
 
     def assertNegative(self, val):
         """Assert that val is less than 0."""
-        self.assertTrue(val < 0, 'expected a negative value, but got %s' % val)
+        self.assertTrue(val < 0, f'expected a negative value, but got {val}')
 
     def assertStartsWith(self, s, prefix):
         if not s.startswith(prefix):
             raise AssertionError(
-                'string {!r} does not start with {!r}'.format(s, prefix))
+                f'string {s!r} does not start with {prefix!r}')
 
     def assertEndsWith(self, s, suffix):
         """Asserts that s ends with suffix."""
         if not s.endswith(suffix):
             raise AssertionError(
-                'string {!r} does not end with {!r}'.format(s, suffix))
+                f'string {s!r} does not end with {suffix!r}')
 
     def assertContainsRe(self, haystack, needle_re, flags=0):
         """Assert that a contains something matching a regular expression."""
@@ -1390,25 +1379,22 @@ class TestCase(testtools.TestCase):
                     len(haystack) > 60):
                 # a long string, format it in a more readable way
                 raise AssertionError(
-                    'pattern "%s" not found in\n"""\\\n%s"""\n'
-                    % (needle_re, haystack))
+                    f'pattern "{needle_re}" not found in\n""\"\\\n{haystack}""\"\n')
             else:
-                raise AssertionError('pattern "%s" not found in "%s"'
-                                     % (needle_re, haystack))
+                raise AssertionError(f'pattern "{needle_re}" not found in "{haystack}"')
 
     def assertNotContainsRe(self, haystack, needle_re, flags=0):
         """Assert that a does not match a regular expression"""
         if re.search(needle_re, haystack, flags):
-            raise AssertionError('pattern "%s" found in "%s"'
-                                 % (needle_re, haystack))
+            raise AssertionError(f'pattern "{needle_re}" found in "{haystack}"')
 
     def assertContainsString(self, haystack, needle):
         if haystack.find(needle) == -1:
-            self.fail("string {!r} not found in '''{}'''".format(needle, haystack))
+            self.fail(f"string {needle!r} not found in '''{haystack}'''")
 
     def assertNotContainsString(self, haystack, needle):
         if haystack.find(needle) != -1:
-            self.fail("string {!r} found in '''{}'''".format(needle, haystack))
+            self.fail(f"string {needle!r} found in '''{haystack}'''")
 
     def assertSubset(self, sublist, superlist):
         """Assert that every entry in sublist is present in superlist."""
@@ -1433,7 +1419,7 @@ class TestCase(testtools.TestCase):
                 excName = excClass.__name__
             else:
                 excName = str(excClass)
-            raise self.failureException("%s not raised" % excName)
+            raise self.failureException(f"{excName} not raised")
 
     def assertRaises(self, excClass, callableObj, *args, **kwargs):
         """Assert that a callable raises a particular exception.
@@ -1455,21 +1441,21 @@ class TestCase(testtools.TestCase):
             else:
                 # probably a tuple
                 excName = str(excClass)
-            raise self.failureException("%s not raised" % excName)
+            raise self.failureException(f"{excName} not raised")
 
     def assertIs(self, left, right, message=None):
         if not (left is right):
             if message is not None:
                 raise AssertionError(message)
             else:
-                raise AssertionError("{!r} is not {!r}.".format(left, right))
+                raise AssertionError(f"{left!r} is not {right!r}.")
 
     def assertIsNot(self, left, right, message=None):
         if (left is right):
             if message is not None:
                 raise AssertionError(message)
             else:
-                raise AssertionError("{!r} is {!r}.".format(left, right))
+                raise AssertionError(f"{left!r} is {right!r}.")
 
     def assertTransportMode(self, transport, path, mode):
         """Fail if a path does not have mode "mode".
@@ -1488,7 +1474,7 @@ class TestCase(testtools.TestCase):
         """Fail if path1 and path2 points to different files"""
         self.assertEqual(osutils.realpath(path1),
                          osutils.realpath(path2),
-                         "apparent paths:\na = {}\nb = {}\n,".format(path1, path2))
+                         f"apparent paths:\na = {path1}\nb = {path2}\n,")
 
     def assertIsInstance(self, obj, kls, msg=None):
         """Fail if obj is not an instance of kls
@@ -1496,8 +1482,7 @@ class TestCase(testtools.TestCase):
         :param msg: Supplementary message to show if the assertion fails.
         """
         if not isinstance(obj, kls):
-            m = "{!r} is an instance of {} rather than {}".format(
-                obj, obj.__class__, kls)
+            m = f"{obj!r} is an instance of {obj.__class__} rather than {kls}"
             if msg:
                 m += ": " + msg
             self.fail(m)
@@ -1595,8 +1580,7 @@ class TestCase(testtools.TestCase):
         expected_first_warning = symbol_versioning.deprecation_string(
             a_callable, deprecation_format)
         if len(call_warnings) == 0:
-            self.fail("No deprecation warning generated by call to %s" %
-                      a_callable)
+            self.fail(f"No deprecation warning generated by call to {a_callable}")
         self.assertEqual(expected_first_warning, call_warnings[0])
         return result
 
@@ -1662,11 +1646,11 @@ class TestCase(testtools.TestCase):
             return [pseudo_log_file.getvalue().decode(
                 "utf-8", "replace").encode("utf-8")]
         self.addDetail(
-            "log", content.Content(
+            'log', content.Content(
                 content.ContentType("text", "plain", {"charset": "utf8"}),
                 _get_log_contents_for_weird_testtools_api))
         self._log_file = pseudo_log_file
-        self._log_memento = trace.push_log_file(self._log_file)
+        self._log_memento = trace.push_log_file(self._log_file, short=True)
         self.addCleanup(self._finishLogFile)
 
     @contextlib.contextmanager
@@ -2218,7 +2202,7 @@ class TestCase(testtools.TestCase):
             cleanup_environment()
             # Include the subprocess's log file in the test details, in case
             # the test fails due to an error in the subprocess.
-            self._add_subprocess_log(trace._get_brz_log_filename())
+            self._add_subprocess_log(trace._initialize_brz_log_filename())
             command = self.get_brz_command()
             if not allow_plugins:
                 command.append('--no-plugins')
@@ -2334,9 +2318,9 @@ class TestCase(testtools.TestCase):
             else:
                 extras.append(name)
         if shape:
-            self.fail("expected paths not found in inventory: %r" % shape)
+            self.fail(f"expected paths not found in inventory: {shape!r}")
         if extras:
-            self.fail("unexpected paths found in inventory: %r" % extras)
+            self.fail(f"unexpected paths found in inventory: {extras!r}")
 
     def apply_redirected(self, stdin=None, stdout=None, stderr=None,
                          a_callable=None, *args, **kwargs):
@@ -2647,7 +2631,7 @@ class TestCaseWithMemoryTransport(TestCase):
                 root, format=BzrDirMetaFormat1())
             del os.environ['BRZ_HOME']
         except Exception as e:
-            self.fail("Fail to initialize the safety net: {!r}\n".format(e))
+            self.fail(f"Fail to initialize the safety net: {e!r}\n")
         # Hack for speed: remember the raw bytes of the dirstate file so that
         # we don't need to re-open the wt to check it hasn't changed.
         TestCaseWithMemoryTransport._SAFETY_NET_PRISTINE_DIRSTATE = (
@@ -2670,7 +2654,7 @@ class TestCaseWithMemoryTransport(TestCase):
             # import pdb; pdb.set_trace()
             _rmtree_temp_dir(root + '/.bzr', test_id=self.id())
             self._create_safety_net()
-            raise AssertionError('%s/.bzr should not be modified' % root)
+            raise AssertionError(f'{root}/.bzr should not be modified')
 
     def _make_test_root(self):
         if TestCaseWithMemoryTransport.TEST_ROOT is None:
@@ -2737,7 +2721,7 @@ class TestCaseWithMemoryTransport(TestCase):
             format = self.resolve_format(format)
             return format.initialize_on_transport(t)
         except errors.UninitializableFormat:
-            raise TestSkipped("Format %s is not initializable." % format)
+            raise TestSkipped(f"Format {format} is not initializable.")
 
     def make_repository(self, relpath, shared=None, format=None):
         """Create a repository on our default transport at relpath.
@@ -2831,13 +2815,13 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         self.overrideEnv('BRZ_LOG', None)
 
     def check_file_contents(self, filename, expect):
-        self.log("check contents of file %s" % filename)
+        self.log(f"check contents of file {filename}")
         with open(filename, 'rb') as f:
             contents = f.read()
         if contents != expect:
-            self.log("expected: %r" % expect)
-            self.log("actually: %r" % contents)
-            self.fail("contents of %s not as expected" % filename)
+            self.log(f"expected: {expect!r}")
+            self.log(f"actually: {contents!r}")
+            self.fail(f"contents of {filename} not as expected")
 
     def _getTestDirPrefix(self):
         # create a directory within the top level test directory
@@ -2922,7 +2906,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
                     end = os.linesep.encode('ascii')
                 else:
                     raise errors.BzrError(
-                        'Invalid line ending request %r' % line_endings)
+                        f'Invalid line ending request {line_endings!r}')
                 content = b"contents of %s%s" % (name.encode('utf-8'), end)
                 transport.put_bytes_non_atomic(urlutils.escape(name), content)
 
@@ -3042,8 +3026,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         try:
             mode = transport.stat(relpath).st_mode
         except _mod_transport.NoSuchFile:
-            self.fail("path %s is not a directory; no such file"
-                      % (relpath))
+            self.fail(f"path {relpath} is not a directory; no such file")
         if not stat.S_ISDIR(mode):
             self.fail("path %s is not a directory; has mode %#o"
                       % (relpath, mode))
@@ -3055,7 +3038,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         self.assertEqual(left.get_parent_ids(), right.get_parent_ids())
         differences = left.changes_from(right)
         self.assertFalse(differences.has_changed(),
-                         "Trees {!r} and {!r} are different: {!r}".format(left, right, differences))
+                         f"Trees {left!r} and {right!r} are different: {differences!r}")
 
     def disable_missing_extensions_warning(self):
         """Some tests expect a precise stderr content.
@@ -3343,7 +3326,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
             runner.list(suite)
         else:
             for t in iter_suite_tests(suite):
-                stream.write("%s\n" % (t.id()))
+                stream.write(f"{t.id()}\n")
         return True
     result = runner.run(suite)
     if strict and getattr(result, 'wasStrictlySuccessful', False):
@@ -3474,8 +3457,7 @@ class RandomDecorator(TestDecorator):
 
     def __init__(self, suite, random_seed, stream):
         random_seed = self.actual_seed(random_seed)
-        stream.write("Randomizing test order using seed %s\n\n" %
-                     (random_seed,))
+        stream.write(f"Randomizing test order using seed {random_seed}\n\n")
         # Initialise the random number generator.
         random.seed(random_seed)
         super().__init__(randomize_suite(suite))
@@ -3909,8 +3891,7 @@ class TestPrefixAliasRegistry(registry.Registry):
         except KeyError:
             actual = self.get(key)
             trace.note(
-                'Test prefix alias %s is already used for %s, ignoring %s'
-                % (key, actual, obj))
+                f'Test prefix alias {key} is already used for {actual}, ignoring {obj}')
 
     def resolve_alias(self, id_start):
         """Replace the alias by the prefix in the given string.
@@ -3922,7 +3903,7 @@ class TestPrefixAliasRegistry(registry.Registry):
             parts[0] = self.get(parts[0])
         except KeyError:
             raise errors.CommandError(
-                '%s is not a known test prefix alias' % parts[0])
+                f'{parts[0]} is not a known test prefix alias')
         return '.'.join(parts)
 
 
@@ -4202,10 +4183,10 @@ def test_suite(keep_only=None, starting_with=None):
             doc_suite = IsolatedDocTestSuite(
                 mod, optionflags=doctest.REPORT_ONLY_FIRST_FAILURE)
         except ValueError as e:
-            print('**failed to get doctest for: {}\n{}'.format(mod, e))
+            print(f'**failed to get doctest for: {mod}\n{e}')
             raise
         if len(doc_suite._tests) == 0:
-            raise errors.BzrError("no doctests found in {}".format(mod))
+            raise errors.BzrError(f"no doctests found in {mod}")
         suite.addTest(doc_suite)
 
     default_encoding = sys.getdefaultencoding()
@@ -4269,7 +4250,7 @@ def _multiply_two_scenarios(scenarios_left, scenarios_right):
         right scenario.
     """
     return [
-        ('{},{}'.format(left_name, right_name),
+        (f'{left_name},{right_name}',
          dict(left_dict, **right_dict))
         for left_name, left_dict in scenarios_left
         for right_name, right_dict in scenarios_right]
@@ -4337,7 +4318,7 @@ def apply_scenario(test, scenario):
         test.
     :return: The adapted test.
     """
-    new_id = "{}({})".format(test.id(), scenario[0])
+    new_id = f"{test.id()}({scenario[0]})"
     new_test = clone_test(test, new_id)
     for name, value in scenario[1].items():
         setattr(new_test, name, value)
@@ -4433,12 +4414,10 @@ def _rmtree_temp_dir(dirname, test_id=None):
         # possible info to the test runner is even worse.
         if test_id is not None:
             ui.ui_factory.clear_term()
-            sys.stderr.write('\nWhile running: {}\n'.format(test_id))
+            sys.stderr.write(f'\nWhile running: {test_id}\n')
         # Ugly, but the last thing we want here is fail, so bear with it.
-        printable_e = str(e).decode(osutils.get_user_encoding(), 'replace'
-                                    ).encode('ascii', 'replace')
         sys.stderr.write('Unable to remove testing dir %s\n%s'
-                         % (os.path.basename(dirname), printable_e))
+                         % (os.path.basename(dirname), e))
 
 
 def probe_unicode_in_user_encoding():

@@ -1808,7 +1808,7 @@ class TestFailedToLoadExtension(tests.TestCase):
 
     def test_report_extension_load_failures_message(self):
         log = BytesIO()
-        trace.push_log_file(log)
+        trace.push_log_file(log, short=True)
         self.assertTrue(self._try_loading())
         osutils.report_extension_load_failures()
         self.assertContainsRe(

@@ -118,10 +118,10 @@ class TestAdd(TestCICPBase):
         # create a file on disk with the mixed-case name
         self.build_tree(['MixedCaseParent/', 'MixedCaseParent/MixedCase'])
         expected_fname = pathjoin(wt.basedir, "MixedCaseParent", "notfound")
-        run_script(self, """
+        run_script(self, f"""
             $ brz add mixedcaseparent/notfound
-            2>brz: ERROR: No such file: {}
-            """.format(repr(expected_fname)))
+            2>brz: ERROR: No such file: {repr(expected_fname)}
+            """)
 
 
 class TestMove(TestCICPBase):

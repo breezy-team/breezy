@@ -86,7 +86,7 @@ def tarball_generator(tree, root, subdir=None, force_mtime=None, format='', recu
     Returns: A generator that will produce file content chunks.
     """
     buf = BytesIO()
-    with closing(tarfile.open(None, "w:%s" % format, buf)) as ball, tree.lock_read():
+    with closing(tarfile.open(None, f"w:{format}", buf)) as ball, tree.lock_read():
         for final_path, tree_path, entry in _export_iter_entries(
                 tree, subdir, recurse_nested=recurse_nested):
             (item, fileobj) = prepare_tarball_item(

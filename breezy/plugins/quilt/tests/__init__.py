@@ -30,6 +30,6 @@ def load_tests(loader, basic_tests, pattern):
         'test_wrapper',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["{}.{}".format(__name__, i) for i in testmod_names]))
+        [f"{__name__}.{i}" for i in testmod_names]))
 
     return basic_tests

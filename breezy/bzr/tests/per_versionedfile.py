@@ -1471,8 +1471,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
     def test_add_fallback_implies_without_fallbacks(self):
         f = self.get_versionedfiles('files')
         if getattr(f, 'add_fallback_versioned_files', None) is None:
-            raise TestNotApplicable("%s doesn't support fallbacks"
-                                    % (f.__class__.__name__,))
+            raise TestNotApplicable(f"{f.__class__.__name__} doesn't support fallbacks")
         g = self.get_versionedfiles('fallback')
         key_a = self.get_simple_key(b'a')
         g.add_lines(key_a, [], [b'\n'])
@@ -1769,8 +1768,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         if not self.graph:
             raise TestNotApplicable('ancestry info only relevant with graph.')
         if getattr(f, 'add_fallback_versioned_files', None) is None:
-            raise TestNotApplicable("%s doesn't support fallbacks"
-                                    % (f.__class__.__name__,))
+            raise TestNotApplicable(f"{f.__class__.__name__} doesn't support fallbacks")
         key_a = self.get_simple_key(b'a')
         key_b = self.get_simple_key(b'b')
         key_c = self.get_simple_key(b'c')
@@ -1929,7 +1927,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             for key in seen:
                 sort_pos = sort_order[key]
                 self.assertTrue(sort_pos >= lows[key[:-1]],
-                                "Out of order in sorted stream: {!r}, {!r}".format(key, seen))
+                                f"Out of order in sorted stream: {key!r}, {seen!r}")
                 lows[key[:-1]] = sort_pos
 
     def test_get_record_stream_unknown_storage_kind_raises(self):

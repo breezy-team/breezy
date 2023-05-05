@@ -2907,7 +2907,7 @@ class TestBlackboxSupport(tests.TestCase):
         self.addCleanup(transport_server.stop_server)
         url = transport_server.get_url()
         self.permit_url(url)
-        out, err = self.run_bzr(["log", "%s/nonexistantpath" % url], retcode=3)
+        out, err = self.run_bzr(["log", f"{url}/nonexistantpath"], retcode=3)
         self.assertEqual(out, '')
         self.assertContainsRe(
             err, 'brz: ERROR: Not a branch: ".*nonexistantpath/".\n')

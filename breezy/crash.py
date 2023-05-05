@@ -63,11 +63,11 @@ def report_bug(exc_info, stderr):
             # wrote a file; if None then report the old way
             return
     except ImportError as e:
-        trace.mutter("couldn't find apport bug-reporting library: %s" % e)
+        trace.mutter(f"couldn't find apport bug-reporting library: {e}")
     except Exception as e:
         # this should only happen if apport is installed but it didn't
         # work, eg because of an io error writing the crash file
-        trace.mutter("brz: failed to report crash using apport: %r" % e)
+        trace.mutter(f"brz: failed to report crash using apport: {e!r}")
         trace.log_exception_quietly()
     return report_bug_legacy(exc_info, stderr)
 
@@ -85,7 +85,7 @@ def report_bug_legacy(exc_info, err_file):
                   (breezy.__version__,
                    breezy._format_version_tuple(sys.version_info),
                    platform.platform(aliased=1)))
-    print_wrapped('arguments: %r\n' % sys.argv)
+    print_wrapped(f'arguments: {sys.argv!r}\n')
     print_wrapped(textwrap.fill(
         'plugins: ' + plugin.format_concise_plugin_list(),
         width=78,
@@ -219,7 +219,7 @@ def _write_apport_report_to_file(exc_info):
 
 def _attach_log_tail(pr):
     try:
-        brz_log = open(trace._get_brz_log_filename())
+        brz_log = open(trace.get_brz_log_filename())
     except OSError as e:
         pr['BrzLogTail'] = repr(e)
         return
@@ -245,9 +245,7 @@ def _open_crash_file():
         user_part = '.%d' % os.getuid()
     filename = osutils.pathjoin(
         crash_dir,
-        'brz{}.{}.crash'.format(
-            user_part,
-            date_string))
+        f'brz{user_part}.{date_string}.crash')
     # be careful here that people can't play tmp-type symlink mischief in the
     # world-writable directory
     return filename, os.fdopen(
