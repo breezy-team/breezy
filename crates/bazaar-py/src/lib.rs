@@ -4,7 +4,7 @@ use pyo3::class::basic::CompareOp;
 use pyo3::exceptions::{PyNotImplementedError, PyRuntimeError, PyTypeError, PyValueError};
 use pyo3::import_exception;
 use pyo3::prelude::*;
-use pyo3::types::{PyBytes, PyList, PyString};
+use pyo3::types::{PyBytes, PyList, PyString, PyUnicode};
 use pyo3_file::PyFileLikeObject;
 use std::collections::HashMap;
 
@@ -402,6 +402,28 @@ fn check_not_reserved_id(py: Python, revision_id: PyObject) -> PyResult<()> {
     }
 }
 
+#[pyfunction]
+fn escape_invalid_chars(message: Option<&str>) -> (Option<String>, usize) {
+    bazaar::xml_serializer::escape_invalid_chars(message)
+}
+
+#[pyfunction]
+fn encode_and_escape(py: Python, unicode_or_utf8_str: PyObject) -> PyResult<&PyBytes> {
+    if let Ok(text) = unicode_or_utf8_str.extract::<&str>(py) {
+        Ok(PyBytes::new(
+            py,
+            bazaar::xml_serializer::encode_and_escape_string(text).as_slice(),
+        ))
+    } else if let Ok(bytes) = unicode_or_utf8_str.extract::<&[u8]>(py) {
+        Ok(PyBytes::new(
+            py,
+            bazaar::xml_serializer::encode_and_escape_bytes(bytes).as_slice(),
+        ))
+    } else {
+        Err(PyTypeError::new_err("expected str or bytes"))
+    }
+}
+
 #[pymodule]
 fn _bzr_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(_next_id_suffix))?;
@@ -424,5 +446,7 @@ fn _bzr_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(is_null_revision))?;
     m.add_wrapped(wrap_pyfunction!(is_reserved_revision_id))?;
     m.add_wrapped(wrap_pyfunction!(check_not_reserved_id))?;
+    m.add_wrapped(wrap_pyfunction!(escape_invalid_chars))?;
+    m.add_wrapped(wrap_pyfunction!(encode_and_escape))?;
     Ok(())
 }
