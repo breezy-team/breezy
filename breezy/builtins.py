@@ -2363,7 +2363,7 @@ class cmd_diff(Command):
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None,
             prefix=None, old=None, new=None, using=None, format=None,
-            context=None, color='never'):
+            context=None, color='auto'):
         from .diff import (get_trees_and_branches_to_diff_locked,
                            show_diff_trees)
 
@@ -6954,7 +6954,7 @@ class cmd_grep(Command):
             color = global_config.get_user_option('grep_color')
 
         if color is None:
-            color = 'never'
+            color = 'auto'
 
         if color not in ['always', 'never', 'auto']:
             raise errors.CommandError('Valid values for --color are '
