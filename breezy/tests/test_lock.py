@@ -65,7 +65,7 @@ class TestOSLock(tests.TestCaseInTempDir):
     def test_read_locks_block_write_locks(self):
         r_lock = self.read_lock('a-lock-file')
         try:
-            if lock.have_fcntl and self.write_lock is lock._fcntl_WriteLock:
+            if lock.have_fcntl:
                 # With -Dlock, fcntl locks are properly exclusive
                 debug.debug_flags.add('strict_locks')
                 self.assertRaises(errors.LockContention,
@@ -90,7 +90,7 @@ class TestOSLock(tests.TestCaseInTempDir):
     def test_write_locks_block_read_lock(self):
         w_lock = self.write_lock('a-lock-file')
         try:
-            if lock.have_fcntl and self.read_lock is lock._fcntl_ReadLock:
+            if lock.have_fcntl:
                 # With -Dlock, fcntl locks are properly exclusive
                 debug.debug_flags.add('strict_locks')
                 self.assertRaises(errors.LockContention,
