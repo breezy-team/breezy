@@ -4,6 +4,7 @@ pub mod filters;
 pub mod gen_ids;
 pub mod globbing;
 pub mod revision;
+pub mod serializer;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct FileId(Vec<u8>);
@@ -53,6 +54,12 @@ impl From<Vec<u8>> for RevisionId {
     }
 }
 
+impl From<&[u8]> for RevisionId {
+    fn from(v: &[u8]) -> Self {
+        RevisionId(v.to_vec())
+    }
+}
+
 impl From<RevisionId> for Vec<u8> {
     fn from(v: RevisionId) -> Self {
         v.0
@@ -85,3 +92,5 @@ impl RevisionId {
         }
     }
 }
+
+pub mod bencode_serializer;

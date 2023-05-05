@@ -1,10 +1,11 @@
 use bazaar::RevisionId;
 use chrono::NaiveDateTime;
 use pyo3::class::basic::CompareOp;
-use pyo3::exceptions::{PyNotImplementedError, PyTypeError, PyValueError};
+use pyo3::exceptions::{PyNotImplementedError, PyRuntimeError, PyTypeError, PyValueError};
 use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyList, PyString};
+use pyo3_file::PyFileLikeObject;
 use std::collections::HashMap;
 
 import_exception!(breezy.errors, ReservedId);
@@ -301,6 +302,79 @@ impl Revision {
     }
 }
 
+fn serializer_err_to_py_err(e: bazaar::serializer::Error) -> PyErr {
+    PyRuntimeError::new_err(format!("serializer error: {:?}", e))
+}
+
+#[pyclass(subclass)]
+struct RevisionSerializer(Box<dyn bazaar::serializer::RevisionSerializer>);
+
+#[pyclass(subclass,extends=RevisionSerializer)]
+struct BEncodeRevisionSerializerv1;
+
+#[pymethods]
+impl BEncodeRevisionSerializerv1 {
+    #[new]
+    fn new() -> (Self, RevisionSerializer) {
+        (
+            Self {},
+            RevisionSerializer(Box::new(
+                bazaar::bencode_serializer::BEncodeRevisionSerializer1,
+            )),
+        )
+    }
+}
+
+#[pymethods]
+impl RevisionSerializer {
+    #[getter]
+    fn format_name(&self) -> String {
+        self.0.format_name().to_string()
+    }
+
+    #[getter]
+    fn squashes_xml_invalid_characters(&self) -> bool {
+        self.0.squashes_xml_invalid_characters()
+    }
+
+    fn read_revision(&self, py: Python, file: PyObject) -> PyResult<Revision> {
+        py.allow_threads(|| {
+            let mut file = PyFileLikeObject::with_requirements(file, true, false, false)?;
+            Ok(Revision(
+                self.0
+                    .read_revision(&mut file)
+                    .map_err(serializer_err_to_py_err)?,
+            ))
+        })
+    }
+
+    fn write_revision_to_string(&self, py: Python, revision: &Revision) -> PyResult<PyObject> {
+        Ok(PyBytes::new(
+            py,
+            py.allow_threads(|| self.0.write_revision_to_string(&revision.0))
+                .map_err(serializer_err_to_py_err)?
+                .as_slice(),
+        )
+        .into_py(py))
+    }
+
+    fn write_revision_to_lines(&self, py: Python, revision: &Revision) -> PyResult<Vec<PyObject>> {
+        self.0
+            .write_revision_to_lines(&revision.0)
+            .map(|s| -> PyResult<PyObject> {
+                Ok(PyBytes::new(py, s.map_err(serializer_err_to_py_err)?.as_slice()).into_py(py))
+            })
+            .collect::<PyResult<Vec<PyObject>>>()
+    }
+
+    fn read_revision_from_string(&self, py: Python, string: &[u8]) -> PyResult<Revision> {
+        Ok(Revision(
+            py.allow_threads(|| self.0.read_revision_from_string(string))
+                .map_err(serializer_err_to_py_err)?,
+        ))
+    }
+}
+
 #[pyfunction(name = "is_null")]
 fn is_null_revision(revision_id: &PyBytes) -> bool {
     bazaar::RevisionId::from(revision_id.as_bytes().to_vec()).is_null()
@@ -339,6 +413,12 @@ fn _bzr_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m_globbing.add_class::<Replacer>()?;
     m.add_submodule(m_globbing)?;
     m.add_class::<Revision>()?;
+    m.add_class::<RevisionSerializer>()?;
+    m.add_class::<BEncodeRevisionSerializerv1>()?;
+    m.add(
+        "revision_bencode_serializer",
+        m.getattr("BEncodeRevisionSerializerv1")?.call0()?,
+    )?;
     m.add("CURRENT_REVISION", bazaar::CURRENT_REVISION)?;
     m.add("NULL_REVISION", bazaar::NULL_REVISION)?;
     m.add_wrapped(wrap_pyfunction!(is_null_revision))?;

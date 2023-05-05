@@ -765,6 +765,7 @@ class VersionedFileRepository(Repository):
 
     def _add_revision(self, revision):
         lines = self._revision_serializer.write_revision_to_lines(revision)
+        self._revision_serializer.read_revision_from_string(b"".join(lines))
         key = (revision.revision_id,)
         parents = tuple((parent,) for parent in revision.parent_ids)
         self.revisions.add_lines(key, parents, lines)
