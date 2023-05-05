@@ -15,28 +15,71 @@ impl RevisionSerializer for BEncodeRevisionSerializer1 {
 
     fn write_revision_to_string(&self, rev: &Revision) -> std::result::Result<Vec<u8>, Error> {
         let mut e = Encoder::new();
-        e.emit_dict(|mut e| {
-            e.emit_pair(b"format", 10)?;
+        e.emit_list(|e| {
+            e.emit_list(|e| {
+                e.emit_bytes(b"format")?;
+                e.emit_int(10)?;
+                Ok(())
+            })?;
             if let Some(committer) = rev.committer.as_ref() {
-                e.emit_pair(b"committer", committer)?;
+                e.emit_list(|e| {
+                    e.emit_bytes(b"committer")?;
+                    e.emit_bytes(committer.as_bytes())?;
+                    Ok(())
+                })?;
             }
             if let Some(timezone) = rev.timezone {
-                e.emit_pair(b"timezone", timezone)?;
+                e.emit_list(|e| {
+                    e.emit_bytes(b"timezone")?;
+                    e.emit_int(timezone)?;
+                    Ok(())
+                })?;
             }
-            e.emit_pair(b"properties", &rev.properties)?;
-            e.emit_pair(b"timestamp", format!("{:.3}", rev.timestamp))?;
-            e.emit_pair(b"revision-id", &rev.revision_id.0)?;
-            e.emit_pair(
-                b"parent-ids",
-                rev.parent_ids
-                    .iter()
-                    .map(|p| p.0.as_slice())
-                    .collect::<Vec<&[u8]>>(),
-            )?;
+            e.emit_list(|e| {
+                e.emit_bytes(b"properties")?;
+                e.emit_dict(|mut e| {
+                    for (k, v) in rev.properties.iter() {
+                        e.emit_pair_with(k.as_bytes(), |e| {
+                            e.emit_bytes(v)?;
+                            Ok(())
+                        })?;
+                    }
+                    Ok(())
+                })?;
+                Ok(())
+            })?;
+            e.emit_list(|e| {
+                e.emit_bytes(b"timestamp")?;
+                e.emit_bytes(format!("{:.3}", rev.timestamp).as_bytes())?;
+                Ok(())
+            })?;
+            e.emit_list(|e| {
+                e.emit_bytes(b"revision-id")?;
+                e.emit_bytes(rev.revision_id.0.as_slice())?;
+                Ok(())
+            })?;
+            e.emit_list(|e| {
+                e.emit_bytes(b"parent-ids")?;
+                e.emit_list(|e| {
+                    for p in rev.parent_ids.iter() {
+                        e.emit_bytes(p.0.as_slice())?;
+                    }
+                    Ok(())
+                })?;
+                Ok(())
+            })?;
             if let Some(inventory_sha1) = rev.inventory_sha1.as_ref() {
-                e.emit_pair(b"inventory-sha1", inventory_sha1)?;
+                e.emit_list(|e| {
+                    e.emit_bytes(b"inventory-sha1")?;
+                    e.emit_bytes(inventory_sha1.as_slice())?;
+                    Ok(())
+                })?;
             }
-            e.emit_pair(b"message", &rev.message)?;
+            e.emit_list(|e| {
+                e.emit_bytes(b"message")?;
+                e.emit_bytes(rev.message.as_bytes())?;
+                Ok(())
+            })?;
             Ok(())
         })
         .map_err(|e| Error::EncodeError(format!("failed to encode revision: {}", e)))?;
@@ -66,7 +109,7 @@ impl RevisionSerializer for BEncodeRevisionSerializer1 {
 
     fn read_revision_from_string(&self, text: &[u8]) -> std::result::Result<Revision, Error> {
         let mut decoder = bendy::decoding::Decoder::new(text);
-        let mut d = if let Some(Object::Dict(d)) = decoder
+        let mut d = if let Some(Object::List(d)) = decoder
             .next_object()
             .map_err(|e| Error::DecodeError(format!("failed to decode bencode: {}", e)))?
         {
@@ -82,11 +125,34 @@ impl RevisionSerializer for BEncodeRevisionSerializer1 {
         let mut parent_ids = None;
         let mut revision_id = None;
         let mut inventory_sha1 = None;
-        while let Some((key, value)) = d
-            .next_pair()
+        while let Some(entry) = d
+            .next_object()
             .map_err(|e| Error::DecodeError(format!("failed to decode bencode: {}", e)))?
         {
+            let mut tuple =
+                entry.list_or_else(|_| Err(Error::DecodeError("expected tuple".to_string())))?;
+            let key = tuple
+                .next_object()
+                .map_err(|e| Error::DecodeError(format!("expected tuple with key: {}", e)))?
+                .ok_or_else(|| Error::DecodeError("expected tuple with key".to_string()))?
+                .bytes_or_else(|_| {
+                    Err(Error::DecodeError("expected tuple with key".to_string()))
+                })?;
+            let value = tuple
+                .next_object()
+                .map_err(|e| Error::DecodeError(format!("expected tuple with value: {}", e)))?
+                .ok_or_else(|| Error::DecodeError("expected tuple with value".to_string()))?;
             match key {
+                b"format" => {
+                    if value
+                        .integer_or(Err(Error::DecodeError("invalid format".to_string())))?
+                        .parse::<u64>()
+                        .map_err(|e| Error::DecodeError(format!("invalid format: {}", e)))?
+                        != 10
+                    {
+                        return Err(Error::DecodeError("invalid format".to_string()));
+                    }
+                }
                 b"timezone" => {
                     timezone = Some(
                         value
@@ -117,7 +183,7 @@ impl RevisionSerializer for BEncodeRevisionSerializer1 {
                         .map_err(|e| Error::DecodeError(format!("invalid committer: {}", e)))?,
                     );
                 }
-                b"parent_ids" => {
+                b"parent-ids" => {
                     let mut ps =
                         value.list_or(Err(Error::DecodeError("invalid parent_ids".to_string())))?;
                     let mut gs = Vec::new();
@@ -131,13 +197,13 @@ impl RevisionSerializer for BEncodeRevisionSerializer1 {
                     }
                     parent_ids = Some(gs);
                 }
-                b"revision_id" => {
+                b"revision-id" => {
                     revision_id = Some(RevisionId::from(
                         value
                             .bytes_or(Err(Error::DecodeError("invalid revision_id".to_string())))?,
                     ));
                 }
-                b"inventory_sha1" => {
+                b"inventory-sha1" => {
                     inventory_sha1 = Some(
                         value
                             .bytes_or(Err(Error::DecodeError(
@@ -187,8 +253,18 @@ impl RevisionSerializer for BEncodeRevisionSerializer1 {
                     );
                 }
                 _ => {
-                    return Err(Error::DecodeError("unknown key".to_string()));
+                    return Err(Error::DecodeError(format!(
+                        "unknown key {}",
+                        String::from_utf8_lossy(key)
+                    )));
                 }
+            }
+            if tuple
+                .next_object()
+                .map_err(|e| Error::DecodeError(format!("expected tuple: {}", e)))?
+                .is_some()
+            {
+                return Err(Error::DecodeError("extra item in tuple".to_string()));
             }
         }
 
