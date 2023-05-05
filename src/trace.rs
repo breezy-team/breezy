@@ -127,14 +127,16 @@ pub fn open_brz_log() -> Option<File> {
 
 pub struct BreezyTraceLogger<F> {
     file: Mutex<F>,
+    start_time: chrono::DateTime<chrono::Local>,
     short: bool,
 }
 
 impl<F: Write> BreezyTraceLogger<F> {
     pub fn new(mut file: F, short: bool) -> Self {
+        let start_time = chrono::Local::now();
         if !short {
             let start_time = breezy_osutils::time::format_local_date(
-                chrono::Local::now().timestamp(),
+                start_time.timestamp(),
                 None,
                 breezy_osutils::time::Timezone::Local,
                 None,
@@ -146,7 +148,22 @@ impl<F: Write> BreezyTraceLogger<F> {
         Self {
             file: Mutex::new(file),
             short,
+            start_time,
         }
+    }
+
+    pub fn mutter(&self, msg: &str) {
+        let elapsed = chrono::Local::now().signed_duration_since(self.start_time);
+
+        let mut file = self.file.lock().unwrap();
+        writeln!(
+            file,
+            "{:.3}  {msg}",
+            elapsed.num_seconds() as f64 + elapsed.num_microseconds().unwrap() as f64 / 1_000_000.0
+        )
+        .expect("failed to write to trace file");
+
+        file.flush().expect("failed to flush trace file");
     }
 }
 

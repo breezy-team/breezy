@@ -1436,11 +1436,11 @@ class TestTestCase(tests.TestCase):
         # one child, we should instead see the bad result inside our test with
         # the two children.
         # the outer child test
-        original_trace = breezy.trace._trace_file
+        original_trace = breezy.trace._trace_handler
         outer_test = TestTestCase("outer_child")
         result = self.make_test_result()
         outer_test.run(result)
-        self.assertEqual(original_trace, breezy.trace._trace_file)
+        self.assertEqual(original_trace, breezy.trace._trace_handler)
 
     def method_that_times_a_bit_twice(self):
         # call self.time twice to ensure it aggregates

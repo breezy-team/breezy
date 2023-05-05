@@ -1661,9 +1661,9 @@ class TestCase(testtools.TestCase):
 
     def _finishLogFile(self):
         """Flush and dereference the in-memory log for this testcase"""
-        if trace._trace_file:
+        if trace._trace_handler:
             # flush the log file, to get all content
-            trace._trace_file.flush()
+            trace._trace_handler.flush()
         trace.pop_log_file(self._log_memento)
         # The logging module now tracks references for cleanup so discard ours
         del self._log_memento
