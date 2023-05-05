@@ -25,6 +25,7 @@ create_exception!(
 import_exception!(breezy.errors, IllegalPath);
 import_exception!(breezy.errors, PathNotChild);
 import_exception!(breezy.errors, DirectoryNotEmpty);
+import_exception!(breezy.errors, BinaryFile);
 
 #[pyclass]
 struct PyChunksToLinesIterator {
@@ -526,13 +527,17 @@ fn IterableFile(py_iterable: PyObject) -> PyResult<PyObject> {
 }
 
 #[pyfunction]
-fn check_text_path(path: &PyAny) -> PyResult<bool> {
+fn check_text_path(path: &PyAny) -> PyResult<()> {
     let path = extract_path(path)?;
-    Ok(breezy_osutils::textfile::check_text_path(path.as_path())?)
+    if !breezy_osutils::textfile::check_text_path(path.as_path())? {
+        Err(BinaryFile::new_err(()))
+    } else {
+        Ok(())
+    }
 }
 
 #[pyfunction]
-fn check_text_lines(py: Python, lines: &PyAny) -> PyResult<bool> {
+fn check_text_lines(py: Python, lines: &PyAny) -> PyResult<()> {
     let mut py_iter = lines.iter()?;
     let line_iter = std::iter::from_fn(|| {
         let line = py_iter.next();
@@ -550,7 +555,11 @@ fn check_text_lines(py: Python, lines: &PyAny) -> PyResult<bool> {
     if PyErr::occurred(py) {
         return Err(PyErr::fetch(py));
     }
-    Ok(result)
+    if !result {
+        Err(BinaryFile::new_err(()))
+    } else {
+        Ok(())
+    }
 }
 
 #[pyfunction]

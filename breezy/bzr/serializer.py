@@ -127,7 +127,7 @@ class SerializerRegistry(registry.Registry):
 revision_format_registry = SerializerRegistry()
 revision_format_registry.register_lazy('5', 'breezy.bzr.xml5', 'revision_serializer_v5')
 revision_format_registry.register_lazy('8', 'breezy.bzr.xml8', 'revision_serializer_v8')
-revision_format_registry.register_lazy('10', 'breezy.bzr.chk_serializer', 'revision_bencode_serializer')
+revision_format_registry.register_lazy('10', 'breezy._bzr_rs', 'revision_bencode_serializer')
 
 
 inventory_format_registry = SerializerRegistry()
