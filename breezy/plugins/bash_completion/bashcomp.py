@@ -31,8 +31,7 @@ class BashCodeGen:
         self.debug = debug
 
     def script(self):
-        return ("""\
-# Programmable completion for the Breezy brz command under bash.
+        return (f"""# Programmable completion for the Breezy brz command under bash.
 # Known to work with bash 2.05a as well as bash 4.1.2, and probably
 # all versions in between as well.
 
@@ -43,16 +42,12 @@ class BashCodeGen:
 # Generated using the bash_completion plugin.
 # See https://launchpad.net/bzr-bash-completion for details.
 
-# Commands and options of brz {brz_version}
+# Commands and options of brz {self.brz_version()}
 
 shopt -s progcomp
-{function}
-complete -F {function_name} -o default brz
-""".format(
-            function_name=self.function_name,
-            function=self.function(),
-            brz_version=self.brz_version(),
-        ))
+{self.function()}
+complete -F {self.function_name} -o default brz
+""")
 
     def function(self):
         return ("""\
@@ -181,7 +176,7 @@ complete -F {function_name} -o default brz
         else:
             brz_version += " and the following plugins:"
             for name, plugin in sorted(self.data.plugins.items()):
-                brz_version += "\n# %s" % plugin
+                brz_version += f"\n# {plugin}"
         return brz_version
 
     def global_options(self):
@@ -194,27 +189,27 @@ complete -F {function_name} -o default brz
         return cases
 
     def command_case(self, command):
-        case = "\t%s)\n" % "|".join(command.aliases)
+        case = f"\t{'|'.join(command.aliases)})\n"
         if command.plugin:
-            case += "\t\t# plugin \"%s\"\n" % command.plugin
+            case += f"\t\t# plugin \"{command.plugin}\"\n"
         options = []
         enums = []
         for option in command.options:
             for message in option.error_messages:
-                case += "\t\t# %s\n" % message
+                case += f"\t\t# {message}\n"
             if option.registry_keys:
                 for key in option.registry_keys:
-                    options.append("{}={}".format(option, key))
+                    options.append(f"{option}={key}")
                 enums.append("%s) optEnums=( %s ) ;;" %
                              (option, ' '.join(option.registry_keys)))
             else:
                 options.append(str(option))
-        case += "\t\tcmdOpts=( %s )\n" % " ".join(options)
+        case += f"\t\tcmdOpts=( {' '.join(options)} )\n"
         if command.fixed_words:
             fixed_words = command.fixed_words
             if isinstance(fixed_words, list):
                 fixed_words = "( %s )" + ' '.join(fixed_words)
-            case += "\t\tfixedWords=%s\n" % fixed_words
+            case += f"\t\tfixedWords={fixed_words}\n"
         if enums:
             case += "\t\tcase $curOpt in\n\t\t\t"
             case += "\n\t\t\t".join(enums)
@@ -259,7 +254,7 @@ class PluginData:
     def __str__(self):
         if self.version == 'unknown':
             return self.name
-        return '{} {}'.format(self.name, self.version)
+        return f'{self.name} {self.version}'
 
 
 class OptionData:
@@ -358,7 +353,7 @@ class DataCollector:
         optswitches.clear()
         opt.add_option(parser, opt.short_name())
         if isinstance(opt, option.RegistryOption) and opt.enum_switch:
-            enum_switch = '--%s' % opt.name
+            enum_switch = f'--{opt.name}'
             enum_data = optswitches.get(enum_switch)
             if enum_data:
                 try:

@@ -19,7 +19,7 @@
 import hashlib
 import time
 
-from .. import controldir, debug, errors, osutils
+from .. import _bzr_rs, controldir, debug, errors, osutils
 from .. import revision as _mod_revision
 from .. import trace, ui
 from ..bzr import chk_map, chk_serializer
@@ -378,7 +378,7 @@ class GCCHKPacker(Packer):
     def _copy_stream(self, source_vf, target_vf, keys, message, vf_to_stream,
                      pb_offset):
         trace.mutter('repacking %d %s', len(keys), message)
-        self.pb.update('repacking {}'.format(message), pb_offset)
+        self.pb.update(f'repacking {message}', pb_offset)
         with ui.ui_factory.nested_progress_bar() as child_pb:
             stream = vf_to_stream(source_vf, keys, message, child_pb)
             for _, _ in target_vf._insert_record_stream(
@@ -589,7 +589,7 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
 
         This is useful to get the side-effects of generating a stream.
         """
-        self.pb.update('scanning {}'.format(message), pb_offset)
+        self.pb.update(f'scanning {message}', pb_offset)
         with ui.ui_factory.nested_progress_bar() as child_pb:
             list(vf_to_stream(source_vf, keys, message, child_pb))
 
@@ -769,8 +769,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         present_text_keys = no_fallback_texts_index.get_parent_map(text_keys)
         missing_text_keys = text_keys.difference(present_text_keys)
         if missing_text_keys:
-            problems.append("missing text keys: %r"
-                            % (sorted(missing_text_keys),))
+            problems.append(f"missing text keys: {sorted(missing_text_keys)!r}")
         return problems
 
 
@@ -920,7 +919,7 @@ class CHKInventoryRepository(PackRepository):
             resulting inventory.
         """
         if not self.is_in_write_group():
-            raise AssertionError("{!r} not in write group".format(self))
+            raise AssertionError(f"{self!r} not in write group")
         _mod_revision.check_not_reserved_id(new_revision_id)
         basis_tree = None
         if basis_inv is None or not isinstance(basis_inv, inventory.CHKInventory):
@@ -1341,7 +1340,7 @@ class RepositoryFormat2a(RepositoryFormatPack):
     supports_chks = True
     _commit_builder_class = PackCommitBuilder
     rich_root_data = True
-    _revision_serializer = chk_serializer.revision_bencode_serializer
+    _revision_serializer = _bzr_rs.revision_bencode_serializer
     _inventory_serializer = chk_serializer.inventory_chk_serializer_255_bigpage_10
     _commit_inv_deltas = True
     # What index classes to use

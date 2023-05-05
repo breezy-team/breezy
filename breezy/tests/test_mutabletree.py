@@ -31,12 +31,12 @@ class TestHooks(tests.TestCase):
         self.assertIn(
             "start_commit",
             hooks,
-            "start_commit not in %s" % hooks
+            f"start_commit not in {hooks}"
         )
         self.assertIn(
             "post_commit",
             hooks,
-            "post_commit not in %s" % hooks
+            f"post_commit not in {hooks}"
         )
 
     def test_installed_hooks_are_MutableTreeHooks(self):

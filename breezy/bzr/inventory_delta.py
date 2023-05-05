@@ -178,9 +178,9 @@ class InventoryDeltaSerializer:
         :return: The serialized delta as lines.
         """
         if not isinstance(old_name, bytes):
-            raise TypeError('old_name should be str, got {!r}'.format(old_name))
+            raise TypeError(f'old_name should be str, got {old_name!r}')
         if not isinstance(new_name, bytes):
-            raise TypeError('new_name should be str, got {!r}'.format(new_name))
+            raise TypeError(f'new_name should be str, got {new_name!r}')
         lines = [b'', b'', b'', b'', b'']
         to_line = self._delta_item_to_line
         for delta_item in delta_to_new:

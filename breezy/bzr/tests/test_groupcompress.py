@@ -738,7 +738,7 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
         target = self.make_test_vf(True, dir='target',
                                    inconsistency_fatal=inconsistency_fatal)
         for x in range(2):
-            source = self.make_source_with_b(x == 1, 'source%s' % x)
+            source = self.make_source_with_b(x == 1, f'source{x}')
             target.insert_record_stream(source.get_record_stream(
                 [(b'b',)], 'unordered', False))
 

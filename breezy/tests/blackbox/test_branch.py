@@ -90,8 +90,7 @@ class TestBranch(tests.TestCaseWithTransport):
         os.mkdir('b')
         tree = self.example_branch('b/a', format='development-colo')
         tree.controldir.create_branch(name='somecolo')
-        out, err = self.run_bzr('branch %s,branch=somecolo' %
-                                local_path_to_url('b/a'))
+        out, err = self.run_bzr(f"branch {local_path_to_url('b/a')},branch=somecolo")
         self.assertEqual('', out)
         self.assertEqual('Branched 0 revisions.\n', err)
         self.assertPathExists('a')
@@ -101,8 +100,7 @@ class TestBranch(tests.TestCaseWithTransport):
         os.mkdir('b')
         tree = self.example_branch('b/a', format='development-colo')
         tree.controldir.create_branch(name='somecolo')
-        out, err = self.run_bzr('branch -b somecolo %s' %
-                                local_path_to_url('b/a'))
+        out, err = self.run_bzr(f"branch -b somecolo {local_path_to_url('b/a')}")
         self.assertEqual('', out)
         self.assertEqual('Branched 0 revisions.\n', err)
         self.assertPathExists('a')

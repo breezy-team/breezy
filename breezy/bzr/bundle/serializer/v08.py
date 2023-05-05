@@ -438,7 +438,7 @@ class BundleReader:
         if line is None:
             return
         key, value = self._read_next_entry(line, indent=1)
-        mutter('_handle_next {!r} => {!r}'.format(key, value))
+        mutter(f'_handle_next {key!r} => {value!r}')
         if key is None:
             return
 
@@ -453,10 +453,10 @@ class BundleReader:
                     value = value.encode('ascii')
                 setattr(revision_info, key, value)
             else:
-                raise errors.MalformedHeader('Duplicated Key: %s' % key)
+                raise errors.MalformedHeader(f'Duplicated Key: {key}')
         else:
             # What do we do with a key we don't recognize
-            raise errors.MalformedHeader('Unknown Key: "%s"' % key)
+            raise errors.MalformedHeader(f'Unknown Key: "{key}"')
 
     def _read_many(self, indent):
         """If a line ends with no entry, that means that it should be

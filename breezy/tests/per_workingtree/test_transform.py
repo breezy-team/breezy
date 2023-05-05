@@ -228,7 +228,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertLess(
             abs(creation_mtime - st1.st_mtime),
             2.0,
-            "{} != {} within 2 seconds".format(creation_mtime, st1.st_mtime)
+            f"{creation_mtime} != {st1.st_mtime} within 2 seconds"
         )
         # But if we have more than that, all files should get the same result
         self.assertEqual(st1.st_mtime, st2.st_mtime)
@@ -1689,7 +1689,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         foo_trans_id = tt.trans_id_tree_path("foo")
         tt.delete_contents(foo_trans_id)
         log = BytesIO()
-        trace.push_log_file(log)
+        trace.push_log_file(log, short=True)
         tt.create_symlink("bar", foo_trans_id)
         tt.apply()
         self.assertContainsRe(

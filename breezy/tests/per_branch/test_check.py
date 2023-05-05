@@ -87,7 +87,7 @@ class TestBranchCheck(TestCaseWithBranch):
                 existences.add(value)
             else:
                 raise AssertionError(
-                    'unknown ref kind for ref %s' % ref)
+                    f'unknown ref kind for ref {ref}')
         node_distances = branch.repository.get_graph().find_lefthand_distances(
             distances)
         for key, distance in node_distances.items():

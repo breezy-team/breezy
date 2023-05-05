@@ -164,13 +164,13 @@ class RemoteHelper:
             elif self.batchcmd is None:
                 return
             else:
-                raise AssertionError("invalid batch %r" % self.batchcmd)
+                raise AssertionError(f"invalid batch {self.batchcmd!r}")
             self.batchcmd = None
         else:
             try:
                 self.commands[argv[0].decode()](self, outf, argv)
             except KeyError:
-                raise Exception("Unknown remote command %r" % argv)
+                raise Exception(f"Unknown remote command {argv!r}")
         outf.flush()
 
 

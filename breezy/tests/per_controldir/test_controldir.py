@@ -1387,7 +1387,7 @@ class TestControlDir(TestCaseWithControlDir):
         try:
             made_tree = made_control.create_workingtree(revision_id=a)
         except (errors.NotLocalUrl, errors.UnsupportedOperation):
-            raise TestSkipped("Can't make working tree on transport %r" % t)
+            raise TestSkipped(f"Can't make working tree on transport {t!r}")
         self.assertEqual([a], made_tree.get_parent_ids())
 
     def test_open_workingtree(self):
@@ -1403,8 +1403,7 @@ class TestControlDir(TestCaseWithControlDir):
             made_tree = made_control.create_workingtree()
         except (errors.NotLocalUrl, errors.UnsupportedOperation):
             raise TestSkipped(
-                "Can't initialize {!r} on transport {!r}".format(
-                    self.bzrdir_format, t))
+                f"Can't initialize {self.bzrdir_format!r} on transport {t!r}")
         opened_tree = made_control.open_workingtree()
         self.assertEqual(made_control, opened_tree.controldir)
         self.assertIsInstance(opened_tree, made_tree.__class__)
@@ -1755,7 +1754,7 @@ class TestTransportConfig(TestCaseWithControlDir):
                 self.assertNotIsInstance(
                     my_dir,
                     (_mod_bzrdir.BzrDirMeta1, RemoteBzrDir),
-                    "%r should support configs" % my_dir
+                    f"{my_dir!r} should support configs"
                 )
                 raise TestNotApplicable(
                     'This BzrDir format does not support configs.')

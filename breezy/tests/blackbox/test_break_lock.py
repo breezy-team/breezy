@@ -115,7 +115,6 @@ class TestConfigBreakLock(tests.TestCaseWithTransport):
         self.assertTrue(self.config._lock.is_held)
 
     def test_break_lock(self):
-        self.run_bzr('break-lock --config %s'
-                     % osutils.dirname(self.config_file_name),
+        self.run_bzr(f'break-lock --config {osutils.dirname(self.config_file_name)}',
                      stdin="y\n")
         self.assertRaises(errors.LockBroken, self.config.unlock)

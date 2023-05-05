@@ -98,8 +98,7 @@ def unescape_file_id(file_id):
             elif file_id[i + 1:i + 2] == b'c':
                 ret.append(b"\x0c"[0])
             else:
-                raise ValueError("unknown escape character %s" %
-                                 file_id[i + 1:i + 2])
+                raise ValueError(f"unknown escape character {file_id[i + 1:i + 2]}")
             i += 1
         i += 1
     return bytes(ret)
@@ -208,7 +207,7 @@ class BzrGitMapping(foreign.VcsMapping):
         except KeyError:
             return ""
         else:
-            return "\ngit-svn-id: %s\n" % git_svn_id.encode(encoding)
+            return f"\ngit-svn-id: {git_svn_id.encode(encoding)}\n"
 
     def _generate_hg_message_tail(self, rev):
         extra = {}
@@ -297,7 +296,7 @@ class BzrGitMapping(foreign.VcsMapping):
                     metadata.explicit_parent_ids = rev.parent_ids
             if git_p is not None:
                 if len(git_p) != 40:
-                    raise AssertionError("unexpected length for %r" % git_p)
+                    raise AssertionError(f"unexpected length for {git_p!r}")
                 parents.append(git_p)
         commit.parents = parents
         try:
@@ -335,8 +334,13 @@ class BzrGitMapping(foreign.VcsMapping):
         if 'git-gpg-signature' in rev.properties:
             commit.gpgsig = rev.properties['git-gpg-signature'].encode(
                 'utf-8', 'surrogateescape')
-        commit.message = self._encode_commit_message(rev, rev.message,
-                                                     encoding)
+        if 'git-missing-message' in rev.properties:
+            if commit.message != '':
+                raise AssertionError('git-missing-message set but message is not empty')
+            commit.message = None
+        else:
+            commit.message = self._encode_commit_message(rev, rev.message,
+                                                         encoding)
         if not isinstance(commit.message, bytes):
             raise TypeError(commit.message)
         if metadata is not None:
@@ -504,6 +508,10 @@ class BzrGitMapping(foreign.VcsMapping):
         if extra_lines:
             properties['git-extra'] = ''.join(extra_lines)
 
+        if message is None:
+            properties['git-missing-message'] = 'true'
+            message = ''
+
         rev = ForeignRevision(
             foreign_revid=commit.id, mapping=self,
             revision_id=self.revision_id_foreign_to_bzr(commit.id),
@@ -550,7 +558,7 @@ class BzrGitMappingExperimental(BzrGitMappingv1):
     def import_commit(self, commit, lookup_parent_revid, strict=True):
         rev, roundtrip_revid, verifiers = super().import_commit(
                 commit, lookup_parent_revid, strict)
-        rev.properties['converted_revision'] = "git %s\n" % commit.id
+        rev.properties['converted_revision'] = f"git {commit.id}\n"
         return rev, roundtrip_revid, verifiers
 
 
@@ -648,7 +656,7 @@ def mode_kind(mode):
                 "Unknown file kind %d, perms=%o." % (file_kind, mode,))
     else:
         raise AssertionError(
-            "Unknown kind, perms={!r}.".format(mode))
+            f"Unknown kind, perms={mode!r}.")
 
 
 def object_mode(kind, executable):

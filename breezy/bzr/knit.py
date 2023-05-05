@@ -353,7 +353,7 @@ class KnitContentFactory(ContentFactory):
             annotated_kind = 'annotated-'
         else:
             annotated_kind = ''
-        self.storage_kind = 'knit-{}{}-gz'.format(annotated_kind, kind)
+        self.storage_kind = f'knit-{annotated_kind}{kind}-gz'
         self._raw_record = raw_record
         self._network_bytes = network_bytes
         self._build_details = build_details
@@ -971,10 +971,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         self._reload_func = reload_func
 
     def __repr__(self):
-        return "{}({!r}, {!r})".format(
-            self.__class__.__name__,
-            self._index,
-            self._access)
+        return f"{self.__class__.__name__}({self._index!r}, {self._access!r})"
 
     def without_fallbacks(self):
         """Return a clone of this object without any fallbacks configured."""
@@ -1088,11 +1085,11 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
 
         for element in key[:-1]:
             if not isinstance(element, bytes):
-                raise TypeError("key contains non-bytestrings: {!r}".format(key))
+                raise TypeError(f"key contains non-bytestrings: {key!r}")
         if key[-1] is None:
             key = key[:-1] + (b'sha1:' + digest,)
         elif not isinstance(key[-1], bytes):
-            raise TypeError("key contains non-bytestrings: {!r}".format(key))
+            raise TypeError(f"key contains non-bytestrings: {key!r}")
         # Knit hunks are still last-element only
         version_id = key[-1]
         content = self._factory.make(lines, version_id)
@@ -1194,7 +1191,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         """
         if rec[1] != version_id:
             raise KnitCorrupt(self,
-                              'unexpected version, wanted {!r}, got {!r}'.format(version_id, rec[1]))
+                              f'unexpected version, wanted {version_id!r}, got {rec[1]!r}')
 
     def _check_should_delta(self, parent):
         """Iterate back through the parent listing, looking for a fulltext.
@@ -1660,9 +1657,9 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         # The set of types we can cheaply adapt without needing basis texts.
         native_types = set()
         if self._max_delta_chain:
-            native_types.add("knit-%sdelta-gz" % annotated)
-            delta_types.add("knit-%sdelta-gz" % annotated)
-        native_types.add("knit-%sft-gz" % annotated)
+            native_types.add(f"knit-{annotated}delta-gz")
+            delta_types.add(f"knit-{annotated}delta-gz")
+        native_types.add(f"knit-{annotated}ft-gz")
         knit_types = native_types.union(convertibles)
         adapters = {}
         # Buffer all index entries that we can't add immediately because their
@@ -2079,9 +2076,9 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         for chunk in chunks:
             if not isinstance(chunk, bytes):
                 raise AssertionError(
-                    'data must be plain bytes was %s' % type(chunk))
+                    f'data must be plain bytes was {type(chunk)}')
         if lines and not lines[-1].endswith(b'\n'):
-            raise ValueError('corrupt lines value %r' % lines)
+            raise ValueError(f'corrupt lines value {lines!r}')
         compressed_chunks = tuned_gzip.chunks_to_gzip(chunks)
         return sum(map(len, compressed_chunks)), compressed_chunks
 
@@ -2531,7 +2528,7 @@ class _KndxIndex:
                         self._dictionary_compress(parents), b':'])
                     if not isinstance(line, bytes):
                         raise AssertionError(
-                            'data must be utf8 was %s' % type(line))
+                            f'data must be utf8 was {type(line)}')
                     lines.append(line)
                     self._cache_key(key, options, pos, size, parents)
                 if len(orig_history):
@@ -2568,8 +2565,7 @@ class _KndxIndex:
         parents = tuple(parent[-1] for parent in parent_keys)
         for parent in parent_keys:
             if parent[:-1] != prefix:
-                raise ValueError("mismatched prefixes for {!r}, {!r}".format(
-                    key, parent_keys))
+                raise ValueError(f"mismatched prefixes for {key!r}, {parent_keys!r}")
         cache, history = self._kndx_cache[prefix]
         # only want the _history index to reference the 1st index entry
         # for version_id
@@ -2821,7 +2817,7 @@ class _KndxIndex:
         for key in keys:
             if key[:-1] != prefix:
                 # kndx indices cannot refer across partitioned storage.
-                raise ValueError("mismatched prefixes for %r" % keys)
+                raise ValueError(f"mismatched prefixes for {keys!r}")
             if key[-1] in cache:
                 # -- inlined lookup() --
                 result_list.append(b'%d' % cache[key[-1]][5])
@@ -2911,7 +2907,7 @@ class _KnitGraphIndex:
             self._key_dependencies = None
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self._graph_index)
+        return f"{self.__class__.__name__}({self._graph_index!r})"
 
     def add_records(self, records, random_id=False,
                     missing_compression_parents=False):
@@ -3058,7 +3054,7 @@ class _KnitGraphIndex:
             return None
         if len(compression_parents) != 1:
             raise AssertionError(
-                "Too many compression parents: %r" % compression_parents)
+                f"Too many compression parents: {compression_parents!r}")
         return compression_parents[0]
 
     def get_build_details(self, keys):
@@ -3275,7 +3271,7 @@ class _KnitKeyAccess:
         raw_data = b''.join(raw_data)
         if not isinstance(raw_data, bytes):
             raise AssertionError(
-                'data must be plain bytes was %s' % type(raw_data))
+                f'data must be plain bytes was {type(raw_data)}')
         result = []
         offset = 0
         # TODO: This can be tuned for writing to sftp and other servers where

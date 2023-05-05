@@ -48,7 +48,7 @@ class DictParentsProvider:
         self.ancestry = ancestry
 
     def __repr__(self):
-        return 'DictParentsProvider(%r)' % self.ancestry
+        return f'DictParentsProvider({self.ancestry!r})'
 
     # Note: DictParentsProvider does not implement get_cached_parent_map
     #       Arguably, the data is clearly cached in memory. However, this class
@@ -71,7 +71,7 @@ class StackedParentsProvider:
         self._parent_providers = parent_providers
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self._parent_providers)
+        return f"{self.__class__.__name__}({self._parent_providers!r})"
 
     def get_parent_map(self, keys):
         """Get a mapping of keys => parents
@@ -145,7 +145,7 @@ class CachingParentsProvider:
         self.enable_cache(True)
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self._real_provider)
+        return f"{self.__class__.__name__}({self._real_provider!r})"
 
     def enable_cache(self, cache_misses=True):
         """Enable cache."""
@@ -218,7 +218,7 @@ class CallableToParentsProviderAdapter:
         self.callable = a_callable
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self.callable)
+        return f"{self.__class__.__name__}({self.callable!r})"
 
     def get_parent_map(self, keys):
         return self.callable(keys)
@@ -249,7 +249,7 @@ class Graph:
         self._parents_provider = parents_provider
 
     def __repr__(self):
-        return 'Graph(%r)' % self._parents_provider
+        return f'Graph({self._parents_provider!r})'
 
     def find_lca(self, *revisions):
         """Determine the lowest common ancestors of the provided revisions
@@ -1341,7 +1341,7 @@ class _BreadthFirstSearcher:
             prefix = "searching"
         else:
             prefix = "starting"
-        search = '{}={!r}'.format(prefix, list(self._next_query))
+        search = f'{prefix}={list(self._next_query)!r}'
         return ('_BreadthFirstSearcher(iterations=%d, %s,'
                 ' seen=%r)' % (self._iterations, search, list(self.seen)))
 

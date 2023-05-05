@@ -440,15 +440,15 @@ class TestInfo(TestCaseWithTransport):
         # U U U
         out, err = self.run_bzr('info -v branch')
         self.assertEqualDiff(
-            """Standalone tree (format: weave)
+            f"""Standalone tree (format: weave)
 Location:
-  branch root: {}
+  branch root: branch
 
 Format:
        control: All-in-one format 6
   working tree: Working tree format 2
         branch: Branch format 4
-    repository: {}
+    repository: {tree.branch.repository._format.get_format_description()}
 
 In the working tree:
          0 unchanged
@@ -466,22 +466,21 @@ Branch history:
 
 Repository:
          0 revisions
-""".format('branch', tree.branch.repository._format.get_format_description(),
-       ), out)
+""", out)
         self.assertEqual('', err)
         # L L L
         tree.lock_write()
         out, err = self.run_bzr('info -v branch')
         self.assertEqualDiff(
-            """Standalone tree (format: weave)
+            f"""Standalone tree (format: weave)
 Location:
-  branch root: {}
+  branch root: branch
 
 Format:
        control: All-in-one format 6
   working tree: Working tree format 2
         branch: Branch format 4
-    repository: {}
+    repository: {tree.branch.repository._format.get_format_description()}
 
 In the working tree:
          0 unchanged
@@ -499,8 +498,7 @@ Branch history:
 
 Repository:
          0 revisions
-""".format('branch', tree.branch.repository._format.get_format_description(),
-       ), out)
+""", out)
         self.assertEqual('', err)
         tree.unlock()
 
@@ -540,7 +538,7 @@ class TestBoundBranch(TestCaseWithTransport):
         #       print out the actual path, rather than the URL
         cwd = urlutils.local_path_to_url(getcwd())
         self.assertEqual(
-            'brz: ERROR: Branch at %s/ does not support binding.\n' % cwd, err)
+            f'brz: ERROR: Branch at {cwd}/ does not support binding.\n', err)
 
     def test_unbind_format_6_bzrdir(self):
         # bind on a format 6 bzrdir should error

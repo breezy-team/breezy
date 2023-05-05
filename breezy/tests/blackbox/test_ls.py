@@ -213,9 +213,7 @@ class TestLS(tests.TestCaseWithTransport):
         self.run_bzr_error(['invalid kind specified'], 'ls --kind=pile')
 
     def test_ls_path_nonrecursive(self):
-        self.ls_equals('%s/.bzrignore\n'
-                       '%s/a\n'
-                       % (self.test_dir, self.test_dir),
+        self.ls_equals(f'{self.test_dir}/.bzrignore\n{self.test_dir}/a\n',
                        self.test_dir, recursive=False)
 
     def test_ls_directory(self):

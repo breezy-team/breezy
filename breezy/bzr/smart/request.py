@@ -243,8 +243,7 @@ class SmartServerResponse:
                 and other.body_stream is self.body_stream)
 
     def __repr__(self):
-        return "<{} args={!r} body={!r}>".format(self.__class__.__name__,
-                                         self.args, self.body)
+        return f"<{self.__class__.__name__} args={self.args!r} body={self.body!r}>"
 
 
 class FailedSmartServerResponse(SmartServerResponse):
@@ -307,7 +306,7 @@ class SmartServerRequestHandler:
         # that just putting it in a helper doesn't help a lot. And some state
         # is taken from the instance.
         if include_time:
-            t = '%5.3fs ' % (osutils.perf_counter() - self._request_start_time)
+            t = f'{osutils.perf_counter() - self._request_start_time:5.3f}s '
         else:
             t = ''
         if extra_bytes is None:
@@ -327,7 +326,7 @@ class SmartServerRequestHandler:
         self._run_handler_code(self._command.do_chunk, (bytes,), {})
         if 'hpss' in debug.debug_flags:
             self._trace('accept body',
-                        '%d bytes' % (len(bytes),), bytes)
+                        f'{len(bytes)} bytes', bytes)
 
     def end_of_body(self):
         """No more body data will be received."""
@@ -389,7 +388,7 @@ class SmartServerRequestHandler:
                 action = 'hpss vfs req'
             else:
                 action = 'hpss request'
-            self._trace(action, '{} {}'.format(cmd, repr(args)[1:-1]))
+            self._trace(action, f'{cmd} {repr(args)[1:-1]}')
         self._command = command(
             self._backing_transport, self._root_client_path, self._jail_root)
         self._run_handler_code(self._command.execute, args, {})

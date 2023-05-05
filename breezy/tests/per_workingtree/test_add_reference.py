@@ -37,8 +37,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
             raise tests.TestNotApplicable(
                 'Tree format does not support references')
         else:
-            self.fail('%r does not support references but should'
-                      % (tree, ))
+            self.fail(f'{tree!r} does not support references but should')
 
     def make_nested_trees(self):
         tree, sub_tree = self.make_trees()

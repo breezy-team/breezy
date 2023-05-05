@@ -692,7 +692,7 @@ create_signatures=when-possible
         tree.add('foo')
         tree.commit('added foo', rev_id=b'foo_id')
         log = BytesIO()
-        trace.push_log_file(log)
+        trace.push_log_file(log, short=True)
         self.overrideAttr(os, 'symlink', None)
         self.overrideAttr(osutils, 'supports_symlinks', lambda x: False)
         # At this point as bzr thinks symlinks are not supported

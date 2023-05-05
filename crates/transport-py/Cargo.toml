@@ -1,14 +1,15 @@
 [package]
 name = "transport-py"
 version = "3.3.3"
-edition = "2021"
+edition = "2018"
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = { version = ">=0.17, <0.19", features = ["extension-module"]}
-breezy-transport = { path = "../transport", features = ["pyo3"] }
-url = "2.2"
+breezy-transport = { path = "../transport" }
 pyo3-file = { git = "https://github.com/omerbenamram/pyo3-file" }
+sftp = "0.2.0"
+url = "2.2"
 log = "0.4"

@@ -391,7 +391,7 @@ def report_delta(to_file, delta, short_status=False, show_ids=False,
 
     def show_more_renamed(item):
         dec_new_path = decorate_path(item.path[1], item.kind[1], item.meta_modified())
-        to_file.write(' => %s' % dec_new_path)
+        to_file.write(f' => {dec_new_path}')
         if item.changed_content or item.meta_modified():
             extra_modified.append(InventoryTreeChange(
                 item.file_id, (item.path[1], item.path[1]),
@@ -403,7 +403,7 @@ def report_delta(to_file, delta, short_status=False, show_ids=False,
                 item.executable))
 
     def show_more_kind_changed(item):
-        to_file.write(' ({} => {})'.format(item.kind[0], item.kind[1]))
+        to_file.write(f' ({item.kind[0]} => {item.kind[1]})')
 
     def show_path(path, kind, meta_modified,
                   default_format, with_file_id_format):
@@ -442,7 +442,7 @@ def report_delta(to_file, delta, short_status=False, show_ids=False,
                 if show_more is not None:
                     show_more(item)
                 if show_ids and getattr(item, 'file_id', None):
-                    to_file.write(' %s' % item.file_id.decode('utf-8'))
+                    to_file.write(f" {item.file_id.decode('utf-8')}")
                 to_file.write('\n')
 
     show_list(delta.removed, 'removed', 'D')

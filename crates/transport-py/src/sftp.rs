@@ -13,13 +13,13 @@ import_exception!(breezy.transport, NoSuchFile);
 import_exception!(breezy.errors, PermissionDenied);
 
 #[pyclass]
-struct SFTPAttributes(breezy_transport::sftp::Attributes);
+struct SFTPAttributes(sftp::Attributes);
 
 #[pymethods]
 impl SFTPAttributes {
     #[new]
     fn new() -> Self {
-        Self(breezy_transport::sftp::Attributes::new())
+        Self(sftp::Attributes::new())
     }
 
     #[getter]
@@ -45,31 +45,29 @@ impl SFTPAttributes {
 
 #[pyclass]
 struct SFTPClient {
-    sftp: Arc<breezy_transport::sftp::SftpClient>,
+    sftp: Arc<sftp::SftpClient>,
     cwd: Option<String>,
 }
 
-fn sftp_error_to_py_err(e: breezy_transport::sftp::Error, path: Option<&str>) -> PyErr {
+fn sftp_error_to_py_err(e: sftp::Error, path: Option<&str>) -> PyErr {
     match e {
-        breezy_transport::sftp::Error::Io(e) => e.into(),
-        breezy_transport::sftp::Error::Eof(_, _) => {
-            std::io::Error::from(std::io::ErrorKind::UnexpectedEof).into()
-        }
-        breezy_transport::sftp::Error::NoSuchFile(msg, _lang) => {
+        sftp::Error::Io(e) => e.into(),
+        sftp::Error::Eof(_, _) => std::io::Error::from(std::io::ErrorKind::UnexpectedEof).into(),
+        sftp::Error::NoSuchFile(msg, _lang) => {
             NoSuchFile::new_err((path.map(|p| p.to_string()), msg))
         }
-        breezy_transport::sftp::Error::PermissionDenied(msg, _) => {
+        sftp::Error::PermissionDenied(msg, _) => {
             PermissionDenied::new_err((path.map(|p| p.to_string()), msg))
         }
-        breezy_transport::sftp::Error::Failure(msg, _lang) => SFTPError::new_err(msg),
+        sftp::Error::Failure(msg, _lang) => SFTPError::new_err(msg),
         _ => SFTPError::new_err(format!("{:?}", e)),
     }
 }
 
 #[pyclass]
 struct SFTPFile {
-    sftp: Arc<breezy_transport::sftp::SftpClient>,
-    file: breezy_transport::sftp::File,
+    sftp: Arc<sftp::SftpClient>,
+    file: sftp::File,
     offset: u64,
 }
 
@@ -170,8 +168,8 @@ impl SFTPFile {
         #[pyclass]
         struct ReadvIter {
             offsets: VecDeque<(u64, u32)>,
-            sftp: Arc<breezy_transport::sftp::SftpClient>,
-            file: breezy_transport::sftp::File,
+            sftp: Arc<sftp::SftpClient>,
+            file: sftp::File,
         }
 
         #[pymethods]
@@ -184,9 +182,7 @@ impl SFTPFile {
                 if let Some((offset, length)) = self.offsets.pop_front() {
                     match py.allow_threads(|| self.sftp.pread(&self.file, offset, length)) {
                         Ok(data) => Ok(Some(PyBytes::new(py, &data).into())),
-                        Err(breezy_transport::sftp::Error::Eof(_, _)) => {
-                            Ok(Some(PyBytes::new(py, &[]).into()))
-                        }
+                        Err(sftp::Error::Eof(_, _)) => Ok(Some(PyBytes::new(py, &[]).into())),
                         Err(e) => Err(sftp_error_to_py_err(e, None)),
                     }
                 } else {
@@ -221,7 +217,7 @@ impl SFTPFile {
                 self.offset += data.len() as u64;
                 Ok(PyBytes::new(py, data.as_slice()).into_py(py))
             }
-            Err(breezy_transport::sftp::Error::Eof(_, _)) => Ok(PyBytes::new(py, &[]).into_py(py)),
+            Err(sftp::Error::Eof(_, _)) => Ok(PyBytes::new(py, &[]).into_py(py)),
             Err(e) => Err(sftp_error_to_py_err(e, None)),
         }
     }
@@ -250,10 +246,7 @@ impl SFTPFile {
 }
 
 #[pyclass]
-struct SFTPDir(
-    Arc<breezy_transport::sftp::SftpClient>,
-    breezy_transport::sftp::Directory,
-);
+struct SFTPDir(Arc<sftp::SftpClient>, sftp::Directory);
 
 #[pymethods]
 impl SFTPDir {
@@ -266,7 +259,7 @@ impl SFTPDir {
             })
         }) {
             Ok(v) => Ok(Some(v)),
-            Err(breezy_transport::sftp::Error::Eof(_, _)) => Ok(None),
+            Err(sftp::Error::Eof(_, _)) => Ok(None),
             Err(e) => Err(sftp_error_to_py_err(e, None)),
         }
     }
@@ -281,7 +274,7 @@ impl SFTPDir {
 impl SFTPClient {
     #[new]
     fn new(py: Python, fd: i32) -> PyResult<Self> {
-        let session = py.allow_threads(|| breezy_transport::sftp::SftpClient::from_fd(fd))?;
+        let session = py.allow_threads(|| sftp::SftpClient::from_fd(fd))?;
         Ok(Self {
             sftp: Arc::new(session),
             cwd: None,
@@ -290,7 +283,7 @@ impl SFTPClient {
 
     fn mkdir(&mut self, py: Python, path: &str, mode: Option<u32>) -> PyResult<()> {
         let path = self._adjust_cwd(path);
-        let mut attr = breezy_transport::sftp::Attributes::new();
+        let mut attr = sftp::Attributes::new();
         attr.permissions = Some(mode.unwrap_or(0o777) | 0o40000);
         py.allow_threads(|| self.sftp.mkdir(path.as_str(), &attr))
             .map_err(|e| sftp_error_to_py_err(e, Some(path.as_str())))
@@ -317,7 +310,7 @@ impl SFTPClient {
 
     fn chmod(&mut self, py: Python, path: &str, mode: u32) -> PyResult<()> {
         let path = self._adjust_cwd(path);
-        let attr = breezy_transport::sftp::Attributes {
+        let attr = sftp::Attributes {
             permissions: Some(mode),
             ..Default::default()
         };
@@ -424,37 +417,33 @@ impl SFTPClient {
         let mode = mode.unwrap_or("rt");
         match mode {
             "rt" => {
-                flags = breezy_transport::sftp::SFTP_FLAG_READ;
+                flags = sftp::SFTP_FLAG_READ;
             }
             "ab" => {
-                flags = breezy_transport::sftp::SFTP_FLAG_WRITE
-                    | breezy_transport::sftp::SFTP_FLAG_CREAT
-                    | breezy_transport::sftp::SFTP_FLAG_APPEND;
+                flags = sftp::SFTP_FLAG_WRITE | sftp::SFTP_FLAG_CREAT | sftp::SFTP_FLAG_APPEND;
             }
             "wb" => {
-                flags = breezy_transport::sftp::SFTP_FLAG_WRITE
-                    | breezy_transport::sftp::SFTP_FLAG_CREAT
-                    | breezy_transport::sftp::SFTP_FLAG_TRUNC
-                    | breezy_transport::sftp::SFTP_FLAG_READ;
+                flags = sftp::SFTP_FLAG_WRITE
+                    | sftp::SFTP_FLAG_CREAT
+                    | sftp::SFTP_FLAG_TRUNC
+                    | sftp::SFTP_FLAG_READ;
             }
             "rb" => {
-                flags = breezy_transport::sftp::SFTP_FLAG_READ;
+                flags = sftp::SFTP_FLAG_READ;
             }
             "r+" | "rb+" | "b+" => {
-                flags = breezy_transport::sftp::SFTP_FLAG_READ
-                    | breezy_transport::sftp::SFTP_FLAG_WRITE
-                    | breezy_transport::sftp::SFTP_FLAG_CREAT;
+                flags = sftp::SFTP_FLAG_READ | sftp::SFTP_FLAG_WRITE | sftp::SFTP_FLAG_CREAT;
             }
             "a+" | "ab+" => {
-                flags = breezy_transport::sftp::SFTP_FLAG_READ
-                    | breezy_transport::sftp::SFTP_FLAG_WRITE
-                    | breezy_transport::sftp::SFTP_FLAG_APPEND
-                    | breezy_transport::sftp::SFTP_FLAG_CREAT;
+                flags = sftp::SFTP_FLAG_READ
+                    | sftp::SFTP_FLAG_WRITE
+                    | sftp::SFTP_FLAG_APPEND
+                    | sftp::SFTP_FLAG_CREAT;
             }
             mode => panic!("Unsupported mode: {}", mode),
         }
 
-        let mut attr = breezy_transport::sftp::Attributes::default();
+        let mut attr = sftp::Attributes::default();
         attr.permissions = create_mode;
 
         let h = py
@@ -500,123 +489,57 @@ pub fn _sftp_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<SFTPAttributes>()?;
     m.add(
         "SSH_FXF_ACCESS_DISPOSITION",
-        breezy_transport::sftp::SSH_FXF_ACCESS_DISPOSITION,
+        sftp::SSH_FXF_ACCESS_DISPOSITION,
     )?;
-    m.add(
-        "SSH_FXF_CREATE_NEW",
-        breezy_transport::sftp::SSH_FXF_CREATE_NEW,
-    )?;
-    m.add(
-        "SSH_FXF_CREATE_TRUNCATE",
-        breezy_transport::sftp::SSH_FXF_CREATE_TRUNCATE,
-    )?;
-    m.add(
-        "SSH_FXF_OPEN_EXISTING",
-        breezy_transport::sftp::SSH_FXF_OPEN_EXISTING,
-    )?;
-    m.add(
-        "SSH_FXF_OPEN_OR_CREATE",
-        breezy_transport::sftp::SSH_FXF_OPEN_OR_CREATE,
-    )?;
-    m.add(
-        "SSH_FXF_TRUNCATE_EXISTING",
-        breezy_transport::sftp::SSH_FXF_TRUNCATE_EXISTING,
-    )?;
-    m.add(
-        "SSH_FXF_APPEND_DATA",
-        breezy_transport::sftp::SSH_FXF_APPEND_DATA,
-    )?;
+    m.add("SSH_FXF_CREATE_NEW", sftp::SSH_FXF_CREATE_NEW)?;
+    m.add("SSH_FXF_CREATE_TRUNCATE", sftp::SSH_FXF_CREATE_TRUNCATE)?;
+    m.add("SSH_FXF_OPEN_EXISTING", sftp::SSH_FXF_OPEN_EXISTING)?;
+    m.add("SSH_FXF_OPEN_OR_CREATE", sftp::SSH_FXF_OPEN_OR_CREATE)?;
+    m.add("SSH_FXF_TRUNCATE_EXISTING", sftp::SSH_FXF_TRUNCATE_EXISTING)?;
+    m.add("SSH_FXF_APPEND_DATA", sftp::SSH_FXF_APPEND_DATA)?;
     m.add(
         "SSH_FXF_APPEND_DATA_ATOMIC",
-        breezy_transport::sftp::SSH_FXF_APPEND_DATA_ATOMIC,
+        sftp::SSH_FXF_APPEND_DATA_ATOMIC,
     )?;
-    m.add(
-        "SSH_FXF_TEXT_MODE",
-        breezy_transport::sftp::SSH_FXF_TEXT_MODE,
-    )?;
-    m.add(
-        "SSH_FXF_BLOCK_READ",
-        breezy_transport::sftp::SSH_FXF_BLOCK_READ,
-    )?;
-    m.add(
-        "SSH_FXF_BLOCK_WRITE",
-        breezy_transport::sftp::SSH_FXF_BLOCK_WRITE,
-    )?;
-    m.add(
-        "SSH_FXF_BLOCK_DELETE",
-        breezy_transport::sftp::SSH_FXF_BLOCK_DELETE,
-    )?;
-    m.add(
-        "SSH_FXF_BLOCK_ADVISORY",
-        breezy_transport::sftp::SSH_FXF_BLOCK_ADVISORY,
-    )?;
-    m.add("SSH_FXF_NOFOLLOW", breezy_transport::sftp::SSH_FXF_NOFOLLOW)?;
-    m.add(
-        "SSH_FXF_DELETE_ON_CLOSE",
-        breezy_transport::sftp::SSH_FXF_DELETE_ON_CLOSE,
-    )?;
+    m.add("SSH_FXF_TEXT_MODE", sftp::SSH_FXF_TEXT_MODE)?;
+    m.add("SSH_FXF_BLOCK_READ", sftp::SSH_FXF_BLOCK_READ)?;
+    m.add("SSH_FXF_BLOCK_WRITE", sftp::SSH_FXF_BLOCK_WRITE)?;
+    m.add("SSH_FXF_BLOCK_DELETE", sftp::SSH_FXF_BLOCK_DELETE)?;
+    m.add("SSH_FXF_BLOCK_ADVISORY", sftp::SSH_FXF_BLOCK_ADVISORY)?;
+    m.add("SSH_FXF_NOFOLLOW", sftp::SSH_FXF_NOFOLLOW)?;
+    m.add("SSH_FXF_DELETE_ON_CLOSE", sftp::SSH_FXF_DELETE_ON_CLOSE)?;
     m.add(
         "SSH_FXF_ACCESS_AUDIT_ALARM_INFO",
-        breezy_transport::sftp::SSH_FXF_ACCESS_AUDIT_ALARM_INFO,
+        sftp::SSH_FXF_ACCESS_AUDIT_ALARM_INFO,
     )?;
-    m.add(
-        "SSH_FXF_ACCESS_BACKUP",
-        breezy_transport::sftp::SSH_FXF_ACCESS_BACKUP,
-    )?;
-    m.add(
-        "SSH_FXF_BACKUP_STREAM",
-        breezy_transport::sftp::SSH_FXF_BACKUP_STREAM,
-    )?;
-    m.add(
-        "SSH_FXF_OVERRIDE_OWNER",
-        breezy_transport::sftp::SSH_FXF_OVERRIDE_OWNER,
-    )?;
+    m.add("SSH_FXF_ACCESS_BACKUP", sftp::SSH_FXF_ACCESS_BACKUP)?;
+    m.add("SSH_FXF_BACKUP_STREAM", sftp::SSH_FXF_BACKUP_STREAM)?;
+    m.add("SSH_FXF_OVERRIDE_OWNER", sftp::SSH_FXF_OVERRIDE_OWNER)?;
 
-    m.add("ACE4_READ_DATA", breezy_transport::sftp::ACE4_READ_DATA)?;
-    m.add(
-        "ACE4_LIST_DIRECTORY",
-        breezy_transport::sftp::ACE4_LIST_DIRECTORY,
-    )?;
-    m.add("ACE4_WRITE_DATA", breezy_transport::sftp::ACE4_WRITE_DATA)?;
-    m.add("ACE4_ADD_FILE", breezy_transport::sftp::ACE4_ADD_FILE)?;
-    m.add("ACE4_APPEND_DATA", breezy_transport::sftp::ACE4_APPEND_DATA)?;
-    m.add(
-        "ACE4_ADD_SUBDIRECTORY",
-        breezy_transport::sftp::ACE4_ADD_SUBDIRECTORY,
-    )?;
-    m.add(
-        "ACE4_READ_NAMED_ATTRS",
-        breezy_transport::sftp::ACE4_READ_NAMED_ATTRS,
-    )?;
-    m.add(
-        "ACE4_WRITE_NAMED_ATTRS",
-        breezy_transport::sftp::ACE4_WRITE_NAMED_ATTRS,
-    )?;
-    m.add("ACE4_EXECUTE", breezy_transport::sftp::ACE4_EXECUTE)?;
-    m.add(
-        "ACE4_DELETE_CHILD",
-        breezy_transport::sftp::ACE4_DELETE_CHILD,
-    )?;
-    m.add(
-        "ACE4_READ_ATTRIBUTES",
-        breezy_transport::sftp::ACE4_READ_ATTRIBUTES,
-    )?;
-    m.add(
-        "ACE4_WRITE_ATTRIBUTES",
-        breezy_transport::sftp::ACE4_WRITE_ATTRIBUTES,
-    )?;
-    m.add("ACE4_DELETE", breezy_transport::sftp::ACE4_DELETE)?;
-    m.add("ACE4_READ_ACL", breezy_transport::sftp::ACE4_READ_ACL)?;
-    m.add("ACE4_WRITE_ACL", breezy_transport::sftp::ACE4_WRITE_ACL)?;
-    m.add("ACE4_WRITE_OWNER", breezy_transport::sftp::ACE4_WRITE_OWNER)?;
-    m.add("ACE4_SYNCHRONIZE", breezy_transport::sftp::ACE4_SYNCHRONIZE)?;
+    m.add("ACE4_READ_DATA", sftp::ACE4_READ_DATA)?;
+    m.add("ACE4_LIST_DIRECTORY", sftp::ACE4_LIST_DIRECTORY)?;
+    m.add("ACE4_WRITE_DATA", sftp::ACE4_WRITE_DATA)?;
+    m.add("ACE4_ADD_FILE", sftp::ACE4_ADD_FILE)?;
+    m.add("ACE4_APPEND_DATA", sftp::ACE4_APPEND_DATA)?;
+    m.add("ACE4_ADD_SUBDIRECTORY", sftp::ACE4_ADD_SUBDIRECTORY)?;
+    m.add("ACE4_READ_NAMED_ATTRS", sftp::ACE4_READ_NAMED_ATTRS)?;
+    m.add("ACE4_WRITE_NAMED_ATTRS", sftp::ACE4_WRITE_NAMED_ATTRS)?;
+    m.add("ACE4_EXECUTE", sftp::ACE4_EXECUTE)?;
+    m.add("ACE4_DELETE_CHILD", sftp::ACE4_DELETE_CHILD)?;
+    m.add("ACE4_READ_ATTRIBUTES", sftp::ACE4_READ_ATTRIBUTES)?;
+    m.add("ACE4_WRITE_ATTRIBUTES", sftp::ACE4_WRITE_ATTRIBUTES)?;
+    m.add("ACE4_DELETE", sftp::ACE4_DELETE)?;
+    m.add("ACE4_READ_ACL", sftp::ACE4_READ_ACL)?;
+    m.add("ACE4_WRITE_ACL", sftp::ACE4_WRITE_ACL)?;
+    m.add("ACE4_WRITE_OWNER", sftp::ACE4_WRITE_OWNER)?;
+    m.add("ACE4_SYNCHRONIZE", sftp::ACE4_SYNCHRONIZE)?;
 
-    m.add("SFTP_FLAG_READ", breezy_transport::sftp::SFTP_FLAG_READ)?;
-    m.add("SFTP_FLAG_WRITE", breezy_transport::sftp::SFTP_FLAG_WRITE)?;
-    m.add("SFTP_FLAG_APPEND", breezy_transport::sftp::SFTP_FLAG_APPEND)?;
-    m.add("SFTP_FLAG_CREAT", breezy_transport::sftp::SFTP_FLAG_CREAT)?;
-    m.add("SFTP_FLAG_TRUNC", breezy_transport::sftp::SFTP_FLAG_TRUNC)?;
-    m.add("SFTP_FLAG_EXCL", breezy_transport::sftp::SFTP_FLAG_EXCL)?;
+    m.add("SFTP_FLAG_READ", sftp::SFTP_FLAG_READ)?;
+    m.add("SFTP_FLAG_WRITE", sftp::SFTP_FLAG_WRITE)?;
+    m.add("SFTP_FLAG_APPEND", sftp::SFTP_FLAG_APPEND)?;
+    m.add("SFTP_FLAG_CREAT", sftp::SFTP_FLAG_CREAT)?;
+    m.add("SFTP_FLAG_TRUNC", sftp::SFTP_FLAG_TRUNC)?;
+    m.add("SFTP_FLAG_EXCL", sftp::SFTP_FLAG_EXCL)?;
 
     m.add("SFTPError", py.get_type::<SFTPError>())?;
     Ok(())

@@ -105,10 +105,9 @@ class TransportStore(Store):
 
     def _check_fileid(self, fileid):
         if not isinstance(fileid, bytes):
-            raise TypeError('Fileids should be bytestrings: {} {!r}'.format(
-                type(fileid), fileid))
+            raise TypeError(f'Fileids should be bytestrings: {type(fileid)} {fileid!r}')
         if b'\\' in fileid or b'/' in fileid:
-            raise ValueError("invalid store id %r" % fileid)
+            raise ValueError(f"invalid store id {fileid!r}")
 
     def _id_to_names(self, fileid, suffix):
         """Return the names in the expected order"""
@@ -179,8 +178,7 @@ class TransportStore(Store):
             self._mapper = versionedfile.HashPrefixMapper()
         elif self._escaped:
             raise ValueError(
-                "%r: escaped unprefixed stores are not permitted."
-                % (self,))
+                f"{self!r}: escaped unprefixed stores are not permitted.")
         else:
             self._mapper = versionedfile.PrefixMapper()
 
@@ -210,7 +208,7 @@ class TransportStore(Store):
         if suffixes:
             for suffix in suffixes:
                 if suffix not in self._suffixes:
-                    raise ValueError("Unregistered suffix %r" % suffix)
+                    raise ValueError(f"Unregistered suffix {suffix!r}")
                 self._check_fileid(suffix.encode('utf-8'))
         else:
             suffixes = []
@@ -220,9 +218,9 @@ class TransportStore(Store):
 
     def __repr__(self):
         if self._transport is None:
-            return "%s(None)" % (self.__class__.__name__)
+            return f"{self.__class__.__name__}(None)"
         else:
-            return "{}({!r})".format(self.__class__.__name__, self._transport.base)
+            return f"{self.__class__.__name__}({self._transport.base!r})"
 
     __str__ = __repr__
 

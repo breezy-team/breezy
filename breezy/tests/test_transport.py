@@ -444,7 +444,7 @@ class TestHooks(tests.TestCase):
         self.assertIn(
             "post_connect",
             hookpoint,
-            "post_connect not in {}".format(hookpoint)
+            f"post_connect not in {hookpoint}"
         )
 
     def test_post_connect(self):

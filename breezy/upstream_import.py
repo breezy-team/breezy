@@ -102,7 +102,7 @@ class DirWrapper:
         self.root = os.path.realpath(fileobj.read().decode('utf-8'))
 
     def __repr__(self):
-        return 'DirWrapper(%r)' % self.root
+        return f'DirWrapper({self.root!r})'
 
     def getmembers(self, subdir=None):
         if subdir is not None:
@@ -129,7 +129,7 @@ class FileInfo:
         if filepath != '':
             self.name = pathjoin(basename(root), filepath)
         else:
-            print('root %r' % root)
+            print(f'root {root!r}')
             self.name = basename(root)
         self.type = None
         stat = os.lstat(self.fullpath)
@@ -138,7 +138,7 @@ class FileInfo:
             self.name += '/'
 
     def __repr__(self):
-        return 'FileInfo(%r)' % self.name
+        return f'FileInfo({self.name!r})'
 
     def isreg(self):
         return stat.S_ISREG(self.mode)

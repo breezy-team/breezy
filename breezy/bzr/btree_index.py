@@ -1520,7 +1520,7 @@ class BTreeGraphIndex:
             elif bytes.startswith(_INTERNAL_FLAG):
                 node = _InternalNode(bytes)
             else:
-                raise AssertionError("Unknown node type for %r" % bytes)
+                raise AssertionError(f"Unknown node type for {bytes!r}")
             yield offset // _PAGE_SIZE, node
 
     def _signature(self):

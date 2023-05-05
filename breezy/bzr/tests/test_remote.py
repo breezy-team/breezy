@@ -34,6 +34,7 @@ import fastbencode as bencode
 from ... import branch, config, controldir, errors, repository, tests
 from ... import transport as _mod_transport
 from ... import treebuilder
+from ..._bzr_rs import revision_bencode_serializer
 from ...branch import Branch
 from ...revision import NULL_REVISION, Revision
 from ...tests import test_server
@@ -45,7 +46,6 @@ from .. import (RemoteBzrProber, bzrdir, groupcompress_repo, inventory,
                 inventory_delta, knitpack_repo, remote, versionedfile,
                 vf_search)
 from ..bzrdir import BzrDir, BzrDirFormat
-from ..chk_serializer import revision_bencode_serializer
 from ..remote import (RemoteBranch, RemoteBranchFormat, RemoteBzrDir,
                       RemoteBzrDirFormat, RemoteRepository,
                       RemoteRepositoryFormat, UnknownErrorFromSmartServer)
@@ -220,7 +220,7 @@ class FakeClient(_SmartClient):
         try:
             response_tuple = self.responses.pop(0)
         except IndexError:
-            raise AssertionError("{!r} didn't expect any more calls".format(self))
+            raise AssertionError(f"{self!r} didn't expect any more calls")
         if response_tuple[0] == b'unknown':
             raise errors.UnknownSmartMethod(response_tuple[1])
         elif response_tuple[0] == b'error':

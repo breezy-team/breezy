@@ -54,7 +54,7 @@ class EmailSender:
             'url': self.url()
         }
         for name, value in fields.items():
-            text = text.replace('$%s' % name, value)
+            text = text.replace(f'${name}', value)
         return text
 
     def body(self):
@@ -75,7 +75,7 @@ class EmailSender:
 
         _body = self.config.get('post_commit_body')
         if _body is None:
-            _body = 'At %s\n\n' % self.url()
+            _body = f'At {self.url()}\n\n'
         outf.write(self._format(_body))
 
         log_format = self.config.get('post_commit_log_format')
@@ -218,7 +218,7 @@ class EmailSender:
             rc = process.wait()
             if rc != 0:
                 raise errors.BzrError(
-                    "Failed to send email: exit status {}".format(rc))
+                    f"Failed to send email: exit status {rc}")
 
     def _send_using_smtplib(self):
         """Use python's smtplib to send the email."""
@@ -266,7 +266,7 @@ class EmailSender:
         return self._format(_subject)
 
     def diff_filename(self):
-        return "patch-{}.diff".format(self.revno)
+        return f"patch-{self.revno}.diff"
 
 
 opt_post_commit_body = Option("post_commit_body",

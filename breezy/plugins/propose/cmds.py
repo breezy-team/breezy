@@ -295,7 +295,7 @@ class cmd_my_merge_proposals(Command):
                 continue
             try:
                 for mp in instance.iter_my_proposals(status=status):
-                    self.outf.write('%s\n' % mp.url)
+                    self.outf.write(f'{mp.url}\n')
                     if verbose:
                         source_branch_url = mp.get_source_branch_url()
                         if source_branch_url:
@@ -305,12 +305,11 @@ class cmd_my_merge_proposals(Command):
                                  mp.get_target_branch_url()))
                         else:
                             self.outf.write(
-                                '(Merging into %s)\n' %
-                                mp.get_target_branch_url())
+                                f'(Merging into {mp.get_target_branch_url()})\n')
                         description = mp.get_description()
                         if description:
                             self.outf.writelines(
-                                ['\t%s\n' % l
+                                [f'\t{l}\n'
                                  for l in description.splitlines()])
                         self.outf.write('\n')
             except _mod_forge.ForgeLoginRequired as e:
@@ -369,7 +368,7 @@ class cmd_web_open(Command):
 
             return forge.get_web_url(branch)
         raise errors.CommandError(
-            'Unable to get web URL for %s' % location)
+            f'Unable to get web URL for {location}')
 
     def run(self, location=None, dry_run=False):
         if location is None:

@@ -734,7 +734,7 @@ class TestLockableConfig(tests.TestCaseInTempDir):
 
     def setUp(self):
         super().setUp()
-        self._content = '[{}]\none=1\ntwo=2\n'.format(self.config_section)
+        self._content = f'[{self.config_section}]\none=1\ntwo=2\n'
         self.config = self.create_config(self._content)
 
     def get_existing_config(self):
@@ -971,7 +971,7 @@ class TestBranchConfig(tests.TestCaseWithTransport):
 
         local_url = urlutils.local_path_to_url('branch')
         conf = config.LocationConfig.from_string(
-            '[{}]\nnickname = foobar'.format(local_url),
+            f'[{local_url}]\nnickname = foobar',
             local_url, save=True)
         self.assertIsNot(None, conf)
         self.assertEqual('foobar', branch.nick)
@@ -1544,7 +1544,7 @@ class TestTransportConfig(tests.TestCaseWithTransport):
         """Ensure we can load an utf8-encoded file."""
         t = self.get_transport()
         unicode_user = 'b\N{Euro Sign}ar'
-        unicode_content = 'user={}'.format(unicode_user)
+        unicode_content = f'user={unicode_user}'
         utf8_content = unicode_content.encode('utf8')
         # Store the raw content in the config file
         t.put_bytes('foo.conf', utf8_content)
@@ -1981,7 +1981,7 @@ class TestOptionConverter(tests.TestCase):
         self.assertEqual(None, opt.convert_from_unicode(None, value))
         self.assertLength(1, warnings)
         self.assertEqual(
-            'Value "{}" is not valid for "{}"'.format(value, opt.name),
+            f'Value "{value}" is not valid for "{opt.name}"',
             warnings[0])
 
     def assertCallsError(self, opt, value):
@@ -2460,7 +2460,7 @@ class TestDictFromStore(tests.TestCase):
         # are getting the value or displaying it. In the later case, '%s' will
         # do).
         self.assertEqual({'a': '1'}, unquoted)
-        self.assertIn('{}'.format(unquoted), ("{u'a': u'1'}", "{'a': '1'}"))
+        self.assertIn(f'{unquoted}', ("{u'a': u'1'}", "{'a': '1'}"))
 
 
 class TestIniFileStoreContent(tests.TestCaseWithTransport):
@@ -2479,7 +2479,7 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
         t = self.get_transport()
         # From http://pad.lv/799212
         unicode_user = 'b\N{Euro Sign}ar'
-        unicode_content = 'user={}'.format(unicode_user)
+        unicode_content = f'user={unicode_user}'
         utf8_content = unicode_content.encode('utf8')
         # Store the raw content in the config file
         t.put_bytes('foo.conf', utf8_content)
@@ -2541,7 +2541,7 @@ class TestIniConfigContent(tests.TestCaseWithTransport):
         """Ensure we can load an utf8-encoded file."""
         # From http://pad.lv/799212
         unicode_user = 'b\N{Euro Sign}ar'
-        unicode_content = 'user={}'.format(unicode_user)
+        unicode_content = f'user={unicode_user}'
         utf8_content = unicode_content.encode('utf8')
         # Store the raw content in the config file
         with open('foo.conf', 'wb') as f:

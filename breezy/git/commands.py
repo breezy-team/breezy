@@ -185,7 +185,7 @@ class cmd_git_object(Command):
                 self.outf.write(text)
             else:
                 for sha1 in object_store:
-                    self.outf.write("%s\n" % sha1.decode('ascii'))
+                    self.outf.write(f"{sha1.decode('ascii')}\n")
 
 
 class cmd_git_refs(Command):
@@ -208,8 +208,7 @@ class cmd_git_refs(Command):
         with object_store.lock_read():
             refs = get_refs_container(controldir, object_store)
             for k, v in sorted(refs.as_dict().items()):
-                self.outf.write("%s -> %s\n" %
-                                (k.decode('utf-8'), v.decode('utf-8')))
+                self.outf.write(f"{k.decode('utf-8')} -> {v.decode('utf-8')}\n")
 
 
 class cmd_git_apply(Command):
@@ -245,7 +244,7 @@ class cmd_git_apply(Command):
         message = c.message.decode('utf-8')
         if signoff:
             signed_off_by = wt.branch.get_config().username()
-            message += "Signed-off-by: {}\n".format(signed_off_by)
+            message += f"Signed-off-by: {signed_off_by}\n"
         wt.commit(authors=[c.author.decode('utf-8')], message=message)
 
     def run(self, patches_list=None, signoff=False, force=False):
@@ -305,8 +304,7 @@ class cmd_git_push_pristine_tar_deltas(Command):
                         "Ignoring.", name)
                     continue
                 upstream_version = name[len("upstream/"):]
-                filename = '{}_{}.orig.tar.{}'.format(
-                    package, upstream_version, kind)
+                filename = f'{package}_{upstream_version}.orig.tar.{kind}'
                 if gitid not in target:
                     warning(
                         "base git id %s for %s missing in target repository",

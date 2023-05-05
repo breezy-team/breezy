@@ -1356,7 +1356,7 @@ class TestSmartTCPServer(tests.TestCase):
     def test_serve_conn_tracks_connections(self):
         server = _mod_server.SmartTCPServer(None, client_timeout=4.0)
         server_sock, client_sock = portable_socket_pair()
-        server.serve_conn(server_sock, '-{}'.format(self.id()))
+        server.serve_conn(server_sock, f'-{self.id()}')
         self.assertEqual(1, len(server._active_connections))
         # We still want to talk on the connection. Polling should indicate it
         # is still active.

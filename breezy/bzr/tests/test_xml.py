@@ -528,21 +528,14 @@ class TestSerializer(TestCase):
 class TestEncodeAndEscape(TestCase):
     """Whitebox testing of the _encode_and_escape function."""
 
-    def setUp(self):
-        super().setUp()
-        # Keep the cache clear before and after the test
-        breezy.bzr.xml_serializer._clear_cache()
-        self.addCleanup(breezy.bzr.xml_serializer._clear_cache)
-
     def test_simple_ascii(self):
         # _encode_and_escape always appends a final ", because these parameters
         # are being used in xml attributes, and by returning it now, we have to
         # do fewer string operations later.
         val = breezy.bzr.xml_serializer.encode_and_escape('foo bar')
         self.assertEqual(b'foo bar', val)
-        # The second time should be cached
         val2 = breezy.bzr.xml_serializer.encode_and_escape('foo bar')
-        self.assertIs(val2, val)
+        self.assertEqual(val2, val)
 
     def test_ascii_with_xml(self):
         self.assertEqual(b'&amp;&apos;&quot;&lt;&gt;',

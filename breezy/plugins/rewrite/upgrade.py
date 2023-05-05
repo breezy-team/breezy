@@ -173,6 +173,6 @@ def upgrade_repository(repository, generate_rebase_map,
             revision_id=revision_id, allow_changes=allow_changes)
         if verbose:
             for revid in rebase_todo(repository, plan):
-                trace.note("{} -> {}".format(revid, plan[revid][0]))
+                trace.note(f"{revid} -> {plan[revid][0]}")
         rebase(repository, plan, CommitBuilderRevisionRewriter(repository))
         return revid_renames

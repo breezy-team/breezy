@@ -121,12 +121,10 @@ class RepoFetcher:
                     stream, from_format, resume_tokens)
             if missing_keys:
                 raise AssertionError(
-                    "second push failed to complete a fetch {!r}.".format(
-                        missing_keys))
+                    f"second push failed to complete a fetch {missing_keys!r}.")
             if resume_tokens:
                 raise AssertionError(
-                    "second push failed to commit the fetch {!r}.".format(
-                        resume_tokens))
+                    f"second push failed to commit the fetch {resume_tokens!r}.")
             pb.update("Finishing stream")
             self.sink.finished()
 
@@ -375,7 +373,7 @@ class FetchSpecFactory:
         from . import vf_search
         if self.target_repo_kind is None or self.source_repo is None:
             raise AssertionError(
-                'Incomplete FetchSpecFactory: {!r}'.format(self.__dict__))
+                f'Incomplete FetchSpecFactory: {self.__dict__!r}')
         if len(self._explicit_rev_ids) == 0 and self.source_branch is None:
             if self.limit is not None:
                 raise NotImplementedError(

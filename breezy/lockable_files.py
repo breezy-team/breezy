@@ -79,11 +79,10 @@ class LockableFiles:
         self._lock.create(mode=self._dir_mode)
 
     def __repr__(self):
-        return '{}({!r})'.format(self.__class__.__name__,
-                           self._transport)
+        return f'{self.__class__.__name__}({self._transport!r})'
 
     def __str__(self):
-        return 'LockableFiles({}, {})'.format(self.lock_name, self._transport.base)
+        return f'LockableFiles({self.lock_name}, {self._transport.base})'
 
     def break_lock(self) -> None:
         """Break the lock of this lockable files group if it is held.
@@ -162,7 +161,7 @@ class LockableFiles:
     def lock_read(self) -> None:
         if self._lock_mode:
             if self._lock_mode not in ('r', 'w'):
-                raise ValueError("invalid lock mode {!r}".format(self._lock_mode))
+                raise ValueError(f"invalid lock mode {self._lock_mode!r}")
             self._lock_count += 1
         else:
             self._lock.lock_read()
@@ -226,15 +225,13 @@ class LockableFiles:
     def _set_transaction(self, new_transaction):
         """Set a new active transaction."""
         if self._transaction is not None:
-            raise errors.LockError('Branch %s is in a transaction already.' %
-                                   self)
+            raise errors.LockError(f'Branch {self} is in a transaction already.')
         self._transaction = new_transaction
 
     def _finish_transaction(self):
         """Exit the current transaction."""
         if self._transaction is None:
-            raise errors.LockError('Branch %s is not in a transaction' %
-                                   self)
+            raise errors.LockError(f'Branch {self} is not in a transaction')
         transaction = self._transaction
         self._transaction = None
         transaction.finish()

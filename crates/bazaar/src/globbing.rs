@@ -31,6 +31,8 @@ pub enum Replacement {
     Closure(Box<dyn FnMut(String) -> String + Sync + Send>),
 }
 
+// TODO(jelmer): Consider using RegexSet from the regex crate instead.
+
 /// Do a multiple-pattern substitution.
 ///
 /// The patterns and substitutions are combined into one, so the result of

@@ -30,7 +30,7 @@ class TestHooks(TestCaseWithTransport):
     def _check_hooks_output(self, command_output, hooks):
         for hook_type in Branch.hooks:
             s = "\n  ".join(hooks.get(hook_type, ["<no hooks installed>"]))
-            self.assertIn("{}:\n    {}".format(hook_type, s), command_output)
+            self.assertIn(f"{hook_type}:\n    {s}", command_output)
 
     def test_hooks_with_no_hooks(self):
         self.make_branch('.')

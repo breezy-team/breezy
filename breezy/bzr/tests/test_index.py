@@ -1434,9 +1434,9 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         Nodes will have a value of '' and no references.
         """
         nodes = [
-            ((('index-{}-key-{}'.format(name, n)).encode('ascii'),), b'', ())
+            ((f'index-{name}-key-{n}'.encode('ascii'),), b'', ())
             for n in range(1, num_nodes + 1)]
-        return self.make_index('index-%s' % name, 0, nodes=nodes)
+        return self.make_index(f'index-{name}', 0, nodes=nodes)
 
     def test_reorder_after_iter_entries(self):
         # Four indices: [key1] in idx1, [key2,key3] in idx2, [] in idx3,

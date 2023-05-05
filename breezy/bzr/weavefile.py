@@ -45,7 +45,7 @@ def write_weave(weave, f, format=None):
     if format is None or format == 1:
         return write_weave_v5(weave, f)
     else:
-        raise ValueError("unknown weave format %r" % format)
+        raise ValueError(f"unknown weave format {format!r}")
 
 
 def write_weave_v5(weave, f):
@@ -124,7 +124,7 @@ def _read_weave_v5(f, w):
         raise WeaveFormatError('invalid weave file: no header')
 
     if l != FORMAT_1:
-        raise WeaveFormatError('invalid weave file header: %r' % l)
+        raise WeaveFormatError(f'invalid weave file header: {l!r}')
 
     ver = 0
     # read weave header.
@@ -149,7 +149,7 @@ def _read_weave_v5(f, w):
         elif l == b'w\n':
             break
         else:
-            raise WeaveFormatError('unexpected line %r' % l)
+            raise WeaveFormatError(f'unexpected line {l!r}')
 
     # read weave body
     while True:

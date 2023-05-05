@@ -142,8 +142,7 @@ class _CompatibilityThunkFeature(Feature):
     def _ensure(self):
         if self._feature is None:
             from breezy import pyutils
-            depr_msg = self._dep_version % ('%s.%s'
-                                            % (self._module, self._name))
+            depr_msg = self._dep_version % (f'{self._module}.{self._name}')
             use_msg = ' Use {}.{} instead.'.format(self._replacement_module,
                                                self._replacement_name)
             symbol_versioning.warn(depr_msg + use_msg, DeprecationWarning,
@@ -224,7 +223,7 @@ class PluginLoadedFeature(Feature):
         return get_loaded_plugin(self.plugin_name)
 
     def feature_name(self):
-        return '%s plugin' % self.plugin_name
+        return f'{self.plugin_name} plugin'
 
 
 class _HTTPSServerFeature(Feature):
@@ -450,7 +449,7 @@ class ExecutableFeature(Feature):
         return self._path is not None
 
     def feature_name(self):
-        return '%s executable' % self.name
+        return f'{self.name} executable'
 
 
 bash_feature = ExecutableFeature('bash')
@@ -572,4 +571,4 @@ class PathFeature(Feature):
         return os.path.exists(self.path)
 
     def feature_name(self):
-        return "%s exists" % self.path
+        return f"{self.path} exists"

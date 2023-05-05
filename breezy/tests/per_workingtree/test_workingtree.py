@@ -293,7 +293,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.log('first revision_id is {%s}' % revid)
 
         tree = b.repository.revision_tree(revid)
-        self.log('contents of tree: %r' % list(tree.iter_entries_by_dir()))
+        self.log(f'contents of tree: {list(tree.iter_entries_by_dir())!r}')
 
         self.check_tree_shape(tree, ['dir/', 'dir/sub/', 'dir/sub/file'])
         wt.rename_one('dir', 'newdir')
@@ -1159,7 +1159,7 @@ class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
             wt.branch.bind(master)
         except _mod_branch.BindingUnsupported:
             raise TestNotApplicable(
-                "Can't bind %s" % wt.branch._format.__class__)
+                f"Can't bind {wt.branch._format.__class__}")
         return wt, master
 
     def test_update_remove_commit(self):

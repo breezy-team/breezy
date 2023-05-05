@@ -85,7 +85,7 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
         bdir.create_repository()
         branch = BzrBranchFormat5().initialize(bdir)
         t = self.get_transport()
-        self.log("branch instance is %r" % branch)
+        self.log(f"branch instance is {branch!r}")
         self.assertIsInstance(branch, BzrBranch5)
         self.assertIsDirectory('.', t)
         self.assertIsDirectory('.bzr/branch', t)
@@ -540,33 +540,33 @@ class TestHooks(tests.TestCaseWithTransport):
     def test_constructor(self):
         """Check that creating a BranchHooks instance has the right defaults."""
         hooks = _mod_branch.BranchHooks()
-        self.assertIn("post_push", hooks, "post_push not in %s" % hooks)
+        self.assertIn("post_push", hooks, f"post_push not in {hooks}")
         self.assertIn(
             "post_commit",
             hooks,
-            "post_commit not in %s" % hooks
+            f"post_commit not in {hooks}"
         )
-        self.assertIn("pre_commit", hooks, "pre_commit not in %s" % hooks)
-        self.assertIn("post_pull", hooks, "post_pull not in %s" % hooks)
+        self.assertIn("pre_commit", hooks, f"pre_commit not in {hooks}")
+        self.assertIn("post_pull", hooks, f"post_pull not in {hooks}")
         self.assertIn(
             "post_uncommit",
             hooks,
-            "post_uncommit not in %s" % hooks
+            f"post_uncommit not in {hooks}"
         )
         self.assertIn(
             "post_change_branch_tip",
             hooks,
-            "post_change_branch_tip not in %s" % hooks
+            f"post_change_branch_tip not in {hooks}"
         )
         self.assertIn(
             "post_branch_init",
             hooks,
-            "post_branch_init not in %s" % hooks
+            f"post_branch_init not in {hooks}"
         )
         self.assertIn(
             "post_switch",
             hooks,
-            "post_switch not in %s" % hooks
+            f"post_switch not in {hooks}"
         )
 
     def test_installed_hooks_are_BranchHooks(self):

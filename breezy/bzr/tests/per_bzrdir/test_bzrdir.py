@@ -111,14 +111,14 @@ class TestBzrDir(TestCaseWithBzrDir):
                 try:
                     stat = source.stat(path)
                 except transport.NoSuchFile:
-                    self.fail('%s not in source' % path)
+                    self.fail(f'{path} not in source')
                 if S_ISDIR(stat.st_mode):
                     self.assertTrue(S_ISDIR(target.stat(path).st_mode))
                     directories.append(path)
                 else:
                     self.assertEqualDiff(source.get_bytes(path),
                                          target.get_bytes(path),
-                                         "text for file %r differs:\n" % path)
+                                         f"text for file {path!r} differs:\n")
 
     def assertRepositoryHasSameItems(self, left_repo, right_repo):
         """require left_repo and right_repo to contain the same data."""

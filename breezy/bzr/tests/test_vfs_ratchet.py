@@ -219,7 +219,7 @@ class TestSmartServerCat(TestCaseWithTransport):
         t.add("foo")
         t.commit("message")
         self.reset_smart_call_log()
-        out, err = self.run_bzr(['cat', "%s/foo" % self.get_url('branch')])
+        out, err = self.run_bzr(['cat', f"{self.get_url('branch')}/foo"])
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
         # being too low. If rpc_count increases, more network roundtrips have

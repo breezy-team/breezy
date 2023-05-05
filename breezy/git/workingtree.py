@@ -125,7 +125,7 @@ class TextConflict(_mod_conflicts.Conflict):
 
         :param tree: The tree passed as a parameter to the method.
         """
-        meth = getattr(self, 'action_%s' % action, None)
+        meth = getattr(self, f'action_{action}', None)
         if meth is None:
             raise NotImplementedError(self.__class__.__name__ + '.' + action)
         meth(tree)
@@ -136,13 +136,13 @@ class TextConflict(_mod_conflicts.Conflict):
         pass
 
     def describe(self):
-        return 'Text conflict in %(path)s' % self.__dict__
+        return f"Text conflict in {self.__dict__['path']}"
 
     def __str__(self):
         return self.describe()
 
     def __repr__(self):
-        return "{}({!r})".format(type(self).__name__, self.path)
+        return f"{type(self).__name__}({self.path!r})"
 
 
 class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
@@ -388,8 +388,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             backup_name = self.controldir._available_backup_name(
                 file_to_backup)
             osutils.rename(abs_path, self.abspath(backup_name))
-            return "removed {} (but kept a copy: {})".format(
-                file_to_backup, backup_name)
+            return f"removed {file_to_backup} (but kept a copy: {backup_name})"
 
         # Sort needed to first handle directory content before the directory
         files_to_backup = []
@@ -467,7 +466,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     kind_ch = osutils.kind_marker(kind)
                     to_file.write(new_status + '       ' + f + kind_ch + '\n')
                 if kind is None:
-                    message = "{} does not exist".format(f)
+                    message = f"{f} does not exist"
                 else:
                     if not keep_files:
                         if f in files_to_backup and not force:
@@ -477,9 +476,9 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                                 osutils.rmtree(abs_path)
                             else:
                                 osutils.delete_any(abs_path)
-                            message = "deleted {}".format(f)
+                            message = f"deleted {f}"
                     else:
-                        message = "removed {}".format(f)
+                        message = f"removed {f}"
                 self._unversion_path(f)
 
                 # print only one message (if any) per file.

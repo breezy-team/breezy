@@ -24,9 +24,6 @@ import os
 
 from .. import _transport_rs, osutils, transport, urlutils
 
-_append_flags = os.O_CREAT | os.O_APPEND | os.O_WRONLY | osutils.O_BINARY | osutils.O_NOINHERIT
-_put_non_atomic_flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY | osutils.O_BINARY | osutils.O_NOINHERIT
-
 
 def file_stat(f, _lstat=os.lstat):
     try:
@@ -47,7 +44,7 @@ from .._transport_rs import local as _local_rs
 LocalTransport = _local_rs.LocalTransport
 
 
-class EmulatedWin32LocalTransport(_local_rs.LocalTransport):
+class EmulatedWin32LocalTransport(LocalTransport):
     """Special transport for testing Win32 [UNC] paths on non-windows"""
 
     def __init__(self, base):

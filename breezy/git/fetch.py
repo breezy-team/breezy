@@ -307,8 +307,7 @@ def verify_commit_reconstruction(target_git_object_retriever, lookup_object,
     rec_o = target_git_object_retriever._reconstruct_commit(rev, o.tree, True,
                                                             verifiers)
     if rec_o != o:
-        raise AssertionError("Reconstructed commit differs: {!r} != {!r}".format(
-            rec_o, o))
+        raise AssertionError(f"Reconstructed commit differs: {rec_o!r} != {o!r}")
     diff = []
     new_objs = {}
     for path, obj, ie in _tree_to_objects(
@@ -334,7 +333,7 @@ def verify_commit_reconstruction(target_git_object_retriever, lookup_object,
                     new_obj = new_objs[path]
                     break
         raise AssertionError(
-            "objects differ for {}: {!r} != {!r}".format(path, old_obj, new_obj))
+            f"objects differ for {path}: {old_obj!r} != {new_obj!r}")
 
 
 def ensure_inventories_in_repo(repo, trees):
@@ -461,7 +460,7 @@ def import_git_objects(repo, mapping, object_iter,
             if o.object[1] not in checked:
                 heads.append(o.object[1])
         else:
-            trace.warning("Unable to import head object %r" % o)
+            trace.warning(f"Unable to import head object {o!r}")
         checked.add(o.id)
     del checked
     # Order the revisions

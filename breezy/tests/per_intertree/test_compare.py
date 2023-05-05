@@ -466,7 +466,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
             if left_item == right_item:
                 same.append(str(left_item))
             else:
-                different.append(" {}\n {}".format(left_item, right_item))
+                different.append(f" {left_item}\n {right_item}")
         self.fail("iter_changes output different. Unchanged items:\n"
                   + "\n".join(same) + "\nChanged items:\n" + "\n".join(different))
 
@@ -1054,7 +1054,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
             tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         except (KeyError,):
             raise tests.TestNotApplicable(
-                "Cannot represent a FIFO in this case %s" % self.id())
+                f"Cannot represent a FIFO in this case {self.id()}")
         try:
             self.do_iter_changes(tree1, tree2)
         except errors.BadFileKindError:

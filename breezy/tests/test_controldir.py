@@ -180,7 +180,7 @@ class TestNotBzrDir(tests.TestCaseWithTransport):
             if isinstance(format, NotBzrDirFormat):
                 break
         else:
-            self.fail("No NotBzrDirFormat in %s" % formats)
+            self.fail(f"No NotBzrDirFormat in {formats}")
 
 
 class UnsupportedControlComponentFormat(controldir.ControlComponentFormat):

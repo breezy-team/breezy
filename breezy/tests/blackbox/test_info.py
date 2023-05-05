@@ -37,7 +37,7 @@ class TestInfo(tests.TestCaseWithTransport):
         location = self.get_url()
         out, err = self.run_bzr('info ' + location, retcode=3)
         self.assertEqual(out, '')
-        self.assertEqual(err, 'brz: ERROR: Not a branch: "%s".\n' % location)
+        self.assertEqual(err, f'brz: ERROR: Not a branch: "{location}".\n')
 
     def test_info_empty_controldir(self):
         self.make_controldir('ctrl')
@@ -194,7 +194,7 @@ Related branches:
 
         out, err = self.run_bzr('info branch --verbose')
         self.assertEqualDiff(
-            """Standalone tree (format: knit)
+            f"""Standalone tree (format: knit)
 Location:
   branch root: branch
 
@@ -225,13 +225,12 @@ In the working tree:
 Branch history:
          1 revision
          0 days old
-   first revision: {}
-  latest revision: {}
+   first revision: {datestring_first}
+  latest revision: {datestring_first}
 
 Repository:
          1 revision
-""".format(datestring_first, datestring_first,
-       ), out)
+""", out)
         self.assertEqual('', err)
 
         # Branch and bind to standalone, needs upgrade to metadir
@@ -244,7 +243,7 @@ Repository:
         bound_tree = branch3.controldir.open_workingtree()
         out, err = self.run_bzr('info -v bound')
         self.assertEqualDiff(
-            """Checkout (format: knit)
+            f"""Checkout (format: knit)
 Location:
        checkout root: bound
   checkout of branch: standalone
@@ -254,9 +253,9 @@ Related branches:
 
 Format:
        control: Meta directory format 1
-  working tree: {}
-        branch: {}
-    repository: {}
+  working tree: {bound_tree._format.get_format_description()}
+        branch: {branch3._format.get_format_description()}
+    repository: {branch3.repository._format.get_format_description()}
 
 Control directory:
          1 branches
@@ -275,16 +274,12 @@ In the working tree:
 Branch history:
          1 revision
          0 days old
-   first revision: {}
-  latest revision: {}
+   first revision: {datestring_first}
+  latest revision: {datestring_first}
 
 Repository:
          1 revision
-""".format(bound_tree._format.get_format_description(),
-                branch3._format.get_format_description(),
-                branch3.repository._format.get_format_description(),
-                datestring_first, datestring_first,
-       ), out)
+""", out)
         self.assertEqual('', err)
 
         # Checkout standalone (same as above, but does not have parent set)
@@ -294,7 +289,7 @@ Repository:
         branch4.controldir.open_workingtree().update()
         out, err = self.run_bzr('info checkout --verbose')
         self.assertEqualDiff(
-            """Checkout (format: knit)
+            f"""Checkout (format: knit)
 Location:
        checkout root: checkout
   checkout of branch: standalone
@@ -303,7 +298,7 @@ Format:
        control: Meta directory format 1
   working tree: Working tree format 3
         branch: Branch format 5
-    repository: {}
+    repository: {branch4.repository._format.get_format_description()}
 
 Control directory:
          1 branches
@@ -322,14 +317,12 @@ In the working tree:
 Branch history:
          1 revision
          0 days old
-   first revision: {}
-  latest revision: {}
+   first revision: {datestring_first}
+  latest revision: {datestring_first}
 
 Repository:
          1 revision
-""".format(branch4.repository._format.get_format_description(),
-                datestring_first, datestring_first,
-       ), out)
+""", out)
         self.assertEqual('', err)
 
         # Lightweight checkout (same as above, different branch and repository)
@@ -341,7 +334,7 @@ Repository:
         else:
             format_description = "knit"
         self.assertEqualDiff(
-            """Lightweight checkout (format: {})
+            f"""Lightweight checkout (format: {format_description})
 Location:
   light checkout root: lightcheckout
    checkout of branch: standalone
@@ -369,12 +362,12 @@ In the working tree:
 Branch history:
          1 revision
          0 days old
-   first revision: {}
-  latest revision: {}
+   first revision: {datestring_first}
+  latest revision: {datestring_first}
 
 Repository:
          1 revision
-""".format(format_description, datestring_first, datestring_first), out)
+""", out)
         self.assertEqual('', err)
 
         # Update initial standalone branch
@@ -387,7 +380,7 @@ Repository:
         # Out of date branched standalone branch will not be detected
         out, err = self.run_bzr('info -v branch')
         self.assertEqualDiff(
-            """Standalone tree (format: knit)
+            f"""Standalone tree (format: knit)
 Location:
   branch root: branch
 
@@ -418,19 +411,18 @@ In the working tree:
 Branch history:
          1 revision
          0 days old
-   first revision: {}
-  latest revision: {}
+   first revision: {datestring_first}
+  latest revision: {datestring_first}
 
 Repository:
          1 revision
-""".format(datestring_first, datestring_first,
-       ), out)
+""", out)
         self.assertEqual('', err)
 
         # Out of date bound branch
         out, err = self.run_bzr('info -v bound')
         self.assertEqualDiff(
-            """Checkout (format: knit)
+            f"""Checkout (format: knit)
 Location:
        checkout root: bound
   checkout of branch: standalone
@@ -442,7 +434,7 @@ Format:
        control: Meta directory format 1
   working tree: Working tree format 3
         branch: Branch format 5
-    repository: {}
+    repository: {branch3.repository._format.get_format_description()}
 
 Control directory:
          1 branches
@@ -463,20 +455,18 @@ In the working tree:
 Branch history:
          1 revision
          0 days old
-   first revision: {}
-  latest revision: {}
+   first revision: {datestring_first}
+  latest revision: {datestring_first}
 
 Repository:
          1 revision
-""".format(branch3.repository._format.get_format_description(),
-                datestring_first, datestring_first,
-       ), out)
+""", out)
         self.assertEqual('', err)
 
         # Out of date checkout
         out, err = self.run_bzr('info -v checkout')
         self.assertEqualDiff(
-            """Checkout (format: knit)
+            f"""Checkout (format: knit)
 Location:
        checkout root: checkout
   checkout of branch: standalone
@@ -485,7 +475,7 @@ Format:
        control: Meta directory format 1
   working tree: Working tree format 3
         branch: Branch format 5
-    repository: {}
+    repository: {branch4.repository._format.get_format_description()}
 
 Control directory:
          1 branches
@@ -506,20 +496,18 @@ In the working tree:
 Branch history:
          1 revision
          0 days old
-   first revision: {}
-  latest revision: {}
+   first revision: {datestring_first}
+  latest revision: {datestring_first}
 
 Repository:
          1 revision
-""".format(branch4.repository._format.get_format_description(),
-                datestring_first, datestring_first,
-       ), out)
+""", out)
         self.assertEqual('', err)
 
         # Out of date lightweight checkout
         out, err = self.run_bzr('info lightcheckout --verbose')
         self.assertEqualDiff(
-            """Lightweight checkout (format: {})
+            f"""Lightweight checkout (format: {format_description})
 Location:
   light checkout root: lightcheckout
    checkout of branch: standalone
@@ -549,12 +537,12 @@ In the working tree:
 Branch history:
          2 revisions
          0 days old
-   first revision: {}
-  latest revision: {}
+   first revision: {datestring_first}
+  latest revision: {datestring_last}
 
 Repository:
          2 revisions
-""".format(format_description, datestring_first, datestring_last), out)
+""", out)
         self.assertEqual('', err)
 
     def test_info_standalone_no_tree(self):
@@ -596,21 +584,20 @@ Repository:
         repo.set_make_working_trees(False)
         out, err = self.run_bzr('info -v repo')
         self.assertEqualDiff(
-            """Shared repository (format: dirstate or dirstate-tags or knit)
+            f"""Shared repository (format: dirstate or dirstate-tags or knit)
 Location:
-  shared repository: {}
+  shared repository: repo
 
 Format:
        control: Meta directory format 1
-    repository: {}
+    repository: {format.repository_format.get_format_description()}
 
 Control directory:
          0 branches
 
 Repository:
          0 revisions
-""".format('repo', format.repository_format.get_format_description(),
-       ), out)
+""", out)
         self.assertEqual('', err)
 
         # Create branch inside shared repository
@@ -619,15 +606,15 @@ Repository:
             'repo/branch', format=format)
         out, err = self.run_bzr('info -v repo/branch')
         self.assertEqualDiff(
-            """Repository branch (format: dirstate or knit)
+            f"""Repository branch (format: dirstate or knit)
 Location:
   shared repository: repo
   repository branch: repo/branch
 
 Format:
        control: Meta directory format 1
-        branch: {}
-    repository: {}
+        branch: {format.get_branch_format().get_format_description()}
+    repository: {format.repository_format.get_format_description()}
 
 Control directory:
          1 branches
@@ -637,9 +624,7 @@ Branch history:
 
 Repository:
          0 revisions
-""".format(format.get_branch_format().get_format_description(),
-                format.repository_format.get_format_description(),
-       ), out)
+""", out)
         self.assertEqual('', err)
 
         # Create lightweight checkout
@@ -664,7 +649,7 @@ Repository:
         datestring_first = osutils.format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
-            """Lightweight checkout (format: {})
+            f"""Lightweight checkout (format: {self._repo_strings})
 Location:
   light checkout root: tree/lightcheckout
    checkout of branch: repo/branch
@@ -673,8 +658,8 @@ Location:
 Format:
        control: Meta directory format 1
   working tree: Working tree format 6
-        branch: {}
-    repository: {}
+        branch: {format.get_branch_format().get_format_description()}
+    repository: {format.repository_format.get_format_description()}
 
 Control directory:
          1 branches
@@ -693,21 +678,18 @@ In the working tree:
 Branch history:
          1 revision
          0 days old
-   first revision: {}
-  latest revision: {}
+   first revision: {datestring_first}
+  latest revision: {datestring_first}
 
 Repository:
          1 revision
-""".format(self._repo_strings, format.get_branch_format().get_format_description(),
-                format.repository_format.get_format_description(),
-                datestring_first, datestring_first,
-       ), out)
+""", out)
         self.assertEqual('', err)
 
         # Out of date checkout
         out, err = self.run_bzr('info -v tree/checkout')
         self.assertEqualDiff(
-            """Checkout (format: unnamed)
+            f"""Checkout (format: unnamed)
 Location:
        checkout root: tree/checkout
   checkout of branch: repo/branch
@@ -715,8 +697,8 @@ Location:
 Format:
        control: Meta directory format 1
   working tree: Working tree format 6
-        branch: {}
-    repository: {}
+        branch: {format.get_branch_format().get_format_description()}
+    repository: {format.repository_format.get_format_description()}
 
 Control directory:
          1 branches
@@ -739,9 +721,7 @@ Branch history:
 
 Repository:
          0 revisions
-""".format(format.get_branch_format().get_format_description(),
-                format.repository_format.get_format_description(),
-       ), out)
+""", out)
         self.assertEqual('', err)
 
         # Update checkout
@@ -750,7 +730,7 @@ Repository:
         tree3.add('b')
         out, err = self.run_bzr('info tree/checkout --verbose')
         self.assertEqualDiff(
-            """Checkout (format: unnamed)
+            f"""Checkout (format: unnamed)
 Location:
        checkout root: tree/checkout
   checkout of branch: repo/branch
@@ -758,8 +738,8 @@ Location:
 Format:
        control: Meta directory format 1
   working tree: Working tree format 6
-        branch: {}
-    repository: {}
+        branch: {format.get_branch_format().get_format_description()}
+    repository: {format.repository_format.get_format_description()}
 
 Control directory:
          1 branches
@@ -778,15 +758,12 @@ In the working tree:
 Branch history:
          1 revision
          0 days old
-   first revision: {}
-  latest revision: {}
+   first revision: {datestring_first}
+  latest revision: {datestring_first}
 
 Repository:
          1 revision
-""".format(format.get_branch_format().get_format_description(),
-                format.repository_format.get_format_description(),
-                datestring_first, datestring_first,
-       ), out)
+""", out)
         self.assertEqual('', err)
         tree3.commit('commit two')
 
@@ -795,7 +772,7 @@ Repository:
         datestring_last = osutils.format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
-            """Lightweight checkout (format: {})
+            f"""Lightweight checkout (format: {self._repo_strings})
 Location:
   light checkout root: tree/lightcheckout
    checkout of branch: repo/branch
@@ -804,8 +781,8 @@ Location:
 Format:
        control: Meta directory format 1
   working tree: Working tree format 6
-        branch: {}
-    repository: {}
+        branch: {format.get_branch_format().get_format_description()}
+    repository: {format.repository_format.get_format_description()}
 
 Control directory:
          1 branches
@@ -826,29 +803,26 @@ In the working tree:
 Branch history:
          2 revisions
          0 days old
-   first revision: {}
-  latest revision: {}
+   first revision: {datestring_first}
+  latest revision: {datestring_last}
 
 Repository:
          2 revisions
-""".format(self._repo_strings, format.get_branch_format().get_format_description(),
-                format.repository_format.get_format_description(),
-                datestring_first, datestring_last,
-       ), out)
+""", out)
         self.assertEqual('', err)
 
         # Show info about shared branch
         out, err = self.run_bzr('info repo/branch --verbose')
         self.assertEqualDiff(
-            """Repository branch (format: dirstate or knit)
+            f"""Repository branch (format: dirstate or knit)
 Location:
   shared repository: repo
   repository branch: repo/branch
 
 Format:
        control: Meta directory format 1
-        branch: {}
-    repository: {}
+        branch: {format.get_branch_format().get_format_description()}
+    repository: {format.repository_format.get_format_description()}
 
 Control directory:
          1 branches
@@ -856,35 +830,31 @@ Control directory:
 Branch history:
          2 revisions
          0 days old
-   first revision: {}
-  latest revision: {}
+   first revision: {datestring_first}
+  latest revision: {datestring_last}
 
 Repository:
          2 revisions
-""".format(format.get_branch_format().get_format_description(),
-                format.repository_format.get_format_description(),
-                datestring_first, datestring_last,
-       ), out)
+""", out)
         self.assertEqual('', err)
 
         # Show info about repository with revisions
         out, err = self.run_bzr('info -v repo')
         self.assertEqualDiff(
-            """Shared repository (format: dirstate or dirstate-tags or knit)
+            f"""Shared repository (format: dirstate or dirstate-tags or knit)
 Location:
   shared repository: repo
 
 Format:
        control: Meta directory format 1
-    repository: {}
+    repository: {format.repository_format.get_format_description()}
 
 Control directory:
          0 branches
 
 Repository:
          2 revisions
-""".format(format.repository_format.get_format_description(),
-       ), out)
+""", out)
         self.assertEqual('', err)
 
     def test_info_shared_repository_with_trees(self):
@@ -896,13 +866,13 @@ Repository:
         repo.set_make_working_trees(True)
         out, err = self.run_bzr('info -v repo')
         self.assertEqualDiff(
-            """Shared repository with trees (format: dirstate or dirstate-tags or knit)
+            f"""Shared repository with trees (format: dirstate or dirstate-tags or knit)
 Location:
   shared repository: repo
 
 Format:
        control: Meta directory format 1
-    repository: {}
+    repository: {format.repository_format.get_format_description()}
 
 Control directory:
          0 branches
@@ -911,8 +881,7 @@ Create working tree for new branches inside the repository.
 
 Repository:
          0 revisions
-""".format(format.repository_format.get_format_description(),
-       ), out)
+""", out)
         self.assertEqual('', err)
 
         # Create two branches
@@ -924,7 +893,7 @@ Repository:
         # Empty first branch
         out, err = self.run_bzr('info repo/branch1 --verbose')
         self.assertEqualDiff(
-            """Repository tree (format: knit)
+            f"""Repository tree (format: knit)
 Location:
   shared repository: repo
   repository branch: repo/branch1
@@ -932,8 +901,8 @@ Location:
 Format:
        control: Meta directory format 1
   working tree: Working tree format 3
-        branch: {}
-    repository: {}
+        branch: {format.get_branch_format().get_format_description()}
+    repository: {format.repository_format.get_format_description()}
 
 Control directory:
          1 branches
@@ -954,9 +923,7 @@ Branch history:
 
 Repository:
          0 revisions
-""".format(format.get_branch_format().get_format_description(),
-                format.repository_format.get_format_description(),
-       ), out)
+""", out)
         self.assertEqual('', err)
 
         # Update first branch
@@ -968,7 +935,7 @@ Repository:
         datestring_first = osutils.format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info -v repo/branch1')
         self.assertEqualDiff(
-            """Repository tree (format: knit)
+            f"""Repository tree (format: knit)
 Location:
   shared repository: repo
   repository branch: repo/branch1
@@ -976,8 +943,8 @@ Location:
 Format:
        control: Meta directory format 1
   working tree: Working tree format 3
-        branch: {}
-    repository: {}
+        branch: {format.get_branch_format().get_format_description()}
+    repository: {format.repository_format.get_format_description()}
 
 Control directory:
          1 branches
@@ -996,21 +963,18 @@ In the working tree:
 Branch history:
          1 revision
          0 days old
-   first revision: {}
-  latest revision: {}
+   first revision: {datestring_first}
+  latest revision: {datestring_first}
 
 Repository:
          1 revision
-""".format(format.get_branch_format().get_format_description(),
-                format.repository_format.get_format_description(),
-                datestring_first, datestring_first,
-       ), out)
+""", out)
         self.assertEqual('', err)
 
         # Out of date second branch
         out, err = self.run_bzr('info repo/branch2 --verbose')
         self.assertEqualDiff(
-            """Repository tree (format: knit)
+            f"""Repository tree (format: knit)
 Location:
   shared repository: repo
   repository branch: repo/branch2
@@ -1021,8 +985,8 @@ Related branches:
 Format:
        control: Meta directory format 1
   working tree: Working tree format 3
-        branch: {}
-    repository: {}
+        branch: {format.get_branch_format().get_format_description()}
+    repository: {format.repository_format.get_format_description()}
 
 Control directory:
          1 branches
@@ -1043,9 +1007,7 @@ Branch history:
 
 Repository:
          1 revision
-""".format(format.get_branch_format().get_format_description(),
-                format.repository_format.get_format_description(),
-       ), out)
+""", out)
         self.assertEqual('', err)
 
         # Update second branch
@@ -1053,7 +1015,7 @@ Repository:
         tree2.pull(branch1)
         out, err = self.run_bzr('info -v repo/branch2')
         self.assertEqualDiff(
-            """Repository tree (format: knit)
+            f"""Repository tree (format: knit)
 Location:
   shared repository: repo
   repository branch: repo/branch2
@@ -1064,8 +1026,8 @@ Related branches:
 Format:
        control: Meta directory format 1
   working tree: Working tree format 3
-        branch: {}
-    repository: {}
+        branch: {format.get_branch_format().get_format_description()}
+    repository: {format.repository_format.get_format_description()}
 
 Control directory:
          1 branches
@@ -1084,27 +1046,24 @@ In the working tree:
 Branch history:
          1 revision
          0 days old
-   first revision: {}
-  latest revision: {}
+   first revision: {datestring_first}
+  latest revision: {datestring_first}
 
 Repository:
          1 revision
-""".format(format.get_branch_format().get_format_description(),
-                format.repository_format.get_format_description(),
-                datestring_first, datestring_first,
-       ), out)
+""", out)
         self.assertEqual('', err)
 
         # Show info about repository with revisions
         out, err = self.run_bzr('info -v repo')
         self.assertEqualDiff(
-            """Shared repository with trees (format: dirstate or dirstate-tags or knit)
+            f"""Shared repository with trees (format: dirstate or dirstate-tags or knit)
 Location:
   shared repository: repo
 
 Format:
        control: Meta directory format 1
-    repository: {}
+    repository: {format.repository_format.get_format_description()}
 
 Control directory:
          0 branches
@@ -1113,8 +1072,7 @@ Create working tree for new branches inside the repository.
 
 Repository:
          1 revision
-""".format(format.repository_format.get_format_description(),
-       ),
+""",
             out)
         self.assertEqual('', err)
 
@@ -1127,13 +1085,13 @@ Repository:
         repo.set_make_working_trees(True)
         out, err = self.run_bzr('info -v repo')
         self.assertEqualDiff(
-            """Shared repository with trees (format: dirstate or dirstate-tags or knit)
+            f"""Shared repository with trees (format: dirstate or dirstate-tags or knit)
 Location:
   shared repository: repo
 
 Format:
        control: Meta directory format 1
-    repository: {}
+    repository: {format.repository_format.get_format_description()}
 
 Control directory:
          0 branches
@@ -1142,8 +1100,7 @@ Create working tree for new branches inside the repository.
 
 Repository:
          0 revisions
-""".format(format.repository_format.get_format_description(),
-       ), out)
+""", out)
         self.assertEqual('', err)
 
         # Create branch in root of repository
@@ -1152,7 +1109,7 @@ Repository:
         control.create_workingtree()
         out, err = self.run_bzr('info -v repo')
         self.assertEqualDiff(
-            """Repository tree (format: knit)
+            f"""Repository tree (format: knit)
 Location:
   shared repository: repo
   repository branch: repo
@@ -1160,8 +1117,8 @@ Location:
 Format:
        control: Meta directory format 1
   working tree: Working tree format 3
-        branch: {}
-    repository: {}
+        branch: {format.get_branch_format().get_format_description()}
+    repository: {format.repository_format.get_format_description()}
 
 Control directory:
          1 branches
@@ -1182,9 +1139,7 @@ Branch history:
 
 Repository:
          0 revisions
-""".format(format.get_branch_format().get_format_description(),
-                format.repository_format.get_format_description(),
-       ), out)
+""", out)
         self.assertEqual('', err)
 
     def test_info_repository_hook(self):
@@ -1197,13 +1152,13 @@ Repository:
         repo = self.make_repository('repo', shared=True, format=format)
         out, err = self.run_bzr('info -v repo')
         self.assertEqualDiff(
-            """Shared repository with trees (format: dirstate or dirstate-tags or knit)
+            f"""Shared repository with trees (format: dirstate or dirstate-tags or knit)
 Location:
   shared repository: repo
 
 Format:
        control: Meta directory format 1
-    repository: {}
+    repository: {format.repository_format.get_format_description()}
 
 Control directory:
          0 branches
@@ -1213,8 +1168,7 @@ Create working tree for new branches inside the repository.
 Repository:
          0 revisions
 more info
-""".format(format.repository_format.get_format_description(),
-       ), out)
+""", out)
         self.assertEqual('', err)
 
     def test_info_unshared_repository_with_colocated_branches(self):
@@ -1280,7 +1234,7 @@ Location:
                                'for different processes (Bug #174055)',
                                self.run_brz_subprocess,
                                'info ' + command_string)
-        out, err = self.run_bzr('info %s' % command_string)
+        out, err = self.run_bzr(f'info {command_string}')
         description = {
             (True, True): 'Lightweight checkout',
             (True, False): 'Repository checkout',
