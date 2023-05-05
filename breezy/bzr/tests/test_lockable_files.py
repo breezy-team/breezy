@@ -18,12 +18,12 @@ import breezy
 import breezy.branch
 
 from ... import errors, lockdir, osutils, transport
-from .test_smart import TestCaseWithSmartMedium
-from ..lockable_files import LockableFiles, TransportLock
-from ...transactions import (PassThroughTransaction, ReadOnlyTransaction,
-                             WriteTransaction)
 from ...tests import TestCaseInTempDir, TestNotApplicable
 from ...tests.test_transactions import DummyWeave
+from ...transactions import (PassThroughTransaction, ReadOnlyTransaction,
+                             WriteTransaction)
+from ..lockable_files import LockableFiles, TransportLock
+from .test_smart import TestCaseWithSmartMedium
 
 
 # these tests are applied in each parameterized suite for LockableFiles
