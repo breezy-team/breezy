@@ -24,22 +24,7 @@ from breezy.bzr import (
     xml_serializer,
     )
 """)
-from .. import cache_utf8
-from .. import revision as _mod_revision
 from . import serializer
-
-
-def _validate_properties(props, _decode=cache_utf8._utf8_decode):
-    # TODO: we really want an 'isascii' check for key
-    # Cast the utf8 properties into Unicode 'in place'
-    return {_decode(key)[0]: _decode(value, 'surrogateescape')[0] for key, value in props.items()}
-
-
-def _is_format_10(value):
-    if value != 10:
-        raise ValueError('Format number was not recognized, expected 10 got %d'
-                         % (value,))
-    return 10
 
 
 class CHKSerializer(serializer.InventorySerializer):
