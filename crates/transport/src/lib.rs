@@ -1,4 +1,4 @@
-use crate::lock::Lock;
+use crate::lock::{Lock, LockError};
 use std::collections::HashMap;
 use std::fs::{Metadata, Permissions};
 use std::io::{Read, Seek};
@@ -61,9 +61,11 @@ pub fn map_io_err_to_transport_err(err: std::io::Error, path: Option<&str>) -> E
         // std::io::ErrorKind::NotADirectoryError => Error::NotADirectoryError(None),
         // std::io::ErrorKind::IsADirectoryError => Error::IsADirectoryError(None),
         _ => match err.raw_os_error() {
-            Some(libc::ENOTDIR) => Error::NotADirectoryError(path.map(|p| p.to_string())),
-            Some(libc::EISDIR) => Error::IsADirectoryError(path.map(|p| p.to_string())),
-            Some(libc::ENOTEMPTY) => Error::DirectoryNotEmptyError(path.map(|p| p.to_string())),
+            Some(nix::libc::ENOTDIR) => Error::NotADirectoryError(path.map(|p| p.to_string())),
+            Some(nix::libc::EISDIR) => Error::IsADirectoryError(path.map(|p| p.to_string())),
+            Some(nix::libc::ENOTEMPTY) => {
+                Error::DirectoryNotEmptyError(path.map(|p| p.to_string()))
+            }
             _ => Error::Io(err),
         },
     }
@@ -117,11 +119,11 @@ impl From<Metadata> for Stat {
 
 impl Stat {
     pub fn is_dir(&self) -> bool {
-        self.mode & libc::S_IFMT == libc::S_IFDIR
+        self.mode & nix::libc::S_IFMT == nix::libc::S_IFDIR
     }
 
     pub fn is_file(&self) -> bool {
-        self.mode & libc::S_IFMT == libc::S_IFREG
+        self.mode & nix::libc::S_IFMT == nix::libc::S_IFREG
     }
 }
 
@@ -526,5 +528,3 @@ pub mod filelock;
 pub mod lock;
 
 pub mod readv;
-
-pub mod sftp;

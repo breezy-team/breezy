@@ -1,5 +1,6 @@
 use crate::{
-    Error, Lock, ReadStream, Result, SmartMedium, Stat, Transport, Url, UrlFragment, WriteStream,
+    Error, Lock, LockError, ReadStream, Result, SmartMedium, Stat, Transport, Url, UrlFragment,
+    WriteStream,
 };
 use pyo3::import_exception;
 use pyo3::prelude::*;
@@ -22,6 +23,8 @@ import_exception!(breezy.errors, UrlError);
 import_exception!(breezy.errors, PermissionDenied);
 import_exception!(breezy.errors, PathNotChild);
 import_exception!(breezy.errors, ShortReadvError);
+import_exception!(breezy.errors, LockContention);
+import_exception!(breezy.errors, LockFailed);
 
 struct PySmartMedium(PyObject);
 
@@ -35,12 +38,30 @@ impl From<PyObject> for PyTransport {
     }
 }
 
+fn map_py_err_to_lock_err(e: PyErr) -> LockError {
+    Python::with_gil(|py| {
+        if e.is_instance_of::<LockContention>(py) {
+            LockError::Contention(e.value(py).getattr("lock").unwrap().extract().unwrap())
+        } else if e.is_instance_of::<LockFailed>(py) {
+            let v = e.value(py);
+            LockError::Failed(
+                v.getattr("lock").unwrap().extract().unwrap(),
+                v.getattr("why").unwrap().extract().unwrap(),
+            )
+        } else {
+            LockError::IoError(e.into())
+        }
+    })
+}
+
 struct PyLock(PyObject);
 
 impl Lock for PyLock {
-    fn unlock(&mut self) -> Result<()> {
+    fn unlock(&mut self) -> std::result::Result<(), LockError> {
         Python::with_gil(|py| {
-            self.0.call_method0(py, "unlock")?;
+            self.0
+                .call_method0(py, "unlock")
+                .map_err(map_py_err_to_lock_err)?;
             Ok(())
         })
     }

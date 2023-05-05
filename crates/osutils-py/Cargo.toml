@@ -11,6 +11,7 @@ pyo3 = { version = ">=0.17, < 0.19", features = ["extension-module", "chrono" ]}
 breezy-osutils = { path = "../osutils" }
 pyo3-file = { git = "https://github.com/omerbenamram/pyo3-file" }
 memchr = "2.3.4"
+termion = "2"
 
 [target.'cfg(unix)'.dependencies]
 nix = ">=0.26"

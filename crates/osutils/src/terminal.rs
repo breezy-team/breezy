@@ -1,4 +1,5 @@
-use std::io::stdout;
+use std::io::{stdout, Write};
+use termion::color::{Bg, Color, Fg, Reset};
 use termion::is_tty;
 
 pub fn terminal_size() -> std::io::Result<(u16, u16)> {
@@ -17,7 +18,7 @@ pub fn has_ansi_colors() -> bool {
 
     #[cfg(not(windows))]
     {
-        use termion::color::{AnsiValue, Bg, DetectColors};
+        use termion::color::DetectColors;
         use termion::raw::IntoRawMode;
 
         match stdout().into_raw_mode() {
@@ -28,4 +29,27 @@ pub fn has_ansi_colors() -> bool {
             Err(_) => false,
         }
     }
+}
+
+pub fn colorstring<F: Color, B: Color>(
+    text: &[u8],
+    fgcolor: Option<F>,
+    bgcolor: Option<B>,
+) -> Vec<u8> {
+    let mut ret = Vec::new();
+
+    if let Some(color) = fgcolor {
+        ret.write_all(Fg(color).to_string().as_bytes()).unwrap();
+    }
+
+    if let Some(color) = bgcolor {
+        ret.write_all(Bg(color).to_string().as_bytes()).unwrap();
+    }
+
+    ret.extend_from_slice(text);
+
+    ret.write_all(Fg(Reset).to_string().as_bytes()).unwrap();
+    ret.write_all(Bg(Reset).to_string().as_bytes()).unwrap();
+
+    ret
 }

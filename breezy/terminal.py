@@ -18,45 +18,7 @@
 from . import _osutils_rs
 
 has_ansi_colors = _osutils_rs.has_ansi_colors
-
-
-colors = {
-    "black": b"0",
-    "red": b"1",
-    "green": b"2",
-    "yellow": b"3",
-    "blue": b"4",
-    "magenta": b"5",
-    "cyan": b"6",
-    "white": b"7"
-}
-
-def colorstring(text, fgcolor=None, bgcolor=None):
-    """
-    Returns a string using ANSI control codes to set the text color.
-
-    :param text: The text to set the color for.
-    :type text: string
-    :param fgcolor: The foreground color to use
-    :type fgcolor: string
-    :param bgcolor: The background color to use
-    :type bgcolor: string
-    """
-    code = []
-
-    if fgcolor:
-        if fgcolor.startswith('dark'):
-            code.append(b'0')
-            fgcolor = fgcolor[4:]
-        else:
-            code.append(b'1')
-
-        code.append(b'3' + colors[fgcolor])
-
-    if bgcolor:
-        code.append(b'4' + colors[bgcolor])
-
-    return b"".join((b"\033[", b';'.join(code), b"m", text, b"\033[0m"))
+colorstring = _osutils_rs.colorstring
 
 
 class FG:

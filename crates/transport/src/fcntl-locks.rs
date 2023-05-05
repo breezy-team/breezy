@@ -1,5 +1,4 @@
-use crate::lock::FileLock;
-use crate::{map_io_err_to_transport_err, Error, Lock};
+use crate::lock::{FileLock, Lock, LockError};
 use lazy_static::lazy_static;
 use log::debug;
 use nix::fcntl::{fcntl, FcntlArg};
@@ -9,18 +8,12 @@ use std::fs::{File, OpenOptions};
 use std::os::unix::io::AsRawFd;
 use std::path::{Path, PathBuf};
 
-impl From<std::io::Error> for Error {
-    fn from(e: std::io::Error) -> Self {
-        map_io_err_to_transport_err(e, None)
-    }
-}
-
-fn open(filename: &Path, options: &OpenOptions) -> std::result::Result<(PathBuf, File), Error> {
+fn open(filename: &Path, options: &OpenOptions) -> std::result::Result<(PathBuf, File), LockError> {
     let filename = breezy_osutils::path::realpath(filename)?;
     match options.open(&filename) {
         Ok(f) => Ok((filename, f)),
         Err(e) => match e.kind() {
-            std::io::ErrorKind::PermissionDenied => Err(Error::LockFailed(filename, e.to_string())),
+            std::io::ErrorKind::PermissionDenied => Err(LockError::Failed(filename, e.to_string())),
             std::io::ErrorKind::NotFound => {
                 // Maybe this is an old branch (before 2005)?
                 debug!(
@@ -52,14 +45,14 @@ pub struct WriteLock {
 }
 
 impl WriteLock {
-    pub fn new(filename: &Path, strict_locks: bool) -> Result<WriteLock, Error> {
+    pub fn new(filename: &Path, strict_locks: bool) -> Result<WriteLock, LockError> {
         let filename = breezy_osutils::path::realpath(filename)?;
         if OPEN_WRITE_LOCKS.lock().unwrap().contains(&filename) {
-            return Err(Error::LockContention(filename));
+            return Err(LockError::Contention(filename));
         }
         if OPEN_READ_LOCKS.lock().unwrap().contains_key(&filename) {
             if strict_locks {
-                return Err(Error::LockContention(filename));
+                return Err(LockError::Contention(filename));
             } else {
                 debug!(
                     "Write lock taken w/ an open read lock on: {}",
@@ -73,9 +66,9 @@ impl WriteLock {
             OpenOptions::new().read(true).write(true),
         )?;
         OPEN_WRITE_LOCKS.lock().unwrap().insert(filename.clone());
-        let flock = libc::flock {
-            l_type: libc::F_WRLCK as i16,
-            l_whence: libc::SEEK_SET as i16,
+        let flock = nix::libc::flock {
+            l_type: nix::libc::F_WRLCK as i16,
+            l_whence: nix::libc::SEEK_SET as i16,
             l_start: 0,
             l_len: 0,
             l_pid: 0,
@@ -84,9 +77,9 @@ impl WriteLock {
             Ok(_) => Ok(WriteLock { filename, f }),
             Err(e) => {
                 if e == nix::errno::Errno::EAGAIN || e == nix::errno::Errno::EACCES {
-                    let flock = libc::flock {
-                        l_type: libc::F_UNLCK as i16,
-                        l_whence: libc::SEEK_SET as i16,
+                    let flock = nix::libc::flock {
+                        l_type: nix::libc::F_UNLCK as i16,
+                        l_whence: nix::libc::SEEK_SET as i16,
                         l_start: 0,
                         l_len: 0,
                         l_pid: 0,
@@ -95,18 +88,18 @@ impl WriteLock {
                 }
                 // we should be more precise about whats a locking
                 // error and whats a random-other error
-                Err(Error::LockContention(filename))
+                Err(LockError::Contention(filename))
             }
         }
     }
 }
 
 impl Lock for WriteLock {
-    fn unlock(&mut self) -> Result<(), Error> {
+    fn unlock(&mut self) -> Result<(), LockError> {
         OPEN_WRITE_LOCKS.lock().unwrap().remove(&self.filename);
-        let flock = libc::flock {
-            l_type: libc::F_UNLCK as i16,
-            l_whence: libc::SEEK_SET as i16,
+        let flock = nix::libc::flock {
+            l_type: nix::libc::F_UNLCK as i16,
+            l_whence: nix::libc::SEEK_SET as i16,
             l_start: 0,
             l_len: 0,
             l_pid: 0,
@@ -132,11 +125,11 @@ pub struct ReadLock {
 }
 
 impl ReadLock {
-    pub fn new(filename: &Path, strict_locks: bool) -> std::result::Result<Self, Error> {
+    pub fn new(filename: &Path, strict_locks: bool) -> std::result::Result<Self, LockError> {
         let filename = breezy_osutils::path::realpath(filename)?;
         if OPEN_WRITE_LOCKS.lock().unwrap().contains(&filename) {
             if strict_locks {
-                return Err(Error::LockContention(filename));
+                return Err(LockError::Contention(filename));
             } else {
                 debug!(
                     "Read lock taken w/ an open write lock on: {}",
@@ -153,9 +146,9 @@ impl ReadLock {
             .or_insert(1);
 
         let (filename, f) = open(&filename, OpenOptions::new().read(true))?;
-        let flock = libc::flock {
-            l_type: libc::F_RDLCK as i16,
-            l_whence: libc::SEEK_SET as i16,
+        let flock = nix::libc::flock {
+            l_type: nix::libc::F_RDLCK as i16,
+            l_whence: nix::libc::SEEK_SET as i16,
             l_start: 0,
             l_len: 0,
             l_pid: 0,
@@ -165,7 +158,7 @@ impl ReadLock {
             Err(e) => {
                 // we should be more precise about whats a locking
                 // error and whats a random-other error
-                return Err(Error::LockContention(filename));
+                return Err(LockError::Contention(filename));
             }
         }
         Ok(ReadLock { filename, f })
@@ -179,7 +172,9 @@ impl ReadLock {
     /// write lock.
     ///
     /// Returns: A token which can be used to switch back to a read lock.
-    pub fn temporary_write_lock(self) -> std::result::Result<TemporaryWriteLock, (Self, Error)> {
+    pub fn temporary_write_lock(
+        self,
+    ) -> std::result::Result<TemporaryWriteLock, (Self, LockError)> {
         if OPEN_WRITE_LOCKS.lock().unwrap().contains(&self.filename) {
             panic!("file already locked: {}", self.filename.to_string_lossy());
         }
@@ -188,7 +183,7 @@ impl ReadLock {
 }
 
 impl Lock for ReadLock {
-    fn unlock(&mut self) -> std::result::Result<(), Error> {
+    fn unlock(&mut self) -> std::result::Result<(), LockError> {
         match OPEN_READ_LOCKS.lock().unwrap().entry(self.filename.clone()) {
             Entry::Occupied(mut entry) => {
                 let count = entry.get_mut();
@@ -200,9 +195,9 @@ impl Lock for ReadLock {
             }
             Entry::Vacant(_) => panic!("no read lock on {}", self.filename.to_string_lossy()),
         }
-        let flock = libc::flock {
-            l_type: libc::F_UNLCK as i16,
-            l_whence: libc::SEEK_SET as i16,
+        let flock = nix::libc::flock {
+            l_type: nix::libc::F_UNLCK as i16,
+            l_whence: nix::libc::SEEK_SET as i16,
             l_start: 0,
             l_len: 0,
             l_pid: 0,
@@ -232,13 +227,13 @@ pub struct TemporaryWriteLock {
 }
 
 impl TemporaryWriteLock {
-    pub fn new(read_lock: ReadLock) -> std::result::Result<Self, (ReadLock, Error)> {
+    pub fn new(read_lock: ReadLock) -> std::result::Result<Self, (ReadLock, LockError)> {
         let filename = read_lock.filename.clone();
         if let Some(count) = OPEN_READ_LOCKS.lock().unwrap().get(&filename) {
             if *count > 1 {
                 // Something else also has a read-lock, so we cannot grab a
                 // write lock.
-                return Err((read_lock, Error::LockContention(filename.clone())));
+                return Err((read_lock, LockError::Contention(filename)));
             }
         }
 
@@ -257,16 +252,14 @@ impl TemporaryWriteLock {
             .open(&filename)
         {
             Ok(f) => Ok(f),
-            Err(e) => {
-                return Err((read_lock, Error::LockFailed(filename, e.to_string())));
-            }
+            Err(e) => return Err((read_lock, e.into())),
         }?;
 
         // LOCK_NB will cause IOError to be raised if we can't grab a
         // lock right away.
-        let flock = libc::flock {
-            l_type: libc::F_RDLCK as i16,
-            l_whence: libc::SEEK_SET as i16,
+        let flock = nix::libc::flock {
+            l_type: nix::libc::F_RDLCK as i16,
+            l_whence: nix::libc::SEEK_SET as i16,
             l_start: 0,
             l_len: 0,
             l_pid: 0,
@@ -275,7 +268,7 @@ impl TemporaryWriteLock {
         match fcntl(f.as_raw_fd(), FcntlArg::F_SETLK(&flock)) {
             Ok(_) => Ok(()),
             Err(_) => {
-                return Err((read_lock, Error::LockContention(filename)));
+                return Err((read_lock, LockError::Contention(filename)));
             }
         }?;
 
@@ -292,9 +285,9 @@ impl TemporaryWriteLock {
     pub fn restore_read_lock(self) -> ReadLock {
         // For fcntl, since we never released the read lock, just release
         // the write lock, and return the original lock.
-        let flock = libc::flock {
-            l_type: libc::F_UNLCK as i16,
-            l_whence: libc::SEEK_SET as i16,
+        let flock = nix::libc::flock {
+            l_type: nix::libc::F_UNLCK as i16,
+            l_whence: nix::libc::SEEK_SET as i16,
             l_start: 0,
             l_len: 0,
             l_pid: 0,

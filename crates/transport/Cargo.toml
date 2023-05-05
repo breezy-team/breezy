@@ -12,7 +12,6 @@ authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@j
 [lib]
 
 [dependencies]
-<<<<<<< TREE
 breezy-osutils = { path = "../osutils" }
 url = "2.2.2"
 atomicwrites = "0.4"
@@ -20,20 +19,14 @@ pyo3 = { version = ">= 0.17, <0.19", optional = true }
 pyo3-file = { git = "https://github.com/omerbenamram/pyo3-file", optional = true }
 breezy-urlutils = { path = "../urlutils" }
 path-clean = "1"
-#[cfg(unix)]
-nix = { version = "0.22" }
 walkdir = "2.3"
-#[cfg(unix)]
-libc = "0.2"
+lazy_static = "1"
+sftp = { version = ">=0.2", optional = true }
 log = "0.4"
-lazy_static = "1.4"
-byteorder = { version = "1", optional = true }
 
 [features]
 default = ["pyo3", "sftp"]
 pyo3 = ["dep:pyo3", "dep:pyo3-file"]
-sftp = ["dep:byteorder"]
-=======
-byteorder = "1.3.2"
-sftp = "0.2.0"
->>>>>>> MERGE-SOURCE
+
+[target.'cfg(unix)'.dependencies]
+nix = ">=0.26"

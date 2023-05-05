@@ -1,3 +1,4 @@
+use crate::lock::LockError;
 use crate::{
     map_atomic_err_to_transport_err, map_io_err_to_transport_err, Error, Lock, ReadStream, Result,
     SmartMedium, Stat, Transport, UrlFragment, WriteStream,
@@ -23,7 +24,9 @@ pub struct LocalTransport {
 impl TryFrom<&Path> for LocalTransport {
     type Error = Error;
     fn try_from(path: &Path) -> Result<Self> {
-        let url = breezy_urlutils::local_path_to_url(path)?;
+        let url = breezy_urlutils::local_path_to_url(path).map_err(|e| {
+            map_io_err_to_transport_err(e, Some(path.to_path_buf().to_str().unwrap()))
+        })?;
         LocalTransport::new(&url)
     }
 }
@@ -87,6 +90,14 @@ impl LocalTransport {
 impl std::fmt::Debug for LocalTransport {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "LocalTransport({})", self.base)
+    }
+}
+
+fn lock_err_to_transport_err(e: LockError) -> Error {
+    match e {
+        LockError::Contention(p) => Error::LockContention(p),
+        LockError::IoError(e) => Error::Io(e),
+        LockError::Failed(p, w) => Error::LockFailed(p, w),
     }
 }
 
@@ -261,7 +272,12 @@ impl Transport for LocalTransport {
         };
         let file = match std::fs::File::open(abspath) {
             Ok(f) => f,
-            Err(err) => return Box::new(std::iter::once(Err(err.into()))),
+            Err(err) => {
+                return Box::new(std::iter::once(Err(map_io_err_to_transport_err(
+                    err,
+                    Some(path),
+                ))))
+            }
         };
 
         Box::new(
@@ -277,7 +293,10 @@ impl Transport for LocalTransport {
                             len as u64,
                             n as u64,
                         )),
-                        Err(e) => Err(std::io::Error::from_raw_os_error(e as i32).into()),
+                        Err(e) => Err(map_io_err_to_transport_err(
+                            std::io::Error::from_raw_os_error(e as i32),
+                            Some(path),
+                        )),
                     }
                 }),
         )
@@ -371,9 +390,11 @@ impl Transport for LocalTransport {
     ) -> Result<Box<dyn WriteStream + Send + Sync>> {
         let path = self._abspath(relpath)?;
         let file = File::create(path).map_err(|e| map_io_err_to_transport_err(e, Some(relpath)))?;
-        file.set_len(0)?;
+        file.set_len(0)
+            .map_err(|e| map_io_err_to_transport_err(e, Some(relpath)))?;
         if let Some(permissions) = permissions {
-            file.set_permissions(permissions)?;
+            file.set_permissions(permissions)
+                .map_err(|e| map_io_err_to_transport_err(e, Some(relpath)))?;
         }
         Ok(Box::new(file))
     }
@@ -405,7 +426,7 @@ impl Transport for LocalTransport {
         };
         Box::new(
             entries
-                .map(|entry| entry.map_err(Error::from))
+                .map(|entry| entry.map_err(|e| map_io_err_to_transport_err(e, None)))
                 .map(|entry| {
                     entry.map(|entry| escape(entry.file_name().as_os_str().as_bytes(), None))
                 }),
@@ -422,13 +443,15 @@ impl Transport for LocalTransport {
 
     fn lock_read(&self, relpath: &UrlFragment) -> Result<Box<dyn Lock + Send + Sync>> {
         let path = self._abspath(relpath)?;
-        let lock = crate::filelock::ReadLock::new(path.as_path(), false)?;
+        let lock = crate::filelock::ReadLock::new(path.as_path(), false)
+            .map_err(lock_err_to_transport_err)?;
         Ok(Box::new(lock))
     }
 
     fn lock_write(&self, relpath: &UrlFragment) -> Result<Box<dyn Lock + Send + Sync>> {
         let path = self._abspath(relpath)?;
-        let lock = crate::filelock::WriteLock::new(path.as_path(), false)?;
+        let lock = crate::filelock::WriteLock::new(path.as_path(), false)
+            .map_err(lock_err_to_transport_err)?;
         Ok(Box::new(lock))
     }
 
@@ -470,7 +493,8 @@ impl Transport for LocalTransport {
         std::fs::copy(
             self._abspath(rel_from)?.as_path(),
             self._abspath(rel_to)?.as_path(),
-        )?;
+        )
+        .map_err(|e| map_io_err_to_transport_err(e, Some(rel_from)))?;
         Ok(())
     }
 }

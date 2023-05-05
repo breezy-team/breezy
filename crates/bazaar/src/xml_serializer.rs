@@ -31,7 +31,6 @@ fn unicode_escape_replace(cap: &regex::Captures) -> String {
 
 fn utf8_escape_replace(cap: &regex::bytes::Captures) -> Vec<u8> {
     let m = cap.get(0).unwrap().as_bytes();
-    eprintln!("m: {:?}", cap);
     if m.len() == 1 {
         if let Some(ret) = escape_low(m[0]) {
             return ret.as_bytes().to_vec();

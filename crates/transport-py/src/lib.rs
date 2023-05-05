@@ -1,18 +1,14 @@
-use breezy_transport::lock::FileLock;
-use breezy_transport::lock::Lock as LockTrait;
-use breezy_transport::{
-    Error, ReadStream, Result, Stat, Transport as TransportTrait, UrlFragment, WriteStream,
-};
+use breezy_transport::lock::{FileLock, Lock as LockTrait, LockError};
+use breezy_transport::{Error, ReadStream, Transport as TransportTrait, UrlFragment, WriteStream};
 use log::debug;
-use pyo3::create_exception;
-use pyo3::exceptions::{PyException, PyRuntimeError, PyValueError};
+use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyIterator, PyList, PyType};
 use pyo3_file::PyFileLikeObject;
 use std::collections::HashMap;
-use std::fs::{Metadata, Permissions};
-use std::io::{BufRead, BufReader, BufWriter, Read, Seek, Write};
+use std::fs::Permissions;
+use std::io::{BufRead, BufReader, Read, Seek, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use url::Url;
@@ -870,9 +866,7 @@ impl From<Box<dyn breezy_transport::lock::Lock + Send + Sync>> for Lock {
 #[pymethods]
 impl Lock {
     fn unlock(&mut self) -> PyResult<()> {
-        self.0
-            .unlock()
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))
+        self.0.unlock().map_err(|e| map_lock_err_to_py_err(e))
     }
 }
 
@@ -993,6 +987,14 @@ fn sort_expand_and_combine(
     )
 }
 
+fn map_lock_err_to_py_err(err: LockError) -> PyErr {
+    match err {
+        LockError::Contention(p) => LockContention::new_err((p,)),
+        LockError::Failed(p, w) => LockFailed::new_err((p, w)),
+        LockError::IoError(e) => e.into(),
+    }
+}
+
 #[pyclass]
 struct ReadLock(Option<breezy_transport::filelock::ReadLock>);
 
@@ -1003,9 +1005,7 @@ struct WriteLock(breezy_transport::filelock::WriteLock);
 impl ReadLock {
     fn unlock(&mut self) -> PyResult<()> {
         if let Some(mut read_lock) = self.0.take() {
-            read_lock
-                .unlock()
-                .map_err(|e| map_transport_err_to_py_err(e, None, None))
+            read_lock.unlock().map_err(map_lock_err_to_py_err)
         } else {
             debug!("ReadLock already unlocked");
             Ok(())
@@ -1016,7 +1016,7 @@ impl ReadLock {
     fn new(filename: PathBuf, strict_locks: Option<bool>) -> PyResult<Self> {
         Ok(Self(Some(
             breezy_transport::filelock::ReadLock::new(&filename, strict_locks.unwrap_or(false))
-                .map_err(|e| map_transport_err_to_py_err(e, None, None))?,
+                .map_err(map_lock_err_to_py_err)?,
         )))
     }
 
@@ -1025,11 +1025,12 @@ impl ReadLock {
         if let Some(read_lock) = m.0.take() {
             match read_lock.temporary_write_lock() {
                 Ok(twl) => Ok((true, TemporaryWriteLock(Some(twl)).into_py(py))),
-                Err((rl, Error::LockFailed(_, _))) | Err((rl, Error::LockContention(_))) => {
+                Err((rl, LockError::Contention(_))) => {
                     m.0 = Some(rl);
                     Ok((false, slf.to_object(slf.py())))
                 }
-                Err((rl, e)) => Err(map_transport_err_to_py_err(e, None, None)),
+                Err((_rl, LockError::Failed(p, w))) => Err(LockFailed::new_err((p, w))),
+                Err((_rl, LockError::IoError(e))) => Err(e.into()),
             }
         } else {
             Err(PyRuntimeError::new_err("ReadLock already unlocked"))
@@ -1077,16 +1078,14 @@ impl TemporaryWriteLock {
 #[pymethods]
 impl WriteLock {
     fn unlock(&mut self) -> PyResult<()> {
-        self.0
-            .unlock()
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))
+        self.0.unlock().map_err(map_lock_err_to_py_err)
     }
 
     #[new]
     fn new(filename: PathBuf, strict_locks: Option<bool>) -> PyResult<Self> {
         Ok(Self(
             breezy_transport::filelock::WriteLock::new(&filename, strict_locks.unwrap_or(false))
-                .map_err(|e| map_transport_err_to_py_err(e, None, None))?,
+                .map_err(map_lock_err_to_py_err)?,
         ))
     }
 
@@ -1115,6 +1114,9 @@ fn _transport_rs(py: Python, m: &PyModule) -> PyResult<()> {
     let sftpm = PyModule::new(py, "sftp")?;
     sftp::_sftp_rs(py, sftpm)?;
     m.add_submodule(sftpm)?;
+    m.add_class::<ReadLock>()?;
+    m.add_class::<WriteLock>()?;
+    m.add_class::<TemporaryWriteLock>()?;
 
     Ok(())
 }

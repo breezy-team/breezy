@@ -34,16 +34,23 @@ unlock() method.
 """
 
 import contextlib
-import errno
-import os
-import sys
 import warnings
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Optional
 
-from . import debug, errors, osutils, trace
+from . import _transport_rs, debug, errors, trace
 from .hooks import Hooks
 from .i18n import gettext
 from .transport import Transport
+
+have_fcntl = True
+
+def ReadLock(path):
+    return _transport_rs.ReadLock(path, 'strict_locks' in debug.debug_flags)
+
+def WriteLock(path):
+    return _transport_rs.WriteLock(path, 'strict_locks' in debug.debug_flags)
+
+
 
 LockToken = bytes
 
@@ -183,3 +190,6 @@ def write_locked(lockable):
         yield lockable
     finally:
         lockable.unlock()
+
+
+_lock_classes = [('default', WriteLock, ReadLock)]

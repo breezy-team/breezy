@@ -56,15 +56,20 @@ class TestOSLock(tests.TestCaseInTempDir):
     def test_read_locks_block_write_locks(self):
         r_lock = self.read_lock('a-lock-file')
         try:
-            # With -Dlock, fcntl locks are properly exclusive
-            self.assertRaises(errors.LockContention,
-                              self.write_lock, 'a-lock-file', True)
-            # But not without it
-            try:
-                w_lock = self.write_lock('a-lock-file', False)
-            except errors.LockContention:
-                self.fail('Unexpected success. fcntl read locks'
-                          ' do not usually block write locks')
+            if lock.have_fcntl:
+                # With -Dlock, fcntl locks are properly exclusive
+                self.assertRaises(errors.LockContention,
+                                  self.write_lock, 'a-lock-file', True)
+                # But not without it
+                try:
+                    w_lock = self.write_lock('a-lock-file', False)
+                except errors.LockContention:
+                    self.fail('Unexpected success. fcntl read locks'
+                              ' do not usually block write locks')
+                else:
+                    w_lock.unlock()
+                    self.knownFailure('fcntl read locks don\'t'
+                                      ' block write locks without -Dlock')
             else:
                 w_lock.unlock()
                 self.knownFailure('fcntl read locks don\'t'
@@ -75,17 +80,20 @@ class TestOSLock(tests.TestCaseInTempDir):
     def test_write_locks_block_read_lock(self):
         w_lock = self.write_lock('a-lock-file')
         try:
-            # With -Dlock, fcntl locks are properly exclusive
-            debug.debug_flags.add('strict_locks')
-            self.assertRaises(errors.LockContention,
-                              self.read_lock, 'a-lock-file', True)
-            # But not without it
-            debug.debug_flags.remove('strict_locks')
-            try:
-                r_lock = self.read_lock('a-lock-file', False)
-            except errors.LockContention:
-                self.fail('Unexpected success. fcntl write locks'
-                          ' do not usually block read locks')
+            if lock.have_fcntl:
+                # With -Dlock, fcntl locks are properly exclusive
+                self.assertRaises(errors.LockContention,
+                                  self.read_lock, 'a-lock-file', True)
+                # But not without it
+                try:
+                    r_lock = self.read_lock('a-lock-file', False)
+                except errors.LockContention:
+                    self.fail('Unexpected success. fcntl write locks'
+                              ' do not usually block read locks')
+                else:
+                    r_lock.unlock()
+                    self.knownFailure('fcntl write locks don\'t'
+                                      ' block read locks without -Dlock')
             else:
                 r_lock.unlock()
                 self.knownFailure('fcntl write locks don\'t'
