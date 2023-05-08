@@ -42,7 +42,6 @@ from breezy import (
     trace,
     win32utils,
     )
-from breezy.i18n import gettext
 """)
 
 import breezy
@@ -766,9 +765,6 @@ set_or_unset_env = _osutils_rs.set_or_unset_env
 IterableFile = _osutils_rs.IterableFile
 
 
-_WIN32_ERROR_DIRECTORY = 267  # Similar to errno.ENOTDIR
-
-
 def walkdirs(top, prefix="", fsdecode=os.fsdecode):
     """Yield data about all the directories in a tree.
 
@@ -1181,33 +1177,7 @@ def set_fd_cloexec(fd):
 find_executable_on_path = _osutils_rs.find_executable_on_path
 
 
-def _posix_is_local_pid_dead(pid):
-    """True if pid doesn't correspond to live process on this machine"""
-    try:
-        # Special meaning of unix kill: just check if it's there.
-        os.kill(pid, 0)
-    except OSError as e:
-        if e.errno == errno.ESRCH:
-            # On this machine, and really not found: as sure as we can be
-            # that it's dead.
-            return True
-        elif e.errno == errno.EPERM:
-            # exists, though not ours
-            return False
-        else:
-            trace.mutter("os.kill(%d, 0) failed: %s" % (pid, e))
-            # Don't really know.
-            return False
-    else:
-        # Exists and our process: not dead.
-        return False
-
-
-if sys.platform == "win32":
-    is_local_pid_dead = win32utils.is_local_pid_dead
-else:
-    is_local_pid_dead = _posix_is_local_pid_dead
-
+is_local_pid_dead = _osutils_rs.is_local_pid_dead
 _maybe_ignored = ['EAGAIN', 'EINTR', 'ENOTSUP', 'EOPNOTSUPP', 'EACCES']
 _fdatasync_ignored = [getattr(errno, name) for name in _maybe_ignored
                       if getattr(errno, name, None) is not None]

@@ -1,4 +1,4 @@
-use log::warn;
+use log::{debug, warn};
 use memchr::memchr;
 use rand::Rng;
 use std::fs::File;
@@ -257,3 +257,19 @@ pub mod mounts;
 mod tests;
 
 pub mod terminal;
+
+#[cfg(unix)]
+pub fn is_local_pid_dead(pid: i32) -> bool {
+    use nix::sys::signal::kill;
+    use nix::unistd::Pid;
+
+    match kill(Pid::from_raw(pid), None) {
+        Ok(_) => false,                  // Process exists and is ours: not dead.
+        Err(nix::Error::ESRCH) => true,  // Not found: as sure as we can be that it's dead.
+        Err(nix::Error::EPERM) => false, // Exists, though not ours.
+        Err(err) => {
+            debug!("kill({:?}, 0) failed: {}", pid, err);
+            false // Don't really know.
+        }
+    }
+}
