@@ -41,10 +41,10 @@ def file_kind(f, _lstat=os.lstat):
 
 from .._transport_rs import local as _local_rs
 
-LocalTransport = _local_rs.LocalTransport
+LocalTransport = _local_rs.LocalTransport  # type:ignore
 
 
-class EmulatedWin32LocalTransport(LocalTransport):
+class EmulatedWin32LocalTransport(LocalTransport):  # type:ignore
     """Special transport for testing Win32 [UNC] paths on non-windows"""
 
     def __init__(self, base):
