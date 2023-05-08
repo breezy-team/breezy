@@ -68,7 +68,7 @@ make_writable = _osutils_rs.make_writable
 minimum_path_selection = _osutils_rs.minimum_path_selection
 
 
-from ._osutils_rs import get_umask, kind_marker, quotefn, lexists
+from ._osutils_rs import get_umask, kind_marker, lexists, quotefn
 
 
 def fancy_rename(old, new, rename_func, unlink_func):
