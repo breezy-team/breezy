@@ -67,7 +67,7 @@ class MemoryTransport(transport.Transport):
 
     def clone(self, offset=None):
         """See Transport.clone()."""
-        path = urlutils.URL._combine_paths(self._cwd, offset)
+        path = urlutils.combine_paths(self._cwd, offset)
         if len(path) == 0 or path[-1] != '/':
             path += '/'
         url = self._scheme + path
