@@ -1808,7 +1808,7 @@ class TestFailedToLoadExtension(tests.TestCase):
 
     def test_report_extension_load_failures_message(self):
         log = BytesIO()
-        trace.push_log_file(log)
+        trace.push_log_file(log, short=True)
         self.assertTrue(self._try_loading())
         osutils.report_extension_load_failures()
         self.assertContainsRe(
@@ -1870,7 +1870,7 @@ class TestTerminalWidth(tests.TestCase):
         self.overrideEnv('BRZ_COLUMNS', None)
         self.overrideEnv('COLUMNS', None)
 
-        def terminal_size(w, h):
+        def terminal_size():
             return 42, 42
 
         self.set_fake_tty()

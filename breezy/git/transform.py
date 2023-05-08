@@ -758,7 +758,7 @@ class TreeTransformBase(TreeTransform):
             elif c[0] == 'path conflict':
                 yield TextConflict(fp.get_path(c[1]))
             else:
-                raise AssertionError('unknown conflict %s' % c[0])
+                raise AssertionError(f'unknown conflict {c[0]}')
 
 
 class DiskTreeTransform(TreeTransformBase):
@@ -966,7 +966,7 @@ class DiskTreeTransform(TreeTransformBase):
             except KeyError:
                 path = None
             trace.warning(
-                'Unable to create symlink "{}" on this filesystem.'.format(path))
+                f'Unable to create symlink "{path}" on this filesystem.')
             self._symlink_target[trans_id] = target
         # We add symlink to _new_contents even if they are unsupported
         # and not created. These entries are subsequently used to avoid
@@ -1158,14 +1158,18 @@ class GitTreeTransform(DiskTreeTransform):
         try:
             limbodir = urlutils.local_path_from_url(
                 tree._transport.abspath('limbo'))
-            osutils.ensure_empty_directory_exists(
-                limbodir,
-                errors.ExistingLimbo)
+            try:
+                osutils.ensure_empty_directory_exists(
+                    limbodir)
+            except errors.DirectoryNotEmpty:
+                raise errors.ExistingLimbo(limbodir)
             deletiondir = urlutils.local_path_from_url(
                 tree._transport.abspath('pending-deletion'))
-            osutils.ensure_empty_directory_exists(
-                deletiondir,
-                errors.ExistingPendingDeletion)
+            try:
+                osutils.ensure_empty_directory_exists(
+                    deletiondir)
+            except errors.DirectoryNotEmpty:
+                raise errors.ExistingPendingDeletion(deletiondir)
         except BaseException:
             tree.unlock()
             raise
@@ -1426,7 +1430,7 @@ class GitTreeTransform(DiskTreeTransform):
                     BareLocalGitControlDirFormat().initialize_on_transport(submodule_transport)
                     with open(os.path.join(full_path, '.git'), 'w') as f:
                         submodule_abspath = submodule_transport.local_abspath('.')
-                        f.write('gitdir: %s\n' % os.path.relpath(submodule_abspath, full_path))
+                        f.write(f'gitdir: {os.path.relpath(submodule_abspath, full_path)}\n')
         for path, trans_id in new_paths:
             # new_paths includes stuff like workingtree conflicts. Only the
             # stuff in new_contents actually comes from limbo.

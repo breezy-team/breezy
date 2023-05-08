@@ -57,7 +57,7 @@ class TestZLibEstimator(tests.TestCase):
         # 32401
         raw_comp = zlib.compress(raw_data[:start])
         self.assertTrue(31000 < len(raw_comp) < 35000,
-                        "Unexpected compressed size: %d bytes" % (len(raw_comp),))
+                        f"Unexpected compressed size: {len(raw_comp)} bytes")
 
     def test_adding_more_content(self):
         ze = ZLibEstimator(64000)
@@ -74,4 +74,4 @@ class TestZLibEstimator(tests.TestCase):
         # 32401
         raw_comp = zlib.compress(raw_data[:start])
         self.assertTrue(63000 < len(raw_comp) < 65000,
-                        "Unexpected compressed size: %d bytes" % (len(raw_comp),))
+                        f"Unexpected compressed size: {len(raw_comp)} bytes")

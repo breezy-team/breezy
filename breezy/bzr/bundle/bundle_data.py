@@ -31,7 +31,7 @@ from ..inventory import (Inventory, InventoryDirectory, InventoryFile,
                          InventoryLink)
 from ..inventorytree import InventoryTree
 from ..testament import StrictTestament
-from ..xml5 import serializer_v5
+from ..xml5 import inventory_serializer_v5
 from . import apply_bundle
 
 
@@ -58,16 +58,7 @@ class RevisionInfo:
         return pprint.pformat(self.__dict__)
 
     def as_revision(self):
-        rev = Revision(revision_id=self.revision_id,
-                       committer=self.committer,
-                       timestamp=float(self.timestamp),
-                       timezone=int(self.timezone),
-                       inventory_sha1=self.inventory_sha1,
-                       message='\n'.join(self.message))
-
-        if self.parent_ids:
-            rev.parent_ids.extend(self.parent_ids)
-
+        properties = {}
         if self.properties:
             for property in self.properties:
                 key_end = property.find(': ')
@@ -79,9 +70,16 @@ class RevisionInfo:
                 else:
                     key = str(property[:key_end])
                     value = property[key_end + 2:]
-                rev.properties[key] = value
+                properties[key] = value
 
-        return rev
+        return Revision(revision_id=self.revision_id,
+                        committer=self.committer,
+                        timestamp=float(self.timestamp),
+                        timezone=int(self.timezone),
+                        inventory_sha1=self.inventory_sha1,
+                        message='\n'.join(self.message),
+                        parent_ids=self.parent_ids or [],
+                        properties=properties)
 
     @staticmethod
     def from_revision(revision):
@@ -266,7 +264,7 @@ class BundleInfo:
         so build up an inventory, and make sure the hashes match.
         """
         # Now we should have a complete inventory entry.
-        cs = serializer_v5.write_inventory_to_chunks(inv)
+        cs = inventory_serializer_v5.write_inventory_to_chunks(inv)
         sha1 = sha_strings(cs)
         # Target revision is the last entry in the real_revisions list
         rev = self.get_revision(revision_id)
@@ -326,7 +324,7 @@ class BundleInfo:
                 try:
                     name, value = info_item.split(':', 1)
                 except ValueError:
-                    raise ValueError('Value %r has no colon' % info_item)
+                    raise ValueError(f'Value {info_item!r} has no colon')
                 if name == 'last-changed':
                     last_changed = value
                 elif name == 'executable':
@@ -421,8 +419,7 @@ class BundleInfo:
                 self.get_revision_info(revision_id).tree_actions:
             first = action_line.find(' ')
             if first == -1:
-                raise BzrError('Bogus action line'
-                               ' (no opening space): %r' % action_line)
+                raise BzrError(f'Bogus action line (no opening space): {action_line!r}')
             second = action_line.find(' ', first + 1)
             if second == -1:
                 raise BzrError('Bogus action line'
@@ -613,12 +610,12 @@ class BundleTree(InventoryTree):
                     self.kind(path) == 'directory'):
                 return BytesIO()
             if patch_original is None:
-                raise AssertionError("None: %s" % file_id)
+                raise AssertionError(f"None: {file_id}")
             return patch_original
 
         if file_patch.startswith(b'\\'):
             raise ValueError(
-                'Malformed patch for {}, {!r}'.format(file_id, file_patch))
+                f'Malformed patch for {file_id}, {file_patch!r}')
         return patched_file(file_patch, patch_original)
 
     def get_symlink_target(self, path):
@@ -706,7 +703,7 @@ class BundleTree(InventoryTree):
                 ie.text_size, ie.text_sha1 = self.get_size_and_sha1(path)
                 if ie.text_size is None:
                     raise BzrError(
-                        'Got a text_size of None for file_id %r' % file_id)
+                        f'Got a text_size of None for file_id {file_id!r}')
             inv.add(ie)
 
         sorted_entries = self.sorted_path_id()

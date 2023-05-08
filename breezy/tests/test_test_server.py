@@ -49,8 +49,7 @@ class TCPClient:
 
     def connect(self, addr):
         if self.sock is not None:
-            raise AssertionError('Already connected to %r'
-                                 % (self.sock.getsockname(),))
+            raise AssertionError(f'Already connected to {self.sock.getsockname()!r}')
         self.sock = osutils.connect_socket(addr)
 
     def disconnect(self):
@@ -94,7 +93,7 @@ class TCPConnectionHandler(socketserver.BaseRequestHandler):
         # An empty string is allowed, to indicate the end of the connection
         if not req or (req.endswith(b'\n') and req.count(b'\n') == 1):
             return req
-        raise ValueError('[{!r}] not a simple line'.format(req))
+        raise ValueError(f'[{req!r}] not a simple line')
 
     def handle_connection(self):
         req = self.readline()
@@ -103,7 +102,7 @@ class TCPConnectionHandler(socketserver.BaseRequestHandler):
         elif req == b'ping\n':
             self.request.sendall(b'pong\n')
         else:
-            raise ValueError('[%s] not understood' % req)
+            raise ValueError(f'[{req}] not understood')
 
 
 class TestTCPServerInAThread(tests.TestCase):

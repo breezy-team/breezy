@@ -19,7 +19,7 @@
 import hashlib
 import time
 
-from .. import controldir, debug, errors, osutils
+from .. import _bzr_rs, controldir, debug, errors, osutils
 from .. import revision as _mod_revision
 from .. import trace, ui
 from ..bzr import chk_map, chk_serializer
@@ -378,7 +378,7 @@ class GCCHKPacker(Packer):
     def _copy_stream(self, source_vf, target_vf, keys, message, vf_to_stream,
                      pb_offset):
         trace.mutter('repacking %d %s', len(keys), message)
-        self.pb.update('repacking {}'.format(message), pb_offset)
+        self.pb.update(f'repacking {message}', pb_offset)
         with ui.ui_factory.nested_progress_bar() as child_pb:
             stream = vf_to_stream(source_vf, keys, message, child_pb)
             for _, _ in target_vf._insert_record_stream(
@@ -589,7 +589,7 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
 
         This is useful to get the side-effects of generating a stream.
         """
-        self.pb.update('scanning {}'.format(message), pb_offset)
+        self.pb.update(f'scanning {message}', pb_offset)
         with ui.ui_factory.nested_progress_bar() as child_pb:
             list(vf_to_stream(source_vf, keys, message, child_pb))
 
@@ -769,8 +769,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         present_text_keys = no_fallback_texts_index.get_parent_map(text_keys)
         missing_text_keys = text_keys.difference(present_text_keys)
         if missing_text_keys:
-            problems.append("missing text keys: %r"
-                            % (sorted(missing_text_keys),))
+            problems.append(f"missing text keys: {sorted(missing_text_keys)!r}")
         return problems
 
 
@@ -778,10 +777,9 @@ class CHKInventoryRepository(PackRepository):
     """subclass of PackRepository that uses CHK based inventories."""
 
     def __init__(self, _format, a_controldir, control_files, _commit_builder_class,
-                 _serializer):
+                 _revision_serializer, _inventory_serializer):
         """Overridden to change pack collection class."""
-        super().__init__(_format, a_controldir,
-                                                     control_files, _commit_builder_class, _serializer)
+        super().__init__(_format, a_controldir, control_files, _commit_builder_class, _revision_serializer, _inventory_serializer)
         index_transport = self._transport.clone('indices')
         self._pack_collection = GCRepositoryPackCollection(self,
                                                            self._transport, index_transport,
@@ -826,7 +824,7 @@ class CHKInventoryRepository(PackRepository):
                           parents=False, is_locked=self.is_locked,
                           inconsistency_fatal=False),
             access=self._pack_collection.chk_index.data_access)
-        search_key_name = self._format._serializer.search_key_name
+        search_key_name = self._format._inventory_serializer.search_key_name
         search_key_func = chk_map.search_key_registry.get(search_key_name)
         self.chk_bytes._search_key_func = search_key_func
         # True when the repository object is 'write locked' (as opposed to the
@@ -849,7 +847,7 @@ class CHKInventoryRepository(PackRepository):
         :seealso: add_inventory, for the contract.
         """
         # make inventory
-        serializer = self._format._serializer
+        serializer = self._format._inventory_serializer
         result = inventory.CHKInventory.from_inventory(self.chk_bytes, inv,
                                                        maximum_size=serializer.maximum_size,
                                                        search_key_name=serializer.search_key_name)
@@ -863,7 +861,7 @@ class CHKInventoryRepository(PackRepository):
         This is a simplified form of create_by_apply_delta which knows that all
         the old values must be None, so everything is a create.
         """
-        serializer = self._format._serializer
+        serializer = self._format._inventory_serializer
         new_inv = inventory.CHKInventory(serializer.search_key_name)
         new_inv.revision_id = revision_id
         entry_to_bytes = new_inv._entry_to_bytes
@@ -921,7 +919,7 @@ class CHKInventoryRepository(PackRepository):
             resulting inventory.
         """
         if not self.is_in_write_group():
-            raise AssertionError("{!r} not in write group".format(self))
+            raise AssertionError(f"{self!r} not in write group")
         _mod_revision.check_not_reserved_id(new_revision_id)
         basis_tree = None
         if basis_inv is None or not isinstance(basis_inv, inventory.CHKInventory):
@@ -977,7 +975,7 @@ class CHKInventoryRepository(PackRepository):
         # it allowing _get_inventory_xml to work. Bundles currently use the
         # serializer directly; this also isn't ideal, but there isn't an xml
         # iteration interface offered at all for repositories.
-        return self._serializer.write_inventory_to_lines(
+        return self._inventory_serializer.write_inventory_to_lines(
             self.get_inventory(revision_id))
 
     def _find_present_inventory_keys(self, revision_keys):
@@ -1081,7 +1079,8 @@ class CHKInventoryRepository(PackRepository):
 
     def _get_source(self, to_format):
         """Return a source for streaming from this repository."""
-        if self._format._serializer == to_format._serializer:
+        if (self._format._inventory_serializer == to_format._inventory_serializer and
+                self._format._revision_serializer == to_format._revision_serializer):
             # We must be exactly the same format, otherwise stuff like the chk
             # page layout might be different.
             # Actually, this test is just slightly looser than exact so that
@@ -1341,7 +1340,8 @@ class RepositoryFormat2a(RepositoryFormatPack):
     supports_chks = True
     _commit_builder_class = PackCommitBuilder
     rich_root_data = True
-    _serializer = chk_serializer.chk_bencode_serializer
+    _revision_serializer = _bzr_rs.revision_bencode_serializer
+    _inventory_serializer = chk_serializer.inventory_chk_serializer_255_bigpage_10
     _commit_inv_deltas = True
     # What index classes to use
     index_builder_class = BTreeBuilder

@@ -41,11 +41,10 @@ def _deserialise_leaf_node(data, key, search_key_func=None):
     lines = data.split(b'\n')
     trailing = lines.pop()
     if trailing != b'':
-        raise AssertionError('We did not have a final newline for %s'
-                             % (key,))
+        raise AssertionError(f'We did not have a final newline for {key}')
     items = {}
     if lines[0] != b'chkleaf:':
-        raise ValueError("not a serialised leaf node: %r" % bytes)
+        raise ValueError(f"not a serialised leaf node: {bytes!r}")
     maximum_size = int(lines[1])
     width = int(lines[2])
     length = int(lines[3])
@@ -103,7 +102,7 @@ def _deserialise_internal_node(data, key, search_key_func=None):
     lines.pop(-1)
     items = {}
     if lines[0] != b'chknode:':
-        raise ValueError("not a serialised internal node: %r" % bytes)
+        raise ValueError(f"not a serialised internal node: {bytes!r}")
     maximum_size = int(lines[1])
     width = int(lines[2])
     length = int(lines[3])
@@ -113,7 +112,7 @@ def _deserialise_internal_node(data, key, search_key_func=None):
         prefix, flat_key = line.rsplit(b'\x00', 1)
         items[prefix] = StaticTuple(flat_key,)
     if len(items) == 0:
-        raise AssertionError("We didn't find any item for %s" % key)
+        raise AssertionError(f"We didn't find any item for {key}")
     result._items = items
     result._len = length
     result._maximum_size = maximum_size

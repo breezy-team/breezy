@@ -257,10 +257,9 @@ class Evolution(BodyExternalMailClient):
             message_options['attach'] = attach_path
         if body is not None:
             message_options['body'] = body
-        options_list = ['{}={}'.format(k, urlutils.escape(v)) for (k, v) in
+        options_list = [f'{k}={urlutils.escape(v)}' for (k, v) in
                         sorted(message_options.items())]
-        return ['mailto:{}?{}'.format(self._encode_safe(to or ''),
-                                  '&'.join(options_list))]
+        return [f"mailto:{self._encode_safe(to or '')}?{'&'.join(options_list)}"]
 
 
 mail_client_registry.register('evolution', Evolution,
@@ -324,11 +323,10 @@ class Thunderbird(BodyExternalMailClient):
             message_options['attachment'] = urlutils.local_path_to_url(
                 attach_path)
         if body is not None:
-            options_list = ['body=%s' %
-                            urlutils.quote(self._encode_safe(body))]
+            options_list = [f'body={urlutils.quote(self._encode_safe(body))}']
         else:
             options_list = []
-        options_list.extend(["{}='{}'".format(k, v) for k, v in
+        options_list.extend([f"{k}='{v}'" for k, v in
                              sorted(message_options.items())])
         return ['-compose', ','.join(options_list)]
 
@@ -383,8 +381,7 @@ class Claws(ExternalMailClient):
         # to must be supplied for the claws-mail --compose syntax to work.
         if to is None:
             raise NoMailAddressSpecified()
-        compose_url = 'mailto:{}?{}'.format(
-            self._encode_safe(to), '&'.join(compose_url))
+        compose_url = f"mailto:{self._encode_safe(to)}?{'&'.join(compose_url)}"
         # Collect command-line options.
         message_options = ['--compose', compose_url]
         if attach_path is not None:
@@ -518,7 +515,7 @@ class EmacsMail(ExternalMailClient):
         # This will work with any mail mode including default mail-mode
         # User must tweak mail-user-agent variable to tell what function
         # will be called inside compose-mail.
-        mail_cmd = "(compose-mail {} {})".format(_to, _subject)
+        mail_cmd = f"(compose-mail {_to} {_subject})"
         commandline.append(mail_cmd)
 
         # Try to attach a MIME attachment using our wrapper function
@@ -526,10 +523,10 @@ class EmacsMail(ExternalMailClient):
             # Do not create a file if there is no attachment
             elisp = self._prepare_send_function()
             self.elisp_tmp_file = elisp
-            lmmform = '(load "%s")' % elisp
+            lmmform = f'(load "{elisp}")'
             mmform = '(bzr-add-mime-att "%s")' % \
                 self._encode_path(attach_path, 'attachment')
-            rmform = '(delete-file "%s")' % elisp
+            rmform = f'(delete-file "{elisp}")'
             commandline.append(lmmform)
             commandline.append(mmform)
             commandline.append(rmform)
@@ -633,7 +630,7 @@ class DefaultMail(MailClient):
 
     def _mail_client(self):
         """Determine the preferred mail client for this platform"""
-        if osutils.supports_mapi():
+        if sys.platform == "win32":
             return MAPIClient(self.config)
         else:
             return XDGEmail(self.config)

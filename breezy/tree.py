@@ -132,7 +132,7 @@ class TreeChange:
         self.copied = copied
 
     def __repr__(self):
-        return "{}{!r}".format(self.__class__.__name__, self._as_tuple())
+        return f"{self.__class__.__name__}{self._as_tuple()!r}"
 
     def _as_tuple(self):
         return (self.path, self.changed_content, self.versioned,

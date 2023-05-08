@@ -105,8 +105,8 @@ _mod_workingtree.format_registry.register_extra_lazy(
     'breezy.plugins.weave_fmt.workingtree',
     'WorkingTreeFormat2')
 
-serializer.format_registry.register_lazy('4', 'breezy.plugins.weave_fmt.xml4',
-                                         'serializer_v4')
+serializer.revision_format_registry.register_lazy('4', 'breezy.plugins.weave_fmt.xml4', 'revision_serializer_v4')
+serializer.inventory_format_registry.register_lazy('4', 'breezy.plugins.weave_fmt.xml4', 'inventory_serializer_v4')
 
 
 def load_tests(loader, basic_tests, pattern):
@@ -117,5 +117,5 @@ def load_tests(loader, basic_tests, pattern):
         'test_workingtree',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["{}.{}".format(__name__, tmn) for tmn in testmod_names]))
+        [f"{__name__}.{tmn}" for tmn in testmod_names]))
     return basic_tests

@@ -419,7 +419,7 @@ class GitBranch(ForeignBranch):
         self._lock_count = 0
         super().__init__(repository.get_mapping())
         if not isinstance(ref, bytes):
-            raise TypeError("ref is invalid: %r" % ref)
+            raise TypeError(f"ref is invalid: {ref!r}")
         self.ref = ref
         self._head = None
         self._user_transport = controldir.user_transport.clone('.')
@@ -493,8 +493,7 @@ class GitBranch(ForeignBranch):
     nick = property(_get_nick, _set_nick)
 
     def __repr__(self):
-        return "<{}({!r}, {!r})>".format(self.__class__.__name__, self.repository.base,
-                                 self.name)
+        return f"<{self.__class__.__name__}({self.repository.base!r}, {self.name!r})>"
 
     def set_last_revision(self, revid):
         raise NotImplementedError(self.set_last_revision)

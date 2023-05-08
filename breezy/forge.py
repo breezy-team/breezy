@@ -290,7 +290,7 @@ class Forge:
     @property
     def name(self):
         """Name of this instance."""
-        return "{} at {}".format(type(self).__name__, self.base_url)
+        return f"{type(self).__name__} at {self.base_url}"
 
     # Does this forge support suggesting a commit message in the
     # merge proposal?

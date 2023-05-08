@@ -249,7 +249,7 @@ class ConflictList:
         return not (self == other_list)
 
     def __repr__(self):
-        return "ConflictList(%r)" % self.__list
+        return f"ConflictList({self.__list!r})"
 
     def to_strings(self):
         """Generate strings for the provided conflicts"""
@@ -291,9 +291,9 @@ class ConflictList:
         if ignore_misses is not True:
             for path in [p for p in paths if p not in selected_paths]:
                 if not os.path.exists(tree.abspath(path)):
-                    print("%s does not exist" % path)
+                    print(f"{path} does not exist")
                 else:
-                    print("%s is not conflicted" % path)
+                    print(f"{path} is not conflicted")
         return new_conflicts, selected_conflicts
 
 

@@ -98,12 +98,11 @@ class ImportTariffTestCase(TestCaseWithTransport):
 
         bad_modules = []
         for module_name in forbidden_imports:
-            if err.find("\nimport '%s' " % module_name) != -1:
+            if err.find(f"\nimport '{module_name}' ") != -1:
                 bad_modules.append(module_name)
 
         if bad_modules:
-            self.fail("command loaded forbidden modules %r"
-                      % (bad_modules,))
+            self.fail(f"command loaded forbidden modules {bad_modules!r}")
 
     def finish_brz_subprocess_with_import_check(self, process,
                                                 args, forbidden_imports):

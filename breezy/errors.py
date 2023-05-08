@@ -111,7 +111,7 @@ class BzrError(Exception):
     __str__ = _format
 
     def __repr__(self):
-        return '{}({})'.format(self.__class__.__name__, str(self))
+        return f'{self.__class__.__name__}({str(self)})'
 
     def _get_format_string(self):
         """Return format string for this exception or None"""
@@ -450,7 +450,7 @@ class NotBranchError(PathError):
         PathError.__init__(self, path=path)
 
     def __repr__(self):
-        return '<{} {!r}>'.format(self.__class__.__name__, self.__dict__)
+        return f'<{self.__class__.__name__} {self.__dict__!r}>'
 
     def _get_format_string(self):
         # GZ 2017-06-08: Not the best place to lazy fill detail in.
@@ -994,13 +994,13 @@ class NoCommits(BranchError):
 class UnlistableStore(BzrError):
 
     def __init__(self, store):
-        BzrError.__init__(self, "Store %s is not listable" % store)
+        BzrError.__init__(self, f"Store {store} is not listable")
 
 
 class UnlistableBranch(BzrError):
 
     def __init__(self, br):
-        BzrError.__init__(self, "Stores for branch %s are not listable" % br)
+        BzrError.__init__(self, f"Stores for branch {br} are not listable")
 
 
 class BoundBranchOutOfDate(BzrError):
@@ -1154,7 +1154,7 @@ class SocketConnectionError(ConnectionError):
         if port is None:
             self.port = ''
         else:
-            self.port = ':%s' % port
+            self.port = f':{port}'
 
 
 # XXX: This is also used for unexpected end of file, which is different at the
@@ -1190,7 +1190,7 @@ class InvalidHttpResponse(TransportError):
         else:
             # This is reached for obscure and unusual errors so we want to
             # preserve as much info as possible to ease debug.
-            orig_error = ': {!r}'.format(orig_error)
+            orig_error = f': {orig_error!r}'
         self.headers = headers
         TransportError.__init__(self, msg, orig_error=orig_error)
 

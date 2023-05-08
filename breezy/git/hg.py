@@ -77,5 +77,5 @@ def extract_hg_metadata(message):
                 before, after = data.split(" : ", 1)
                 extra[before] = urllib.parse.unquote(after)
             else:
-                raise KeyError("unknown hg-git metadata command %s" % command)
+                raise KeyError(f"unknown hg-git metadata command {command}")
     return (message, renames, branch, extra)

@@ -87,7 +87,7 @@ class MultiParent:
             self.hunks = []
 
     def __repr__(self):
-        return "MultiParent(%r)" % self.hunks
+        return f"MultiParent({self.hunks!r})"
 
     def __eq__(self, other):
         if self.__class__ is not other.__class__:
@@ -274,7 +274,7 @@ class NewText:
         return (other.lines == self.lines)
 
     def __repr__(self):
-        return 'NewText(%r)' % self.lines
+        return f'NewText({self.lines!r})'
 
     def to_patch(self):
         yield b'i %d\n' % len(self.lines)

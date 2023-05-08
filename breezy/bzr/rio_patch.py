@@ -96,7 +96,7 @@ def _patch_stanza_iter(line_iter):
         elif line.startswith(b'#'):
             line = line[1:]
         else:
-            raise ValueError("bad line {!r}".format(line))
+            raise ValueError(f"bad line {line!r}")
         if last_line is not None and len(line) > 2:
             line = line[2:]
         line = re.sub(b'\r', b'', line)

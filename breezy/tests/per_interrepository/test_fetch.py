@@ -111,6 +111,7 @@ class TestInterRepository(TestCaseWithInterRepository):
                            committer="Foo Bar <foo@example.com>",
                            message="Message",
                            inventory_sha1=inv_sha1,
+                           properties={},
                            revision_id=b'new',
                            parent_ids=[revid])
             source.add_revision(rev.revision_id, rev)
@@ -494,8 +495,9 @@ class TestInterRepository(TestCaseWithInterRepository):
                        committer="Foo Bar <foo@example.com>",
                        message="Message",
                        inventory_sha1=sha1,
-                       revision_id=b'b')
-        rev.parent_ids = [b'a']
+                       parent_ids=[b'a'],
+                       revision_id=b'b',
+                       properties={})
         source.add_revision(b'b', rev)
         self.disable_commit_write_group_paranoia(source)
         source.commit_write_group()

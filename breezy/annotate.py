@@ -72,15 +72,18 @@ def annotate_file_tree(tree, path, to_file, verbose=False, full=False,
         # Create a virtual revision to represent the current tree state.
         # Should get some more pending commit attributes, like pending tags,
         # bugfixes etc.
-        current_rev = Revision(CURRENT_REVISION)
-        current_rev.parent_ids = tree.get_parent_ids()
         try:
-            current_rev.committer = branch.get_config_stack().get('email')
+            committer = branch.get_config_stack().get('email')
         except errors.NoWhoami:
-            current_rev.committer = 'local user'
-        current_rev.message = "?"
-        current_rev.timestamp = round(time.time(), 3)
-        current_rev.timezone = osutils.local_time_offset()
+            committer = 'local user'
+        current_rev = Revision(
+                CURRENT_REVISION,
+                parent_ids=tree.get_parent_ids(),
+                committer=committer, message="?",
+                properties={},
+                inventory_sha1=None,
+                timestamp=round(time.time(), 3),
+                timezone=osutils.local_time_offset())
     else:
         current_rev = None
     annotation = list(_expand_annotations(
@@ -120,7 +123,7 @@ def _print_annotations(annotation, verbose, to_file, full, encoding):
         # GZ 2017-05-21: Writing both unicode annotation and bytes from file
         # which the given to_file must cope with.
         to_file.write(anno)
-        to_file.write('| {}\n'.format(text.decode(encoding)))
+        to_file.write(f'| {text.decode(encoding)}\n')
         prevanno = anno
 
 

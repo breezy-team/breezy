@@ -62,7 +62,7 @@ def needs(request, *paths):
     """Errors out if the specified path does not exists"""
     missing = [p for p in paths if not os.path.exists(p)]
     if missing:
-        error('{} needs: {}'.format(request, ','.join(missing)))
+        error(f"{request} needs: {','.join(missing)}")
 
 
 def rm_f(path):
@@ -118,7 +118,7 @@ def build_ca_key():
     rm_f(key_path)
     _openssl(['genrsa', '-passout', 'stdin', '-des3', '-out',
               key_path, '4096'],
-             input='%(ca_pass)s\n%(ca_pass)s\n' % ssl_params)
+             input=f"{ssl_params['ca_pass']}\n{ssl_params['ca_pass']}\n")
 
 
 def build_ca_certificate():
@@ -152,13 +152,13 @@ def build_server_key():
     rm_f(key_path)
     _openssl(['genrsa', '-passout', 'stdin', '-des3', '-out',
               key_path, '4096'],
-             input='%(server_pass)s\n%(server_pass)s\n' % ssl_params)
+             input=f"{ssl_params['server_pass']}\n{ssl_params['server_pass']}\n")
 
     key_nopass_path = ssl_certs.build_path('server_without_pass.key')
     rm_f(key_nopass_path)
     _openssl(['rsa', '-passin', 'stdin', '-in', key_path,
               '-out', key_nopass_path],
-             input='%(server_pass)s\n' % ssl_params)
+             input=f"{ssl_params['server_pass']}\n")
 
 
 def build_server_signing_request():
@@ -199,7 +199,7 @@ def sign_server_certificate():
               '-set_serial', '01',
               '-extfile', server_ext_conf,
               '-out', server_cert_path],
-             input='%(ca_pass)s\n' % ssl_params)
+             input=f"{ssl_params['ca_pass']}\n")
 
 
 def build_ssls(name, options, builders):
@@ -207,7 +207,7 @@ def build_ssls(name, options, builders):
         for item in options:
             builder = builders.get(item, None)
             if builder is None:
-                error('{} is not a known {}'.format(item, name))
+                error(f'{item} is not a known {name}')
             builder()
 
 

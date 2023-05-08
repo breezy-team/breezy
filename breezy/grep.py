@@ -22,7 +22,7 @@ from .lazy_import import lazy_import
 lazy_import(globals(), """
 from fnmatch import fnmatch
 
-from breezy._termcolor import color_string, FG
+from breezy.terminal import color_string, FG
 
 from breezy import (
     diff,
@@ -147,7 +147,7 @@ def compile_pattern(pattern, flags=0):
     try:
         return re.compile(pattern, flags)
     except re.error as e:
-        raise errors.BzrError("Invalid pattern: '%s'" % pattern)
+        raise errors.BzrError(f"Invalid pattern: '{pattern}'")
     return None
 
 
@@ -324,14 +324,14 @@ def grep_diff(opts):
                     display_file = True
                 elif diff_pattern.search(line):
                     if display_revno:
-                        writerevno("=== revno:{} ===".format(revno))
+                        writerevno(f"=== revno:{revno} ===")
                         display_revno = False
                     if display_file:
                         writefileheader(
-                            "  {}".format(file_header.decode(file_encoding, 'replace')))
+                            f"  {file_header.decode(file_encoding, 'replace')}")
                         display_file = False
                     line = line.decode(file_encoding, 'replace')
-                    writeline("    {}".format(line))
+                    writeline(f"    {line}")
 
 
 def versioned_grep(opts):

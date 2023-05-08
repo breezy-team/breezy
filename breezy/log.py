@@ -108,7 +108,7 @@ def find_touching_revisions(repository, last_revision, last_tree, last_path):
         elif this_path is None and last_path is not None:
             yield revno, revision_id, "added " + last_path
         elif this_path != last_path:
-            yield revno, revision_id, ("renamed {} => {}".format(this_path, last_path))
+            yield revno, revision_id, (f"renamed {this_path} => {last_path}")
             this_verifier = this_tree.get_file_verifier(this_path)
         else:
             this_verifier = this_tree.get_file_verifier(this_path)
@@ -354,7 +354,7 @@ class Logger:
         :param lf: The LogFormatter object to send the output to.
         """
         if not isinstance(lf, LogFormatter):
-            warn("not a LogFormatter instance: %r" % lf)
+            warn(f"not a LogFormatter instance: {lf!r}")
 
         with self.branch.lock_read():
             if getattr(lf, 'begin_log', None):
@@ -944,7 +944,7 @@ def _match_filter(searchRE, rev):
         'message': (rev.message,),
         'committer': (rev.committer,),
         'author': (rev.get_apparent_authors()),
-        'bugs': list(rev.iter_bugs())
+        'bugs': list(_mod_revision.iter_bugs(rev))
         }
     strings[''] = [item for inner_list in strings.values()
                    for item in inner_list]
@@ -1542,7 +1542,7 @@ class LogFormatter:
         If a registered handler raises an error it is propagated.
         """
         for line in self.custom_properties(revision):
-            self.to_file.write("{}{}\n".format(indent, line))
+            self.to_file.write(f"{indent}{line}\n")
 
     def custom_properties(self, revision):
         """Format the custom properties returned by each registered handler.
@@ -1632,30 +1632,28 @@ class LongLogFormatter(LogFormatter):
         indent = '    ' * revision.merge_depth
         lines = [_LONG_SEP]
         if revision.revno is not None:
-            lines.append('revno: {}{}'.format(revision.revno,
-                                          self.merge_marker(revision)))
+            lines.append(f'revno: {revision.revno}{self.merge_marker(revision)}')
         if revision.tags:
-            lines.append('tags: %s' % (', '.join(sorted(revision.tags))))
+            lines.append(f"tags: {', '.join(sorted(revision.tags))}")
         if self.show_ids or revision.revno is None:
-            lines.append('revision-id: %s' %
-                         (revision.rev.revision_id.decode('utf-8'),))
+            lines.append(f"revision-id: {revision.rev.revision_id.decode('utf-8')}")
         if self.show_ids:
             for parent_id in revision.rev.parent_ids:
-                lines.append('parent: {}'.format(parent_id.decode('utf-8')))
+                lines.append(f"parent: {parent_id.decode('utf-8')}")
         lines.extend(self.custom_properties(revision.rev))
 
         committer = revision.rev.committer
         authors = self.authors(revision.rev, 'all')
         if authors != [committer]:
-            lines.append('author: {}'.format(", ".join(authors)))
-        lines.append('committer: {}'.format(committer))
+            lines.append(f"author: {', '.join(authors)}")
+        lines.append(f'committer: {committer}')
 
         branch_nick = revision.rev.properties.get('branch-nick', None)
         if branch_nick is not None:
-            lines.append('branch nick: {}'.format(branch_nick))
+            lines.append(f'branch nick: {branch_nick}')
 
         try:
-            lines.append('timestamp: {}'.format(self.date_string(revision.rev)))
+            lines.append(f'timestamp: {self.date_string(revision.rev)}')
         except UnsupportedTimezoneFormat:
             raise errors.CommandError(gettext(f'Unsupported timezone format "{self.show_timezone}", options are "utc", "original", "local".'))
 
@@ -1668,7 +1666,7 @@ class LongLogFormatter(LogFormatter):
         else:
             message = revision.rev.message.rstrip('\r\n')
             for l in message.split('\n'):
-                lines.append('  {}'.format(l))
+                lines.append(f'  {l}')
 
         # Dump the output, appending the delta and diff if requested
         to_file = self.to_file
@@ -1744,7 +1742,7 @@ class ShortLogFormatter(LogFormatter):
         else:
             message = revision.rev.message.rstrip('\r\n')
             for l in message.split('\n'):
-                to_file.write(indent + offset + '{}\n'.format(l))
+                to_file.write(indent + offset + f'{l}\n')
 
         if revision.delta is not None:
             # Use the standard status output to display changes
@@ -1807,7 +1805,7 @@ class LineLogFormatter(LogFormatter):
         out = []
         if revno:
             # show revno only when is not None
-            out.append("%s:" % revno)
+            out.append(f"{revno}:")
         if max_chars is not None:
             out.append(self.truncate(
                 self.short_author(rev), (max_chars + 3) // 4))
@@ -1839,7 +1837,7 @@ class GnuChangelogLogFormatter(LogFormatter):
                                show_offset=False)
         committer_str = self.authors(revision.rev, 'first', sep=', ')
         committer_str = committer_str.replace(' <', '  <')
-        to_file.write('{}  {}\n\n'.format(date_str, committer_str))
+        to_file.write(f'{date_str}  {committer_str}\n\n')
 
         if revision.delta is not None and revision.delta.has_changed():
             for c in revision.delta.added + revision.delta.removed + revision.delta.modified:
@@ -1847,10 +1845,10 @@ class GnuChangelogLogFormatter(LogFormatter):
                     path = c.path[1]
                 else:
                     path = c.path[0]
-                to_file.write('\t* {}:\n'.format(path))
+                to_file.write(f'\t* {path}:\n')
             for c in revision.delta.renamed + revision.delta.copied:
                 # For renamed files, show both the old and the new path
-                to_file.write('\t* {}:\n\t* {}:\n'.format(c.path[0], c.path[1]))
+                to_file.write(f'\t* {c.path[0]}:\n\t* {c.path[1]}:\n')
             to_file.write('\n')
 
         if not revision.rev.message:
@@ -1858,7 +1856,7 @@ class GnuChangelogLogFormatter(LogFormatter):
         else:
             message = revision.rev.message.rstrip('\r\n')
             for l in message.split('\n'):
-                to_file.write('\t{}\n'.format(l.lstrip()))
+                to_file.write(f'\t{l.lstrip()}\n')
             to_file.write('\n')
 
 
@@ -2194,7 +2192,7 @@ properties_handler_registry = registry.Registry[str, Callable[[Dict[str, str]], 
 def _bugs_properties_handler(revision):
     fixed_bug_urls = []
     related_bug_urls = []
-    for bug_url, status in revision.iter_bugs():
+    for bug_url, status in _mod_revision.iter_bugs(revision):
         if status == 'fixed':
             fixed_bug_urls.append(bug_url)
         elif status == 'related':

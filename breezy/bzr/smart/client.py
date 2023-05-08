@@ -41,7 +41,7 @@ class _SmartClient:
             self._headers = dict(headers)
 
     def __repr__(self):
-        return '{}({!r})'.format(self.__class__.__name__, self._medium)
+        return f'{self.__class__.__name__}({self._medium!r})'
 
     def _call_and_read_response(self, method, args, body=None, readv_body=None,
                                 body_stream=None, expect_response_body=True):
@@ -70,12 +70,12 @@ class _SmartClient:
     def call_with_body_bytes(self, method, args, body):
         """Call a method on the remote server with body bytes."""
         if not isinstance(method, bytes):
-            raise TypeError('method must be a byte string, not {!r}'.format(method))
+            raise TypeError(f'method must be a byte string, not {method!r}')
         for arg in args:
             if not isinstance(arg, bytes):
-                raise TypeError('args must be byte strings, not {!r}'.format(args))
+                raise TypeError(f'args must be byte strings, not {args!r}')
         if not isinstance(body, bytes):
-            raise TypeError('body must be byte string, not {!r}'.format(body))
+            raise TypeError(f'body must be byte string, not {body!r}')
         response, response_handler = self._call_and_read_response(
             method, args, body=body, expect_response_body=False)
         return response
@@ -83,12 +83,12 @@ class _SmartClient:
     def call_with_body_bytes_expecting_body(self, method, args, body):
         """Call a method on the remote server with body bytes."""
         if not isinstance(method, bytes):
-            raise TypeError('method must be a byte string, not {!r}'.format(method))
+            raise TypeError(f'method must be a byte string, not {method!r}')
         for arg in args:
             if not isinstance(arg, bytes):
-                raise TypeError('args must be byte strings, not {!r}'.format(args))
+                raise TypeError(f'args must be byte strings, not {args!r}')
         if not isinstance(body, bytes):
-            raise TypeError('body must be byte string, not {!r}'.format(body))
+            raise TypeError(f'body must be byte string, not {body!r}')
         response, response_handler = self._call_and_read_response(
             method, args, body=body, expect_response_body=True)
         return (response, response_handler)
@@ -164,8 +164,7 @@ class _SmartClientRequest:
         # already consumed the local stream.
         if request_type in ('semivfs', 'mutate', 'stream'):
             return False
-        trace.mutter('Unknown request type: %s for method %s'
-                     % (request_type, self.method))
+        trace.mutter(f'Unknown request type: {request_type} for method {self.method}')
         return False
 
     def _run_call_hooks(self):
@@ -281,8 +280,7 @@ class _SmartClientRequest:
                 #   SmartClientRequestProtocolOne or Two, because they don't
                 #   support client-side body streams.
                 raise
-            trace.warning('ConnectionReset calling %r, retrying'
-                          % (self.method,))
+            trace.warning(f'ConnectionReset calling {self.method!r}, retrying')
             trace.log_exception_quietly()
             encoder, response_handler = self._construct_protocol(
                 protocol_version)
@@ -341,7 +339,7 @@ class CallHookParams:
     def __repr__(self):
         attrs = {k: v for k, v in self.__dict__.items()
                      if v is not None}
-        return '<{} {!r}>'.format(self.__class__.__name__, attrs)
+        return f'<{self.__class__.__name__} {attrs!r}>'
 
     def __eq__(self, other):
         if not isinstance(other, type(self)):

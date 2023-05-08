@@ -189,11 +189,11 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         # it.  mbp 20070306
 
     def _serialize(self, inventory, out_file):
-        xml5.serializer_v5.write_inventory(
+        xml5.inventory_serializer_v5.write_inventory(
             self._inventory, out_file, working=True)
 
     def _deserialize(selt, in_file):
-        return xml5.serializer_v5.read_inventory(in_file)
+        return xml5.inventory_serializer_v5.read_inventory(in_file)
 
     def break_lock(self):
         """Break a lock if one is present from another instance.
@@ -288,7 +288,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 elif kind == 'symlink':
                     inv.add(InventoryLink(file_id, name, parent))
                 else:
-                    raise errors.BzrError("unknown kind %r" % kind)
+                    raise errors.BzrError(f"unknown kind {kind!r}")
             self._write_inventory(inv)
 
     def _write_basis_inventory(self, xml):
@@ -438,8 +438,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 backup_name = self.controldir._available_backup_name(
                     file_to_backup)
                 osutils.rename(abs_path, self.abspath(backup_name))
-                return "removed {} (but kept a copy: {})".format(file_to_backup,
-                                                             backup_name)
+                return f"removed {file_to_backup} (but kept a copy: {backup_name})"
 
             # Build inv_delta and delete files where applicable,
             # do this before any modifications to meta data.
@@ -447,7 +446,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 fid = self.path2id(f)
                 message = None
                 if not fid:
-                    message = "{} is not versioned.".format(f)
+                    message = f"{f} is not versioned."
                 else:
                     if verbose:
                         # having removed it, it must be either ignored or
@@ -463,7 +462,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                             new_status + '       ' + f + kind_ch + '\n')
                     # Unversion file
                     inv_delta.append((f, None, fid, None))
-                    message = "removed {}".format(f)
+                    message = f"removed {f}"
 
                 if not keep_files:
                     abs_path = self.abspath(f)
@@ -472,7 +471,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                                 and len(os.listdir(abs_path)) > 0):
                             if force:
                                 osutils.rmtree(abs_path)
-                                message = "deleted {}".format(f)
+                                message = f"deleted {f}"
                             else:
                                 message = backup(f)
                         else:
@@ -480,10 +479,10 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                                 message = backup(f)
                             else:
                                 osutils.delete_any(abs_path)
-                                message = "deleted {}".format(f)
+                                message = f"deleted {f}"
                     elif message is not None:
                         # Only care if we haven't done anything yet.
-                        message = "{} does not exist.".format(f)
+                        message = f"{f} does not exist."
 
                 # Print only one message (if any) per file.
                 if message is not None:
@@ -549,7 +548,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             firstline = lines[0]
             if (b'revision_id="' not in firstline
                     or b'format="7"' not in firstline):
-                inv = self.branch.repository._serializer.read_inventory_from_lines(
+                inv = self.branch.repository._inventory_serializer.read_inventory_from_lines(
                     lines, new_revision)
                 lines = self._create_basis_xml_from_inventory(new_revision, inv)
             self._write_basis_inventory(lines)
@@ -562,7 +561,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     def _create_basis_xml_from_inventory(self, revision_id, inventory):
         """Create the text that will be saved in basis-inventory"""
         inventory.revision_id = revision_id
-        return xml7.serializer_v7.write_inventory_to_lines(inventory)
+        return xml7.inventory_serializer_v7.write_inventory_to_lines(inventory)
 
     def set_conflicts(self, conflicts):
         conflict_list = _mod_bzr_conflicts.ConflictList(conflicts)
@@ -845,7 +844,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 pass
             else:
                 try:
-                    inv = xml7.serializer_v7.read_inventory_from_lines(xml_lines)
+                    inv = xml7.inventory_serializer_v7.read_inventory_from_lines(xml_lines)
                     # dont use the repository revision_tree api because we want
                     # to supply the inventory.
                     if inv.revision_id == revision_id:

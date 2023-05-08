@@ -97,7 +97,7 @@ class TestTransformPreview(TestCaseWithTree):
         preview_tree = preview.get_preview_tree()
         out = BytesIO()
         log = BytesIO()
-        trace.push_log_file(log)
+        trace.push_log_file(log, short=True)
         show_diff_trees(revision_tree, preview_tree, out)
         lines = out.getvalue().splitlines()
         self.assertContainsRe(

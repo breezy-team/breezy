@@ -87,7 +87,7 @@ class GitCommitBuilder(CommitBuilder):
             try:
                 entry_kls = entry_factory[change.kind[1]]
             except KeyError:
-                raise KeyError("unknown kind %s" % change.kind[1])
+                raise KeyError(f"unknown kind {change.kind[1]}")
             entry = entry_kls(file_id, change.name[1], parent_id_new)
             if change.kind[1] == "file":
                 entry.executable = change.executable[1]
@@ -118,7 +118,7 @@ class GitCommitBuilder(CommitBuilder):
                 entry.reference_revision = reference_revision
                 st = None
             else:
-                raise AssertionError("Unknown kind %r" % change.kind[1])
+                raise AssertionError(f"Unknown kind {change.kind[1]!r}")
             mode = object_mode(change.kind[1], change.executable[1])
             self._inv_delta.append((change.path[0], change.path[1], file_id, entry))
             if change.path[0] is not None:
@@ -186,11 +186,11 @@ class GitCommitBuilder(CommitBuilder):
         c.author = fix_person_identifier(author.encode(encoding))
         bugstext = self._revprops.pop('bugs', None)
         if bugstext is not None:
-            for url, status in bugtracker.decode_bug_urls(bugstext):
+            for url, status in bugtracker.decode_bug_urls(bugstext.splitlines()):
                 if status == bugtracker.FIXED:
-                    pseudoheaders.append(("Fixes: %s" % url).encode(encoding))
+                    pseudoheaders.append(f"Fixes: {url}".encode(encoding))
                 elif status == bugtracker.RELATED:
-                    pseudoheaders.append(("Bug: %s" % url).encode(encoding))
+                    pseudoheaders.append(f"Bug: {url}".encode(encoding))
                 else:
                     raise bugtracker.InvalidBugStatus(status)
         if self._revprops:

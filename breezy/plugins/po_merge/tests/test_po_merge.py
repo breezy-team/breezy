@@ -123,10 +123,10 @@ class TestAdduserBranch(script.TestCaseWithTransportAndScript):
         self.run_script("""\
 $ brz branch adduser -rrevid:%(revid)s %(branch_name)s
 """ % env, null_output_matches_anything=True)
-        self.assertFileEqual(_Adduser['%(revid)s_pot' % env],
-                             '%(branch_name)s/po/adduser.pot' % env)
-        self.assertFileEqual(_Adduser['%(revid)s_po' % env],
-                             '%(branch_name)s/po/fr.po' % env)
+        self.assertFileEqual(_Adduser[f"{env['revid']}_pot"],
+                             f"{env['branch_name']}/po/adduser.pot")
+        self.assertFileEqual(_Adduser[f"{env['revid']}_po"],
+                             f"{env['branch_name']}/po/fr.po")
 
     def test_base(self):
         self.assertAdduserBranchContent('base')

@@ -50,7 +50,7 @@ class AddAction:
         :param kind: The kind of the object being added.
         """
         if self.should_print:
-            self._to_file.write('adding %s\n' % _quote(path))
+            self._to_file.write(f'adding {_quote(path)}\n')
         return None
 
     def skip_file(self, tree, path, kind, stat_value=None):
@@ -107,8 +107,7 @@ class AddFromBaseAction(AddAction):
         file_id, base_path = self._get_base_file_id(path, parent_ie)
         if file_id is not None:
             if self.should_print:
-                self._to_file.write('adding %s w/ file id from %s\n'
-                                    % (path, base_path))
+                self._to_file.write(f'adding {path} w/ file id from {base_path}\n')
         else:
             # we aren't doing anything special, so let the default
             # reporter happen

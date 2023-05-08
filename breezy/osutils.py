@@ -158,27 +158,8 @@ def fancy_rename(old, new, rename_func, unlink_func):
 
 _posix_normpath = _osutils_rs.posix.normpath
 _win32_normpath = _osutils_rs.win32.normpath
-
-
-def _win32_fixdrive(path):
-    """Force drive letters to be consistent.
-
-    win32 is inconsistent whether it returns lower or upper case
-    and even if it was consistent the user might type the other
-    so we force it to uppercase
-    running python.exe under cmd.exe return capital C:\\
-    running win32 python inside a cygwin shell returns lowercase c:\\
-    """
-    drive, path = ntpath.splitdrive(path)
-    return drive.upper() + path
-
-def _win32_fix_separators(path):
-    """Return path with directory separators changed to forward slashes"""
-    if isinstance(path, bytes):
-        return path.replace(b'\\', b'/')
-    else:
-        return path.replace('\\', '/')
-
+_win32_fixdrive = _osutils_rs.win32.fixdrive
+_win32_fix_separators = _osutils_rs.win32.fix_separators
 _win32_abspath = _osutils_rs.win32.abspath
 
 def _win32_realpath(path):
@@ -190,8 +171,7 @@ def _win32_pathjoin(*args):
     return _win32_fix_separators(ntpath.join(*args))
 
 
-def _win32_getcwd():
-    return _win32_fixdrive(_win32_fix_separators(os.getcwd()))
+_win32_getcwd = _osutils_rs.win32.getcwd
 
 
 def _win32_rename(old, new):
@@ -228,8 +208,7 @@ def _rename_wrap_exception(rename_func):
             rename_func(old, new)
         except OSError as e:
             detailed_error = OSError(e.errno, e.strerror +
-                                     " [occurred when renaming '%s' to '%s']" %
-                                     (old, new))
+                                     f" [occurred when renaming '{old}' to '{new}']")
             detailed_error.old_filename = old
             detailed_error.new_filename = new
             raise detailed_error
@@ -247,7 +226,7 @@ realpath = _osutils_rs.realpath
 normalizepath = _osutils_rs.normalizepath
 pathjoin = os.path.join
 normpath = _osutils_rs.normpath
-_get_home_dir = partial(os.path.expanduser, '~')
+_get_home_dir = _osutils_rs.get_home_dir
 
 def getuser_unicode():
     import getpass
@@ -300,7 +279,6 @@ if sys.platform == 'win32':
         """Replacer for shutil.rmtree: could remove readonly dirs/files"""
         return shutil.rmtree(path, ignore_errors, onerror)
 
-    _get_home_dir = win32utils.get_home_location
     getuser_unicode = win32utils.get_user_name
 
 elif sys.platform == 'darwin':
@@ -387,34 +365,10 @@ is_inside = _osutils_rs.is_inside
 is_inside_any = _osutils_rs.is_inside_any
 is_inside_or_parent_of_any = _osutils_rs.is_inside_or_parent_of_any
 pumpfile = _osutils_rs.pumpfile
+pump_string_file = _osutils_rs.pump_string_file
 
 
-def pump_string_file(bytes, file_handle, segment_size=None):
-    """Write bytes to file_handle in many smaller writes.
-
-    :param bytes: The string to write.
-    :param file_handle: The file to write to.
-    """
-    # Write data in chunks rather than all at once, because very large
-    # writes fail on some platforms (e.g. Windows with SMB  mounted
-    # drives).
-    if not segment_size:
-        segment_size = 5242880  # 5MB
-    offsets = range(0, len(bytes), segment_size)
-    view = memoryview(bytes)
-    write = file_handle.write
-    for offset in offsets:
-        write(view[offset:offset + segment_size])
-
-
-def file_iterator(input_file, readsize=32768):
-    while True:
-        b = input_file.read(readsize)
-        if len(b) == 0:
-            break
-        yield b
-
-
+file_iterator = _osutils_rs.file_iterator
 sha_file = _osutils_rs.sha_file
 size_sha_file = _osutils_rs.size_sha_file
 sha_file_by_name = _osutils_rs.sha_file_by_name
@@ -544,7 +498,7 @@ def failed_to_load_extension(exception):
     # with 10 warnings.
     exception_str = str(exception)
     if exception_str not in _extension_load_failures:
-        trace.mutter("failed to load compiled extension: %s" % exception_str)
+        trace.mutter(f"failed to load compiled extension: {exception_str}")
         _extension_load_failures.append(exception_str)
 
 
@@ -825,7 +779,10 @@ def terminal_width():
         return None
 
     # Query the OS
-    width, height = os_size = _terminal_size(None, None)
+    try:
+        width, _height = os_size = _terminal_size()
+    except OSError as e:
+        width = os_size = None
     global _first_terminal_size, _terminal_size_state
     if _terminal_size_state == 'no_data':
         _first_terminal_size = os_size
@@ -855,40 +812,7 @@ def terminal_width():
     return None
 
 
-def _win32_terminal_size(width, height):
-    width, height = win32utils.get_console_size(
-        defaultx=width, defaulty=height)
-    return width, height
-
-
-def _ioctl_terminal_size(width, height):
-    try:
-        import fcntl
-        import struct
-        import termios
-        s = struct.pack('HHHH', 0, 0, 0, 0)
-        x = fcntl.ioctl(1, termios.TIOCGWINSZ, s)
-        height, width = struct.unpack('HHHH', x)[0:2]
-    except (OSError, AttributeError):
-        pass
-    return width, height
-
-
-_terminal_size = None
-"""Returns the terminal size as (width, height).
-
-:param width: Default value for width.
-:param height: Default value for height.
-
-This is defined specifically for each OS and query the size of the controlling
-terminal. If any error occurs, the provided default values should be returned.
-"""
-if sys.platform == 'win32':
-    _terminal_size = _win32_terminal_size
-else:
-    _terminal_size = _ioctl_terminal_size
-
-
+_terminal_size = _osutils_rs.terminal_size
 supports_executable = _osutils_rs.supports_executable
 supports_hardlinks = _osutils_rs.supports_hardlinks
 supports_symlinks = _osutils_rs.supports_symlinks
@@ -1088,55 +1012,7 @@ class UnicodeDirReader(DirReader):
 
 copy_ownership_from_path = _osutils_rs.copy_ownership_from_path
 copy_tree = _osutils_rs.copy_tree
-
-_cached_user_encoding = None
-
-
-def get_user_encoding():
-    """Find out what the preferred user encoding is.
-
-    This is generally the encoding that is used for command line parameters
-    and file contents. This may be different from the terminal encoding
-    or the filesystem encoding.
-
-    :return: A string defining the preferred user encoding
-    """
-    global _cached_user_encoding
-    if _cached_user_encoding is not None:
-        return _cached_user_encoding
-
-    if os.name == 'posix' and getattr(locale, 'CODESET', None) is not None:
-        # Use the existing locale settings and call nl_langinfo directly
-        # rather than going through getpreferredencoding. This avoids
-        # <http://bugs.python.org/issue6202> on OSX Python 2.6 and the
-        # possibility of the setlocale call throwing an error.
-        user_encoding = locale.nl_langinfo(locale.CODESET)
-    else:
-        # GZ 2011-12-19: On windows could call GetACP directly instead.
-        user_encoding = locale.getpreferredencoding(False)
-
-    try:
-        user_encoding = codecs.lookup(user_encoding).name
-    except LookupError:
-        if user_encoding not in ("", "cp0"):
-            sys.stderr.write('brz: warning:'
-                             ' unknown encoding %s.'
-                             ' Continuing with ascii encoding.\n'
-                             % user_encoding
-                             )
-        user_encoding = 'ascii'
-    else:
-        # Get 'ascii' when setlocale has not been called or LANG=C or unset.
-        if user_encoding == 'ascii':
-            if sys.platform == 'darwin':
-                # OSX is special-cased in Python to have a UTF-8 filesystem
-                # encoding and previously had LANG set here if not present.
-                user_encoding = 'utf-8'
-            # GZ 2011-12-19: Maybe UTF-8 should be the default in this case
-            #                for some other posix platforms as well.
-
-    _cached_user_encoding = user_encoding
-    return user_encoding
+get_user_encoding = _osutils_rs.get_user_encoding
 
 
 def get_diff_header_encoding():
@@ -1229,8 +1105,7 @@ def send_all(sock, bytes, report_activity=None):
                 raise
         else:
             if sent == 0:
-                raise errors.ConnectionReset('Sending to %s returned 0 bytes'
-                                             % (sock,))
+                raise errors.ConnectionReset(f'Sending to {sock} returned 0 bytes')
             sent_total += sent
             if report_activity is not None:
                 report_activity(sent, 'write')
@@ -1263,11 +1138,6 @@ def connect_socket(address):
 dereference_path = _osutils_rs.dereference_path
 
 
-def supports_mapi():
-    """Return True if we can use MAPI to launch a mail client."""
-    return sys.platform == "win32"
-
-
 def resource_string(package, resource_name):
     """Load a resource from a package and return it as a string.
 
@@ -1287,7 +1157,7 @@ def resource_string(package, resource_name):
         package = package[len("breezy."):].replace('.', os.sep)
         resource_relpath = pathjoin(package, resource_name)
     else:
-        raise errors.BzrError('resource package %s not in breezy' % package)
+        raise errors.BzrError(f'resource package {package} not in breezy')
 
     # Map the resource to a file and read its contents
     base = dirname(breezy.__file__)
@@ -1402,26 +1272,12 @@ def fdatasync(fileno):
             # raise ENOTSUP. However, we are calling fdatasync to be helpful
             # and reduce the chance of corruption-on-powerloss situations. It
             # is not a mandatory call, so it is ok to suppress failures.
-            trace.mutter("ignoring error calling fdatasync: {}".format(e))
+            trace.mutter(f"ignoring error calling fdatasync: {e}")
             if getattr(e, 'errno', None) not in _fdatasync_ignored:
                 raise
 
 
-def ensure_empty_directory_exists(path, exception_class):
-    """Make sure a local directory exists and is empty.
-
-    If it does not exist, it is created.  If it exists and is not empty, an
-    instance of exception_class is raised.
-    """
-    try:
-        os.mkdir(path)
-    except OSError as e:
-        if e.errno != errno.EEXIST:
-            raise
-        if os.listdir(path) != []:
-            raise exception_class(path)
-
-
+ensure_empty_directory_exists = _osutils_rs.ensure_empty_directory_exists
 read_mtab = _osutils_rs.read_mtab
 get_fs_type = _osutils_rs.get_fs_type
 perf_counter = time.perf_counter

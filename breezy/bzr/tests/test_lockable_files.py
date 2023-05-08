@@ -15,14 +15,15 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import breezy
+import breezy.branch
 
-from .. import errors, lockdir, osutils, transport
-from ..bzr.tests.test_smart import TestCaseWithSmartMedium
+from ... import errors, lockdir, osutils, transport
+from ...tests import TestCaseInTempDir, TestNotApplicable
+from ...tests.test_transactions import DummyWeave
+from ...transactions import (PassThroughTransaction, ReadOnlyTransaction,
+                             WriteTransaction)
 from ..lockable_files import LockableFiles, TransportLock
-from ..transactions import (PassThroughTransaction, ReadOnlyTransaction,
-                            WriteTransaction)
-from . import TestCaseInTempDir, TestNotApplicable
-from .test_transactions import DummyWeave
+from .test_smart import TestCaseWithSmartMedium
 
 
 # these tests are applied in each parameterized suite for LockableFiles
@@ -65,7 +66,7 @@ class _TestLockableFiles_mixin:
         except NotImplementedError:
             # this lock cannot be broken
             self.lockable.unlock()
-            raise TestNotApplicable("{!r} is not breakable".format(self.lockable))
+            raise TestNotApplicable(f"{self.lockable!r} is not breakable")
         l2 = self.get_lockable()
         orig_factory = breezy.ui.ui_factory
         # silent ui - no need for stdout
@@ -87,7 +88,7 @@ class _TestLockableFiles_mixin:
         if token is not None:
             # This test does not apply, because this lockable supports
             # tokens.
-            raise TestNotApplicable("{!r} uses tokens".format(self.lockable))
+            raise TestNotApplicable(f"{self.lockable!r} uses tokens")
         self.assertRaises(errors.TokenLockingNotSupported,
                           self.lockable.lock_write, token='token')
 

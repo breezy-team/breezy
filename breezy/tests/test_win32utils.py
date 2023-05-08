@@ -139,7 +139,7 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
             result = glob_expand(pattern)
             expected.sort()
             result.sort()
-            self.assertEqual(expected, result, 'pattern %s' % pattern)
+            self.assertEqual(expected, result, f'pattern {pattern}')
 
 
 class TestAppPaths(TestCase):

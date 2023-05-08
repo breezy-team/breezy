@@ -289,7 +289,7 @@ class TestBTreeBuilder(BTreeTestCase):
         # Seed the metadata, we're using internal calls now.
         index.key_count()
         self.assertEqual(3, len(index._row_lengths),
-                         "Not enough rows: %r" % index._row_lengths)
+                         f"Not enough rows: {index._row_lengths!r}")
         self.assertEqual(4, len(index._row_offsets))
         self.assertEqual(sum(index._row_lengths), index._row_offsets[-1])
         internal_nodes = index._get_internal_nodes([0, 1, 2])
@@ -884,7 +884,7 @@ class TestBTreeIndex(BTreeTestCase):
             self.assertIs(node[0], index)
             bare_nodes.append(node[1:])
         self.assertEqual(3, len(index._row_lengths),
-                         "Not enough rows: %r" % index._row_lengths)
+                         f"Not enough rows: {index._row_lengths!r}")
         # Should be as long as the nodes we supplied
         self.assertEqual(20000, len(found_nodes))
         # Should have the same content
@@ -1397,8 +1397,7 @@ class TestExpandOffsets(tests.TestCase):
 
     def assertExpandOffsets(self, expected, index, offsets):
         self.assertEqual(expected, index._expand_offsets(offsets),
-                         'We did not get the expected value after expanding'
-                         ' %s' % (offsets,))
+                         f'We did not get the expected value after expanding {offsets}')
 
     def test_default_recommended_pages(self):
         index = self.make_index(None)

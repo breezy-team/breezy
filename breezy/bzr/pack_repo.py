@@ -40,15 +40,15 @@ from breezy.bzr.index import (
     CombinedGraphIndex,
     )
 """)
-from .. import errors, lockable_files, lockdir
+from .. import errors, lockdir
 from .. import transport as _mod_transport
-from ..bzr import btree_index, index
+from ..bzr import btree_index, index, lockable_files
 from ..decorators import only_raises
 from ..lock import LogicalLockResult
 from ..repository import RepositoryWriteLockResult, _LazyListJoin
 from ..trace import mutter, note, warning
 from .repository import MetaDirRepository, RepositoryFormatMetaDir
-from .serializer import Serializer
+from .serializer import InventorySerializer, RevisionSerializer
 from .vf_repository import (MetaDirVersionedFileRepository,
                             MetaDirVersionedFileRepositoryFormat,
                             VersionedFileCommitBuilder)
@@ -638,8 +638,7 @@ class AggregateIndex:
         """
         if self.add_callback is not None:
             raise AssertionError(
-                "%s already has a writable index through %s" %
-                (self, self.add_callback))
+                f"{self} already has a writable index through {self.add_callback}")
         # allow writing: queue writes to a new index
         self.add_index(index, pack)
         # Updates the index to packs mapping as a side effect,
@@ -857,7 +856,7 @@ class RepositoryPackCollection:
         self.config_stack = config.LocationStack(self.transport.base)
 
     def __repr__(self):
-        return '{}({!r})'.format(self.__class__.__name__, self.repo)
+        return f'{self.__class__.__name__}({self.repo!r})'
 
     def add_pack_to_memory(self, pack):
         """Make a Pack object available to the repository to satisfy queries.
@@ -866,7 +865,7 @@ class RepositoryPackCollection:
         """
         if pack.name in self._packs_by_name:
             raise AssertionError(
-                'pack {} already in _packs_by_name'.format(pack.name))
+                f'pack {pack.name} already in _packs_by_name')
         self.packs.append(pack)
         self._packs_by_name[pack.name] = pack
         self.revision_index.add_index(pack.revision_index, pack)
@@ -1183,7 +1182,7 @@ class RepositoryPackCollection:
         self.ensure_loaded()
         if a_new_pack.name in self._names:
             raise errors.BzrError(
-                'Pack {!r} already exists in {}'.format(a_new_pack.name, self))
+                f'Pack {a_new_pack.name!r} already exists in {self}')
         self._names[a_new_pack.name] = tuple(a_new_pack.index_sizes)
         self.add_pack_to_memory(a_new_pack)
 
@@ -1259,8 +1258,7 @@ class RepositoryPackCollection:
                                              '../obsolete_packs/' + pack.file_name())
             except (errors.PathError, errors.TransportError) as e:
                 # TODO: Should these be warnings or mutters?
-                mutter("couldn't rename obsolete pack, skipping it:\n%s"
-                       % (e,))
+                mutter(f"couldn't rename obsolete pack, skipping it:\n{e}")
             # TODO: Probably needs to know all possible indices for this pack
             # - or maybe list the directory and move all indices matching this
             # name whether we recognize it or not?
@@ -1272,8 +1270,7 @@ class RepositoryPackCollection:
                     self._index_transport.move(pack.name + suffix,
                                                '../obsolete_packs/' + pack.name + suffix)
                 except (errors.PathError, errors.TransportError) as e:
-                    mutter("couldn't rename obsolete index, skipping it:\n%s"
-                           % (e,))
+                    mutter(f"couldn't rename obsolete index, skipping it:\n{e}")
 
     def pack_distribution(self, total_revisions):
         """Generate a list of the number of revisions to put in each pack.
@@ -1540,8 +1537,7 @@ class RepositoryPackCollection:
             try:
                 obsolete_pack_transport.delete(filename)
             except (errors.PathError, errors.TransportError) as e:
-                warning("couldn't delete obsolete pack, skipping it:\n%s"
-                        % (e,))
+                warning(f"couldn't delete obsolete pack, skipping it:\n{e}")
         return found
 
     def _start_write_group(self):
@@ -1705,13 +1701,15 @@ class PackRepository(MetaDirVersionedFileRepository):
     # them, or a subclass fails to call the constructor, that an error will
     # occur rather than the system working but generating incorrect data.
     _commit_builder_class: Type[VersionedFileCommitBuilder]
-    _serializer: Serializer
+    _revision_serializer: RevisionSerializer
+    _inventory_serializer: InventorySerializer
 
     def __init__(self, _format, a_controldir, control_files, _commit_builder_class,
-                 _serializer):
+                 _revision_serializer, _inventory_serializer):
         MetaDirRepository.__init__(self, _format, a_controldir, control_files)
         self._commit_builder_class = _commit_builder_class
-        self._serializer = _serializer
+        self._revision_serializer = _revision_serializer
+        self._inventory_serializer = _inventory_serializer
         self._reconcile_fixes_text_parents = True
         if self._format.supports_external_lookups:
             self._unstacked_provider = graph.CachingParentsProvider(
@@ -1861,8 +1859,7 @@ class PackRepository(MetaDirVersionedFileRepository):
             self._transaction = None
             self._write_lock_count = 0
             raise errors.BzrError(
-                'Must end write group before releasing write lock on %s'
-                % self)
+                f'Must end write group before releasing write lock on {self}')
         if self._write_lock_count:
             self._write_lock_count -= 1
             if not self._write_lock_count:
@@ -1902,7 +1899,8 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
     _commit_builder_class: Type[VersionedFileCommitBuilder]
     # Set this attribute in derived clases to control the _serializer that the
     # repository objects will have passed to their constructor.
-    _serializer: Serializer
+    _revision_serializer: RevisionSerializer
+    _inventory_serializer: InventorySerializer
     # Packs are not confused by ghosts.
     supports_ghosts: bool = True
     # External references are not supported in pack repositories yet.
@@ -1956,7 +1954,8 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
                                      a_controldir=a_controldir,
                                      control_files=control_files,
                                      _commit_builder_class=self._commit_builder_class,
-                                     _serializer=self._serializer)
+                                     _revision_serializer=self._revision_serializer,
+                                     _inventory_serializer=self._inventory_serializer)
 
 
 class RetryPackOperations(RetryWithNewPacks):
@@ -2024,7 +2023,7 @@ class _DirectPackAccess:
         raw_data = b''.join(raw_data)
         if not isinstance(raw_data, bytes):
             raise AssertionError(
-                'data must be plain bytes was %s' % type(raw_data))
+                f'data must be plain bytes was {type(raw_data)}')
         result = []
         offset = 0
         for key, size in key_sizes:

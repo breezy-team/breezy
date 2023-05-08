@@ -87,7 +87,7 @@ def cachedproperty(attrname_or_fn):
         return _CachedPropertyForAttr(attrname)
     else:
         fn = attrname_or_fn
-        attrname = '_%s_cached_value' % fn.__name__
+        attrname = f'_{fn.__name__}_cached_value'
         return _CachedProperty(attrname, fn)
 
 

@@ -4,6 +4,7 @@ use log::debug;
 use nix::sys::stat::SFlag;
 use std::fs::{set_permissions, Permissions};
 use std::io::Result;
+use std::io::{BufRead, Read};
 use std::path::Path;
 use walkdir::WalkDir;
 
@@ -209,5 +210,42 @@ pub fn delete_any<P: AsRef<Path>>(path: P) -> std::io::Result<()> {
             delete_file_or_dir(path.as_ref())
         }
         Err(e) => Err(e),
+    }
+}
+
+pub fn file_iterator<F: Read>(
+    input_file: F,
+    readsize: Option<usize>,
+) -> impl Iterator<Item = Vec<u8>> {
+    let readsize = readsize.unwrap_or(32768);
+    let mut buffer = vec![0; readsize];
+    let mut reader = std::io::BufReader::new(input_file);
+    std::iter::from_fn(move || match reader.read(&mut buffer) {
+        Ok(0) => None,
+        Ok(n) => Some(buffer[..n].to_vec()),
+        Err(_) => None,
+    })
+}
+
+pub fn ensure_empty_directory_exists(path: &Path) -> std::io::Result<()> {
+    match std::fs::create_dir(path) {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            if e.kind() != std::io::ErrorKind::AlreadyExists {
+                Err(e)
+            } else {
+                let dir_entries = std::fs::read_dir(path)?;
+                if dir_entries.count() > 0 {
+                    Err(std::io::Error::new(
+                        // TODO(jelmer): Switch to DirectoryNotEmpty once available:
+                        // std::io::ErrorKind::DirectoryNotEmpty,
+                        std::io::ErrorKind::Other,
+                        format!("Directory {:?} is not empty", path),
+                    ))
+                } else {
+                    Ok(())
+                }
+            }
+        }
     }
 }

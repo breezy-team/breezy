@@ -21,6 +21,7 @@ pub enum Error {
     InvalidUNCUrl(String),
     UrlNotAscii(String),
     InvalidWin32LocalUrl(String),
+    InvalidWin32Path(String),
     UrlTooShort(String),
     PathNotChild(String, String),
 }
@@ -73,7 +74,7 @@ pub fn split(url: &str, exclude_trailing_slash: bool) -> (String, String) {
         // Strip off the drive letter
         // url_base is currently file://
         // path is currently /C:/foo
-        let (url_base, path) = _win32_extract_drive_letter(url_base, path);
+        let (url_base, path) = extract_drive_letter(url_base, path);
         // now it should be file:///C: and /foo
     }
 
@@ -149,7 +150,7 @@ pub fn strip_trailing_slash(url: &str) -> &str {
 
     #[cfg(target_os = "windows")]
     if url.starts_with("file://") {
-        return _win32_strip_local_trailing_slash(url);
+        return win32::strip_local_trailing_slash(url);
     }
 
     let (scheme_loc, first_path_slash) = find_scheme_and_separator(url);
@@ -665,6 +666,28 @@ pub mod win32 {
             win32_url[3..=3].to_uppercase(),
             super::unescape(&win32_url[5..])?
         )))
+    }
+
+    const WIN32_MIN_ABS_FILEURL_LENGTH: usize = "file:///C:/".len();
+
+    pub fn extract_drive_letter(url_base: &str, path: &str) -> super::Result<(String, String)> {
+        if path.len() < 4
+            || !":|".contains(path.chars().nth(2).unwrap())
+            || path.chars().nth(3).unwrap() != '/'
+        {
+            return Err(super::Error::InvalidWin32Path(path.to_owned()));
+        }
+        let url_base = url_base.to_owned() + &path[0..3];
+        let path = &path[3..];
+        Ok((url_base, path.to_owned()))
+    }
+
+    pub fn strip_local_trailing_slash(url: &str) -> String {
+        if url.len() > WIN32_MIN_ABS_FILEURL_LENGTH {
+            url[..url.len() - 1].to_owned()
+        } else {
+            url.to_owned()
+        }
     }
 }
 

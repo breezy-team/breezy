@@ -264,12 +264,12 @@ class BzrFastExporter:
 
     def note(self, msg, *args):
         """Output a note but timestamp it."""
-        msg = "{} {}".format(self._time_of_day(), msg)
+        msg = f"{self._time_of_day()} {msg}"
         trace.note(msg, *args)
 
     def warning(self, msg, *args):
         """Output a warning but timestamp it."""
-        msg = "{} WARNING: {}".format(self._time_of_day(), msg)
+        msg = f"{self._time_of_day()} WARNING: {msg}"
         trace.warning(msg, *args)
 
     def _time_of_day(self):
@@ -286,10 +286,10 @@ class BzrFastExporter:
             minutes = (time.time() - self._start_time) / 60
             rate = commit_count * 1.0 / minutes
             if rate > 10:
-                rate_str = "at %.0f/minute " % rate
+                rate_str = f"at {rate:.0f}/minute "
             else:
-                rate_str = "at %.1f/minute " % rate
-            self.note("{} commits exported {}{}".format(counts, rate_str, details))
+                rate_str = f"at {rate:.1f}/minute "
+            self.note(f"{counts} commits exported {rate_str}{details}")
 
     def dump_stats(self):
         time_required = progress.str_tdelta(time.time() - self._start_time)
@@ -312,8 +312,7 @@ class BzrFastExporter:
             if tree.kind(path) != 'directory':
                 return False
         except _mod_transport.NoSuchFile:
-            self.warning("Skipping empty_dir detection - no file_id for %s" %
-                         (path,))
+            self.warning(f"Skipping empty_dir detection - no file_id for {path}")
             return False
 
         # Use treewalk to find the contents of our directory
@@ -566,8 +565,7 @@ class BzrFastExporter:
                         change.path[1].encode("utf-8")))
                 deleted_paths.remove(change.path[1])
             if (self.is_empty_dir(tree_old, change.path[0])):
-                self.note("Skipping empty dir {} in rev {}".format(change.path[0],
-                                                               revision_id))
+                self.note(f"Skipping empty dir {change.path[0]} in rev {revision_id}")
                 continue
             # oldpath = self._adjust_path_for_renames(oldpath, renamed,
             #    revision_id)

@@ -44,7 +44,7 @@ class TestCaseWithBrokenRevisionIndex(TestCaseWithRepository):
             # where repo.revision_graph_can_have_wrong_parents() is True, but
             # at the moment we only know how to corrupt knit repos.
             raise TestNotApplicable(
-                "%s isn't a knit format" % self.repository_format)
+                f"{self.repository_format} isn't a knit format")
 
         repo = self.make_repository('broken')
         with repo.lock_write(), WriteGroup(repo):
@@ -57,10 +57,11 @@ class TestCaseWithBrokenRevisionIndex(TestCaseWithRepository):
             revision = _mod_revision.Revision(b'revision-id',
                                               committer='jrandom@example.com', timestamp=0,
                                               inventory_sha1=inv_sha1, timezone=0, message='message',
+                                              properties={},
                                               parent_ids=[])
             # Manually add the revision text using the RevisionStore API, with
             # bad parents.
-            lines = repo._serializer.write_revision_to_lines(revision)
+            lines = repo._revision_serializer.write_revision_to_lines(revision)
             repo.revisions.add_lines((revision.revision_id,),
                                      [(b'incorrect-parent',)],
                                      lines)

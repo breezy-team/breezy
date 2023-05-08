@@ -546,7 +546,8 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
             return False
         if (to_format.supports_chks
             and from_format.repository_class is to_format.repository_class
-                and from_format._serializer == to_format._serializer):
+                and from_format._revision_serializer == to_format._revision_serializer
+                and from_format._inventory_serializer == to_format._inventory_serializer):
             # Source is CHK, but target matches: that's ok
             # (e.g. 2a->2a, or CHK2->2a)
             return False
@@ -611,7 +612,7 @@ def _stream_to_byte_stream(stream, src_format):
             if record.storage_kind in ('chunked', 'fulltext'):
                 serialised = record_to_fulltext_bytes(record)
             elif record.storage_kind == 'absent':
-                raise ValueError("Absent factory for {}".format(record.key))
+                raise ValueError(f"Absent factory for {record.key}")
             else:
                 serialised = record.get_bytes_as(record.storage_kind)
             if serialised:

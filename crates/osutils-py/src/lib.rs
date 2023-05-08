@@ -1,4 +1,5 @@
 #![allow(non_snake_case)]
+use breezy_osutils::Kind;
 use pyo3::create_exception;
 use pyo3::exceptions::{PyIOError, PyTypeError, PyValueError};
 use pyo3::import_exception;
@@ -10,10 +11,11 @@ use pyo3_file::PyFileLikeObject;
 use std::collections::HashSet;
 use std::ffi::OsString;
 use std::fs::Permissions;
-use std::io::{BufRead, Read};
+use std::io::{BufRead, Read, Write};
 use std::iter::Iterator;
 use std::os::unix::ffi::OsStringExt;
 use std::path::{Path, PathBuf};
+use termion::color::Color;
 
 create_exception!(
     breezy_osutils,
@@ -23,6 +25,8 @@ create_exception!(
 
 import_exception!(breezy.errors, IllegalPath);
 import_exception!(breezy.errors, PathNotChild);
+import_exception!(breezy.errors, DirectoryNotEmpty);
+import_exception!(breezy.errors, BinaryFile);
 
 #[pyclass]
 struct PyChunksToLinesIterator {
@@ -287,7 +291,7 @@ pub fn minimum_path_selection(paths: &PyAny) -> PyResult<HashSet<String>> {
 
 #[pyfunction]
 fn set_or_unset_env(key: &str, value: Option<&str>) -> PyResult<Py<PyAny>> {
-    // Note that we're not calling out to breey_osutils::set_or_unset_env here, because it doesn't
+    // Note that we're not calling out to breezy_osutils::set_or_unset_env here, because it doesn't
     // change the environment in Python.
     Python::with_gil(|py| {
         let os = py.import("os")?;
@@ -295,11 +299,13 @@ fn set_or_unset_env(key: &str, value: Option<&str>) -> PyResult<Py<PyAny>> {
         let old = environ.call_method1("get", (key, py.None()))?;
         if let Some(value) = value {
             environ.set_item(key, value)?;
+            std::env::set_var(key, value);
         } else {
             if old.is_none() {
                 return Ok(py.None());
             }
             environ.del_item(key)?;
+            std::env::remove_var(key);
         }
         Ok(old.into_py(py))
     })
@@ -522,13 +528,17 @@ fn IterableFile(py_iterable: PyObject) -> PyResult<PyObject> {
 }
 
 #[pyfunction]
-fn check_text_path(path: &PyAny) -> PyResult<bool> {
+fn check_text_path(path: &PyAny) -> PyResult<()> {
     let path = extract_path(path)?;
-    Ok(breezy_osutils::textfile::check_text_path(path.as_path())?)
+    if !breezy_osutils::textfile::check_text_path(path.as_path())? {
+        Err(BinaryFile::new_err(()))
+    } else {
+        Ok(())
+    }
 }
 
 #[pyfunction]
-fn check_text_lines(py: Python, lines: &PyAny) -> PyResult<bool> {
+fn check_text_lines(py: Python, lines: &PyAny) -> PyResult<()> {
     let mut py_iter = lines.iter()?;
     let line_iter = std::iter::from_fn(|| {
         let line = py_iter.next();
@@ -546,7 +556,11 @@ fn check_text_lines(py: Python, lines: &PyAny) -> PyResult<bool> {
     if PyErr::occurred(py) {
         return Err(PyErr::fetch(py));
     }
-    Ok(result)
+    if !result {
+        Err(BinaryFile::new_err(()))
+    } else {
+        Ok(())
+    }
 }
 
 #[pyfunction]
@@ -665,7 +679,13 @@ fn get_umask() -> PyResult<u32> {
 
 #[pyfunction]
 fn kind_marker(kind: &str) -> &str {
-    breezy_osutils::kind_marker(kind)
+    breezy_osutils::kind_marker(match kind {
+        "file" => Kind::File,
+        "directory" => Kind::Directory,
+        "symlink" => Kind::Symlink,
+        "tree-reference" => Kind::TreeReference,
+        _ => return "",
+    })
 }
 
 #[pyfunction]
@@ -878,6 +898,162 @@ fn dereference_path(path: PathBuf) -> std::io::Result<PathBuf> {
     Ok(breezy_osutils::path::dereference_path(path.as_path())?)
 }
 
+#[pyfunction]
+fn pump_string_file(data: &[u8], file: PyObject, segment_size: Option<usize>) -> PyResult<()> {
+    let mut file = PyFileLikeObject::with_requirements(file, false, true, false)?;
+    Ok(breezy_osutils::pump_string_file(
+        data,
+        &mut file,
+        segment_size,
+    )?)
+}
+
+/// Return path with directory separators changed to forward slashes
+#[pyfunction(name = "fix_separators")]
+fn win32_fix_separators(path: PathBuf) -> PathBuf {
+    breezy_osutils::path::win32::fix_separators(path.as_path())
+}
+
+/// Force drive letters to be consistent.
+///
+/// win32 is inconsistent whether it returns lower or upper case
+/// and even if it was consistent the user might type the other
+/// so we force it to uppercase running python.exe under cmd.exe return capital C:\\ running win32
+/// python inside a cygwin shell returns lowercase c:\\
+#[pyfunction(name = "fixdrive")]
+fn win32_fixdrive(path: PathBuf) -> PathBuf {
+    breezy_osutils::path::win32::fixdrive(path.as_path())
+}
+
+#[pyfunction(name = "getcwd")]
+fn win32_getcwd() -> PyResult<PathBuf> {
+    Ok(breezy_osutils::path::win32::getcwd()?)
+}
+
+#[pyclass]
+struct FileIterator {
+    input_file: PyObject,
+    read_size: usize,
+}
+
+#[pymethods]
+impl FileIterator {
+    #[new]
+    fn new(input_file: PyObject, read_size: Option<usize>) -> Self {
+        FileIterator {
+            input_file,
+            read_size: read_size.unwrap_or(32768),
+        }
+    }
+
+    fn __iter__(slf: PyRef<Self>) -> Py<Self> {
+        slf.into()
+    }
+
+    fn __next__(&mut self, py: Python) -> PyResult<Option<PyObject>> {
+        let result = self.input_file.call_method1(py, "read", (self.read_size,));
+        match result {
+            Ok(buf) if buf.is_none(py) => Ok(None),
+            Ok(buf) if buf.as_ref(py).len()? == 0 => Ok(None),
+            Ok(buf) => Ok(Some(buf)),
+            Err(e) => Err(e),
+        }
+    }
+}
+
+#[pyfunction]
+fn file_iterator(py: Python, input_file: PyObject, read_size: Option<usize>) -> PyResult<PyObject> {
+    let iterator = FileIterator::new(input_file, read_size);
+    Ok(iterator.into_py(py))
+}
+
+/// Returns the terminal size as (width, height).
+///
+/// Args:
+///   width: Default value for width.
+///   height: Default value for height.
+///
+/// This is defined specifically for each OS and query the size of the controlling
+/// terminal. If any error occurs, the provided default values should be returned.
+#[pyfunction]
+fn terminal_size() -> PyResult<(u16, u16)> {
+    Ok(breezy_osutils::terminal::terminal_size()?)
+}
+
+#[pyfunction]
+fn has_ansi_colors() -> bool {
+    breezy_osutils::terminal::has_ansi_colors()
+}
+
+/// Make sure a local directory exists and is empty.
+///
+/// If it does not exist, it is created.  If it exists and is not empty,
+/// DirectoryNotEmpty is raised.
+#[pyfunction]
+fn ensure_empty_directory_exists(path: PathBuf) -> PyResult<()> {
+    match breezy_osutils::file::ensure_empty_directory_exists(path.as_path()) {
+        Ok(()) => Ok(()),
+        Err(ref e)
+            if e.kind() == std::io::ErrorKind::Other && e.to_string().contains(" not empty") =>
+        {
+            Err(DirectoryNotEmpty::new_err(path))
+        }
+        Err(e) => Err(e.into()),
+    }
+}
+
+#[pyfunction]
+fn get_home_dir() -> PyResult<Option<PathBuf>> {
+    Ok(breezy_osutils::get_home_dir())
+}
+
+#[pyfunction]
+fn get_user_encoding() -> Option<String> {
+    breezy_osutils::get_user_encoding()
+}
+
+fn string_to_color(name: &str) -> PyResult<&dyn Color> {
+    match name {
+        "darkblack" => Ok(&termion::color::Black),
+        "darkred" => Ok(&termion::color::Red),
+        "darkgreen" => Ok(&termion::color::Green),
+        "darkyellow" => Ok(&termion::color::Yellow),
+        "darkblue" => Ok(&termion::color::Blue),
+        "darkmagenta" => Ok(&termion::color::Magenta),
+        "darkcyan" => Ok(&termion::color::Cyan),
+        "darkwhite" => Ok(&termion::color::White),
+        "yellow" => Ok(&termion::color::LightYellow),
+        "black" => Ok(&termion::color::LightBlack),
+        "red" => Ok(&termion::color::LightRed),
+        "green" => Ok(&termion::color::LightGreen),
+        "blue" => Ok(&termion::color::LightBlue),
+        "magenta" => Ok(&termion::color::LightMagenta),
+        "cyan" => Ok(&termion::color::LightCyan),
+        "white" => Ok(&termion::color::LightWhite),
+        _ => Err(PyValueError::new_err(format!(
+            "Invalid color name: {}",
+            name
+        ))),
+    }
+}
+
+#[pyfunction]
+fn colorstring(
+    py: Python,
+    text: &[u8],
+    fgcolor: Option<&str>,
+    bgcolor: Option<&str>,
+) -> PyResult<PyObject> {
+    let fgcolor = fgcolor.map(string_to_color).transpose()?;
+    let bgcolor = bgcolor.map(string_to_color).transpose()?;
+
+    Ok(PyBytes::new(
+        py,
+        &breezy_osutils::terminal::colorstring(text, fgcolor, bgcolor),
+    )
+    .into_py(py))
+}
+
 #[pymodule]
 fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -908,6 +1084,7 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(check_text_path))?;
     m.add_wrapped(wrap_pyfunction!(check_text_lines))?;
     m.add_wrapped(wrap_pyfunction!(format_delta))?;
+    m.add_wrapped(wrap_pyfunction!(file_iterator))?;
     m.add_wrapped(wrap_pyfunction!(
         format_date_with_offset_in_original_timezone
     ))?;
@@ -934,6 +1111,9 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     let win32m = PyModule::new(py, "win32")?;
     win32m.add_wrapped(wrap_pyfunction!(win32_abspath))?;
     win32m.add_wrapped(wrap_pyfunction!(win32_normpath))?;
+    win32m.add_wrapped(wrap_pyfunction!(win32_fix_separators))?;
+    win32m.add_wrapped(wrap_pyfunction!(win32_fixdrive))?;
+    win32m.add_wrapped(wrap_pyfunction!(win32_getcwd))?;
     m.add_submodule(win32m)?;
     let posixm = PyModule::new(py, "posix")?;
     posixm.add_wrapped(wrap_pyfunction!(posix_abspath))?;
@@ -951,9 +1131,14 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(contains_linebreaks))?;
     m.add_wrapped(wrap_pyfunction!(relpath))?;
     m.add_wrapped(wrap_pyfunction!(normpath))?;
+    m.add_wrapped(wrap_pyfunction!(pump_string_file))?;
     m.add_wrapped(wrap_pyfunction!(realpath))?;
     m.add_wrapped(wrap_pyfunction!(normalizepath))?;
     m.add_wrapped(wrap_pyfunction!(dereference_path))?;
+    m.add_wrapped(wrap_pyfunction!(terminal_size))?;
+    m.add_wrapped(wrap_pyfunction!(has_ansi_colors))?;
+    m.add_wrapped(wrap_pyfunction!(ensure_empty_directory_exists))?;
+    m.add_wrapped(wrap_pyfunction!(get_user_encoding))?;
     m.add(
         "MIN_ABS_PATHLENGTH",
         breezy_osutils::path::MIN_ABS_PATHLENGTH,
@@ -962,5 +1147,7 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
         "UnsupportedTimezoneFormat",
         py.get_type::<UnsupportedTimezoneFormat>(),
     )?;
+    m.add_wrapped(wrap_pyfunction!(get_home_dir))?;
+    m.add_wrapped(wrap_pyfunction!(colorstring))?;
     Ok(())
 }

@@ -114,7 +114,7 @@ class cmd_dump_btree(Command):
                 tuple([r.decode('utf-8') for r in node[1]]),
                 node[2].decode('utf-8'),
                 refs_as_tuples)
-            self.outf.write('{}\n'.format(as_tuple))
+            self.outf.write(f'{as_tuple}\n')
 
 
 class cmd_file_id(Command):
@@ -158,4 +158,4 @@ class cmd_file_path(Command):
         segments = osutils.splitpath(relpath)
         for pos in range(1, len(segments) + 1):
             path = osutils.joinpath(segments[:pos])
-            self.outf.write("%s\n" % tree.path2id(path))
+            self.outf.write(f"{tree.path2id(path)}\n")

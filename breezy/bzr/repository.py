@@ -16,11 +16,11 @@
 
 import itertools
 
-from .. import errors, lockable_files, lockdir
+from .. import errors, lockdir
 from .. import revision as _mod_revision
 from .. import transport as _mod_transport
 from ..repository import Repository, RepositoryFormat, format_registry
-from . import bzrdir
+from . import bzrdir, lockable_files
 
 
 class MetaDirRepository(Repository):

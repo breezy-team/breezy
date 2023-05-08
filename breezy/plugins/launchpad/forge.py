@@ -254,7 +254,7 @@ class Launchpad(Forge):
     def name(self):
         if self._api_base_url == lp_uris.LPNET_SERVICE_ROOT:
             return 'Launchpad'
-        return 'Launchpad at %s' % self.base_url
+        return f'Launchpad at {self.base_url}'
 
     @property
     def launchpad(self):
@@ -267,7 +267,7 @@ class Launchpad(Forge):
         return lp_uris.web_root_for_service_root(self._api_base_url)
 
     def __repr__(self):
-        return "Launchpad(service_root=%s)" % self._api_base_url
+        return f"Launchpad(service_root={self._api_base_url})"
 
     def get_current_user(self):
         return self.launchpad.me.name
@@ -302,7 +302,7 @@ class Launchpad(Forge):
         except KeyError:
             branch_name = params.get('branch', branch.name)
             if branch_name:
-                ref_path = 'refs/heads/%s' % branch_name
+                ref_path = f'refs/heads/{branch_name}'
             else:
                 ref_path = repo_lp.default_branch
         ref_lp = repo_lp.getRefByPath(path=ref_path)
@@ -320,7 +320,7 @@ class Launchpad(Forge):
             project = '/'.join(base_path.split('/')[1:])
         # TODO(jelmer): Surely there is a better way of creating one of these
         # URLs?
-        return "~{}/{}".format(owner, project)
+        return f"~{owner}/{project}"
 
     def _publish_git(self, local_branch, base_path, name, owner, project=None,
                      revision_id=None, overwrite=False, allow_lossy=True,
@@ -357,7 +357,7 @@ class Launchpad(Forge):
                     lossy=True, tag_selector=tag_selector)
             br_to = dir_to.target_branch
         return br_to, (
-            "https://git.launchpad.net/{}/+ref/{}".format(to_path, name))
+            f"https://git.launchpad.net/{to_path}/+ref/{name}")
 
     def _get_derived_bzr_path(self, base_branch, name, owner, project):
         if project is None:
@@ -365,7 +365,7 @@ class Launchpad(Forge):
             project = '/'.join(base_branch_lp.unique_name.split('/')[1:-1])
         # TODO(jelmer): Surely there is a better way of creating one of these
         # URLs?
-        return "~{}/{}/{}".format(owner, project, name)
+        return f"~{owner}/{project}/{name}"
 
     def get_push_url(self, branch):
         (vcs, user, password, path, params) = self._split_url(branch.user_url)
@@ -407,7 +407,7 @@ class Launchpad(Forge):
         elif host.startswith('git.'):
             vcs = 'git'
         else:
-            raise ValueError("unknown host %s" % host)
+            raise ValueError(f"unknown host {host}")
         return (vcs, user, password, path, params)
 
     def publish_derived(self, local_branch, base_branch, name, project=None,
@@ -456,7 +456,7 @@ class Launchpad(Forge):
                 except KeyError:
                     continue
                 return _mod_branch.Branch.open(prefix + to_path)
-            raise AssertionError('no supported schemes: %r' % preferred_schemes)
+            raise AssertionError(f'no supported schemes: {preferred_schemes!r}')
         elif base_vcs == 'git':
             to_path = self._get_derived_git_path(
                 base_path.strip('/'), owner, project)
@@ -468,7 +468,7 @@ class Launchpad(Forge):
                 to_url = urlutils.join_segment_parameters(
                     prefix + to_path, {'branch': name})
                 return _mod_branch.Branch.open(to_url)
-            raise AssertionError('no supported schemes: %r' % preferred_schemes)
+            raise AssertionError(f'no supported schemes: {preferred_schemes!r}')
         else:
             raise AssertionError('not a valid Launchpad URL')
 
@@ -556,7 +556,7 @@ class Launchpad(Forge):
         (scheme, user, password, host, port, path) = urlutils.parse_url(
             url)
         LAUNCHPAD_CODE_DOMAINS = [
-            ('code.%s' % domain) for domain in lp_uris.LAUNCHPAD_DOMAINS.values()]
+            f'code.{domain}' for domain in lp_uris.LAUNCHPAD_DOMAINS.values()]
         if host not in LAUNCHPAD_CODE_DOMAINS:
             raise UnsupportedForge(url)
         # TODO(jelmer): Check if this is a launchpad URL. Otherwise, raise
@@ -606,8 +606,8 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
 
     def get_infotext(self):
         """Determine the initial comment for the merge proposal."""
-        info = ["Source: %s\n" % self.source_branch_lp.bzr_identity]
-        info.append("Target: %s\n" % self.target_branch_lp.bzr_identity)
+        info = [f"Source: {self.source_branch_lp.bzr_identity}\n"]
+        info.append(f"Target: {self.target_branch_lp.bzr_identity}\n")
         return ''.join(info)
 
     def get_initial_body(self):
@@ -743,8 +743,8 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
 
     def get_infotext(self):
         """Determine the initial comment for the merge proposal."""
-        info = ["Source: %s\n" % self.source_branch.user_url]
-        info.append("Target: %s\n" % self.target_branch.user_url)
+        info = [f"Source: {self.source_branch.user_url}\n"]
+        info.append(f"Target: {self.target_branch.user_url}\n")
         return ''.join(info)
 
     def get_initial_body(self):

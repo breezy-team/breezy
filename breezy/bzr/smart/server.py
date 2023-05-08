@@ -243,7 +243,7 @@ class SmartTCPServer:
 
     def get_url(self):
         """Return the url of the server"""
-        return "bzr://{}:{}/".format(self._sockname[0], self._sockname[1])
+        return f"bzr://{self._sockname[0]}:{self._sockname[1]}/"
 
     def _make_handler(self, conn):
         return medium.SmartServerSocketStreamMedium(

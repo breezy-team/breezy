@@ -15,12 +15,12 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from .. import errors, osutils
-from . import inventory, xml6
+from . import inventory, xml6, xml8
 from .xml_serializer import (encode_and_escape, get_utf8_or_ascii,
                              unpack_inventory_entry)
 
 
-class Serializer_v5(xml6.Serializer_v6):
+class InventorySerializer_v5(xml6.InventorySerializer_v6):
     """Version 5 serializer
 
     Packs objects into XML and vice versa.
@@ -38,8 +38,7 @@ class Serializer_v5(xml6.Serializer_v6):
         format = elt.get('format')
         if format is not None:
             if format != '5':
-                raise errors.BzrError("invalid format version %r on inventory"
-                                      % format)
+                raise errors.BzrError(f"invalid format version {format!r} on inventory")
         data_revision_id = elt.get('revision_id')
         if data_revision_id is not None:
             revision_id = data_revision_id.encode('utf-8')
@@ -98,4 +97,13 @@ class Serializer_v5(xml6.Serializer_v6):
         append(b'<inventory%s format="5"%s>\n' % (fileid, revid))
 
 
-serializer_v5 = Serializer_v5()
+class RevisionSerializer_v5(xml8.RevisionSerializer_v8):
+    """Version 5 serializer
+
+    Packs objects into XML and vice versa.
+    """
+    format_num = b'5'
+
+
+inventory_serializer_v5 = InventorySerializer_v5()
+revision_serializer_v5 = RevisionSerializer_v5()

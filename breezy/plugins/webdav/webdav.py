@@ -158,7 +158,7 @@ class DavStatHandler(DavResponseHandler):
         sname = self._strip_ns(name)
         if sname != 'multistatus':
             raise errors.InvalidHttpResponse(
-                self.url, msg='Unexpected %s element' % name)
+                self.url, msg=f'Unexpected {name} element')
 
     def _href_end(self):
         stack = self.elt_stack
@@ -231,7 +231,7 @@ def _extract_stat_info(url, infile):
         parser.parse(infile)
     except xml.sax.SAXParseException as e:
         raise errors.InvalidHttpResponse(
-            url, msg='Malformed xml response: %s' % e)
+            url, msg=f'Malformed xml response: {e}')
     if handler.is_dir:
         size = -1 # directory sizes are meaningless for bzr
         is_exec = True
@@ -287,7 +287,7 @@ def _extract_dir_content(url, infile):
         parser.parse(infile)
     except xml.sax.SAXParseException as e:
         raise errors.InvalidHttpResponse(
-            url, msg='Malformed xml response: %s' % e)
+            url, msg=f'Malformed xml response: {e}')
     # Reformat for bzr needs
     dir_content = handler.dir_content
     (dir_name, is_dir) = dir_content[0][:2]
@@ -605,7 +605,7 @@ class HttpDavTransport(urllib.HttpTransport):
             # bug  even,  since  we  require explicitely  to  not
             # overwrite.
             self._raise_http_error(abs_from, response,
-                                   'unable to rename to %r' % (abs_to))
+                                   f'unable to rename to {abs_to!r}')
 
     def move(self, rel_from, rel_to):
         """See Transport.move"""
@@ -625,7 +625,7 @@ class HttpDavTransport(urllib.HttpTransport):
         # 204 means it did exist.
         if code not in (201, 204):
             self._raise_http_error(abs_from, response,
-                                   'unable to move to %r' % (abs_to))
+                                   f'unable to move to {abs_to!r}')
 
     def delete(self, rel_path):
         """
@@ -660,8 +660,7 @@ class HttpDavTransport(urllib.HttpTransport):
         # investivation.
         if code not in (201, 204):
             self._raise_http_error(abs_from, response,
-                                   'unable to copy from %r to %r'
-                                   % (abs_from, abs_to))
+                                   f'unable to copy from {abs_from!r} to {abs_to!r}')
 
     def copy_to(self, relpaths, other, mode=None, pb=None):
         """Copy a set of entries from self into another Transport.
@@ -695,7 +694,7 @@ class HttpDavTransport(urllib.HttpTransport):
 """
         response = self.request(
             'PROPFIND', abspath, body=propfind, headers={
-                'Depth': '{}'.format(depth),
+                'Depth': f'{depth}',
                 'Content-Type': 'application/xml; charset="utf-8"'})
 
         code = response.status
@@ -706,7 +705,7 @@ class HttpDavTransport(urllib.HttpTransport):
             raise transport.NoSuchFile(abspath)
         if code != 207:
             self._raise_http_error(abspath, response,
-                                   'unable to list  %r directory' % (abspath))
+                                   f'unable to list  {abspath!r} directory')
         return _extract_dir_content(abspath, response)
 
     def lock_write(self, relpath):
@@ -753,7 +752,7 @@ class HttpDavTransport(urllib.HttpTransport):
             raise transport.NoSuchFile(abspath)
         if code != 207:
             self._raise_http_error(abspath, response,
-                                   'unable to list  %r directory' % (abspath))
+                                   f'unable to list  {abspath!r} directory')
         return _extract_stat_info(abspath, response)
 
     def iter_files_recursive(self):
@@ -804,8 +803,7 @@ class HttpDavTransport(urllib.HttpTransport):
             # then the server is buggy :-/ )
             relpath_size = int(response.getheader('Content-Length', 0))
             if relpath_size == 0:
-                trace.mutter('if %s is not empty, the server is buggy'
-                             % relpath)
+                trace.mutter(f'if {relpath} is not empty, the server is buggy')
         if relpath_size:
             self._put_bytes_ranged(relpath, bytes, relpath_size)
         else:

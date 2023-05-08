@@ -250,7 +250,7 @@ class TreeTransform:
 
     def assign_id(self):
         """Produce a new tranform id"""
-        new_id = "new-%s" % self._id_number
+        new_id = f"new-{self._id_number}"
         self._id_number += 1
         return new_id
 
@@ -686,7 +686,7 @@ def create_from_tree(tt, trans_id, tree, path, chunks=None,
     elif kind == "tree-reference":
         tt.create_tree_reference(tree.get_reference_revision(path), trans_id)
     else:
-        raise AssertionError('Unknown kind %r' % kind)
+        raise AssertionError(f'Unknown kind {kind!r}')
 
 
 def create_entry_executability(tt, entry, trans_id):

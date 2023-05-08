@@ -949,8 +949,7 @@ class cmd_cp(Command):
                             % (src, dst, src)))
             if src_kind == 'directory':
                 raise errors.CommandError(
-                    gettext('Could not copy %s => %s . %s is a directory.'
-                            % (src, dst, src)))
+                    gettext(f'Could not copy {src} => {dst} . {src} is a directory.'))
             dst_parent = osutils.split(dst)[0]
             if dst_parent != '':
                 try:
@@ -1055,7 +1054,7 @@ class cmd_mv(Command):
             rel_names = list(tree.get_canonical_paths(rel_names))
             for src, dest in tree.move(rel_names[:-1], rel_names[-1], after=after):
                 if not is_quiet():
-                    self.outf.write("{} => {}\n".format(src, dest))
+                    self.outf.write(f"{src} => {dest}\n")
         else:
             if len(names_list) != 2:
                 raise errors.CommandError(gettext('to mv multiple files the'
@@ -1107,7 +1106,7 @@ class cmd_mv(Command):
             mutter("attempting to move %s => %s", src, dest)
             tree.rename_one(src, dest, after=after)
             if not is_quiet():
-                self.outf.write("{} => {}\n".format(src, dest))
+                self.outf.write(f"{src} => {dest}\n")
 
 
 class cmd_pull(Command):
@@ -1597,14 +1596,14 @@ class cmd_branches(Command):
             # Only mention the current branch explicitly if it's not
             # one of the colocated branches
             if not any(names.values()) and active_branch is not None:
-                self.outf.write("* %s\n" % gettext("(default)"))
+                self.outf.write(f"* {gettext('(default)')}\n")
             for name in sorted(names):
                 active = names[name]
                 if active:
                     prefix = "*"
                 else:
                     prefix = " "
-                self.outf.write("{} {}\n".format(prefix, name))
+                self.outf.write(f"{prefix} {name}\n")
 
 
 class cmd_checkout(Command):
@@ -1739,7 +1738,7 @@ class cmd_renames(Command):
             renames.append(change.path)
         renames.sort()
         for old_name, new_name in renames:
-            self.outf.write("{} => {}\n".format(old_name, new_name))
+            self.outf.write(f"{old_name} => {new_name}\n")
 
 
 class cmd_update(Command):
@@ -2364,7 +2363,7 @@ class cmd_diff(Command):
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None,
             prefix=None, old=None, new=None, using=None, format=None,
-            context=None, color='never'):
+            context=None, color='auto'):
         from .diff import (get_trees_and_branches_to_diff_locked,
                            show_diff_trees)
 
@@ -3212,7 +3211,7 @@ class cmd_ignore(Command):
         if default_rules is not None:
             # dump the default rules and exit
             for pattern in ignores.USER_DEFAULTS:
-                self.outf.write("%s\n" % pattern)
+                self.outf.write(f"{pattern}\n")
             return
         if not name_pattern_list:
             raise errors.CommandError(gettext("ignore requires at least one "
@@ -3224,7 +3223,7 @@ class cmd_ignore(Command):
         for p in name_pattern_list:
             if not globbing.Globster.is_pattern_valid(p):
                 bad_patterns_count += 1
-                bad_patterns += ('\n  %s' % p)
+                bad_patterns += f'\n  {p}'
         if bad_patterns:
             msg = (ngettext('Invalid ignore pattern found. %s',
                             'Invalid ignore patterns found. %s',
@@ -3299,7 +3298,7 @@ class cmd_lookup_revision(Command):
                                       % revno) from exc
         revid = WorkingTree.open_containing(
             directory)[0].branch.get_rev_id(revno)
-        self.outf.write("%s\n" % revid.decode('utf-8'))
+        self.outf.write(f"{revid.decode('utf-8')}\n")
 
 
 class cmd_export(Command):
@@ -3482,7 +3481,7 @@ class cmd_local_time_offset(Command):
 
     @display_command
     def run(self):
-        self.outf.write("%s\n" % osutils.local_time_offset())
+        self.outf.write(f"{osutils.local_time_offset()}\n")
 
 
 class cmd_commit(Command):
@@ -3978,7 +3977,7 @@ class cmd_nick(Command):
 
     @display_command
     def printme(self, branch):
-        self.outf.write('%s\n' % branch.nick)
+        self.outf.write(f'{branch.nick}\n')
 
 
 class cmd_alias(Command):
@@ -4033,17 +4032,17 @@ class cmd_alias(Command):
         """Print out the defined aliases in a similar format to bash."""
         aliases = _mod_config.GlobalConfig().get_aliases()
         for key, value in sorted(aliases.items()):
-            self.outf.write('brz alias {}="{}"\n'.format(key, value))
+            self.outf.write(f'brz alias {key}="{value}\"\n')
 
     @display_command
     def print_alias(self, alias_name):
         from .commands import get_alias
         alias = get_alias(alias_name)
         if alias is None:
-            self.outf.write("brz alias: %s: not found\n" % alias_name)
+            self.outf.write(f"brz alias: {alias_name}: not found\n")
         else:
             self.outf.write(
-                'brz alias {}="{}"\n'.format(alias_name, ' '.join(alias)))
+                f"brz alias {alias_name}=\"{' '.join(alias)}\"\n")
 
     def set_alias(self, alias_name, alias_command):
         """Save the alias in the global config."""
@@ -4114,8 +4113,7 @@ class cmd_selftest(Command):
         elif typestring == "fakenfs":
             from .tests import test_server
             return test_server.FakeNFSServer
-        msg = "No known transport type %s. Supported types are: sftp\n" %\
-            (typestring)
+        msg = f"No known transport type {typestring}. Supported types are: sftp\n"
         raise errors.CommandError(msg)
 
     hidden = True
@@ -6530,14 +6528,13 @@ class cmd_hooks(Command):
     def run(self):
         for hook_key in sorted(hooks.known_hooks.keys()):
             some_hooks = hooks.known_hooks_key_to_object(hook_key)
-            self.outf.write("%s:\n" % type(some_hooks).__name__)
+            self.outf.write(f"{type(some_hooks).__name__}:\n")
             for hook_name, hook_point in sorted(some_hooks.items()):
-                self.outf.write("  {}:\n".format(hook_name))
+                self.outf.write(f"  {hook_name}:\n")
                 found_hooks = list(hook_point)
                 if found_hooks:
                     for hook in found_hooks:
-                        self.outf.write("    %s\n" %
-                                        (some_hooks.get_hook_name(hook),))
+                        self.outf.write(f"    {some_hooks.get_hook_name(hook)}\n")
                 else:
                     self.outf.write(gettext("    <no hooks installed>\n"))
 
@@ -6777,7 +6774,7 @@ class cmd_reference(Command):
         for path, location in info:
             ref_list.append((path, location))
         for path, location in sorted(ref_list):
-            self.outf.write('{} {}\n'.format(path, location))
+            self.outf.write(f'{path} {location}\n')
 
 
 class cmd_export_pot(Command):
@@ -6936,7 +6933,7 @@ class cmd_grep(Command):
             files_without_match=False, color=None, diff=False):
         import re
 
-        from breezy import _termcolor
+        from breezy import terminal
 
         from . import grep
         if path_list is None:
@@ -6957,7 +6954,7 @@ class cmd_grep(Command):
             color = global_config.get_user_option('grep_color')
 
         if color is None:
-            color = 'never'
+            color = 'auto'
 
         if color not in ['always', 'never', 'auto']:
             raise errors.CommandError('Valid values for --color are '
@@ -6998,7 +6995,7 @@ class cmd_grep(Command):
         elif color == 'never':
             show_color = False
         elif color == 'auto':
-            show_color = _termcolor.allow_color()
+            show_color = terminal.has_ansi_colors()
 
         opts = grep.GrepOptions()
 
@@ -7085,7 +7082,7 @@ class cmd_resolve_location(Command):
         from .location import location_to_url
         url = location_to_url(location)
         display_url = urlutils.unescape_for_display(url, self.outf.encoding)
-        self.outf.write('%s\n' % display_url)
+        self.outf.write(f'{display_url}\n')
 
 
 def _register_lazy_builtins():

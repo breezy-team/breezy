@@ -1295,7 +1295,7 @@ class DiskTreeTransform(TreeTransformBase):
             except KeyError:
                 path = None
             trace.warning(
-                'Unable to create symlink "{}" on this filesystem.'.format(path))
+                f'Unable to create symlink "{path}" on this filesystem.')
         # We add symlink to _new_contents even if they are unsupported
         # and not created. These entries are subsequently used to avoid
         # conflicts on platforms that don't support symlink
@@ -1397,14 +1397,18 @@ class InventoryTreeTransform(DiskTreeTransform):
         try:
             limbodir = urlutils.local_path_from_url(
                 tree._transport.abspath('limbo'))
-            osutils.ensure_empty_directory_exists(
-                limbodir,
-                errors.ExistingLimbo)
+            try:
+                osutils.ensure_empty_directory_exists(
+                    limbodir)
+            except errors.DirectoryNotEmpty:
+                raise errors.ExistingLimbo(limbodir)
             deletiondir = urlutils.local_path_from_url(
                 tree._transport.abspath('pending-deletion'))
-            osutils.ensure_empty_directory_exists(
-                deletiondir,
-                errors.ExistingPendingDeletion)
+            try:
+                osutils.ensure_empty_directory_exists(
+                    deletiondir)
+            except errors.DirectoryNotEmpty:
+                raise errors.ExistingPendingDeletion(deletiondir)
         except BaseException:
             tree.unlock()
             raise

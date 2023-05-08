@@ -202,7 +202,7 @@ class cmd_rebase(Command):
                 todo = list(rebase_todo(wt.branch.repository, replace_map))
                 note(gettext('%d revisions will be rebased:') % len(todo))
                 for revid in todo:
-                    note("%s" % revid)
+                    note(f"{revid}")
 
             if not dry_run:
                 # Write plan file
@@ -479,7 +479,7 @@ class cmd_rebase_foreign(Command):
             f = open(idmap_file, 'w')
             try:
                 for oldid, newid in renames.iteritems():
-                    f.write("{}\t{}\n".format(oldid, newid))
+                    f.write(f"{oldid}\t{newid}\n")
             finally:
                 f.close()
 

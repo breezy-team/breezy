@@ -18,7 +18,8 @@
 
 from io import BytesIO
 
-from ... import errors, lockable_files
+from ... import errors
+from ...bzr import lockable_files
 from ...bzr.bzrdir import BzrDir, BzrDirFormat, BzrDirMetaFormat1
 from ...controldir import (ControlDir, Converter, MustHaveWorkingTree,
                            NoColocatedBranchSupport, format_registry)
@@ -79,7 +80,7 @@ class BzrDirFormatAllInOne(BzrDirFormat):
     @classmethod
     def from_string(cls, format_string):
         if format_string != cls.get_format_string():
-            raise AssertionError("unexpected format string %r" % format_string)
+            raise AssertionError(f"unexpected format string {format_string!r}")
         return cls()
 
 
@@ -293,10 +294,10 @@ class ConvertBzrDir4To5(Converter):
         self.controldir.transport.delete_tree('text-store')
 
     def _convert_working_inv(self):
-        inv = xml4.serializer_v4.read_inventory(
+        inv = xml4.inventory_serializer_v4.read_inventory(
             self.branch._transport.get('inventory'))
         f = BytesIO()
-        xml5.serializer_v5.write_inventory(inv, f, working=True)
+        xml5.inventory_serializer_v5.write_inventory(inv, f, working=True)
         self.branch._transport.put_bytes('inventory', f.getvalue(),
                                          mode=self.controldir._get_file_mode())
 
@@ -327,16 +328,16 @@ class ConvertBzrDir4To5(Converter):
         self.controldir.transport.mkdir('revision-store')
         revision_transport = self.controldir.transport.clone('revision-store')
         # TODO permissions
-        from ...bzr.xml5 import serializer_v5
+        from ...bzr.xml5 import revision_serializer_v5
         from .repository import RevisionTextStore
         revision_store = RevisionTextStore(revision_transport,
-                                           serializer_v5, False, versionedfile.PrefixMapper(),
+                                           revision_serializer_v5, False, versionedfile.PrefixMapper(),
                                            lambda: True, lambda: True)
         try:
             for i, rev_id in enumerate(self.converted_revs):
                 self.pb.update(gettext('write revision'), i,
                                len(self.converted_revs))
-                lines = serializer_v5.write_revision_to_lines(
+                lines = revision_serializer_v5.write_revision_to_lines(
                     self.revisions[rev_id])
                 key = (rev_id,)
                 revision_store.add_lines(key, None, lines)
@@ -366,14 +367,14 @@ class ConvertBzrDir4To5(Converter):
 
     def _load_old_inventory(self, rev_id):
         with self.branch.repository.inventory_store.get(rev_id) as f:
-            inv = xml4.serializer_v4.read_inventory(f)
+            inv = xml4.inventory_serializer_v4.read_inventory(f)
         inv.revision_id = rev_id
         rev = self.revisions[rev_id]
         return inv
 
     def _load_updated_inventory(self, rev_id):
         inv_xml = self.inv_weave.get_lines(rev_id)
-        inv = xml5.serializer_v5.read_inventory_from_lines(inv_xml, rev_id)
+        inv = xml5.inventory_serializer_v5.read_inventory_from_lines(inv_xml, rev_id)
         return inv
 
     def _convert_one_rev(self, rev_id):
@@ -387,7 +388,7 @@ class ConvertBzrDir4To5(Converter):
         self.converted_revs.add(rev_id)
 
     def _store_new_inv(self, rev, inv, present_parents):
-        new_inv_xml = xml5.serializer_v5.write_inventory_to_lines(inv)
+        new_inv_xml = xml5.inventory_serializer_v5.write_inventory_to_lines(inv)
         new_inv_sha1 = osutils.sha_strings(new_inv_xml)
         self.inv_weave.add_lines(rev.revision_id,
                                  present_parents,
@@ -620,7 +621,7 @@ class ConvertBzrDir6ToMeta(Converter):
         """Make a lock for the new control dir name."""
         self.step(gettext('Make %s lock') % name)
         ld = lockdir.LockDir(self.controldir.transport,
-                             '%s/lock' % name,
+                             f'{name}/lock',
                              file_modebits=self.file_mode,
                              dir_modebits=self.dir_mode)
         ld.create()
@@ -631,13 +632,13 @@ class ConvertBzrDir6ToMeta(Converter):
         mandatory = entry[1]
         self.step(gettext('Moving %s') % name)
         try:
-            self.controldir.transport.move(name, '{}/{}'.format(new_dir, name))
+            self.controldir.transport.move(name, f'{new_dir}/{name}')
         except NoSuchFile:
             if mandatory:
                 raise
 
     def put_format(self, dirname, format):
-        self.controldir.transport.put_bytes('%s/format' % dirname,
+        self.controldir.transport.put_bytes(f'{dirname}/format',
                                             format.get_format_string(),
                                             self.file_mode)
 
@@ -703,7 +704,7 @@ class BzrDirFormat4(BzrDirFormat):
     @classmethod
     def from_string(cls, format_string):
         if format_string != cls.get_format_string():
-            raise AssertionError("unexpected format string %r" % format_string)
+            raise AssertionError(f"unexpected format string {format_string!r}")
         return cls()
 
 
@@ -756,7 +757,7 @@ class BzrDirPreSplitOut(BzrDir):
         """See ControlDir.create_branch."""
         if repository is not None:
             raise NotImplementedError(
-                "create_branch(repository=<not None>) on {!r}".format(self))
+                f"create_branch(repository=<not None>) on {self!r}")
         return self._format.get_branch_format().initialize(self, name=name,
                                                            append_revisions_only=append_revisions_only)
 
@@ -790,8 +791,7 @@ class BzrDirPreSplitOut(BzrDir):
         # happens for creating checkouts, which cannot be
         # done on this format anyway. So - acceptable wart.
         if hardlink:
-            warning("can't support hardlinked working trees in %r"
-                    % (self,))
+            warning(f"can't support hardlinked working trees in {self!r}")
         try:
             result = self.open_workingtree(recommend_upgrade=False)
         except NoSuchFile:

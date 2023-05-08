@@ -54,8 +54,8 @@ class TestBase(TestCase):
 
             self.log('')
             self.log('parents: %s' % (k._parents == k2._parents))
-            self.log('         %r' % k._parents)
-            self.log('         %r' % k2._parents)
+            self.log(f'         {k._parents!r}')
+            self.log(f'         {k2._parents!r}')
             self.log('')
             self.fail('read/write check failed')
 

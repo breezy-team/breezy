@@ -18,11 +18,11 @@
 """Tests for foreign VCS utility code."""
 
 
-from .. import (branch, controldir, errors, foreign, lockable_files, lockdir,
-                repository, revision, tests, trace)
+from .. import (branch, controldir, errors, foreign, lockdir, repository,
+                revision, tests, trace)
 from .. import transport as _mod_transport
 from ..bzr import branch as bzrbranch
-from ..bzr import bzrdir, groupcompress_repo, vf_repository
+from ..bzr import bzrdir, groupcompress_repo, lockable_files, vf_repository
 from ..bzr.pack_repo import PackCommitBuilder
 
 # This is the dummy foreign revision control system, used
@@ -396,8 +396,10 @@ class ForeignRevisionTests(tests.TestCase):
     def test_create(self):
         mapp = DummyForeignVcsMapping(DummyForeignVcs())
         rev = foreign.ForeignRevision((b"a", b"foreign", b"revid"),
-                                      mapp, b"roundtripped-revid")
-        self.assertEqual(b"", rev.inventory_sha1)
+                                      mapp, b"roundtripped-revid", parent_ids=[],
+                                      message="", committer="", properties={},
+                                      timestamp=0, timezone=0)
+        self.assertIs(None, rev.inventory_sha1)
         self.assertEqual((b"a", b"foreign", b"revid"), rev.foreign_revid)
         self.assertEqual(mapp, rev.mapping)
 

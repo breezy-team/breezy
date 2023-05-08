@@ -99,33 +99,17 @@ def _unescape_safe_chars(matchobj):
         return matchobj.group(0).upper()
 
 
-def _win32_extract_drive_letter(url_base, path):
-    """On win32 the drive letter needs to be added to the url base."""
-    # Strip off the drive letter
-    # path is currently /C:/foo
-    if len(path) < 4 or path[2] not in ':|' or path[3] != '/':
-        raise InvalidURL(url_base + path,
-                         'win32 file:/// paths need a drive letter')
-    url_base += path[0:3]  # file:// + /C:
-    path = path[3:]  # /foo
-    return url_base, path
-
-
-def _win32_strip_local_trailing_slash(url):
-    """Strip slashes after the drive letter"""
-    if len(url) > WIN32_MIN_ABS_FILEURL_LENGTH:
-        return url[:-1]
-    else:
-        return url
+_win32_extract_drive_letter = win32_rs.extract_drive_letter
+_win32_strip_local_trailing_slash = win32_rs.strip_local_trailing_slash
 
 
 # These are characters that if escaped, should stay that way
 _no_decode_chars = ';/?:@&=+$,#'
 _no_decode_ords = [ord(c) for c in _no_decode_chars]
-_no_decode_hex = (['%02x' % o for o in _no_decode_ords]
-                  + ['%02X' % o for o in _no_decode_ords])
-_hex_display_map = dict([('%02x' % o, bytes([o])) for o in range(256)]
-                         + [('%02X' % o, bytes([o])) for o in range(256)])
+_no_decode_hex = ([f'{o:02x}' for o in _no_decode_ords]
+                  + [f'{o:02X}' for o in _no_decode_ords])
+_hex_display_map = dict([(f'{o:02x}', bytes([o])) for o in range(256)]
+                         + [(f'{o:02X}', bytes([o])) for o in range(256)])
 # These entries get mapped to themselves
 _hex_display_map.update((hex, b'%' + hex.encode('ascii'))
                         for hex in _no_decode_hex)
@@ -330,8 +314,7 @@ class URL:
                 try:
                     port = int(port)
                 except ValueError:
-                    raise InvalidURL('invalid port number %s in url:\n%s' %
-                                     (port, url))
+                    raise InvalidURL(f'invalid port number {port} in url:\n{url}')
             else:
                 port = None
         if host != "" and host[0] == '[' and host[-1] == ']':  # IPv6
@@ -342,12 +325,12 @@ class URL:
     def __str__(self):
         netloc = self.quoted_host
         if ":" in netloc:
-            netloc = "[%s]" % netloc
+            netloc = f"[{netloc}]"
         if self.quoted_user is not None:
             # Note that we don't put the password back even if we
             # have one so that it doesn't get accidentally
             # exposed.
-            netloc = '{}@{}'.format(self.quoted_user, netloc)
+            netloc = f'{self.quoted_user}@{netloc}'
         if self.port is not None:
             netloc = '%s:%d' % (netloc, self.port)
         return urlparse.urlunparse(

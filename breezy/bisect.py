@@ -70,8 +70,7 @@ class BisectCurrent:
         """Write the current revision's log entry to a file."""
         rev = self._branch.repository.get_revision(self._revid)
         revno = ".".join([str(x) for x in self.get_current_revno()])
-        outf.write("On revision {} ({}):\n{}\n".format(revno, rev.revision_id,
-                                                   rev.message))
+        outf.write(f"On revision {revno} ({rev.revision_id}):\n{rev.message}\n")
 
     def switch(self, revid):
         """Switch the current revision to the given revid."""
@@ -146,7 +145,7 @@ class BisectLog:
                 if not matches:
                     continue
                 if len(matches) > 1:
-                    raise RuntimeError("revision %s duplicated" % revision)
+                    raise RuntimeError(f"revision {revision} duplicated")
                 if matches[0] == "yes":
                     high_revid = revision
                     between_revs = []
@@ -188,7 +187,7 @@ class BisectLog:
         if not self.is_done():
             if status != "done" and revid in [x[0] for x in self._items
                                               if x[1] in ['yes', 'no']]:
-                raise RuntimeError("attempting to add revid %s twice" % revid)
+                raise RuntimeError(f"attempting to add revid {revid} twice")
             self._items.append((revid, status))
 
     def change_file_name(self, filename):

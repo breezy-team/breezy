@@ -1,5 +1,8 @@
+use log::warn;
 use memchr::memchr;
 use rand::Rng;
+use std::fs::File;
+use std::io::Write;
 
 pub fn chunks_to_lines<'a, I, E>(mut chunks: I) -> impl Iterator<Item = Result<Vec<u8>, E>>
 where
@@ -104,13 +107,19 @@ pub fn get_umask() -> Mode {
     mask
 }
 
-pub fn kind_marker(kind: &str) -> &str {
+pub enum Kind {
+    File,
+    Directory,
+    Symlink,
+    TreeReference,
+}
+
+pub fn kind_marker(kind: Kind) -> &'static str {
     match kind {
-        "file" => "",
-        "directory" => "/",
-        "symlink" => "@",
-        "tree-reference" => "+",
-        _ => "",
+        Kind::File => "",
+        Kind::Directory => "/",
+        Kind::Symlink => "@",
+        Kind::TreeReference => "+",
     }
 }
 
@@ -152,6 +161,24 @@ pub fn pumpfile(
     })
 }
 
+pub fn pump_string_file(
+    data: &[u8],
+    mut file_handle: impl std::io::Write,
+    segment_size: Option<usize>,
+) -> std::io::Result<()> {
+    // Write data in chunks rather than all at once, because very large
+    // writes fail on some platforms (e.g. Windows with SMB mounted
+    // drives).
+    let segment_size = segment_size.unwrap_or(5_242_880); // 5MB
+    let chunks = data.chunks(segment_size);
+
+    for chunk in chunks {
+        file_handle.write_all(chunk)?;
+    }
+
+    Ok(())
+}
+
 pub fn contains_whitespace(s: &str) -> bool {
     let ws = " \t\n\r\u{000B}\u{000C}";
     for ch in ws.chars() {
@@ -181,6 +208,36 @@ pub fn contains_linebreaks(s: &str) -> bool {
     false
 }
 
+pub fn get_home_dir() -> Option<std::path::PathBuf> {
+    dirs::home_dir()
+}
+
+fn _get_user_encoding() -> Option<String> {
+    unsafe {
+        let codeset = nix::libc::nl_langinfo(nix::libc::CODESET);
+        if codeset.is_null() {
+            return None;
+        }
+        let codeset_str = std::ffi::CStr::from_ptr(codeset);
+        Some(codeset_str.to_string_lossy().to_string())
+    }
+}
+
+pub fn get_user_encoding() -> Option<String> {
+    let encoding = _get_user_encoding()?;
+
+    match encoding_rs::Encoding::for_label(encoding.as_bytes()) {
+        Some(enc) => Some(enc.name().to_string()),
+        _ => {
+            warn!(
+                "brz: warning: unknown encoding {}. Defaulting to ASCII.",
+                encoding
+            );
+            Some("ASCII".to_string())
+        }
+    }
+}
+
 pub mod file;
 pub mod iterablefile;
 pub mod path;
@@ -198,3 +255,5 @@ pub mod mounts;
 
 #[cfg(test)]
 mod tests;
+
+pub mod terminal;

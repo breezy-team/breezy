@@ -143,7 +143,7 @@ class CommitBuilder:
         """Verify things like commit messages don't have bogus characters."""
         # TODO(jelmer): Make this repository-format specific
         if '\r' in text:
-            raise ValueError('Invalid value for {}: {!r}'.format(context, text))
+            raise ValueError(f'Invalid value for {context}: {text!r}')
 
     def _validate_revprops(self, revprops):
         for key, value in revprops.items():
@@ -154,7 +154,7 @@ class CommitBuilder:
                                  ' (unicode) string: %r' % (key, value))
             # TODO(jelmer): Make this repository-format specific
             self._validate_unicode_text(value,
-                                        'revision property ({})'.format(key))
+                                        f'revision property ({key})')
 
     def commit(self, message):
         """Make the actual commit.
@@ -240,8 +240,7 @@ class RepositoryWriteLockResult(LogicalLockResult):
         self.repository_token = repository_token
 
     def __repr__(self):
-        return "RepositoryWriteLockResult({}, {})".format(self.repository_token,
-                                                      self.unlock)
+        return f"RepositoryWriteLockResult({self.repository_token}, {self.unlock})"
 
 
 class WriteGroup:
@@ -414,8 +413,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 self.base,
                 self._fallback_repositories)
         else:
-            return '{}({!r})'.format(self.__class__.__name__,
-                               self.base)
+            return f'{self.__class__.__name__}({self.base!r})'
 
     def _has_same_fallbacks(self, other_repo):
         """Returns true if the repositories have the same fallbacks."""
@@ -463,8 +461,6 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         A token should be passed in if you know that you have locked the object
         some other way, and need to synchronise this object's state with that
         fact.
-
-        XXX: this docstring is duplicated in many places, e.g. lockable_files.py
 
         Args:
           token: if this is already locked, then lock_write will fail
@@ -1363,7 +1359,7 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     supports_multiple_authors: bool = True
 
     def __repr__(self):
-        return "%s()" % self.__class__.__name__
+        return f"{self.__class__.__name__}()"
 
     def __eq__(self, other):
         # format objects are generally stateless
@@ -1578,14 +1574,18 @@ class InterRepository(InterObject[Repository]):
         if source.supports_rich_root() != target.supports_rich_root():
             raise errors.IncompatibleRepositories(source, target,
                                                   "different rich-root support")
-        if not hasattr(source, '_serializer') or not hasattr(target, '_serializer'):
+        if not hasattr(source, '_revision_serializer') or not hasattr(target, '_revision_serializer'):
             if source != target:
                 raise errors.IncompatibleRepositories(source, target, "different formats")
             return
 
-        if source._serializer != target._serializer:
+        if source._inventory_serializer != target._inventory_serializer:
             raise errors.IncompatibleRepositories(source, target,
-                                                  "different serializers")
+                                                  "different inventory serializers")
+
+        if source._revision_serializer != target._revision_serializer:
+            raise errors.IncompatibleRepositories(source, target,
+                                                  "different revision serializers")
 
 
 class CopyConverter:
@@ -1706,5 +1706,4 @@ class _LazyListJoin:
         return iter(full_list)
 
     def __repr__(self):
-        return "{}.{}({})".format(self.__module__, self.__class__.__name__,
-                              self.list_parts)
+        return f"{self.__module__}.{self.__class__.__name__}({self.list_parts})"

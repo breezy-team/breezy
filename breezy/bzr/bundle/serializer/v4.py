@@ -49,7 +49,7 @@ class _MPDiffInventoryGenerator(_mod_versionedfile._MPDiffGenerator):
         # parents first, and then grab the ordered requests.
         needed_ids = [k[-1] for k in self.present_parents]
         needed_ids.extend([k[-1] for k in self.ordered_keys])
-        inv_to_lines = self.repo._serializer.write_inventory_to_chunks
+        inv_to_lines = self.repo._inventory_serializer.write_inventory_to_chunks
         for inv in self.repo.iter_inventories(needed_ids):
             revision_id = inv.revision_id
             key = (revision_id,)
@@ -242,8 +242,7 @@ class BundleReader:
         iterator = pack.iter_records_from_file(self._container_file)
         for names, bytes in iterator:
             if len(names) != 1:
-                raise errors.BadBundle('Record has %d names instead of 1'
-                                       % len(names))
+                raise errors.BadBundle(f'Record has {len(names)} names instead of 1')
             metadata = bencode.bdecode(bytes)
             if metadata[b'storage_kind'] == b'header':
                 bytes = None
@@ -275,7 +274,10 @@ class BundleSerializerV4(bundle_serializer.BundleSerializer):
     @staticmethod
     def get_source_serializer(info):
         """Retrieve the serializer for a given info object"""
-        return serializer.format_registry.get(info[b'serializer'].decode('ascii'))
+        format_name = info[b'serializer'].decode('ascii')
+        inventory_serializer = serializer.inventory_format_registry.get(format_name)
+        revision_serializer = serializer.revision_format_registry.get({'7': '5', '6': '5'}.get(format_name, format_name))
+        return (revision_serializer, inventory_serializer)
 
 
 class BundleWriteOperation:
@@ -338,7 +340,7 @@ class BundleWriteOperation:
             revision_order = list(topological_order)
             revision_order.remove(self.target)
             revision_order.append(self.target)
-        if self.repository._serializer.support_altered_by_hack:
+        if self.repository._inventory_serializer.support_altered_by_hack:
             # Repositories that support_altered_by_hack means that
             # inventories.make_mpdiffs() contains all the data about the tree
             # shape. Formats without support_altered_by_hack require
@@ -370,7 +372,7 @@ class BundleWriteOperation:
 
     def _add_revision_texts(self, revision_order):
         parent_map = self.repository.get_parent_map(revision_order)
-        revision_to_bytes = self.repository._serializer.write_revision_to_string
+        revision_to_bytes = self.repository._revision_serializer.write_revision_to_string
         revisions = self.repository.get_revisions(revision_order)
         for revision in revisions:
             revision_id = revision.revision_id
@@ -469,10 +471,10 @@ class BundleInfoV4:
             for bytes, metadata, repo_kind, revision_id, file_id in \
                     bundle_reader.iter_records():
                 if repo_kind == 'info':
-                    serializer =\
+                    revision_serializer, inventory_serializer =\
                         self._serializer.get_source_serializer(metadata)
                 if repo_kind == 'revision':
-                    rev = serializer.read_revision_from_string(bytes)
+                    rev = revision_serializer.read_revision_from_string(bytes)
                     self.__real_revisions.append(rev)
         return self.__real_revisions
     real_revisions = property(_get_real_revisions)
@@ -554,7 +556,7 @@ class RevisionInstaller:
     def _handle_info(self, info):
         """Extract data from an info record"""
         self._info = info
-        self._source_serializer = self._serializer.get_source_serializer(info)
+        (self._source_revision_serializer, self._source_inventory_serializer) = self._serializer.get_source_serializer(info)
         if (info[b'supports_rich_root'] == 0 and
                 self._repository.supports_rich_root()):
             self.update_root = True
@@ -613,7 +615,7 @@ class RevisionInstaller:
                     present_parent_ids.append(p_id)
                 else:
                     ghosts.add(p_id)
-            to_lines = self._source_serializer.write_inventory_to_chunks
+            to_lines = self._source_inventory_serializer.write_inventory_to_chunks
             for parent_inv in self._repository.iter_inventories(
                     present_parent_ids):
                 p_text = b''.join(to_lines(parent_inv))
@@ -627,8 +629,8 @@ class RevisionInstaller:
         return parent_texts
 
     def _install_inventory_records(self, records):
-        if (self._info[b'serializer'] == self._repository._serializer.format_num
-                and self._repository._serializer.support_altered_by_hack):
+        if (self._info[b'serializer'] == self._repository._inventory_serializer.format_num
+                and self._repository._inventory_serializer.support_altered_by_hack):
             return self._install_mp_records_keys(self._repository.inventories,
                                                  records)
         # Use a 10MB text cache, since these are string xml inventories. Note
@@ -662,7 +664,7 @@ class RevisionInstaller:
                     raise errors.BadBundle("Can't convert to target format")
                 # Add this to the cache so we don't have to extract it again.
                 inventory_text_cache[revision_id] = b''.join(target_lines)
-                target_inv = self._source_serializer.read_inventory_from_lines(
+                target_inv = self._source_inventory_serializer.read_inventory_from_lines(
                     target_lines)
                 del target_lines
                 self._handle_root(target_inv, parent_ids)
@@ -695,7 +697,7 @@ class RevisionInstaller:
     def _install_revision(self, revision_id, metadata, text):
         if self._repository.has_revision(revision_id):
             return
-        revision = self._source_serializer.read_revision_from_string(text)
+        revision = self._source_revision_serializer.read_revision_from_string(text)
         self._repository.add_revision(revision.revision_id, revision)
 
     def _install_signature(self, revision_id, metadata, text):

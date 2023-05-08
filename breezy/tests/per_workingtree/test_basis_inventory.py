@@ -26,16 +26,14 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         # not separate is mandatory.
         if isinstance(self.workingtree_format,
                       breezy.bzr.workingtree_4.DirStateWorkingTreeFormat):
-            raise TestNotApplicable("not applicable to %r"
-                                    % (self.workingtree_format,))
+            raise TestNotApplicable(f"not applicable to {self.workingtree_format!r}")
         # TODO: jam 20051218 this probably should add more than just
         #                    a couple files to the inventory
 
         # Make sure the basis file is created by a commit
         t = self.make_branch_and_tree('.')
         if getattr(t, 'root_inventory', None) is None:
-            raise TestNotApplicable("not applicable to %r"
-                                    % (self.workingtree_format,))
+            raise TestNotApplicable(f"not applicable to {self.workingtree_format!r}")
 
         b = t.branch
         with open('a', 'wb') as f:
@@ -59,7 +57,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         self.assertTrue(t._transport.has('basis-inventory-cache'))
 
         basis_inv_lines = t.read_basis_inventory()
-        basis_inv = breezy.bzr.xml7.serializer_v7.read_inventory_from_lines(
+        basis_inv = breezy.bzr.xml7.inventory_serializer_v7.read_inventory_from_lines(
             basis_inv_lines)
         self.assertEqual(r2, basis_inv.revision_id)
         store_inv = b.repository.get_inventory(r2)
@@ -72,12 +70,10 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         # not separate and ignorable.
         if isinstance(self.workingtree_format,
                       breezy.bzr.workingtree_4.DirStateWorkingTreeFormat):
-            raise TestNotApplicable("not applicable to %r"
-                                    % (self.workingtree_format,))
+            raise TestNotApplicable(f"not applicable to {self.workingtree_format!r}")
         t = self.make_branch_and_tree('.')
         if getattr(t, 'root_inventory', None) is None:
-            raise TestNotApplicable("not applicable to %r"
-                                    % (self.workingtree_format,))
+            raise TestNotApplicable(f"not applicable to {self.workingtree_format!r}")
 
         b = t.branch
         with open('a', 'wb') as f:

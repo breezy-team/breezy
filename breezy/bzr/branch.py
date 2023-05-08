@@ -34,7 +34,7 @@ from breezy.bzr import (
     )
 """)
 
-from .. import errors, lockable_files
+from .. import errors
 from .. import revision as _mod_revision
 from .. import transport as _mod_transport
 from .. import urlutils
@@ -44,7 +44,7 @@ from ..controldir import ControlDir
 from ..decorators import only_raises
 from ..lock import LogicalLockResult, _RelockDebugMixin
 from ..trace import mutter
-from . import bzrdir, rio
+from . import bzrdir, lockable_files, rio
 from .repository import MetaDirRepository
 
 if TYPE_CHECKING:
@@ -97,7 +97,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         self._tags_bytes = None
 
     def __str__(self):
-        return '{}({})'.format(self.__class__.__name__, self.user_url)
+        return f'{self.__class__.__name__}({self.user_url})'
 
     __repr__ = __str__
 
@@ -536,8 +536,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
             new_repository = new_bzrdir.find_repository()
             if new_repository._fallback_repositories:
                 raise AssertionError(
-                    "didn't expect %r to have fallback_repositories"
-                    % (self.repository,))
+                    f"didn't expect {self.repository!r} to have fallback_repositories")
             # Replace self.repository with the new repository.
             # Do our best to transfer the lock state (i.e. lock-tokens and
             # lock count) of self.repository to the new repository.
@@ -907,8 +906,7 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
         if not _found:
             format = BranchFormatMetadir.find_format(a_controldir, name=name)
             if format.__class__ != self.__class__:
-                raise AssertionError("wrong format %r found for %r" %
-                                     (format, self))
+                raise AssertionError(f"wrong format {format!r} found for {self!r}")
         transport = a_controldir.get_branch_transport(None, name=name)
         try:
             control_files = lockable_files.LockableFiles(transport, 'lock',
@@ -1171,8 +1169,7 @@ class BranchReferenceFormat(BranchFormatMetadir):
         if not _found:
             format = BranchFormatMetadir.find_format(a_controldir, name=name)
             if format.__class__ != self.__class__:
-                raise AssertionError("wrong format %r found for %r" %
-                                     (format, self))
+                raise AssertionError(f"wrong format {format!r} found for {self!r}")
         if location is None:
             location = self.get_reference(a_controldir, name)
         real_bzrdir = ControlDir.open(
