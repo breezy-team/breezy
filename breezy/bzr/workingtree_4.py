@@ -470,8 +470,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                         except errors.NoSuchId:
                             pass
                 raise errors.NoSuchId(tree=self, file_id=file_id)
-            path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
-            return path_utf8.decode('utf8')
+            return osutils.pathjoin(entry[0][0], entry[0][1]).decode('utf-8', 'surrogateescape')
 
     def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
         entry = self._get_entry(path=path)

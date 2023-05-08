@@ -154,10 +154,6 @@ def _win32_realpath(path):
     return _win32_fixdrive(_win32_fix_separators(ntpath.realpath(path)))
 
 
-def _win32_pathjoin(*args):
-    return _win32_fix_separators(ntpath.join(*args))
-
-
 _win32_getcwd = _osutils_rs.win32.getcwd
 
 
@@ -211,7 +207,7 @@ rename = _rename_wrap_exception(os.rename)
 abspath = _osutils_rs.abspath
 realpath = _osutils_rs.realpath
 normalizepath = _osutils_rs.normalizepath
-pathjoin = os.path.join
+pathjoin = _osutils_rs.pathjoin
 normpath = _osutils_rs.normpath
 _get_home_dir = _osutils_rs.get_home_dir
 
@@ -229,16 +225,15 @@ splitext = os.path.splitext
 lstat = os.lstat
 fstat = os.fstat
 
+_win32_normpath = _osutils_rs.win32.normpath
+_win32_getcwd = _osutils_rs.win32.getcwd
+
 
 def wrap_stat(st):
     return st
 
 
 if sys.platform == 'win32':
-    realpath = _win32_realpath
-    pathjoin = _win32_pathjoin
-    normpath = _win32_normpath
-    getcwd = _win32_getcwd
     rename = _rename_wrap_exception(_win32_rename)
     try:
         from . import _walkdirs_win32
@@ -415,45 +410,8 @@ rand_chars = _osutils_rs.rand_chars
 # TODO: We could later have path objects that remember their list
 # decomposition (might be too tricksy though.)
 
-def splitpath(p):
-    """Turn string into list of parts."""
-    use_bytes = isinstance(p, bytes)
-    if os.path.sep == '\\':
-        # split on either delimiter because people might use either on
-        # Windows
-        if use_bytes:
-            ps = re.split(b'[\\\\/]', p)
-        else:
-            ps = re.split(r'[\\/]', p)
-    else:
-        if use_bytes:
-            ps = p.split(b'/')
-        else:
-            ps = p.split('/')
-
-    if use_bytes:
-        parent_dir = b'..'
-        current_empty_dir = (b'.', b'')
-    else:
-        parent_dir = '..'
-        current_empty_dir = ('.', '')
-
-    rps = []
-    for f in ps:
-        if f == parent_dir:
-            raise errors.BzrError(gettext("sorry, %r not allowed in path") % f)
-        elif f in current_empty_dir:
-            pass
-        else:
-            rps.append(f)
-    return rps
-
-
-def joinpath(p):
-    for f in p:
-        if (f == '..') or (f is None) or (f == ''):
-            raise errors.BzrError(gettext("sorry, %r not allowed in path") % f)
-    return pathjoin(*p)
+splitpath = _osutils_rs.splitpath
+joinpath = _osutils_rs.joinpath
 
 
 parent_directories = _osutils_rs.parent_directories
