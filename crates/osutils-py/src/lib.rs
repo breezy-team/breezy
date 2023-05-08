@@ -894,6 +894,11 @@ fn normalizepath(path: PathBuf) -> PyResult<PathBuf> {
 }
 
 #[pyfunction]
+fn dereference_path(path: PathBuf) -> std::io::Result<PathBuf> {
+    Ok(breezy_osutils::path::dereference_path(path.as_path())?)
+}
+
+#[pyfunction]
 fn pump_string_file(data: &[u8], file: PyObject, segment_size: Option<usize>) -> PyResult<()> {
     let mut file = PyFileLikeObject::with_requirements(file, false, true, false)?;
     Ok(breezy_osutils::pump_string_file(
@@ -1129,6 +1134,7 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(pump_string_file))?;
     m.add_wrapped(wrap_pyfunction!(realpath))?;
     m.add_wrapped(wrap_pyfunction!(normalizepath))?;
+    m.add_wrapped(wrap_pyfunction!(dereference_path))?;
     m.add_wrapped(wrap_pyfunction!(terminal_size))?;
     m.add_wrapped(wrap_pyfunction!(has_ansi_colors))?;
     m.add_wrapped(wrap_pyfunction!(ensure_empty_directory_exists))?;
