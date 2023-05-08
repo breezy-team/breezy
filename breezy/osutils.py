@@ -1260,18 +1260,7 @@ def connect_socket(address):
     raise err
 
 
-def dereference_path(path):
-    """Determine the real path to a file.
-
-    All parent elements are dereferenced.  But the file itself is not
-    dereferenced.
-    :param path: The original path.  May be absolute or relative.
-    :return: the real path *to* the file
-    """
-    parent, base = os.path.split(path)
-    # The pathjoin for '.' is a workaround for Python bug #1213894.
-    # (initial path components aren't dereferenced)
-    return pathjoin(realpath(pathjoin('.', parent)), base)
+dereference_path = _osutils_rs.dereference_path
 
 
 def supports_mapi():

@@ -873,6 +873,11 @@ fn normalizepath(path: PathBuf) -> PyResult<PathBuf> {
     Ok(breezy_osutils::path::normalizepath(path.as_path())?)
 }
 
+#[pyfunction]
+fn dereference_path(path: PathBuf) -> std::io::Result<PathBuf> {
+    Ok(breezy_osutils::path::dereference_path(path.as_path())?)
+}
+
 #[pymodule]
 fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -948,6 +953,7 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(normpath))?;
     m.add_wrapped(wrap_pyfunction!(realpath))?;
     m.add_wrapped(wrap_pyfunction!(normalizepath))?;
+    m.add_wrapped(wrap_pyfunction!(dereference_path))?;
     m.add(
         "MIN_ABS_PATHLENGTH",
         breezy_osutils::path::MIN_ABS_PATHLENGTH,
