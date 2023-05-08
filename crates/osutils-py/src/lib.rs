@@ -1049,6 +1049,11 @@ fn colorstring(
     .into_py(py))
 }
 
+#[pyfunction]
+fn lexists(path: PathBuf) -> PyResult<bool> {
+    Ok(breezy_osutils::file::lexists(path.as_path())?)
+}
+
 #[pymodule]
 fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -1143,5 +1148,6 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     )?;
     m.add_wrapped(wrap_pyfunction!(get_home_dir))?;
     m.add_wrapped(wrap_pyfunction!(colorstring))?;
+    m.add_wrapped(wrap_pyfunction!(lexists))?;
     Ok(())
 }
