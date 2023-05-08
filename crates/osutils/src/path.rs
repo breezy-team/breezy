@@ -621,3 +621,23 @@ pub fn joinpath(ps: &[&OsStr]) -> std::result::Result<PathBuf, InvalidPathSegmen
 
     Ok(pathjoin(ps))
 }
+
+/// Determine the real path to a file.
+///
+/// All parent elements are dereferenced.  But the file itself is not
+/// dereferenced.
+/// Args:
+///   path: The original path.  May be absolute or relative.
+/// Returns:the real path *to* the file
+pub fn dereference_path(path: &Path) -> std::io::Result<PathBuf> {
+    let filename = if let Some(filename) = path.file_name() {
+        filename
+    } else {
+        return Ok(PathBuf::from(path));
+    };
+    if let Some(parent) = path.parent() {
+        Ok(realpath(parent)?.join(filename))
+    } else {
+        Ok(PathBuf::from(filename))
+    }
+}
