@@ -186,7 +186,7 @@ fn bisect_dirblock(
             Some(item) => item.extract::<Vec<PathBuf>>()?,
             None => {
                 let split = split_object(py, cur.into_py(py))?;
-                cache.set_item(cur.clone(), split.clone())?;
+                cache.set_item(cur, split.clone())?;
                 split
             }
         };

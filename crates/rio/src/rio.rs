@@ -27,6 +27,7 @@ use std::iter::Iterator;
 use std::result::Result;
 use std::str;
 
+#[derive(Debug)]
 pub enum Error {
     Io(std::io::Error),
     InvalidTag(String),
@@ -165,6 +166,10 @@ impl Stanza {
         self.items.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.items.is_empty()
+    }
+
     pub fn iter_pairs(&self) -> impl Iterator<Item = (&str, &StanzaValue)> {
         self.items.iter().map(|(tag, value)| (tag.as_str(), value))
     }
@@ -247,6 +252,12 @@ impl Stanza {
     }
 }
 
+impl std::default::Default for Stanza {
+    fn default() -> Self {
+        Stanza::new()
+    }
+}
+
 pub fn read_stanza_file(line_iter: &mut dyn BufRead) -> Result<Option<Stanza>, Error> {
     read_stanza(line_iter.split(b'\n').map(|l| {
         let mut vec: Vec<u8> = l?;
@@ -316,12 +327,8 @@ where
 
 pub fn read_stanzas(line_iter: &mut dyn BufRead) -> Result<Vec<Stanza>, Error> {
     let mut stanzas = vec![];
-    loop {
-        if let Some(s) = read_stanza_file(line_iter)? {
-            stanzas.push(s);
-        } else {
-            break;
-        }
+    while let Some(s) = read_stanza_file(line_iter)? {
+        stanzas.push(s);
     }
     Ok(stanzas)
 }

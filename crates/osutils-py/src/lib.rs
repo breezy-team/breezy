@@ -63,10 +63,7 @@ impl PyChunksToLinesIterator {
                     }
                 } else {
                     if let Some(next_chunk) = self.chunk_iter.cast_as::<PyIterator>(py)?.next() {
-                        if let Err(e) = next_chunk {
-                            return Err(e);
-                        }
-                        let next_chunk = next_chunk.unwrap();
+                        let next_chunk = next_chunk?;
                         let next_chunk = next_chunk.extract::<&[u8]>()?;
                         chunk.extend_from_slice(next_chunk);
                     } else {
@@ -77,26 +74,21 @@ impl PyChunksToLinesIterator {
                         self.tail = Some(chunk);
                     }
                 }
-            } else {
-                if let Some(next_chunk) = self.chunk_iter.cast_as::<PyIterator>(py)?.next() {
-                    if let Err(e) = next_chunk {
-                        return Err(e);
+            } else if let Some(next_chunk) = self.chunk_iter.cast_as::<PyIterator>(py)?.next() {
+                let next_chunk_py = next_chunk?;
+                let next_chunk = next_chunk_py.extract::<&[u8]>()?;
+                if let Some(newline) = memchr::memchr(b'\n', next_chunk) {
+                    if newline == next_chunk.len() - 1 {
+                        let line = next_chunk_py.cast_as::<PyBytes>()?;
+                        return Ok(Some(line.to_object(py)));
                     }
-                    let next_chunk_py = next_chunk.unwrap();
-                    let next_chunk = next_chunk_py.extract::<&[u8]>()?;
-                    if let Some(newline) = memchr::memchr(b'\n', &next_chunk) {
-                        if newline == next_chunk.len() - 1 {
-                            let line = next_chunk_py.cast_as::<PyBytes>()?;
-                            return Ok(Some(line.to_object(py)));
-                        }
-                    }
-
-                    if !next_chunk.is_empty() {
-                        self.tail = Some(next_chunk.to_vec());
-                    }
-                } else {
-                    return Ok(None);
                 }
+
+                if !next_chunk.is_empty() {
+                    self.tail = Some(next_chunk.to_vec());
+                }
+            } else {
+                return Ok(None);
             }
         })
     }
@@ -129,7 +121,7 @@ fn chunks_to_lines(py: Python, chunks: PyObject) -> PyResult<PyObject> {
 fn split_lines(py: Python, mut chunks: PyObject) -> PyResult<PyObject> {
     let ret = PyList::empty(py);
     if let Ok(chunk) = chunks.extract::<&PyBytes>(py) {
-        chunks = PyList::new(py, &[chunk]).into_py(py);
+        chunks = PyList::new(py, [chunk]).into_py(py);
     }
 
     let chunk_iter = chunks.call_method0(py, "__iter__");
@@ -895,7 +887,7 @@ fn normalizepath(path: PathBuf) -> PyResult<PathBuf> {
 
 #[pyfunction]
 fn dereference_path(path: PathBuf) -> std::io::Result<PathBuf> {
-    Ok(breezy_osutils::path::dereference_path(path.as_path())?)
+    breezy_osutils::path::dereference_path(path.as_path())
 }
 
 #[pyfunction]

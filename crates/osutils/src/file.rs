@@ -3,8 +3,8 @@ use log::debug;
 #[cfg(unix)]
 use nix::sys::stat::SFlag;
 use std::fs::{set_permissions, symlink_metadata, Permissions};
+use std::io::Read;
 use std::io::Result;
-use std::io::{BufRead, Read};
 use std::path::Path;
 use walkdir::WalkDir;
 
@@ -53,7 +53,7 @@ pub fn chmod_if_possible<P: AsRef<Path>>(path: P, permissions: Permissions) -> R
 #[cfg(unix)]
 pub fn copy_ownership_from_path<P: AsRef<Path>>(dst: P, src: Option<&Path>) -> Result<()> {
     use nix::unistd::{chown, Gid, Uid};
-    use std::os::unix::ffi::OsStrExt;
+
     use std::os::unix::fs::MetadataExt;
 
     let mut src = match src {
@@ -251,5 +251,5 @@ pub fn ensure_empty_directory_exists(path: &Path) -> std::io::Result<()> {
 }
 
 pub fn lexists(path: &Path) -> std::io::Result<bool> {
-    symlink_metadata(path).map(|_| true).or_else(|e| Ok(false))
+    symlink_metadata(path).map(|_| true).or_else(|_e| Ok(false))
 }

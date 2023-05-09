@@ -549,9 +549,9 @@ impl<K: Eq + Hash + std::fmt::Debug + Clone> Iterator for MergeSorter<K> {
         if let Err(err) = self.build() {
             return Some(Err(err));
         }
-        while let Some((node_name, merge_depth, revno)) = self.scheduled_nodes.pop() {
+        if let Some((node_name, merge_depth, revno)) = self.scheduled_nodes.pop() {
             if self.stop_revision.is_some() && &node_name == self.stop_revision.as_ref().unwrap() {
-                break;
+                return None;
             }
             let end_of_merge: bool;
             if self.scheduled_nodes.is_empty() {
@@ -590,9 +590,10 @@ impl<K: Eq + Hash + std::fmt::Debug + Clone> Iterator for MergeSorter<K> {
                 )
             };
             self.sequence_number += 1;
-            return Some(Ok(result));
+            Some(Ok(result))
+        } else {
+            None
         }
-        None
     }
 }
 

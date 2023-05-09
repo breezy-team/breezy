@@ -155,6 +155,12 @@ impl RevnoVec {
     }
 }
 
+impl Default for RevnoVec {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl IntoIterator for RevnoVec {
     type Item = usize;
     type IntoIter = std::vec::IntoIter<usize>;

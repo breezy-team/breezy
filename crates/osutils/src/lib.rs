@@ -1,7 +1,7 @@
 use log::{debug, warn};
 use memchr::memchr;
 use rand::Rng;
-use std::fs::File;
+
 use std::io::Write;
 
 pub fn chunks_to_lines<'a, I, E>(mut chunks: I) -> impl Iterator<Item = Result<Vec<u8>, E>>

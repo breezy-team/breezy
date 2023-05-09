@@ -243,6 +243,6 @@ pub fn unpack_highres_date(date: &str) -> Result<(f64, i32), String> {
 
 pub fn compact_date(when: u64) -> String {
     let system_time = Utc.timestamp(when as i64, 0);
-    let date_time: DateTime<Utc> = DateTime::from(system_time);
+    let date_time: DateTime<Utc> = system_time;
     date_time.format("%Y%m%d%H%M%S").to_string()
 }
