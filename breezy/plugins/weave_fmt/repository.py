@@ -34,8 +34,7 @@ from breezy import (
     ui,
     )
 """)
-from ... import debug, errors, lockdir, osutils
-from ... import trace
+from ... import debug, errors, lockdir, osutils, trace
 from ... import transport as _mod_transport
 from ... import urlutils
 from ...bzr import lockable_files, tuned_gzip, versionedfile, weave, weavefile

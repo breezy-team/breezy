@@ -16,7 +16,7 @@
 
 """Merge logic for po_merge plugin."""
 
-from ... import config, osutils, merge, trace
+from ... import config, merge, osutils, trace
 from ...lazy_import import lazy_import
 
 lazy_import(globals(), """

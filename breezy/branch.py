@@ -16,11 +16,10 @@
 
 __docformat__ = "google"
 
-from typing import (TYPE_CHECKING, Dict, List, Optional, TextIO, Tuple, Union,
-                    cast)
-
 import contextlib
 import itertools
+from typing import (TYPE_CHECKING, Dict, List, Optional, TextIO, Tuple, Union,
+                    cast)
 
 from . import config as _mod_config
 from . import debug, errors, registry, repository
@@ -2109,7 +2108,7 @@ class GenericInterBranch(InterBranch):
     def fetch(self, stop_revision=None, limit=None, lossy=False):
         if self.target.base == self.source.base:
             return (0, [])
-        from .bzr.fetch import (FetchSpecFactory, TargetRepoKinds)
+        from .bzr.fetch import FetchSpecFactory, TargetRepoKinds
         with self.source.lock_read(), self.target.lock_write():
             fetch_spec_factory = FetchSpecFactory()
             fetch_spec_factory.source_branch = self.source

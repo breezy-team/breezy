@@ -16,8 +16,8 @@
 
 """Weave-era BzrDir formats."""
 
-from io import BytesIO
 import os
+from io import BytesIO
 
 from ... import errors, osutils, trace
 from ...bzr import lockable_files

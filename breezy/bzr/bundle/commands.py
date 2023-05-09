@@ -24,7 +24,6 @@ and for applying a changeset.
 from io import BytesIO
 
 from ... import errors
-
 from ...commands import Command
 
 
@@ -37,9 +36,9 @@ class cmd_bundle_info(Command):
     encoding_type = 'exact'
 
     def run(self, location, verbose=False):
-        from breezy import osutils, merge_directive
-        from breezy.i18n import gettext
+        from breezy import merge_directive, osutils
         from breezy.bzr.bundle.serializer import read_bundle
+        from breezy.i18n import gettext
 
         from ...mergeable import read_mergeable_from_url
         term_encoding = osutils.get_terminal_encoding()

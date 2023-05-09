@@ -561,8 +561,8 @@ class MultiVersionedFile(BaseVersionedFile):
             return MultiParent.from_patch(content)
 
     def add_diff(self, diff, version_id, parent_ids):
-        import itertools
         import gzip
+        import itertools
         with open(self._filename + '.mpknit', 'ab') as outfile:
             outfile.seek(0, 2)      # workaround for windows bug:
             # .tell() for files opened in 'ab' mode

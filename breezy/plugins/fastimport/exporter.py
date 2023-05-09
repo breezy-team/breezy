@@ -51,8 +51,7 @@ from email.utils import parseaddr
 import breezy.branch
 import breezy.revision
 
-from ... import (builtins, lazy_import, lru_cache, osutils, progress,
-                 trace)
+from ... import builtins, lazy_import, lru_cache, osutils, progress, trace
 from ... import transport as _mod_transport
 from . import helpers, marks_file
 

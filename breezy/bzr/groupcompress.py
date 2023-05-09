@@ -20,10 +20,9 @@ import time
 import zlib
 from typing import Type
 
-from breezy import (
-    debug,
-    )
+from breezy import debug
 from breezy.i18n import gettext
+
 from ..lazy_import import lazy_import
 
 lazy_import(globals(), """
@@ -38,8 +37,7 @@ from .. import errors, osutils, trace
 from ..lru_cache import LRUSizeCache
 from .btree_index import BTreeBuilder
 from .versionedfile import (AbsentContentFactory, ChunkedContentFactory,
-                            ExistingContent,
-                            UnavailableRepresentation,
+                            ExistingContent, UnavailableRepresentation,
                             VersionedFilesWithFallbacks, _KeyRefs,
                             adapter_registry)
 
@@ -60,6 +58,7 @@ def sort_gc_optimal(parent_map):
     :return: A sorted-list of keys
     """
     from .. import tsort
+
     # groupcompress ordering is approximately reverse topological,
     # properly grouped by file-id.
     per_prefix_map = {}
@@ -1480,6 +1479,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             valid until the iterator is advanced.
         """
         from .pack_repo import RetryWithNewPacks
+
         # keys might be a generator
         orig_keys = list(keys)
         keys = set(keys)

@@ -45,8 +45,9 @@ from breezy.bzr import (
     )
 """)
 
-from .. import debug, errors, osutils, trace
+from .. import debug, errors, osutils
 from .. import revision as _mod_revision
+from .. import trace
 from ..lock import LogicalLockResult
 from ..lockdir import LockDir
 from ..mutabletree import BadReferenceTarget, MutableTree

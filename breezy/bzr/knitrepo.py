@@ -28,7 +28,9 @@ from breezy.bzr import (
     versionedfile,
     )
 """)
-from .. import controldir, errors, lockdir, revision as _mod_revision, trace
+from .. import controldir, errors, lockdir
+from .. import revision as _mod_revision
+from .. import trace
 from .. import transport as _mod_transport
 from ..repository import InterRepository, IsInWriteGroupError, Repository
 from .repository import RepositoryFormatMetaDir

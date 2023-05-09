@@ -16,10 +16,10 @@
 
 """Ping plugin for brz."""
 
-from ...commands import Command
-
-from breezy.transport import get_transport
 from breezy import errors
+from breezy.transport import get_transport
+
+from ...commands import Command
 
 
 class cmd_ping(Command):

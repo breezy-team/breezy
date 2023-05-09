@@ -32,7 +32,6 @@ from breezy import (
 
 from . import osutils, trace
 
-
 known_merge_tools = {
     'bcompare': 'bcompare {this} {other} {base} {result}',
     'kdiff3': 'kdiff3 {base} {this} {other} -o {result}',
