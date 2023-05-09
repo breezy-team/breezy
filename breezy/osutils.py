@@ -17,19 +17,15 @@
 import codecs
 import errno
 import os
-import re
 import stat
 import sys
 import time
-from functools import partial
 from typing import List
 
 from .lazy_import import lazy_import
 
 lazy_import(globals(), """
-import locale
 import ntpath
-import posixpath
 # We need to import both shutil and rmtree as we export the later on posix
 # and need the former on windows
 import shutil
@@ -210,10 +206,6 @@ pathjoin = _osutils_rs.pathjoin
 normpath = _osutils_rs.normpath
 _get_home_dir = _osutils_rs.get_home_dir
 
-def getuser_unicode():
-    import getpass
-    return getpass.getuser()
-
 getcwd = os.getcwd
 dirname = os.path.dirname
 basename = os.path.basename
@@ -226,6 +218,8 @@ fstat = os.fstat
 
 _win32_normpath = _osutils_rs.win32.normpath
 _win32_getcwd = _osutils_rs.win32.getcwd
+
+getuser_unicode = _osutils_rs.get_user_name
 
 
 def wrap_stat(st):
@@ -259,8 +253,6 @@ if sys.platform == 'win32':
     def rmtree(path, ignore_errors=False, onerror=_win32_delete_readonly):
         """Replacer for shutil.rmtree: could remove readonly dirs/files"""
         return shutil.rmtree(path, ignore_errors, onerror)
-
-    getuser_unicode = win32utils.get_user_name
 
 elif sys.platform == 'darwin':
     getcwd = _mac_getcwd

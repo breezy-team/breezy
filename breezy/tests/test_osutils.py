@@ -1921,8 +1921,6 @@ class TestGetuserUnicode(tests.TestCase):
 
     def envvar_to_override(self):
         if sys.platform == "win32":
-            # Disable use of platform calls on windows so envvar is used
-            self.overrideAttr(win32utils.ctypes, 'windll', None)
             return 'USERNAME'  # only variable used on windows
         return 'LOGNAME'  # first variable checked by getpass.getuser()
 

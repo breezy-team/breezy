@@ -273,3 +273,13 @@ pub fn is_local_pid_dead(pid: i32) -> bool {
         }
     }
 }
+
+pub fn get_user_name() -> String {
+    for name in &["LOGNAME", "USER", "LNAME", "USERNAME"] {
+        if let Ok(user) = std::env::var(name) {
+            return user;
+        }
+    }
+
+    whoami::username()
+}
