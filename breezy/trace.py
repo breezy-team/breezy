@@ -58,7 +58,6 @@ import errno
 import logging
 import os
 import sys
-import time
 from io import StringIO
 
 import breezy
@@ -67,12 +66,10 @@ from .lazy_import import lazy_import
 
 lazy_import(globals(), """
 from breezy import (
-    debug,
-    osutils,
     ui,
     )
 """)
-from . import _cmd_rs, errors
+from . import _cmd_rs, debug, errors, osutils
 
 # global verbosity for breezy; controls the log level for stderr; 0=normal; <0
 # is quiet; >0 is verbose.

@@ -56,7 +56,6 @@ from breezy import (
     )
 from breezy.branch import Branch
 from breezy.transport import memory
-from breezy.smtp_connection import SMTPConnection
 from breezy.workingtree import WorkingTree
 from breezy.i18n import gettext, ngettext
 """)
@@ -5792,6 +5791,7 @@ class cmd_merge_directive(Command):
             else:
                 self.outf.writelines(directive.to_lines())
         else:
+            from .smtp_connection import SMTPConnection
             message = directive.to_email(mail_to, branch, sign)
             s = SMTPConnection(branch.get_config_stack())
             s.send_email(message)

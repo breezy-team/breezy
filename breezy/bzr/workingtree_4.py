@@ -35,11 +35,8 @@ from breezy import (
     branch as _mod_branch,
     cache_utf8,
     controldir,
-    debug,
     filters as _mod_filters,
-    osutils,
     revisiontree,
-    trace,
     views,
     )
 from breezy.bzr import (
@@ -48,7 +45,7 @@ from breezy.bzr import (
     )
 """)
 
-from .. import errors
+from .. import debug, errors, osutils, trace
 from .. import revision as _mod_revision
 from ..lock import LogicalLockResult
 from ..lockdir import LockDir

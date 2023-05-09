@@ -88,23 +88,20 @@ import breezy
 from .lazy_import import lazy_import
 
 lazy_import(globals(), """
-import fnmatch
 import re
 
 from breezy import (
     cmdline,
     controldir,
-    debug,
     lock,
     lockdir,
-    osutils,
     ui,
     urlutils,
     win32utils,
     )
 from breezy.i18n import gettext
 """)
-from . import (bedding, commands, errors, hooks, lazy_regex, registry, trace,
+from . import (bedding, commands, debug, errors, hooks, lazy_regex, osutils, registry, trace,
                transport)
 from .option import Option as CommandOption
 
@@ -1100,6 +1097,7 @@ def _iter_for_location_by_parts(sections, location):
     ``location`` will always be a local path and never a 'file://' url but the
     section names themselves can be in either form.
     """
+    import fnmatch
     location_parts = location.rstrip('/').split('/')
 
     for section in sections:
@@ -3325,6 +3323,7 @@ class StartingPathMatcher(SectionMatcher):
         The returned section are therefore returned in the reversed order so
         the most specific ones can be found first.
         """
+        import fnmatch
         location_parts = self.location.rstrip('/').split('/')
         store = self.store
         # Later sections are more specific, they should be returned first

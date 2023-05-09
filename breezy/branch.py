@@ -19,19 +19,6 @@ __docformat__ = "google"
 from typing import (TYPE_CHECKING, Dict, List, Optional, TextIO, Tuple, Union,
                     cast)
 
-from .lazy_import import lazy_import
-
-lazy_import(globals(), """
-from breezy import (
-    ui,
-    )
-from breezy.bzr import (
-    fetch,
-    remote,
-    vf_search,
-    )
-""")
-
 import contextlib
 import itertools
 
@@ -2094,7 +2081,8 @@ class GenericInterBranch(InterBranch):
 
     @classmethod
     def unwrap_format(klass, format):
-        if isinstance(format, remote.RemoteBranchFormat):
+        from .bzr.remote import RemoteBranchFormat
+        if isinstance(format, RemoteBranchFormat):
             format._ensure_real()
             return format._custom_format
         return format
@@ -2121,14 +2109,15 @@ class GenericInterBranch(InterBranch):
     def fetch(self, stop_revision=None, limit=None, lossy=False):
         if self.target.base == self.source.base:
             return (0, [])
+        from .bzr.fetch import (FetchSpecFactory, TargetRepoKinds)
         with self.source.lock_read(), self.target.lock_write():
-            fetch_spec_factory = fetch.FetchSpecFactory()
+            fetch_spec_factory = FetchSpecFactory()
             fetch_spec_factory.source_branch = self.source
             fetch_spec_factory.source_branch_stop_revision_id = stop_revision
             fetch_spec_factory.source_repo = self.source.repository
             fetch_spec_factory.target_repo = self.target.repository
             fetch_spec_factory.target_repo_kind = (
-                fetch.TargetRepoKinds.PREEXISTING)
+                TargetRepoKinds.PREEXISTING)
             fetch_spec_factory.limit = limit
             fetch_spec = fetch_spec_factory.make_fetch_spec()
             return self.target.repository.fetch(

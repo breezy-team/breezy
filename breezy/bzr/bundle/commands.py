@@ -24,18 +24,6 @@ and for applying a changeset.
 from io import BytesIO
 
 from ... import errors
-from ...lazy_import import lazy_import
-
-lazy_import(globals(), """
-from breezy import (
-    branch,
-    merge_directive,
-    revision as _mod_revision,
-    urlutils,
-    transport,
-    )
-from breezy.i18n import gettext
-""")
 
 from ...commands import Command
 
@@ -49,7 +37,8 @@ class cmd_bundle_info(Command):
     encoding_type = 'exact'
 
     def run(self, location, verbose=False):
-        from breezy import osutils
+        from breezy import osutils, merge_directive
+        from breezy.i18n import gettext
         from breezy.bzr.bundle.serializer import read_bundle
 
         from ...mergeable import read_mergeable_from_url

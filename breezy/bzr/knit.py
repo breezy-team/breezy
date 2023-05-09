@@ -58,13 +58,10 @@ from io import BytesIO
 from ..lazy_import import lazy_import
 
 lazy_import(globals(), """
-import patiencediff
 import gzip
 
 from breezy import (
-    debug,
     diff,
-    trace,
     tsort,
     ui,
     )
@@ -77,7 +74,7 @@ from breezy.bzr import (
 from breezy.bzr import pack_repo
 from breezy.i18n import gettext
 """)
-from .. import annotate, errors, osutils
+from .. import annotate, debug, errors, osutils, trace
 from .. import transport as _mod_transport
 from ..bzr.versionedfile import (AbsentContentFactory, ConstantMapper,
                                  ContentFactory, ExistingContent,
@@ -514,6 +511,7 @@ class KnitContent:
 
     def line_delta_iter(self, new_lines):
         """Generate line-based delta from this content to new_lines."""
+        import patiencediff
         new_texts = new_lines.text()
         old_texts = self.text()
         s = patiencediff.PatienceSequenceMatcher(None, old_texts, new_texts)
@@ -1907,6 +1905,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         and generating a delta on the resulting full texts. If annotations are
         not being created then a simple delta is created.
         """
+        import patiencediff
         if left_matching_blocks is not None:
             delta_seq = diff._PrematchedMatcher(left_matching_blocks)
         else:

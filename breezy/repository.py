@@ -25,12 +25,11 @@ import time
 
 from breezy import (
     config,
-    osutils,
     )
 from breezy.i18n import gettext
 """)
 
-from . import controldir, debug, errors, graph, registry
+from . import controldir, debug, errors, graph, osutils, registry
 from . import revision as _mod_revision
 from . import ui
 from .decorators import only_raises

@@ -17,13 +17,8 @@
 """Ping plugin for brz."""
 
 from ...commands import Command
-from ...lazy_import import lazy_import
 
-lazy_import(globals(), """
-from breezy.bzr.smart.client import _SmartClient
 from breezy.transport import get_transport
-""")
-
 from breezy import errors
 
 
@@ -37,6 +32,7 @@ class cmd_ping(Command):
     takes_args = ['location']
 
     def run(self, location):
+        from breezy.bzr.smart.client import _SmartClient
         transport = get_transport(location)
         try:
             medium = transport.get_smart_medium()

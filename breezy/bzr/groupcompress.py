@@ -20,28 +20,25 @@ import time
 import zlib
 from typing import Type
 
+from breezy import (
+    debug,
+    )
+from breezy.i18n import gettext
 from ..lazy_import import lazy_import
 
 lazy_import(globals(), """
-from breezy import (
-    debug,
-    tsort,
-    )
 from breezy.bzr import (
     knit,
-    pack,
-    pack_repo,
     static_tuple,
     )
 
-from breezy.i18n import gettext
 """)
 
 from .. import errors, osutils, trace
 from ..lru_cache import LRUSizeCache
 from .btree_index import BTreeBuilder
 from .versionedfile import (AbsentContentFactory, ChunkedContentFactory,
-                            ExistingContent, FulltextContentFactory,
+                            ExistingContent,
                             UnavailableRepresentation,
                             VersionedFilesWithFallbacks, _KeyRefs,
                             adapter_registry)
@@ -62,6 +59,7 @@ def sort_gc_optimal(parent_map):
 
     :return: A sorted-list of keys
     """
+    from .. import tsort
     # groupcompress ordering is approximately reverse topological,
     # properly grouped by file-id.
     per_prefix_map = {}
@@ -1481,6 +1479,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         :return: An iterator of ContentFactory objects, each of which is only
             valid until the iterator is advanced.
         """
+        from .pack_repo import RetryWithNewPacks
         # keys might be a generator
         orig_keys = list(keys)
         keys = set(keys)
@@ -1501,7 +1500,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                     remaining_keys.discard(content_factory.key)
                     yield content_factory
                 return
-            except pack_repo.RetryWithNewPacks as e:
+            except RetryWithNewPacks as e:
                 self._access.reload_or_raise(e)
 
     def _find_from_fallback(self, missing):
@@ -1538,6 +1537,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         :return: List of [(source, [keys])] tuples, such that all keys are in
             the defined order, regardless of source.
         """
+        from .. import tsort
         if ordering == 'topological':
             present_keys = tsort.topo_sort(parent_map)
         else:

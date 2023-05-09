@@ -55,7 +55,7 @@ from ..decorators import only_raises
 from ..repository import (CommitBuilder, FetchResult, InterRepository,
                           Repository, RepositoryFormat, WriteGroup)
 from ..trace import mutter, note
-from .inventory import ROOT_ID, Inventory, entry_factory
+from .inventory import Inventory, entry_factory
 from .inventorytree import InventoryTreeChange
 from .repository import MetaDirRepository, RepositoryFormatMetaDir
 

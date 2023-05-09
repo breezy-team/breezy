@@ -38,14 +38,6 @@ from ... import branch as _mod_branch
 from ... import debug, errors, osutils, registry, revision, trace
 from ... import transport as _mod_transport
 from ... import urlutils
-from ...lazy_import import lazy_import
-
-lazy_import(globals(), """
-from breezy.bzr import bzrdir
-from breezy.bzr.bundle import serializer
-
-import tempfile
-""")
 
 
 jail_info = threading.local()
@@ -62,6 +54,7 @@ class DisabledMethod(errors.InternalBzrError):
 
 
 def _install_hook():
+    from breezy.bzr import bzrdir
     bzrdir.BzrDir.hooks.install_named_hook(
         'pre_open', _pre_open_hook, 'checking server jail')
 
@@ -489,6 +482,9 @@ class GetBundleRequest(SmartServerRequest):
     """Get a bundle of from the null revision to the specified revision."""
 
     def do(self, path, revision_id):
+        from breezy.bzr import bzrdir
+        from breezy.bzr.bundle import serializer
+        import tempfile
         # open transport relative to our base
         t = self.transport_from_client_path(path)
         control, extra_path = bzrdir.BzrDir.open_containing_from_transport(t)

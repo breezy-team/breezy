@@ -28,16 +28,7 @@ import re
 from bisect import bisect_right
 from io import BytesIO
 
-from ..lazy_import import lazy_import
-
-lazy_import(globals(), """
-from breezy import (
-    bisect_multi,
-    revision as _mod_revision,
-    trace,
-    )
-""")
-from .. import debug, errors
+from .. import debug, errors, revision as _mod_revision, trace
 from .. import transport as _mod_transport
 from .static_tuple import StaticTuple
 
@@ -728,6 +719,7 @@ class GraphIndex:
             keys supplied. No additional keys will be returned, and every
             key supplied that is in the index will be returned.
         """
+        from .. import bisect_multi
         keys = set(keys)
         if not keys:
             return []

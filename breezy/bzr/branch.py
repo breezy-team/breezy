@@ -16,16 +16,14 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from io import BytesIO
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Union
 
 from ..lazy_import import lazy_import
 
 lazy_import(globals(), """
 from breezy import (
-    cache_utf8,
     config as _mod_config,
     lockdir,
-    shelf,
     ui,
     )
 from breezy.bzr import (
@@ -165,7 +163,8 @@ class BzrBranch(Branch, _RelockDebugMixin):
             transform = branch._transport.get('stored-transform')
         except _mod_transport.NoSuchFile:
             return None
-        return shelf.Unshelver.from_tree_and_shelf(tree, transform)
+        from ..shelf import Unshelver
+        return Unshelver.from_tree_and_shelf(tree, transform)
 
     def is_locked(self) -> bool:
         return self.control_files.is_locked()
@@ -376,6 +375,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
             return None
 
     def _read_last_revision_info(self):
+        from .. import cache_utf8
         revision_string = self._transport.get_bytes('last-revision')
         revno, revision_id = revision_string.rstrip(b'\n').split(b' ', 1)
         revision_id = cache_utf8.get_cached_utf8(revision_id)
