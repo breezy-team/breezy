@@ -14,12 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from ... import lazy_import
-
-lazy_import.lazy_import(globals(), """
-from breezy.bzr.smart import request as _mod_request
-""")
-
 import breezy
 
 from ... import debug, errors, hooks, trace
@@ -157,6 +151,7 @@ class _SmartClientRequest:
         if self.body_stream is not None or 'noretry' in debug.debug_flags:
             # We can't restart a body stream that has already been consumed.
             return False
+        from breezy.bzr.smart import request as _mod_request
         request_type = _mod_request.request_handlers.get_info(self.method)
         if request_type in ('read', 'idem', 'semi'):
             return True

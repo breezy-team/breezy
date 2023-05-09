@@ -26,10 +26,6 @@ from breezy import (
     lockdir,
     ui,
     )
-from breezy.bzr import (
-    tag as _mod_tag,
-    vf_search,
-    )
 """)
 
 from .. import errors
@@ -510,6 +506,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
 
         Don't call this directly, use set_stacked_on_url(None).
         """
+        from .vf_search import NotInOtherForRevs
         with ui.ui_factory.nested_progress_bar() as pb:
             # The basic approach here is to fetch the tip of the branch,
             # including all available ghosts, from the existing stacked
@@ -574,7 +571,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
                     tags_to_fetch = set(self.tags.get_reverse_tag_dict())
                 except errors.TagsNotSupported:
                     tags_to_fetch = set()
-                fetch_spec = vf_search.NotInOtherForRevs(
+                fetch_spec = NotInOtherForRevs(
                     self.repository, old_repository,
                     required_ids=[self.last_revision()],
                     if_present_ids=tags_to_fetch, find_ghosts=True).execute()
@@ -980,7 +977,8 @@ class BzrBranchFormat6(BranchFormatMetadir):
 
     def make_tags(self, branch):
         """See breezy.branch.BranchFormat.make_tags()."""
-        return _mod_tag.BasicTags(branch)
+        from .tag import BasicTags
+        return BasicTags(branch)
 
     def supports_set_append_revisions_only(self):
         return True
@@ -1017,7 +1015,8 @@ class BzrBranchFormat8(BranchFormatMetadir):
 
     def make_tags(self, branch):
         """See breezy.branch.BranchFormat.make_tags()."""
-        return _mod_tag.BasicTags(branch)
+        from .tag import BasicTags
+        return BasicTags(branch)
 
     def supports_set_append_revisions_only(self):
         return True
@@ -1068,7 +1067,8 @@ class BzrBranchFormat7(BranchFormatMetadir):
 
     def make_tags(self, branch):
         """See breezy.branch.BranchFormat.make_tags()."""
-        return _mod_tag.BasicTags(branch)
+        from .tag import BasicTags
+        return BasicTags(branch)
 
     # This is a white lie; as soon as you set a reference location, we upgrade
     # you to BzrBranchFormat8.
