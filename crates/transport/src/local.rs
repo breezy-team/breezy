@@ -48,8 +48,8 @@ impl Clone for LocalTransport {
 }
 
 impl WriteStream for File {
-    fn sync_all(&self) -> std::io::Result<()> {
-        self.sync_all()
+    fn sync_data(&self) -> std::io::Result<()> {
+        self.sync_data()
     }
 }
 

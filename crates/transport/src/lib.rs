@@ -128,7 +128,7 @@ impl Stat {
 }
 
 pub trait WriteStream: std::io::Write {
-    fn sync_all(&self) -> std::io::Result<()>;
+    fn sync_data(&self) -> std::io::Result<()>;
 }
 
 pub trait ReadStream: Read + Seek {}

@@ -114,7 +114,8 @@ impl PyWriteStream {
     }
 
     fn fdatasync(&mut self, py: Python) -> PyResult<()> {
-        py.allow_threads(|| self.0.sync_all()).map_err(|e| e.into())
+        py.allow_threads(|| self.0.sync_data())
+            .map_err(|e| e.into())
     }
 
     fn __enter__(slf: PyRef<Self>) -> Py<Self> {

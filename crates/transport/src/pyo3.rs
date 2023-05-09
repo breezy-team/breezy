@@ -145,7 +145,7 @@ impl Write for PyWriteStream {
 }
 
 impl WriteStream for PyWriteStream {
-    fn sync_all(&self) -> std::io::Result<()> {
+    fn sync_data(&self) -> std::io::Result<()> {
         Python::with_gil(|py| {
             self.0.call_method0(py, "fdatasync")?;
             Ok(())
