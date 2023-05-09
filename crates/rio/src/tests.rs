@@ -10,8 +10,10 @@ fn test_valid_tag() {
 #[test]
 fn test_stanza() {
     let mut s = Stanza::new();
-    s.add("number".to_string(), StanzaValue::String("42".to_string()));
-    s.add("name".to_string(), StanzaValue::String("fred".to_string()));
+    s.add("number".to_string(), StanzaValue::String("42".to_string()))
+        .unwrap();
+    s.add("name".to_string(), StanzaValue::String("fred".to_string()))
+        .unwrap();
 
     assert!(s.contains("number"));
     assert!(!s.contains("color"));
@@ -35,16 +37,21 @@ fn test_stanza() {
 #[test]
 fn test_eq() {
     let mut s = Stanza::new();
-    s.add("number".to_string(), StanzaValue::String("42".to_string()));
-    s.add("name".to_string(), StanzaValue::String("fred".to_string()));
+    s.add("number".to_string(), StanzaValue::String("42".to_string()))
+        .unwrap();
+    s.add("name".to_string(), StanzaValue::String("fred".to_string()))
+        .unwrap();
 
     let mut t = Stanza::new();
-    t.add("number".to_string(), StanzaValue::String("42".to_string()));
-    t.add("name".to_string(), StanzaValue::String("fred".to_string()));
+    t.add("number".to_string(), StanzaValue::String("42".to_string()))
+        .unwrap();
+    t.add("name".to_string(), StanzaValue::String("fred".to_string()))
+        .unwrap();
 
     assert_eq!(s, s);
     assert_eq!(s, t);
-    t.add("color".to_string(), StanzaValue::String("red".to_string()));
+    t.add("color".to_string(), StanzaValue::String("red".to_string()))
+        .unwrap();
 
     assert_ne!(s, t);
 }
@@ -97,7 +104,7 @@ field-with-newlines: foo
 "
     .split(|c| *c == b'\n')
     .map(|s| s.to_vec());
-    let s = read_stanza(lines.map(|l| Ok(l))).unwrap().unwrap();
+    let s = read_stanza(lines.map(Ok)).unwrap().unwrap();
     let expected = Stanza::from_pairs(vec![
         ("number".to_string(), StanzaValue::String("42".to_string())),
         ("name".to_string(), StanzaValue::String("fred".to_string())),

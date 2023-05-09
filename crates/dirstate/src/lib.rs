@@ -20,6 +20,12 @@ impl DefaultSHA1Provider {
     }
 }
 
+impl Default for DefaultSHA1Provider {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SHA1Provider for DefaultSHA1Provider {
     /// Return the sha1 of a file given its absolute path.
     fn sha1(&self, path: &Path) -> std::io::Result<String> {

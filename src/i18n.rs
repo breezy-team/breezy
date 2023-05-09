@@ -38,12 +38,10 @@ pub fn gettext(msgid: &str) -> String {
 pub fn ngettext(msgid: &str, msgid_plural: &str, n: u32) -> String {
     if unsafe { ENABLED } {
         gettextrs::ngettext(msgid, msgid_plural, n)
+    } else if n == 1 {
+        msgid.to_string()
     } else {
-        if n == 1 {
-            msgid.to_string()
-        } else {
-            msgid_plural.to_string()
-        }
+        msgid_plural.to_string()
     }
 }
 
