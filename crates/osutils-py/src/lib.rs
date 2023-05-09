@@ -1129,6 +1129,11 @@ fn splitpath(path: PathBuf) -> PyResult<Vec<String>> {
 }
 
 #[pyfunction]
+fn get_user_name() -> PyResult<String> {
+    Ok(breezy_osutils::get_user_name())
+}
+
+#[pyfunction]
 fn is_local_pid_dead(pid: i32) -> PyResult<bool> {
     Ok(breezy_osutils::is_local_pid_dead(pid))
 }
@@ -1233,5 +1238,6 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(joinpath))?;
     m.add_wrapped(wrap_pyfunction!(splitpath))?;
     m.add_wrapped(wrap_pyfunction!(is_local_pid_dead))?;
+    m.add_wrapped(wrap_pyfunction!(get_user_name))?;
     Ok(())
 }

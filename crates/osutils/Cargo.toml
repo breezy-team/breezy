@@ -23,6 +23,7 @@ path-clean = "1"
 termion = "2"
 dirs = "*"
 encoding_rs = ">=0.8"
+whoami = "1"
 
 [target.'cfg(unix)'.dependencies]
 nix = ">=0.26"
