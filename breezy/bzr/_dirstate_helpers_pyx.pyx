@@ -674,6 +674,10 @@ cdef int _versioned_minikind(char minikind): # cannot_raise
             minikind == b't')
 
 
+cdef utf8_decode(path: bytes):
+    return codecs.utf_8_decode(path, 'surrogateescape')[0]
+
+
 cdef class ProcessEntryC:
 
     cdef int doing_consistency_expansion
@@ -735,7 +739,6 @@ cdef class ProcessEntryC:
         else:
             self.include_unchanged = int(include_unchanged)
         self.use_filesystem_for_exec = use_filesystem_for_exec
-        self.utf8_decode = codecs.utf_8_decode
         # for all search_indexs in each path at or under each element of
         # search_specific_files, if the detail is relocated: add the id, and
         # add the relocated path as one to search if its not searched already.
@@ -977,21 +980,21 @@ cdef class ProcessEntryC:
                 if old_path is None:
                     path = self.pathjoin(old_dirname, old_basename)
                     old_path = path
-                    old_path_u = self.utf8_decode(old_path, 'surrogateescape')[0]
+                    old_path_u = utf8_decode(old_path)
                     path_u = old_path_u
                 else:
-                    old_path_u = self.utf8_decode(old_path, 'surrogateescape')[0]
+                    old_path_u = utf8_decode(old_path)
                     if old_path == path:
                         path_u = old_path_u
                     else:
-                        path_u = self.utf8_decode(path, 'surrogateescape')[0]
+                        path_u = utf8_decode(path)
                 source_kind = _minikind_to_kind(source_minikind)
                 return InventoryTreeChange(entry[0][2],
                        (old_path_u, path_u),
                        content_change,
                        (True, True),
                        (source_parent_id, target_parent_id),
-                       (self.utf8_decode(old_basename, 'surrogateescape')[0], self.utf8_decode(entry[0][1], 'surrogateescape')[0]),
+                       (utf8_decode(old_basename), utf8_decode(entry[0][1])),
                        (source_kind, target_kind),
                        (source_exec, target_exec)), changed
         elif source_minikind == b'a' and _versioned_minikind(target_minikind):
@@ -1020,21 +1023,21 @@ cdef class ProcessEntryC:
                 else:
                     target_exec = target_details[3]
                 return InventoryTreeChange(entry[0][2],
-                       (None, self.utf8_decode(path, 'surrogateescape')[0]),
+                       (None, utf8_decode(path)),
                        True,
                        (False, True),
                        (None, parent_id),
-                       (None, self.utf8_decode(entry[0][1], 'surrogateescape')[0]),
+                       (None, utf8_decode(entry[0][1])),
                        (None, path_info[2]),
                        (None, target_exec)), True
             else:
                 # Its a missing file, report it as such.
                 return InventoryTreeChange(entry[0][2],
-                       (None, self.utf8_decode(path, 'surrogateescape')[0]),
+                       (None, utf8_decode(path)),
                        False,
                        (False, True),
                        (None, parent_id),
-                       (None, self.utf8_decode(entry[0][1], 'surrogateescape')[0]),
+                       (None, utf8_decode(entry[0][1])),
                        (None, None),
                        (None, False)), True
         elif _versioned_minikind(source_minikind) and target_minikind == b'a':
@@ -1049,11 +1052,11 @@ cdef class ProcessEntryC:
                 parent_id = None
             return InventoryTreeChange(
                    entry[0][2],
-                   (self.utf8_decode(old_path, 'surrogateescape')[0], None),
+                   (utf8_decode(old_path), None),
                    True,
                    (True, False),
                    (parent_id, None),
-                   (self.utf8_decode(entry[0][1], 'surrogateescape')[0], None),
+                   (utf8_decode(entry[0][1]), None),
                    (_minikind_to_kind(source_minikind), None),
                    (source_details[3], None)), True
         elif _versioned_minikind(source_minikind) and target_minikind == b'r':
@@ -1351,7 +1354,7 @@ cdef class ProcessEntryC:
                         if self.want_unversioned:
                             if current_path_info[2] == 'directory':
                                 if self.tree._directory_is_tree_reference(
-                                    self.utf8_decode(current_path_info[0], 'surrogateescape')[0]):
+                                    utf8_decode(current_path_info[0])):
                                     current_path_info = current_path_info[:2] + \
                                         ('tree-reference',) + current_path_info[3:]
                             new_executable = bool(
@@ -1359,11 +1362,11 @@ cdef class ProcessEntryC:
                                 and stat.S_IEXEC & current_path_info[3].st_mode)
                             return InventoryTreeChange(
                                 None,
-                                (None, self.utf8_decode(current_path_info[0], 'surrogateescape')[0]),
+                                (None, utf8_decode(current_path_info[0])),
                                 True,
                                 (False, False),
                                 (None, None),
-                                (None, self.utf8_decode(current_path_info[1], 'surrogateescape')[0]),
+                                (None, utf8_decode(current_path_info[1])),
                                 (None, current_path_info[2]),
                                 (None, new_executable))
                     # This dir info has been handled, go to the next
@@ -1416,7 +1419,7 @@ cdef class ProcessEntryC:
 
     cdef object _maybe_tree_ref(self, current_path_info):
         if self.tree._directory_is_tree_reference(
-            self.utf8_decode(current_path_info[0], 'surrogateescape')[0]):
+            utf8_decode(current_path_info[0])):
             return current_path_info[:2] + \
                 ('tree-reference',) + current_path_info[3:]
         else:
@@ -1519,7 +1522,7 @@ cdef class ProcessEntryC:
                             new_executable = bool(
                                 stat.S_ISREG(current_path_info[3].st_mode)
                                 and stat.S_IEXEC & current_path_info[3].st_mode)
-                            relpath_unicode = self.utf8_decode(current_path_info[0], 'surrogateescape')[0]
+                            relpath_unicode = utf8_decode(current_path_info[0])
                             if changed is not None:
                                 raise AssertionError(
                                     "result is not None: %r" % result)
@@ -1529,7 +1532,7 @@ cdef class ProcessEntryC:
                                 True,
                                 (False, False),
                                 (None, None),
-                                (None, self.utf8_decode(current_path_info[1], 'surrogateescape')[0]),
+                                (None, utf8_decode(current_path_info[1])),
                                 (None, current_path_info[2]),
                                 (None, new_executable))
                             changed = True

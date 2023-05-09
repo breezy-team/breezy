@@ -258,6 +258,7 @@ pub fn quotefn(f: &str) -> String {
 pub mod win32 {
     use lazy_static::lazy_static;
     use regex::Regex;
+    use std::ffi::OsStr;
     use std::path::{Path, PathBuf};
 
     /// Force drive letters to be consistent.
@@ -360,10 +361,19 @@ pub mod win32 {
             fix_separators(std::env::current_dir()?.as_path()).as_path(),
         ))
     }
+
+    pub fn pathjoin(ps: &[&OsStr]) -> PathBuf {
+        let mut p = PathBuf::from(ps[0]);
+        for s in ps[1..].iter() {
+            p.push(s);
+        }
+        fix_separators(&p)
+    }
 }
 
 pub mod posix {
     use std::collections::HashMap;
+    use std::ffi::OsStr;
     use std::path::{Component, Path, PathBuf};
 
     pub fn abspath(path: &Path) -> Result<PathBuf, std::io::Error> {
@@ -478,6 +488,14 @@ pub mod posix {
 
         Ok((path.to_path_buf(), true))
     }
+
+    pub fn pathjoin(ps: &[&OsStr]) -> PathBuf {
+        let mut p = PathBuf::new();
+        for s in ps {
+            p.push(s);
+        }
+        p
+    }
 }
 
 pub fn abspath(path: &Path) -> Result<PathBuf, std::io::Error> {
@@ -562,6 +580,46 @@ pub fn realpath(f: &Path) -> std::io::Result<PathBuf> {
 
     #[cfg(not(windows))]
     return posix::realpath(f);
+}
+
+pub struct InvalidPathSegmentError(pub String);
+
+pub fn splitpath(p: &str) -> std::result::Result<Vec<&str>, InvalidPathSegmentError> {
+    #[cfg(windows)]
+    let split = |c| c == '/' || c == '\\';
+    #[cfg(not(windows))]
+    let split = |c| c == '/';
+
+    let mut rps = Vec::new();
+    for f in p.split(split) {
+        if f == ".." {
+            return Err(InvalidPathSegmentError(f.to_string()));
+        } else if f == "." || f.is_empty() {
+            continue;
+        } else {
+            rps.push(f);
+        }
+    }
+
+    Ok(rps)
+}
+
+pub fn pathjoin(ps: &[&OsStr]) -> PathBuf {
+    #[cfg(windows)]
+    return win32::pathjoin(ps);
+
+    #[cfg(not(windows))]
+    return posix::pathjoin(ps);
+}
+
+pub fn joinpath(ps: &[&OsStr]) -> std::result::Result<PathBuf, InvalidPathSegmentError> {
+    for p in ps {
+        if p == &"" || p == &".." {
+            return Err(InvalidPathSegmentError(p.to_string_lossy().into_owned()));
+        }
+    }
+
+    Ok(pathjoin(ps))
 }
 
 /// Determine the real path to a file.

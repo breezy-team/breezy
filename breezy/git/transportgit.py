@@ -718,12 +718,12 @@ class TransportObjectStore(PackBasedObjectStore):
 
     def _remove_loose_object(self, sha):
         path = osutils.joinpath(self._split_loose_object(sha))
-        self.transport.delete(urlutils.quote_from_bytes(path))
+        self.transport.delete(urlutils.quote(path))
 
     def _get_loose_object(self, sha):
         path = osutils.joinpath(self._split_loose_object(sha))
         try:
-            with self.transport.get(urlutils.quote_from_bytes(path)) as f:
+            with self.transport.get(urlutils.quote(path)) as f:
                 return ShaFile.from_file(f)
         except NoSuchFile:
             return None

@@ -2,7 +2,7 @@ use core::ops::BitAnd;
 use log::debug;
 #[cfg(unix)]
 use nix::sys::stat::SFlag;
-use std::fs::{set_permissions, Permissions};
+use std::fs::{set_permissions, symlink_metadata, Permissions};
 use std::io::Result;
 use std::io::{BufRead, Read};
 use std::path::Path;
@@ -248,4 +248,8 @@ pub fn ensure_empty_directory_exists(path: &Path) -> std::io::Result<()> {
             }
         }
     }
+}
+
+pub fn lexists(path: &Path) -> std::io::Result<bool> {
+    symlink_metadata(path).map(|_| true).or_else(|e| Ok(false))
 }

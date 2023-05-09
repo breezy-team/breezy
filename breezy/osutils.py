@@ -42,7 +42,6 @@ from breezy import (
     trace,
     win32utils,
     )
-from breezy.i18n import gettext
 """)
 
 import breezy
@@ -69,20 +68,7 @@ make_writable = _osutils_rs.make_writable
 minimum_path_selection = _osutils_rs.minimum_path_selection
 
 
-from ._osutils_rs import get_umask, kind_marker, quotefn
-
-lexists = getattr(os.path, 'lexists', None)
-if lexists is None:
-    def lexists(f):
-        try:
-            stat = getattr(os, 'lstat', os.stat)
-            stat(f)
-            return True
-        except FileNotFoundError:
-            return False
-        except OSError as e:
-            raise errors.BzrError(
-                gettext("lstat/stat of ({0!r}): {1!r}").format(f, e))
+from ._osutils_rs import get_umask, kind_marker, lexists, quotefn
 
 
 def fancy_rename(old, new, rename_func, unlink_func):
@@ -167,10 +153,6 @@ def _win32_realpath(path):
     return _win32_fixdrive(_win32_fix_separators(ntpath.realpath(path)))
 
 
-def _win32_pathjoin(*args):
-    return _win32_fix_separators(ntpath.join(*args))
-
-
 _win32_getcwd = _osutils_rs.win32.getcwd
 
 
@@ -224,7 +206,7 @@ rename = _rename_wrap_exception(os.rename)
 abspath = _osutils_rs.abspath
 realpath = _osutils_rs.realpath
 normalizepath = _osutils_rs.normalizepath
-pathjoin = os.path.join
+pathjoin = _osutils_rs.pathjoin
 normpath = _osutils_rs.normpath
 _get_home_dir = _osutils_rs.get_home_dir
 
@@ -242,16 +224,15 @@ splitext = os.path.splitext
 lstat = os.lstat
 fstat = os.fstat
 
+_win32_normpath = _osutils_rs.win32.normpath
+_win32_getcwd = _osutils_rs.win32.getcwd
+
 
 def wrap_stat(st):
     return st
 
 
 if sys.platform == 'win32':
-    realpath = _win32_realpath
-    pathjoin = _win32_pathjoin
-    normpath = _win32_normpath
-    getcwd = _win32_getcwd
     rename = _rename_wrap_exception(_win32_rename)
     try:
         from . import _walkdirs_win32
@@ -428,45 +409,8 @@ rand_chars = _osutils_rs.rand_chars
 # TODO: We could later have path objects that remember their list
 # decomposition (might be too tricksy though.)
 
-def splitpath(p):
-    """Turn string into list of parts."""
-    use_bytes = isinstance(p, bytes)
-    if os.path.sep == '\\':
-        # split on either delimiter because people might use either on
-        # Windows
-        if use_bytes:
-            ps = re.split(b'[\\\\/]', p)
-        else:
-            ps = re.split(r'[\\/]', p)
-    else:
-        if use_bytes:
-            ps = p.split(b'/')
-        else:
-            ps = p.split('/')
-
-    if use_bytes:
-        parent_dir = b'..'
-        current_empty_dir = (b'.', b'')
-    else:
-        parent_dir = '..'
-        current_empty_dir = ('.', '')
-
-    rps = []
-    for f in ps:
-        if f == parent_dir:
-            raise errors.BzrError(gettext("sorry, %r not allowed in path") % f)
-        elif f in current_empty_dir:
-            pass
-        else:
-            rps.append(f)
-    return rps
-
-
-def joinpath(p):
-    for f in p:
-        if (f == '..') or (f is None) or (f == ''):
-            raise errors.BzrError(gettext("sorry, %r not allowed in path") % f)
-    return pathjoin(*p)
+splitpath = _osutils_rs.splitpath
+joinpath = _osutils_rs.joinpath
 
 
 parent_directories = _osutils_rs.parent_directories
@@ -819,9 +763,6 @@ supports_symlinks = _osutils_rs.supports_symlinks
 supports_posix_readonly = _osutils_rs.supports_posix_readonly
 set_or_unset_env = _osutils_rs.set_or_unset_env
 IterableFile = _osutils_rs.IterableFile
-
-
-_WIN32_ERROR_DIRECTORY = 267  # Similar to errno.ENOTDIR
 
 
 def walkdirs(top, prefix="", fsdecode=os.fsdecode):
@@ -1225,33 +1166,7 @@ def set_fd_cloexec(fd):
 find_executable_on_path = _osutils_rs.find_executable_on_path
 
 
-def _posix_is_local_pid_dead(pid):
-    """True if pid doesn't correspond to live process on this machine"""
-    try:
-        # Special meaning of unix kill: just check if it's there.
-        os.kill(pid, 0)
-    except OSError as e:
-        if e.errno == errno.ESRCH:
-            # On this machine, and really not found: as sure as we can be
-            # that it's dead.
-            return True
-        elif e.errno == errno.EPERM:
-            # exists, though not ours
-            return False
-        else:
-            trace.mutter("os.kill(%d, 0) failed: %s" % (pid, e))
-            # Don't really know.
-            return False
-    else:
-        # Exists and our process: not dead.
-        return False
-
-
-if sys.platform == "win32":
-    is_local_pid_dead = win32utils.is_local_pid_dead
-else:
-    is_local_pid_dead = _posix_is_local_pid_dead
-
+is_local_pid_dead = _osutils_rs.is_local_pid_dead
 _maybe_ignored = ['EAGAIN', 'EINTR', 'ENOTSUP', 'EOPNOTSUPP', 'EACCES']
 _fdatasync_ignored = [getattr(errno, name) for name in _maybe_ignored
                       if getattr(errno, name, None) is not None]
