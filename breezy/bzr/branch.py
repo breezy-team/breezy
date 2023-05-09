@@ -16,21 +16,15 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from io import BytesIO
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Union
 
 from ..lazy_import import lazy_import
 
 lazy_import(globals(), """
 from breezy import (
-    cache_utf8,
     config as _mod_config,
     lockdir,
-    shelf,
     ui,
-    )
-from breezy.bzr import (
-    tag as _mod_tag,
-    vf_search,
     )
 """)
 
@@ -165,7 +159,8 @@ class BzrBranch(Branch, _RelockDebugMixin):
             transform = branch._transport.get('stored-transform')
         except _mod_transport.NoSuchFile:
             return None
-        return shelf.Unshelver.from_tree_and_shelf(tree, transform)
+        from ..shelf import Unshelver
+        return Unshelver.from_tree_and_shelf(tree, transform)
 
     def is_locked(self) -> bool:
         return self.control_files.is_locked()
@@ -376,6 +371,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
             return None
 
     def _read_last_revision_info(self):
+        from .. import cache_utf8
         revision_string = self._transport.get_bytes('last-revision')
         revno, revision_id = revision_string.rstrip(b'\n').split(b' ', 1)
         revision_id = cache_utf8.get_cached_utf8(revision_id)
@@ -510,6 +506,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
 
         Don't call this directly, use set_stacked_on_url(None).
         """
+        from .vf_search import NotInOtherForRevs
         with ui.ui_factory.nested_progress_bar() as pb:
             # The basic approach here is to fetch the tip of the branch,
             # including all available ghosts, from the existing stacked
@@ -574,7 +571,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
                     tags_to_fetch = set(self.tags.get_reverse_tag_dict())
                 except errors.TagsNotSupported:
                     tags_to_fetch = set()
-                fetch_spec = vf_search.NotInOtherForRevs(
+                fetch_spec = NotInOtherForRevs(
                     self.repository, old_repository,
                     required_ids=[self.last_revision()],
                     if_present_ids=tags_to_fetch, find_ghosts=True).execute()
@@ -980,7 +977,8 @@ class BzrBranchFormat6(BranchFormatMetadir):
 
     def make_tags(self, branch):
         """See breezy.branch.BranchFormat.make_tags()."""
-        return _mod_tag.BasicTags(branch)
+        from .tag import BasicTags
+        return BasicTags(branch)
 
     def supports_set_append_revisions_only(self):
         return True
@@ -1017,7 +1015,8 @@ class BzrBranchFormat8(BranchFormatMetadir):
 
     def make_tags(self, branch):
         """See breezy.branch.BranchFormat.make_tags()."""
-        return _mod_tag.BasicTags(branch)
+        from .tag import BasicTags
+        return BasicTags(branch)
 
     def supports_set_append_revisions_only(self):
         return True
@@ -1068,7 +1067,8 @@ class BzrBranchFormat7(BranchFormatMetadir):
 
     def make_tags(self, branch):
         """See breezy.branch.BranchFormat.make_tags()."""
-        return _mod_tag.BasicTags(branch)
+        from .tag import BasicTags
+        return BasicTags(branch)
 
     # This is a white lie; as soon as you set a reference location, we upgrade
     # you to BzrBranchFormat8.

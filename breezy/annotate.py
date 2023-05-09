@@ -28,15 +28,6 @@
 import sys
 import time
 
-from .lazy_import import lazy_import
-
-lazy_import(globals(), """
-import patiencediff
-
-from breezy import (
-    tsort,
-    )
-""")
 from . import config, errors, osutils
 from .repository import _strip_NULL_ghosts
 from .revision import CURRENT_REVISION, Revision
@@ -153,6 +144,7 @@ def _expand_annotations(annotations, branch, current_rev=None):
     :param revision_id_to_revno: A map from id to revision numbers.
     :param branch: A locked branch to query for revision details.
     """
+    from . import tsort
     repository = branch.repository
     revision_ids = {o for o, t in annotations}
     if current_rev is not None:
@@ -271,6 +263,7 @@ def reannotate(parents_lines, new_lines, new_revision_id,
 
 def _reannotate(parent_lines, new_lines, new_revision_id,
                 matching_blocks=None):
+    import patiencediff
     new_cur = 0
     if matching_blocks is None:
         plain_parent_lines = [l for r, l in parent_lines]
@@ -287,6 +280,7 @@ def _reannotate(parent_lines, new_lines, new_revision_id,
 
 
 def _get_matching_blocks(old, new):
+    import patiencediff
     matcher = patiencediff.PatienceSequenceMatcher(None, old, new)
     return matcher.get_matching_blocks()
 

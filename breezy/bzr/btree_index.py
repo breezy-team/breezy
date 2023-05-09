@@ -22,7 +22,6 @@ from io import BytesIO
 from ..lazy_import import lazy_import
 
 lazy_import(globals(), """
-import bisect
 import math
 import tempfile
 import zlib
@@ -1020,6 +1019,7 @@ class BTreeGraphIndex:
         :param fixed_keys: A sorted list of keys to match against
         :return: A list of (integer position, [key list]) tuples.
         """
+        import bisect
         if not in_keys:
             return []
         if not fixed_keys:

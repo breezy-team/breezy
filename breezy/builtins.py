@@ -16,14 +16,13 @@
 
 """builtin brz commands"""
 
-import errno
 import os
 import sys
 
 import breezy.bzr
 import breezy.git
 
-from . import controldir, errors, lazy_import, transport
+from . import controldir, errors, lazy_import, osutils, transport
 
 lazy_import.lazy_import(globals(), """
 import time
@@ -32,32 +31,20 @@ import breezy
 from breezy import (
     branch as _mod_branch,
     bugtracker,
-    directory_service,
     delta,
     config as _mod_config,
-    globbing,
     gpg,
     hooks,
-    lazy_regex,
     log,
     merge as _mod_merge,
-    mergeable as _mod_mergeable,
-    merge_directive,
-    osutils,
     patch,
-    reconfigure,
-    rename_map,
     revision as _mod_revision,
     symbol_versioning,
     tree as _mod_tree,
     ui,
     urlutils,
-    views,
     )
 from breezy.branch import Branch
-from breezy.transport import memory
-from breezy.smtp_connection import SMTPConnection
-from breezy.workingtree import WorkingTree
 from breezy.i18n import gettext, ngettext
 """)
 
@@ -121,7 +108,8 @@ def lookup_new_sibling_branch(control_dir, location, possible_transports=None):
     :param location: Name of the new branch
     :return: Full location to the new branch
     """
-    location = directory_service.directories.dereference(location)
+    from .directory_service import directories
+    location = directories.dereference(location)
     if '/' not in location and '\\' not in location:
         (colocated, this_url) = _is_colocated(control_dir, possible_transports)
 
@@ -212,6 +200,9 @@ def tree_files_for_add(file_list):
     custom implementation.  In particular, MutableTreeTree.smart_add expects
     absolute paths, which it immediately converts to relative paths.
     """
+    from . import views
+    from .workingtree import WorkingTree
+
     # FIXME Would be nice to just return the relative paths like
     # internal_tree_files does, but there are a large number of unit tests
     # that assume the current interface to mutabletree.smart_add
@@ -272,6 +263,7 @@ def _get_one_revision_tree(command_name, revisions, branch=None, tree=None):
 
 def _get_view_info_for_change_reporter(tree):
     """Get the view information from a tree for change reporting."""
+    from . import views
     view_info = None
     try:
         current_view = tree.views.get_view_info()[0]
@@ -375,6 +367,7 @@ class cmd_status(Command):
             versioned=False, no_pending=False, verbose=False,
             no_classify=False):
         from .status import show_tree_status
+        from .workingtree import WorkingTree
 
         if revision and len(revision) > 2:
             raise errors.CommandError(
@@ -527,6 +520,7 @@ class cmd_repair_workingtree(Command):
     hidden = True
 
     def run(self, revision=None, directory='.', force=False):
+        from .workingtree import WorkingTree
         tree, _ = WorkingTree.open_containing(directory)
         self.enter_context(tree.lock_tree_write())
         if not force:
@@ -571,6 +565,7 @@ class cmd_revno(Command):
 
     @display_command
     def run(self, tree=False, location='.', revision=None):
+        from .workingtree import WorkingTree
         if revision is not None and tree:
             raise errors.CommandError(
                 gettext("--tree and --revision can not be used together"))
@@ -618,6 +613,7 @@ class cmd_revision_info(Command):
     @display_command
     def run(self, revision=None, directory='.', tree=False,
             revision_info_list=[]):
+        from .workingtree import WorkingTree
 
         try:
             wt = WorkingTree.open_containing(directory)[0]
@@ -723,6 +719,8 @@ class cmd_add(Command):
     def run(self, file_list, no_recurse=False, dry_run=False, verbose=False,
             file_ids_from=None):
         import breezy.add
+
+        from .workingtree import WorkingTree
         tree, file_list = tree_files_for_add(file_list)
 
         if file_ids_from is not None and not tree.supports_setting_file_ids():
@@ -790,6 +788,7 @@ class cmd_mkdir(Command):
         wt.add([relpath])
 
     def run(self, dir_list, parents=False):
+        from .workingtree import WorkingTree
         if parents:
             add_file = self.add_file_with_parents
         else:
@@ -816,6 +815,8 @@ class cmd_relpath(Command):
 
     @display_command
     def run(self, filename):
+        from .workingtree import WorkingTree
+
         # TODO: jam 20050106 Can relpath return a munged path if
         #       sys.stdout encoding cannot represent it?
         tree, relpath = WorkingTree.open_containing(filename)
@@ -850,6 +851,7 @@ class cmd_inventory(Command):
     @display_command
     def run(self, revision=None, show_ids=False, kind=None, include_root=False,
             file_list=None):
+        from .workingtree import WorkingTree
         if kind and kind not in ['file', 'directory', 'symlink']:
             raise errors.CommandError(
                 gettext('invalid kind %r specified') % (kind,))
@@ -910,6 +912,7 @@ class cmd_cp(Command):
     encoding_type = 'replace'
 
     def run(self, names_list):
+        from .workingtree import WorkingTree
         if names_list is None:
             names_list = []
         if len(names_list) < 2:
@@ -998,6 +1001,7 @@ class cmd_mv(Command):
     encoding_type = 'replace'
 
     def run(self, names_list, after=False, auto=False, dry_run=False):
+        from .workingtree import WorkingTree
         if auto:
             return self.run_auto(names_list, after, dry_run)
         elif dry_run:
@@ -1016,6 +1020,8 @@ class cmd_mv(Command):
         self._run(tree, names_list, rel_names, after)
 
     def run_auto(self, names_list, after, dry_run):
+        from .rename_map import RenameMap
+        from .workingtree import WorkingTree
         if names_list is not None and len(names_list) > 1:
             raise errors.CommandError(
                 gettext('Only one path may be specified to --auto.'))
@@ -1025,7 +1031,7 @@ class cmd_mv(Command):
         work_tree, file_list = WorkingTree.open_containing_paths(
             names_list, default_directory='.')
         self.enter_context(work_tree.lock_tree_write())
-        rename_map.RenameMap.guess_renames(
+        RenameMap.guess_renames(
             work_tree.basis_tree(), work_tree, dry_run)
 
     def _run(self, tree, names_list, rel_names, after):
@@ -1163,6 +1169,8 @@ class cmd_pull(Command):
             revision=None, verbose=False,
             directory=None, local=False,
             show_base=False, overwrite_tags=False):
+        from . import mergeable as _mod_mergeable
+        from .workingtree import WorkingTree
 
         if overwrite:
             overwrite = ["history", "tags"]
@@ -1451,6 +1459,8 @@ class cmd_branch(Command):
             use_existing_dir=False, switch=False, bind=False,
             files_from=None, no_recurse_nested=False, colocated_branch=None):
         from breezy import switch as _mod_switch
+
+        from .workingtree import WorkingTree
         accelerator_tree, br_from = controldir.ControlDir.open_tree_or_branch(
             from_location, name=colocated_branch)
         if no_recurse_nested:
@@ -1647,6 +1657,7 @@ class cmd_checkout(Command):
 
     def run(self, branch_location=None, to_location=None, revision=None,
             lightweight=False, files_from=None, hardlink=False):
+        from .workingtree import WorkingTree
         if branch_location is None:
             branch_location = osutils.getcwd()
             to_location = branch_location
@@ -1724,6 +1735,7 @@ class cmd_renames(Command):
 
     @display_command
     def run(self, dir='.'):
+        from .workingtree import WorkingTree
         tree = WorkingTree.open_containing(dir)[0]
         self.enter_context(tree.lock_read())
         old_tree = tree.basis_tree()
@@ -1780,6 +1792,7 @@ class cmd_update(Command):
     aliases = ['up']
 
     def run(self, dir=None, revision=None, show_base=None):
+        from .workingtree import WorkingTree
         if revision is not None and len(revision) != 1:
             raise errors.CommandError(gettext(
                 "brz update --revision takes exactly one revision"))
@@ -1922,6 +1935,7 @@ class cmd_remove(Command):
 
     def run(self, file_list, verbose=False, new=False,
             file_deletion_strategy='safe'):
+        from .workingtree import WorkingTree
 
         tree, file_list = WorkingTree.open_containing_paths(file_list)
 
@@ -2016,6 +2030,7 @@ class cmd_ancestry(Command):
 
     @display_command
     def run(self, location="."):
+        from .workingtree import WorkingTree
         try:
             wt = WorkingTree.open_containing(location)[0]
         except errors.NoWorkingTree:
@@ -2430,6 +2445,7 @@ class cmd_deleted(Command):
 
     @display_command
     def run(self, show_ids=False, directory='.'):
+        from .workingtree import WorkingTree
         tree = WorkingTree.open_containing(directory)[0]
         self.enter_context(tree.lock_read())
         old = tree.basis_tree()
@@ -2453,6 +2469,7 @@ class cmd_modified(Command):
 
     @display_command
     def run(self, null=False, directory='.'):
+        from .workingtree import WorkingTree
         tree = WorkingTree.open_containing(directory)[0]
         self.enter_context(tree.lock_read())
         td = tree.changes_from(tree.basis_tree())
@@ -2474,6 +2491,7 @@ class cmd_added(Command):
 
     @display_command
     def run(self, null=False, directory='.'):
+        from .workingtree import WorkingTree
         wt = WorkingTree.open_containing(directory)[0]
         self.enter_context(wt.lock_read())
         basis = wt.basis_tree()
@@ -2502,6 +2520,7 @@ class cmd_root(Command):
     @display_command
     def run(self, filename=None):
         """Print the branch root."""
+        from .workingtree import WorkingTree
         tree = WorkingTree.open_containing(filename)[0]
         self.outf.write(tree.basedir + '\n')
 
@@ -2981,6 +3000,7 @@ class cmd_touching_revisions(Command):
 
     @display_command
     def run(self, filename):
+        from .workingtree import WorkingTree
         tree, relpath = WorkingTree.open_containing(filename)
         with tree.lock_read():
             touching_revs = log.find_touching_revisions(
@@ -3022,6 +3042,8 @@ class cmd_ls(Command):
             recursive=False, from_root=False,
             unknown=False, versioned=False, ignored=False,
             null=False, kind=None, show_ids=False, path=None, directory=None):
+        from . import views
+        from .workingtree import WorkingTree
 
         if kind and kind not in ('file', 'directory', 'symlink', 'tree-reference'):
             raise errors.CommandError(gettext('invalid kind specified'))
@@ -3119,6 +3141,7 @@ class cmd_unknowns(Command):
 
     @display_command
     def run(self, directory='.'):
+        from .workingtree import WorkingTree
         for f in WorkingTree.open_containing(directory)[0].unknowns():
             self.outf.write(osutils.quotefn(f) + '\n')
 
@@ -3208,6 +3231,9 @@ class cmd_ignore(Command):
     def run(self, name_pattern_list=None, default_rules=None,
             directory='.'):
         from breezy import ignores
+
+        from . import globbing, lazy_regex
+        from .workingtree import WorkingTree
         if default_rules is not None:
             # dump the default rules and exit
             for pattern in ignores.USER_DEFAULTS:
@@ -3269,6 +3295,7 @@ class cmd_ignored(Command):
 
     @display_command
     def run(self, directory='.'):
+        from .workingtree import WorkingTree
         tree = WorkingTree.open_containing(directory)[0]
         self.enter_context(tree.lock_read())
         for path, file_class, kind, entry in tree.list_files():
@@ -3291,6 +3318,7 @@ class cmd_lookup_revision(Command):
 
     @display_command
     def run(self, revno, directory='.'):
+        from .workingtree import WorkingTree
         try:
             revno = int(revno)
         except ValueError as exc:
@@ -3636,6 +3664,7 @@ class cmd_commit(Command):
                                 generate_commit_message_template,
                                 make_commit_message_template_encoded,
                                 set_commit_message)
+        from .workingtree import WorkingTree
 
         commit_stamp = offset = None
         if commit_time is not None:
@@ -4108,6 +4137,8 @@ class cmd_selftest(Command):
             from .tests import stub_sftp
             return stub_sftp.SFTPAbsoluteServer
         elif typestring == "memory":
+            from breezy.transport import memory
+
             from .tests import test_server
             return memory.MemoryServer
         elif typestring == "fakenfs":
@@ -4450,6 +4481,8 @@ class cmd_merge(Command):
             preview=False,
             interactive=False,
             ):
+        from . import mergeable as _mod_mergeable
+        from .workingtree import WorkingTree
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
 
@@ -4671,6 +4704,7 @@ class cmd_merge(Command):
         :param location: The location containing uncommitted changes.
         :param pb: The progress bar to use for showing progress.
         """
+        from .workingtree import WorkingTree
         location = self._select_branch_location(tree, location)[0]
         other_tree, other_path = WorkingTree.open_containing(location)
         merger = _mod_merge.Merger.from_uncommitted(tree, other_tree, pb)
@@ -4760,6 +4794,7 @@ class cmd_remerge(Command):
     def run(self, file_list=None, merge_type=None, show_base=False,
             reprocess=False):
         from .conflicts import restore
+        from .workingtree import WorkingTree
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
         tree, file_list = WorkingTree.open_containing_paths(file_list)
@@ -4885,6 +4920,7 @@ class cmd_revert(Command):
 
     def run(self, revision=None, no_backup=False, file_list=None,
             forget_merges=None):
+        from .workingtree import WorkingTree
         tree, file_list = WorkingTree.open_containing_paths(file_list)
         self.enter_context(tree.lock_tree_write())
         if forget_merges:
@@ -5287,6 +5323,7 @@ class cmd_re_sign(Command):
     takes_options = ['directory', 'revision']
 
     def run(self, revision_id_list=None, revision=None, directory='.'):
+        from .workingtree import WorkingTree
         if revision_id_list is not None and revision is not None:
             raise errors.CommandError(
                 gettext('You can only supply one of revision_id or --revision'))
@@ -5641,6 +5678,7 @@ class cmd_join(Command):
 
     def run(self, tree, reference=False):
         from .mutabletree import BadReferenceTarget
+        from .workingtree import WorkingTree
         sub_tree = WorkingTree.open(tree)
         parent_dir = osutils.dirname(sub_tree.basedir)
         containing_tree = WorkingTree.open_containing(parent_dir)[0]
@@ -5682,6 +5720,7 @@ class cmd_split(Command):
     takes_args = ['tree']
 
     def run(self, tree):
+        from .workingtree import WorkingTree
         containing_tree, subdir = WorkingTree.open_containing(tree)
         if not containing_tree.is_versioned(subdir):
             raise errors.NotVersionedError(subdir)
@@ -5738,6 +5777,7 @@ class cmd_merge_directive(Command):
     def run(self, submit_branch=None, public_branch=None, patch_type='bundle',
             sign=False, revision=None, mail_to=None, message=None,
             directory='.'):
+        from . import merge_directive
         from .revision import NULL_REVISION
         include_patch, include_bundle = {
             'plain': (False, False),
@@ -5792,6 +5832,7 @@ class cmd_merge_directive(Command):
             else:
                 self.outf.writelines(directive.to_lines())
         else:
+            from .smtp_connection import SMTPConnection
             message = directive.to_email(mail_to, branch, sign)
             s = SMTPConnection(branch.get_config_stack())
             s.send_email(message)
@@ -6204,6 +6245,7 @@ class cmd_reconfigure(Command):
     def run(self, location=None, bind_to=None, force=False,
             tree_type=None, repository_type=None, repository_trees=None,
             stacked_on=None, unstacked=None):
+        from . import reconfigure
         directory = controldir.ControlDir.open(location)
         if stacked_on and unstacked:
             raise errors.CommandError(
@@ -6446,6 +6488,8 @@ class cmd_view(Command):
             name=None,
             switch=None,
             ):
+        from . import views
+        from .workingtree import WorkingTree
         tree, file_list = WorkingTree.open_containing_paths(file_list,
                                                             apply_view=False)
         current_view, view_dict = tree.views.get_view_info()
@@ -6646,6 +6690,7 @@ class cmd_shelve(Command):
             return 0
 
     def run_for_list(self, directory=None):
+        from .workingtree import WorkingTree
         if directory is None:
             directory = '.'
         tree = WorkingTree.open_containing(directory)[0]
@@ -6826,6 +6871,7 @@ class cmd_link_tree(Command):
 
     def run(self, location):
         from .transform import link_tree
+        from .workingtree import WorkingTree
         target_tree = WorkingTree.open_containing(".")[0]
         source_tree = WorkingTree.open(location)
         with target_tree.lock_write(), source_tree.lock_read():
@@ -7051,6 +7097,7 @@ class cmd_patch(Command):
 
     def run(self, filename=None, strip=None, silent=False):
         from .patch import patch_tree
+        from .workingtree import WorkingTree
         wt = WorkingTree.open_containing('.')[0]
         if strip is None:
             strip = 1

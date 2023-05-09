@@ -16,9 +16,10 @@
 
 """Weave-era BzrDir formats."""
 
+import os
 from io import BytesIO
 
-from ... import errors
+from ... import errors, osutils, trace
 from ...bzr import lockable_files
 from ...bzr.bzrdir import BzrDir, BzrDirFormat, BzrDirMetaFormat1
 from ...controldir import (ControlDir, Converter, MustHaveWorkingTree,
@@ -28,26 +29,20 @@ from ...lazy_import import lazy_import
 from ...transport import NoSuchFile, get_transport, local
 
 lazy_import(globals(), """
-import os
-
 from breezy import (
     branch as _mod_branch,,
     graph,
     lockdir,
-    osutils,
     revision as _mod_revision,
-    trace,
     ui,
     urlutils,
     )
 from breezy.bzr import (
     versionedfile,
     weave,
-    xml5,
     )
 from breezy.plugins.weave_fmt.store.versioned import VersionedFileStore
 from breezy.transactions import WriteTransaction
-from breezy.plugins.weave_fmt import xml4
 """)
 
 
@@ -294,10 +289,12 @@ class ConvertBzrDir4To5(Converter):
         self.controldir.transport.delete_tree('text-store')
 
     def _convert_working_inv(self):
-        inv = xml4.inventory_serializer_v4.read_inventory(
+        from .xml4 import inventory_serializer_v4
+        inv = inventory_serializer_v4.read_inventory(
             self.branch._transport.get('inventory'))
         f = BytesIO()
-        xml5.inventory_serializer_v5.write_inventory(inv, f, working=True)
+        from ...bzr.xml5 import inventory_serializer_v5
+        inventory_serializer_v5.write_inventory(inv, f, working=True)
         self.branch._transport.put_bytes('inventory', f.getvalue(),
                                          mode=self.controldir._get_file_mode())
 
@@ -366,15 +363,17 @@ class ConvertBzrDir4To5(Converter):
             self.revisions[rev_id] = rev
 
     def _load_old_inventory(self, rev_id):
+        from .xml4 import inventory_serializer_v4
         with self.branch.repository.inventory_store.get(rev_id) as f:
-            inv = xml4.inventory_serializer_v4.read_inventory(f)
+            inv = inventory_serializer_v4.read_inventory(f)
         inv.revision_id = rev_id
         rev = self.revisions[rev_id]
         return inv
 
     def _load_updated_inventory(self, rev_id):
+        from ...bzr.xml5 import inventory_serializer_v5
         inv_xml = self.inv_weave.get_lines(rev_id)
-        inv = xml5.inventory_serializer_v5.read_inventory_from_lines(inv_xml, rev_id)
+        inv = inventory_serializer_v5.read_inventory_from_lines(inv_xml, rev_id)
         return inv
 
     def _convert_one_rev(self, rev_id):
@@ -388,7 +387,8 @@ class ConvertBzrDir4To5(Converter):
         self.converted_revs.add(rev_id)
 
     def _store_new_inv(self, rev, inv, present_parents):
-        new_inv_xml = xml5.inventory_serializer_v5.write_inventory_to_lines(inv)
+        from ...bzr.xml5 import inventory_serializer_v5
+        new_inv_xml = inventory_serializer_v5.write_inventory_to_lines(inv)
         new_inv_sha1 = osutils.sha_strings(new_inv_xml)
         self.inv_weave.add_lines(rev.revision_id,
                                  present_parents,

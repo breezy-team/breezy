@@ -16,7 +16,7 @@
 
 """Merge logic for po_merge plugin."""
 
-from ... import config, merge
+from ... import config, merge, osutils, trace
 from ...lazy_import import lazy_import
 
 lazy_import(globals(), """
@@ -26,8 +26,6 @@ import tempfile
 
 from breezy import (
     cmdline,
-    osutils,
-    trace,
     )
 """)
 

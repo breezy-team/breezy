@@ -28,12 +28,11 @@ lazy_import(globals(), """
 import time
 
 from breezy import (
-    debug,
     progress,
     )
 """)
 
-from .. import config, osutils, trace
+from .. import config, debug, osutils, trace
 from . import NullProgressView, UIFactory
 
 

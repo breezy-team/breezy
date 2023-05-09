@@ -29,7 +29,6 @@ from breezy import (
     gpg,
     graph,
     lru_cache,
-    osutils,
     revision as _mod_revision,
     tsort,
     ui,
@@ -50,12 +49,12 @@ from breezy.i18n import gettext
 from breezy.bzr.testament import Testament
 """)
 
-from .. import debug, errors
+from .. import debug, errors, osutils
 from ..decorators import only_raises
 from ..repository import (CommitBuilder, FetchResult, InterRepository,
                           Repository, RepositoryFormat, WriteGroup)
 from ..trace import mutter, note
-from .inventory import ROOT_ID, Inventory, entry_factory
+from .inventory import Inventory, entry_factory
 from .inventorytree import InventoryTreeChange
 from .repository import MetaDirRepository, RepositoryFormatMetaDir
 

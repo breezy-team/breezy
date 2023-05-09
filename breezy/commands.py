@@ -26,9 +26,9 @@ __docformat__ = "google"
 import contextlib
 import os
 import sys
-from typing import List, Optional, Type, Union
+from typing import List, Optional, Union
 
-from . import i18n, option, osutils, trace
+from . import i18n, option, trace
 from .lazy_import import lazy_import
 
 lazy_import(globals(), """
@@ -36,12 +36,11 @@ lazy_import(globals(), """
 import breezy
 from breezy import (
     cmdline,
-    debug,
     ui,
     )
 """)
 
-from . import errors, registry
+from . import debug, errors, registry
 from .hooks import Hooks
 from .plugin import disable_plugins, load_plugins, plugin_name
 

@@ -20,10 +20,6 @@ from io import BytesIO
 from .lazy_import import lazy_import
 
 lazy_import(globals(), """
-import gzip
-import itertools
-import patiencediff
-
 from breezy import (
     ui,
     )
@@ -97,6 +93,7 @@ class MultiParent:
     @staticmethod
     def from_lines(text, parents=(), left_blocks=None):
         """Produce a MultiParent from a list of lines and parents"""
+        import patiencediff
         def compare(parent):
             matcher = patiencediff.PatienceSequenceMatcher(None, parent,
                                                            text)
@@ -553,6 +550,7 @@ class MultiVersionedFile(BaseVersionedFile):
         self._diff_offset = {}
 
     def get_diff(self, version_id):
+        import gzip
         start, count = self._diff_offset[version_id]
         with open(self._filename + '.mpknit', 'rb') as infile:
             infile.seek(start)
@@ -563,6 +561,8 @@ class MultiVersionedFile(BaseVersionedFile):
             return MultiParent.from_patch(content)
 
     def add_diff(self, diff, version_id, parent_ids):
+        import gzip
+        import itertools
         with open(self._filename + '.mpknit', 'ab') as outfile:
             outfile.seek(0, 2)      # workaround for windows bug:
             # .tell() for files opened in 'ab' mode
@@ -662,6 +662,7 @@ class _Reconstructor:
 
 
 def gzip_string(lines):
+    import gzip
     sio = BytesIO()
     with gzip.GzipFile(None, mode='wb', fileobj=sio) as data_file:
         data_file.writelines(lines)

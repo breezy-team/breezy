@@ -41,8 +41,6 @@ import socket
 import weakref
 
 from breezy import (
-    debug,
-    trace,
     transport,
     ui,
     urlutils,
@@ -51,7 +49,7 @@ from breezy.i18n import gettext
 from breezy.bzr.smart import client, protocol, request, signals, vfs
 from breezy.transport import ssh
 """)
-from ... import errors, osutils
+from ... import debug, errors, osutils, trace
 
 # Throughout this module buffer size parameters are either limited to be at
 # most _MAX_READ_SIZE, or are ignored and _MAX_READ_SIZE is used instead.

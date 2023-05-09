@@ -24,7 +24,6 @@ from typing import List, Optional, Type, Union
 from .lazy_import import lazy_import
 
 lazy_import(globals(), """
-import patiencediff
 import subprocess
 
 from breezy import (
@@ -79,6 +78,7 @@ def internal_diff(old_label, oldlines, new_label, newlines, to_file,
         textfile.check_text_lines(newlines)
 
     if sequence_matcher is None:
+        import patiencediff
         sequence_matcher = patiencediff.PatienceSequenceMatcher
     ud = unified_diff_bytes(
         oldlines, newlines,

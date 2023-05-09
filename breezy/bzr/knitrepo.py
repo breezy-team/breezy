@@ -19,27 +19,18 @@ from typing import Type
 from ..lazy_import import lazy_import
 
 lazy_import(globals(), """
-import itertools
-
 from breezy import (
-    controldir,
-    lockdir,
-    osutils,
-    revision as _mod_revision,
-    trace,
     transactions,
     )
 from breezy.bzr import (
     knit as _mod_knit,
     lockable_files,
     versionedfile,
-    serializer,
-    xml5,
-    xml6,
-    xml7,
     )
 """)
-from .. import errors
+from .. import controldir, errors, lockdir
+from .. import revision as _mod_revision
+from .. import trace
 from .. import transport as _mod_transport
 from ..repository import InterRepository, IsInWriteGroupError, Repository
 from .repository import RepositoryFormatMetaDir
@@ -239,11 +230,13 @@ class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
 
     @property
     def _revision_serializer(self):
-        return xml5.revision_serializer_v5
+        from .xml5 import revision_serializer_v5
+        return revision_serializer_v5
 
     @property
     def _inventory_serializer(self):
-        return xml5.inventory_serializer_v5
+        from .xml5 import inventory_serializer_v5
+        return inventory_serializer_v5
     # Knit based repositories handle ghosts reasonably well.
     supports_ghosts = True
     # External lookups are not supported in this format.
@@ -371,11 +364,13 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
 
     @property
     def _revision_serializer(self):
-        return xml5.revision_serializer_v5
+        from .xml5 import revision_serializer_v5
+        return revision_serializer_v5
 
     @property
     def _inventory_serializer(self):
-        return xml5.inventory_serializer_v5
+        from .xml5 import inventory_serializer_v5
+        return inventory_serializer_v5
 
     def __ne__(self, other):
         return self.__class__ is not other.__class__
@@ -414,11 +409,13 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
 
     @property
     def _revision_serializer(self):
-        return xml5.revision_serializer_v5
+        from .xml5 import revision_serializer_v5
+        return revision_serializer_v5
 
     @property
     def _inventory_serializer(self):
-        return xml7.inventory_serializer_v7
+        from .xml7 import inventory_serializer_v7
+        return inventory_serializer_v7
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir('dirstate-with-subtree')
@@ -462,11 +459,13 @@ class RepositoryFormatKnit4(RepositoryFormatKnit):
 
     @property
     def _revision_serializer(self):
-        return xml5.revision_serializer_v5
+        from .xml5 import revision_serializer_v5
+        return revision_serializer_v5
 
     @property
     def _inventory_serializer(self):
-        return xml6.inventory_serializer_v6
+        from .xml6 import inventory_serializer_v6
+        return inventory_serializer_v6
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir('rich-root')
@@ -513,6 +512,7 @@ class InterKnitRepo(InterSameDataRepository):
                                     find_ghosts=True, revision_ids=None, if_present_ids=None,
                                     limit=None):
         """See InterRepository.search_missing_revision_ids()."""
+        import itertools
         with self.lock_read():
             source_ids_set = self._present_source_revisions_for(
                 revision_ids, if_present_ids)
