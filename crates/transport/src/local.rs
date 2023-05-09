@@ -1,9 +1,8 @@
 use crate::lock::LockError;
 use crate::{
-    map_atomic_err_to_transport_err, map_io_err_to_transport_err, Error, Lock, ReadStream, Result,
-    SmartMedium, Stat, Transport, UrlFragment, WriteStream,
+    map_io_err_to_transport_err, Error, Lock, ReadStream, Result, SmartMedium, Stat, Transport,
+    UrlFragment, WriteStream,
 };
-use atomicwrites::{AllowOverwrite, AtomicFile};
 use breezy_urlutils::{escape, unescape};
 use path_clean::{clean, PathClean};
 use std::collections::HashMap;
@@ -196,15 +195,19 @@ impl Transport for LocalTransport {
         permissions: Option<Permissions>,
     ) -> Result<u64> {
         let path = self._abspath(relpath)?;
-        let af = AtomicFile::new(path, AllowOverwrite);
-        let n = af
-            .write(|outf| {
-                if let Some(permissions) = permissions {
-                    outf.set_permissions(permissions)?;
-                }
-                std::io::copy(f, outf)
-            })
-            .map_err(|e| map_atomic_err_to_transport_err(e, Some(relpath)))?;
+        let mut tmpfile = tempfile::Builder::new()
+            .tempfile_in(path.parent().unwrap())
+            .map_err(|e| map_io_err_to_transport_err(e, Some(relpath)))?;
+
+        let n = std::io::copy(f, &mut tmpfile)
+            .map_err(|e| map_io_err_to_transport_err(e, Some(relpath)))?;
+        let f = tmpfile
+            .persist(&path)
+            .map_err(|e| map_io_err_to_transport_err(e.error, Some(relpath)))?;
+        if let Some(permissions) = permissions {
+            f.set_permissions(permissions)
+                .map_err(|e| map_io_err_to_transport_err(e, Some(relpath)))?;
+        }
         Ok(n)
     }
 

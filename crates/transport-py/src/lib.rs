@@ -74,6 +74,15 @@ fn perms_from_py_object(obj: PyObject) -> Permissions {
     })
 }
 
+#[cfg(unix)]
+fn default_perms() -> Permissions {
+    use nix::sys::stat::{umask, Mode};
+    let mask = umask(Mode::empty());
+    umask(mask);
+    let mode = 0o666 & !mask.bits();
+    Permissions::from_mode(mode)
+}
+
 #[pyclass]
 struct PyStat {
     #[pyo3(get)]
@@ -502,9 +511,9 @@ impl Transport {
         data: &[u8],
         mode: Option<PyObject>,
     ) -> PyResult<()> {
-        let mode = mode.map(perms_from_py_object);
+        let mode = mode.map(perms_from_py_object).unwrap_or_else(default_perms);
         let t = &slf.borrow().0;
-        py.allow_threads(|| t.put_bytes(path, data, mode))
+        py.allow_threads(|| t.put_bytes(path, data, Some(mode)))
             .map_err(|e| map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)))?;
         Ok(())
     }
@@ -524,7 +533,7 @@ impl Transport {
             t.put_bytes_non_atomic(
                 path,
                 data,
-                mode.map(perms_from_py_object),
+                Some(mode.map(perms_from_py_object).unwrap_or_else(default_perms)),
                 create_parent_dir,
                 dir_mode.map(perms_from_py_object),
             )
@@ -543,7 +552,13 @@ impl Transport {
         let t = &slf.borrow().0;
         let mut file = PyFileLikeObject::with_requirements(file, true, false, false)?;
         let ret = py
-            .allow_threads(|| t.put_file(path, &mut file, mode.map(perms_from_py_object)))
+            .allow_threads(|| {
+                t.put_file(
+                    path,
+                    &mut file,
+                    Some(mode.map(perms_from_py_object).unwrap_or_else(default_perms)),
+                )
+            })
             .map_err(|e| map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)))?;
         Ok(ret)
     }
@@ -563,7 +578,7 @@ impl Transport {
             t.put_file_non_atomic(
                 path,
                 &mut file,
-                mode.map(perms_from_py_object),
+                Some(mode.map(perms_from_py_object).unwrap_or_else(default_perms)),
                 create_parent_dir,
                 dir_mode.map(perms_from_py_object),
             )

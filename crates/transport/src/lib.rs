@@ -71,16 +71,6 @@ pub fn map_io_err_to_transport_err(err: std::io::Error, path: Option<&str>) -> E
     }
 }
 
-fn map_atomic_err_to_transport_err(
-    err: atomicwrites::Error<std::io::Error>,
-    path: Option<&str>,
-) -> Error {
-    match err {
-        atomicwrites::Error::Internal(err) => map_io_err_to_transport_err(err, path),
-        atomicwrites::Error::User(err) => map_io_err_to_transport_err(err, path),
-    }
-}
-
 impl From<url::ParseError> for Error {
     fn from(err: url::ParseError) -> Self {
         Error::UrlError(err)
@@ -90,12 +80,6 @@ impl From<url::ParseError> for Error {
 impl From<breezy_urlutils::Error> for Error {
     fn from(err: breezy_urlutils::Error) -> Self {
         Error::UrlutilsError(err)
-    }
-}
-
-impl From<atomicwrites::Error<std::io::Error>> for Error {
-    fn from(err: atomicwrites::Error<std::io::Error>) -> Self {
-        map_atomic_err_to_transport_err(err, None)
     }
 }
 
@@ -274,9 +258,9 @@ pub trait Transport: std::fmt::Debug + 'static + Send + Sync {
             Ok(_) => Ok(()),
             Err(Error::NoSuchFile(filename)) => {
                 if create_parent_dir.unwrap_or(false) {
-                    if let Some(parent) = relpath.rsplitn(2, '/').nth(1) {
+                    if let Some(parent) = relpath.rsplit_once('/').map(|x| x.0) {
                         self.mkdir(parent, dir_permissions)?;
-                        self.put_file(relpath, f, permissions.clone())?;
+                        self.put_file(relpath, f, permissions)?;
                         Ok(())
                     } else {
                         Err(Error::NoSuchFile(filename))
