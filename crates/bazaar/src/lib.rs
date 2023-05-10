@@ -1,10 +1,13 @@
 use std::fmt::{Debug, Error, Formatter};
 
+pub mod bencode_serializer;
 pub mod filters;
 pub mod gen_ids;
 pub mod globbing;
 pub mod revision;
 pub mod serializer;
+#[cfg(feature = "old-formats")]
+pub mod xml_serializer;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct FileId(Vec<u8>);
@@ -93,5 +96,4 @@ impl RevisionId {
     }
 }
 
-pub mod bencode_serializer;
 pub mod xml_serializer;

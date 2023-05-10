@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from .. import errors, osutils
-from . import inventory, xml6, xml8
+from . import inventory, xml6
 from .xml_serializer import (encode_and_escape, get_utf8_or_ascii,
                              unpack_inventory_entry)
 
@@ -97,13 +97,6 @@ class InventorySerializer_v5(xml6.InventorySerializer_v6):
         append(b'<inventory%s format="5"%s>\n' % (fileid, revid))
 
 
-class RevisionSerializer_v5(xml8.RevisionSerializer_v8):
-    """Version 5 serializer
-
-    Packs objects into XML and vice versa.
-    """
-    format_num = b'5'
-
-
 inventory_serializer_v5 = InventorySerializer_v5()
-revision_serializer_v5 = RevisionSerializer_v5()
+
+from breezy._bzr_rs import revision_serializer_v5
