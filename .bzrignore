@@ -81,3 +81,4 @@ __pycache__
 ./brz
 *.so
 .pytest_cache
+.ruff_cache

@@ -95,3 +95,26 @@ version = {attr = "breezy.__version__"}
 
 [tool.mypy]
 ignore_missing_imports = true
+
+[tool.ruff]
+select = [
+    "ANN",  # annotations
+    "D",  # pydocstyle
+    "E",  # pycodestyle
+    "F",  # pyflakes
+    "N",  # naming
+    "B",  # bugbear
+    "I",  # isort
+    "TCH", # typecheck
+    "INT", # gettext
+#   "SIM", # simplify
+    "C4",  # comprehensions
+]
+ignore = [
+    "ANN101",  # missing-type-self
+]
+# These are actually fine, but they make mypy more strict and then it fails.
+unfixable = ["ANN204"]
+
+[tool.ruff.pydocstyle]
+convention = "google"
