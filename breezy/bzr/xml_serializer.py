@@ -23,8 +23,8 @@
 # ElementTree bits
 
 from typing import Optional, Union
-from xml.etree.ElementTree import (Element, SubElement, ElementTree, ParseError,
-                                   fromstring, fromstringlist)
+from xml.etree.ElementTree import (Element, ElementTree, ParseError,
+                                   SubElement, fromstring, fromstringlist)
 
 from . import inventory, serializer
 

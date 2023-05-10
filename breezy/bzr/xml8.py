@@ -18,10 +18,8 @@ from typing import List, Optional
 
 from breezy._bzr_rs import revision_serializer_v8
 
-from .. import lazy_regex
-from .. import trace
-from .xml_serializer import (XMLInventorySerializer,
-                             encode_and_escape,
+from .. import lazy_regex, trace
+from .xml_serializer import (XMLInventorySerializer, encode_and_escape,
                              serialize_inventory_flat, unpack_inventory_entry,
                              unpack_inventory_flat)
 
