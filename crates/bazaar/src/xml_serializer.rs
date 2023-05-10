@@ -2,13 +2,13 @@ use crate::revision::Revision;
 use crate::serializer::{Error, RevisionSerializer};
 use crate::RevisionId;
 use std::collections::HashMap;
-use std::io::Read;
+use std::io::{BufRead, Read, Write};
 use std::str;
 use xmltree::Element;
 
 lazy_static::lazy_static! {
-    static ref UTF8_RE: regex::bytes::Regex = regex::bytes::Regex::new(r#"(?-u)[&<>'"]|[\x80-\xff]+"#).unwrap();
-    static ref UNICODE_RE: regex::Regex = regex::Regex::new(r#"[&<>'"\u{0080}-\u{ffff}]"#).unwrap();
+    static ref UTF8_RE: regex::bytes::Regex = regex::bytes::Regex::new(r#"(?-u)[&<>'"]|[\x7f-\xff]+"#).unwrap();
+    static ref UNICODE_RE: regex::Regex = regex::Regex::new(r#"[&<>'"\u{007f}-\u{ffff}]"#).unwrap();
 
 }
 
@@ -126,114 +126,129 @@ impl<T: XMLRevisionSerializer> RevisionSerializer for T {
         self.read_revision(&mut cursor)
     }
 
-    fn write_revision_to_string(&self, revision: &Revision) -> Result<Vec<u8>, Error> {
-        let mut lines = Vec::new();
-        for line in self.write_revision_to_lines(revision) {
-            lines.push(line?);
-        }
-        Ok(lines.concat())
-    }
-
     fn write_revision_to_lines(
         &self,
         rev: &Revision,
     ) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>>> {
-        let mut lines = Vec::new();
-        // For the XML format, we need to write them as Unicode rather than as
-        // utf-8 strings. So that cElementTree can handle properly escaping
-        // them.
-        let mut el = "<revision ".to_string();
+        let buf = self.write_revision_to_string(rev);
+
+        if let Ok(buf) = buf {
+            let cursor = std::io::Cursor::new(buf);
+            let mut reader = std::io::BufReader::new(cursor);
+            Box::new(std::iter::from_fn(move || {
+                let mut line = Vec::new();
+                match reader.read_until(b'\n', &mut line) {
+                    Ok(0) => None,
+                    Ok(_) => Some(Ok(line)),
+                    Err(e) => Some(Err(Error::IOError(e))),
+                }
+            }))
+        } else {
+            Box::new(std::iter::once(Err(Error::EncodeError(
+                "Failed to write revision to string".to_string(),
+            ))))
+        }
+    }
+
+    fn write_revision_to_string(&self, rev: &Revision) -> Result<Vec<u8>, Error> {
+        let mut buf = Vec::new();
+        buf.write_all(b"<revision ")?;
 
         if let Some(ref committer) = rev.committer {
-            el += &format!(
-                "committer=\"{}\" ",
-                encode_and_escape_string(committer.as_str())
-            );
+            buf.write_all(
+                format!(
+                    "committer=\"{}\" ",
+                    encode_and_escape_string(committer.as_str())
+                )
+                .as_bytes(),
+            )?;
         }
 
-        el += &format!("format=\"{}\" ", self.format_name());
+        buf.write_all(format!("format=\"{}\" ", self.format_name()).as_bytes())?;
 
         if let Some(ref inventory_sha1) = rev.inventory_sha1 {
-            el += &format!(
-                "inventory_sha1=\"{}\" ",
-                encode_and_escape_bytes(inventory_sha1.as_slice())
-            );
+            buf.write_all(
+                format!(
+                    "inventory_sha1=\"{}\" ",
+                    encode_and_escape_bytes(inventory_sha1.as_slice())
+                )
+                .as_bytes(),
+            )?;
         }
 
-        el += &format!(
-            "revision_id=\"{}\" timestamp=\"{:.3}\"",
-            encode_and_escape_bytes(rev.revision_id.bytes()),
-            rev.timestamp,
-        );
+        buf.write_all(
+            format!(
+                "revision_id=\"{}\" timestamp=\"{:.3}\"",
+                encode_and_escape_bytes(rev.revision_id.bytes()),
+                rev.timestamp,
+            )
+            .as_bytes(),
+        )?;
 
         if let Some(timezone) = rev.timezone {
-            el += &format!(" timezone=\"{}\"", timezone);
+            buf.write_all(format!(" timezone=\"{}\"", timezone).as_bytes())?;
         }
 
-        lines.push((el + ">\n").as_bytes().to_vec());
+        buf.write_all(b">\n")?;
 
         let message = encode_and_escape_string(escape_invalid_chars(rev.message.as_str()).as_str());
-        lines.extend(
-            (format!("<message>{}</message>\n", message))
-                .as_bytes()
-                .split_inclusive(|&c| c == b'\n')
-                .map(|s| s.to_vec()),
-        );
+        buf.write_all(format!("<message>{}</message>\n", message).as_bytes())?;
 
         if !rev.parent_ids.is_empty() {
-            lines.push(b"<parents>\n".to_vec());
+            buf.write_all(b"<parents>\n")?;
             for parent_id in &rev.parent_ids {
                 if parent_id.is_reserved() {
                     panic!("reserved revision id used as parent: {}", parent_id);
                 }
-                lines.push(
+                buf.write_all(
                     format!(
                         "<revision_ref revision_id=\"{}\" />\n",
                         encode_and_escape_bytes(parent_id.bytes())
                     )
-                    .as_bytes()
-                    .to_vec(),
-                );
+                    .as_bytes(),
+                )?;
             }
-            lines.push(b"</parents>\n".to_vec());
+            buf.write_all(b"</parents>\n")?;
         }
 
         if !rev.properties.is_empty() {
-            lines.push(b"<properties>".to_vec());
+            buf.write_all(b"<properties>")?;
             let mut sorted_keys: Vec<_> = rev.properties.keys().collect();
             sorted_keys.sort();
             for prop_name in sorted_keys {
                 let prop_value = rev.properties.get(prop_name).unwrap();
                 if !prop_value.is_empty() {
-                    let prop_value_utf8 = String::from_utf8(prop_value.clone()).unwrap();
-                    let proplines: Vec<Vec<u8>> = format!(
-                        "<property name=\"{}\">{}</property>\n",
-                        encode_and_escape_string(prop_name),
-                        encode_and_escape_string(
-                            escape_invalid_chars(prop_value_utf8.as_str()).as_str()
+                    buf.write_all(
+                        format!(
+                            "<property name=\"{}\">",
+                            encode_and_escape_string(prop_name)
                         )
-                    )
-                    .as_bytes()
-                    .split(|&c| c == b'\n')
-                    .map(|s| s.to_vec())
-                    .collect();
-                    lines.extend(proplines);
+                        .as_bytes(),
+                    )?;
+                    let prop_value_utf8 = String::from_utf8(prop_value.clone()).unwrap();
+                    buf.write_all(
+                        encode_and_escape_string(
+                            escape_invalid_chars(prop_value_utf8.as_str()).as_str(),
+                        )
+                        .as_bytes(),
+                    )?;
+                    buf.write_all(b"</property>\n")?;
                 } else {
-                    let proplines = [format!(
-                        "<property name=\"{}\" />\n",
-                        encode_and_escape_string(prop_name)
-                    )
-                    .as_bytes()
-                    .to_vec()];
-                    lines.extend(proplines);
+                    buf.write_all(
+                        format!(
+                            "<property name=\"{}\" />\n",
+                            encode_and_escape_string(prop_name)
+                        )
+                        .as_bytes(),
+                    )?;
                 }
             }
-            lines.push(b"</properties>\n".to_vec());
+            buf.write_all(b"</properties>\n")?;
         }
 
-        lines.push(b"</revision>\n".to_vec());
+        buf.write_all(b"</revision>\n")?;
 
-        Box::new(lines.into_iter().map(Ok))
+        Ok(buf)
     }
 }
 
@@ -272,13 +287,12 @@ pub trait XMLRevisionSerializer: RevisionSerializer {
             .map_or_else(|| None, |v| Some(v.parse::<i32>().unwrap()));
 
         let message = document.get_child("message").map_or_else(
-            || Ok("".to_owned()),
+            || "".to_string(),
             |e| {
                 e.get_text()
-                    .map(|s| s.to_string())
-                    .ok_or_else(|| Error::DecodeError("message element missing text".to_owned()))
+                    .map_or_else(|| "".to_owned(), |t| t.to_string())
             },
-        )?;
+        );
 
         let revision_id = RevisionId::from(
             document
