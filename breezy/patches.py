@@ -154,7 +154,7 @@ class Hunk:
         self.mod_pos = mod_pos
         self.mod_range = mod_range
         self.tail = tail
-        self.lines = []
+        self.lines: List[bytes] = []
 
     def get_header(self):
         if self.tail is None:
@@ -270,7 +270,7 @@ class Patch(BinaryPatch):
         BinaryPatch.__init__(self, oldname, newname)
         self.oldts = oldts
         self.newts = newts
-        self.hunks = []
+        self.hunks: List[Hunk] = []
 
     def as_bytes(self):
         ret = self.get_header()

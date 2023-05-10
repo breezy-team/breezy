@@ -56,23 +56,23 @@ unquote_to_bytes = urlparse.unquote_to_bytes
 unquote = urlparse.unquote
 
 
-from ._urlutils_rs import (_find_scheme_and_separator, basename, combine_paths,
+from ._urlutils_rs import (_find_scheme_and_separator, basename, combine_paths,  # noqa: F401
                            derive_to_location, dirname, escape, file_relpath,
                            is_url, join, join_segment_parameters,
                            join_segment_parameters_raw, joinpath,
                            local_path_from_url, local_path_to_url,
                            normalize_url)
 from ._urlutils_rs import posix as posix_rs
-from ._urlutils_rs import (relative_url, split, split_segment_parameters,
+from ._urlutils_rs import (relative_url, split, split_segment_parameters,  # noqa: F401
                            split_segment_parameters_raw,
                            strip_segment_parameters, strip_trailing_slash,
                            unescape)
 from ._urlutils_rs import win32 as win32_rs
 
-_posix_local_path_to_url = posix_rs.local_path_to_url
-_win32_local_path_to_url = win32_rs.local_path_to_url
-_win32_local_path_from_url = win32_rs.local_path_from_url
-_posix_local_path_from_url = posix_rs.local_path_from_url
+_posix_local_path_to_url = posix_rs.local_path_to_url  # noqa: F401
+_win32_local_path_to_url = win32_rs.local_path_to_url  # noqa: F401
+_win32_local_path_from_url = win32_rs.local_path_from_url  # noqa: F401
+_posix_local_path_from_url = posix_rs.local_path_from_url  # noqa: F401
 
 
 MIN_ABS_FILEURL_LENGTH = len('file:///')

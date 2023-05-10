@@ -30,7 +30,7 @@ from dulwich.diff_tree import RenameDetector, tree_changes
 from dulwich.errors import NotTreeError
 from dulwich.index import (Index, IndexEntry, blob_from_path_and_stat,
                            cleanup_mode, commit_tree, index_entry_from_stat)
-from dulwich.object_store import OverlayObjectStore, iter_tree_contents
+from dulwich.object_store import OverlayObjectStore, iter_tree_contents, BaseObjectStore
 from dulwich.objects import S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Blob, Tree
 
 from .. import controldir as _mod_controldir
@@ -227,6 +227,8 @@ def ensure_normalized_path(path):
 class GitTree(_mod_tree.Tree):
 
     supports_file_ids = False
+
+    store: BaseObjectStore
 
     @classmethod
     def is_special_path(cls, path):
@@ -996,7 +998,10 @@ class InterGitTrees(_mod_tree.InterTree):
 
     _test_mutable_trees_to_test_trees = None
 
-    def __init__(self, source, target):
+    source: GitTree
+    target: GitTree
+
+    def __init__(self, source: GitTree, target: GitTree) -> None:
         super().__init__(source, target)
         if self.source.store == self.target.store:
             self.store = self.source.store

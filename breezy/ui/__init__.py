@@ -47,7 +47,12 @@ breezy.ui.text.TextUIFactory
     back to working through the terminal.
 """
 
+from typing import List, TYPE_CHECKING, Set
 import warnings
+
+if TYPE_CHECKING:
+    from ..progress import ProgressTask
+
 
 _valid_boolean_strings = dict(yes=True, no=False,
                               y=True, n=False,
@@ -168,8 +173,8 @@ class UIFactory:
         )
 
     def __init__(self):
-        self._task_stack = []
-        self.suppressed_warnings = set()
+        self._task_stack: List["ProgressTask"] = []
+        self.suppressed_warnings: Set[str] = set()
         self._quiet = False
 
     def __enter__(self):

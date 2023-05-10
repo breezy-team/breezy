@@ -18,20 +18,9 @@
 
 import os
 from io import BytesIO
-from typing import Set
+from typing import Set, BinaryIO, Iterable
 
-import breezy
-
-from .lazy_import import lazy_import
-
-lazy_import(globals(), """
-from breezy import (
-    atomicfile,
-    globbing,
-    trace,
-    )
-""")
-from . import bedding
+from . import bedding, trace
 
 # ~/.config/breezy/ignore will be filled out using
 # this ignore list, if it does not exist
@@ -50,13 +39,14 @@ USER_DEFAULTS = [
 ]
 
 
-def parse_ignore_file(f):
-    """Read in all of the lines in the file and turn it into an ignore list
+def parse_ignore_file(f: BinaryIO) -> Set[str]:
+    """Parse an ignore file
 
     Continue in the case of utf8 decoding errors, and emit a warning when
     such and error is found. Optimise for the common case -- no decoding
     errors.
     """
+    from .globbing import normalize_pattern
     ignored = set()
     ignore_file = f.read()
     try:
@@ -77,11 +67,11 @@ def parse_ignore_file(f):
                     'Ignoring line.' % (line_number + 1))
 
     # Append each line to ignore list if it's not a comment line
-    for line in unicode_lines:
-        line = line.rstrip('\r\n')
-        if not line or line.startswith('#'):
+    for uline in unicode_lines:
+        uline = uline.rstrip('\r\n')
+        if not uline or uline.startswith('#'):
             continue
-        ignored.add(globbing.normalize_pattern(line))
+        ignored.add(normalize_pattern(uline))
     return ignored
 
 
@@ -107,7 +97,7 @@ def get_user_ignores():
         f.close()
 
 
-def _set_user_ignores(patterns):
+def _set_user_ignores(patterns: Iterable[str]) -> None:
     """Fill out the user ignore file with the given patterns
 
     This may raise an error if it doesn't have permission to
@@ -125,16 +115,17 @@ def _set_user_ignores(patterns):
             f.write(pattern.encode('utf8') + b'\n')
 
 
-def add_unique_user_ignores(new_ignores):
+def add_unique_user_ignores(new_ignores: Set[str]):
     """Add entries to the user's ignore list if not present.
 
     :param new_ignores: A list of ignore patterns
     :return: The list of ignores that were added
     """
+    from .globbing import normalize_pattern
     ignored = get_user_ignores()
-    to_add = []
+    to_add: list[str] = []
     for ignore in new_ignores:
-        ignore = globbing.normalize_pattern(ignore)
+        ignore = normalize_pattern(ignore)
         if ignore not in ignored:
             ignored.add(ignore)
             to_add.append(ignore)
@@ -174,6 +165,7 @@ def get_runtime_ignores():
 
 def tree_ignores_add_patterns(tree, name_pattern_list):
     """Add more ignore patterns to the ignore file in a tree.
+
     If ignore file does not exist then it will be created.
     The ignore file will be automatically added under version control.
 
@@ -197,8 +189,9 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
     with BytesIO(file_contents) as sio:
         ignores = parse_ignore_file(sio)
 
+    from .atomicfile import AtomicFile
     # write out the updated ignores set
-    with atomicfile.AtomicFile(ifn, 'wb') as f:
+    with AtomicFile(ifn, 'wb') as f:
         # write the original contents, preserving original line endings
         f.write(file_contents)
         if len(file_contents) > 0 and not file_contents.endswith(b'\n'):

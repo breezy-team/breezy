@@ -42,6 +42,7 @@ to inherit from them).
 """
 
 from .errors import BzrError, InternalBzrError
+from typing import Dict, Any
 
 
 class ImportNameCollision(InternalBzrError):
@@ -267,7 +268,7 @@ class ImportProcessor:
     __slots__ = ['imports', '_lazy_import_class']
 
     def __init__(self, lazy_import_class=None):
-        self.imports = {}
+        self.imports: Dict[str, Any] = {}
         if lazy_import_class is None:
             self._lazy_import_class = ImportReplacer
         else:
