@@ -68,7 +68,7 @@ class ReadOnlyTransaction(Transaction):
         """Return True if an_object is clean."""
         return (an_object in self._clean_objects)
 
-    def register_clean(self, an_object, precious=False):
+    def register_clean(self, an_object, precious: bool = False) -> None:
         """Register an_object as being clean.
 
         If the precious hint is True, the object will not

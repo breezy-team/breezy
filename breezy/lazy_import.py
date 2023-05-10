@@ -41,6 +41,8 @@ true for classes or functions (when used as a factory, or you want
 to inherit from them).
 """
 
+from typing import Any, Dict
+
 from .errors import BzrError, InternalBzrError
 
 
@@ -267,7 +269,7 @@ class ImportProcessor:
     __slots__ = ['imports', '_lazy_import_class']
 
     def __init__(self, lazy_import_class=None):
-        self.imports = {}
+        self.imports: Dict[str, Any] = {}
         if lazy_import_class is None:
             self._lazy_import_class = ImportReplacer
         else:
