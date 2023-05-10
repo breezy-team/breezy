@@ -97,13 +97,6 @@ class InventorySerializer_v5(xml6.InventorySerializer_v6):
         append(b'<inventory%s format="5"%s>\n' % (fileid, revid))
 
 
-class RevisionSerializer_v5(xml8.RevisionSerializer_v8):
-    """Version 5 serializer
-
-    Packs objects into XML and vice versa.
-    """
-    format_num = b'5'
-
-
 inventory_serializer_v5 = InventorySerializer_v5()
-revision_serializer_v5 = RevisionSerializer_v5()
+
+from breezy._bzr_rs import revision_serializer_v5
