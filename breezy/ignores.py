@@ -18,7 +18,7 @@
 
 import os
 from io import BytesIO
-from typing import Set, BinaryIO, Iterable
+from typing import BinaryIO, Iterable, Set
 
 from . import bedding, trace
 
@@ -190,6 +190,7 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
         ignores = parse_ignore_file(sio)
 
     from .atomicfile import AtomicFile
+
     # write out the updated ignores set
     with AtomicFile(ifn, 'wb') as f:
         # write the original contents, preserving original line endings

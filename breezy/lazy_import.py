@@ -41,8 +41,9 @@ true for classes or functions (when used as a factory, or you want
 to inherit from them).
 """
 
+from typing import Any, Dict
+
 from .errors import BzrError, InternalBzrError
-from typing import Dict, Any
 
 
 class ImportNameCollision(InternalBzrError):

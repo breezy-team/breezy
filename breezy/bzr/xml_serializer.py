@@ -24,9 +24,9 @@
 
 import re
 from typing import Dict, Optional, Union
-from xml.etree.ElementTree import (Element, ElementTree, ParseError,  # noqa: F401
-                                   SubElement, fromstring, fromstringlist,
-                                   tostring, tostringlist)
+from xml.etree.ElementTree import (Element, ElementTree,  # noqa: F401
+                                   ParseError, SubElement, fromstring,
+                                   fromstringlist, tostring, tostringlist)
 
 from .. import errors, lazy_regex
 from . import inventory, serializer

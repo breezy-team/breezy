@@ -47,8 +47,8 @@ breezy.ui.text.TextUIFactory
     back to working through the terminal.
 """
 
-from typing import List, TYPE_CHECKING, Set
 import warnings
+from typing import TYPE_CHECKING, List, Set
 
 if TYPE_CHECKING:
     from ..progress import ProgressTask

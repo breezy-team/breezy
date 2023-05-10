@@ -20,8 +20,8 @@
 For more generic per-repository tests, see breezy.tests.per_repository.
 """
 
-from breezy.tests.per_repository import (TestCaseWithRepository,  # noqa: F401
-                                         all_repository_format_scenarios)
+from breezy.tests.per_repository import TestCaseWithRepository  # noqa: F401
+from breezy.tests.per_repository import all_repository_format_scenarios
 
 
 def all_repository_vf_format_scenarios():

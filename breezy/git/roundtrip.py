@@ -46,7 +46,7 @@ This extra metadata is stored in so-called "supplements":
 """
 
 from io import BytesIO
-from typing import Dict, Any
+from typing import Any, Dict
 
 
 class CommitSupplement:

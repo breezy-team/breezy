@@ -21,7 +21,7 @@ import os
 import tempfile
 import time
 from stat import S_IEXEC, S_ISREG
-from typing import Dict, Any, Tuple, Set, Optional
+from typing import Any, Dict, Optional, Set, Tuple
 
 from .. import (annotate, conflicts, controldir, errors, lock, multiparent,
                 osutils)

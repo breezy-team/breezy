@@ -21,7 +21,7 @@ import os
 import struct
 from copy import copy
 from io import BytesIO
-from typing import Any, Tuple, Optional
+from typing import Any, Optional, Tuple
 from zlib import adler32
 
 from ..lazy_import import lazy_import
@@ -33,9 +33,11 @@ from breezy import (
     multiparent,
     )
 """)
-from .. import errors, osutils, revision, urlutils
+from .. import errors
 from .. import graph as _mod_graph
+from .. import osutils, revision
 from .. import transport as _mod_transport
+from .. import urlutils
 from ..registry import Registry
 from ..textmerge import TextMerge
 from . import index
@@ -1936,7 +1938,7 @@ class NetworkRecordStream:
             iterator should have been obtained from a record_streams'
             record.get_bytes_as(record.storage_kind) call.
         """
-        from . import knit, groupcompress
+        from . import groupcompress, knit
         self._bytes_iterator = bytes_iterator
         self._kind_factory = {
             'fulltext': fulltext_network_to_record,
