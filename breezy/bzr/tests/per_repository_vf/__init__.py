@@ -20,7 +20,7 @@
 For more generic per-repository tests, see breezy.tests.per_repository.
 """
 
-from breezy.tests.per_repository import (TestCaseWithRepository,
+from breezy.tests.per_repository import (TestCaseWithRepository,  # noqa: F401
                                          all_repository_format_scenarios)
 
 

@@ -57,7 +57,7 @@ class MalformedHunkHeader(PatchSyntax):
         self.line = line
 
 
-from ._patch_rs import (BinaryFiles, MalformedPatchHeader, difference_index,
+from ._patch_rs import (BinaryFiles, MalformedPatchHeader, difference_index,  # noqa: F401
                         get_patch_names, iter_lines_handle_nl, parse_range)
 
 

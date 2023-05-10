@@ -1582,7 +1582,7 @@ class _BreadthFirstSearcher:
             return revs, ghosts
 
 
-from ._graph_rs import collapse_linear_regions, invert_parent_map
+from ._graph_rs import collapse_linear_regions, invert_parent_map  # noqa: F401
 
 
 class GraphThunkIdsToKeys:

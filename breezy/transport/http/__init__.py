@@ -22,7 +22,7 @@ There are separate implementation modules for each http client implementation.
 DEBUG = 0
 
 import os
-import ssl
+import ssl  # noqa: F401
 import sys
 
 from ... import config
