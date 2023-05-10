@@ -60,21 +60,23 @@ pub fn encode_and_escape_bytes(data: &[u8]) -> String {
     String::from_utf8_lossy(bytes.as_slice()).to_string()
 }
 
+fn escape_invalid_char(c: char) -> String {
+    if c == '\t' || c == '\n' || c == '\r' || c == '\x7f' {
+        c.to_string()
+    } else if c.is_ascii_control()
+        || (c as u32) > 0xD7FF && (c as u32) < 0xE000
+        || (c as u32) > 0xFFFD && (c as u32) < 0x10000
+    {
+        format!("\\x{:02x}", c as u32)
+    } else {
+        c.to_string()
+    }
+}
+
 pub fn escape_invalid_chars(message: &str) -> String {
     message
         .chars()
-        .map(|c| {
-            if c == '\t' || c == '\n' || c == '\r' || c == '\x7f' {
-                c.to_string()
-            } else if c.is_ascii_control()
-                || (c as u32) > 0xD7FF && (c as u32) < 0xE000
-                || (c as u32) > 0xFFFD && (c as u32) < 0x10000
-            {
-                format!("\\x{:02x}", c as u32)
-            } else {
-                c.to_string()
-            }
-        })
+        .map(escape_invalid_char)
         .collect::<Vec<String>>()
         .join("")
 }
@@ -104,6 +106,91 @@ fn unpack_revision_properties(elt: &xmltree::Element) -> Result<HashMap<String, 
     } else {
         Ok(HashMap::new())
     }
+}
+
+// TODO(jelmer): Move this to somewhere more central?
+fn surrogate_escape(b: u8) -> Vec<u8> {
+    let hi = 0xDC80 + ((b >> 4) as u32);
+    let lo = 0xDC00 + ((b & 0x0F) as u32);
+    let mut result = Vec::new();
+    result.extend_from_slice(&hi.to_be_bytes());
+    result.extend_from_slice(&lo.to_be_bytes());
+    result
+}
+
+fn utf8_encode_surrogate(codepoint: u32) -> Vec<u8> {
+    let mut result = Vec::new();
+    if codepoint < 0x80 {
+        result.push(codepoint as u8);
+    } else if codepoint < 0x800 {
+        result.push(((codepoint >> 6) & 0x1F) as u8 | 0xC0);
+        result.push((codepoint & 0x3F) as u8 | 0x80);
+    } else if codepoint < 0x10000 {
+        result.push(((codepoint >> 12) & 0x0F) as u8 | 0xE0);
+        result.push(((codepoint >> 6) & 0x3F) as u8 | 0x80);
+        result.push((codepoint & 0x3F) as u8 | 0x80);
+    } else if codepoint < 0x110000 {
+        result.push(((codepoint >> 18) & 0x07) as u8 | 0xF0);
+        result.push(((codepoint >> 12) & 0x3F) as u8 | 0x80);
+        result.push(((codepoint >> 6) & 0x3F) as u8 | 0x80);
+        result.push((codepoint & 0x3F) as u8 | 0x80);
+    } else {
+        panic!("Invalid codepoint: {}", codepoint);
+    }
+    result
+}
+
+fn decode_pep838<F, G>(bytes: &[u8], surrogate_fn: F, other_fn: G) -> String
+where
+    F: Fn(u32) -> String,
+    G: Fn(char) -> String,
+{
+    let mut result = Vec::new();
+    let mut i = 0;
+    while i < bytes.len() {
+        let byte = bytes[i];
+        if byte & 0x80 == 0 {
+            // single-byte character
+            result.push(other_fn(byte as char));
+            i += 1;
+        } else if byte & 0xE0 == 0xC0 {
+            // two-byte character
+            if i + 1 < bytes.len() {
+                let c = (((byte & 0x1F) as u32) << 6) | ((bytes[i + 1] & 0x3F) as u32);
+                result.push(other_fn(char::from_u32(c).unwrap()));
+            } else {
+                result.push(other_fn('\u{FFFD}'));
+            }
+            i += 2;
+        } else if byte & 0xF0 == 0xE0 {
+            // three-byte character
+            if i + 2 < bytes.len() {
+                let c = (((byte & 0x0F) as u32) << 12)
+                    | (((bytes[i + 1] & 0x3F) as u32) << 6)
+                    | ((bytes[i + 2] & 0x3F) as u32);
+                result.push(other_fn(char::from_u32(c).unwrap()));
+            } else {
+                result.push(other_fn('\u{FFFD}'));
+            }
+            i += 3;
+        } else if byte & 0xF8 == 0xF0 {
+            // four-byte character
+            if i + 3 < bytes.len() {
+                let high = ((byte & 0x07) as u16) << 2 | ((bytes[i + 1] & 0x30) >> 4) as u16;
+                let low = ((bytes[i + 1] & 0x0F) as u16) << 6 | (bytes[i + 2] & 0x3F) as u16;
+                result.push(surrogate_fn(((high as u32) << 16) | (low as u32)));
+                i += 4;
+            } else {
+                result.push(other_fn('\u{FFFD}'));
+                i += 1;
+            }
+        } else {
+            // invalid character
+            result.push(other_fn('\u{FFFD}'));
+            i += 1;
+        }
+    }
+    result.concat()
 }
 
 impl<T: XMLRevisionSerializer> RevisionSerializer for T {
@@ -225,13 +312,17 @@ impl<T: XMLRevisionSerializer> RevisionSerializer for T {
                         )
                         .as_bytes(),
                     )?;
-                    let prop_value_utf8 = String::from_utf8(prop_value.clone()).unwrap();
-                    buf.write_all(
-                        encode_and_escape_string(
-                            escape_invalid_chars(prop_value_utf8.as_str()).as_str(),
-                        )
-                        .as_bytes(),
-                    )?;
+                    let prop_value = decode_pep838(
+                        prop_value,
+                        |c| {
+                            utf8_encode_surrogate(c)
+                                .iter()
+                                .map(|x| format!("\\x{:02x}", *x as u32))
+                                .collect()
+                        },
+                        escape_invalid_char,
+                    );
+                    buf.write_all(encode_and_escape_string(prop_value.as_str()).as_bytes())?;
                     buf.write_all(b"</property>\n")?;
                 } else {
                     buf.write_all(
