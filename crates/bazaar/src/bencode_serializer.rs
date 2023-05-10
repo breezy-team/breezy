@@ -230,34 +230,41 @@ impl RevisionSerializer for BEncodeRevisionSerializer1 {
                     );
                 }
                 b"properties" => {
-                    properties = Some(
-                        value
-                            .dictionary_or_else(|_| {
-                                Err(Error::DecodeError("invalid properties".to_string()))
-                            })
-                            .map(|mut d| {
-                                let mut ps = std::collections::HashMap::new();
-                                while let Some((k, v)) = d.next_pair().map_err(|e| {
-                                    Error::DecodeError(format!("failed to decode bencode: {}", e))
-                                })? {
-                                    let v = v
-                                        .bytes_or(Err(Error::DecodeError(format!(
-                                            "invalid property {}",
-                                            String::from_utf8_lossy(k)
-                                        ))))?
-                                        .to_vec();
-                                    let k = String::from_utf8(k.to_vec()).map_err(|e| {
+                    properties =
+                        Some(
+                            value
+                                .dictionary_or_else(|_| {
+                                    Err(Error::DecodeError("invalid properties".to_string()))
+                                })
+                                .map(|mut d| {
+                                    let mut ps = std::collections::HashMap::new();
+                                    while let Some((k, v)) = d.next_pair().map_err(|e| {
                                         Error::DecodeError(format!(
-                                            "invalid property {}: {}",
-                                            String::from_utf8_lossy(k),
+                                            "failed to decode bencode: {}",
                                             e
                                         ))
-                                    })?;
-                                    ps.insert(k, v);
-                                }
-                                Ok(ps)
-                            })??,
-                    );
+                                    })? {
+                                        let v = v
+                                            .bytes_or(Err(Error::DecodeError(format!(
+                                                "invalid property {}",
+                                                String::from_utf8_lossy(k)
+                                            ))))?
+                                            .to_vec();
+                                        let k = String::from_utf8(k.to_vec()).map_err(|e| {
+                                            Error::DecodeError(format!(
+                                                "invalid property {}: {}",
+                                                String::from_utf8_lossy(k),
+                                                e
+                                            ))
+                                        })?;
+                                        ps.insert(k, v);
+                                    }
+                                    Ok::<
+                                        std::collections::HashMap<std::string::String, Vec<u8>>,
+                                        Error,
+                                    >(ps)
+                                })??,
+                        );
                 }
                 b"message" => {
                     message = Some(
@@ -303,3 +310,5 @@ impl RevisionSerializer for BEncodeRevisionSerializer1 {
         self.read_revision_from_string(&buf)
     }
 }
+
+const BENCODE_REVISION_SERIALIZER_V1: BEncodeRevisionSerializer1 = BEncodeRevisionSerializer1 {};

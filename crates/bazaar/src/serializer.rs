@@ -8,6 +8,12 @@ pub enum Error {
     IOError(std::io::Error),
 }
 
+impl From<std::io::Error> for Error {
+    fn from(error: std::io::Error) -> Self {
+        Error::IOError(error)
+    }
+}
+
 pub trait RevisionSerializer: Send + Sync {
     fn format_name(&self) -> &'static str;
 
