@@ -2282,6 +2282,9 @@ class CHKInventory(CommonInventory):
 class CHKInventoryDirectory(InventoryDirectory):
     """A directory in an inventory."""
 
+    def __init__(self, file_id, name, parent_id):
+        InventoryEntry.__init__(self, file_id, name, parent_id)
+
     @property
     def children(self):
         """Access the list of children of this directory.
