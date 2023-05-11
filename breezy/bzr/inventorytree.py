@@ -1079,11 +1079,10 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
             else:
                 relroot = ""
             # FIXME: stash the node in pending
-            entry = inv.get_entry(file_id)
             subdirs = []
-            for name, child in entry.sorted_children():
-                toppath = relroot + name
-                dirblock.append((toppath, name, child.kind, None, child.kind))
+            for child in inv.iter_sorted_children(file_id):
+                toppath = relroot + child.name
+                dirblock.append((toppath, child.name, child.kind, None, child.kind))
                 if child.kind == _directory:
                     subdirs.append((toppath, child.file_id))
             yield root, dirblock

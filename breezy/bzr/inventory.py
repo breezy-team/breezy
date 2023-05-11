@@ -416,9 +416,6 @@ class InventoryDirectory(InventoryEntry):
         super().__init__(file_id, name, parent_id)
         self.children = {}
 
-    def sorted_children(self):
-        return sorted(self.children.items())
-
     def kind_character(self):
         """See InventoryEntry.kind_character."""
         return '/'
@@ -884,7 +881,7 @@ class CommonInventory:
             return None, None, None
         for i, f in enumerate(names):
             try:
-                children = getattr(parent, 'children', None)
+                children = self.get_children(parent.file_id)
                 if children is None:
                     return None, None, None
                 cie = children[f]
@@ -921,7 +918,7 @@ class CommonInventory:
             return None
         for f in names:
             try:
-                children = getattr(parent, 'children', None)
+                children = self.get_children(parent.file_id)
                 if children is None:
                     return None
                 cie = children[f]
@@ -1686,7 +1683,7 @@ class CHKInventory(CommonInventory):
         elif sections[0].startswith(b"dir: "):
             result = CHKInventoryDirectory(sections[0][5:],
                                            sections[2].decode('utf8'),
-                                           sections[1], self)
+                                           sections[1])
         elif sections[0].startswith(b"symlink: "):
             result = InventoryLink(sections[0][9:],
                                    sections[2].decode('utf8'),
@@ -2285,14 +2282,6 @@ class CHKInventory(CommonInventory):
 class CHKInventoryDirectory(InventoryDirectory):
     """A directory in an inventory."""
 
-    __slots__ = ['_children', '_chk_inventory']
-
-    def __init__(self, file_id, name, parent_id, chk_inventory):
-        # Don't call InventoryDirectory.__init__ - it isn't right for this
-        # class.
-        InventoryEntry.__init__(self, file_id, name, parent_id)
-        self._chk_inventory = chk_inventory
-
     @property
     def children(self):
         """Access the list of children of this directory.
@@ -2303,7 +2292,7 @@ class CHKInventoryDirectory(InventoryDirectory):
         well when specific names are accessed. (So path traversal can be
         written in the obvious way but not examine siblings.).
         """
-        return self._chk_inventory.get_children(self.file_id)
+        raise NotImplementedError
 
 
 entry_factory = {
