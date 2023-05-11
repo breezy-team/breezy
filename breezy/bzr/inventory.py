@@ -36,10 +36,8 @@ from breezy.bzr import (
 """)
 
 from .. import errors, lazy_regex, osutils, trace
-from .static_tuple import StaticTuple
-
-
 from .._bzr_rs import ROOT_ID
+from .static_tuple import StaticTuple
 
 
 class InvalidEntryName(errors.InternalBzrError):
