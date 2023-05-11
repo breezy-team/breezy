@@ -325,6 +325,34 @@ impl BEncodeRevisionSerializerv1 {
     }
 }
 
+#[pyclass(subclass,extends=RevisionSerializer)]
+struct XMLRevisionSerializer8;
+
+#[pymethods]
+impl XMLRevisionSerializer8 {
+    #[new]
+    fn new() -> (Self, RevisionSerializer) {
+        (
+            Self {},
+            RevisionSerializer(Box::new(bazaar::xml_serializer::XMLRevisionSerializer8)),
+        )
+    }
+}
+
+#[pyclass(subclass,extends=RevisionSerializer)]
+struct XMLRevisionSerializer5;
+
+#[pymethods]
+impl XMLRevisionSerializer5 {
+    #[new]
+    fn new() -> (Self, RevisionSerializer) {
+        (
+            Self {},
+            RevisionSerializer(Box::new(bazaar::xml_serializer::XMLRevisionSerializer5)),
+        )
+    }
+}
+
 #[pymethods]
 impl RevisionSerializer {
     #[getter]
@@ -404,24 +432,27 @@ fn check_not_reserved_id(py: Python, revision_id: PyObject) -> PyResult<()> {
 
 #[pyfunction]
 fn escape_invalid_chars(message: Option<&str>) -> (Option<String>, usize) {
-    bazaar::xml_serializer::escape_invalid_chars(message)
+    if let Some(message) = message {
+        (
+            Some(bazaar::xml_serializer::escape_invalid_chars(message)),
+            message.len(),
+        )
+    } else {
+        (None, 0)
+    }
 }
 
 #[pyfunction]
 fn encode_and_escape(py: Python, unicode_or_utf8_str: PyObject) -> PyResult<&PyBytes> {
-    if let Ok(text) = unicode_or_utf8_str.extract::<&str>(py) {
-        Ok(PyBytes::new(
-            py,
-            bazaar::xml_serializer::encode_and_escape_string(text).as_slice(),
-        ))
+    let ret = if let Ok(text) = unicode_or_utf8_str.extract::<&str>(py) {
+        bazaar::xml_serializer::encode_and_escape_string(text)
     } else if let Ok(bytes) = unicode_or_utf8_str.extract::<&[u8]>(py) {
-        Ok(PyBytes::new(
-            py,
-            bazaar::xml_serializer::encode_and_escape_bytes(bytes).as_slice(),
-        ))
+        bazaar::xml_serializer::encode_and_escape_bytes(bytes)
     } else {
-        Err(PyTypeError::new_err("expected str or bytes"))
-    }
+        return Err(PyTypeError::new_err("expected str or bytes"));
+    };
+
+    Ok(PyBytes::new(py, ret.as_bytes()))
 }
 
 #[pymodule]
@@ -437,9 +468,19 @@ fn _bzr_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<Revision>()?;
     m.add_class::<RevisionSerializer>()?;
     m.add_class::<BEncodeRevisionSerializerv1>()?;
+    m.add_class::<XMLRevisionSerializer5>()?;
+    m.add_class::<XMLRevisionSerializer8>()?;
     m.add(
         "revision_bencode_serializer",
         m.getattr("BEncodeRevisionSerializerv1")?.call0()?,
+    )?;
+    m.add(
+        "revision_serializer_v8",
+        m.getattr("XMLRevisionSerializer8")?.call0()?,
+    )?;
+    m.add(
+        "revision_serializer_v5",
+        m.getattr("XMLRevisionSerializer5")?.call0()?,
     )?;
     m.add("CURRENT_REVISION", bazaar::CURRENT_REVISION)?;
     m.add("NULL_REVISION", bazaar::NULL_REVISION)?;

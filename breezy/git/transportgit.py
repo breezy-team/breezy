@@ -452,6 +452,7 @@ class TransportRepo(BaseRepo):
         object_store = TransportObjectStore.from_config(
             self._commontransport.clone(OBJECTDIR),
             config)
+        refs_container: RefsContainer
         if refs_text is not None:
             refs_container = InfoRefsContainer(BytesIO(refs_text))
             try:

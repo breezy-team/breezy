@@ -22,13 +22,11 @@
 # importing this module is fairly slow because it has to load several
 # ElementTree bits
 
-import re
-from typing import Dict, Optional, Union
-from xml.etree.ElementTree import (Element, ElementTree, ParseError,
-                                   SubElement, fromstring, fromstringlist,
-                                   tostring, tostringlist)
+from typing import Optional
+from xml.etree.ElementTree import (Element, ElementTree,  # noqa: F401
+                                   ParseError, SubElement, fromstring,
+                                   fromstringlist)
 
-from .. import errors, lazy_regex
 from . import inventory, serializer
 
 
@@ -121,7 +119,7 @@ def get_utf8_or_ascii(a_str):
         return a_str
 
 
-from .._bzr_rs import encode_and_escape, escape_invalid_chars
+from .._bzr_rs import encode_and_escape, escape_invalid_chars  # noqa: F401
 
 
 def unpack_inventory_entry(elt, entry_cache=None, return_from_cache=False):

@@ -20,13 +20,9 @@ from io import BytesIO
 from .lazy_import import lazy_import
 
 lazy_import(globals(), """
-from fnmatch import fnmatch
 
 from breezy.terminal import color_string, FG
 
-from breezy import (
-    diff,
-    )
 """)
 from . import controldir, errors, osutils
 from . import revision as _mod_revision
@@ -243,6 +239,7 @@ class _GrepDiffOutputter:
 def grep_diff(opts):
     wt, branch, relpath = \
         controldir.ControlDir.open_containing_tree_or_branch('.')
+    from breezy import diff
     with branch.lock_read():
         if opts.revision:
             start_rev = opts.revision[0]
@@ -519,7 +516,8 @@ def versioned_file_grep(tree, tree_path, relpath, path, opts, revno, path_prefix
     _file_grep(file_text, path, opts, revno, path_prefix)
 
 
-def _path_in_glob_list(path, glob_list):
+def _path_in_glob_list(path, glob_list) -> bool:
+    from fnmatch import fnmatch
     for glob in glob_list:
         if fnmatch(path, glob):
             return True

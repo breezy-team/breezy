@@ -19,6 +19,7 @@
 
 from collections import defaultdict
 from io import BytesIO
+from typing import Dict, Set
 
 from .. import errors, trace
 from .. import transport as _mod_transport
@@ -31,8 +32,8 @@ class UnpeelMap:
     """
 
     def __init__(self):
-        self._map = defaultdict(set)
-        self._re_map = {}
+        self._map: Dict[bytes, Set[bytes]] = defaultdict(set)
+        self._re_map: Dict[bytes, Set[bytes]] = {}
 
     def update(self, m):
         for k, v in m.items():
