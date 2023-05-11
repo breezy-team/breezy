@@ -687,14 +687,14 @@ class CommonInventory:
         if from_dir is None:
             if self.root is None:
                 return
-            from_dir = self.root
+            from_dir = self.root.file_id
             yield '', self.root
-        elif isinstance(from_dir, bytes):
-            from_dir = self.get_entry(from_dir)
+        elif not isinstance(from_dir, bytes):
+            from_dir = from_dir.file_id
 
         # unrolling the recursive called changed the time from
         # 440ms/663ms (inline/total) to 116ms/116ms
-        children = [(c.name, c) for c in self.iter_sorted_children(from_dir.file_id)]
+        children = [(c.name, c) for c in self.iter_sorted_children(from_dir)]
         if not recursive:
             yield from children
             return
