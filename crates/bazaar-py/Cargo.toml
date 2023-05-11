@@ -11,3 +11,4 @@ pyo3 = { version = ">=0.17, <0.19", features = ["extension-module", "chrono"]}
 pyo3-file = { git = "https://github.com/omerbenamram/pyo3-file" }
 bazaar = { path = "../bazaar" }
 chrono = ">= 0.4"
+breezy-osutils = { path = "../osutils" }

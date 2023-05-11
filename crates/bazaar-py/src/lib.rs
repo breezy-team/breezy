@@ -8,6 +8,8 @@ use pyo3::types::{PyBytes, PyList, PyString, PyUnicode};
 use pyo3_file::PyFileLikeObject;
 use std::collections::HashMap;
 
+mod inventory;
+
 import_exception!(breezy.errors, ReservedId);
 
 /// Create a new file id suffix that is reasonably unique.
@@ -466,6 +468,8 @@ fn _bzr_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m_globbing.add_class::<Replacer>()?;
     m.add_submodule(m_globbing)?;
     m.add_class::<Revision>()?;
+    let inventorym = inventory::_inventory_rs(py)?;
+    m.add_submodule(inventorym)?;
     m.add_class::<RevisionSerializer>()?;
     m.add_class::<BEncodeRevisionSerializerv1>()?;
     m.add_class::<XMLRevisionSerializer5>()?;
