@@ -58,7 +58,8 @@ from ..transport.local import LocalTransport, file_kind
 from ..tree import FileTimestampUnavailable, InterTree, MissingNestedTree
 from ..workingtree import WorkingTree
 from . import dirstate
-from .inventory import ROOT_ID, Inventory, entry_factory, InventoryEntry, DuplicateFileId
+from .inventory import (ROOT_ID, DuplicateFileId, Inventory, InventoryEntry,
+                        entry_factory)
 from .inventorytree import (InterInventoryTree, InventoryRevisionTree,
                             InventoryTree)
 from .lockable_files import LockableFiles
