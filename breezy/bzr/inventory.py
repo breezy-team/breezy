@@ -23,10 +23,6 @@
 # But those depend on its position within a particular inventory, and
 # it would be nice not to need to hold the backpointer here.
 
-# This should really be an id randomly assigned when the tree is
-# created, but it's not for now.
-ROOT_ID = b"TREE_ROOT"
-
 from collections import deque
 
 from ..lazy_import import lazy_import
@@ -41,6 +37,9 @@ from breezy.bzr import (
 
 from .. import errors, lazy_regex, osutils, trace
 from .static_tuple import StaticTuple
+
+
+from .._bzr_rs import ROOT_ID
 
 
 class InvalidEntryName(errors.InternalBzrError):

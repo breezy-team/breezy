@@ -94,4 +94,5 @@ impl RevisionId {
 }
 
 pub mod bencode_serializer;
+pub mod inventory;
 pub mod xml_serializer;
