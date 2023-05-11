@@ -377,7 +377,7 @@ class CommitHandler(processor.CommitHandler):
             except:
                 print("failed to add path '%s' with entry '%s' in command %s"
                       % (path, ie, self.command.id))
-                print(f"parent's children are:\n{ie.parent_id.children!r}\n")
+                print(f"parent's children are:\n{inv.get_children(ie.parent_id)!r}\n")
                 raise
         else:
             if old_ie.kind == 'directory':
@@ -584,7 +584,7 @@ class CommitHandler(processor.CommitHandler):
             ie = new_inv.get_entry(file_id)
             if ie.kind != 'directory':
                 continue
-            if len(ie.children) == 0:
+            if len(new_inv.get_children(ie.file_id)) == 0:
                 result.append((dir, file_id))
                 if self.verbose:
                     self.note(f"pruning empty directory {dir}")

@@ -293,13 +293,6 @@ class InventoryTree(Tree):
                         yield p, e
             return iter_entries(self.root_inventory)
 
-    def iter_child_entries(self, path):
-        with self.lock_read():
-            ie = self._path2ie(path)
-            if ie.kind != 'directory':
-                raise errors.NotADirectory(path)
-            return ie.children.values()
-
     def _get_plan_merge_data(self, path, other, base):
         from . import versionedfile
         file_id = self.path2id(path)
@@ -682,8 +675,7 @@ class _SmartAddHelper:
         """Retrieve the most up to date inventory entry for a path.
 
         :param inv_path: Normalized inventory path
-        :return: Inventory entry (with possibly invalid .children for
-            directories)
+        :return: Inventory entry
         """
         entry = self._invdelta.get(inv_path)
         if entry is not None:
@@ -1013,6 +1005,14 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
                     yield full_subpath, status, kind, entry
             else:
                 yield path, 'V', entry.kind, entry
+
+    def iter_child_entries(self, path):
+        inv, ie = self._path2inv_ie(path)
+        if ie is None:
+            raise _mod_transport.NoSuchFile(path)
+        if ie.kind != 'directory':
+            raise errors.NotADirectory(path)
+        return inv.iter_sorted_children(ie.file_id)
 
     def get_symlink_target(self, path):
         # Inventories store symlink targets in unicode

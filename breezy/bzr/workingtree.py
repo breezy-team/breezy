@@ -358,7 +358,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         # and link it into the index with the new changed id.
         inv._byid[inv.root.file_id] = inv.root
         # and finally update all children to reference the new id.
-        # XXX: this should be safe to just look at the root.children
+        # XXX: this should be safe to just look at the root children
         # list, not the WHOLE INVENTORY.
         for fid in inv.iter_all_ids():
             entry = inv.get_entry(fid)
@@ -968,11 +968,11 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 hashfile.close()
 
     def subsume(self, other_tree):
-        def add_children(inventory, entry):
-            for child_entry in entry.children.values():
+        def add_children(inventory, other_inventory, entry):
+            for child_entry in other_inventory.get_children(entry.file_id).values():
                 inventory._byid[child_entry.file_id] = child_entry
                 if child_entry.kind == 'directory':
-                    add_children(inventory, child_entry)
+                    add_children(inventory, other_inventory, child_entry)
         with self.lock_write():
             if other_tree.path2id('') == self.path2id(''):
                 raise errors.BadSubsumeSource(self, other_tree,
@@ -996,7 +996,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 other_root.parent_id = new_root_parent
                 other_root.name = osutils.basename(other_tree_path)
                 self.root_inventory.add(other_root)
-                add_children(self.root_inventory, other_root)
+                add_children(self.root_inventory, other_tree.root_inventory, other_root)
                 self._write_inventory(self.root_inventory)
                 # normally we don't want to fetch whole repositories, but i
                 # think here we really do want to consolidate the whole thing.
@@ -1129,7 +1129,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
                     dir_ie = inv.get_entry(from_dir_id)
                     if dir_ie.kind == 'directory':
-                        f_ie = dir_ie.children.get(f)
+                        f_ie = inv.get_children(dir_ie.file_id).get(f)
                     else:
                         f_ie = None
                     if f_ie:
@@ -1292,6 +1292,13 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             # TODO(jelmer): what about the from_invs?
             self._write_inventory(to_inv)
             return rename_tuples
+
+    def iter_child_entries(self, path):
+        with self.lock_read():
+            ie = self._path2ie(path)
+            if ie.kind != 'directory':
+                raise errors.NotADirectory(path)
+            return ie.children.values()
 
     def rename_one(self, from_rel, to_rel, after=False):
         """Rename one file.
@@ -1560,17 +1567,19 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 # e.g. directory deleted
                 continue
 
+            versioned_children = [e.name for e in self.iter_child_entries(path)]
+
             fl = []
             for subf in os.listdir(os.fsencode(dirabs)):
                 subf = os.fsdecode(subf)
 
                 if self.controldir.is_control_filename(subf):
                     continue
-                if subf not in dir_entry.children:
+                if subf not in versioned_children:
                     (subf_norm,
                      can_access) = osutils.normalized_filename(subf)
                     if subf_norm != subf and can_access:
-                        if subf_norm not in dir_entry.children:
+                        if subf_norm not in versioned_children:
                             fl.append(subf_norm)
                     else:
                         fl.append(subf)
@@ -1728,8 +1737,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             # FIXME: stash the node in pending
             entry = inv.get_entry(top_id)
             if entry.kind == 'directory':
-                for name, child in entry.sorted_children():
-                    dirblock.append((relroot + name, name, child.kind, None,
+                for child in inv.iter_sorted_children(entry.file_id):
+                    dirblock.append((relroot + child.name, child.name, child.kind, None,
                                      child.file_id, child.kind
                                      ))
             yield (currentdir[0], entry.file_id), dirblock
