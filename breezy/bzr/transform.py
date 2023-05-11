@@ -1854,14 +1854,11 @@ class TransformPreview(InventoryTreeTransform):
         except KeyError:
             return
         try:
-            entry = next(self._tree.iter_entries_by_dir(
-                specific_files=[path]))[1]
-        except StopIteration:
-            return
-        children = getattr(entry, 'children', {})
-        for child in children:
-            childpath = joinpath(path, child)
-            yield self.trans_id_tree_path(childpath)
+            for child in self._tree.iter_child_entries(path):
+                childpath = joinpath(path, child.name)
+                yield self.trans_id_tree_path(childpath)
+        except (errors.NotADirectory, _mod_transport.NoSuchFile):
+            pass
 
     def new_orphan(self, trans_id, parent_id):
         raise NotImplementedError(self.new_orphan)
