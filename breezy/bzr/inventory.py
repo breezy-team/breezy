@@ -809,9 +809,9 @@ class CommonInventory:
             cur_relpath, cur_dir = stack.pop()
 
             child_dirs = []
-            for child_name, child_ie in sorted(cur_dir.children.items()):
+            for child_ie in self.iter_sorted_children(cur_dir.file_id):
 
-                child_relpath = cur_relpath + child_name
+                child_relpath = cur_relpath + child_ie.name
 
                 if (specific_file_ids is None
                         or child_ie.file_id in specific_file_ids):
@@ -853,9 +853,8 @@ class CommonInventory:
         accum = []
 
         def descend(dir_ie, dir_path):
-            kids = sorted(dir_ie.children.items())
-            for name, ie in kids:
-                child_path = osutils.pathjoin(dir_path, name)
+            for ie in self.iter_sorted_children(dir_ie.file_id):
+                child_path = osutils.pathjoin(dir_path, ie.name)
                 accum.append((child_path, ie))
                 if ie.kind == 'directory':
                     descend(ie, child_path)
@@ -1049,7 +1048,8 @@ class Inventory(CommonInventory):
         return f"<Inventory object at {id(self):x}, contents={contents!r}>"
 
     def get_children(self, file_id):
-        return self.get_entry(file_id).children
+        ie = self.get_entry(file_id)
+        return getattr(ie, 'children', {})
 
     def apply_delta(self, delta):
         """Apply a delta to this inventory.
@@ -1112,7 +1112,7 @@ class Inventory(CommonInventory):
         for old_path, file_id in sorted(((op, f) for op, np, f, e in delta
                                          if op is not None), reverse=True):
             # Preserve unaltered children of file_id for later reinsertion.
-            file_id_children = getattr(self.get_entry(file_id), 'children', {})
+            file_id_children = self.get_children(file_id)
             if len(file_id_children):
                 children[file_id] = file_id_children
             if self.id2path(file_id) != old_path:
@@ -1296,7 +1296,7 @@ class Inventory(CommonInventory):
         ie = self.get_entry(file_id)
         del self._byid[file_id]
         if ie.parent_id is not None:
-            del self.get_entry(ie.parent_id).children[ie.name]
+            del self.get_children(ie.parent_id)[ie.name]
 
     def __eq__(self, other):
         """Compare two sets by comparing their contents.
@@ -1844,7 +1844,7 @@ class CHKInventory(CommonInventory):
                 continue
             # This loop could potentially be better by using the id_basename
             # map to just get the child file ids.
-            for child in entry.children.values():
+            for child in self.iter_sorted_children(entry.file_id):
                 if child.file_id not in altered:
                     raise errors.InconsistentDelta(self.id2path(child.file_id),
                                                    child.file_id, "Child not deleted or reparented when "
