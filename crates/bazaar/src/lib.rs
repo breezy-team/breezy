@@ -96,4 +96,5 @@ impl RevisionId {
     }
 }
 
+pub mod inventory;
 pub mod xml_serializer;

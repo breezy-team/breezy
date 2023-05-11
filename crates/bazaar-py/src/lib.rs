@@ -484,6 +484,7 @@ fn _bzr_rs(py: Python, m: &PyModule) -> PyResult<()> {
     )?;
     m.add("CURRENT_REVISION", bazaar::CURRENT_REVISION)?;
     m.add("NULL_REVISION", bazaar::NULL_REVISION)?;
+    m.add("ROOT_ID", bazaar::inventory::ROOT_ID)?;
     m.add_wrapped(wrap_pyfunction!(is_null_revision))?;
     m.add_wrapped(wrap_pyfunction!(is_reserved_revision_id))?;
     m.add_wrapped(wrap_pyfunction!(check_not_reserved_id))?;
