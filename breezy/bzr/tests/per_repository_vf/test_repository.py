@@ -138,6 +138,7 @@ class TestRepository(TestCaseWithRepository):
         inv = inventory.Inventory(revision_id=b'A')
         inv.root.revision = b'A'
         inv.root.file_id = b'fixed-root'
+        inv._byid[inv.root.file_id] = inv.root
         # Insert the inventory on its own to an identical repository, to get
         # its sha1.
         reference_repo = self.make_repository('reference_repo')

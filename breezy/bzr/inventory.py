@@ -694,7 +694,7 @@ class CommonInventory:
 
         # unrolling the recursive called changed the time from
         # 440ms/663ms (inline/total) to 116ms/116ms
-        children = sorted(from_dir.children.items())
+        children = [(c.name, c) for c in self.iter_sorted_children(from_dir.file_id)]
         if not recursive:
             yield from children
             return
@@ -718,7 +718,7 @@ class CommonInventory:
                     continue
 
                 # But do this child first
-                new_children = sorted(ie.children.items())
+                new_children = [(c.name, c) for c in self.iter_sorted_children(ie.file_id)]
                 new_children = deque(new_children)
                 stack.append((path, new_children))
                 # Break out of inner loop, so that we start outer loop with child
