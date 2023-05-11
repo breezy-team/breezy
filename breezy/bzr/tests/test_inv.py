@@ -308,8 +308,8 @@ class TestInventoryUpdates(TestCase):
     def test_add_recursive(self):
         parent = InventoryDirectory(b'src-id', 'src', b'tree-root')
         child = InventoryFile(b'hello-id', 'hello.c', b'src-id')
-        parent.children[child.file_id] = child
         inv = inventory.Inventory(b'tree-root')
+        parent.children = {'hello.c': child}
         inv.add(parent)
         self.assertEqual('src/hello.c', inv.id2path(b'hello-id'))
 
@@ -932,10 +932,9 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         lines = chk_inv.to_lines()
         new_inv = CHKInventory.deserialise(chk_bytes, lines, (b"revid",))
         root_entry = new_inv.get_entry(inv.root.file_id)
-        self.assertEqual(None, root_entry._children)
-        self.assertEqual({'file'}, set(root_entry.children))
+        self.assertEqual({'file'}, set(inv.get_children(root_entry.file_id)))
         file_direct = new_inv.get_entry(b"fileid")
-        file_found = root_entry.children['file']
+        file_found = inv.get_children(root_entry.file_id)['file']
         self.assertEqual(file_direct.kind, file_found.kind)
         self.assertEqual(file_direct.file_id, file_found.file_id)
         self.assertEqual(file_direct.parent_id, file_found.parent_id)
@@ -1339,9 +1338,9 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
             sorted(new_inv._fileid_to_entry_cache.keys()))
         ie_root = new_inv._fileid_to_entry_cache[new_inv.root_id]
         self.assertEqual(['dir-\N{EURO SIGN}', 'f\xefle'],
-                         sorted(ie_root._children.keys()))
+                         [ie.name for ie in new_inv.iter_sorted_children(ie_root.file_id)])
         ie_dir = new_inv._fileid_to_entry_cache[b'dirid']
-        self.assertEqual(['ch\xefld'], sorted(ie_dir._children.keys()))
+        self.assertEqual(['ch\xefld'], [ie.name for ie in new_inv.iter_sorted_children(ie_dir.file_id)])
 
     def test__preload_populates_cache(self):
         inv = Inventory()
@@ -1372,26 +1371,21 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
             sorted(new_inv._fileid_to_entry_cache.keys()))
         self.assertTrue(new_inv._fully_cached)
         ie_root = new_inv._fileid_to_entry_cache[root_id]
-        self.assertEqual(['dir', 'file'], sorted(ie_root._children.keys()))
+        self.assertEqual(['dir', 'file'], [ie.name for ie in new_inv.iter_sorted_children(ie_root.file_id)])
         ie_dir = new_inv._fileid_to_entry_cache[b'dirid']
-        self.assertEqual(['child'], sorted(ie_dir._children.keys()))
+        self.assertEqual(['child'], [ie.name for ie in new_inv.iter_sorted_children(ie_dir.file_id)])
 
     def test__preload_handles_partially_evaluated_inventory(self):
         new_inv = self.make_basic_utf8_inventory()
         ie = new_inv.get_entry(new_inv.root_id)
-        self.assertIs(None, ie._children)
         self.assertEqual(['dir-\N{EURO SIGN}', 'f\xefle'],
-                         sorted(ie.children.keys()))
-        # Accessing .children loads _children
-        self.assertEqual(['dir-\N{EURO SIGN}', 'f\xefle'],
-                         sorted(ie._children.keys()))
+                         [c.name for c in new_inv.iter_sorted_children(ie.file_id)])
         new_inv._preload_cache()
         # No change
         self.assertEqual(['dir-\N{EURO SIGN}', 'f\xefle'],
-                         sorted(ie._children.keys()))
-        ie_dir = new_inv.get_entry(b"dirid")
+                         [c.name for c in new_inv.iter_sorted_children(ie.file_id)])
         self.assertEqual(['ch\xefld'],
-                         sorted(ie_dir._children.keys()))
+                         [c.name for c in new_inv.iter_sorted_children(b"dirid")])
 
     def test_filter_change_in_renamed_subfolder(self):
         inv = Inventory(b'tree-root')

@@ -727,6 +727,12 @@ class CommonInventory:
                 # if we finished all children, pop it off the stack
                 stack.pop()
 
+    def get_children(self, file_id):
+        raise NotImplementedError
+
+    def iter_sorted_children(self, file_id):
+        return (c for (_n, c) in sorted(self.get_children(file_id).items()))
+
     def _preload_cache(self):
         """Populate any caches, we are about to access all items.
 
@@ -1041,6 +1047,9 @@ class Inventory(CommonInventory):
         if len(contents) > max_len:
             contents = contents[:(max_len - len(closing))] + closing
         return f"<Inventory object at {id(self):x}, contents={contents!r}>"
+
+    def get_children(self, file_id):
+        return self.get_entry(file_id).children
 
     def apply_delta(self, delta):
         """Apply a delta to this inventory.
@@ -1446,6 +1455,7 @@ class CHKInventory(CommonInventory):
         self._path_to_fileid_cache = {}
         self._search_key_name = search_key_name
         self.root_id = None
+        self._children_cache = {}
 
     def __eq__(self, other):
         """Compare two sets by comparing their contents."""
@@ -1459,6 +1469,46 @@ class CHKInventory(CommonInventory):
         if None in (this_key, this_pid_key, other_key, other_pid_key):
             return False
         return this_key == other_key and this_pid_key == other_pid_key
+
+    def get_children(self, dir_id):
+        """Access the list of children of this directory.
+
+        With a parent_id_basename_to_file_id index, loads all the children,
+        without loads the entire index. Without is bad. A more sophisticated
+        proxy object might be nice, to allow partial loading of children as
+        well when specific names are accessed. (So path traversal can be
+        written in the obvious way but not examine siblings.).
+        """
+        children = self._children_cache.get(dir_id)
+        if children is not None:
+            return children
+        # No longer supported
+        if self.parent_id_basename_to_file_id is None:
+            raise AssertionError("Inventories without"
+                                 " parent_id_basename_to_file_id are no longer supported")
+        result = {}
+        # XXX: Todo - use proxy objects for the children rather than loading
+        # all when the attribute is referenced.
+        child_keys = set()
+        for (parent_id, name_utf8), file_id in self.parent_id_basename_to_file_id.iteritems(
+                key_filter=[StaticTuple(dir_id,)]):
+            child_keys.add(StaticTuple(file_id,))
+        cached = set()
+        for file_id_key in child_keys:
+            entry = self._fileid_to_entry_cache.get(
+                file_id_key[0], None)
+            if entry is not None:
+                result[entry.name] = entry
+                cached.add(file_id_key)
+        child_keys.difference_update(cached)
+        # populate; todo: do by name
+        id_to_entry = self.id_to_entry
+        for file_id_key, bytes in id_to_entry.iteritems(child_keys):
+            entry = self._bytes_to_entry(bytes)
+            result[entry.name] = entry
+            self._fileid_to_entry_cache[file_id_key[0]] = entry
+        self._children_cache[dir_id] = result
+        return result
 
     def _entry_to_bytes(self, entry):
         """Serialise entry as a single bytestring.
@@ -2047,11 +2097,10 @@ class CHKInventory(CommonInventory):
                                  ' An entry in the parent_id_basename_to_file_id map'
                                  ' has parent_id {%s} but the kind of that object'
                                  ' is %r not "directory"' % (parent_id, parent_ie.kind))
-            if parent_ie._children is None:
-                parent_ie._children = {}
+            siblings = self._children_cache.setdefault(parent_ie.file_id, {})
             basename = basename.decode('utf-8')
-            if basename in parent_ie._children:
-                existing_ie = parent_ie._children[basename]
+            if basename in siblings:
+                existing_ie = siblings[basename]
                 if existing_ie != ie:
                     raise ValueError('Data inconsistency detected.'
                                      ' Two entries with basename %r were found'
@@ -2063,7 +2112,7 @@ class CHKInventory(CommonInventory):
                                  ' {%s} is listed as having basename %r, but in the'
                                  ' id_to_entry map it is %r'
                                  % (child_file_id, basename, ie.name))
-            parent_ie._children[basename] = ie
+            siblings[basename] = ie
         self._fully_cached = True
 
     def iter_changes(self, basis):
@@ -2242,7 +2291,6 @@ class CHKInventoryDirectory(InventoryDirectory):
         # Don't call InventoryDirectory.__init__ - it isn't right for this
         # class.
         InventoryEntry.__init__(self, file_id, name, parent_id)
-        self._children = None
         self._chk_inventory = chk_inventory
 
     @property
@@ -2255,36 +2303,7 @@ class CHKInventoryDirectory(InventoryDirectory):
         well when specific names are accessed. (So path traversal can be
         written in the obvious way but not examine siblings.).
         """
-        if self._children is not None:
-            return self._children
-        # No longer supported
-        if self._chk_inventory.parent_id_basename_to_file_id is None:
-            raise AssertionError("Inventories without"
-                                 " parent_id_basename_to_file_id are no longer supported")
-        result = {}
-        # XXX: Todo - use proxy objects for the children rather than loading
-        # all when the attribute is referenced.
-        parent_id_index = self._chk_inventory.parent_id_basename_to_file_id
-        child_keys = set()
-        for (parent_id, name_utf8), file_id in parent_id_index.iteritems(
-                key_filter=[StaticTuple(self.file_id,)]):
-            child_keys.add(StaticTuple(file_id,))
-        cached = set()
-        for file_id_key in child_keys:
-            entry = self._chk_inventory._fileid_to_entry_cache.get(
-                file_id_key[0], None)
-            if entry is not None:
-                result[entry.name] = entry
-                cached.add(file_id_key)
-        child_keys.difference_update(cached)
-        # populate; todo: do by name
-        id_to_entry = self._chk_inventory.id_to_entry
-        for file_id_key, bytes in id_to_entry.iteritems(child_keys):
-            entry = self._chk_inventory._bytes_to_entry(bytes)
-            result[entry.name] = entry
-            self._chk_inventory._fileid_to_entry_cache[file_id_key[0]] = entry
-        self._children = result
-        return result
+        return self._chk_inventory.get_children(self.file_id)
 
 
 entry_factory = {
