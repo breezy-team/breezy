@@ -25,18 +25,15 @@ from typing import List
 from .lazy_import import lazy_import
 
 lazy_import(globals(), """
-import ntpath
 # We need to import both shutil and rmtree as we export the later on posix
 # and need the former on windows
 import shutil
 from shutil import rmtree
 import socket
-import unicodedata
 
 from breezy import (
     config,
     trace,
-    win32utils,
     )
 """)
 
@@ -145,6 +142,7 @@ _win32_fix_separators = _osutils_rs.win32.fix_separators
 _win32_abspath = _osutils_rs.win32.abspath
 
 def _win32_realpath(path):
+    import ntpath
     # Real ntpath.realpath doesn't have a problem with a unicode cwd
     return _win32_fixdrive(_win32_fix_separators(ntpath.realpath(path)))
 
@@ -171,6 +169,7 @@ def _win32_rename(old, new):
 
 
 def _mac_getcwd():
+    import unicodedata
     return unicodedata.normalize('NFC', os.getcwd())
 
 
@@ -676,14 +675,6 @@ def terminal_width():
 
     From there, we need to query the OS to get the size of the controlling
     terminal.
-
-    On Unices we query the OS by:
-    - get termios.TIOCGWINSZ
-    - if an error occurs or a negative value is obtained, returns None
-
-    On Windows we query the OS by:
-    - win32utils.get_console_size() decides,
-    - returns None on error (provided default value)
     """
     # Note to implementors: if changing the rules for determining the width,
     # make sure you've considered the behaviour in these cases:

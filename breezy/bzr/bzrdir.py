@@ -34,7 +34,6 @@ from ..lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     branch as _mod_branch,
-    osutils,
     repository,
     revision as _mod_revision,
     ui,
@@ -55,7 +54,7 @@ from breezy.bzr import (
 from breezy.i18n import gettext
 """)
 
-from .. import config, controldir, errors, lockdir
+from .. import config, controldir, errors, lockdir, osutils
 from .. import transport as _mod_transport
 from ..trace import mutter, note, warning
 from ..transport import do_catching_redirections, local
