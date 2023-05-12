@@ -1807,7 +1807,7 @@ class InventoryTreeTransform(DiskTreeTransform):
                     old_path = None
                 new_executability = self._new_executability.get(trans_id)
                 if new_executability is not None:
-                    new_entry.executable = new_executability
+                    new_entry.executable = bool(new_executability)
                 inventory_delta.append(
                     (old_path, path, new_entry.file_id, new_entry))
         return inventory_delta
@@ -1964,10 +1964,11 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
                 yield self._final_paths._determine_path(trans_id)
 
     def _make_inv_entries(self, ordered_entries, specific_files=None):
-        for trans_id, parent_file_id in ordered_entries:
+        for trans_id, parent_trans_id in ordered_entries:
             file_id = self._transform.final_file_id(trans_id)
             if file_id is None:
                 continue
+            parent_file_id = self._transform.final_file_id(parent_trans_id)
             if (specific_files is not None
                     and self._final_paths.get_path(trans_id) not in specific_files):
                 continue
@@ -1986,13 +1987,12 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         ordered_ids = []
         while len(todo) > 0:
             parent = todo.pop()
-            parent_file_id = self._transform.final_file_id(parent)
             children = list(self._all_children(parent))
             paths = dict(zip(children, self._final_paths.get_paths(children)))
             children.sort(key=paths.get)
             todo.extend(reversed(children))
             for trans_id in children:
-                ordered_ids.append((trans_id, parent_file_id))
+                ordered_ids.append((trans_id, parent))
         return ordered_ids
 
     def iter_child_entries(self, path):
@@ -2023,9 +2023,8 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         """Return path, entry for items in a directory without recursing down."""
         ordered_ids = []
         dir_trans_id = self._path2trans_id(dir_path)
-        dir_id = self._transform.final_file_id(dir_trans_id)
         for child_trans_id in self._all_children(dir_trans_id):
-            ordered_ids.append((child_trans_id, dir_id))
+            ordered_ids.append((child_trans_id, dir_trans_id))
         path_entries = []
         for entry, trans_id in self._make_inv_entries(ordered_ids):
             path_entries.append((self._final_paths.get_path(trans_id), entry))
@@ -2059,7 +2058,7 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         else:
             if from_dir is None and include_root is True:
                 root_entry = inventory.make_entry(
-                    'directory', '', ROOT_PARENT, self.path2id(''))
+                    'directory', '', None, self.path2id(''))
                 yield '', 'V', 'directory', root_entry
             entries = self._iter_entries_for_dir(from_dir or '')
             for path, entry in entries:

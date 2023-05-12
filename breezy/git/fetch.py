@@ -119,7 +119,7 @@ def import_git_blob(texts, mapping, path, name, hexshas,
             chunks = blob.chunked
         texts.insert_record_stream([
             ChunkedContentFactory((file_id, ie.revision),
-                                  tuple(parent_keys), ie.text_sha1, chunks)])
+                                  tuple(parent_keys), getattr(ie, 'text_sha1', None), chunks)])
     invdelta = []
     if base_hexsha is not None:
         old_path = decoded_path  # Renames are not supported yet

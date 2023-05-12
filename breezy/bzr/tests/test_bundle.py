@@ -326,7 +326,7 @@ class BTreeTester(tests.TestCase):
         btree.note_deletion("grandparent/parent/file")
         btree.note_id(b"e", "grandparent/alt_parent/fool", kind="directory")
         btree.note_last_changed("grandparent/alt_parent/fool",
-                                "revisionidiguess")
+                                b"revisionidiguess")
         self.assertEqual(self.sorted_ids(btree),
                          [inventory.ROOT_ID, b'a', b'b', b'd', b'e'])
 
