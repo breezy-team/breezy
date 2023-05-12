@@ -30,6 +30,7 @@ WorkingTree.open(dir).
 """
 
 
+import contextlib
 import itertools
 import operator
 import os
@@ -47,7 +48,6 @@ from .. import lazy_import
 from . import bzrdir
 
 lazy_import.lazy_import(globals(), """
-import contextlib
 from breezy import (
     cache_utf8,
     conflicts as _mod_conflicts,
@@ -61,15 +61,12 @@ from breezy.bzr import (
     inventory,
     rio as _mod_rio,
     serializer,
-    xml5,
-    xml7,
     )
 """)
 
 from .. import errors, osutils
 from .. import revision as _mod_revision
 from .. import transport as _mod_transport
-from ..controldir import ControlDir
 from ..lock import LogicalLockResult
 from ..trace import mutter, note
 from ..transport.local import file_kind
@@ -189,11 +186,13 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         # it.  mbp 20070306
 
     def _serialize(self, inventory, out_file):
-        xml5.inventory_serializer_v5.write_inventory(
+        from .xml5 import inventory_serializer_v5
+        inventory_serializer_v5.write_inventory(
             self._inventory, out_file, working=True)
 
     def _deserialize(selt, in_file):
-        return xml5.inventory_serializer_v5.read_inventory(in_file)
+        from .xml5 import inventory_serializer_v5
+        return inventory_serializer_v5.read_inventory(in_file)
 
     def break_lock(self):
         """Break a lock if one is present from another instance.
@@ -561,7 +560,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     def _create_basis_xml_from_inventory(self, revision_id, inventory):
         """Create the text that will be saved in basis-inventory"""
         inventory.revision_id = revision_id
-        return xml7.inventory_serializer_v7.write_inventory_to_lines(inventory)
+        from .xml7 import inventory_serializer_v7
+        return inventory_serializer_v7.write_inventory_to_lines(inventory)
 
     def set_conflicts(self, conflicts):
         conflict_list = _mod_bzr_conflicts.ConflictList(conflicts)
@@ -843,8 +843,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             except _mod_transport.NoSuchFile:
                 pass
             else:
+                from .xml7 import inventory_serializer_v7
                 try:
-                    inv = xml7.inventory_serializer_v7.read_inventory_from_lines(xml_lines)
+                    inv = inventory_serializer_v7.read_inventory_from_lines(xml_lines)
                     # dont use the repository revision_tree api because we want
                     # to supply the inventory.
                     if inv.revision_id == revision_id:

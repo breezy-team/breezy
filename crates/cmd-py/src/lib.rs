@@ -21,14 +21,14 @@ fn i18n_dgettext(domain: &str, msgid: &str) -> PyResult<String> {
 
 #[pyfunction(name = "install")]
 fn i18n_install(lang: Option<&str>, locale_base: Option<PathBuf>) -> PyResult<()> {
-    let locale_base = locale_base.as_ref().map(|p| p.as_path());
+    let locale_base = locale_base.as_deref();
     breezy::i18n::install(lang, locale_base)?;
     Ok(())
 }
 
 #[pyfunction(name = "install_plugin")]
 fn i18n_install_plugin(name: &str, locale_base: Option<PathBuf>) -> PyResult<()> {
-    let locale_base = locale_base.as_ref().map(|p| p.as_path());
+    let locale_base = locale_base.as_deref();
     breezy::i18n::install_plugin(name, locale_base)?;
     Ok(())
 }
@@ -45,7 +45,7 @@ fn i18n_ngettext(msgid: &str, msgid_plural: &str, n: u32) -> PyResult<String> {
 
 #[pyfunction]
 fn ensure_config_dir_exists(path: Option<PathBuf>) -> PyResult<()> {
-    breezy::bedding::ensure_config_dir_exists(path.as_ref().map(|p| p.as_path()))?;
+    breezy::bedding::ensure_config_dir_exists(path.as_deref())?;
     Ok(())
 }
 
@@ -150,7 +150,8 @@ fn open_brz_log() -> PyResult<Option<PyLogFile>> {
 
 #[pyfunction]
 fn set_brz_log_filename(path: Option<PathBuf>) -> PyResult<()> {
-    Ok(breezy::trace::set_brz_log_filename(path.as_deref()))
+    breezy::trace::set_brz_log_filename(path.as_deref());
+    Ok(())
 }
 
 #[pyfunction]

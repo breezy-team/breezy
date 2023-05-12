@@ -65,6 +65,7 @@ def load_tests(loader, basic_tests, pattern):
         'test_inv',
         'test_inventory_delta',
         'test_knit',
+        'test_lockable_files',
         'test_matchers',
         'test_pack',
         'test_read_bundle',

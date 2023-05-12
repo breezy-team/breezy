@@ -9,7 +9,7 @@ use pyo3::wrap_pyfunction;
 use pyo3::PyErr;
 use pyo3_file::PyFileLikeObject;
 use std::collections::HashSet;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fs::Permissions;
 use std::io::{BufRead, Read, Write};
 use std::iter::Iterator;
@@ -63,10 +63,7 @@ impl PyChunksToLinesIterator {
                     }
                 } else {
                     if let Some(next_chunk) = self.chunk_iter.cast_as::<PyIterator>(py)?.next() {
-                        if let Err(e) = next_chunk {
-                            return Err(e);
-                        }
-                        let next_chunk = next_chunk.unwrap();
+                        let next_chunk = next_chunk?;
                         let next_chunk = next_chunk.extract::<&[u8]>()?;
                         chunk.extend_from_slice(next_chunk);
                     } else {
@@ -77,26 +74,21 @@ impl PyChunksToLinesIterator {
                         self.tail = Some(chunk);
                     }
                 }
-            } else {
-                if let Some(next_chunk) = self.chunk_iter.cast_as::<PyIterator>(py)?.next() {
-                    if let Err(e) = next_chunk {
-                        return Err(e);
+            } else if let Some(next_chunk) = self.chunk_iter.cast_as::<PyIterator>(py)?.next() {
+                let next_chunk_py = next_chunk?;
+                let next_chunk = next_chunk_py.extract::<&[u8]>()?;
+                if let Some(newline) = memchr::memchr(b'\n', next_chunk) {
+                    if newline == next_chunk.len() - 1 {
+                        let line = next_chunk_py.cast_as::<PyBytes>()?;
+                        return Ok(Some(line.to_object(py)));
                     }
-                    let next_chunk_py = next_chunk.unwrap();
-                    let next_chunk = next_chunk_py.extract::<&[u8]>()?;
-                    if let Some(newline) = memchr::memchr(b'\n', &next_chunk) {
-                        if newline == next_chunk.len() - 1 {
-                            let line = next_chunk_py.cast_as::<PyBytes>()?;
-                            return Ok(Some(line.to_object(py)));
-                        }
-                    }
-
-                    if !next_chunk.is_empty() {
-                        self.tail = Some(next_chunk.to_vec());
-                    }
-                } else {
-                    return Ok(None);
                 }
+
+                if !next_chunk.is_empty() {
+                    self.tail = Some(next_chunk.to_vec());
+                }
+            } else {
+                return Ok(None);
             }
         })
     }
@@ -129,7 +121,7 @@ fn chunks_to_lines(py: Python, chunks: PyObject) -> PyResult<PyObject> {
 fn split_lines(py: Python, mut chunks: PyObject) -> PyResult<PyObject> {
     let ret = PyList::empty(py);
     if let Ok(chunk) = chunks.extract::<&PyBytes>(py) {
-        chunks = PyList::new(py, &[chunk]).into_py(py);
+        chunks = PyList::new(py, [chunk]).into_py(py);
     }
 
     let chunk_iter = chunks.call_method0(py, "__iter__");
@@ -894,6 +886,11 @@ fn normalizepath(path: PathBuf) -> PyResult<PathBuf> {
 }
 
 #[pyfunction]
+fn dereference_path(path: PathBuf) -> std::io::Result<PathBuf> {
+    breezy_osutils::path::dereference_path(path.as_path())
+}
+
+#[pyfunction]
 fn pump_string_file(data: &[u8], file: PyObject, segment_size: Option<usize>) -> PyResult<()> {
     let mut file = PyFileLikeObject::with_requirements(file, false, true, false)?;
     Ok(breezy_osutils::pump_string_file(
@@ -1049,6 +1046,90 @@ fn colorstring(
     .into_py(py))
 }
 
+#[pyfunction]
+fn lexists(path: PathBuf) -> PyResult<bool> {
+    Ok(breezy_osutils::file::lexists(path.as_path())?)
+}
+
+fn extract_osstring(py: Python, obj: PyObject) -> PyResult<OsString> {
+    if let Ok(s) = obj.extract::<OsString>(py) {
+        Ok(s)
+    } else if let Ok(s) = obj.extract::<Vec<u8>>(py) {
+        Ok(OsString::from_vec(s))
+    } else {
+        Err(PyTypeError::new_err(format!(
+            "Expected str, or bytes, got {}",
+            obj.as_ref(py).get_type().name()?
+        )))
+    }
+}
+
+#[pyfunction]
+fn joinpath(py: Python, parts: Vec<PyObject>) -> PyResult<PathBuf> {
+    let parts = parts
+        .into_iter()
+        .map(|p| extract_osstring(py, p))
+        .collect::<PyResult<Vec<_>>>()?;
+    match breezy_osutils::path::joinpath(
+        parts
+            .iter()
+            .map(|p| p.as_os_str())
+            .collect::<Vec<_>>()
+            .as_slice(),
+    ) {
+        Ok(path) => Ok(path),
+        Err(e) => Err(PyValueError::new_err(format!(
+            "Invalid path segment: {}",
+            e.0
+        ))),
+    }
+}
+
+#[pyfunction(args = "*")]
+fn pathjoin(py: Python, args: Vec<PyObject>) -> PyResult<PyObject> {
+    let return_bytes = args[0].as_ref(py).is_instance_of::<PyBytes>()?;
+    let parts = args
+        .into_iter()
+        .map(|p| extract_osstring(py, p))
+        .collect::<PyResult<Vec<_>>>()?;
+
+    let ret: PathBuf = breezy_osutils::path::pathjoin(
+        parts
+            .iter()
+            .map(|p| p.as_os_str())
+            .collect::<Vec<_>>()
+            .as_slice(),
+    );
+
+    if return_bytes {
+        use std::os::unix::ffi::OsStrExt;
+        Ok(PyBytes::new(py, ret.as_path().as_os_str().as_bytes()).into_py(py))
+    } else {
+        Ok(ret.into_py(py))
+    }
+}
+
+#[pyfunction]
+fn splitpath(path: PathBuf) -> PyResult<Vec<String>> {
+    match breezy_osutils::path::splitpath(path.to_str().unwrap()) {
+        Ok(parts) => Ok(parts.iter().map(|p| p.to_string()).collect()),
+        Err(e) => Err(PyValueError::new_err(format!(
+            "Invalid path segment: {}",
+            e.0
+        ))),
+    }
+}
+
+#[pyfunction]
+fn get_user_name() -> PyResult<String> {
+    Ok(breezy_osutils::get_user_name())
+}
+
+#[pyfunction]
+fn is_local_pid_dead(pid: i32) -> PyResult<bool> {
+    Ok(breezy_osutils::is_local_pid_dead(pid))
+}
+
 #[pymodule]
 fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -1129,6 +1210,7 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(pump_string_file))?;
     m.add_wrapped(wrap_pyfunction!(realpath))?;
     m.add_wrapped(wrap_pyfunction!(normalizepath))?;
+    m.add_wrapped(wrap_pyfunction!(dereference_path))?;
     m.add_wrapped(wrap_pyfunction!(terminal_size))?;
     m.add_wrapped(wrap_pyfunction!(has_ansi_colors))?;
     m.add_wrapped(wrap_pyfunction!(ensure_empty_directory_exists))?;
@@ -1143,5 +1225,11 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     )?;
     m.add_wrapped(wrap_pyfunction!(get_home_dir))?;
     m.add_wrapped(wrap_pyfunction!(colorstring))?;
+    m.add_wrapped(wrap_pyfunction!(lexists))?;
+    m.add_wrapped(wrap_pyfunction!(pathjoin))?;
+    m.add_wrapped(wrap_pyfunction!(joinpath))?;
+    m.add_wrapped(wrap_pyfunction!(splitpath))?;
+    m.add_wrapped(wrap_pyfunction!(is_local_pid_dead))?;
+    m.add_wrapped(wrap_pyfunction!(get_user_name))?;
     Ok(())
 }

@@ -71,12 +71,7 @@ from io import BytesIO
 
 import patiencediff
 
-from ..lazy_import import lazy_import
-
-lazy_import(globals(), """
-from breezy import tsort
-""")
-from .. import errors, osutils
+from .. import errors
 from .. import transport as _mod_transport
 from ..errors import RevisionAlreadyPresent, RevisionNotPresent
 from ..osutils import dirname, sha_strings, split_lines
@@ -368,6 +363,7 @@ class Weave(VersionedFile):
         :return: An iterator of ContentFactory objects, each of which is only
             valid until the iterator is advanced.
         """
+        from .. import tsort
         versions = [version[-1] for version in versions]
         if ordering == 'topological':
             parents = self.get_parent_map(versions)
@@ -1033,6 +1029,7 @@ def _reweave(wa, wb, pb=None, msg=None):
     :param pb: An optional progress bar, indicating how far done we are
     :param msg: An optional message for the progress
     """
+    from .. import tsort
     wr = Weave()
     # first determine combined parents of all versions
     # map from version name -> all parent names

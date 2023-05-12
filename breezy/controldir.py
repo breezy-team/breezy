@@ -24,7 +24,7 @@ see breezy.bzrdir.BzrDir.
 
 """
 
-from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Type, cast
+from typing import TYPE_CHECKING, Dict, List, Optional, Set, Type, cast
 
 from .lazy_import import lazy_import
 

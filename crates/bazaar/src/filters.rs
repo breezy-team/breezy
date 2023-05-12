@@ -73,6 +73,12 @@ impl ContentFilterStack {
     }
 }
 
+impl std::default::Default for ContentFilterStack {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ContentFilter for ContentFilterStack {
     fn reader(
         &self,

@@ -23,12 +23,11 @@ lazy_import(globals(), """
 
 from breezy import (
     cache_utf8,
-    errors,
     transform,
-    osutils,
     )
 """)
 
+from .. import errors, osutils
 from .. import transport as _mod_transport
 from ..conflicts import Conflict as BaseConflict
 from ..conflicts import ConflictList as BaseConflictList

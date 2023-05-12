@@ -336,10 +336,6 @@ class URL:
         return urlparse.urlunparse(
             (self.scheme, netloc, self.quoted_path, None, None, None))
 
-    @staticmethod
-    def _combine_paths(base_path: str, relpath: str) -> str:
-        return combine_paths(base_path, relpath)
-
     def clone(self, offset=None):
         """Return a new URL for a path relative to this URL.
 
@@ -349,7 +345,7 @@ class URL:
         """
         if offset is not None:
             relative = unescape(offset)
-            path = self._combine_paths(self.path, relative)
+            path = combine_paths(self.path, relative)
             path = quote(path, safe="/~")
         else:
             path = self.quoted_path

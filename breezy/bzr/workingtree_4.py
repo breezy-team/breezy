@@ -35,11 +35,8 @@ from breezy import (
     branch as _mod_branch,
     cache_utf8,
     controldir,
-    debug,
     filters as _mod_filters,
-    osutils,
     revisiontree,
-    trace,
     views,
     )
 from breezy.bzr import (
@@ -48,10 +45,10 @@ from breezy.bzr import (
     )
 """)
 
-from .. import errors
+from .. import debug, errors, osutils
 from .. import revision as _mod_revision
+from .. import trace
 from ..lock import LogicalLockResult
-from ..lockable_files import LockableFiles
 from ..lockdir import LockDir
 from ..mutabletree import BadReferenceTarget, MutableTree
 from ..osutils import isdir, pathjoin, realpath, safe_unicode
@@ -63,6 +60,7 @@ from . import dirstate
 from .inventory import ROOT_ID, Inventory, entry_factory
 from .inventorytree import (InterInventoryTree, InventoryRevisionTree,
                             InventoryTree)
+from .lockable_files import LockableFiles
 from .workingtree import InventoryWorkingTree, WorkingTreeFormatMetaDir
 
 
@@ -470,8 +468,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                         except errors.NoSuchId:
                             pass
                 raise errors.NoSuchId(tree=self, file_id=file_id)
-            path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
-            return path_utf8.decode('utf8')
+            return osutils.pathjoin(entry[0][0], entry[0][1]).decode('utf-8', 'surrogateescape')
 
     def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
         entry = self._get_entry(path=path)

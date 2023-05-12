@@ -22,13 +22,10 @@
 # importing this module is fairly slow because it has to load several
 # ElementTree bits
 
-import re
-from typing import Dict, Optional, Union
+from typing import Optional, Union
 from xml.etree.ElementTree import (Element, ElementTree, ParseError,
-                                   SubElement, fromstring, fromstringlist,
-                                   tostring, tostringlist)
+                                   SubElement, fromstring, fromstringlist)
 
-from .. import errors, lazy_regex
 from . import inventory, serializer
 
 

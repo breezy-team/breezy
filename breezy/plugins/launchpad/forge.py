@@ -23,7 +23,7 @@ import tempfile
 from typing import Any, List, Optional
 
 from ... import branch as _mod_branch
-from ... import controldir, errors, hooks, urlutils
+from ... import controldir, errors, urlutils
 from ...forge import (AutoMergeUnsupported, Forge, LabelsUnsupported,
                       MergeProposal, MergeProposalBuilder, MergeProposalExists,
                       TitleUnsupported, UnsupportedForge)
@@ -33,7 +33,6 @@ from ...trace import mutter
 
 lazy_import(globals(), """
 from breezy.plugins.launchpad import (
-    lp_api,
     uris as lp_uris,
     )
 
@@ -259,7 +258,8 @@ class Launchpad(Forge):
     @property
     def launchpad(self):
         if self._launchpad is None:
-            self._launchpad = lp_api.connect_launchpad(self._api_base_url, version='devel')
+            from .lp_api import connect_launchpad
+            self._launchpad = connect_launchpad(self._api_base_url, version='devel')
         return self._launchpad
 
     @property
@@ -514,6 +514,7 @@ class Launchpad(Forge):
 
     @classmethod
     def iter_instances(cls):
+        from . import lp_api
         credential_store = lp_api.get_credential_store()
         for service_root in set(lp_uris.service_roots.values()):
             auth_engine = lp_api.get_auth_engine(service_root)

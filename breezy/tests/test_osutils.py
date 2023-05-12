@@ -783,23 +783,6 @@ class TestWin32Funcs(tests.TestCase):
         self.assertEqual('C:/foo', osutils._win32_realpath('C:\\foo'))
         self.assertEqual('C:/foo', osutils._win32_realpath('C:/foo'))
 
-    def test_pathjoin(self):
-        self.assertEqual('path/to/foo',
-                         osutils._win32_pathjoin('path', 'to', 'foo'))
-        self.assertEqual('C:/foo',
-                         osutils._win32_pathjoin('path\\to', 'C:\\foo'))
-        self.assertEqual('C:/foo',
-                         osutils._win32_pathjoin('path/to', 'C:/foo'))
-        self.assertEqual('path/to/foo',
-                         osutils._win32_pathjoin('path/to/', 'foo'))
-
-    def test_pathjoin_late_bugfix(self):
-        expected = 'C:/foo'
-        self.assertEqual(expected,
-                         osutils._win32_pathjoin('C:/path/to/', '/foo'))
-        self.assertEqual(expected,
-                         osutils._win32_pathjoin('C:\\path\\to\\', '\\foo'))
-
     def test_normpath(self):
         if sys.platform != 'win32':
             raise tests.TestNotApplicable(
@@ -906,7 +889,7 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
         else:
             check(['a\\.b'], 'a\\.b')
 
-        self.assertRaises(errors.BzrError, osutils.splitpath, 'a/../b')
+        self.assertRaises(ValueError, osutils.splitpath, 'a/../b')
 
 
 class TestParentDirectories(tests.TestCaseInTempDir):
@@ -1938,8 +1921,6 @@ class TestGetuserUnicode(tests.TestCase):
 
     def envvar_to_override(self):
         if sys.platform == "win32":
-            # Disable use of platform calls on windows so envvar is used
-            self.overrideAttr(win32utils.ctypes, 'windll', None)
             return 'USERNAME'  # only variable used on windows
         return 'LOGNAME'  # first variable checked by getpass.getuser()
 

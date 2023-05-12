@@ -17,6 +17,7 @@
 """Tests for the urlutils wrapper."""
 
 import os
+import posixpath
 import sys
 
 from .. import osutils, urlutils
@@ -951,8 +952,8 @@ class TestURL(TestCase):
         parsed = urlutils.URL.from_string('http://[1:2:3::40]:80/one')
         self.assertEqual('http://[1:2:3::40]:80/one', str(parsed))
 
-    def test__combine_paths(self):
-        combine = urlutils.URL._combine_paths
+    def test_combine_paths(self):
+        combine = urlutils.combine_paths
         self.assertEqual('/home/sarah/project/foo',
                          combine('/home/sarah', 'project/foo'))
         self.assertEqual('/etc',
@@ -992,10 +993,10 @@ class TestFileRelpath(TestCase):
                           urlutils._posix_local_path_from_url)
         self.overrideAttr(urlutils, "MIN_ABS_FILEURL_LENGTH", len("file:///"))
         self.overrideAttr(osutils, "normpath", osutils._posix_normpath)
-        self.overrideAttr(osutils, "abspath", osutils.posixpath.abspath)
+        self.overrideAttr(osutils, "abspath", posixpath.abspath)
         self.overrideAttr(osutils, "normpath", osutils._posix_normpath)
-        self.overrideAttr(osutils, "pathjoin", osutils.posixpath.join)
-        self.overrideAttr(osutils, "split", osutils.posixpath.split)
+        self.overrideAttr(osutils, "pathjoin", posixpath.join)
+        self.overrideAttr(osutils, "split", posixpath.split)
         self.overrideAttr(osutils, "MIN_ABS_PATHLENGTH", 1)
 
     def _with_win32_paths(self):
@@ -1005,7 +1006,6 @@ class TestFileRelpath(TestCase):
                           urlutils.WIN32_MIN_ABS_FILEURL_LENGTH)
         self.overrideAttr(osutils, "abspath", osutils._win32_abspath)
         self.overrideAttr(osutils, "normpath", osutils._win32_normpath)
-        self.overrideAttr(osutils, "pathjoin", osutils._win32_pathjoin)
         self.overrideAttr(osutils, "split", osutils.ntpath.split)
         self.overrideAttr(osutils, "MIN_ABS_PATHLENGTH", 3)
 

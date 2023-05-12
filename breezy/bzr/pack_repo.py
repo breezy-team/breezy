@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import contextlib
 import hashlib
 import re
 import sys
@@ -22,14 +23,11 @@ from typing import Type
 from ..lazy_import import lazy_import
 
 lazy_import(globals(), """
-import contextlib
 import time
 
 from breezy import (
     config,
-    debug,
     graph,
-    osutils,
     transactions,
     ui,
     )
@@ -40,9 +38,9 @@ from breezy.bzr.index import (
     CombinedGraphIndex,
     )
 """)
-from .. import errors, lockable_files, lockdir
+from .. import debug, errors, lockdir, osutils
 from .. import transport as _mod_transport
-from ..bzr import btree_index, index
+from ..bzr import btree_index, index, lockable_files
 from ..decorators import only_raises
 from ..lock import LogicalLockResult
 from ..repository import RepositoryWriteLockResult, _LazyListJoin

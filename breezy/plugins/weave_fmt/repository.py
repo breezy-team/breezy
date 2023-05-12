@@ -33,16 +33,11 @@ from breezy import (
     graph as _mod_graph,
     ui,
     )
-from breezy.bzr import (
-    xml5,
-    )
 """)
-from ... import debug, errors, lockable_files, lockdir, osutils
-from ... import revision as _mod_revision
-from ... import trace
+from ... import debug, errors, lockdir, osutils, trace
 from ... import transport as _mod_transport
 from ... import urlutils
-from ...bzr import tuned_gzip, versionedfile, weave, weavefile
+from ...bzr import lockable_files, tuned_gzip, versionedfile, weave, weavefile
 from ...bzr.repository import RepositoryFormatMetaDir
 from ...bzr.versionedfile import (AbsentContentFactory, FulltextContentFactory,
                                   VersionedFiles)
@@ -62,11 +57,13 @@ class AllInOneRepository(VersionedFileRepository):
 
     @property
     def _revision_serializer(self):
-        return xml5.revision_serializer_v5
+        from ...bzr.xml5 import revision_serializer_v5
+        return revision_serializer_v5
 
     @property
     def _inventory_serializer(self):
-        return xml5.inventory_serializer_v5
+        from ...bzr.xml5 import inventory_serializer_v5
+        return inventory_serializer_v5
 
     def _escape(self, file_or_path):
         if not isinstance(file_or_path, str):
@@ -388,11 +385,13 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
 
     @property
     def _revision_serializer(self):
-        return xml5.revision_serializer_v5
+        from ...bzr.xml5 import revision_serializer_v5
+        return revision_serializer_v5
 
     @property
     def _inventory_serializer(self):
-        return xml5.inventory_serializer_v5
+        from ...bzr.xml5 import inventory_serializer_v5
+        return inventory_serializer_v5
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -408,8 +407,9 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
                                                    weave.WeaveFile, mapper, repo.is_locked)
 
     def _get_revisions(self, repo_transport, repo):
+        from ...bzr.xml5 import revision_serializer_v5
         return RevisionTextStore(repo_transport.clone('revision-store'),
-                                 xml5.revision_serializer_v5, False, versionedfile.PrefixMapper(),
+                                 revision_serializer_v5, False, versionedfile.PrefixMapper(),
                                  repo.is_locked, repo.is_write_locked)
 
     def _get_signatures(self, repo_transport, repo):
@@ -439,11 +439,13 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
 
     @property
     def _revision_serializer(self):
-        return xml5.revision_serializer_v5
+        from ...bzr.xml5 import revision_serializer_v5
+        return revision_serializer_v5
 
     @property
     def _inventory_serializer(self):
-        return xml5.inventory_serializer_v5
+        from ...bzr.xml5 import inventory_serializer_v5
+        return inventory_serializer_v5
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -459,8 +461,9 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
                                                    weave.WeaveFile, mapper, repo.is_locked)
 
     def _get_revisions(self, repo_transport, repo):
+        from ...bzr.xml5 import revision_serializer_v5
         return RevisionTextStore(repo_transport.clone('revision-store'),
-                                 xml5.revision_serializer_v5, False, versionedfile.HashPrefixMapper(),
+                                 revision_serializer_v5, False, versionedfile.HashPrefixMapper(),
                                  repo.is_locked, repo.is_write_locked)
 
     def _get_signatures(self, repo_transport, repo):
@@ -499,11 +502,13 @@ class RepositoryFormat7(MetaDirVersionedFileRepositoryFormat):
 
     @property
     def _revision_serializer(self):
-        return xml5.revision_serializer_v5
+        from ...bzr.xml5 import revision_serializer_v5
+        return revision_serializer_v5
 
     @property
     def _inventory_serializer(self):
-        return xml5.inventory_serializer_v5
+        from ...bzr.xml5 import inventory_serializer_v5
+        return inventory_serializer_v5
 
     @classmethod
     def get_format_string(cls):
@@ -520,8 +525,9 @@ class RepositoryFormat7(MetaDirVersionedFileRepositoryFormat):
                                                    weave.WeaveFile, mapper, repo.is_locked)
 
     def _get_revisions(self, repo_transport, repo):
+        from ...bzr.xml5 import revision_serializer_v5
         return RevisionTextStore(repo_transport.clone('revision-store'),
-                                 xml5.revision_serializer_v5, True, versionedfile.HashPrefixMapper(),
+                                 revision_serializer_v5, True, versionedfile.HashPrefixMapper(),
                                  repo.is_locked, repo.is_write_locked)
 
     def _get_signatures(self, repo_transport, repo):

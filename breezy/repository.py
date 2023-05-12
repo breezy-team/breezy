@@ -25,12 +25,11 @@ import time
 
 from breezy import (
     config,
-    osutils,
     )
 from breezy.i18n import gettext
 """)
 
-from . import controldir, debug, errors, graph, registry
+from . import controldir, debug, errors, graph, osutils, registry
 from . import revision as _mod_revision
 from . import ui
 from .decorators import only_raises
@@ -461,8 +460,6 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         A token should be passed in if you know that you have locked the object
         some other way, and need to synchronise this object's state with that
         fact.
-
-        XXX: this docstring is duplicated in many places, e.g. lockable_files.py
 
         Args:
           token: if this is already locked, then lock_write will fail

@@ -28,7 +28,6 @@ from breezy import (
     email_message,
     gpg,
     patch as _mod_patch,
-    trace,
     )
 from breezy.bzr import (
     rio,
@@ -41,6 +40,7 @@ from breezy.bzr.bundle import (
 from . import branch as _mod_branch
 from . import errors, hooks, registry
 from . import revision as _mod_revision
+from . import trace
 
 
 class IllegalMergeDirectivePayload(errors.BzrError):

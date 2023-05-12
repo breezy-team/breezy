@@ -36,7 +36,6 @@ from ..branch import BranchWriteLockResult
 from ..decorators import only_raises
 from ..errors import NoSuchRevision, SmartProtocolError
 from ..i18n import gettext
-from ..lockable_files import LockableFiles
 from ..repository import RepositoryWriteLockResult, _LazyListJoin
 from ..revision import NULL_REVISION, RevisionID
 from ..trace import log_exception_quietly, mutter, note, warning
@@ -48,6 +47,7 @@ from . import vf_repository, vf_search
 from .branch import BranchReferenceFormat
 from .inventory import Inventory
 from .inventorytree import InventoryRevisionTree
+from .lockable_files import LockableFiles
 from .serializer import revision_format_registry
 from .smart import client
 from .smart import repository as smart_repo
