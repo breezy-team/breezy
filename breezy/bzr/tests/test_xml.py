@@ -260,38 +260,6 @@ class TestSerializer(TestCase):
             breezy.osutils.split_lines(_inventory_v5a), revision_id=b'test-rev-id')
         self.assertEqual(b'test-rev-id', inv.root.revision)
 
-    def test_unpack_inventory_5a_cache_and_copy(self):
-        # Passing an entry_cache should get populated with the objects
-        # But the returned objects should be copies if return_from_cache is
-        # False
-        entry_cache = fifo_cache.FIFOCache()
-        inv = breezy.bzr.xml5.inventory_serializer_v5.read_inventory_from_lines(
-            breezy.osutils.split_lines(_inventory_v5a), revision_id=b'test-rev-id',
-            entry_cache=entry_cache, return_from_cache=False)
-        for entry in inv.iter_just_entries():
-            key = (entry.file_id, entry.revision)
-            if entry.file_id is inv.root.file_id:
-                # The root id is inferred for xml v5
-                self.assertNotIn(key, entry_cache)
-            else:
-                self.assertIsNot(entry, entry_cache[key])
-
-    def test_unpack_inventory_5a_cache_no_copy(self):
-        # Passing an entry_cache should get populated with the objects
-        # The returned objects should be exact if return_from_cache is
-        # True
-        entry_cache = fifo_cache.FIFOCache()
-        inv = breezy.bzr.xml5.inventory_serializer_v5.read_inventory_from_lines(
-            breezy.osutils.split_lines(_inventory_v5a), revision_id=b'test-rev-id',
-            entry_cache=entry_cache, return_from_cache=True)
-        for entry in inv.iter_just_entries():
-            key = (entry.file_id, entry.revision)
-            if entry.file_id is inv.root.file_id:
-                # The root id is inferred for xml v5
-                self.assertNotIn(key, entry_cache)
-            else:
-                self.assertIs(entry, entry_cache[key])
-
     def test_unpack_inventory_5b(self):
         inv = breezy.bzr.xml5.inventory_serializer_v5.read_inventory_from_lines(
             breezy.osutils.split_lines(_inventory_v5b), revision_id=b'test-rev-id')

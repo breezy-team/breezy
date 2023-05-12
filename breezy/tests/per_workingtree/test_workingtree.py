@@ -993,7 +993,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.build_tree(['tree/a'])
         self.assertRaises(_mod_transport.NoSuchFile, tree.stored_kind, 'a')
         tree.add(['a'])
-        self.assertIs('file', tree.stored_kind('a'))
+        self.assertEqual('file', tree.stored_kind('a'))
 
     def test_missing_file_sha1(self):
         """If a file is missing, its sha1 should be reported as None."""

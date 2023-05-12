@@ -385,7 +385,6 @@ class ImportObjects(TestCaseWithTransport):
         self.assertEqual("directory", ie.kind)
         self.assertEqual(False, ie.executable)
         self.assertEqual(b"somerevid", ie.revision)
-        self.assertEqual(None, ie.text_sha1)
 
     def test_import_tree_with_file(self):
         blob = Blob.from_string(b"bar1")

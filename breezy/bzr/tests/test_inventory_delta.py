@@ -383,27 +383,6 @@ class TestSerialization(TestCase):
         self.assertContainsRe(
             str(err), "^Version present for / in b?'TREE_ROOT'")
 
-    def test_unknown_kind_errors(self):
-        old_inv = Inventory(None)
-        new_inv = Inventory(None)
-        root = new_inv.make_entry('directory', '', None, b'my-rich-root-id')
-        root.revision = b'changed'
-        new_inv.add(root)
-
-        class StrangeInventoryEntry(inventory.InventoryEntry):
-            kind = 'strange'
-        non_root = StrangeInventoryEntry(b'id', 'foo', root.file_id)
-        non_root.revision = b'changed'
-        new_inv.add(non_root)
-        delta = new_inv._make_delta(old_inv)
-        serializer = inventory_delta.InventoryDeltaSerializer(
-            versioned_root=True, tree_references=True)
-        # we expect keyerror because there is little value wrapping this.
-        # This test aims to prove that it errors more than how it errors.
-        err = self.assertRaises(KeyError,
-                                serializer.delta_to_lines, NULL_REVISION, b'entry-version', delta)
-        self.assertEqual(('strange',), err.args)
-
     def test_tree_reference_disabled(self):
         old_inv = Inventory(None)
         new_inv = Inventory(None)

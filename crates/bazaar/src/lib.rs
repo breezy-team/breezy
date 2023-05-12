@@ -4,9 +4,9 @@ pub mod bencode_serializer;
 pub mod filters;
 pub mod gen_ids;
 pub mod globbing;
+pub mod inventory;
 pub mod revision;
 pub mod serializer;
-#[cfg(feature = "old-formats")]
 pub mod xml_serializer;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -30,9 +30,19 @@ impl From<FileId> for Vec<u8> {
     }
 }
 
+impl From<&[u8]> for FileId {
+    fn from(v: &[u8]) -> Self {
+        FileId(v.to_vec())
+    }
+}
+
 impl FileId {
     pub fn generate(name: &str) -> Self {
         Self::from(gen_ids::gen_file_id(name))
+    }
+
+    pub fn bytes(&self) -> &[u8] {
+        &self.0
     }
 }
 
@@ -95,6 +105,3 @@ impl RevisionId {
         }
     }
 }
-
-pub mod inventory;
-pub mod xml_serializer;

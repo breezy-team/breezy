@@ -343,7 +343,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 if kind == 'file':
                     # This is only needed on win32, where this is the only way
                     # we know the executable bit.
-                    inv_entry.executable = executable
+                    inv_entry.executable = bool(executable)
                     # not strictly needed: working tree
                     # inv_entry.text_size = size
                     # inv_entry.text_sha1 = sha1
@@ -1878,7 +1878,7 @@ class DirStateRevisionTree(InventoryTree):
                                           parent_ie.file_id)
                 inv_entry.revision = revid
                 if kind == 'file':
-                    inv_entry.executable = executable
+                    inv_entry.executable = bool(executable)
                     inv_entry.text_size = size
                     inv_entry.text_sha1 = fingerprint
                 elif kind == 'directory':
