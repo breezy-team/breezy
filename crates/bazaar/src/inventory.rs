@@ -21,7 +21,6 @@ pub enum Entry {
         revision: Option<RevisionId>,
         parent_id: Option<FileId>,
         name: String,
-        children: Option<HashMap<String, Entry>>,
     },
     File {
         file_id: FileId,
@@ -127,7 +126,6 @@ impl Entry {
             revision,
             parent_id,
             name,
-            children: Some(HashMap::new()),
         }
     }
 
@@ -208,17 +206,6 @@ impl Entry {
         }
 
         self.revision() == other_revision
-    }
-
-    pub fn sorted_children(&self) -> Vec<&Entry> {
-        let mut children: Vec<&Entry> = match self {
-            Entry::Directory { children, .. } => children.as_ref().unwrap().values().collect(),
-            _ => vec![],
-        };
-
-        children.sort_by(|a, b| a.name().cmp(b.name()));
-
-        children
     }
 
     pub fn unchanged(&self, other: &Entry) -> bool {

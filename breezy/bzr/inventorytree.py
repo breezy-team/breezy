@@ -1016,7 +1016,10 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
 
     def get_symlink_target(self, path):
         # Inventories store symlink targets in unicode
-        return self._path2ie(path).symlink_target
+        ie = self._path2ie(path)
+        if ie.kind != 'symlink':
+            return None
+        return ie.symlink_target
 
     def get_reference_revision(self, path):
         return self._path2ie(path).reference_revision

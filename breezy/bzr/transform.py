@@ -2058,7 +2058,7 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         else:
             if from_dir is None and include_root is True:
                 root_entry = inventory.make_entry(
-                    'directory', '', ROOT_PARENT, self.path2id(''))
+                    'directory', '', None, self.path2id(''))
                 yield '', 'V', 'directory', root_entry
             entries = self._iter_entries_for_dir(from_dir or '')
             for path, entry in entries:

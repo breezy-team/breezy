@@ -328,40 +328,9 @@ impl InventoryDirectory {
             file_id: FileId::from(file_id),
             name,
             parent_id: parent_id.map(FileId::from),
-            children: Some(HashMap::new()),
             revision: None,
         };
         Ok((Self(), InventoryEntry(entry)))
-    }
-
-    fn sorted_children(slf: PyRef<Self>, py: Python) -> PyResult<Vec<(String, PyObject)>> {
-        let s = slf.into_super();
-        let mut children = match &s.0 {
-            Entry::Directory { children, .. } => children.as_ref().unwrap(),
-            _ => panic!("Not a directory"),
-        }
-        .iter()
-        .map(|(n, c)| Ok((n.clone(), entry_to_py(py, c.clone())?)))
-        .collect::<PyResult<Vec<_>>>()?;
-        children.sort_by(|(an, _ae), (bn, _be)| an.cmp(bn));
-        Ok(children)
-    }
-
-    #[getter]
-    fn get_children(slf: PyRef<Self>, py: Python) -> PyResult<Option<HashMap<String, PyObject>>> {
-        let s = slf.into_super();
-        match &s.0 {
-            Entry::Directory { children, .. } => children.as_ref().map(|children| {
-                children
-                    .iter()
-                    .map(|(n, c)| -> PyResult<(String, PyObject)> {
-                        Ok((n.clone(), entry_to_py(py, c.clone())?))
-                    })
-                    .collect::<PyResult<HashMap<String, PyObject>>>()
-            }),
-            _ => panic!("Not a directory"),
-        }
-        .transpose()
     }
 
     fn copy(slf: PyRef<Self>, py: Python) -> PyResult<PyObject> {
@@ -369,6 +338,49 @@ impl InventoryDirectory {
         let init = PyClassInitializer::from(InventoryEntry(s.0.clone()));
         let init = init.add_subclass(Self());
         Ok(PyCell::new(py, init)?.to_object(py))
+    }
+
+    #[getter]
+    fn get_text_size(&self, py: Python) -> PyObject {
+        py.None()
+    }
+
+    #[getter]
+    fn get_text_sha1(&self, py: Python) -> PyObject {
+        py.None()
+    }
+
+    fn __repr__(slf: PyRef<Self>, py: Python) -> PyResult<String> {
+        let s = slf.into_super();
+        Ok(match &s.0 {
+            Entry::Directory {
+                name,
+                file_id,
+                parent_id,
+                revision,
+                ..
+            } => format!(
+                "InventoryDirectory({}, {}, parent_id={}, revision={})",
+                PyBytes::new(py, file_id.bytes())
+                    .to_object(py)
+                    .as_ref(py)
+                    .repr()?,
+                name.to_object(py).as_ref(py).repr()?,
+                parent_id
+                    .as_ref()
+                    .map(|p| PyBytes::new(py, p.bytes()))
+                    .to_object(py)
+                    .as_ref(py)
+                    .repr()?,
+                revision
+                    .as_ref()
+                    .map(|r| PyBytes::new(py, r.bytes()))
+                    .to_object(py)
+                    .as_ref(py)
+                    .repr()?,
+            ),
+            _ => panic!("Not a directory"),
+        })
     }
 }
 
@@ -463,12 +475,12 @@ impl InventoryLink {
     }
 
     #[setter]
-    fn set_symlink_target(slf: PyRefMut<Self>, target: String) {
+    fn set_symlink_target(slf: PyRefMut<Self>, target: Option<String>) {
         match slf.into_super().0 {
             Entry::Link {
                 ref mut symlink_target,
                 ..
-            } => *symlink_target = Some(target),
+            } => *symlink_target = target,
             _ => panic!("Not a link"),
         }
     }
@@ -478,6 +490,16 @@ impl InventoryLink {
         let init = PyClassInitializer::from(InventoryEntry(s.0.clone()));
         let init = init.add_subclass(Self());
         Ok(PyCell::new(py, init)?.to_object(py))
+    }
+
+    #[getter]
+    fn get_text_size(&self, py: Python) -> PyObject {
+        py.None()
+    }
+
+    #[getter]
+    fn get_text_sha1(&self, py: Python) -> PyObject {
+        py.None()
     }
 }
 

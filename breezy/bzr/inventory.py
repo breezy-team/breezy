@@ -35,12 +35,10 @@ from breezy.bzr import (
     )
 """)
 
-from .. import errors, osutils
+from .. import errors, lazy_regex, osutils, trace
 from .._bzr_rs import ROOT_ID
 from .._bzr_rs import inventory as _mod_inventory_rs
 from .static_tuple import StaticTuple
-
-InventoryEntry = _mod_inventory_rs.InventoryEntry
 
 
 def _parent_candidates(self, previous_inventories):
@@ -77,8 +75,8 @@ def _parent_candidates(self, previous_inventories):
                 candidates[ie.revision] = ie
     return candidates
 
-    def parent_candidates(self, previous_inventories):
-        _parent_candidates(self, previous_inventories)
+
+InventoryEntry = _mod_inventory_rs.InventoryEntry
 
 
 class InventoryFile(_mod_inventory_rs.InventoryFile):
@@ -103,19 +101,32 @@ class InventoryFile(_mod_inventory_rs.InventoryFile):
                         self.parent_id, rev_id))
         checker._add_entry_to_text_key_references(inv, self)
         # TODO: check size too.
-        checker.add_pending_item(tree_revision_id,
+        checker.add_pending_item(rev_id,
                                  ('texts', self.file_id, self.revision), b'text',
                                  self.text_sha1)
         if self.text_size is None:
             checker._report_items.append(
                 'fileid {{{}}} in {{{}}} has None for text_size'.format(self.file_id,
-                                                                tree_revision_id))
+                                                                rev_id))
 
     def parent_candidates(self, previous_inventories):
-        _parent_candidates(self, previous_inventories)
+        return _parent_candidates(self, previous_inventories)
+
+    def copy(self):
+        ie = InventoryFile(self.file_id, self.name, self.parent_id)
+        ie.revision = self.revision
+        ie.executable = self.executable
+        ie.text_sha1 = self.text_sha1
+        ie.text_size = self.text_size
+        return ie
 
 
 class InventoryDirectory(_mod_inventory_rs.InventoryDirectory):
+
+    __slots__ = ['children']
+
+    def __init__(self, file_id, name, parent_id):
+        self.children = {}
 
     def check(self, checker, rev_id, inv):
         """Check this inventory entry is intact.
@@ -148,8 +159,12 @@ class InventoryDirectory(_mod_inventory_rs.InventoryDirectory):
                                  b'da39a3ee5e6b4b0d3255bfef95601890afd80709')
 
     def parent_candidates(self, previous_inventories):
-        _parent_candidates(self, previous_inventories)
+        return _parent_candidates(self, previous_inventories)
 
+    def copy(self):
+        ie = InventoryDirectory(self.file_id, self.name, self.parent_id)
+        ie.revision = self.revision
+        return ie
 
 
 class TreeReference(_mod_inventory_rs.TreeReference):
@@ -175,7 +190,13 @@ class TreeReference(_mod_inventory_rs.TreeReference):
         checker._add_entry_to_text_key_references(inv, self)
 
     def parent_candidates(self, previous_inventories):
-        _parent_candidates(self, previous_inventories)
+        return _parent_candidates(self, previous_inventories)
+
+    def copy(self):
+        ie = TreeReference(self.file_id, self.name, self.parent_id)
+        ie.revision = self.revision
+        ie.reference_revision = self.reference_revision
+        return ie
 
 
 class InventoryLink(_mod_inventory_rs.InventoryLink):
@@ -202,14 +223,20 @@ class InventoryLink(_mod_inventory_rs.InventoryLink):
         if self.symlink_target is None:
             checker._report_items.append(
                 'symlink {%s} has no target in revision {%s}'
-                % (self.file_id, tree_revision_id))
+                % (self.file_id, rev_id))
         # Symlinks are stored as ''
-        checker.add_pending_item(tree_revision_id,
+        checker.add_pending_item(rev_id,
                                  ('texts', self.file_id, self.revision), b'text',
                                  b'da39a3ee5e6b4b0d3255bfef95601890afd80709')
 
     def parent_candidates(self, previous_inventories):
-        _parent_candidates(self, previous_inventories)
+        return _parent_candidates(self, previous_inventories)
+
+    def copy(self):
+        ie = InventoryLink(self.file_id, self.name, self.parent_id)
+        ie.revision = self.revision
+        ie.symlink_target = self.symlink_target
+        return ie
 
 
 class InvalidEntryName(errors.InternalBzrError):
@@ -1272,7 +1299,7 @@ class CHKInventory(CommonInventory):
             result.text_size = int(sections[5])
             result.executable = sections[6] == b"Y"
         elif sections[0].startswith(b"dir: "):
-            result = InventoryDirectory(sections[0][5:],
+            result = CHKInventoryDirectory(sections[0][5:],
                                            sections[2].decode('utf8'),
                                            sections[1])
         elif sections[0].startswith(b"symlink: "):
@@ -1870,6 +1897,25 @@ class CHKInventory(CommonInventory):
         return self.get_entry(self.root_id)
 
 
+class CHKInventoryDirectory(InventoryDirectory):
+    """A directory in an inventory."""
+
+    def __init__(self, file_id, name, parent_id):
+        InventoryEntry.__init__(self, file_id, name, parent_id)
+
+    @property
+    def children(self):
+        """Access the list of children of this directory.
+
+        With a parent_id_basename_to_file_id index, loads all the children,
+        without loads the entire index. Without is bad. A more sophisticated
+        proxy object might be nice, to allow partial loading of children as
+        well when specific names are accessed. (So path traversal can be
+        written in the obvious way but not examine siblings.).
+        """
+        raise NotImplementedError
+
+
 entry_factory = {
     'directory': InventoryDirectory,
     'file': InventoryFile,
@@ -1878,7 +1924,22 @@ entry_factory = {
 }
 
 
-make_entry = _mod_inventory_rs.make_entry  # noqa: F401
+def make_entry(kind, name, parent_id, file_id=None):
+    """Create an inventory entry.
+
+    :param kind: the type of inventory entry to create.
+    :param name: the basename of the entry.
+    :param parent_id: the parent_id of the entry.
+    :param file_id: the file_id to use. if None, one will be created.
+    """
+    if file_id is None:
+        file_id = generate_ids.gen_file_id(name)
+    name = ensure_normalized_name(name)
+    try:
+        factory = entry_factory[kind]
+    except KeyError:
+        raise errors.BadFileKindError(name, kind)
+    return factory(file_id, name, parent_id)
 
 
 def ensure_normalized_name(name):
@@ -1903,7 +1964,7 @@ def ensure_normalized_name(name):
     return name
 
 
-is_valid_name = _mod_inventory_rs.is_valid_name  # noqa: F401
+is_valid_name = _mod_inventory_rs.is_valid_name
 
 
 def _check_delta_unique_ids(delta):

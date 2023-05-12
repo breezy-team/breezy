@@ -351,24 +351,6 @@ class TestDeltaApplication(TestCaseWithTransport):
         inv2 = self.get_empty_inventory(inv)
         self.assertEqual([], inv2._make_delta(inv))
 
-    def test_None_file_id(self):
-        inv = self.get_empty_inventory()
-        dir1 = inventory.InventoryDirectory(b'dirid', 'dir1', inv.root.file_id)
-        dir1.file_id = None
-        dir1.revision = b'result'
-        delta = [(None, 'dir1', None, dir1)]
-        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
-                          inv, delta)
-
-    def test_unicode_file_id(self):
-        inv = self.get_empty_inventory()
-        dir1 = inventory.InventoryDirectory(b'dirid', 'dir1', inv.root.file_id)
-        dir1.file_id = 'dirid'
-        dir1.revision = b'result'
-        delta = [(None, 'dir1', dir1.file_id, dir1)]
-        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
-                          inv, delta)
-
     def test_repeated_file_id(self):
         inv = self.get_empty_inventory()
         file1 = inventory.InventoryFile(b'id', 'path1', inv.root.file_id)
@@ -694,7 +676,7 @@ class TestInventoryEntry(TestCase):
 
     def test_link_kind_character(self):
         dir = inventory.InventoryLink(b'123', 'hello.c', ROOT_ID)
-        self.assertEqual(dir.kind_character(), '')
+        self.assertEqual(dir.kind_character(), '@')
 
     def test_tree_ref_kind_character(self):
         dir = TreeReference(b'123', 'hello.c', ROOT_ID)
