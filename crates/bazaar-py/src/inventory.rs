@@ -18,7 +18,7 @@ fn kind_from_str(kind: &str) -> Option<Kind> {
         "file" => Some(Kind::File),
         "directory" => Some(Kind::Directory),
         "tree-reference" => Some(Kind::TreeReference),
-        "link" => Some(Kind::Symlink),
+        "symlink" => Some(Kind::Symlink),
         _ => None,
     }
 }
