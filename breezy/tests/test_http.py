@@ -51,8 +51,8 @@ def vary_by_http_client_implementation():
     """Test the libraries we can use, currently just urllib."""
     transport_scenarios = [
         ('urllib', {'_transport': HttpTransport,
-                        '_server': http_server.HttpServer,
-                        '_url_protocol': 'http',}),
+                    '_server': http_server.HttpServer,
+                    '_url_protocol': 'http'}),
         ]
     return transport_scenarios
 
@@ -98,7 +98,7 @@ def vary_by_http_proxy_auth_scheme():
 def vary_by_http_activity():
     activity_scenarios = [
         ('urllib,http', {'_activity_server': ActivityHTTPServer,
-                             '_transport': HttpTransport,}),
+                         '_transport': HttpTransport}),
         ]
     if features.HTTPSServerFeature.available():
         # FIXME: Until we have a better way to handle self-signed certificates
@@ -116,7 +116,7 @@ def vary_by_http_activity():
 
         activity_scenarios.append(
             ('urllib,https', {'_activity_server': ActivityHTTPSServer,
-                                  '_transport': HTTPS_transport,}),)
+                              '_transport': HTTPS_transport}),)
     return activity_scenarios
 
 

@@ -143,6 +143,7 @@ _win32_abspath = _osutils_rs.win32.abspath
 
 def _win32_realpath(path):
     import ntpath
+
     # Real ntpath.realpath doesn't have a problem with a unicode cwd
     return _win32_fixdrive(_win32_fix_separators(ntpath.realpath(path)))
 

@@ -236,10 +236,10 @@ opt_parser.add_option(
     help="generate a new SIGNING (several -s options can be specified)")
 
 
-key_builders = {"ca": build_ca_key, "server": build_server_key,}
-certificate_builders = {"ca": build_ca_certificate,}
-signing_request_builders = {"server": build_server_signing_request,}
-signing_builders = {"server": sign_server_certificate,}
+key_builders = {"ca": build_ca_key, "server": build_server_key}
+certificate_builders = {"ca": build_ca_certificate}
+signing_request_builders = {"server": build_server_signing_request}
+signing_builders = {"server": sign_server_certificate}
 
 
 if __name__ == '__main__':
