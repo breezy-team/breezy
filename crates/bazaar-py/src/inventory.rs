@@ -46,6 +46,16 @@ impl InventoryEntry {
         }
     }
 
+    #[setter]
+    fn set_name(&mut self, name: String) {
+        match &mut self.0 {
+            Entry::File { name: n, .. } => *n = name,
+            Entry::Directory { name: n, .. } => *n = name,
+            Entry::TreeReference { name: n, .. } => *n = name,
+            Entry::Link { name: n, .. } => *n = name,
+        }
+    }
+
     #[getter]
     fn get_file_id(&self, py: Python) -> PyObject {
         let file_id = &self.0.file_id();
@@ -70,6 +80,16 @@ impl InventoryEntry {
         parent_id
             .as_ref()
             .map(|parent_id| PyBytes::new(py, parent_id.bytes()).into())
+    }
+
+    #[setter]
+    fn set_parent_id(&mut self, parent_id: Option<Vec<u8>>) {
+        match &mut self.0 {
+            Entry::File { parent_id: p, .. } => *p = parent_id.map(FileId::from),
+            Entry::Directory { parent_id: p, .. } => *p = parent_id.map(FileId::from),
+            Entry::TreeReference { parent_id: p, .. } => *p = parent_id.map(FileId::from),
+            Entry::Link { parent_id: p, .. } => *p = parent_id.map(FileId::from),
+        }
     }
 
     #[getter]
@@ -204,6 +224,15 @@ impl InventoryFile {
             Entry::File { text_id, .. } => text_id
                 .as_ref()
                 .map(|text_id| PyBytes::new(py, text_id).into()),
+            _ => panic!("Not a file"),
+        }
+    }
+
+    #[setter]
+    fn set_text_id(slf: PyRefMut<Self>, text_id: Option<Vec<u8>>) {
+        let mut s = slf.into_super();
+        match &mut s.0 {
+            Entry::File { text_id: t, .. } => *t = text_id,
             _ => panic!("Not a file"),
         }
     }

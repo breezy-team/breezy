@@ -293,13 +293,6 @@ class InventoryTree(Tree):
                         yield p, e
             return iter_entries(self.root_inventory)
 
-    def iter_child_entries(self, path):
-        with self.lock_read():
-            ie = self._path2ie(path)
-            if ie.kind != 'directory':
-                raise errors.NotADirectory(path)
-            return ie.children.values()
-
     def _get_plan_merge_data(self, path, other, base):
         from . import versionedfile
         file_id = self.path2id(path)
@@ -682,8 +675,7 @@ class _SmartAddHelper:
         """Retrieve the most up to date inventory entry for a path.
 
         :param inv_path: Normalized inventory path
-        :return: Inventory entry (with possibly invalid .children for
-            directories)
+        :return: Inventory entry
         """
         entry = self._invdelta.get(inv_path)
         if entry is not None:
@@ -1014,6 +1006,14 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
             else:
                 yield path, 'V', entry.kind, entry
 
+    def iter_child_entries(self, path):
+        inv, ie = self._path2inv_ie(path)
+        if ie is None:
+            raise _mod_transport.NoSuchFile(path)
+        if ie.kind != 'directory':
+            raise errors.NotADirectory(path)
+        return inv.iter_sorted_children(ie.file_id)
+
     def get_symlink_target(self, path):
         # Inventories store symlink targets in unicode
         return self._path2ie(path).symlink_target
@@ -1079,11 +1079,10 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
             else:
                 relroot = ""
             # FIXME: stash the node in pending
-            entry = inv.get_entry(file_id)
             subdirs = []
-            for name, child in entry.sorted_children():
-                toppath = relroot + name
-                dirblock.append((toppath, name, child.kind, None, child.kind))
+            for child in inv.iter_sorted_children(file_id):
+                toppath = relroot + child.name
+                dirblock.append((toppath, child.name, child.kind, None, child.kind))
                 if child.kind == _directory:
                     subdirs.append((toppath, child.file_id))
             yield root, dirblock

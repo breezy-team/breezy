@@ -366,7 +366,6 @@ class ImportObjects(TestCaseWithTransport):
         ie = ret[0][3]
         self.assertEqual(False, ie.executable)
         self.assertEqual("directory", ie.kind)
-        self.assertEqual({}, ie.children)
         self.assertEqual(b"somerevid", ie.revision)
         self.assertEqual(None, ie.text_sha1)
 
@@ -385,7 +384,6 @@ class ImportObjects(TestCaseWithTransport):
         ie = ret[0][3]
         self.assertEqual("directory", ie.kind)
         self.assertEqual(False, ie.executable)
-        self.assertEqual({}, ie.children)
         self.assertEqual(b"somerevid", ie.revision)
 
     def test_import_tree_with_file(self):
