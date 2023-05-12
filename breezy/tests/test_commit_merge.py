@@ -29,7 +29,8 @@ class TestCommitMerge(TestCaseWithTransport):
 
     These don't currently test the merge code, which is intentional to
     reduce the scope of testing.  We just mark the revision as merged
-    without bothering about the contents much."""
+    without bothering about the contents much.
+    """
 
     def test_merge_commit_empty(self):
         """Simple commit of two-way merge of empty trees."""
@@ -52,7 +53,7 @@ class TestCommitMerge(TestCaseWithTransport):
         wty.commit('merge from x', rev_id=b'y@u-0-2', allow_pointless=False)
 
         self.assertEqual(by.revno(), 3)
-        graph = wty.branch.repository.get_graph()
+        wty.branch.repository.get_graph()
         self.addCleanup(wty.lock_read().unlock)
         self.assertThat(by,
                         RevisionHistoryMatches(
@@ -65,7 +66,7 @@ class TestCommitMerge(TestCaseWithTransport):
     def test_merge_new_file(self):
         """Commit merge of two trees with no overlapping files."""
         wtx = self.make_branch_and_tree('x')
-        base_rev = wtx.commit('common parent')
+        wtx.commit('common parent')
         bx = wtx.branch
         wtx.commit('establish root id')
         wty = wtx.controldir.sprout('y').open_workingtree()

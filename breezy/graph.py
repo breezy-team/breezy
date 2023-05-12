@@ -56,7 +56,7 @@ class DictParentsProvider:
     #       change it.
 
     def get_parent_map(self, keys):
-        """See StackedParentsProvider.get_parent_map"""
+        """See StackedParentsProvider.get_parent_map."""
         ancestry = self.ancestry
         return {k: tuple(ancestry[k]) for k in keys if k in ancestry}
 
@@ -74,7 +74,7 @@ class StackedParentsProvider:
         return f"{self.__class__.__name__}({self._parent_providers!r})"
 
     def get_parent_map(self, keys):
-        """Get a mapping of keys => parents
+        """Get a mapping of keys => parents.
 
         A dictionary is returned with an entry for each key present in this
         source. If this source doesn't have information about a key, it should
@@ -232,7 +232,7 @@ class Graph:
     """
 
     def __init__(self, parents_provider):
-        """Construct a Graph that uses several graphs as its input
+        """Construct a Graph that uses several graphs as its input.
 
         This should not normally be invoked directly, because there may be
         specialized implementations for particular repository types.  See
@@ -252,7 +252,7 @@ class Graph:
         return f'Graph({self._parents_provider!r})'
 
     def find_lca(self, *revisions):
-        """Determine the lowest common ancestors of the provided revisions
+        """Determine the lowest common ancestors of the provided revisions.
 
         A lowest common ancestor is a common ancestor none of whose
         descendants are common ancestors.  In graphs, unlike trees, there may
@@ -292,7 +292,7 @@ class Graph:
         return self.heads(border_common)
 
     def find_difference(self, left_revision, right_revision):
-        """Determine the graph difference between two revisions"""
+        """Determine the graph difference between two revisions."""
         border, common, searchers = self._find_border_ancestors(
             [left_revision, right_revision])
         self._search_for_extra_common(common, searchers)
@@ -470,7 +470,6 @@ class Graph:
 
         :return: (unique_searcher, common_searcher)
         """
-
         unique_searcher = self._make_breadth_first_searcher(unique_revisions)
         # we know that unique_revisions aren't in common_revisions, so skip
         # past them.
@@ -566,7 +565,7 @@ class Graph:
     def _step_unique_and_common_searchers(self, common_searcher,
                                           unique_tip_searchers,
                                           unique_searcher):
-        """Step all the searchers"""
+        """Step all the searchers."""
         newly_seen_common = set(common_searcher.step())
         newly_seen_unique = set()
         for searcher in unique_tip_searchers:
@@ -1218,7 +1217,7 @@ class Graph:
                 return
 
     def _remove_simple_descendants(self, revisions, parent_map):
-        """remove revisions which are children of other ones in the set
+        """Remove revisions which are children of other ones in the set.
 
         This doesn't do any graph searching, it just checks the immediate
         parent_map to find if there are any children which can be removed.
@@ -1453,7 +1452,7 @@ class _BreadthFirstSearcher:
         seen.update(revisions)
         parent_map = self._parents_provider.get_parent_map(revisions)
         found_revisions.update(parent_map)
-        for rev_id, parents in parent_map.items():
+        for _rev_id, parents in parent_map.items():
             if parents is None:
                 continue
             new_found_parents = [p for p in parents if p not in seen]
@@ -1507,8 +1506,7 @@ class _BreadthFirstSearcher:
         return seen_ancestors
 
     def stop_searching_any(self, revisions):
-        """
-        Remove any of the specified revisions from the search list.
+        """Remove any of the specified revisions from the search list.
 
         None of the specified revisions are required to be present in the
         search list.
@@ -1595,7 +1593,7 @@ class GraphThunkIdsToKeys:
         return [r for (r,) in self._graph.topo_sort()]
 
     def heads(self, ids):
-        """See Graph.heads()"""
+        """See Graph.heads()."""
         as_keys = [(i,) for i in ids]
         head_keys = self._graph.heads(as_keys)
         return {h[0] for h in head_keys}

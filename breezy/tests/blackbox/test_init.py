@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Test 'brz init'"""
+"""Test 'brz init'."""
 
 import os
 import re
@@ -165,7 +165,7 @@ Using shared repository: {}
 
     def test_init_create_prefix(self):
         """'brz init --create-prefix; will create leading directories."""
-        tree = self.create_simple_tree()
+        self.create_simple_tree()
 
         self.run_bzr_error(['Parent directory of ../new/tree does not exist'],
                            'init ../new/tree', working_dir='tree')
@@ -173,7 +173,7 @@ Using shared repository: {}
         self.assertPathExists('new/tree/.bzr')
 
     def test_init_default_format_option(self):
-        """brz init should read default format from option default_format"""
+        """Brz init should read default format from option default_format."""
         g_store = _mod_config.GlobalStore()
         g_store._load_from_string(b'''
 [DEFAULT]
@@ -229,8 +229,7 @@ class TestSFTPInit(TestCaseWithSFTPServer):
                            'init --append-revisions-only --format=knit knit')
 
     def test_init_without_username(self):
-        """Ensure init works if username is not set.
-        """
+        """Ensure init works if username is not set."""
         # brz makes user specified whoami mandatory for operations
         # like commit as whoami is recorded. init however is not so final
         # and uses whoami only in a lock file. Without whoami the login name

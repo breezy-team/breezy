@@ -84,11 +84,11 @@ class AtomicFile:
         return f'{self.__class__.__name__}({self.realfilename!r})'
 
     def write(self, data):
-        """Write some data to the file. Like file.write()"""
+        """Write some data to the file. Like file.write()."""
         return os.write(self._fd, data)
 
     def _close_tmpfile(self, func_name):
-        """Close the local temp file in preparation for commit or abort"""
+        """Close the local temp file in preparation for commit or abort."""
         if self._fd is None:
             raise AtomicFileAlreadyClosed(path=self.realfilename,
                                           function=func_name)

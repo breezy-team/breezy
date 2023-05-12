@@ -118,7 +118,6 @@ def sanitize_ref_name_for_git(refname):
     :param refname: refname to rewrite
     :return: new refname
     """
-    import struct
     new_refname = re.sub(
         # '/.' in refname or startswith '.'
         br"/\.|^\."

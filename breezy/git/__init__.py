@@ -29,7 +29,7 @@ dulwich_minimum_version = (0, 19, 11)
 
 from .. import __version__ as breezy_version  # noqa: F401
 from .. import errors as brz_errors
-from .. import trace, urlutils, version_info
+from .. import trace, urlutils
 from ..commands import plugin_cmds
 from ..controldir import ControlDirFormat, Prober, format_registry
 from ..controldir import \
@@ -149,7 +149,6 @@ class RemoteGitProber(Prober):
         url = urlutils.URL.from_string(base_url)
         url.user = url.quoted_user = None
         url.password = url.quoted_password = None
-        host = url.host
         url = urlutils.join(str(url), "info/refs") + "?service=git-upload-pack"
         headers = {"Content-Type": "application/x-git-upload-pack-request",
                    "Accept": "application/x-git-upload-pack-result",
@@ -297,8 +296,7 @@ from ..repository import \
 repository_network_format_registry.register_lazy(
     b'git', __name__ + '.repository', 'GitRepositoryFormat')
 
-register_extra_lazy_repository_format = getattr(repository_format_registry,
-                                                "register_extra_lazy")
+register_extra_lazy_repository_format = repository_format_registry.register_extra_lazy
 register_extra_lazy_repository_format(__name__ + '.repository',
                                       'GitRepositoryFormat')
 

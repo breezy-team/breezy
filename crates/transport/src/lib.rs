@@ -1,5 +1,3 @@
-use crate::lock::Lock;
-
 pub mod readv;
 
 #[cfg(unix)]

@@ -98,8 +98,7 @@ class TestIncompatibleStacking(TestCaseWithRepository):
 
 
 def external_reference_test_scenarios():
-    """Generate test scenarios for repositories supporting external references.
-    """
+    """Generate test scenarios for repositories supporting external references."""
     result = []
     for test_name, scenario_info in all_repository_format_scenarios():
         format = scenario_info['repository_format']

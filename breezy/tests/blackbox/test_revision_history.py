@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from breezy import branch, tests
+from breezy import tests
 
 
 class TestRevisionHistory(tests.TestCaseWithTransport):
@@ -40,7 +40,7 @@ class TestRevisionHistory(tests.TestCaseWithTransport):
         self.assertEqual(rh, 'revision_1\nrevision_2\nrevision_3\n')
 
     def test_revision_history(self):
-        """No location"""
+        """No location."""
         self._build_branch()
         self._check_revision_history(working_dir='test')
 

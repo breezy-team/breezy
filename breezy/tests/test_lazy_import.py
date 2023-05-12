@@ -16,17 +16,16 @@
 
 """Test the lazy_import functionality."""
 
-import linecache
 import os
 import re
 import sys
 
-from .. import errors, lazy_import, osutils
+from .. import lazy_import, osutils
 from . import TestCase, TestCaseInTempDir
 
 
 class InstrumentedReplacer(lazy_import.ScopeReplacer):
-    """Track what actions are done"""
+    """Track what actions are done."""
 
     @staticmethod
     def use_actions(actions):
@@ -61,7 +60,7 @@ class InstrumentedImportReplacer(lazy_import.ImportReplacer):
 
 
 class TestClass:
-    """Just a simple test class instrumented for the test cases"""
+    """Just a simple test class instrumented for the test cases."""
 
     class_member = 'class_member'
 
@@ -418,7 +417,7 @@ class TestScopeReplacer(TestCase):
                           ], actions)
 
     def test_replacing_from_own_scope_fails(self):
-        """If a ScopeReplacer tries to replace itself a nice error is given"""
+        """If a ScopeReplacer tries to replace itself a nice error is given."""
         actions = []
         InstrumentedReplacer.use_actions(actions)
         TestClass.use_actions(actions)
@@ -448,7 +447,7 @@ class TestScopeReplacer(TestCase):
 
 
 class ImportReplacerHelper(TestCaseInTempDir):
-    """Test the ability to have a lazily imported module or object"""
+    """Test the ability to have a lazily imported module or object."""
 
     def setUp(self):
         super().setUp()
@@ -492,7 +491,7 @@ class ImportReplacerHelper(TestCaseInTempDir):
         os.mkdir('base')
         root_path = osutils.pathjoin('base', root_name)
         os.mkdir(root_path)
-        root_init = osutils.pathjoin(root_path, '__init__.py')
+        osutils.pathjoin(root_path, '__init__.py')
         with open(osutils.pathjoin(root_path, '__init__.py'), 'w') as f:
             f.write('var1 = 1\ndef func1(a):\n  return a\n')
         mod_path = osutils.pathjoin(root_path, mod_name + '.py')
@@ -519,7 +518,7 @@ class ImportReplacerHelper(TestCaseInTempDir):
 class TestImportReplacerHelper(ImportReplacerHelper):
 
     def test_basic_import(self):
-        """Test that a real import of these modules works"""
+        """Test that a real import of these modules works."""
         sub_mod_path = '.'.join([self.root_name, self.sub_name,
                                  self.submoda_name])
         root = lazy_import._builtin_import(sub_mod_path, {}, {}, [], 0)
@@ -540,7 +539,7 @@ class TestImportReplacerHelper(ImportReplacerHelper):
 class TestImportReplacer(ImportReplacerHelper):
 
     def test_import_root(self):
-        """Test 'import root-XXX as root1'"""
+        """Test 'import root-XXX as root1'."""
         try:
             root1
         except NameError:
@@ -565,7 +564,7 @@ class TestImportReplacer(ImportReplacerHelper):
                           ], self.actions)
 
     def test_import_mod(self):
-        """Test 'import root-XXX.mod-XXX as mod2'"""
+        """Test 'import root-XXX.mod-XXX as mod2'."""
         try:
             mod1
         except NameError:
@@ -590,7 +589,7 @@ class TestImportReplacer(ImportReplacerHelper):
                           ], self.actions)
 
     def test_import_mod_from_root(self):
-        """Test 'from root-XXX import mod-XXX as mod2'"""
+        """Test 'from root-XXX import mod-XXX as mod2'."""
         try:
             mod2
         except NameError:
@@ -614,7 +613,7 @@ class TestImportReplacer(ImportReplacerHelper):
                           ], self.actions)
 
     def test_import_root_and_mod(self):
-        """Test 'import root-XXX.mod-XXX' remapping both to root3.mod3"""
+        """Test 'import root-XXX.mod-XXX' remapping both to root3.mod3."""
         try:
             root3
         except NameError:
@@ -764,7 +763,7 @@ class TestImportReplacer(ImportReplacerHelper):
 
 
 class TestConvertImportToMap(TestCase):
-    """Directly test the conversion from import strings to maps"""
+    """Directly test the conversion from import strings to maps."""
 
     def check(self, expected, import_strings):
         proc = lazy_import.ImportProcessor()
@@ -827,7 +826,7 @@ class TestConvertImportToMap(TestCase):
 
 
 class TestFromToMap(TestCase):
-    """Directly test the conversion of 'from foo import bar' syntax"""
+    """Directly test the conversion of 'from foo import bar' syntax."""
 
     def check_result(self, expected, from_strings):
         proc = lazy_import.ImportProcessor()
@@ -861,7 +860,7 @@ class TestFromToMap(TestCase):
 
 
 class TestCanonicalize(TestCase):
-    """Test that we can canonicalize import texts"""
+    """Test that we can canonicalize import texts."""
 
     def check(self, expected, text):
         proc = lazy_import.ImportProcessor()
@@ -916,7 +915,7 @@ class TestCanonicalize(TestCase):
 
 
 class TestImportProcessor(TestCase):
-    """Test that ImportProcessor can turn import texts into lazy imports"""
+    """Test that ImportProcessor can turn import texts into lazy imports."""
 
     def check(self, expected, text):
         proc = lazy_import.ImportProcessor()
@@ -1103,7 +1102,7 @@ import %(root_name)s.%(sub_name)s.%(submoda_name)s as submoda7
                           ], self.actions)
 
     def test_lazy_import(self):
-        """Smoke test that lazy_import() does the right thing"""
+        """Smoke test that lazy_import() does the right thing."""
         try:
             root8
         except NameError:

@@ -26,7 +26,7 @@ import breezy.transport.trace
 
 from .. import errors, osutils, tests, transport, urlutils
 from ..transport import (FileExists, NoSuchFile, UnsupportedProtocol, chroot,
-                         fakenfs, http, local, memory, pathfilter, readonly)
+                         fakenfs, local, memory, pathfilter, readonly)
 from ..transport.local import file_kind
 from . import features, test_server
 
@@ -66,7 +66,7 @@ class TestTransport(tests.TestCase):
                          transport._get_transport_modules())
 
     def test_transport_dependency(self):
-        """Transport with missing dependency causes no error"""
+        """Transport with missing dependency causes no error."""
         saved_handlers = transport._get_protocol_handlers()
         self.addCleanup(transport._set_protocol_handlers, saved_handlers)
         # don't pollute the current handlers
@@ -85,7 +85,7 @@ class TestTransport(tests.TestCase):
             self.fail('Did not raise UnsupportedProtocol')
 
     def test_transport_fallback(self):
-        """Transport with missing dependency causes no error"""
+        """Transport with missing dependency causes no error."""
         saved_handlers = transport._get_protocol_handlers()
         self.addCleanup(transport._set_protocol_handlers, saved_handlers)
         transport._clear_protocol_handlers()
@@ -98,7 +98,7 @@ class TestTransport(tests.TestCase):
         self.assertIsInstance(t, BackupTransportHandler)
 
     def test_ssh_hints(self):
-        """Transport ssh:// should raise an error pointing out bzr+ssh://"""
+        """Transport ssh:// should raise an error pointing out bzr+ssh://."""
         try:
             transport.get_transport_from_url('ssh://fooserver/foo')
         except UnsupportedProtocol as e:
@@ -433,13 +433,13 @@ class TestChrootServer(tests.TestCase):
 
 
 class TestHooks(tests.TestCase):
-    """Basic tests for transport hooks"""
+    """Basic tests for transport hooks."""
 
     def _get_connected_transport(self):
         return transport.ConnectedTransport("bogus:nowhere")
 
     def test_transporthooks_initialisation(self):
-        """Check all expected transport hook points are set up"""
+        """Check all expected transport hook points are set up."""
         hookpoint = transport.TransportHooks()
         self.assertIn(
             "post_connect",
@@ -448,7 +448,7 @@ class TestHooks(tests.TestCase):
         )
 
     def test_post_connect(self):
-        """Ensure the post_connect hook is called when _set_transport is"""
+        """Ensure the post_connect hook is called when _set_transport is."""
         calls = []
         transport.Transport.hooks.install_named_hook("post_connect",
                                                      calls.append, None)
@@ -478,7 +478,8 @@ class PathFilteringDecoratorTransportTest(tests.TestCase):
         """Make a PathFilteringTransport backed by a MemoryTransport.
 
         :param filter_func: by default this will be a no-op function.  Use this
-            parameter to override it."""
+        parameter to override it.
+        """
         if filter_func is None:
             def filter_func(x):
                 return x
@@ -614,10 +615,10 @@ class FakeNFSDecoratorTests(tests.TestCaseInTempDir):
 
 
 class FakeVFATDecoratorTests(tests.TestCaseInTempDir):
-    """Tests for simulation of VFAT restrictions"""
+    """Tests for simulation of VFAT restrictions."""
 
     def get_vfat_transport(self, url):
-        """Return vfat-backed transport for test directory"""
+        """Return vfat-backed transport for test directory."""
         from ..transport.fakevfat import FakeVFATTransportDecorator
         return FakeVFATTransportDecorator('vfat+' + url)
 
@@ -644,7 +645,7 @@ class BadTransportHandler(transport.Transport):
 
 
 class BackupTransportHandler(transport.Transport):
-    """Test transport that works as a backup for the BadTransportHandler"""
+    """Test transport that works as a backup for the BadTransportHandler."""
     pass
 
 
@@ -817,7 +818,7 @@ class TestWin32LocalTransport(tests.TestCase):
         # clone to root should stop at least at \\HOST part
         # not on \\
         t = local.EmulatedWin32LocalTransport('file://HOST/path/to/some/dir/')
-        for i in range(4):
+        for _i in range(4):
             t = t.clone('..')
         self.assertEqual(t.base, 'file://HOST/')
         # make sure we reach the root
@@ -826,7 +827,7 @@ class TestWin32LocalTransport(tests.TestCase):
 
 
 class TestConnectedTransport(tests.TestCase):
-    """Tests for connected to remote server transports"""
+    """Tests for connected to remote server transports."""
 
     def test_parse_url(self):
         t = transport.ConnectedTransport(
@@ -911,7 +912,7 @@ class TestConnectedTransport(tests.TestCase):
 
 
 class TestReusedTransports(tests.TestCase):
-    """Tests for transport reuse"""
+    """Tests for transport reuse."""
 
     def test_reuse_same_transport(self):
         possible_transports = []

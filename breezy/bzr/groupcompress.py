@@ -265,11 +265,10 @@ class GroupCompressBlock:
         # bytes (it takes 5 bytes to encode 2^32)
         c = self._content[start:start + 1]
         if c == b'f':
-            type = 'fulltext'
+            pass
         else:
             if c != b'd':
                 raise ValueError(f'Unknown content control code: {c}')
-            type = 'delta'
         content_len, len_len = decode_base128_int(
             self._content[start + 1:start + 6])
         content_start = start + 1 + len_len
@@ -319,7 +318,7 @@ class GroupCompressBlock:
         self._create_z_content_from_chunks(chunks)
 
     def to_chunks(self):
-        """Create the byte stream as a series of 'chunks'"""
+        """Create the byte stream as a series of 'chunks'."""
         self._create_z_content()
         header = self.GCB_HEADER
         chunks = [b'%s%d\n%d\n'
@@ -407,7 +406,7 @@ class _LazyGroupCompressFactory:
     """Yield content from a GroupCompressBlock on demand."""
 
     def __init__(self, key, parents, manager, start, end, first):
-        """Create a _LazyGroupCompressFactory
+        """Create a _LazyGroupCompressFactory.
 
         :param key: The key of just this record
         :param parents: The parents of this key (possibly None)
@@ -960,7 +959,7 @@ class PythonGroupCompressor(_CommonGroupCompressor):
         self.chunks = self._delta_index.lines
 
     def _compress(self, key, chunks, input_len, max_delta_size, soft=False):
-        """see _CommonGroupCompressor._compress"""
+        """See _CommonGroupCompressor._compress."""
         new_lines = osutils.chunks_to_lines(chunks)
         out_lines, index_lines = self._delta_index.make_delta(
             new_lines, bytes_length=input_len, soft=soft)
@@ -1014,7 +1013,7 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
         self._delta_index = DeltaIndex(max_bytes_to_index=max_bytes_to_index)
 
     def _compress(self, key, chunks, input_len, max_delta_size, soft=False):
-        """see _CommonGroupCompressor._compress"""
+        """See _CommonGroupCompressor._compress."""
         # By having action/label/sha1/len, we can parse the group if the index
         # was ever destroyed, we have the key in 'label', we know the final
         # bytes are valid from sha1, and we know where to find the end of this
@@ -1364,19 +1363,19 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         if keys is None:
             keys = self.keys()
             for record in self.get_record_stream(keys, 'unordered', True):
-                for chunk in record.iter_bytes_as('chunked'):
+                for _chunk in record.iter_bytes_as('chunked'):
                     pass
         else:
             return self.get_record_stream(keys, 'unordered', True)
 
     def clear_cache(self):
-        """See VersionedFiles.clear_cache()"""
+        """See VersionedFiles.clear_cache()."""
         self._group_cache.clear()
         self._index._graph_index.clear_cache()
         self._index._int_cache.clear()
 
     def _check_add(self, key, random_id):
-        """check that version_id and lines are safe to add."""
+        """Check that version_id and lines are safe to add."""
         version_id = key[-1]
         if version_id is not None:
             if osutils.contains_whitespace(version_id):
@@ -1693,7 +1692,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             if val is not None:
                 try:
                     val = int(val)
-                except ValueError as e:
+                except ValueError:
                     trace.warning('Value for '
                                   '"bzr.groupcompress.max_bytes_to_index"'
                                   ' %r is not an integer'
@@ -1893,7 +1892,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         The caller is responsible for cleaning up progress bars (because this
         is an iterator).
 
-        NOTES:
+        Notes:
          * Lines are normalised by the underlying store: they will all have \n
            terminators.
          * Lines are returned in arbitrary order.
@@ -2049,7 +2048,7 @@ class _GCGraphIndex:
         # check for dups
         if not random_id:
             present_nodes = self._get_entries(keys)
-            for (index, key, value, node_refs) in present_nodes:
+            for (_index, key, value, node_refs) in present_nodes:
                 # Sometimes these are passed as a list rather than a tuple
                 node_refs = static_tuple.as_tuples(node_refs)
                 passed = static_tuple.as_tuples(keys[key])
@@ -2119,7 +2118,7 @@ class _GCGraphIndex:
                 raise errors.RevisionNotPresent(missing_keys.pop(), self)
 
     def find_ancestry(self, keys):
-        """See CombinedGraphIndex.find_ancestry"""
+        """See CombinedGraphIndex.find_ancestry."""
         return self._graph_index.find_ancestry(keys, 0)
 
     def get_parent_map(self, keys):

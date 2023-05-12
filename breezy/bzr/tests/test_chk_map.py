@@ -1013,7 +1013,7 @@ class TestMap(TestCaseWithStore):
             chk_bytes=basis._store, maximum_size=10)
         self.assertEqual([((b'a',), None, b'content here'),
                           ((b'b',), None, b'more content')],
-                         sorted(list(target.iter_changes(basis))))
+                         sorted(target.iter_changes(basis)))
 
     def test_iter_changes_ab_empty(self):
         # Asking for changes between a dict with keys to an empty dict returns
@@ -1023,12 +1023,12 @@ class TestMap(TestCaseWithStore):
         target = self._get_map({}, chk_bytes=basis._store, maximum_size=10)
         self.assertEqual([((b'a',), b'content here', None),
                           ((b'b',), b'more content', None)],
-                         sorted(list(target.iter_changes(basis))))
+                         sorted(target.iter_changes(basis)))
 
     def test_iter_changes_empty_empty_is_empty(self):
         basis = self._get_map({}, maximum_size=10)
         target = self._get_map({}, chk_bytes=basis._store, maximum_size=10)
-        self.assertEqual([], sorted(list(target.iter_changes(basis))))
+        self.assertEqual([], sorted(target.iter_changes(basis)))
 
     def test_iter_changes_ab_ab_is_empty(self):
         basis = self._get_map({(b'a',): b'content here', (b'b',): b'more content'},
@@ -1036,7 +1036,7 @@ class TestMap(TestCaseWithStore):
         target = self._get_map(
             {(b'a',): b'content here', (b'b',): b'more content'},
             chk_bytes=basis._store, maximum_size=10)
-        self.assertEqual([], sorted(list(target.iter_changes(basis))))
+        self.assertEqual([], sorted(target.iter_changes(basis)))
 
     def test_iter_changes_ab_ab_nodes_not_loaded(self):
         basis = self._get_map({(b'a',): b'content here', (b'b',): b'more content'},
@@ -1054,7 +1054,7 @@ class TestMap(TestCaseWithStore):
         target = self._get_map(
             {(b'a',): b'content here', (b'b',): b'different content'},
             chk_bytes=basis._store, maximum_size=10)
-        result = sorted(list(target.iter_changes(basis)))
+        result = sorted(target.iter_changes(basis))
         self.assertEqual([((b'b',), b'more content', b'different content')],
                          result)
 
@@ -1083,7 +1083,7 @@ class TestMap(TestCaseWithStore):
         basis = self._get_map(basis_dict, maximum_size=10)
         target = self._get_map(target_dict, maximum_size=10,
                                chk_bytes=basis._store)
-        self.assertEqual(changes, sorted(list(target.iter_changes(basis))))
+        self.assertEqual(changes, sorted(target.iter_changes(basis)))
 
     def test_iter_changes_common_pages_not_loaded(self):
         # aaa - common unaltered
@@ -1108,7 +1108,7 @@ class TestMap(TestCaseWithStore):
                 raise AssertionError(f"'aaa' pointer was followed {keys!r}")
             return basis_get(keys, order, fulltext)
         basis._store.get_record_stream = get_record_stream
-        result = sorted(list(target.iter_changes(basis)))
+        result = sorted(target.iter_changes(basis))
         for change in result:
             if change[0] == (b'aaa',):
                 self.fail(f"Found unexpected change: {change}")
@@ -1127,7 +1127,7 @@ class TestMap(TestCaseWithStore):
             ]
         basis = self._get_map(basis_dict)
         target = self._get_map(target_dict, chk_bytes=basis._store)
-        self.assertEqual(changes, sorted(list(target.iter_changes(basis))))
+        self.assertEqual(changes, sorted(target.iter_changes(basis)))
 
     def test_iteritems_empty(self):
         chk_bytes = self.get_chk_bytes()
@@ -1141,7 +1141,7 @@ class TestMap(TestCaseWithStore):
                                     {(b"a", ): b"content here", (b"b", ): b"more content"})
         chkmap = CHKMap(chk_bytes, root_key)
         self.assertEqual([((b"a",), b"content here"), ((b"b",), b"more content")],
-                         sorted(list(chkmap.iteritems())))
+                         sorted(chkmap.iteritems()))
 
     def test_iteritems_selected_one_of_two_items(self):
         chkmap = self._get_map(
@@ -1329,7 +1329,7 @@ class TestMap(TestCaseWithStore):
 
 
 def _search_key_single(key):
-    """A search key function that maps all nodes to the same value"""
+    """A search key function that maps all nodes to the same value."""
     return 'value'
 
 
@@ -2029,7 +2029,7 @@ class TestInternalNode(TestCaseWithStore):
         node = chkmap._root_node
         # unmapping k23 should give us a root, with k1 and k22 as direct
         # children.
-        result = node.unmap(chkmap._store, (b'k23',))
+        node.unmap(chkmap._store, (b'k23',))
         # check the pointed-at object within node - k2 should now point at the
         # k22 leaf (which has been paged in to see if we can collapse the tree)
         child = node._items[b'k2']
@@ -2203,12 +2203,12 @@ class TestCHKMapDifference(TestCaseWithExampleMaps):
         c_map.map((b'abb',), b'new abb content')
         key2 = c_map._save()
         key2_a = c_map._root_node._items[b'a'].key()
-        key2_c = c_map._root_node._items[b'c'].key()
+        c_map._root_node._items[b'c'].key()
         c_map = chk_map.CHKMap(self.get_chk_bytes(), key1,
                                chk_map._search_key_plain)
         c_map.map((b'ccc',), b'new ccc content')
         key3 = c_map._save()
-        key3_a = c_map._root_node._items[b'a'].key()
+        c_map._root_node._items[b'a'].key()
         key3_c = c_map._root_node._items[b'c'].key()
         diff = self.get_difference([key2, key3], [key1],
                                    chk_map._search_key_plain)
@@ -2292,7 +2292,7 @@ class TestCHKMapDifference(TestCaseWithExampleMaps):
         c_map._dump_tree()  # load everything
         key1 = c_map.key()
         key1_aa = c_map._root_node._items[b'aa'].key()
-        key1_ad = c_map._root_node._items[b'ad'].key()
+        c_map._root_node._items[b'ad'].key()
 
         c_map2 = self.make_one_deep_one_prefix_map(chk_map._search_key_plain)
         c_map2._dump_tree()
@@ -2429,7 +2429,7 @@ class TestCHKMapDifference(TestCaseWithExampleMaps):
         key1_a = c_map._root_node._items[b'a'].key()
         c_map.map((b'ccc',), b'new ccc value')
         key2 = c_map._save()
-        key2_a = c_map._root_node._items[b'a'].key()
+        c_map._root_node._items[b'a'].key()
         c_map.map((b'add',), b'new add value')
         key3 = c_map._save()
         key3_a = c_map._root_node._items[b'a'].key()
@@ -2459,7 +2459,7 @@ class TestCHKMapDifference(TestCaseWithExampleMaps):
         c_map.map((b'acc',), b'new acc content')
         key3 = c_map._save()
         key3_a = c_map._root_node._items[b'a'].key()
-        key3_ac = c_map._root_node._items[b'a']._items[b'ac'].key()
+        c_map._root_node._items[b'a']._items[b'ac'].key()
         diff = self.get_difference([key3], [key1, key2],
                                    chk_map._search_key_plain)
         root_results = [record.key for record in diff._read_all_roots()]
@@ -2615,7 +2615,7 @@ class TestIterInterestingNodes(TestCaseWithExampleMaps):
             "  'b' LeafNode\n"
             "      ('bbb',) 'new'\n",
             target3_map._dump_tree())
-        aaa_key = target1_map._root_node.key()
+        target1_map._root_node.key()
         b_key = target2_map._root_node._items[b'b'].key()
         a_key = target3_map._root_node._items[b'a'].key()
         aac_key = target3_map._root_node._items[b'a']._items[b'aac'].key()
@@ -2806,7 +2806,7 @@ class TestIterInterestingNodes(TestCaseWithExampleMaps):
             left_map._dump_tree())
         # Keys from left side target
         l_a_key = left_map._root_node._items[b'a'].key()
-        l_c_key = left_map._root_node._items[b'c'].key()
+        left_map._root_node._items[b'c'].key()
         # Get right expected data
         right_map = CHKMap(self.get_chk_bytes(), right)
         self.assertEqualDiff(
@@ -2818,7 +2818,7 @@ class TestIterInterestingNodes(TestCaseWithExampleMaps):
             "      ('caa',) 'unchanged'\n"
             "      ('cbb',) 'changed right'\n",
             right_map._dump_tree())
-        r_a_key = right_map._root_node._items[b'a'].key()
+        right_map._root_node._items[b'a'].key()
         r_c_key = right_map._root_node._items[b'c'].key()
         self.assertIterInteresting(
             [right, left, l_a_key, r_c_key],

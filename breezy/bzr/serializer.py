@@ -121,7 +121,7 @@ class InventorySerializer:
 
 
 class SerializerRegistry(registry.Registry):
-    """Registry for serializer objects"""
+    """Registry for serializer objects."""
 
 
 revision_format_registry = SerializerRegistry()

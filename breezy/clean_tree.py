@@ -25,13 +25,13 @@ from .workingtree import WorkingTree
 
 
 def is_detritus(subp):
-    """Return True if the supplied path is detritus, False otherwise"""
+    """Return True if the supplied path is detritus, False otherwise."""
     return subp.endswith('.THIS') or subp.endswith('.BASE') or\
         subp.endswith('.OTHER') or subp.endswith('~') or subp.endswith('.tmp')
 
 
 def iter_deletables(tree, unknown=False, ignored=False, detritus=False):
-    """Iterate through files that may be deleted"""
+    """Iterate through files that may be deleted."""
     for subp in tree.extras():
         if detritus and is_detritus(subp):
             yield tree.abspath(subp), subp
@@ -46,7 +46,7 @@ def iter_deletables(tree, unknown=False, ignored=False, detritus=False):
 
 def clean_tree(directory, unknown=False, ignored=False, detritus=False,
                dry_run=False, no_prompt=False):
-    """Remove files in the specified classes from the tree"""
+    """Remove files in the specified classes from the tree."""
     tree = WorkingTree.open_containing(directory)[0]
     with tree.lock_read():
         deletables = list(iter_deletables(tree, unknown=unknown,
@@ -56,7 +56,7 @@ def clean_tree(directory, unknown=False, ignored=False, detritus=False,
             note(gettext('Nothing to delete.'))
             return 0
         if not no_prompt:
-            for path, subp in deletables:
+            for _path, subp in deletables:
                 ui.ui_factory.note(subp)
             prompt = gettext('Are you sure you wish to delete these')
             if not ui.ui_factory.get_boolean(prompt):
@@ -87,10 +87,9 @@ def _filter_out_nested_controldirs(deletables):
 
 
 def delete_items(deletables, dry_run=False):
-    """Delete files in the deletables iterable"""
+    """Delete files in the deletables iterable."""
     def onerror(function, path, excinfo):
-        """Show warning for errors seen by rmtree.
-        """
+        """Show warning for errors seen by rmtree."""
         # Handle only permission error while removing files.
         # Other errors are re-raised.
         if function is not os.remove or not isinstance(excinfo[1], PermissionError):

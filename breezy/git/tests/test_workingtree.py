@@ -41,9 +41,7 @@ def changes_between_git_tree_and_working_copy(source_store, from_tree_sha, targe
                                               want_unversioned=False,
                                               rename_detector=None,
                                               include_trees=True):
-    """Determine the changes between a git tree and a working tree with index.
-
-    """
+    """Determine the changes between a git tree and a working tree with index."""
     to_tree_sha, extras = target.git_snapshot(want_unversioned=want_unversioned)
     store = OverlayObjectStore([source_store, target.store])
     return tree_changes(
@@ -102,7 +100,7 @@ class GitWorkingTreeTests(TestCaseWithTransport):
 
     def test_add_submodule_file(self):
         os.mkdir('.git/modules')
-        subbranch = self.make_branch('.git/modules/asub', format='git-bare')
+        self.make_branch('.git/modules/asub', format='git-bare')
         os.mkdir('asub')
         with open('asub/.git', 'w') as f:
             f.write('gitdir: ../.git/modules/asub\n')
@@ -265,7 +263,7 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
         self.build_tree(['a'])
         self.wt.add(['a'])
         os.unlink('a')
-        a = Blob.from_string(b'contents of a\n')
+        Blob.from_string(b'contents of a\n')
         t = Tree()
         t.add(b"a", 0, ZERO_SHA)
         self.expectDelta(

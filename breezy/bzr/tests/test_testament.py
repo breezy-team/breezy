@@ -97,7 +97,7 @@ class TestamentTests(TestamentSetup):
         self.assertEqualDiff(actual_short, self.expected('rev_2_short'))
 
     def test_testament_symlinks(self):
-        """Testament containing symlink (where possible)"""
+        """Testament containing symlink (where possible)."""
         self.requireFeature(SymlinkFeature(self.test_dir))
         os.symlink('wibble/linktarget', 'link')
         self.wt.add(['link'], ids=[b'link-id'])
@@ -110,7 +110,7 @@ class TestamentTests(TestamentSetup):
         self.assertEqualDiff(t.as_text(), self.expected('rev_3'))
 
     def test_testament_revprops(self):
-        """Testament to revision with extra properties"""
+        """Testament to revision with extra properties."""
         props = {'flavor': 'sour cherry\ncream cheese',
                  'size': 'medium',
                  'empty': '',

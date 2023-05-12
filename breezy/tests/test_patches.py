@@ -46,10 +46,10 @@ class PatchesTester(TestCase):
         lines = [b"diff -pruN commands.py\n",
                  b"--- orig/commands.py\n",
                  b"+++ mod/dommands.py\n"]
-        bits = list(parse_patches(iter(lines), allow_dirty=True))
+        list(parse_patches(iter(lines), allow_dirty=True))
 
     def test_preserve_dirty_head(self):
-        """Parse a patch containing a dirty header, and preserve lines"""
+        """Parse a patch containing a dirty header, and preserve lines."""
         lines = [b"=== added directory 'foo/bar'\n",
                  b"=== modified file 'orig/commands.py'\n",
                  b"--- orig/commands.py\n",
@@ -85,7 +85,7 @@ class PatchesTester(TestCase):
         self.assertEqual([b"other\n", b"foo\n"], list(i))
 
     def testValidPatchHeader(self):
-        """Parse a valid patch header"""
+        """Parse a valid patch header."""
         lines = (
             b"--- orig/commands.py\t2020-09-09 23:39:35 +0000\n"
             b"+++ mod/dommands.py\t2020-09-09 23:39:35 +0000\n").splitlines(True)
@@ -96,19 +96,19 @@ class PatchesTester(TestCase):
             mod, (b"mod/dommands.py", b'2020-09-09 23:39:35 +0000'))
 
     def testValidPatchHeaderMissingTimestamps(self):
-        """Parse a valid patch header"""
+        """Parse a valid patch header."""
         lines = b"--- orig/commands.py\n+++ mod/dommands.py\n".splitlines(True)
         (orig, mod) = get_patch_names(iter(lines))
         self.assertEqual(orig, (b"orig/commands.py", None))
         self.assertEqual(mod, (b"mod/dommands.py", None))
 
     def testInvalidPatchHeader(self):
-        """Parse an invalid patch header"""
+        """Parse an invalid patch header."""
         lines = b"-- orig/commands.py\n+++ mod/dommands.py".splitlines(True)
         self.assertRaises(MalformedPatchHeader, get_patch_names, iter(lines))
 
     def testValidHunkHeader(self):
-        """Parse a valid hunk header"""
+        """Parse a valid hunk header."""
         header = b"@@ -34,11 +50,6 @@\n"
         hunk = hunk_from_header(header)
         self.assertEqual(hunk.orig_pos, 34)
@@ -118,7 +118,7 @@ class PatchesTester(TestCase):
         self.assertEqual(hunk.as_bytes(), header)
 
     def testValidHunkHeader2(self):
-        """Parse a tricky, valid hunk header"""
+        """Parse a tricky, valid hunk header."""
         header = b"@@ -1 +0,0 @@\n"
         hunk = hunk_from_header(header)
         self.assertEqual(hunk.orig_pos, 1)
@@ -128,7 +128,7 @@ class PatchesTester(TestCase):
         self.assertEqual(hunk.as_bytes(), header)
 
     def testPDiff(self):
-        """Parse a hunk header produced by diff -p"""
+        """Parse a hunk header produced by diff -p."""
         header = b"@@ -407,7 +292,7 @@ bzr 0.18rc1  2007-07-10\n"
         hunk = hunk_from_header(header)
         self.assertEqual(b'bzr 0.18rc1  2007-07-10', hunk.tail)
@@ -138,7 +138,7 @@ class PatchesTester(TestCase):
         self.assertRaises(MalformedHunkHeader, hunk_from_header, header)
 
     def testInvalidHeader(self):
-        """Parse an invalid hunk header"""
+        """Parse an invalid hunk header."""
         self.makeMalformed(b" -34,11 +50,6 \n")
         self.makeMalformed(b"@@ +50,6 -34,11 @@\n")
         self.makeMalformed(b"@@ -34,11 +50,6 @@")
@@ -158,17 +158,17 @@ class PatchesTester(TestCase):
         self.assertRaises(MalformedLine, parse_line, text)
 
     def testValidLine(self):
-        """Parse a valid hunk line"""
+        """Parse a valid hunk line."""
         self.lineThing(b" hello\n", ContextLine)
         self.lineThing(b"+hello\n", InsertLine)
         self.lineThing(b"-hello\n", RemoveLine)
 
     def testMalformedLine(self):
-        """Parse invalid valid hunk lines"""
+        """Parse invalid valid hunk lines."""
         self.makeMalformedLine(b"hello\n")
 
     def testMalformedLineNO_NL(self):
-        """Parse invalid '\\ No newline at end of file' in hunk lines"""
+        """Parse invalid '\\ No newline at end of file' in hunk lines."""
         self.makeMalformedLine(NO_NL)
 
     def compare_parsed(self, patchtext):
@@ -181,13 +181,13 @@ class PatchesTester(TestCase):
         self.assertEqual(patchtext, patch.as_bytes())
 
     def testAll(self):
-        """Test parsing a whole patch"""
+        """Test parsing a whole patch."""
         with self.datafile("patchtext.patch") as f:
             patchtext = f.read()
         self.compare_parsed(patchtext)
 
     def test_parse_binary(self):
-        """Test parsing a whole patch"""
+        """Test parsing a whole patch."""
         patches = list(parse_patches(self.data_lines("binary.patch")))
         self.assertIs(BinaryPatch, patches[0].__class__)
         self.assertIs(Patch, patches[1].__class__)
@@ -212,7 +212,7 @@ class PatchesTester(TestCase):
         self.assertEqual(patchtext, b''.join(p.as_bytes() for p in patches))
 
     def testInit(self):
-        """Handle patches missing half the position, range tuple"""
+        """Handle patches missing half the position, range tuple."""
         patchtext = \
             b"""--- orig/__vavg__.cl
 +++ mod/__vavg__.cl
@@ -223,7 +223,7 @@ class PatchesTester(TestCase):
         self.compare_parsed(patchtext)
 
     def testLineLookup(self):
-        """Make sure we can accurately look up mod line from orig"""
+        """Make sure we can accurately look up mod line from orig."""
         patch = parse_patch(self.datafile("diff"))
         orig = list(self.datafile("orig"))
         mod = list(self.datafile("mod"))
@@ -265,7 +265,7 @@ class PatchesTester(TestCase):
 
     def test_iter_patched_binary(self):
         binary_lines = self.data_lines('binary.patch')
-        e = self.assertRaises(BinaryFiles, iter_patched, [], binary_lines)
+        self.assertRaises(BinaryFiles, iter_patched, [], binary_lines)
 
     def test_iter_patched_from_hunks(self):
         """Test a few patch files, and make sure they work."""
@@ -290,12 +290,12 @@ class PatchesTester(TestCase):
             self.assertEqual(count, len(mod_lines))
 
     def testFirstLineRenumber(self):
-        """Make sure we handle lines at the beginning of the hunk"""
+        """Make sure we handle lines at the beginning of the hunk."""
         patch = parse_patch(self.datafile("insert_top.patch"))
         self.assertEqual(patch.pos_in_mod(0), 1)
 
     def testParsePatches(self):
-        """Make sure file names can be extracted from tricky unified diffs"""
+        """Make sure file names can be extracted from tricky unified diffs."""
         patchtext = \
             b"""--- orig-7
 +++ mod-7

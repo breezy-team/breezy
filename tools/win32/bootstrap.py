@@ -11,7 +11,7 @@
 # FOR A PARTICULAR PURPOSE.
 #
 ##############################################################################
-"""Bootstrap a buildout-based project
+"""Bootstrap a buildout-based project.
 
 Simply run this script in a directory containing a buildout.cfg.
 The script accepts buildout command-line options, so you can

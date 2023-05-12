@@ -312,7 +312,7 @@ class TestTestingSmartServer(tests.TestCase):
 
 
 class FakeServer:
-    """Minimal implementation to pass to TestingSmartConnectionHandler"""
+    """Minimal implementation to pass to TestingSmartConnectionHandler."""
     backing_transport = None
     root_client_path = '/'
 

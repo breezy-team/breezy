@@ -162,7 +162,7 @@ class Testament:
         return path.replace('\\', '/').replace(' ', '\\ ')
 
     def _entry_to_line(self, path, ie):
-        """Turn an inventory entry into a testament line"""
+        """Turn an inventory entry into a testament line."""
         if contains_whitespace(ie.file_id):
             raise ValueError(ie.file_id)
         content = ''
@@ -212,7 +212,7 @@ class Testament:
 
 
 class StrictTestament(Testament):
-    """This testament format is for use as a checksum in bundle format 0.8"""
+    """This testament format is for use as a checksum in bundle format 0.8."""
 
     long_header = 'bazaar-ng testament version 2.1\n'
     short_header = 'bazaar-ng testament short form 2.1\n'
@@ -226,7 +226,7 @@ class StrictTestament(Testament):
 
 
 class StrictTestament3(StrictTestament):
-    """This testament format is for use as a checksum in bundle format 0.9+
+    """This testament format is for use as a checksum in bundle format 0.9+.
 
     It differs from StrictTestament by including data about the tree root.
     """

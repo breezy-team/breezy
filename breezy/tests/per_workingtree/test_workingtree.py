@@ -53,8 +53,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_branch_builder(self):
         # Just a smoke test that we get a branch at the specified relpath
-        builder = self.make_branch_builder('foobar')
-        br = _mod_branch.Branch.open(self.get_url('foobar'))
+        self.make_branch_builder('foobar')
+        _mod_branch.Branch.open(self.get_url('foobar'))
 
     def test_list_files(self):
         tree = self.make_branch_and_tree('.')
@@ -198,7 +198,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(None, tree.branch.peek_lock_mode())
 
     def test_revert(self):
-        """Test selected-file revert"""
+        """Test selected-file revert."""
         tree = self.make_branch_and_tree('.')
 
         self.build_tree(['hello.txt'])
@@ -498,7 +498,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         source.branch.clone(made_control)
         MutableTree.hooks.install_named_hook("post_build_tree",
                                              track_post_build_tree, "Test")
-        made_tree = self.workingtree_format.initialize(made_control,
+        self.workingtree_format.initialize(made_control,
                                                        revision_id=a)
         self.assertEqual([a], calls)
 
@@ -542,7 +542,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         checkout = main_branch.create_checkout('checkout')
         # now commit to 'tree'
         wt.add('file')
-        a = wt.commit('A')
+        wt.commit('A')
         # and update checkout
         self.assertEqual(0, checkout.update())
         self.assertPathExists('checkout/file')
@@ -684,11 +684,11 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt.add(['a'])
         rev1 = wt.commit('first master commit')
         self.build_tree_contents([('wt/a', b'new content')])
-        rev2 = wt.commit('second master commit')
+        wt.commit('second master commit')
         # https://bugs.launchpad.net/bzr/+bug/45719/comments/20
         # when adding 'update -r' we should make sure all wt formats support
         # it
-        conflicts = wt.update(revision=rev1)
+        wt.update(revision=rev1)
         self.assertFileEqual(b'old content', 'wt/a')
         self.assertEqual([rev1], wt.get_parent_ids())
 
@@ -839,7 +839,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.build_tree_contents([('.bzrignore', b'foo.pyc')])
         tree.add('foo.pyc')
         tree.lock_read()
-        files = sorted(list(tree.list_files()))
+        files = sorted(tree.list_files())
         tree.unlock()
         self.assertEqual(
             ('.bzrignore', '?', 'file', None),
@@ -1007,7 +1007,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertIs(None, tree.get_file_sha1('file'))
 
     def test_no_file_sha1(self):
-        """If a file is not present, get_file_sha1 should raise NoSuchFile"""
+        """If a file is not present, get_file_sha1 should raise NoSuchFile."""
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         self.addCleanup(tree.unlock)
@@ -1103,10 +1103,9 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
 
     def make_diverged_master_branch(self):
-        """
-        B: wt.branch.last_revision()
+        """B: wt.branch.last_revision()
         M: wt.branch.get_master_branch().last_revision()
-        W: wt.last_revision()
+        W: wt.last_revision().
 
 
             1
@@ -1336,7 +1335,7 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
         if not getattr(tree.branch._format, 'supports_reference_locations', False):
             raise tests.TestNotApplicable('Branch cannot hold reference locations.')
         tree.commit('Add reference')
-        reference_parent = tree.reference_parent(
+        tree.reference_parent(
             urlutils.relative_url(
                 urlutils.strip_segment_parameters(tree.branch.user_url),
                 urlutils.strip_segment_parameters(subtree.branch.user_url)),

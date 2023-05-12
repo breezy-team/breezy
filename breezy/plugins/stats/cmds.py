@@ -15,7 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """A Simple bzr plugin to generate statistics about the history."""
 
-import operator
 
 from ... import (branch, commands, config, errors, option, trace, tsort, ui,
                  workingtree)
@@ -134,13 +133,12 @@ def collapse_email_and_users(email_users, combo_count):
 
 def get_revisions_and_committers(a_repo, revids):
     """Get the Revision information, and the best-match for committer."""
-
     email_users = {}  # user@email.com => User Name
     combo_count = {}
     with ui.ui_factory.nested_progress_bar() as pb:
         trace.note('getting revisions')
         revisions = list(a_repo.iter_revisions(revids))
-        for count, (revid, rev) in enumerate(revisions):
+        for count, (_revid, rev) in enumerate(revisions):
             pb.update('checking', count, len(revids))
             for author in rev.get_apparent_authors():
                 # XXX: There is a chance sometimes with svn imports that the
@@ -154,8 +152,8 @@ def get_revisions_and_committers(a_repo, revids):
 
 
 def get_info(a_repo, revision):
-    """Get all of the information for a particular revision"""
-    with ui.ui_factory.nested_progress_bar() as pb, a_repo.lock_read():
+    """Get all of the information for a particular revision."""
+    with ui.ui_factory.nested_progress_bar(), a_repo.lock_read():
         trace.note('getting ancestry')
         graph = a_repo.get_graph()
         ancestry = [
@@ -168,11 +166,11 @@ def get_info(a_repo, revision):
 
 
 def get_diff_info(a_repo, start_rev, end_rev):
-    """Get only the info for new revisions between the two revisions
+    """Get only the info for new revisions between the two revisions.
 
     This lets us figure out what has actually changed between 2 revisions.
     """
-    with ui.ui_factory.nested_progress_bar() as pb, a_repo.lock_read():
+    with ui.ui_factory.nested_progress_bar(), a_repo.lock_read():
         graph = a_repo.get_graph()
         trace.note('getting ancestry diff')
         ancestry = graph.find_difference(start_rev, end_rev)[1]
@@ -183,8 +181,7 @@ def get_diff_info(a_repo, start_rev, end_rev):
 
 
 def display_info(info, to_file, gather_class_stats=None):
-    """Write out the information"""
-
+    """Write out the information."""
     for count, revs, emails, fullnames in info:
         # Get the most common email name
         sorted_emails = sorted(((count, email)
@@ -266,7 +263,7 @@ class cmd_committer_statistics(commands.Command):
 
 
 class cmd_ancestor_growth(commands.Command):
-    """Figure out the ancestor graph for LOCATION"""
+    """Figure out the ancestor graph for LOCATION."""
 
     takes_args = ['location?']
 
@@ -290,7 +287,7 @@ class cmd_ancestor_growth(commands.Command):
             cur_parents = 0
             sorted_graph = tsort.merge_sort(graph.iter_ancestry([last_rev]),
                                             last_rev)
-            for num, node_name, depth, isend in reversed(sorted_graph):
+            for _num, _node_name, depth, _isend in reversed(sorted_graph):
                 cur_parents += 1
                 if depth == 0:
                     revno += 1

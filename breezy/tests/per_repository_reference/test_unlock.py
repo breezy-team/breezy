@@ -16,7 +16,6 @@
 
 """Tests for locking/unlocking a repository with external references."""
 
-from breezy import branch, errors
 from breezy.tests.per_repository_reference import \
     TestCaseWithExternalReferenceRepository
 
@@ -53,7 +52,7 @@ class TestUnlock(TestCaseWithExternalReferenceRepository):
         return base, stacked
 
     def test_unlock_unlocks_fallback(self):
-        base = self.make_branch('base')
+        self.make_branch('base')
         stacked = self.make_branch('stacked')
         repo = stacked.repository
         stacked.set_stacked_on_url('../base')

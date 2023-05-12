@@ -486,7 +486,7 @@ class SmartServerRepositoryLockWrite(SmartServerRepositoryRequest):
             token = None
         try:
             token = repository.lock_write(token=token).repository_token
-        except errors.LockContention as e:
+        except errors.LockContention:
             return FailedSmartServerResponse((b'LockContention',))
         except errors.UnlockableTransport:
             return FailedSmartServerResponse((b'UnlockableTransport',))
@@ -757,7 +757,7 @@ class SmartServerRepositoryUnlock(SmartServerRepositoryRequest):
     def do_repository_request(self, repository, token):
         try:
             repository.lock_write(token=token)
-        except errors.TokenMismatch as e:
+        except errors.TokenMismatch:
             return FailedSmartServerResponse((b'TokenMismatch',))
         repository.dont_leave_lock_in_place()
         repository.unlock()
@@ -1091,7 +1091,7 @@ class SmartServerRepositoryReconcile(SmartServerRepositoryRequest):
     def do_repository_request(self, repository, lock_token):
         try:
             repository.lock_write(token=lock_token)
-        except errors.TokenLockingNotSupported as e:
+        except errors.TokenLockingNotSupported:
             return FailedSmartServerResponse(
                 (b'TokenLockingNotSupported', ))
         try:
@@ -1238,7 +1238,7 @@ class SmartServerRepositoryGetInventories(SmartServerRepositoryRequest):
             repository.supports_rich_root(),
             repository._format.supports_tree_reference)
         with repository.lock_read():
-            for inv, revid in repository._iter_inventories(revids, ordering):
+            for inv, _revid in repository._iter_inventories(revids, ordering):
                 if inv is None:
                     continue
                 inv_delta = inv._make_delta(prev_inv)
@@ -1329,7 +1329,7 @@ class SmartServerRepositoryRevisionArchive(SmartServerRepositoryRequest):
         :param format: Format (tar, tgz, tbz2, etc)
         :param name: Target file name
         :param root: Name of root directory (or '')
-        :param subdir: Subdirectory to export, if not the root
+        :param subdir: Subdirectory to export, if not the root.
         """
         tree = repository.revision_tree(revision_id)
         if subdir is not None:

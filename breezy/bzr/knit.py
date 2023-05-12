@@ -82,7 +82,7 @@ from ..bzr.versionedfile import (AbsentContentFactory, ConstantMapper,
                                  VersionedFilesWithFallbacks, _KeyRefs,
                                  adapter_registry, sort_groupcompress)
 from ..errors import InternalBzrError, InvalidRevisionId, RevisionNotPresent
-from ..osutils import contains_whitespace, sha_string, sha_strings, split_lines
+from ..osutils import contains_whitespace, sha_string, sha_strings
 from ..transport import NoSuchFile
 from . import index as _mod_index
 
@@ -297,7 +297,7 @@ class DeltaPlainToFullText(KnitAdapter):
         compressed_bytes = factory._raw_record
         rec, contents = \
             self._data._parse_record_unchecked(compressed_bytes)
-        delta = self._plain_factory.parse_line_delta(contents, rec[1])
+        self._plain_factory.parse_line_delta(contents, rec[1])
         compression_parent = factory.parents[0]
         # XXX: string splitting overhead.
         basis_entry = next(self._basis_vf.get_record_stream(
@@ -526,11 +526,11 @@ class KnitContent:
 
     @staticmethod
     def get_line_delta_blocks(knit_delta, source, target):
-        """Extract SequenceMatcher.get_matching_blocks() from a knit delta"""
+        """Extract SequenceMatcher.get_matching_blocks() from a knit delta."""
         target_len = len(target)
         s_pos = 0
         t_pos = 0
-        for s_begin, s_end, t_len, new_text in knit_delta:
+        for s_begin, s_end, t_len, _new_text in knit_delta:
             true_n = s_begin - s_pos
             n = true_n
             if n > 0:
@@ -673,7 +673,7 @@ class KnitAnnotateFactory(_KnitFactory):
         return AnnotatedKnitContent(zip([version_id] * num_lines, lines))
 
     def parse_fulltext(self, content, version_id):
-        """Convert fulltext to internal representation
+        """Convert fulltext to internal representation.
 
         fulltext content is of the format
         revid(utf8) plaintext\n
@@ -746,14 +746,14 @@ class KnitAnnotateFactory(_KnitFactory):
                 yield text
 
     def lower_fulltext(self, content):
-        """convert a fulltext content record into a serializable form.
+        """Convert a fulltext content record into a serializable form.
 
         see parse_fulltext which this inverts.
         """
         return [b'%s %s' % (o, t) for o, t in content._lines]
 
     def lower_line_delta(self, delta):
-        """convert a delta into a serializable form.
+        """Convert a delta into a serializable form.
 
         See parse_line_delta which this inverts.
         """
@@ -1161,7 +1161,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             fallback_vfs.check()
 
     def _check_add(self, key, lines, random_id, check_content):
-        """check that version_id and lines are safe to add."""
+        """Check that version_id and lines are safe to add."""
         if not all(isinstance(x, bytes) or x is None for x in key):
             raise TypeError(key)
         version_id = key[-1]
@@ -1204,7 +1204,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         """
         delta_size = 0
         fulltext_size = None
-        for count in range(self._max_delta_chain):
+        for _count in range(self._max_delta_chain):
             try:
                 # Note that this only looks in the index of this particular
                 # KnitVersionedFiles, not in the fallbacks.  This ensures that
@@ -1212,7 +1212,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 # boundaries.
                 build_details = self._index.get_build_details([parent])
                 parent_details = build_details[parent]
-            except (RevisionNotPresent, KeyError) as e:
+            except (RevisionNotPresent, KeyError):
                 # Some basis is not locally present: always fulltext
                 return False
             index_memo, compression_parent, _, _ = parent_details
@@ -1273,7 +1273,8 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
 
     def _get_content(self, key, parent_texts={}):
         """Returns a content object that makes up the specified
-        version."""
+        version.
+        """
         cached_version = parent_texts.get(key, None)
         if cached_version is not None:
             # Ensure the cache dict is valid.
@@ -1428,7 +1429,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         #       from the same pack file together, and we want to extract all
         #       the texts for a given build-chain together. Ultimately it
         #       probably needs a better global view.
-        total_keys = len(keys)
+        len(keys)
         prefix_split_keys, prefix_order = self._split_by_prefix(keys)
         prefix_split_non_local_keys, _ = self._split_by_prefix(non_local_keys)
         cur_keys = []
@@ -1819,7 +1820,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         The caller is responsible for cleaning up progress bars (because this
         is an iterator).
 
-        NOTES:
+        Notes:
          * Lines are normalised by the underlying store: they will all have \\n
            terminators.
          * Lines are returned in arbitrary order.
@@ -1845,7 +1846,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                     if key in keys:
                         key_records.append((key, details[0]))
                 records_iter = enumerate(self._read_records_iter(key_records))
-                for (key_idx, (key, data, sha_value)) in records_iter:
+                for (key_idx, (key, data, _sha_value)) in records_iter:
                     pb.update(gettext('Walking content'), key_idx, total)
                     compression_parent = build_details[key][1]
                     if compression_parent is None:
@@ -2017,7 +2018,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         raw_data = self._access.get_raw_records(
             [index_memo for key, index_memo in needed_records])
 
-        for (key, index_memo), data in zip(needed_records, raw_data):
+        for (key, _index_memo), data in zip(needed_records, raw_data):
             content, digest = self._parse_record(key[-1], data)
             yield key, content, digest
 
@@ -2052,7 +2053,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                               in records]
             raw_records = self._access.get_raw_records(needed_offsets)
 
-        for key, index_memo in records:
+        for key, _index_memo in records:
             data = next(raw_records)
             yield key, data
 
@@ -2413,7 +2414,7 @@ class _NetworkContentMapGenerator(_ContentMapGenerator):
 
 
 class _KndxIndex:
-    """Manages knit index files
+    """Manages knit index files.
 
     The index is kept in memory and read on startup, to enable
     fast lookups of revision information.  The cursor of the index
@@ -2665,10 +2666,9 @@ class _KndxIndex:
             raise RevisionNotPresent(key, self)
 
     def find_ancestry(self, keys):
-        """See CombinedGraphIndex.find_ancestry()"""
+        """See CombinedGraphIndex.find_ancestry()."""
         prefixes = {key[:-1] for key in keys}
         self._load_prefixes(prefixes)
-        result = {}
         parent_map = {}
         missing_keys = set()
         pending_keys = list(keys)
@@ -2968,7 +2968,7 @@ class _KnitGraphIndex:
         # check for dups
         if not random_id:
             present_nodes = self._get_entries(keys)
-            for (index, key, value, node_refs) in present_nodes:
+            for (_index, key, value, node_refs) in present_nodes:
                 parents = node_refs[:1]
                 # Sometimes these are passed as a list rather than a tuple
                 passed = static_tuple.as_tuples(keys[key])
@@ -3036,7 +3036,7 @@ class _KnitGraphIndex:
         return frozenset(self._key_dependencies.get_unsatisfied_refs())
 
     def _check_read(self):
-        """raise if reads are not permitted."""
+        """Raise if reads are not permitted."""
         if not self._is_locked():
             raise errors.ObjectNotLocked(self)
 
@@ -3149,7 +3149,7 @@ class _KnitGraphIndex:
         return options
 
     def find_ancestry(self, keys):
-        """See CombinedGraphIndex.find_ancestry()"""
+        """See CombinedGraphIndex.find_ancestry()."""
         return self._graph_index.find_ancestry(keys, 0)
 
     def get_parent_map(self, keys):
@@ -3312,7 +3312,7 @@ class _KnitKeyAccess:
             request_lists.append((current_prefix, current_list))
         for prefix, read_vector in request_lists:
             path = self._mapper.map(prefix) + '.knit'
-            for pos, data in self._transport.readv(path, read_vector):
+            for _pos, data in self._transport.readv(path, read_vector):
                 yield data
 
 
@@ -3516,7 +3516,7 @@ class _KnitAnnotator(annotate.Annotator):
             compression_parent = key
             children = self._pending_deltas.pop(key)
             for child_key, parent_keys, record, record_details in children:
-                lines = self._expand_record(child_key, parent_keys,
+                self._expand_record(child_key, parent_keys,
                                             compression_parent,
                                             record, record_details)
                 if self._check_ready_for_annotations(child_key, parent_keys):
@@ -3530,7 +3530,7 @@ class _KnitAnnotator(annotate.Annotator):
         return to_return
 
     def _check_ready_for_annotations(self, key, parent_keys):
-        """return true if this text is ready to be yielded.
+        """Return true if this text is ready to be yielded.
 
         Otherwise, this will return False, and queue the text into
         self._pending_annotation
@@ -3546,7 +3546,7 @@ class _KnitAnnotator(annotate.Annotator):
         return True
 
     def _extract_texts(self, records):
-        """Extract the various texts needed based on records"""
+        """Extract the various texts needed based on records."""
         # We iterate in the order read, rather than a strict order requested
         # However, process what we can, and put off to the side things that
         # still need parents, cleaning them up when those parents are
@@ -3576,8 +3576,7 @@ class _KnitAnnotator(annotate.Annotator):
         # code can know when it can stop caching fulltexts, as well.
 
         # Children that are missing their compression parent
-        pending_deltas = {}
-        for (key, record, digest) in self._vf._read_records_iter(records):
+        for (key, record, _digest) in self._vf._read_records_iter(records):
             # ghosts?
             details = self._all_build_details[key]
             (_, compression_parent, parent_keys, record_details) = details

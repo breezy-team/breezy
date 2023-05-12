@@ -299,7 +299,7 @@ class SmartServerStreamMedium(SmartMedium):
         return protocol
 
     def _wait_on_descriptor(self, fd, timeout_seconds):
-        """select() on a file descriptor, waiting for nonblocking read()
+        """select() on a file descriptor, waiting for nonblocking read().
 
         This will raise a ConnectionTimeout exception if we do not get a
         readable handle before timeout_seconds.
@@ -342,7 +342,7 @@ class SmartServerStreamMedium(SmartMedium):
             self._serve_one_request_unguarded(protocol)
         except KeyboardInterrupt:
             raise
-        except Exception as e:
+        except Exception:
             self.terminate_due_to_error()
 
     def terminate_due_to_error(self):
@@ -455,7 +455,7 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
         self._out = out_file
 
     def serve(self):
-        """See SmartServerStreamMedium.serve"""
+        """See SmartServerStreamMedium.serve."""
         # This is the regular serve, except it adds signal trapping for soft
         # shutdown.
         stop_gracefully = self._stop_gracefully
@@ -657,9 +657,7 @@ class SmartClientMediumRequest:
 
 
 class _VfsRefuser:
-    """An object that refuses all VFS requests.
-
-    """
+    """An object that refuses all VFS requests."""
 
     def __init__(self):
         client._SmartClient.hooks.install_named_hook(
@@ -697,13 +695,13 @@ class _DebugCounter:
         """
         medium_repr = repr(medium)
         # Add this medium to the WeakKeyDictionary
-        self.counts[medium] = dict(count=0, vfs_count=0,
-                                   medium_repr=medium_repr)
+        self.counts[medium] = {"count": 0, "vfs_count": 0,
+                                   "medium_repr": medium_repr}
         # Weakref callbacks are fired in reverse order of their association
         # with the referenced object.  So we add a weakref *after* adding to
         # the WeakKeyDict so that we can report the value from it before the
         # entry is removed by the WeakKeyDict's own callback.
-        ref = weakref.ref(medium, self.done)
+        weakref.ref(medium, self.done)
 
     def increment_call_count(self, params):
         # Increment the count in the WeakKeyDictionary
@@ -1127,7 +1125,7 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
                                          (self._host, port, err_msg))
         # Initialize err in case there are no addresses returned:
         last_err = socket.error(f"no address found for {self._host}")
-        for (family, socktype, proto, canonname, sockaddr) in sockaddrs:
+        for (family, socktype, proto, _canonname, sockaddr) in sockaddrs:
             try:
                 self._socket = socket.socket(family, socktype, proto)
                 self._socket.setsockopt(socket.IPPROTO_TCP,

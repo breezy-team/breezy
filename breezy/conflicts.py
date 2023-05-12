@@ -252,12 +252,12 @@ class ConflictList:
         return f"ConflictList({self.__list!r})"
 
     def to_strings(self):
-        """Generate strings for the provided conflicts"""
+        """Generate strings for the provided conflicts."""
         for conflict in self:
             yield str(conflict)
 
     def remove_files(self, tree):
-        """Remove the THIS, BASE and OTHER files for listed conflicts"""
+        """Remove the THIS, BASE and OTHER files for listed conflicts."""
         for conflict in self:
             if not conflict.has_files:
                 continue

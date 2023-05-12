@@ -107,7 +107,7 @@ class TestBashCompletion(tests.TestCase, BashCompletionMixin):
     """Test bash completions that don't execute brz."""
 
     def test_simple_scipt(self):
-        """Ensure that the test harness works as expected"""
+        """Ensure that the test harness works as expected."""
         self.script = """
 _brz() {
     COMPREPLY=()

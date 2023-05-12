@@ -44,7 +44,6 @@ parse_headers = http_client.parse_headers
 
 from .. import errors, tests
 from ..transport.http import response, urllib
-from .file_utils import FakeReadFile
 
 
 class ReadSocket:
@@ -417,7 +416,7 @@ class TestRangeFileMultipleRangesQuotedBoundaries(TestRangeFileMultipleRanges):
     """Perform the same tests as TestRangeFileMultipleRanges, but uses
     an angle-bracket quoted boundary string like IIS 6.0 and 7.0
     (but not IIS 5, which breaks the RFC in a different way
-    by using square brackets, not angle brackets)
+    by using square brackets, not angle brackets).
 
     This reveals a bug caused by
 
@@ -452,7 +451,6 @@ class TestRangeFileVarious(tests.TestCase):
 
     def test_range_syntax(self):
         """Test the Content-Range scanning."""
-
         f = response.RangeFile('foo', BytesIO())
 
         def ok(expected, header_value):

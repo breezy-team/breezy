@@ -54,10 +54,10 @@ if TYPE_CHECKING:
     from ..progress import ProgressTask
 
 
-_valid_boolean_strings = dict(yes=True, no=False,
-                              y=True, n=False,
-                              on=True, off=False,
-                              true=True, false=False)
+_valid_boolean_strings = {"yes": True, "no": False,
+                              "y": True, "n": False,
+                              "on": True, "off": False,
+                              "true": True, "false": False}
 _valid_boolean_strings['1'] = True
 _valid_boolean_strings['0'] = False
 
@@ -143,34 +143,34 @@ class UIFactory:
                            no be emitted.
     """
 
-    _user_warning_templates = dict(
-        cross_format_fetch=("Doing on-the-fly conversion from "
+    _user_warning_templates = {
+        "cross_format_fetch": ("Doing on-the-fly conversion from "
                             "%(from_format)s to %(to_format)s.\n"
                             "This may take some time. Upgrade the repositories to the "
                             "same format for better performance."
                             ),
-        experimental_format_fetch=("Fetching into experimental format "
+        "experimental_format_fetch": ("Fetching into experimental format "
                                    "%(to_format)s.\n"
                                    "This format may be unreliable or change in the future "
                                    "without an upgrade path.\n"),
-        deprecated_command=(
+        "deprecated_command": (
             "The command 'brz %(deprecated_name)s' "
             "has been deprecated in brz %(deprecated_in_version)s. "
             "Please use 'brz %(recommended_name)s' instead."),
-        deprecated_command_option=(
+        "deprecated_command_option": (
             "The option '%(deprecated_name)s' to 'brz %(command)s' "
             "has been deprecated in brz %(deprecated_in_version)s. "
             "Please use '%(recommended_name)s' instead."),
-        recommend_upgrade=("%(current_format_name)s is deprecated "
+        "recommend_upgrade": ("%(current_format_name)s is deprecated "
                            "and a better format is available.\n"
                            "It is recommended that you upgrade by "
                            "running the command\n"
                            "  brz upgrade %(basedir)s"),
-        locks_steal_dead=(
+        "locks_steal_dead": (
             "Stole dead lock %(lock_url)s %(other_holder_info)s."),
-        not_checking_ssl_cert=(
+        "not_checking_ssl_cert": (
             "Not checking SSL certificate for %(host)s."),
-        )
+        }
 
     def __init__(self):
         self._task_stack: List["ProgressTask"] = []
@@ -282,7 +282,7 @@ class UIFactory:
         return t
 
     def _progress_finished(self, task):
-        """Called by the ProgressTask when it finishes"""
+        """Called by the ProgressTask when it finishes."""
         if not self._task_stack:
             warnings.warn(f"{task!r} finished but nothing is active")
         if task in self._task_stack:
@@ -293,7 +293,7 @@ class UIFactory:
             self._progress_all_finished()
 
     def _progress_all_finished(self):
-        """Called when the top-level progress task finished"""
+        """Called when the top-level progress task finished."""
         pass
 
     def _progress_updated(self, task):
@@ -528,8 +528,7 @@ ui_factory = SilentUIFactory()
 
 
 def make_ui_for_terminal(stdin, stdout, stderr):
-    """Construct and return a suitable UIFactory for a text mode program.
-    """
+    """Construct and return a suitable UIFactory for a text mode program."""
     # this is now always TextUIFactory, which in turn decides whether it
     # should display progress bars etc
     from .text import TextUIFactory

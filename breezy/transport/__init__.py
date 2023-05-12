@@ -42,7 +42,7 @@ _file_streams: Dict[str, Any] = {}
 
 
 def _get_protocol_handlers():
-    """Return a dictionary of {urlprefix: [factory]}"""
+    """Return a dictionary of {urlprefix: [factory]}."""
     return transport_list_registry
 
 
@@ -63,7 +63,7 @@ def _clear_protocol_handlers():
 def _get_transport_modules():
     """Return a list of the modules providing transports."""
     modules = set()
-    for prefix, factory_list in transport_list_registry.items():
+    for _prefix, factory_list in transport_list_registry.items():
         for factory in factory_list:
             modules.add(factory.get_module())
     # Add chroot and pathfilter directly, because there is no handler
@@ -214,7 +214,7 @@ class LateReadError:
         self._path = path
 
     def close(self):
-        """a no-op - do nothing."""
+        """A no-op - do nothing."""
 
     def __enter__(self):
         return self
@@ -324,7 +324,7 @@ class AppendBasedFileStream(FileStream):
 
 
 class TransportHooks(hooks.Hooks):
-    """Mapping of hook names to registered callbacks for transport hooks"""
+    """Mapping of hook names to registered callbacks for transport hooks."""
 
     def __init__(self):
         super().__init__()
@@ -464,8 +464,7 @@ class Transport:
         raise NotImplementedError(self.external_url)
 
     def get_segment_parameters(self):
-        """Return the segment parameters for the top segment of the URL.
-        """
+        """Return the segment parameters for the top segment of the URL."""
         return self._segment_parameters
 
     def set_segment_parameter(self, name, value):
@@ -551,7 +550,6 @@ class Transport:
 
         :param relpath: a string of a relative path
         """
-
         # XXX: Robert Collins 20051016 - is this really needed in the public
         # interface ?
         raise NotImplementedError(self.abspath)
@@ -1004,7 +1002,7 @@ class Transport:
             self.delete(rel_from)
 
     def delete(self, relpath):
-        """Delete the item at relpath"""
+        """Delete the item at relpath."""
         raise NotImplementedError(self.delete)
 
     def delete_tree(self, relpath):
@@ -1123,7 +1121,8 @@ class Transport:
 
         Warning: this is not guaranteed to be accurate as sometimes we can't
         be sure: for example with vfat mounted on unix, or a windows sftp
-        server."""
+        server.
+        """
         # TODO: Perhaps return a e.g. TransportCharacteristics that can answer
         # several questions about the transport.
         return False
@@ -1240,7 +1239,7 @@ class ConnectedTransport(Transport):
         return self._parsed_url.scheme
 
     def clone(self, offset=None):
-        """Return a new transport with root at self.base + offset
+        """Return a new transport with root at self.base + offset.
 
         We leave the daughter classes take advantage of the hint
         that it's a cloning not a raw creation.
@@ -1283,7 +1282,7 @@ class ConnectedTransport(Transport):
         return urlutils.urlparse.urlunparse((scheme, netloc, path, None, None, None))
 
     def relpath(self, abspath):
-        """Return the local path portion from a given absolute path"""
+        """Return the local path portion from a given absolute path."""
         parsed_url = self._split_url(abspath)
         error = []
         if parsed_url.scheme != self._parsed_url.scheme:
@@ -1535,7 +1534,7 @@ def do_catching_redirections(
     # If a loop occurs, there is little we can do. So we don't try to detect
     # them, just getting out if too much redirections occurs. The solution
     # is outside: where the loop is defined.
-    for redirections in range(MAX_REDIRECTIONS):
+    for _redirections in range(MAX_REDIRECTIONS):
         try:
             return action(transport)
         except errors.RedirectRequested as e:

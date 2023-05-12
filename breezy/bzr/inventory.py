@@ -209,7 +209,7 @@ class InventoryEntry:
         return False
 
     def __init__(self, file_id, name, parent_id):
-        """Create an InventoryEntry
+        """Create an InventoryEntry.
 
         The filename must be a single component, relative to the
         parent directory; it cannot be a whole path or relative name.
@@ -393,7 +393,7 @@ class InventoryDirectory(InventoryEntry):
     kind = 'directory'
 
     def _check(self, checker, rev_id):
-        """See InventoryEntry._check"""
+        """See InventoryEntry._check."""
         # In non rich root repositories we do not expect a file graph for the
         # root.
         if self.name == '' and not checker.rich_roots:
@@ -436,7 +436,7 @@ class InventoryFile(InventoryEntry):
         self.executable = False
 
     def _check(self, checker, tree_revision_id):
-        """See InventoryEntry._check"""
+        """See InventoryEntry._check."""
         # TODO: check size too.
         checker.add_pending_item(tree_revision_id,
                                  ('texts', self.file_id, self.revision), b'text',
@@ -539,7 +539,7 @@ class InventoryLink(InventoryEntry):
         self.symlink_target = None
 
     def _check(self, checker, tree_revision_id):
-        """See InventoryEntry._check"""
+        """See InventoryEntry._check."""
         if self.symlink_target is None:
             checker._report_items.append(
                 'symlink {%s} has no target in revision {%s}'
@@ -620,8 +620,7 @@ class TreeReference(InventoryEntry):
                              self.revision, self.reference_revision)
 
     def _read_tree_state(self, path, work_tree):
-        """Populate fields in the inventory entry from the given tree.
-        """
+        """Populate fields in the inventory entry from the given tree."""
         self.reference_revision = work_tree.get_reference_revision(
             path, self.file_id)
 
@@ -966,7 +965,7 @@ class CommonInventory:
         other.root.revision = self.root.revision
         other.revision_id = self.revision_id
         directories_to_expand = set()
-        for path, entry in entries:
+        for _path, entry in entries:
             file_id = entry.file_id
             if (file_id in specific_fileids or
                     entry.parent_id in directories_to_expand):
@@ -1123,7 +1122,7 @@ class Inventory(CommonInventory):
         # longest, ensuring that items which were modified and whose parents in
         # the resulting inventory were also modified, are inserted after their
         # parents.
-        for new_path, f, new_entry in sorted((np, f, e) for op, np, f, e in
+        for new_path, _f, new_entry in sorted((np, f, e) for op, np, f, e in
                                              delta if np is not None):
             if new_entry.kind == 'directory':
                 # Pop the child which to allow detection of children whose
@@ -1153,7 +1152,7 @@ class Inventory(CommonInventory):
 
     def create_by_apply_delta(self, inventory_delta, new_revision_id,
                               propagate_caches=False):
-        """See CHKInventory.create_by_apply_delta()"""
+        """See CHKInventory.create_by_apply_delta()."""
         new_inv = self.copy()
         new_inv.apply_delta(inventory_delta)
         new_inv.revision_id = new_revision_id
@@ -1172,7 +1171,7 @@ class Inventory(CommonInventory):
         other.root.revision = self.root.revision
         # copy recursively so we know directories will be added before
         # their children.  There are more efficient ways than this...
-        for path, entry in entries:
+        for _path, entry in entries:
             other.add(entry.copy())
         return other
 
@@ -1220,7 +1219,7 @@ class Inventory(CommonInventory):
         return self.get_entry(parent_id).children.get(filename)
 
     def _add_child(self, entry):
-        """Add an entry to the inventory, without adding it to its parent"""
+        """Add an entry to the inventory, without adding it to its parent."""
         if entry.file_id in self._byid:
             raise errors.BzrError(
                 "inventory already contains entry with id {%s}" %
@@ -1260,8 +1259,8 @@ class Inventory(CommonInventory):
 
         The immediate parent must already be versioned.
 
-        Returns the new entry object."""
-
+        Returns the new entry object.
+        """
         parts = osutils.splitpath(relpath)
 
         if len(parts) == 0:
@@ -1487,7 +1486,7 @@ class CHKInventory(CommonInventory):
         # XXX: Todo - use proxy objects for the children rather than loading
         # all when the attribute is referenced.
         child_keys = set()
-        for (parent_id, name_utf8), file_id in self.parent_id_basename_to_file_id.iteritems(
+        for (_parent_id, _name_utf8), file_id in self.parent_id_basename_to_file_id.iteritems(
                 key_filter=[StaticTuple(dir_id,)]):
             child_keys.add(StaticTuple(file_id,))
         cached = set()
@@ -1950,7 +1949,7 @@ class CHKInventory(CommonInventory):
         parent_id_basename_key = result._parent_id_basename_key
         id_to_entry_dict = {}
         parent_id_basename_dict = {}
-        for path, entry in inventory.iter_entries():
+        for _path, entry in inventory.iter_entries():
             key = StaticTuple(entry.file_id,).intern()
             id_to_entry_dict[key] = entry_to_bytes(entry)
             p_id_key = parent_id_basename_key(entry)
@@ -1985,7 +1984,7 @@ class CHKInventory(CommonInventory):
         return StaticTuple(parent_id, entry.name.encode('utf8')).intern()
 
     def get_entry(self, file_id):
-        """map a single file_id -> InventoryEntry."""
+        """Map a single file_id -> InventoryEntry."""
         if file_id is None:
             raise errors.NoSuchId(self, file_id)
         result = self._fileid_to_entry_cache.get(file_id, None)
@@ -2013,7 +2012,7 @@ class CHKInventory(CommonInventory):
             else:
                 result.append(entry)
         file_keys = [StaticTuple(f,).intern() for f in remaining]
-        for file_key, value in self.id_to_entry.iteritems(file_keys):
+        for _file_key, value in self.id_to_entry.iteritems(file_keys):
             entry = self._bytes_to_entry(value)
             result.append(entry)
             self._fileid_to_entry_cache[entry.file_id] = entry
@@ -2061,7 +2060,7 @@ class CHKInventory(CommonInventory):
             yield ie
 
     def _preload_cache(self):
-        """Make sure all file-ids are in _fileid_to_entry_cache"""
+        """Make sure all file-ids are in _fileid_to_entry_cache."""
         if self._fully_cached:
             return  # No need to do it again
         # The optimal sort order is to use iteritems() directly
@@ -2454,6 +2453,6 @@ def mutable_inventory_from_tree(tree):
     """
     entries = tree.iter_entries_by_dir()
     inv = Inventory(None, tree.get_revision_id())
-    for path, inv_entry in entries:
+    for _path, inv_entry in entries:
         inv.add(inv_entry.copy())
     return inv

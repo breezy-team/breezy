@@ -81,7 +81,7 @@ class TestStatus(TestCaseWithTransport):
                              output.getvalue())
 
     def test_with_pending_ghost(self):
-        """Test when a pending merge is itself a ghost"""
+        """Test when a pending merge is itself a ghost."""
         tree = self.make_branch_and_tree('a')
         tree.commit('first')
         tree.add_parent_tree_id(b'a-ghost-revision')
@@ -118,7 +118,7 @@ class TestStatus(TestCaseWithTransport):
             output.getvalue())
 
     def tests_revision_to_revision(self):
-        """doing a status between two revision trees should work."""
+        """Doing a status between two revision trees should work."""
         tree = self.make_branch_and_tree('.')
         r1_id = tree.commit('one', allow_pointless=True)
         r2_id = tree.commit('two', allow_pointless=True)
@@ -132,8 +132,7 @@ class TestStatus(TestCaseWithTransport):
 class TestHooks(TestCaseWithTransport):
 
     def test_constructor(self):
-        """Check that creating a StatusHooks instance has the right defaults.
-        """
+        """Check that creating a StatusHooks instance has the right defaults."""
         hooks = _mod_status.StatusHooks()
         self.assertIn(
             "post_status",
@@ -143,15 +142,13 @@ class TestHooks(TestCaseWithTransport):
         self.assertIn("pre_status", hooks, f"pre_status not in {hooks}")
 
     def test_installed_hooks_are_StatusHooks(self):
-        """The installed hooks object should be a StatusHooks.
-        """
+        """The installed hooks object should be a StatusHooks."""
         # the installed hooks are saved in self._preserved_hooks.
         self.assertIsInstance(self._preserved_hooks[_mod_status][1],
                               _mod_status.StatusHooks)
 
     def test_post_status_hook(self):
-        """Ensure that post_status hook is invoked with the right args.
-        """
+        """Ensure that post_status hook is invoked with the right args."""
         calls = []
         _mod_status.hooks.install_named_hook('post_status', calls.append, None)
         self.assertLength(0, calls)
@@ -172,8 +169,7 @@ class TestHooks(TestCaseWithTransport):
                             f'Attribute "{a}" not found in StatusHookParam')
 
     def test_pre_status_hook(self):
-        """Ensure that pre_status hook is invoked with the right args.
-        """
+        """Ensure that pre_status hook is invoked with the right args."""
         calls = []
         _mod_status.hooks.install_named_hook('pre_status', calls.append, None)
         self.assertLength(0, calls)

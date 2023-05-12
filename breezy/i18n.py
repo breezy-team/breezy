@@ -86,7 +86,7 @@ def install(lang=None):
 
 
 def _get_locale_dir():
-    """Returns directory to find .mo translations file in, either local or system
+    """Returns directory to find .mo translations file in, either local or system.
 
     :param base: plugins can specify their own local directory
     """

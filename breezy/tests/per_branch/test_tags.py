@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tags stored within a branch
+"""Tags stored within a branch.
 
 The tags are actually in the Branch.tags namespace, but these are
 1:1 with Branch implementations so can be tested from here.

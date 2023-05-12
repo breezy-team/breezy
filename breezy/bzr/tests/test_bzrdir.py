@@ -30,17 +30,15 @@ from ... import (branch, bzr, config, controldir, errors, help_topics, lock,
                  osutils, repository)
 from ... import revision as _mod_revision
 from ... import transport as _mod_transport
-from ... import urlutils, win32utils
+from ... import urlutils
 from ...errors import (NotBranchError, UnknownFormatError,
                        UnsupportedFormatError)
 from ...tests import (TestCase, TestCaseWithMemoryTransport,
-                      TestCaseWithTransport, TestSkipped, http_server,
-                      http_utils)
+                      TestCaseWithTransport, http_server, http_utils)
 from ...transport import memory, pathfilter
 from ...transport.http.urllib import HttpTransport
 from ...transport.nosmart import NoSmartTransportDecorator
 from ...transport.readonly import ReadonlyTransportDecorator
-from .. import branch as bzrbranch
 from .. import (bzrdir, knitpack_repo, knitrepo, remote, workingtree_3,
                 workingtree_4)
 from ..fullhistory import BzrBranchFormat5
@@ -210,7 +208,7 @@ class SampleBzrDir(bzrdir.BzrDir):
 
 
 class SampleBzrDirFormat(bzrdir.BzrDirFormat):
-    """A sample format
+    """A sample format.
 
     this format is initializable, unsupported to aid in testing the
     open and open_downlevel routines.
@@ -303,7 +301,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
         t.put_bytes(
             '.bzr/branch-format',
             b'<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">')
-        e = self.assertRaises(
+        self.assertRaises(
             NotBranchError, bzrdir.BzrDirFormat.find_format,
             _mod_transport.get_transport_from_path('.'))
 
@@ -386,7 +384,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
         branch.controldir.open_repository()
 
     def test_create_branch_convenience_possible_transports(self):
-        """Check that the optional 'possible_transports' is recognized"""
+        """Check that the optional 'possible_transports' is recognized."""
         format = controldir.format_registry.make_controldir('knit')
         t = self.get_transport()
         branch = bzrdir.BzrDir.create_branch_convenience(
@@ -509,20 +507,20 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         # Make stackable source branch with an unstackable repo format.
         source_bzrdir = self.make_controldir('source')
         knitpack_repo.RepositoryFormatKnitPack1().initialize(source_bzrdir)
-        source_branch = breezy.bzr.branch.BzrBranchFormat7().initialize(
+        breezy.bzr.branch.BzrBranchFormat7().initialize(
             source_bzrdir)
         # Make a directory with a default stacking policy
         parent_bzrdir = self.make_controldir('parent')
         stacked_on = self.make_branch('parent/stacked-on', format='pack-0.92')
         parent_bzrdir.get_config().set_default_stack_on(stacked_on.base)
         # Clone source into directory
-        target = source_bzrdir.clone(self.get_url('parent/target'))
+        source_bzrdir.clone(self.get_url('parent/target'))
 
     def test_format_initialize_on_transport_ex_stacked_on(self):
         # trunk is a stackable format.  Note that its in the same server area
         # which is what launchpad does, but not sufficient to exercise the
         # general case.
-        trunk = self.make_branch('trunk', format='1.9')
+        self.make_branch('trunk', format='1.9')
         t = self.get_transport('stacked')
         old_fmt = controldir.format_registry.make_controldir('pack-0.92')
         repo_name = old_fmt.repository_format.network_name()
@@ -620,7 +618,7 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         self.assertEqual('..', stacked.get_stacked_on_url())
 
     def test_relative_branch_stacking_to_absolute(self):
-        stack_on = self.make_branch('stack_on', format='1.6')
+        self.make_branch('stack_on', format='1.6')
         stacked = self.make_branch('stack_on/stacked', format='1.6')
         policy = bzrdir.UseExistingRepository(stacked.repository,
                                               '.', self.get_readonly_url('stack_on'))
@@ -650,7 +648,7 @@ class ChrootedTests(TestCaseWithTransport):
                           self.get_readonly_url(''))
         self.assertRaises(NotBranchError, bzrdir.BzrDir.open_containing,
                           self.get_readonly_url('g/p/q'))
-        control = bzrdir.BzrDir.create(self.get_url())
+        bzrdir.BzrDir.create(self.get_url())
         branch, relpath = bzrdir.BzrDir.open_containing(
             self.get_readonly_url(''))
         self.assertEqual('', relpath)
@@ -753,7 +751,7 @@ class ChrootedTests(TestCaseWithTransport):
                           bzrdir.BzrDir.open_containing_from_transport,
                           _mod_transport.get_transport_from_url(
                               self.get_readonly_url('g/p/q')))
-        control = bzrdir.BzrDir.create(self.get_url())
+        bzrdir.BzrDir.create(self.get_url())
         branch, relpath = bzrdir.BzrDir.open_containing_from_transport(
             _mod_transport.get_transport_from_url(
                 self.get_readonly_url('')))
@@ -823,7 +821,7 @@ class ChrootedTests(TestCaseWithTransport):
     def test_open_from_transport(self):
         # transport pointing at bzrdir should give a bzrdir with root transport
         # set to the given transport
-        control = bzrdir.BzrDir.create(self.get_url())
+        bzrdir.BzrDir.create(self.get_url())
         t = self.get_transport()
         opened_bzrdir = bzrdir.BzrDir.open_from_transport(t)
         self.assertEqual(t.base, opened_bzrdir.root_transport.base)
@@ -834,7 +832,7 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertRaises(NotBranchError, bzrdir.BzrDir.open_from_transport, t)
 
     def test_open_from_transport_bzrdir_in_parent(self):
-        control = bzrdir.BzrDir.create(self.get_url())
+        bzrdir.BzrDir.create(self.get_url())
         t = self.get_transport()
         t.mkdir('subdir')
         t = t.clone('subdir')
@@ -856,7 +854,7 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual('tree-reference', tree2.kind('subtree'))
 
     def test_cloning_metadir(self):
-        """Ensure that cloning metadir is suitable"""
+        """Ensure that cloning metadir is suitable."""
         bzrdir = self.make_controldir('bzrdir')
         bzrdir.cloning_metadir()
         branch = self.make_branch('branch', format='knit')
@@ -951,7 +949,7 @@ class ChrootedTests(TestCaseWithTransport):
     def test_find_controldirs_evaluate(self):
         def evaluate(bzrdir):
             try:
-                repo = bzrdir.open_repository()
+                bzrdir.open_repository()
             except errors.NoRepositoryPresent:
                 return True, bzrdir.root_transport.base
             else:
@@ -970,9 +968,9 @@ class ChrootedTests(TestCaseWithTransport):
             self.assertEqual(x.root_transport.base, y.root_transport.base)
 
     def test_find_branches(self):
-        root = self.make_repository('', shared=True)
+        self.make_repository('', shared=True)
         foo, bar, baz = self.make_foo_bar_baz()
-        qux = self.make_controldir('foo/qux')
+        self.make_controldir('foo/qux')
         t = self.get_transport()
         branches = bzrdir.BzrDir.find_branches(t)
         self.assertEqual(baz.root_transport.base, branches[0].base)
@@ -991,7 +989,7 @@ class TestMissingRepoBranchesSkipped(TestCaseWithMemoryTransport):
         t = self.get_transport()
         arepo = self.make_repository('arepo', shared=True)
         abranch_url = arepo.user_url + '/abranch'
-        abranch = bzrdir.BzrDir.create(abranch_url).create_branch()
+        bzrdir.BzrDir.create(abranch_url).create_branch()
         t.delete_tree('arepo/.bzr')
         self.assertRaises(errors.NoRepositoryPresent,
                           branch.Branch.open, abranch_url)
@@ -1176,7 +1174,7 @@ class TestHTTPRedirectionsBase:
                           bzrdir.BzrDir.open_from_transport, newt)
 
     def test_qualifier_preserved(self):
-        wt = self.make_branch_and_tree('branch')
+        self.make_branch_and_tree('branch')
         old_url = self._qualified_url(self.old_server.host,
                                       self.old_server.port)
         start = self._transport(old_url).clone('branch')
@@ -1188,7 +1186,7 @@ class TestHTTPRedirectionsBase:
 
 class TestHTTPRedirections(TestHTTPRedirectionsBase,
                            http_utils.TestCaseWithTwoWebservers):
-    """Tests redirections for urllib implementation"""
+    """Tests redirections for urllib implementation."""
 
     _transport = HttpTransport
 
@@ -1200,7 +1198,7 @@ class TestHTTPRedirections(TestHTTPRedirectionsBase,
 
 class TestHTTPRedirections_nosmart(TestHTTPRedirectionsBase,
                                    http_utils.TestCaseWithTwoWebservers):
-    """Tests redirections for the nosmart decorator"""
+    """Tests redirections for the nosmart decorator."""
 
     _transport = NoSmartTransportDecorator
 
@@ -1212,7 +1210,7 @@ class TestHTTPRedirections_nosmart(TestHTTPRedirectionsBase,
 
 class TestHTTPRedirections_readonly(TestHTTPRedirectionsBase,
                                     http_utils.TestCaseWithTwoWebservers):
-    """Tests redirections for readonly decoratror"""
+    """Tests redirections for readonly decoratror."""
 
     _transport = ReadonlyTransportDecorator
 
@@ -1236,12 +1234,12 @@ class TestDotBzrHidden(TestCaseWithTransport):
         return out.splitlines()
 
     def test_dot_bzr_hidden(self):
-        b = bzrdir.BzrDir.create('.')
+        bzrdir.BzrDir.create('.')
         self.build_tree(['a'])
         self.assertEqual([b'a'], self.get_ls())
 
     def test_dot_bzr_hidden_with_url(self):
-        b = bzrdir.BzrDir.create(urlutils.local_path_to_url('.'))
+        bzrdir.BzrDir.create(urlutils.local_path_to_url('.'))
         self.build_tree(['a'])
         self.assertEqual([b'a'], self.get_ls())
 
@@ -1345,7 +1343,7 @@ class TestBzrDirSprout(TestCaseWithMemoryTransport):
 
         # Sprout the bzrdir
         target_url = self.get_url('target')
-        result = source_bzrdir.sprout(target_url, recurse='no')
+        source_bzrdir.sprout(target_url, recurse='no')
 
         # The bzrdir called the branch's sprout method.
         self.assertSubset(['sprout'], source_bzrdir.test_branch.calls)

@@ -17,7 +17,7 @@
 import sys
 
 from .. import branch as _mod_branch
-from .. import controldir, errors, info
+from .. import controldir, info
 from .. import repository as _mod_repository
 from .. import tests, workingtree
 from ..bzr import branch as _mod_bzrbranch
@@ -83,14 +83,14 @@ class TestInfo(tests.TestCaseWithTransport):
                                               checkout, control=tree.controldir))
 
     def assertTreeDescription(self, format):
-        """Assert a tree's format description matches expectations"""
+        """Assert a tree's format description matches expectations."""
         self.make_branch_and_tree(f'{format}_tree', format=format)
         tree = workingtree.WorkingTree.open(f'{format}_tree')
         self.assertEqual(format, info.describe_format(tree.controldir,
                                                       tree.branch.repository, tree.branch, tree))
 
     def assertCheckoutDescription(self, format, expected=None):
-        """Assert a checkout's format description matches expectations"""
+        """Assert a checkout's format description matches expectations."""
         if expected is None:
             expected = format
         branch = self.make_branch(f'{format}_cobranch', format=format)
@@ -114,7 +114,7 @@ class TestInfo(tests.TestCaseWithTransport):
             control._format.workingtree_format = old_format
 
     def assertBranchDescription(self, format, expected=None):
-        """Assert branch's format description matches expectations"""
+        """Assert branch's format description matches expectations."""
         if expected is None:
             expected = format
         self.make_branch(f'{format}_branch', format=format)
@@ -123,7 +123,7 @@ class TestInfo(tests.TestCaseWithTransport):
                                                         branch.repository, branch, None))
 
     def assertRepoDescription(self, format, expected=None):
-        """Assert repository's format description matches expectations"""
+        """Assert repository's format description matches expectations."""
         if expected is None:
             expected = format
         self.make_repository(f'{format}_repo', format=format)

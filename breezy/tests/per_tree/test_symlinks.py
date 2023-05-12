@@ -17,7 +17,7 @@
 """Tests for interface conformance of inventories of trees."""
 
 
-from breezy import osutils, tests
+from breezy import osutils
 from breezy.tests import TestSkipped, features, per_tree
 
 from ...git.branch import GitBranch
@@ -76,7 +76,7 @@ class TestTreeWithoutSymlinks(per_tree.TestCaseWithTree):
         with mem_tree.lock_write():
             mem_tree._file_transport.symlink('source', 'symlink')
             mem_tree.add(['', 'symlink'])
-            rev1 = mem_tree.commit('rev1')
+            mem_tree.commit('rev1')
         self.assertPathDoesNotExist('a/symlink')
 
     def test_clone_skips_symlinks(self):

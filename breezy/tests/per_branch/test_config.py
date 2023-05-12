@@ -16,7 +16,7 @@
 
 """Tests for branch.get_config behaviour."""
 
-from breezy import branch, errors, tests
+from breezy import branch
 from breezy.tests import per_branch
 
 

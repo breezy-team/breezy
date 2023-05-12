@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from .. import errors, mail_client, osutils, tests, urlutils
+from .. import mail_client, osutils, tests, urlutils
 
 
 class TestMutt(tests.TestCase):
@@ -266,7 +266,7 @@ class TestClaws(tests.TestCase):
 class TestEditor(tests.TestCase):
 
     def test_get_merge_prompt_unicode(self):
-        """Prompt, to and subject are unicode, the attachement is binary"""
+        """Prompt, to and subject are unicode, the attachement is binary."""
         editor = mail_client.Editor(None)
         prompt = editor._get_merge_prompt('foo\u1234',
                                           'bar\u1234',

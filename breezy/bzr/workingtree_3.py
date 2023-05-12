@@ -14,11 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""WorkingTree3 format and implementation.
+"""WorkingTree3 format and implementation."""
 
-"""
-
-from .. import errors, osutils
+from .. import errors
 from .. import revision as _mod_revision
 from .. import trace
 from .. import transport as _mod_transport
@@ -60,7 +58,7 @@ class PreDirStateWorkingTree(InventoryWorkingTree):
         if self._hashcache.needs_write:
             try:
                 self._hashcache.write()
-            except (PermissionError, ) as e:
+            except PermissionError as e:
                 # TODO: jam 20061219 Should this be a warning? A single line
                 #       warning might be sufficient to let the user know what
                 #       is going on.
@@ -227,7 +225,7 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
         return inventory.Inventory()
 
     def open(self, a_controldir, _found=False):
-        """Return the WorkingTree object for a_controldir
+        """Return the WorkingTree object for a_controldir.
 
         _found is a private parameter, do not use it. It is used to indicate
                if format probing has already been done.

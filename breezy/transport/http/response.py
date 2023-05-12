@@ -149,7 +149,7 @@ class RangeFile(ResponseFile):
         self.set_range(0, -1)
 
     def set_range(self, start, size):
-        """Change the range mapping"""
+        """Change the range mapping."""
         self._start = start
         self._size = size
         # Set the new _pos since that's what we want to expose
@@ -169,7 +169,7 @@ class RangeFile(ResponseFile):
         self.read_range_definition()
 
     def read_boundary(self):
-        """Read the boundary headers defining a new range"""
+        """Read the boundary headers defining a new range."""
         boundary_line = b'\r\n'
         while boundary_line == b'\r\n':
             # RFC2616 19.2 Additional CRLFs may precede the first boundary
@@ -216,7 +216,7 @@ class RangeFile(ResponseFile):
         self.set_range_from_header(content_range)
 
     def set_range_from_header(self, content_range):
-        """Helper to set the new range from its description in the headers"""
+        """Helper to set the new range from its description in the headers."""
         try:
             rtype, values = content_range.split()
         except ValueError:

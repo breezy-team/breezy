@@ -1,10 +1,10 @@
 use log::debug;
 use std::env;
-use std::ffi::{OsStr, OsString};
+
 use std::fs::create_dir;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
-use std::os::unix::ffi::OsStrExt;
+
+use std::io::{BufRead};
+
 use std::path::{Path, PathBuf};
 
 // TODO(jelmer): Rely on the directories crate instead

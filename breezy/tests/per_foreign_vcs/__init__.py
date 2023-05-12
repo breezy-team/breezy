@@ -15,16 +15,14 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Tests specific to foreign branch implementations.
-
-"""
+"""Tests specific to foreign branch implementations."""
 
 from breezy import foreign, tests
 
 
 def vcs_scenarios():
     scenarios = []
-    for name, vcs in foreign.foreign_vcs_registry.items():
+    for _name, vcs in foreign.foreign_vcs_registry.items():
         scenarios.append((vcs.__class__.__name__, {
             "branch_factory": vcs.branch_format.get_foreign_tests_branch_factory(),
             "repository_factory": vcs.repository_format.get_foreign_tests_repository_factory(),

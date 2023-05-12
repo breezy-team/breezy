@@ -15,8 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Black-box tests for brz cat.
-"""
+"""Black-box tests for brz cat."""
 
 from ... import tests
 from ...transport import memory
@@ -70,7 +69,7 @@ class TestCat(tests.TestCaseWithTransport):
                      retcode=3)
 
     def test_cat_different_id(self):
-        """'cat' works with old and new files"""
+        """'cat' works with old and new files."""
         self.disable_missing_extensions_warning()
         tree = self.make_branch_and_tree('.')
         # the files are named after their path in the revision and

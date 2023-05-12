@@ -26,7 +26,7 @@ import os
 import shlex
 import textwrap
 
-from .. import osutils, tests, trace
+from .. import osutils, tests
 from ..tests import ui_testing
 
 
@@ -57,7 +57,6 @@ def _script_to_commands(text, file_name=None):
         split in to words, and the input, output, and errors are just strings,
         typically containing newlines.
     """
-
     commands = []
 
     def add_command(cmd, input, output, error):
@@ -71,7 +70,6 @@ def _script_to_commands(text, file_name=None):
             commands.append((cmd, input, output, error))
 
     cmd_cur = None
-    cmd_line = 1
     lineno = 0
     input, output, error = None, None, None
     text = textwrap.dedent(text)
@@ -100,7 +98,6 @@ def _script_to_commands(text, file_name=None):
             add_command(cmd_cur, input, output, error)
             # And start a new one
             cmd_cur = list(split(line[1:]))
-            cmd_line = lineno
             input, output, error = None, None, None
         elif line.startswith('<'):
             if input is None:
@@ -270,7 +267,6 @@ class ScriptRunner:
                 test_case.assertEqualDiff(expected, actual)
 
     def _pre_process_args(self, args):
-        new_args = []
         for arg in args:
             # Strip the simple and double quotes since we don't care about
             # them.  We leave the backquotes in place though since they have a
@@ -523,6 +519,6 @@ class TestCaseWithTransportAndScript(tests.TestCaseWithTransport):
 
 
 def run_script(test_case, script_string, null_output_matches_anything=False):
-    """Run the given script within a testcase"""
+    """Run the given script within a testcase."""
     return ScriptRunner().run_script(test_case, script_string,
                                      null_output_matches_anything=null_output_matches_anything)

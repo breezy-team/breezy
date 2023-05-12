@@ -93,9 +93,7 @@ def default_test_list():
     for module_name in format_registry._get_all_modules():
         module = pyutils.get_named_object(module_name)
         try:
-            get_extra_interrepo_test_combinations = getattr(
-                module,
-                "get_extra_interrepo_test_combinations")
+            get_extra_interrepo_test_combinations = module.get_extra_interrepo_test_combinations
         except AttributeError:
             continue
         for (interrepo_cls, from_format, to_format) in (

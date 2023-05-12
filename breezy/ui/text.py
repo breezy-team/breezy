@@ -37,9 +37,7 @@ from . import NullProgressView, UIFactory
 
 
 class _ChooseUI:
-
-    """ Helper class for choose implementation.
-    """
+    """Helper class for choose implementation."""
 
     def __init__(self, ui, msg, choices, default):
         self.ui = ui
@@ -120,8 +118,7 @@ class _ChooseUI:
         return char
 
     def interact(self):
-        """Keep asking the user until a valid choice is made.
-        """
+        """Keep asking the user until a valid choice is made."""
         if self.line_based:
             getchoice = self._getline
         else:
@@ -198,7 +195,6 @@ class TextUIFactory(UIFactory):
           and osutils.getchar is used
         - input is line-based, and no controlling terminal is available
         """
-
         choose_ui = _ChooseUI(self, msg, choices, default)
         return choose_ui.interact()
 
@@ -212,7 +208,8 @@ class TextUIFactory(UIFactory):
         """Prepare the terminal for output.
 
         This will, clear any progress bars, and leave the cursor at the
-        leftmost position."""
+        leftmost position.
+        """
         # XXX: If this is preparing to write to stdout, but that's for example
         # directed into a file rather than to the terminal, and the progress
         # bar _is_ going to the terminal, we shouldn't need
@@ -283,8 +280,7 @@ class TextUIFactory(UIFactory):
         return username
 
     def make_progress_view(self):
-        """Construct and return a new ProgressView subclass for this UI.
-        """
+        """Construct and return a new ProgressView subclass for this UI."""
         # with --quiet, never any progress view
         # <https://bugs.launchpad.net/bzr/+bug/320035>.  Otherwise if the
         # user specifically requests either text or no progress bars, always
@@ -334,7 +330,7 @@ class TextUIFactory(UIFactory):
                                                     direction, byte_count)
 
     def log_transport_activity(self, display=False):
-        """See UIFactory.log_transport_activity()"""
+        """See UIFactory.log_transport_activity()."""
         log = getattr(self._progress_view, 'log_transport_activity', None)
         if log is not None:
             log(display=display)
@@ -351,8 +347,7 @@ class TextUIFactory(UIFactory):
         self.stderr.write(f"bzr: warning: {msg}\n")
 
     def _progress_updated(self, task):
-        """A task has been updated and wants to be displayed.
-        """
+        """A task has been updated and wants to be displayed."""
         if not self._task_stack:
             warnings.warn(f"{task!r} updated but no tasks are active")
         elif task != self._task_stack[-1]:

@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""A collection of commonly used 'Features' to optionally run tests.
-"""
+"""A collection of commonly used 'Features' to optionally run tests."""
 
 import importlib
 import os
@@ -227,8 +226,7 @@ class PluginLoadedFeature(Feature):
 
 
 class _HTTPSServerFeature(Feature):
-    """Some tests want an https Server, check if one is available.
-    """
+    """Some tests want an https Server, check if one is available."""
 
     def _probe(self):
         try:
@@ -421,7 +419,7 @@ backslashdir_feature = _BackslashDirSeparatorFeature()
 
 
 class _ChownFeature(Feature):
-    """os.chown is supported"""
+    """os.chown is supported."""
 
     def _probe(self):
         return os.name == 'posix' and hasattr(os, 'chown')

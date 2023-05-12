@@ -23,8 +23,7 @@ from ..tag import Tags
 
 
 class BasicTags(Tags):
-    """Tag storage in an unversioned branch control file.
-    """
+    """Tag storage in an unversioned branch control file."""
 
     def set_tag(self, tag_name, tag_target):
         """Add a tag definition to the branch.
@@ -41,7 +40,7 @@ class BasicTags(Tags):
             self._set_tag_dict(td)
 
     def lookup_tag(self, tag_name):
-        """Return the referent string of a tag"""
+        """Return the referent string of a tag."""
         td = self.get_tag_dict()
         try:
             return td[tag_name]
@@ -62,8 +61,7 @@ class BasicTags(Tags):
             return self._deserialize_tag_dict(tag_content)
 
     def delete_tag(self, tag_name):
-        """Delete a tag definition.
-        """
+        """Delete a tag definition."""
         with self.branch.lock_write():
             d = self.get_tag_dict()
             try:
@@ -79,7 +77,7 @@ class BasicTags(Tags):
             self._set_tag_dict(d)
 
     def _set_tag_dict(self, new_dict):
-        """Replace all tag definitions
+        """Replace all tag definitions.
 
         WARNING: Calling this on an unlocked branch will lock it, and will
         replace the tags without warning on conflicts.
@@ -94,7 +92,7 @@ class BasicTags(Tags):
         return bencode.bencode(td)
 
     def _deserialize_tag_dict(self, tag_content):
-        """Convert the tag file into a dictionary of tags"""
+        """Convert the tag file into a dictionary of tags."""
         # was a special case to make initialization easy, an empty definition
         # is an empty dictionary
         if tag_content == b'':

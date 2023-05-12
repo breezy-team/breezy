@@ -14,12 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Export a Tree to a zip file.
-"""
+"""Export a Tree to a zip file."""
 
-import os
 import stat
-import sys
 import tempfile
 import time
 import zipfile
@@ -41,7 +38,7 @@ _DIR_ATTR = stat.S_IFDIR | ZIP_DIRECTORY_BIT | DIR_PERMISSIONS
 
 def zip_archive_generator(tree, dest, root, subdir=None,
                           force_mtime=None, recurse_nested=False):
-    """ Export this tree to a new zip file.
+    """Export this tree to a new zip file.
 
     `dest` will be created holding the contents of this tree; if it
     already exists, it will be overwritten".

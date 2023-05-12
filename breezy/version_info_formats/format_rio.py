@@ -14,10 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""A generator which creates a rio stanza of the current tree info"""
+"""A generator which creates a rio stanza of the current tree info."""
 
 from breezy import errors, hooks
-from breezy.bzr.rio import RioWriter, Stanza
+from breezy.bzr.rio import Stanza
 from breezy.version_info_formats import VersionInfoBuilder, create_date_str
 
 from ..revision import NULL_REVISION

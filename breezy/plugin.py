@@ -90,7 +90,7 @@ def load_plugins(path=None, state=None, warn_load_problems=True):
     _load_plugins(state, path)
     state.plugins = plugins()
     if warn_load_problems:
-        for plugin, errors in state.plugin_warnings.items():
+        for _plugin, errors in state.plugin_warnings.items():
             for error in errors:
                 trace.warning('%s', error)
 
@@ -461,8 +461,7 @@ def get_loaded_plugin(name):
 
 
 def format_concise_plugin_list(state=None):
-    """Return a string holding a concise list of plugins and their version.
-    """
+    """Return a string holding a concise list of plugins and their version."""
     if state is None:
         state = breezy.get_global_state()
     items = []

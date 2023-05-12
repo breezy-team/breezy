@@ -190,8 +190,7 @@ class ResponseHandler:
         raise NotImplementedError(self.read_body_bytes)
 
     def read_streamed_body(self):
-        """Returns an iterable that reads and returns a series of body chunks.
-        """
+        """Returns an iterable that reads and returns a series of body chunks."""
         raise NotImplementedError(self.read_streamed_body)
 
     def cancel_read_body(self):
@@ -342,7 +341,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
 
 
 def _raise_smart_server_error(error_tuple):
-    """Raise exception based on tuple received from smart server
+    """Raise exception based on tuple received from smart server.
 
     Specific error translation is handled by breezy.bzr.remote._translate_error
     """

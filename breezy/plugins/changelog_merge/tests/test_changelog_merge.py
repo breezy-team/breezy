@@ -137,8 +137,7 @@ class TestMergeCoreLogic(tests.TestCase):
             list(result_entries))
 
     def test_too_hard(self):
-        """A conflict this plugin cannot resolve raises EntryConflict.
-        """
+        """A conflict this plugin cannot resolve raises EntryConflict."""
         # An entry edited in other but deleted in this is a conflict we can't
         # resolve.  (Ideally perhaps we'd generate a nice conflict file, but
         # for now we just give up.)
@@ -196,8 +195,7 @@ class TestChangeLogMerger(tests.TestCaseWithTransport):
         return changelog_merger, merge_hook_params
 
     def test_merge_text_returns_not_applicable(self):
-        """A conflict this plugin cannot resolve returns (not_applicable, None).
-        """
+        """A conflict this plugin cannot resolve returns (not_applicable, None)."""
         # Build same example as TestMergeCoreLogic.test_too_hard: edit an entry
         # in other but delete it in this.
         def entries_as_str(entries):

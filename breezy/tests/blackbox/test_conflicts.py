@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from breezy import conflicts, tests, workingtree
+from breezy import tests
 from breezy.tests import features, script
 
 
@@ -80,7 +80,7 @@ Text conflict in myfile
 
 
 class TestUnicodePaths(tests.TestCaseWithTransport):
-    """Unicode characters in conflicts should be displayed properly"""
+    """Unicode characters in conflicts should be displayed properly."""
 
     _test_needs_features = [features.UnicodeFilenameFeature]
     encoding = "UTF-8"
@@ -89,7 +89,7 @@ class TestUnicodePaths(tests.TestCaseWithTransport):
         return text
 
     def test_messages(self):
-        """Conflict messages involving non-ascii paths are displayed okay"""
+        """Conflict messages involving non-ascii paths are displayed okay."""
         make_tree_with_conflicts(self, "branch", prefix="\xA7")
         out, err = self.run_bzr(["conflicts", "-d", "branch"],
                                 encoding=self.encoding)
@@ -100,7 +100,7 @@ class TestUnicodePaths(tests.TestCaseWithTransport):
         self.assertEqual(err, "")
 
     def test_text_conflict_paths(self):
-        """Text conflicts on non-ascii paths are displayed okay"""
+        """Text conflicts on non-ascii paths are displayed okay."""
         make_tree_with_conflicts(self, "branch", prefix="\xA7")
         out, err = self.run_bzr(["conflicts", "-d", "branch", "--text"],
                                 encoding=self.encoding)
@@ -111,7 +111,7 @@ class TestUnicodePaths(tests.TestCaseWithTransport):
 
 
 class TestUnicodePathsOnAsciiTerminal(TestUnicodePaths):
-    """Undisplayable unicode characters in conflicts should be escaped"""
+    """Undisplayable unicode characters in conflicts should be escaped."""
 
     encoding = "ascii"
 

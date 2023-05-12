@@ -20,7 +20,7 @@ import smtplib
 import socket
 from email.utils import getaddresses, parseaddr
 
-from . import config, osutils
+from . import config
 from .errors import BzrError, InternalBzrError
 
 smtp_password = config.Option('smtp_password', default=None,

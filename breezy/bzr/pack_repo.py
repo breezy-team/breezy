@@ -66,7 +66,7 @@ class RetryWithNewPacks(errors.BzrError):
             " %(orig_error)s")
 
     def __init__(self, context, reload_occurred, exc_info):
-        """create a new RetryWithNewPacks error.
+        """Create a new RetryWithNewPacks error.
 
         :param reload_occurred: Set to True if we know that the packs have
             already been reloaded, and we are failing because of an in-memory
@@ -186,7 +186,7 @@ class Pack:
                 k for (idx, k, v, r) in
                 index.iter_entries(external_refs))
             if missing:
-                missing_items[index_name] = sorted(list(missing))
+                missing_items[index_name] = sorted(missing)
         if missing_items:
             from pprint import pformat
             raise errors.BzrCheckError(
@@ -956,7 +956,7 @@ class RepositoryPackCollection:
         :param packer_class: The class of packer to use
         :return: The new pack names.
         """
-        for revision_count, packs in pack_operations:
+        for _revision_count, packs in pack_operations:
             # we may have no-ops from the setup logic
             if len(packs) == 0:
                 continue
@@ -1103,7 +1103,7 @@ class RepositoryPackCollection:
         if self._names is None:
             self._names = {}
             self._packs_at_load = set()
-            for index, key, value in self._iter_disk_pack_index():
+            for _index, key, value in self._iter_disk_pack_index():
                 name = key[0].decode('ascii')
                 self._names[name] = self._parse_index_sizes(value)
                 self._packs_at_load.add((name, value))
@@ -1282,7 +1282,7 @@ class RepositoryPackCollection:
         result = []
         for exponent, count in enumerate(digits):
             size = 10 ** exponent
-            for pos in range(int(count)):
+            for _pos in range(int(count)):
                 result.append(size)
         return list(reversed(result))
 
@@ -1352,7 +1352,7 @@ class RepositoryPackCollection:
         """
         # load the disk nodes across
         disk_nodes = set()
-        for index, key, value in self._iter_disk_pack_index():
+        for _index, key, value in self._iter_disk_pack_index():
             disk_nodes.add((key[0].decode('ascii'), value))
         orig_disk_nodes = set(disk_nodes)
 
@@ -1941,7 +1941,7 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
                                     than normal. I.e. during 'upgrade'.
         """
         if not _found:
-            format = RepositoryFormatMetaDir.find_format(a_controldir)
+            RepositoryFormatMetaDir.find_format(a_controldir)
         if _override_transport is not None:
             repo_transport = _override_transport
         else:
@@ -2077,7 +2077,7 @@ class _DirectPackAccess:
                                         exc_info=sys.exc_info())
             try:
                 reader = pack.make_readv_reader(transport, path, offsets)
-                for names, read_func in reader.iter_records():
+                for _names, read_func in reader.iter_records():
                     yield read_func(None)
             except _mod_transport.NoSuchFile:
                 # A NoSuchFile error indicates that a pack file has gone

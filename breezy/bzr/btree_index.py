@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
-"""B+Tree indices"""
+"""B+Tree indices."""
 
 from io import BytesIO
 
@@ -438,7 +438,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
         return self._write_nodes(self.iter_all_entries())[0]
 
     def iter_all_entries(self):
-        """Iterate over all keys within the index
+        """Iterate over all keys within the index.
 
         :return: An iterable of (index, key, value, reference_lists). There is
             no defined order for the result iteration - it will be in the most
@@ -597,7 +597,7 @@ class _LeafNode(dict):
         self._keys = dict(self)
 
     def all_items(self):
-        """Return a sorted list of (key, (value, refs)) items"""
+        """Return a sorted list of (key, (value, refs)) items."""
         items = sorted(self.items())
         return items
 
@@ -1107,7 +1107,7 @@ class BTreeGraphIndex:
         # large queries are being made.
         keys_at_index = [(0, sorted(keys))]
 
-        for row_pos, next_row_start in enumerate(self._row_offsets[1:-1]):
+        for _row_pos, next_row_start in enumerate(self._row_offsets[1:-1]):
             node_indexes = [idx for idx, s_keys in keys_at_index]
             nodes = self._get_internal_nodes(node_indexes)
 
@@ -1537,7 +1537,7 @@ class BTreeGraphIndex:
             # We shouldn't be reading anything anyway
             start_node = 1
         node_end = self._row_offsets[-1]
-        for node in self._read_nodes(list(range(start_node, node_end))):
+        for _node in self._read_nodes(list(range(start_node, node_end))):
             pass
 
 

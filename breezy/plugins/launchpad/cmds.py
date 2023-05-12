@@ -17,11 +17,11 @@
 """Launchpad plugin commands."""
 
 from ... import branch as _mod_branch
-from ... import controldir, trace
+from ... import trace
 from ...commands import Command
-from ...errors import CommandError, NotBranchError
+from ...errors import CommandError
 from ...i18n import gettext
-from ...option import ListOption, Option
+from ...option import Option
 
 
 class cmd_launchpad_open(Command):

@@ -118,7 +118,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
         # not be set.
         rename_func(old, new)
         success = True
-    except FileNotFoundError as e:
+    except FileNotFoundError:
         # source and target may be aliases of each other (e.g. on a
         # case-insensitive filesystem), so we may have accidentally renamed
         # source by when we tried to rename target
@@ -251,7 +251,7 @@ if sys.platform == 'win32':
             raise
 
     def rmtree(path, ignore_errors=False, onerror=_win32_delete_readonly):
-        """Replacer for shutil.rmtree: could remove readonly dirs/files"""
+        """Replacer for shutil.rmtree: could remove readonly dirs/files."""
         return shutil.rmtree(path, ignore_errors, onerror)
 
 elif sys.platform == 'darwin':
@@ -350,7 +350,7 @@ sha_string = _osutils_rs.sha_string
 
 
 def compare_files(a, b):
-    """Returns true if equal in contents"""
+    """Returns true if equal in contents."""
     BUFSIZE = 4096
     while True:
         ai = a.read(BUFSIZE)
@@ -453,7 +453,8 @@ def report_extension_load_failures():
     # https://bugs.launchpad.net/bzr/+bug/430529
 
 
-from ._osutils_rs import _accessible_normalized_filename  # noqa: F401
+from ._osutils_rs import \
+    _accessible_normalized_filename  # noqa: F401; noqa: F401
 from ._osutils_rs import (_inaccessible_normalized_filename, check_legal_path,
                           chunks_to_lines, chunks_to_lines_iter, get_host_name,
                           link_or_copy, local_concurrency, normalized_filename,
@@ -717,7 +718,7 @@ def terminal_width():
     # Query the OS
     try:
         width, _height = os_size = _terminal_size()
-    except OSError as e:
+    except OSError:
         width = os_size = None
     global _first_terminal_size, _terminal_size_state
     if _terminal_size_state == 'no_data':
@@ -799,7 +800,7 @@ def walkdirs(top, prefix="", fsdecode=os.fsdecode):
             relprefix = relroot + '/'
         else:
             relprefix = ''
-        top_slash = top + '/'
+        top + '/'
 
         dirblock = []
         try:
@@ -808,7 +809,7 @@ def walkdirs(top, prefix="", fsdecode=os.fsdecode):
                 statvalue = entry.stat(follow_symlinks=False)
                 kind = file_kind_from_stat_mode(statvalue.st_mode)
                 dirblock.append((relprefix + name, name, kind, statvalue, entry.path))
-        except NotADirectoryError as e:
+        except NotADirectoryError:
             pass
         dirblock.sort()
         yield (relroot, top), dirblock
@@ -821,7 +822,7 @@ class DirReader:
     """An interface for reading directories."""
 
     def top_prefix_to_starting_dir(self, top, prefix=""):
-        """Converts top and prefix to a starting dir entry
+        """Converts top and prefix to a starting dir entry.
 
         :param top: A utf8 path
         :param prefix: An optional utf8 path to prefix output relative paths

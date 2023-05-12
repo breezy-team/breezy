@@ -19,7 +19,6 @@ from io import BytesIO
 
 from ... import errors
 from ... import graph as _mod_graph
-from ... import osutils
 from ... import revision as _mod_revision
 from ...bzr import inventory
 from ...bzr.inventorytree import InventoryTreeChange
@@ -340,7 +339,6 @@ class RevisionStore:
             else:
                 self._use_known_graph = False
         if self._graph is not None:
-            orig_heads = builder._heads
 
             def thunked_heads(file_id, revision_ids):
                 # self._graph thinks in terms of keys, not ids, so translate
@@ -361,7 +359,7 @@ class RevisionStore:
             basis_rev_id = _mod_revision.NULL_REVISION
         tree = _TreeShim(self.repo, basis_inv, inv_delta, text_provider)
         changes = tree._delta_to_iter_changes()
-        for (path, fs_hash) in builder.record_iter_changes(
+        for (_path, _fs_hash) in builder.record_iter_changes(
                 tree, basis_rev_id, changes):
             # So far, we don't *do* anything with the result
             pass
@@ -376,7 +374,6 @@ class RevisionStore:
         # This is a duplicate of Builder.commit() since we already have the
         # Revision object, and we *don't* want to call commit_write_group()
         rev.inventory_sha1 = builder.inv_sha1
-        config = builder._config_stack
         builder.repository.add_revision(builder._new_revision_id, rev,
                                         builder.revision_tree().root_inventory)
         if self._graph is not None:

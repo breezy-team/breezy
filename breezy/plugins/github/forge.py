@@ -23,11 +23,9 @@ from typing import Any, Dict, List, Optional
 
 from ... import bedding
 from ... import branch as _mod_branch
-from ... import controldir, errors, hooks, urlutils
-from ... import version_string as breezy_version
-from ...config import AuthenticationConfig, GlobalStack
-from ...errors import (InvalidHttpResponse, PermissionDenied,
-                       UnexpectedHttpStatus)
+from ... import controldir, errors, urlutils
+from ...config import AuthenticationConfig
+from ...errors import PermissionDenied, UnexpectedHttpStatus
 from ...forge import (Forge, ForgeLoginRequired, MergeProposal,
                       MergeProposalBuilder, MergeProposalExists, NoSuchProject,
                       PrerequisiteBranchUnsupported, ReopenFailed,
@@ -36,7 +34,6 @@ from ...git.urls import git_url_to_bzr_url
 from ...i18n import gettext
 from ...trace import note
 from ...transport import get_transport
-from ...transport.http import default_user_agent
 
 GITHUB_HOST = 'github.com'
 WEB_GITHUB_URL = 'https://github.com'
@@ -571,7 +568,8 @@ class GitHub(Forge):
                         owner=None, revision_id=None, overwrite=False,
                         allow_lossy=True, tag_selector=None,):
         if tag_selector is None:
-            tag_selector = lambda t: False
+            def tag_selector(t):
+                return False
         base_owner, base_project, base_branch_name = parse_github_branch_url(base_branch)
         base_repo = self._get_repo(base_owner, base_project)
         if owner is None:

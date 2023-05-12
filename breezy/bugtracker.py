@@ -266,8 +266,7 @@ class UniqueIntegerBugTracker(IntegerBugTracker):
         self.base_url = base_url
 
     def get(self, abbreviated_bugtracker_name, branch):
-        """Returns the tracker if the abbreviation matches, otherwise ``None``.
-        """
+        """Returns the tracker if the abbreviation matches, otherwise ``None``."""
         if abbreviated_bugtracker_name != self.abbreviation:
             return None
         return self
@@ -290,8 +289,7 @@ class ProjectIntegerBugTracker(IntegerBugTracker):
         self._base_url = base_url
 
     def get(self, abbreviated_bugtracker_name, branch):
-        """Returns the tracker if the abbreviation matches, otherwise ``None``.
-        """
+        """Returns the tracker if the abbreviation matches, otherwise ``None``."""
         if abbreviated_bugtracker_name != self.abbreviation:
             return None
         return self

@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import re
 import sys
 
 import breezy
@@ -134,7 +133,7 @@ class DataCollector:
         return self.data
 
     def global_options(self):
-        for name, item in option.Option.OPTIONS.items():
+        for _name, item in option.Option.OPTIONS.items():
             self.data.global_options.append(
                 ('--' + item.name,
                  '-' + item.short_name() if item.short_name() else None,
@@ -179,7 +178,7 @@ class DataCollector:
                                         if useralias not in cmd_data.aliases]))
 
         opts = cmd.options()
-        for optname, opt in sorted(opts.items()):
+        for _optname, opt in sorted(opts.items()):
             cmd_data.options.extend(self.option(opt))
 
         if 'help' == name or 'help' in cmd.aliases:

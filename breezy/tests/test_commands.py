@@ -18,7 +18,7 @@ import errno
 import inspect
 import sys
 
-from .. import builtins, commands, config, errors, option, tests, trace
+from .. import builtins, commands, config, errors, option, tests
 from ..commands import display_command
 from . import TestSkipped
 
@@ -37,7 +37,7 @@ class TestCommands(tests.TestCase):
         self.assertLength(0, commands_without_help)
 
     def test_display_command(self):
-        """EPIPE message is selectively suppressed"""
+        """EPIPE message is selectively suppressed."""
         def pipe_thrower():
             raise OSError(errno.EPIPE, "Bogus pipe error")
         self.assertRaises(IOError, pipe_thrower)
@@ -189,7 +189,7 @@ class TestRegisterLazy(tests.TestCase):
 
     def setUp(self):
         super().setUp()
-        import breezy.tests.fake_command
+        import breezy.tests.fake_command  # noqa: F401
         del sys.modules['breezy.tests.fake_command']
         global lazy_command_imported
         lazy_command_imported = False
@@ -204,7 +204,7 @@ class TestRegisterLazy(tests.TestCase):
         self.assertIsInstance(cmd_obj, cmd_fake)
 
     def test_register_lazy(self):
-        """Ensure lazy registration works"""
+        """Ensure lazy registration works."""
         commands.plugin_cmds.register_lazy('cmd_fake', [],
                                            'breezy.tests.fake_command')
         self.addCleanup(self.remove_fake)
@@ -368,7 +368,7 @@ class TestGetMissingCommandHook(tests.TestCase):
         # looking up help topics.
         self.hook_missing()
         topic = commands.HelpCommandIndex()
-        topics = topic.get_topics('foo')
+        topic.get_topics('foo')
         self.assertEqual([], self.hook_calls)
 
 
@@ -386,7 +386,7 @@ class TestListCommandHook(tests.TestCase):
         commands.Command.hooks.install_named_hook(
             "list_commands", list_my_commands, None)
         # Get a command, which should not trigger the hook.
-        cmd = commands.get_cmd_object('info')
+        commands.get_cmd_object('info')
         self.assertEqual([], hook_calls)
         # Get all command classes (for docs and shell completion).
         cmds = list(commands.all_command_names())
@@ -444,8 +444,7 @@ class TestPreAndPostCommandHooks(tests.TestCase):
         self.assertEqual(['run', 'post'], hook_calls)
 
     def test_pre_command_error(self):
-        """Ensure an CommandError in pre_command aborts the command"""
-
+        """Ensure an CommandError in pre_command aborts the command."""
         hook_calls = []
 
         def pre_command(cmd):

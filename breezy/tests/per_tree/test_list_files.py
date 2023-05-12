@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Test that all trees support Tree.list_files()"""
+"""Test that all trees support Tree.list_files()."""
 
 from breezy import osutils
 from breezy.tests import TestNotApplicable

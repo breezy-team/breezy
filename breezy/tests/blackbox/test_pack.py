@@ -16,7 +16,6 @@
 #
 
 """Tests of the 'brz pack' command."""
-import os
 
 from breezy import tests
 
@@ -38,7 +37,7 @@ class TestPack(tests.TestCaseWithTransport):
             self.run_bzr(['ci', '-m', '"' + path + '"'])
 
     def _update_file(self, path, text, checkin=True):
-        """append text to file 'path' and check it in"""
+        """Append text to file 'path' and check it in."""
         with open(path, 'a') as f:
             f.write(text)
 
@@ -46,29 +45,28 @@ class TestPack(tests.TestCaseWithTransport):
             self.run_bzr(['ci', path, '-m', '"' + path + '"'])
 
     def test_pack_silent(self):
-        """pack command has no intrinsic output."""
+        """Pack command has no intrinsic output."""
         self.make_branch('.')
         out, err = self.run_bzr('pack')
         self.assertEqual('', out)
         self.assertEqual('', err)
 
     def test_pack_accepts_branch_url(self):
-        """pack command accepts the url to a branch."""
+        """Pack command accepts the url to a branch."""
         self.make_branch('branch')
         out, err = self.run_bzr('pack branch')
         self.assertEqual('', out)
         self.assertEqual('', err)
 
     def test_pack_accepts_repo_url(self):
-        """pack command accepts the url to a branch."""
+        """Pack command accepts the url to a branch."""
         self.make_repository('repository')
         out, err = self.run_bzr('pack repository')
         self.assertEqual('', out)
         self.assertEqual('', err)
 
     def test_pack_clean_obsolete_packs(self):
-        """Ensure --clean-obsolete-packs removes obsolete pack files
-        """
+        """Ensure --clean-obsolete-packs removes obsolete pack files."""
         wt = self.make_branch_and_tree('.')
         t = wt.branch.repository.controldir.transport
 

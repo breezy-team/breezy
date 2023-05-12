@@ -105,7 +105,7 @@ class Lock:
 
 
 class LockResult:
-    """Result of an operation on a lock; passed to a hook"""
+    """Result of an operation on a lock; passed to a hook."""
 
     def __init__(self, lock_url, details=None):
         """Create a lock result for lock with optional details about the lock."""

@@ -17,17 +17,14 @@
 
 """Black-box tests for 'brz deleted', which shows newly deleted files."""
 
-import os
 
 from breezy.tests import TestCaseWithTransport
-
-from ...branch import Branch
 
 
 class TestDeleted(TestCaseWithTransport):
 
     def test_deleted_directory(self):
-        """Test --directory option"""
+        """Test --directory option."""
         tree = self.make_branch_and_tree('a')
         self.build_tree(['a/README'])
         tree.add('README')

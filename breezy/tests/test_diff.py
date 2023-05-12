@@ -88,7 +88,7 @@ class TestDiffOptions(tests.TestCase):
 
 class TestDiffOptionsScenarios(tests.TestCase):
 
-    scenarios = [(s, dict(style=s)) for s in diff.style_option_list]
+    scenarios = [(s, {'style': s}) for s in diff.style_option_list]
     style = None  # Set by load_tests_apply_scenarios from scenarios
 
     def test_unified_not_added(self):
@@ -101,14 +101,14 @@ class TestDiffOptionsScenarios(tests.TestCase):
 class TestDiff(tests.TestCase):
 
     def test_add_nl(self):
-        """diff generates a valid diff for patches that add a newline"""
+        """Diff generates a valid diff for patches that add a newline."""
         lines = udiff_lines([b'boo'], [b'boo\n'])
         self.check_patch(lines)
         self.assertEqual(lines[4], b'\\ No newline at end of file\n')
         ## "expected no-nl, got %r" % lines[4]
 
     def test_add_nl_2(self):
-        """diff generates a valid diff for patches that change last line and
+        """Diff generates a valid diff for patches that change last line and
         add a newline.
         """
         lines = udiff_lines([b'boo'], [b'goo\n'])
@@ -117,7 +117,7 @@ class TestDiff(tests.TestCase):
         ## "expected no-nl, got %r" % lines[4]
 
     def test_remove_nl(self):
-        """diff generates a valid diff for patches that change last line and
+        """Diff generates a valid diff for patches that change last line and
         add a newline.
         """
         lines = udiff_lines([b'boo\n'], [b'boo'])
@@ -171,7 +171,7 @@ class TestDiff(tests.TestCase):
         self.assertEqual(lines[1:], [b'\n'])
 
     def test_no_external_diff(self):
-        """Check that NoDiff is raised when diff is not available"""
+        """Check that NoDiff is raised when diff is not available."""
         # Make sure no 'diff' command is available
         # XXX: Weird, using None instead of '' breaks the test -- vila 20101216
         self.overrideEnv('PATH', '')
@@ -303,7 +303,7 @@ class TestDiff(tests.TestCase):
 class TestDiffFiles(tests.TestCaseInTempDir):
 
     def test_external_diff_binary(self):
-        """The output when using external diff should use diff's i18n error"""
+        """The output when using external diff should use diff's i18n error."""
         for lang in ('LANG', 'LC_ALL', 'LANGUAGE'):
             self.overrideEnv(lang, 'C')
         # Make sure external_diff doesn't fail in the current LANG
@@ -439,7 +439,7 @@ class TestDiffDates(tests.TestCaseWithTransport):
 ''')
 
     def test_show_diff_specified(self):
-        """A working tree filename can be used to identify a file"""
+        """A working tree filename can be used to identify a file."""
         self.wt.rename_one('file1', 'file1b')
         old_tree = self.b.repository.revision_tree(b'rev-1')
         new_tree = self.b.repository.revision_tree(b'rev-4')
@@ -448,7 +448,7 @@ class TestDiffDates(tests.TestCaseWithTransport):
         self.assertContainsRe(out, b'file1\t')
 
     def test_recursive_diff(self):
-        """Children of directories are matched"""
+        """Children of directories are matched."""
         os.mkdir('dir1')
         os.mkdir('dir2')
         self.wt.add(['dir1', 'dir2'])
@@ -464,7 +464,7 @@ class TestDiffDates(tests.TestCaseWithTransport):
 
 
 class TestShowDiffTrees(tests.TestCaseWithTransport):
-    """Direct tests for show_diff_trees"""
+    """Direct tests for show_diff_trees."""
 
     def test_modified_file(self):
         """Test when a file is modified."""

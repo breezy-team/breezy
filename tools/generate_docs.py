@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""%(prog)s - generate information from built-in brz help
+"""%(prog)s - generate information from built-in brz help.
 
 %(prog)s creates a file with information on brz in one of
 several different output formats:
@@ -26,17 +26,14 @@ several different output formats:
     ...
 
 Examples:
-
     python generated-docs.py man
     python generated-docs.py bash_completion
 
 Run "%(prog)s --help" for the option reference.
 """
-import os
 import sys
-from optparse import OptionParser
-
 from contextlib import ExitStack
+from optparse import OptionParser
 
 import breezy
 from breezy import commands, doc_generate
@@ -75,7 +72,6 @@ Available OUTPUT_FORMAT:
 
     with breezy.initialize(), ExitStack() as es:
         # Import breezy.bzr for format registration, see <http://pad.lv/956860>
-        from breezy import bzr as _
         commands.install_bzr_command_hooks()
         infogen_type = args[1]
         infogen_mod = doc_generate.get_module(infogen_type)
@@ -94,7 +90,7 @@ Available OUTPUT_FORMAT:
 
 
 def print_extended_help(option, opt, value, parser):
-    """ Program help examples
+    """Program help examples.
 
     Prints out the examples stored in the docstring.
 

@@ -416,7 +416,7 @@ class TestUploadMixin(UploadUtilsMixin):
         return b.get_config_stack().get('upload_auto')
 
     def test_upload_auto(self):
-        """Test that upload --auto sets the upload_auto option"""
+        """Test that upload --auto sets the upload_auto option."""
         self.make_branch_and_working_tree()
 
         self.add_file('hello', b'foo')
@@ -432,7 +432,7 @@ class TestUploadMixin(UploadUtilsMixin):
         self.assertTrue(self.get_upload_auto())
 
     def test_upload_noauto(self):
-        """Test that upload --no-auto unsets the upload_auto option"""
+        """Test that upload --no-auto unsets the upload_auto option."""
         self.make_branch_and_working_tree()
 
         self.add_file('hello', b'foo')
@@ -815,7 +815,7 @@ class TestUploadDiverged(tests.TestCaseWithTransport, UploadUtilsMixin):
 class TestUploadBadRemoteReivd(tests.TestCaseWithTransport, UploadUtilsMixin):
 
     def test_raises_on_wrong_revid(self):
-        tree = self.make_branch_and_working_tree()
+        self.make_branch_and_working_tree()
         self.do_full_upload()
         # Put a fake revid on the remote branch
         t = self.get_transport(self.upload_dir)

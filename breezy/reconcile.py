@@ -24,7 +24,6 @@ __all__ = [
 
 from . import errors, ui
 from .i18n import gettext
-from .trace import mutter
 
 
 def reconcile(dir, canonicalize_chks=False):
@@ -56,8 +55,7 @@ class Reconciler:
         self.canonicalize_chks = canonicalize_chks
 
     def reconcile(self):
-        """Perform reconciliation.
-        """
+        """Perform reconciliation."""
         with ui.ui_factory.nested_progress_bar() as self.pb:
             result = ReconcileResult()
             branch_result = self._reconcile_branch()

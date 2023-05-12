@@ -23,7 +23,7 @@ from dulwich.object_store import tree_lookup_path
 from dulwich.objects import (S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Commit, Tag,
                              Tree)
 
-from .. import debug, errors, osutils, trace
+from .. import debug, osutils, trace
 from ..bzr.inventory import (InventoryDirectory, InventoryFile, InventoryLink,
                              TreeReference)
 from ..bzr.inventorytree import InventoryRevisionTree
@@ -310,7 +310,7 @@ def verify_commit_reconstruction(target_git_object_retriever, lookup_object,
         raise AssertionError(f"Reconstructed commit differs: {rec_o!r} != {o!r}")
     diff = []
     new_objs = {}
-    for path, obj, ie in _tree_to_objects(
+    for path, obj, _ie in _tree_to_objects(
             ret_tree, parent_trees, target_git_object_retriever._cache.idmap,
             unusual_modes, mapping.BZR_DUMMY_FILE):
         old_obj_id = tree_lookup_path(lookup_object, o.tree, path)[1]

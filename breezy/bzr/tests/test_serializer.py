@@ -23,7 +23,7 @@ from . import TestCase
 
 
 class TestSerializer(TestCase):
-    """Test serializer"""
+    """Test serializer."""
 
     def test_registry(self):
         self.assertIs(xml5.revision_serializer_v5,

@@ -31,7 +31,7 @@ load_tests = scenarios.load_tests_apply_scenarios
 class TestPush(tests.TestCaseWithTransport):
 
     def test_push_error_on_vfs_http(self):
-        """ pushing a branch to a HTTP server fails cleanly. """
+        """Pushing a branch to a HTTP server fails cleanly."""
         # the trunk is published on a web server
         self.transport_readonly_server = http_server.HttpServer
         self.make_branch('source')
@@ -128,7 +128,7 @@ class TestPush(tests.TestCaseWithTransport):
 
     def test_push_without_tree(self):
         # brz push from a branch that does not have a checkout should work.
-        b = self.make_branch('.')
+        self.make_branch('.')
         out, err = self.run_bzr('push pushed-location')
         self.assertEqual('', out)
         self.assertEqual('Created new branch.\n', err)
@@ -318,7 +318,7 @@ class TestPush(tests.TestCaseWithTransport):
         """'brz push --use-existing-dir' into a dir with an empty .bzr dir
         fails.
         """
-        tree = self.create_simple_tree()
+        self.create_simple_tree()
         self.build_tree(['target/', 'target/.bzr/'])
         self.run_bzr_error(
             ['Target directory ../target already contains a .bzr directory, '
@@ -328,7 +328,7 @@ class TestPush(tests.TestCaseWithTransport):
     def test_push_onto_repo(self):
         """We should be able to 'brz push' into an existing bzrdir."""
         tree = self.create_simple_tree()
-        repo = self.make_repository('repo', shared=True)
+        self.make_repository('repo', shared=True)
 
         self.run_bzr('push ../repo',
                      working_dir='tree')
@@ -348,8 +348,8 @@ class TestPush(tests.TestCaseWithTransport):
         """
         # TODO: jam 20070109 Maybe it would be better to create the repository
         #       if at this point
-        tree = self.create_simple_tree()
-        a_controldir = self.make_controldir('dir')
+        self.create_simple_tree()
+        self.make_controldir('dir')
 
         self.run_bzr_error(['At ../dir you have a valid .bzr control'],
                            'push ../dir',
@@ -463,7 +463,7 @@ class TestPush(tests.TestCaseWithTransport):
 
     def test_push_new_branch_stacked_no_parent(self):
         """Pushing with --stacked and no parent branch errors."""
-        branch = self.make_branch_and_tree('branch', format='1.9')
+        self.make_branch_and_tree('branch', format='1.9')
         # now we do a stacked push, which should fail as the place to refer too
         # cannot be determined.
         out, err = self.run_bzr_error(
@@ -516,7 +516,7 @@ class TestPush(tests.TestCaseWithTransport):
                                [('modify', ('filename', b'new-content\n'))],
                                revision_id=b'rev-3')
         builder.finish_series()
-        branch = builder.get_branch()
+        builder.get_branch()
         # Push rev-1 to "trunk", so that we can stack on it.
         self.run_bzr('push -d repo/local trunk -r 1')
         # Set a default stacking policy so that new branches will automatically
@@ -729,11 +729,11 @@ class TestPushStrictWithoutChanges(tests.TestCaseWithTransport,
 
 strict_push_change_scenarios = [
     ('uncommitted',
-        dict(_changes_type='_uncommitted_changes')),
+        {'_changes_type': '_uncommitted_changes'}),
     ('pending-merges',
-        dict(_changes_type='_pending_merges')),
+        {'_changes_type': '_pending_merges'}),
     ('out-of-sync-trees',
-        dict(_changes_type='_out_of_sync_trees')),
+        {'_changes_type': '_out_of_sync_trees'}),
     ]
 
 
@@ -824,8 +824,8 @@ class TestPushForeign(tests.TestCaseWithTransport):
         return builder
 
     def test_no_roundtripping(self):
-        target_branch = self.make_dummy_builder('dp').get_branch()
-        source_tree = self.make_branch_and_tree("dc")
+        self.make_dummy_builder('dp').get_branch()
+        self.make_branch_and_tree("dc")
         output, error = self.run_bzr("push -d dc dp", retcode=3)
         self.assertEqual("", output)
         self.assertEqual(

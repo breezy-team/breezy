@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""External tests of 'brz ls'"""
+"""External tests of 'brz ls'."""
 
 from breezy import ignores, tests
 
@@ -49,7 +49,7 @@ class TestLS(tests.TestCaseWithTransport):
                            'ls --verbose --null')
 
     def test_ls_basic(self):
-        """Test the abilities of 'brz ls'"""
+        """Test the abilities of 'brz ls'."""
         self.ls_equals('.bzrignore\na\n')
         self.ls_equals('.bzrignore\na\n', './')
         self.ls_equals('?        .bzrignore\n'
@@ -128,7 +128,7 @@ class TestLS(tests.TestCaseWithTransport):
                        working_dir='subdir')
 
     def test_ls_path(self):
-        """If a path is specified, files are listed with that prefix"""
+        """If a path is specified, files are listed with that prefix."""
         self.build_tree(['subdir/', 'subdir/b'])
         self.wt.add(['subdir', 'subdir/b'])
         self.ls_equals('subdir/b\n',
@@ -164,7 +164,7 @@ class TestLS(tests.TestCaseWithTransport):
         self.ls_equals('', '--revision 1', working_dir='subdir')
 
     def test_ls_branch(self):
-        """If a branch is specified, files are listed from it"""
+        """If a branch is specified, files are listed from it."""
         self.build_tree(['subdir/', 'subdir/b'])
         self.wt.add(['subdir', 'subdir/b'])
         self.wt.commit('committing')
@@ -217,7 +217,7 @@ class TestLS(tests.TestCaseWithTransport):
                        self.test_dir, recursive=False)
 
     def test_ls_directory(self):
-        """Test --directory option"""
+        """Test --directory option."""
         self.wt = self.make_branch_and_tree('dir')
         self.build_tree(['dir/sub/', 'dir/sub/file'])
         self.wt.add(['sub', 'sub/file'])

@@ -16,8 +16,6 @@
 
 """Python implementations of Dirstate Helper functions."""
 
-import binascii
-import struct
 
 # We cannot import the dirstate module, because it loads this module
 # All we really need is the IN_MEMORY_MODIFIED constant
@@ -55,7 +53,7 @@ def _read_dirblocks(state):
     #  + number of fields per tree_data (5) * tree count
     #  + newline
     num_present_parents = state._num_present_parents()
-    tree_count = 1 + num_present_parents
+    1 + num_present_parents
     entry_size = state._fields_per_entry()
     expected_field_count = entry_size * state._num_entries
     field_count = len(fields)
@@ -80,7 +78,7 @@ def _read_dirblocks(state):
         if next is None:
             next = _iter.next
         # Move the iterator to the current position
-        for x in range(cur):
+        for _x in range(cur):
             next()
         # The two blocks here are deliberate: the root block and the
         # contents-of-root block.
@@ -88,7 +86,7 @@ def _read_dirblocks(state):
         current_block = state._dirblocks[0][1]
         current_dirname = b''
         append_entry = current_block.append
-        for count in range(state._num_entries):
+        for _count in range(state._num_entries):
             dirname = next()
             name = next()
             file_id = next()

@@ -20,7 +20,7 @@ from .. import lru_cache, tests
 
 
 def walk_lru(lru):
-    """Test helper to walk the LRU list and assert its consistency"""
+    """Test helper to walk the LRU list and assert its consistency."""
     node = lru._most_recently_used
     if node is not None:
         if node.prev is not None:
@@ -327,7 +327,7 @@ class TestLRUSizeCache(tests.TestCase):
         self.assertEqual({'test': 'key'}, cache.as_dict())
 
     def test_adding_clears_cache_based_on_size(self):
-        """The cache is cleared in LRU order until small enough"""
+        """The cache is cleared in LRU order until small enough."""
         cache = lru_cache.LRUSizeCache(max_size=20)
         cache['key1'] = 'value'  # 5 chars
         cache['key2'] = 'value2'  # 6 chars

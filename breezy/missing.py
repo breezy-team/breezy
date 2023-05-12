@@ -135,7 +135,7 @@ def _enumerate_with_merges(branch, ancestry, graph, tip_revno, tip,
     if not backward:
         merge_sorted_revisions = log.reverse_by_depth(merge_sorted_revisions)
     revline = []
-    for seq, rev_id, merge_depth, revno, end_of_merge in merge_sorted_revisions:
+    for _seq, rev_id, merge_depth, revno, _end_of_merge in merge_sorted_revisions:
         revline.append(('.'.join(map(str, revno)), rev_id, merge_depth))
     return revline
 

@@ -29,9 +29,7 @@ from ..option import Option, RegistryOption
 
 
 class cmd_git_import(Command):
-    """Import all branches from a git repository.
-
-    """
+    """Import all branches from a git repository."""
 
     takes_args = ["src_location", "dest_location?"]
 
@@ -74,8 +72,7 @@ class cmd_git_import(Command):
 
         from .. import controldir, trace, ui, urlutils
         from ..controldir import ControlDir
-        from ..errors import (BzrError, CommandError, NoRepositoryPresent,
-                              NotBranchError)
+        from ..errors import CommandError, NoRepositoryPresent, NotBranchError
         from ..i18n import gettext
         from ..repository import InterRepository, Repository
         from ..transport import get_transport
@@ -189,9 +186,7 @@ class cmd_git_object(Command):
 
 
 class cmd_git_refs(Command):
-    """Output all of the virtual refs for a repository.
-
-    """
+    """Output all of the virtual refs for a repository."""
 
     hidden = True
 

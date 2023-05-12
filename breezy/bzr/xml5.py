@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from breezy._bzr_rs import revision_serializer_v5  # noqa: F401
+
 from .. import errors, osutils
 from . import inventory, xml6
 from .xml_serializer import (encode_and_escape, get_utf8_or_ascii,
@@ -21,7 +23,7 @@ from .xml_serializer import (encode_and_escape, get_utf8_or_ascii,
 
 
 class InventorySerializer_v5(xml6.InventorySerializer_v6):
-    """Version 5 serializer
+    """Version 5 serializer.
 
     Packs objects into XML and vice versa.
     """
@@ -30,8 +32,7 @@ class InventorySerializer_v5(xml6.InventorySerializer_v6):
 
     def _unpack_inventory(self, elt, revision_id, entry_cache=None,
                           return_from_cache=False):
-        """Construct from XML Element
-        """
+        """Construct from XML Element."""
         root_id = elt.get('file_id') or inventory.ROOT_ID
         root_id = get_utf8_or_ascii(root_id)
 
@@ -98,5 +99,3 @@ class InventorySerializer_v5(xml6.InventorySerializer_v6):
 
 
 inventory_serializer_v5 = InventorySerializer_v5()
-
-from breezy._bzr_rs import revision_serializer_v5

@@ -56,7 +56,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
             out = self.run_bzr_raw(args, encoding=encoding,
                                    retcode=retcode, working_dir=working_dir)[0]
             return out.decode(encoding)
-        except UnicodeError as e:
+        except UnicodeError:
             if not fail:
                 raise
         else:
@@ -318,21 +318,21 @@ class TestNonAscii(tests.TestCaseWithTransport):
 
     def test_remove(self):
         fname = self.info['filename']
-        txt = self.run_bzr_decode(['remove', fname], encoding='ascii')
+        self.run_bzr_decode(['remove', fname], encoding='ascii')
 
     def test_remove_verbose(self):
         fname = self.info['filename']
-        txt = self.run_bzr_decode(['remove', '--verbose', fname],
+        self.run_bzr_decode(['remove', '--verbose', fname],
                                   encoding='ascii')
 
     def test_file_id(self):
         fname = self.info['filename']
-        txt = self.run_bzr_decode(['file-id', fname])
+        self.run_bzr_decode(['file-id', fname])
 
         # TODO: jam 20060106 We don't support non-ascii file ids yet,
         #       so there is nothing which would fail in ascii encoding
         #       This *should* be retcode=3
-        txt = self.run_bzr_decode(['file-id', fname], encoding='ascii')
+        self.run_bzr_decode(['file-id', fname], encoding='ascii')
 
     def test_file_path(self):
         # Create a directory structure
@@ -348,22 +348,22 @@ class TestNonAscii(tests.TestCaseWithTransport):
         self.wt.rename_one(fname, path)
         self.wt.commit('moving things around')
 
-        txt = self.run_bzr_decode(['file-path', path])
+        self.run_bzr_decode(['file-path', path])
 
         # TODO: jam 20060106 We don't support non-ascii file ids yet,
         #       so there is nothing which would fail in ascii encoding
         #       This *should* be retcode=3
-        txt = self.run_bzr_decode(['file-path', path], encoding='ascii')
+        self.run_bzr_decode(['file-path', path], encoding='ascii')
 
     def test_revision_history(self):
         # TODO: jam 20060106 We don't support non-ascii revision ids yet,
         #       so there is nothing which would fail in ascii encoding
-        txt = self.run_bzr_decode('revision-history')
+        self.run_bzr_decode('revision-history')
 
     def test_ancestry(self):
         # TODO: jam 20060106 We don't support non-ascii revision ids yet,
         #       so there is nothing which would fail in ascii encoding
-        txt = self.run_bzr_decode('ancestry')
+        self.run_bzr_decode('ancestry')
 
     def test_diff(self):
         self._check_OSX_can_roundtrip(self.info['filename'])
@@ -371,7 +371,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         #       shouldn't encode the file contents, but it needs some sort
         #       of encoding for the paths, etc which are displayed.
         self.build_tree_contents([(self.info['filename'], b'newline\n')])
-        txt = self.run_bzr('diff', retcode=1)[0]
+        self.run_bzr('diff', retcode=1)[0]
 
     def test_deleted(self):
         self._check_OSX_can_roundtrip(self.info['filename'])

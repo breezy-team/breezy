@@ -19,7 +19,7 @@ import time
 
 from breezy import errors
 from breezy import revision as _mod_revision
-from breezy import tests, transform
+from breezy import tests
 from breezy.bzr import inventory, remote
 from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository, all_repository_vf_format_scenarios)
@@ -269,7 +269,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
                 [b'rev-G', b'rev-F', b'rev-C', b'rev-B', b'rev-<D>', b'rev-K', b'rev-J']))
 
     def fileids_altered_by_revision_ids(self, revision_ids):
-        """This is a wrapper to strip TREE_ROOT if it occurs"""
+        """This is a wrapper to strip TREE_ROOT if it occurs."""
         repo = self.branch.repository
         root_id = self.branch.basis_tree().path2id('')
         result = repo.fileids_altered_by_revision_ids(revision_ids)
@@ -303,7 +303,6 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         # the revision history.
         self.branch.lock_read()
         self.addCleanup(self.branch.unlock)
-        pp = []
         graph = self.branch.repository.get_graph()
         history = list(graph.iter_lefthand_ancestry(self.branch.last_revision(),
                                                     [_mod_revision.NULL_REVISION]))
@@ -330,7 +329,6 @@ class TestFileIdInvolvedNonAscii(FileIdInvolvedBase):
 
     def test_utf8_file_ids_and_revision_ids(self):
         main_wt = self.make_branch_and_tree('main')
-        main_branch = main_wt.branch
         self.build_tree(["main/a"])
 
         file_id = 'a-f\xedle-id'.encode()
@@ -422,7 +420,7 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
 
 
 def set_executability(wt, path, executable=True):
-    """Set the executable bit for the file at path in the working tree
+    """Set the executable bit for the file at path in the working tree.
 
     os.chmod() doesn't work on windows. But TreeTransform can mark or
     unmark a file as executable.

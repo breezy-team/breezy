@@ -46,7 +46,7 @@ class LocationList:
         self.base_path = base_path
 
     def add_url(self, label, url):
-        """Add a URL to the list, converting it to a path if possible"""
+        """Add a URL to the list, converting it to a path if possible."""
         if url is None:
             return
         try:
@@ -57,7 +57,7 @@ class LocationList:
             self.add_path(label, path)
 
     def add_path(self, label, path):
-        """Add a path, converting it to a relative path if possible"""
+        """Add a path, converting it to a relative path if possible."""
         try:
             path = osutils.relpath(self.base_path, path)
         except errors.PathNotChild:
@@ -382,7 +382,7 @@ def show_bzrdir_info(a_controldir, verbose=False, outfile=None):
 
 def show_component_info(control, repository, branch=None, working=None,
                         verbose=1, outfile=None):
-    """Write info about all bzrdir components to stdout"""
+    """Write info about all bzrdir components to stdout."""
     if outfile is None:
         outfile = sys.stdout
     if verbose is False:
@@ -422,7 +422,7 @@ def show_component_info(control, repository, branch=None, working=None,
 
 
 def describe_layout(repository=None, branch=None, tree=None, control=None):
-    """Convert a control directory layout into a user-understandable term
+    """Convert a control directory layout into a user-understandable term.
 
     Common outputs include "Standalone tree", "Repository branch" and
     "Checkout".  Uncommon outputs include "Unshared repository with trees"
@@ -480,7 +480,7 @@ def describe_layout(repository=None, branch=None, tree=None, control=None):
 
 
 def describe_format(control, repository, branch, tree):
-    """Determine the format of an existing control directory
+    """Determine the format of an existing control directory.
 
     Several candidates may be found.  If so, the names are returned as a
     single string, separated by ' or '.

@@ -21,7 +21,7 @@ See MutableTree for more details.
 
 from typing import List, Optional, Union
 
-from . import errors, hooks, osutils, trace, tree
+from . import errors, hooks, trace, tree
 
 
 class BadReferenceTarget(errors.InternalBzrError):
@@ -319,9 +319,7 @@ class MutableTreeHooks(hooks.Hooks):
     """
 
     def __init__(self):
-        """Create the default hooks.
-
-        """
+        """Create the default hooks."""
         hooks.Hooks.__init__(self, "breezy.mutabletree", "MutableTree.hooks")
         self.add_hook('start_commit',
                       "Called before a commit is performed on a tree. The start commit "

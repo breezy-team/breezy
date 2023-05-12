@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tree classes, representing directory at point in time.
-"""
+"""Tree classes, representing directory at point in time."""
 
 import os
 import re
@@ -504,7 +503,7 @@ class MutableInventoryTree(MutableTree, InventoryTree):
                 return True
 
     def _fix_case_of_inventory_path(self, path):
-        """If our tree isn't case sensitive, return the canonical path"""
+        """If our tree isn't case sensitive, return the canonical path."""
         if not self.case_sensitive:
             path = self.get_canonical_path(path)
         return path
@@ -641,7 +640,7 @@ class MutableInventoryTree(MutableTree, InventoryTree):
                 # generic constraint checks:
                 if self.is_control_filename(f):
                     raise errors.ForbiddenControlFileError(filename=f)
-                fp = osutils.splitpath(f)
+                osutils.splitpath(f)
             # fill out file kinds for all files [not needed when we stop
             # caring about the instantaneous file kind within a uncommmitted tree
             #
@@ -1092,7 +1091,8 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
     def iter_files_bytes(self, desired_files):
         """See Tree.iter_files_bytes.
 
-        This version is implemented on top of Repository.iter_files_bytes"""
+        This version is implemented on top of Repository.iter_files_bytes
+        """
         repo_desired_files = [(self.path2id(f), self.get_file_revision(f), i)
                               for f, i in desired_files]
         try:
@@ -1101,7 +1101,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
             raise _mod_transport.NoSuchFile(e.file_id)
 
     def annotate_iter(self, path, default_revision=revision.CURRENT_REVISION):
-        """See Tree.annotate_iter"""
+        """See Tree.annotate_iter."""
         file_id = self.path2id(path)
         text_key = (file_id, self.get_file_revision(path))
         annotator = self._repository.texts.get_annotator()
@@ -1123,9 +1123,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
 
 
 class InterInventoryTree(InterTree):
-    """InterTree implementation for InventoryTree objects.
-
-    """
+    """InterTree implementation for InventoryTree objects."""
     @classmethod
     def is_compatible(kls, source, target):
         # The default implementation is naive and uses the public API, so

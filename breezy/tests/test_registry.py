@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for the Registry classes"""
+"""Tests for the Registry classes."""
 
 import os
 import sys
@@ -284,7 +284,7 @@ class TestRegistryIter(tests.TestCase):
 
 
 class TestRegistryWithDirs(tests.TestCaseInTempDir):
-    """Registry tests that require temporary dirs"""
+    """Registry tests that require temporary dirs."""
 
     def create_plugin_file(self, contents):
         """Create a file to be used as a plugin.
@@ -372,7 +372,7 @@ class TestRegistryWithDirs(tests.TestCaseInTempDir):
 
     def test_normal_get_module(self):
         class AThing:
-            """Something"""
+            """Something."""
         a_registry = registry.Registry()
         a_registry.register("obj", AThing())
         self.assertEqual("breezy.tests.test_registry",

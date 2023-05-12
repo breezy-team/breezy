@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for remote bzrdir/branch/repo/etc
+"""Tests for remote bzrdir/branch/repo/etc.
 
 These are proxy objects which act on remote objects by sending messages
 through a smart client.  The proxies are to be created when attempting to open
@@ -93,7 +93,7 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         self.assertTrue(repo.has_revision(revid))
 
     def test_find_correct_format(self):
-        """Should open a RemoteBzrDir over a RemoteTransport"""
+        """Should open a RemoteBzrDir over a RemoteTransport."""
         fmt = BzrDirFormat.find_format(self.transport)
         self.assertIn(RemoteBzrProber, controldir.ControlDirFormat._probers)
         self.assertIsInstance(fmt, RemoteBzrDirFormat)
@@ -348,7 +348,7 @@ class Test_ClientMedium_remote_path_from_transport(tests.TestCase):
         """Assert that the result of
         HttpTransportBase.remote_path_from_transport is the expected value for
         a given transport_base and relpath of that transport.  (Note that
-        HttpTransportBase is a subclass of SmartClientMedium)
+        HttpTransportBase is a subclass of SmartClientMedium).
         """
         base_transport = _mod_transport.get_transport(transport_base)
         client_medium = base_transport.get_smart_medium()
@@ -1502,7 +1502,7 @@ class TestBranchLastRevisionInfo(RemoteBranchTestCase):
 
 
 class TestBranch_get_stacked_on_url(TestRemote):
-    """Test Branch._get_stacked_on_url rpc"""
+    """Test Branch._get_stacked_on_url rpc."""
 
     def test_get_stacked_on_invalid_url(self):
         # test that asking for a stacked on url the server can't access works.
@@ -2263,7 +2263,7 @@ class TestTransportIsReadonly(tests.TestCase):
             client._calls)
 
     def test_error_from_old_server(self):
-        """bzr 0.15 and earlier servers don't recognise the is_readonly verb.
+        """Bzr 0.15 and earlier servers don't recognise the is_readonly verb.
 
         Clients should treat it as a "no" response, because is_readonly is only
         advisory anyway (a transport could be read-write, but then the
@@ -2750,7 +2750,7 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
 
     def test_exposes_get_cached_parent_map(self):
         """RemoteRepository exposes get_cached_parent_map from
-        _unstacked_provider
+        _unstacked_provider.
         """
         r1 = '\u0e33'.encode()
         r2 = '\u0dab'.encode()
@@ -3600,7 +3600,7 @@ class TestRepositoryTarball(TestRemoteRepository):
 
 
 class TestRemoteRepositoryCopyContent(tests.TestCaseWithTransport):
-    """RemoteRepository.copy_content_into optimizations"""
+    """RemoteRepository.copy_content_into optimizations."""
 
     def test_copy_content_remote_to_local(self):
         self.transport_server = test_server.SmartTCPServer_for_testing
@@ -3693,7 +3693,7 @@ class TestRemotePackRepositoryAutoPack(TestRemoteRepository):
             client._calls)
 
     def test_oom_error_reporting(self):
-        """An out-of-memory condition on the server is reported clearly"""
+        """An out-of-memory condition on the server is reported clearly."""
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_expected_call(

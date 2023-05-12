@@ -3,7 +3,7 @@
 """Installation script for brz.
 Run it with
  './setup.py install', or
- './setup.py --help' for more options
+ './setup.py --help' for more options.
 """
 
 import glob
@@ -50,9 +50,6 @@ except ImportError:
     from distutils.version import LooseVersion as Version
 
 from distutils.command.build_scripts import build_scripts
-from distutils.command.install import install
-from distutils.command.install_data import install_data
-from distutils.command.install_scripts import install_scripts
 
 from setuptools import Command
 
@@ -78,8 +75,7 @@ class brz_build_scripts(build_scripts):
 
 
 class build_man(Command):
-    """Generate brz.1.
-    """
+    """Generate brz.1."""
 
     def initialize_options(self):
         pass
@@ -106,8 +102,6 @@ command_classes = {
     'build_man': build_man,
 }
 
-from distutils import log
-from distutils.errors import CCompilerError, DistutilsPlatformError
 from distutils.extension import Extension
 
 ext_modules = []

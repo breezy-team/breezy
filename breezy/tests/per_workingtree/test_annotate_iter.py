@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for interface conformance of 'WorkingTree.annotate_iter'"""
+"""Tests for interface conformance of 'WorkingTree.annotate_iter'."""
 
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 

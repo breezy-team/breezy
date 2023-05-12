@@ -23,7 +23,6 @@ will manage a conceptual stack of nested activities.
 """
 
 import os
-import time
 
 from . import _cmd_rs
 
@@ -110,7 +109,7 @@ class ProgressTask:
             self.msg)
 
     def update(self, msg, current_cnt=None, total_cnt=None):
-        """Report updated task message and if relevent progress counters
+        """Report updated task message and if relevent progress counters.
 
         The message given must be unicode, not a byte string.
         """
@@ -137,9 +136,10 @@ class ProgressTask:
                             progress_view=self.progress_view)
 
     def _overall_completion_fraction(self, child_fraction=0.0):
-        """Return fractional completion of this task and its parents
+        """Return fractional completion of this task and its parents.
 
-        Returns None if no completion can be computed."""
+        Returns None if no completion can be computed.
+        """
         if self.current_cnt is not None and self.total_cnt:
             own_fraction = (float(self.current_cnt) +
                             child_fraction) / self.total_cnt
@@ -204,7 +204,7 @@ str_tdelta = _cmd_rs.str_tdelta
 
 
 class ProgressPhase:
-    """Update progress object with the current phase"""
+    """Update progress object with the current phase."""
 
     def __init__(self, message, total, pb):
         object.__init__(self)

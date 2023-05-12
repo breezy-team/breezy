@@ -36,7 +36,7 @@ class BytesIOWithEncoding(io.BytesIO):
 
 
 class StringIOAsTTY(StringIOWithEncoding):
-    """A helper class which makes a StringIO look like a terminal"""
+    """A helper class which makes a StringIO look like a terminal."""
 
     def isatty(self):
         return True
@@ -80,7 +80,7 @@ class TestUIFactory(TextUIFactory):
     # See https://bugs.launchpad.net/bzr/+bug/408213
 
     def get_non_echoed_password(self):
-        """Get password from stdin without trying to handle the echo mode"""
+        """Get password from stdin without trying to handle the echo mode."""
         password = self.stdin.readline()
         if not password:
             raise EOFError

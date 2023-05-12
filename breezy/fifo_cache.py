@@ -137,14 +137,14 @@ class FIFOCache(dict):
         raise NotImplementedError(self.popitem)
 
     def setdefault(self, key, defaultval=None):
-        """similar to dict.setdefault"""
+        """Similar to dict.setdefault."""
         if key in self:
             return self[key]
         self[key] = defaultval
         return defaultval
 
     def update(self, *args, **kwargs):
-        """Similar to dict.update()"""
+        """Similar to dict.update()."""
         if len(args) == 1:
             arg = args[0]
             if isinstance(arg, dict):

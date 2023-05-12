@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""builtin brz commands"""
+"""builtin brz commands."""
 
 import os
 import sys
@@ -193,8 +193,7 @@ def iter_sibling_branches(control_dir, possible_transports=None):
 
 
 def tree_files_for_add(file_list):
-    """
-    Return a tree and list of absolute paths from a file list.
+    """Return a tree and list of absolute paths from a file list.
 
     Similar to tree_files, but add handles files a bit differently, so it a
     custom implementation.  In particular, MutableTreeTree.smart_add expects
@@ -276,7 +275,8 @@ def _get_view_info_for_change_reporter(tree):
 
 def _open_directory_or_containing_tree_or_branch(filename, directory):
     """Open the tree or branch containing the specified file, unless
-    the --directory option is used to specify a different branch."""
+    the --directory option is used to specify a different branch.
+    """
     if directory is not None:
         return (None, Branch.open(directory), filename)
     return controldir.ControlDir.open_containing_tree_or_branch(filename)
@@ -1546,7 +1546,7 @@ class cmd_branch(Command):
             note(gettext('Created new stacked branch referring to %s.') %
                  branch.get_stacked_on_url())
         except (errors.NotStacked, _mod_branch.UnstackableBranchFormat,
-                errors.UnstackableRepositoryFormat) as e:
+                errors.UnstackableRepositoryFormat):
             revno = branch.revno()
             if revno is not None:
                 note(ngettext('Branched %d revision.',
@@ -1706,9 +1706,9 @@ class cmd_clone(Command):
         accelerator_tree, br_from = controldir.ControlDir.open_tree_or_branch(
             from_location)
         if no_recurse_nested:
-            recurse = 'none'
+            pass
         else:
-            recurse = 'down'
+            pass
         revision = _get_one_revision('branch', revision)
         self.enter_context(br_from.lock_read())
         if revision is not None:
@@ -1720,7 +1720,7 @@ class cmd_clone(Command):
             revision_id = br_from.last_revision()
         if to_location is None:
             to_location = urlutils.derive_to_location(from_location)
-        target_controldir = br_from.controldir.clone(to_location, revision_id=revision_id)
+        br_from.controldir.clone(to_location, revision_id=revision_id)
         note(gettext('Created new control directory.'))
 
 
@@ -1940,7 +1940,7 @@ class cmd_remove(Command):
         tree, file_list = WorkingTree.open_containing_paths(file_list)
 
         if file_list is not None:
-            file_list = [f for f in file_list]
+            file_list = list(file_list)
 
         self.enter_context(tree.lock_write())
         # Heuristics should probably all move into tree.remove_smart or
@@ -3005,7 +3005,7 @@ class cmd_touching_revisions(Command):
         with tree.lock_read():
             touching_revs = log.find_touching_revisions(
                 tree.branch.repository, tree.branch.last_revision(), tree, relpath)
-            for revno, revision_id, what in reversed(list(touching_revs)):
+            for revno, _revision_id, what in reversed(list(touching_revs)):
                 self.outf.write("%6d %s\n" % (revno, what))
 
 
@@ -3266,7 +3266,7 @@ class cmd_ignore(Command):
         ignored = globbing.Globster(name_pattern_list)
         matches = []
         self.enter_context(tree.lock_read())
-        for filename, fc, fkind, entry in tree.list_files():
+        for filename, _fc, _fkind, entry in tree.list_files():
             id = getattr(entry, 'file_id', None)
             if id is not None:
                 if ignored.match(filename):
@@ -3298,7 +3298,7 @@ class cmd_ignored(Command):
         from .workingtree import WorkingTree
         tree = WorkingTree.open_containing(directory)[0]
         self.enter_context(tree.lock_read())
-        for path, file_class, kind, entry in tree.list_files():
+        for path, file_class, _kind, _entry in tree.list_files():
             if file_class != 'I':
                 continue
             # XXX: Slightly inefficient since this was already calculated
@@ -3410,9 +3410,9 @@ class cmd_export(Command):
             root = get_root_name(dest)
 
         if not per_file_timestamps:
-            force_mtime = time.time()
+            time.time()
         else:
-            force_mtime = None
+            pass
 
         if filters:
             from .filter_tree import ContentFilterTree
@@ -3719,7 +3719,7 @@ class cmd_commit(Command):
                     "please specify either --message or --file"))
 
         def get_message(commit_obj):
-            """Callback to get commit message"""
+            """Callback to get commit message."""
             if file:
                 with open(file, 'rb') as f:
                     my_message = f.read().decode(osutils.get_user_encoding())
@@ -4816,7 +4816,7 @@ class cmd_remerge(Command):
                 if tree.kind(filename) != "directory":
                     continue
 
-                for path, ie in tree.iter_entries_by_dir(
+                for path, _ie in tree.iter_entries_by_dir(
                         specific_files=[filename]):
                     interesting_files.add(path)
             new_conflicts = conflicts.select_conflicts(tree, file_list)[0]
@@ -6609,7 +6609,7 @@ class cmd_remove_branch(Command):
         if not force and br.controldir.has_workingtree():
             try:
                 active_branch = br.controldir.open_branch(name="")
-            except errors.NotBranchError as exc:
+            except errors.NotBranchError:
                 active_branch = None
             if (active_branch is not None and
                     br.control_url == active_branch.control_url):
@@ -7085,9 +7085,7 @@ class cmd_grep(Command):
 
 
 class cmd_patch(Command):
-    """Apply a named patch to the current tree.
-
-    """
+    """Apply a named patch to the current tree."""
 
     takes_args = ['filename?']
     takes_options = [Option('strip', type=int, short_name='p',

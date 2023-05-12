@@ -55,7 +55,7 @@ def fetch(outf, wants, shortname, remote_dir, local_dir):
     local_repo = local_dir.find_repository()
     inter = InterRepository.get(remote_repo, local_repo)
     revs = []
-    for (sha1, ref) in wants:
+    for (sha1, _ref) in wants:
         revs.append((sha1, None))
     if (isinstance(remote_repo, GitRepository) and
             isinstance(local_repo, GitRepository)):

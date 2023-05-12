@@ -111,7 +111,7 @@ impl SFTPFile {
             .map_err(|e| sftp_error_to_py_err(e, None))
     }
 
-    fn flush(&mut self, py: Python) -> PyResult<()> {
+    fn flush(&mut self, _py: Python) -> PyResult<()> {
         Ok(())
     }
 
@@ -413,7 +413,7 @@ impl SFTPClient {
     ) -> PyResult<SFTPFile> {
         let path = self._adjust_cwd(path);
         let flags;
-        let mut offset = 0;
+        let offset = 0;
         let mode = mode.unwrap_or("rt");
         match mode {
             "rt" => {

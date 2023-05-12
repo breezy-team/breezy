@@ -14,12 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Test symlink support.
-"""
+"""Test symlink support."""
 
 import os
 
-from breezy import osutils, tests, workingtree
+from breezy import osutils, workingtree
 from breezy.tests import features
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
@@ -170,7 +169,7 @@ class TestOpenTree(TestCaseWithWorkingTree):
         self.assertEqual(expect_paths, relpaths)
 
     def make_test_tree(self):
-        tree = self.make_branch_and_tree('tree')
+        self.make_branch_and_tree('tree')
         self.build_tree_contents([
             ('link@', 'tree'),
             ('tree/outerlink@', '/not/there'),

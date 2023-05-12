@@ -44,7 +44,7 @@ Note that context is currently only supported for write converters.
 from io import BytesIO
 from typing import Callable, Dict, List, Tuple
 
-from .. import errors, osutils, registry
+from .. import osutils, registry
 
 
 class ContentFilter:

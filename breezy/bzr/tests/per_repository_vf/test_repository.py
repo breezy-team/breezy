@@ -152,7 +152,6 @@ class TestRepository(TestCaseWithRepository):
         repo = self.make_repository('repo')
         repo.lock_write()
         repo.start_write_group()
-        root_id = inv.root.file_id
         repo.texts.add_lines((b'fixed-root', b'A'), [], [])
         repo.add_revision(b'A', _mod_revision.Revision(
             b'A', committer='B', timestamp=0,

@@ -72,7 +72,8 @@ class FullHistoryBzrBranch(BzrBranch):
         """Factored out of set_revision_history.
 
         This performs the actual writing to disk.
-        It is intended to be called by set_revision_history."""
+        It is intended to be called by set_revision_history.
+        """
         self._transport.put_bytes(
             'revision-history', b'\n'.join(history),
             mode=self.controldir._get_file_mode())

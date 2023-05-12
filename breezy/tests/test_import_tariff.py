@@ -21,7 +21,6 @@ import os
 
 from testtools import content
 
-from .. import plugins as _mod_plugins
 from .. import trace
 from ..bzr.smart import medium
 from ..controldir import ControlDir
@@ -79,7 +78,7 @@ class ImportTariffTestCase(TestCaseWithTransport):
         # bzr is frozen and python is not explicitly specified. -- mbp 20100208
         env_changes = dict(PYTHONVERBOSE='1', **self.preserved_env_vars)
         trace.mutter('Setting env for bzr subprocess: %r', env_changes)
-        kwargs = dict(env_changes=env_changes, allow_plugins=False)
+        kwargs = {'env_changes': env_changes, 'allow_plugins': False}
         if stderr_file:
             # We don't want to update the whole call chain so we insert stderr
             # *iff* we need to
@@ -132,7 +131,7 @@ class ImportTariffTestCase(TestCaseWithTransport):
 
 
 class TestImportTariffs(ImportTariffTestCase):
-    """Basic import tariff tests for some common bzr commands"""
+    """Basic import tariff tests for some common bzr commands."""
 
     def test_import_tariffs_working(self):
         # check some guaranteed-true and false imports to be sure we're
@@ -259,7 +258,7 @@ class TestImportTariffs(ImportTariffTestCase):
         client_medium = medium.SmartSimplePipesClientMedium(
             process.stdout, process.stdin, url)
         transport = remote.RemoteTransport(url, medium=client_medium)
-        branch = ControlDir.open_from_transport(transport).open_branch()
+        ControlDir.open_from_transport(transport).open_branch()
         process.stdin.close()
         # Hide stdin from the subprocess module, so it won't fail to close it.
         process.stdin = None

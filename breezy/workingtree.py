@@ -37,8 +37,6 @@ if TYPE_CHECKING:
     from .branch import Branch
     from .revisiontree import RevisionTree
 
-import breezy
-
 from .lazy_import import lazy_import
 
 lazy_import(globals(), """
@@ -52,10 +50,8 @@ from breezy import (
 from . import errors, mutabletree, osutils
 from . import revision as _mod_revision
 from .controldir import (ControlComponent, ControlComponentFormat,
-                         ControlComponentFormatRegistry, ControlDir,
-                         ControlDirFormat)
+                         ControlComponentFormatRegistry, ControlDir)
 from .i18n import gettext
-from .symbol_versioning import deprecated_in, deprecated_method
 from .trace import mutter, note
 from .transport import NoSuchFile
 from .transport.local import file_kind
@@ -154,8 +150,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         return self._format.supports_versioned_directories
 
     def supports_merge_modified(self):
-        """Indicate whether this workingtree supports storing merge_modified.
-        """
+        """Indicate whether this workingtree supports storing merge_modified."""
         return self._format.supports_merge_modified
 
     def _supports_executable(self):
@@ -197,9 +192,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
 
     @staticmethod
     def open(path=None, _unsupported=False) -> "WorkingTree":
-        """Open an existing working tree at path.
-
-        """
+        """Open an existing working tree at path."""
         if path is None:
             path = osutils.getcwd()
         control = ControlDir.open(path, _unsupported=_unsupported)
@@ -386,7 +379,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             return my_file.read()
 
     def get_file_lines(self, path, filtered=True):
-        """See Tree.get_file_lines()"""
+        """See Tree.get_file_lines()."""
         with self.get_file(path, filtered=filtered) as file:
             return file.readlines()
 
@@ -454,7 +447,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
                 tree.set_parent_ids(new_parents)
 
     def get_file_size(self, path):
-        """See Tree.get_file_size"""
+        """See Tree.get_file_size."""
         # XXX: this returns the on-disk size; it should probably return the
         # canonical size
         try:
@@ -867,19 +860,18 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         raise NotImplementedError(self.extras)
 
     def ignored_files(self):
-        """Yield list of PATH, IGNORE_PATTERN"""
+        """Yield list of PATH, IGNORE_PATTERN."""
         for subp in self.extras():
             pat = self.is_ignored(subp)
             if pat is not None:
                 yield subp, pat
 
     def is_ignored(self, filename):
-        r"""Check whether the filename matches an ignore pattern.
-        """
+        r"""Check whether the filename matches an ignore pattern."""
         raise NotImplementedError(self.is_ignored)
 
     def stored_kind(self, path):
-        """See Tree.stored_kind"""
+        """See Tree.stored_kind."""
         raise NotImplementedError(self.stored_kind)
 
     def _comparison_data(self, entry, path):
@@ -910,7 +902,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         return self._last_revision()
 
     def _last_revision(self):
-        """helper for get_parent_ids."""
+        """Helper for get_parent_ids."""
         with self.lock_read():
             return self.branch.last_revision()
 

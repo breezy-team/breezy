@@ -16,7 +16,6 @@
 
 """Conversion between refs and Bazaar revision pointers."""
 
-from dulwich.objects import Tag, object_class
 from dulwich.refs import LOCAL_BRANCH_PREFIX, LOCAL_TAG_PREFIX
 
 try:
@@ -26,7 +25,7 @@ except ImportError:
 
 from dulwich.repo import RefsContainer
 
-from .. import controldir, errors, osutils
+from .. import controldir, errors
 from .. import revision as _mod_revision
 
 
@@ -62,7 +61,7 @@ def tag_name_to_ref(name):
 
 
 def ref_to_branch_name(ref):
-    """Map a ref to a branch name
+    """Map a ref to a branch name.
 
     :param ref: Ref
     :return: A branch name

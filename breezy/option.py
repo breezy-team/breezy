@@ -134,7 +134,7 @@ def get_merge_type(typestring):
 
 
 class Option:
-    """Description of a command line option
+    """Description of a command line option.
 
     Attributes:
       _short_name: If this option has a single-letter name, this is it.
@@ -203,7 +203,7 @@ class Option:
             return 'no-' + self.name
 
     def add_option(self, parser, short_name):
-        """Add this option to an Optparse parser"""
+        """Add this option to an Optparse parser."""
         option_strings = [f'--{self.name}']
         if short_name is not None:
             option_strings.append(f'-{short_name}')
@@ -239,7 +239,7 @@ class Option:
     def _optparse_callback(self, option, opt, value, parser):
         try:
             v = self.type(value)
-        except ValueError as e:
+        except ValueError:
             raise optparse.OptionValueError(
                 f'invalid value for option {option}: {value}')
         setattr(parser.values, self._param_name, v)
@@ -247,7 +247,7 @@ class Option:
             self.custom_callback(option, self.name, v, parser)
 
     def iter_switches(self):
-        """Iterate through the list of switches provided by the option
+        """Iterate through the list of switches provided by the option.
 
         :return: an iterator of (name, short_name, argname, help)
         """
@@ -293,7 +293,7 @@ class ListOption(Option):
 
 
 class RegistryOption(Option):
-    """Option based on a registry
+    """Option based on a registry.
 
     The values for the options correspond to entries in the registry.  Input
     must be a registry key.  After validation, it is converted into an object
@@ -301,12 +301,12 @@ class RegistryOption(Option):
     """
 
     def validate_value(self, value):
-        """Validate a value name"""
+        """Validate a value name."""
         if value not in self.registry:
             raise BadOptionValue(self.name, value)
 
     def convert(self, value):
-        """Convert a value name into an output type"""
+        """Convert a value name into an output type."""
         self.validate_value(value)
         if self.converter is None:
             return self.registry.get(value)
@@ -316,8 +316,7 @@ class RegistryOption(Option):
     def __init__(self, name, help, registry=None, converter=None,
                  value_switches=False, title=None, enum_switch=True,
                  lazy_registry=None, short_name=None, short_value_switches=None):
-        """
-        Constructor.
+        """Constructor.
 
         Args:
           name: The option name.
@@ -365,7 +364,7 @@ class RegistryOption(Option):
     @staticmethod
     def from_kwargs(name_, help=None, title=None, value_switches=False,
                     enum_switch=True, **kwargs):
-        """Convenience method to generate string-map registry options
+        """Convenience method to generate string-map registry options.
 
         name, help, value_switches and enum_switch are passed to the
         RegistryOption constructor.  Any other keyword arguments are treated
@@ -383,7 +382,7 @@ class RegistryOption(Option):
                               value_switches=value_switches, enum_switch=enum_switch)
 
     def add_option(self, parser, short_name):
-        """Add this option to an Optparse parser"""
+        """Add this option to an Optparse parser."""
         if self.value_switches:
             parser = parser.add_option_group(self.title)
         if self.enum_switch:
@@ -419,7 +418,7 @@ class RegistryOption(Option):
         return cb
 
     def iter_switches(self):
-        """Iterate through the list of switches provided by the option
+        """Iterate through the list of switches provided by the option.
 
         :return: an iterator of (name, short_name, argname, help)
         """
@@ -441,7 +440,7 @@ class RegistryOption(Option):
 
 
 class OptionParser(optparse.OptionParser):
-    """OptionParser that raises exceptions instead of exiting"""
+    """OptionParser that raises exceptions instead of exiting."""
 
     DEFAULT_VALUE = object()
 
@@ -454,13 +453,13 @@ class OptionParser(optparse.OptionParser):
 
 
 class GettextIndentedHelpFormatter(optparse.IndentedHelpFormatter):
-    """Adds gettext() call to format_option()"""
+    """Adds gettext() call to format_option()."""
 
     def __init__(self):
         optparse.IndentedHelpFormatter.__init__(self)
 
     def format_option(self, option):
-        """code taken from Python's optparse.py"""
+        """Code taken from Python's optparse.py."""
         if option.help:
             from .i18n import gettext
             option.help = gettext(option.help)
@@ -468,8 +467,7 @@ class GettextIndentedHelpFormatter(optparse.IndentedHelpFormatter):
 
 
 def get_optparser(options):
-    """Generate an optparse parser for breezy-style options"""
-
+    """Generate an optparse parser for breezy-style options."""
     parser = OptionParser()
     parser.remove_option('--help')
     for option in options:

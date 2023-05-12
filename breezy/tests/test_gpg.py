@@ -18,10 +18,8 @@
 """Tests for signing and verifying blobs of data via gpg."""
 
 # import system imports here
-import sys
-from io import BytesIO
 
-from .. import config, errors, gpg, tests, trace, ui
+from .. import config, gpg, trace
 from . import TestCase, features
 
 
@@ -294,7 +292,6 @@ JFA6kUIJU2w9LU/b88Y=
 =UuRX
 -----END PGP SIGNATURE-----
 """
-        plain = b"""asdf\n"""
         my_gpg = gpg.GPGStrategy(FakeConfig())
         my_gpg.set_acceptable_keys("test@example.com")
         self.assertEqual((gpg.SIGNATURE_NOT_VALID, None, None),

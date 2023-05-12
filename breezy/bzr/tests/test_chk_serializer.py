@@ -51,10 +51,10 @@ _working_revision_bencode1_no_timezone = (b'l'
 
 
 class TestBEncodeSerializer1(TestCase):
-    """Test BEncode serialization"""
+    """Test BEncode serialization."""
 
     def test_unpack_revision(self):
-        """Test unpacking a revision"""
+        """Test unpacking a revision."""
         rev = revision_bencode_serializer.read_revision_from_string(
             _working_revision_bencode1)
         self.assertEqual(rev.committer,

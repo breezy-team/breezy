@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for interface conformance of 'WorkingTree.move'"""
+"""Tests for interface conformance of 'WorkingTree.move'."""
 
 import os
 
@@ -35,7 +35,7 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertThat(tree, HasLayout(expected))
 
     def test_move_via_rm_and_add(self):
-        """Move by remove and add-with-id"""
+        """Move by remove and add-with-id."""
         self.build_tree(['a1', 'b1'])
         tree = self.make_branch_and_tree('.')
         if tree.supports_setting_file_ids():
@@ -53,7 +53,7 @@ class TestMove(TestCaseWithWorkingTree):
     def test_move_correct_call_named(self):
         """tree.move has the deprecated parameter 'to_name'.
         It has been replaced by 'to_dir' for consistency.
-        Test the new API using named parameter
+        Test the new API using named parameter.
         """
         self.build_tree(['a1', 'sub1/'])
         tree = self.make_branch_and_tree('.')
@@ -66,7 +66,7 @@ class TestMove(TestCaseWithWorkingTree):
     def test_move_correct_call_unnamed(self):
         """tree.move has the deprecated parameter 'to_name'.
         It has been replaced by 'to_dir' for consistency.
-        Test the new API using unnamed parameter
+        Test the new API using unnamed parameter.
         """
         self.build_tree(['a1', 'sub1/'])
         tree = self.make_branch_and_tree('.')
@@ -519,7 +519,7 @@ class TestMove(TestCaseWithWorkingTree):
         tree._validate()
 
     def test_move_to_unversioned_non_ascii_dir(self):
-        """Check error when moving to unversioned non-ascii directory"""
+        """Check error when moving to unversioned non-ascii directory."""
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree(".")
         self.build_tree(["a", "\xA7/"])
@@ -533,7 +533,7 @@ class TestMove(TestCaseWithWorkingTree):
             tree.move(["a"], "\xA7")
 
     def test_move_unversioned_non_ascii(self):
-        """Check error when moving an unversioned non-ascii file"""
+        """Check error when moving an unversioned non-ascii file."""
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree(".")
         self.build_tree(["\xA7", "dir/"])

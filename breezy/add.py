@@ -69,7 +69,7 @@ class AddAction:
 
 
 class AddWithSkipLargeAction(AddAction):
-    """A class that can decide to skip a file if it's considered too large"""
+    """A class that can decide to skip a file if it's considered too large."""
 
     _maxSize = None
 

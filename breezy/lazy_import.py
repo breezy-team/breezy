@@ -112,7 +112,7 @@ class ScopeReplacer:
         scope[name] = self
 
     def _resolve(self):
-        """Return the real object for which this is a placeholder"""
+        """Return the real object for which this is a placeholder."""
         name = object.__getattribute__(self, '_name')
         real_obj = object.__getattribute__(self, '_real_obj')
         if real_obj is None:
@@ -258,7 +258,7 @@ class ImportReplacer(ScopeReplacer):
 
 
 class ImportProcessor:
-    """Convert text that users input into lazy import requests"""
+    """Convert text that users input into lazy import requests."""
 
     # TODO: jam 20060912 This class is probably not strict enough about
     #       what type of text it allows. For example, you can do:
@@ -291,7 +291,7 @@ class ImportProcessor:
                                     member=info[1], children=info[2])
 
     def _build_map(self, text):
-        """Take a string describing imports, and build up the internal map"""
+        """Take a string describing imports, and build up the internal map."""
         for line in self._canonicalize_import_text(text):
             if line.startswith('import '):
                 self._convert_import_str(line)

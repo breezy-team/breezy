@@ -175,7 +175,7 @@ complete -F {self.function_name} -o default brz
             brz_version += "."
         else:
             brz_version += " and the following plugins:"
-            for name, plugin in sorted(self.data.plugins.items()):
+            for _name, plugin in sorted(self.data.plugins.items()):
                 brz_version += f"\n# {plugin}"
         return brz_version
 
@@ -337,7 +337,7 @@ class DataCollector:
                                         if useralias not in cmd_data.aliases]))
 
         opts = cmd.options()
-        for optname, opt in sorted(opts.items()):
+        for _optname, opt in sorted(opts.items()):
             cmd_data.options.extend(self.option(opt))
 
         if 'help' == name or 'help' in cmd.aliases:
@@ -457,7 +457,7 @@ if __name__ == '__main__':
     (opts, args) = parser.parse_args()
     if args:
         parser.error("script does not take positional arguments")
-    kwargs = dict()
+    kwargs = {}
     for name, value in opts.__dict__.items():
         if value is not None:
             kwargs[name] = value

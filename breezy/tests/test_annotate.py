@@ -161,7 +161,7 @@ rev-E fourth-E
 class TestAnnotate(tests.TestCaseWithTransport):
 
     def create_merged_trees(self):
-        """create 2 trees with merges between them.
+        """Create 2 trees with merges between them.
 
         rev-1 --+
          |      |
@@ -314,7 +314,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
                                   builder.get_branch(), 'a', b'rev-3')
 
     def test_annotate_limits_dotted_revnos(self):
-        """Annotate should limit dotted revnos to a depth of 12"""
+        """Annotate should limit dotted revnos to a depth of 12."""
         builder = self.create_deeply_merged_trees()
 
         self.assertBranchAnnotate('1     joe@foo | first\n'

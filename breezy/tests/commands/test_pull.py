@@ -22,8 +22,8 @@ class TestPull(transport_util.TestCaseWithConnectionHookedTransport):
 
     def test_pull(self):
         wt1 = self.make_branch_and_tree('branch1')
-        tip = wt1.commit('empty commit')
-        wt2 = self.make_branch_and_tree('branch2')
+        wt1.commit('empty commit')
+        self.make_branch_and_tree('branch2')
 
         self.start_logging_connections()
 
@@ -35,7 +35,7 @@ class TestPull(transport_util.TestCaseWithConnectionHookedTransport):
 
     def test_pull_with_bound_branch(self):
 
-        master_wt = self.make_branch_and_tree('master')
+        self.make_branch_and_tree('master')
         local_wt = self.make_branch_and_tree('local')
         master_branch = branch.Branch.open(self.get_url('master'))
         local_wt.branch.bind(master_branch)

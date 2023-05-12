@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """brz postinstall helper for win32 installation
-Written by Alexander Belchenko
+Written by Alexander Belchenko.
 
 Dependency: ctypes
 """
@@ -116,7 +116,7 @@ def main():
                                     "check-mfc71",
                                     ])
 
-        for o, a in opts:
+        for o, _a in opts:
             if o in ("-h", "--help"):
                 print(USAGE)
                 return OK

@@ -58,8 +58,7 @@ class GitMemoryTree(MutableGitIndexTree, _mod_tree.Tree):
         return False
 
     def _gather_kinds(self, files, kinds):
-        """See MutableTree._gather_kinds.
-        """
+        """See MutableTree._gather_kinds."""
         with self.lock_tree_write():
             for pos, f in enumerate(files):
                 if kinds[pos] is None:

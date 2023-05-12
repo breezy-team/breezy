@@ -90,7 +90,7 @@ class TestRevert(TestCaseWithTransport):
         self.assertEqual('', self.run_bzr('status')[0])
 
     def test_revert_dirname(self):
-        """Test that revert DIRECTORY does what's expected"""
+        """Test that revert DIRECTORY does what's expected."""
         self._prepare_rename_mod_tree()
         self.run_bzr('revert a')
         self.assertPathExists('a/b')

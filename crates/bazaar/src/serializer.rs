@@ -1,5 +1,5 @@
 use crate::revision::Revision;
-use std::io::{Read, Write};
+use std::io::Read;
 
 #[derive(Debug)]
 pub enum Error {

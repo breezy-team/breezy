@@ -16,7 +16,7 @@
 
 from io import BytesIO
 
-from .. import errors, filters
+from .. import filters
 from ..filters import (ContentFilter, ContentFilterContext,
                        _get_filter_stack_for, _get_registered_names,
                        filtered_input_file, filtered_output_bytes,
@@ -31,11 +31,11 @@ def _swapcase(chunks, context=None):
 
 
 def _addjunk(chunks):
-    return [b'junk\n'] + [s for s in chunks]
+    return [b'junk\n'] + list(chunks)
 
 
 def _deljunk(chunks, context):
-    return [s for s in chunks[1:]]
+    return list(chunks[1:])
 
 
 _stack_1 = [

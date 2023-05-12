@@ -31,11 +31,11 @@ from . import decorator
 
 
 class FakeNFSTransportDecorator(decorator.TransportDecorator):
-    """A transport that behaves like NFS, for testing"""
+    """A transport that behaves like NFS, for testing."""
 
     @classmethod
     def _get_url_prefix(self):
-        """FakeNFS transports are identified by 'fakenfs+'"""
+        """FakeNFS transports are identified by 'fakenfs+'."""
         return 'fakenfs+'
 
     def rename(self, rel_from, rel_to):
@@ -46,7 +46,7 @@ class FakeNFSTransportDecorator(decorator.TransportDecorator):
         """
         try:
             self._decorated.rename(rel_from, rel_to)
-        except (errors.DirectoryNotEmpty, _mod_transport.FileExists) as e:
+        except (errors.DirectoryNotEmpty, _mod_transport.FileExists):
             # if this is a directory rename, raise
             # resourcebusy rather than DirectoryNotEmpty
             stat = self._decorated.stat(rel_to)

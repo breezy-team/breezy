@@ -40,8 +40,6 @@ from bisect import bisect_left
 from collections import deque
 from io import BytesIO
 
-import breezy
-
 from .. import lazy_import
 # Explicitly import breezy.bzrdir so that the BzrProber
 # is guaranteed to be registered.
@@ -291,7 +289,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             self._write_inventory(inv)
 
     def _write_basis_inventory(self, xml):
-        """Write the basis inventory XML to the basis-inventory file"""
+        """Write the basis inventory XML to the basis-inventory file."""
         path = self._basis_inventory_name()
         sio = BytesIO(b''.join(xml))
         self._transport.put_file(path, sio,
@@ -388,8 +386,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         def recurse_directory_to_add_files(directory):
             # Recurse directory and add all files
             # so we can check if they have changed.
-            for parent_path, file_infos in self.walkdirs(directory):
-                for relpath, basename, kind, lstat, kind in file_infos:
+            for _parent_path, file_infos in self.walkdirs(directory):
+                for relpath, _basename, _kind, _lstat, _kind in file_infos:
                     # Is it versioned or ignored?
                     if self.is_versioned(relpath):
                         # Add nested content for deletion.
@@ -558,7 +556,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         return 'basis-inventory-cache'
 
     def _create_basis_xml_from_inventory(self, revision_id, inventory):
-        """Create the text that will be saved in basis-inventory"""
+        """Create the text that will be saved in basis-inventory."""
         inventory.revision_id = revision_id
         from .xml7 import inventory_serializer_v7
         return inventory_serializer_v7.write_inventory_to_lines(inventory)
@@ -572,7 +570,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     def add_conflicts(self, new_conflicts):
         with self.lock_tree_write():
             conflict_set = set(self.conflicts())
-            conflict_set.update(set(list(new_conflicts)))
+            conflict_set.update(set(new_conflicts))
             self.set_conflicts(
                 sorted(conflict_set, key=_mod_bzr_conflicts.Conflict.sort_key))
 
@@ -629,7 +627,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
         If the file is ignored, returns the pattern which caused it to
         be ignored, otherwise None.  So this can simply be used as a
-        boolean if desired."""
+        boolean if desired.
+        """
         if getattr(self, '_ignoreglobster', None) is None:
             self._ignoreglobster = globbing.ExceptionGlobster(
                 self.get_ignore_list())
@@ -858,7 +857,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
     def annotate_iter(self, path,
                       default_revision=_mod_revision.CURRENT_REVISION):
-        """See Tree.annotate_iter
+        """See Tree.annotate_iter.
 
         This implementation will use the basis tree implementation if possible.
         Lines not in the basis are attributed to CURRENT_REVISION
@@ -1544,7 +1543,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 self._write_inventory(self._inventory)
 
     def stored_kind(self, path):
-        """See Tree.stored_kind"""
+        """See Tree.stored_kind."""
         return self._path2ie(path).kind
 
     def extras(self):
@@ -1676,7 +1675,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 # versioned present directory
                 # merge the inventory and disk data together
                 dirblock = []
-                for relpath, subiterator in itertools.groupby(sorted(
+                for _relpath, subiterator in itertools.groupby(sorted(
                         current_inv[1] + cur_disk_dir_content,
                         key=operator.itemgetter(0)), operator.itemgetter(1)):
                     path_elements = list(subiterator)
@@ -1789,7 +1788,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 yield path, ie
 
     def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
-        """See Tree.iter_entries_by_dir()"""
+        """See Tree.iter_entries_by_dir()."""
         # The only trick here is that if we supports_tree_reference then we
         # need to detect if a directory becomes a tree-reference.
         iterator = super(WorkingTree, self).iter_entries_by_dir(

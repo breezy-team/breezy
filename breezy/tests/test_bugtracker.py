@@ -47,7 +47,7 @@ class ErrorsTest(TestCaseWithMemoryTransport):
 
 
 class TestGetBugURL(TestCaseWithMemoryTransport):
-    """Tests for bugtracker.get_bug_url"""
+    """Tests for bugtracker.get_bug_url."""
 
     class TransientTracker:
         """An transient tracker used for testing."""
@@ -248,8 +248,7 @@ class TestProjectIntegerBugTracker(TestCaseWithMemoryTransport):
         self.assertIs(None, tracker.get('yyy', branch))
 
     def test_doesnt_consult_branch(self):
-        """Shouldn't consult the branch for tracker information.
-        """
+        """Shouldn't consult the branch for tracker information."""
         tracker = bugtracker.ProjectIntegerBugTracker('xxx',
                                                       'http://bugs.example.com/{project}/{id}')
         self.assertIs(tracker, tracker.get('xxx', None))
@@ -287,7 +286,8 @@ class TestURLParametrizedBugTracker(TestCaseWithMemoryTransport):
 
     def test_get_with_supported_tag(self):
         """If asked for a valid tag, return a tracker instance that can map bug
-        IDs to <base_url>/<bug_area> + <bug_id>."""
+        IDs to <base_url>/<bug_area> + <bug_id>.
+        """
         bugtracker.tracker_registry.register('some', self.tracker)
         self.addCleanup(bugtracker.tracker_registry.remove, 'some')
 

@@ -17,13 +17,12 @@
 """Tests for the osutils wrapper."""
 
 import codecs
-import locale
 import sys
 from typing import Set
 
 from .. import osutils
 from . import TestCase
-from .ui_testing import BytesIOWithEncoding, StringIOWithEncoding
+from .ui_testing import StringIOWithEncoding
 
 
 class FakeCodec:
@@ -48,7 +47,7 @@ class FakeCodec:
             self._enabled_encodings.add(encoding_name)
 
     def __call__(self, encoding_name):
-        """Called indirectly by codecs module during lookup"""
+        """Called indirectly by codecs module during lookup."""
         if encoding_name in self._enabled_encodings:
             return codecs.lookup('latin-1')
 

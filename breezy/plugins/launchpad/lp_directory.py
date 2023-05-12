@@ -79,7 +79,7 @@ def _resolve_via_api(path, url, api_base_url=LPNET_SERVICE_ROOT):
 class LaunchpadDirectory:
 
     def look_up(self, name, url, purpose=None):
-        """See DirectoryService.look_up"""
+        """See DirectoryService.look_up."""
         return self._resolve(url)
 
     def _resolve_locally(self, path, url, _api_resolver):

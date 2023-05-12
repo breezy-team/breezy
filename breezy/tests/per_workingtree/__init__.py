@@ -170,4 +170,4 @@ class TestWtScenarios(tests.TestCase):
 
     def test_protect_wt_scenarios(self):
         # Just make sure we don't accidentally delete the helper again
-        scenarios = wt_scenarios()
+        wt_scenarios()

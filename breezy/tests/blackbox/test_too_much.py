@@ -34,16 +34,12 @@ rather starts again from the run_brz function.
 
 
 import os
-import re
 import sys
 
-import breezy
 from breezy import osutils
 from breezy.tests import TestCaseWithTransport
 
 from ...branch import Branch
-from ...errors import CommandError
-from ...workingtree import WorkingTree
 from ..http_utils import TestCaseWithWebserver
 from ..test_sftp_transport import TestCaseWithSFTPServer
 
@@ -123,7 +119,6 @@ class TestCommands(TestCaseWithTransport):
 
     def test_pull_verbose(self):
         """Pull changes from one branch to another and watch the output."""
-
         os.mkdir('a')
         os.chdir('a')
 
@@ -164,7 +159,7 @@ class TestCommands(TestCaseWithTransport):
         self.assertLess(added_loc, added_message)
 
     def test_locations(self):
-        """Using and remembering different locations"""
+        """Using and remembering different locations."""
         os.mkdir('a')
         os.chdir('a')
         self.run_bzr('init')
@@ -198,7 +193,7 @@ class TestCommands(TestCaseWithTransport):
         err.index('unknown command')
 
     def create_conflicts(self):
-        """Create a conflicted tree"""
+        """Create a conflicted tree."""
         os.mkdir('base')
         os.chdir('base')
         with open('hello', 'wb') as f:
@@ -238,10 +233,10 @@ class TestCommands(TestCaseWithTransport):
         self.run_bzr('commit --unchanged --message pumpkin')
         os.chdir('../branch3')
         self.run_bzr('merge ../branch2')
-        message = self.run_bzr('status')[0]
+        self.run_bzr('status')[0]
 
     def test_conflicts(self):
-        """Handling of merge conflicts"""
+        """Handling of merge conflicts."""
         self.create_conflicts()
         self.run_bzr('merge ../other --show-base', retcode=1)
         with open('hello') as f:
@@ -323,8 +318,7 @@ class TestCommands(TestCaseWithTransport):
         self.run_bzr('missing ../missing/new-branch')
 
     def test_external_command(self):
-        """Test that external commands can be run by setting the path
-        """
+        """Test that external commands can be run by setting the path."""
         # We don't at present run brz in a subprocess for blackbox tests, and so
         # don't really capture stdout, only the internal python stream.
         # Therefore we don't use a subcommand that produces any output or does
@@ -366,7 +360,6 @@ class OldTests(TestCaseWithTransport):
 
     def test_bzr(self):
         from os import chdir, mkdir
-        from os.path import exists
 
         progress = self.log
 

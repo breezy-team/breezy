@@ -15,13 +15,12 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Black-box tests for default log_formats/log_formatters
-"""
+"""Black-box tests for default log_formats/log_formatters."""
 
 
 import os
 
-from breezy import bedding, tests, workingtree
+from breezy import bedding, tests
 
 
 class TestLogFormats(tests.TestCaseWithTransport):
@@ -57,7 +56,7 @@ log_format=line
 
     def test_log_format_arg(self):
         self._make_simple_branch()
-        log = self.run_bzr(['log', '--log-format', 'short'])[0]
+        self.run_bzr(['log', '--log-format', 'short'])[0]
 
     def test_missing_default_format(self):
         wt = self._make_simple_branch('a')
@@ -102,7 +101,7 @@ log_format=line
         self.assertEqualDiff(expected, log)
 
     def test_logformat_line_wide(self):
-        """Author field should get larger for column widths over 80"""
+        """Author field should get larger for column widths over 80."""
         wt = self.make_branch_and_tree('.')
         wt.commit('revision with a long author', committer='Person with'
                   ' long name SENTINEL')

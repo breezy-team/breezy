@@ -300,7 +300,7 @@ class TestUpgrade(TestCaseWithTransport):
                           b'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
 
     def test_upgrade_simple(self):
-        """Upgrade simple v0.0.4 format to latest format"""
+        """Upgrade simple v0.0.4 format to latest format."""
         eq = self.assertEqual
         self.build_tree_contents(_upgrade1_template)
         upgrade.upgrade('.')
@@ -316,7 +316,6 @@ class TestUpgrade(TestCaseWithTransport):
            [b'mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
             b'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
         rt = b.repository.revision_tree(rh[0])
-        foo_id = b'foo-20051004035605-91e788d1875603ae'
         with rt.lock_read():
             eq(rt.get_file_text('foo'), b'initial contents\n')
         rt = b.repository.revision_tree(rh[1])
@@ -359,7 +358,8 @@ class TestUpgrade(TestCaseWithTransport):
         This shouldn't normally happen in branches created entirely in
         bzr, but can happen in branches imported from baz and arch, or from
         other systems, where the importer knows about a revision but not
-        its contents."""
+        its contents.
+        """
         eq = self.assertEqual
         self.build_tree_contents(_ghost_template)
         upgrade.upgrade('.')
@@ -400,7 +400,7 @@ class TestUpgrade(TestCaseWithTransport):
 
 
 class SFTPBranchTest(TestCaseWithSFTPServer):
-    """Test some stuff when accessing a bzr Branch over sftp"""
+    """Test some stuff when accessing a bzr Branch over sftp."""
 
     def test_lock_file(self):
         # old format branches use a special lock file on sftp.
@@ -504,7 +504,7 @@ Repository:
 
 
 class TestBranchFormat4(TestCaseWithTransport):
-    """Tests specific to branch format 4"""
+    """Tests specific to branch format 4."""
 
     def test_no_metadir_support(self):
         url = self.get_url()

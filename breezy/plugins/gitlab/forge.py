@@ -177,7 +177,7 @@ def iter_tokens():
 
 
 def get_credentials_by_url(url):
-    for name, credentials in iter_tokens():
+    for _name, credentials in iter_tokens():
         if 'url' not in credentials:
             continue
         if credentials['url'].rstrip('/') == url.rstrip('/'):
@@ -673,7 +673,8 @@ class GitLab(Forge):
                         owner=None, revision_id=None, overwrite=False,
                         allow_lossy=True, tag_selector=None):
         if tag_selector is None:
-            tag_selector = lambda t: False
+            def tag_selector(t):
+                return False
         (host, base_project_name, base_branch_name) = parse_gitlab_branch_url(base_branch)
         if owner is None:
             owner = base_branch.get_config_stack().get('fork-namespace')
@@ -807,7 +808,7 @@ class GitLab(Forge):
         try:
             resp = transport.request(
                 'GET', f"https://{host}/api/v4/projects/{urlutils.quote(str(project), '')}")
-        except errors.UnexpectedHttpStatus as e:
+        except errors.UnexpectedHttpStatus:
             raise UnsupportedForge(url)
         except errors.RedirectRequested:
             # GitLab doesn't send redirects for these URLs
@@ -821,7 +822,7 @@ class GitLab(Forge):
 
     @classmethod
     def iter_instances(cls):
-        for name, credentials in iter_tokens():
+        for _name, credentials in iter_tokens():
             if 'url' not in credentials:
                 continue
             yield cls(
