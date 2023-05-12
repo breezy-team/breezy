@@ -676,7 +676,7 @@ fn kind_marker(kind: &str) -> &str {
         "directory" => Kind::Directory,
         "symlink" => Kind::Symlink,
         "tree-reference" => Kind::TreeReference,
-        _ => return "unknown",
+        _ => return "",
     }
     .marker()
 }
