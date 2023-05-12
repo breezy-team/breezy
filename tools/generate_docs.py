@@ -72,6 +72,7 @@ Available OUTPUT_FORMAT:
 
     with breezy.initialize(), ExitStack() as es:
         # Import breezy.bzr for format registration, see <http://pad.lv/956860>
+        from breezy import bzr as _  # noqa: F401
         commands.install_bzr_command_hooks()
         infogen_type = args[1]
         infogen_mod = doc_generate.get_module(infogen_type)
