@@ -35,46 +35,10 @@ from breezy.bzr import (
     )
 """)
 
-from .. import errors, lazy_regex, osutils, trace
+from .. import errors, osutils
 from .._bzr_rs import ROOT_ID
 from .._bzr_rs import inventory as _mod_inventory_rs
 from .static_tuple import StaticTuple
-
-
-def _parent_candidates(self, previous_inventories):
-    """Find possible per-file graph parents.
-
-    This is currently defined by:
-     - Select the last changed revision in the parent inventory.
-     - Do deal with a short lived bug in bzr 0.8's development two entries
-       that have the same last changed but different 'x' bit settings are
-       changed in-place.
-    """
-    # revision:ie mapping for each ie found in previous_inventories.
-    candidates = {}
-    # identify candidate head revision ids.
-    for inv in previous_inventories:
-        try:
-            ie = inv.get_entry(self.file_id)
-        except errors.NoSuchId:
-            pass
-        else:
-            if ie.revision in candidates:
-                # same revision value in two different inventories:
-                # correct possible inconsistencies:
-                #     * there was a bug in revision updates with 'x' bit
-                #       support.
-                try:
-                    if candidates[ie.revision].executable != ie.executable:
-                        candidates[ie.revision].executable = False
-                        ie.executable = False
-                except AttributeError:
-                    pass
-            else:
-                # add this revision as a candidate.
-                candidates[ie.revision] = ie
-    return candidates
-
 
 InventoryEntry = _mod_inventory_rs.InventoryEntry
 
@@ -108,9 +72,6 @@ class InventoryFile(_mod_inventory_rs.InventoryFile):
             checker._report_items.append(
                 'fileid {{{}}} in {{{}}} has None for text_size'.format(self.file_id,
                                                                 rev_id))
-
-    def parent_candidates(self, previous_inventories):
-        return _parent_candidates(self, previous_inventories)
 
     def copy(self):
         ie = InventoryFile(self.file_id, self.name, self.parent_id)
@@ -157,9 +118,6 @@ class InventoryDirectory(_mod_inventory_rs.InventoryDirectory):
         checker.add_pending_item(rev_id,
                                  ('texts', self.file_id, self.revision), b'text',
                                  b'da39a3ee5e6b4b0d3255bfef95601890afd80709')
-
-    def parent_candidates(self, previous_inventories):
-        return _parent_candidates(self, previous_inventories)
 
     def copy(self):
         ie = InventoryDirectory(self.file_id, self.name, self.parent_id)
@@ -228,9 +186,6 @@ class InventoryLink(_mod_inventory_rs.InventoryLink):
         checker.add_pending_item(rev_id,
                                  ('texts', self.file_id, self.revision), b'text',
                                  b'da39a3ee5e6b4b0d3255bfef95601890afd80709')
-
-    def parent_candidates(self, previous_inventories):
-        return _parent_candidates(self, previous_inventories)
 
     def copy(self):
         ie = InventoryLink(self.file_id, self.name, self.parent_id)
