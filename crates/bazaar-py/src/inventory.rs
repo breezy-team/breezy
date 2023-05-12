@@ -1,6 +1,8 @@
 use bazaar::inventory::{describe_change, detect_changes, Entry};
 use bazaar::{FileId, RevisionId};
 use breezy_osutils::Kind;
+use pyo3::class::basic::CompareOp;
+use pyo3::exceptions::PyNotImplementedError;
 use pyo3::prelude::*;
 use pyo3::pyclass_init::PyClassInitializer;
 use pyo3::types::PyBytes;
@@ -139,6 +141,14 @@ impl InventoryEntry {
     #[staticmethod]
     fn describe_change(slf: Option<&InventoryEntry>, other: Option<&InventoryEntry>) -> String {
         describe_change(slf.map(|s| &s.0), other.map(|o| &o.0)).to_string()
+    }
+
+    fn __richcmp__(&self, other: &InventoryEntry, op: CompareOp) -> PyResult<bool> {
+        match op {
+            CompareOp::Eq => Ok(self.0 == other.0),
+            CompareOp::Ne => Ok(self.0 != other.0),
+            _ => Err(PyNotImplementedError::new_err("")),
+        }
     }
 }
 
