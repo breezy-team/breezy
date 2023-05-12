@@ -386,5 +386,5 @@ pub fn detect_changes(old_entry: &Entry, new_entry: &Entry) -> (bool, bool) {
 }
 
 pub fn is_valid_name(name: &str) -> bool {
-    !(name.is_empty() || name.contains('/') || name == "." || name == "..")
+    !(name.contains('/') || name == "." || name == "..")
 }
