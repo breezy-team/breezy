@@ -1,6 +1,5 @@
 use crate::{FileId, RevisionId};
 use breezy_osutils::Kind;
-use regex::Regex;
 use std::collections::HashMap;
 
 // This should really be an id randomly assigned when the tree is
@@ -81,6 +80,9 @@ pub enum Entry {
 
 impl Entry {
     pub fn new(kind: Kind, name: String, file_id: FileId, parent_id: Option<FileId>) -> Self {
+        if !is_valid_name(&name) {
+            panic!("Invalid name: {}", name);
+        }
         match kind {
             Kind::File => Entry::file(file_id, name, parent_id),
             Kind::Directory => Entry::directory(file_id, None, parent_id, name),
@@ -218,6 +220,73 @@ impl Entry {
 
         children
     }
+
+    pub fn unchanged(&self, other: &Entry) -> bool {
+        let mut compatible = true;
+        // different inv parent
+        if self.parent_id() != other.parent_id()
+            || self.name() != other.name()
+            || self.kind() != other.kind()
+        {
+            compatible = false;
+        }
+        match (self, other) {
+            (
+                Entry::File {
+                    text_sha1: this_text_sha1,
+                    text_size: this_text_size,
+                    executable: this_executable,
+                    ..
+                },
+                Entry::File {
+                    text_sha1: other_text_sha1,
+                    text_size: other_text_size,
+                    executable: other_executable,
+                    ..
+                },
+            ) => {
+                if this_text_sha1 != other_text_sha1 {
+                    compatible = false;
+                }
+                if this_text_size != other_text_size {
+                    compatible = false;
+                }
+                if this_executable != other_executable {
+                    compatible = false;
+                }
+            }
+            (
+                Entry::Link {
+                    symlink_target: this_symlink_target,
+                    ..
+                },
+                Entry::Link {
+                    symlink_target: other_symlink_target,
+                    ..
+                },
+            ) => {
+                if this_symlink_target != other_symlink_target {
+                    compatible = false;
+                }
+            }
+            (
+                Entry::TreeReference {
+                    reference_revision: this_reference_revision,
+                    ..
+                },
+                Entry::TreeReference {
+                    reference_revision: other_reference_revision,
+                    ..
+                },
+            ) => {
+                if this_reference_revision != other_reference_revision {
+                    compatible = false;
+                }
+            }
+            _ => {}
+        }
+        compatible
+    }
 }
 
 pub enum EntryChange {
@@ -317,8 +386,5 @@ pub fn detect_changes(old_entry: &Entry, new_entry: &Entry) -> (bool, bool) {
 }
 
 pub fn is_valid_name(name: &str) -> bool {
-    lazy_static::lazy_static! {
-        static ref NAME_RE: Regex = Regex::new(r"^[^/\\]+$").unwrap();
-    }
-    NAME_RE.is_match(name)
+    !(name.is_empty() || name.contains('/') || name == "." || name == "..")
 }

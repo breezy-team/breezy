@@ -194,12 +194,12 @@ class _InventorySerializer_v4(XMLInventorySerializer):
             ie = inventory.InventoryFile(file_id,
                                          elt.get('name'),
                                          parent_id)
-            ie.text_id = elt.get('text_id')
-            if ie.text_id is not None:
-                ie.text_id = ie.text_id.encode('utf-8')
-            ie.text_sha1 = elt.get('text_sha1')
-            if ie.text_sha1 is not None:
-                ie.text_sha1 = ie.text_sha1.encode('ascii')
+            text_id = elt.get('text_id')
+            if text_id is not None:
+                ie.text_id = text_id.encode('utf-8')
+            text_sha1 = elt.get('text_sha1')
+            if text_sha1 is not None:
+                ie.text_sha1 = text_sha1.encode('ascii')
             v = elt.get('text_size')
             ie.text_size = v and int(v)
         elif kind == 'symlink':

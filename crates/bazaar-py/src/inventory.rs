@@ -3,12 +3,15 @@ use bazaar::{FileId, RevisionId};
 use breezy_osutils::Kind;
 use pyo3::class::basic::CompareOp;
 use pyo3::exceptions::PyNotImplementedError;
+use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::pyclass_init::PyClassInitializer;
-use pyo3::types::PyBytes;
+use pyo3::types::{PyBytes, PyString};
 use pyo3::wrap_pyfunction;
 use pyo3::PyClass;
 use std::collections::HashMap;
+
+import_exception!(breezy.bzr.inventory, InvalidEntryName);
 
 fn kind_from_str(kind: &str) -> Option<Kind> {
     match kind {
@@ -17,6 +20,14 @@ fn kind_from_str(kind: &str) -> Option<Kind> {
         "tree-reference" => Some(Kind::TreeReference),
         "link" => Some(Kind::Symlink),
         _ => None,
+    }
+}
+
+fn check_name(name: &str) -> PyResult<()> {
+    if !is_valid_name(name) {
+        Err(InvalidEntryName::new_err((name.to_string(),)))
+    } else {
+        Ok(())
     }
 }
 
@@ -150,6 +161,10 @@ impl InventoryEntry {
             _ => Err(PyNotImplementedError::new_err("")),
         }
     }
+
+    fn _unchanged(&self, other: &InventoryEntry) -> bool {
+        self.0.unchanged(&other.0)
+    }
 }
 
 #[pyclass(subclass,extends=InventoryEntry)]
@@ -158,7 +173,12 @@ struct InventoryFile();
 #[pymethods]
 impl InventoryFile {
     #[new]
-    fn new(file_id: Vec<u8>, name: String, parent_id: Option<Vec<u8>>) -> (Self, InventoryEntry) {
+    fn new(
+        file_id: Vec<u8>,
+        name: String,
+        parent_id: Option<Vec<u8>>,
+    ) -> PyResult<(Self, InventoryEntry)> {
+        check_name(name.as_str())?;
         let entry = Entry::File {
             file_id: FileId::from(file_id),
             name,
@@ -169,7 +189,7 @@ impl InventoryFile {
             text_id: None,
             executable: false,
         };
-        (Self(), InventoryEntry(entry))
+        Ok((Self(), InventoryEntry(entry)))
     }
 
     #[setter]
@@ -253,6 +273,43 @@ impl InventoryFile {
         let init = init.add_subclass(Self());
         Ok(PyCell::new(py, init)?.to_object(py))
     }
+
+    fn __repr__(slf: PyRef<Self>, py: Python) -> PyResult<String> {
+        let s = slf.into_super();
+        Ok(match &s.0 {
+            Entry::File {
+                name,
+                file_id,
+                parent_id,
+                text_sha1,
+                text_size,
+                revision,
+                ..
+            } => format!(
+                "InventoryFile({}, {}, parent_id={}, sha1={}, len={}, revision={})",
+                PyBytes::new(py, file_id.bytes())
+                    .to_object(py)
+                    .as_ref(py)
+                    .repr()?,
+                name.to_object(py).as_ref(py).repr()?,
+                parent_id
+                    .as_ref()
+                    .map(|p| PyBytes::new(py, p.bytes()))
+                    .to_object(py)
+                    .as_ref(py)
+                    .repr()?,
+                text_sha1.to_object(py).as_ref(py).repr()?,
+                text_size.to_object(py).as_ref(py).repr()?,
+                revision
+                    .as_ref()
+                    .map(|r| r.bytes())
+                    .to_object(py)
+                    .as_ref(py)
+                    .repr()?,
+            ),
+            _ => panic!("Not a file"),
+        })
+    }
 }
 
 #[pyclass(subclass,extends=InventoryEntry)]
@@ -261,7 +318,12 @@ struct InventoryDirectory();
 #[pymethods]
 impl InventoryDirectory {
     #[new]
-    fn new(file_id: Vec<u8>, name: String, parent_id: Option<Vec<u8>>) -> (Self, InventoryEntry) {
+    fn new(
+        file_id: Vec<u8>,
+        name: String,
+        parent_id: Option<Vec<u8>>,
+    ) -> PyResult<(Self, InventoryEntry)> {
+        check_name(name.as_str())?;
         let entry = Entry::Directory {
             file_id: FileId::from(file_id),
             name,
@@ -269,7 +331,7 @@ impl InventoryDirectory {
             children: Some(HashMap::new()),
             revision: None,
         };
-        (Self(), InventoryEntry(entry))
+        Ok((Self(), InventoryEntry(entry)))
     }
 
     fn sorted_children(slf: PyRef<Self>, py: Python) -> PyResult<Vec<(String, PyObject)>> {
@@ -322,7 +384,8 @@ impl TreeReference {
         parent_id: Option<Vec<u8>>,
         revision: Option<Vec<u8>>,
         reference_revision: Option<Vec<u8>>,
-    ) -> (Self, InventoryEntry) {
+    ) -> PyResult<(Self, InventoryEntry)> {
+        check_name(name.as_str())?;
         let entry = Entry::TreeReference {
             file_id: FileId::from(file_id),
             name,
@@ -330,7 +393,7 @@ impl TreeReference {
             revision: revision.map(RevisionId::from),
             reference_revision: reference_revision.map(RevisionId::from),
         };
-        (Self(), InventoryEntry(entry))
+        Ok((Self(), InventoryEntry(entry)))
     }
 
     #[getter]
@@ -372,7 +435,12 @@ struct InventoryLink();
 #[pymethods]
 impl InventoryLink {
     #[new]
-    fn new(file_id: Vec<u8>, name: String, parent_id: Option<Vec<u8>>) -> (Self, InventoryEntry) {
+    fn new(
+        file_id: Vec<u8>,
+        name: String,
+        parent_id: Option<Vec<u8>>,
+    ) -> PyResult<(Self, InventoryEntry)> {
+        check_name(name.as_str())?;
         let entry = Entry::Link {
             file_id: FileId::from(file_id),
             name,
@@ -380,7 +448,7 @@ impl InventoryLink {
             symlink_target: None,
             revision: None,
         };
-        (Self(), InventoryEntry(entry))
+        Ok((Self(), InventoryEntry(entry)))
     }
 
     #[getter]
