@@ -95,6 +95,15 @@ class MemoryTree(MutableInventoryTree):
         missing files, so is a no-op.
         """
 
+    def iter_child_entries(self, path):
+        with self.lock_read():
+            ie = self._inventory.get_entry_by_path(path)
+            if ie is None:
+                raise _mod_transport.NoSuchFile(path)
+            if ie.kind != 'directory':
+                raise errors.NotADirectory(path)
+            return ie.children.values()
+
     def get_file(self, path):
         """See Tree.get_file."""
         return self._file_transport.get(path)
