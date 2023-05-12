@@ -6,12 +6,13 @@ use pyo3::exceptions::PyNotImplementedError;
 use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::pyclass_init::PyClassInitializer;
-use pyo3::types::{PyBytes, PyString};
+use pyo3::types::{PyBytes, PyDict, PyString};
 use pyo3::wrap_pyfunction;
 use pyo3::PyClass;
 use std::collections::HashMap;
 
 import_exception!(breezy.bzr.inventory, InvalidEntryName);
+import_exception!(breezy.errors, NoSuchId);
 
 fn kind_from_str(kind: &str) -> Option<Kind> {
     match kind {
@@ -164,6 +165,57 @@ impl InventoryEntry {
 
     fn _unchanged(&self, other: &InventoryEntry) -> bool {
         self.0.unchanged(&other.0)
+    }
+
+    /// Find possible per-file graph parents.
+    ///
+    /// This is currently defined by:
+    /// Select the last changed revision in the parent inventory.
+    /// Do deal with a short lived bug in bzr 0.8's development two entries
+    /// that have the same last changed but different 'x' bit settings are
+    /// changed in-place.
+    fn parent_candidates(&self, py: Python, previous_inventories: Vec<PyObject>) -> PyResult<PyObject> {
+        // revision:ie mapping for each ie found in previous_inventories
+        let mut candidates: HashMap<&RevisionId, PyObject> = HashMap::new();
+        // identify candidate head revision ids
+        for inv in previous_inventories {
+            match inv.call_method1(py, "get_entry", (self.get_file_id(py),)) {
+                Ok(py_entry) => {
+                    if let Ok(mut entry) = py_entry.extract::<PyRefMut<InventoryEntry>>(py) {
+                        if let Some(revision) = entry.0.revision() {
+                            if let Some(candidate) = candidates.get_mut(revision) {
+                                // same revision value in two different inventories:
+                                // correct possible inconsistencies:
+                                //  * there was a bug in revision updates with executable bit support
+                                let mut candidate = candidate.extract::<PyRefMut<InventoryEntry>>(py)?;
+                                match (&mut candidate.0, &mut entry.0) {
+                                    (Entry::File { executable: candidate_executable, .. }, Entry::File { executable: entry_executable, .. }) => {
+                                        if candidate_executable != entry_executable {
+                                            *entry_executable = false;
+                                            *candidate_executable = false;
+                                        }
+                                    },
+                                    _ => {},
+                                }
+                            } else {
+                                // add this revision as a candidate.
+                                //candidates.insert(revision, py_entry);
+                            }
+                        }
+                    }
+                }
+                Err(e) if e.is_instance_of::<NoSuchId>(py) => {
+                },
+                Err(e) => {
+                    return Err(e);
+                },
+            }
+        }
+        let ret = PyDict::new(py);
+        for (revision, entry) in candidates.iter() {
+            ret.set_item(PyBytes::new(py, &revision.bytes()), entry)?;
+        }
+        Ok(ret.into_py(py))
     }
 }
 
