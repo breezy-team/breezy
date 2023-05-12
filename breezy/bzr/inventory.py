@@ -40,7 +40,6 @@ from .._bzr_rs import ROOT_ID
 from .._bzr_rs import inventory as _mod_inventory_rs
 from .static_tuple import StaticTuple
 
-
 InventoryEntry = _mod_inventory_rs.InventoryEntry
 
 

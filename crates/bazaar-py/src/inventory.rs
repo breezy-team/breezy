@@ -174,7 +174,11 @@ impl InventoryEntry {
     /// Do deal with a short lived bug in bzr 0.8's development two entries
     /// that have the same last changed but different 'x' bit settings are
     /// changed in-place.
-    fn parent_candidates(&self, py: Python, previous_inventories: Vec<PyObject>) -> PyResult<PyObject> {
+    fn parent_candidates(
+        &self,
+        py: Python,
+        previous_inventories: Vec<PyObject>,
+    ) -> PyResult<PyObject> {
         // revision:ie mapping for each ie found in previous_inventories
         let mut candidates: HashMap<&RevisionId, PyObject> = HashMap::new();
         // identify candidate head revision ids
@@ -187,15 +191,25 @@ impl InventoryEntry {
                                 // same revision value in two different inventories:
                                 // correct possible inconsistencies:
                                 //  * there was a bug in revision updates with executable bit support
-                                let mut candidate = candidate.extract::<PyRefMut<InventoryEntry>>(py)?;
+                                let mut candidate =
+                                    candidate.extract::<PyRefMut<InventoryEntry>>(py)?;
                                 match (&mut candidate.0, &mut entry.0) {
-                                    (Entry::File { executable: candidate_executable, .. }, Entry::File { executable: entry_executable, .. }) => {
+                                    (
+                                        Entry::File {
+                                            executable: candidate_executable,
+                                            ..
+                                        },
+                                        Entry::File {
+                                            executable: entry_executable,
+                                            ..
+                                        },
+                                    ) => {
                                         if candidate_executable != entry_executable {
                                             *entry_executable = false;
                                             *candidate_executable = false;
                                         }
-                                    },
-                                    _ => {},
+                                    }
+                                    _ => {}
                                 }
                             } else {
                                 // add this revision as a candidate.
@@ -204,11 +218,10 @@ impl InventoryEntry {
                         }
                     }
                 }
-                Err(e) if e.is_instance_of::<NoSuchId>(py) => {
-                },
+                Err(e) if e.is_instance_of::<NoSuchId>(py) => {}
                 Err(e) => {
                     return Err(e);
-                },
+                }
             }
         }
         let ret = PyDict::new(py);
