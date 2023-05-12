@@ -124,6 +124,15 @@ impl Kind {
             Kind::TreeReference => "+",
         }
     }
+
+    pub fn to_string(&self) -> &'static str {
+        match self {
+            Kind::File => "file",
+            Kind::Directory => "directory",
+            Kind::Symlink => "symlink",
+            Kind::TreeReference => "tree-reference",
+        }
+    }
 }
 
 pub fn get_host_name() -> std::io::Result<String> {

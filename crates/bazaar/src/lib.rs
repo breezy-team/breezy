@@ -30,6 +30,12 @@ impl From<FileId> for Vec<u8> {
     }
 }
 
+impl From<&[u8]> for FileId {
+    fn from(v: &[u8]) -> Self {
+        FileId(v.to_vec())
+    }
+}
+
 impl FileId {
     pub fn generate(name: &str) -> Self {
         Self::from(gen_ids::gen_file_id(name))
