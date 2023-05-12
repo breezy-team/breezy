@@ -16,6 +16,7 @@
 
 """Tests for the urlutils wrapper."""
 
+import ntpath
 import os
 import posixpath
 import sys
@@ -1006,7 +1007,7 @@ class TestFileRelpath(TestCase):
                           urlutils.WIN32_MIN_ABS_FILEURL_LENGTH)
         self.overrideAttr(osutils, "abspath", osutils._win32_abspath)
         self.overrideAttr(osutils, "normpath", osutils._win32_normpath)
-        self.overrideAttr(osutils, "split", osutils.ntpath.split)
+        self.overrideAttr(osutils, "split", ntpath.split)
         self.overrideAttr(osutils, "MIN_ABS_PATHLENGTH", 3)
 
     def test_same_url_posix(self):
