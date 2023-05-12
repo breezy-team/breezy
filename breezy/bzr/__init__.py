@@ -23,7 +23,7 @@ from ..repository import format_registry as repository_format_registry
 from ..workingtree import format_registry as workingtree_format_registry
 
 if TYPE_CHECKING:
-    from .bzrdir import BzrDirFormat
+    from .bzrdir import BzrDirFormat  # noqa: F401
 
 
 class LineEndingError(errors.BzrError):

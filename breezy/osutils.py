@@ -64,7 +64,7 @@ make_writable = _osutils_rs.make_writable
 minimum_path_selection = _osutils_rs.minimum_path_selection
 
 
-from ._osutils_rs import get_umask, kind_marker, lexists, quotefn
+from ._osutils_rs import get_umask, kind_marker, lexists, quotefn  # noqa: F401
 
 
 def fancy_rename(old, new, rename_func, unlink_func):
@@ -453,8 +453,8 @@ def report_extension_load_failures():
     # https://bugs.launchpad.net/bzr/+bug/430529
 
 
-from ._osutils_rs import (_accessible_normalized_filename,
-                          _inaccessible_normalized_filename, check_legal_path,
+from ._osutils_rs import _accessible_normalized_filename  # noqa: F401
+from ._osutils_rs import (_inaccessible_normalized_filename, check_legal_path,
                           chunks_to_lines, chunks_to_lines_iter, get_host_name,
                           link_or_copy, local_concurrency, normalized_filename,
                           normalizes_filenames, split_lines)

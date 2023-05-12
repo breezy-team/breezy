@@ -33,7 +33,7 @@ class LogCollector(logging.Handler):
 
     def __init__(self):
         logging.Handler.__init__(self)
-        self.records = []
+        self.records: List[str] = []
 
     def emit(self, record):
         self.records.append(record.getMessage())

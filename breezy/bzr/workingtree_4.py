@@ -24,6 +24,7 @@ WorkingTree.open(dir).
 
 import os
 from io import BytesIO
+from typing import Dict
 
 from ..lazy_import import lazy_import
 
@@ -57,7 +58,8 @@ from ..transport.local import LocalTransport, file_kind
 from ..tree import FileTimestampUnavailable, InterTree, MissingNestedTree
 from ..workingtree import WorkingTree
 from . import dirstate
-from .inventory import ROOT_ID, Inventory, entry_factory
+from .inventory import (ROOT_ID, DuplicateFileId, Inventory, InventoryEntry,
+                        entry_factory)
 from .inventorytree import (InterInventoryTree, InventoryRevisionTree,
                             InventoryTree)
 from .lockable_files import LockableFiles
@@ -317,10 +319,9 @@ class DirStateWorkingTree(InventoryWorkingTree):
         minikind_to_kind = dirstate.DirState._minikind_to_kind
         factory = entry_factory
         utf8_decode = cache_utf8._utf8_decode
-        inv_byid = inv._byid
         # we could do this straight out of the dirstate; it might be fast
         # and should be profiled - RBC 20070216
-        parent_ies = {b'': inv.root}
+        parent_ies: Dict[bytes, InventoryEntry] = {b'': inv.root}
         for block in state._dirblocks[1:]:  # skip the root
             dirname = block[0]
             try:
@@ -353,15 +354,14 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     inv_entry.reference_revision = link_or_sha1 or None
                 elif kind != 'symlink':
                     raise AssertionError(f"unknown kind {kind!r}")
-                # These checks cost us around 40ms on a 55k entry tree
-                if file_id in inv_byid:
+                try:
+                    inv.add(inv_entry)
+                except DuplicateFileId:
                     raise AssertionError(
                         'file_id %s already in'
-                        ' inventory as %s' % (file_id, inv_byid[file_id]))
-                if name_unicode in parent_ie.children:
+                        ' inventory as %s' % (file_id, inv.get_entry(file_id)))
+                except errors.InconsistentDelta:
                     raise AssertionError(f'name {name_unicode!r} already in parent')
-                inv_byid[file_id] = inv_entry
-                parent_ie.children[name_unicode] = inv_entry
         self._inventory = inv
 
     def _get_entry(self, file_id=None, path=None):
@@ -1715,6 +1715,16 @@ class DirStateRevisionTree(InventoryTree):
         annotations = self._repository.texts.annotate(text_key)
         return [(key[-1], line) for (key, line) in annotations]
 
+    def iter_child_entries(self, path):
+        with self.lock_read():
+            inv, inv_file_id = self._path2inv_file_id(path)
+            if inv is None:
+                raise NoSuchFile(path)
+            ie = inv.get_entry(inv_file_id)
+            if ie.kind != 'directory':
+                raise errors.NotADirectory(path)
+            return ie.children.values()
+
     def _comparison_data(self, entry, path):
         """See Tree._comparison_data."""
         if entry is None:
@@ -1845,7 +1855,6 @@ class DirStateRevisionTree(InventoryTree):
         minikind_to_kind = dirstate.DirState._minikind_to_kind
         factory = entry_factory
         utf8_decode = cache_utf8._utf8_decode
-        inv_byid = inv._byid
         # we could do this straight out of the dirstate; it might be fast
         # and should be profiled - RBC 20070216
         parent_ies = {b'': inv.root}
@@ -1882,15 +1891,14 @@ class DirStateRevisionTree(InventoryTree):
                 else:
                     raise AssertionError(
                         f"cannot convert entry {entry!r} into an InventoryEntry")
-                # These checks cost us around 40ms on a 55k entry tree
-                if file_id in inv_byid:
+                try:
+                    inv.add(inv_entry)
+                except DuplicateFileId:
                     raise AssertionError(
                         'file_id %s already in'
-                        ' inventory as %s' % (file_id, inv_byid[file_id]))
-                if name_unicode in parent_ie.children:
+                        ' inventory as %s' % (file_id, inv.get_entry(file_id)))
+                except errors.InconsistentDelta:
                     raise AssertionError(f'name {name_unicode!r} already in parent')
-                inv_byid[file_id] = inv_entry
-                parent_ie.children[name_unicode] = inv_entry
         self._inventory = inv
 
     def get_file_mtime(self, path):
@@ -2139,11 +2147,10 @@ class DirStateRevisionTree(InventoryTree):
             else:
                 relroot = ""
             # FIXME: stash the node in pending
-            entry = inv.get_entry(file_id)
             subdirs = []
-            for name, child in entry.sorted_children():
-                toppath = relroot + name
-                dirblock.append((toppath, name, child.kind, None, child.kind))
+            for child in inv.iter_sorted_children(file_id):
+                toppath = relroot + child.name
+                dirblock.append((toppath, child.name, child.kind, None, child.kind))
                 if child.kind == _directory:
                     subdirs.append((toppath, child.file_id))
             yield relpath, dirblock
