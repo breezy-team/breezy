@@ -36,7 +36,7 @@ class TestBundleInfo(tests.TestCaseWithTransport):
         self.assertNotContainsRe(info, 'foo')
         self.run_bzr_error(['--verbose requires a merge directive'],
                            'bundle-info -v bundle')
-        target = self.make_branch('target')
+        self.make_branch('target')
         md = merge_directive.MergeDirective2.from_objects(
             repository=source.branch.repository, revision_id=b'rev1', time=0,
             timezone=0, target_branch='target', base_revision_id=b'null:')

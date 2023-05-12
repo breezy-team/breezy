@@ -60,8 +60,6 @@ import os
 import sys
 from io import StringIO
 
-import breezy
-
 from .lazy_import import lazy_import
 
 lazy_import(globals(), """
@@ -69,7 +67,7 @@ from breezy import (
     ui,
     )
 """)
-from . import _cmd_rs, debug, errors, osutils
+from . import _cmd_rs, debug, errors
 
 # global verbosity for breezy; controls the log level for stderr; 0=normal; <0
 # is quiet; >0 is verbose.
@@ -153,7 +151,7 @@ set_brz_log_filename = _cmd_rs.set_brz_log_filename
 
 
 def enable_default_logging():
-    """Configure default logging: messages to stderr and debug to brz.log
+    """Configure default logging: messages to stderr and debug to brz.log.
 
     This should only be called once per process.
 
@@ -207,7 +205,8 @@ def pop_log_file(entry):
     This flushes, but does not close the trace file (so that anything that was
     in it is output.
 
-    Takes the memento returned from _push_log_file."""
+    Takes the memento returned from _push_log_file.
+    """
     (magic, old_handlers, new_handler, old_trace_handler) = entry
     global _trace_handler
     _trace_handler = old_trace_handler
@@ -309,7 +308,7 @@ def _dump_memory_usage(err_file):
 
 
 def _qualified_exception_name(eclass, unqualified_breezy_errors=False):
-    """Give name of error class including module for non-builtin exceptions
+    """Give name of error class including module for non-builtin exceptions.
 
     If `unqualified_breezy_errors` is True, errors specific to breezy will
     also omit the module prefix.
@@ -391,7 +390,7 @@ def report_user_error(exc_info, err_file, advice=None):
 
 
 def report_bug(exc_info, err_file):
-    """Report an exception that probably indicates a bug in brz"""
+    """Report an exception that probably indicates a bug in brz."""
     from .crash import report_bug
     report_bug(exc_info, err_file)
 

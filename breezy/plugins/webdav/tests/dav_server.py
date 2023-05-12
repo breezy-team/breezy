@@ -33,8 +33,7 @@ from breezy.tests import http_server
 
 
 class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
-    """
-    Subclass of TestingHTTPRequestHandler handling DAV requests.
+    """Subclass of TestingHTTPRequestHandler handling DAV requests.
 
     This is not a full implementation of a DAV server, only the parts
     really used by the plugin are.
@@ -59,11 +58,11 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
         return s
 
     def _read(self, length):
-        """Read the client socket"""
+        """Read the client socket."""
         return self.rfile.read(length)
 
     def _readline(self):
-        """Read a full line on the client socket"""
+        """Read a full line on the client socket."""
         return self.rfile.readline()
 
     def read_body(self):
@@ -200,8 +199,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
         self.end_headers()
 
     def do_MKCOL(self):
-        """
-        Serve a MKCOL request.
+        """Serve a MKCOL request.
 
         MKCOL is an mkdir in DAV terminology for our part.
         """
@@ -219,7 +217,6 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
 
     def do_COPY(self):
         """Serve a COPY request."""
-
         url_to = self.headers.get('Destination')
         if url_to is None:
             self.send_error(400, "Destination header missing")
@@ -271,7 +268,6 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
 
     def do_MOVE(self):
         """Serve a MOVE request."""
-
         url_to = self.headers.get('Destination')
         if url_to is None:
             self.send_error(400, "Destination header missing")
@@ -307,7 +303,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
     def _generate_response(self, path):
         local_path = self.translate_path(path)
         st = os.stat(local_path)
-        prop = dict()
+        prop = {}
 
         def _prop(ns, name, value=None):
             if value is None:

@@ -57,7 +57,7 @@ from ..workingtree import WorkingTree
 
 
 class VersionedFileCheck(Check):
-    """Check a versioned file repository"""
+    """Check a versioned file repository."""
 
     # The Check object interacts with InventoryEntry.check, etc.
 
@@ -170,7 +170,7 @@ class VersionedFileCheck(Check):
         if not self.repository._format.revision_graph_can_have_wrong_parents:
             # The check against the index isn't needed.
             self.revs_with_bad_parents_in_index = None
-            for thing in revision_iterator:
+            for _thing in revision_iterator:
                 pass
         else:
             bad_revisions = self.repository._find_inconsistent_revision_parents(
@@ -287,9 +287,7 @@ class VersionedFileCheck(Check):
             self.pending_keys[key] = (kind, sha1, referer)
 
     def check_weaves(self):
-        """Check all the weaves we can get our hands on.
-        """
-        weave_ids = []
+        """Check all the weaves we can get our hands on."""
         with ui.ui_factory.nested_progress_bar() as storebar:
             self._check_weaves(storebar)
 

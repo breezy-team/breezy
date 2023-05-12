@@ -24,14 +24,14 @@ import subprocess
 import sys
 from typing import Set, Tuple, Type
 
-from ... import bedding, config, errors, osutils, registry, trace
+from ... import config, errors, osutils, registry, trace
 from ..._transport_rs import sftp as _sftp_rs
 
 SFTPClient = _sftp_rs.SFTPClient
 
 try:
     import paramiko
-except ModuleNotFoundError as e:
+except ModuleNotFoundError:
     # If we have an ssh subprocess, we don't strictly need paramiko for all ssh
     # access
     paramiko = None  # type: ignore
@@ -111,7 +111,7 @@ class SSHVendorManager(registry.Registry[str, "SSHVendor"]):
         return self._get_vendor_by_version_string(version, "ssh")
 
     def _get_vendor_from_path(self, path):
-        """Return the vendor or None using the program at the given path"""
+        """Return the vendor or None using the program at the given path."""
         version = self._get_ssh_version_string([path, '-V'])
         return self._get_vendor_by_version_string(version,
                                                   os.path.splitext(os.path.basename(path))[0])
@@ -357,7 +357,7 @@ register_ssh_vendor('sshcorp', SSHCorpSubprocessVendor())
 
 
 class LSHSubprocessVendor(SubprocessVendor):
-    """SSH vendor that uses the 'lsh' executable from GNU"""
+    """SSH vendor that uses the 'lsh' executable from GNU."""
 
     executable_path = 'lsh'
 

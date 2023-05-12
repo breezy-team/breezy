@@ -27,7 +27,7 @@ from ..test_sftp_transport import TestCaseWithSFTPServer
 
 
 class OldBzrDir(bzrdir.BzrDirMeta1):
-    """An test brz dir implementation"""
+    """An test brz dir implementation."""
 
     def needs_format_conversion(self, format):
         return not isinstance(format, self.__class__)
@@ -211,7 +211,7 @@ finished
         self.assertBranchFormat('branch-foo', 'pack-0.92')
 
     def test_upgrade_permission_check(self):
-        """'backup.bzr' should retain permissions of .bzr. Bug #262450"""
+        """'backup.bzr' should retain permissions of .bzr. Bug #262450."""
         self.requireFeature(features.posix_permissions_feature)
         old_perms = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
         backup_dir = 'backup.bzr.~1~'
@@ -290,7 +290,7 @@ class UpgradeRecommendedTests(TestCaseWithTransport):
             self.fail(f"message shouldn't suggest upgrade:\n{err}")
 
     def test_upgrade_shared_repo(self):
-        repo = self.make_repository('repo', format='2a', shared=True)
-        branch = self.make_branch_and_tree('repo/branch', format="pack-0.92")
+        self.make_repository('repo', format='2a', shared=True)
+        self.make_branch_and_tree('repo/branch', format="pack-0.92")
         self.get_transport('repo/branch/.bzr/repository').delete_tree('.')
         out, err = self.run_bzr(['upgrade'], working_dir='repo/branch')

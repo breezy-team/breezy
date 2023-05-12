@@ -79,8 +79,7 @@ class BzrBranch4(FullHistoryBzrBranch):
                 self._clear_cached_state()
 
     def _get_checkout_format(self, lightweight=False):
-        """Return the most suitable metadir for a checkout of this branch.
-        """
+        """Return the most suitable metadir for a checkout of this branch."""
         from ...bzr.bzrdir import BzrDirMetaFormat1
         from .repository import RepositoryFormat7
         format = BzrDirMetaFormat1()

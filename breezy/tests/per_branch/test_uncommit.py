@@ -19,7 +19,7 @@
 Note that uncommit currently is not a branch method; it should be.
 """
 
-from breezy import branch, errors, uncommit
+from breezy import branch, uncommit
 from breezy.tests import per_branch
 
 
@@ -90,7 +90,7 @@ class TestUncommitHook(per_branch.TestCaseWithBranch):
         tree.lock_write()
         tree.add('')
         revid = tree.commit('first revision')
-        revid2 = tree.commit('second revision')
+        tree.commit('second revision')
         revid3 = tree.commit('third revision')
         tree.unlock()
         branch.Branch.hooks.install_named_hook(

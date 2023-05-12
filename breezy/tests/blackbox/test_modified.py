@@ -17,21 +17,18 @@
 
 """Black-box tests for 'brz modified', which shows modified files."""
 
-import os
 
 from breezy.tests import TestCaseWithTransport
-
-from ...branch import Branch
 
 
 class TestModified(TestCaseWithTransport):
 
     def test_modified(self):
-        """Test that 'modified' command reports modified files"""
+        """Test that 'modified' command reports modified files."""
         self._test_modified('a', 'a')
 
     def test_modified_with_spaces(self):
-        """Test that 'modified' command reports modified files with spaces in their names quoted"""
+        """Test that 'modified' command reports modified files with spaces in their names quoted."""
         self._test_modified('a filename with spaces',
                             '"a filename with spaces"')
 
@@ -74,7 +71,7 @@ class TestModified(TestCaseWithTransport):
         check_modified('')
 
     def test_modified_directory(self):
-        """Test --directory option"""
+        """Test --directory option."""
         tree = self.make_branch_and_tree('a')
         self.build_tree(['a/README'])
         tree.add('README')

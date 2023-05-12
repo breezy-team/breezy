@@ -22,7 +22,7 @@ from io import StringIO
 
 from .. import bisect
 from ..controldir import ControlDir
-from . import TestCaseWithTransport, TestSkipped
+from . import TestCaseWithTransport
 
 
 class BisectTestCase(TestCaseWithTransport):
@@ -30,7 +30,6 @@ class BisectTestCase(TestCaseWithTransport):
 
     def assertRevno(self, rev):
         """Make sure we're at the right revision."""
-
         rev_contents = {1: "one", 1.1: "one dot one", 1.2: "one dot two",
                         1.3: "one dot three", 2: "two", 3: "three",
                         4: "four", 5: "five"}
@@ -44,7 +43,6 @@ class BisectTestCase(TestCaseWithTransport):
 
     def setUp(self):
         """Set up tests."""
-
         # These tests assume a branch with five revisions, and
         # a branch from version 1 containing three revisions
         # merged at version 2.

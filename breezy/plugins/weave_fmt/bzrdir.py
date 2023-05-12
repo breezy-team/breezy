@@ -126,7 +126,7 @@ class BzrDirFormat5(BzrDirFormatAllInOne):
         result = (super().initialize_on_transport(transport))
         RepositoryFormat5().initialize(result, _internal=True)
         if not _cloning:
-            branch = BzrBranchFormat4().initialize(result)
+            BzrBranchFormat4().initialize(result)
             result._init_workingtree()
         return result
 
@@ -190,7 +190,7 @@ class BzrDirFormat6(BzrDirFormatAllInOne):
         result = super().initialize_on_transport(transport)
         RepositoryFormat6().initialize(result, _internal=True)
         if not _cloning:
-            branch = BzrBranchFormat4().initialize(result)
+            BzrBranchFormat4().initialize(result)
             result._init_workingtree()
         return result
 
@@ -345,7 +345,8 @@ class ConvertBzrDir4To5(Converter):
         """Load a revision object into memory.
 
         Any parents not either loaded or abandoned get queued to be
-        loaded."""
+        loaded.
+        """
         self.pb.update(gettext('loading revision'),
                        len(self.revisions),
                        len(self.known_revisions))
@@ -367,7 +368,7 @@ class ConvertBzrDir4To5(Converter):
         with self.branch.repository.inventory_store.get(rev_id) as f:
             inv = inventory_serializer_v4.read_inventory(f)
         inv.revision_id = rev_id
-        rev = self.revisions[rev_id]
+        self.revisions[rev_id]
         return inv
 
     def _load_updated_inventory(self, rev_id):
@@ -398,13 +399,14 @@ class ConvertBzrDir4To5(Converter):
     def _convert_revision_contents(self, rev, inv, present_parents):
         """Convert all the files within a revision.
 
-        Also upgrade the inventory to refer to the text revision ids."""
+        Also upgrade the inventory to refer to the text revision ids.
+        """
         rev_id = rev.revision_id
         trace.mutter('converting texts of revision {%s}', rev_id)
         parent_invs = list(map(self._load_updated_inventory, present_parents))
         entries = inv.iter_entries()
         next(entries)
-        for path, ie in entries:
+        for _path, ie in entries:
             self._convert_file_version(rev, ie, parent_invs)
 
     def _convert_file_version(self, rev, ie, parent_invs):
@@ -419,7 +421,6 @@ class ConvertBzrDir4To5(Converter):
         if w is None:
             w = weave.Weave(file_id)
             self.text_weaves[file_id] = w
-        text_changed = False
         parent_candiate_entries = ie.parent_candidates(parent_invs)
         heads = graph.Graph(self).heads(parent_candiate_entries)
         # XXX: Note that this is unordered - and this is tolerable because
@@ -429,7 +430,7 @@ class ConvertBzrDir4To5(Converter):
         self.snapshot_ie(previous_entries, ie, w, rev_id)
 
     def get_parent_map(self, revision_ids):
-        """See graph.StackedParentsProvider.get_parent_map"""
+        """See graph.StackedParentsProvider.get_parent_map."""
         return {revision_id: self.revisions[revision_id]
                     for revision_id in revision_ids
                     if revision_id in self.revisions}
@@ -468,7 +469,7 @@ class ConvertBzrDir4To5(Converter):
         while todo:
             # scan through looking for a revision whose parents
             # are all done
-            for rev_id in sorted(list(todo)):
+            for rev_id in sorted(todo):
                 rev = self.revisions[rev_id]
                 parent_ids = set(rev.parent_ids)
                 if parent_ids.issubset(done):
@@ -485,7 +486,7 @@ class ConvertBzrDir5To6(Converter):
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
         self.controldir = to_convert
-        with ui.ui_factory.nested_progress_bar() as pb:
+        with ui.ui_factory.nested_progress_bar():
             ui.ui_factory.note(gettext('starting upgrade from format 5 to 6'))
             self._convert_to_prefixed()
             return ControlDir.open(self.controldir.user_url)

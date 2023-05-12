@@ -82,7 +82,7 @@ class SFTPLock:
         self.lock_file = None
         try:
             self.transport.delete(self.lock_path)
-        except (NoSuchFile,):
+        except NoSuchFile:
             # What specific errors should we catch here?
             pass
 
@@ -339,7 +339,7 @@ class SFTPTransport(ConnectedTransport):
             connection.close()
 
     def _get_sftp(self):
-        """Ensures that a connection is established"""
+        """Ensures that a connection is established."""
         connection = self._get_connection()
         if connection is None:
             # First connection ever
@@ -348,9 +348,7 @@ class SFTPTransport(ConnectedTransport):
         return connection
 
     def has(self, relpath):
-        """
-        Does the target location exist?
-        """
+        """Does the target location exist?"""
         try:
             self._get_sftp().stat(self._remote_path(relpath))
             # stat result is about 20 bytes, let's say
@@ -383,7 +381,7 @@ class SFTPTransport(ConnectedTransport):
             return bytes
 
     def _readv(self, relpath, offsets):
-        """See Transport.readv()"""
+        """See Transport.readv()."""
         # We overload the default readv() because we want to use a file
         # that does not have prefetch enabled.
         # Also, if we have a new paramiko, it implements an async readv()
@@ -421,8 +419,7 @@ class SFTPTransport(ConnectedTransport):
         return helper.request_and_yield_offsets(fp)
 
     def put_file(self, relpath, f, mode=None):
-        """
-        Copy the file-like object into the location.
+        """Copy the file-like object into the location.
 
         :param relpath: Location to put the contents, relative to base.
         :param f:       File-like object.
@@ -432,7 +429,7 @@ class SFTPTransport(ConnectedTransport):
         return self._put(final_path, f, mode=mode)
 
     def _put(self, abspath, f, mode=None):
-        """Helper function so both put() and copy_abspaths can reuse the code"""
+        """Helper function so both put() and copy_abspaths can reuse the code."""
         tmp_abspath = '%s.tmp.%.9f.%d.%d' % (abspath, time.time(),
                                              os.getpid(), random.randint(0, 0x7FFFFFFF))
         fout = self._sftp_open_exclusive(tmp_abspath, mode=mode)
@@ -489,7 +486,7 @@ class SFTPTransport(ConnectedTransport):
         #       But for now, we just chmod later anyway.
 
         def _open_and_write_file():
-            """Try to open the target file, raise error on failure"""
+            """Try to open the target file, raise error on failure."""
             fout = None
             try:
                 try:
@@ -667,8 +664,7 @@ class SFTPTransport(ConnectedTransport):
         raise e
 
     def append_file(self, relpath, f, mode=None):
-        """
-        Append the text in the file-like object into the final
+        """Append the text in the file-like object into the final
         location.
         """
         try:
@@ -683,7 +679,7 @@ class SFTPTransport(ConnectedTransport):
             self._translate_io_exception(e, relpath, ': unable to append')
 
     def rename(self, rel_from, rel_to):
-        """Rename without special overwriting"""
+        """Rename without special overwriting."""
         try:
             self._get_sftp().rename(self._remote_path(rel_from),
                                     self._remote_path(rel_to))
@@ -706,13 +702,13 @@ class SFTPTransport(ConnectedTransport):
                                          f': unable to rename to {abs_to!r}')
 
     def move(self, rel_from, rel_to):
-        """Move the item at rel_from to the location at rel_to"""
+        """Move the item at rel_from to the location at rel_to."""
         path_from = self._remote_path(rel_from)
         path_to = self._remote_path(rel_to)
         self._rename_and_overwrite(path_from, path_to)
 
     def delete(self, relpath):
-        """Delete the item at relpath"""
+        """Delete the item at relpath."""
         path = self._remote_path(relpath)
         try:
             self._get_sftp().remove(path)
@@ -729,9 +725,7 @@ class SFTPTransport(ConnectedTransport):
         return True
 
     def list_dir(self, relpath):
-        """
-        Return a list of all files at the given location.
-        """
+        """Return a list of all files at the given location."""
         # does anything actually use this?
         # -- Unknown
         # This is at least used by copy_tree for remote upgrades.
@@ -772,15 +766,14 @@ class SFTPTransport(ConnectedTransport):
         """See Transport.symlink."""
         try:
             conn = self._get_sftp()
-            sftp_retval = conn.symlink(source, self._remote_path(link_name))
+            conn.symlink(source, self._remote_path(link_name))
         except (OSError, SFTPError) as e:
             self._translate_io_exception(e, link_name,
                                          f': unable to create symlink to {source!r}')
 
     def lock_read(self, relpath):
-        """
-        Lock the given file for shared (read) access.
-        :return: A lock object, which has an unlock() member function
+        """Lock the given file for shared (read) access.
+        :return: A lock object, which has an unlock() member function.
         """
         # FIXME: there should be something clever i can do here...
         class BogusLock:
@@ -798,9 +791,8 @@ class SFTPTransport(ConnectedTransport):
         return BogusLock(relpath)
 
     def lock_write(self, relpath):
-        """
-        Lock the given file for exclusive (write) access.
-        WARNING: many transports do not support this, so trying avoid using it
+        """Lock the given file for exclusive (write) access.
+        WARNING: many transports do not support this, so trying avoid using it.
 
         :return: A lock object, which has an unlock() member function
         """

@@ -28,7 +28,7 @@ from breezy.tests import (TestCase, TestCaseInTempDir, TestSkipped,
 class TestVersion(TestCase):
 
     def test_main_version(self):
-        """Check output from version command and master option is reasonable"""
+        """Check output from version command and master option is reasonable."""
         # output is intentionally passed through to stdout so that we
         # can see the version being tested
         self.permit_source_tree_branch_repo()
@@ -133,7 +133,7 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
         uni_val = "\xa7"
         enc = osutils.get_user_encoding()
         try:
-            str_val = uni_val.encode(enc)
+            uni_val.encode(enc)
         except UnicodeEncodeError:
             self.skipTest(
                 f"Test string {uni_val!r} unrepresentable in user encoding {enc}")

@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Black-box tests for repositories with shared branches"""
+"""Black-box tests for repositories with shared branches."""
 
 import os
 
@@ -68,7 +68,7 @@ Location:
         bdir = ControlDir.open('a/b')
         bdir.open_branch()
         self.assertRaises(errors.NoRepositoryPresent, bdir.open_repository)
-        wt = bdir.open_workingtree()
+        bdir.open_workingtree()
 
     def test_branch(self):
         self.run_bzr("init-shared-repo a")
@@ -140,8 +140,7 @@ Location:
         self.assertLength(1, calls)
 
     def test_init_repo_without_username(self):
-        """Ensure init-shared-repo works if username is not set.
-        """
+        """Ensure init-shared-repo works if username is not set."""
         # brz makes user specified whoami mandatory for operations
         # like commit as whoami is recorded. init-shared-repo however is not so
         # final and uses whoami only in a lock file. Without whoami the login name

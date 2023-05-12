@@ -24,7 +24,7 @@ from dulwich.objects import ShaFile, hex_to_sha, sha_to_hex
 
 from .. import bedding
 from .. import errors as bzr_errors
-from .. import osutils, registry, trace
+from .. import registry, trace
 from ..bzr import btree_index as _mod_btree_index
 from ..bzr import index as _mod_index
 from ..bzr import versionedfile
@@ -73,7 +73,7 @@ class GitShaMap:
         :return: list with (type, type_data) tuples with type_data:
             commit: revid, tree_sha, verifiers
             blob: fileid, revid
-            tree: fileid, revid
+            tree: fileid, revid.
         """
         raise NotImplementedError(self.lookup_git_sha)
 
@@ -86,13 +86,11 @@ class GitShaMap:
         raise NotImplementedError(self.lookup_blob_id)
 
     def lookup_tree_id(self, file_id, revision):
-        """Retrieve a Git tree SHA by file id.
-        """
+        """Retrieve a Git tree SHA by file id."""
         raise NotImplementedError(self.lookup_tree_id)
 
     def lookup_commit(self, revid):
-        """Retrieve a Git commit SHA by Bazaar revision id.
-        """
+        """Retrieve a Git commit SHA by Bazaar revision id."""
         raise NotImplementedError(self.lookup_commit)
 
     def revids(self):
@@ -301,7 +299,7 @@ class DictGitShaMap(GitShaMap):
         return self._by_revid[revid]
 
     def revids(self):
-        for key, entries in self._by_sha.items():
+        for _key, entries in self._by_sha.items():
             for (type, type_data) in entries.values():
                 if type == "commit":
                     yield type_data[0]
@@ -914,20 +912,20 @@ class IndexGitShaMap(GitShaMap):
 
     def revids(self):
         """List the revision ids known."""
-        for key, value in self._iter_entries_prefix((b"commit", None, None)):
+        for key, _value in self._iter_entries_prefix((b"commit", None, None)):
             yield key[1]
 
     def missing_revisions(self, revids):
         """Return set of all the revisions that are not present."""
         missing_revids = set(revids)
-        for _, key, value in self._index.iter_entries(
+        for _, key, _value in self._index.iter_entries(
                 (b"commit", revid, b"X") for revid in revids):
             missing_revids.remove(key[1])
         return missing_revids
 
     def sha1s(self):
         """List the SHA1s."""
-        for key, value in self._iter_entries_prefix((b"git", None, None)):
+        for key, _value in self._iter_entries_prefix((b"git", None, None)):
             yield key[1]
 
 

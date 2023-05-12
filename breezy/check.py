@@ -43,7 +43,7 @@ from .trace import note
 
 
 class Check:
-    """Check a repository"""
+    """Check a repository."""
 
     def __init__(self, repository, check_repo=True):
         self.repository = repository

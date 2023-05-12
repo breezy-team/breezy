@@ -22,7 +22,6 @@ client and server.
 import _thread
 import struct
 import sys
-import time
 from collections import deque
 from io import BytesIO
 
@@ -116,7 +115,7 @@ class Requester:
 
 
 class SmartProtocolBase:
-    """Methods common to client and server"""
+    """Methods common to client and server."""
 
     # TODO: this only actually accomodates a single block; possibly should
     # support multiple chunks?
@@ -290,7 +289,7 @@ class SmartServerRequestProtocolTwo(SmartServerRequestProtocolOne):
         if response.body is not None:
             if not isinstance(response.body, bytes):
                 raise AssertionError('body must be bytes')
-            if not (response.body_stream is None):
+            if response.body_stream is not None:
                 raise AssertionError(
                     'body_stream and body cannot both be set')
             data = self._encode_bulk_data(response.body)
@@ -866,8 +865,7 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
         self._request.accept_bytes(self.request_marker)
 
     def read_streamed_body(self):
-        """Read bytes from the body, decoding into a byte stream.
-        """
+        """Read bytes from the body, decoding into a byte stream."""
         # Read no more than 64k at a time so that we don't risk error 10055 (no
         # buffer space available) on Windows.
         _body_decoder = ChunkedBodyDecoder()

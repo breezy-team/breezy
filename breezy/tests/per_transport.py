@@ -25,7 +25,7 @@ import stat
 import sys
 from io import BytesIO
 
-from .. import errors, osutils, pyutils, tests
+from .. import errors, osutils, pyutils
 from .. import transport as _mod_transport
 from .. import urlutils
 from ..errors import ConnectionError, PathError, TransportNotPossible
@@ -60,7 +60,7 @@ def transport_test_permutations():
                             {"transport_class": klass,
                              "transport_server": server_factory})
                 result.append(scenario)
-        except errors.DependencyNotPresent as e:
+        except errors.DependencyNotPresent:
             # Continue even if a dependency prevents us
             # from adding this test
             pass
@@ -85,7 +85,7 @@ class TransportTests(TestTransportImplementation):
         self.assertEqualDiff(content, transport.get_bytes(relpath))
 
     def test_ensure_base_missing(self):
-        """.ensure_base() should create the directory if it doesn't exist"""
+        """.ensure_base() should create the directory if it doesn't exist."""
         t = self.get_transport()
         t_a = t.clone('a')
         self.assertFalse(t.ensure_base())
@@ -97,7 +97,7 @@ class TransportTests(TestTransportImplementation):
         self.assertTrue(t.has('a'))
 
     def test_ensure_base_exists(self):
-        """.ensure_base() should just be happy if it already exists"""
+        """.ensure_base() should just be happy if it already exists."""
         t = self.get_transport()
         if t.is_readonly():
             return
@@ -108,7 +108,7 @@ class TransportTests(TestTransportImplementation):
         self.assertFalse(t_a.ensure_base())
 
     def test_ensure_base_missing_parent(self):
-        """.ensure_base() will fail if the parent dir doesn't exist"""
+        """.ensure_base() will fail if the parent dir doesn't exist."""
         t = self.get_transport()
         if t.is_readonly():
             return
@@ -152,7 +152,6 @@ class TransportTests(TestTransportImplementation):
     def test_get(self):
         t = self.get_transport()
 
-        files = ['a']
         content = b'contents of a\n'
         self.build_tree(['a'], transport=t, line_endings='binary')
         self.check_transport_contents(b'contents of a\n', t, 'a')
@@ -162,9 +161,6 @@ class TransportTests(TestTransportImplementation):
     def test_get_unknown_file(self):
         t = self.get_transport()
         files = ['a', 'b']
-        contents = [b'contents of a\n',
-                    b'contents of b\n',
-                    ]
         self.build_tree(files, transport=t, line_endings='binary')
         self.assertRaises(NoSuchFile, t.get, 'c')
 
@@ -173,11 +169,11 @@ class TransportTests(TestTransportImplementation):
                 # We call f.read() here because things like paramiko actually
                 # spawn a thread to prefetch the content, which we want to
                 # consume before we close the handle.
-                content = f.read()
+                f.read()
                 f.close()
 
     def test_get_directory_read_gives_ReadError(self):
-        """consistent errors for read() on a file returned by get()."""
+        """Consistent errors for read() on a file returned by get()."""
         t = self.get_transport()
         if t.is_readonly():
             self.build_tree(['a directory/'])
@@ -670,7 +666,7 @@ class TransportTests(TestTransportImplementation):
                           t.append_bytes, 'missing/path', b'content')
 
     def test_append_file_mode(self):
-        """Check that append accepts a mode parameter"""
+        """Check that append accepts a mode parameter."""
         # check append accepts a mode
         t = self.get_transport()
         if t.is_readonly():
@@ -747,7 +743,7 @@ class TransportTests(TestTransportImplementation):
         self.assertRaises((NoSuchFile, PathError), t.rmdir, 'adir')
 
     def test_rmdir_not_empty(self):
-        """Deleting a non-empty directory raises an exception
+        """Deleting a non-empty directory raises an exception.
 
         sftp (and possibly others) don't give us a specific "directory not
         empty" exception -- we can just see that the operation failed.
@@ -760,7 +756,7 @@ class TransportTests(TestTransportImplementation):
         self.assertRaises(PathError, t.rmdir, 'adir')
 
     def test_rmdir_empty_but_similar_prefix(self):
-        """rmdir does not get confused by sibling paths.
+        """Rmdir does not get confused by sibling paths.
 
         A naive implementation of MemoryTransport would refuse to rmdir
         ".bzr/branch" if there is a ".bzr/branch-format" directory, because it
@@ -790,7 +786,7 @@ class TransportTests(TestTransportImplementation):
         self.assertFalse(t.has('adir'))
 
     def test_rename_dir_nonempty(self):
-        """Attempting to replace a nonemtpy directory should fail"""
+        """Attempting to replace a nonemtpy directory should fail."""
         t = self.get_transport()
         if t.is_readonly():
             self.assertRaises((TransportNotPossible, NotImplementedError),
@@ -923,7 +919,7 @@ class TransportTests(TestTransportImplementation):
 
         try:
             st = t.stat('.')
-        except TransportNotPossible as e:
+        except TransportNotPossible:
             # This transport cannot stat
             return
 
@@ -1303,7 +1299,7 @@ class TransportTests(TestTransportImplementation):
             p = transport.local_abspath('.')
         except (errors.NotLocalUrl, TransportNotPossible) as e:
             # should be formattable
-            s = str(e)
+            str(e)
         else:
             self.assertEqual(getcwd(), p)
 
@@ -1623,8 +1619,7 @@ class TransportTests(TestTransportImplementation):
                 t.readv('foo', ((0, 1), (2, 1)))))
 
     def test_get_smart_medium(self):
-        """All transports must either give a smart medium, or know they can't.
-        """
+        """All transports must either give a smart medium, or know they can't."""
         transport = self.get_transport()
         try:
             client_medium = transport.get_smart_medium()
@@ -1657,13 +1652,15 @@ class TransportTests(TestTransportImplementation):
 
     def test_no_segment_parameters(self):
         """Segment parameters should be stripped and stored in
-        transport.segment_parameters."""
+        transport.segment_parameters.
+        """
         transport = self.get_transport("foo")
         self.assertEqual({}, transport.get_segment_parameters())
 
     def test_segment_parameters(self):
         """Segment parameters should be stripped and stored in
-        transport.get_segment_parameters()."""
+        transport.get_segment_parameters().
+        """
         base_url = self._server.get_url()
         parameters = {"key1": "val1", "key2": "val2"}
         url = urlutils.join_segment_parameters(base_url, parameters)
@@ -1695,7 +1692,7 @@ class TransportTests(TestTransportImplementation):
         self.assertTrue(stat.S_ISLNK(st.st_mode))
 
     def test_abspath_url_unquote_unreserved(self):
-        """URLs from abspath should have unreserved characters unquoted
+        """URLs from abspath should have unreserved characters unquoted.
 
         Need consistent quoting notably for tildes, see lp:842223 for more.
         """
@@ -1705,7 +1702,7 @@ class TransportTests(TestTransportImplementation):
                          t.abspath(needlessly_escaped_dir))
 
     def test_clone_url_unquote_unreserved(self):
-        """Base URL of a cloned branch needs unreserved characters unquoted
+        """Base URL of a cloned branch needs unreserved characters unquoted.
 
         Cloned transports should be prefix comparable for things like the
         isolation checking of tests, see lp:842223 for more.
@@ -1717,7 +1714,7 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(t1.base + "-.09AZ_az~/", t2.base)
 
     def test_hook_post_connection_one(self):
-        """Fire post_connect hook after a ConnectedTransport is first used"""
+        """Fire post_connect hook after a ConnectedTransport is first used."""
         log = []
         Transport.hooks.install_named_hook("post_connect", log.append, None)
         t = self.get_transport()
@@ -1731,7 +1728,7 @@ class TransportTests(TestTransportImplementation):
             self.assertEqual([], log)
 
     def test_hook_post_connection_multi(self):
-        """Fire post_connect hook once per unshared underlying connection"""
+        """Fire post_connect hook once per unshared underlying connection."""
         log = []
         Transport.hooks.install_named_hook("post_connect", log.append, None)
         t1 = self.get_transport()

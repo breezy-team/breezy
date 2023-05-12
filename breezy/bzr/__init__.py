@@ -79,7 +79,7 @@ class BzrProber(controldir.Prober):
     @classmethod
     def known_formats(cls):
         result = []
-        for name, format in cls.formats.items():
+        for _name, format in cls.formats.items():
             if callable(format):
                 format = format()
             result.append(format)

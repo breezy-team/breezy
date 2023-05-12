@@ -274,7 +274,7 @@ class GCCHKPacker(Packer):
                 def handle_leaf_node(node):
                     # Store is None, because we know we have a LeafNode, and we
                     # just want its entries
-                    for file_id, bytes in node.iteritems(None):
+                    for _file_id, bytes in node.iteritems(None):
                         self._text_refs.add(chk_map._bytes_to_text_key(bytes))
 
                 def next_stream():
@@ -291,7 +291,6 @@ class GCCHKPacker(Packer):
                         # because we only care about external references.
                         node = chk_map._deserialise(bytes, record.key,
                                                     search_key_func=None)
-                        common_base = node._search_prefix
                         if isinstance(node, chk_map.InternalNode):
                             handle_internal_node(node)
                         elif parse_leaf_nodes:
@@ -506,7 +505,7 @@ class GCCHKReconcilePacker(GCCHKPacker):
             self._data_changed = True
 
     def _copy_text_texts(self):
-        """generate what texts we should have and then copy."""
+        """Generate what texts we should have and then copy."""
         source_vf, target_vf = self._build_vfs('text', True, True)
         trace.mutter('repacking %d texts', len(self._text_refs))
         self.pb.update("repacking texts", 4)
@@ -724,7 +723,6 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             no_fallback_inv_index.get_parent_map(all_inv_keys))
         parent_invs_only_keys = all_inv_keys.symmetric_difference(
             corresponding_invs)
-        all_missing = set()
         inv_ids = [key[-1] for key in all_inv_keys]
         parent_invs_only_ids = [key[-1] for key in parent_invs_only_keys]
         root_key_info = _build_interesting_key_sets(
@@ -751,19 +749,19 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             root_key_info.uninteresting_root_keys)
         text_keys = set()
         try:
-            for record in _filter_text_keys(chk_diff, text_keys,
+            for _record in _filter_text_keys(chk_diff, text_keys,
                                             chk_map._bytes_to_text_key):
                 pass
-        except errors.NoSuchRevision as e:
+        except errors.NoSuchRevision:
             # XXX: It would be nice if we could give a more precise error here.
             problems.append("missing chk node(s) for id_to_entry maps")
         chk_diff = chk_map.iter_interesting_nodes(
             chk_bytes_no_fallbacks, root_key_info.interesting_pid_root_keys,
             root_key_info.uninteresting_pid_root_keys)
         try:
-            for interesting_rec, interesting_map in chk_diff:
+            for _interesting_rec, _interesting_map in chk_diff:
                 pass
-        except errors.NoSuchRevision as e:
+        except errors.NoSuchRevision:
             problems.append(
                 "missing chk node(s) for parent_id_basename_to_file_id maps")
         present_text_keys = no_fallback_texts_index.get_parent_map(text_keys)
@@ -980,7 +978,7 @@ class CHKInventoryRepository(PackRepository):
 
     def _find_present_inventory_keys(self, revision_keys):
         parent_map = self.inventories.get_parent_map(revision_keys)
-        present_inventory_keys = {k for k in parent_map}
+        present_inventory_keys = set(parent_map)
         return present_inventory_keys
 
     def fileids_altered_by_revision_ids(self, revision_ids, _inv_weave=None):
@@ -1013,10 +1011,10 @@ class CHKInventoryRepository(PackRepository):
             interesting_root_keys = root_key_info.interesting_root_keys
             uninteresting_root_keys = root_key_info.uninteresting_root_keys
             chk_bytes = self.chk_bytes
-            for record, items in chk_map.iter_interesting_nodes(chk_bytes,
+            for _record, items in chk_map.iter_interesting_nodes(chk_bytes,
                                                                 interesting_root_keys, uninteresting_root_keys,
                                                                 pb=pb):
-                for name, bytes in items:
+                for _name, bytes in items:
                     (name_utf8, file_id, revision_id) = bytes_to_info(bytes)
                     # TODO: consider interning file_id, revision_id here, or
                     #       pushing that intern() into bytes_to_info()
@@ -1042,7 +1040,7 @@ class CHKInventoryRepository(PackRepository):
         # examinations/direct tree traversal. Note that that will require care
         # as a common node is reachable both from the inventory that added it,
         # and others afterwards.
-        revision_keys = self.revisions.keys()
+        self.revisions.keys()
         result = {}
         rich_roots = self.supports_rich_root()
         with ui.ui_factory.nested_progress_bar() as pb:
@@ -1208,7 +1206,7 @@ class GroupCHKStreamSource(StreamSource):
         yield 'chk_bytes', _filter_id_to_entry()
 
         def _get_parent_id_basename_to_file_id_pages():
-            for record, items in chk_map.iter_interesting_nodes(chk_bytes,
+            for record, _items in chk_map.iter_interesting_nodes(chk_bytes,
                                                                 self._chk_p_id_roots, uninteresting_pid_root_keys):
                 if record is not None:
                     yield record
@@ -1379,9 +1377,7 @@ class RepositoryFormat2a(RepositoryFormatPack):
 
 
 class RepositoryFormat2aSubtree(RepositoryFormat2a):
-    """A 2a repository format that supports nested trees.
-
-    """
+    """A 2a repository format that supports nested trees."""
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir('development-subtree')

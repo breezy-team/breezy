@@ -26,7 +26,7 @@ from dulwich.errors import HangupException
 from dulwich.repo import Repo as GitRepo
 
 from ...branch import Branch
-from ...controldir import BranchReferenceLoop, ControlDir
+from ...controldir import ControlDir
 from ...errors import (ConnectionReset, DivergedBranches, NoSuchTag,
                        NotBranchError, PermissionDenied, TransportError,
                        UnexpectedHttpStatus)
@@ -448,7 +448,7 @@ class FetchFromRemoteTestBase:
             message=b'message',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>')
-        c2 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'another commit',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>')
@@ -503,7 +503,7 @@ class PushToRemoteBase:
         wt = self.make_branch_and_tree('local', format=self._from_format)
         self.build_tree(['local/blah'])
         wt.add(['blah'])
-        revid = wt.commit('blah')
+        wt.commit('blah')
 
         if self._from_format == 'git':
             result = remote.push_branch(wt.branch, name='newbranch')
@@ -529,7 +529,7 @@ class PushToRemoteBase:
         cfg.set((b'core', ), b'bare', True)
         cfg.write_to_path()
         self.remote_real.refs.set_symbolic_ref(b'HEAD', b'refs/heads/master')
-        c1 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'message',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>',
@@ -538,7 +538,7 @@ class PushToRemoteBase:
         wt = self.make_branch_and_tree('local', format=self._from_format)
         self.build_tree(['local/blah'])
         wt.add(['blah'])
-        revid = wt.commit('blah')
+        wt.commit('blah')
 
         if self._from_format == 'git':
             result = remote.push_branch(wt.branch, overwrite=True)
@@ -569,7 +569,7 @@ class PushToRemoteBase:
             ('add', ('filename', None, 'file', b'content'))])
         rev_2 = builder.build_snapshot(
             [rev_1], [('modify', ('filename', b'new-content\n'))])
-        rev_3 = builder.build_snapshot(
+        builder.build_snapshot(
             [rev_1], [('modify', ('filename', b'new-new-content\n'))])
         builder.finish_series()
         branch = builder.get_branch()
@@ -598,7 +598,7 @@ class PushToRemoteBase:
             set(self.remote_real.get_refs().keys()))
 
     def test_push(self):
-        c1 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'message',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>')
@@ -643,7 +643,7 @@ class PushToRemoteBase:
         wt = self.make_branch_and_tree('local', format=self._from_format)
         self.build_tree(['local/blah'])
         wt.add(['blah'])
-        revid = wt.commit('blah')
+        wt.commit('blah')
 
         newbranch = remote.open_branch('newbranch')
         if self._from_format == 'git':
@@ -685,11 +685,11 @@ class RemoteControlDirTests(TestCaseWithTransport):
         self.permit_url(self.remote_url)
 
     def test_remove_branch(self):
-        c1 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'message',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>')
-        c2 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'another commit',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>',
@@ -704,11 +704,11 @@ class RemoteControlDirTests(TestCaseWithTransport):
              })
 
     def test_list_branches(self):
-        c1 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'message',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>')
-        c2 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'another commit',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>',
@@ -720,11 +720,11 @@ class RemoteControlDirTests(TestCaseWithTransport):
             {b.name for b in remote.list_branches()})
 
     def test_get_branches(self):
-        c1 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'message',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>')
-        c2 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'another commit',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>',
@@ -738,11 +738,11 @@ class RemoteControlDirTests(TestCaseWithTransport):
             {'', 'blah', 'master'}, set(remote.branch_names()))
 
     def test_remove_tag(self):
-        c1 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'message',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>')
-        c2 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'another commit',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>',
@@ -763,7 +763,7 @@ class RemoteControlDirTests(TestCaseWithTransport):
             message=b'message',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>')
-        c2 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'another commit',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>')
@@ -779,7 +779,7 @@ class RemoteControlDirTests(TestCaseWithTransport):
              })
 
     def test_annotated_tag(self):
-        c1 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'message',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>')
@@ -805,11 +805,11 @@ class RemoteControlDirTests(TestCaseWithTransport):
             remote_branch.tags.get_tag_dict())
 
     def test_get_branch_reference(self):
-        c1 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'message',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>')
-        c2 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'another commit',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>')
@@ -820,7 +820,7 @@ class RemoteControlDirTests(TestCaseWithTransport):
         self.assertEqual(None, remote.get_branch_reference('master'))
 
     def test_get_branch_nick(self):
-        c1 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'message',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>')
@@ -868,7 +868,7 @@ class RemoteRevisionTreeTests(TestCaseWithTransport):
         self.remote_real = GitRepo.init('remote', mkdir=True)
         self.remote_url = f'git://{os.path.abspath(self.remote_real.path)}/'
         self.permit_url(self.remote_url)
-        c1 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'message',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>')

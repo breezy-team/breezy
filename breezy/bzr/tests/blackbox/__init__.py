@@ -23,7 +23,6 @@ rather starts again from the run_brz function.
 """
 
 
-from breezy import tests
 
 
 def load_tests(loader, basic_tests, pattern):

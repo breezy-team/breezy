@@ -76,7 +76,7 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         self.assertEqual(fmt_string, md.get_raw_bundle().splitlines()[0])
 
     def test_uses_parent(self):
-        """Parent location is used as a basis by default"""
+        """Parent location is used as a basis by default."""
         errmsg = self.run_send([], rc=3, wd='grandparent')[1]
         self.assertContainsRe(errmsg, 'No submit branch known or specified')
         stdout, stderr = self.run_send([])
@@ -84,7 +84,7 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         self.assertBundleContains([b'rev3'], [])
 
     def test_bundle(self):
-        """Bundle works like send, except -o is not required"""
+        """Bundle works like send, except -o is not required."""
         errmsg = self.run_send([], cmd=['bundle'], rc=3, wd='grandparent')[1]
         self.assertContainsRe(errmsg, 'No submit branch known or specified')
         stdout, stderr = self.run_send([], cmd=['bundle'])
@@ -92,7 +92,7 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         self.assertBundleContains([b'rev3'], [], cmd=['bundle'])
 
     def test_uses_submit(self):
-        """Submit location can be used and set"""
+        """Submit location can be used and set."""
         self.assertBundleContains([b'rev3'], [])
         self.assertBundleContains([b'rev3', b'rev2'], ['../grandparent'])
         # submit location should be auto-remembered
@@ -133,7 +133,7 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         self.run_send(['--from', 'foo', '../bar'], wd='foo')
 
     def test_content_options(self):
-        """--no-patch and --no-bundle should work and be independant"""
+        """--no-patch and --no-bundle should work and be independant."""
         md = self.get_MD([])
         self.assertIsNot(None, md.bundle)
         self.assertIsNot(None, md.patch)
@@ -358,11 +358,11 @@ class TestSendStrictWithChanges(tests.TestCaseWithTransport,
     # here too.
     scenarios = [
         ('uncommitted',
-         dict(_changes_type='_uncommitted_changes')),
+         {'_changes_type': '_uncommitted_changes'}),
         ('pending_merges',
-         dict(_changes_type='_pending_merges')),
+         {'_changes_type': '_pending_merges'}),
         ('out-of-sync-trees',
-         dict(_changes_type='_out_of_sync_trees')),
+         {'_changes_type': '_out_of_sync_trees'}),
         ]
 
     _changes_type = None  # Set by load_tests

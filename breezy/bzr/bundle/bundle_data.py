@@ -36,8 +36,7 @@ from . import apply_bundle
 
 
 class RevisionInfo:
-    """Gets filled out for each revision object that is read.
-    """
+    """Gets filled out for each revision object that is read."""
 
     def __init__(self, revision_id):
         self.revision_id = revision_id
@@ -190,7 +189,7 @@ class BundleInfo:
             raise AssertionError()
         if not self._validated_revisions_against_repo:
             self._validate_references_from_repository(repository)
-        revision_info = self.get_revision_info(revision_id)
+        self.get_revision_info(revision_id)
         inventory_revision_id = revision_id
         bundle_tree = BundleTree(repository.revision_tree(base),
                                  inventory_revision_id)
@@ -233,14 +232,14 @@ class BundleInfo:
             checked[rev_info.revision_id] = True
             add_sha(rev_to_sha, rev_info.revision_id, rev_info.sha1)
 
-        for (rev, rev_info) in zip(self.real_revisions, self.revisions):
+        for (_rev, rev_info) in zip(self.real_revisions, self.revisions):
             add_sha(inv_to_sha, rev_info.revision_id, rev_info.inventory_sha1)
 
         count = 0
         missing = {}
         for revision_id, sha1 in rev_to_sha.items():
             if repository.has_revision(revision_id):
-                testament = StrictTestament.from_revision(repository,
+                StrictTestament.from_revision(repository,
                                                           revision_id)
                 local_sha1 = self._testament_sha1_from_revision(repository,
                                                                 revision_id)
@@ -281,7 +280,6 @@ class BundleInfo:
 
     def _validate_revision(self, tree, revision_id):
         """Make sure all revision entries match their checksum."""
-
         # This is a mapping from each revision id to its sha hash
         rev_to_sha1 = {}
 
@@ -358,7 +356,7 @@ class BundleInfo:
 
             bundle_tree.note_rename(old_path, new_path)
             last_modified, encoding = extra_info(info[2:], new_path)
-            revision = get_rev_id(last_modified, new_path, kind)
+            get_rev_id(last_modified, new_path, kind)
             if lines:
                 do_patch(new_path, lines, encoding)
 
@@ -392,7 +390,7 @@ class BundleInfo:
             # this will be overridden in extra_info if executable is specified.
             bundle_tree.note_executable(path, False)
             last_changed, encoding = extra_info(info[2:], path)
-            revision = get_rev_id(last_changed, path, kind)
+            get_rev_id(last_changed, path, kind)
             if kind == 'directory':
                 return
             do_patch(path, lines, encoding)
@@ -405,7 +403,7 @@ class BundleInfo:
             path = info[0]
 
             last_modified, encoding = extra_info(info[1:], path)
-            revision = get_rev_id(last_modified, path, kind)
+            get_rev_id(last_modified, path, kind)
             if lines:
                 do_patch(path, lines, encoding)
 
@@ -437,7 +435,7 @@ class BundleInfo:
             valid_actions[action](kind, extra, lines)
 
     def install_revisions(self, target_repo, stream_input=True):
-        """Install revisions and return the target revision
+        """Install revisions and return the target revision.
 
         :param target_repo: The repository to install into
         :param stream_input: Ignored by this implementation.
@@ -446,7 +444,7 @@ class BundleInfo:
         return self.target
 
     def get_merge_request(self, target_repo):
-        """Provide data for performing a merge
+        """Provide data for performing a merge.
 
         Returns suggested base, suggested target, and patch verification status
         """
@@ -475,7 +473,7 @@ class BundleTree(InventoryTree):
         return pprint.pformat(self.__dict__)
 
     def note_rename(self, old_path, new_path):
-        """A file/directory has been renamed from old_path => new_path"""
+        """A file/directory has been renamed from old_path => new_path."""
         if new_path in self._renamed:
             raise AssertionError(new_path)
         if old_path in self._renamed_r:
@@ -503,7 +501,7 @@ class BundleTree(InventoryTree):
         self.patches[new_path] = patch
 
     def note_target(self, new_path, target):
-        """The symlink at the new path has the given target"""
+        """The symlink at the new path has the given target."""
         self._targets[new_path] = target
 
     def note_deletion(self, old_path):
@@ -514,7 +512,7 @@ class BundleTree(InventoryTree):
         self._executable[new_path] = executable
 
     def old_path(self, new_path):
-        """Get the old_path (path in the base_tree) for the file at new_path"""
+        """Get the old_path (path in the base_tree) for the file at new_path."""
         if new_path[:1] in ('\\', '/'):
             raise ValueError(new_path)
         old_path = self._renamed.get(new_path)
@@ -577,7 +575,7 @@ class BundleTree(InventoryTree):
         return self.base_tree.path2id(old_path)
 
     def id2path(self, file_id, recurse='down'):
-        """Return the new path in the target tree of the file with id file_id"""
+        """Return the new path in the target tree of the file with id file_id."""
         path = self._new_id_r.get(file_id)
         if path is not None:
             return path
@@ -759,7 +757,7 @@ class BundleTree(InventoryTree):
 
 
 def patched_file(file_patch, original):
-    """Produce a file-like object with the patched version of a text"""
+    """Produce a file-like object with the patched version of a text."""
     from ...osutils import IterableFile
     from ...patches import iter_patched
     if file_patch == b"":

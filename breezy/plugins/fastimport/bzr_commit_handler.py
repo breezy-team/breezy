@@ -29,7 +29,7 @@ _serializer_handles_escaping = hasattr(serializer.RevisionSerializer,
 def copy_inventory(inv):
     entries = inv.iter_entries_by_dir()
     inv = inventory.Inventory(None, inv.revision_id)
-    for path, inv_entry in entries:
+    for _path, inv_entry in entries:
         inv.add(inv_entry.copy())
     return inv
 
@@ -214,7 +214,7 @@ class CommitHandler(processor.CommitHandler):
 
             # Try the other inventories
             if len(self.parents) > 1:
-                for inv in self.parent_invs[1:]:
+                for _inv in self.parent_invs[1:]:
                     id = self.basis_inventory.path2id(path)
                     if id is not None:
                         return id, False
@@ -385,7 +385,7 @@ class CommitHandler(processor.CommitHandler):
             self.record_changed(path, ie, parent_id)
 
     def _ensure_directory(self, path, inv):
-        """Ensure that the containing directory exists for 'path'"""
+        """Ensure that the containing directory exists for 'path'."""
         dirname, basename = osutils.split(path)
         if dirname == '':
             # the root node doesn't get updated

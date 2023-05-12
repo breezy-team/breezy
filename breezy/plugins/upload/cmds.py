@@ -203,8 +203,7 @@ class BzrUploader:
         self.to_transport.symlink(target, relpath)
 
     def upload_symlink_robustly(self, relpath, target):
-        """Handle uploading symlinks.
-        """
+        """Handle uploading symlinks."""
         self._force_clear(relpath)
         # Target might not be there at this time; dummy file should be
         # overwritten at some point, possibly by another upload.

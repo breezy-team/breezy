@@ -59,7 +59,7 @@ class TestFormat2WorkingTree(TestCaseWithTransport):
         self.assertEqual(list(tree.conflicts()), [expected])
 
     def test_detect_conflicts(self):
-        """Conflicts are detected properly"""
+        """Conflicts are detected properly."""
         tree = self.create_format2_tree('.')
         self.build_tree_contents([('hello', b'hello world4'),
                                   ('hello.THIS', b'hello world2'),

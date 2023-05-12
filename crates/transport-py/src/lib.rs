@@ -6,7 +6,7 @@ use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyList, PyType};
 use pyo3_file::PyFileLikeObject;
-use std::io::{BufRead, BufReader, Read, Seek, SeekFrom, Write};
+use std::io::{BufRead, BufReader, Read, Seek, Write};
 use std::path::{Path, PathBuf};
 
 import_exception!(breezy.errors, ShortReadvError);

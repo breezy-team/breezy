@@ -5,7 +5,6 @@ use pyo3::types::{PyString, PyTuple};
 use pyo3_file::PyFileLikeObject;
 use std::io::Write;
 use std::path::PathBuf;
-use std::time::{Duration, SystemTime};
 
 import_exception!(breezy.errors, NoWhoami);
 
@@ -315,7 +314,7 @@ fn str_tdelta(delt: Option<f64>) -> PyResult<String> {
 }
 
 #[pyfunction]
-fn debug_memory_proc(message: &str, short: bool) -> () {
+fn debug_memory_proc(message: &str, short: bool) {
     breezy::trace::debug_memory_proc(message, short)
 }
 

@@ -99,7 +99,6 @@ Message: %(message)s.
         :param message: The explanation of the error code, Defaults to a short
              entry.
         """
-
         if message is None:
             try:
                 message = self.responses[code][0]

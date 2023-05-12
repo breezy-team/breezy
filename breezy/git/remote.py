@@ -16,7 +16,6 @@
 
 """Remote dirs, repositories and branches."""
 
-import gzip
 import re
 
 from dulwich.refs import SymrefLoop
@@ -47,7 +46,6 @@ import dulwich.client
 from dulwich.errors import GitProtocolError, HangupException
 from dulwich.pack import (PACK_SPOOL_FILE_MAX_SIZE, Pack, load_pack_index,
                           pack_objects_to_data)
-from dulwich.protocol import ZERO_SHA
 from dulwich.refs import SYMREF, DictRefsContainer
 from dulwich.repo import NotGitRepository
 
@@ -58,8 +56,7 @@ from .errors import GitSmartRemoteNotSupported
 from .mapping import encode_git_path, mapping_registry
 from .object_store import get_object_store
 from .push import remote_divergence
-from .refs import (branch_name_to_ref, is_peeled, ref_to_tag_name,
-                   tag_name_to_ref)
+from .refs import is_peeled, ref_to_tag_name, tag_name_to_ref
 from .repository import GitRepository, GitRepositoryFormat
 
 # urlparse only supports a limited number of schemes by default
@@ -835,9 +832,7 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
         return True
 
     def open(self, transport, _found=None):
-        """Open this directory.
-
-        """
+        """Open this directory."""
         split_url = _git_url_and_path_from_transport(transport.external_url())
         if isinstance(transport, GitSmartTransport):
             client = transport._get_client()
@@ -961,9 +956,7 @@ class RemoteGitRepository(GitRepository):
             raise NoSuchRevision(self, bzr_revid)
 
     def lookup_foreign_revision_id(self, foreign_revid, mapping=None):
-        """Lookup a revision id.
-
-        """
+        """Lookup a revision id."""
         if mapping is None:
             mapping = self.get_mapping()
         # Not really an easy way to parse foreign revids here..

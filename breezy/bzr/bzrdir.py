@@ -27,14 +27,13 @@ objects returned.
 
 import contextlib
 import sys
-from typing import TYPE_CHECKING, Set, cast
+from typing import Set, cast
 
 from ..lazy_import import lazy_import
 
 lazy_import(globals(), """
 from breezy import (
     branch as _mod_branch,
-    osutils,
     repository,
     revision as _mod_revision,
     ui,
@@ -55,13 +54,10 @@ from breezy.bzr import (
 from breezy.i18n import gettext
 """)
 
-from .. import config, controldir, errors, lockdir
+from .. import config, controldir, errors, lockdir, osutils
 from .. import transport as _mod_transport
 from ..trace import mutter, note, warning
 from ..transport import do_catching_redirections, local
-
-if TYPE_CHECKING:
-    from .branch import BzrBranch
 
 
 class MissingFeature(errors.BzrError):
@@ -490,7 +486,6 @@ class BzrDir(controldir.ControlDir):
 
         :return: Tuple with old path name and new path name
         """
-
         with ui.ui_factory.nested_progress_bar():
             old_path = self.root_transport.abspath('.bzr')
             backup_dir = self._available_backup_name('backup.bzr')
@@ -612,15 +607,13 @@ class BzrDir(controldir.ControlDir):
                 self._file_mode = self._dir_mode & ~0o7111
 
     def _get_file_mode(self):
-        """Return Unix mode for newly created files, or None.
-        """
+        """Return Unix mode for newly created files, or None."""
         if not self._mode_check_done:
             self._find_creation_modes()
         return self._file_mode
 
     def _get_dir_mode(self):
-        """Return Unix mode for newly created directories, or None.
-        """
+        """Return Unix mode for newly created directories, or None."""
         if not self._mode_check_done:
             self._find_creation_modes()
         return self._dir_mode
@@ -1195,8 +1188,7 @@ class BzrFormat:
         return ret
 
     def as_string(self):
-        """Return the string representation of this format.
-        """
+        """Return the string representation of this format."""
         lines = [self.get_format_string()]
         lines.extend([(item[1] + b" " + item[0] + b"\n")
                       for item in sorted(self.features.items())])
@@ -1262,7 +1254,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
         try:
             # can we hand off the request to the smart server rather than using
             # vfs calls?
-            client_medium = transport.get_smart_medium()
+            transport.get_smart_medium()
         except errors.NoSmartMedium:
             return self._initialize_on_transport_vfs(transport)
         else:
@@ -1311,7 +1303,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
         if not vfs_only:
             # Try to hand off to a smart server
             try:
-                client_medium = transport.get_smart_medium()
+                transport.get_smart_medium()
             except errors.NoSmartMedium:
                 pass
             else:
@@ -1494,7 +1486,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
 
 
 class BzrDirMetaFormat1(BzrDirFormat):
-    """Bzr meta control format 1
+    """Bzr meta control format 1.
 
     This is the first format with split out working tree, branch and repository
     disk storage.
@@ -1841,7 +1833,7 @@ class ConvertMetaToColo(controldir.Converter):
 
 
 class CreateRepository(controldir.RepositoryAcquisitionPolicy):
-    """A policy of creating a new repository"""
+    """A policy of creating a new repository."""
 
     def __init__(self, controldir, stack_on=None, stack_on_pwd=None,
                  require_stacking=False):
@@ -1858,7 +1850,7 @@ class CreateRepository(controldir.RepositoryAcquisitionPolicy):
 
     def acquire_repository(self, make_working_trees=None, shared=False,
                            possible_transports=None):
-        """Implementation of RepositoryAcquisitionPolicy.acquire_repository
+        """Implementation of RepositoryAcquisitionPolicy.acquire_repository.
 
         Creates the desired repository in the controldir we already have.
         """
@@ -1885,7 +1877,7 @@ class CreateRepository(controldir.RepositoryAcquisitionPolicy):
 
 
 class UseExistingRepository(controldir.RepositoryAcquisitionPolicy):
-    """A policy of reusing an existing repository"""
+    """A policy of reusing an existing repository."""
 
     def __init__(self, repository, stack_on=None, stack_on_pwd=None,
                  require_stacking=False):
@@ -1902,7 +1894,7 @@ class UseExistingRepository(controldir.RepositoryAcquisitionPolicy):
 
     def acquire_repository(self, make_working_trees=None, shared=False,
                            possible_transports=None):
-        """Implementation of RepositoryAcquisitionPolicy.acquire_repository
+        """Implementation of RepositoryAcquisitionPolicy.acquire_repository.
 
         Returns an existing repository to use.
         """

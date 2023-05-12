@@ -409,8 +409,7 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
 
 
 class UnreferencedFileParentsFromNoOpMergeScenario(BrokenRepoScenario):
-    """
-    rev1a and rev1b with identical contents
+    """rev1a and rev1b with identical contents
     rev2 revision has parents of [rev1a, rev1b]
     There is a a-file:rev2 file version, not referenced by the inventory.
     """
@@ -902,7 +901,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
                                     b'before')
             vf_shas = self.shas_for_versions_of_file(
                 repo, scenario.all_versions_after_reconcile())
-        result = repo.reconcile(thorough=True)
+        repo.reconcile(thorough=True)
         with repo.lock_read():
             self.assertParentsMatch(scenario.corrected_parents(), repo,
                                     b'after')

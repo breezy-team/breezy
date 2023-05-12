@@ -68,7 +68,7 @@ class FakeVFATTransportDecorator(decorator.TransportDecorator):
 
     @classmethod
     def _get_url_prefix(self):
-        """Readonly transport decorators are invoked via 'vfat+'"""
+        """Readonly transport decorators are invoked via 'vfat+'."""
         return 'vfat+'
 
     def _squash_name(self, name):

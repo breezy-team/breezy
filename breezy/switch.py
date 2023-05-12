@@ -16,7 +16,7 @@
 
 # Original author: David Allouche
 
-from . import errors, lock, merge, revision
+from . import errors, merge, revision
 from .branch import Branch
 from .i18n import gettext
 from .trace import note

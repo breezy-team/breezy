@@ -26,7 +26,7 @@ import sys
 
 import breezy.branch
 from breezy import osutils
-from breezy.tests import TestCase, TestSkipped, features
+from breezy.tests import TestCase, TestSkipped
 
 # Files which are listed here will be skipped when testing for Copyright (or
 # GPL) statements.
@@ -95,7 +95,7 @@ class TestApiUsage(TestSourceHelper):
 class TestSource(TestSourceHelper):
 
     def get_breezy_dir(self):
-        """Get the path to the root of breezy"""
+        """Get the path to the root of breezy."""
         source = self.source_file_name(breezy)
         source_dir = os.path.dirname(source)
 
@@ -106,7 +106,7 @@ class TestSource(TestSourceHelper):
         return source_dir
 
     def get_source_files(self, extensions=None):
-        """Yield all source files for bzr and breezy
+        """Yield all source files for bzr and breezy.
 
         :param our_files_only: If true, exclude files from included libraries
             or plugins.
@@ -134,14 +134,14 @@ class TestSource(TestSourceHelper):
                 yield fname, f.read()
 
     def is_our_code(self, fname):
-        """True if it's a "real" part of breezy rather than external code"""
+        """True if it's a "real" part of breezy rather than external code."""
         if '/util/' in fname or '/plugins/' in fname:
             return False
         else:
             return True
 
     def is_copyright_exception(self, fname):
-        """Certain files are allowed to be different"""
+        """Certain files are allowed to be different."""
         if not self.is_our_code(fname):
             return True
         for exc in COPYRIGHT_EXCEPTIONS:
@@ -150,7 +150,7 @@ class TestSource(TestSourceHelper):
         return False
 
     def is_license_exception(self, fname):
-        """Certain files are allowed to be different"""
+        """Certain files are allowed to be different."""
         if not self.is_our_code(fname):
             return True
         for exc in LICENSE_EXCEPTIONS:
@@ -159,7 +159,7 @@ class TestSource(TestSourceHelper):
         return False
 
     def test_tmpdir_not_in_source_files(self):
-        """When scanning for source files, we don't descend test tempdirs"""
+        """When scanning for source files, we don't descend test tempdirs."""
         for filename in self.get_source_files():
             if re.search(r'test....\.tmp', filename):
                 self.fail("get_source_file() returned filename %r "
@@ -167,7 +167,7 @@ class TestSource(TestSourceHelper):
                           % filename)
 
     def test_copyright(self):
-        """Test that all .py and .pyx files have a valid copyright statement"""
+        """Test that all .py and .pyx files have a valid copyright statement."""
         incorrect = []
 
         copyright_re = re.compile('#\\s*copyright.*(?=\n)', re.I)
@@ -309,7 +309,7 @@ class TestSource(TestSourceHelper):
             self.fail('\n\n'.join(problems))
 
     def test_no_asserts(self):
-        """bzr shouldn't use the 'assert' statement."""
+        """Bzr shouldn't use the 'assert' statement."""
         # assert causes too much variation between -O and not, and tends to
         # give bad errors to the user
         badfiles = []

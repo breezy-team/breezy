@@ -14,7 +14,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 r"""FastImport Plugin
-=================
+=================.
 
 The fastimport plugin provides stream-based importing and exporting of
 data into and out of Bazaar. As well as enabling interchange between
@@ -62,7 +62,7 @@ def load_fastimport():
     """Load the fastimport module or raise an appropriate exception."""
     try:
         import fastimport
-    except ModuleNotFoundError as e:
+    except ModuleNotFoundError:
         from ...errors import DependencyNotPresent
         raise DependencyNotPresent("fastimport",
                                    "fastimport requires the fastimport python module")

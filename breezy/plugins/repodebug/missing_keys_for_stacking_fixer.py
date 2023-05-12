@@ -46,7 +46,7 @@ class cmd_fix_missing_keys_for_stacking(Command):
                 f"Not a branch or invalid URL: {branch_url}")
         b.lock_read()
         try:
-            url = b.get_stacked_on_url()
+            b.get_stacked_on_url()
         except (errors.UnstackableRepositoryFormat, errors.NotStacked,
                 errors.UnstackableBranchFormat):
             b.unlock()

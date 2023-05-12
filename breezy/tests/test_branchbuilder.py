@@ -27,7 +27,7 @@ class TestBranchBuilder(tests.TestCaseWithMemoryTransport):
 
     def test_create(self):
         """Test the constructor api."""
-        builder = BranchBuilder(self.get_transport().clone('foo'))
+        BranchBuilder(self.get_transport().clone('foo'))
         # we dont care if the branch has been built or not at this point.
 
     def test_get_branch(self):
@@ -48,7 +48,7 @@ class TestBranchBuilder(tests.TestCaseWithMemoryTransport):
         self.assertIsInstance(branch, _mod_bzrbranch.BzrBranch6)
 
     def test_build_one_commit(self):
-        """doing build_commit causes a commit to happen."""
+        """Doing build_commit causes a commit to happen."""
         builder = BranchBuilder(self.get_transport().clone('foo'))
         rev_id = builder.build_commit()
         branch = builder.get_branch()
@@ -148,7 +148,7 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
 
     def test_add_empty_dir(self):
         builder = self.build_a_rev()
-        rev_id2 = builder.build_snapshot(None,
+        builder.build_snapshot(None,
                                          [('add', ('b', b'b-id', 'directory', None))],
                                          revision_id=b'B-id')
         rev_tree = builder.get_branch().repository.revision_tree(b'B-id')
@@ -219,7 +219,7 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
 
     def test_delete_directory(self):
         builder = self.build_a_rev()
-        rev_id2 = builder.build_snapshot(None,
+        builder.build_snapshot(None,
                                          [('add', ('b', b'b-id', 'directory', None)),
                                           ('add', ('b/c', b'c-id', 'file', b'foo\n')),
                                              ('add', ('b/d', b'd-id',

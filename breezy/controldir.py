@@ -135,13 +135,12 @@ class ControlDir(ControlComponent):
 
     def can_convert_format(self):
         """Return true if this controldir is one whose format we can convert
-        from."""
+        from.
+        """
         return True
 
     def list_branches(self) -> List["Branch"]:
-        """Return a sequence of all branches local to this control directory.
-
-        """
+        """Return a sequence of all branches local to this control directory."""
         return list(self.get_branches().values())
 
     def branch_names(self) -> List[str]:
@@ -1035,13 +1034,11 @@ class ControlComponentFormatRegistry(registry.FormatRegistry[ControlComponentFor
         self._extra_formats.append(registry._ObjectGetter(format))
 
     def remove_extra(self, format):
-        """Remove an extra format.
-        """
+        """Remove an extra format."""
         self._extra_formats.remove(registry._ObjectGetter(format))
 
     def register_extra_lazy(self, module_name, member_name):
-        """Register a format lazily.
-        """
+        """Register a format lazily."""
         self._extra_formats.append(
             registry._LazyObjectGetter(module_name, member_name))
 
@@ -1167,8 +1164,7 @@ class ControlDirFormat:
         return True
 
     def is_initializable(self):
-        """Whether new control directories of this format can be initialized.
-        """
+        """Whether new control directories of this format can be initialized."""
         return self.is_supported()
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
@@ -1197,16 +1193,12 @@ class ControlDirFormat:
 
     @classmethod
     def register_prober(klass, prober: Type["Prober"]):
-        """Register a prober that can look for a control dir.
-
-        """
+        """Register a prober that can look for a control dir."""
         klass._probers.append(prober)
 
     @classmethod
     def unregister_prober(klass, prober: Type["Prober"]):
-        """Unregister a prober.
-
-        """
+        """Unregister a prober."""
         klass._probers.remove(prober)
 
     def __str__(self):
@@ -1219,8 +1211,7 @@ class ControlDirFormat:
 
     @classmethod
     def known_formats(klass):
-        """Return all the known formats.
-        """
+        """Return all the known formats."""
         result = []
         for prober_kls in klass.all_probers():
             result.extend(prober_kls.known_formats())
@@ -1308,13 +1299,12 @@ class ControlDirFormat:
         raise NotImplementedError(self.network_name)
 
     def open(self, transport: _mod_transport.Transport, _found=False) -> "ControlDir":
-        """Return an instance of this format for the dir transport points at.
-        """
+        """Return an instance of this format for the dir transport points at."""
         raise NotImplementedError(self.open)
 
     @classmethod
     def _set_default_format(klass, format):
-        """Set default format (for testing behavior of defaults only)"""
+        """Set default format (for testing behavior of defaults only)."""
         klass._default_format = format
 
     @classmethod
@@ -1323,8 +1313,7 @@ class ControlDirFormat:
         return klass._default_format
 
     def supports_transport(self, transport):
-        """Check if this format can be opened over a particular transport.
-        """
+        """Check if this format can be opened over a particular transport."""
         raise NotImplementedError(self.supports_transport)
 
     @classmethod
@@ -1416,7 +1405,7 @@ class ControlDirFormatRegistry(registry.Registry[str, ControlDirFormat]):
 
     def __init__(self):
         """Create a ControlDirFormatRegistry."""
-        self._registration_order = list()
+        self._registration_order = []
         super().__init__()
 
     def register(self, key, factory, help, native=True, deprecated=False,
@@ -1469,7 +1458,7 @@ class ControlDirFormatRegistry(registry.Registry[str, ControlDirFormat]):
         if 'default' in self:
             self.remove('default')
         self.set_default(key)
-        format = self.get('default')()
+        self.get('default')()
 
     def make_controldir(self, key):
         return self.get(key)()
@@ -1577,7 +1566,7 @@ def is_control_filename(filename):
     """Check if filename is used for control directories."""
     # TODO(jelmer): Instead, have a function that returns all control
     # filenames.
-    for key, format in format_registry.items():
+    for _key, format in format_registry.items():
         if format().is_control_filename(filename):
             return True
     else:

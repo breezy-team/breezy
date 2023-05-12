@@ -65,7 +65,7 @@ def _normalize(s):
 
 
 def _parse_source(source_text, filename='<unknown>'):
-    """Get object to lineno mappings from given source_text"""
+    """Get object to lineno mappings from given source_text."""
     import ast
     cls_to_lineno = {}
     str_to_lineno = {}
@@ -84,7 +84,7 @@ def _parse_source(source_text, filename='<unknown>'):
 
 
 class _ModuleContext:
-    """Record of the location within a source tree"""
+    """Record of the location within a source tree."""
 
     def __init__(self, path, lineno=1, _source_info=None):
         self.path = path
@@ -94,7 +94,7 @@ class _ModuleContext:
 
     @classmethod
     def from_module(cls, module):
-        """Get new context from module object and parse source for linenos"""
+        """Get new context from module object and parse source for linenos."""
         sourcepath = inspect.getsourcefile(module)
         # TODO: fix this to do the right thing rather than rely on cwd
         relpath = os.path.relpath(sourcepath)
@@ -102,7 +102,7 @@ class _ModuleContext:
                    _source_info=_parse_source("".join(inspect.findsource(module)[0]), module.__file__))
 
     def from_class(self, cls):
-        """Get new context with same details but lineno of class in source"""
+        """Get new context with same details but lineno of class in source."""
         try:
             lineno = self._cls_to_lineno[cls.__name__]
         except (AttributeError, KeyError):
@@ -112,7 +112,7 @@ class _ModuleContext:
                               (self._cls_to_lineno, self._str_to_lineno))
 
     def from_string(self, string):
-        """Get new context with same details but lineno of string in source"""
+        """Get new context with same details but lineno of string in source."""
         try:
             lineno = self._str_to_lineno[string]
         except (AttributeError, KeyError):
@@ -123,7 +123,7 @@ class _ModuleContext:
 
 
 class _PotExporter:
-    """Write message details to output stream in .pot file format"""
+    """Write message details to output stream in .pot file format."""
 
     def __init__(self, outf, include_duplicates=False):
         self.outf = outf
@@ -228,7 +228,6 @@ def _command_helps(exporter, plugin_name=None):
     This respects the Bazaar cmdtable/table convention and will
     only extract docstrings from functions mentioned in these tables.
     """
-
     # builtin commands
     for cmd_name in _mod_commands.builtin_command_names():
         command = _mod_commands.get_cmd_object(cmd_name, False)

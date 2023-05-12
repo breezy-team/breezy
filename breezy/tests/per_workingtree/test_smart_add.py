@@ -187,7 +187,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
                           ['non-existant-file'])
 
     def test_returns_and_ignores(self):
-        """Correctly returns added/ignored files"""
+        """Correctly returns added/ignored files."""
         wt = self.make_branch_and_tree('.')
         # The default ignore list includes '*.py[co]', but not CVS
         ignores._set_user_ignores(['*.py[co]'])
@@ -235,7 +235,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
                          [path for path, ie in tree.iter_entries_by_dir()])
 
     def test_add_dir_bug_251864(self):
-        """Added file turning into a dir should be detected on add dir
+        """Added file turning into a dir should be detected on add dir.
 
         Similar to bug 205636 but with automatic adding of directory contents.
         """
@@ -252,7 +252,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         self.assertFalse(list(tree.iter_changes(tree.basis_tree())))
 
     def test_add_subdir_file_bug_205636(self):
-        """Added file turning into a dir should be detected on add dir/file"""
+        """Added file turning into a dir should be detected on add dir/file."""
         tree = self.make_branch_and_tree(".")
         self.build_tree(["dir"])  # whoops, make a file called dir
         tree.smart_add(["dir"])

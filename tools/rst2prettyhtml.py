@@ -26,7 +26,7 @@ def kidified_rest(rest_file, template_name):
     xhtml_file = StringIO()
     # prevent docutils from autoclosing the StringIO
     xhtml_file.close = lambda: None
-    xhtml = publish_file(rest_file, writer_name='html', destination=xhtml_file,
+    publish_file(rest_file, writer_name='html', destination=xhtml_file,
                          settings_overrides={"doctitle_xform": 0})
     xhtml_file.seek(0)
     xml = HTMLTreeBuilder.parse(xhtml_file)

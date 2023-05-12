@@ -15,16 +15,15 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Tests of simple versioning operations"""
+"""Tests of simple versioning operations."""
 
 # TODO: test trying to commit within a directory that is not yet added
 
 
 import os
 
-from breezy.tests import TestCaseInTempDir, TestCaseWithTransport
+from breezy.tests import TestCaseWithTransport
 
-from ...branch import Branch
 from ...osutils import pathjoin
 from ...trace import mutter
 from ...workingtree import WorkingTree
@@ -34,17 +33,16 @@ class TestMkdir(TestCaseWithTransport):
 
     def test_mkdir_fails_cleanly(self):
         """'mkdir' fails cleanly when no working tree is available.
-        https://bugs.launchpad.net/bzr/+bug/138600
+        https://bugs.launchpad.net/bzr/+bug/138600.
         """
         # Since there is a safety working tree above us, we create a bare repo
         # here locally.
-        shared_repo = self.make_repository('.')
+        self.make_repository('.')
         self.run_bzr(['mkdir', 'abc'], retcode=3)
         self.assertPathDoesNotExist('abc')
 
     def test_mkdir(self):
-        """Basic 'brz mkdir' operation"""
-
+        """Basic 'brz mkdir' operation."""
         self.make_branch_and_tree('.')
         self.run_bzr(['mkdir', 'foo'])
         self.assertTrue(os.path.isdir('foo'))
@@ -62,8 +60,7 @@ class TestMkdir(TestCaseWithTransport):
         self.assertFalse(delta.modified)
 
     def test_mkdir_in_subdir(self):
-        """'brz mkdir' operation in subdirectory"""
-
+        """'brz mkdir' operation in subdirectory."""
         self.make_branch_and_tree('.')
         self.run_bzr(['mkdir', 'dir'])
         self.assertTrue(os.path.isdir('dir'))
@@ -84,8 +81,7 @@ class TestMkdir(TestCaseWithTransport):
         self.assertFalse(delta.modified)
 
     def test_mkdir_w_nested_trees(self):
-        """'brz mkdir' with nested trees"""
-
+        """'brz mkdir' with nested trees."""
         self.make_branch_and_tree('.')
         self.make_branch_and_tree('a')
         self.make_branch_and_tree('a/b')
@@ -115,8 +111,7 @@ class TestMkdir(TestCaseWithTransport):
         self.assertFalse(delta.modified)
 
     def test_mkdir_quiet(self):
-        """'brz mkdir --quiet' should not print a status message"""
-
+        """'brz mkdir --quiet' should not print a status message."""
         self.make_branch_and_tree('.')
         out, err = self.run_bzr(['mkdir', '--quiet', 'foo'])
         self.assertEqual('', err)

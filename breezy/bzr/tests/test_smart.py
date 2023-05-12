@@ -395,7 +395,7 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithMemoryTransport):
                 (b'ok', b'', rich_root, subtrees))
 
     def test_shared_repository(self):
-        """for a shared repository, we get 'ok', 'relpath-to-repo'."""
+        """For a shared repository, we get 'ok', 'relpath-to-repo'."""
         backing = self.get_transport()
         request = self._request_class(backing)
         result = self._make_repository_and_result(shared=True)
@@ -1132,8 +1132,7 @@ class TestSetLastRevisionVerbMixin:
         self.assertRequestSucceeds(b'null:', 0)
 
     def test_NoSuchRevision(self):
-        """If the revision_id is not present, the verb returns NoSuchRevision.
-        """
+        """If the revision_id is not present, the verb returns NoSuchRevision."""
         revision_id = b'non-existent revision'
         self.assertEqual(
             smart_req.FailedSmartServerResponse(
@@ -2026,7 +2025,7 @@ class TestSmartServerRequestHasSignatureForRevisionId(
 class TestSmartServerRepositoryGatherStats(tests.TestCaseWithMemoryTransport):
 
     def test_empty_revid(self):
-        """With an empty revid, we get only size an number and revisions"""
+        """With an empty revid, we get only size an number and revisions."""
         backing = self.get_transport()
         request = smart_repo.SmartServerRepositoryGatherStats(backing)
         repository = self.make_repository('.')
@@ -2367,7 +2366,7 @@ class TestSmartServerRepositoryGetSerializerFormat(
 
     def test_get_serializer_format(self):
         backing = self.get_transport()
-        repo = self.make_repository('.', format='2a')
+        self.make_repository('.', format='2a')
         request_class = smart_repo.SmartServerRepositoryGetSerializerFormat
         request = request_class(backing)
         self.assertEqual(
@@ -2491,7 +2490,7 @@ class TestSmartServerPackRepositoryAutopack(tests.TestCaseWithTransport):
 
     def test_autopack_on_nonpack_format(self):
         """A request to autopack a non-pack repo is a no-op."""
-        repo = self.make_repository('.', format='knit')
+        self.make_repository('.', format='knit')
         backing = self.get_transport()
         request = smart_packrepo.SmartServerPackRepositoryAutopack(
             backing)
@@ -2521,7 +2520,7 @@ class TestHandlers(tests.TestCase):
         # an AttributeError.
         for key in smart_req.request_handlers.keys():
             try:
-                item = smart_req.request_handlers.get(key)
+                smart_req.request_handlers.get(key)
             except AttributeError as e:
                 raise AttributeError(f'failed to get {key}: {e}')
 
@@ -2784,7 +2783,7 @@ class TestSmartServerRepositoryGetStreamForMissingKeys(GetStreamTestBase):
             backing)
         repo, r1, r2 = self.make_two_commit_repo()
         request.execute(b'', b'yada yada yada')
-        expected = smart_req.FailedSmartServerResponse(
+        smart_req.FailedSmartServerResponse(
             (b'UnknownFormat', b'repository', b'yada yada yada'))
 
 

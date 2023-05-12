@@ -14,15 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Export trees to tarballs, zipfiles, etc.
-"""
+"""Export trees to tarballs, zipfiles, etc."""
 
-import os
-import time
-import warnings
 from typing import Iterator, cast
 
-from .. import errors, pyutils, registry, trace
+from .. import errors, registry
 
 
 class ArchiveFormatInfo:
@@ -43,8 +39,7 @@ class ArchiveFormatRegistry(registry.Registry):
         return self._extension_map.keys()
 
     def register(self, key, factory, extensions, help=None):
-        """Register an archive format.
-        """
+        """Register an archive format."""
         registry.Registry.register(self, key, factory, help,
                                    ArchiveFormatInfo(extensions))
         self._register_extensions(key, extensions)

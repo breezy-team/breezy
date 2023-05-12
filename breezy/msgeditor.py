@@ -34,7 +34,7 @@ class BadCommitMessageEncoding(BzrError):
 
 
 def _get_editor():
-    """Return sequence of possible editor binaries for the current platform"""
+    """Return sequence of possible editor binaries for the current platform."""
     try:
         yield os.environ["BRZ_EDITOR"], '$BRZ_EDITOR'
     except KeyError:
@@ -107,7 +107,6 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
 
     :return:    commit message or None.
     """
-
     if start_message is not None:
         start_message = start_message.encode(osutils.get_user_encoding())
     infotext = infotext.encode(osutils.get_user_encoding(), 'replace')
@@ -321,7 +320,7 @@ hooks = MessageEditorHooks()
 def set_commit_message(commit, start_message=None):
     """Sets the commit message.
     :param commit: Commit object for the active commit.
-    :return: The commit message or None to continue using the message editor
+    :return: The commit message or None to continue using the message editor.
     """
     start_message = None
     for hook in hooks['set_commit_message']:

@@ -286,7 +286,7 @@ class TestLockableFiles_TransportLock(TestCaseInTempDir,
 
 class TestLockableFiles_LockDir(TestCaseInTempDir,
                                 _TestLockableFiles_mixin):
-    """LockableFile tests run with LockDir underneath"""
+    """LockableFile tests run with LockDir underneath."""
 
     def setUp(self):
         super().setUp()

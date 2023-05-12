@@ -16,8 +16,7 @@
 #
 # Author: Aaron Bentley <aaron.bentley@utoronto.ca>
 
-"""Black-box tests for brz merge.
-"""
+"""Black-box tests for brz merge."""
 
 import doctest
 import os
@@ -181,7 +180,7 @@ class TestMerge(tests.TestCaseWithTransport):
                              tree.get_file_text('fname'))
 
     def test_merge_with_missing_file(self):
-        """Merge handles missing file conflicts"""
+        """Merge handles missing file conflicts."""
         self.build_tree_contents([
             ('a/',),
             ('a/sub/',),
@@ -328,7 +327,7 @@ class TestMerge(tests.TestCaseWithTransport):
         self.assertEqual('Nothing to do.\n', err)
 
     def test_merge_uncommitted(self):
-        """Check that merge --uncommitted behaves properly"""
+        """Check that merge --uncommitted behaves properly."""
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/file_1', 'a/file_2'])
         tree_a.add(['file_1', 'file_2'])
@@ -359,7 +358,8 @@ class TestMerge(tests.TestCaseWithTransport):
 
     def test_merge_nonexistent_file(self):
         """It should not be possible to merge changes from a file which
-        does not exist."""
+        does not exist.
+        """
         tree_a = self.make_branch_and_tree('tree_a')
         self.build_tree_contents([('tree_a/file', b'bar\n')])
         tree_a.add(['file'])
@@ -541,7 +541,7 @@ class TestMerge(tests.TestCaseWithTransport):
         tree_b.merge_from_branch(tree_a.branch)
         tree_a.commit('', rev_id=b'rev3a')
         tree_b.commit('', rev_id=b'rev3b')
-        graph = tree_a.branch.repository.get_graph(tree_b.branch.repository)
+        tree_a.branch.repository.get_graph(tree_b.branch.repository)
         out, err = self.run_bzr(['merge', '-d', 'a', 'b'])
         self.assertContainsRe(err, 'Warning: criss-cross merge encountered.')
 
@@ -695,8 +695,8 @@ class TestMerge(tests.TestCaseWithTransport):
 
 class TestMergeRevisionRange(tests.TestCaseWithTransport):
 
-    scenarios = (('whole-tree', dict(context='.')),
-                 ('file-only', dict(context='a')))
+    scenarios = (('whole-tree', {'context': '.'}),
+                 ('file-only', {'context': 'a'}))
 
     def setUp(self):
         super().setUp()
@@ -719,7 +719,7 @@ class TestMergeScript(script.TestCaseWithTransportAndScript):
         self.build_tree(['source/a'])
         source.add('a')
         source.commit('Added a', rev_id=b'rev1')
-        target = self.make_branch_and_tree('target')
+        self.make_branch_and_tree('target')
         self.run_script("""\
 $ brz merge -d target source
 2>brz: ERROR: Merging into empty branches not currently supported, https://bugs.launchpad.net/bzr/+bug/308562

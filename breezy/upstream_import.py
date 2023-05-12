@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Import upstream source into a branch"""
+"""Import upstream source into a branch."""
 
 import os
 import re
@@ -164,7 +164,7 @@ def top_path(path):
 
 
 def common_directory(names):
-    """Determine a single directory prefix from a list of names"""
+    """Determine a single directory prefix from a list of names."""
     possible_prefix = None
     for name in names:
         name_top = top_path(name)
@@ -186,7 +186,7 @@ def do_directory(tt, trans_id, tree, relative_path, path):
 
 
 def add_implied_parents(implied_parents, path):
-    """Update the set of implied parents from a path"""
+    """Update the set of implied parents from a path."""
     parent = os.path.dirname(path)
     if parent in implied_parents:
         return
@@ -301,7 +301,7 @@ def import_archive_to_transform(tree, archive_file, tt):
 
 
 def do_import(source, tree_directory=None):
-    """Implementation of import command.  Intended for UI only"""
+    """Implementation of import command.  Intended for UI only."""
     if tree_directory is not None:
         try:
             tree = WorkingTree.open(tree_directory)

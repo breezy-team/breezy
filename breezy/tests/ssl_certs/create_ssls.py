@@ -49,7 +49,6 @@ _dir = os.path.dirname
 our_bzr = _dir(_dir(_dir(_dir(os.path.realpath(__file__)))))
 sys.path.insert(0, our_bzr)
 
-from breezy import osutils
 from breezy.tests import ssl_certs
 
 
@@ -59,14 +58,14 @@ def error(s):
 
 
 def needs(request, *paths):
-    """Errors out if the specified path does not exists"""
+    """Errors out if the specified path does not exists."""
     missing = [p for p in paths if not os.path.exists(p)]
     if missing:
         error(f"{request} needs: {','.join(missing)}")
 
 
 def rm_f(path):
-    """rm -f path"""
+    """Rm -f path."""
     try:
         os.unlink(path)
     except:
@@ -87,29 +86,29 @@ def _openssl(args, input=None):
     return proc.returncode, stdout, stderr
 
 
-ssl_params = dict(
+ssl_params = {
     # Passwords
-    server_pass='I will protect the communications',
-    server_challenge_pass='Challenge for the CA',
-    ca_pass='I am the authority for the whole... localhost',
+    "server_pass": 'I will protect the communications',
+    "server_challenge_pass": 'Challenge for the CA',
+    "ca_pass": 'I am the authority for the whole... localhost',
     # CA identity
-    ca_country_code='BZ',
-    ca_state='Internet',
-    ca_locality='Bazaar',
-    ca_organization='Distributed',
-    ca_section='VCS',
-    ca_name='Master of certificates',
-    ca_email='cert@no.spam',
+    "ca_country_code": 'BZ',
+    "ca_state": 'Internet',
+    "ca_locality": 'Bazaar',
+    "ca_organization": 'Distributed',
+    "ca_section": 'VCS',
+    "ca_name": 'Master of certificates',
+    "ca_email": 'cert@no.spam',
     # Server identity
-    server_country_code='LH',
-    server_state='Internet',
-    server_locality='LocalHost',
-    server_organization='Testing Ltd',
-    server_section='https server',
-    server_name='127.0.0.1',  # Always accessed under that name
-    server_email='https_server@localhost',
-    server_optional_company_name='',
-)
+    "server_country_code": 'LH',
+    "server_state": 'Internet',
+    "server_locality": 'LocalHost',
+    "server_organization": 'Testing Ltd',
+    "server_section": 'https server',
+    "server_name": '127.0.0.1',  # Always accessed under that name
+    "server_email": 'https_server@localhost',
+    "server_optional_company_name": '',
+}
 
 
 def build_ca_key():
@@ -162,7 +161,7 @@ def build_server_key():
 
 
 def build_server_signing_request():
-    """Create a CSR (certificate signing request) to get signed by the CA"""
+    """Create a CSR (certificate signing request) to get signed by the CA."""
     key_path = ssl_certs.build_path('server_with_pass.key')
     needs('Building server.csr', key_path)
     server_csr_path = ssl_certs.build_path('server.csr')
@@ -183,7 +182,7 @@ def build_server_signing_request():
 
 
 def sign_server_certificate():
-    """CA signs server csr"""
+    """CA signs server csr."""
     server_csr_path = ssl_certs.build_path('server.csr')
     ca_cert_path = ssl_certs.build_path('ca.crt')
     ca_key_path = ssl_certs.build_path('ca.key')
@@ -237,10 +236,10 @@ opt_parser.add_option(
     help="generate a new SIGNING (several -s options can be specified)")
 
 
-key_builders = dict(ca=build_ca_key, server=build_server_key,)
-certificate_builders = dict(ca=build_ca_certificate,)
-signing_request_builders = dict(server=build_server_signing_request,)
-signing_builders = dict(server=sign_server_certificate,)
+key_builders = {"ca": build_ca_key, "server": build_server_key}
+certificate_builders = {"ca": build_ca_certificate}
+signing_request_builders = {"server": build_server_signing_request}
+signing_builders = {"server": sign_server_certificate}
 
 
 if __name__ == '__main__':

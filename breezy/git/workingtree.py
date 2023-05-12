@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""An adapter between a Git index and a Bazaar Working Tree"""
+"""An adapter between a Git index and a Bazaar Working Tree."""
 
 import itertools
 import os
@@ -398,8 +398,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         def recurse_directory_to_add_files(directory):
             # Recurse directory and add all files
             # so we can check if they have changed.
-            for parent_path, file_infos in self.walkdirs(directory):
-                for relpath, basename, kind, lstat, kind in file_infos:
+            for _parent_path, file_infos in self.walkdirs(directory):
+                for relpath, _basename, _kind, _lstat, _kind in file_infos:
                     # Is it versioned or ignored?
                     if self.is_versioned(relpath):
                         # Add nested content for deletion.
@@ -625,8 +625,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 yield os.fsdecode(yp)
 
     def extras(self):
-        """Yield all unversioned files in this WorkingTree.
-        """
+        """Yield all unversioned files in this WorkingTree."""
         with self.lock_read():
             index_paths = {
                 decode_git_path(p) for p, sha, mode in self.iter_git_objects()}
@@ -679,7 +678,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
 
         If the file is ignored, returns the pattern which caused it to
         be ignored, otherwise None.  So this can simply be used as a
-        boolean if desired."""
+        boolean if desired.
+        """
         if getattr(self, '_global_ignoreglobster', None) is None:
             from breezy import ignores
             ignore_globs = set()
@@ -834,7 +834,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     value = None
                 kind = self.kind(path)
                 parent, name = posixpath.split(path)
-                for dir_path, dir_ie in self._add_missing_parent_ids(
+                for _dir_path, _dir_ie in self._add_missing_parent_ids(
                         parent, dir_ids):
                     pass
                 if kind == 'tree-reference' and recurse_nested:
@@ -884,7 +884,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             return paths
 
     def iter_child_entries(self, path):
-        encoded_path = encode_git_path(path)
+        encode_git_path(path)
         with self.lock_read():
             parent_id = self.path2id(path)
             found_any = False
@@ -928,7 +928,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 self._set_conflicted(path, path in by_path)
 
     def _set_conflicted(self, path, conflicted):
-        value = self.index[path]
+        self.index[path]
         self._index_dirty = True
         if conflicted:
             self.index[path] = self.index[path]._replace(flags=self.index[path].flags | FLAG_STAGEMASK)
@@ -1037,7 +1037,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 # versioned present directory
                 # merge the inventory and disk data together
                 dirblock = []
-                for relpath, subiterator in itertools.groupby(sorted(
+                for _relpath, subiterator in itertools.groupby(sorted(
                         current_inv[1] + cur_disk_dir_content,
                         key=operator.itemgetter(0)), operator.itemgetter(1)):
                     path_elements = list(subiterator)
@@ -1110,7 +1110,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
 
     def annotate_iter(self, path,
                       default_revision=_mod_revision.CURRENT_REVISION):
-        """See Tree.annotate_iter
+        """See Tree.annotate_iter.
 
         This implementation will use the basis tree implementation if possible.
         Lines not in the basis are attributed to CURRENT_REVISION

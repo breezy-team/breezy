@@ -29,12 +29,12 @@ from ...osutils import getcwd
 class TestParent(TestCaseWithTransport):
 
     def test_no_default_parent(self):
-        """Branches should have no parent by default"""
+        """Branches should have no parent by default."""
         b = self.make_branch('.')
         self.assertEqual(None, b.get_parent())
 
     def test_set_get_parent(self):
-        """Set, re-get and reset the parent"""
+        """Set, re-get and reset the parent."""
         b = self.make_branch('subdir')
         url = 'http://example.com/bzr/bzr.dev'
         b.set_parent(url)

@@ -326,3 +326,9 @@ reformat:
 
 clippy:
 	cargo clippy --fix --all --allow-no-vcs
+
+ruff-fix:
+	ruff check --fix .
+
+fix: clippy ruff-fix
+	$(MAKE) reformat

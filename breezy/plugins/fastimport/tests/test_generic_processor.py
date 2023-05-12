@@ -31,7 +31,6 @@ def load_tests(loader, standard_tests, pattern):
         ('pack-0.92', {'branch_format': 'pack-0.92'}),
         ('1.9-rich-root', {'branch_format': '1.9-rich-root'}),
     ]
-    from ....bzr.groupcompress_repo import RepositoryFormat2a
     scenarios.append(('2a', {'branch_format': '2a'}))
     suite = loader.suiteClass()
     result = tests.multiply_tests(standard_tests, scenarios, suite)
@@ -89,7 +88,7 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
     def _check_changes(self, changes, expected_added=[],
                        expected_removed=[], expected_modified=[],
                        expected_renamed=[], expected_kind_changed=[]):
-        """Check the changes in a TreeDelta
+        """Check the changes in a TreeDelta.
 
         This method checks that the TreeDelta contains the expected
         modifications between the two trees that were used to generate

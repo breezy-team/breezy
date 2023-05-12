@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for lock-breaking user interface"""
+"""Tests for lock-breaking user interface."""
 
 from breezy import branch, config, controldir, errors, osutils, tests
 
@@ -66,7 +66,7 @@ class TestBreakLock(tests.TestCaseWithTransport):
         self.assertEqual('', err)
 
     def test_break_lock_no_interaction(self):
-        """With --force, the user isn't asked for confirmation"""
+        """With --force, the user isn't asked for confirmation."""
         self.master_branch.lock_write()
         run_script(self, """
         $ brz break-lock --force master-repo/master-branch

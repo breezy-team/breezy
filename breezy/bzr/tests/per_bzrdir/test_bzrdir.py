@@ -32,42 +32,42 @@ from ...remote import RemoteBzrDirFormat
 
 
 class AnonymousTestBranchFormat(breezy.branch.BranchFormat):
-    """An anonymous branch format (does not have a format string)"""
+    """An anonymous branch format (does not have a format string)."""
 
     def get_format_string(self):
         raise NotImplementedError(self.get_format_string)
 
 
 class IdentifiableTestBranchFormat(breezy.branch.BranchFormat):
-    """An identifable branch format (has a format string)"""
+    """An identifable branch format (has a format string)."""
 
     def get_format_string(self):
         return b"I have an identity"
 
 
 class AnonymousTestRepositoryFormat(repository.RepositoryFormat):
-    """An anonymous branch format (does not have a format string)"""
+    """An anonymous branch format (does not have a format string)."""
 
     def get_format_string(self):
         raise NotImplementedError(self.get_format_string)
 
 
 class IdentifiableTestRepositoryFormat(repository.RepositoryFormat):
-    """An identifable branch format (has a format string)"""
+    """An identifable branch format (has a format string)."""
 
     def get_format_string(self):
         return b"I have an identity"
 
 
 class AnonymousTestWorkingTreeFormat(workingtree.WorkingTreeFormat):
-    """An anonymous branch format (does not have a format string)"""
+    """An anonymous branch format (does not have a format string)."""
 
     def get_format_string(self):
         raise NotImplementedError(self.get_format_string)
 
 
 class IdentifiableTestWorkingTreeFormat(workingtree.WorkingTreeFormat):
-    """An identifable branch format (has a format string)"""
+    """An identifable branch format (has a format string)."""
 
     def get_format_string(self):
         return b"I have an identity"
@@ -100,7 +100,6 @@ class TestBzrDir(TestCaseWithBzrDir):
             rather than representation checking of repositories for
             equivalence.
         """
-        files = []
         directories = ['.']
         while directories:
             dir = directories.pop()
@@ -121,7 +120,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                                          f"text for file {path!r} differs:\n")
 
     def assertRepositoryHasSameItems(self, left_repo, right_repo):
-        """require left_repo and right_repo to contain the same data."""
+        """Require left_repo and right_repo to contain the same data."""
         # XXX: TODO: Doesn't work yet, because we need to be able to compare
         # local repositories to remote ones...  but this is an as-yet unsolved
         # aspect of format management and the Remote protocols...

@@ -175,7 +175,6 @@ class TestMergeDirective:
         self.assertEqualDiff(self.OUTPUT2, b''.join(md.to_lines()))
 
     def test_deserialize_junk(self):
-        time = 501
         self.assertRaises(errors.NotAMergeDirective,
                           merge_directive.MergeDirective.from_lines, [b'lala'])
 
@@ -228,7 +227,7 @@ class TestMergeDirective:
 
 
 class TestMergeDirective1(tests.TestCase, TestMergeDirective):
-    """Test merge directive format 1"""
+    """Test merge directive format 1."""
 
     INPUT1 = INPUT1
 
@@ -266,7 +265,7 @@ class TestMergeDirective1(tests.TestCase, TestMergeDirective):
 
 
 class TestMergeDirective2(tests.TestCase, TestMergeDirective):
-    """Test merge directive format 2"""
+    """Test merge directive format 2."""
 
     INPUT1 = INPUT1_2
 
@@ -371,7 +370,7 @@ class TestMergeDirectiveBranch:
     def test_empty_target(self):
         tree_a, tree_b, branch_c = self.make_trees()
         tree_d = self.make_branch_and_tree('tree_d')
-        md2 = self.from_objects(tree_a.branch.repository, b'rev2a', 500, 120,
+        self.from_objects(tree_a.branch.repository, b'rev2a', 500, 120,
                                 tree_d.branch.base, patch_type='diff',
                                 public_branch=tree_a.branch.base)
 
@@ -415,7 +414,7 @@ class TestMergeDirectiveBranch:
         self.assertEqual(md1.source_branch, branch_c.base)
         # Once we update the public branch, we can generate a diff.
         branch_c.pull(tree_a.branch)
-        md3 = self.from_objects(tree_a.branch.repository, b'rev2a', 500, 144,
+        self.from_objects(tree_a.branch.repository, b'rev2a', 500, 144,
                                 tree_b.branch.base, patch_type=None, public_branch=branch_c.base)
 
     def test_use_public_submit_branch(self):
@@ -576,7 +575,7 @@ class TestMergeDirectiveBranch:
         tree_a.commit('rev3a', rev_id=b'rev3a')
         md = self.from_objects(tree_a.branch.repository, b'rev3a', 500, 36,
                                branch_c.base, base_revision_id=b'rev2a')
-        revision = md.install_revisions(tree_b.branch.repository)
+        md.install_revisions(tree_b.branch.repository)
 
     def test_handle_target_not_a_branch(self):
         tree_a, tree_b, branch_c = self.make_trees()
@@ -592,7 +591,7 @@ class TestMergeDirectiveBranch:
 
 class TestMergeDirective1Branch(tests.TestCaseWithTransport,
                                 TestMergeDirectiveBranch):
-    """Test merge directive format 1 with a branch"""
+    """Test merge directive format 1 with a branch."""
 
     EMAIL1 = EMAIL1
 
@@ -625,7 +624,7 @@ class TestMergeDirective1Branch(tests.TestCaseWithTransport,
 
 class TestMergeDirective2Branch(tests.TestCaseWithTransport,
                                 TestMergeDirectiveBranch):
-    """Test merge directive format 2 with a branch"""
+    """Test merge directive format 2 with a branch."""
 
     EMAIL1 = EMAIL1_2
 

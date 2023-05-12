@@ -318,7 +318,7 @@ class LocalGitRepository(GitRepository):
 
     def all_revision_ids(self):
         ret = set()
-        for git_sha, revid in self._iter_revision_ids():
+        for _git_sha, revid in self._iter_revision_ids():
             ret.add(revid)
         return list(ret)
 
@@ -361,8 +361,7 @@ class LocalGitRepository(GitRepository):
         return parent_map
 
     def get_known_graph_ancestry(self, revision_ids):
-        """Return the known graph for a set of revision ids and their ancestors.
-        """
+        """Return the known graph for a set of revision ids and their ancestors."""
         pending = set(revision_ids)
         parent_map = {}
         while pending:

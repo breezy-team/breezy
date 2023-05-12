@@ -33,8 +33,7 @@ _VIEWS_FORMAT1_MARKER = b"Bazaar views format 1\n"
 
 
 class NoSuchView(errors.BzrError):
-    """A view does not exist.
-    """
+    """A view does not exist."""
 
     _fmt = "No such view: %(view_name)s."
 
@@ -43,8 +42,7 @@ class NoSuchView(errors.BzrError):
 
 
 class ViewsNotSupported(errors.BzrError):
-    """Views are not supported by a tree format.
-    """
+    """Views are not supported by a tree format."""
 
     _fmt = ("Views are not supported by %(tree)s;"
             " use 'brz upgrade' to change your tree to a later format.")

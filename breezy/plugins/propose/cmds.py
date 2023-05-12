@@ -312,7 +312,7 @@ class cmd_my_merge_proposals(Command):
                                 [f'\t{l}\n'
                                  for l in description.splitlines()])
                         self.outf.write('\n')
-            except _mod_forge.ForgeLoginRequired as e:
+            except _mod_forge.ForgeLoginRequired:
                 warning('Skipping %s, login required.', instance)
 
 

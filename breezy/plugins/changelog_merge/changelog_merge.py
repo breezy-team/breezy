@@ -81,8 +81,8 @@ class ChangeLogMerger(merge.ConfigurableFileMerger):
     def merge_text(self, params):
         """Merge changelog changes.
 
-         * new entries from other will float to the top
-         * edits to older entries are preserved
+        * new entries from other will float to the top
+        * edits to older entries are preserved
         """
         # Transform files into lists of changelog entries
         this_entries = changelog_entries(params.this_lines)

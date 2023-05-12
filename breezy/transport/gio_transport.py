@@ -102,7 +102,6 @@ class GioTransport(ConnectedTransport):
 
     def __init__(self, base, _from_transport=None):
         """Initialize the GIO transport and make sure the url is correct."""
-
         if not base.startswith('gio+'):
             raise ValueError(base)
 
@@ -200,9 +199,8 @@ class GioTransport(ConnectedTransport):
 
         try:
             connection = gio.File(self.url)
-            mount = None
             try:
-                mount = connection.find_enclosing_mount()
+                connection.find_enclosing_mount()
             except gio.Error as e:
                 if (e.code == gio.ERROR_NOT_MOUNTED):
                     self.loop = glib.MainLoop()
@@ -213,7 +211,7 @@ class GioTransport(ConnectedTransport):
                     if password:
                         op.set_password(password)
                     op.connect('ask-password', self._auth_cb)
-                    m = connection.mount_enclosing_volume(op,
+                    connection.mount_enclosing_volume(op,
                                                           self._mount_done_cb)
                     self.loop.run()
         except gio.Error as e:
@@ -228,7 +226,7 @@ class GioTransport(ConnectedTransport):
 
     def _reconnect(self):
         # FIXME: This doesn't seem to be used -- vila 20100601
-        """Create a new connection with the previously used credentials"""
+        """Create a new connection with the previously used credentials."""
         credentials = self._get_credentials()
         connection, credentials = self._create_connection(credentials)
         self._set_connection(connection, credentials)
@@ -348,7 +346,7 @@ class GioTransport(ConnectedTransport):
         return 64 * 1024
 
     def rmdir(self, relpath):
-        """Delete the directory at rel_path"""
+        """Delete the directory at rel_path."""
         try:
             if 'gio' in debug.debug_flags:
                 mutter(f"GIO rmdir {relpath}")
@@ -427,7 +425,7 @@ class GioTransport(ConnectedTransport):
                     self._translate_gio_error(e, relpath)
 
     def rename(self, rel_from, rel_to):
-        """Rename without special overwriting"""
+        """Rename without special overwriting."""
         try:
             if 'gio' in debug.debug_flags:
                 mutter("GIO move (rename): %s => %s", rel_from, rel_to)
@@ -438,7 +436,7 @@ class GioTransport(ConnectedTransport):
             self._translate_gio_error(e, rel_from)
 
     def move(self, rel_from, rel_to):
-        """Move the item at rel_from to the location at rel_to"""
+        """Move the item at rel_from to the location at rel_to."""
         try:
             if 'gio' in debug.debug_flags:
                 mutter("GIO move: %s => %s", rel_from, rel_to)
@@ -449,7 +447,7 @@ class GioTransport(ConnectedTransport):
             self._translate_gio_error(e, relfrom)
 
     def delete(self, relpath):
-        """Delete the item at relpath"""
+        """Delete the item at relpath."""
         try:
             if 'gio' in debug.debug_flags:
                 mutter("GIO delete: %s", relpath)
@@ -488,7 +486,8 @@ class GioTransport(ConnectedTransport):
     def iter_files_recursive(self):
         """See Transport.iter_files_recursive.
 
-        This is cargo-culted from the SFTP transport"""
+        This is cargo-culted from the SFTP transport
+        """
         if 'gio' in debug.debug_flags:
             mutter("GIO iter_files_recursive")
         queue = list(self.list_dir("."))
@@ -513,7 +512,7 @@ class GioTransport(ConnectedTransport):
 
     def lock_read(self, relpath):
         """Lock the given file for shared (read) access.
-        :return: A lock object, which should be passed to Transport.unlock()
+        :return: A lock object, which should be passed to Transport.unlock().
         """
         if 'gio' in debug.debug_flags:
             mutter("GIO lock_read", relpath)
@@ -532,7 +531,7 @@ class GioTransport(ConnectedTransport):
 
     def lock_write(self, relpath):
         """Lock the given file for exclusive (write) access.
-        WARNING: many transports do not support this, so trying avoid using it
+        WARNING: many transports do not support this, so trying avoid using it.
 
         :return: A lock object, whichshould be passed to Transport.unlock()
         """
@@ -569,5 +568,4 @@ class GioTransport(ConnectedTransport):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from breezy.tests import test_server
     return [(GioTransport, GioLocalURLServer)]

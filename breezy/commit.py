@@ -56,8 +56,7 @@ from . import debug, errors, trace, ui
 from .branch import Branch
 from .errors import BzrError, ConflictsInTree, StrictCommitFailed
 from .i18n import gettext
-from .osutils import (get_user_encoding, is_inside_any, minimum_path_selection,
-                      supports_symlinks)
+from .osutils import get_user_encoding, is_inside_any, minimum_path_selection
 from .trace import is_quiet, mutter, note
 from .urlutils import unescape_for_display
 
@@ -592,7 +591,7 @@ class Commit:
             hooks = post_commit.split(' ')
             # this would be nicer with twisted.python.reflect.namedAny
             for hook in hooks:
-                result = eval(hook + '(branch, rev_id)',
+                eval(hook + '(branch, rev_id)',
                               {'branch': self.branch,
                                'breezy': breezy,
                                'rev_id': self.rev_id})
@@ -643,8 +642,7 @@ class Commit:
                      tree_delta, future_tree)
 
     def _update_builder_with_changes(self):
-        """Update the commit builder with the data about what has changed.
-        """
+        """Update the commit builder with the data about what has changed."""
         specific_files = self.specific_files
         mutter("Selecting files for commit with filter %r", specific_files)
 
@@ -721,7 +719,7 @@ class Commit:
         # selected_files).
         if self.strict:
             # raise an exception as soon as we find a single unknown.
-            for unknown in self.work_tree.unknowns():
+            for _unknown in self.work_tree.unknowns():
                 raise StrictCommitFailed()
 
     def _commit_nested_tree(self, path):

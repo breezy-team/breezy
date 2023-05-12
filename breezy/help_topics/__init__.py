@@ -116,8 +116,7 @@ topic_registry = HelpTopicRegistry()
 # ----------------------------------------------------
 
 def _help_on_topics(dummy):
-    """Write out the help for topics to outfile"""
-
+    """Write out the help for topics to outfile."""
     topics = topic_registry.keys()
     lmax = max(len(topic) for topic in topics)
 
@@ -180,8 +179,8 @@ The keywords used as revision selection methods are the following:
         "\nA detailed description of each keyword is given below.\n")
 
     # The help text is indented 4 spaces - this re cleans that up below
-    indent_re = re.compile(r'^    ', re.MULTILINE)
-    for prefix, i in breezy.revisionspec.revspec_registry.iteritems():
+    re.compile(r'^    ', re.MULTILINE)
+    for _prefix, i in breezy.revisionspec.revspec_registry.iteritems():
         doc = i.help_txt
         if doc == breezy.revisionspec.RevisionSpec.help_txt:
             summary = "N/A"

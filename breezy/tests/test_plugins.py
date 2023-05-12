@@ -15,7 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for plugins"""
+"""Tests for plugins."""
 
 import importlib
 import logging
@@ -497,7 +497,7 @@ class TestHelpIndex(tests.TestCase):
     """Tests for the PluginsHelpIndex class."""
 
     def test_default_constructable(self):
-        index = plugin.PluginsHelpIndex()
+        plugin.PluginsHelpIndex()
 
     def test_get_topics_None(self):
         """Searching for None returns an empty list."""
@@ -807,7 +807,7 @@ class TestLoadPluginAt(BaseTestPlugins):
     def test_import(self):
         self.overrideEnv('BRZ_PLUGINS_AT', 'test_foo@non-standard-dir')
         self.update_module_paths(['standard'])
-        import breezy.testingplugins.test_foo
+        import breezy.testingplugins.test_foo  # noqa: F401
         self.assertTestFooLoadedFrom('non-standard-dir')
 
     def test_loading(self):

@@ -20,7 +20,6 @@ from breezy.tests.per_controldir import TestCaseWithControlDir
 
 from ...controldir import NoColocatedBranchSupport
 from ...errors import LossyPushToSameVCS, NoSuchRevision, TagsNotSupported
-from ...revision import NULL_REVISION
 from .. import TestNotApplicable
 
 
@@ -148,7 +147,7 @@ class TestPush(TestCaseWithControlDir):
         dir.push_branch(tree.branch)
         self.build_tree(['tree/b'])
         tree.add(['b'])
-        rev_2 = tree.commit('two')
+        tree.commit('two')
         result = dir.push_branch(tree.branch)
         self.assertEqual(tree.last_revision(),
                          result.branch_push_result.new_revid)

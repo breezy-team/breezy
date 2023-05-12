@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Symbol versioning
+"""Symbol versioning.
 
 The methods here allow for api symbol versioning.
 """
@@ -179,8 +179,7 @@ def _decorate_docstring(callable, deprecation_version, label,
 
 def _populate_decorated(callable, deprecation_version, label,
                         decorated_callable):
-    """Populate attributes like __name__ and __doc__ on the decorated callable.
-    """
+    """Populate attributes like __name__ and __doc__ on the decorated callable."""
     _decorate_docstring(callable, deprecation_version, label,
                         decorated_callable)
     decorated_callable.__module__ = callable.__module__
@@ -189,7 +188,7 @@ def _populate_decorated(callable, deprecation_version, label,
 
 
 def _dict_deprecation_wrapper(wrapped_method):
-    """Returns a closure that emits a warning and calls the superclass"""
+    """Returns a closure that emits a warning and calls the superclass."""
     def cb(dep_dict, *args, **kwargs):
         msg = f'access to {dep_dict._variable_name}'
         msg = dep_dict._deprecation_version % (msg,)
@@ -237,7 +236,7 @@ class DeprecatedDict(dict):
 
 def deprecated_list(deprecation_version, variable_name,
                     initial_value, extra=None):
-    """Create a list that warns when modified
+    """Create a list that warns when modified.
 
     :param deprecation_version: string for the warning format to raise,
         typically from deprecated_in()
@@ -245,7 +244,6 @@ def deprecated_list(deprecation_version, variable_name,
     :param variable_name: This allows better warnings to be printed
     :param extra: Extra info to print when printing a warning
     """
-
     subst_text = f'Modifying {variable_name}'
     msg = deprecation_version % (subst_text,)
     if extra:

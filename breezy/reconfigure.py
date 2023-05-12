@@ -175,7 +175,7 @@ class Reconfigure:
 
     @staticmethod
     def to_branch(controldir):
-        """Return a Reconfiguration to convert this controldir into a branch
+        """Return a Reconfiguration to convert this controldir into a branch.
 
         :param controldir: The controldir to reconfigure
         :raise AlreadyBranch: if controldir is already a branch
@@ -189,7 +189,7 @@ class Reconfigure:
 
     @staticmethod
     def to_tree(controldir):
-        """Return a Reconfiguration to convert this controldir into a tree
+        """Return a Reconfiguration to convert this controldir into a tree.
 
         :param controldir: The controldir to reconfigure
         :raise AlreadyTree: if controldir is already a tree
@@ -203,7 +203,7 @@ class Reconfigure:
 
     @staticmethod
     def to_checkout(controldir, bound_location=None):
-        """Return a Reconfiguration to convert this controldir into a checkout
+        """Return a Reconfiguration to convert this controldir into a checkout.
 
         :param controldir: The controldir to reconfigure
         :param bound_location: The location the checkout should be bound to.
@@ -218,7 +218,7 @@ class Reconfigure:
 
     @classmethod
     def to_lightweight_checkout(klass, controldir, reference_location=None):
-        """Make a Reconfiguration to convert controldir into a lightweight checkout
+        """Make a Reconfiguration to convert controldir into a lightweight checkout.
 
         :param controldir: The controldir to reconfigure
         :param bound_location: The location the checkout should be bound to.
@@ -234,7 +234,7 @@ class Reconfigure:
 
     @classmethod
     def to_use_shared(klass, controldir):
-        """Convert a standalone branch into a repository branch"""
+        """Convert a standalone branch into a repository branch."""
         reconfiguration = klass(controldir)
         reconfiguration._set_use_shared(use_shared=True)
         if not reconfiguration.changes_planned():
@@ -243,7 +243,7 @@ class Reconfigure:
 
     @classmethod
     def to_standalone(klass, controldir):
-        """Convert a repository branch into a standalone branch"""
+        """Convert a repository branch into a standalone branch."""
         reconfiguration = klass(controldir)
         reconfiguration._set_use_shared(use_shared=False)
         if not reconfiguration.changes_planned():
@@ -252,7 +252,7 @@ class Reconfigure:
 
     @classmethod
     def set_repository_trees(klass, controldir, with_trees):
-        """Adjust a repository's working tree presence default"""
+        """Adjust a repository's working tree presence default."""
         reconfiguration = klass(controldir)
         if not reconfiguration.repository.is_shared():
             raise ReconfigurationNotSupported(reconfiguration.controldir)
@@ -267,7 +267,7 @@ class Reconfigure:
 
     def _plan_changes(self, want_tree, want_branch, want_bound,
                       want_reference):
-        """Determine which changes are needed to assume the configuration"""
+        """Determine which changes are needed to assume the configuration."""
         if not want_branch and not want_reference:
             raise ReconfigurationNotSupported(self.controldir)
         if want_branch and want_reference:
@@ -316,14 +316,14 @@ class Reconfigure:
                 self._create_repository = True
 
     def changes_planned(self):
-        """Return True if changes are planned, False otherwise"""
+        """Return True if changes are planned, False otherwise."""
         return (self._unbind or self._bind or self._destroy_tree or
                 self._create_tree or self._destroy_reference or
                 self._create_branch or self._create_repository or
                 self._create_reference or self._destroy_repository)
 
     def _check(self):
-        """Raise if reconfiguration would destroy local changes"""
+        """Raise if reconfiguration would destroy local changes."""
         if self._destroy_tree and self.tree.has_changes():
             raise errors.UncommittedChanges(self.tree)
         if self._create_reference and self.local_branch is not None:
@@ -363,7 +363,7 @@ class Reconfigure:
         raise NoBindLocation(self.controldir)
 
     def apply(self, force=False):
-        """Apply the reconfiguration
+        """Apply the reconfiguration.
 
         :param force: If true, the reconfiguration is applied even if it will
             destroy local changes.

@@ -35,7 +35,7 @@ class NoHelpTopic(errors.BzrError):
 
 
 def help(topic=None, outfile=None):
-    """Write the help for the specific topic to outfile"""
+    """Write the help for the specific topic to outfile."""
     if outfile is None:
         outfile = ui.ui_factory.make_output_stream()
 
@@ -58,14 +58,14 @@ def help(topic=None, outfile=None):
 
 
 def help_commands(outfile=None):
-    """List all commands"""
+    """List all commands."""
     if outfile is None:
         outfile = ui.ui_factory.make_output_stream()
     outfile.write(_help_commands_to_text('commands'))
 
 
 def _help_commands_to_text(topic):
-    """Generate the help text for the list of commands"""
+    """Generate the help text for the list of commands."""
     out = []
     if topic == 'hidden-commands':
         hidden = True

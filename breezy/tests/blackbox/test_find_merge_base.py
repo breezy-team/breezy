@@ -13,7 +13,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
-import os
 
 from breezy.tests import TestCaseWithTransport
 
@@ -33,6 +32,6 @@ class TestFindMergeBase(TestCaseWithTransport):
     def test_find_null_merge_base(self):
         tree = self.make_branch_and_tree('foo')
         tree.commit('message')
-        tree2 = self.make_branch_and_tree('bar')
+        self.make_branch_and_tree('bar')
         r = self.run_bzr('find-merge-base foo bar')[0]
         self.assertEqual('merge base is revision null:\n', r)

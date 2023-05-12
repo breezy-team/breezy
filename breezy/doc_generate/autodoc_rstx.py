@@ -30,12 +30,12 @@ import breezy.osutils
 
 
 def get_filename(options):
-    """Provides name of manual"""
+    """Provides name of manual."""
     return f"{options.brz_name}_man.txt"
 
 
 def infogen(options, outfile):
-    """Create manual in RSTX format"""
+    """Create manual in RSTX format."""
     t = time.time()
     tt = time.gmtime(t)
     params = \
@@ -57,7 +57,7 @@ def infogen(options, outfile):
 
 def _get_body(params, topic_dir):
     """Build the manual content."""
-    from breezy.help_topics import SECT_CONCEPT, SECT_LIST, SECT_PLUGIN
+    from breezy.help_topics import SECT_CONCEPT, SECT_LIST
     registry = breezy.help_topics.topic_registry
     result = []
     result.append(_get_section(registry, SECT_CONCEPT, "Concepts",

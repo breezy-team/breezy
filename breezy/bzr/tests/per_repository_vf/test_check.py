@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Test operations that check the repository for corruption"""
+"""Test operations that check the repository for corruption."""
 
 
 from breezy import errors

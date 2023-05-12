@@ -30,9 +30,8 @@ possible and supported. Individual changes via map/unmap are buffered in memory
 until the _save method is called to force serialisation of the tree.
 apply_delta records its changes immediately by performing an implicit _save.
 
-TODO:
+Todo:
 -----
-
 Densely packed upper nodes.
 
 """
@@ -132,7 +131,7 @@ class CHKMap:
             raise errors.InconsistentDeltaDelta(delta,
                                                 f"New items are already in the map {existing_new!r}.")
         # Now apply changes.
-        for old, new, value in delta:
+        for old, new, _value in delta:
             if old is not None and old != new:
                 self.unmap(old, check_remap=False)
                 has_deletes = True
@@ -371,8 +370,6 @@ class CHKMap:
                 process_node(self_node, self_path, self, self_pending)
                 process_node(basis_node, basis_path, basis, basis_pending)
         process_common_prefix_nodes(self_node, None, basis_node, None)
-        self_seen = set()
-        basis_seen = set()
         excluded_keys = set()
 
         def check_excluded(key_path):
@@ -394,7 +391,7 @@ class CHKMap:
             loop_counter += 1
             if not self_pending:
                 # self is exhausted: output remainder of basis
-                for prefix, key, node, path in basis_pending:
+                for _prefix, key, node, path in basis_pending:
                     if check_excluded(path):
                         continue
                     node = basis._get_node(node)
@@ -408,7 +405,7 @@ class CHKMap:
                 return
             elif not basis_pending:
                 # basis is exhausted: output remainder of self.
-                for prefix, key, node, path in self_pending:
+                for _prefix, key, node, path in self_pending:
                     if check_excluded(path):
                         continue
                     node = self._get_node(node)
@@ -550,7 +547,7 @@ class CHKMap:
             return node._key
 
     def unmap(self, key, check_remap=True):
-        """remove key from the map."""
+        """Remove key from the map."""
         key = StaticTuple.from_sequence(key)
         self._ensure_root()
         if isinstance(self._root_node, InternalNode):
@@ -1500,7 +1497,6 @@ class CHKMapDifference:
         # only 1 time during this code. (We may want to evaluate saving the
         # raw bytes into the page cache, which would allow a working tree
         # update after the fetch to not have to read the bytes again.)
-        as_st = StaticTuple.from_sequence
         stream = self._store.get_record_stream(keys, 'unordered', True)
         for record in stream:
             if self._pb is not None:
@@ -1530,7 +1526,7 @@ class CHKMapDifference:
     def _read_old_roots(self):
         old_chks_to_enqueue = []
         all_old_chks = self._all_old_chks
-        for record, node, prefix_refs, items in \
+        for _record, _node, prefix_refs, items in \
                 self._read_nodes_from_store(self._old_root_keys):
             # Uninteresting node
             prefix_refs = [p_r for p_r in prefix_refs
@@ -1585,7 +1581,7 @@ class CHKMapDifference:
         # added a second time
         processed_new_refs = self._processed_new_refs
         processed_new_refs.update(new_keys)
-        for record, node, prefix_refs, items in \
+        for record, _node, prefix_refs, items in \
                 self._read_nodes_from_store(new_keys):
             # At this level, we now know all the uninteresting references
             # So we filter and queue up whatever is remaining
@@ -1668,7 +1664,7 @@ class CHKMapDifference:
         refs = self._old_queue
         self._old_queue = []
         all_old_chks = self._all_old_chks
-        for record, _, prefix_refs, items in self._read_nodes_from_store(refs):
+        for _record, _, prefix_refs, items in self._read_nodes_from_store(refs):
             # TODO: Use StaticTuple here?
             self._all_old_items.update(items)
             refs = [r for _, r in prefix_refs if r not in all_old_chks]

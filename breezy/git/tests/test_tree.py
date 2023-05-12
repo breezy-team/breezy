@@ -19,7 +19,7 @@
 
 import stat
 
-from dulwich.objects import Blob, Tree
+from dulwich.objects import Blob
 
 from breezy.tests import TestCase, TestCaseWithTransport
 
@@ -290,7 +290,7 @@ class DeltaFromGitChangesTests(TestCase):
 
     def test_unchanged(self):
         b = Blob.from_string(b'b')
-        delta = self.transform([
+        self.transform([
             ('unchanged',
              (b'a', stat.S_IFREG | 0o644, b), (b'a', stat.S_IFREG | 0o644, b))])
         expected_delta = TreeDelta()

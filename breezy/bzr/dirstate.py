@@ -221,7 +221,6 @@ desired.
 import bisect
 import codecs
 import contextlib
-import errno
 import operator
 import os
 import stat
@@ -1100,7 +1099,6 @@ class DirState:
         self._dirblocks = [(b'', []), (b'', [])]
         current_block = self._dirblocks[0][1]
         current_dirname = b''
-        root_key = (b'', b'')
         append_entry = current_block.append
         for entry in new_entries:
             if entry[0][0] != current_dirname:
@@ -1181,7 +1179,7 @@ class DirState:
             3 fields for the key
             + number of fields per tree_data (5) * tree count
             + newline
-         """
+        """
         tree_count = 1 + self._num_present_parents()
         return 3 + 5 * tree_count + 1
 
@@ -1277,7 +1275,7 @@ class DirState:
             with contextlib.ExitStack() as exit_stack:
                 exit_stack.enter_context(tree.lock_read())
                 parent_ids = tree.get_parent_ids()
-                num_parents = len(parent_ids)
+                len(parent_ids)
                 parent_trees = []
                 for parent_id in parent_ids:
                     parent_tree = tree.branch.repository.revision_tree(
@@ -1312,7 +1310,7 @@ class DirState:
         return delta
 
     def update_by_delta(self, delta):
-        """Apply an inventory delta to the dirstate for tree 0
+        """Apply an inventory delta to the dirstate for tree 0.
 
         This is the workhorse for apply_inventory_delta in dirstate based
         trees.
@@ -1321,7 +1319,6 @@ class DirState:
             details.
         """
         self._read_dirblocks_if_needed()
-        encode = cache_utf8.encode
         insertions = {}
         removals = {}
         # Accumulate parent references (path_utf8, id), to check for parentless
@@ -1762,7 +1759,7 @@ class DirState:
         :param adds: A sequence of changes. Each change is a tuple:
             (path_utf8, path_utf8, file_id, (entry_details))
         """
-        for old_path, new_path, file_id, new_details in changes:
+        for _old_path, new_path, file_id, new_details in changes:
             # the entry for this file_id must be in tree 0.
             entry = self._get_entry(1, file_id, new_path)
             if entry[0] is None or entry[1][1][0] in (b'a', b'r'):
@@ -1920,7 +1917,7 @@ class DirState:
             return old_executable
 
     def _read_link(self, abspath, old_link):
-        """Read the target of a symlink"""
+        """Read the target of a symlink."""
         # TODO: jam 200700301 On Win32, this could just return the value
         #       already in memory. However, this really needs to be done at a
         #       higher level, because there either won't be anything on disk,
@@ -2302,7 +2299,7 @@ class DirState:
         """
         if self._id_index is None:
             id_index = {}
-            for key, tree_details in self._iter_entries():
+            for key, _tree_details in self._iter_entries():
                 self._add_to_id_index(id_index, key)
             self._id_index = id_index
         return self._id_index
@@ -2407,11 +2404,11 @@ class DirState:
         self._read_prelude()
         parent_line = self._state_file.readline()
         info = parent_line.split(b'\0')
-        num_parents = int(info[0])
+        int(info[0])
         self._parents = info[1:-1]
         ghost_line = self._state_file.readline()
         info = ghost_line.split(b'\0')
-        num_ghosts = int(info[1])
+        int(info[1])
         self._ghosts = info[2:-1]
         self._header_state = DirState.IN_MEMORY_UNMODIFIED
         self._end_of_header = self._state_file.tell()
@@ -2454,7 +2451,7 @@ class DirState:
         """Get a packed_stat index of self._dirblocks."""
         if self._packed_stat_index is None:
             index = {}
-            for key, tree_details in self._iter_entries():
+            for _key, tree_details in self._iter_entries():
                 if tree_details[0][0] == b'f':
                     index[tree_details[0][4]] = tree_details[0][1]
             self._packed_stat_index = index

@@ -24,7 +24,7 @@ import tempfile
 import time
 from io import BytesIO
 
-from .. import errors, osutils, tests, trace, win32utils
+from .. import errors, osutils, tests, trace
 from . import features, file_utils, test__walkdirs_win32
 from .scenarios import load_tests_apply_scenarios
 
@@ -62,23 +62,23 @@ def dir_reader_scenarios():
 
     # UnicodeDirReader is the fallback, it should be tested on all platforms.
     scenarios = [('unicode',
-                  dict(_dir_reader_class=osutils.UnicodeDirReader,
-                       _native_to_unicode=_already_unicode))]
+                  {'_dir_reader_class': osutils.UnicodeDirReader,
+                       '_native_to_unicode': _already_unicode})]
     # Some DirReaders are platform specific and even there they may not be
     # available.
     if UTF8DirReaderFeature.available():
         from .. import _readdir_pyx
         scenarios.append(('utf8',
-                          dict(_dir_reader_class=_readdir_pyx.UTF8DirReader,
-                               _native_to_unicode=_utf8_to_unicode)))
+                          {'_dir_reader_class': _readdir_pyx.UTF8DirReader,
+                               '_native_to_unicode': _utf8_to_unicode}))
 
     if test__walkdirs_win32.win32_readdir_feature.available():
         try:
             from .. import _walkdirs_win32
             scenarios.append(
                 ('win32',
-                 dict(_dir_reader_class=_walkdirs_win32.Win32ReadDir,
-                      _native_to_unicode=_already_unicode)))
+                 {'_dir_reader_class': _walkdirs_win32.Win32ReadDir,
+                      '_native_to_unicode': _already_unicode}))
         except ModuleNotFoundError:
             pass
     return scenarios
@@ -300,7 +300,7 @@ class TestUmask(tests.TestCaseInTempDir):
 class TestDateTime(tests.TestCase):
 
     def assertFormatedDelta(self, expected, seconds):
-        """Assert osutils.format_delta formats as expected"""
+        """Assert osutils.format_delta formats as expected."""
         actual = osutils.format_delta(seconds)
         self.assertEqual(expected, actual)
 
@@ -539,7 +539,8 @@ class TestPumpFile(tests.TestCase):
 
     def test_bracket_block_size(self):
         """Read data in blocks with the requested read size bracketing the
-        block size."""
+        block size.
+        """
         # make sure test data is larger than max read size
         self.assertGreater(self.test_data_len, self.block_size)
 
@@ -580,7 +581,8 @@ class TestPumpFile(tests.TestCase):
 
     def test_specified_size(self):
         """Request a transfer larger than the maximum block size and verify
-        that the maximum read doesn't exceed the block_size."""
+        that the maximum read doesn't exceed the block_size.
+        """
         # make sure test data is larger than max read size
         self.assertGreater(self.test_data_len, self.block_size)
 
@@ -600,7 +602,8 @@ class TestPumpFile(tests.TestCase):
 
     def test_to_eof(self):
         """Read to end-of-file and verify that the reads are not larger than
-        the maximum read size."""
+        the maximum read size.
+        """
         # make sure test data is larger than max read size
         self.assertGreater(self.test_data_len, self.block_size)
 
@@ -619,7 +622,8 @@ class TestPumpFile(tests.TestCase):
     def test_defaults(self):
         """Verifies that the default arguments will read to EOF -- this
         test verifies that any existing usages of pumpfile will not be broken
-        with this new version."""
+        with this new version.
+        """
         # retrieve data using default (old) pumpfile method
         from_file = file_utils.FakeReadFile(self.test_data)
         to_file = BytesIO()
@@ -759,7 +763,8 @@ class TestSendAll(tests.TestCase):
 
 class TestPosixFuncs(tests.TestCase):
     """Test that the posix version of normpath returns an appropriate path
-       when used with 2 leading slashes."""
+    when used with 2 leading slashes.
+    """
 
     def test_normpath(self):
         self.assertEqual('/etc/shadow', osutils._posix_normpath('/etc/shadow'))
@@ -893,7 +898,7 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
 
 
 class TestParentDirectories(tests.TestCaseInTempDir):
-    """Test osutils.parent_directories()"""
+    """Test osutils.parent_directories()."""
 
     def test_parent_directories(self):
         self.assertEqual([], osutils.parent_directories('a'))
@@ -1116,7 +1121,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
         # this should raise on error
         def attempt():
-            for dirdetail, dirblock in osutils.walkdirs(b'.', codecs.utf_8_decode):
+            for _dirdetail, _dirblock in osutils.walkdirs(b'.', codecs.utf_8_decode):
                 pass
 
         self.assertRaises(UnicodeDecodeError, attempt)
@@ -1172,8 +1177,8 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.assertExpectedBlocks(expected_dirblocks[1:], result)
 
     def _filter_out_stat(self, result):
-        """Filter out the stat value from the walkdirs result"""
-        for dirdetail, dirblock in result:
+        """Filter out the stat value from the walkdirs result."""
+        for _dirdetail, dirblock in result:
             new_dirblock = []
             for info in dirblock:
                 # Ignore info[3] which is the stat
@@ -1315,7 +1320,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.assertEqual(expected_dirblocks, result)
 
     def test__walkdirs_utf8_with_unicode_fs(self):
-        """UnicodeDirReader should be a safe fallback everywhere
+        """UnicodeDirReader should be a safe fallback everywhere.
 
         The abspath portion should be in unicode
         """
@@ -1421,7 +1426,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.assertEqual(os_stat.st_mode, win32stat.st_mode)
 
     def test__walkdirs_utf_win32_find_file_stat_file(self):
-        """make sure our Stat values are valid"""
+        """Make sure our Stat values are valid."""
         self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self.requireFeature(features.UnicodeFilenameFeature)
         from .._walkdirs_win32 import Win32ReadDir
@@ -1442,7 +1447,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.assertNotEqual(entry[3].st_mtime, entry[3].st_ctime)
 
     def test__walkdirs_utf_win32_find_file_stat_directory(self):
-        """make sure our Stat values are valid"""
+        """Make sure our Stat values are valid."""
         self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self.requireFeature(features.UnicodeFilenameFeature)
         from .._walkdirs_win32 import Win32ReadDir
@@ -1482,7 +1487,7 @@ class TestCopyTree(tests.TestCaseInTempDir):
 
 
 class TestSetUnsetEnv(tests.TestCase):
-    """Test updating the environment"""
+    """Test updating the environment."""
 
     def setUp(self):
         super().setUp()
@@ -1497,20 +1502,20 @@ class TestSetUnsetEnv(tests.TestCase):
         self.addCleanup(cleanup)
 
     def test_set(self):
-        """Test that we can set an env variable"""
+        """Test that we can set an env variable."""
         old = osutils.set_or_unset_env('BRZ_TEST_ENV_VAR', 'foo')
         self.assertEqual(None, old)
         self.assertEqual('foo', os.environ.get('BRZ_TEST_ENV_VAR'))
 
     def test_double_set(self):
-        """Test that we get the old value out"""
+        """Test that we get the old value out."""
         osutils.set_or_unset_env('BRZ_TEST_ENV_VAR', 'foo')
         old = osutils.set_or_unset_env('BRZ_TEST_ENV_VAR', 'bar')
         self.assertEqual('foo', old)
         self.assertEqual('bar', os.environ.get('BRZ_TEST_ENV_VAR'))
 
     def test_unicode(self):
-        """Environment can only contain plain strings
+        """Environment can only contain plain strings.
 
         So Unicode strings must be encoded.
         """
@@ -1524,7 +1529,7 @@ class TestSetUnsetEnv(tests.TestCase):
         self.assertEqual(uni_val, os.environ.get('BRZ_TEST_ENV_VAR'))
 
     def test_unset(self):
-        """Test that passing None will remove the env var"""
+        """Test that passing None will remove the env var."""
         osutils.set_or_unset_env('BRZ_TEST_ENV_VAR', 'foo')
         old = osutils.set_or_unset_env('BRZ_TEST_ENV_VAR', None)
         self.assertEqual('foo', old)
@@ -1936,7 +1941,7 @@ class TestGetuserUnicode(tests.TestCase):
                 'Cannot find a unicode character that works in encoding %s'
                 % (osutils.get_user_encoding(),))
         uni_username = 'jrandom' + uni_val
-        encoded_username = uni_username.encode(ue)
+        uni_username.encode(ue)
         self.overrideEnv(self.envvar_to_override(), uni_username)
         self.assertEqual(uni_username, osutils.getuser_unicode())
 

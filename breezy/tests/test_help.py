@@ -545,7 +545,7 @@ class TestTopicIndex(TestHelp):
     """Tests for the HelpTopicIndex class."""
 
     def test_default_constructable(self):
-        index = help_topics.HelpTopicIndex()
+        help_topics.HelpTopicIndex()
 
     def test_get_topics_None(self):
         """Searching for None returns the basic help topic."""
@@ -603,7 +603,7 @@ class TestCommandIndex(TestHelp):
     """Tests for the HelpCommandIndex class."""
 
     def test_default_constructable(self):
-        index = commands.HelpCommandIndex()
+        commands.HelpCommandIndex()
 
     def test_get_topics_None(self):
         """Searching for None returns an empty list."""
@@ -692,7 +692,7 @@ class TestHelpIndices(tests.TestCase):
             calls)
 
     def test_search_returns_index_and_results(self):
-        """Searching should return help topics with their index"""
+        """Searching should return help topics with their index."""
         class CannedIndex:
             def __init__(self, prefix, search_result):
                 self.prefix = prefix

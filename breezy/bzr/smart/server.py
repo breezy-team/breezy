@@ -224,7 +224,7 @@ class SmartTCPServer:
             except KeyboardInterrupt:
                 # dont log when CTRL-C'd.
                 raise
-            except Exception as e:
+            except Exception:
                 trace.report_exception(sys.exc_info(), sys.stderr)
                 raise
         finally:
@@ -242,7 +242,7 @@ class SmartTCPServer:
         self._fully_stopped.set()
 
     def get_url(self):
-        """Return the url of the server"""
+        """Return the url of the server."""
         return f"bzr://{self._sockname[0]}:{self._sockname[1]}/"
 
     def _make_handler(self, conn):

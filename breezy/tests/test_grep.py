@@ -47,7 +47,7 @@ class GrepTestBase(tests.TestCaseWithTransport):
             self.run_bzr(['ci', '-m', '"' + path + '"'])
 
     def _update_file(self, path, text, checkin=True):
-        """append text to file 'path' and check it in"""
+        """Append text to file 'path' and check it in."""
         with open(path, 'a') as f:
             f.write(text)
         if checkin:
@@ -78,7 +78,8 @@ class TestGrep(GrepTestBase):
     def test_basic_unknown_file(self):
         """Search for pattern in specfic file.
 
-        If specified file is unknown, grep it anyway."""
+        If specified file is unknown, grep it anyway.
+        """
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -103,8 +104,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 0)
 
     def test_ver_basic_file(self):
-        """(versioned) Search for pattern in specfic file.
-        """
+        """(versioned) Search for pattern in specfic file."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -127,8 +127,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 10)
 
     def test_wtree_basic_file(self):
-        """(wtree) Search for pattern in specfic file.
-        """
+        """(wtree) Search for pattern in specfic file."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -153,8 +152,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 0)
 
     def test_ver_basic_include(self):
-        """(versioned) Ensure that -I flag is respected.
-        """
+        """(versioned) Ensure that -I flag is respected."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -195,8 +193,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 2)
 
     def test_wtree_basic_include(self):
-        """(wtree) Ensure that --include flag is respected.
-        """
+        """(wtree) Ensure that --include flag is respected."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -221,8 +218,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 2)
 
     def test_ver_basic_exclude(self):
-        """(versioned) Ensure that --exclude flag is respected.
-        """
+        """(versioned) Ensure that --exclude flag is respected."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -261,8 +257,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 4)
 
     def test_wtree_basic_exclude(self):
-        """(wtree) Ensure that --exclude flag is respected.
-        """
+        """(wtree) Ensure that --exclude flag is respected."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -285,8 +280,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 2)
 
     def test_ver_multiple_files(self):
-        """(versioned) Search for pattern in multiple files.
-        """
+        """(versioned) Search for pattern in multiple files."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -325,8 +319,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 6)
 
     def test_multiple_wtree_files(self):
-        """(wtree) Search for pattern in multiple files in working tree.
-        """
+        """(wtree) Search for pattern in multiple files in working tree."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -372,8 +365,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 1)
 
     def test_ver_null_option(self):
-        """(versioned) --null option should use NUL instead of newline.
-        """
+        """(versioned) --null option should use NUL instead of newline."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -399,8 +391,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 1)
 
     def test_wtree_null_option(self):
-        """(wtree) --null option should use NUL instead of newline.
-        """
+        """(wtree) --null option should use NUL instead of newline."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -422,7 +413,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 1)
 
     def test_versioned_file_in_dir_no_recursive(self):
-        """(versioned) Should not recurse with --no-recursive"""
+        """(versioned) Should not recurse with --no-recursive."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -443,7 +434,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 0)
 
     def test_wtree_file_in_dir_no_recursive(self):
-        """(wtree) Should not recurse with --no-recursive"""
+        """(wtree) Should not recurse with --no-recursive."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -462,8 +453,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 0)
 
     def test_versioned_file_in_dir_recurse(self):
-        """(versioned) Should recurse by default.
-        """
+        """(versioned) Should recurse by default."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -483,8 +473,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 2)
 
     def test_wtree_file_in_dir_recurse(self):
-        """(wtree) Should recurse by default.
-        """
+        """(wtree) Should recurse by default."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -504,8 +493,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 2)
 
     def test_versioned_file_within_dir(self):
-        """(versioned) Search for pattern while in nested dir.
-        """
+        """(versioned) Search for pattern while in nested dir."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -526,8 +514,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 2)
 
     def test_versioned_include_file_within_dir(self):
-        """(versioned) Ensure --include is respected with file within dir.
-        """
+        """(versioned) Ensure --include is respected with file within dir."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -591,8 +578,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 6)
 
     def test_versioned_exclude_file_within_dir(self):
-        """(versioned) Ensure --exclude is respected with file within dir.
-        """
+        """(versioned) Ensure --exclude is respected with file within dir."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -618,8 +604,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 2)
 
     def test_wtree_file_within_dir(self):
-        """(wtree) Search for pattern while in nested dir.
-        """
+        """(wtree) Search for pattern while in nested dir."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -638,8 +623,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 2)
 
     def test_wtree_include_file_within_dir(self):
-        """(wtree) Ensure --include is respected with file within dir.
-        """
+        """(wtree) Ensure --include is respected with file within dir."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -660,8 +644,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 2)
 
     def test_wtree_exclude_file_within_dir(self):
-        """(wtree) Ensure --exclude is respected with file within dir.
-        """
+        """(wtree) Ensure --exclude is respected with file within dir."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -687,8 +670,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 2)
 
     def test_versioned_include_from_outside_dir(self):
-        """(versioned) Ensure --include is respected during recursive search.
-        """
+        """(versioned) Ensure --include is respected during recursive search."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -731,8 +713,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 4)
 
     def test_wtree_include_from_outside_dir(self):
-        """(wtree) Ensure --include is respected during recursive search.
-        """
+        """(wtree) Ensure --include is respected during recursive search."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -775,8 +756,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 4)
 
     def test_versioned_exclude_from_outside_dir(self):
-        """(versioned) Ensure --exclude is respected during recursive search.
-        """
+        """(versioned) Ensure --exclude is respected during recursive search."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -807,8 +787,7 @@ class TestGrep(GrepTestBase):
         self.assertNotContainsRe(out, "file1.cc", flags=TestGrep._reflags)
 
     def test_wtree_exclude_from_outside_dir(self):
-        """(wtree) Ensure --exclude is respected during recursive search.
-        """
+        """(wtree) Ensure --exclude is respected during recursive search."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -837,8 +816,7 @@ class TestGrep(GrepTestBase):
         self.assertNotContainsRe(out, "file1.cc", flags=TestGrep._reflags)
 
     def test_workingtree_files_from_outside_dir(self):
-        """(wtree) Grep for pattern with dirs passed as argument.
-        """
+        """(wtree) Grep for pattern with dirs passed as argument."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -862,8 +840,7 @@ class TestGrep(GrepTestBase):
                               flags=TestGrep._reflags)
 
     def test_versioned_files_from_outside_dir(self):
-        """(versioned) Grep for pattern with dirs passed as argument.
-        """
+        """(versioned) Grep for pattern with dirs passed as argument."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -889,8 +866,7 @@ class TestGrep(GrepTestBase):
             out, "^dir1/file1.txt~.:line1", flags=TestGrep._reflags)
 
     def test_wtree_files_from_outside_dir(self):
-        """(wtree) Grep for pattern with dirs passed as argument.
-        """
+        """(wtree) Grep for pattern with dirs passed as argument."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -914,8 +890,7 @@ class TestGrep(GrepTestBase):
                               flags=TestGrep._reflags)
 
     def test_versioned_files_from_outside_two_dirs(self):
-        """(versioned) Grep for pattern with two levels of nested dir.
-        """
+        """(versioned) Grep for pattern with two levels of nested dir."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -948,8 +923,7 @@ class TestGrep(GrepTestBase):
             out, "^dir0/dir00/file0.txt~.:line1", flags=TestGrep._reflags)
 
     def test_wtree_files_from_outside_two_dirs(self):
-        """(wtree) Grep for pattern with two levels of nested dir.
-        """
+        """(wtree) Grep for pattern with two levels of nested dir."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -980,8 +954,7 @@ class TestGrep(GrepTestBase):
             out, "^dir0/dir00/file0.txt:line1", flags=TestGrep._reflags)
 
     def test_versioned_file_within_dir_two_levels(self):
-        """(versioned) Search for pattern while in nested dir (two levels).
-        """
+        """(versioned) Search for pattern while in nested dir (two levels)."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -1018,8 +991,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 0)
 
     def test_wtree_file_within_dir_two_levels(self):
-        """(wtree) Search for pattern while in nested dir (two levels).
-        """
+        """(wtree) Search for pattern while in nested dir (two levels)."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -1051,8 +1023,7 @@ class TestGrep(GrepTestBase):
         self.assertNotContainsRe(out, "file0.txt", flags=TestGrep._reflags)
 
     def test_versioned_ignore_case_no_match(self):
-        """(versioned) Match fails without --ignore-case.
-        """
+        """(versioned) Match fails without --ignore-case."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -1067,8 +1038,7 @@ class TestGrep(GrepTestBase):
             out, "file0.txt~.:line1", flags=TestGrep._reflags)
 
     def test_wtree_ignore_case_no_match(self):
-        """(wtree) Match fails without --ignore-case.
-        """
+        """(wtree) Match fails without --ignore-case."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -1083,8 +1053,7 @@ class TestGrep(GrepTestBase):
             out, "file0.txt:line1", flags=TestGrep._reflags)
 
     def test_versioned_ignore_case_match(self):
-        """(versioned) Match fails without --ignore-case.
-        """
+        """(versioned) Match fails without --ignore-case."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -1106,8 +1075,7 @@ class TestGrep(GrepTestBase):
                               flags=TestGrep._reflags)
 
     def test_wtree_ignore_case_match(self):
-        """(wtree) Match fails without --ignore-case.
-        """
+        """(wtree) Match fails without --ignore-case."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -1125,8 +1093,7 @@ class TestGrep(GrepTestBase):
         self.assertContainsRe(out, "^file0.txt:line1", flags=TestGrep._reflags)
 
     def test_versioned_from_root_fail(self):
-        """(versioned) Match should fail without --from-root.
-        """
+        """(versioned) Match should fail without --from-root."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -1141,8 +1108,7 @@ class TestGrep(GrepTestBase):
         self.assertNotContainsRe(out, "file0.txt", flags=TestGrep._reflags)
 
     def test_wtree_from_root_fail(self):
-        """(wtree) Match should fail without --from-root.
-        """
+        """(wtree) Match should fail without --from-root."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -1157,8 +1123,7 @@ class TestGrep(GrepTestBase):
         self.assertNotContainsRe(out, "file0.txt", flags=TestGrep._reflags)
 
     def test_versioned_from_root_pass(self):
-        """(versioned) Match pass with --from-root.
-        """
+        """(versioned) Match pass with --from-root."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -1177,8 +1142,7 @@ class TestGrep(GrepTestBase):
                               flags=TestGrep._reflags)
 
     def test_wtree_from_root_pass(self):
-        """(wtree) Match pass with --from-root.
-        """
+        """(wtree) Match pass with --from-root."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -1193,8 +1157,7 @@ class TestGrep(GrepTestBase):
         self.assertContainsRe(out, "file0.txt:line1", flags=TestGrep._reflags)
 
     def test_versioned_with_line_number(self):
-        """(versioned) Search for pattern with --line-number.
-        """
+        """(versioned) Search for pattern with --line-number."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -1220,8 +1183,7 @@ class TestGrep(GrepTestBase):
                               flags=TestGrep._reflags)
 
     def test_wtree_with_line_number(self):
-        """(wtree) Search for pattern with --line-number.
-        """
+        """(wtree) Search for pattern with --line-number."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -1245,8 +1207,7 @@ class TestGrep(GrepTestBase):
                               flags=TestGrep._reflags)
 
     def test_revno_basic_history_grep_file(self):
-        """Search for pattern in specific revision number in a file.
-        """
+        """Search for pattern in specific revision number in a file."""
         wd = 'foobar0'
         fname = 'file0.txt'
         self.make_branch_and_tree(wd)
@@ -1283,8 +1244,7 @@ class TestGrep(GrepTestBase):
                               flags=TestGrep._reflags)
 
     def test_revno_basic_history_grep_full(self):
-        """Search for pattern in specific revision number in a file.
-        """
+        """Search for pattern in specific revision number in a file."""
         wd = 'foobar0'
         fname = 'file0.txt'
         self.make_branch_and_tree(wd)
@@ -1320,8 +1280,7 @@ class TestGrep(GrepTestBase):
         self.assertContainsRe(out, "file0.txt~3:1:v3", flags=TestGrep._reflags)
 
     def test_revno_versioned_file_in_dir(self):
-        """Grep specific version of file withing dir.
-        """
+        """Grep specific version of file withing dir."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -1352,8 +1311,7 @@ class TestGrep(GrepTestBase):
                               flags=TestGrep._reflags)
 
     def test_revno_range_basic_history_grep(self):
-        """Search for pattern in revision range for file.
-        """
+        """Search for pattern in revision range for file."""
         wd = 'foobar0'
         fname = 'file0.txt'
         self.make_branch_and_tree(wd)
@@ -1430,8 +1388,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 3)
 
     def test_revno_range_versioned_file_in_dir(self):
-        """Grep rev-range for pattern for file withing a dir.
-        """
+        """Grep rev-range for pattern for file withing a dir."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -1465,8 +1422,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 3)
 
     def test_revno_range_versioned_file_from_outside_dir(self):
-        """Grep rev-range for pattern from outside dir.
-        """
+        """Grep rev-range for pattern from outside dir."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -1498,8 +1454,7 @@ class TestGrep(GrepTestBase):
             out, "^dir0/file0.txt~6:v3", flags=TestGrep._reflags)
 
     def test_levels(self):
-        """--levels=0 should show findings from merged revision.
-        """
+        """--levels=0 should show findings from merged revision."""
         wd0 = 'foobar0'
         wd1 = 'foobar1'
 
@@ -1616,8 +1571,7 @@ class TestGrep(GrepTestBase):
             out, "file1.txt~1.1.1:1:line1", flags=TestGrep._reflags)
 
     def test_dotted_rev_grep(self):
-        """Grep in dotted revs
-        """
+        """Grep in dotted revs."""
         wd0 = 'foobar0'
         wd1 = 'foobar1'
 
@@ -1653,8 +1607,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 6)
 
     def test_versioned_binary_file_grep(self):
-        """(versioned) Grep for pattern in binary file.
-        """
+        """(versioned) Grep for pattern in binary file."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -1680,8 +1633,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(err.splitlines()), 1)
 
     def test_wtree_binary_file_grep(self):
-        """(wtree) Grep for pattern in binary file.
-        """
+        """(wtree) Grep for pattern in binary file."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -1702,8 +1654,7 @@ class TestGrep(GrepTestBase):
         self.assertNotContainsRe(err, "Binary file", flags=TestGrep._reflags)
 
     def test_revspec(self):
-        """Ensure various revspecs work
-        """
+        """Ensure various revspecs work."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -1730,8 +1681,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 1)
 
     def test_wtree_files_with_matches(self):
-        """(wtree) Ensure --files-with-matches, -l works
-        """
+        """(wtree) Ensure --files-with-matches, -l works."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -1816,8 +1766,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 1)
 
     def test_ver_files_with_matches(self):
-        """(ver) Ensure --files-with-matches, -l works
-        """
+        """(ver) Ensure --files-with-matches, -l works."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -1930,8 +1879,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 1)
 
     def test_wtree_files_without_matches(self):
-        """(wtree) Ensure --files-without-match, -L works
-        """
+        """(wtree) Ensure --files-without-match, -L works."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -2018,8 +1966,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 1)
 
     def test_ver_files_without_matches(self):
-        """(ver) Ensure --files-without-match, -L works
-        """
+        """(ver) Ensure --files-without-match, -L works."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -2142,8 +2089,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 1)
 
     def test_no_tree(self):
-        """Ensure grep works without working tree.
-        """
+        """Ensure grep works without working tree."""
         wd0 = 'foobar0'
         wd1 = 'foobar1'
         self.make_branch_and_tree(wd0)
@@ -2165,12 +2111,12 @@ class TestGrep(GrepTestBase):
 
 
 class TestNonAscii(GrepTestBase):
-    """Tests for non-ascii filenames and file contents"""
+    """Tests for non-ascii filenames and file contents."""
 
     _test_needs_features = [UnicodeFilenameFeature]
 
     def test_unicode_only_file(self):
-        """Test filename and contents that requires a unicode encoding"""
+        """Test filename and contents that requires a unicode encoding."""
         tree = self.make_branch_and_tree(".")
         contents = ["\u1234"]
         self.build_tree(contents)
@@ -2210,15 +2156,14 @@ class TestColorGrep(GrepTestBase):
     _sep = color_string(':', fg=FG.BOLD_CYAN)
 
     def test_color_option(self):
-        """Ensure options for color are valid.
-        """
+        """Ensure options for color are valid."""
         out, err = self.run_bzr(['grep', '--color', 'foo', 'bar'], 3)
         self.assertEqual(out, '')
         self.assertContainsRe(
             err, 'Valid values for --color are', flags=TestGrep._reflags)
 
     def test_ver_matching_files(self):
-        """(versioned) Search for matches or no matches only"""
+        """(versioned) Search for matches or no matches only."""
         tree = self.make_branch_and_tree(".")
         contents = ["d/", "d/aaa", "bbb"]
         self.build_tree(contents)
@@ -2240,7 +2185,7 @@ class TestColorGrep(GrepTestBase):
             ]), ""))
 
     def test_wtree_matching_files(self):
-        """(wtree) Search for matches or no matches only"""
+        """(wtree) Search for matches or no matches only."""
         tree = self.make_branch_and_tree(".")
         contents = ["d/", "d/aaa", "bbb"]
         self.build_tree(contents)
@@ -2262,8 +2207,7 @@ class TestColorGrep(GrepTestBase):
             ]), ""))
 
     def test_ver_basic_file(self):
-        """(versioned) Search for pattern in specfic file.
-        """
+        """(versioned) Search for pattern in specfic file."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -2329,8 +2273,7 @@ class TestColorGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 1)
 
     def test_wtree_basic_file(self):
-        """(wtree) Search for pattern in specfic file.
-        """
+        """(wtree) Search for pattern in specfic file."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -2408,7 +2351,7 @@ class TestGrepDiff(tests.TestCaseWithTransport):
         return tree
 
     def test_grep_diff_basic(self):
-        """grep -p basic test."""
+        """Grep -p basic test."""
         tree = self.make_example_branch()
         self.build_tree_contents([('hello', b'hello world!\n')])
         tree.commit('updated hello')
@@ -2427,7 +2370,7 @@ class TestGrepDiff(tests.TestCaseWithTransport):
 ''')
 
     def test_grep_diff_revision(self):
-        """grep -p specific revision."""
+        """Grep -p specific revision."""
         tree = self.make_example_branch()
         self.build_tree_contents([('hello', b'hello world!\n')])
         tree.commit('updated hello')
@@ -2442,7 +2385,7 @@ class TestGrepDiff(tests.TestCaseWithTransport):
 ''')
 
     def test_grep_diff_revision_range(self):
-        """grep -p revision range."""
+        """Grep -p revision range."""
         tree = self.make_example_branch()
         self.build_tree_contents([('hello', b'hello world!1\n')])  # rev 3
         tree.commit('rev3')
@@ -2472,7 +2415,7 @@ class TestGrepDiff(tests.TestCaseWithTransport):
 ''')
 
     def test_grep_diff_color(self):
-        """grep -p color test."""
+        """Grep -p color test."""
         tree = self.make_example_branch()
         self.build_tree_contents([('hello', b'hello world!\n')])
         tree.commit('updated hello')
@@ -2492,7 +2435,7 @@ class TestGrepDiff(tests.TestCaseWithTransport):
         self.assertEqualDiff(subst_dates(out), revno + filename + diffstr)
 
     def test_grep_norevs(self):
-        """grep -p with zero revisions."""
+        """Grep -p with zero revisions."""
         out, err = self.run_bzr(['init'])
         out, err = self.run_bzr(['grep', '--diff', 'foo'], 3)
         self.assertEqual(out, '')

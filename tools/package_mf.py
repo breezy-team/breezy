@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Custom module finder for entire package"""
+"""Custom module finder for entire package."""
 
 import os
 import sys
@@ -38,7 +38,7 @@ class CustomModuleFinder(modulefinder.ModuleFinder):
             self, path, debug, excludes, replace_paths)
 
     def load_package_recursive(self, fqname):
-        """Recursively process each module in package
+        """Recursively process each module in package.
 
         :param  fqname:   name of the package.
         """
@@ -89,7 +89,7 @@ class CustomModuleFinder(modulefinder.ModuleFinder):
                     ".".join((package, partname)), pkg_module)
 
     def get_result(self):
-        """Return 2-tuple: (list of packages, list of modules)"""
+        """Return 2-tuple: (list of packages, list of modules)."""
         keys = sorted(self.modules.keys())
         mods = []
         packs = []

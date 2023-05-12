@@ -28,8 +28,8 @@ from dulwich.config import ConfigFile as GitConfigFile
 from dulwich.config import parse_submodules
 from dulwich.diff_tree import RenameDetector, tree_changes
 from dulwich.errors import NotTreeError
-from dulwich.index import (Index, IndexEntry, blob_from_path_and_stat,
-                           cleanup_mode, commit_tree, index_entry_from_stat)
+from dulwich.index import (IndexEntry, blob_from_path_and_stat, cleanup_mode,
+                           commit_tree, index_entry_from_stat)
 from dulwich.object_store import (BaseObjectStore, OverlayObjectStore,
                                   iter_tree_contents)
 from dulwich.objects import S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Blob, Tree
@@ -38,7 +38,7 @@ from .. import controldir as _mod_controldir
 from .. import delta, errors, mutabletree, osutils, revisiontree, trace
 from .. import transport as _mod_transport
 from .. import tree as _mod_tree
-from .. import urlutils, workingtree
+from .. import urlutils
 from ..bzr.inventorytree import InventoryTreeChange
 from ..revision import CURRENT_REVISION, NULL_REVISION
 from ..transport import get_transport
@@ -598,8 +598,8 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
                     substore = store
                 if stat.S_ISDIR(mode):
                     if (specific_files is None or
-                            any([p for p in specific_files if p.startswith(
-                                child_path)])):
+                            any(p for p in specific_files if p.startswith(
+                                child_path))):
                         extradirs.append(
                             (substore, child_path, hexsha,
                              self.path2id(child_path_decoded)))
@@ -1084,7 +1084,7 @@ class InterGitTrees(_mod_tree.InterTree):
         ret = {}
         changes = self._iter_git_changes(
             specific_files=paths, include_trees=False)[0]
-        for (change_type, old, new) in changes:
+        for (_change_type, old, new) in changes:
             if old[0] is None:
                 continue
             oldpath = decode_git_path(old[0])
@@ -1106,7 +1106,7 @@ class InterGitTrees(_mod_tree.InterTree):
         ret = {}
         changes = self._iter_git_changes(
             specific_files=paths, include_trees=False)[0]
-        for (change_type, old, new) in changes:
+        for (_change_type, old, new) in changes:
             if new[0] is None:
                 continue
             newpath = decode_git_path(new[0])
@@ -1158,7 +1158,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
         if self._lock_mode is None:
             raise errors.ObjectNotLocked(self)
         self._versioned_dirs = set()
-        for p, sha, mode in self.iter_git_objects():
+        for p, _sha, _mode in self.iter_git_objects():
             self._ensure_versioned_dir(posixpath.dirname(p))
 
     def _ensure_versioned_dir(self, dirname):
@@ -1215,7 +1215,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                 # generic constraint checks:
                 if self.is_control_filename(f):
                     raise errors.ForbiddenControlFileError(filename=f)
-                fp = osutils.splitpath(f)
+                osutils.splitpath(f)
             # fill out file kinds for all files [not needed when we stop
             # caring about the instantaneous file kind within a uncommmitted tree
             #
@@ -1268,7 +1268,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
         self._index_dirty = True
 
     def _apply_index_changes(self, changes):
-        for (path, kind, executability, reference_revision,
+        for (path, kind, _executability, reference_revision,
              symlink_target) in changes:
             if kind is None or kind == 'directory':
                 (index, subpath) = self._lookup_index(
@@ -1494,7 +1494,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
 
     def update_basis_by_delta(self, revid, delta):
         # TODO(jelmer): This shouldn't be called, it's inventory specific.
-        for (old_path, new_path, file_id, ie) in delta:
+        for (old_path, new_path, _file_id, ie) in delta:
             if old_path is not None:
                 (index, old_subpath) = self._lookup_index(
                     encode_git_path(old_path))
@@ -1546,10 +1546,9 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                 kind = self.kind(to_rel)
             else:
                 try:
-                    to_kind = self.kind(to_rel)
+                    self.kind(to_rel)
                 except _mod_transport.NoSuchFile:
                     exc_type = errors.BzrRenameFailedError
-                    to_kind = None
                 else:
                     exc_type = errors.BzrMoveFailedError
                 if self.is_versioned(to_rel):

@@ -223,7 +223,7 @@ class RevisionSpec:
         return self._as_revision_id(context_branch)
 
     def _as_revision_id(self, context_branch):
-        """Implementation of as_revision_id()
+        """Implementation of as_revision_id().
 
         Classes should override this function to provide appropriate
         functionality. The default is to just call '.in_history().rev_id'
@@ -294,7 +294,6 @@ class RevisionSpec_dwim(RevisionSpec):
 
     def _match_on(self, branch, revs):
         """Run the lookup and see what we can get."""
-
         # First, see if it's a revno
         if self._revno_regex.match(self.spec) is not None:
             try:
@@ -358,7 +357,7 @@ class RevisionSpec_revno(RevisionSpec):
     prefix = 'revno:'
 
     def _match_on(self, branch, revs):
-        """Lookup a revision by revision number"""
+        """Lookup a revision by revision number."""
         branch, revno, revision_id = self._lookup(branch)
         return RevisionInfo(branch, revno, revision_id)
 
@@ -593,7 +592,7 @@ class RevisionSpec_before(RevisionSpec):
 
 
 class RevisionSpec_tag(RevisionSpec):
-    """Select a revision identified by tag name"""
+    """Select a revision identified by tag name."""
 
     help_txt = """Selects a revision identified by a tag name.
 
@@ -613,7 +612,7 @@ class RevisionSpec_tag(RevisionSpec):
 
 
 class _RevListToTimestamps:
-    """This takes a list of revisions, and allows you to bisect by date"""
+    """This takes a list of revisions, and allows you to bisect by date."""
 
     __slots__ = ['branch']
 
@@ -621,7 +620,7 @@ class _RevListToTimestamps:
         self.branch = branch
 
     def __getitem__(self, index):
-        """Get the date of the index'd item"""
+        """Get the date of the index'd item."""
         r = self.branch.repository.get_revision(self.branch.get_rev_id(index))
         return r.datetime()
 
@@ -721,10 +720,10 @@ class RevisionSpec_date(RevisionSpec):
 
     def _match_on(self, branch, revs):
         """Spec for date revisions:
-          date:value
-          value can be 'yesterday', 'today', 'tomorrow' or a YYYY-MM-DD string.
-          matches the first entry after a given date (either at midnight or
-          at a specified time).
+        date:value
+        value can be 'yesterday', 'today', 'tomorrow' or a YYYY-MM-DD string.
+        matches the first entry after a given date (either at midnight or
+        at a specified time).
         """
         try:
             dt = _parse_datespec(self.spec)

@@ -106,7 +106,7 @@ class CommandRegistry(registry.Registry):
             return command_name
 
     def register(self, cmd, decorate=False):
-        """Utility function to help register a command
+        """Utility function to help register a command.
 
         Args:
           cmd: Command subclass to register
@@ -721,7 +721,8 @@ class Command:
     def options(self):
         """Return dict of valid options for this command.
 
-        Maps from long option name to option object."""
+        Maps from long option name to option object.
+        """
         r = option.Option.STD_OPTIONS.copy()
         std_names = set(r)
         for o in self.takes_options:
@@ -1365,10 +1366,10 @@ class HelpCommandIndex:
 
 
 class Provider:
-    """Generic class to be overriden by plugins"""
+    """Generic class to be overriden by plugins."""
 
     def plugin_for_command(self, cmd_name):
-        """Takes a command and returns the information for that plugin
+        """Takes a command and returns the information for that plugin.
 
         :return: A dictionary with all the available information
             for the requested plugin
@@ -1377,10 +1378,10 @@ class Provider:
 
 
 class ProvidersRegistry(registry.Registry):
-    """This registry exists to allow other providers to exist"""
+    """This registry exists to allow other providers to exist."""
 
     def __iter__(self):
-        for key, provider in self.items():
+        for _key, provider in self.items():
             yield provider
 
 

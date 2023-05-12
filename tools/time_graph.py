@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 import optparse
-import os
 import random
 import sys
-import time
 
-from breezy import (_known_graph_py, _known_graph_pyx, branch, commands, graph,
-                    osutils, trace, ui)
+from breezy import (
+    _known_graph_py,
+    _known_graph_pyx,
+    branch,
+    commands,
+    graph,
+    osutils,
+    trace,
+    ui,
+)
 from breezy.ui import text
 
 p = optparse.OptionParser()
@@ -51,7 +57,7 @@ combinations = []
 # Times for 500 'merge parents' from bzr.dev
 #   25.6s   vs   45.0s  :(
 
-for revision_id, parent_ids in parent_map.iteritems():
+for _revision_id, parent_ids in parent_map.iteritems():
     if parent_ids is not None and len(parent_ids) > 1:
         combinations.append(parent_ids)
 # The largest portion of the graph that has to be walked for a heads() check
@@ -74,7 +80,7 @@ def combi_graph(graph_klass, comb):
     else:
         heads = all_heads_comp(g, comb)
     end = osutils.perf_counter()
-    return dict(elapsed=(end - begin), graph=g, heads=heads)
+    return {'elapsed': (end - begin), 'graph': g, 'heads': heads}
 
 def report(name, g):
     print(f"{name}: {g['elapsed']:.3f}s")

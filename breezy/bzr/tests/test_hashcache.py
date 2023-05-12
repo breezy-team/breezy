@@ -15,11 +15,9 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-import stat
 import time
 
 from ... import osutils
-from ...errors import BzrError
 from ...tests import TestCaseInTempDir
 from ...tests.features import OsFifoFeature
 from ..hashcache import HashCache
@@ -32,7 +30,7 @@ def pause():
 
 
 class TestHashCache(TestCaseInTempDir):
-    """Test the hashcache against a real directory"""
+    """Test the hashcache against a real directory."""
 
     def make_hashcache(self):
         # make a dummy bzr directory just to hold the cache
@@ -46,7 +44,7 @@ class TestHashCache(TestCaseInTempDir):
         return hc
 
     def test_hashcache_initial_miss(self):
-        """Get correct hash from an empty hashcache"""
+        """Get correct hash from an empty hashcache."""
         hc = self.make_hashcache()
         self.build_tree_contents([('foo', b'hello')])
         self.assertEqual(hc.get_sha1('foo'),
@@ -104,7 +102,7 @@ class TestHashCache(TestCaseInTempDir):
             hc = self.reopen_hashcache()
 
     def test_hashcache_raise(self):
-        """check that hashcache can raise BzrError"""
+        """Check that hashcache can raise BzrError."""
         self.requireFeature(OsFifoFeature)
         hc = self.make_hashcache()
         os.mkfifo('a')

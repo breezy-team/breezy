@@ -15,11 +15,10 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Tests for decorator functions"""
+"""Tests for decorator functions."""
 
-import inspect
 
-from .. import decorators, lock
+from .. import decorators
 from . import TestCase
 
 

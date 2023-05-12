@@ -75,12 +75,12 @@ class TestCheck(TestCaseWithTransport):
                                    r"checked branch.*")
 
     def test_check_missing_tree(self):
-        branch = self.make_branch('.')
+        self.make_branch('.')
         out, err = self.run_bzr('check --tree')
         self.assertEqual(err, "No working tree found at specified location.\n")
 
     def test_check_missing_partial(self):
-        branch = self.make_branch('.')
+        self.make_branch('.')
         out, err = self.run_bzr('check --tree --branch')
         self.assertContainsRe(err,
                               r"Checking branch at '.*'\.\n"

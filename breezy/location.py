@@ -24,8 +24,7 @@ from .hooks import Hooks
 
 
 class LocationHooks(Hooks):
-    """Dictionary mapping hook name to a list of callables for location hooks.
-    """
+    """Dictionary mapping hook name to a list of callables for location hooks."""
 
     def __init__(self):
         Hooks.__init__(self, "breezy.location", "hooks")

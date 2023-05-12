@@ -59,28 +59,28 @@ class TopoSortTests(TestCase):
                               % (parent, node, iter_result))
 
     def test_tsort_empty(self):
-        """TopoSort empty list"""
+        """TopoSort empty list."""
         self.assertSortAndIterate([], [])
 
     def test_tsort_easy(self):
-        """TopoSort list with one node"""
+        """TopoSort list with one node."""
         self.assertSortAndIterate({0: []}.items(), [0])
 
     def test_tsort_cycle(self):
-        """TopoSort traps graph with cycles"""
+        """TopoSort traps graph with cycles."""
         self.assertSortAndIterateRaise(GraphCycleError,
                                        {0: [1],
                                         1: [0]}.items())
 
     def test_tsort_cycle_2(self):
-        """TopoSort traps graph with longer cycle"""
+        """TopoSort traps graph with longer cycle."""
         self.assertSortAndIterateRaise(GraphCycleError,
                                        {0: [1],
                                         1: [2],
                                         2: [0]}.items())
 
     def test_topo_sort_cycle_with_tail(self):
-        """TopoSort traps graph with longer cycle"""
+        """TopoSort traps graph with longer cycle."""
         self.assertSortAndIterateRaise(GraphCycleError,
                                        {0: [1],
                                         1: [2],
@@ -89,7 +89,7 @@ class TopoSortTests(TestCase):
                                         4: []}.items())
 
     def test_tsort_1(self):
-        """TopoSort simple nontrivial graph"""
+        """TopoSort simple nontrivial graph."""
         self.assertSortAndIterate({0: [3],
                                    1: [4],
                                    2: [1, 4],
@@ -114,7 +114,7 @@ class TopoSortTests(TestCase):
                                         (8, [0, 1, 4, 5, 6])])
 
     def test_tsort_unincluded_parent(self):
-        """Sort nodes, but don't include some parents in the output"""
+        """Sort nodes, but don't include some parents in the output."""
         self.assertSortAndIterate([(0, [1]),
                                    (1, [2])],
                                   [1, 0])
@@ -591,7 +591,7 @@ class MergeSortTests(TestCase):
             )
 
     def test_revnos_are_globally_assigned(self):
-        """revnos are assigned according to the revision they derive from."""
+        """Revnos are assigned according to the revision they derive from."""
         # in this test we setup a number of branches that all derive from
         # the first revision, and then merge them one at a time, which
         # should give the revisions as they merge numbers still deriving from

@@ -15,7 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for WorkingTreeFormat4"""
+"""Tests for WorkingTreeFormat4."""
 
 import os
 import time
@@ -65,8 +65,8 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
     def test_uses_lockdir(self):
         """WorkingTreeFormat4 uses its own LockDir:
 
-            - lock is a directory
-            - when the WorkingTree is locked, LockDir can see that
+        - lock is a directory
+        - when the WorkingTree is locked, LockDir can see that
         """
         # this test could be factored into a subclass of tests common to both
         # format 3 and 4, but for now its not much of an issue as there is only
@@ -668,8 +668,8 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.assertEqual([b'', b'versioned', b'versioned2'], returned)
 
     def test_iter_changes_unversioned_error(self):
-        """ Check if a PathsNotVersionedError is correctly raised and the
-            paths list contains all unversioned entries only.
+        """Check if a PathsNotVersionedError is correctly raised and the
+        paths list contains all unversioned entries only.
         """
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/bar', b'')])
@@ -678,16 +678,15 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
 
         def tree_iter_changes(files):
-            return [
-                c for c in tree.iter_changes(
+            return list(tree.iter_changes(
                     tree.basis_tree(), specific_files=files,
-                    require_versioned=True)]
+                    require_versioned=True))
         e = self.assertRaises(errors.PathsNotVersionedError,
                               tree_iter_changes, ['bar', 'foo'])
         self.assertEqual(e.paths, ['foo'])
 
     def test_iter_changes_unversioned_non_ascii(self):
-        """Unversioned non-ascii paths should be reported as unicode"""
+        """Unversioned non-ascii paths should be reported as unicode."""
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('f', b'')])

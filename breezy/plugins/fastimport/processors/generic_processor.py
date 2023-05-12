@@ -478,7 +478,7 @@ class GenericProcessor(processor.ImportProcessor):
             return
         if self.first_incremental_commit:
             self.first_incremental_commit = None
-            parents = self.cache_mgr.reftracker.track_heads(cmd)
+            self.cache_mgr.reftracker.track_heads(cmd)
 
         # 'Commit' the revision and report progress
         handler = self.commit_handler_factory(cmd, self.cache_mgr,
