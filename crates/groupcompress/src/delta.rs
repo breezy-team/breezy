@@ -106,7 +106,7 @@ struct SourceInfo {
 }
 
 // Result type for functions that have multiple failure modes
-enum DeltaError {
+pub enum DeltaError {
     OutOfMemory, // Could not allocate required memory
     IndexNeeded, // A delta_index must be passed
     SourceEmpty, // A source_info had no content

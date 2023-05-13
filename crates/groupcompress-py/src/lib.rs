@@ -68,27 +68,26 @@ fn encode_copy_instruction(py: Python, offset: usize, length: usize) -> PyResult
     Ok(PyBytes::new(py, &ret).to_object(py))
 }
 
-fn translate_delta_failure(result: DeltaError) -> Option<PyErr> {
+fn translate_delta_failure(result: DeltaError) -> PyErr {
     match result {
-        DeltaError::DeltaOutOfMemory => Some(PyMemoryError::new_err(
-            "Delta function failed to allocate memory",
-        )),
-        DeltaError::DeltaIndexNeeded => Some(PyValueError::new_err(
-            "Delta function requires delta_index param",
-        )),
-        DeltaError::DeltaSourceEmpty => Some(PyValueError::new_err(
-            "Delta function given empty source_info param",
-        )),
-        DeltaError::DeltaBufferEmpty => Some(PyValueError::new_err(
-            "Delta function given empty buffer params",
-        )),
-        DeltaError::DeltaSourceBad => Some(PyRuntimeError::new_err(
-            "A source info had invalid or corrupt content",
-        )),
-        DeltaError::DeltaSizeTooBig => Some(PyValueError::new_err(
-            "Delta data is larger than the max requested",
-        )),
-        DeltaError::DeltaOk => None,
+        DeltaError::OutOfMemory => {
+            PyMemoryError::new_err("Delta function failed to allocate memory")
+        }
+        DeltaError::IndexNeeded => {
+            PyValueError::new_err("Delta function requires delta_index param")
+        }
+        DeltaError::SourceEmpty => {
+            PyValueError::new_err("Delta function given empty source_info param")
+        }
+        DeltaError::BufferEmpty => {
+            PyValueError::new_err("Delta function given empty buffer params")
+        }
+        DeltaError::SourceBad => {
+            PyRuntimeError::new_err("A source info had invalid or corrupt content")
+        }
+        DeltaError::SizeTooBig => {
+            PyValueError::new_err("Delta data is larger than the max requested")
+        }
     }
 }
 
