@@ -56,6 +56,9 @@ class WorkingTreeFormat2(WorkingTreeFormat):
 
     ignore_filename = '.bzrignore'
 
+    supports_setting_file_ids = True
+    """If this format allows setting the file id."""
+
     def get_format_description(self):
         """See WorkingTreeFormat.get_format_description()."""
         return "Working tree format 2"

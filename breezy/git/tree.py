@@ -1178,9 +1178,6 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                     osutils.safe_unicode(path))
             return None
 
-    def _set_root_id(self, file_id):
-        raise errors.UnsupportedOperation(self._set_root_id, self)
-
     def add(self, files, kinds=None):
         """Add paths to the set of versioned paths.
 

@@ -425,26 +425,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
 
     def copy_content_into(self, tree, revision_id=None):
         """Copy the current content and user files of this tree into tree."""
-        from .merge import transform_tree
-        with self.lock_read():
-            tree.set_root_id(self.path2id(''))
-            if revision_id is None:
-                transform_tree(tree, self)
-            else:
-                # TODO now merge from tree.last_revision to revision (to
-                # preserve user local changes)
-                try:
-                    other_tree = self.revision_tree(revision_id)
-                except errors.NoSuchRevision:
-                    other_tree = self.branch.repository.revision_tree(
-                        revision_id)
-
-                transform_tree(tree, other_tree)
-                if revision_id == _mod_revision.NULL_REVISION:
-                    new_parents = []
-                else:
-                    new_parents = [revision_id]
-                tree.set_parent_ids(new_parents)
+        raise NotImplementedError(self.copy_content_into)
 
     def get_file_size(self, path):
         """See Tree.get_file_size."""
@@ -794,52 +775,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
     def pull(self, source, overwrite=False, stop_revision=None,
              change_reporter=None, possible_transports=None, local=False,
              show_base=False, tag_selector=None):
-        from .merge import merge_inner
-        with self.lock_write(), source.lock_read():
-            old_revision_info = self.branch.last_revision_info()
-            basis_tree = self.basis_tree()
-            count = self.branch.pull(source, overwrite=overwrite, stop_revision=stop_revision,
-                                     possible_transports=possible_transports,
-                                     local=local, tag_selector=tag_selector)
-            new_revision_info = self.branch.last_revision_info()
-            if new_revision_info != old_revision_info:
-                repository = self.branch.repository
-                if repository._format.fast_deltas:
-                    parent_ids = self.get_parent_ids()
-                    if parent_ids:
-                        basis_id = parent_ids[0]
-                        basis_tree = repository.revision_tree(basis_id)
-                with basis_tree.lock_read():
-                    new_basis_tree = self.branch.basis_tree()
-                    merge_inner(
-                        self.branch,
-                        new_basis_tree,
-                        basis_tree,
-                        this_tree=self,
-                        change_reporter=change_reporter,
-                        show_base=show_base)
-                    basis_root_id = basis_tree.path2id('')
-                    new_root_id = new_basis_tree.path2id('')
-                    if new_root_id is not None and basis_root_id != new_root_id:
-                        self.set_root_id(new_root_id)
-                # TODO - dedup parents list with things merged by pull ?
-                # reuse the revisiontree we merged against to set the new
-                # tree data.
-                parent_trees = []
-                if self.branch.last_revision() != _mod_revision.NULL_REVISION:
-                    parent_trees.append(
-                        (self.branch.last_revision(), new_basis_tree))
-                # we have to pull the merge trees out again, because
-                # merge_inner has set the ids. - this corner is not yet
-                # layered well enough to prevent double handling.
-                # XXX TODO: Fix the double handling: telling the tree about
-                # the already known parent data is wasteful.
-                merges = self.get_parent_ids()[1:]
-                parent_trees.extend([
-                    (parent, repository.revision_tree(parent)) for
-                    parent in merges])
-                self.set_parent_trees(parent_trees)
-            return count
+        raise NotImplementedError(self.pull)
 
     def put_file_bytes_non_atomic(self, path, bytes):
         """See MutableTree.put_file_bytes_non_atomic."""
@@ -1011,27 +947,6 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         will do so. For other trees, it will fall back to the repository.
         """
         raise NotImplementedError(self.revision_tree)
-
-    def set_root_id(self, file_id):
-        """Set the root id for this tree."""
-        if not self.supports_setting_file_ids():
-            raise SettingFileIdUnsupported()
-        with self.lock_tree_write():
-            # for compatibility
-            if file_id is None:
-                raise ValueError(
-                    'WorkingTree.set_root_id with fileid=None')
-            self._set_root_id(file_id)
-
-    def _set_root_id(self, file_id):
-        """Set the root id for this tree, in a format specific manner.
-
-        Args:
-          file_id: The file id to assign to the root. It must not be
-            present in the current inventory or an error will occur. It must
-            not be None, but rather a valid file id.
-        """
-        raise NotImplementedError(self._set_root_id)
 
     def unlock(self):
         """See Branch.unlock.
@@ -1277,7 +1192,7 @@ class WorkingTreeFormat(ControlComponentFormat):
     supports_merge_modified = True
     """If this format supports storing merge modified hashes."""
 
-    supports_setting_file_ids = True
+    supports_setting_file_ids = None
     """If this format allows setting the file id."""
 
     supports_store_uncommitted = True
