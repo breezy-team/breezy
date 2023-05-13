@@ -171,7 +171,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                 stop_revids.append(revid)
             elif sha1 is not None:
                 if self._commit_needs_fetching(sha1):
-                    for (kind, (revid, tree_sha, verifiers)) in self.source_store.lookup_git_sha(sha1):
+                    for (_kind, (revid, _tree_sha, _verifiers)) in self.source_store.lookup_git_sha(sha1):
                         revid_sha_map[revid] = sha1
                         stop_revids.append(revid)
             else:
@@ -255,7 +255,7 @@ class InterToLocalGitRepository(InterToGitRepository):
 
     def fetch_revs(self, revs, lossy: bool, limit: Optional[int] = None) -> RevidMap:
         if not lossy and not self.mapping.roundtripping:
-            for git_sha, bzr_revid in revs:
+            for _git_sha, bzr_revid in revs:
                 if (bzr_revid is not None and
                         needs_roundtripping(self.source, bzr_revid)):
                     raise NoPushSupport(self.source, self.target, self.mapping,
@@ -440,7 +440,8 @@ class InterFromGitRepository(InterRepository):
 
 class InterGitNonGitRepository(InterFromGitRepository):
     """Base InterRepository that copies revisions from a Git into a non-Git
-    repository."""
+    repository.
+    """
 
     def _target_has_shas(self, shas):
         revids = {}
@@ -522,7 +523,8 @@ class InterGitNonGitRepository(InterFromGitRepository):
 
 class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
     """InterRepository that copies revisions from a remote Git into a non-Git
-    repository."""
+    repository.
+    """
 
     def get_target_heads(self):
         # FIXME: This should be more efficient
@@ -570,7 +572,8 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
 
 class InterLocalGitNonGitRepository(InterGitNonGitRepository):
     """InterRepository that copies revisions from a local Git into a non-Git
-    repository."""
+    repository.
+    """
 
     def fetch_objects(self, determine_wants, mapping, limit=None, lossy=False):
         """See `InterGitNonGitRepository`."""
@@ -633,7 +636,7 @@ class InterGitGitRepository(InterFromGitRepository):
             ref_changes.update(new_refs)
             return ret
         self.fetch_objects(determine_wants)
-        for k, (git_sha, bzr_revid) in ref_changes.items():
+        for k, (git_sha, _bzr_revid) in ref_changes.items():
             self.target._git.refs[k] = git_sha  # type: ignore
         new_refs = self.target.controldir.get_refs_container()
         return {}, old_refs, new_refs

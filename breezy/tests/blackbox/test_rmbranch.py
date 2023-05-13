@@ -35,7 +35,7 @@ class TestRemoveBranch(TestCaseWithTransport):
 
     def test_remove_local(self):
         # Remove a local branch.
-        tree = self.example_tree('a')
+        self.example_tree('a')
         self.run_bzr_error(['Branch is active. Use --force to remove it.\n'],
                            'rmbranch a')
         self.run_bzr('rmbranch --force a')

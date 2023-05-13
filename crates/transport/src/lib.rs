@@ -500,6 +500,7 @@ pub mod local;
 
 #[cfg(feature = "pyo3")]
 pub mod pyo3;
+pub mod readv;
 
 #[cfg(unix)]
 #[path = "fcntl-locks.rs"]
@@ -510,5 +511,3 @@ pub mod filelock;
 pub mod filelock;
 
 pub mod lock;
-
-pub mod readv;

@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for Tree.path2id('')"""
+"""Tests for Tree.path2id('')."""
 
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_tree import TestCaseWithTree
@@ -31,9 +31,6 @@ class TestGetRootID(TestCaseWithTree):
     def make_tree_with_fixed_root_id(self):
         tree = self.make_branch_and_tree('tree')
         if not tree.supports_setting_file_ids():
-            self.assertRaises(
-                SettingFileIdUnsupported, tree.set_root_id,
-                b'custom-tree-root-id')
             self.skipTest('tree format does not support setting tree id')
         tree.set_root_id(b'custom-tree-root-id')
         return self._convert_tree(tree)

@@ -59,7 +59,6 @@ def report_changes(to_file, old, new, specific_files,
     :param want_unversioned: If False, only shows versioned files.
     :param classify: Add special symbols to indicate file kind.
     """
-
     if short:
         changes = new.iter_changes(old, want_unchanged, specific_files,
                                    require_versioned=False, want_unversioned=want_unversioned)
@@ -310,7 +309,7 @@ def show_pending_merges(new, to_file, short=False, verbose=False):
         if first != merge:
             raise AssertionError('Somehow we misunderstood how'
                                  ' iter_topo_order works %s != %s' % (first, merge))
-        for num, sub_merge, depth, eom in rev_id_iterator:
+        for _num, sub_merge, _depth, _eom in rev_id_iterator:
             rev = revisions[sub_merge]
             if rev is None:
                 to_file.write(sub_prefix + '(ghost) ' +

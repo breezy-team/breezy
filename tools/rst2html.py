@@ -6,9 +6,7 @@
 #
 # This file is in the public domain.
 
-"""
-A minimal front end to the Docutils Publisher, producing HTML.
-"""
+"""A minimal front end to the Docutils Publisher, producing HTML."""
 
 try:
     import locale
@@ -16,7 +14,6 @@ try:
 except:
     pass
 
-import docutils
 from docutils.core import default_description, publish_cmdline
 
 if True: # this is still required in the distutils trunk as-at June 2008.

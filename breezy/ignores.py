@@ -40,7 +40,7 @@ USER_DEFAULTS = [
 
 
 def parse_ignore_file(f: BinaryIO) -> Set[str]:
-    """Parse an ignore file
+    """Parse an ignore file.
 
     Continue in the case of utf8 decoding errors, and emit a warning when
     such and error is found. Optimise for the common case -- no decoding
@@ -98,7 +98,7 @@ def get_user_ignores():
 
 
 def _set_user_ignores(patterns: Iterable[str]) -> None:
-    """Fill out the user ignore file with the given patterns
+    """Fill out the user ignore file with the given patterns.
 
     This may raise an error if it doesn't have permission to
     write to the user ignore file.

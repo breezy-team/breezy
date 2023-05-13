@@ -61,8 +61,7 @@ class RebaseState:
         raise NotImplementedError(self.write_plan)
 
     def remove_plan(self):
-        """Remove a rebase plan file.
-        """
+        """Remove a rebase plan file."""
         raise NotImplementedError(self.remove_plan)
 
     def write_active_revid(self, revid):
@@ -175,7 +174,8 @@ def regenerate_default_revid(repository, revid):
 
     :param repository: Repository in which the revision is present.
     :param revid: Revision id of the revision that is being rebased.
-    :return: new revision id."""
+    :return: new revision id.
+    """
     if revid == NULL_REVISION:
         return NULL_REVISION
     rev = repository.get_revision(revid)
@@ -311,7 +311,7 @@ def generate_transpose_plan(ancestry, renames, graph, generate_revid):
                 assert isinstance(parents, tuple), \
                     f"Expected tuple of parents, got: {parents!r}"
                 # replace r in parents with replace_map[r][0]
-                if not replace_map[r][0] in parents:
+                if replace_map[r][0] not in parents:
                     parents = list(parents)
                     parents[parents.index(r)] = replace_map[r][0]
                     parents = tuple(parents)
@@ -444,7 +444,7 @@ class CommitBuilderRevisionRewriter:
             revprops=revprops, revision_id=newrevid,
             config_stack=_mod_config.GlobalStack())
         try:
-            for (relpath, fs_hash) in builder.record_iter_changes(
+            for (_relpath, _fs_hash) in builder.record_iter_changes(
                     mappedtree, new_base, iter_changes):
                 pass
             builder.finish_inventory()
@@ -457,9 +457,7 @@ class CommitBuilderRevisionRewriter:
 class WorkingTreeRevisionRewriter:
 
     def __init__(self, wt, state, merge_type=None):
-        """
-        :param wt: Working tree in which to do the replays.
-        """
+        """:param wt: Working tree in which to do the replays."""
         self.wt = wt
         self.graph = self.wt.branch.repository.get_graph()
         self.state = state
@@ -484,7 +482,7 @@ class WorkingTreeRevisionRewriter:
         complete_revert(self.wt, [newparents[0]])
         assert not self.wt.changes_from(self.wt.basis_tree()).has_changed(), "Changes in rev"
 
-        oldtree = repository.revision_tree(oldrevid)
+        repository.revision_tree(oldrevid)
         self.state.write_active_revid(oldrevid)
         merger = Merger(self.wt.branch, this_tree=self.wt)
         merger.set_other_revision(oldrevid, self.wt.branch)
@@ -535,7 +533,8 @@ class WorkingTreeRevisionRewriter:
         """Commit a rebase.
 
         :param oldrev: Revision info of new revision to commit.
-        :param newrevid: New revision id."""
+        :param newrevid: New revision id.
+        """
         assert oldrev.revision_id != newrevid, f"Invalid revid {newrevid!r}"
         revprops = dict(oldrev.properties)
         revprops[REVPROP_REBASE_OF] = oldrev.revision_id.decode('utf-8')

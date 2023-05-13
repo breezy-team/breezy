@@ -74,7 +74,7 @@ class TestDefaultFormat(TestCase):
 
 
 class SampleRepositoryFormat(bzrrepository.RepositoryFormatMetaDir):
-    """A sample format
+    """A sample format.
 
     this format is initializable, unsupported to aid in testing the
     open and open(unsupported=True) routines.
@@ -86,7 +86,7 @@ class SampleRepositoryFormat(bzrrepository.RepositoryFormatMetaDir):
         return b"Sample .bzr repository format."
 
     def initialize(self, a_controldir, shared=False):
-        """Initialize a repository in a BzrDir"""
+        """Initialize a repository in a BzrDir."""
         t = a_controldir.get_repository_transport(self)
         t.put_bytes('format', self.get_format_string())
         return 'A bzr repository dir'
@@ -99,9 +99,7 @@ class SampleRepositoryFormat(bzrrepository.RepositoryFormatMetaDir):
 
 
 class SampleExtraRepositoryFormat(repository.RepositoryFormat):
-    """A sample format that can not be used in a metadir
-
-    """
+    """A sample format that can not be used in a metadir."""
 
     def get_format_string(self):
         raise NotImplementedError
@@ -248,7 +246,7 @@ class TestFormatKnit1(TestCaseWithTransport):
                                  f.read())
 
     def check_knits(self, t):
-        """check knit content for a repository."""
+        """Check knit content for a repository."""
         self.assertHasKnit(t, 'inventory')
         self.assertHasKnit(t, 'revisions')
         self.assertHasKnit(t, 'signatures')
@@ -302,7 +300,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         self.check_knits(t)
 
     def test_deserialise_sets_root_revision(self):
-        """We must have a inventory.root.revision
+        """We must have a inventory.root.revision.
 
         Old versions of the XML5 serializer did not set the revision_id for
         the whole inventory. So we grab the one from the expected text. Which
@@ -315,7 +313,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         self.assertEqual(b'test-rev-id', inv.root.revision)
 
     def test_deserialise_uses_global_revision_id(self):
-        """If it is set, then we re-use the global revision id"""
+        """If it is set, then we re-use the global revision id."""
         repo = self.make_repository(
             '.', format=controldir.format_registry.get('knit')())
         inv_xml = (b'<inventory format="5" revision_id="other-rev-id">\n'
@@ -496,7 +494,7 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         self.assertEqual(True, repo._format._fetch_uses_deltas)
 
     def test_convert(self):
-        """Ensure the upgrade adds weaves for roots"""
+        """Ensure the upgrade adds weaves for roots."""
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = knitrepo.RepositoryFormatKnit1()
         tree = self.make_branch_and_tree('.', format)
@@ -1339,7 +1337,8 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
 
     def test_pack_no_obsolete_packs_directory(self):
         """Bug #314314, don't fail if obsolete_packs directory does
-        not exist."""
+        not exist.
+        """
         tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
         r.control_transport.rmdir('obsolete_packs')
         packs._clear_obsolete_packs()
@@ -1503,7 +1502,7 @@ class TestGCCHKPacker(TestCaseWithTransport):
         return builder.get_branch()
 
     def make_branch_with_disjoint_inventory_and_revision(self):
-        """a repo with separate packs for a revisions Revision and Inventory.
+        """A repo with separate packs for a revisions Revision and Inventory.
 
         There will be one pack file that holds the Revision content, and one
         for the Inventory content.

@@ -22,19 +22,16 @@ tests are not using self.capture. If we add tests for the programmatic
 interface later, they will be non blackbox tests.
 """
 
-import codecs
 import sys
 from io import BytesIO, StringIO
 from os import chdir, mkdir, rmdir, unlink
 
-import breezy.branch
 from breezy.bzr import bzrdir, conflicts
 
 from ... import errors, osutils, status
 from ...osutils import pathjoin
 from ...revisionspec import RevisionSpec
 from ...status import show_tree_status
-from ...workingtree import WorkingTree
 from .. import TestCaseWithTransport, TestSkipped
 
 
@@ -68,7 +65,7 @@ class BranchStatus(TestCaseWithTransport):
         return uio.getvalue().decode('utf-8')
 
     def test_branch_status(self):
-        """Test basic branch status"""
+        """Test basic branch status."""
         wt = self.make_branch_and_tree('.')
 
         # status with no commits or files - it must
@@ -129,7 +126,7 @@ class BranchStatus(TestCaseWithTransport):
             wt, short=True, pending=False)
 
     def test_branch_status_revisions(self):
-        """Tests branch status with revisions"""
+        """Tests branch status with revisions."""
         wt = self.make_branch_and_tree('.')
 
         self.build_tree(['hello.c', 'bye.c'])
@@ -160,13 +157,13 @@ class BranchStatus(TestCaseWithTransport):
             revision=revs)
 
     def test_pending(self):
-        """Pending merges display works, including Unicode"""
+        """Pending merges display works, including Unicode."""
         mkdir("./branch")
         wt = self.make_branch_and_tree('branch')
         b = wt.branch
         wt.commit("Empty commit 1")
         b_2_dir = b.controldir.sprout('./copy')
-        b_2 = b_2_dir.open_branch()
+        b_2_dir.open_branch()
         wt2 = b_2_dir.open_workingtree()
         wt.commit("\N{TIBETAN DIGIT TWO} Empty commit 2")
         wt2.merge_from_branch(wt.branch)
@@ -184,7 +181,7 @@ class BranchStatus(TestCaseWithTransport):
         self.assertEndsWith(message, "...\n")
 
     def test_tree_status_ignores(self):
-        """Tests branch status with ignores"""
+        """Tests branch status with ignores."""
         wt = self.make_branch_and_tree('.')
         self.run_bzr('ignore *~')
         wt.commit('commit .bzrignore')
@@ -200,9 +197,8 @@ class BranchStatus(TestCaseWithTransport):
             wt, short=True)
 
     def test_tree_status_specific_files(self):
-        """Tests branch status with given specific files"""
+        """Tests branch status with given specific files."""
         wt = self.make_branch_and_tree('.')
-        b = wt.branch
 
         self.build_tree(['directory/', 'directory/hello.c',
                          'bye.c', 'test.c', 'dir2/',
@@ -373,7 +369,7 @@ class BranchStatus(TestCaseWithTransport):
 
     def test_status_nonexistent_file_with_others(self):
         # brz st [--short] NONEXISTENT ...others..
-        wt = self._prepare_nonexistent()
+        self._prepare_nonexistent()
         expected = [
             'removed:\n',
             '  FILE_E\n',
@@ -406,7 +402,7 @@ class BranchStatus(TestCaseWithTransport):
 
     def test_status_multiple_nonexistent_files(self):
         # brz st [--short] NONEXISTENT ... ANOTHER_NONEXISTENT ...
-        wt = self._prepare_nonexistent()
+        self._prepare_nonexistent()
         expected = [
             'removed:\n',
             '  FILE_E\n',
@@ -441,7 +437,7 @@ class BranchStatus(TestCaseWithTransport):
 
     def test_status_nonexistent_file_with_unversioned(self):
         # brz st [--short] NONEXISTENT A B UNVERSIONED_BUT_EXISTING C D E Q
-        wt = self._prepare_nonexistent()
+        self._prepare_nonexistent()
         expected = [
             'removed:\n',
             '  FILE_E\n',
@@ -481,7 +477,7 @@ class BranchStatus(TestCaseWithTransport):
                               'NONEXISTENT.*')
 
     def test_status_out_of_date(self):
-        """Simulate status of out-of-date tree after remote push"""
+        """Simulate status of out-of-date tree after remote push."""
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('a', b'foo\n')])
         with tree.lock_write():
@@ -498,7 +494,7 @@ class BranchStatus(TestCaseWithTransport):
 
         See https://bugs.launchpad.net/bzr/+bug/40103
         """
-        tree = self.make_branch_and_tree('.')
+        self.make_branch_and_tree('.')
 
         self.build_tree(['test1.c', 'test1.c~', 'test2.c~'])
         result = self.run_bzr('status')[0]
@@ -545,8 +541,7 @@ class BranchStatus(TestCaseWithTransport):
         self.assertEqual('', out)
 
     def test_status_with_shelves(self):
-        """Ensure that _show_shelve_summary handler works.
-        """
+        """Ensure that _show_shelve_summary handler works."""
         wt = self.make_branch_and_tree('.')
         self.build_tree(['hello.c'])
         wt.add('hello.c')
@@ -686,7 +681,7 @@ class TestStatus(TestCaseWithTransport):
         self.assertEqual(result2, result)
 
     def assertStatusContains(self, pattern, short=False):
-        """Run status, and assert it contains the given pattern"""
+        """Run status, and assert it contains the given pattern."""
         if short:
             result = self.run_bzr("status --short")[0]
         else:
@@ -747,10 +742,10 @@ class TestStatus(TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/a', b'content of a\n')])
         tree.add('a')
-        r1_id = tree.commit('one')
+        tree.commit('one')
         alt = tree.controldir.sprout('alt').open_workingtree()
         self.build_tree_contents([('alt/a', b'content of a\nfrom alt\n')])
-        alt_id = alt.commit('alt')
+        alt.commit('alt')
         tree.merge_from_branch(alt.branch)
         output = self.make_utf8_encoded_stringio()
         show_tree_status(tree, to_file=output)
@@ -775,7 +770,7 @@ class TestStatusEncodings(TestCaseWithTransport):
 
     def test_stdout_ascii(self):
         self.overrideAttr(osutils, 'get_user_encoding', lambda: 'ascii')
-        working_tree = self.make_uncommitted_tree()
+        self.make_uncommitted_tree()
         stdout, stderr = self.run_bzr("status")
 
         self.assertEqual(stdout, """\
@@ -785,7 +780,7 @@ added:
 
     def test_stdout_latin1(self):
         self.overrideAttr(osutils, 'get_user_encoding', lambda: 'latin-1')
-        working_tree = self.make_uncommitted_tree()
+        self.make_uncommitted_tree()
         stdout, stderr = self.run_bzr('status')
 
         expected = """\

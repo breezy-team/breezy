@@ -65,7 +65,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         self.assertEqual([], store_inv._make_delta(basis_inv))
 
     def test_wrong_format(self):
-        """WorkingTree.basis safely ignores junk basis inventories"""
+        """WorkingTree.basis safely ignores junk basis inventories."""
         # This test is not applicable to DirState based trees: the basis is
         # not separate and ignorable.
         if isinstance(self.workingtree_format,
@@ -75,7 +75,6 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         if getattr(t, 'root_inventory', None) is None:
             raise TestNotApplicable(f"not applicable to {self.workingtree_format!r}")
 
-        b = t.branch
         with open('a', 'wb') as f:
             f.write(b'a\n')
         t.add('a')

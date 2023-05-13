@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Test for setup.py build process"""
+"""Test for setup.py build process."""
 
 import os
 import subprocess
@@ -35,7 +35,7 @@ from .. import tests
 class TestSetup(tests.TestCaseInTempDir):
 
     def test_build_and_install(self):
-        """ test cmd `python setup.py build`
+        """Test cmd `python setup.py build`.
 
         This tests that the build process and man generator run correctly.
         It also can catch new subdirectories that weren't added to setup.py.

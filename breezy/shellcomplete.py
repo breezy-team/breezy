@@ -58,7 +58,7 @@ def shellcomplete_on_options(options, outfile=None):
 
 
 def shellcomplete_commands(outfile=None):
-    """List all commands"""
+    """List all commands."""
     from inspect import getdoc
 
     from . import commands

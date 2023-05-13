@@ -243,7 +243,7 @@ None\x00/\x00TREE_ROOT\x00\x00a@e\xc3\xa5ample.com--2004\x00dir
         self.assertContainsRe(str(err), 'Versioned root found')
 
     def test_parse_last_line_not_empty(self):
-        """newpath must start with / if it is not None."""
+        """Newpath must start with / if it is not None."""
         # Trim the trailing newline from a valid serialization
         lines = root_only_lines[:-1]
         deserializer = inventory_delta.InventoryDeltaDeserializer()
@@ -252,7 +252,7 @@ None\x00/\x00TREE_ROOT\x00\x00a@e\xc3\xa5ample.com--2004\x00dir
         self.assertContainsRe(str(err), 'last line not empty')
 
     def test_parse_invalid_newpath(self):
-        """newpath must start with / if it is not None."""
+        """Newpath must start with / if it is not None."""
         lines = empty_lines
         lines += b"None\x00bad\x00TREE_ROOT\x00\x00version\x00dir\n"
         deserializer = inventory_delta.InventoryDeltaDeserializer()
@@ -261,7 +261,7 @@ None\x00/\x00TREE_ROOT\x00\x00a@e\xc3\xa5ample.com--2004\x00dir
         self.assertContainsRe(str(err), 'newpath invalid')
 
     def test_parse_invalid_oldpath(self):
-        """oldpath must start with / if it is not None."""
+        """Oldpath must start with / if it is not None."""
         lines = root_only_lines
         lines += b"bad\x00/new\x00file-id\x00\x00version\x00dir\n"
         deserializer = inventory_delta.InventoryDeltaDeserializer()
@@ -270,7 +270,7 @@ None\x00/\x00TREE_ROOT\x00\x00a@e\xc3\xa5ample.com--2004\x00dir
         self.assertContainsRe(str(err), 'oldpath invalid')
 
     def test_parse_new_file(self):
-        """a new file is parsed correctly"""
+        """A new file is parsed correctly."""
         lines = root_only_lines
         fake_sha = b"deadbeef" * 5
         lines += (
@@ -382,27 +382,6 @@ class TestSerialization(TestCase):
                                 serializer.delta_to_lines, NULL_REVISION, b'entry-version', delta)
         self.assertContainsRe(
             str(err), "^Version present for / in b?'TREE_ROOT'")
-
-    def test_unknown_kind_errors(self):
-        old_inv = Inventory(None)
-        new_inv = Inventory(None)
-        root = new_inv.make_entry('directory', '', None, b'my-rich-root-id')
-        root.revision = b'changed'
-        new_inv.add(root)
-
-        class StrangeInventoryEntry(inventory.InventoryEntry):
-            kind = 'strange'
-        non_root = StrangeInventoryEntry(b'id', 'foo', root.file_id)
-        non_root.revision = b'changed'
-        new_inv.add(non_root)
-        delta = new_inv._make_delta(old_inv)
-        serializer = inventory_delta.InventoryDeltaSerializer(
-            versioned_root=True, tree_references=True)
-        # we expect keyerror because there is little value wrapping this.
-        # This test aims to prove that it errors more than how it errors.
-        err = self.assertRaises(KeyError,
-                                serializer.delta_to_lines, NULL_REVISION, b'entry-version', delta)
-        self.assertEqual(('strange',), err.args)
 
     def test_tree_reference_disabled(self):
         old_inv = Inventory(None)

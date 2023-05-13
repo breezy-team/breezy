@@ -1,12 +1,13 @@
-use bazaar::RevisionId;
 use chrono::NaiveDateTime;
 use pyo3::class::basic::CompareOp;
 use pyo3::exceptions::{PyNotImplementedError, PyRuntimeError, PyTypeError, PyValueError};
 use pyo3::import_exception;
 use pyo3::prelude::*;
-use pyo3::types::{PyBytes, PyList, PyString, PyUnicode};
+use pyo3::types::{PyBytes, PyList, PyString};
 use pyo3_file::PyFileLikeObject;
 use std::collections::HashMap;
+
+mod inventory;
 
 import_exception!(breezy.errors, ReservedId);
 
@@ -466,6 +467,8 @@ fn _bzr_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m_globbing.add_class::<Replacer>()?;
     m.add_submodule(m_globbing)?;
     m.add_class::<Revision>()?;
+    let inventorym = inventory::_inventory_rs(py)?;
+    m.add_submodule(inventorym)?;
     m.add_class::<RevisionSerializer>()?;
     m.add_class::<BEncodeRevisionSerializerv1>()?;
     m.add_class::<XMLRevisionSerializer5>()?;

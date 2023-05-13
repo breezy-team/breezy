@@ -49,7 +49,7 @@ def report_notmarked(bug, task, section):
 
 
 def read_news_bugnos(path):
-    """Read the bug numbers closed by a particular NEWS file
+    """Read the bug numbers closed by a particular NEWS file.
 
     Args:
       path: Path to the NEWS file

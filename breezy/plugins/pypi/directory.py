@@ -57,7 +57,7 @@ def find_repo_url(data):
 class PypiDirectory:
 
     def look_up(self, name, url, purpose=None):
-        """See DirectoryService.look_up"""
+        """See DirectoryService.look_up."""
         try:
             with urlopen(f'https://pypi.org/pypi/{name}/json') as f:
                 data = json.load(f)

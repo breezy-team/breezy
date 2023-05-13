@@ -21,11 +21,9 @@
 # needed by a command that uses it.
 
 
-import base64
 import re
-from urllib.parse import urlparse, urlunparse
 
-from ... import bedding, branch, errors, osutils, trace, transport
+from ... import bedding, branch, errors, osutils, trace
 from ...i18n import gettext
 
 
@@ -43,9 +41,7 @@ try:
 except ModuleNotFoundError as e:
     raise LaunchpadlibMissing(e)
 
-from launchpadlib.credentials import (AccessToken, Credentials,
-                                      CredentialStore,
-                                      RequestTokenAuthorizationEngine)
+from launchpadlib.credentials import AccessToken, Credentials, CredentialStore
 from launchpadlib.launchpad import Launchpad
 
 # Declare the minimum version of launchpadlib that we need in order to work.
@@ -90,8 +86,7 @@ def get_credential_store():
 
 
 class BreezyCredentialStore(CredentialStore):
-    """Implementation of the launchpadlib CredentialStore API for Breezy.
-    """
+    """Implementation of the launchpadlib CredentialStore API for Breezy."""
 
     def __init__(self, credential_save_failed=None):
         super().__init__(credential_save_failed)

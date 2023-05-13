@@ -62,7 +62,7 @@ class TestStacking(TestCaseWithBranch):
     def test_get_set_stacked_on_relative(self):
         # Branches can be stacked on other branches using relative paths.
         branch = self.make_branch('branch')
-        target = self.make_branch('target')
+        self.make_branch('target')
         try:
             branch.set_stacked_on_url('../target')
         except unstackable_format_errors:
@@ -90,7 +90,7 @@ class TestStacking(TestCaseWithBranch):
         # Stacking on the same branch silently raises and doesn't execute the
         # change.
         branch = self.make_branch('branch')
-        target = self.make_branch('target')
+        self.make_branch('target')
         try:
             branch.set_stacked_on_url('../target')
         except unstackable_format_errors:
@@ -172,7 +172,7 @@ class TestStacking(TestCaseWithBranch):
         self.assertRevisionInRepository('newbranch', new_branch_revid)
 
     def test_unstack_fetches(self):
-        """Removing the stacked-on branch pulls across all data"""
+        """Removing the stacked-on branch pulls across all data."""
         try:
             builder = self.make_branch_builder('trunk')
         except errors.UninitializableFormat:
@@ -278,7 +278,7 @@ class TestStacking(TestCaseWithBranch):
             self.assertEqual(
                 stacked_bzrdir.open_branch().get_stacked_on_url(),
                 cloned_bzrdir.open_branch().get_stacked_on_url())
-        except unstackable_format_errors as e:
+        except unstackable_format_errors:
             pass
 
     def test_clone_from_branch_stacked_on_relative_url_preserve_stacking(self):
@@ -383,7 +383,7 @@ class TestStacking(TestCaseWithBranch):
         rev1 = stack_on.commit('first commit')
         try:
             stacked_dir = stack_on.controldir.sprout('stacked', stacked=True)
-        except unstackable_format_errors as e:
+        except unstackable_format_errors:
             raise TestNotApplicable('Format does not support stacking.')
         unstacked = self.make_repository('unstacked')
         return stacked_dir.open_workingtree(), unstacked, rev1
@@ -467,7 +467,7 @@ class TestStacking(TestCaseWithBranch):
         target = self.make_branch('target')
         try:
             target.set_stacked_on_url('../stacked-on')
-        except unstackable_format_errors as e:
+        except unstackable_format_errors:
             raise TestNotApplicable('Format does not support stacking.')
 
         # Change the source branch.
@@ -485,11 +485,11 @@ class TestStacking(TestCaseWithBranch):
     def test_transform_fallback_location_hook(self):
         # The 'transform_fallback_location' branch hook allows us to inspect
         # and transform the URL of the fallback location for the branch.
-        stack_on = self.make_branch('stack-on')
+        self.make_branch('stack-on')
         stacked = self.make_branch('stacked')
         try:
             stacked.set_stacked_on_url('../stack-on')
-        except unstackable_format_errors as e:
+        except unstackable_format_errors:
             raise TestNotApplicable('Format does not support stacking.')
         self.get_transport().rename('stack-on', 'new-stack-on')
         hook_calls = []
@@ -529,7 +529,7 @@ class TestStacking(TestCaseWithBranch):
         try:
             stacked_dir = stack_on.controldir.sprout(
                 self.get_url('stacked'), stacked=True)
-        except unstackable_format_errors as e:
+        except unstackable_format_errors:
             raise TestNotApplicable('Format does not support stacking.')
         try:
             stacked = stacked_dir.open_workingtree()
@@ -574,10 +574,10 @@ class TestStackingConnections(
 
     def test_open_stacked(self):
         b = _mod_branch.Branch.open(self.get_url('stacked'))
-        rev = b.repository.get_revision(self.rev_base)
+        b.repository.get_revision(self.rev_base)
         self.assertEqual(1, len(self.connections))
 
     def test_open_stacked_relative(self):
         b = _mod_branch.Branch.open(self.get_url('stacked_relative'))
-        rev = b.repository.get_revision(self.rev_base)
+        b.repository.get_revision(self.rev_base)
         self.assertEqual(1, len(self.connections))

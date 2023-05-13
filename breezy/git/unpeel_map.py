@@ -21,7 +21,7 @@ from collections import defaultdict
 from io import BytesIO
 from typing import Dict, Set
 
-from .. import errors, trace
+from .. import trace
 from .. import transport as _mod_transport
 
 
@@ -82,8 +82,7 @@ class UnpeelMap:
 
     @classmethod
     def from_repository(cls, repository):
-        """Load the unpeel map for a repository.
-        """
+        """Load the unpeel map for a repository."""
         m = UnpeelMap()
         try:
             m.load(repository.control_transport.get("git-unpeel-map"))

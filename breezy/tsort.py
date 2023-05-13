@@ -17,9 +17,7 @@
 """Topological sorting routines."""
 
 
-from . import errors
 from . import graph as _mod_graph
-from . import revision as _mod_revision
 
 __all__ = ["topo_sort", "TopoSorter", "merge_sort", "MergeSorter"]
 

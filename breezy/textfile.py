@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Utilities for distinguishing binary files from text files"""
+"""Utilities for distinguishing binary files from text files."""
 
 from itertools import chain
 

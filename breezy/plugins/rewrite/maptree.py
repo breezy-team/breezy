@@ -35,8 +35,7 @@ def map_file_ids(repository, old_parents, new_parents):
 
 
 class MapTree:
-    """Wrapper around a tree that translates file ids.
-    """
+    """Wrapper around a tree that translates file ids."""
 
     def __init__(self, oldtree, fileid_map):
         """Create a new MapTree.

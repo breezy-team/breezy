@@ -51,7 +51,7 @@ class TestWalkdirs(TestCaseWithTree):
         if symlinks:
             dirblocks[''].append(
                 ('symlink', 'symlink', 'symlink', None, 'symlink'))
-        return [(path, list(sorted(entries)))
+        return [(path, sorted(entries))
                 for (path, entries) in sorted(dirblocks.items())]
 
     def test_walkdir_root(self):

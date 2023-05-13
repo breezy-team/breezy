@@ -26,12 +26,9 @@ from dulwich.file import FileLocked, _GitFile
 from dulwich.object_store import (PACK_MODE, PACKDIR, PackBasedObjectStore,
                                   read_packs_file)
 from dulwich.objects import ShaFile
-from dulwich.pack import (PACK_SPOOL_FILE_MAX_SIZE, MemoryPackIndex, Pack,
-                          PackData, PackIndexer, PackInflater,
-                          PackStreamCopier, compute_file_sha, extend_pack,
-                          iter_sha1, load_pack_index_file, write_pack_header,
-                          write_pack_index, write_pack_object,
-                          write_pack_objects)
+from dulwich.pack import (Pack, PackData, PackIndexer, PackStreamCopier,
+                          extend_pack, iter_sha1, load_pack_index_file,
+                          write_pack_index)
 from dulwich.refs import SymrefLoop
 from dulwich.repo import (BASE_DIRECTORIES, COMMONDIR, CONTROLDIR,
                           INDEX_FILENAME, OBJECTDIR, SYMREF, BaseRepo,
@@ -41,7 +38,7 @@ from dulwich.repo import (BASE_DIRECTORIES, COMMONDIR, CONTROLDIR,
 
 from .. import osutils
 from .. import transport as _mod_transport
-from .. import ui, urlutils
+from .. import urlutils
 from ..errors import (AlreadyControlDirError, LockBroken, LockContention,
                       NotLocalUrl, ReadError, TransportNotPossible)
 from ..lock import LogicalLockResult
@@ -379,7 +376,7 @@ class TransportRefsContainer(RefsContainer):
         self._ensure_dir_exists(urlutils.quote_from_bytes(name))
         lockname = urlutils.quote_from_bytes(name + b".lock")
         try:
-            local_path = transport.local_abspath(
+            transport.local_abspath(
                 urlutils.quote_from_bytes(name))
         except NotLocalUrl:
             # This is racy, but what can we do?

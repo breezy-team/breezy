@@ -159,7 +159,7 @@ class EmailSender:
         return self.config.get('post_commit_to')
 
     def url(self):
-        """What URL to display in the subject of the mail"""
+        """What URL to display in the subject of the mail."""
         url = self.config.get('post_commit_url')
         if url is None:
             url = self.config.get('public_branch')

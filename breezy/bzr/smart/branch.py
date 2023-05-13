@@ -27,8 +27,7 @@ from .request import (FailedSmartServerResponse, SmartServerRequest,
 
 
 class SmartServerBranchRequest(SmartServerRequest):
-    """Base class for handling common branch request logic.
-    """
+    """Base class for handling common branch request logic."""
 
     def do(self, path, *args):
         """Execute a request for a branch at path.
@@ -70,8 +69,7 @@ class SmartServerLockedBranchRequest(SmartServerBranchRequest):
 class SmartServerBranchBreakLock(SmartServerBranchRequest):
 
     def do_with_branch(self, branch):
-        """Break a branch lock.
-        """
+        """Break a branch lock."""
         branch.break_lock()
         return SuccessfulSmartServerResponse((b'ok', ), )
 
@@ -79,7 +77,7 @@ class SmartServerBranchBreakLock(SmartServerBranchRequest):
 class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
 
     def do_with_branch(self, branch):
-        """Return the content of branch.conf
+        """Return the content of branch.conf.
 
         The body is not utf8 decoded - its the literal bytestream from disk.
         """

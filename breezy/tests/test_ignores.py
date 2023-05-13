@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for handling of ignore files"""
+"""Tests for handling of ignore files."""
 
 import os
 from io import BytesIO
@@ -121,7 +121,7 @@ class TestUserIgnores(TestCaseInTempDir):
         self.assertEqual(set(patterns), ignores.get_user_ignores())
 
     def test_add(self):
-        """Test that adding will not duplicate ignores"""
+        """Test that adding will not duplicate ignores."""
         # Create an empty file
         ignores._set_user_ignores([])
 
@@ -131,7 +131,7 @@ class TestUserIgnores(TestCaseInTempDir):
         self.assertEqual(set(patterns), ignores.get_user_ignores())
 
     def test_add_directory(self):
-        """Test that adding a directory will strip any trailing slash"""
+        """Test that adding a directory will strip any trailing slash."""
         # Create an empty file
         ignores._set_user_ignores([])
 
@@ -142,7 +142,7 @@ class TestUserIgnores(TestCaseInTempDir):
         self.assertEqual(set(out_patterns), ignores.get_user_ignores())
 
     def test_add_unique(self):
-        """Test that adding will not duplicate ignores"""
+        """Test that adding will not duplicate ignores."""
         ignores._set_user_ignores(
             ['foo', './bar', 'b\xe5z', 'dir1/', 'dir3\\'])
 

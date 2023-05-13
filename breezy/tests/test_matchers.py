@@ -18,7 +18,7 @@
 
 from testtools.matchers import *
 
-from . import CapturedCall, TestCase, TestCaseWithTransport
+from . import TestCase, TestCaseWithTransport
 from .matchers import *
 
 
@@ -90,7 +90,7 @@ class TestMatchesAncestry(TestCaseWithTransport):
         b = self.make_branch_builder('.')
         b.start_series()
         revid1 = b.build_commit()
-        revid2 = b.build_commit()
+        b.build_commit()
         b.finish_series()
         branch = b.get_branch()
         m = MatchesAncestry(branch.repository, revid1)

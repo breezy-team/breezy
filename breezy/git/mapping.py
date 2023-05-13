@@ -24,9 +24,9 @@ from typing import Optional
 
 import fastbencode as bencode
 
-from .. import errors, foreign, trace, urlutils
+from .. import errors, foreign, trace
 from ..foreign import ForeignRevision, ForeignVcs, VcsMappingRegistry
-from ..revision import NULL_REVISION, Revision
+from ..revision import NULL_REVISION
 from .errors import NoPushSupport
 from .hg import extract_hg_metadata, format_hg_metadata
 from .roundtrip import (CommitSupplement, extract_bzr_metadata,
@@ -269,7 +269,7 @@ class BzrGitMapping(foreign.VcsMapping):
 
     def export_commit(self, rev, tree_sha, parent_lookup, lossy,
                       verifiers):
-        """Turn a Bazaar revision in to a Git commit
+        """Turn a Bazaar revision in to a Git commit.
 
         :param tree_sha: Tree sha for the commit
         :param parent_lookup: Function for looking up the GIT sha equiv of a
@@ -593,7 +593,7 @@ mapping_registry.set_default(b'git-v1')
 
 
 class ForeignGit(ForeignVcs):
-    """The Git Stupid Content Tracker"""
+    """The Git Stupid Content Tracker."""
 
     @property
     def branch_format(self):

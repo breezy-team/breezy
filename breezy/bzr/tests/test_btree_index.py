@@ -20,7 +20,7 @@
 import pprint
 import zlib
 
-from ... import errors, fifo_cache, lru_cache, osutils, tests, transport
+from ... import fifo_cache, lru_cache, osutils, tests, transport
 from ...tests import TestCaseWithTransport, features, scenarios
 from .. import btree_index
 from .. import index as _mod_index
@@ -95,7 +95,7 @@ class BTreeTestCase(TestCaseWithTransport):
         btree_index._PAGE_SIZE = 2048
 
     def assertEqualApproxCompressed(self, expected, actual, slop=6):
-        """Check a count of compressed bytes is approximately as expected
+        """Check a count of compressed bytes is approximately as expected.
 
         Relying on compressed length being stable even with fixed inputs is
         slightly bogus, but zlib is stable enough that this mostly works.
@@ -293,7 +293,7 @@ class TestBTreeBuilder(BTreeTestCase):
         self.assertEqual(4, len(index._row_offsets))
         self.assertEqual(sum(index._row_lengths), index._row_offsets[-1])
         internal_nodes = index._get_internal_nodes([0, 1, 2])
-        root_node = internal_nodes[0]
+        internal_nodes[0]
         internal_node1 = internal_nodes[1]
         internal_node2 = internal_nodes[2]
         # The left most node node2 points at should be one after the right most
@@ -321,9 +321,9 @@ class TestBTreeBuilder(BTreeTestCase):
             b"row_lengths=1,3\n",
             content[:77])
         root = content[77:4096]
-        leaf1 = content[4096:8192]
-        leaf2 = content[8192:12288]
-        leaf3 = content[12288:]
+        content[4096:8192]
+        content[8192:12288]
+        content[12288:]
         root_bytes = zlib.decompress(root)
         expected_root = (
             b"type=internal\n"
@@ -652,13 +652,13 @@ class TestBTreeIndex(BTreeTestCase):
 
     def test_trivial_constructor(self):
         t = transport.get_transport_from_url('trace+' + self.get_url(''))
-        index = btree_index.BTreeGraphIndex(t, 'index', None)
+        btree_index.BTreeGraphIndex(t, 'index', None)
         # Checks the page size at load, but that isn't logged yet.
         self.assertEqual([], t._activity)
 
     def test_with_size_constructor(self):
         t = transport.get_transport_from_url('trace+' + self.get_url(''))
-        index = btree_index.BTreeGraphIndex(t, 'index', 1)
+        btree_index.BTreeGraphIndex(t, 'index', 1)
         # Checks the page size at load, but that isn't logged yet.
         self.assertEqual([], t._activity)
 

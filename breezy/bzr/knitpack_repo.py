@@ -1019,7 +1019,7 @@ class KnitReconcilePacker(KnitPacker):
         self._text_filter = None
 
     def _copy_text_texts(self):
-        """generate what texts we should have and then copy."""
+        """Generate what texts we should have and then copy."""
         self.pb.update("Copying content texts", 3)
         # we have three major tasks here:
         # 1) generate the ideal index
@@ -1084,8 +1084,8 @@ class KnitReconcilePacker(KnitPacker):
         topo_order = tsort.topo_sort(ancestors)
         rev_order = dict(zip(topo_order, range(len(topo_order))))
         bad_texts.sort(key=lambda key: rev_order.get(key[0][1], 0))
-        transaction = repo.get_transaction()
-        file_id_index = GraphIndexPrefixAdapter(
+        repo.get_transaction()
+        GraphIndexPrefixAdapter(
             self.new_pack.text_index,
             ('blank', ), 1,
             add_nodes_callback=self.new_pack.text_index.add_nodes)

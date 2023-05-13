@@ -136,7 +136,7 @@ class TestCommitWithStacking(TestCaseWithStackedTarget):
                            stacked_only_repo.inventories, all_keys)
 
     def test_multi_stack(self):
-        """base + stacked + stacked-on-stacked"""
+        """Base + stacked + stacked-on-stacked."""
         base_tree, stacked_tree = self.make_stacked_target()
         self.build_tree(['stacked/f3.txt'])
         stacked_tree.add(['f3.txt'], ids=[b'f3.txt-id'])

@@ -222,10 +222,10 @@ Updated to revision 2 of branch %s
         self.assertEqual([b'o2'], checkout1.get_parent_ids()[1:])
 
     def test_readonly_lightweight_update(self):
-        """Update a light checkout of a readonly branch"""
+        """Update a light checkout of a readonly branch."""
         tree = self.make_branch_and_tree('branch')
         readonly_branch = branch.Branch.open(self.get_readonly_url('branch'))
-        checkout = readonly_branch.create_checkout('checkout',
+        readonly_branch.create_checkout('checkout',
                                                    lightweight=True)
         tree.commit('empty commit')
         self.run_bzr('update checkout')
@@ -292,8 +292,7 @@ $ brz update -r 1
         self.assertEqual([b'm1'], master.get_parent_ids())
 
     def test_update_dash_r_outside_history(self):
-        """Ensure that we can update -r to dotted revisions.
-        """
+        """Ensure that we can update -r to dotted revisions."""
         master = self.make_branch_and_tree('master')
         self.build_tree(['master/file1'])
         master.add(['file1'])
@@ -348,10 +347,10 @@ $ brz update -r revid:m2
 ''')
 
     def test_update_show_base(self):
-        """brz update support --show-base
+        """Brz update support --show-base.
 
-        see https://bugs.launchpad.net/bzr/+bug/202374"""
-
+        see https://bugs.launchpad.net/bzr/+bug/202374
+        """
         tree = self.make_branch_and_tree('.')
 
         with open('hello', 'w') as f:
@@ -384,14 +383,15 @@ $ brz update -r revid:m2
 
     def test_update_checkout_prevent_double_merge(self):
         """"Launchpad bug 113809 in brz "update performs two merges"
-        https://launchpad.net/bugs/113809"""
+        https://launchpad.net/bugs/113809.
+        """
         master = self.make_branch_and_tree('master')
         self.build_tree_contents([('master/file', b'initial contents\n')])
         master.add(['file'])
         master.commit('one', rev_id=b'm1')
 
         checkout = master.branch.create_checkout('checkout')
-        lightweight = checkout.branch.create_checkout('lightweight',
+        checkout.branch.create_checkout('lightweight',
                                                       lightweight=True)
 
         # time to create a mess

@@ -40,14 +40,10 @@ class GitPushResult(PushResult):
 
 
 class MissingObjectsIterator:
-    """Iterate over git objects that are missing from a target repository.
-
-    """
+    """Iterate over git objects that are missing from a target repository."""
 
     def __init__(self, store, source, pb=None):
-        """Create a new missing objects iterator.
-
-        """
+        """Create a new missing objects iterator."""
         self.source = source
         self._object_store = store
         self._pending = []

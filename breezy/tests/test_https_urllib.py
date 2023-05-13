@@ -14,12 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for the SSL support in the urllib HTTP transport.
-
-"""
+"""Tests for the SSL support in the urllib HTTP transport."""
 
 import os
-import sys
 
 from .. import config, tests, trace
 from ..transport.http import opt_ssl_ca_certs, ssl

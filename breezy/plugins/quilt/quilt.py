@@ -20,7 +20,6 @@
 
 import os
 
-from ... import osutils
 from . import wrapper
 
 QuiltError = wrapper.QuiltError

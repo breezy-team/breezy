@@ -26,7 +26,8 @@ class TestHooks(tests.TestCase):
 
     def test_constructor(self):
         """Check that creating a MutableTreeHooks instance has the right
-        defaults."""
+        defaults.
+        """
         hooks = mutabletree.MutableTreeHooks()
         self.assertIn(
             "start_commit",

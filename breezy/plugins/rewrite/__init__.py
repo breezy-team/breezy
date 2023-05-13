@@ -21,7 +21,6 @@ patches, the user can resolve the conflict and continue the rebase using the
 'rebase-continue' command or abort using the 'rebase-abort' command.
 """
 
-from ... import errors
 from ... import transport as _mod_transport
 from ...bzr.bzrdir import BzrFormat
 from ...commands import plugin_cmds

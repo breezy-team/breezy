@@ -14,9 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import os
 
-from breezy import merge, osutils, tests
+from breezy import merge
 from breezy.plugins import po_merge
 from breezy.tests import features, script
 
@@ -119,7 +118,7 @@ class TestAdduserBranch(script.TestCaseWithTransportAndScript):
         self.builder = make_adduser_branch(self, 'adduser')
 
     def assertAdduserBranchContent(self, revid):
-        env = dict(revid=revid, branch_name=revid)
+        env = {'revid': revid, 'branch_name': revid}
         self.run_script("""\
 $ brz branch adduser -rrevid:%(revid)s %(branch_name)s
 """ % env, null_output_matches_anything=True)
@@ -142,8 +141,8 @@ $ brz branch adduser -rrevid:%(revid)s %(branch_name)s
 # details. This is declared at the end of the file to avoid cluttering the
 # beginning of the file.
 
-_Adduser = dict(
-    base_pot=(r"""# SOME DESCRIPTIVE TITLE.
+_Adduser = {
+    'base_pot': (r"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -171,7 +170,7 @@ msgid "Warning: The home dir you specified already exists.\n"
 msgstr ""
 
 """).encode("utf-8"),
-    this_pot=(r"""# SOME DESCRIPTIVE TITLE.
+    'this_pot': (r"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -206,7 +205,7 @@ msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 
 """).encode("utf-8"),
-    other_pot=(r"""# SOME DESCRIPTIVE TITLE.
+    'other_pot': (r"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -241,7 +240,7 @@ msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 
 """).encode("utf-8"),
-    resolved_pot=(r"""# SOME DESCRIPTIVE TITLE.
+    'resolved_pot': (r"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -276,7 +275,7 @@ msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 
 """).encode("utf-8"),
-    base_po=(r"""# adduser's manpages translation to French
+    'base_po': (r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -312,7 +311,7 @@ msgstr ""
 "Attention ! Le répertoire personnel que vous avez indiqué existe déjà.\n"
 
 """).encode("utf-8"),
-    this_po=(r"""# adduser's manpages translation to French
+    'this_po': (r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -355,7 +354,7 @@ msgstr ""
 "Attention ! Le répertoire personnel que vous avez indiqué existe déjà.\n"
 
 """).encode("utf-8"),
-    other_po=(r"""# adduser's manpages translation to French
+    'other_po': (r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -398,7 +397,7 @@ msgstr ""
 "indiqué (%s) : %s.\n"
 
 """).encode("utf-8"),
-    resolved_po=(r"""# adduser's manpages translation to French
+    'resolved_po': (r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -441,4 +440,4 @@ msgstr ""
 "indiqué (%s) : %s.\n"
 
 """).encode("utf-8"),
-)
+}

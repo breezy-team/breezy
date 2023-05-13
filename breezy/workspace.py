@@ -76,7 +76,7 @@ def reset_tree(
 
 
 def delete_items(deletables, dry_run: bool = False):
-    """Delete files in the deletables iterable"""
+    """Delete files in the deletables iterable."""
 
     def onerror(function, path, excinfo):
         """Show warning for errors seen by rmtree."""
@@ -199,8 +199,7 @@ class Workspace:
         return self._es.__exit__(exc_type, exc_val, exc_tb)
 
     def tree_path(self, path=''):
-        """Return a path relative to the tree subpath used by this workspace.
-        """
+        """Return a path relative to the tree subpath used by this workspace."""
         return os.path.join(self.subpath, path)
 
     def abspath(self, path=''):
@@ -208,8 +207,7 @@ class Workspace:
         return self.tree.abspath(self.tree_path(path))
 
     def reset(self):
-        """Reset - revert local changes, revive deleted files, remove added.
-        """
+        """Reset - revert local changes, revive deleted files, remove added."""
         if self._dirty_tracker and not self._dirty_tracker.is_dirty():
             return
         reset_tree(self.tree, subpath=self.subpath)

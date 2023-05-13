@@ -32,7 +32,7 @@ class CHKSerializer(serializer.InventorySerializer):
 
     def _unpack_inventory(self, elt, revision_id=None, entry_cache=None,
                           return_from_cache=False):
-        """Construct from XML Element"""
+        """Construct from XML Element."""
         from .xml_serializer import (unpack_inventory_entry,
                                      unpack_inventory_flat)
         inv = unpack_inventory_flat(elt, self.format_num,

@@ -26,7 +26,7 @@ from ..revisionspec import (InvalidRevisionSpec, RevisionInfo, RevisionSpec,
 
 
 def spec_in_history(spec, branch):
-    """A simple helper to change a revision spec into a branch search"""
+    """A simple helper to change a revision spec into a branch search."""
     return RevisionSpec.from_string(spec).in_history(branch)
 
 
@@ -119,7 +119,7 @@ class TestRevisionSpecBase(TestRevisionSpec):
 
 
 class TestOddRevisionSpec(TestRevisionSpec):
-    """Test things that aren't normally thought of as revision specs"""
+    """Test things that aren't normally thought of as revision specs."""
 
     def test_none(self):
         self.assertInHistoryIs(None, None, None)
@@ -310,7 +310,7 @@ class TestRevisionSpec_revno(TestRevisionSpec):
         self.assertInvalid('revno:3:tree2')
 
     def test_revno_n_path(self):
-        """Old revno:N:path tests"""
+        """Old revno:N:path tests."""
         wta = self.make_branch_and_tree('a')
         ba = wta.branch
 
@@ -371,7 +371,7 @@ class TestRevisionSpec_revid(TestRevisionSpec):
         self.assertInvalid('revid:r3', invalid_as_revision_id=False)
 
     def test_merged(self):
-        """We can reach revisions in the ancestry"""
+        """We can reach revisions in the ancestry."""
         self.assertInHistoryIs(None, b'alt_r2', 'revid:alt_r2')
 
     def test_not_here(self):
@@ -380,7 +380,7 @@ class TestRevisionSpec_revid(TestRevisionSpec):
         self.assertInvalid('revid:alt_r3', invalid_as_revision_id=False)
 
     def test_in_repository(self):
-        """We can get any revision id in the repository"""
+        """We can get any revision id in the repository."""
         # XXX: This may change in the future, but for now, it is true
         self.tree2.commit('alt third', rev_id=b'alt_r3')
         self.tree.branch.fetch(self.tree2.branch, b'alt_r3')

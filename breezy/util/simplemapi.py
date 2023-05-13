@@ -1,5 +1,4 @@
-"""
-Copyright (c) 2007 Ian Cook and John Popplewell
+"""Copyright (c) 2007 Ian Cook and John Popplewell.
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
@@ -231,14 +230,13 @@ def _sendMail(session, recipient, subject, body, attach):
 
 
 def SendMail(recipient, subject="", body="", attachfiles=""):
-    """Post an e-mail message using Simple MAPI
+    """Post an e-mail message using Simple MAPI.
 
     recipient - string: address to send to (multiple addresses separated with a semicolon)
     subject   - string: subject header
     body      - string: message text
     attach    - string: files to attach (multiple attachments separated with a semicolon)
     """
-
     attach = []
     AttachWork = attachfiles.split(';')
     for f in AttachWork:

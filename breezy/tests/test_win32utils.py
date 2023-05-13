@@ -52,7 +52,8 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
 
     def test_tree_ascii(self):
         """Checks the glob expansion and path separation char
-        normalization"""
+        normalization.
+        """
         self.build_ascii_tree()
         self._run_testset([
             # no wildcards
@@ -96,7 +97,7 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
             ])
 
     def test_tree_unicode(self):
-        """Checks behaviour with non-ascii filenames"""
+        """Checks behaviour with non-ascii filenames."""
         self.build_unicode_tree()
         self._run_testset([
             # no wildcards
@@ -297,7 +298,7 @@ class Test_CommandLineToArgv(tests.TestCaseInTempDir):
         self.assertCommandLine(['a/b.c'], 'a\\b*')
 
     def test_with_pdb(self):
-        """Check stripping Python arguments before bzr script per lp:587868"""
+        """Check stripping Python arguments before bzr script per lp:587868."""
         self.assertCommandLine(["rocks"], "-m pdb rocks", ["rocks"])
         self.build_tree(['d/', 'd/f1', 'd/f2'])
         self.assertCommandLine(["rm", "x*"], "-m pdb rm x*", ["rm", "x*"])

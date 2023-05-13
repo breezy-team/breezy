@@ -15,8 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Black-box tests for brz re-sign.
-"""
+"""Black-box tests for brz re-sign."""
 
 from breezy import gpg, tests
 
@@ -85,11 +84,11 @@ class ReSign(tests.TestCaseInTempDir):
             self.assertEqualSignature(repo, r)
 
     def test_resign_directory(self):
-        """Test --directory option"""
+        """Test --directory option."""
         wt = ControlDir.create_standalone_workingtree('a')
         a = wt.commit("base A", allow_pointless=True)
         b = wt.commit("base B", allow_pointless=True)
-        c = wt.commit("base C", allow_pointless=True)
+        wt.commit("base C", allow_pointless=True)
         repo = wt.branch.repository
         self.monkey_patch_gpg()
         self.run_bzr('re-sign --directory=a -r revid:' + a.decode('utf-8'))

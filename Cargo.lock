@@ -113,6 +113,7 @@ name = "bazaar-py"
 version = "3.3.3"
 dependencies = [
  "bazaar",
+ "breezy-osutils",
  "chrono",
  "pyo3",
  "pyo3-file",

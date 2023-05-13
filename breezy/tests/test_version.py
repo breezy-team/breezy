@@ -56,8 +56,8 @@ class TestBzrlibVersioning(tests.TestCase):
 
 class TestPlatformUse(tests.TestCase):
 
-    scenarios = [('ascii', dict(_platform='test-platform')),
-                 ('unicode', dict(_platform='Schr\xc3\xb6dinger'))]
+    scenarios = [('ascii', {"_platform": 'test-platform'}),
+                 ('unicode', {"_platform": 'Schr\xc3\xb6dinger'})]
 
     def setUp(self):
         super().setUp()

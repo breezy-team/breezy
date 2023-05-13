@@ -82,7 +82,7 @@ class SmartServerRequestBzrDir(SmartServerRequest):
         try:
             self._bzrdir = BzrDir.open_from_transport(
                 self.transport_from_client_path(path))
-        except errors.NotBranchError as e:
+        except errors.NotBranchError:
             return FailedSmartServerResponse((b'nobranch',))
         return self.do_bzrdir_request(*args)
 
@@ -124,7 +124,7 @@ class SmartServerBzrDirRequestDestroyBranch(SmartServerRequestBzrDir):
         try:
             self._bzrdir.destroy_branch(
                 name.decode('utf-8') if name is not None else None)
-        except errors.NotBranchError as e:
+        except errors.NotBranchError:
             return FailedSmartServerResponse((b'nobranch',))
         return SuccessfulSmartServerResponse((b'ok',))
 
@@ -156,7 +156,7 @@ class SmartServerBzrDirRequestDestroyRepository(SmartServerRequestBzrDir):
         """
         try:
             self._bzrdir.destroy_repository()
-        except errors.NoRepositoryPresent as e:
+        except errors.NoRepositoryPresent:
             return FailedSmartServerResponse((b'norepository',))
         return SuccessfulSmartServerResponse((b'ok',))
 
@@ -310,7 +310,7 @@ class SmartServerRequestCreateRepository(SmartServerRequestBzrDir):
 class SmartServerRequestFindRepository(SmartServerRequestBzrDir):
 
     def _find(self, path):
-        """try to find a repository from path upwards
+        """Try to find a repository from path upwards.
 
         This operates precisely like 'bzrdir.find_repository'.
 
@@ -334,7 +334,7 @@ class SmartServerRequestFindRepository(SmartServerRequestBzrDir):
 class SmartServerRequestFindRepositoryV1(SmartServerRequestFindRepository):
 
     def do(self, path):
-        """try to find a repository from path upwards
+        """Try to find a repository from path upwards.
 
         This operates precisely like 'bzrdir.find_repository'.
 
@@ -357,7 +357,7 @@ class SmartServerRequestFindRepositoryV1(SmartServerRequestFindRepository):
 class SmartServerRequestFindRepositoryV2(SmartServerRequestFindRepository):
 
     def do(self, path):
-        """try to find a repository from path upwards
+        """Try to find a repository from path upwards.
 
         This operates precisely like 'bzrdir.find_repository'.
 
@@ -382,7 +382,7 @@ class SmartServerRequestFindRepositoryV2(SmartServerRequestFindRepository):
 class SmartServerRequestFindRepositoryV3(SmartServerRequestFindRepository):
 
     def do(self, path):
-        """try to find a repository from path upwards
+        """Try to find a repository from path upwards.
 
         This operates precisely like 'bzrdir.find_repository'.
 
@@ -565,20 +565,20 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
 class SmartServerRequestOpenBranch(SmartServerRequestBzrDir):
 
     def do_bzrdir_request(self):
-        """open a branch at path and return the branch reference or branch."""
+        """Open a branch at path and return the branch reference or branch."""
         try:
             reference_url = self._bzrdir.get_branch_reference()
             if reference_url is None:
                 reference_url = ''
             return SuccessfulSmartServerResponse((b'ok', reference_url.encode('utf-8')))
-        except errors.NotBranchError as e:
+        except errors.NotBranchError:
             return FailedSmartServerResponse((b'nobranch',))
 
 
 class SmartServerRequestOpenBranchV2(SmartServerRequestBzrDir):
 
     def do_bzrdir_request(self):
-        """open a branch at path and return the reference or format."""
+        """Open a branch at path and return the reference or format."""
         try:
             reference_url = self._bzrdir.get_branch_reference()
             if reference_url is None:
@@ -587,7 +587,7 @@ class SmartServerRequestOpenBranchV2(SmartServerRequestBzrDir):
                 return SuccessfulSmartServerResponse((b'branch', format))
             else:
                 return SuccessfulSmartServerResponse((b'ref', reference_url.encode('utf-8')))
-        except errors.NotBranchError as e:
+        except errors.NotBranchError:
             return FailedSmartServerResponse((b'nobranch',))
 
 

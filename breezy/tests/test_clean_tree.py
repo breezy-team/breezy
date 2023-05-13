@@ -43,7 +43,7 @@ class TestCleanTree(TestCaseInTempDir):
         self.assertPathExists('no-die-please/child')
 
     def test_iter_deletable(self):
-        """Files are selected for deletion appropriately"""
+        """Files are selected for deletion appropriately."""
         os.mkdir('branch')
         tree = ControlDir.create_standalone_workingtree('branch')
         transport = tree.controldir.root_transport
@@ -68,11 +68,9 @@ class TestCleanTree(TestCaseInTempDir):
             self.assertEqual([], dels)
 
     def test_delete_items_warnings(self):
-        """Ensure delete_items issues warnings on EACCES. (bug #430785)
-        """
+        """Ensure delete_items issues warnings on EACCES. (bug #430785)."""
         def _dummy_unlink(path):
-            """unlink() files other than files named '0foo'.
-            """
+            """unlink() files other than files named '0foo'."""
             if path.endswith('0foo'):
                 # Simulate 'permission denied' error.
                 # This should show up as a warning for the
@@ -80,15 +78,14 @@ class TestCleanTree(TestCaseInTempDir):
                 raise PermissionError()
 
         def _dummy_rmtree(path, ignore_errors=False, onerror=None):
-            """Call user supplied error handler onerror.
-            """
+            """Call user supplied error handler onerror."""
             # Indicate failure in removing 'path' if path is subdir0
             # We later check to ensure that this is indicated
             # to the user as a warning. We raise OSError to construct
             # proper excinfo that needs to be passed to onerror
             try:
                 raise PermissionError
-            except PermissionError as e:
+            except PermissionError:
                 excinfo = sys.exc_info()
                 function = os.remove
                 if 'subdir0' not in path:

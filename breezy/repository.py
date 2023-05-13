@@ -16,7 +16,7 @@
 
 __docformat__ = "google"
 
-from typing import TYPE_CHECKING, Iterable, List, Optional, Type
+from typing import Iterable, Optional
 
 from .lazy_import import lazy_import
 
@@ -163,8 +163,7 @@ class CommitBuilder:
         raise NotImplementedError(self.commit)
 
     def abort(self):
-        """Abort the commit that is being built.
-        """
+        """Abort the commit that is being built."""
         raise NotImplementedError(self.abort)
 
     def revision_tree(self) -> "RevisionTree":
@@ -377,7 +376,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         return RepositoryFormat.get_default_format().initialize(controldir)
 
     def __init__(self, _format, controldir, control_files):
-        """instantiate a Repository.
+        """Instantiate a Repository.
 
         Args:
           _format: The format of the repository on disk.
@@ -464,6 +463,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         Args:
           token: if this is already locked, then lock_write will fail
             unless the token matches the existing lock.
+
         Returns:
           a token if this instance supports tokens, otherwise None.
 
@@ -1071,7 +1071,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         return self.control_files.get_transaction()
 
     def get_parent_map(self, revision_ids):
-        """See graph.StackedParentsProvider.get_parent_map"""
+        """See graph.StackedParentsProvider.get_parent_map."""
         raise NotImplementedError(self.get_parent_map)
 
     def _get_parent_map_no_fallbacks(self, revision_ids):
@@ -1109,8 +1109,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             self._get_parent_map_no_fallbacks)
 
     def get_known_graph_ancestry(self, revision_ids):
-        """Return the known graph for a set of revision ids and their ancestors.
-        """
+        """Return the known graph for a set of revision ids and their ancestors."""
         raise NotImplementedError(self.get_known_graph_ancestry)
 
     def get_file_graph(self):
@@ -1118,7 +1117,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         raise NotImplementedError(self.get_file_graph)
 
     def get_graph(self, other_repository=None):
-        """Return the graph walker for this repository format"""
+        """Return the graph walker for this repository format."""
         parents_provider = self._make_parents_provider()
         if (other_repository is not None and
                 not self.has_same_location(other_repository)):
@@ -1563,13 +1562,12 @@ class InterRepository(InterObject[Repository]):
         try:
             InterRepository._assert_same_model(source, target)
             return True
-        except errors.IncompatibleRepositories as e:
+        except errors.IncompatibleRepositories:
             return False
 
     @staticmethod
     def _assert_same_model(source, target):
-        """Raise an exception if two repositories do not use the same model.
-        """
+        """Raise an exception if two repositories do not use the same model."""
         if source.supports_rich_root() != target.supports_rich_root():
             raise errors.IncompatibleRepositories(source, target,
                                                   "different rich-root support")
@@ -1647,7 +1645,7 @@ def _strip_NULL_ghosts(revision_graph):
 
 def _iter_for_revno(repo, partial_history_cache, stop_index=None,
                     stop_revision=None):
-    """Extend the partial history to include a given index
+    """Extend the partial history to include a given index.
 
     If a stop_index is supplied, stop when that index has been reached.
     If a stop_revision is supplied, stop when that revision is

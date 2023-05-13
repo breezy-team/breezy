@@ -80,7 +80,7 @@ class TestPull(TestCaseWithInterBranch):
         self.assertEqual(p2, mine.branch.last_revision())
 
     def test_pull_updates_checkout_and_master(self):
-        """Pulling into a checkout updates the checkout and the master branch"""
+        """Pulling into a checkout updates the checkout and the master branch."""
         master_tree = self.make_from_branch_and_tree('master')
         master_tree.commit('master')
         checkout = master_tree.branch.create_checkout('checkout')

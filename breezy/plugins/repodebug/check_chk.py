@@ -14,17 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Check each CHK page to make sure it is in 'canonical' form.
-
-"""
+"""Check each CHK page to make sure it is in 'canonical' form."""
 
 from ... import commands, controldir, trace, transport, ui
 from ...bzr import chk_map, groupcompress
 
 
 class cmd_check_chk(commands.Command):
-    """Check the CHK pages for canonical form.
-    """
+    """Check the CHK pages for canonical form."""
 
     hidden = True
     takes_options = ['directory', 'revision']

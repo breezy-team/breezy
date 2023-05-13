@@ -15,7 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""An adapter between a Git Branch and a Bazaar Branch"""
+"""An adapter between a Git Branch and a Bazaar Branch."""
 
 
 import contextlib
@@ -37,7 +37,7 @@ from ..revision import NULL_REVISION
 from ..tag import InterTags, TagConflict, Tags, TagSelector, TagUpdates
 from ..trace import is_quiet, mutter, warning
 from .errors import NoPushSupport
-from .mapping import decode_git_path, encode_git_path
+from .mapping import decode_git_path
 from .push import remote_divergence
 from .refs import (branch_name_to_ref, is_tag, ref_to_branch_name,
                    ref_to_tag_name, tag_name_to_ref)
@@ -236,7 +236,7 @@ class InterTagsFromGitToNonGit(InterTags):
         conflicts = []
         updates = {}
         result = dict(to_tags.get_tag_dict())
-        for ref_name, tag_name, peeled, unpeeled in source_tag_refs:
+        for _ref_name, tag_name, peeled, unpeeled in source_tag_refs:
             if selector and not selector(tag_name):
                 continue
             if unpeeled is not None:
@@ -274,7 +274,7 @@ class GitTags(Tags):
 
     def get_tag_dict(self):
         ret = {}
-        for (ref_name, tag_name, peeled, unpeeled) in (
+        for (_ref_name, tag_name, peeled, _unpeeled) in (
                 self.branch.get_tag_refs()):
             try:
                 bzr_revid = self.branch.lookup_foreign_revision_id(peeled)
@@ -285,7 +285,7 @@ class GitTags(Tags):
         return ret
 
     def lookup_tag(self, tag_name):
-        """Return the referent string of a tag"""
+        """Return the referent string of a tag."""
         # TODO(jelmer): Replace with something more efficient for local tags.
         td = self.get_tag_dict()
         try:
@@ -1016,7 +1016,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
         tree = self.target.repository.revision_tree(revid)
         try:
             with tree.get_file('.gitmodules') as f:
-                for path, url, section in parse_submodules(
+                for path, url, _section in parse_submodules(
                         GitConfigFile.from_file(f)):
                     self.target.set_reference_info(
                         tree.path2id(decode_git_path(path)), url.decode('utf-8'),
@@ -1426,7 +1426,7 @@ class InterToGitBranch(branch.GenericInterBranch):
             stop_revision = self.source.last_revision()
         ret = []
         if fetch_tags:
-            for k, v in self.source.tags.get_tag_dict().items():
+            for _k, v in self.source.tags.get_tag_dict().items():
                 ret.append((None, v))
         ret.append((None, stop_revision))
         if getattr(self.interrepo, 'fetch_revs', None):

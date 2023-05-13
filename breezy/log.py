@@ -238,7 +238,7 @@ def make_log_request_dict(direction='reverse', specific_files=None,
       a sensible default.
 
     :param generate_tags: If True, include tags for matched revisions.
-`
+    `
     :param delta_type: Either 'full', 'partial' or None.
       'full' means generate the complete delta - adds/deletes/modifies/etc;
       'partial' means filter the delta using specific_files;
@@ -304,7 +304,7 @@ def _apply_log_request_defaults(rqst):
 
 
 def format_signature_validity(rev_id, branch):
-    """get the signature validity
+    """Get the signature validity.
 
     :param rev_id: revision id to validate
     :param branch: branch of revision
@@ -835,7 +835,7 @@ def _graph_view_revisions(branch, start_rev_id, end_rev_id,
         start_revision_id=end_rev_id, stop_revision_id=start_rev_id,
         stop_rule=stop_rule)
     if not rebase_initial_depths:
-        for (rev_id, merge_depth, revno, end_of_merge
+        for (rev_id, merge_depth, revno, _end_of_merge
              ) in view_revisions:
             yield rev_id, '.'.join(map(str, revno)), merge_depth
     else:
@@ -844,7 +844,7 @@ def _graph_view_revisions(branch, start_rev_id, end_rev_id,
         # a depth less than it. Then we use that depth as the adjustment.
         # If and when we reach the mainline, depth adjustment ends.
         depth_adjustment = None
-        for (rev_id, merge_depth, revno, end_of_merge
+        for (rev_id, merge_depth, revno, _end_of_merge
              ) in view_revisions:
             if depth_adjustment is None:
                 depth_adjustment = merge_depth
@@ -1070,7 +1070,7 @@ def _update_files(delta, files, stop_on):
 
 
 def _make_revision_objects(branch, generate_delta, search, log_rev_iterator):
-    """Extract revision objects from the repository
+    """Extract revision objects from the repository.
 
     :param branch: The branch being logged.
     :param generate_delta: Whether to generate a delta for each revision.
@@ -1552,7 +1552,7 @@ class LogFormatter:
         :return: a list of formatted lines (excluding trailing newlines)
         """
         lines = self._foreign_info_properties(revision)
-        for key, handler in properties_handler_registry.iteritems():
+        for _key, handler in properties_handler_registry.iteritems():
             try:
                 lines.extend(self._format_properties(handler(revision)))
             except Exception:
@@ -1792,7 +1792,7 @@ class LineLogFormatter(LogFormatter):
         self.to_file.write('\n')
 
     def log_string(self, revno, rev, max_chars, tags=None, prefix=''):
-        """Format log info into one string. Truncate tail of string
+        """Format log info into one string. Truncate tail of string.
 
         :param revno:      revision number or None.
                            Revision numbers counts from 1.
@@ -1866,7 +1866,7 @@ def line_log(rev, max_chars):
 
 
 class LogFormatterRegistry(registry.Registry):
-    """Registry for log formatters"""
+    """Registry for log formatters."""
 
     def make_formatter(self, name, *args, **kwargs):
         """Construct a formatter from arguments.

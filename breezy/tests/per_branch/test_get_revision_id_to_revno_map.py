@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for Branch.get_revision_id_to_revno_map()"""
+"""Tests for Branch.get_revision_id_to_revno_map()."""
 
 from breezy.tests.per_branch import TestCaseWithBranch
 
@@ -72,8 +72,7 @@ class TestCaching(TestCaseWithBranch):
         self.assertEqual(['_gen_revno_map'] * 3, calls)
 
     def test_locked(self):
-        """Repeated calls will only call _gen_revno_map once.
-        """
+        """Repeated calls will only call _gen_revno_map once."""
         branch, revmap, calls = self.get_instrumented_branch()
         # Lock the branch, then repeatedly call revision_history.
         with branch.lock_read():

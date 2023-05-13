@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""
-A stub SFTP server for loopback SFTP testing.
+"""A stub SFTP server for loopback SFTP testing.
 Adapted from the one in paramiko's unit tests.
 """
 
@@ -296,8 +295,7 @@ class SocketDelay:
 
     def __init__(self, sock, latency, bandwidth=1.0,
                  really_sleep=True):
-        """
-        :param bandwith: simulated bandwith (MegaBit)
+        """:param bandwith: simulated bandwith (MegaBit)
         :param really_sleep: If set to false, the SocketDelay will just
         increase a counter, instead of calling time.sleep. This is useful for
         unittesting the SocketDelay.
@@ -409,7 +407,6 @@ class TestingSFTPWithoutSSHConnectionHandler(TestingSFTPConnectionHandler):
             FakeChannel(), 'sftp', StubServer(tcs), StubSFTPServer,
             root=tcs._root, home=tcs._server_homedir)
         self.sftp_server = sftp_server
-        sys_stderr = sys.stderr  # Used in error reporting during shutdown
         try:
             sftp_server.start_subsystem(
                 'sftp', None, ssh.SocketAsChannelAdapter(self.request))

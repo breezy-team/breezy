@@ -17,7 +17,7 @@
 
 import os
 import re
-from typing import Iterator, List, Optional
+from typing import Iterator, List
 
 from .errors import BzrError
 
@@ -217,11 +217,10 @@ class Hunk:
 
 
 def iter_hunks(iter_lines, allow_dirty=False):
-    '''
-    :arg iter_lines: iterable of lines to parse for hunks
+    ''':arg iter_lines: iterable of lines to parse for hunks
     :kwarg allow_dirty: If True, when we encounter something that is not
         a hunk header when we're looking for one, assume the rest of the lines
-        are not part of the patch (comments or other junk).  Default False
+        are not part of the patch (comments or other junk).  Default False.
     '''
     hunk = None
     for line in iter_lines:
@@ -304,7 +303,7 @@ class Patch(BinaryPatch):
         return (inserts, removes, len(self.hunks))
 
     def stats_str(self):
-        """Return a string of patch statistics"""
+        """Return a string of patch statistics."""
         return "%i inserts, %i removes in %i hunks" % \
             self.stats_values()
 
@@ -318,7 +317,7 @@ class Patch(BinaryPatch):
         return newpos
 
     def iter_inserted(self):
-        """Iteraties through inserted lines
+        """Iteraties through inserted lines.
 
         :return: Pair of line number, line
         :rtype: iterator of (int, InsertLine)
@@ -334,10 +333,9 @@ class Patch(BinaryPatch):
 
 
 def parse_patch(iter_lines, allow_dirty=False):
-    '''
-    :arg iter_lines: iterable of lines to parse
+    ''':arg iter_lines: iterable of lines to parse
     :kwarg allow_dirty: If True, allow the patch to have trailing junk.
-        Default False
+        Default False.
     '''
     iter_lines = iter_lines_handle_nl(iter_lines)
     try:
@@ -353,8 +351,7 @@ def parse_patch(iter_lines, allow_dirty=False):
 
 
 def iter_file_patch(iter_lines: Iterator[bytes], allow_dirty: bool = False, keep_dirty: bool = False):
-    '''
-    :arg iter_lines: iterable of lines to parse for patches
+    ''':arg iter_lines: iterable of lines to parse for patches
     :kwarg allow_dirty: If True, allow comments and other non-patch text
         before the first patch.  Note that the algorithm here can only find
         such text before any patches have been found.  Comments after the
@@ -423,8 +420,7 @@ def iter_file_patch(iter_lines: Iterator[bytes], allow_dirty: bool = False, keep
 
 
 def parse_patches(iter_lines, allow_dirty=False, keep_dirty=False):
-    '''
-    :arg iter_lines: iterable of lines to parse for patches
+    ''':arg iter_lines: iterable of lines to parse for patches
     :kwarg allow_dirty: If True, allow text that's not part of the patch at
         selected places.  This includes comments before and after a patch
         for instance.  Default False.
@@ -523,8 +519,7 @@ def apply_patches(tt, patches, prefix=1):
 
 
 class AppliedPatches:
-    """Context that provides access to a tree with patches applied.
-    """
+    """Context that provides access to a tree with patches applied."""
 
     def __init__(self, tree, patches, prefix=1):
         self.tree = tree

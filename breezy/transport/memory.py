@@ -27,7 +27,7 @@ from io import BytesIO
 from stat import S_IFDIR, S_IFLNK, S_IFREG, S_ISDIR
 
 from .. import transport, urlutils
-from ..errors import InProcessTransport, LockError, TransportNotPossible
+from ..errors import InProcessTransport, LockError
 from ..transport import (AppendBasedFileStream, FileExists, LateReadError,
                          NoSuchFile, _file_streams)
 
@@ -196,7 +196,7 @@ class MemoryTransport(transport.Transport):
         return result
 
     def rename(self, rel_from, rel_to):
-        """Rename a file or directory; fail if the destination exists"""
+        """Rename a file or directory; fail if the destination exists."""
         abs_from = self._resolve_symlinks(rel_from)
         abs_to = self._resolve_symlinks(rel_to)
 

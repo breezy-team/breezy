@@ -316,8 +316,7 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
         return builder.get_branch()
 
     def test_missing_text_record(self):
-        """commit_write_group fails with BzrCheckError when a text is missing.
-        """
+        """commit_write_group fails with BzrCheckError when a text is missing."""
         repo = self.make_repository('damaged-repo')
         b = self.make_branch_with_multiple_chk_nodes()
         src_repo = b.repository

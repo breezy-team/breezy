@@ -493,7 +493,7 @@ class BazaarObjectStore(BaseObjectStore):
         tree = self.tree_cache.revision_tree(rev.revision_id)
         updater = self._get_updater(rev)
         # FIXME JRV 2011-12-15: Shouldn't we try both values for lossy ?
-        for path, obj in self._revision_to_objects(
+        for _path, obj in self._revision_to_objects(
                 rev, tree, lossy=(not self.mapping.roundtripping),
                 add_cache_entry=updater.add_object):
             if isinstance(obj, Commit):

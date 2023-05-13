@@ -183,7 +183,7 @@ class ReadvRequest(VfsRequest):
         self._relpath = relpath
 
     def do_body(self, body_bytes):
-        """accept offsets for a readv request."""
+        """Accept offsets for a readv request."""
         offsets = self._deserialise_offsets(body_bytes)
         backing_bytes = b''.join(bytes for offset, bytes in
                                  self._backing_transport.readv(self._relpath, offsets))

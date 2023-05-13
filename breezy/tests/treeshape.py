@@ -61,8 +61,9 @@ def build_tree_contents(template):
 def capture_tree_contents(top):
     """Make a Python datastructure description of a tree.
 
-    If top is an absolute path the descriptions will be absolute."""
-    for dirpath, dirnames, filenames in os.walk(top):
+    If top is an absolute path the descriptions will be absolute.
+    """
+    for dirpath, _dirnames, filenames in os.walk(top):
         yield (dirpath + '/', )
         filenames.sort()
         for fn in filenames:

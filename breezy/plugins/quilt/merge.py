@@ -22,7 +22,6 @@
 import shutil
 import tempfile
 
-from ... import errors
 from ... import merge as _mod_merge
 from ... import trace
 from ...i18n import gettext

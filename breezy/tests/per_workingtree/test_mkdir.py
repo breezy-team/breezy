@@ -15,7 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for interface conformance of 'workingtree.put_mkdir'"""
+"""Tests for interface conformance of 'workingtree.put_mkdir'."""
 
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
@@ -28,7 +28,7 @@ class TestMkdir(TestCaseWithWorkingTree):
         t = self.make_branch_and_tree('t1')
         t.lock_write()
         self.addCleanup(t.unlock)
-        file_id = t.mkdir('path')
+        t.mkdir('path')
         self.assertEqual('directory', t.kind('path'))
 
     def test_mkdir_with_id(self):
@@ -37,8 +37,8 @@ class TestMkdir(TestCaseWithWorkingTree):
         self.addCleanup(t.unlock)
         if not t.supports_setting_file_ids():
             self.assertRaises(
-                (SettingFileIdUnsupported, TypeError),
-                t.mkdir, 'path', b'my-id')
+                TypeError,
+                t.mkdir, 'path', file_id=b'my-id')
         else:
             file_id = t.mkdir('path', b'my-id')
             self.assertEqual(b'my-id', file_id)

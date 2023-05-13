@@ -14,13 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tree classes, representing directory at point in time.
-"""
+"""Tree classes, representing directory at point in time."""
 
 __docformat__ = "google"
 
-from typing import (TYPE_CHECKING, Dict, Iterator, List, Optional, Type, Union,
-                    cast)
+from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Union, cast
 
 from . import errors, lock, osutils
 from . import revision as _mod_revision
@@ -47,8 +45,7 @@ class MissingNestedTree(errors.BzrError):
 
 
 class TreeEntry:
-    """An entry that implements the minimum interface used by commands.
-    """
+    """An entry that implements the minimum interface used by commands."""
 
     __slots__: List[str] = []
 
@@ -205,19 +202,16 @@ class Tree:
         raise NotImplementedError(self.supports_tree_reference)
 
     def supports_symlinks(self):
-        """Does this tree support symbolic links?
-        """
+        """Does this tree support symbolic links?"""
         return True
 
     def is_special_path(self, path):
-        """Is the specified path special to the VCS.
-        """
+        """Is the specified path special to the VCS."""
         return False
 
     @property
     def supports_file_ids(self):
-        """Does this tree support file ids?
-        """
+        """Does this tree support file ids?"""
         raise NotImplementedError(self.supports_file_ids)
 
     def changes_from(self, other, want_unchanged=False, specific_files=None,
@@ -258,7 +252,7 @@ class Tree:
     def iter_changes(self, from_tree, include_unchanged=False,
                      specific_files=None, pb=None, extra_trees=None,
                      require_versioned=True, want_unversioned=False):
-        """See InterTree.iter_changes"""
+        """See InterTree.iter_changes."""
         intertree = InterTree.get(from_tree, self)
         return intertree.iter_changes(include_unchanged, specific_files, pb,
                                       extra_trees, require_versioned,
@@ -281,6 +275,7 @@ class Tree:
 
         Returns: a list of parent ids. [] is returned to indicate
         a tree with no parents.
+
         Raises:
           BzrError: if the parents are not known.
         """
@@ -438,8 +433,7 @@ class Tree:
         raise NotImplementedError(self._comparison_data)
 
     def get_file(self, path):
-        """Return a file object for the file path in the tree.
-        """
+        """Return a file object for the file path in the tree."""
         raise NotImplementedError(self.get_file)
 
     def get_file_with_stat(self, path):
@@ -627,6 +621,7 @@ class Tree:
         Args:
           revision_id: The revision_id of the requested tree.
         Returns: A Tree.
+
         Raises:
           NoSuchRevision: if the tree cannot be obtained.
         """
@@ -819,6 +814,7 @@ class InterTree(InterObject[Tree]):
         """Return the changes from source to target.
 
         Returns: A TreeDelta.
+
         Args:
           specific_files: An optional list of file paths to restrict the
             comparison to. When mapping filenames to ids, all matches in all
@@ -925,6 +921,7 @@ class InterTree(InterObject[Tree]):
         Args:
           path: Path to search for (exists in source)
         Returns: path in target, or None if there is no equivalent path.
+
         Raises:
           NoSuchFile: If the path doesn't exist in source
         """
@@ -937,6 +934,7 @@ class InterTree(InterObject[Tree]):
         Args:
           path: Path to search for (exists in target)
         Returns: path in source, or None if there is no equivalent path.
+
         Raises:
           NoSuchFile: if the path doesn't exist in target
         """
@@ -994,6 +992,7 @@ def find_previous_path(from_tree, to_tree, path, recurse='none'):
       to_tree: To tree
       path: Path to search for (exists in from_tree)
     Returns: path in to_tree, or None if there is no equivalent path.
+
     Raises:
       NoSuchFile: If the path doesn't exist in from_tree
     """

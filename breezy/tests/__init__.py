@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Testing framework extensions"""
+"""Testing framework extensions."""
 
 # NOTE: Some classes in here use camelCaseNaming() rather than
 # underscore_naming().  That's for consistency with unittest; it's not the
@@ -190,7 +190,7 @@ def restore_os_environ(test):
 
 
 def _clear__type_equality_funcs(test):
-    """Cleanup bound methods stored on TestCase instances
+    """Cleanup bound methods stored on TestCase instances.
 
     Clear the dict breaking a few (mostly) harmless cycles in the affected
     unittests released with Python 2.6 and initial Python 2.7 versions.
@@ -310,9 +310,9 @@ class ExtendedTestResult(testtools.TextTestResult):
                 self.stream.write("Missing feature '%s' skipped %d tests.\n" %
                                   (feature, count))
         if self._strict:
-            ok = self.wasStrictlySuccessful()
+            self.wasStrictlySuccessful()
         else:
-            ok = self.wasSuccessful()
+            self.wasSuccessful()
         if self._first_thread_leaker_id:
             self.stream.write(
                 '%s is leaking threads among %d leaking tests.\n' % (
@@ -370,7 +370,7 @@ class ExtendedTestResult(testtools.TextTestResult):
     #                each test but the container list is shared between cases.
     #                See lp:498869 lp:625574 and lp:637725 for background.
     def _record_traceback_from_test(self, exc_info):
-        """Store the traceback from passed exc_info tuple till"""
+        """Store the traceback from passed exc_info tuple till."""
         self._traceback_from_test = exc_info[2]
 
     def startTest(self, test):
@@ -403,7 +403,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         self._active_threads = threading.enumerate()
 
     def _check_leaked_threads(self, test):
-        """See if any threads have leaked since last call
+        """See if any threads have leaked since last call.
 
         A sample of live threads is stored in the _active_threads attribute,
         when this method runs it compares the current live threads and any not
@@ -468,7 +468,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         self.report_known_failure(test, err)
 
     def addUnexpectedSuccess(self, test, details=None):
-        """Tell result the test unexpectedly passed, counting as a failure
+        """Tell result the test unexpectedly passed, counting as a failure.
 
         When the minimum version of testtools required becomes 0.9.8 this
         can be updated to use the new handling there.
@@ -481,8 +481,7 @@ class ExtendedTestResult(testtools.TextTestResult):
             self.stop()
 
     def addNotSupported(self, test, feature):
-        """The test will not be run because of a missing feature.
-        """
+        """The test will not be run because of a missing feature."""
         # this can be called in two different ways: it may be that the
         # test started running, and then raised (through requireFeature)
         # UnavailableFeature.  Alternatively this method can be called
@@ -503,7 +502,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         self.report_not_applicable(test, reason)
 
     def _count_stored_tests(self):
-        """Count of tests instances kept alive due to not succeeding"""
+        """Count of tests instances kept alive due to not succeeding."""
         return self.error_count + self.failure_count + self.known_failure_count
 
     def _post_mortem(self, tb=None):
@@ -522,7 +521,7 @@ class ExtendedTestResult(testtools.TextTestResult):
             raise errors.BzrError(f"Unknown whence {whence!r}")
 
     def report_tests_starting(self):
-        """Display information before the test run begins"""
+        """Display information before the test run begins."""
         bzr_path = osutils.realpath(sys.argv[0])
         self.stream.write(
             f'brz selftest: {bzr_path}\n')
@@ -537,10 +536,10 @@ class ExtendedTestResult(testtools.TextTestResult):
         self.stream.write('\n')
 
     def report_test_start(self, test):
-        """Display information on the test just about to be run"""
+        """Display information on the test just about to be run."""
 
     def _report_thread_leak(self, test, leaked_threads, active_threads):
-        """Display information on a test that leaked one or more threads"""
+        """Display information on a test that leaked one or more threads."""
         # GZ 2010-09-09: A leak summary reported separately from the general
         #                thread debugging would be nice. Tests under subunit
         #                need something not using stream, perhaps adding a
@@ -562,7 +561,7 @@ class ExtendedTestResult(testtools.TextTestResult):
 
 
 class TextTestResult(ExtendedTestResult):
-    """Displays progress and results of tests in text form"""
+    """Displays progress and results of tests in text form."""
 
     def __init__(self, stream, descriptions, verbosity,
                  bench_history=None,
@@ -647,14 +646,14 @@ class TextTestResult(ExtendedTestResult):
         pass
 
     def report_unsupported(self, test, feature):
-        """test cannot be run because feature is missing."""
+        """Test cannot be run because feature is missing."""
 
 
 class VerboseTestResult(ExtendedTestResult):
-    """Produce long output, with one line per test run plus times"""
+    """Produce long output, with one line per test run plus times."""
 
     def _ellipsize_to_right(self, a_string, final_width):
-        """Truncate and pad a string, keeping the right hand side"""
+        """Truncate and pad a string, keeping the right hand side."""
         if len(a_string) > final_width:
             result = '...' + a_string[3 - final_width:]
         else:
@@ -719,7 +718,7 @@ class VerboseTestResult(ExtendedTestResult):
         self.stream.write(f'  N/A {self._testTimeString(test)}\n    {reason}\n')
 
     def report_unsupported(self, test, feature):
-        """test cannot be run because feature is missing."""
+        """Test cannot be run because feature is missing."""
         self.stream.write("NODEP %s\n    The feature '%s' is not available.\n"
                           % (self._testTimeString(test), feature))
 
@@ -790,7 +789,7 @@ class TextTestRunner:
 
 
 def iter_suite_tests(suite):
-    """Return all tests in a suite, recursing through nested suites"""
+    """Return all tests in a suite, recursing through nested suites."""
     if isinstance(suite, unittest.TestCase):
         yield suite
     elif isinstance(suite, unittest.TestSuite):
@@ -869,7 +868,6 @@ def IsolatedDocTestSuite(*args, **kwargs):
 
     The method is really a factory and users are expected to use it as such.
     """
-
     kwargs['setUp'] = isolated_doctest_setUp
     kwargs['tearDown'] = isolated_doctest_tearDown
     return doctest.DocTestSuite(*args, **kwargs)
@@ -1001,9 +999,7 @@ class TestCase(testtools.TestCase):
         self.addCleanup(hooks.uninstall_named_hook, name, label)
 
     def _install_config_stats_hooks(self):
-        """Install config hooks to count hook calls.
-
-        """
+        """Install config hooks to count hook calls."""
         for hook_name in ('get', 'set', 'remove', 'load', 'save'):
             self.install_counter_hook(config.ConfigHooks, hook_name,
                                       f'config.{hook_name}')
@@ -1034,7 +1030,7 @@ class TestCase(testtools.TestCase):
         # prevent hooks affecting tests
         known_hooks = hooks.known_hooks
         self._preserved_hooks = {}
-        for key, (parent, name) in known_hooks.iter_parent_objects():
+        for _key, (parent, name) in known_hooks.iter_parent_objects():
             current_hooks = getattr(parent, name)
             self._preserved_hooks[parent] = (name, current_hooks)
         self._preserved_lazy_hooks = hooks._lazy_hooks
@@ -1055,7 +1051,7 @@ class TestCase(testtools.TestCase):
         self._directory_isolation = True
 
     def _silenceUI(self):
-        """Turn off UI for duration of test"""
+        """Turn off UI for duration of test."""
         # by default the UI is off; tests can turn it on if they want it.
         self.overrideAttr(ui, 'ui_factory', ui.SilentUIFactory())
 
@@ -1246,7 +1242,8 @@ class TestCase(testtools.TestCase):
         """Return ndiff between two strings containing lines.
 
         A trailing newline is added if missing to make the strings
-        print properly."""
+        print properly.
+        """
         if b and not b.endswith('\n'):
             b += '\n'
         if a and not a.endswith('\n'):
@@ -1300,7 +1297,7 @@ class TestCase(testtools.TestCase):
                          f'mode mismatch {mode:o} != {mode_test:o}')
 
     def assertEqualStat(self, expected, actual):
-        """assert that expected and actual are the same stat result.
+        """Assert that expected and actual are the same stat result.
 
         :param expected: A stat result.
         :param actual: A stat result.
@@ -1336,8 +1333,7 @@ class TestCase(testtools.TestCase):
                 length, len(obj_with_len), obj_with_len))
 
     def assertLogsError(self, exception_class, func, *args, **kwargs):
-        """Assert that `func(*args, **kwargs)` quietly logs a specific error.
-        """
+        """Assert that `func(*args, **kwargs)` quietly logs a specific error."""
         captured = []
         orig_log_exception_quietly = trace.log_exception_quietly
         try:
@@ -1384,7 +1380,7 @@ class TestCase(testtools.TestCase):
                 raise AssertionError(f'pattern "{needle_re}" not found in "{haystack}"')
 
     def assertNotContainsRe(self, haystack, needle_re, flags=0):
-        """Assert that a does not match a regular expression"""
+        """Assert that a does not match a regular expression."""
         if re.search(needle_re, haystack, flags):
             raise AssertionError(f'pattern "{needle_re}" found in "{haystack}"')
 
@@ -1444,7 +1440,7 @@ class TestCase(testtools.TestCase):
             raise self.failureException(f"{excName} not raised")
 
     def assertIs(self, left, right, message=None):
-        if not (left is right):
+        if left is not right:
             if message is not None:
                 raise AssertionError(message)
             else:
@@ -1471,13 +1467,13 @@ class TestCase(testtools.TestCase):
                          % (path, oct(mode), oct(actual_mode)))
 
     def assertIsSameRealPath(self, path1, path2):
-        """Fail if path1 and path2 points to different files"""
+        """Fail if path1 and path2 points to different files."""
         self.assertEqual(osutils.realpath(path1),
                          osutils.realpath(path2),
                          f"apparent paths:\na = {path1}\nb = {path2}\n,")
 
     def assertIsInstance(self, obj, kls, msg=None):
-        """Fail if obj is not an instance of kls
+        """Fail if obj is not an instance of kls.
 
         :param msg: Supplementary message to show if the assertion fails.
         """
@@ -1497,7 +1493,7 @@ class TestCase(testtools.TestCase):
         self.assertEqualDiff(content, s)
 
     def assertDocstring(self, expected_docstring, obj):
-        """Fail if obj does not have expected_docstring"""
+        """Fail if obj does not have expected_docstring."""
         if __doc__ is None:
             # With -OO the docstring should be None instead
             self.assertIs(obj.__doc__, None)
@@ -1639,7 +1635,7 @@ class TestCase(testtools.TestCase):
         return result
 
     def _startLogFile(self):
-        """Setup a in-memory target for bzr and testcase log messages"""
+        """Setup a in-memory target for bzr and testcase log messages."""
         pseudo_log_file = BytesIO()
 
         def _get_log_contents_for_weird_testtools_api():
@@ -1660,7 +1656,7 @@ class TestCase(testtools.TestCase):
         stream.detach()
 
     def _finishLogFile(self):
-        """Flush and dereference the in-memory log for this testcase"""
+        """Flush and dereference the in-memory log for this testcase."""
         if trace._trace_handler:
             # flush the log file, to get all content
             trace._trace_handler.flush()
@@ -1754,7 +1750,7 @@ class TestCase(testtools.TestCase):
         self._preserved_lazy_hooks.clear()
 
     def knownFailure(self, reason):
-        """Declare that this test fails for a known reason
+        """Declare that this test fails for a known reason.
 
         Tests that are known to fail should generally be using expectedFailure
         with an appropriate reverse assertion if a change could cause the test
@@ -2067,7 +2063,7 @@ class TestCase(testtools.TestCase):
         return out, err
 
     def run_bzr_error(self, error_regexes, *args, **kwargs):
-        """Run brz, and check that stderr contains the supplied regexes
+        """Run brz, and check that stderr contains the supplied regexes.
 
         :param error_regexes: Sequence of regular expressions which
             must each be found in the error output. The relative ordering
@@ -2326,7 +2322,8 @@ class TestCase(testtools.TestCase):
                          a_callable=None, *args, **kwargs):
         """Call callable with redirected std io pipes.
 
-        Returns the return code."""
+        Returns the return code.
+        """
         if not callable(a_callable):
             raise ValueError("a_callable must be callable.")
         if stdin is None:
@@ -2447,7 +2444,7 @@ class TestCaseWithMemoryTransport(TestCase):
         super().setUp()
 
         def _add_disconnect_cleanup(transport):
-            """Schedule disconnection of given transport at test cleanup
+            """Schedule disconnection of given transport at test cleanup.
 
             This needs to happen for all connected transports or leaks occur.
 
@@ -2484,7 +2481,7 @@ class TestCaseWithMemoryTransport(TestCase):
         return t
 
     def get_readonly_transport(self, relpath=None):
-        """Return a readonly transport for the test scratch space
+        """Return a readonly transport for the test scratch space.
 
         This can be used to test that operations which should only need
         readonly access in fact do not try to write.
@@ -2504,7 +2501,7 @@ class TestCaseWithMemoryTransport(TestCase):
         return self.transport_readonly_server()
 
     def get_readonly_server(self):
-        """Get the server instance for the readonly transport
+        """Get the server instance for the readonly transport.
 
         This is useful for some tests with specific servers to do diagnostics.
         """
@@ -2913,7 +2910,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
     build_tree_contents = staticmethod(treeshape.build_tree_contents)
 
     def assertInWorkingTree(self, path, root_path='.', tree=None):
-        """Assert whether path or paths are in the WorkingTree"""
+        """Assert whether path or paths are in the WorkingTree."""
         if tree is None:
             tree = workingtree.WorkingTree.open(root_path)
         if not isinstance(path, str):
@@ -2924,7 +2921,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
                             path + ' not in working tree.')
 
     def assertNotInWorkingTree(self, path, root_path='.', tree=None):
-        """Assert whether path or paths are not in the WorkingTree"""
+        """Assert whether path or paths are not in the WorkingTree."""
         if tree is None:
             tree = workingtree.WorkingTree.open(root_path)
         if not isinstance(path, str):
@@ -3492,7 +3489,7 @@ def partition_tests(suite, count):
     # resources, but on the other it avoids assigning blocks of slow tests to
     # just one partition.  So the slowest partition shouldn't be much slower
     # than the fastest.
-    partitions = [list() for i in range(count)]
+    partitions = [[] for i in range(count)]
     tests = iter_suite_tests(suite)
     for partition, test in zip(itertools.cycle(partitions), tests):
         partition.append(test)
@@ -3513,7 +3510,7 @@ def workaround_zealous_crypto_random():
 
 
 def fork_for_tests(suite):
-    """Take suite and start up one runner per CPU by forking()
+    """Take suite and start up one runner per CPU by forking().
 
     :return: An iterable of TestCase-like objects which can each have
         run(result) called on them to feed tests to result.
@@ -3712,7 +3709,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              stream=None,
              lsprof_tests=False,
              ):
-    """Run the whole test suite under the enhanced runner"""
+    """Run the whole test suite under the enhanced runner."""
     # XXX: Very ugly way to do this...
     # Disable warning about old formats because we don't want it to disturb
     # any blackbox tests.
@@ -3809,7 +3806,7 @@ def suite_matches_id_list(test_suite, id_list):
     help to localize defects).
     """
     # Build a dict counting id occurrences
-    tests = dict()
+    tests = {}
     for test in iter_suite_tests(test_suite):
         id = test.id()
         tests[id] = tests.get(id, 0) + 1
@@ -3839,7 +3836,7 @@ class TestIdList:
     def __init__(self, test_id_list):
         # When a test suite needs to be filtered against us we compare test ids
         # for equality, so a simple dict offers a quick and simple solution.
-        self.tests = dict().fromkeys(test_id_list, True)
+        self.tests = {}.fromkeys(test_id_list, True)
 
         # While unittest.TestCase have ids like:
         # <module>.<class>.<method>[(<param+)],
@@ -4135,7 +4132,6 @@ def test_suite(keep_only=None, starting_with=None):
     This function can be replaced if you need to change the default test
     suite on a global basis, but it is not encouraged.
     """
-
     loader = TestUtil.TestLoader()
 
     if keep_only is not None:
@@ -4338,7 +4334,7 @@ def clone_test(test, new_id):
     # read the test output for parameterized tests, because tracebacks will be
     # associated with irrelevant tests.
     try:
-        details = new_test._TestCase__details
+        pass
     except AttributeError:
         # must be a different version of testtools than expected.  Do nothing.
         pass
@@ -4371,7 +4367,6 @@ def permute_tests_for_extension(standard_tests, loader, py_module_name,
         tests. feature is the Feature object that can be used to determine if
         the module is available.
     """
-
     from .features import ModuleAvailableFeature
     py_module = pyutils.get_named_object(py_module_name)
     scenarios = [

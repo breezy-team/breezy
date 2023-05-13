@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for Branch.revision_id_to_dotted_revno()"""
+"""Tests for Branch.revision_id_to_dotted_revno()."""
 
 from breezy import errors
 from breezy.tests.per_branch import TestCaseWithBranch

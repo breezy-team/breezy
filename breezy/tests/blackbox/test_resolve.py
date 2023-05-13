@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from breezy import conflicts, tests
+from breezy import tests
 from breezy.bzr import conflicts as _mod_bzr_conflicts
 from breezy.tests import KnownFailure, script
 from breezy.tests.blackbox import test_conflicts
@@ -167,7 +167,7 @@ $ brz resolve --take-other
 class TestResolveAuto(tests.TestCaseWithTransport):
 
     def test_auto_resolve(self):
-        """Text conflicts can be resolved automatically"""
+        """Text conflicts can be resolved automatically."""
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file',
                                    b'<<<<<<<\na\n=======\n>>>>>>>\n')])

@@ -14,13 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Test commit message editor.
-"""
+"""Test commit message editor."""
 
 import os
 import sys
 
-from .. import commit, config, errors, msgeditor, osutils, trace
+from .. import commit, config, msgeditor, osutils, trace
 from .. import transport as _mod_transport
 from ..msgeditor import (edit_commit_message_encoded,
                          make_commit_message_template_encoded)
@@ -54,7 +53,7 @@ class MsgEditorTest(TestCaseWithTransport):
         return working_tree
 
     def test_commit_template(self):
-        """Test building a commit message template"""
+        """Test building a commit message template."""
         working_tree = self.make_uncommitted_tree()
         template = msgeditor.make_commit_message_template(working_tree,
                                                           None)
@@ -95,7 +94,7 @@ pending merges:
 """)
 
     def test_commit_template_encoded(self):
-        """Test building a commit message template"""
+        """Test building a commit message template."""
         working_tree = self.make_uncommitted_tree()
         template = make_commit_message_template_encoded(working_tree,
                                                         None,
@@ -107,7 +106,7 @@ added:
 """.encode())
 
     def test_commit_template_and_diff(self):
-        """Test building a commit message template"""
+        """Test building a commit message template."""
         working_tree = self.make_uncommitted_tree()
         template = make_commit_message_template_encoded(working_tree,
                                                         None,
@@ -371,7 +370,7 @@ if len(sys.argv) == 2:
 
 # GZ 2009-11-17: This wants moving to osutils when the errno checking code is
 class TestPlatformErrnoWorkarounds(TestCaseInTempDir):
-    """Ensuring workarounds enshrined in code actually serve a purpose"""
+    """Ensuring workarounds enshrined in code actually serve a purpose."""
 
     def test_subprocess_call_bad_file(self):
         if sys.platform != "win32":

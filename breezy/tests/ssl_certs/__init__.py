@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""ssl_certs -- provides access to ssl keys and certificates needed by tests"""
+"""ssl_certs -- provides access to ssl keys and certificates needed by tests."""
 
 from breezy import osutils
 
@@ -23,5 +23,5 @@ base_dir = osutils.dirname(osutils.realpath(__file__))
 
 
 def build_path(name):
-    """Build and return a path in ssl_certs directory for name"""
+    """Build and return a path in ssl_certs directory for name."""
     return osutils.pathjoin(base_dir, name)

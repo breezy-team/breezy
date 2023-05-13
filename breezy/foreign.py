@@ -23,9 +23,7 @@ from .revision import Revision
 
 
 class VcsMapping:
-    """Describes the mapping between the semantics of Bazaar and a foreign VCS.
-
-    """
+    """Describes the mapping between the semantics of Bazaar and a foreign VCS."""
     # Whether this is an experimental mapping that is still open to changes.
     experimental = False
 

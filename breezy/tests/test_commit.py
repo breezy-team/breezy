@@ -30,7 +30,7 @@ from ..errors import BzrError, LockContention
 from ..tree import TreeChange
 from . import TestCase, TestCaseWithTransport, test_foreign
 from .features import SymlinkFeature
-from .matchers import MatchesAncestry, MatchesTreeChanges
+from .matchers import MatchesAncestry
 
 # TODO: Test commit with some added, and added-but-missing files
 
@@ -100,7 +100,6 @@ class TestCommit(TestCaseWithTransport):
     def test_commit_lossy_native(self):
         """Attempt a lossy commit to a native branch."""
         wt = self.make_branch_and_tree('.')
-        b = wt.branch
         with open('hello', 'w') as f:
             f.write('hello world')
         wt.add('hello')
@@ -112,7 +111,6 @@ class TestCommit(TestCaseWithTransport):
         test_foreign.register_dummy_foreign_for_test(self)
         wt = self.make_branch_and_tree('.',
                                        format=test_foreign.DummyForeignVcsDirFormat())
-        b = wt.branch
         with open('hello', 'w') as f:
             f.write('hello world')
         wt.add('hello')
@@ -126,7 +124,6 @@ class TestCommit(TestCaseWithTransport):
         foreign_branch = self.make_branch('foreign',
                                           format=test_foreign.DummyForeignVcsDirFormat())
         wt = foreign_branch.create_checkout("local")
-        b = wt.branch
         with open('local/hello', 'w') as f:
             f.write('hello world')
         wt.add('hello')
@@ -139,7 +136,7 @@ class TestCommit(TestCaseWithTransport):
                          wt.branch.last_revision())
 
     def test_missing_commit(self):
-        """Test a commit with a missing file"""
+        """Test a commit with a missing file."""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
         with open('hello', 'w') as f:
@@ -167,7 +164,6 @@ class TestCommit(TestCaseWithTransport):
         olive/ has not been snapshotted yet.
         """
         wt = self.make_branch_and_tree('.')
-        b = wt.branch
         self.build_tree(['annotate/', 'annotate/foo.py',
                          'olive/', 'olive/dialog.py'
                          ])
@@ -205,7 +201,7 @@ class TestCommit(TestCaseWithTransport):
         self.assertEqual(b.revno(), 2)
 
     def test_selective_delete(self):
-        """Selective commit in tree with deletions"""
+        """Selective commit in tree with deletions."""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
         with open('hello', 'w') as f:
@@ -277,9 +273,8 @@ class TestCommit(TestCaseWithTransport):
         eq(tree2.get_file_revision('fruity'), b'test@rev-2')
 
     def test_reused_rev_id(self):
-        """Test that a revision id cannot be reused in a branch"""
+        """Test that a revision id cannot be reused in a branch."""
         wt = self.make_branch_and_tree('.')
-        b = wt.branch
         wt.commit('initial', rev_id=b'test@rev-1', allow_pointless=True)
         self.assertRaises(Exception,
                           wt.commit,
@@ -288,7 +283,7 @@ class TestCommit(TestCaseWithTransport):
                           allow_pointless=True)
 
     def test_commit_move(self):
-        """Test commit of revisions with moved files and directories"""
+        """Test commit of revisions with moved files and directories."""
         eq = self.assertEqual
         wt = self.make_branch_and_tree('.')
         b = wt.branch
@@ -332,7 +327,7 @@ class TestCommit(TestCaseWithTransport):
         eq(inv.get_entry(b'b-id').revision, r3)
 
     def test_removed_commit(self):
-        """Commit with a removed file"""
+        """Commit with a removed file."""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
         with open('hello', 'w') as f:
@@ -380,7 +375,6 @@ class TestCommit(TestCaseWithTransport):
         """Try and commit with unknown files and strict = True, should fail."""
         from ..errors import StrictCommitFailed
         wt = self.make_branch_and_tree('.')
-        b = wt.branch
         with open('hello', 'w') as f:
             f.write('hello world')
         wt.add('hello')
@@ -391,9 +385,9 @@ class TestCommit(TestCaseWithTransport):
 
     def test_strict_commit_without_unknowns(self):
         """Try and commit with no unknown files and strict = True,
-        should work."""
+        should work.
+        """
         wt = self.make_branch_and_tree('.')
-        b = wt.branch
         with open('hello', 'w') as f:
             f.write('hello world')
         wt.add('hello')
@@ -402,7 +396,6 @@ class TestCommit(TestCaseWithTransport):
     def test_nonstrict_commit(self):
         """Try and commit with unknown files and strict = False, should work."""
         wt = self.make_branch_and_tree('.')
-        b = wt.branch
         with open('hello', 'w') as f:
             f.write('hello world')
         wt.add('hello')
@@ -412,9 +405,9 @@ class TestCommit(TestCaseWithTransport):
 
     def test_nonstrict_commit_without_unknowns(self):
         """Try and commit with no unknown files and strict = False,
-        should work."""
+        should work.
+        """
         wt = self.make_branch_and_tree('.')
-        b = wt.branch
         with open('hello', 'w') as f:
             f.write('hello world')
         wt.add('hello')
@@ -501,7 +494,6 @@ create_signatures=when-possible
     def test_commit_invokes_hooks(self):
         import breezy.commit as commit
         wt = self.make_branch_and_tree('.')
-        branch = wt.branch
         calls = []
 
         def called(branch, rev_id):
@@ -652,7 +644,7 @@ create_signatures=when-possible
             self.assertTrue(basis.is_versioned('b'))
 
     def test_commit_saves_1ms_timestamp(self):
-        """Passing in a timestamp is saved with 1ms resolution"""
+        """Passing in a timestamp is saved with 1ms resolution."""
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a'])
         tree.add('a')
@@ -663,7 +655,7 @@ create_signatures=when-possible
         self.assertEqual(1153248633.419, rev.timestamp)
 
     def test_commit_has_1ms_resolution(self):
-        """Allowing commit to generate the timestamp also has 1ms resolution"""
+        """Allowing commit to generate the timestamp also has 1ms resolution."""
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a'])
         tree.add('a')
@@ -752,7 +744,7 @@ create_signatures=when-possible
         self.assertBasisTreeKind('directory', tree, 'name')
 
     def test_commit_unversioned_specified(self):
-        """Commit should raise if specified files isn't in basis or worktree"""
+        """Commit should raise if specified files isn't in basis or worktree."""
         tree = self.make_branch_and_tree('.')
         self.assertRaises(errors.PathsNotVersionedError, tree.commit,
                           'message', specific_files=['bogus'])
@@ -770,8 +762,7 @@ create_signatures=when-possible
             return self.message
 
     def test_commit_callback(self):
-        """Commit should invoke a callback to get the message"""
-
+        """Commit should invoke a callback to get the message."""
         tree = self.make_branch_and_tree('.')
         try:
             tree.commit()
@@ -789,7 +780,7 @@ create_signatures=when-possible
         self.assertEqual('commit 1', message)
 
     def test_no_callback_pointless(self):
-        """Callback should not be invoked for pointless commit"""
+        """Callback should not be invoked for pointless commit."""
         tree = self.make_branch_and_tree('.')
         cb = self.Callback('commit 2', self)
         self.assertRaises(PointlessCommit, tree.commit, message_callback=cb,
@@ -797,7 +788,7 @@ create_signatures=when-possible
         self.assertFalse(cb.called)
 
     def test_no_callback_netfailure(self):
-        """Callback should not be invoked if connectivity fails"""
+        """Callback should not be invoked if connectivity fails."""
         tree = self.make_branch_and_tree('.')
         cb = self.Callback('commit 2', self)
         repository = tree.branch.repository
@@ -811,7 +802,7 @@ create_signatures=when-possible
         self.assertFalse(cb.called)
 
     def test_selected_file_merge_commit(self):
-        """Ensure the correct error is raised"""
+        """Ensure the correct error is raised."""
         tree = self.make_branch_and_tree('foo')
         # pending merge would turn into a left parent
         tree.commit('commit 1')
@@ -825,7 +816,7 @@ create_signatures=when-possible
                          ' yet: files bar, baz', str(err))
 
     def test_commit_ordering(self):
-        """Test of corner-case commit ordering error"""
+        """Test of corner-case commit ordering error."""
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'a/z/', 'a/c/', 'a/z/x', 'a/z/y'])
         tree.add(['a/', 'a/z/', 'a/c/', 'a/z/x', 'a/z/y'])
@@ -882,7 +873,7 @@ create_signatures=when-possible
                           authors=['John\nDoe <jdoe@example.com>'])
 
     def test_commit_with_checkout_and_branch_sharing_repo(self):
-        repo = self.make_repository('repo', shared=True)
+        self.make_repository('repo', shared=True)
         # make_branch_and_tree ignores shared repos
         branch = controldir.ControlDir.create_branch_convenience('repo/branch')
         tree2 = branch.create_checkout('repo/tree2')

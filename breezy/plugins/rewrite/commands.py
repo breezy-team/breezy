@@ -104,7 +104,7 @@ class cmd_rebase(Command):
         from ...revisionspec import RevisionSpec
         from ...workingtree import WorkingTree
         from .rebase import (RebaseState1, WorkingTreeRevisionRewriter,
-                             generate_simple_plan, rebase, rebase_todo,
+                             generate_simple_plan, rebase_todo,
                              regenerate_default_revid)
         if revision is not None and pending_merges:
             raise CommandError(gettext(
@@ -313,9 +313,7 @@ class cmd_rebase_todo(Command):
 
 
 class cmd_replay(Command):
-    """Replay commits from another branch on top of this one.
-
-    """
+    """Replay commits from another branch on top of this one."""
 
     takes_options = [
         'revision', 'merge-type',
@@ -457,7 +455,7 @@ class cmd_rebase_foreign(Command):
             return create_deterministic_revid(old_revid, new_parents)
         branch_to.lock_write()
         try:
-            graph = branch_to.repository.get_graph()
+            branch_to.repository.get_graph()
             renames = upgrade_branch(
                 branch_to, generate_rebase_map,
                 determine_new_revid, allow_changes=True,

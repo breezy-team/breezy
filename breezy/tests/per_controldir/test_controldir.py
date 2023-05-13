@@ -46,8 +46,7 @@ class TestControlDir(TestCaseWithControlDir):
                               % a_controldir.transport)
 
     def openWorkingTreeIfLocal(self, a_controldir):
-        """If a_controldir is on a local transport, call open_workingtree() on it.
-        """
+        """If a_controldir is on a local transport, call open_workingtree() on it."""
         if not isinstance(a_controldir.root_transport, LocalTransport):
             # it's not local, but that's ok
             return
@@ -279,7 +278,7 @@ class TestControlDir(TestCaseWithControlDir):
         tree = self.make_branch_and_tree('commit_tree')
         self.build_tree(['commit_tree/foo'])
         tree.add('foo')
-        rev1 = tree.commit('revision 1')
+        tree.commit('revision 1')
         tree.branch.controldir.open_branch().generate_revision_history(
             _mod_revision.NULL_REVISION)
         tree.set_parent_trees([])
@@ -360,7 +359,7 @@ class TestControlDir(TestCaseWithControlDir):
         tree.add('foo')
         rev1 = tree.commit('revision 1')
         rev2 = tree.commit('revision 2', allow_pointless=True)
-        rev3 = tree.commit('revision 2', allow_pointless=True)
+        tree.commit('revision 2', allow_pointless=True)
         dir = tree.branch.controldir
         colo = dir.create_branch(name='colo')
         colo.pull(tree.branch, stop_revision=rev1)
@@ -397,14 +396,14 @@ class TestControlDir(TestCaseWithControlDir):
         self.build_tree(['source/foo'])
         tree.add('foo')
         rev1 = tree.commit('revision 1')
-        rev2 = tree.commit('revision 2', allow_pointless=True)
+        tree.commit('revision 2', allow_pointless=True)
         dir = tree.controldir
         target = dir.clone(self.get_url('target'), revision_id=rev1)
         self.skipIfNoWorkingTree(target)
         self.assertEqual([rev1], target.open_workingtree().get_parent_ids())
 
     def test_clone_controldir_into_notrees_repo(self):
-        """Cloning into a no-trees repo should not create a working tree"""
+        """Cloning into a no-trees repo should not create a working tree."""
         tree = self.make_branch_and_tree('source')
         self.build_tree(['source/foo'])
         tree.add('foo')
@@ -439,11 +438,11 @@ class TestControlDir(TestCaseWithControlDir):
         self.assertEqual(child.open_branch().get_stacked_on_url(), branch.base)
 
     def test_set_branch_reference(self):
-        """set_branch_reference creates a branch reference"""
+        """set_branch_reference creates a branch reference."""
         referenced_branch = self.make_branch('referenced')
         dir = self.make_controldir('source')
         try:
-            reference = dir.set_branch_reference(referenced_branch)
+            dir.set_branch_reference(referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             raise TestNotApplicable("control directory does not "
@@ -452,27 +451,27 @@ class TestControlDir(TestCaseWithControlDir):
                          dir.get_branch_reference())
 
     def test_set_branch_reference_on_existing_reference(self):
-        """set_branch_reference creates a branch reference"""
+        """set_branch_reference creates a branch reference."""
         referenced_branch1 = self.make_branch('old-referenced')
         referenced_branch2 = self.make_branch('new-referenced')
         dir = self.make_controldir('source')
         try:
-            reference = dir.set_branch_reference(referenced_branch1)
+            dir.set_branch_reference(referenced_branch1)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             raise TestNotApplicable("control directory does not "
                                     "support branch references")
-        reference = dir.set_branch_reference(referenced_branch2)
+        dir.set_branch_reference(referenced_branch2)
         self.assertEqual(
             referenced_branch2.user_url,
             dir.get_branch_reference())
 
     def test_set_branch_reference_on_existing_branch(self):
-        """set_branch_reference creates a branch reference"""
+        """set_branch_reference creates a branch reference."""
         referenced_branch = self.make_branch('referenced')
         dir = self.make_branch('source').controldir
         try:
-            reference = dir.set_branch_reference(referenced_branch)
+            dir.set_branch_reference(referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             raise TestNotApplicable("control directory does not "
@@ -566,7 +565,7 @@ class TestControlDir(TestCaseWithControlDir):
         tree.controldir.open_branch().generate_revision_history(
             _mod_revision.NULL_REVISION)
         tree.set_parent_trees([])
-        rev2 = tree.commit('revision 2')
+        tree.commit('revision 2')
         source = self.make_repository('source')
         tree.branch.repository.copy_content_into(source)
         dir = source.controldir
@@ -596,7 +595,7 @@ class TestControlDir(TestCaseWithControlDir):
         tree.controldir.open_branch().generate_revision_history(
             _mod_revision.NULL_REVISION)
         tree.set_parent_trees([])
-        rev2 = tree.commit('revision 2')
+        tree.commit('revision 2')
         tree.branch.repository.copy_content_into(shared_repo)
         dir = self.make_controldir('shared/source')
         dir.create_branch()
@@ -880,17 +879,17 @@ class TestControlDir(TestCaseWithControlDir):
         base_rev = builder.build_commit(message="Base")
         # Make three parallel lines of ancestry off this base.
         source = builder.get_branch()
-        rev_a1 = builder.build_commit(message="Rev A1")
+        builder.build_commit(message="Rev A1")
         rev_a2 = builder.build_commit(message="Rev A2")
-        rev_a3 = builder.build_commit(message="Rev A3")
+        builder.build_commit(message="Rev A3")
         source.set_last_revision_info(1, base_rev)
         rev_b1 = builder.build_commit(message="Rev B1")
         rev_b2 = builder.build_commit(message="Rev B2")
-        rev_b3 = builder.build_commit(message="Rev B3")
+        builder.build_commit(message="Rev B3")
         source.set_last_revision_info(1, base_rev)
         rev_c1 = builder.build_commit(message="Rev C1")
         rev_c2 = builder.build_commit(message="Rev C2")
-        rev_c3 = builder.build_commit(message="Rev C3")
+        builder.build_commit(message="Rev C3")
         # Set the branch tip to A2
         source.set_last_revision_info(3, rev_a2)
         try:
@@ -1027,7 +1026,7 @@ class TestControlDir(TestCaseWithControlDir):
         builder = self.make_branch_builder('stack-on')
         builder.start_series()
         rev1 = builder.build_commit(message='Rev 1.')
-        rev2 = builder.build_commit(message='Rev 2.')
+        builder.build_commit(message='Rev 2.')
         rev3 = builder.build_commit(message='Rev 3.')
         builder.finish_series()
         stack_on = builder.get_branch()
@@ -1378,7 +1377,7 @@ class TestControlDir(TestCaseWithControlDir):
         t = self.get_transport()
         source = self.make_branch_and_tree('source')
         a = source.commit('a', allow_pointless=True)
-        b = source.commit('b', allow_pointless=True)
+        source.commit('b', allow_pointless=True)
         t.mkdir('new')
         t_new = t.clone('new')
         made_control = self.bzrdir_format.initialize_on_transport(t_new)
@@ -1557,7 +1556,7 @@ class TestControlDir(TestCaseWithControlDir):
         t.mkdir('intermediate/child')
         made_control = self.bzrdir_format.initialize(url)
         try:
-            child_repo = made_control.open_repository()
+            made_control.open_repository()
             # if there is a repository, then the format cannot ever hit this
             # code path.
             return
@@ -1779,7 +1778,7 @@ class ChrootedControlDirTests(ChrootedTestCase):
         # supported formats must be able to init and open
         # - do the vfs initialisation over the basic vfs transport
         # XXX: TODO this should become a 'bzrdirlocation' api call.
-        url = self.get_vfs_only_url('subdir')
+        self.get_vfs_only_url('subdir')
         transport.get_transport_from_url(
             self.get_vfs_only_url()).mkdir('subdir')
         made_control = self.bzrdir_format.initialize(self.get_url('subdir'))

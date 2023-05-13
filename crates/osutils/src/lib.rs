@@ -107,6 +107,7 @@ pub fn get_umask() -> Mode {
     mask
 }
 
+#[derive(PartialEq)]
 pub enum Kind {
     File,
     Directory,
@@ -114,12 +115,23 @@ pub enum Kind {
     TreeReference,
 }
 
-pub fn kind_marker(kind: Kind) -> &'static str {
-    match kind {
-        Kind::File => "",
-        Kind::Directory => "/",
-        Kind::Symlink => "@",
-        Kind::TreeReference => "+",
+impl Kind {
+    pub fn marker(&self) -> &'static str {
+        match self {
+            Kind::File => "",
+            Kind::Directory => "/",
+            Kind::Symlink => "@",
+            Kind::TreeReference => "+",
+        }
+    }
+
+    pub fn to_string(&self) -> &'static str {
+        match self {
+            Kind::File => "file",
+            Kind::Directory => "directory",
+            Kind::Symlink => "symlink",
+            Kind::TreeReference => "tree-reference",
+        }
     }
 }
 

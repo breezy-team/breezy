@@ -31,7 +31,7 @@ from . import inventory, serializer
 
 
 class XMLRevisionSerializer(serializer.RevisionSerializer):
-    """Abstract XML object serialize/deserialize"""
+    """Abstract XML object serialize/deserialize."""
 
     squashes_xml_invalid_characters = True
 
@@ -52,7 +52,7 @@ class XMLRevisionSerializer(serializer.RevisionSerializer):
 
 
 class XMLInventorySerializer(serializer.InventorySerializer):
-    """Abstract XML object serialize/deserialize"""
+    """Abstract XML object serialize/deserialize."""
 
     def read_inventory_from_lines(self, lines, revision_id=None,
                                   entry_cache=None, return_from_cache=False):
@@ -191,9 +191,9 @@ def unpack_inventory_entry(elt, entry_cache=None, return_from_cache=False):
         ie = inventory.InventoryFile(file_id,
                                      elt_get('name'),
                                      parent_id)
-        ie.text_sha1 = elt_get('text_sha1')
-        if ie.text_sha1 is not None:
-            ie.text_sha1 = ie.text_sha1.encode('ascii')
+        text_sha1 = elt_get('text_sha1')
+        if text_sha1 is not None:
+            ie.text_sha1 = text_sha1.encode('ascii')
         if elt_get('executable') == 'yes':
             ie.executable = True
         v = elt_get('text_size')
@@ -262,7 +262,7 @@ def serialize_inventory_flat(inv, append, root_id, supported_kinds, working):
     entries = inv.iter_entries()
     # Skip the root
     root_path, root_ie = next(entries)
-    for path, ie in entries:
+    for _path, ie in entries:
         if ie.parent_id != root_id:
             parent_str = b''.join(
                 [b' parent_id="', encode_and_escape(ie.parent_id), b'"'])

@@ -235,7 +235,7 @@ class Shelver:
         path_encoding = osutils.get_terminal_encoding()
         text_differ = diff.DiffText(old_tree, new_tree, diff_file,
                                     path_encoding=path_encoding)
-        patch = text_differ.diff(old_path, new_path, 'file', 'file')
+        text_differ.diff(old_path, new_path, 'file', 'file')
         diff_file.seek(0)
         return patches.parse_patch(diff_file)
 
@@ -341,8 +341,7 @@ class Shelver:
         return lines, change_count
 
     def _edit_file(self, file_id, work_tree_lines):
-        """
-        :param file_id: id of the file to edit.
+        """:param file_id: id of the file to edit.
         :param work_tree_lines: Line contents of the file in the working tree.
         :return: (lines, change_region_count), where lines is the new line
             content of the file, and change_region_count is the number of

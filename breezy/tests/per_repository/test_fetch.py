@@ -33,7 +33,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])
         tree_a.add('foo')
-        rev1 = tree_a.commit('rev1')
+        tree_a.commit('rev1')
         # fetch with a default limit (grab everything)
         repo = self.make_repository('b')
         if (tree_a.branch.repository.supports_rich_root() and not
@@ -104,7 +104,8 @@ class TestFetchSameRepository(TestCaseWithRepository):
         :param result: A parents list for the inventories.get_parent_map call.
         :param snapshots: An iterable of snapshot parameters for
             BranchBuilder.build_snapshot.
-        '"""
+        '
+        """
         # This overlaps slightly with the tests for commit builder about graph
         # consistency.
         # Cases:
@@ -236,7 +237,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
 
     def test_fetch_all_from_self(self):
         tree = self.make_branch_and_tree('.')
-        rev_id = tree.commit('one')
+        tree.commit('one')
         # This needs to be a new copy of the repository, if this changes, the
         # test needs to be rewritten
         repo = tree.branch.repository.controldir.open_repository()
@@ -252,7 +253,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
 
     def test_fetch_missing_from_self(self):
         tree = self.make_branch_and_tree('.')
-        rev_id = tree.commit('one')
+        tree.commit('one')
         # Even though the fetch() is a NO-OP it should assert the revision id
         # is present
         repo = tree.branch.repository.controldir.open_repository()
@@ -303,7 +304,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
         # no-op the second time.
         repo = self.make_repository('repo')
         tree = self.make_branch_and_tree('tree')
-        revision_id = tree.commit('test')
+        tree.commit('test')
         repo.fetch(tree.branch.repository)
         repo.fetch(tree.branch.repository)
 

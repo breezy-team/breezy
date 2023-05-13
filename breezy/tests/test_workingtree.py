@@ -130,7 +130,7 @@ class TestDefaultFormat(TestCaseWithTransport):
 
 
 class SampleTreeFormat(bzrworkingtree.WorkingTreeFormatMetaDir):
-    """A sample format
+    """A sample format.
 
     this format is initializable, unsupported to aid in testing the
     open and open_downlevel routines.
@@ -156,9 +156,7 @@ class SampleTreeFormat(bzrworkingtree.WorkingTreeFormatMetaDir):
 
 
 class SampleExtraTreeFormat(workingtree.WorkingTreeFormat):
-    """A sample format that does not support use in a metadir.
-
-    """
+    """A sample format that does not support use in a metadir."""
 
     def get_format_string(self):
         # Not usable in a metadir, so no format string
@@ -349,8 +347,8 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
     def test_uses_lockdir(self):
         """WorkingTreeFormat3 uses its own LockDir:
 
-            - lock is a directory
-            - when the WorkingTree is locked, LockDir can see that
+        - lock is a directory
+        - when the WorkingTree is locked, LockDir can see that
         """
         t = self.get_transport()
         url = self.get_url()

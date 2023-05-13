@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""UI implementations for use in testing.
-"""
+"""UI implementations for use in testing."""
 
 
 from .. import progress, ui
@@ -24,7 +23,8 @@ from .. import progress, ui
 class ProgressRecordingUIFactory(ui.UIFactory, progress.DummyProgress):
     """Captures progress updates made through it.
 
-    This is overloaded as both the UIFactory and the progress model."""
+    This is overloaded as both the UIFactory and the progress model.
+    """
 
     def __init__(self):
         super().__init__()

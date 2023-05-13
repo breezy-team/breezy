@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Command that signs unsigned commits by the current user. """
+"""Command that signs unsigned commits by the current user."""
 
 from . import controldir, errors, gpg
 from . import repository as _mod_repository

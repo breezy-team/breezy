@@ -14,7 +14,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """An object that maps git ref names to bzr branch names.  Note that it is not
-used to map git ref names to bzr tag names."""
+used to map git ref names to bzr tag names.
+"""
 
 import re
 
@@ -23,8 +24,7 @@ class BranchMapper:
     _GIT_TRUNK_RE = re.compile(b'(?:git-)*trunk')
 
     def git_to_bzr(self, ref_name):
-        """Map a git reference name to a Bazaar branch name.
-        """
+        """Map a git reference name to a Bazaar branch name."""
         parts = ref_name.split(b'/')
         if parts[0] == b'refs':
             parts.pop(0)

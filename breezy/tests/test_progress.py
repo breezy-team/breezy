@@ -75,7 +75,7 @@ class TestTextProgressView(tests.TestCase):
             '\r/ reticulating splines 5/20                                                    \r', out.getvalue())
 
     def test_render_progress_easy(self):
-        """Just one task and one quarter done"""
+        """Just one task and one quarter done."""
         out, view = self.make_view()
         view.enable_bar = True
         task = self.make_task(None, view, 'reticulating splines', 5, 20)
@@ -84,7 +84,7 @@ class TestTextProgressView(tests.TestCase):
             '\r[####/               ] reticulating splines 5/20                               \r', out.getvalue())
 
     def test_render_progress_nested(self):
-        """Tasks proportionally contribute to overall progress"""
+        """Tasks proportionally contribute to overall progress."""
         out, view = self.make_view()
         task = self.make_task(None, view, 'reticulating splines', 0, 2)
         task2 = self.make_task(task, view, 'stage2', 1, 2)

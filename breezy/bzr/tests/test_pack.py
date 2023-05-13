@@ -140,8 +140,7 @@ class TestContainerWriter(tests.TestCase):
             b'B3\nname1\n\nabc')
 
     def test_add_bytes_record_split_writes(self):
-        """Write a large record which does multiple IOs"""
-
+        """Write a large record which does multiple IOs."""
         writes = []
         real_write = self.writer.write_func
 
@@ -281,22 +280,21 @@ class TestContainerReader(tests.TestCase):
              for (names, read_bytes) in reader.iter_records()])
 
     def test_validate_empty_container(self):
-        """validate does not raise an error for a container with no records."""
+        """Validate does not raise an error for a container with no records."""
         reader = self.get_reader_for(
             b"Bazaar pack format 1 (introduced in 0.18)\nE")
         # No exception raised
         reader.validate()
 
     def test_validate_non_empty_valid_container(self):
-        """validate does not raise an error for a container with a valid record.
-        """
+        """Validate does not raise an error for a container with a valid record."""
         reader = self.get_reader_for(
             b"Bazaar pack format 1 (introduced in 0.18)\nB3\nname\n\nabcE")
         # No exception raised
         reader.validate()
 
     def test_validate_bad_format(self):
-        """validate raises an error for unrecognised format strings.
+        """Validate raises an error for unrecognised format strings.
 
         It may raise either UnexpectedEndOfContainerError or
         UnknownContainerFormatError, depending on exactly what the string is.
@@ -311,7 +309,7 @@ class TestContainerReader(tests.TestCase):
                 reader.validate)
 
     def test_validate_bad_record_marker(self):
-        """validate raises UnknownRecordTypeError for unrecognised record
+        """Validate raises UnknownRecordTypeError for unrecognised record
         types.
         """
         reader = self.get_reader_for(
@@ -319,7 +317,7 @@ class TestContainerReader(tests.TestCase):
         self.assertRaises(pack.UnknownRecordTypeError, reader.validate)
 
     def test_validate_data_after_end_marker(self):
-        """validate raises ContainerHasExcessDataError if there are any bytes
+        """Validate raises ContainerHasExcessDataError if there are any bytes
         after the end of the container.
         """
         reader = self.get_reader_for(
@@ -328,7 +326,7 @@ class TestContainerReader(tests.TestCase):
             pack.ContainerHasExcessDataError, reader.validate)
 
     def test_validate_no_end_marker(self):
-        """validate raises UnexpectedEndOfContainerError if there's no end of
+        """Validate raises UnexpectedEndOfContainerError if there's no end of
         container marker, even if the container up to this point has been
         valid.
         """
@@ -338,7 +336,7 @@ class TestContainerReader(tests.TestCase):
             pack.UnexpectedEndOfContainerError, reader.validate)
 
     def test_validate_duplicate_name(self):
-        """validate raises DuplicateRecordNameError if the same name occurs
+        """Validate raises DuplicateRecordNameError if the same name occurs
         multiple times in the container.
         """
         reader = self.get_reader_for(
@@ -388,8 +386,7 @@ class TestBytesRecordReader(tests.TestCase):
         self.assertEqual(b'aaaaa', get_bytes(None))
 
     def test_record_with_two_names(self):
-        """Reading a Bytes record with two names returns a list of both names.
-        """
+        """Reading a Bytes record with two names returns a list of both names."""
         reader = self.get_reader_for(b"5\nname1\nname2\n\naaaaa")
         names, get_bytes = reader.read()
         self.assertEqual([(b'name1', ), (b'name2', )], names)
@@ -674,8 +671,7 @@ class TestContainerPushParserBytesParsing(PushParserTestCase):
             b"5\nname1\n\naaaaa")
 
     def test_record_with_two_names(self):
-        """Reading a Bytes record with two names returns a list of both names.
-        """
+        """Reading a Bytes record with two names returns a list of both names."""
         self.assertRecordParsing(
             ([(b'name1', ), (b'name2', )], b'aaaaa'),
             b"5\nname1\nname2\n\naaaaa")

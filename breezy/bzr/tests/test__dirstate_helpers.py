@@ -16,7 +16,6 @@
 
 """Tests for the compiled dirstate helpers."""
 
-import binascii
 import bisect
 import os
 import time
@@ -68,7 +67,7 @@ class TestBisectPathMixin:
     """
 
     def get_bisect_path(self):
-        """Return an implementation of _bisect_path_*"""
+        """Return an implementation of _bisect_path_*."""
         raise NotImplementedError
 
     def get_bisect(self):
@@ -118,7 +117,7 @@ class TestBisectPathMixin:
         return dir_split_paths
 
     def test_simple(self):
-        """In the simple case it works just like bisect_left"""
+        """In the simple case it works just like bisect_left."""
         paths = [b'', b'a', b'b', b'c', b'd']
         split_paths = self.split_for_dirblocks(paths)
         for path in paths:
@@ -222,7 +221,7 @@ class TestBisectPathLeft(tests.TestCase, TestBisectPathMixin):
 
 
 class TestBisectPathRight(tests.TestCase, TestBisectPathMixin):
-    """Run all Bisect Path tests against bisect_path_right"""
+    """Run all Bisect Path tests against bisect_path_right."""
 
     def get_bisect_path(self):
         from .._dirstate_rs import bisect_path_right
@@ -233,7 +232,7 @@ class TestBisectPathRight(tests.TestCase, TestBisectPathMixin):
 
 
 class TestLtByDirs(tests.TestCase):
-    """Test an implementation of lt_by_dirs()
+    """Test an implementation of lt_by_dirs().
 
     lt_by_dirs() compares 2 paths by their directory sections, rather than as
     plain strings.
@@ -273,7 +272,7 @@ class TestLtByDirs(tests.TestCase):
         self.assertCmpByDirs(1, b'test/ing/a/path/', b'')
 
     def test_cmp_same_str(self):
-        """Compare the same string"""
+        """Compare the same string."""
         self.assertCmpByDirs(0, b'a', b'a')
         self.assertCmpByDirs(0, b'ab', b'ab')
         self.assertCmpByDirs(0, b'abc', b'abc')
@@ -292,7 +291,7 @@ class TestLtByDirs(tests.TestCase):
         self.assertCmpByDirs(0, b'a/b/c/d/e', b'a/b/c/d/e')
 
     def test_simple_paths(self):
-        """Compare strings that act like normal string comparison"""
+        """Compare strings that act like normal string comparison."""
         self.assertCmpByDirs(-1, b'a', b'b')
         self.assertCmpByDirs(-1, b'aa', b'ab')
         self.assertCmpByDirs(-1, b'ab', b'bb')
@@ -331,7 +330,7 @@ class TestLtByDirs(tests.TestCase):
 
 
 class TestLtPathByDirblock(tests.TestCase):
-    """Test an implementation of lt_path_by_dirblock()
+    """Test an implementation of lt_path_by_dirblock().
 
     lt_path_by_dirblock() compares two paths using the sort order used by
     DirState. All paths in the same directory are sorted together.
@@ -453,7 +452,7 @@ class TestLtPathByDirblock(tests.TestCase):
 
 
 class TestReadDirblocks(test_dirstate.TestCaseWithDirState):
-    """Test an implementation of _read_dirblocks()
+    """Test an implementation of _read_dirblocks().
 
     _read_dirblocks() reads in all of the dirblock information from the disk
     file.
@@ -500,7 +499,7 @@ class TestReadDirblocks(test_dirstate.TestCaseWithDirState):
 
 
 class TestCompiledReadDirblocks(TestReadDirblocks):
-    """Test the pyrex implementation of _read_dirblocks"""
+    """Test the pyrex implementation of _read_dirblocks."""
 
     _test_needs_features = [compiled_dirstate_helpers_feature]
 
@@ -553,7 +552,7 @@ class TestUsingCompiledIfAvailable(tests.TestCase):
 
 
 class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
-    """Test the DirState.update_entry functions"""
+    """Test the DirState.update_entry functions."""
 
     scenarios = multiply_scenarios(
         dir_reader_scenarios(), ue_scenarios)
@@ -566,7 +565,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         self.overrideAttr(dirstate, 'update_entry', self.update_entry)
 
     def get_state_with_a(self):
-        """Create a DirState tracking a single object named 'a'"""
+        """Create a DirState tracking a single object named 'a'."""
         state = test_dirstate.InstrumentedDirState.initialize('dirstate')
         self.addCleanup(state.unlock)
         state.add('a', b'a-id', 'file', None, b'')
@@ -900,7 +899,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         self.create_and_test_dir(state, entry)
 
     def test_update_file_to_symlink(self):
-        """File becomes a symlink"""
+        """File becomes a symlink."""
         self.requireFeature(features.SymlinkFeature(self.test_dir))
         state, entry = self.get_state_with_a()
         # The file sha1 won't be cached unless the file is old
@@ -919,7 +918,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         self.create_and_test_file(state, entry)
 
     def test_update_dir_to_symlink(self):
-        """Directory becomes a symlink"""
+        """Directory becomes a symlink."""
         self.requireFeature(features.SymlinkFeature(self.test_dir))
         state, entry = self.get_state_with_a()
         # The symlink target won't be cached if it isn't old
@@ -929,7 +928,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         self.create_and_test_symlink(state, entry)
 
     def test_update_symlink_to_file(self):
-        """Symlink becomes a file"""
+        """Symlink becomes a file."""
         self.requireFeature(features.SymlinkFeature(self.test_dir))
         state, entry = self.get_state_with_a()
         # The symlink and file info won't be cached unless old
@@ -939,7 +938,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         self.create_and_test_file(state, entry)
 
     def test_update_symlink_to_dir(self):
-        """Symlink becomes a directory"""
+        """Symlink becomes a directory."""
         self.requireFeature(features.SymlinkFeature(self.test_dir))
         state, entry = self.get_state_with_a()
         # The symlink target won't be cached if it isn't old
@@ -962,7 +961,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         entry[1][0] = (b'f', b'', 0, True, dirstate.DirState.NULLSTAT)
 
         stat_value = os.lstat('a')
-        packed_stat = dirstate.pack_stat(stat_value)
+        dirstate.pack_stat(stat_value)
 
         state.adjust_time(-10)  # Make sure everything is new
         self.update_entry(state, entry, abspath=b'a', stat_value=stat_value)
@@ -974,7 +973,6 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         # Make the disk object look old enough to cache (but it won't cache the
         # sha as it is a new file).
         state.adjust_time(+20)
-        digest = b'b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6'
         self.update_entry(state, entry, abspath=b'a', stat_value=stat_value)
         self.assertEqual([(b'f', b'', 14, True, dirstate.DirState.NULLSTAT)],
                          entry[1])

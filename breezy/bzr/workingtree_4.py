@@ -343,7 +343,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 if kind == 'file':
                     # This is only needed on win32, where this is the only way
                     # we know the executable bit.
-                    inv_entry.executable = executable
+                    inv_entry.executable = bool(executable)
                     # not strictly needed: working tree
                     # inv_entry.text_size = size
                     # inv_entry.text_sha1 = sha1
@@ -447,13 +447,13 @@ class DirStateWorkingTree(InventoryWorkingTree):
     def get_nested_tree(self, path):
         try:
             return WorkingTree.open(self.abspath(path))
-        except errors.NotBranchError as e:
+        except errors.NotBranchError:
             raise MissingNestedTree(path)
 
     def id2path(self, file_id, recurse='down'):
         "Convert a file-id to a path."
         with self.lock_read():
-            state = self.current_dirstate()
+            self.current_dirstate()
             entry = self._get_entry(file_id=file_id)
             if entry == (None, None):
                 if recurse == 'down':
@@ -492,7 +492,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
     def all_file_ids(self):
-        """See Tree.iter_all_file_ids"""
+        """See Tree.iter_all_file_ids."""
         self._must_be_locked()
         result = set()
         for key, tree_details in self.current_dirstate()._iter_entries():
@@ -916,8 +916,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         state._read_dirblocks_if_needed()
 
         def _entries_for_path(path):
-            """Return a list with all the entries that match path for all ids.
-            """
+            """Return a list with all the entries that match path for all ids."""
             dirname, basename = os.path.split(path)
             key = (dirname, basename, b'')
             block_index, present = state._find_block_index_from_key(key)
@@ -1297,14 +1296,14 @@ class DirStateWorkingTree(InventoryWorkingTree):
                         self._inventory.remove_recursive_id(file_id)
 
     def rename_one(self, from_rel, to_rel, after=False):
-        """See WorkingTree.rename_one"""
+        """See WorkingTree.rename_one."""
         with self.lock_tree_write():
             self.flush()
             super().rename_one(
                 from_rel, to_rel, after)
 
     def apply_inventory_delta(self, changes):
-        """See MutableTree.apply_inventory_delta"""
+        """See MutableTree.apply_inventory_delta."""
         with self.lock_tree_write():
             state = self.current_dirstate()
             state.update_by_delta(changes)
@@ -1567,7 +1566,7 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
         """
 
     def open(self, a_controldir, _found=False):
-        """Return the WorkingTree object for a_controldir
+        """Return the WorkingTree object for a_controldir.
 
         _found is a private parameter, do not use it. It is used to indicate
                if format probing has already been done.
@@ -1630,8 +1629,7 @@ class WorkingTreeFormat4(DirStateWorkingTreeFormat):
 
 
 class WorkingTreeFormat5(DirStateWorkingTreeFormat):
-    """WorkingTree format supporting content filtering.
-    """
+    """WorkingTree format supporting content filtering."""
 
     upgrade_recommended = False
 
@@ -1651,8 +1649,7 @@ class WorkingTreeFormat5(DirStateWorkingTreeFormat):
 
 
 class WorkingTreeFormat6(DirStateWorkingTreeFormat):
-    """WorkingTree format supporting views.
-    """
+    """WorkingTree format supporting views."""
 
     upgrade_recommended = False
 
@@ -1709,7 +1706,7 @@ class DirStateRevisionTree(InventoryTree):
 
     def annotate_iter(self, path,
                       default_revision=_mod_revision.CURRENT_REVISION):
-        """See Tree.annotate_iter"""
+        """See Tree.annotate_iter."""
         file_id = self.path2id(path)
         text_key = (file_id, self.get_file_revision(path))
         annotations = self._repository.texts.annotate(text_key)
@@ -1879,7 +1876,7 @@ class DirStateRevisionTree(InventoryTree):
                                           parent_ie.file_id)
                 inv_entry.revision = revid
                 if kind == 'file':
-                    inv_entry.executable = executable
+                    inv_entry.executable = bool(executable)
                     inv_entry.text_size = size
                     inv_entry.text_sha1 = fingerprint
                 elif kind == 'directory':
@@ -1938,7 +1935,7 @@ class DirStateRevisionTree(InventoryTree):
         return BytesIO(self.get_file_text(path))
 
     def get_file_size(self, path):
-        """See Tree.get_file_size"""
+        """See Tree.get_file_size."""
         inv, inv_file_id = self._path2inv_file_id(path)
         return inv.get_entry(inv_file_id).text_size
 
@@ -1963,7 +1960,8 @@ class DirStateRevisionTree(InventoryTree):
     def iter_files_bytes(self, desired_files):
         """See Tree.iter_files_bytes.
 
-        This version is implemented on top of Repository.iter_files_bytes"""
+        This version is implemented on top of Repository.iter_files_bytes
+        """
         parent_index = self._get_parent_index()
         repo_desired_files = []
         for path, identifier in desired_files:
@@ -2015,7 +2013,7 @@ class DirStateRevisionTree(InventoryTree):
         return dirstate.DirState._minikind_to_kind[entry[parent_index][0]]
 
     def stored_kind(self, path):
-        """See Tree.stored_kind"""
+        """See Tree.stored_kind."""
         return self.kind(path)
 
     def path_content_summary(self, path):
@@ -2247,7 +2245,7 @@ class InterDirStateTree(InterInventoryTree):
             source_index = None
             indices = (target_index,)
         else:
-            if not (self.source._revision_id in parent_ids):
+            if self.source._revision_id not in parent_ids:
                 raise AssertionError(
                     "Failure: source._revision_id: {} not in target.parent_ids({})".format(
                         self.source._revision_id, parent_ids))

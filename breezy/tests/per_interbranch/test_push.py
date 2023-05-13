@@ -67,7 +67,7 @@ class TestPush(TestCaseWithInterBranch):
         # via a third branch - so its buried in the ancestry and is not
         # directly accessible.
         mine = self.make_from_branch_and_tree('mine')
-        p1 = mine.commit('1st post', allow_pointless=True)
+        mine.commit('1st post', allow_pointless=True)
         try:
             target = self.sprout_to(
                 mine.controldir, 'target').open_workingtree()
@@ -75,10 +75,10 @@ class TestPush(TestCaseWithInterBranch):
             raise tests.TestNotApplicable(
                 'lossless push between %r and %r not supported' %
                 (self.branch_format_from, self.branch_format_to))
-        m1 = target.commit('my change', allow_pointless=True)
+        target.commit('my change', allow_pointless=True)
         other = self.sprout_to(mine.controldir, 'other').open_workingtree()
         other.merge_from_branch(target.branch)
-        o2 = other.commit('merge my change')
+        other.commit('merge my change')
         try:
             mine.merge_from_branch(other.branch)
         except errors.NoRoundtrippingSupport:
@@ -90,7 +90,7 @@ class TestPush(TestCaseWithInterBranch):
         self.assertEqual(p2, target.branch.last_revision())
 
     def test_push_to_checkout_updates_master(self):
-        """Pushing into a checkout updates the checkout and the master branch"""
+        """Pushing into a checkout updates the checkout and the master branch."""
         master_tree = self.make_to_branch_and_tree('master')
         checkout = self.make_to_branch_and_tree('checkout')
         try:
@@ -98,7 +98,7 @@ class TestPush(TestCaseWithInterBranch):
         except BindingUnsupported:
             # cant bind this format, the test is irrelevant.
             return
-        rev1 = checkout.commit('master')
+        checkout.commit('master')
 
         try:
             other_bzrdir = self.sprout_from(
@@ -193,7 +193,7 @@ class TestPush(TestCaseWithInterBranch):
     def test_push_within_repository(self):
         """Push from one branch to another inside the same repository."""
         try:
-            repo = self.make_repository('repo', shared=True)
+            self.make_repository('repo', shared=True)
         except (errors.IncompatibleFormat, errors.UninitializableFormat):
             # This Branch format cannot create shared repositories
             return
@@ -270,7 +270,7 @@ class TestPush(TestCaseWithInterBranch):
         #   - rev-1, adds a file
         #   - rev-2, no changes
         #   - rev-3, modifies the file.
-        repo = self.make_repository('repo', shared=True, format='1.6')
+        self.make_repository('repo', shared=True, format='1.6')
         try:
             builder = self.make_from_branch_builder('repo/local')
         except errors.UninitializableFormat:
@@ -281,7 +281,7 @@ class TestPush(TestCaseWithInterBranch):
             ('add', ('', None, 'directory', '')),
             ('add', ('filename', None, 'file', b'content\n'))])
         revid2 = builder.build_snapshot([revid1], [])
-        revid3 = builder.build_snapshot([revid2],
+        builder.build_snapshot([revid2],
                                         [('modify', ('filename', b'new-content\n'))])
         builder.finish_series()
         trunk = builder.get_branch()
@@ -319,7 +319,7 @@ class TestPush(TestCaseWithInterBranch):
             ('add', ('', None, 'directory', ''))])
         second = builder.build_snapshot([first], [])
         third = builder.build_snapshot([second], [])
-        fourth = builder.build_snapshot([third], [])
+        builder.build_snapshot([third], [])
         builder.finish_series()
         local = branch.Branch.open(self.get_vfs_only_url('local'))
         # Initial push of three revisions

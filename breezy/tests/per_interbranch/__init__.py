@@ -28,7 +28,7 @@ from typing import Any, List
 from breezy import branchbuilder
 from breezy.tests import TestCaseWithTransport, multiply_tests
 
-from ...branch import GenericInterBranch, InterBranch
+from ...branch import InterBranch
 
 
 def make_scenarios(test_list):

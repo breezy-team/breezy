@@ -16,7 +16,7 @@
 
 """Tests for indices."""
 
-from ... import errors, tests, transport
+from ... import tests, transport
 from .. import index as _mod_index
 
 
@@ -449,7 +449,7 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
     def test_open_bad_index_no_error(self):
         trans = self.get_transport()
         trans.put_bytes('name', b"not an index\n")
-        idx = _mod_index.GraphIndex(trans, 'name', 13)
+        _mod_index.GraphIndex(trans, 'name', 13)
 
     def test_with_offset(self):
         nodes = self.make_nodes(200)
@@ -519,7 +519,6 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
         # bytes or we will trigger "buffer_all".
         # We also want the 'missing' key to fall within the range that *did*
         # read
-        nodes = []
         index = self.make_index(nodes=self.make_nodes(64))
         # reset the transport log
         del index._transport._activity[:]
@@ -1097,7 +1096,7 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
         size = trans.put_file('index', stream)
         # It doesn't matter what unlimited_cache does here, just that it can be
         # passed
-        idx = _mod_index.GraphIndex(trans, 'index', size, unlimited_cache=True)
+        _mod_index.GraphIndex(trans, 'index', size, unlimited_cache=True)
 
 
 class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
@@ -1149,7 +1148,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
     def test_open_missing_index_no_error(self):
         trans = self.get_transport()
         idx1 = _mod_index.GraphIndex(trans, 'missing', 100)
-        idx = _mod_index.CombinedGraphIndex([idx1])
+        _mod_index.CombinedGraphIndex([idx1])
 
     def test_add_index(self):
         idx = _mod_index.CombinedGraphIndex([])
@@ -1410,7 +1409,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         index, reload_counter = self.make_combined_index_with_missing(['2'])
         index1, index2 = index._indices
         result = list(index.iter_entries_prefix([(b'1',)]))
-        index3 = index._indices[0]
+        index._indices[0]
         # We had already yielded b'1', so we just go on to the next, we should
         # not yield b'1' twice.
         self.assertEqual([(index1, (b'1',), b'')], result)
@@ -1740,11 +1739,11 @@ class TestGraphIndexPrefixAdapter(tests.TestCaseWithMemoryTransport):
 
     def test_construct(self):
         idx = _mod_index.InMemoryGraphIndex()
-        adapter = _mod_index.GraphIndexPrefixAdapter(idx, (b'prefix', ), 1)
+        _mod_index.GraphIndexPrefixAdapter(idx, (b'prefix', ), 1)
 
     def test_construct_with_callback(self):
         idx = _mod_index.InMemoryGraphIndex()
-        adapter = _mod_index.GraphIndexPrefixAdapter(idx, (b'prefix', ), 1,
+        _mod_index.GraphIndexPrefixAdapter(idx, (b'prefix', ), 1,
                                                      idx.add_nodes)
 
     def test_iter_all_entries_cross_prefix_map_errors(self):

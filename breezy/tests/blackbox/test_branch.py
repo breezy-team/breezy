@@ -30,7 +30,6 @@ from ...bzr.knitrepo import RepositoryFormatKnit1
 from ...urlutils import local_path_to_url, strip_trailing_slash
 from ...workingtree import WorkingTree
 from ..features import HardlinkFeature
-from ..script import run_script
 from ..test_sftp_transport import TestCaseWithSFTPServer
 
 
@@ -106,7 +105,7 @@ class TestBranch(tests.TestCaseWithTransport):
         self.assertPathExists('a')
 
     def test_branch_broken_pack(self):
-        """branching with a corrupted pack file."""
+        """Branching with a corrupted pack file."""
         self.example_branch('a')
         # add some corruption
         packs_dir = 'a/.bzr/repository/packs/'
@@ -273,7 +272,7 @@ class TestBranch(tests.TestCaseWithTransport):
         self.assertEqual(second_stat, target_stat)
 
     def test_branch_standalone(self):
-        shared_repo = self.make_repository('repo', shared=True)
+        self.make_repository('repo', shared=True)
         self.example_branch('source')
         self.run_bzr('branch --standalone source repo/target')
         b = branch.Branch.open('repo/target')
@@ -386,7 +385,7 @@ class TestBranch(tests.TestCaseWithTransport):
 
         self.run_bzr('branch source target')
 
-        target = WorkingTree.open('target')
+        WorkingTree.open('target')
         self.assertRaises(errors.NotBranchError, WorkingTree.open, 'target/subtree')
 
     def test_branch_with_nested_trees_no_recurse(self):
@@ -400,7 +399,7 @@ class TestBranch(tests.TestCaseWithTransport):
 
         self.run_bzr('branch --no-recurse-nested source target')
 
-        target = WorkingTree.open('target')
+        WorkingTree.open('target')
         self.addCleanup(subtree.lock_read().unlock)
         basis = subtree.basis_tree()
         self.addCleanup(basis.lock_read().unlock)
@@ -408,7 +407,7 @@ class TestBranch(tests.TestCaseWithTransport):
 
 
 class TestBranchStacked(tests.TestCaseWithTransport):
-    """Tests for branch --stacked"""
+    """Tests for branch --stacked."""
 
     def assertRevisionInRepository(self, repo_path, revid):
         """Check that a revision is in a repo, disregarding stacking."""
@@ -426,7 +425,7 @@ class TestBranchStacked(tests.TestCaseWithTransport):
                          repo.has_revisions(revid_list))
 
     def test_branch_stacked_branch_not_stacked(self):
-        """Branching a stacked branch is not stacked by default"""
+        """Branching a stacked branch is not stacked by default."""
         # We have a mainline
         trunk_tree = self.make_branch_and_tree('target',
                                                format='1.9')
@@ -453,7 +452,7 @@ class TestBranchStacked(tests.TestCaseWithTransport):
                           controldir.ControlDir.open('newbranch').open_branch().get_stacked_on_url)
 
     def test_branch_stacked_branch_stacked(self):
-        """Asking to stack on a stacked branch does work"""
+        """Asking to stack on a stacked branch does work."""
         # We have a mainline
         trunk_tree = self.make_branch_and_tree('target',
                                                format='1.9')
@@ -502,12 +501,12 @@ class TestBranchStacked(tests.TestCaseWithTransport):
     def test_branch_stacked_from_smart_server(self):
         # We can branch stacking on a smart server
         self.transport_server = test_server.SmartTCPServer_for_testing
-        trunk = self.make_branch('mainline', format='1.9')
+        self.make_branch('mainline', format='1.9')
         out, err = self.run_bzr(
             ['branch', '--stacked', self.get_url('mainline'), 'shallow'])
 
     def test_branch_stacked_from_non_stacked_format(self):
-        """The origin format doesn't support stacking"""
+        """The origin format doesn't support stacking."""
         trunk = self.make_branch('trunk', format='pack-0.92')
         out, err = self.run_bzr(
             ['branch', '--stacked', 'trunk', 'shallow'])

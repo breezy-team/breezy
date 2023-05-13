@@ -302,7 +302,7 @@ class Test_GenerateAllRevisions(TestLogWithLogCatcher):
                           delayed_graph_generation=True)
 
     def test_no_start_rev_id_with_end_rev_id_being_a_merge(self):
-        revs = log._generate_all_revisions(
+        log._generate_all_revisions(
             self.branch, None, '2.1.3',
             'reverse', delayed_graph_generation=True)
 
@@ -403,7 +403,7 @@ class TestLogErrors(TestLog):
                            "log -r 1.1.1..1")
 
     def test_log_bad_message_re(self):
-        """Bad --message argument gives a sensible message
+        """Bad --message argument gives a sensible message.
 
         See https://bugs.launchpad.net/bzr/+bug/251352
         """
@@ -472,7 +472,7 @@ class TestLogSignatures(TestLog):
     def test_log_with_signatures(self):
         self.requireFeature(features.gpg)
 
-        tree = self.make_linear_branch(format='dirstate-tags')
+        self.make_linear_branch(format='dirstate-tags')
 
         log = self.run_bzr("log --signatures")[0]
         self.assertIn('signature: no signature', log)
@@ -480,7 +480,7 @@ class TestLogSignatures(TestLog):
     def test_log_without_signatures(self):
         self.requireFeature(features.gpg)
 
-        tree = self.make_linear_branch(format='dirstate-tags')
+        self.make_linear_branch(format='dirstate-tags')
 
         log = self.run_bzr("log")[0]
         self.assertNotIn('signature: no signature', log)
@@ -544,7 +544,7 @@ class TestLogMerges(TestLogWithLogCatcher):
 
     def test_merges_are_indented_by_level(self):
         self.run_bzr(['log', '-n0'], working_dir='level0')
-        revnos_and_depth = [(r.revno, r.merge_depth)
+        [(r.revno, r.merge_depth)
                             for r in self.get_captured_revisions()]
         self.assertEqual([('2', 0), ('1.1.2', 1), ('1.2.1', 2), ('1.1.1', 1),
                           ('1', 0)],
@@ -583,7 +583,7 @@ class TestLogMerges(TestLogWithLogCatcher):
             working_dir='level0')
 
     def test_merges_partial_range_ignore_before_lower_bound(self):
-        """Dont show revisions before the lower bound's merged revs"""
+        """Dont show revisions before the lower bound's merged revs."""
         self.assertLogRevnosAndDepths(
             ['-n0', '-r1.1.2..2'],
             [('2', 0), ('1.1.2', 1), ('1.2.1', 2)],
@@ -758,9 +758,9 @@ class TestLogEncodings(tests.TestCaseInTempDir):
         if fail:
             self.assertRaises(UnicodeEncodeError,
                               self._mu.encode, encoding)
-            encoded_msg = self._message.encode(encoding, 'replace')
+            self._message.encode(encoding, 'replace')
         else:
-            encoded_msg = self._message.encode(encoding)
+            self._message.encode(encoding)
 
         old_encoding = osutils.get_user_encoding
         # This test requires that 'run_bzr' uses the current
@@ -819,7 +819,7 @@ class TestLogEncodings(tests.TestCaseInTempDir):
 class TestLogFile(TestLogWithLogCatcher):
 
     def test_log_local_branch_file(self):
-        """We should be able to log files in local treeless branches"""
+        """We should be able to log files in local treeless branches."""
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file'])
         tree.add('file')
@@ -938,7 +938,7 @@ class TestLogMultiple(TestLogWithLogCatcher):
         os.chdir('parent')
 
     def test_log_files(self):
-        """The log for multiple file should only list revs for those files"""
+        """The log for multiple file should only list revs for those files."""
         self.prepare_tree()
         self.assertLogRevnos(['file1', 'file2', 'dir1/dir2/file3'],
                              ['6', '5.1.1', '3', '2', '1'])

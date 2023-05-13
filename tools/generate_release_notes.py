@@ -56,7 +56,7 @@ Breezy Release Notes
 
 
 def natural_sort_key(file_name):
-    """Split 'aaa-N.MMbbb' into ('aaa-', N, '.' MM, 'bbb')
+    """Split 'aaa-N.MMbbb' into ('aaa-', N, '.' MM, 'bbb').
 
     e.g. 1.10b1 will sort as greater than 1.2::
 

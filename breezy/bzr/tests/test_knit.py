@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for Knit data structure"""
+"""Tests for Knit data structure."""
 
 import gzip
 import sys
@@ -22,7 +22,7 @@ from io import BytesIO
 
 from patiencediff import PatienceSequenceMatcher
 
-from ... import errors, multiparent, osutils, tests
+from ... import errors, multiparent, osutils
 from ... import transport as _mod_transport
 from ...tests import (TestCase, TestCaseWithMemoryTransport,
                       TestCaseWithTransport, TestNotApplicable, features)
@@ -73,7 +73,7 @@ class ErrorTests(TestCase):
 class KnitContentTestsMixin:
 
     def test_constructor(self):
-        content = self._make_content([])
+        self._make_content([])
 
     def test_text(self):
         content = self._make_content([])
@@ -91,7 +91,7 @@ class KnitContentTestsMixin:
         self.assertEqual(copy.annotate(), content.annotate())
 
     def assertDerivedBlocksEqual(self, source, target, noeol=False):
-        """Assert that the derived matching blocks match real output"""
+        """Assert that the derived matching blocks match real output."""
         source_lines = source.splitlines(True)
         target_lines = target.splitlines(True)
 
@@ -124,7 +124,7 @@ class KnitContentTestsMixin:
         self.assertDerivedBlocksEqual('a\nb\nc', 'a\nb\nc\nd')
 
     def test_get_line_delta_blocks_noeol(self):
-        """Handle historical knit deltas safely
+        """Handle historical knit deltas safely.
 
         Some existing knit deltas don't consider the last line to differ
         when the only difference whether it has a final newline.
@@ -459,7 +459,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         # populated
         try:
             raise _TestException('foobar')
-        except _TestException as e:
+        except _TestException:
             retry_exc = pack_repo.RetryWithNewPacks(None, reload_occurred=False,
                                                  exc_info=sys.exc_info())
         # GZ 2010-08-10: Cycle with exc_info affects 3 tests
@@ -528,7 +528,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         transport = self.get_transport()
         # Note that the index key has changed from 'foo' to 'bar'
         access = pack_repo._DirectPackAccess({'bar': (transport, 'packname')})
-        e = self.assertListRaises(KeyError, access.get_raw_records, memos)
+        self.assertListRaises(KeyError, access.get_raw_records, memos)
 
     def test_missing_file_raises_retry(self):
         memos = self.make_pack_file()
@@ -553,7 +553,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         # Note that the 'filename' has been changed to 'different-packname'
         access = pack_repo._DirectPackAccess(
             {'foo': (transport, 'different-packname')})
-        e = self.assertListRaises(_mod_transport.NoSuchFile,
+        self.assertListRaises(_mod_transport.NoSuchFile,
                                   access.get_raw_records, memos)
 
     def test_failing_readv_raises_retry(self):
@@ -594,7 +594,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         self.assertEqual([b'12345'],
                          list(access.get_raw_records(memos[1:2])))
         # A multiple offset readv() will fail mid-way through
-        e = self.assertListRaises(_mod_transport.NoSuchFile,
+        self.assertListRaises(_mod_transport.NoSuchFile,
                                   access.get_raw_records, memos)
 
     def test_reload_or_raise_no_reload(self):
@@ -687,7 +687,6 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         # exercise the code well.
         # What we care about is that all lines are always yielded, but not
         # duplicated
-        count = 0
         reload_lines = sorted(vf.iter_lines_added_or_present_in_keys(keys))
         self.assertEqual([1, 1, 0], reload_counter)
         # Now do it again, to make sure the result is equivalent
@@ -1349,12 +1348,12 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         ann._num_compression_children[parent_key] = 2
         ann._expand_record(parent_key, (), None, [b'line1\n', b'line2\n'],
                            ('fulltext', False))
-        res = ann._expand_record(rev_key, (parent_key,), parent_key,
+        ann._expand_record(rev_key, (parent_key,), parent_key,
                                  record, details)
         self.assertEqual({parent_key: 1}, ann._num_compression_children)
         # Expanding the second child should remove the content object, and the
         # num_compression_children entry
-        res = ann._expand_record(rev2_key, (parent_key,), parent_key,
+        ann._expand_record(rev2_key, (parent_key,), parent_key,
                                  record, details)
         self.assertNotIn(parent_key, ann._content_objects)
         self.assertEqual({}, ann._num_compression_children)
@@ -1504,7 +1503,7 @@ class TestBadShaError(KnitTests):
 class TestKnitIndex(KnitTests):
 
     def test_add_versions_dictionary_compresses(self):
-        """Adding versions to the index should update the lookup dict"""
+        """Adding versions to the index should update the lookup dict."""
         knit = self.make_test_knit()
         idx = knit._index
         idx.add_records([((b'a-1',), [b'fulltext'], ((b'a-1',), 0, 0), [])])
@@ -1555,7 +1554,7 @@ class TestKnitIndex(KnitTests):
             pass
 
         def generate_failure():
-            """Add some entries and then raise an exception"""
+            """Add some entries and then raise an exception."""
             yield ((b'a-2',), [b'fulltext'], (None, 0, 0), (b'a-1',))
             yield ((b'a-3',), [b'fulltext'], (None, 0, 0), (b'a-2',))
             raise StopEarly()
@@ -1581,7 +1580,7 @@ class TestKnitIndex(KnitTests):
         t = _mod_transport.get_transport_from_path('.')
         t.put_bytes('test.kndx', b'')
 
-        knit = self.make_test_knit()
+        self.make_test_knit()
 
     def test_knit_index_checks_header(self):
         t = _mod_transport.get_transport_from_path('.')
@@ -2607,7 +2606,7 @@ class TestNetworkBehaviour(KnitTests):
 
 
 class TestContentMapGenerator(KnitTests):
-    """Tests for ContentMapGenerator"""
+    """Tests for ContentMapGenerator."""
 
     def test_get_record_stream_gives_records(self):
         vf = self.make_test_knit(name='test')

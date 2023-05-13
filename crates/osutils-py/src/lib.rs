@@ -9,9 +9,9 @@ use pyo3::wrap_pyfunction;
 use pyo3::PyErr;
 use pyo3_file::PyFileLikeObject;
 use std::collections::HashSet;
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsString;
 use std::fs::Permissions;
-use std::io::{BufRead, Read, Write};
+use std::io::{BufRead, Read};
 use std::iter::Iterator;
 use std::os::unix::ffi::OsStringExt;
 use std::path::{Path, PathBuf};
@@ -671,13 +671,14 @@ fn get_umask() -> PyResult<u32> {
 
 #[pyfunction]
 fn kind_marker(kind: &str) -> &str {
-    breezy_osutils::kind_marker(match kind {
+    match kind {
         "file" => Kind::File,
         "directory" => Kind::Directory,
         "symlink" => Kind::Symlink,
         "tree-reference" => Kind::TreeReference,
         _ => return "",
-    })
+    }
+    .marker()
 }
 
 #[pyfunction]

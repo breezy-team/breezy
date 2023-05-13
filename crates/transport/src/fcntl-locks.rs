@@ -155,7 +155,7 @@ impl ReadLock {
         };
         match fcntl(f.as_raw_fd(), FcntlArg::F_SETLK(&flock)) {
             Ok(_) => {}
-            Err(e) => {
+            Err(_e) => {
                 // we should be more precise about whats a locking
                 // error and whats a random-other error
                 return Err(LockError::Contention(filename));

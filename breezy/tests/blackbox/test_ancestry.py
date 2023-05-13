@@ -52,7 +52,7 @@ class TestAncestry(TestCaseWithTransport):
             self.assertEqualDiff(result, out)
 
     def test_ancestry(self):
-        """Tests 'ancestry' command"""
+        """Tests 'ancestry' command."""
         self._build_branches()
         os.chdir('A')
         self._check_ancestry()
@@ -64,7 +64,8 @@ class TestAncestry(TestCaseWithTransport):
 
     def test_ancestry_with_repo_branch(self):
         """Tests 'ancestry' command with a location that is a
-        repository branch."""
+        repository branch.
+        """
         a_tree = self._build_branches()[0]
 
         self.make_repository('repo', shared=True)
@@ -74,7 +75,8 @@ class TestAncestry(TestCaseWithTransport):
 
     def test_ancestry_with_checkout(self):
         """Tests 'ancestry' command with a location that is a
-        checkout of a repository branch."""
+        checkout of a repository branch.
+        """
         a_tree = self._build_branches()[0]
         self.make_repository('repo', shared=True)
         repo_branch = a_tree.controldir.sprout('repo/A').open_branch()
@@ -83,7 +85,8 @@ class TestAncestry(TestCaseWithTransport):
 
     def test_ancestry_with_lightweight_checkout(self):
         """Tests 'ancestry' command with a location that is a
-        lightweight checkout of a repository branch."""
+        lightweight checkout of a repository branch.
+        """
         a_tree = self._build_branches()[0]
         self.make_repository('repo', shared=True)
         repo_branch = a_tree.controldir.sprout('repo/A').open_branch()
@@ -92,7 +95,8 @@ class TestAncestry(TestCaseWithTransport):
 
     def test_ancestry_with_truncated_checkout(self):
         """Tests 'ancestry' command with a location that is a
-        checkout of a repository branch with a shortened revision history."""
+        checkout of a repository branch with a shortened revision history.
+        """
         a_tree = self._build_branches()[0]
         self.make_repository('repo', shared=True)
         repo_branch = a_tree.controldir.sprout('repo/A').open_branch()
@@ -102,7 +106,8 @@ class TestAncestry(TestCaseWithTransport):
 
     def test_ancestry_with_truncated_lightweight_checkout(self):
         """Tests 'ancestry' command with a location that is a lightweight
-        checkout of a repository branch with a shortened revision history."""
+        checkout of a repository branch with a shortened revision history.
+        """
         a_tree = self._build_branches()[0]
         self.make_repository('repo', shared=True)
         repo_branch = a_tree.controldir.sprout('repo/A').open_branch()

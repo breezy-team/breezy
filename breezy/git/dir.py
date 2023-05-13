@@ -59,7 +59,7 @@ class GitControlDirFormat(ControlDirFormat):
 
 
 class UseExistingRepository(RepositoryAcquisitionPolicy):
-    """A policy of reusing an existing repository"""
+    """A policy of reusing an existing repository."""
 
     def __init__(self, repository, stack_on=None, stack_on_pwd=None,
                  require_stacking=False):
@@ -76,7 +76,7 @@ class UseExistingRepository(RepositoryAcquisitionPolicy):
 
     def acquire_repository(self, make_working_trees=None, shared=False,
                            possible_transports=None):
-        """Implementation of RepositoryAcquisitionPolicy.acquire_repository
+        """Implementation of RepositoryAcquisitionPolicy.acquire_repository.
 
         Returns an existing repository to use.
         """
@@ -287,8 +287,7 @@ class GitDir(ControlDir):
         return self._gitrepository_class(self._find_commondir())
 
     def get_refs_container(self):
-        """Retrieve the refs container.
-        """
+        """Retrieve the refs container."""
         raise NotImplementedError(self.get_refs_container)
 
     def determine_repository_policy(self, force_new_repo=False, stack_on=None,
@@ -399,9 +398,7 @@ class LocalGitControlDirFormat(GitControlDirFormat):
         return LocalGitBranchFormat()
 
     def open(self, transport, _found=None):
-        """Open this directory.
-
-        """
+        """Open this directory."""
         from .transportgit import TransportRepo
 
         def _open(transport):
@@ -631,7 +628,7 @@ class LocalGitDir(GitDir):
                 self.root_transport.base, controldir=self)
         try:
             ref_chain, unused_sha = self._git.refs.follow(ref)
-        except SymrefLoop as e:
+        except SymrefLoop:
             raise BranchReferenceLoop(self)
         if ref_chain[-1] == b'HEAD':
             controldir = self
@@ -766,15 +763,13 @@ class LocalGitDir(GitDir):
                 self._file_mode = self._dir_mode & ~0o7111
 
     def _get_file_mode(self):
-        """Return Unix mode for newly created files, or None.
-        """
+        """Return Unix mode for newly created files, or None."""
         if not self._mode_check_done:
             self._find_creation_modes()
         return self._file_mode
 
     def _get_dir_mode(self):
-        """Return Unix mode for newly created directories, or None.
-        """
+        """Return Unix mode for newly created directories, or None."""
         if not self._mode_check_done:
             self._find_creation_modes()
         return self._dir_mode

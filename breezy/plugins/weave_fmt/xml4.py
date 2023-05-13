@@ -36,7 +36,7 @@ class Revision(_mod_revision.Revision):
 
 
 class _RevisionSerializer_v4(XMLRevisionSerializer):
-    """Version 0.0.4 serializer
+    """Version 0.0.4 serializer.
 
     You should use the revision_serializer_v4 singleton.
 
@@ -46,7 +46,7 @@ class _RevisionSerializer_v4(XMLRevisionSerializer):
     __slots__: List[str] = []
 
     def _pack_revision(self, rev):
-        """Revision object -> xml tree"""
+        """Revision object -> xml tree."""
         root = Element('revision',
                        committer=rev.committer,
                        timestamp=f'{rev.timestamp:.9f}',
@@ -81,8 +81,7 @@ class _RevisionSerializer_v4(XMLRevisionSerializer):
         f.write(b'\n')
 
     def _unpack_revision(self, elt):
-        """XML Element -> Revision object"""
-
+        """XML Element -> Revision object."""
         # <changeset> is deprecated...
         if elt.tag not in ('revision', 'changeset'):
             raise BzrError(f"unexpected tag in revision file: {elt!r}")
@@ -106,7 +105,7 @@ class _RevisionSerializer_v4(XMLRevisionSerializer):
                 parent_sha1s.append(p.get('revision_sha1').encode('utf-8') if p.get('revision_sha1') else None)
             if precursor:
                 # must be consistent
-                prec_parent = parent_ids[0]
+                parent_ids[0]
         elif precursor:
             # revisions written prior to 0.0.5 have a single precursor
             # give as an attribute
@@ -128,7 +127,7 @@ class _RevisionSerializer_v4(XMLRevisionSerializer):
 
 
 class _InventorySerializer_v4(XMLInventorySerializer):
-    """Version 0.0.4 serializer
+    """Version 0.0.4 serializer.
 
     You should use the inventory_serializer_v4 singleton.
 
@@ -136,7 +135,7 @@ class _InventorySerializer_v4(XMLInventorySerializer):
     """
 
     def _pack_entry(self, ie):
-        """Convert InventoryEntry to XML element"""
+        """Convert InventoryEntry to XML element."""
         e = Element('entry')
         e.set('name', ie.name)
         e.set('file_id', ie.file_id.decode('ascii'))
@@ -162,7 +161,7 @@ class _InventorySerializer_v4(XMLInventorySerializer):
 
     def _unpack_inventory(self, elt, revision_id=None, entry_cache=None,
                           return_from_cache=False):
-        """Construct from XML Element
+        """Construct from XML Element.
 
         :param revision_id: Ignored parameter used by xml5.
         """
@@ -194,12 +193,12 @@ class _InventorySerializer_v4(XMLInventorySerializer):
             ie = inventory.InventoryFile(file_id,
                                          elt.get('name'),
                                          parent_id)
-            ie.text_id = elt.get('text_id')
-            if ie.text_id is not None:
-                ie.text_id = ie.text_id.encode('utf-8')
-            ie.text_sha1 = elt.get('text_sha1')
-            if ie.text_sha1 is not None:
-                ie.text_sha1 = ie.text_sha1.encode('ascii')
+            text_id = elt.get('text_id')
+            if text_id is not None:
+                ie.text_id = text_id.encode('utf-8')
+            text_sha1 = elt.get('text_sha1')
+            if text_sha1 is not None:
+                ie.text_sha1 = text_sha1.encode('ascii')
             v = elt.get('text_size')
             ie.text_size = v and int(v)
         elif kind == 'symlink':

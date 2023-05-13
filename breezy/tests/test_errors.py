@@ -19,7 +19,6 @@
 import inspect
 import re
 import socket
-import sys
 
 from .. import controldir, errors, osutils, tests, urlutils
 
@@ -225,13 +224,12 @@ class TestErrors(tests.TestCase):
                              ' readonly original error', str(error))
 
     def assertSocketConnectionError(self, expected, *args, **kwargs):
-        """Check the formatting of a SocketConnectionError exception"""
+        """Check the formatting of a SocketConnectionError exception."""
         e = errors.SocketConnectionError(*args, **kwargs)
         self.assertEqual(expected, str(e))
 
     def test_socket_connection_error(self):
-        """Test the formatting of SocketConnectionError"""
-
+        """Test the formatting of SocketConnectionError."""
         # There should be a default msg about failing to connect
         # we only require a host name.
         self.assertSocketConnectionError(

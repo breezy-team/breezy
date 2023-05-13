@@ -16,7 +16,7 @@
 
 from typing import List, Optional
 
-from breezy._bzr_rs import revision_serializer_v8
+from breezy._bzr_rs import revision_serializer_v8  # noqa: F401
 
 from .. import lazy_regex, trace
 from .xml_serializer import (XMLInventorySerializer, encode_and_escape,
@@ -162,7 +162,7 @@ class InventorySerializer_v8(XMLInventorySerializer):
 
     def _unpack_inventory(self, elt, revision_id=None, entry_cache=None,
                           return_from_cache=False):
-        """Construct from XML Element"""
+        """Construct from XML Element."""
         inv = unpack_inventory_flat(elt, self.format_num, self._unpack_entry,
                                     entry_cache, return_from_cache)
         self._check_cache_size(len(inv), entry_cache)

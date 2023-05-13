@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Walk multiple trees simultaneously.
-"""
+"""Walk multiple trees simultaneously."""
 
 from . import errors, osutils
 
@@ -160,7 +159,6 @@ class MultiWalker:
 
         master_has_more = True
         step_one = self._step_one
-        lookup_by_file_id = self._lookup_by_file_id
         out_of_order_processed = self._out_of_order_processed
 
         while master_has_more:

@@ -198,9 +198,7 @@ def quilt_upgrade(working_dir):
 
 
 def quilt_applied(tree):
-    """Find the list of applied quilt patches.
-
-    """
+    """Find the list of applied quilt patches."""
     try:
         return [os.fsdecode(patch.rstrip(b"\n"))
                 for patch in tree.get_file_lines(".pc/applied-patches")

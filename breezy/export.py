@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Export trees to tarballs, non-controlled directories, zipfiles, etc.
-"""
+"""Export trees to tarballs, non-controlled directories, zipfiles, etc."""
 
 import os
 import sys
@@ -76,7 +75,7 @@ def export(tree, dest, format=None, root=None, subdir=None,
         # TODO(jelmer): If the tree is remote (e.g. HPSS, Git Remote),
         # then we should stream a tar file and unpack that on the fly.
         with tree.lock_read():
-            for unused in dir_exporter_generator(tree, dest, root, subdir,
+            for _unused in dir_exporter_generator(tree, dest, root, subdir,
                                                  force_mtime,
                                                  recurse_nested=recurse_nested):
                 pass
@@ -112,9 +111,7 @@ def guess_format(filename, default='dir'):
 
 
 def get_root_name(dest):
-    """Get just the root name for an export.
-
-    """
+    """Get just the root name for an export."""
     global _exporter_extensions
     if dest == '-':
         # Exporting to -/foo doesn't make sense so use relative paths.
@@ -211,7 +208,7 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
     # The data returned here can be in any order, but we've already created all
     # the directories
     flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY | getattr(os, 'O_BINARY', 0)
-    for (relpath, treepath, unused_none), chunks in tree.iter_files_bytes(to_fetch):
+    for (relpath, treepath, _unused_none), chunks in tree.iter_files_bytes(to_fetch):
         fullpath = osutils.pathjoin(dest, relpath)
         # We set the mode and let the umask sort out the file info
         mode = 0o666

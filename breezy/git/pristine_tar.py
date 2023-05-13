@@ -46,9 +46,7 @@ def revision_pristine_tar_data(rev):
 
 
 def get_pristine_tar_tree(repo):
-    """Retrieve the pristine tar tree for a repository.
-
-    """
+    """Retrieve the pristine tar tree for a repository."""
     try:
         cid = repo.refs[b"refs/heads/pristine-tar"]
     except KeyError:

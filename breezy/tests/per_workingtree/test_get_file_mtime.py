@@ -22,8 +22,6 @@ from breezy import errors, transport
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
-from ...tree import FileTimestampUnavailable
-
 
 class TestGetFileMTime(TestCaseWithWorkingTree):
     """Test WorkingTree.get_file_mtime.
@@ -93,7 +91,7 @@ class TestGetFileMTime(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/d/', 'tree/d/a'])
         tree.add(['d', 'd/a'])
-        rev_1 = tree.commit('1')
+        tree.commit('1')
 
         tree.rename_one('d', 'e')
 

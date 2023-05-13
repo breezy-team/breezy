@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for the python and pyrex extensions of groupcompress"""
+"""Tests for the python and pyrex extensions of groupcompress."""
 
 import sys
 
@@ -290,7 +290,7 @@ class TestDeltaIndex(tests.TestCase):
                           (47, 64, rabin_hash(_text1[49:65])),
                           ], just_entries)
         # This ensures that the hash map points to the location we expect it to
-        for entry_idx, text_offset, hash_val in just_entries:
+        for entry_idx, _text_offset, hash_val in just_entries:
             self.assertEqual(entry_idx, hash_list[hash_val & 0xf])
 
     def test__dump_index_two_sources(self):
@@ -317,7 +317,7 @@ class TestDeltaIndex(tests.TestCase):
                           (47, 64, rabin_hash(_text1[49:65])),
                           ], just_entries)
         # Each entry should be in the appropriate hash bucket.
-        for entry_idx, text_offset, hash_val in just_entries:
+        for entry_idx, _text_offset, hash_val in just_entries:
             hash_idx = hash_val & 0xf
             self.assertTrue(
                 hash_list[hash_idx] <= entry_idx < hash_list[hash_idx + 1])

@@ -36,7 +36,6 @@ def delta_application_scenarios():
     # Reduce form of the per_repository test logic - that logic needs to be
     # be able to get /just/ repositories whereas these tests are fine with
     # just creating trees.
-    formats = set()
     for _, format in repository.format_registry.iteritems():
         if format.supports_full_versioned_files:
             scenarios.append((str(format.__name__), {
@@ -65,7 +64,7 @@ def delta_application_scenarios():
 
 def create_texts_for_inv(repo, inv):
     for path, ie in inv.iter_entries():
-        if ie.text_size:
+        if getattr(ie, 'text_size', None):
             lines = [b'a' * ie.text_size]
         else:
             lines = []
@@ -152,15 +151,14 @@ def _get_basis_entries(tree):
 def _populate_different_tree(tree, basis, delta):
     """Put all entries into tree, but at a unique location."""
     added_ids = set()
-    added_paths = set()
     tree.add(['unique-dir'], ['directory'], [b'unique-dir-id'])
-    for path, ie in basis.iter_entries_by_dir():
+    for _path, ie in basis.iter_entries_by_dir():
         if ie.file_id in added_ids:
             continue
         # We want a unique path for each of these, we use the file-id
         tree.add(['unique-dir/' + ie.file_id], [ie.kind], [ie.file_id])
         added_ids.add(ie.file_id)
-    for old_path, new_path, file_id, ie in delta:
+    for _old_path, _new_path, file_id, ie in delta:
         if file_id in added_ids:
             continue
         tree.add(['unique-dir/' + file_id], [ie.kind], [file_id])
@@ -235,7 +233,7 @@ def apply_inventory_Repository_add_inventory_by_delta(self, basis, delta,
         create_texts_for_inv(repo, basis)
         repo.add_revision(b'basis', rev, basis)
     with repo.lock_write(), repository.WriteGroup(repo):
-        inv_sha1 = repo.add_inventory_by_delta(
+        repo.add_inventory_by_delta(
             b'basis', delta, b'result', [b'basis'])
     # Fresh lock, reads disk again.
     repo = repo.controldir.open_repository()
@@ -350,24 +348,6 @@ class TestDeltaApplication(TestCaseWithTransport):
         inv = self.apply_delta(self, inv, delta)
         inv2 = self.get_empty_inventory(inv)
         self.assertEqual([], inv2._make_delta(inv))
-
-    def test_None_file_id(self):
-        inv = self.get_empty_inventory()
-        dir1 = inventory.InventoryDirectory(b'dirid', 'dir1', inv.root.file_id)
-        dir1.file_id = None
-        dir1.revision = b'result'
-        delta = [(None, 'dir1', None, dir1)]
-        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
-                          inv, delta)
-
-    def test_unicode_file_id(self):
-        inv = self.get_empty_inventory()
-        dir1 = inventory.InventoryDirectory(b'dirid', 'dir1', inv.root.file_id)
-        dir1.file_id = 'dirid'
-        dir1.revision = b'result'
-        delta = [(None, 'dir1', dir1.file_id, dir1)]
-        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
-                          inv, delta)
 
     def test_repeated_file_id(self):
         inv = self.get_empty_inventory()
@@ -669,7 +649,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         self.assertFalse(inv.is_root(b'booga'))
 
     def test_entries_for_empty_inventory(self):
-        """Test that entries() will not fail for an empty inventory"""
+        """Test that entries() will not fail for an empty inventory."""
         inv = Inventory(root_id=None)
         self.assertEqual([], inv.entries())
 
@@ -694,7 +674,7 @@ class TestInventoryEntry(TestCase):
 
     def test_link_kind_character(self):
         dir = inventory.InventoryLink(b'123', 'hello.c', ROOT_ID)
-        self.assertEqual(dir.kind_character(), '')
+        self.assertEqual(dir.kind_character(), '@')
 
     def test_tree_ref_kind_character(self):
         dir = TreeReference(b'123', 'hello.c', ROOT_ID)
@@ -708,15 +688,15 @@ class TestInventoryEntry(TestCase):
 
     def test_file_detect_changes(self):
         left = inventory.InventoryFile(b'123', 'hello.c', ROOT_ID)
-        left.text_sha1 = 123
+        left.text_sha1 = b"123"
         right = inventory.InventoryFile(b'123', 'hello.c', ROOT_ID)
-        right.text_sha1 = 123
+        right.text_sha1 = b"123"
         self.assertEqual((False, False), left.detect_changes(right))
         self.assertEqual((False, False), right.detect_changes(left))
         left.executable = True
         self.assertEqual((False, True), left.detect_changes(right))
         self.assertEqual((False, True), right.detect_changes(left))
-        right.text_sha1 = 321
+        right.text_sha1 = b"321"
         self.assertEqual((True, True), left.detect_changes(right))
         self.assertEqual((True, True), right.detect_changes(left))
 

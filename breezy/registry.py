@@ -46,7 +46,7 @@ class _ObjectGetter(Generic[T]):
         return self._obj.__module__
 
     def get_obj(self) -> T:
-        """Get the object that was saved at creation time"""
+        """Get the object that was saved at creation time."""
         return self._obj
 
 
@@ -65,8 +65,7 @@ class _LazyObjectGetter(_ObjectGetter[T]):
         super().__init__(None)
 
     def get_module(self):
-        """Get the module the referenced object will be loaded from.
-        """
+        """Get the module the referenced object will be loaded from."""
         return self._module_name
 
     def get_obj(self) -> T:
@@ -187,7 +186,7 @@ class Registry(Generic[K, V]):
         self._add_help_and_info(key, help=self._help_dict[target], info=info)
 
     def _add_help_and_info(self, key: K, help=None, info=None):
-        """Add the help and information about this key"""
+        """Add the help and information about this key."""
         self._help_dict[key] = help
         self._info_dict[key] = info
 
@@ -230,7 +229,7 @@ class Registry(Generic[K, V]):
                 return self.get(key), fullname[len(key):]
 
     def _get_key_or_default(self, key=None):
-        """Return either 'key' or the default key if key is None"""
+        """Return either 'key' or the default key if key is None."""
         if key is not None:
             return key
         if self.default_key is None:
@@ -239,14 +238,14 @@ class Registry(Generic[K, V]):
             return self.default_key
 
     def get_help(self, key: Optional[K] = None) -> Optional[str]:
-        """Get the help text associated with the given key"""
+        """Get the help text associated with the given key."""
         the_help = self._help_dict[self._get_key_or_default(key)]
         if callable(the_help):
             return the_help(self, key)
         return the_help
 
     def get_info(self, key=None):
-        """Get the extra information associated with the given key"""
+        """Get the extra information associated with the given key."""
         return self._info_dict[self._get_key_or_default(key)]
 
     def remove(self, key):
@@ -260,7 +259,7 @@ class Registry(Generic[K, V]):
         return key in self._dict
 
     def keys(self):
-        """Get a list of registered entries"""
+        """Get a list of registered entries."""
         return sorted(self._dict)
 
     def iteritems(self) -> Iterator[Tuple[K, V]]:

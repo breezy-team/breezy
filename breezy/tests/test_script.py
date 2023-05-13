@@ -154,7 +154,7 @@ class TestRedirections(tests.TestCase):
 class TestExecution(script.TestCaseWithTransportAndScript):
 
     def test_unknown_command(self):
-        """A clear error is reported for commands that aren't recognised
+        """A clear error is reported for commands that aren't recognised.
 
         Testing the attributes of the SyntaxError instance is equivalent to
         using traceback.format_exception_only and comparing with:
@@ -181,7 +181,8 @@ class TestExecution(script.TestCaseWithTransportAndScript):
 
     def test_null_output_matches_option(self):
         """If you want null output to be a wild card, you can pass
-        null_output_matches_anything to run_script"""
+        null_output_matches_anything to run_script.
+        """
         self.run_script(
             """
             $ echo foo
@@ -286,8 +287,7 @@ cat dog "chicken" 'dragon'
 """)
 
     def test_verbosity_isolated(self):
-        """Global verbosity is isolated from commands run in scripts.
-        """
+        """Global verbosity is isolated from commands run in scripts."""
         # see also 656694; we should get rid of global verbosity
         self.run_script("""
         $ brz init --quiet a

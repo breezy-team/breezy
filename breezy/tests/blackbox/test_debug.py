@@ -14,20 +14,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Blackbox tests for -D debug options"""
+"""Blackbox tests for -D debug options."""
 
-import os
-import signal
-import sys
-import time
 
-from breezy import debug, tests
+from breezy import tests
 
 
 class TestDebugOption(tests.TestCaseInTempDir):
 
     def test_dash_derror(self):
-        """With -Derror, tracebacks are shown even for user errors"""
+        """With -Derror, tracebacks are shown even for user errors."""
         out, err = self.run_bzr("-Derror branch nonexistent-location",
                                 retcode=3)
         # error output should contain a traceback; we used to look for code in
@@ -47,7 +43,7 @@ class TestDebugBytes(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/one'])
         tree.add('one')
-        rev_id = tree.commit('first')
+        tree.commit('first')
         remote_trans = self.make_smart_server('.')
         # I would like to avoid run_brz_subprocess here, but we need it to be
         # connected to a real TextUIFactory. The NullProgressView always

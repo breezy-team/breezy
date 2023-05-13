@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for the python and pyrex extensions of KnownGraph"""
+"""Tests for the python and pyrex extensions of KnownGraph."""
 
 import pprint
 
@@ -342,28 +342,28 @@ class TestKnownGraphTopoSort(TestCaseWithKnownGraph):
                               % (parent, node, sort_result))
 
     def test_topo_sort_empty(self):
-        """TopoSort empty list"""
+        """TopoSort empty list."""
         self.assertTopoSortOrder({})
 
     def test_topo_sort_easy(self):
-        """TopoSort list with one node"""
+        """TopoSort list with one node."""
         self.assertTopoSortOrder({0: []})
 
     def test_topo_sort_cycle(self):
-        """TopoSort traps graph with cycles"""
+        """TopoSort traps graph with cycles."""
         g = self.make_known_graph({0: [1],
                                    1: [0]})
         self.assertRaises(errors.GraphCycleError, g.topo_sort)
 
     def test_topo_sort_cycle_2(self):
-        """TopoSort traps graph with longer cycle"""
+        """TopoSort traps graph with longer cycle."""
         g = self.make_known_graph({0: [1],
                                    1: [2],
                                    2: [0]})
         self.assertRaises(errors.GraphCycleError, g.topo_sort)
 
     def test_topo_sort_cycle_with_tail(self):
-        """TopoSort traps graph with longer cycle"""
+        """TopoSort traps graph with longer cycle."""
         g = self.make_known_graph({0: [1],
                                    1: [2],
                                    2: [3, 4],
@@ -372,7 +372,7 @@ class TestKnownGraphTopoSort(TestCaseWithKnownGraph):
         self.assertRaises(errors.GraphCycleError, g.topo_sort)
 
     def test_topo_sort_1(self):
-        """TopoSort simple nontrivial graph"""
+        """TopoSort simple nontrivial graph."""
         self.assertTopoSortOrder({0: [3],
                                   1: [4],
                                   2: [1, 4],
@@ -396,7 +396,7 @@ class TestKnownGraphTopoSort(TestCaseWithKnownGraph):
                                   8: [0, 1, 4, 5, 6]})
 
     def test_topo_sort_ghost_parent(self):
-        """Sort nodes, but don't include some parents in the output"""
+        """Sort nodes, but don't include some parents in the output."""
         self.assertTopoSortOrder({0: [1],
                                   1: [2]})
 
@@ -682,7 +682,7 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
             )
 
     def test_revnos_are_globally_assigned(self):
-        """revnos are assigned according to the revision they derive from."""
+        """Revnos are assigned according to the revision they derive from."""
         # in this test we setup a number of branches that all derive from
         # the first revision, and then merge them one at a time, which
         # should give the revisions as they merge numbers still deriving from

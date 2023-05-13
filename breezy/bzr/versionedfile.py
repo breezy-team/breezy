@@ -117,7 +117,7 @@ class ChunkedContentFactory(ContentFactory):
         no parent information, None (as opposed to () for an empty list of
         parents).
     :ivar chunks_are_lines: Whether chunks are lines.
-     """
+    """
 
     def __init__(self, key, parents, sha1, chunks, chunks_are_lines=None):
         """Create a ContentFactory."""
@@ -165,7 +165,7 @@ class FulltextContentFactory(ContentFactory):
     :ivar parents: A tuple of parent keys for self.key. If the object has
         no parent information, None (as opposed to () for an empty list of
         parents).
-     """
+    """
 
     def __init__(self, key, parents, sha1, text):
         """Create a ContentFactory."""
@@ -198,8 +198,7 @@ class FulltextContentFactory(ContentFactory):
 
 
 class FileContentFactory(ContentFactory):
-    """File-based content factory.
-    """
+    """File-based content factory."""
 
     def __init__(self, key, parents, fileobj, sha1=None, size=None):
         self.key = key
@@ -336,7 +335,7 @@ class _MPDiffGenerator:
         refcounts = {}
         setdefault = refcounts.setdefault
         just_parents = set()
-        for child_key, parent_keys in parent_map.items():
+        for _child_key, parent_keys in parent_map.items():
             if not parent_keys:
                 # parent_keys may be None if a given VersionedFile claims to
                 # not support graph operations.
@@ -355,7 +354,7 @@ class _MPDiffGenerator:
         return needed_keys, refcounts
 
     def _compute_diff(self, key, parent_lines, lines):
-        """Compute a single mp_diff, and store it in self._diffs"""
+        """Compute a single mp_diff, and store it in self._diffs."""
         if len(parent_lines) > 0:
             # XXX: _extract_blocks is not usefully defined anywhere...
             #      It was meant to extract the left-parent diff without
@@ -614,18 +613,18 @@ class VersionedFile:
         vf_parents = {}
         mpvf = multiparent.MultiMemoryVersionedFile()
         versions = []
-        for version, parent_ids, expected_sha1, mpdiff in records:
+        for version, parent_ids, _expected_sha1, mpdiff in records:
             versions.append(version)
             mpvf.add_diff(mpdiff, version, parent_ids)
         needed_parents = set()
-        for version, parent_ids, expected_sha1, mpdiff in records:
+        for version, parent_ids, _expected_sha1, mpdiff in records:
             needed_parents.update(p for p in parent_ids
                                   if not mpvf.has_version(p))
         present_parents = set(self.get_parent_map(needed_parents))
         for parent_id, lines in zip(present_parents,
                                     self._get_lf_split_line_list(present_parents)):
             mpvf.add_version(lines, parent_id, [])
-        for (version, parent_ids, expected_sha1, mpdiff), lines in zip(
+        for (version, parent_ids, _expected_sha1, mpdiff), lines in zip(
                 records, mpvf.get_line_list(versions)):
             if len(parent_ids) == 1:
                 left_matching_blocks = list(mpdiff.get_matching_blocks(0,
@@ -681,7 +680,8 @@ class VersionedFile:
         will not include the null revision.
 
         Must raise RevisionNotPresent if any of the given versions are
-        not present in file history."""
+        not present in file history.
+        """
         raise NotImplementedError(self.get_ancestry)
 
     def get_ancestry_with_ghosts(self, version_ids):
@@ -1103,11 +1103,11 @@ class VersionedFiles:
         vf_parents = {}
         mpvf = multiparent.MultiMemoryVersionedFile()
         versions = []
-        for version, parent_ids, expected_sha1, mpdiff in records:
+        for version, parent_ids, _expected_sha1, mpdiff in records:
             versions.append(version)
             mpvf.add_diff(mpdiff, version, parent_ids)
         needed_parents = set()
-        for version, parent_ids, expected_sha1, mpdiff in records:
+        for version, parent_ids, _expected_sha1, mpdiff in records:
             needed_parents.update(p for p in parent_ids
                                   if not mpvf.has_version(p))
         # It seems likely that adding all the present parents as fulltexts can
@@ -1258,7 +1258,7 @@ class VersionedFiles:
         The caller is responsible for cleaning up progress bars (because this
         is an iterator).
 
-        NOTES:
+        Notes:
          * Lines are normalised by the underlying store: they will all have \n
            terminators.
          * Lines are returned in arbitrary order.
@@ -1384,7 +1384,7 @@ class ThunkedVersionedFiles(VersionedFiles):
         # XXX: This is over-enthusiastic but as we only thunk for Weaves today
         # this is tolerable. Ideally we'd pass keys down to check() and
         # have the older VersiondFile interface updated too.
-        for prefix, vf in self._iter_all_components():
+        for _prefix, vf in self._iter_all_components():
             vf.check()
         if keys is not None:
             return self.get_record_stream(keys, 'unordered', True)
@@ -1453,7 +1453,6 @@ class ThunkedVersionedFiles(VersionedFiles):
 
     def _iter_keys_vf(self, keys):
         prefixes = self._partition_keys(keys)
-        sha1s = {}
         for prefix, suffixes in prefixes.items():
             path = self._mapper.map(prefix)
             vf = self._get_vf(path)
@@ -1504,7 +1503,7 @@ class ThunkedVersionedFiles(VersionedFiles):
         The caller is responsible for cleaning up progress bars (because this
         is an iterator).
 
-        NOTES:
+        Notes:
          * Lines are normalised by the underlying store: they will all have \n
            terminators.
          * Lines are returned in arbitrary order.
@@ -1584,7 +1583,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
         self._providers = [_mod_graph.DictParentsProvider(self._parents)]
 
     def plan_merge(self, ver_a, ver_b, base=None):
-        """See VersionedFile.plan_merge"""
+        """See VersionedFile.plan_merge."""
         from ..merge import _PlanMerge
         if base is None:
             return _PlanMerge(ver_a, ver_b, self, (self._file_id,)).plan_merge()
@@ -1610,7 +1609,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
             factory.key, factory.parents, factory.get_bytes_as('lines'))
 
     def add_lines(self, key, parents, lines):
-        """See VersionedFiles.add_lines
+        """See VersionedFiles.add_lines.
 
         Lines are added locally, not to fallback versionedfiles.  Also, ghosts
         are permitted.  Only reserved ids are permitted.
@@ -1651,7 +1650,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
             yield AbsentContentFactory(key)
 
     def get_parent_map(self, keys):
-        """See VersionedFiles.get_parent_map"""
+        """See VersionedFiles.get_parent_map."""
         # We create a new provider because a fallback may have been added.
         # If we make fallbacks private we can update a stack list and avoid
         # object creation thrashing.

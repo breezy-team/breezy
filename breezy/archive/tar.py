@@ -17,7 +17,6 @@
 """Export a tree to a tarball."""
 
 import os
-import sys
 import tarfile
 from contextlib import closing
 from io import BytesIO
@@ -27,7 +26,7 @@ from ..export import _export_iter_entries
 
 
 def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=None):
-    """Prepare a tarball item for exporting
+    """Prepare a tarball item for exporting.
 
     :param tree: Tree to export
     :param final_path: Final path to place item
@@ -119,7 +118,6 @@ def tgz_generator(tree, dest, root, subdir, force_mtime=None, recurse_nested=Fal
         else:
             root_mtime = None
 
-        is_stdout = False
         basename = None
         # gzip file is used with an explicit fileobj so that
         # the basename can be stored in the gzip file rather than

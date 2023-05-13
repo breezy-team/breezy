@@ -18,15 +18,13 @@ import os
 import sys
 import tempfile
 
-import breezy
-
 from .. import controldir, errors, merge_directive, osutils
 from ..bzr import generate_ids
 from ..bzr.conflicts import ContentsConflict, PathConflict, TextConflict
 from ..merge import Diff3Merger, Merge3Merger, Merger, WeaveMerger
 from ..osutils import getcwd, pathjoin
 from ..workingtree import WorkingTree
-from . import TestCaseWithTransport, TestSkipped, features
+from . import TestCaseWithTransport, TestSkipped
 
 
 class MergeBuilder:
@@ -224,7 +222,7 @@ class MergeBuilder:
 class MergeTest(TestCaseWithTransport):
 
     def test_change_name(self):
-        """Test renames"""
+        """Test renames."""
         builder = MergeBuilder(getcwd())
         name1 = builder.add_file(builder.root(), "name1", b"hello1", True, file_id=b"1")
         builder.change_name(name1, other="name2")
@@ -253,10 +251,10 @@ class MergeTest(TestCaseWithTransport):
         builder.cleanup()
 
     def test_file_moves(self):
-        """Test moves"""
+        """Test moves."""
         builder = MergeBuilder(getcwd())
         dir1 = builder.add_dir(builder.root(), "dir1", file_id=b"1")
-        dir2 = builder.add_dir(builder.root(), "dir2", file_id=b"2")
+        builder.add_dir(builder.root(), "dir2", file_id=b"2")
         file1 = builder.add_file(dir1, "file1", b"hello1", True, file_id=b"3")
         file2 = builder.add_file(dir1, "file2", b"hello2", True, file_id=b'4')
         file3 = builder.add_file(dir1, "file3", b"hello3", True, file_id=b'5')
@@ -279,11 +277,11 @@ class MergeTest(TestCaseWithTransport):
         builder.cleanup()
 
     def test_contents_merge(self):
-        """Test merge3 merging"""
+        """Test merge3 merging."""
         self.do_contents_test(Merge3Merger)
 
     def test_contents_merge2(self):
-        """Test diff3 merging"""
+        """Test diff3 merging."""
         if sys.platform == 'win32':
             raise TestSkipped("diff3 does not have --binary flag"
                               " and therefore always fails on win32")
@@ -293,7 +291,7 @@ class MergeTest(TestCaseWithTransport):
             raise TestSkipped("diff3 not available")
 
     def test_contents_merge3(self):
-        """Test diff3 merging"""
+        """Test diff3 merging."""
         self.do_contents_test(WeaveMerger)
 
     def test_reprocess_weave(self):
@@ -322,7 +320,7 @@ y
         builder.cleanup()
 
     def do_contents_test(self, merge_factory):
-        """Test merging with specified ContentsChange factory"""
+        """Test merging with specified ContentsChange factory."""
         builder = self.contents_test_success(merge_factory)
         builder.cleanup()
         self.contents_test_conflicts(merge_factory)
@@ -473,13 +471,10 @@ class FunctionalMergeTest(TestCaseWithTransport):
         tree.commit("change file1")
         # Mary does too
         mary_tree = WorkingTree.open('mary')
-        mary_branch = mary_tree.branch
         with open("mary/file2", "w") as f:
             f.write("Mary\n")
         mary_tree.commit("change file2")
         # john should be able to merge with no conflicts.
-        base = [None, None]
-        other = ("mary", -1)
         tree.merge_from_branch(mary_tree.branch)
         with open("original/file1") as f:
             self.assertEqual("John\n", f.read())
@@ -529,7 +524,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
             ('add', ('foo', b'foo-id', 'file', b'orig\ncontents\n'))])
         d_id = builder.build_snapshot([b_id, c_id], [
             ('add', ('foo', b'foo-id', 'file', b'orig\ncontents\nand D\n'))])
-        e_id = builder.build_snapshot([c_id, b_id], [
+        builder.build_snapshot([c_id, b_id], [
             ('modify', ('foo', b'orig\ncontents\nand E\n'))])
         builder.finish_series()
         tree = builder.get_branch().create_checkout('tree', lightweight=True)
@@ -542,15 +537,13 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.assertPathExists('tree/foo.BASE')
 
     def test_merge_unrelated(self):
-        """Sucessfully merges unrelated branches with no common names"""
+        """Sucessfully merges unrelated branches with no common names."""
         wta = self.make_branch_and_tree('a')
-        a = wta.branch
         with open('a/a_file', 'wb') as f:
             f.write(b'contents\n')
         wta.add('a_file')
         wta.commit('a_revision', allow_pointless=False)
         wtb = self.make_branch_and_tree('b')
-        b = wtb.branch
         with open('b/b_file', 'wb') as f:
             f.write(b'contents\n')
         wtb.add('b_file')
@@ -560,15 +553,13 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.assertEqual([b_rev], wta.get_parent_ids()[1:])
 
     def test_merge_unrelated_conflicting(self):
-        """Sucessfully merges unrelated branches with common names"""
+        """Sucessfully merges unrelated branches with common names."""
         wta = self.make_branch_and_tree('a')
-        a = wta.branch
         with open('a/file', 'wb') as f:
             f.write(b'contents\n')
         wta.add('file')
         wta.commit('a_revision', allow_pointless=False)
         wtb = self.make_branch_and_tree('b')
-        b = wtb.branch
         with open('b/file', 'wb') as f:
             f.write(b'contents\n')
         wtb.add('file')
@@ -596,7 +587,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.assertFalse(os.path.lexists('b/file'))
 
     def test_merge_metadata_vs_deletion(self):
-        """Conflict deletion vs metadata change"""
+        """Conflict deletion vs metadata change."""
         a_wt = self.make_branch_and_tree('a')
         with open('a/file', 'wb') as f:
             f.write(b'contents\n')
@@ -661,7 +652,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
             self.assertEqual(f.read(), 'THAT')
 
     def test_merge_rename_before_create(self):
-        """rename before create
+        """Rename before create.
 
         This case requires that you must not do creates
         before move-into-place:
@@ -690,7 +681,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
                                b_wt.branch.get_rev_id(1))
 
     def test_merge_create_before_rename(self):
-        """create before rename, target parents before children
+        """Create before rename, target parents before children.
 
         This case requires that you must not do move-into-place
         before creates, and that you must not do children after
@@ -720,7 +711,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
                                b_wt.branch.get_rev_id(1))
 
     def test_merge_rename_to_temp_before_delete(self):
-        """rename to temp before delete, source children before parents
+        """Rename to temp before delete, source children before parents.
 
         This case requires that you must not do deletes before
         move-out-of-the-way, and that you must not do children
@@ -751,7 +742,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
                                b_wt.branch.get_rev_id(1))
 
     def test_merge_delete_before_rename_to_temp(self):
-        """delete before rename to temp
+        """Delete before rename to temp.
 
         This case requires that you must not do
         move-out-of-the-way before deletes:

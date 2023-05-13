@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Implementation of Graph algorithms when we have already loaded everything.
-"""
+"""Implementation of Graph algorithms when we have already loaded everything."""
 
 from collections import deque
 
@@ -348,7 +347,7 @@ class KnownGraph:
                                     generate_revno=True)]
 
     def get_parent_keys(self, key):
-        """Get the parents for a key
+        """Get the parents for a key.
 
         Returns a list containg the parents keys. If the key is a ghost,
         None is returned. A KeyError will be raised if the key is not in
@@ -360,7 +359,7 @@ class KnownGraph:
         return self._nodes[key].parent_keys
 
     def get_child_keys(self, key):
-        """Get the children for a key
+        """Get the children for a key.
 
         Returns a list containg the children keys. A KeyError will be raised
         if the key is not in the graph.

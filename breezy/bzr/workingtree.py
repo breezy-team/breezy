@@ -40,8 +40,6 @@ from bisect import bisect_left
 from collections import deque
 from io import BytesIO
 
-import breezy
-
 from .. import lazy_import
 # Explicitly import breezy.bzrdir so that the BzrProber
 # is guaranteed to be registered.
@@ -291,7 +289,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             self._write_inventory(inv)
 
     def _write_basis_inventory(self, xml):
-        """Write the basis inventory XML to the basis-inventory file"""
+        """Write the basis inventory XML to the basis-inventory file."""
         path = self._basis_inventory_name()
         sio = BytesIO(b''.join(xml))
         self._transport.put_file(path, sio,
@@ -338,6 +336,15 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         """Return the ShelfManager for this WorkingTree."""
         from ..shelf import ShelfManager
         return ShelfManager(self, self._transport)
+
+    def set_root_id(self, file_id):
+        """Set the root id for this tree."""
+        with self.lock_tree_write():
+            # for compatibility
+            if file_id is None:
+                raise ValueError(
+                    'WorkingTree.set_root_id with fileid=None')
+            self._set_root_id(file_id)
 
     def _set_root_id(self, file_id):
         """Set the root id for this tree, in a format specific manner.
@@ -388,8 +395,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         def recurse_directory_to_add_files(directory):
             # Recurse directory and add all files
             # so we can check if they have changed.
-            for parent_path, file_infos in self.walkdirs(directory):
-                for relpath, basename, kind, lstat, kind in file_infos:
+            for _parent_path, file_infos in self.walkdirs(directory):
+                for relpath, _basename, _kind, _lstat, _kind in file_infos:
                     # Is it versioned or ignored?
                     if self.is_versioned(relpath):
                         # Add nested content for deletion.
@@ -558,7 +565,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         return 'basis-inventory-cache'
 
     def _create_basis_xml_from_inventory(self, revision_id, inventory):
-        """Create the text that will be saved in basis-inventory"""
+        """Create the text that will be saved in basis-inventory."""
         inventory.revision_id = revision_id
         from .xml7 import inventory_serializer_v7
         return inventory_serializer_v7.write_inventory_to_lines(inventory)
@@ -572,7 +579,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     def add_conflicts(self, new_conflicts):
         with self.lock_tree_write():
             conflict_set = set(self.conflicts())
-            conflict_set.update(set(list(new_conflicts)))
+            conflict_set.update(set(new_conflicts))
             self.set_conflicts(
                 sorted(conflict_set, key=_mod_bzr_conflicts.Conflict.sort_key))
 
@@ -629,7 +636,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
         If the file is ignored, returns the pattern which caused it to
         be ignored, otherwise None.  So this can simply be used as a
-        boolean if desired."""
+        boolean if desired.
+        """
         if getattr(self, '_ignoreglobster', None) is None:
             self._ignoreglobster = globbing.ExceptionGlobster(
                 self.get_ignore_list())
@@ -825,11 +833,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     def mkdir(self, path, file_id=None):
         """See MutableTree.mkdir()."""
         if file_id is None:
-            if self.supports_setting_file_ids():
-                file_id = generate_ids.gen_file_id(os.path.basename(path))
-        else:
-            if not self.supports_setting_file_ids():
-                raise SettingFileIdUnsupported()
+            file_id = generate_ids.gen_file_id(os.path.basename(path))
         with self.lock_write():
             os.mkdir(self.abspath(path))
             self.add([path], ['directory'], ids=[file_id])
@@ -858,7 +862,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
     def annotate_iter(self, path,
                       default_revision=_mod_revision.CURRENT_REVISION):
-        """See Tree.annotate_iter
+        """See Tree.annotate_iter.
 
         This implementation will use the basis tree implementation if possible.
         Lines not in the basis are attributed to CURRENT_REVISION
@@ -1544,7 +1548,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 self._write_inventory(self._inventory)
 
     def stored_kind(self, path):
-        """See Tree.stored_kind"""
+        """See Tree.stored_kind."""
         return self._path2ie(path).kind
 
     def extras(self):
@@ -1676,7 +1680,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 # versioned present directory
                 # merge the inventory and disk data together
                 dirblock = []
-                for relpath, subiterator in itertools.groupby(sorted(
+                for _relpath, subiterator in itertools.groupby(sorted(
                         current_inv[1] + cur_disk_dir_content,
                         key=operator.itemgetter(0)), operator.itemgetter(1)):
                     path_elements = list(subiterator)
@@ -1789,17 +1793,14 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 yield path, ie
 
     def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
-        """See Tree.iter_entries_by_dir()"""
+        """See Tree.iter_entries_by_dir()."""
         # The only trick here is that if we supports_tree_reference then we
         # need to detect if a directory becomes a tree-reference.
         iterator = super(WorkingTree, self).iter_entries_by_dir(
             specific_files=specific_files, recurse_nested=recurse_nested)
-        if not self.supports_tree_reference():
-            return iterator
-        else:
-            return self._check_for_tree_references(
-                iterator, recurse_nested=recurse_nested,
-                specific_files=specific_files)
+        return self._check_for_tree_references(
+            iterator, recurse_nested=recurse_nested,
+            specific_files=specific_files)
 
     def get_canonical_paths(self, paths):
         """Look up canonical paths for multiple items.
@@ -2022,11 +2023,87 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 last_rev = parent_trees[0][0]
             return len(nb_conflicts)
 
+    def pull(self, source, overwrite=False, stop_revision=None,
+             change_reporter=None, possible_transports=None, local=False,
+             show_base=False, tag_selector=None):
+        from ..merge import merge_inner
+        with self.lock_write(), source.lock_read():
+            old_revision_info = self.branch.last_revision_info()
+            basis_tree = self.basis_tree()
+            count = self.branch.pull(source, overwrite=overwrite, stop_revision=stop_revision,
+                                     possible_transports=possible_transports,
+                                     local=local, tag_selector=tag_selector)
+            new_revision_info = self.branch.last_revision_info()
+            if new_revision_info != old_revision_info:
+                repository = self.branch.repository
+                if repository._format.fast_deltas:
+                    parent_ids = self.get_parent_ids()
+                    if parent_ids:
+                        basis_id = parent_ids[0]
+                        basis_tree = repository.revision_tree(basis_id)
+                with basis_tree.lock_read():
+                    new_basis_tree = self.branch.basis_tree()
+                    merge_inner(
+                        self.branch,
+                        new_basis_tree,
+                        basis_tree,
+                        this_tree=self,
+                        change_reporter=change_reporter,
+                        show_base=show_base)
+                    basis_root_id = basis_tree.path2id('')
+                    new_root_id = new_basis_tree.path2id('')
+                    if new_root_id is not None and basis_root_id != new_root_id:
+                        self.set_root_id(new_root_id)
+                # TODO - dedup parents list with things merged by pull ?
+                # reuse the revisiontree we merged against to set the new
+                # tree data.
+                parent_trees = []
+                if self.branch.last_revision() != _mod_revision.NULL_REVISION:
+                    parent_trees.append(
+                        (self.branch.last_revision(), new_basis_tree))
+                # we have to pull the merge trees out again, because
+                # merge_inner has set the ids. - this corner is not yet
+                # layered well enough to prevent double handling.
+                # XXX TODO: Fix the double handling: telling the tree about
+                # the already known parent data is wasteful.
+                merges = self.get_parent_ids()[1:]
+                parent_trees.extend([
+                    (parent, repository.revision_tree(parent)) for
+                    parent in merges])
+                self.set_parent_trees(parent_trees)
+            return count
+
+    def copy_content_into(self, tree, revision_id=None):
+        """Copy the current content and user files of this tree into tree."""
+        from ..merge import transform_tree
+        with self.lock_read():
+            tree.set_root_id(self.path2id(''))
+            if revision_id is None:
+                transform_tree(tree, self)
+            else:
+                # TODO now merge from tree.last_revision to revision (to
+                # preserve user local changes)
+                try:
+                    other_tree = self.revision_tree(revision_id)
+                except errors.NoSuchRevision:
+                    other_tree = self.branch.repository.revision_tree(
+                        revision_id)
+
+                transform_tree(tree, other_tree)
+                if revision_id == _mod_revision.NULL_REVISION:
+                    new_parents = []
+                else:
+                    new_parents = [revision_id]
+                tree.set_parent_ids(new_parents)
+
 
 class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
     """Base class for working trees that live in bzr meta directories."""
 
     ignore_filename = '.bzrignore'
+
+    supports_setting_file_ids = True
+    """If this format allows setting the file id."""
 
     def __init__(self):
         WorkingTreeFormat.__init__(self)
