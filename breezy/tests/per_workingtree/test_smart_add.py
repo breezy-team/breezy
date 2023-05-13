@@ -343,16 +343,22 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
         workingtree format has the requires_normalized_unicode_filenames flag
         set and the underlying filesystem doesn't normalize.
         """
-        osutils.normalized_filename = osutils._accessible_normalized_filename
         if (self.workingtree_format.requires_normalized_unicode_filenames
                 and sys.platform != 'darwin'):
+            if not osutils.normalizes_filenames():
+                self.skipTest('Filesystem does not normalize filenames')
             self.assertRaises(
                 transport.NoSuchFile, self.wt.smart_add, ['a\u030a'])
         else:
+            if not osutils.normalizes_filenames():
+                self.skipTest('Filesystem does not normalize filenames')
             self.wt.smart_add(['a\u030a'])
 
     def test_accessible_explicit(self):
-        osutils.normalized_filename = osutils._accessible_normalized_filename
+        if not osutils.normalizes_filenames():
+            raise tests.TestNotApplicable(
+                'filesystem dopes not normalize filenames')
+
         if self.workingtree_format.requires_normalized_unicode_filenames:
             raise tests.TestNotApplicable(
                 'Working tree format smart_add requires normalized unicode '
@@ -365,7 +371,10 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
                           self.wt.iter_entries_by_dir()])
 
     def test_accessible_implicit(self):
-        osutils.normalized_filename = osutils._accessible_normalized_filename
+        if not osutils.normalizes_filenames():
+            raise tests.TestNotApplicable(
+                'filesystem dopes not normalize filenames')
+
         if self.workingtree_format.requires_normalized_unicode_filenames:
             raise tests.TestNotApplicable(
                 'Working tree format smart_add requires normalized unicode '

@@ -855,7 +855,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             raise TestSkipped('Filesystem does not support unicode filenames')
         tree = self.make_branch_and_tree('.')
         orig = osutils.normalized_filename
-        osutils.normalized_filename = osutils._accessible_normalized_filename
+        if not osutils.normalizes_filenames():
+            raise TestSkipped('Filesystem does not normalize filenames')
         try:
             tree.add(['a\u030a'])
             with tree.lock_read():
