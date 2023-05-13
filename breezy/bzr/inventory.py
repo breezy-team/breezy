@@ -41,45 +41,7 @@ from .._bzr_rs import inventory as _mod_inventory_rs
 from .static_tuple import StaticTuple
 
 InventoryEntry = _mod_inventory_rs.InventoryEntry
-
-
-class InventoryFile(_mod_inventory_rs.InventoryFile):
-
-    def check(self, checker, rev_id, inv):
-        """Check this inventory entry is intact.
-
-        This is a template method, override _check for kind specific
-        tests.
-
-        :param checker: Check object providing context for the checks;
-             can be used to find out what parts of the repository have already
-             been checked.
-        :param rev_id: Revision id from which this InventoryEntry was loaded.
-             Not necessarily the last-changed revision for this file.
-        :param inv: Inventory from which the entry was loaded.
-        """
-        if self.parent_id is not None:
-            if not inv.has_id(self.parent_id):
-                raise errors.BzrCheckError(
-                    'missing parent {{{}}} in inventory for revision {{{}}}'.format(
-                        self.parent_id, rev_id))
-        checker._add_entry_to_text_key_references(inv, self)
-        # TODO: check size too.
-        checker.add_pending_item(rev_id,
-                                 ('texts', self.file_id, self.revision), b'text',
-                                 self.text_sha1)
-        if self.text_size is None:
-            checker._report_items.append(
-                'fileid {{{}}} in {{{}}} has None for text_size'.format(self.file_id,
-                                                                rev_id))
-
-    def copy(self):
-        ie = InventoryFile(self.file_id, self.name, self.parent_id)
-        ie.revision = self.revision
-        ie.executable = self.executable
-        ie.text_sha1 = self.text_sha1
-        ie.text_size = self.text_size
-        return ie
+InventoryFile = _mod_inventory_rs.InventoryFile
 
 
 class InventoryDirectory(_mod_inventory_rs.InventoryDirectory):
@@ -89,109 +51,15 @@ class InventoryDirectory(_mod_inventory_rs.InventoryDirectory):
     def __init__(self, file_id, name, parent_id):
         self.children = {}
 
-    def check(self, checker, rev_id, inv):
-        """Check this inventory entry is intact.
-
-        This is a template method, override _check for kind specific
-        tests.
-
-        :param checker: Check object providing context for the checks;
-             can be used to find out what parts of the repository have already
-             been checked.
-        :param rev_id: Revision id from which this InventoryEntry was loaded.
-             Not necessarily the last-changed revision for this file.
-        :param inv: Inventory from which the entry was loaded.
-        """
-        if self.parent_id is not None:
-            if not inv.has_id(self.parent_id):
-                raise errors.BzrCheckError(
-                    'missing parent {{{}}} in inventory for revision {{{}}}'.format(
-                        self.parent_id, rev_id))
-        checker._add_entry_to_text_key_references(inv, self)
-        # In non rich root repositories we do not expect a file graph for the
-        # root.
-        if self.name == '' and not checker.rich_roots:
-            return
-        # Directories are stored as an empty file, but the file should exist
-        # to provide a per-fileid log. The hash of every directory content is
-        # "da..." below (the sha1sum of '').
-        checker.add_pending_item(rev_id,
-                                 ('texts', self.file_id, self.revision), b'text',
-                                 b'da39a3ee5e6b4b0d3255bfef95601890afd80709')
-
     def copy(self):
         ie = InventoryDirectory(self.file_id, self.name, self.parent_id)
         ie.revision = self.revision
         return ie
 
 
-class TreeReference(_mod_inventory_rs.TreeReference):
+TreeReference = _mod_inventory_rs.TreeReference
 
-    def check(self, checker, rev_id, inv):
-        """Check this inventory entry is intact.
-
-        This is a template method, override _check for kind specific
-        tests.
-
-        :param checker: Check object providing context for the checks;
-             can be used to find out what parts of the repository have already
-             been checked.
-        :param rev_id: Revision id from which this InventoryEntry was loaded.
-             Not necessarily the last-changed revision for this file.
-        :param inv: Inventory from which the entry was loaded.
-        """
-        if self.parent_id is not None:
-            if not inv.has_id(self.parent_id):
-                raise errors.BzrCheckError(
-                    'missing parent {{{}}} in inventory for revision {{{}}}'.format(
-                        self.parent_id, rev_id))
-        checker._add_entry_to_text_key_references(inv, self)
-
-    def parent_candidates(self, previous_inventories):
-        return _parent_candidates(self, previous_inventories)
-
-    def copy(self):
-        ie = TreeReference(self.file_id, self.name, self.parent_id)
-        ie.revision = self.revision
-        ie.reference_revision = self.reference_revision
-        return ie
-
-
-class InventoryLink(_mod_inventory_rs.InventoryLink):
-
-    def check(self, checker, rev_id, inv):
-        """Check this inventory entry is intact.
-
-        This is a template method, override _check for kind specific
-        tests.
-
-        :param checker: Check object providing context for the checks;
-             can be used to find out what parts of the repository have already
-             been checked.
-        :param rev_id: Revision id from which this InventoryEntry was loaded.
-             Not necessarily the last-changed revision for this file.
-        :param inv: Inventory from which the entry was loaded.
-        """
-        if self.parent_id is not None:
-            if not inv.has_id(self.parent_id):
-                raise errors.BzrCheckError(
-                    'missing parent {{{}}} in inventory for revision {{{}}}'.format(
-                        self.parent_id, rev_id))
-        checker._add_entry_to_text_key_references(inv, self)
-        if self.symlink_target is None:
-            checker._report_items.append(
-                'symlink {%s} has no target in revision {%s}'
-                % (self.file_id, rev_id))
-        # Symlinks are stored as ''
-        checker.add_pending_item(rev_id,
-                                 ('texts', self.file_id, self.revision), b'text',
-                                 b'da39a3ee5e6b4b0d3255bfef95601890afd80709')
-
-    def copy(self):
-        ie = InventoryLink(self.file_id, self.name, self.parent_id)
-        ie.revision = self.revision
-        ie.symlink_target = self.symlink_target
-        return ie
+InventoryLink = _mod_inventory_rs.InventoryLink
 
 
 class InvalidEntryName(errors.InternalBzrError):

@@ -46,6 +46,12 @@ impl FileId {
     }
 }
 
+impl std::fmt::Display for FileId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", String::from_utf8(self.0.clone()).unwrap())
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct RevisionId(Vec<u8>);
 
