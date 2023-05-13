@@ -41,17 +41,7 @@ from .._bzr_rs import inventory as _mod_inventory_rs
 from .static_tuple import StaticTuple
 
 InventoryEntry = _mod_inventory_rs.InventoryEntry
-
-
-class InventoryFile(_mod_inventory_rs.InventoryFile):
-
-    def copy(self):
-        ie = InventoryFile(self.file_id, self.name, self.parent_id)
-        ie.revision = self.revision
-        ie.executable = self.executable
-        ie.text_sha1 = self.text_sha1
-        ie.text_size = self.text_size
-        return ie
+InventoryFile = _mod_inventory_rs.InventoryFile
 
 
 class InventoryDirectory(_mod_inventory_rs.InventoryDirectory):
@@ -67,22 +57,9 @@ class InventoryDirectory(_mod_inventory_rs.InventoryDirectory):
         return ie
 
 
-class TreeReference(_mod_inventory_rs.TreeReference):
+TreeReference = _mod_inventory_rs.TreeReference
 
-    def copy(self):
-        ie = TreeReference(self.file_id, self.name, self.parent_id)
-        ie.revision = self.revision
-        ie.reference_revision = self.reference_revision
-        return ie
-
-
-class InventoryLink(_mod_inventory_rs.InventoryLink):
-
-    def copy(self):
-        ie = InventoryLink(self.file_id, self.name, self.parent_id)
-        ie.revision = self.revision
-        ie.symlink_target = self.symlink_target
-        return ie
+InventoryLink = _mod_inventory_rs.InventoryLink
 
 
 class InvalidEntryName(errors.InternalBzrError):
