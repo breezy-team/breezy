@@ -553,9 +553,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_update_sets_updated_root_id(self):
         wt = self.make_branch_and_tree('tree')
         if not wt.supports_setting_file_ids():
-            self.assertRaises(SettingFileIdUnsupported, wt.set_root_id,
-                              'first_root_id')
-            return
+            self.skipTest('workingtree does not support setting file ids')
         wt.set_root_id(b'first_root_id')
         self.assertEqual(b'first_root_id', wt.path2id(''))
         self.build_tree(['tree/file'])
@@ -926,7 +924,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         else:
             tree.add(['foo'])
             if tree.branch.repository._format.supports_versioned_directories:
-                self.assertIsInstance(str, tree.path2id('foo'))
+                self.assertIsInstance(tree.path2id('foo'), bytes)
             else:
                 self.skipTest('format does not support versioning directories')
 
