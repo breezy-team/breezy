@@ -13,6 +13,7 @@ use std::collections::HashMap;
 
 import_exception!(breezy.bzr.inventory, InvalidEntryName);
 import_exception!(breezy.errors, NoSuchId);
+import_exception!(breezy.errors, BzrCheckError);
 
 fn kind_from_str(kind: &str) -> Option<Kind> {
     match kind {
@@ -30,6 +31,36 @@ fn check_name(name: &str) -> PyResult<()> {
     } else {
         Ok(())
     }
+}
+
+fn common_ie_check(
+    slf: PyObject,
+    ie: &Entry,
+    py: Python,
+    checker: &PyObject,
+    rev_id: &[u8],
+    inv: PyObject,
+) -> PyResult<()> {
+    if let Some(parent_id) = ie.parent_id() {
+        let present = inv
+            .call_method1(
+                py,
+                "has_id",
+                (PyBytes::new(py, parent_id.bytes()).to_object(py),),
+            )?
+            .extract::<bool>(py)?;
+        if !present {
+            return Err(BzrCheckError::new_err(format!(
+                "missing parent {{{}}} in inventory for revision {{{}}}",
+                parent_id,
+                String::from_utf8(rev_id.to_vec()).unwrap()
+            )));
+        }
+    }
+
+    checker.call_method1(py, "_add_entry_to_text_key_references", (inv, slf))?;
+
+    Ok(())
 }
 
 #[pyclass(subclass)]
@@ -375,6 +406,68 @@ impl InventoryFile {
             _ => panic!("Not a file"),
         })
     }
+
+    fn check(
+        slf: &PyCell<Self>,
+        py: Python,
+        checker: PyObject,
+        rev_id: Vec<u8>,
+        inv: PyObject,
+    ) -> PyResult<()> {
+        let spr = slf.borrow().into_super();
+        common_ie_check(
+            slf.to_object(py),
+            &spr.0,
+            py,
+            &checker,
+            rev_id.as_slice(),
+            inv,
+        )?;
+
+        let (file_id, revision, text_sha1, text_size) = match spr.0 {
+            Entry::File {
+                ref text_sha1,
+                ref file_id,
+                ref revision,
+                text_size,
+                ..
+            } => (file_id, revision, text_sha1, text_size),
+            _ => panic!("Not a file"),
+        };
+
+        checker.call_method1(
+            py,
+            "add_pending_item",
+            (
+                PyBytes::new(py, rev_id.as_slice()).to_object(py),
+                (
+                    "texts",
+                    PyBytes::new(py, file_id.bytes()).to_object(py),
+                    revision
+                        .as_ref()
+                        .map(|p| PyBytes::new(py, p.bytes()).to_object(py)),
+                ),
+                PyBytes::new(py, b"text").to_object(py),
+                text_sha1
+                    .as_ref()
+                    .map(|t| PyBytes::new(py, t.as_slice()).to_object(py)),
+            ),
+        )?;
+
+        if text_size.is_none() {
+            checker.getattr(py, "_report_items")?.call_method1(
+                py,
+                "append",
+                (format!(
+                    "fileid {{{}}} in {{{}}} has None for text_size",
+                    String::from_utf8(file_id.bytes().to_vec()).unwrap(),
+                    String::from_utf8(rev_id).unwrap()
+                ),),
+            )?;
+        }
+
+        Ok(())
+    }
 }
 
 #[pyclass(subclass,extends=InventoryEntry)]
@@ -446,6 +539,51 @@ impl InventoryDirectory {
             ),
             _ => panic!("Not a directory"),
         })
+    }
+
+    fn check(
+        slf: &PyCell<Self>,
+        py: Python,
+        checker: PyObject,
+        rev_id: Vec<u8>,
+        inv: PyObject,
+    ) -> PyResult<()> {
+        let spr = slf.borrow().into_super();
+        common_ie_check(
+            slf.to_object(py),
+            &spr.0,
+            py,
+            &checker,
+            rev_id.as_slice(),
+            inv,
+        )?;
+
+        // In non rich root repositories we do not expect a file graph for the
+        // root.
+        if spr.0.name().is_empty() && !checker.getattr(py, "rich_roots")?.extract::<bool>(py)? {
+            return Ok(());
+        }
+        // Directories are stored as an empty file, but the file should exist
+        // to provide a per-fileid log. The hash of every directory content is
+        // "da..." below (the sha1sum of '').
+        checker.call_method1(
+            py,
+            "add_pending_item",
+            (
+                PyBytes::new(py, rev_id.as_slice()).to_object(py),
+                (
+                    "texts",
+                    PyBytes::new(py, spr.0.file_id().bytes()).to_object(py),
+                    spr.0
+                        .revision()
+                        .map(|p| PyBytes::new(py, p.bytes()).to_object(py)),
+                ),
+                PyBytes::new(py, b"text").to_object(py),
+                PyBytes::new(py, b"da39a3ee5e6b4b0d3255bfef95601890afd80709").to_object(py),
+            ),
+        )?;
+
+        Ok(())
     }
 }
 
@@ -565,6 +703,57 @@ impl InventoryLink {
     #[getter]
     fn get_text_sha1(&self, py: Python) -> PyObject {
         py.None()
+    }
+
+    fn check(
+        slf: &PyCell<Self>,
+        py: Python,
+        checker: PyObject,
+        rev_id: Vec<u8>,
+        inv: PyObject,
+    ) -> PyResult<()> {
+        let spr = slf.borrow().into_super();
+        common_ie_check(
+            slf.to_object(py),
+            &spr.0,
+            py,
+            &checker,
+            rev_id.as_slice(),
+            inv,
+        )?;
+
+        if spr.0.symlink_target().is_none() {
+            let report_items = checker.getattr(py, "_report_items")?;
+            report_items.call_method1(
+                py,
+                "append",
+                (format!(
+                    "symlink {} has no target in revision {}",
+                    String::from_utf8(spr.0.file_id().bytes().to_vec()).unwrap(),
+                    spr.0
+                        .revision()
+                        .map(|p| String::from_utf8(p.bytes().to_vec()).unwrap())
+                        .unwrap_or_else(|| String::from("None"))
+                ),),
+            )?;
+        }
+
+        // Symlinks are stored as ''
+        checker.call_method1(
+            py,
+            "add_pending_item",
+            (
+                PyBytes::new(py, rev_id.as_slice()).to_object(py),
+                (
+                    "texts",
+                    PyBytes::new(py, spr.0.file_id().bytes()),
+                    spr.0.revision().map(|r| PyBytes::new(py, r.bytes())),
+                ),
+                PyBytes::new(py, b"text").to_object(py),
+                PyBytes::new(py, b"da39a3ee5e6b4b0d3255bfef95601890afd80709").to_object(py),
+            ),
+        )?;
+        Ok(())
     }
 }
 

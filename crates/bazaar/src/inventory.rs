@@ -198,6 +198,15 @@ impl Entry {
         }
     }
 
+    pub fn symlink_target(&self) -> Option<&str> {
+        match self {
+            Entry::Directory { .. } => None,
+            Entry::File { .. } => None,
+            Entry::Link { symlink_target, .. } => symlink_target.as_ref().map(|s| s.as_str()),
+            Entry::TreeReference { .. } => None,
+        }
+    }
+
     pub fn is_unmodified(&self, other: &Entry) -> bool {
         let other_revision = other.revision();
 
