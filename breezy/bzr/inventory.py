@@ -526,11 +526,7 @@ class Inventory(CommonInventory):
         # done within the loops below but it's safer to validate the delta
         # before starting to mutate the inventory, as there isn't a rollback
         # facility.
-        list(_check_delta_unique_ids(_check_delta_unique_new_paths(
-            _check_delta_unique_old_paths(_check_delta_ids_match_entry(
-                _check_delta_ids_are_valid(
-                    _check_delta_new_path_entry_both_or_None(
-                        delta)))))))
+        check_delta(delta)
 
         children = {}
         # Remove all affected items which were in the original inventory,
@@ -1197,19 +1193,7 @@ class CHKInventory(CommonInventory):
         id_to_entry_delta = []
         # inventory_delta is only traversed once, so we just update the
         # variable.
-        # Check for repeated file ids
-        inventory_delta = _check_delta_unique_ids(inventory_delta)
-        # Repeated old paths
-        inventory_delta = _check_delta_unique_old_paths(inventory_delta)
-        # Check for repeated new paths
-        inventory_delta = _check_delta_unique_new_paths(inventory_delta)
-        # Check for entries that don't match the fileid
-        inventory_delta = _check_delta_ids_match_entry(inventory_delta)
-        # Check for nonsense fileids
-        inventory_delta = _check_delta_ids_are_valid(inventory_delta)
-        # Check for new_path <-> entry consistency
-        inventory_delta = _check_delta_new_path_entry_both_or_None(
-            inventory_delta)
+        check_delta(inventory_delta)
         # All changed entries need to have their parents be directories and be
         # at the right path. This set contains (path, id) tuples.
         parents = set()
@@ -1746,124 +1730,10 @@ def make_entry(kind, name, parent_id, file_id=None):
     return factory(file_id, name, parent_id)
 
 
-def ensure_normalized_name(name):
-    """Normalize name.
-
-    :raises InvalidNormalization: When name is not normalized, and cannot be
-        accessed on this platform by the normalized path.
-    :return: The NFC normalised version of name.
-    """
-    # ------- This has been copied to breezy.dirstate.DirState.add, please
-    # keep them synchronised.
-    # we dont import normalized_filename directly because we want to be
-    # able to change the implementation at runtime for tests.
-    norm_name, can_access = osutils.normalized_filename(name)
-    if norm_name != name:
-        if can_access:
-            return norm_name
-        else:
-            # TODO: jam 20060701 This would probably be more useful
-            #       if the error was raised with the full path
-            raise errors.InvalidNormalization(name)
-    return name
-
-
+ensure_normalized_name = _mod_inventory_rs.ensure_normalized_name
 is_valid_name = _mod_inventory_rs.is_valid_name
 
-
-def _check_delta_unique_ids(delta):
-    """Decorate a delta and check that the file ids in it are unique.
-
-    :return: A generator over delta.
-    """
-    ids = set()
-    for item in delta:
-        length = len(ids) + 1
-        ids.add(item[2])
-        if len(ids) != length:
-            raise errors.InconsistentDelta(item[0] or item[1], item[2],
-                                           "repeated file_id")
-        yield item
-
-
-def _check_delta_unique_new_paths(delta):
-    """Decorate a delta and check that the new paths in it are unique.
-
-    :return: A generator over delta.
-    """
-    paths = set()
-    for item in delta:
-        length = len(paths) + 1
-        path = item[1]
-        if path is not None:
-            paths.add(path)
-            if len(paths) != length:
-                raise errors.InconsistentDelta(path, item[2], "repeated path")
-        yield item
-
-
-def _check_delta_unique_old_paths(delta):
-    """Decorate a delta and check that the old paths in it are unique.
-
-    :return: A generator over delta.
-    """
-    paths = set()
-    for item in delta:
-        length = len(paths) + 1
-        path = item[0]
-        if path is not None:
-            paths.add(path)
-            if len(paths) != length:
-                raise errors.InconsistentDelta(path, item[2], "repeated path")
-        yield item
-
-
-def _check_delta_ids_are_valid(delta):
-    """Decorate a delta and check that the ids in it are valid.
-
-    :return: A generator over delta.
-    """
-    for item in delta:
-        entry = item[3]
-        if item[2] is None:
-            raise errors.InconsistentDelta(item[0] or item[1], item[2],
-                                           f"entry with file_id None {entry!r}")
-        if not isinstance(item[2], bytes):
-            raise errors.InconsistentDelta(item[0] or item[1], item[2],
-                                           f"entry with non bytes file_id {entry!r}")
-        yield item
-
-
-def _check_delta_ids_match_entry(delta):
-    """Decorate a delta and check that the ids in it match the entry.file_id.
-
-    :return: A generator over delta.
-    """
-    for item in delta:
-        entry = item[3]
-        if entry is not None:
-            if entry.file_id != item[2]:
-                raise errors.InconsistentDelta(item[0] or item[1], item[2],
-                                               f"mismatched id with {entry!r}")
-        yield item
-
-
-def _check_delta_new_path_entry_both_or_None(delta):
-    """Decorate a delta and check that the new_path and entry are paired.
-
-    :return: A generator over delta.
-    """
-    for item in delta:
-        new_path = item[1]
-        entry = item[3]
-        if new_path is None and entry is not None:
-            raise errors.InconsistentDelta(item[0], item[1],
-                                           "Entry with no new_path")
-        if new_path is not None and entry is None:
-            raise errors.InconsistentDelta(new_path, item[1],
-                                           "new_path with no entry")
-        yield item
-
+check_delta = _mod_inventory_rs.check_delta
 
 def mutable_inventory_from_tree(tree):
     """Create a new inventory that has the same contents as a specified tree.

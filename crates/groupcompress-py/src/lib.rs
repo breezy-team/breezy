@@ -1,3 +1,5 @@
+use bazaar_groupcompress::delta::DeltaError;
+use pyo3::exceptions::{PyMemoryError, PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use pyo3::wrap_pyfunction;
@@ -64,6 +66,29 @@ fn encode_copy_instruction(py: Python, offset: usize, length: usize) -> PyResult
     }
     let ret = ret.unwrap();
     Ok(PyBytes::new(py, &ret).to_object(py))
+}
+
+fn translate_delta_failure(result: DeltaError) -> PyErr {
+    match result {
+        DeltaError::OutOfMemory => {
+            PyMemoryError::new_err("Delta function failed to allocate memory")
+        }
+        DeltaError::IndexNeeded => {
+            PyValueError::new_err("Delta function requires delta_index param")
+        }
+        DeltaError::SourceEmpty => {
+            PyValueError::new_err("Delta function given empty source_info param")
+        }
+        DeltaError::BufferEmpty => {
+            PyValueError::new_err("Delta function given empty buffer params")
+        }
+        DeltaError::SourceBad => {
+            PyRuntimeError::new_err("A source info had invalid or corrupt content")
+        }
+        DeltaError::SizeTooBig => {
+            PyValueError::new_err("Delta data is larger than the max requested")
+        }
+    }
 }
 
 #[pymodule]
