@@ -14,7 +14,7 @@ pub fn versionable_kind(kind: Kind) -> bool {
     )
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Entry {
     Directory {
         file_id: FileId,
@@ -375,3 +375,61 @@ pub fn detect_changes(old_entry: &Entry, new_entry: &Entry) -> (bool, bool) {
 pub fn is_valid_name(name: &str) -> bool {
     !(name.contains('/') || name == "." || name == "..")
 }
+
+#[derive(Debug, Clone)]
+pub struct MutableInventory {
+    by_id: HashMap<FileId, Entry>,
+    root: Option<FileId>,
+    revision_id: Option<RevisionId>,
+}
+
+impl MutableInventory {
+    pub fn iter_all_ids(&self) -> impl Iterator<Item = FileId> + '_ {
+        self.by_id.keys().cloned()
+    }
+
+    pub fn len(&self) -> usize {
+        self.by_id.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.by_id.is_empty()
+    }
+
+    pub fn get_entry(&self, id: FileId) -> Option<&Entry> {
+        self.by_id.get(&id)
+    }
+
+    pub fn get_file_kind(&self, id: FileId) -> Option<Kind> {
+        self.by_id.get(&id).map(|e| e.kind())
+    }
+
+    pub fn has_id(&self, id: FileId) -> bool {
+        self.by_id.contains_key(&id)
+    }
+
+    fn iter_file_id_parents(&self, id: FileId) -> impl Iterator<Item = FileId> + '_ {
+        let mut id = id;
+        std::iter::from_fn(move || {
+            let entry = self.by_id.get(&id)?;
+            if let Some(parent_id) = entry.parent_id() {
+                id = parent_id.clone();
+                Some(id.clone())
+            } else {
+                None
+            }
+        })
+    }
+
+    pub fn is_root(&self, id: FileId) -> bool {
+        self.root == Some(id)
+    }
+}
+
+impl PartialEq for MutableInventory {
+    fn eq(&self, other: &Self) -> bool {
+        self.by_id == other.by_id
+    }
+}
+
+impl Eq for MutableInventory {}
