@@ -185,11 +185,21 @@ fn size_sha_file(py: Python, file: PyObject) -> PyResult<(usize, PyObject)> {
 }
 
 #[pyfunction]
-fn normalized_filename(filename: &PyAny) -> PyResult<(PathBuf, bool)> {
-    if breezy_osutils::path::normalizes_filenames() {
+fn normalized_filename(filename: &PyAny, policy: Option<&str>) -> PyResult<(PathBuf, bool)> {
+    if policy.is_none() {
+        if breezy_osutils::path::normalizes_filenames() {
+            _accessible_normalized_filename(filename)
+        } else {
+            _inaccessible_normalized_filename(filename)
+        }
+    } else if policy == Some("accessible") {
         _accessible_normalized_filename(filename)
-    } else {
+    } else if policy == Some("inaccessible") {
         _inaccessible_normalized_filename(filename)
+    } else {
+        Err(PyValueError::new_err(
+            "policy must be 'accessible', 'inaccessible' or None",
+        ))
     }
 }
 

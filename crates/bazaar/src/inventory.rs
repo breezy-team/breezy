@@ -384,3 +384,22 @@ pub fn detect_changes(old_entry: &Entry, new_entry: &Entry) -> (bool, bool) {
 pub fn is_valid_name(name: &str) -> bool {
     !(name.contains('/') || name == "." || name == "..")
 }
+
+// Normalize name
+pub fn ensure_normalized_name(name: &std::path::Path) -> Result<std::path::PathBuf, String> {
+    let (norm_name, can_access) = breezy_osutils::path::normalized_filename(name)
+        .ok_or_else(|| format!("name '{}' is not normalized", name.display()))?;
+
+    if norm_name != name {
+        if can_access {
+            return Ok(norm_name);
+        } else {
+            return Err(format!(
+                "name '{}' is not normalized and cannot be accessed",
+                name.display()
+            ));
+        }
+    }
+
+    Ok(name.to_path_buf())
+}

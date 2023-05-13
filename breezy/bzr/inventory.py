@@ -1765,28 +1765,7 @@ def make_entry(kind, name, parent_id, file_id=None):
     return factory(file_id, name, parent_id)
 
 
-def ensure_normalized_name(name):
-    """Normalize name.
-
-    :raises InvalidNormalization: When name is not normalized, and cannot be
-        accessed on this platform by the normalized path.
-    :return: The NFC normalised version of name.
-    """
-    # ------- This has been copied to breezy.dirstate.DirState.add, please
-    # keep them synchronised.
-    # we dont import normalized_filename directly because we want to be
-    # able to change the implementation at runtime for tests.
-    norm_name, can_access = osutils.normalized_filename(name)
-    if norm_name != name:
-        if can_access:
-            return norm_name
-        else:
-            # TODO: jam 20060701 This would probably be more useful
-            #       if the error was raised with the full path
-            raise errors.InvalidNormalization(name)
-    return name
-
-
+ensure_normalized_name = _mod_inventory_rs.ensure_normalized_name
 is_valid_name = _mod_inventory_rs.is_valid_name
 
 

@@ -14,6 +14,7 @@ use std::collections::HashMap;
 import_exception!(breezy.bzr.inventory, InvalidEntryName);
 import_exception!(breezy.errors, NoSuchId);
 import_exception!(breezy.errors, BzrCheckError);
+import_exception!(breezy.errors, InvalidNormalization);
 
 fn kind_from_str(kind: &str) -> Option<Kind> {
     match kind {
@@ -805,6 +806,12 @@ fn is_valid_name(name: &str) -> bool {
     bazaar::inventory::is_valid_name(name)
 }
 
+#[pyfunction]
+fn ensure_normalized_name(name: std::path::PathBuf) -> PyResult<std::path::PathBuf> {
+    bazaar::inventory::ensure_normalized_name(name.as_path())
+        .map_err(|_e| InvalidNormalization::new_err(name))
+}
+
 pub fn _inventory_rs(py: Python) -> PyResult<&PyModule> {
     let m = PyModule::new(py, "inventory")?;
 
@@ -815,6 +822,7 @@ pub fn _inventory_rs(py: Python) -> PyResult<&PyModule> {
     m.add_class::<TreeReference>()?;
     m.add_wrapped(wrap_pyfunction!(make_entry))?;
     m.add_wrapped(wrap_pyfunction!(is_valid_name))?;
+    m.add_wrapped(wrap_pyfunction!(ensure_normalized_name))?;
 
     Ok(m)
 }

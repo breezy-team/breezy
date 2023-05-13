@@ -732,19 +732,13 @@ class TestInventoryEntry(TestCase):
                               inventory.InventoryDirectory)
 
     def test_make_entry_non_normalized(self):
-        orig_normalized_filename = osutils.normalized_filename
-
-        try:
-            osutils.normalized_filename = osutils._accessible_normalized_filename
+        if osutils.normalizes_filenames():
             entry = inventory.make_entry("file", 'a\u030a', ROOT_ID)
             self.assertEqual('\xe5', entry.name)
             self.assertIsInstance(entry, inventory.InventoryFile)
-
-            osutils.normalized_filename = osutils._inaccessible_normalized_filename
+        else:
             self.assertRaises(errors.InvalidNormalization,
                               inventory.make_entry, 'file', 'a\u030a', ROOT_ID)
-        finally:
-            osutils.normalized_filename = orig_normalized_filename
 
 
 class TestDescribeChanges(TestCase):
