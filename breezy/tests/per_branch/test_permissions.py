@@ -34,7 +34,6 @@ from breezy import tests
 
 from ...bzr.branch import BzrBranch
 from ...bzr.remote import RemoteBranchFormat
-from ...controldir import ControlDir
 from ..test_permissions import check_mode_r
 
 

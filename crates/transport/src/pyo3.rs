@@ -76,7 +76,7 @@ impl IntoPy<PyObject> for PyTransport {
 impl From<PyErr> for Error {
     fn from(e: PyErr) -> Self {
         Python::with_gil(|py| {
-            let arg = |i| -> Option<String> {
+            let arg = |_i| -> Option<String> {
                 let args = e.value(py).getattr("args").unwrap();
                 match args.get_item(0) {
                     Ok(a) if a.is_none() => None,
@@ -570,15 +570,15 @@ impl Transport for PyTransport {
         })
     }
 
-    fn copy_tree_to_transport(&self, to_transport: &dyn Transport) -> Result<()> {
+    fn copy_tree_to_transport(&self, _to_transport: &dyn Transport) -> Result<()> {
         unimplemented!()
     }
 
     fn copy_to(
         &self,
-        relpaths: &[&UrlFragment],
-        to_transport: &dyn Transport,
-        permissions: Option<Permissions>,
+        _relpaths: &[&UrlFragment],
+        _to_transport: &dyn Transport,
+        _permissions: Option<Permissions>,
     ) -> Result<usize> {
         unimplemented!()
     }

@@ -19,8 +19,6 @@
 
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
-from ...workingtree import SettingFileIdUnsupported
-
 
 class TestMkdir(TestCaseWithWorkingTree):
 

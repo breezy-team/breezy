@@ -4,13 +4,13 @@ use crate::{
     UrlFragment, WriteStream,
 };
 use breezy_urlutils::{escape, unescape};
-use path_clean::{clean, PathClean};
+
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::fs::File;
 use std::fs::Permissions;
 use std::io::{Read, Seek};
-use std::os::unix::fs::PermissionsExt;
+
 use std::path::{Path, PathBuf};
 use url::Url;
 use walkdir;
@@ -477,7 +477,7 @@ impl Transport for LocalTransport {
         }
 
         let mut count = 0;
-        let z = relpaths.iter().try_for_each(|relpath| {
+        relpaths.iter().try_for_each(|relpath| {
             let path = self._abspath(relpath)?;
             let target_path = target.local_abspath(relpath)?;
             std::fs::copy(path, &target_path)

@@ -22,7 +22,7 @@ This is a fairly thin wrapper on regular file IO.
 import errno
 import os
 
-from .. import _transport_rs, osutils, transport, urlutils
+from .. import osutils, transport, urlutils
 
 
 def file_stat(f, _lstat=os.lstat):
@@ -45,7 +45,7 @@ LocalTransport = _local_rs.LocalTransport  # type:ignore
 
 
 class EmulatedWin32LocalTransport(LocalTransport):  # type:ignore
-    """Special transport for testing Win32 [UNC] paths on non-windows"""
+    """Special transport for testing Win32 [UNC] paths on non-windows."""
 
     def __init__(self, base):
         if base[-1] != '/':

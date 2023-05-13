@@ -63,7 +63,7 @@ def delta_application_scenarios():
 
 
 def create_texts_for_inv(repo, inv):
-    for path, ie in inv.iter_entries():
+    for _path, ie in inv.iter_entries():
         if getattr(ie, 'text_size', None):
             lines = [b'a' * ie.text_size]
         else:

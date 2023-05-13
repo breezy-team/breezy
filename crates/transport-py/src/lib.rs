@@ -49,10 +49,10 @@ fn map_transport_err_to_py_err(e: Error, t: Option<PyObject>, p: Option<&UrlFrag
         Error::NoSuchFile(name) => NoSuchFile::new_err((pick_path(name),)),
         Error::FileExists(name) => FileExists::new_err((pick_path(name),)),
         Error::TransportNotPossible => TransportNotPossible::new_err(()),
-        Error::UrlError(e) => InvalidURL::new_err((p.map(|p| p.to_string()),)),
+        Error::UrlError(_e) => InvalidURL::new_err((p.map(|p| p.to_string()),)),
         Error::PermissionDenied(name) => PermissionDenied::new_err((pick_path(name),)),
         Error::PathNotChild => PathNotChild::new_err(()),
-        Error::UrlutilsError(e) => InvalidURL::new_err((p.map(|p| p.to_string()),)),
+        Error::UrlutilsError(_e) => InvalidURL::new_err((p.map(|p| p.to_string()),)),
         Error::Io(e) => e.into(),
         Error::UnexpectedEof => PyValueError::new_err("Unexpected EOF"),
         Error::LockContention(name) => LockContention::new_err((name,)),
@@ -882,7 +882,7 @@ impl From<Box<dyn breezy_transport::lock::Lock + Send + Sync>> for Lock {
 #[pymethods]
 impl Lock {
     fn unlock(&mut self) -> PyResult<()> {
-        self.0.unlock().map_err(|e| map_lock_err_to_py_err(e))
+        self.0.unlock().map_err(map_lock_err_to_py_err)
     }
 }
 

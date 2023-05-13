@@ -17,7 +17,7 @@
 """Tests for OS Locks."""
 
 
-from .. import _transport_rs, debug, errors, lock, tests
+from .. import _transport_rs, errors, lock, tests
 
 
 class TestOSLock(tests.TestCaseInTempDir):

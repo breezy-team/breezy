@@ -796,7 +796,7 @@ class TestLocalTransportWriteStream(tests.TestCaseWithTransport):
         if fdatasync is sentinel:
             raise tests.TestNotApplicable('fdatasync not supported')
         t = self.get_transport('.')
-        calls = self.recordCalls(os, 'fdatasync')
+        self.recordCalls(os, 'fdatasync')
         w = t.open_write_stream('out')
         w.write(b'foo')
         w.fdatasync()

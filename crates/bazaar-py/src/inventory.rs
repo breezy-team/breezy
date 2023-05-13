@@ -6,9 +6,9 @@ use pyo3::exceptions::PyNotImplementedError;
 use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::pyclass_init::PyClassInitializer;
-use pyo3::types::{PyBytes, PyDict, PyString};
+use pyo3::types::{PyBytes, PyDict};
 use pyo3::wrap_pyfunction;
-use pyo3::PyClass;
+
 use std::collections::HashMap;
 
 import_exception!(breezy.bzr.inventory, InvalidEntryName);
@@ -257,7 +257,7 @@ impl InventoryEntry {
         }
         let ret = PyDict::new(py);
         for (revision, entry) in candidates.iter() {
-            ret.set_item(PyBytes::new(py, &revision.bytes()), entry)?;
+            ret.set_item(PyBytes::new(py, revision.bytes()), entry)?;
         }
         Ok(ret.into_py(py))
     }
