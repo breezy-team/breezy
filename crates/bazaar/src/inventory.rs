@@ -476,14 +476,13 @@ pub fn check_delta_consistency(delta: &InventoryDelta) -> Result<(), InventoryDe
 }
 
 pub fn sort_inventory_delta(delta: &mut InventoryDelta) {
-    // TODO(jelmer): Use references rather than clones here
-    fn key(entry: &InventoryDeltaEntry) -> (String, String, FileId, Option<Entry>) {
+    fn key(entry: &InventoryDeltaEntry) -> (&str, &str, &FileId, Option<&Entry>) {
         (
-            entry.old_path.as_deref().unwrap_or("").to_string(),
-            entry.new_path.as_deref().unwrap_or("").to_string(),
-            entry.file_id.clone(),
-            entry.new_entry.clone(),
+            entry.old_path.as_deref().unwrap_or(""),
+            entry.new_path.as_deref().unwrap_or(""),
+            &entry.file_id,
+            entry.new_entry.as_ref(),
         )
     }
-    delta.sort_by_key(key);
+    delta.sort_by(|x, y| key(x).cmp(&key(y)));
 }
