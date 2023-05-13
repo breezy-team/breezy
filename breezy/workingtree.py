@@ -1192,7 +1192,7 @@ class WorkingTreeFormat(ControlComponentFormat):
     supports_merge_modified = True
     """If this format supports storing merge modified hashes."""
 
-    supports_setting_file_ids = None
+    supports_setting_file_ids: Optional[bool] = None
     """If this format allows setting the file id."""
 
     supports_store_uncommitted = True
