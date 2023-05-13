@@ -307,8 +307,8 @@ class TestInventoryUpdates(TestCase):
         parent = InventoryDirectory(b'src-id', 'src', b'tree-root')
         child = InventoryFile(b'hello-id', 'hello.c', b'src-id')
         inv = inventory.Inventory(b'tree-root')
-        parent.children = {'hello.c': child}
         inv.add(parent)
+        inv.add(child)
         self.assertEqual('src/hello.c', inv.id2path(b'hello-id'))
 
 
