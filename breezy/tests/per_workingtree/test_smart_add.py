@@ -345,6 +345,8 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
         """
         if (self.workingtree_format.requires_normalized_unicode_filenames
                 and sys.platform != 'darwin'):
+            if not osutils.normalizes_filenames():
+                self.skipTest('Filesystem does not normalize filenames')
             self.assertRaises(
                 transport.NoSuchFile, self.wt.smart_add, ['a\u030a'])
         else:
