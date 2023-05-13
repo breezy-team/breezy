@@ -1,3 +1,5 @@
+pub mod delta;
+
 pub fn encode_base128_int(mut val: u128) -> Vec<u8> {
     let mut data = Vec::new();
     while val >= 0x80 {

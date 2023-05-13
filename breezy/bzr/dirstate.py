@@ -1292,12 +1292,7 @@ class DirState:
         return result
 
     def _check_delta_is_valid(self, delta):
-        delta = list(inventory._check_delta_unique_ids(
-                     inventory._check_delta_unique_old_paths(
-                         inventory._check_delta_unique_new_paths(
-                             inventory._check_delta_ids_match_entry(
-                                 inventory._check_delta_ids_are_valid(
-                                     inventory._check_delta_new_path_entry_both_or_None(delta)))))))
+        inventory.check_delta(delta)
 
         def delta_key(d):
             (old_path, new_path, file_id, new_entry) = d

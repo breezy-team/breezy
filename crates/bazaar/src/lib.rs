@@ -9,7 +9,7 @@ pub mod revision;
 pub mod serializer;
 pub mod xml_serializer;
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct FileId(Vec<u8>);
 
 impl Debug for FileId {
@@ -52,7 +52,7 @@ impl std::fmt::Display for FileId {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct RevisionId(Vec<u8>);
 
 impl Debug for RevisionId {
