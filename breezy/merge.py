@@ -1796,7 +1796,8 @@ class MergeIntoMergeType(Merge3Merger):
         try:
             self.this_tree.id2path(subdir.file_id)
         except errors.NoSuchId:
-            pass
+            merge_into_root = subdir.copy()
+            merge_into_root.name = name_in_target
         else:
             # Give the root a new file-id.
             # This can happen fairly easily if the directory we are

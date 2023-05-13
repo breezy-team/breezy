@@ -544,12 +544,17 @@ class Inventory(CommonInventory):
                                                f"Entry was at wrong other path {self.id2path(file_id)!r}.")
             # Remove file_id and the unaltered children. If file_id is not
             # being deleted it will be reinserted back later.
-            del self._byid[file_id]
+            ie = self._byid.pop(file_id)
+            if ie.parent_id is not None:
+                del self._children[ie.parent_id][ie.name]
             # Preserve unaltered children of file_id for later reinsertion.
             try:
-                children[file_id] = self._children.pop(file_id)
+                file_id_children = self._children.pop(file_id)
             except KeyError:
                 pass
+            else:
+                if file_id_children:
+                    children[file_id] = file_id_children
         # Insert all affected which should be in the new inventory, reattaching
         # their children if they had any. This is done from shortest path to
         # longest, ensuring that items which were modified and whose parents in
@@ -559,12 +564,12 @@ class Inventory(CommonInventory):
                                              delta if np is not None):
             try:
                 self.add(new_entry)
-            except DuplicateFileId:
+            except DuplicateFileId as ex:
                 raise errors.InconsistentDelta(new_path, new_entry.file_id,
-                                               "New id is already present in target.")
-            except AttributeError:
+                                               "New id is already present in target.") from ex
+            except AttributeError as ex:
                 raise errors.InconsistentDelta(new_path, new_entry.file_id,
-                                               "Parent is not a directory.")
+                                               "Parent is not a directory.") from ex
             if self.id2path(new_entry.file_id) != new_path:
                 raise errors.InconsistentDelta(new_path, new_entry.file_id,
                                                "New path is not consistent with parent path.")
@@ -663,6 +668,10 @@ class Inventory(CommonInventory):
             except KeyError:
                 raise errors.InconsistentDelta("<unknown>", entry.parent_id,
                                                "Parent not in inventory.")
+            if parent.kind != 'directory':
+                raise errors.InconsistentDelta(self.id2path(entry.parent_id),
+                                               entry.file_id,
+                                               "Parent is not a directory.")
             siblings = self._children[parent.file_id]
             if entry.name in siblings:
                 raise errors.InconsistentDelta(
@@ -750,8 +759,8 @@ class Inventory(CommonInventory):
         while file_id is not None:
             try:
                 ie = self._byid[file_id]
-            except KeyError:
-                raise errors.NoSuchId(tree=None, file_id=file_id)
+            except KeyError as e:
+                raise errors.NoSuchId(tree=None, file_id=file_id) from e
             yield ie
             file_id = ie.parent_id
 
@@ -1297,9 +1306,9 @@ class CHKInventory(CommonInventory):
                 if result.get_entry(parent).kind != 'directory':
                     raise errors.InconsistentDelta(result.id2path(parent), parent,
                                                    'Not a directory, but given children')
-            except errors.NoSuchId:
+            except errors.NoSuchId as e:
                 raise errors.InconsistentDelta("<unknown>", parent,
-                                               "Parent is not present in resulting inventory.")
+                                               "Parent is not present in resulting inventory.") from e
             if result.path2id(parent_path) != parent:
                 raise errors.InconsistentDelta(parent_path, parent,
                                                f"Parent has wrong path {result.path2id(parent_path)!r}.")
@@ -1426,9 +1435,9 @@ class CHKInventory(CommonInventory):
         try:
             return self._bytes_to_entry(
                 next(self.id_to_entry.iteritems([StaticTuple(file_id,)]))[1])
-        except StopIteration:
+        except StopIteration as e:
             # really we're passing an inventory, not a tree...
-            raise errors.NoSuchId(self, file_id)
+            raise errors.NoSuchId(self, file_id) from e
 
     def _getitems(self, file_ids):
         """Similar to get_entry, but lets you query for multiple.
