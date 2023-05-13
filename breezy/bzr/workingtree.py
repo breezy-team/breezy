@@ -344,6 +344,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             present in the current inventory or an error will occur. It must
             not be None, but rather a valid file id.
         """
+        from .inventory import InventoryDirectory
         inv = self._inventory
         orig_root_id = inv.root.file_id
         # TODO: it might be nice to exit early if there was nothing
@@ -351,17 +352,15 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         self._inventory_is_modified = True
         # we preserve the root inventory entry object, but
         # unlinkit from the byid index
-        inv.delete(inv.root.file_id)
-        inv.root.file_id = file_id
+        children = inv._children.pop(inv.root.file_id)
+        del inv._byid[inv.root.file_id]
+        inv.root = InventoryDirectory(file_id, '', None)
         # and link it into the index with the new changed id.
         inv._byid[inv.root.file_id] = inv.root
+        inv._children[inv.root.file_id] = children
         # and finally update all children to reference the new id.
-        # XXX: this should be safe to just look at the root children
-        # list, not the WHOLE INVENTORY.
-        for fid in inv.iter_all_ids():
-            entry = inv.get_entry(fid)
-            if entry.parent_id == orig_root_id:
-                entry.parent_id = inv.root.file_id
+        for child in children.values():
+            child.parent_id = file_id
 
     def remove(self, files, verbose=False, to_file=None, keep_files=True,
                force=False):
@@ -1294,10 +1293,13 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
     def iter_child_entries(self, path):
         with self.lock_read():
-            ie = self._path2ie(path)
+            # TODO(jelmer): Should this perhaps examine the enties on disk?
+            inv, ie = self._path2inv_ie(path)
+            if inv is None:
+                raise _mod_transport.NoSuchFile(path)
             if ie.kind != 'directory':
                 raise errors.NotADirectory(path)
-            return ie.children.values()
+            return inv.iter_sorted_children(ie.file_id)
 
     def rename_one(self, from_rel, to_rel, after=False):
         """Rename one file.

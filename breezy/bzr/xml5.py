@@ -51,6 +51,7 @@ class InventorySerializer_v5(xml6.InventorySerializer_v6):
         #   adding assertions       2.50s
         #   last_parent cache       2.52s (worse, removed)
         byid = inv._byid
+        children = inv._children
         for e in elt:
             ie = unpack_inventory_entry(e, entry_cache=entry_cache,
                                         return_from_cache=return_from_cache)
@@ -64,13 +65,16 @@ class InventorySerializer_v5(xml6.InventorySerializer_v6):
                                       % (parent_id,))
             if ie.file_id in byid:
                 raise inventory.DuplicateFileId(ie.file_id, byid[ie.file_id])
-            if ie.name in parent.children:
+            siblings = children[parent.file_id]
+            if ie.name in siblings:
                 raise errors.BzrError(
                     "{} is already versioned".format(
                         osutils.pathjoin(
                             inv.id2path(parent_id), ie.name).encode('utf-8')))
-            parent.children[ie.name] = ie
+            siblings[ie.name] = ie
             byid[ie.file_id] = ie
+            if ie.kind == 'directory':
+                children[ie.file_id] = {}
         if revision_id is not None:
             inv.root.revision = revision_id
         self._check_cache_size(len(inv), entry_cache)

@@ -109,7 +109,7 @@ impl InventoryEntry {
     }
 
     #[setter]
-    fn set_file_id(&mut self, file_id: Vec<u8>) {
+    fn set__file_id(&mut self, py: Python, file_id: &[u8]) {
         match &mut self.0 {
             Entry::File { file_id: f, .. } => *f = FileId::from(file_id),
             Entry::Directory { file_id: f, .. } => *f = FileId::from(file_id),
@@ -394,11 +394,16 @@ impl InventoryFile {
                     .to_object(py)
                     .as_ref(py)
                     .repr()?,
-                text_sha1.to_object(py).as_ref(py).repr()?,
+                text_sha1
+                    .as_ref()
+                    .map(|r| PyBytes::new(py, r).to_object(py))
+                    .to_object(py)
+                    .as_ref(py)
+                    .repr()?,
                 text_size.to_object(py).as_ref(py).repr()?,
                 revision
                     .as_ref()
-                    .map(|r| r.bytes())
+                    .map(|r| PyBytes::new(py, r.bytes()).to_object(py))
                     .to_object(py)
                     .as_ref(py)
                     .repr()?,
