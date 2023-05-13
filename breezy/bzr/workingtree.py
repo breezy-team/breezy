@@ -1046,14 +1046,15 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 tree_bzrdir = branch_bzrdir
             wt = tree_bzrdir.create_workingtree(_mod_revision.NULL_REVISION)
             wt.set_parent_ids(self.get_parent_ids())
-            # FIXME: Support nested trees
+            my_inv, new_root = self._path2inv_ie(sub_path)
             my_inv = self.root_inventory
             child_inv = inventory.Inventory(root_id=None)
-            file_id = self.path2id(sub_path)
-            new_root = my_inv.get_entry(file_id)
-            my_inv.remove_recursive_id(file_id)
-            new_root.parent_id = None
-            child_inv.add(new_root)
+            # Recursively migrate everything under the new root to the child inv
+            for ie in my_inv.remove_recursive_id(new_root.file_id):
+                if ie.file_id == new_root.file_id:
+                    ie.parent_id = None
+                    ie.name = ''
+                child_inv.add(ie)
             self._write_inventory(my_inv)
             wt._write_inventory(child_inv)
             return wt

@@ -820,6 +820,7 @@ class Inventory(CommonInventory):
                 del self._children[ie.parent_id][ie.name]
             else:
                 self.root = None
+        return to_delete
 
     def rename(self, file_id, new_parent_id, new_name):
         """Move a file within the inventory.
