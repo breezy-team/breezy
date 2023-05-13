@@ -862,6 +862,46 @@ fn check_delta(
     })
 }
 
+#[pyfunction]
+fn sort_inventory_delta(
+    py: Python,
+    delta: Vec<(
+        Option<String>,
+        Option<String>,
+        Vec<u8>,
+        Option<PyRef<InventoryEntry>>,
+    )>,
+) -> PyResult<Vec<(Option<String>, Option<String>, PyObject, PyObject)>> {
+    let mut delta = delta
+        .iter()
+        .map(|(old_name, new_name, file_id, entry)| {
+            let old_name = old_name.as_ref().map(|s| s.as_str());
+            let new_name = new_name.as_ref().map(|s| s.as_str());
+            let file_id = file_id.as_slice();
+            let entry = entry.as_ref().map(|e| e.0.clone());
+            InventoryDeltaEntry {
+                old_path: old_name.map(|s| s.to_string()),
+                new_path: new_name.map(|s| s.to_string()),
+                file_id: FileId::from(file_id),
+                new_entry: entry,
+            }
+        })
+        .collect::<Vec<_>>();
+    bazaar::inventory::sort_inventory_delta(&mut delta);
+    delta
+        .into_iter()
+        .map(|e| {
+            Ok((
+                e.old_path,
+                e.new_path,
+                PyBytes::new(py, e.file_id.bytes()).to_object(py),
+                e.new_entry
+                    .map_or_else(|| Ok(py.None()), |e| entry_to_py(py, e))?,
+            ))
+        })
+        .collect::<PyResult<Vec<_>>>()
+}
+
 pub fn _inventory_rs(py: Python) -> PyResult<&PyModule> {
     let m = PyModule::new(py, "inventory")?;
 
@@ -873,6 +913,7 @@ pub fn _inventory_rs(py: Python) -> PyResult<&PyModule> {
     m.add_wrapped(wrap_pyfunction!(make_entry))?;
     m.add_wrapped(wrap_pyfunction!(is_valid_name))?;
     m.add_wrapped(wrap_pyfunction!(check_delta))?;
+    m.add_wrapped(wrap_pyfunction!(sort_inventory_delta))?;
 
     Ok(m)
 }

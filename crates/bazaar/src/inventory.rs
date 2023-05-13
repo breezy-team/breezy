@@ -15,7 +15,7 @@ pub fn versionable_kind(kind: Kind) -> bool {
     )
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Entry {
     Directory {
         file_id: FileId,
@@ -473,4 +473,17 @@ pub fn check_delta_consistency(delta: &InventoryDelta) -> Result<(), InventoryDe
         }
     }
     Ok(())
+}
+
+pub fn sort_inventory_delta(delta: &mut InventoryDelta) {
+    // TODO(jelmer): Use references rather than clones here
+    fn key(entry: &InventoryDeltaEntry) -> (String, String, FileId, Option<Entry>) {
+        (
+            entry.old_path.as_deref().unwrap_or("").to_string(),
+            entry.new_path.as_deref().unwrap_or("").to_string(),
+            entry.file_id.clone(),
+            entry.new_entry.clone(),
+        )
+    }
+    delta.sort_by_key(key);
 }
