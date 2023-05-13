@@ -1,6 +1,7 @@
 use crate::{FileId, RevisionId};
 use breezy_osutils::Kind;
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 // This should really be an id randomly assigned when the tree is
 // created, but it's not for now.
@@ -383,4 +384,93 @@ pub fn detect_changes(old_entry: &Entry, new_entry: &Entry) -> (bool, bool) {
 
 pub fn is_valid_name(name: &str) -> bool {
     !(name.contains('/') || name == "." || name == "..")
+}
+
+pub struct InventoryDeltaEntry {
+    pub old_path: Option<String>,
+    pub new_path: Option<String>,
+    pub file_id: FileId,
+    pub new_entry: Option<Entry>,
+}
+
+pub type InventoryDelta = Vec<InventoryDeltaEntry>;
+
+pub enum InventoryDeltaInconsistency {
+    DuplicateFileId(String, FileId),
+    DuplicateOldPath(String, FileId),
+    DuplicateNewPath(String, FileId),
+    NoPath,
+    MismatchedId(String, FileId, FileId),
+    EntryWithoutPath(String, FileId),
+    PathWithoutEntry(String, FileId),
+}
+
+pub fn check_delta_consistency(delta: &InventoryDelta) -> Result<(), InventoryDeltaInconsistency> {
+    let mut ids = HashSet::new();
+    let mut old_paths = HashSet::new();
+    let mut new_paths = HashSet::new();
+    for entry in delta {
+        let path = if let Some(old_path) = &entry.old_path {
+            old_path
+        } else if let Some(new_path) = &entry.new_path {
+            new_path
+        } else {
+            return Err(InventoryDeltaInconsistency::NoPath);
+        };
+
+        if ids.contains(&entry.file_id) {
+            return Err(InventoryDeltaInconsistency::DuplicateFileId(
+                path.clone(),
+                entry.file_id.clone(),
+            ));
+        }
+        ids.insert(&entry.file_id);
+
+        if entry.old_path.is_some() {
+            let old_path = entry.old_path.as_ref().unwrap();
+            if old_paths.contains(old_path) {
+                return Err(InventoryDeltaInconsistency::DuplicateOldPath(
+                    old_path.clone(),
+                    entry.file_id.clone(),
+                ));
+            }
+            old_paths.insert(old_path);
+        }
+
+        if entry.new_path.is_some() {
+            let new_path = entry.new_path.as_ref().unwrap();
+            if new_paths.contains(new_path) {
+                return Err(InventoryDeltaInconsistency::DuplicateNewPath(
+                    new_path.clone(),
+                    entry.file_id.clone(),
+                ));
+            }
+            new_paths.insert(new_path);
+        }
+
+        if let Some(ref new_entry) = entry.new_entry {
+            if &entry.file_id != new_entry.file_id() {
+                return Err(InventoryDeltaInconsistency::MismatchedId(
+                    path.clone(),
+                    entry.file_id.clone(),
+                    new_entry.file_id().clone(),
+                ));
+            }
+        }
+
+        if entry.new_entry.is_some() && entry.new_path.is_none() {
+            return Err(InventoryDeltaInconsistency::EntryWithoutPath(
+                path.clone(),
+                entry.file_id.clone(),
+            ));
+        }
+
+        if entry.new_entry.is_none() && entry.new_path.is_some() {
+            return Err(InventoryDeltaInconsistency::PathWithoutEntry(
+                path.clone(),
+                entry.file_id.clone(),
+            ));
+        }
+    }
+    Ok(())
 }
