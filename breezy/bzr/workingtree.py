@@ -1128,7 +1128,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
                     dir_ie = inv.get_entry(from_dir_id)
                     if dir_ie.kind == 'directory':
-                        f_ie = inv.get_children(dir_ie.file_id).get(f)
+                        f_ie = inv.get_child(dir_ie.file_id, f)
                     else:
                         f_ie = None
                     if f_ie:

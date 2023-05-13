@@ -454,10 +454,9 @@ class CommonInventory:
             return None, None, None
         for i, f in enumerate(names):
             try:
-                children = self.get_children(parent.file_id)
-                if children is None:
+                cie = self.get_child(parent.file_id, f)
+                if cie is None:
                     return None, None, None
-                cie = children[f]
                 if cie.kind == 'tree-reference':
                     return cie, names[:i + 1], names[i + 1:]
                 parent = cie
@@ -491,10 +490,9 @@ class CommonInventory:
             return None
         for f in names:
             try:
-                children = self.get_children(parent.file_id)
-                if children is None:
+                cie = self.get_child(parent.file_id, f)
+                if cie is None:
                     return None
-                cie = children[f]
                 parent = cie
             except KeyError:
                 # or raise an error?
@@ -790,7 +788,7 @@ class Inventory(CommonInventory):
         return self._byid[file_id].kind
 
     def get_child(self, parent_id, filename):
-        return self.get_entry(parent_id).children.get(filename)
+        return self.get_children(parent_id).get(filename)
 
     def _add_child(self, entry):
         """Add an entry to the inventory, without adding it to its parent."""
@@ -1079,6 +1077,10 @@ class CHKInventory(CommonInventory):
             self._fileid_to_entry_cache[file_id_key[0]] = entry
         self._children_cache[dir_id] = result
         return result
+
+    def get_child(self, dir_id, name):
+        # TODO(jelmer): Implement a version that doesn't load all children.
+        return self.get_children(dir_id).get(name)
 
     def _entry_to_bytes(self, entry):
         """Serialise entry as a single bytestring.
