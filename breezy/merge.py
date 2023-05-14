@@ -1793,12 +1793,11 @@ class MergeIntoMergeType(Merge3Merger):
         if target_id is None:
             raise PathNotInTree(self._target_subdir, "Target tree")
         name_in_target = osutils.basename(self._target_subdir)
-        merge_into_root = subdir.copy()
-        merge_into_root.name = name_in_target
         try:
-            self.this_tree.id2path(merge_into_root.file_id)
+            self.this_tree.id2path(subdir.file_id)
         except errors.NoSuchId:
-            pass
+            merge_into_root = subdir.copy()
+            merge_into_root.name = name_in_target
         else:
             # Give the root a new file-id.
             # This can happen fairly easily if the directory we are
@@ -1808,7 +1807,11 @@ class MergeIntoMergeType(Merge3Merger):
             # Non-root file-ids could potentially conflict too.  That's really
             # an edge case, so we don't do anything special for those.  We let
             # them cause conflicts.
-            merge_into_root.file_id = generate_ids.gen_file_id(name_in_target)
+            from .bzr.inventory import InventoryDirectory
+            merge_into_root = InventoryDirectory(
+                generate_ids.gen_file_id(name_in_target),
+                name_in_target, subdir.parent_id)
+            merge_into_root.revision = subdir.revision
         yield (merge_into_root, target_id, '')
         if subdir.kind != 'directory':
             # No children, so we are done.

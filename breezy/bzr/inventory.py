@@ -42,23 +42,8 @@ from .static_tuple import StaticTuple
 
 InventoryEntry = _mod_inventory_rs.InventoryEntry
 InventoryFile = _mod_inventory_rs.InventoryFile
-
-
-class InventoryDirectory(_mod_inventory_rs.InventoryDirectory):
-
-    __slots__ = ['children']
-
-    def __init__(self, file_id, name, parent_id):
-        self.children = {}
-
-    def copy(self):
-        ie = InventoryDirectory(self.file_id, self.name, self.parent_id)
-        ie.revision = self.revision
-        return ie
-
-
+InventoryDirectory = _mod_inventory_rs.InventoryDirectory
 TreeReference = _mod_inventory_rs.TreeReference
-
 InventoryLink = _mod_inventory_rs.InventoryLink
 
 
@@ -322,10 +307,9 @@ class CommonInventory:
             return None, None, None
         for i, f in enumerate(names):
             try:
-                children = self.get_children(parent.file_id)
-                if children is None:
+                cie = self.get_child(parent.file_id, f)
+                if cie is None:
                     return None, None, None
-                cie = children[f]
                 if cie.kind == 'tree-reference':
                     return cie, names[:i + 1], names[i + 1:]
                 parent = cie
@@ -359,10 +343,9 @@ class CommonInventory:
             return None
         for f in names:
             try:
-                children = self.get_children(parent.file_id)
-                if children is None:
+                cie = self.get_child(parent.file_id, f)
+                if cie is None:
                     return None
-                cie = children[f]
                 parent = cie
             except KeyError:
                 # or raise an error?
@@ -469,12 +452,20 @@ class Inventory(CommonInventory):
         The inventory is created with a default root directory, with
         an id of None.
         """
+        self.root = None
+        self._byid = {}
+        self._children = {}
         if root_id is not None:
             self._set_root(InventoryDirectory(root_id, '', None))
-        else:
-            self.root = None
-            self._byid = {}
         self.revision_id = revision_id
+
+    def rename_id(self, old_file_id, new_file_id):
+        self._byid[new_file_id] = self._byid.pop(old_file_id)
+        if self._byid[new_file_id].kind == 'directory':
+            self._children[new_file_id] = self._children.pop(old_file_id)
+            for child in self._children[new_file_id].values():
+                child.parent_id = new_file_id
+        self._byid[new_file_id]._file_id = new_file_id
 
     def __repr__(self):
         # More than one page of ouput is not useful anymore to debug
@@ -486,8 +477,7 @@ class Inventory(CommonInventory):
         return f"<Inventory object at {id(self):x}, contents={contents!r}>"
 
     def get_children(self, file_id):
-        ie = self.get_entry(file_id)
-        return getattr(ie, 'children', {})
+        return self._children[file_id]
 
     def apply_delta(self, delta):
         """Apply a delta to this inventory.
@@ -545,16 +535,22 @@ class Inventory(CommonInventory):
         # modified children remaining by the time we examine it.
         for old_path, file_id in sorted(((op, f) for op, np, f, e in delta
                                          if op is not None), reverse=True):
-            # Preserve unaltered children of file_id for later reinsertion.
-            file_id_children = self.get_children(file_id)
-            if len(file_id_children):
-                children[file_id] = file_id_children
             if self.id2path(file_id) != old_path:
                 raise errors.InconsistentDelta(old_path, file_id,
                                                f"Entry was at wrong other path {self.id2path(file_id)!r}.")
             # Remove file_id and the unaltered children. If file_id is not
             # being deleted it will be reinserted back later.
-            self.remove_recursive_id(file_id)
+            ie = self._byid.pop(file_id)
+            if ie.parent_id is not None:
+                del self._children[ie.parent_id][ie.name]
+            # Preserve unaltered children of file_id for later reinsertion.
+            try:
+                file_id_children = self._children.pop(file_id)
+            except KeyError:
+                pass
+            else:
+                if file_id_children:
+                    children[file_id] = file_id_children
         # Insert all affected which should be in the new inventory, reattaching
         # their children if they had any. This is done from shortest path to
         # longest, ensuring that items which were modified and whose parents in
@@ -562,26 +558,20 @@ class Inventory(CommonInventory):
         # parents.
         for new_path, _f, new_entry in sorted((np, f, e) for op, np, f, e in
                                              delta if np is not None):
-            if new_entry.kind == 'directory':
-                # Pop the child which to allow detection of children whose
-                # parents were deleted and which were not reattached to a new
-                # parent.
-                replacement = InventoryDirectory(new_entry.file_id,
-                                                 new_entry.name, new_entry.parent_id)
-                replacement.revision = new_entry.revision
-                replacement.children = children.pop(replacement.file_id, {})
-                new_entry = replacement
             try:
                 self.add(new_entry)
-            except DuplicateFileId:
+            except DuplicateFileId as ex:
                 raise errors.InconsistentDelta(new_path, new_entry.file_id,
-                                               "New id is already present in target.")
-            except AttributeError:
+                                               "New id is already present in target.") from ex
+            except AttributeError as ex:
                 raise errors.InconsistentDelta(new_path, new_entry.file_id,
-                                               "Parent is not a directory.")
+                                               "Parent is not a directory.") from ex
             if self.id2path(new_entry.file_id) != new_path:
                 raise errors.InconsistentDelta(new_path, new_entry.file_id,
                                                "New path is not consistent with parent path.")
+            if new_entry.kind == 'directory':
+                self._children[new_entry.file_id] = children.pop(new_entry.file_id, {})
+
         if len(children):
             # Get the parent id that was deleted
             parent_id, children = children.popitem()
@@ -599,6 +589,9 @@ class Inventory(CommonInventory):
     def _set_root(self, ie):
         self.root = ie
         self._byid = {self.root.file_id: self.root}
+        if self.root.file_id in self._children:
+            raise AssertionError('Root id already in children')
+        self._children = {self.root.file_id: {}}
 
     def copy(self):
         # TODO: jam 20051218 Should copy also copy the revision_id?
@@ -654,20 +647,7 @@ class Inventory(CommonInventory):
         return self._byid[file_id].kind
 
     def get_child(self, parent_id, filename):
-        return self.get_entry(parent_id).children.get(filename)
-
-    def _add_child(self, entry):
-        """Add an entry to the inventory, without adding it to its parent."""
-        if entry.file_id in self._byid:
-            raise errors.BzrError(
-                "inventory already contains entry with id {%s}" %
-                entry.file_id)
-        self._byid[entry.file_id] = entry
-        children = getattr(entry, 'children', {})
-        if children is not None:
-            for child in children.values():
-                self._add_child(child)
-        return entry
+        return self.get_children(parent_id).get(filename)
 
     def add(self, entry):
         """Add entry to inventory.
@@ -684,13 +664,21 @@ class Inventory(CommonInventory):
             except KeyError:
                 raise errors.InconsistentDelta("<unknown>", entry.parent_id,
                                                "Parent not in inventory.")
-            if entry.name in parent.children:
+            if parent.kind != 'directory':
+                raise errors.InconsistentDelta(self.id2path(entry.parent_id),
+                                               entry.file_id,
+                                               "Parent is not a directory.")
+            siblings = self._children[parent.file_id]
+            if entry.name in siblings:
                 raise errors.InconsistentDelta(
-                    self.id2path(parent.children[entry.name].file_id),
+                    self.id2path(siblings[entry.name].file_id),
                     entry.file_id,
                     "Path already versioned")
-            parent.children[entry.name] = entry
-        return self._add_child(entry)
+            siblings[entry.name] = entry
+        self._byid[entry.file_id] = entry
+        if entry.kind == 'directory':
+            self._children[entry.file_id] = {}
+        return entry
 
     def add_path(self, relpath, kind, file_id=None, parent_id=None):
         """Add entry from a path.
@@ -706,6 +694,9 @@ class Inventory(CommonInventory):
                 file_id = generate_ids.gen_root_id()
             self.root = InventoryDirectory(file_id, '', None)
             self._byid = {self.root.file_id: self.root}
+            if self.root.file_id in self._children:
+                raise AssertionError('Root id already in children')
+            self._children = {self.root.file_id: {}}
             return self.root
         else:
             parent_path = parts[:-1]
@@ -764,8 +755,8 @@ class Inventory(CommonInventory):
         while file_id is not None:
             try:
                 ie = self._byid[file_id]
-            except KeyError:
-                raise errors.NoSuchId(tree=None, file_id=file_id)
+            except KeyError as e:
+                raise errors.NoSuchId(tree=None, file_id=file_id) from e
             yield ie
             file_id = ie.parent_id
 
@@ -813,16 +804,23 @@ class Inventory(CommonInventory):
         to_delete = []
         while to_find_delete:
             ie = to_find_delete.pop()
-            to_delete.append(ie.file_id)
+            to_delete.append(ie)
             if ie.kind == 'directory':
-                to_find_delete.extend(ie.children.values())
-        for file_id in reversed(to_delete):
-            ie = self.get_entry(file_id)
-            del self._byid[file_id]
-        if ie.parent_id is not None:
-            del self.get_entry(ie.parent_id).children[ie.name]
-        else:
-            self.root = None
+                to_find_delete.extend(self.get_children(ie.file_id).values())
+        for ie in reversed(to_delete):
+            del self._byid[ie.file_id]
+            if ie.kind == 'directory':
+                if self._children[ie.file_id]:
+                    raise AssertionError('Directory not empty')
+                del self._children[ie.file_id]
+            else:
+                if ie.parent_id is None:
+                    raise AssertionError('Root id already in children')
+            if ie.parent_id is not None:
+                del self._children[ie.parent_id][ie.name]
+            else:
+                self.root = None
+        return to_delete
 
     def rename(self, file_id, new_parent_id, new_name):
         """Move a file within the inventory.
@@ -836,7 +834,7 @@ class Inventory(CommonInventory):
             raise errors.BzrError(f"not an acceptable filename: {new_name!r}")
 
         new_parent = self._byid[new_parent_id]
-        if new_name in new_parent.children:
+        if new_name in self._children[new_parent.file_id]:
             raise errors.BzrError("%r already exists in %r" %
                                   (new_name, self.id2path(new_parent_id)))
 
@@ -851,8 +849,8 @@ class Inventory(CommonInventory):
 
         # TODO: Don't leave things messed up if this fails
 
-        del old_parent.children[file_ie.name]
-        new_parent.children[new_name] = file_ie
+        del self._children[old_parent.file_id][file_ie.name]
+        self._children[new_parent.file_id][new_name] = file_ie
 
         file_ie.name = new_name
         file_ie.parent_id = new_parent_id
@@ -943,6 +941,10 @@ class CHKInventory(CommonInventory):
             self._fileid_to_entry_cache[file_id_key[0]] = entry
         self._children_cache[dir_id] = result
         return result
+
+    def get_child(self, dir_id, name):
+        # TODO(jelmer): Implement a version that doesn't load all children.
+        return self.get_children(dir_id).get(name)
 
     def _entry_to_bytes(self, entry):
         """Serialise entry as a single bytestring.
@@ -1118,7 +1120,7 @@ class CHKInventory(CommonInventory):
             result.text_size = int(sections[5])
             result.executable = sections[6] == b"Y"
         elif sections[0].startswith(b"dir: "):
-            result = CHKInventoryDirectory(sections[0][5:],
+            result = InventoryDirectory(sections[0][5:],
                                            sections[2].decode('utf8'),
                                            sections[1])
         elif sections[0].startswith(b"symlink: "):
@@ -1133,7 +1135,6 @@ class CHKInventory(CommonInventory):
             result.reference_revision = sections[4]
         else:
             raise ValueError(f"Not a serialised entry {bytes!r}")
-        result.file_id = result.file_id
         result.revision = sections[3]
         if result.parent_id == b'':
             result.parent_id = None
@@ -1290,9 +1291,9 @@ class CHKInventory(CommonInventory):
                 if result.get_entry(parent).kind != 'directory':
                     raise errors.InconsistentDelta(result.id2path(parent), parent,
                                                    'Not a directory, but given children')
-            except errors.NoSuchId:
+            except errors.NoSuchId as e:
                 raise errors.InconsistentDelta("<unknown>", parent,
-                                               "Parent is not present in resulting inventory.")
+                                               "Parent is not present in resulting inventory.") from e
             if result.path2id(parent_path) != parent:
                 raise errors.InconsistentDelta(parent_path, parent,
                                                f"Parent has wrong path {result.path2id(parent_path)!r}.")
@@ -1419,9 +1420,9 @@ class CHKInventory(CommonInventory):
         try:
             return self._bytes_to_entry(
                 next(self.id_to_entry.iteritems([StaticTuple(file_id,)]))[1])
-        except StopIteration:
+        except StopIteration as e:
             # really we're passing an inventory, not a tree...
-            raise errors.NoSuchId(self, file_id)
+            raise errors.NoSuchId(self, file_id) from e
 
     def _getitems(self, file_ids):
         """Similar to get_entry, but lets you query for multiple.
@@ -1702,25 +1703,6 @@ class CHKInventory(CommonInventory):
     def root(self):
         """Get the root entry."""
         return self.get_entry(self.root_id)
-
-
-class CHKInventoryDirectory(InventoryDirectory):
-    """A directory in an inventory."""
-
-    def __init__(self, file_id, name, parent_id):
-        pass
-
-    @property
-    def children(self):
-        """Access the list of children of this directory.
-
-        With a parent_id_basename_to_file_id index, loads all the children,
-        without loads the entire index. Without is bad. A more sophisticated
-        proxy object might be nice, to allow partial loading of children as
-        well when specific names are accessed. (So path traversal can be
-        written in the obvious way but not examine siblings.).
-        """
-        raise NotImplementedError
 
 
 entry_factory = {

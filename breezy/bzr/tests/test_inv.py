@@ -96,18 +96,12 @@ def apply_inventory_WT(self, basis, delta, invalid_delta=True):
     control.create_repository()
     control.create_branch()
     tree = self.format.initialize(control)
-    tree.lock_write()
-    try:
+    with tree.lock_write():
         tree._write_inventory(basis)
-    finally:
-        tree.unlock()
     # Fresh object, reads disk again.
     tree = tree.controldir.open_workingtree()
-    tree.lock_write()
-    try:
+    with tree.lock_write():
         tree.apply_inventory_delta(delta)
-    finally:
-        tree.unlock()
     # reload tree - ensure we get what was written.
     tree = tree.controldir.open_workingtree()
     tree.lock_read()
@@ -271,7 +265,7 @@ class TestInventoryUpdates(TestCase):
         inv = inventory.Inventory(root_id=b'some-tree-root')
         ie = inv.add_path('hello', 'file', b'hello-id')
         inv2 = inv.copy()
-        inv.root.file_id = b'some-new-root'
+        inv.rename_id(b'some-tree-root', b'some-new-root')
         ie.name = 'file2'
         self.assertEqual(b'some-tree-root', inv2.root.file_id)
         self.assertEqual('hello', inv2.get_entry(b'hello-id').name)
@@ -307,8 +301,8 @@ class TestInventoryUpdates(TestCase):
         parent = InventoryDirectory(b'src-id', 'src', b'tree-root')
         child = InventoryFile(b'hello-id', 'hello.c', b'src-id')
         inv = inventory.Inventory(b'tree-root')
-        parent.children = {'hello.c': child}
         inv.add(parent)
+        inv.add(child)
         self.assertEqual('src/hello.c', inv.id2path(b'hello-id'))
 
 
@@ -368,8 +362,10 @@ class TestDeltaApplication(TestCaseWithTransport):
         file1.revision = b'result'
         file1.text_size = 0
         file1.text_sha1 = b""
-        file2 = file1.copy()
-        file2.file_id = b'id2'
+        file2 = inventory.InventoryFile(b'id2', 'path', inv.root.file_id)
+        file2.revision = b'result'
+        file2.text_size = 0
+        file2.text_sha1 = b""
         delta = [(None, 'path', b'id1', file1),
                  (None, 'path', b'id2', file2)]
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
@@ -640,7 +636,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         inv = inventory.Inventory(b'TREE_ROOT')
         self.assertTrue(inv.is_root(b'TREE_ROOT'))
         self.assertFalse(inv.is_root(b'booga'))
-        inv.root.file_id = b'booga'
+        inv.rename_id(inv.root.file_id, b'booga')
         self.assertFalse(inv.is_root(b'TREE_ROOT'))
         self.assertTrue(inv.is_root(b'booga'))
         # works properly even if no root is set

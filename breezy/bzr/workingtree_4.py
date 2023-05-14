@@ -1722,7 +1722,7 @@ class DirStateRevisionTree(InventoryTree):
             ie = inv.get_entry(inv_file_id)
             if ie.kind != 'directory':
                 raise errors.NotADirectory(path)
-            return ie.children.values()
+            return inv.iter_sorted_children(inv_file_id)
 
     def _comparison_data(self, entry, path):
         """See Tree._comparison_data."""
