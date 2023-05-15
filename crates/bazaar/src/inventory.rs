@@ -521,7 +521,7 @@ impl MutableInventory {
                     };
                     accum.push((child_path.clone(), ie));
                     if ie.kind() == Kind::Directory {
-                        todo.push((&ie.file_id(), child_path));
+                        todo.push(((ie.file_id()), child_path));
                     }
                 }
             }
@@ -532,17 +532,14 @@ impl MutableInventory {
 
     pub fn rename_id(&mut self, old_file_id: &FileId, new_file_id: &FileId) {
         let mut ie = self.by_id.remove(old_file_id).unwrap();
-        match ie {
-            Entry::Directory { .. } => {
-                let children = self.children.remove(old_file_id).unwrap();
-                for child_id in children.values() {
-                    let mut child = self.by_id.get_mut(child_id).unwrap();
-                    assert_eq!(child.parent_id(), Some(old_file_id));
-                    child.set_parent_id(Some(new_file_id.clone()));
-                }
-                self.children.insert(new_file_id.clone(), children);
+        if let Entry::Directory { .. } = ie {
+            let children = self.children.remove(old_file_id).unwrap();
+            for child_id in children.values() {
+                let child = self.by_id.get_mut(child_id).unwrap();
+                assert_eq!(child.parent_id(), Some(old_file_id));
+                child.set_parent_id(Some(new_file_id.clone()));
             }
-            _ => {}
+            self.children.insert(new_file_id.clone(), children);
         }
         ie.set_file_id(new_file_id.clone());
         self.by_id.insert(new_file_id.clone(), ie);
@@ -597,9 +594,9 @@ impl MutableInventory {
             } else if !interesting_parents.contains(file_id) {
                 continue;
             }
-            other.add(entry.clone());
+            other.add(entry.clone()).unwrap();
         }
-        return other;
+        other
     }
 
     /// Return a list of file_ids for the path to an entry.
@@ -622,18 +619,16 @@ impl MutableInventory {
         self.get_entry_by_path_segments_partial(&names)
     }
 
-    pub fn get_entry_by_path_segments_partial<'a>(
-        &'a self,
+    pub fn get_entry_by_path_segments_partial(
+        &self,
         names: &[&str],
     ) -> Option<(&Entry, Vec<String>, Vec<String>)> {
-        if self.root_id.is_none() {
-            return None;
-        }
+        self.root_id.as_ref()?;
 
-        let mut parent = self.by_id.get(&self.root_id.as_ref().unwrap()).unwrap();
+        let mut parent = self.by_id.get(self.root_id.as_ref().unwrap()).unwrap();
 
         for (i, f) in names.iter().enumerate() {
-            if let Some(cie) = self.get_child(&parent.file_id(), f) {
+            if let Some(cie) = self.get_child(parent.file_id(), f) {
                 parent = cie;
                 if cie.kind() == Kind::TreeReference {
                     let (before, after) = names.split_at(i + 1);
@@ -662,14 +657,12 @@ impl MutableInventory {
     }
 
     pub fn get_entry_by_path_segments(&self, names: &[&str]) -> Option<&Entry> {
-        if self.root_id.is_none() {
-            return None;
-        }
+        self.root_id.as_ref()?;
 
-        let mut parent = self.by_id.get(&self.root_id.as_ref().unwrap()).unwrap();
+        let mut parent = self.by_id.get(self.root_id.as_ref().unwrap()).unwrap();
 
-        for (i, f) in names.iter().enumerate() {
-            if let Some(cie) = self.get_child(&parent.file_id(), f) {
+        for f in names {
+            if let Some(cie) = self.get_child(parent.file_id(), f) {
                 parent = cie;
             } else {
                 return None;
@@ -738,7 +731,7 @@ impl MutableInventory {
         from_dir: Option<&'a FileId>,
         specific_file_ids: Option<&'a HashSet<&FileId>>,
     ) -> impl Iterator<Item = (String, &'a Entry)> + '_ {
-        let parents = if let Some(ref specific_file_ids) = specific_file_ids {
+        let parents = if let Some(specific_file_ids) = specific_file_ids {
             let mut parents = HashSet::new();
             let mut todo = specific_file_ids.iter().cloned().collect::<Vec<_>>();
             while let Some(file_id) = todo.pop() {
@@ -788,12 +781,11 @@ impl MutableInventory {
                             children.push_back((child_relpath.clone(), child_ie));
                         }
 
-                        if child_ie.kind() == Kind::Directory {
-                            if parents.is_none()
-                                || parents.as_ref().unwrap().contains(child_ie.file_id())
-                            {
-                                child_dirs.push((child_relpath + "/", child_ie.file_id()))
-                            }
+                        if child_ie.kind() == Kind::Directory
+                            && (parents.is_none()
+                                || parents.as_ref().unwrap().contains(child_ie.file_id()))
+                        {
+                            child_dirs.push((child_relpath + "/", child_ie.file_id()))
                         }
 
                         child_dirs.reverse();
@@ -866,11 +858,9 @@ impl MutableInventory {
         let mut old = delta
             .iter()
             .filter_map(|d| {
-                if let Some(ref old_path) = d.old_path {
-                    Some((old_path, d.file_id.clone()))
-                } else {
-                    None
-                }
+                d.old_path
+                    .as_ref()
+                    .map(|old_path| (old_path, d.file_id.clone()))
             })
             .collect::<Vec<_>>();
         old.sort();
@@ -891,7 +881,7 @@ impl MutableInventory {
             }
             // Preserve unaltered children of file_id for later reinsertion.
             if let Some(file_id_children) = self.children.remove(&file_id) {
-                if file_id_children.len() > 0 {
+                if !file_id_children.is_empty() {
                     children.insert(file_id, file_id_children);
                 }
             }
@@ -905,11 +895,9 @@ impl MutableInventory {
         let mut new = delta
             .iter()
             .filter_map(|de| {
-                if let Some(ref new_path) = de.new_path {
-                    Some((new_path, &de.file_id, &de.new_entry))
-                } else {
-                    None
-                }
+                de.new_path
+                    .as_ref()
+                    .map(|new_path| (new_path, &de.file_id, &de.new_entry))
             })
             .collect::<Vec<_>>();
         new.sort();
@@ -944,17 +932,14 @@ impl MutableInventory {
                     self.id2path(new_entry.file_id()),
                 ));
             }
-            match new_entry {
-                Entry::Directory { .. } => {
-                    if let Some(children) = children.remove(new_entry.file_id()) {
-                        self.children.insert(new_entry.file_id().clone(), children);
-                    }
+            if let Entry::Directory { .. } = new_entry {
+                if let Some(children) = children.remove(new_entry.file_id()) {
+                    self.children.insert(new_entry.file_id().clone(), children);
                 }
-                _ => {}
             }
             if !children.is_empty() {
                 // Get the parent id that was deleted
-                let (parent_id, children) = children.drain().next().unwrap();
+                let (parent_id, _children) = children.drain().next().unwrap();
                 return Err(InventoryDeltaInconsistency::OrphanedChild(parent_id));
             }
         }
@@ -1005,8 +990,8 @@ impl MutableInventory {
         self.by_id.get(id).map(|e| e.kind())
     }
 
-    pub fn has_id(&self, id: FileId) -> bool {
-        self.by_id.contains_key(&id)
+    pub fn has_id(&self, id: &FileId) -> bool {
+        self.by_id.contains_key(id)
     }
 
     fn iter_file_id_parents<'a>(&'a self, id: &'a FileId) -> impl Iterator<Item = &'a Entry> + 'a {
@@ -1018,6 +1003,10 @@ impl MutableInventory {
             }
             Some(entry)
         })
+    }
+
+    pub fn root(&self) -> Option<&Entry> {
+        self.get_entry(self.root_id.as_ref()?)
     }
 
     pub fn is_root(&self, id: FileId) -> bool {
@@ -1057,7 +1046,7 @@ impl MutableInventory {
                 Entry::Directory { .. } => {}
                 _ => {
                     return Err(Error::ParentNotDirectory(
-                        self.id2path(&parent_id),
+                        self.id2path(parent_id),
                         ie.file_id().clone(),
                     ));
                 }
@@ -1079,13 +1068,10 @@ impl MutableInventory {
             self.root_id = Some(ie.file_id().clone());
         }
 
-        self.by_id.insert(ie.file_id().clone(), ie.clone());
-        match ie {
-            Entry::Directory { .. } => {
-                self.children.insert(ie.file_id().clone(), HashMap::new());
-            }
-            _ => {}
+        if let Entry::Directory { ref file_id, .. } = ie {
+            self.children.insert(file_id.clone(), HashMap::new());
         }
+        self.by_id.insert(ie.file_id().clone(), ie);
         Ok(())
     }
 
@@ -1108,7 +1094,7 @@ impl MutableInventory {
             );
             self.by_id = HashMap::new();
             self.by_id.insert(root.file_id().clone(), root);
-            if self.children.contains_key(&self.root_id.as_ref().unwrap()) {
+            if self.children.contains_key(self.root_id.as_ref().unwrap()) {
                 panic!("Root id already in children");
             }
             self.children = HashMap::new();
@@ -1132,7 +1118,7 @@ impl MutableInventory {
             .remove(file_id)
             .ok_or_else(|| Error::NoSuchId(file_id.clone()))?;
         if let Some(parent_id) = ie.parent_id() {
-            let siblings = self.children.get_mut(&parent_id).unwrap();
+            let siblings = self.children.get_mut(parent_id).unwrap();
             siblings.remove(ie.name());
         } else {
             self.root_id = None;
@@ -1140,7 +1126,7 @@ impl MutableInventory {
         Ok(())
     }
 
-    fn make_delta(&self, old: &MutableInventory) -> InventoryDelta {
+    pub fn make_delta(&self, old: &MutableInventory) -> InventoryDelta {
         let old_ids = old.iter_all_ids().collect::<HashSet<_>>();
         let new_ids = self.iter_all_ids().collect::<HashSet<_>>();
         let adds = new_ids.difference(&old_ids).collect::<HashSet<_>>();
@@ -1214,7 +1200,7 @@ impl MutableInventory {
                 assert!(!self.children.contains_key(ie.file_id()));
             }
             if let Some(parent_id) = ie.parent_id() {
-                let siblings = self.children.get_mut(&parent_id).unwrap();
+                let siblings = self.children.get_mut(parent_id).unwrap();
                 siblings.remove(ie.name());
             } else {
                 self.root_id = None;
@@ -1283,11 +1269,11 @@ impl Default for MutableInventory {
 
 impl std::fmt::Debug for MutableInventory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        const max_len: usize = 2048;
-        const closing: &str = "...}";
+        const MAX_LEN: usize = 2048;
+        const CLOSING: &str = "...}";
         let mut contents = format!("{:?}", self.by_id);
-        if contents.len() > max_len {
-            contents = contents[0..max_len - closing.len()].to_string() + closing;
+        if contents.len() > MAX_LEN {
+            contents = contents[0..MAX_LEN - CLOSING.len()].to_string() + CLOSING;
         }
         write!(
             f,

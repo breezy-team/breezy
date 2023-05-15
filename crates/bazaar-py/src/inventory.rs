@@ -1,21 +1,21 @@
 use bazaar::inventory::{
-    check_delta_consistency, describe_change, detect_changes, Entry, InventoryDeltaEntry,
+    check_delta_consistency, describe_change, detect_changes, Entry, Error, InventoryDeltaEntry,
     InventoryDeltaInconsistency,
 };
 use bazaar::{FileId, RevisionId};
 use breezy_osutils::Kind;
 use pyo3::class::basic::CompareOp;
-use pyo3::exceptions::PyNotImplementedError;
+use pyo3::exceptions::{PyNotImplementedError, PyValueError};
 use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::pyclass_init::PyClassInitializer;
-use pyo3::types::{PyBytes, PyDict, PyString};
+use pyo3::types::{PyBytes, PyDict};
 use pyo3::wrap_pyfunction;
-use pyo3::PyClass;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
 import_exception!(breezy.bzr.inventory, InvalidEntryName);
+import_exception!(breezy.bzr.inventory, DuplicateFileId);
 import_exception!(breezy.errors, NoSuchId);
 import_exception!(breezy.errors, BzrCheckError);
 import_exception!(breezy.errors, InvalidNormalization);
@@ -823,31 +823,8 @@ fn ensure_normalized_name(name: std::path::PathBuf) -> PyResult<std::path::PathB
         .map_err(|_e| InvalidNormalization::new_err(name))
 }
 
-#[pyfunction]
-fn check_delta(
-    delta: Vec<(
-        Option<String>,
-        Option<String>,
-        Vec<u8>,
-        Option<PyRef<InventoryEntry>>,
-    )>,
-) -> PyResult<()> {
-    let delta = delta
-        .iter()
-        .map(|(old_name, new_name, file_id, entry)| {
-            let old_name = old_name.as_ref().map(|s| s.as_str());
-            let new_name = new_name.as_ref().map(|s| s.as_str());
-            let file_id = file_id.as_slice();
-            let entry = entry.as_ref().map(|e| e.0.clone());
-            InventoryDeltaEntry {
-                old_path: old_name.map(|s| s.to_string()),
-                new_path: new_name.map(|s| s.to_string()),
-                file_id: FileId::from(file_id),
-                new_entry: entry,
-            }
-        })
-        .collect::<Vec<_>>();
-    check_delta_consistency(&delta).map_err(|e| match e {
+fn delta_err_to_py_err(e: InventoryDeltaInconsistency) -> PyErr {
+    match e {
         InventoryDeltaInconsistency::NoPath => {
             InconsistentDelta::new_err(("", "", "No path in entry"))
         }
@@ -901,7 +878,34 @@ fn check_delta(
         InventoryDeltaInconsistency::PathAlreadyVersioned(name, parent_path) => {
             PathAlreadyVersioned::new_err((name, parent_path))
         }
-    })
+    }
+}
+
+#[pyfunction]
+fn check_delta(
+    delta: Vec<(
+        Option<String>,
+        Option<String>,
+        Vec<u8>,
+        Option<PyRef<InventoryEntry>>,
+    )>,
+) -> PyResult<()> {
+    let delta = delta
+        .iter()
+        .map(|(old_name, new_name, file_id, entry)| {
+            let old_name = old_name.as_ref().map(|s| s.as_str());
+            let new_name = new_name.as_ref().map(|s| s.as_str());
+            let file_id = file_id.as_slice();
+            let entry = entry.as_ref().map(|e| e.0.clone());
+            InventoryDeltaEntry {
+                old_path: old_name.map(|s| s.to_string()),
+                new_path: new_name.map(|s| s.to_string()),
+                file_id: FileId::from(file_id),
+                new_entry: entry,
+            }
+        })
+        .collect::<Vec<_>>();
+    check_delta_consistency(&delta).map_err(delta_err_to_py_err)
 }
 
 #[pyfunction]
@@ -944,6 +948,31 @@ fn sort_inventory_delta(
         .collect::<PyResult<Vec<_>>>()
 }
 
+fn inventory_err_to_py_err(e: Error, py: Python) -> PyErr {
+    match e {
+        Error::InvalidEntryName(name) => InvalidEntryName::new_err((name,)),
+        Error::DuplicateFileId(fid) => DuplicateFileId::new_err((fid.bytes().to_vec(),)),
+        Error::NoSuchId(fid) => NoSuchId::new_err((fid.bytes().to_vec(),)),
+        Error::ParentNotDirectory(path, fid) => {
+            InconsistentDelta::new_err((path, fid.bytes().to_vec(), "parent not directory"))
+        }
+        Error::FileIdCycle(fid, path, parent_path) => InconsistentDelta::new_err((
+            path,
+            fid.bytes().to_vec(),
+            format!("file_id cycle with {}", parent_path),
+        )),
+        Error::ParentMissing(fid) => {
+            InconsistentDelta::new_err(("", fid.bytes().to_vec(), "parent missing"))
+        }
+        Error::PathAlreadyVersioned(name, parent_path) => {
+            PathAlreadyVersioned::new_err((name, parent_path))
+        }
+        Error::ParentNotVersioned(path) => {
+            InconsistentDelta::new_err((path, py.None(), "parent not versioned"))
+        }
+    }
+}
+
 #[pyclass]
 struct Inventory(bazaar::inventory::MutableInventory);
 
@@ -961,6 +990,295 @@ impl Inventory {
         inv.0.add(root).unwrap();
         inv.0.revision_id = revision_id.map(RevisionId::from);
         inv
+    }
+
+    #[getter]
+    fn root(&self, py: Python) -> PyResult<PyObject> {
+        if let Some(root) = self.0.root() {
+            entry_to_py(py, root.clone())
+        } else {
+            Ok(py.None())
+        }
+    }
+
+    fn add(&mut self, py: Python, entry: &InventoryEntry) -> PyResult<()> {
+        self.0
+            .add(entry.0.clone())
+            .map_err(|e| inventory_err_to_py_err(e, py))?;
+        Ok(())
+    }
+
+    fn add_path(
+        &mut self,
+        py: Python,
+        relpath: &str,
+        kind: &str,
+        file_id: Option<Vec<u8>>,
+        parent_id: Option<Vec<u8>>,
+    ) -> PyResult<()> {
+        let kind = match kind {
+            "file" => breezy_osutils::Kind::File,
+            "directory" => breezy_osutils::Kind::Directory,
+            "link" => breezy_osutils::Kind::Symlink,
+            "tree-reference" => breezy_osutils::Kind::TreeReference,
+            _ => return Err(PyValueError::new_err("invalid kind")),
+        };
+        self.0
+            .add_path(
+                relpath,
+                kind,
+                file_id.map(FileId::from),
+                parent_id.map(FileId::from),
+            )
+            .map_err(|e| inventory_err_to_py_err(e, py))?;
+        Ok(())
+    }
+
+    #[getter]
+    fn get_revision_id(&self, py: Python) -> PyResult<PyObject> {
+        if let Some(revision_id) = self.0.revision_id.as_ref() {
+            Ok(PyBytes::new(py, revision_id.bytes()).to_object(py))
+        } else {
+            Ok(py.None())
+        }
+    }
+
+    #[setter]
+    fn set_revision_id(&mut self, revision_id: Option<Vec<u8>>) {
+        self.0.revision_id = revision_id.map(RevisionId::from);
+    }
+
+    fn id2path(&self, py: Python, file_id: Vec<u8>) -> PyResult<String> {
+        let file_id = FileId::from(file_id);
+        Ok(self.0.id2path(&file_id))
+    }
+
+    fn path2id(&self, py: Python, path: &str) -> Option<PyObject> {
+        self.0
+            .path2id(path)
+            .map(|fid| PyBytes::new(py, fid.bytes()).to_object(py))
+    }
+
+    fn is_root(&self, py: Python, file_id: Vec<u8>) -> PyResult<bool> {
+        let file_id = FileId::from(file_id);
+        Ok(self.0.is_root(file_id))
+    }
+
+    fn has_filename(&self, py: Python, name: &str) -> PyResult<bool> {
+        Ok(self.0.has_filename(name))
+    }
+
+    fn get_children(&self, py: Python, file_id: Vec<u8>) -> PyResult<HashMap<String, PyObject>> {
+        let file_id = FileId::from(file_id);
+        let children = self.0.get_children(&file_id);
+        let mut result = HashMap::with_capacity(children.len());
+        for (name, child) in children {
+            result.insert(name.to_string(), entry_to_py(py, child.clone())?);
+        }
+        Ok(result)
+    }
+
+    fn entries(&self, py: Python) -> PyResult<Vec<(String, PyObject)>> {
+        let entries = self.0.entries();
+        let mut result = Vec::with_capacity(entries.len());
+        for (name, entry) in entries {
+            result.push((name, entry_to_py(py, entry.clone())?));
+        }
+        Ok(result)
+    }
+
+    fn rename_id(
+        &mut self,
+        py: Python,
+        old_file_id: Vec<u8>,
+        new_file_id: Vec<u8>,
+    ) -> PyResult<()> {
+        let old_file_id = FileId::from(old_file_id);
+        let new_file_id = FileId::from(new_file_id);
+        self.0.rename_id(&old_file_id, &new_file_id);
+        Ok(())
+    }
+
+    fn path2id_segments(&self, py: Python, names: Vec<&str>) -> Option<PyObject> {
+        self.0
+            .path2id_segments(names.as_slice())
+            .map(|fid| PyBytes::new(py, fid.bytes()).to_object(py))
+    }
+
+    fn filter(&self, py: Python, specific_fileids: HashSet<Vec<u8>>) -> PyResult<Self> {
+        let specific_fileids = specific_fileids
+            .into_iter()
+            .map(FileId::from)
+            .collect::<HashSet<_>>();
+        let result = self.0.filter(&specific_fileids.iter().collect());
+        Ok(Self(result))
+    }
+
+    fn get_entry_by_path_partial(
+        &self,
+        relpath: &str,
+    ) -> Option<(PyObject, Vec<String>, Vec<String>)> {
+        self.0
+            .get_entry_by_path_partial(relpath)
+            .map(|(entry, segments, missing)| {
+                (
+                    entry_to_py(Python::acquire_gil().python(), entry.clone()).unwrap(),
+                    segments,
+                    missing,
+                )
+            })
+    }
+
+    fn get_entry_by_path_segments_partial(
+        &self,
+        segments: Vec<&str>,
+    ) -> Option<(PyObject, Vec<String>, Vec<String>)> {
+        self.0
+            .get_entry_by_path_segments_partial(segments.as_slice())
+            .map(|(entry, segments, missing)| {
+                (
+                    entry_to_py(Python::acquire_gil().python(), entry.clone()).unwrap(),
+                    segments,
+                    missing,
+                )
+            })
+    }
+
+    fn get_entry_by_path(&self, relpath: &str) -> Option<PyObject> {
+        self.0
+            .get_entry_by_path(relpath)
+            .map(|entry| entry_to_py(Python::acquire_gil().python(), entry.clone()).unwrap())
+    }
+
+    fn get_entry_by_path_segments(&self, segments: Vec<&str>) -> Option<PyObject> {
+        self.0
+            .get_entry_by_path_segments(segments.as_slice())
+            .map(|entry| entry_to_py(Python::acquire_gil().python(), entry.clone()).unwrap())
+    }
+
+    fn apply_delta(
+        &mut self,
+        delta: Vec<(
+            Option<String>,
+            Option<String>,
+            Vec<u8>,
+            Option<PyRef<InventoryEntry>>,
+        )>,
+    ) -> PyResult<()> {
+        let delta = delta
+            .into_iter()
+            .map(|(old_name, new_name, file_id, entry)| InventoryDeltaEntry {
+                old_path: old_name,
+                new_path: new_name,
+                file_id: FileId::from(file_id),
+                new_entry: entry.map(|entry| entry.0.clone()),
+            })
+            .collect();
+        self.0.apply_delta(&delta).map_err(delta_err_to_py_err)
+    }
+
+    fn create_by_apply_delta(
+        &self,
+        delta: Vec<(
+            Option<String>,
+            Option<String>,
+            Vec<u8>,
+            Option<PyRef<InventoryEntry>>,
+        )>,
+        new_revision_id: Vec<u8>,
+    ) -> PyResult<Self> {
+        let delta = delta
+            .into_iter()
+            .map(|(old_name, new_name, file_id, entry)| InventoryDeltaEntry {
+                old_path: old_name,
+                new_path: new_name,
+                file_id: FileId::from(file_id),
+                new_entry: entry.map(|entry| entry.0.clone()),
+            })
+            .collect();
+        let new_revision_id = RevisionId::from(new_revision_id);
+        let result = self
+            .0
+            .create_by_apply_delta(&delta, new_revision_id)
+            .map_err(delta_err_to_py_err)?;
+        Ok(Self(result))
+    }
+
+    fn __len__(&self) -> usize {
+        self.0.len()
+    }
+
+    fn get_entry(&self, py: Python, file_id: Vec<u8>) -> Option<PyObject> {
+        let file_id = FileId::from(file_id);
+        self.0
+            .get_entry(&file_id)
+            .map(|entry| entry_to_py(py, entry.clone()).unwrap())
+    }
+
+    fn get_file_kind(&self, file_id: Vec<u8>) -> Option<&str> {
+        let file_id = FileId::from(file_id);
+        self.0.get_file_kind(&file_id).map(|kind| kind.to_string())
+    }
+
+    fn has_id(&self, file_id: Vec<u8>) -> bool {
+        let file_id = FileId::from(file_id);
+        self.0.has_id(&file_id)
+    }
+
+    fn get_child(&self, py: Python, file_id: Vec<u8>, name: &str) -> Option<PyObject> {
+        let file_id = FileId::from(file_id);
+        self.0
+            .get_child(&file_id, name)
+            .map(|entry| entry_to_py(py, entry.clone()).unwrap())
+    }
+
+    fn delete(&mut self, py: Python, file_id: Vec<u8>) -> PyResult<()> {
+        let file_id = FileId::from(file_id);
+        self.0
+            .delete(&file_id)
+            .map_err(|e| inventory_err_to_py_err(e, py))
+    }
+
+    fn make_delta(
+        &self,
+        py: Python,
+        old: &Inventory,
+    ) -> Vec<(Option<String>, Option<String>, PyObject, Option<PyObject>)> {
+        self.0
+            .make_delta(&old.0)
+            .into_iter()
+            .map(|entry| {
+                (
+                    entry.old_path,
+                    entry.new_path,
+                    PyBytes::new(py, entry.file_id.bytes()).to_object(py),
+                    entry.new_entry.map(|entry| entry_to_py(py, entry).unwrap()),
+                )
+            })
+            .collect()
+    }
+
+    fn remove_recursive_id(&mut self, file_id: Vec<u8>) -> PyResult<Vec<PyObject>> {
+        let file_id = FileId::from(file_id);
+        self.0
+            .remove_recursive_id(&file_id)
+            .into_iter()
+            .map(|entry| entry_to_py(Python::acquire_gil().python(), entry))
+            .collect::<PyResult<Vec<_>>>()
+    }
+
+    fn rename(
+        &mut self,
+        py: Python,
+        file_id: Vec<u8>,
+        new_parent_id: Vec<u8>,
+        new_name: &str,
+    ) -> PyResult<()> {
+        let file_id = FileId::from(file_id);
+        let new_parent_id = FileId::from(new_parent_id);
+        self.0
+            .rename(&file_id, &new_parent_id, new_name)
+            .map_err(|e| inventory_err_to_py_err(e, py))
     }
 }
 
