@@ -602,13 +602,8 @@ class CommitHandler(processor.CommitHandler):
         else:
             new_inv = inventory.Inventory(revision_id=self.revision_id)
             # This is set in the delta so remove it to prevent a duplicate
-            new_inv.delete(inventory.ROOT_ID)
-            try:
-                new_inv.apply_delta(delta)
-            except errors.InconsistentDelta:
-                self.mutter("INCONSISTENT DELTA IS:\n%s" %
-                            "\n".join([str(de) for de in delta]))
-                raise
+            new_inv.remove_recursive_id(inventory.ROOT_ID)
+            new_inv.apply_delta(delta)
         return new_inv
 
     def _add_entry(self, entry):

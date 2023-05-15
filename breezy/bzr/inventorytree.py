@@ -898,7 +898,7 @@ class _SmartAddHelper:
                     if entry is not None:
                         sub_ie = entry[3]
                     else:
-                        sub_ie = this_ie.children.get(inv_f)
+                        sub_ie = InterInventoryTree._get_entry(self.tree, sub_invp)
                     if sub_ie is not None:
                         # recurse into this already versioned subdir.
                         things_to_add.append((subp, sub_invp, sub_ie, this_ie))

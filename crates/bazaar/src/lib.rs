@@ -9,7 +9,7 @@ pub mod revision;
 pub mod serializer;
 pub mod xml_serializer;
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct FileId(Vec<u8>);
 
 impl Debug for FileId {
@@ -41,12 +41,22 @@ impl FileId {
         Self::from(gen_ids::gen_file_id(name))
     }
 
+    pub fn generate_root_id() -> Self {
+        Self::from(gen_ids::gen_root_id())
+    }
+
     pub fn bytes(&self) -> &[u8] {
         &self.0
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+impl std::fmt::Display for FileId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", String::from_utf8(self.0.clone()).unwrap())
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct RevisionId(Vec<u8>);
 
 impl Debug for RevisionId {

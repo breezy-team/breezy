@@ -2501,12 +2501,10 @@ class TestUpdateBasisByDelta(tests.TestCase):
                 path, file_id, ie_rev_id = info
             if path == '':
                 # Replace the root entry
-                del inv._byid[inv.root.file_id]
-                inv.root.file_id = file_id
-                inv._byid[file_id] = inv.root
+                inv.rename_id(inv.root.file_id, file_id)
                 dir_ids[''] = file_id
-                continue
-            inv.add(self.path_to_ie(path, file_id, ie_rev_id, dir_ids))
+            else:
+                inv.add(self.path_to_ie(path, file_id, ie_rev_id, dir_ids))
         return inventorytree.InventoryRevisionTree(_Repo(), inv, rev_id)
 
     def create_empty_dirstate(self):

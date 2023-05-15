@@ -136,9 +136,9 @@ class TestRepository(TestCaseWithRepository):
 
     def test_add_revision_inventory_sha1(self):
         inv = inventory.Inventory(revision_id=b'A')
-        inv.root.revision = b'A'
-        inv.root.file_id = b'fixed-root'
-        inv._byid[inv.root.file_id] = inv.root
+        root = inventory.InventoryDirectory(b'fixed-root', '', None)
+        root.revision = b'A'
+        inv.add(root)
         # Insert the inventory on its own to an identical repository, to get
         # its sha1.
         reference_repo = self.make_repository('reference_repo')

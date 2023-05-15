@@ -337,6 +337,15 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         from ..shelf import ShelfManager
         return ShelfManager(self, self._transport)
 
+    def set_root_id(self, file_id):
+        """Set the root id for this tree."""
+        with self.lock_tree_write():
+            # for compatibility
+            if file_id is None:
+                raise ValueError(
+                    'WorkingTree.set_root_id with fileid=None')
+            self._set_root_id(file_id)
+
     def _set_root_id(self, file_id):
         """Set the root id for this tree, in a format specific manner.
 
@@ -344,6 +353,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             present in the current inventory or an error will occur. It must
             not be None, but rather a valid file id.
         """
+        from .inventory import InventoryDirectory
         inv = self._inventory
         orig_root_id = inv.root.file_id
         # TODO: it might be nice to exit early if there was nothing
@@ -351,17 +361,15 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         self._inventory_is_modified = True
         # we preserve the root inventory entry object, but
         # unlinkit from the byid index
-        inv.delete(inv.root.file_id)
-        inv.root.file_id = file_id
+        children = inv._children.pop(inv.root.file_id)
+        del inv._byid[inv.root.file_id]
+        inv.root = InventoryDirectory(file_id, '', None)
         # and link it into the index with the new changed id.
         inv._byid[inv.root.file_id] = inv.root
+        inv._children[inv.root.file_id] = children
         # and finally update all children to reference the new id.
-        # XXX: this should be safe to just look at the root children
-        # list, not the WHOLE INVENTORY.
-        for fid in inv.iter_all_ids():
-            entry = inv.get_entry(fid)
-            if entry.parent_id == orig_root_id:
-                entry.parent_id = inv.root.file_id
+        for child in children.values():
+            child.parent_id = file_id
 
     def remove(self, files, verbose=False, to_file=None, keep_files=True,
                force=False):
@@ -824,11 +832,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     def mkdir(self, path, file_id=None):
         """See MutableTree.mkdir()."""
         if file_id is None:
-            if self.supports_setting_file_ids():
-                file_id = generate_ids.gen_file_id(os.path.basename(path))
-        else:
-            if not self.supports_setting_file_ids():
-                raise SettingFileIdUnsupported()
+            file_id = generate_ids.gen_file_id(os.path.basename(path))
         with self.lock_write():
             os.mkdir(self.abspath(path))
             self.add([path], ['directory'], ids=[file_id])
@@ -1042,14 +1046,15 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 tree_bzrdir = branch_bzrdir
             wt = tree_bzrdir.create_workingtree(_mod_revision.NULL_REVISION)
             wt.set_parent_ids(self.get_parent_ids())
-            # FIXME: Support nested trees
+            my_inv, new_root = self._path2inv_ie(sub_path)
             my_inv = self.root_inventory
             child_inv = inventory.Inventory(root_id=None)
-            file_id = self.path2id(sub_path)
-            new_root = my_inv.get_entry(file_id)
-            my_inv.remove_recursive_id(file_id)
-            new_root.parent_id = None
-            child_inv.add(new_root)
+            # Recursively migrate everything under the new root to the child inv
+            for ie in my_inv.remove_recursive_id(new_root.file_id):
+                if ie.file_id == new_root.file_id:
+                    ie.parent_id = None
+                    ie.name = ''
+                child_inv.add(ie)
             self._write_inventory(my_inv)
             wt._write_inventory(child_inv)
             return wt
@@ -1128,7 +1133,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
                     dir_ie = inv.get_entry(from_dir_id)
                     if dir_ie.kind == 'directory':
-                        f_ie = inv.get_children(dir_ie.file_id).get(f)
+                        f_ie = inv.get_child(dir_ie.file_id, f)
                     else:
                         f_ie = None
                     if f_ie:
@@ -1294,10 +1299,13 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
     def iter_child_entries(self, path):
         with self.lock_read():
-            ie = self._path2ie(path)
+            # TODO(jelmer): Should this perhaps examine the enties on disk?
+            inv, ie = self._path2inv_ie(path)
+            if inv is None:
+                raise _mod_transport.NoSuchFile(path)
             if ie.kind != 'directory':
                 raise errors.NotADirectory(path)
-            return ie.children.values()
+            return inv.iter_sorted_children(ie.file_id)
 
     def rename_one(self, from_rel, to_rel, after=False):
         """Rename one file.
@@ -1793,12 +1801,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         # need to detect if a directory becomes a tree-reference.
         iterator = super(WorkingTree, self).iter_entries_by_dir(
             specific_files=specific_files, recurse_nested=recurse_nested)
-        if not self.supports_tree_reference():
-            return iterator
-        else:
-            return self._check_for_tree_references(
-                iterator, recurse_nested=recurse_nested,
-                specific_files=specific_files)
+        return self._check_for_tree_references(
+            iterator, recurse_nested=recurse_nested,
+            specific_files=specific_files)
 
     def get_canonical_paths(self, paths):
         """Look up canonical paths for multiple items.
@@ -2021,11 +2026,87 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 last_rev = parent_trees[0][0]
             return len(nb_conflicts)
 
+    def pull(self, source, overwrite=False, stop_revision=None,
+             change_reporter=None, possible_transports=None, local=False,
+             show_base=False, tag_selector=None):
+        from ..merge import merge_inner
+        with self.lock_write(), source.lock_read():
+            old_revision_info = self.branch.last_revision_info()
+            basis_tree = self.basis_tree()
+            count = self.branch.pull(source, overwrite=overwrite, stop_revision=stop_revision,
+                                     possible_transports=possible_transports,
+                                     local=local, tag_selector=tag_selector)
+            new_revision_info = self.branch.last_revision_info()
+            if new_revision_info != old_revision_info:
+                repository = self.branch.repository
+                if repository._format.fast_deltas:
+                    parent_ids = self.get_parent_ids()
+                    if parent_ids:
+                        basis_id = parent_ids[0]
+                        basis_tree = repository.revision_tree(basis_id)
+                with basis_tree.lock_read():
+                    new_basis_tree = self.branch.basis_tree()
+                    merge_inner(
+                        self.branch,
+                        new_basis_tree,
+                        basis_tree,
+                        this_tree=self,
+                        change_reporter=change_reporter,
+                        show_base=show_base)
+                    basis_root_id = basis_tree.path2id('')
+                    new_root_id = new_basis_tree.path2id('')
+                    if new_root_id is not None and basis_root_id != new_root_id:
+                        self.set_root_id(new_root_id)
+                # TODO - dedup parents list with things merged by pull ?
+                # reuse the revisiontree we merged against to set the new
+                # tree data.
+                parent_trees = []
+                if self.branch.last_revision() != _mod_revision.NULL_REVISION:
+                    parent_trees.append(
+                        (self.branch.last_revision(), new_basis_tree))
+                # we have to pull the merge trees out again, because
+                # merge_inner has set the ids. - this corner is not yet
+                # layered well enough to prevent double handling.
+                # XXX TODO: Fix the double handling: telling the tree about
+                # the already known parent data is wasteful.
+                merges = self.get_parent_ids()[1:]
+                parent_trees.extend([
+                    (parent, repository.revision_tree(parent)) for
+                    parent in merges])
+                self.set_parent_trees(parent_trees)
+            return count
+
+    def copy_content_into(self, tree, revision_id=None):
+        """Copy the current content and user files of this tree into tree."""
+        from ..merge import transform_tree
+        with self.lock_read():
+            tree.set_root_id(self.path2id(''))
+            if revision_id is None:
+                transform_tree(tree, self)
+            else:
+                # TODO now merge from tree.last_revision to revision (to
+                # preserve user local changes)
+                try:
+                    other_tree = self.revision_tree(revision_id)
+                except errors.NoSuchRevision:
+                    other_tree = self.branch.repository.revision_tree(
+                        revision_id)
+
+                transform_tree(tree, other_tree)
+                if revision_id == _mod_revision.NULL_REVISION:
+                    new_parents = []
+                else:
+                    new_parents = [revision_id]
+                tree.set_parent_ids(new_parents)
+
 
 class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
     """Base class for working trees that live in bzr meta directories."""
 
     ignore_filename = '.bzrignore'
+
+    supports_setting_file_ids = True
+    """If this format allows setting the file id."""
 
     def __init__(self):
         WorkingTreeFormat.__init__(self)

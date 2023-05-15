@@ -1,6 +1,10 @@
 use crate::{FileId, RevisionId};
 use breezy_osutils::Kind;
 use std::collections::HashMap;
+use std::collections::HashSet;
+use std::collections::VecDeque;
+use std::fmt::Write;
+use std::hash::Hash;
 
 // This should really be an id randomly assigned when the tree is
 // created, but it's not for now.
@@ -14,7 +18,7 @@ pub fn versionable_kind(kind: Kind) -> bool {
     )
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Entry {
     Directory {
         file_id: FileId,
@@ -46,6 +50,18 @@ pub enum Entry {
         name: String,
         parent_id: Option<FileId>,
     },
+}
+
+#[derive(Debug)]
+pub enum Error {
+    InvalidEntryName(String),
+    DuplicateFileId(FileId),
+    ParentNotDirectory(String, FileId),
+    FileIdCycle(FileId, String, String),
+    NoSuchId(FileId),
+    ParentMissing(FileId),
+    PathAlreadyVersioned(String, String),
+    ParentNotVersioned(String),
 }
 
 /// Description of a versioned file.
@@ -171,12 +187,46 @@ impl Entry {
         }
     }
 
+    pub fn set_file_id(&mut self, new_file_id: FileId) {
+        match self {
+            Entry::Directory { file_id, .. } => {
+                *file_id = new_file_id;
+            }
+            Entry::File { file_id, .. } => {
+                *file_id = new_file_id;
+            }
+            Entry::Link { file_id, .. } => {
+                *file_id = new_file_id;
+            }
+            Entry::TreeReference { file_id, .. } => {
+                *file_id = new_file_id;
+            }
+        }
+    }
+
     pub fn parent_id(&self) -> Option<&FileId> {
         match self {
             Entry::Directory { parent_id, .. } => parent_id.as_ref(),
             Entry::File { parent_id, .. } => parent_id.as_ref(),
             Entry::Link { parent_id, .. } => parent_id.as_ref(),
             Entry::TreeReference { parent_id, .. } => parent_id.as_ref(),
+        }
+    }
+
+    pub fn set_parent_id(&mut self, new_parent_id: Option<FileId>) {
+        match self {
+            Entry::Directory { parent_id, .. } => {
+                *parent_id = new_parent_id;
+            }
+            Entry::File { parent_id, .. } => {
+                *parent_id = new_parent_id;
+            }
+            Entry::Link { parent_id, .. } => {
+                *parent_id = new_parent_id;
+            }
+            Entry::TreeReference { parent_id, .. } => {
+                *parent_id = new_parent_id;
+            }
         }
     }
 
@@ -189,12 +239,38 @@ impl Entry {
         }
     }
 
+    pub fn set_name(&mut self, new_name: String) {
+        match self {
+            Entry::Directory { name, .. } => {
+                *name = new_name;
+            }
+            Entry::File { name, .. } => {
+                *name = new_name;
+            }
+            Entry::Link { name, .. } => {
+                *name = new_name;
+            }
+            Entry::TreeReference { name, .. } => {
+                *name = new_name;
+            }
+        }
+    }
+
     pub fn revision(&self) -> Option<&RevisionId> {
         match self {
             Entry::Directory { revision, .. } => revision.as_ref(),
             Entry::File { revision, .. } => revision.as_ref(),
             Entry::Link { revision, .. } => revision.as_ref(),
             Entry::TreeReference { revision, .. } => revision.as_ref(),
+        }
+    }
+
+    pub fn symlink_target(&self) -> Option<&str> {
+        match self {
+            Entry::Directory { .. } => None,
+            Entry::File { .. } => None,
+            Entry::Link { symlink_target, .. } => symlink_target.as_ref().map(|s| s.as_str()),
+            Entry::TreeReference { .. } => None,
         }
     }
 
@@ -376,14 +452,539 @@ pub fn is_valid_name(name: &str) -> bool {
     !(name.contains('/') || name == "." || name == "..")
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct MutableInventory {
     by_id: HashMap<FileId, Entry>,
-    root: Option<FileId>,
-    revision_id: Option<RevisionId>,
+    root_id: Option<FileId>,
+    pub revision_id: Option<RevisionId>,
+    children: HashMap<FileId, HashMap<String, FileId>>,
 }
 
 impl MutableInventory {
+    pub fn new() -> MutableInventory {
+        Self {
+            by_id: HashMap::new(),
+            root_id: None,
+            revision_id: None,
+            children: HashMap::new(),
+        }
+    }
+
+    pub fn has_filename(&self, filename: &str) -> bool {
+        self.path2id(filename).is_some()
+    }
+
+    pub fn id2path(&self, file_id: &FileId) -> String {
+        let mut segments = self
+            .iter_file_id_parents(file_id)
+            .map(|p| p.name())
+            .collect::<Vec<_>>();
+        segments.pop();
+        segments.reverse();
+        segments.join("/")
+    }
+
+    pub fn get_children(&self, file_id: &FileId) -> HashMap<&str, &Entry> {
+        self.children
+            .get(file_id)
+            .unwrap()
+            .iter()
+            .map(|(k, v)| (k.as_str(), self.get_entry(v).unwrap()))
+            .collect()
+    }
+
+    pub fn iter_sorted_children(&self, file_id: &FileId) -> impl Iterator<Item = (&str, &Entry)> {
+        let children = self.get_children(file_id);
+        let mut names = children.keys().cloned().collect::<Vec<_>>();
+        names.sort();
+        let mut it = names.into_iter();
+        std::iter::from_fn(move || -> Option<(&str, &Entry)> {
+            it.next().map(|name| (name, *children.get(name).unwrap()))
+        })
+    }
+
+    pub fn entries(&self) -> Vec<(String, &Entry)> {
+        let mut accum = Vec::new();
+
+        let mut todo = Vec::new();
+        if let Some(ref root_id) = self.root_id {
+            todo.push((root_id, "".to_string()));
+        }
+
+        while !todo.is_empty() {
+            if let Some((dir_id, dir_path)) = todo.pop() {
+                for (name, ie) in self.iter_sorted_children(dir_id) {
+                    let child_path = if dir_path.is_empty() {
+                        name.to_string()
+                    } else {
+                        format!("{}/{}", dir_path, name)
+                    };
+                    accum.push((child_path.clone(), ie));
+                    if ie.kind() == Kind::Directory {
+                        todo.push((&ie.file_id(), child_path));
+                    }
+                }
+            }
+        }
+
+        accum
+    }
+
+    pub fn rename_id(&mut self, old_file_id: &FileId, new_file_id: &FileId) {
+        let mut ie = self.by_id.remove(old_file_id).unwrap();
+        match ie {
+            Entry::Directory { .. } => {
+                let children = self.children.remove(old_file_id).unwrap();
+                for child_id in children.values() {
+                    let mut child = self.by_id.get_mut(child_id).unwrap();
+                    assert_eq!(child.parent_id(), Some(old_file_id));
+                    child.set_parent_id(Some(new_file_id.clone()));
+                }
+                self.children.insert(new_file_id.clone(), children);
+            }
+            _ => {}
+        }
+        ie.set_file_id(new_file_id.clone());
+        self.by_id.insert(new_file_id.clone(), ie);
+    }
+
+    pub fn path2id(&self, relpath: &str) -> Option<&FileId> {
+        if let Some(ie) = self.get_entry_by_path(relpath) {
+            Some(ie.file_id())
+        } else {
+            None
+        }
+    }
+
+    pub fn path2id_segments(&self, names: &[&str]) -> Option<&FileId> {
+        if let Some(ie) = self.get_entry_by_path_segments(names) {
+            Some(ie.file_id())
+        } else {
+            None
+        }
+    }
+
+    /// Get an inventory view filtered against a set of file-ids.
+    ///
+    /// Children of directories and parents are included.
+    ///
+    /// The result may or may not reference the underlying inventory
+    /// so it should be treated as immutable.
+    pub fn filter(&self, specific_fileids: &HashSet<&FileId>) -> Self {
+        let mut interesting_parents = HashSet::new();
+        for file_id in specific_fileids {
+            interesting_parents.extend(self.get_idpath(file_id));
+        }
+
+        let mut entries = self.iter_entries(None);
+        let root = entries.next();
+        let mut other = Self::new();
+        if root.is_none() {
+            return other;
+        }
+
+        other.set_root(root.unwrap().1.clone());
+        let mut directories_to_expand = HashSet::new();
+        for (_path, entry) in entries {
+            let file_id = entry.file_id();
+            if specific_fileids.contains(file_id)
+                || (entry.parent_id().is_some()
+                    && directories_to_expand.contains(entry.parent_id().unwrap()))
+            {
+                if entry.kind() == Kind::Directory {
+                    directories_to_expand.insert(file_id);
+                }
+            } else if !interesting_parents.contains(file_id) {
+                continue;
+            }
+            other.add(entry.clone());
+        }
+        return other;
+    }
+
+    /// Return a list of file_ids for the path to an entry.
+    ///
+    /// The list contains one element for each directory followed by
+    /// the id of the file itself.  So the length of the returned list
+    /// is equal to the depth of the file in the tree, counting the
+    /// root directory as depth 1.
+    pub fn get_idpath<'a>(&'a self, file_id: &'a FileId) -> Vec<&'a FileId> {
+        self.iter_file_id_parents(file_id)
+            .map(|e| e.file_id())
+            .collect()
+    }
+
+    pub fn get_entry_by_path_partial(
+        &self,
+        relpath: &str,
+    ) -> Option<(&Entry, Vec<String>, Vec<String>)> {
+        let names = breezy_osutils::path::splitpath(relpath).unwrap();
+        self.get_entry_by_path_segments_partial(&names)
+    }
+
+    pub fn get_entry_by_path_segments_partial<'a>(
+        &'a self,
+        names: &[&str],
+    ) -> Option<(&Entry, Vec<String>, Vec<String>)> {
+        if self.root_id.is_none() {
+            return None;
+        }
+
+        let mut parent = self.by_id.get(&self.root_id.as_ref().unwrap()).unwrap();
+
+        for (i, f) in names.iter().enumerate() {
+            if let Some(cie) = self.get_child(&parent.file_id(), f) {
+                parent = cie;
+                if cie.kind() == Kind::TreeReference {
+                    let (before, after) = names.split_at(i + 1);
+                    return Some((
+                        cie,
+                        before.iter().map(|s| s.to_string()).collect(),
+                        after.iter().map(|s| s.to_string()).collect(),
+                    ));
+                }
+            } else {
+                return None;
+            }
+        }
+
+        Some((
+            parent,
+            names.iter().map(|s| s.to_string()).collect(),
+            Vec::new(),
+        ))
+    }
+
+    pub fn get_entry_by_path(&self, relpath: &str) -> Option<&Entry> {
+        self.get_entry_by_path_segments(
+            breezy_osutils::path::splitpath(relpath).unwrap().as_slice(),
+        )
+    }
+
+    pub fn get_entry_by_path_segments(&self, names: &[&str]) -> Option<&Entry> {
+        if self.root_id.is_none() {
+            return None;
+        }
+
+        let mut parent = self.by_id.get(&self.root_id.as_ref().unwrap()).unwrap();
+
+        for (i, f) in names.iter().enumerate() {
+            if let Some(cie) = self.get_child(&parent.file_id(), f) {
+                parent = cie;
+            } else {
+                return None;
+            }
+        }
+
+        Some(parent)
+    }
+
+    /// Return (path, entry) pairs, in order by name.
+    ///
+    /// Args:
+    ///   from_dir: if None, start from the root,
+    ///     otherwise start from this directory (either file-id or entry)
+    pub fn iter_entries<'a>(
+        &'a self,
+        from_dir: Option<&FileId>,
+    ) -> impl Iterator<Item = (String, &'a Entry)> {
+        let mut stack = VecDeque::new();
+        let from_dir = if from_dir.is_none() {
+            self.root_id.as_ref()
+        } else {
+            from_dir
+        };
+        if let Some(from_dir) = from_dir {
+            let children = self.iter_sorted_children(from_dir).collect::<VecDeque<_>>();
+            stack.push_back((String::new(), children));
+        }
+
+        std::iter::from_fn(move || -> Option<(String, &Entry)> {
+            loop {
+                if let Some((base, children)) = stack.back_mut() {
+                    if let Some((name, ie)) = children.pop_front() {
+                        let path = if base.is_empty() {
+                            name.to_string()
+                        } else {
+                            format!("{}/{}", base, name)
+                        };
+                        if ie.kind() == Kind::Directory {
+                            let children = self
+                                .iter_sorted_children(ie.file_id())
+                                .collect::<VecDeque<_>>();
+                            stack.push_back((path.clone(), children));
+                        }
+                        return Some((path, ie));
+                    } else {
+                        stack.pop_back();
+                    }
+                } else {
+                    return None;
+                }
+            }
+        })
+    }
+
+    /// Iterate over the entries in a directory first order.
+    ///
+    /// This returns all entries for a directory before returning
+    /// the entries for children of a directory. This is not
+    /// lexicographically sorted order, and is a hybrid between
+    /// depth-first and breadth-first.
+    ///
+    /// This yields (path, entry) pairs
+    pub fn iter_entries_by_dir<'a>(
+        &'a self,
+        from_dir: Option<&'a FileId>,
+        specific_file_ids: Option<&'a HashSet<&FileId>>,
+    ) -> impl Iterator<Item = (String, &'a Entry)> + '_ {
+        let parents = if let Some(ref specific_file_ids) = specific_file_ids {
+            let mut parents = HashSet::new();
+            let mut todo = specific_file_ids.iter().cloned().collect::<Vec<_>>();
+            while let Some(file_id) = todo.pop() {
+                let ie = self.get_entry(file_id).unwrap();
+                if let Some(parent_id) = ie.parent_id() {
+                    if !parents.contains(parent_id) {
+                        todo.push(parent_id);
+                        parents.insert(parent_id);
+                    }
+                }
+            }
+            Some(parents)
+        } else {
+            None
+        };
+
+        let mut stack: Vec<(String, &FileId)> = vec![];
+
+        let from_dir = if from_dir.is_none() {
+            self.root_id.as_ref()
+        } else {
+            from_dir
+        };
+        let mut children = VecDeque::new();
+        if let Some(from_dir) = from_dir {
+            stack.push(("".to_string(), from_dir));
+            children.extend(
+                self.iter_sorted_children(from_dir)
+                    .map(|(p, ie)| (p.to_string(), ie)),
+            );
+        }
+
+        std::iter::from_fn(move || -> Option<(String, &'a Entry)> {
+            if let Some((relpath, ie)) = children.pop_front() {
+                return Some((relpath, ie));
+            }
+
+            loop {
+                if let Some((cur_relpath, cur_dir)) = stack.pop() {
+                    for (child_name, child_ie) in self.iter_sorted_children(cur_dir) {
+                        let child_relpath = cur_relpath.to_string() + child_name;
+                        let mut child_dirs = Vec::new();
+
+                        if specific_file_ids.is_none()
+                            || specific_file_ids.unwrap().contains(child_ie.file_id())
+                        {
+                            children.push_back((child_relpath.clone(), child_ie));
+                        }
+
+                        if child_ie.kind() == Kind::Directory {
+                            if parents.is_none()
+                                || parents.as_ref().unwrap().contains(child_ie.file_id())
+                            {
+                                child_dirs.push((child_relpath + "/", child_ie.file_id()))
+                            }
+                        }
+
+                        child_dirs.reverse();
+                        stack.extend(child_dirs.into_iter());
+                    }
+                } else {
+                    return None;
+                }
+            }
+        })
+    }
+
+    /// Apply a delta to this inventory.
+    ///
+    /// See the inventory developers documentation for the theory behind
+    /// inventory deltas.
+    ///
+    /// If delta application fails the inventory is left in an indeterminate
+    /// state and must not be used.
+    ///
+    /// Args:
+    ///   delta: A list of changes to apply. After all the changes are
+    ///      applied the final inventory must be internally consistent, but it
+    ///      is ok to supply changes which, if only half-applied would have an
+    ///      invalid result - such as supplying two changes which rename two
+    ///      files, 'A' and 'B' with each other : [('A', 'B', b'A-id', a_entry),
+    ///      ('B', 'A', b'B-id', b_entry)].
+    ///
+    ///      Each change is a tuple, of the form (old_path, new_path, file_id,
+    ///      new_entry).
+    ///
+    ///      When new_path is None, the change indicates the removal of an entry
+    ///      from the inventory and new_entry will be ignored (using None is
+    ///      appropriate). If new_path is not None, then new_entry must be an
+    ///      InventoryEntry instance, which will be incorporated into the
+    ///      inventory (and replace any existing entry with the same file id).
+    ///
+    ///      When old_path is None, the change indicates the addition of
+    ///      a new entry to the inventory.
+    ///
+    ///      When neither new_path nor old_path are None, the change is a
+    ///      modification to an entry, such as a rename, reparent, kind change
+    ///      etc.
+    ///
+    ///      The children attribute of new_entry is ignored. This is because
+    ///      this method preserves children automatically across alterations to
+    ///      the parent of the children, and cases where the parent id of a
+    ///      child is changing require the child to be passed in as a separate
+    ///      change regardless. E.g. in the recursive deletion of a directory -
+    ///      the directory's children must be included in the delta, or the
+    ///      final inventory will be invalid.
+    ///
+    ///      Note that a file_id must only appear once within a given delta.
+    ///      An AssertionError is raised otherwise.
+    pub fn apply_delta(
+        &mut self,
+        delta: &InventoryDelta,
+    ) -> std::result::Result<(), InventoryDeltaInconsistency> {
+        // Check that the delta is legal. It would be nice if this could be
+        // done within the loops below but it's safer to validate the delta
+        // before starting to mutate the inventory, as there isn't a rollback
+        // facility.
+        check_delta_consistency(delta)?;
+
+        let mut children = HashMap::new();
+        // Remove all affected items which were in the original inventory,
+        // starting with the longest paths, thus ensuring parents are examined
+        // after their children, which means that everything we examine has no
+        // modified children remaining by the time we examine it.
+        let mut old = delta
+            .iter()
+            .filter_map(|d| {
+                if let Some(ref old_path) = d.old_path {
+                    Some((old_path, d.file_id.clone()))
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+        old.sort();
+        old.reverse();
+        for (old_path, file_id) in old {
+            if &self.id2path(&file_id) != old_path {
+                return Err(InventoryDeltaInconsistency::PathMismatch(
+                    file_id.clone(),
+                    old_path.clone(),
+                    self.id2path(&file_id),
+                ));
+            }
+            // Remove file_id and the unaltered children. If file_id is not being deleted it will
+            // be reinserted later.
+            let ie = self.by_id.remove(&file_id).unwrap();
+            if let Some(parent_id) = ie.parent_id() {
+                self.children.get_mut(parent_id).unwrap().remove(ie.name());
+            }
+            // Preserve unaltered children of file_id for later reinsertion.
+            if let Some(file_id_children) = self.children.remove(&file_id) {
+                if file_id_children.len() > 0 {
+                    children.insert(file_id, file_id_children);
+                }
+            }
+        }
+
+        // Insert all affected which should be in the new inventory, reattaching
+        // their children if they had any. This is done from shortest path to
+        // longest, ensuring that items which were modified and whose parents in
+        // the resulting inventory were also modified, are inserted after their
+        // parents.
+        let mut new = delta
+            .iter()
+            .filter_map(|de| {
+                if let Some(ref new_path) = de.new_path {
+                    Some((new_path, &de.file_id, &de.new_entry))
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+        new.sort();
+        for (new_path, fid, new_entry) in new {
+            let new_entry = new_entry.as_ref().unwrap();
+            self.add(new_entry.clone()).map_err(|e| match e {
+                Error::DuplicateFileId(fid) => {
+                    InventoryDeltaInconsistency::DuplicateFileId(new_path.clone(), fid)
+                }
+                Error::ParentNotDirectory(path, fid) => {
+                    InventoryDeltaInconsistency::ParentNotDirectory(new_path.clone(), fid)
+                }
+                Error::NoSuchId(fid) => InventoryDeltaInconsistency::NoSuchId(fid),
+                Error::InvalidEntryName(name) => {
+                    InventoryDeltaInconsistency::InvalidEntryName(name)
+                }
+                Error::FileIdCycle(fid, path, parent) => {
+                    InventoryDeltaInconsistency::FileIdCycle(fid, path, parent)
+                }
+                Error::ParentMissing(fid) => InventoryDeltaInconsistency::ParentMissing(fid),
+                Error::PathAlreadyVersioned(new_name, parent_path) => {
+                    InventoryDeltaInconsistency::PathAlreadyVersioned(new_name, parent_path)
+                }
+                Error::ParentNotVersioned(parent_path) => {
+                    unreachable!();
+                }
+            })?;
+            if &self.id2path(new_entry.file_id()) != new_path {
+                return Err(InventoryDeltaInconsistency::PathMismatch(
+                    new_entry.file_id().clone(),
+                    new_path.clone(),
+                    self.id2path(new_entry.file_id()),
+                ));
+            }
+            match new_entry {
+                Entry::Directory { .. } => {
+                    if let Some(children) = children.remove(new_entry.file_id()) {
+                        self.children.insert(new_entry.file_id().clone(), children);
+                    }
+                }
+                _ => {}
+            }
+            if !children.is_empty() {
+                // Get the parent id that was deleted
+                let (parent_id, children) = children.drain().next().unwrap();
+                return Err(InventoryDeltaInconsistency::OrphanedChild(parent_id));
+            }
+        }
+        Ok(())
+    }
+
+    pub fn create_by_apply_delta(
+        &self,
+        inventory_delta: &InventoryDelta,
+        new_revision_id: RevisionId,
+    ) -> Result<Self, InventoryDeltaInconsistency> {
+        let mut new_inv = self.clone();
+        new_inv.apply_delta(inventory_delta)?;
+        new_inv.revision_id = Some(new_revision_id);
+        Ok(new_inv)
+    }
+
+    fn set_root(&mut self, ie: Entry) {
+        assert!(ie.parent_id().is_none());
+        self.root_id = Some(ie.file_id().clone());
+        self.by_id = HashMap::new();
+        self.by_id.insert(ie.file_id().clone(), ie.clone());
+        if self.children.contains_key(ie.file_id()) {
+            panic!("Root id already in children");
+        }
+        self.children = HashMap::new();
+        self.children
+            .insert(self.root_id.clone().unwrap(), HashMap::new());
+    }
+
     pub fn iter_all_ids(&self) -> impl Iterator<Item = FileId> + '_ {
         self.by_id.keys().cloned()
     }
@@ -396,33 +997,305 @@ impl MutableInventory {
         self.by_id.is_empty()
     }
 
-    pub fn get_entry(&self, id: FileId) -> Option<&Entry> {
-        self.by_id.get(&id)
+    pub fn get_entry(&self, id: &FileId) -> Option<&Entry> {
+        self.by_id.get(id)
     }
 
-    pub fn get_file_kind(&self, id: FileId) -> Option<Kind> {
-        self.by_id.get(&id).map(|e| e.kind())
+    pub fn get_file_kind(&self, id: &FileId) -> Option<Kind> {
+        self.by_id.get(id).map(|e| e.kind())
     }
 
     pub fn has_id(&self, id: FileId) -> bool {
         self.by_id.contains_key(&id)
     }
 
-    fn iter_file_id_parents(&self, id: FileId) -> impl Iterator<Item = FileId> + '_ {
-        let mut id = id;
+    fn iter_file_id_parents<'a>(&'a self, id: &'a FileId) -> impl Iterator<Item = &'a Entry> + 'a {
+        let mut id: &'a FileId = id;
         std::iter::from_fn(move || {
-            let entry = self.by_id.get(&id)?;
+            let entry = self.by_id.get(id)?;
             if let Some(parent_id) = entry.parent_id() {
-                id = parent_id.clone();
-                Some(id.clone())
-            } else {
-                None
+                id = parent_id;
             }
+            Some(entry)
         })
     }
 
     pub fn is_root(&self, id: FileId) -> bool {
-        self.root == Some(id)
+        self.root_id == Some(id)
+    }
+
+    /// Iterate over all entries.
+    ///
+    /// Unlike iter_entries(), just the entries are returned (not (path, ie))
+    /// and the order of entries is undefined.
+    pub fn iter_just_entries(&self) -> impl Iterator<Item = &Entry> + '_ {
+        return self.by_id.values();
+    }
+
+    pub fn get_child(&self, parent_id: &FileId, filename: &str) -> Option<&Entry> {
+        if let Some(siblings) = self.children.get(parent_id) {
+            if let Some(child_id) = siblings.get(filename) {
+                self.by_id.get(child_id)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    pub fn add(&mut self, ie: Entry) -> Result<(), Error> {
+        if self.by_id.contains_key(ie.file_id()) {
+            return Err(Error::DuplicateFileId(ie.file_id().clone()));
+        }
+        if let Some(parent_id) = ie.parent_id() {
+            let parent = self
+                .by_id
+                .get(parent_id)
+                .ok_or_else(|| Error::ParentMissing(parent_id.clone()))?;
+            match parent {
+                Entry::Directory { .. } => {}
+                _ => {
+                    return Err(Error::ParentNotDirectory(
+                        self.id2path(&parent_id),
+                        ie.file_id().clone(),
+                    ));
+                }
+            }
+            let siblings = self.children.get_mut(parent.file_id()).unwrap();
+            match siblings.entry(ie.name().to_string()) {
+                std::collections::hash_map::Entry::Vacant(entry) => {
+                    entry.insert(ie.file_id().clone());
+                }
+                std::collections::hash_map::Entry::Occupied(entry) => {
+                    let fid = entry.get().clone();
+                    return Err(Error::PathAlreadyVersioned(
+                        self.id2path(&fid),
+                        self.id2path(parent.file_id()),
+                    ));
+                }
+            }
+        } else {
+            self.root_id = Some(ie.file_id().clone());
+        }
+
+        self.by_id.insert(ie.file_id().clone(), ie.clone());
+        match ie {
+            Entry::Directory { .. } => {
+                self.children.insert(ie.file_id().clone(), HashMap::new());
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    pub fn add_path(
+        &mut self,
+        relpath: &str,
+        kind: Kind,
+        file_id: Option<FileId>,
+        parent_id: Option<FileId>,
+    ) -> Result<(), Error> {
+        let parts = breezy_osutils::path::splitpath(relpath).unwrap();
+
+        if parts.is_empty() {
+            self.root_id = Some(file_id.unwrap_or_else(FileId::generate_root_id));
+            let root = Entry::directory(
+                self.root_id.as_ref().unwrap().clone(),
+                None,
+                None,
+                "".to_string(),
+            );
+            self.by_id = HashMap::new();
+            self.by_id.insert(root.file_id().clone(), root);
+            if self.children.contains_key(&self.root_id.as_ref().unwrap()) {
+                panic!("Root id already in children");
+            }
+            self.children = HashMap::new();
+            self.children
+                .insert(self.root_id.as_ref().unwrap().clone(), HashMap::new());
+            Ok(())
+        } else {
+            let (basename, parent_path) = parts.split_last().unwrap();
+            let parent_id = self.path2id_segments(parent_path);
+            if parent_id.is_none() {
+                return Err(Error::ParentNotVersioned(parent_path.join("/")));
+            }
+            let ie = make_entry(kind, basename.to_string(), parent_id.cloned(), file_id);
+            self.add(ie)
+        }
+    }
+
+    pub fn delete(&mut self, file_id: &FileId) -> Result<(), Error> {
+        let ie = self
+            .by_id
+            .remove(file_id)
+            .ok_or_else(|| Error::NoSuchId(file_id.clone()))?;
+        if let Some(parent_id) = ie.parent_id() {
+            let siblings = self.children.get_mut(&parent_id).unwrap();
+            siblings.remove(ie.name());
+        } else {
+            self.root_id = None;
+        }
+        Ok(())
+    }
+
+    fn make_delta(&self, old: &MutableInventory) -> InventoryDelta {
+        let old_ids = old.iter_all_ids().collect::<HashSet<_>>();
+        let new_ids = self.iter_all_ids().collect::<HashSet<_>>();
+        let adds = new_ids.difference(&old_ids).collect::<HashSet<_>>();
+        let deletes = old_ids.difference(&new_ids).collect::<HashSet<_>>();
+        let common = if adds.is_empty() && deletes.is_empty() {
+            new_ids.clone()
+        } else {
+            old_ids
+                .intersection(&new_ids)
+                .cloned()
+                .collect::<HashSet<_>>()
+        };
+        let mut delta = Vec::new();
+        for file_id in deletes {
+            delta.push(InventoryDeltaEntry {
+                old_path: Some(old.id2path(file_id)),
+                new_path: None,
+                file_id: file_id.clone(),
+                new_entry: None,
+            });
+        }
+        for file_id in adds {
+            delta.push(InventoryDeltaEntry {
+                old_path: None,
+                new_path: Some(self.id2path(file_id)),
+                file_id: file_id.clone(),
+                new_entry: self.get_entry(file_id).cloned(),
+            });
+        }
+        for file_id in common {
+            let new_ie = self.get_entry(&file_id);
+            let old_ie = old.get_entry(&file_id);
+
+            // If xml_serializer returns the cached InventoryEntries (rather
+            // than always doing .copy()), inlining the 'is' check saves 2.7M
+            // calls to __eq__.  Under lsprof this saves 20s => 6s.
+            // It is a minor improvement without lsprof.
+            if old_ie == new_ie {
+                continue;
+            }
+            delta.push(InventoryDeltaEntry {
+                old_path: Some(old.id2path(&file_id)),
+                new_path: Some(self.id2path(&file_id)),
+                file_id: file_id.clone(),
+                new_entry: new_ie.cloned(),
+            });
+        }
+
+        delta
+    }
+
+    pub fn remove_recursive_id(&mut self, file_id: &FileId) -> Vec<Entry> {
+        let start_ie = self.by_id.get(file_id).unwrap().clone();
+        let mut to_find_delete = vec![start_ie];
+        let mut to_delete = Vec::new();
+
+        while let Some(ie) = to_find_delete.pop() {
+            if ie.kind() == Kind::Directory {
+                to_find_delete.extend(self.get_children(ie.file_id()).values().cloned().cloned());
+            }
+            to_delete.push(ie);
+        }
+        let mut deleted = Vec::new();
+        to_delete.reverse();
+        for ie in to_delete {
+            deleted.push(self.by_id.remove(ie.file_id()).unwrap());
+            if ie.kind() == Kind::Directory {
+                let children = self.children.remove(ie.file_id()).unwrap();
+                assert!(children.is_empty());
+            } else {
+                assert!(!self.children.contains_key(ie.file_id()));
+            }
+            if let Some(parent_id) = ie.parent_id() {
+                let siblings = self.children.get_mut(&parent_id).unwrap();
+                siblings.remove(ie.name());
+            } else {
+                self.root_id = None;
+            }
+        }
+
+        deleted
+    }
+
+    pub fn rename(
+        &mut self,
+        file_id: &FileId,
+        new_parent_id: &FileId,
+        new_name: &str,
+    ) -> Result<(), Error> {
+        let new_name = std::path::PathBuf::from(new_name);
+        let new_name = ensure_normalized_name(new_name.as_path()).unwrap();
+        let new_name = new_name.to_str().unwrap();
+        if !is_valid_name(new_name) {
+            return Err(Error::InvalidEntryName(new_name.to_string()));
+        }
+
+        let new_siblings = self.children.get_mut(new_parent_id).unwrap();
+        if new_siblings.contains_key(new_name) {
+            return Err(Error::PathAlreadyVersioned(
+                new_name.to_string(),
+                self.id2path(new_parent_id),
+            ));
+        }
+
+        let new_parent_idpath = self.get_idpath(new_parent_id);
+        if new_parent_idpath.contains(&file_id) {
+            return Err(Error::FileIdCycle(
+                file_id.clone(),
+                self.id2path(file_id),
+                self.id2path(new_parent_id),
+            ));
+        }
+
+        let file_ie = self.by_id.get(file_id).unwrap();
+        let old_parent = self.by_id.get(file_ie.parent_id().unwrap()).unwrap();
+        let new_parent = self.by_id.get(new_parent_id).unwrap();
+
+        // TODO: Don't leave things messed up if this fails
+        self.children
+            .get_mut(old_parent.file_id())
+            .unwrap()
+            .remove(file_ie.name());
+        self.children
+            .get_mut(new_parent.file_id())
+            .unwrap()
+            .insert(new_name.to_string(), file_id.clone());
+
+        let file_ie = self.by_id.get_mut(file_id).unwrap();
+        file_ie.set_name(new_name.to_string());
+        file_ie.set_parent_id(Some(new_parent_id.clone()));
+        Ok(())
+    }
+}
+
+impl Default for MutableInventory {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl std::fmt::Debug for MutableInventory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        const max_len: usize = 2048;
+        const closing: &str = "...}";
+        let mut contents = format!("{:?}", self.by_id);
+        if contents.len() > max_len {
+            contents = contents[0..max_len - closing.len()].to_string() + closing;
+        }
+        write!(
+            f,
+            "<Inventory object at {:p} with {} entries: {}>",
+            self,
+            self.by_id.len(),
+            contents,
+        )
     }
 }
 
@@ -433,3 +1306,146 @@ impl PartialEq for MutableInventory {
 }
 
 impl Eq for MutableInventory {}
+
+// Normalize name
+pub fn ensure_normalized_name(name: &std::path::Path) -> Result<std::path::PathBuf, String> {
+    let (norm_name, can_access) = breezy_osutils::path::normalized_filename(name)
+        .ok_or_else(|| format!("name '{}' is not normalized", name.display()))?;
+
+    if norm_name != name {
+        if can_access {
+            return Ok(norm_name);
+        } else {
+            return Err(format!(
+                "name '{}' is not normalized and cannot be accessed",
+                name.display()
+            ));
+        }
+    }
+
+    Ok(name.to_path_buf())
+}
+
+pub struct InventoryDeltaEntry {
+    pub old_path: Option<String>,
+    pub new_path: Option<String>,
+    pub file_id: FileId,
+    pub new_entry: Option<Entry>,
+}
+
+pub type InventoryDelta = Vec<InventoryDeltaEntry>;
+
+pub enum InventoryDeltaInconsistency {
+    DuplicateFileId(String, FileId),
+    DuplicateOldPath(String, FileId),
+    DuplicateNewPath(String, FileId),
+    NoPath,
+    MismatchedId(String, FileId, FileId),
+    EntryWithoutPath(String, FileId),
+    PathWithoutEntry(String, FileId),
+    PathMismatch(FileId, String, String),
+    OrphanedChild(FileId),
+    ParentNotDirectory(String, FileId),
+    ParentMissing(FileId),
+    NoSuchId(FileId),
+    InvalidEntryName(String),
+    FileIdCycle(FileId, String, String),
+    PathAlreadyVersioned(String, String),
+}
+
+pub fn check_delta_consistency(delta: &InventoryDelta) -> Result<(), InventoryDeltaInconsistency> {
+    let mut ids = HashSet::new();
+    let mut old_paths = HashSet::new();
+    let mut new_paths = HashSet::new();
+    for entry in delta {
+        let path = if let Some(old_path) = &entry.old_path {
+            old_path
+        } else if let Some(new_path) = &entry.new_path {
+            new_path
+        } else {
+            return Err(InventoryDeltaInconsistency::NoPath);
+        };
+
+        if ids.contains(&entry.file_id) {
+            return Err(InventoryDeltaInconsistency::DuplicateFileId(
+                path.clone(),
+                entry.file_id.clone(),
+            ));
+        }
+        ids.insert(&entry.file_id);
+
+        if entry.old_path.is_some() {
+            let old_path = entry.old_path.as_ref().unwrap();
+            if old_paths.contains(old_path) {
+                return Err(InventoryDeltaInconsistency::DuplicateOldPath(
+                    old_path.clone(),
+                    entry.file_id.clone(),
+                ));
+            }
+            old_paths.insert(old_path);
+        }
+
+        if entry.new_path.is_some() {
+            let new_path = entry.new_path.as_ref().unwrap();
+            if new_paths.contains(new_path) {
+                return Err(InventoryDeltaInconsistency::DuplicateNewPath(
+                    new_path.clone(),
+                    entry.file_id.clone(),
+                ));
+            }
+            new_paths.insert(new_path);
+        }
+
+        if let Some(ref new_entry) = entry.new_entry {
+            if &entry.file_id != new_entry.file_id() {
+                return Err(InventoryDeltaInconsistency::MismatchedId(
+                    path.clone(),
+                    entry.file_id.clone(),
+                    new_entry.file_id().clone(),
+                ));
+            }
+        }
+
+        if entry.new_entry.is_some() && entry.new_path.is_none() {
+            return Err(InventoryDeltaInconsistency::EntryWithoutPath(
+                path.clone(),
+                entry.file_id.clone(),
+            ));
+        }
+
+        if entry.new_entry.is_none() && entry.new_path.is_some() {
+            return Err(InventoryDeltaInconsistency::PathWithoutEntry(
+                path.clone(),
+                entry.file_id.clone(),
+            ));
+        }
+    }
+    Ok(())
+}
+
+pub fn sort_inventory_delta(delta: &mut InventoryDelta) {
+    fn key(entry: &InventoryDeltaEntry) -> (&str, &str, &FileId, Option<&Entry>) {
+        (
+            entry.old_path.as_deref().unwrap_or(""),
+            entry.new_path.as_deref().unwrap_or(""),
+            &entry.file_id,
+            entry.new_entry.as_ref(),
+        )
+    }
+    delta.sort_by(|x, y| key(x).cmp(&key(y)));
+}
+
+pub fn make_entry(
+    kind: Kind,
+    name: String,
+    parent_id: Option<FileId>,
+    file_id: Option<FileId>,
+) -> Entry {
+    let file_id = file_id.unwrap_or_else(|| FileId::generate(name.as_str()));
+    match kind {
+        Kind::Directory => Entry::directory(file_id, None, parent_id, name),
+        Kind::File => Entry::file(file_id, name, parent_id),
+        Kind::Symlink => Entry::link(file_id, name, parent_id),
+        Kind::TreeReference => Entry::tree_reference(file_id, name, parent_id),
+    }
+}
