@@ -1,0 +1,560 @@
+//! Inventory delta serialisation.
+//!
+//! See doc/developers/inventory.txt for the description of the format.
+//!
+//! In this module the interesting classes are:
+//!  - InventoryDeltaSerializer - object to read/write inventory deltas.
+
+use crate::inventory::Entry;
+use crate::{FileId, RevisionId, NULL_REVISION};
+use std::collections::HashSet;
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct InventoryDeltaEntry {
+    pub old_path: Option<String>,
+    pub new_path: Option<String>,
+    pub file_id: FileId,
+    pub new_entry: Option<Entry>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct InventoryDelta(Vec<InventoryDeltaEntry>);
+
+impl From<Vec<InventoryDeltaEntry>> for InventoryDelta {
+    fn from(v: Vec<InventoryDeltaEntry>) -> Self {
+        InventoryDelta(v)
+    }
+}
+
+impl std::ops::Deref for InventoryDelta {
+    type Target = Vec<InventoryDeltaEntry>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for InventoryDelta {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+pub enum InventoryDeltaInconsistency {
+    DuplicateFileId(String, FileId),
+    DuplicateOldPath(String, FileId),
+    DuplicateNewPath(String, FileId),
+    NoPath,
+    MismatchedId(String, FileId, FileId),
+    EntryWithoutPath(String, FileId),
+    PathWithoutEntry(String, FileId),
+}
+
+impl InventoryDelta {
+    pub fn check(&self) -> Result<(), InventoryDeltaInconsistency> {
+        let mut ids = HashSet::new();
+        let mut old_paths = HashSet::new();
+        let mut new_paths = HashSet::new();
+        for entry in self.iter() {
+            let path = if let Some(old_path) = &entry.old_path {
+                old_path
+            } else if let Some(new_path) = &entry.new_path {
+                new_path
+            } else {
+                return Err(InventoryDeltaInconsistency::NoPath);
+            };
+
+            if ids.contains(&entry.file_id) {
+                return Err(InventoryDeltaInconsistency::DuplicateFileId(
+                    path.clone(),
+                    entry.file_id.clone(),
+                ));
+            }
+            ids.insert(&entry.file_id);
+
+            if entry.old_path.is_some() {
+                let old_path = entry.old_path.as_ref().unwrap();
+                if old_paths.contains(old_path) {
+                    return Err(InventoryDeltaInconsistency::DuplicateOldPath(
+                        old_path.clone(),
+                        entry.file_id.clone(),
+                    ));
+                }
+                old_paths.insert(old_path);
+            }
+
+            if entry.new_path.is_some() {
+                let new_path = entry.new_path.as_ref().unwrap();
+                if new_paths.contains(new_path) {
+                    return Err(InventoryDeltaInconsistency::DuplicateNewPath(
+                        new_path.clone(),
+                        entry.file_id.clone(),
+                    ));
+                }
+                new_paths.insert(new_path);
+            }
+
+            if let Some(ref new_entry) = entry.new_entry {
+                if &entry.file_id != new_entry.file_id() {
+                    return Err(InventoryDeltaInconsistency::MismatchedId(
+                        path.clone(),
+                        entry.file_id.clone(),
+                        new_entry.file_id().clone(),
+                    ));
+                }
+            }
+
+            if entry.new_entry.is_some() && entry.new_path.is_none() {
+                return Err(InventoryDeltaInconsistency::EntryWithoutPath(
+                    path.clone(),
+                    entry.file_id.clone(),
+                ));
+            }
+
+            if entry.new_entry.is_none() && entry.new_path.is_some() {
+                return Err(InventoryDeltaInconsistency::PathWithoutEntry(
+                    path.clone(),
+                    entry.file_id.clone(),
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    pub fn sort(&mut self) {
+        fn key(entry: &InventoryDeltaEntry) -> (&str, &str, &FileId, Option<&Entry>) {
+            (
+                entry.old_path.as_deref().unwrap_or(""),
+                entry.new_path.as_deref().unwrap_or(""),
+                &entry.file_id,
+                entry.new_entry.as_ref(),
+            )
+        }
+        self.sort_by(|x, y| key(x).cmp(&key(y)));
+    }
+}
+
+#[derive(Debug)]
+pub struct InventoryDeltaSerializeError(pub String);
+
+const FORMAT_1: &str = "bzr inventory delta v1 (bzr 1.14)";
+
+pub fn serialize_inventory_entry(e: &Entry) -> Result<Vec<u8>, InventoryDeltaSerializeError> {
+    Ok(match e {
+        Entry::Directory { .. } => b"dir".to_vec(),
+        Entry::File {
+            executable,
+            text_size,
+            ref text_sha1,
+            ..
+        } => {
+            let mut v = b"file".to_vec();
+            v.push(b'\x00');
+            if text_size.is_none() {
+                return Err(InventoryDeltaSerializeError(
+                    "text_size is None".to_string(),
+                ));
+            }
+            v.extend_from_slice(text_size.unwrap().to_string().as_bytes());
+            v.push(b'\x00');
+            if *executable {
+                v.push(b'Y');
+            }
+            v.push(b'\x00');
+            let text_sha1 = text_sha1.as_ref();
+            if text_sha1.is_none() {
+                return Err(InventoryDeltaSerializeError(
+                    "text_sha1 is None".to_string(),
+                ));
+            }
+            v.extend_from_slice(text_sha1.unwrap().as_slice());
+            v
+        }
+        Entry::Link { symlink_target, .. } => {
+            let mut v = b"link".to_vec();
+            v.push(b'\x00');
+            if symlink_target.is_none() {
+                return Err(InventoryDeltaSerializeError(
+                    "symlink_target is None".to_string(),
+                ));
+            }
+            v.extend_from_slice(symlink_target.as_ref().unwrap().as_bytes());
+            v
+        }
+        Entry::TreeReference {
+            reference_revision, ..
+        } => {
+            let mut v = b"tree".to_vec();
+            v.push(b'\x00');
+            if reference_revision.is_none() {
+                return Err(InventoryDeltaSerializeError(
+                    "reference_revision is None".to_string(),
+                ));
+            }
+            v.extend_from_slice(reference_revision.as_ref().unwrap().bytes());
+            v
+        }
+    })
+}
+
+pub fn serialize_inventory_delta(
+    old_name: &RevisionId,
+    new_name: &RevisionId,
+    delta_to_new: &InventoryDelta,
+    versioned_root: bool,
+    tree_references: bool,
+) -> Result<Vec<Vec<u8>>, InventoryDeltaSerializeError> {
+    let mut lines = vec![
+        format!("format: {}\n", FORMAT_1).into_bytes(),
+        vec![b"parent: ", old_name.bytes(), b"\n"].concat(),
+        vec![b"version: ", new_name.bytes(), b"\n"].concat(),
+        format!("versioned_root: {}\n", serialize_bool(versioned_root)).into_bytes(),
+        format!("tree_references: {}\n", serialize_bool(tree_references)).into_bytes(),
+    ];
+
+    let mut extra_lines = delta_to_new
+        .iter()
+        .map(|entry| delta_entry_to_line(entry, new_name, Some(versioned_root)))
+        .collect::<Result<Vec<_>, _>>()?;
+    extra_lines.sort();
+    lines.extend(extra_lines);
+    Ok(lines)
+}
+
+/// Return a line sequence for delta_to_new.
+///
+/// :param old_name: A UTF8 revision id for the old inventory.  May be
+///    NULL_REVISION if there is no older inventory and delta_to_new
+///    includes the entire inventory contents.
+/// :param new_name: The version name of the inventory we create with this
+///     delta.
+/// :param delta_to_new: An inventory delta such as Inventory.apply_delta
+///    takes.
+/// :return: The serialized delta as lines.
+fn delta_entry_to_line(
+    delta_item: &InventoryDeltaEntry,
+    new_version: &RevisionId,
+    versioned_root: Option<bool>,
+) -> Result<Vec<u8>, InventoryDeltaSerializeError> {
+    let versioned_root = versioned_root.unwrap_or(true);
+    let last_modified;
+    let parent_id;
+    let oldpath_utf8;
+    let newpath_utf8;
+    let content;
+    if delta_item.new_path.is_none() {
+        // delete
+        if delta_item.old_path.is_none() {
+            return Err(InventoryDeltaSerializeError(format!(
+                "Bad inventory delta: old_path is None in delta item {:?}",
+                delta_item
+            )));
+        }
+        oldpath_utf8 = format!("/{}", delta_item.old_path.as_ref().unwrap());
+        newpath_utf8 = "None".to_string();
+        parent_id = &b""[..];
+        last_modified = RevisionId::from(NULL_REVISION);
+        content = b"deleted\x00\x00".to_vec();
+    } else {
+        oldpath_utf8 = if let Some(ref old_path) = delta_item.old_path {
+            format!("/{}", old_path)
+        } else {
+            "None".to_string()
+        };
+        if delta_item.new_entry.is_none() {
+            return Err(InventoryDeltaSerializeError(format!(
+                "Bad inventory delta: new_entry is None in delta item {:?}",
+                delta_item
+            )));
+        }
+        let new_entry = delta_item.new_entry.as_ref().unwrap();
+        if delta_item.new_path == Some("/".to_string()) {
+            return Err(InventoryDeltaSerializeError(format!(
+                "Bad inventory delta: '/' is not a valid newpath (should be '') in delta item {:?}",
+                delta_item
+            )));
+        }
+        newpath_utf8 = format!(
+            "/{}",
+            delta_item.new_path.as_ref().unwrap_or(&"".to_string())
+        );
+        // Serialize None as ''
+        parent_id = new_entry
+            .parent_id()
+            .as_ref()
+            .map_or(&b""[..], |x| x.bytes());
+        // Serialize unknown revisions as NULL_REVISION
+        if new_entry.revision().is_none() {
+            return Err(InventoryDeltaSerializeError(format!(
+                "no version for fileid {:?}",
+                delta_item.file_id
+            )));
+        }
+        last_modified = new_entry.revision().unwrap().clone();
+
+        // special cases for /
+        if newpath_utf8 == "/" && !versioned_root {
+            // This is an entry for the root, this inventory does not
+            // support versioned roots.  So this must be an unversioned
+            // root, i.e. last_modified == new revision.  Otherwise, this
+            // delta is invalid.
+            // Note: the non-rich-root repositories *can* have roots with
+            // file-ids other than TREE_ROOT, e.g. repo formats that use the
+            // xml5 serializer.
+            if &last_modified != new_version {
+                return Err(InventoryDeltaSerializeError(format!(
+                    "Version present for / in {:?} ({:?} != {:?})",
+                    new_entry.file_id(),
+                    last_modified,
+                    new_version
+                )));
+            }
+        }
+        content = serialize_inventory_entry(new_entry)?;
+    }
+    let entries = vec![
+        oldpath_utf8.as_bytes(),
+        newpath_utf8.as_bytes(),
+        delta_item.file_id.bytes(),
+        parent_id,
+        last_modified.bytes(),
+        content.as_slice(),
+    ];
+    let mut line = entries.join(&b"\x00"[..]);
+    line.push(b'\n');
+    Ok(line)
+}
+
+pub fn parse_inventory_entry(
+    file_id: FileId,
+    name: String,
+    parent_id: Option<FileId>,
+    revision: Option<RevisionId>,
+    data: &[u8],
+) -> Entry {
+    let mut parts = data.split(|&c| c == b'\x00');
+    let entry_type = parts.next().unwrap();
+    match entry_type {
+        b"dir" => Entry::Directory {
+            file_id,
+            name,
+            parent_id,
+            revision,
+        },
+        b"file" => {
+            let text_size = parts.next().unwrap();
+            let executable = parts.next().unwrap();
+            let text_sha1 = parts.next().unwrap();
+            Entry::File {
+                file_id,
+                name,
+                parent_id,
+                executable: executable == b"Y",
+                text_id: None,
+                text_size: Some(
+                    String::from_utf8(text_size.to_vec())
+                        .unwrap()
+                        .parse()
+                        .unwrap(),
+                ),
+                text_sha1: Some(text_sha1.to_vec()),
+                revision,
+            }
+        }
+        b"link" => {
+            let symlink_target = parts.next().unwrap();
+            Entry::Link {
+                file_id,
+                name,
+                parent_id,
+                symlink_target: Some(String::from_utf8(symlink_target.to_vec()).unwrap()),
+                revision,
+            }
+        }
+        b"tree" => {
+            let reference_revision = parts.next().unwrap();
+            Entry::TreeReference {
+                file_id,
+                name,
+                parent_id,
+                reference_revision: Some(RevisionId::from(reference_revision)),
+                revision,
+            }
+        }
+        _ => panic!("Invalid entry type: {:?}", entry_type),
+    }
+}
+
+fn serialize_bool(value: bool) -> &'static str {
+    if value {
+        "true"
+    } else {
+        "false"
+    }
+}
+
+fn parse_bool(value: &[u8]) -> Result<bool, String> {
+    match value {
+        b"true" => Ok(true),
+        b"false" => Ok(false),
+        _ => Err(format!("Invalid boolean value: {:?}", value)),
+    }
+}
+
+pub fn parse_inventory_delta_item(
+    line: &[u8],
+    versioned_root: bool,
+    tree_references: bool,
+    delta_version_id: &RevisionId,
+) -> Result<InventoryDeltaEntry, InventoryDeltaParseError> {
+    let parts = line.splitn(6, |&c| c == b'\x00').collect::<Vec<_>>();
+
+    let oldpath_utf8 = parts[0];
+    let newpath_utf8 = parts[1];
+    let file_id = FileId::from(parts[2]);
+    let parent_id = if parts[3].is_empty() {
+        None
+    } else {
+        Some(FileId::from(parts[3]))
+    };
+    let last_modified = RevisionId::from(parts[4]);
+    let content = parts[5];
+
+    if newpath_utf8 == b"/" && !versioned_root && &last_modified != delta_version_id {
+        return Err(InventoryDeltaParseError("Versioned root found".to_string()));
+    } else if newpath_utf8 != b"None" && last_modified.is_reserved() {
+        return Err(InventoryDeltaParseError(format!(
+            "Invalid revision id: {:?}",
+            last_modified
+        )));
+    }
+
+    if content.starts_with(b"tree\x00") && !tree_references {
+        return Err(InventoryDeltaParseError(
+            "Tree reference found (but header said tree_references: false)".to_string(),
+        ));
+    }
+
+    fn parse_path(path: &[u8]) -> Result<Option<String>, InventoryDeltaParseError> {
+        if path == b"None" {
+            Ok(None)
+        } else if !path.starts_with(b"/") {
+            Err(InventoryDeltaParseError(format!(
+                "Invalid path: {:?} (does not start with /)",
+                path
+            )))
+        } else {
+            Ok(Some(String::from_utf8(path[1..].to_vec()).unwrap()))
+        }
+    }
+
+    let old_path = parse_path(oldpath_utf8)?;
+    let new_path = parse_path(newpath_utf8)?;
+
+    let new_entry = if content.starts_with(b"deleted\x00") {
+        None
+    } else {
+        let name = new_path.as_ref().unwrap().rsplit_once('/').map_or_else(
+            || new_path.as_ref().unwrap().clone(),
+            |(_, name)| name.to_string(),
+        );
+        Some(parse_inventory_entry(
+            file_id.clone(),
+            name,
+            parent_id,
+            Some(last_modified),
+            content,
+        ))
+    };
+    Ok(InventoryDeltaEntry {
+        old_path,
+        new_path,
+        file_id,
+        new_entry,
+    })
+}
+
+#[derive(Debug)]
+pub struct InventoryDeltaParseError(pub String);
+
+pub fn parse_inventory_delta(
+    lines: &[&[u8]],
+    allow_versioned_root: Option<bool>,
+    allow_tree_references: Option<bool>,
+) -> Result<(RevisionId, RevisionId, bool, bool, InventoryDelta), InventoryDeltaParseError> {
+    let allow_versioned_root = allow_versioned_root.unwrap_or(true);
+    let allow_tree_references = allow_tree_references.unwrap_or(true);
+
+    if lines.is_empty() {
+        return Err(InventoryDeltaParseError(
+            "Invalid inventory delta is empty".to_string(),
+        ));
+    }
+
+    if !lines[lines.len() - 1].ends_with(b"\n") {
+        return Err(InventoryDeltaParseError("last line not empty".to_string()));
+    }
+
+    let lines = lines
+        .iter()
+        .map(|x| x.strip_suffix(b"\n").unwrap())
+        .collect::<Vec<_>>();
+
+    if lines.is_empty() || lines[0] != vec![b"format: ", FORMAT_1.as_bytes()].concat() {
+        return Err(InventoryDeltaParseError(format!(
+            "Invalid inventory delta: does not start with format line: {}",
+            String::from_utf8_lossy(lines[0])
+        )));
+    }
+
+    if lines.len() < 2 || !lines[1].starts_with(b"parent: ") {
+        return Err(InventoryDeltaParseError(
+            "Invalid inventory delta: does not contain parent line".to_string(),
+        ));
+    }
+
+    let delta_parent_id = RevisionId::from(lines[1][8..].to_vec());
+
+    if lines.len() < 3 || !lines[2].starts_with(b"version: ") {
+        return Err(InventoryDeltaParseError(
+            "Invalid inventory delta: does not contain version line".to_string(),
+        ));
+    }
+
+    let delta_version = RevisionId::from(lines[2][9..].to_vec());
+
+    if lines.len() < 4 || !lines[3].starts_with(b"versioned_root: ") {
+        return Err(InventoryDeltaParseError(
+            "Invalid inventory delta: does not contain versioned_root line".to_string(),
+        ));
+    }
+
+    let delta_versioned_root = parse_bool(&lines[3][16..]).unwrap();
+
+    if lines.len() < 5 || !lines[4].starts_with(b"tree_references: ") {
+        return Err(InventoryDeltaParseError(
+            "Invalid inventory delta: does not contain tree_references line".to_string(),
+        ));
+    }
+
+    let delta_tree_references = parse_bool(&lines[4][17..]).unwrap();
+
+    let mut result = Vec::new();
+
+    for line in lines.iter().skip(5) {
+        result.push(parse_inventory_delta_item(
+            line,
+            delta_versioned_root,
+            delta_tree_references,
+            &delta_version,
+        )?);
+    }
+
+    Ok((
+        delta_parent_id,
+        delta_version,
+        delta_versioned_root,
+        delta_tree_references,
+        InventoryDelta(result),
+    ))
+}

@@ -27,6 +27,7 @@ from ..controldir import ControlDir
 from ..mutabletree import MutableTree
 from ..revisiontree import RevisionTree
 from ..transport.local import file_kind, file_stat
+from .inventory_delta import InventoryDelta
 
 lazy_import.lazy_import(globals(), """
 from breezy import (
@@ -454,7 +455,7 @@ class MutableInventoryTree(MutableTree, InventoryTree):
         with self.lock_tree_write():
             self.flush()
             inv = self.root_inventory
-            inv.apply_delta(changes)
+            inv.apply_delta(InventoryDelta(changes))
             self._write_inventory(inv)
 
     def has_changes(self, _from_tree=None):

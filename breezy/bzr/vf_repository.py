@@ -55,6 +55,7 @@ from ..repository import (CommitBuilder, FetchResult, InterRepository,
                           Repository, RepositoryFormat, WriteGroup)
 from ..trace import mutter, note
 from .inventory import Inventory, entry_factory
+from .inventory_delta import InventoryDelta
 from .inventorytree import InventoryTreeChange
 from .repository import MetaDirRepository, RepositoryFormatMetaDir
 
@@ -213,7 +214,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
         # inventory.
         basis_id = self.basis_delta_revision
         self.inv_sha1, self._new_inventory = self.repository.add_inventory_by_delta(
-            basis_id, self._basis_delta, self._new_revision_id,
+            basis_id, InventoryDelta(self._basis_delta), self._new_revision_id,
             self.parents)
         return self._new_revision_id
 
@@ -269,7 +270,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
         :return: An inventory delta, suitable for use with apply_delta, or
             Repository.add_inventory_by_delta, etc.
         """
-        return self._basis_delta
+        return InventoryDelta(self._basis_delta)
 
     def record_iter_changes(self, tree, basis_revision_id, iter_changes,
                             _entry_factory=entry_factory):

@@ -21,6 +21,7 @@ from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository, all_repository_vf_format_scenarios)
 
 from ....tests.scenarios import load_tests_apply_scenarios
+from breezy.bzr.inventory_delta import InventoryDelta
 
 load_tests = load_tests_apply_scenarios
 
@@ -78,7 +79,7 @@ class TestAddInventoryByDelta(TestCaseWithRepository):
             if old.get_entry(file_id) != new.get_entry(file_id):
                 delta.append((old.id2path(file_id), new.id2path(file_id),
                               file_id, new[file_id]))
-        return delta
+        return InventoryDelta(delta)
 
     def test_same_validator(self):
         # Adding an inventory via delta or direct results in the same

@@ -22,6 +22,7 @@ from breezy.bzr import inventory, versionedfile
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_interrepository import TestCaseWithInterRepository
 
+from ...bzr.inventory_delta import InventoryDelta
 from ...bzr.vf_search import SearchResult
 from ...errors import NoSuchRevision
 from ...repository import WriteGroup
@@ -104,8 +105,8 @@ class TestInterRepository(TestCaseWithInterRepository):
             entry.revision = revid
             entry.text_size = len('contents')
             entry.text_sha1 = osutils.sha_string(b'contents')
-            inv_sha1, _ = source.add_inventory_by_delta(revid, [
-                (None, 'foo-path', b'foo', entry)], b'new', [revid])
+            inv_sha1, _ = source.add_inventory_by_delta(revid, InventoryDelta([
+                (None, 'foo-path', b'foo', entry)]), b'new', [revid])
             rev = Revision(timestamp=0,
                            timezone=None,
                            committer="Foo Bar <foo@example.com>",
