@@ -25,6 +25,8 @@
 
 from collections import deque
 
+from typing import TYPE_CHECKING
+
 from ..lazy_import import lazy_import
 
 lazy_import(globals(), """
@@ -39,6 +41,9 @@ from .. import errors, osutils
 from .._bzr_rs import ROOT_ID
 from .._bzr_rs import inventory as _mod_inventory_rs
 from .static_tuple import StaticTuple
+
+if TYPE_CHECKING:
+    from .inventory_delta import InventoryDelta
 
 InventoryEntry = _mod_inventory_rs.InventoryEntry
 InventoryFile = _mod_inventory_rs.InventoryFile
@@ -245,7 +250,7 @@ class CommonInventory:
                         child_dirs.append((child_relpath + '/', child_ie))
             stack.extend(reversed(child_dirs))
 
-    def _make_delta(self, old):
+    def _make_delta(self, old: "CommonInventory") -> "InventoryDelta":
         """Make an inventory delta from two inventories."""
         old_ids = set(old.iter_all_ids())
         new_ids = set(self.iter_all_ids())
@@ -262,7 +267,8 @@ class CommonInventory:
             if old.get_entry(file_id) != self.get_entry(file_id):
                 delta.append((old.id2path(file_id), self.id2path(file_id),
                               file_id, self.get_entry(file_id)))
-        return delta
+        from .inventory_delta import InventoryDelta
+        return InventoryDelta(delta)
 
     def make_entry(self, kind, name, parent_id, file_id=None):
         """Simple thunk to breezy.bzr.inventory.make_entry."""
@@ -526,7 +532,7 @@ class Inventory(CommonInventory):
         # done within the loops below but it's safer to validate the delta
         # before starting to mutate the inventory, as there isn't a rollback
         # facility.
-        check_delta(delta)
+        delta.check()
 
         children = {}
         # Remove all affected items which were in the original inventory,
@@ -763,7 +769,7 @@ class Inventory(CommonInventory):
     def has_id(self, file_id):
         return (file_id in self._byid)
 
-    def _make_delta(self, old):
+    def _make_delta(self, old: CommonInventory) -> "InventoryDelta":
         """Make an inventory delta from two inventories."""
         old_getter = old.get_entry
         new_getter = self.get_entry
@@ -793,7 +799,8 @@ class Inventory(CommonInventory):
             else:
                 delta.append((old.id2path(file_id), self.id2path(file_id),
                               file_id, new_ie))
-        return delta
+        from .inventory_delta import InventoryDelta
+        return InventoryDelta(delta)
 
     def remove_recursive_id(self, file_id):
         """Remove file_id, and children, from the inventory.
@@ -1194,7 +1201,7 @@ class CHKInventory(CommonInventory):
         id_to_entry_delta = []
         # inventory_delta is only traversed once, so we just update the
         # variable.
-        check_delta(inventory_delta)
+        inventory_delta.check()
         # All changed entries need to have their parents be directories and be
         # at the right path. This set contains (path, id) tuples.
         parents = set()
@@ -1616,7 +1623,7 @@ class CHKInventory(CommonInventory):
         """Return the number of entries in the inventory."""
         return len(self.id_to_entry)
 
-    def _make_delta(self, old):
+    def _make_delta(self, old: CommonInventory) -> "InventoryDelta":
         """Make an inventory delta from two inventories."""
         if not isinstance(old, CHKInventory):
             return CommonInventory._make_delta(self, old)
@@ -1636,7 +1643,8 @@ class CHKInventory(CommonInventory):
                 entry = None
                 new_path = None
             delta.append((old_path, new_path, file_id, entry))
-        return delta
+        from .inventory_delta import InventoryDelta
+        return InventoryDelta(delta)
 
     def path2id(self, relpath):
         """See CommonInventory.path2id()."""
@@ -1733,8 +1741,6 @@ def make_entry(kind, name, parent_id, file_id=None):
 
 ensure_normalized_name = _mod_inventory_rs.ensure_normalized_name
 is_valid_name = _mod_inventory_rs.is_valid_name
-
-check_delta = _mod_inventory_rs.check_delta
 
 def mutable_inventory_from_tree(tree):
     """Create a new inventory that has the same contents as a specified tree.

@@ -25,7 +25,7 @@ from ... import osutils
 from ...revision import NULL_REVISION
 from .. import inventory, inventory_delta
 from ..inventory import Inventory
-from ..inventory_delta import InventoryDeltaError
+from ..inventory_delta import InventoryDeltaError, InventoryDelta
 from . import TestCase
 
 ### DO NOT REFLOW THESE TEXTS. NEW LINES ARE SIGNIFICANT. ###
@@ -140,7 +140,7 @@ None\x00/\x00an-id\x00\x00a@e\xc3\xa5ample.com--2004\x00dir\x00\x00
         expected_entry.revision = b'a@e\xc3\xa5ample.com--2004'
         self.assertEqual(
             (b'null:', b'entry-version', True, True,
-             [(None, '', b'an-id', expected_entry)]),
+             InventoryDelta([(None, '', b'an-id', expected_entry)])),
             parse_result)
 
     def test_parse_special_revid_not_valid_last_mod(self):
@@ -193,7 +193,7 @@ None\x00/\x00an-id\x00\x00parent-id\x00dir\x00\x00
         expected_entry.revision = b'entry-version'
         self.assertEqual(
             (b'null:', b'entry-version', False, False,
-             [(None, '', b'TREE_ROOT', expected_entry)]),
+             InventoryDelta([(None, '', b'TREE_ROOT', expected_entry)])),
             parse_result)
 
     def test_parse_versioned_root_when_disabled(self):
@@ -423,7 +423,7 @@ class TestSerialization(TestCase):
     def test_to_inventory_root_id_versioned_not_permitted(self):
         root_entry = inventory.make_entry('directory', '', None, b'TREE_ROOT')
         root_entry.revision = b'some-version'
-        delta = [(None, '', b'TREE_ROOT', root_entry)]
+        delta = InventoryDelta([(None, '', b'TREE_ROOT', root_entry)])
         serializer = inventory_delta.InventoryDeltaSerializer(
             versioned_root=False, tree_references=True)
         self.assertRaises(
@@ -431,8 +431,8 @@ class TestSerialization(TestCase):
             b'new-version', delta)
 
     def test_to_inventory_root_id_not_versioned(self):
-        delta = [(None, '', b'an-id', inventory.make_entry(
-            'directory', '', None, b'an-id'))]
+        delta = InventoryDelta([(None, '', b'an-id', inventory.make_entry(
+            'directory', '', None, b'an-id'))])
         serializer = inventory_delta.InventoryDeltaSerializer(
             versioned_root=True, tree_references=True)
         self.assertRaises(
@@ -444,12 +444,12 @@ class TestSerialization(TestCase):
         tree_ref = make_entry(
             'tree-reference', 'foo', b'changed-in', b'ref-id')
         tree_ref.reference_revision = b'ref-revision'
-        delta = [
+        delta = InventoryDelta([
             (None, '', b'an-id',
              make_entry('directory', '', b'changed-in', b'an-id')),
             (None, 'foo', b'ref-id', tree_ref)
             # a file that followed the root move
-            ]
+            ])
         serializer = inventory_delta.InventoryDeltaSerializer(
             versioned_root=True, tree_references=True)
         self.assertRaises(InventoryDeltaError, serializer.delta_to_lines,
@@ -467,7 +467,7 @@ class TestSerialization(TestCase):
         # - deep dirs
         # - files moved after parent dir was renamed
         # - files with and without exec bit
-        delta = [
+        delta = InventoryDelta([
             # new root:
             (None, '', b'new-root-id',
                 make_entry('directory', '', None, b'new-root-id',
@@ -501,7 +501,7 @@ class TestSerialization(TestCase):
                 make_entry('file', 'configure', b'new-root-id', b'exec-id',
                            executable=True, text_size=30, text_sha1=b'some-sha',
                            revision=b'old-rev')),
-            ]
+            ])
         serializer = inventory_delta.InventoryDeltaSerializer(
             versioned_root=True, tree_references=True)
         lines = serializer.delta_to_lines(NULL_REVISION, b'something', delta)

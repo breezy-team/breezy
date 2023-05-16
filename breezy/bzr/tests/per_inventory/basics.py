@@ -24,6 +24,7 @@ from breezy.bzr import inventory
 from breezy.bzr.tests.per_inventory import TestCaseWithInventory
 
 from ...inventory import InventoryFile, InventoryLink
+from ...inventory_delta import InventoryDelta
 
 
 class TestInventory(TestCaseWithInventory):
@@ -76,41 +77,41 @@ class TestInventoryCreateByApplyDelta(TestInventory):
 
     def test_add(self):
         inv = self.make_init_inventory()
-        inv = inv.create_by_apply_delta([
+        inv = inv.create_by_apply_delta(InventoryDelta([
             (None, "a", b"a-id", self.make_file(b'a-id', 'a', b'tree-root')),
-            ], b'new-test-rev')
+            ]), b'new-test-rev')
         self.assertEqual('a', inv.id2path(b'a-id'))
 
     def test_delete(self):
         inv = self.make_init_inventory()
-        inv = inv.create_by_apply_delta([
+        inv = inv.create_by_apply_delta(InventoryDelta([
             (None, "a", b"a-id", self.make_file(b'a-id', 'a', b'tree-root')),
-            ], b'new-rev-1')
+            ]), b'new-rev-1')
         self.assertEqual('a', inv.id2path(b'a-id'))
-        inv = inv.create_by_apply_delta([
+        inv = inv.create_by_apply_delta(InventoryDelta([
             ("a", None, b"a-id", None),
-            ], b'new-rev-2')
+            ]), b'new-rev-2')
         self.assertRaises(errors.NoSuchId, inv.id2path, b'a-id')
 
     def test_rename(self):
         inv = self.make_init_inventory()
-        inv = inv.create_by_apply_delta([
+        inv = inv.create_by_apply_delta(InventoryDelta([
             (None, "a", b"a-id", self.make_file(b'a-id', 'a', b'tree-root')),
-            ], b'new-rev-1')
+            ]), b'new-rev-1')
         self.assertEqual('a', inv.id2path(b'a-id'))
         a_ie = inv.get_entry(b'a-id')
         b_ie = self.make_file(a_ie.file_id, "b", a_ie.parent_id)
         inv = inv.create_by_apply_delta(
-            [("a", "b", b"a-id", b_ie)], b'new-rev-2')
+            InventoryDelta([("a", "b", b"a-id", b_ie)]), b'new-rev-2')
         self.assertEqual("b", inv.id2path(b'a-id'))
 
     def test_illegal(self):
         # A file-id cannot appear in a delta more than once
         inv = self.make_init_inventory()
-        self.assertRaises(errors.InconsistentDelta, inv.create_by_apply_delta, [
+        self.assertRaises(errors.InconsistentDelta, inv.create_by_apply_delta, InventoryDelta([
             (None, "a", b"id-1", self.make_file(b'id-1', 'a', b'tree-root')),
             (None, "b", b"id-1", self.make_file(b'id-1', 'b', b'tree-root')),
-            ], b'new-rev-1')
+            ]), b'new-rev-1')
 
 
 class TestInventoryReads(TestInventory):
@@ -122,8 +123,8 @@ class TestInventoryReads(TestInventory):
         self.assertFalse(inv.is_root(b'booga'))
         ie = inv.get_entry(b'tree-root').copy()
         ie._file_id = b'booga'
-        inv = inv.create_by_apply_delta([("", None, b"tree-root", None),
-                                         (None, "", b"booga", ie)], b'new-rev-2')
+        inv = inv.create_by_apply_delta(InventoryDelta([("", None, b"tree-root", None),
+                                         (None, "", b"booga", ie)]), b'new-rev-2')
         self.assertFalse(inv.is_root(b'TREE_ROOT'))
         self.assertTrue(inv.is_root(b'booga'))
 

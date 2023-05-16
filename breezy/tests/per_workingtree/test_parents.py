@@ -23,6 +23,7 @@ from ... import errors
 from ... import revision as _mod_revision
 from ...bzr.inventory import (Inventory, InventoryDirectory, InventoryFile,
                               InventoryLink)
+from ...bzr.inventory_delta import InventoryDelta
 from ...bzr.inventorytree import InventoryRevisionTree, InventoryTree
 from ...tests import TestNotApplicable
 from ...uncommit import uncommit
@@ -415,7 +416,7 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
             if old.get_entry(file_id) != new.get_entry(file_id):
                 delta.append((old.id2path(file_id), new.id2path(file_id),
                               file_id, new.get_entry(file_id)))
-        return delta
+        return InventoryDelta(delta)
 
     def fake_up_revision(self, tree, revid, shape):
 

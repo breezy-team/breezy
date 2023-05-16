@@ -28,6 +28,9 @@ from .. import errors
 from ..osutils import basename
 from ..revision import NULL_REVISION
 from . import inventory
+from .._bzr_rs import inventory as _inventory_delta_rs
+InventoryDelta = _inventory_delta_rs.InventoryDelta
+
 
 FORMAT_1 = b'bzr inventory delta v1 (bzr 1.14)'
 
@@ -371,7 +374,7 @@ class InventoryDeltaDeserializer:
             delta_item = (oldpath, newpath, file_id, entry)
             result.append(delta_item)
         return (delta_parent_id, delta_version_id, delta_versioned_root,
-                delta_tree_references, result)
+                delta_tree_references, InventoryDelta(result))
 
 
 def _parse_entry(path, file_id, parent_id, last_modified, content):

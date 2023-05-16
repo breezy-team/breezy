@@ -451,10 +451,11 @@ class MutableInventoryTree(MutableTree, InventoryTree):
         :return None:
         :seealso Inventory.apply_delta: For details on the changes parameter.
         """
+        from .inventory_delta import InventoryDelta
         with self.lock_tree_write():
             self.flush()
             inv = self.root_inventory
-            inv.apply_delta(changes)
+            inv.apply_delta(InventoryDelta(changes))
             self._write_inventory(inv)
 
     def has_changes(self, _from_tree=None):
