@@ -1,9 +1,12 @@
 use bazaar::inventory::{describe_change, detect_changes, Entry};
-use bazaar::inventory_delta::{InventoryDeltaEntry, InventoryDeltaInconsistency};
+use bazaar::inventory_delta::{
+    InventoryDeltaEntry, InventoryDeltaInconsistency, InventoryDeltaParseError,
+    InventoryDeltaSerializeError,
+};
 use bazaar::{FileId, RevisionId};
 use breezy_osutils::Kind;
 use pyo3::class::basic::CompareOp;
-use pyo3::exceptions::{PyIndexError, PyNotImplementedError};
+use pyo3::exceptions::{PyIndexError, PyKeyError, PyNotImplementedError};
 use pyo3::prelude::*;
 use pyo3::pyclass_init::PyClassInitializer;
 use pyo3::types::{PyBytes, PyDict};
@@ -950,7 +953,10 @@ fn parse_inventory_delta(
             allow_versioned_root,
             allow_tree_references,
         )
-        .map_err(|e| InventoryDeltaError::new_err((e.0,)))?;
+        .map_err(|e| match e {
+            InventoryDeltaParseError::Invalid(m) => InventoryDeltaError::new_err((m,)),
+            InventoryDeltaParseError::Incompatible(m) => IncompatibleInventoryDelta::new_err((m,)),
+        })?;
 
     let parent = PyBytes::new(py, parent.bytes()).to_object(py);
     let version = PyBytes::new(py, version.bytes()).to_object(py);
@@ -982,7 +988,10 @@ fn serialize_inventory_entry(py: Python, entry: &InventoryEntry) -> PyResult<PyO
     Ok(PyBytes::new(
         py,
         bazaar::inventory_delta::serialize_inventory_entry(&entry.0)
-            .map_err(|e| InventoryDeltaError::new_err((e.0,)))?
+            .map_err(|e| match e {
+                InventoryDeltaSerializeError::Invalid(m) => InventoryDeltaError::new_err((m,)),
+                InventoryDeltaSerializeError::UnsupportedKind(k) => PyKeyError::new_err((k,)),
+            })?
             .as_slice(),
     )
     .to_object(py))
@@ -1004,7 +1013,10 @@ fn serialize_inventory_delta(
         versioned_root,
         tree_references,
     )
-    .map_err(|e| InventoryDeltaError::new_err((e.0,)))?
+    .map_err(|e| match e {
+        InventoryDeltaSerializeError::Invalid(m) => InventoryDeltaError::new_err((m,)),
+        InventoryDeltaSerializeError::UnsupportedKind(m) => PyKeyError::new_err((m,)),
+    })?
     .into_iter()
     .map(|x| PyBytes::new(py, x.as_slice()).to_object(py))
     .collect())

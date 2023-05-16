@@ -130,12 +130,15 @@ impl InventoryDelta {
                 entry.new_entry.as_ref(),
             )
         }
-        self.sort_by(|x, y| key(x).cmp(&key(y)));
+        self.sort_by(|x, y| key(y).cmp(&key(x)));
     }
 }
 
 #[derive(Debug)]
-pub struct InventoryDeltaSerializeError(pub String);
+pub enum InventoryDeltaSerializeError {
+    Invalid(String),
+    UnsupportedKind(String),
+}
 
 const FORMAT_1: &str = "bzr inventory delta v1 (bzr 1.14)";
 
@@ -151,7 +154,7 @@ pub fn serialize_inventory_entry(e: &Entry) -> Result<Vec<u8>, InventoryDeltaSer
             let mut v = b"file".to_vec();
             v.push(b'\x00');
             if text_size.is_none() {
-                return Err(InventoryDeltaSerializeError(
+                return Err(InventoryDeltaSerializeError::Invalid(
                     "text_size is None".to_string(),
                 ));
             }
@@ -163,7 +166,7 @@ pub fn serialize_inventory_entry(e: &Entry) -> Result<Vec<u8>, InventoryDeltaSer
             v.push(b'\x00');
             let text_sha1 = text_sha1.as_ref();
             if text_sha1.is_none() {
-                return Err(InventoryDeltaSerializeError(
+                return Err(InventoryDeltaSerializeError::Invalid(
                     "text_sha1 is None".to_string(),
                 ));
             }
@@ -174,7 +177,7 @@ pub fn serialize_inventory_entry(e: &Entry) -> Result<Vec<u8>, InventoryDeltaSer
             let mut v = b"link".to_vec();
             v.push(b'\x00');
             if symlink_target.is_none() {
-                return Err(InventoryDeltaSerializeError(
+                return Err(InventoryDeltaSerializeError::Invalid(
                     "symlink_target is None".to_string(),
                 ));
             }
@@ -187,7 +190,7 @@ pub fn serialize_inventory_entry(e: &Entry) -> Result<Vec<u8>, InventoryDeltaSer
             let mut v = b"tree".to_vec();
             v.push(b'\x00');
             if reference_revision.is_none() {
-                return Err(InventoryDeltaSerializeError(
+                return Err(InventoryDeltaSerializeError::Invalid(
                     "reference_revision is None".to_string(),
                 ));
             }
@@ -214,7 +217,17 @@ pub fn serialize_inventory_delta(
 
     let mut extra_lines = delta_to_new
         .iter()
-        .map(|entry| delta_entry_to_line(entry, new_name, Some(versioned_root)))
+        .map(|entry| {
+            if let Some(entry) = entry.new_entry.as_ref() {
+                if !tree_references && entry.kind() == breezy_osutils::Kind::TreeReference {
+                    return Err(InventoryDeltaSerializeError::UnsupportedKind(
+                        "tree-reference".to_string(),
+                    ));
+                }
+            }
+
+            delta_entry_to_line(entry, new_name, Some(versioned_root))
+        })
         .collect::<Result<Vec<_>, _>>()?;
     extra_lines.sort();
     lines.extend(extra_lines);
@@ -245,7 +258,7 @@ fn delta_entry_to_line(
     if delta_item.new_path.is_none() {
         // delete
         if delta_item.old_path.is_none() {
-            return Err(InventoryDeltaSerializeError(format!(
+            return Err(InventoryDeltaSerializeError::Invalid(format!(
                 "Bad inventory delta: old_path is None in delta item {:?}",
                 delta_item
             )));
@@ -262,14 +275,14 @@ fn delta_entry_to_line(
             "None".to_string()
         };
         if delta_item.new_entry.is_none() {
-            return Err(InventoryDeltaSerializeError(format!(
+            return Err(InventoryDeltaSerializeError::Invalid(format!(
                 "Bad inventory delta: new_entry is None in delta item {:?}",
                 delta_item
             )));
         }
         let new_entry = delta_item.new_entry.as_ref().unwrap();
         if delta_item.new_path == Some("/".to_string()) {
-            return Err(InventoryDeltaSerializeError(format!(
+            return Err(InventoryDeltaSerializeError::Invalid(format!(
                 "Bad inventory delta: '/' is not a valid newpath (should be '') in delta item {:?}",
                 delta_item
             )));
@@ -285,7 +298,7 @@ fn delta_entry_to_line(
             .map_or(&b""[..], |x| x.bytes());
         // Serialize unknown revisions as NULL_REVISION
         if new_entry.revision().is_none() {
-            return Err(InventoryDeltaSerializeError(format!(
+            return Err(InventoryDeltaSerializeError::Invalid(format!(
                 "no version for fileid {:?}",
                 delta_item.file_id
             )));
@@ -302,7 +315,7 @@ fn delta_entry_to_line(
             // file-ids other than TREE_ROOT, e.g. repo formats that use the
             // xml5 serializer.
             if &last_modified != new_version {
-                return Err(InventoryDeltaSerializeError(format!(
+                return Err(InventoryDeltaSerializeError::Invalid(format!(
                     "Version present for / in {:?} ({:?} != {:?})",
                     new_entry.file_id(),
                     last_modified,
@@ -421,35 +434,47 @@ pub fn parse_inventory_delta_item(
     let content = parts[5];
 
     if newpath_utf8 == b"/" && !versioned_root && &last_modified != delta_version_id {
-        return Err(InventoryDeltaParseError("Versioned root found".to_string()));
+        return Err(InventoryDeltaParseError::Invalid(
+            "Versioned root found".to_string(),
+        ));
     } else if newpath_utf8 != b"None" && last_modified.is_reserved() {
-        return Err(InventoryDeltaParseError(format!(
-            "Invalid revision id: {:?}",
+        return Err(InventoryDeltaParseError::Invalid(format!(
+            "special revisionid found: {:?}",
             last_modified
         )));
     }
 
     if content.starts_with(b"tree\x00") && !tree_references {
-        return Err(InventoryDeltaParseError(
+        return Err(InventoryDeltaParseError::Invalid(
             "Tree reference found (but header said tree_references: false)".to_string(),
         ));
     }
 
-    fn parse_path(path: &[u8]) -> Result<Option<String>, InventoryDeltaParseError> {
+    fn parse_path(kind: &str, path: &[u8]) -> Result<Option<String>, InventoryDeltaParseError> {
         if path == b"None" {
             Ok(None)
         } else if !path.starts_with(b"/") {
-            Err(InventoryDeltaParseError(format!(
-                "Invalid path: {:?} (does not start with /)",
-                path
+            Err(InventoryDeltaParseError::Invalid(format!(
+                "{} invalid: {} (does not start with /)",
+                kind,
+                String::from_utf8_lossy(path)
             )))
         } else {
-            Ok(Some(String::from_utf8(path[1..].to_vec()).unwrap()))
+            Ok(Some(String::from_utf8(path[1..].to_vec()).map_err(
+                |x| {
+                    InventoryDeltaParseError::Invalid(format!(
+                        "{} invalid: {} (invalid utf8: {})",
+                        kind,
+                        String::from_utf8_lossy(path),
+                        x
+                    ))
+                },
+            )?))
         }
     }
 
-    let old_path = parse_path(oldpath_utf8)?;
-    let new_path = parse_path(newpath_utf8)?;
+    let old_path = parse_path("oldpath", oldpath_utf8)?;
+    let new_path = parse_path("newpath", newpath_utf8)?;
 
     let new_entry = if content.starts_with(b"deleted\x00") {
         None
@@ -475,7 +500,10 @@ pub fn parse_inventory_delta_item(
 }
 
 #[derive(Debug)]
-pub struct InventoryDeltaParseError(pub String);
+pub enum InventoryDeltaParseError {
+    Incompatible(String),
+    Invalid(String),
+}
 
 pub fn parse_inventory_delta(
     lines: &[&[u8]],
@@ -486,13 +514,15 @@ pub fn parse_inventory_delta(
     let allow_tree_references = allow_tree_references.unwrap_or(true);
 
     if lines.is_empty() {
-        return Err(InventoryDeltaParseError(
+        return Err(InventoryDeltaParseError::Invalid(
             "Invalid inventory delta is empty".to_string(),
         ));
     }
 
     if !lines[lines.len() - 1].ends_with(b"\n") {
-        return Err(InventoryDeltaParseError("last line not empty".to_string()));
+        return Err(InventoryDeltaParseError::Invalid(
+            "last line not empty".to_string(),
+        ));
     }
 
     let lines = lines
@@ -501,39 +531,45 @@ pub fn parse_inventory_delta(
         .collect::<Vec<_>>();
 
     if lines.is_empty() || lines[0] != vec![b"format: ", FORMAT_1.as_bytes()].concat() {
-        return Err(InventoryDeltaParseError(format!(
-            "Invalid inventory delta: does not start with format line: {}",
-            String::from_utf8_lossy(lines[0])
+        return Err(InventoryDeltaParseError::Invalid(format!(
+            "unknown format: {}",
+            String::from_utf8_lossy(&lines[0][8..])
         )));
     }
 
     if lines.len() < 2 || !lines[1].starts_with(b"parent: ") {
-        return Err(InventoryDeltaParseError(
-            "Invalid inventory delta: does not contain parent line".to_string(),
+        return Err(InventoryDeltaParseError::Invalid(
+            "missing parent: marker".to_string(),
         ));
     }
 
     let delta_parent_id = RevisionId::from(lines[1][8..].to_vec());
 
     if lines.len() < 3 || !lines[2].starts_with(b"version: ") {
-        return Err(InventoryDeltaParseError(
-            "Invalid inventory delta: does not contain version line".to_string(),
+        return Err(InventoryDeltaParseError::Invalid(
+            "missing version: marker".to_string(),
         ));
     }
 
     let delta_version = RevisionId::from(lines[2][9..].to_vec());
 
     if lines.len() < 4 || !lines[3].starts_with(b"versioned_root: ") {
-        return Err(InventoryDeltaParseError(
-            "Invalid inventory delta: does not contain versioned_root line".to_string(),
+        return Err(InventoryDeltaParseError::Invalid(
+            "missing versioned_root: marker".to_string(),
         ));
     }
 
     let delta_versioned_root = parse_bool(&lines[3][16..]).unwrap();
 
+    if !allow_versioned_root && delta_versioned_root {
+        return Err(InventoryDeltaParseError::Incompatible(
+            "versioned_root not allowed".to_string(),
+        ));
+    }
+
     if lines.len() < 5 || !lines[4].starts_with(b"tree_references: ") {
-        return Err(InventoryDeltaParseError(
-            "Invalid inventory delta: does not contain tree_references line".to_string(),
+        return Err(InventoryDeltaParseError::Invalid(
+            "missing tree_references: marker".to_string(),
         ));
     }
 
@@ -541,13 +577,30 @@ pub fn parse_inventory_delta(
 
     let mut result = Vec::new();
 
+    let mut ids = HashSet::new();
+
     for line in lines.iter().skip(5) {
-        result.push(parse_inventory_delta_item(
+        let item = parse_inventory_delta_item(
             line,
             delta_versioned_root,
             delta_tree_references,
             &delta_version,
-        )?);
+        )?;
+        if !allow_tree_references
+            && item.new_entry.is_some()
+            && item.new_entry.as_ref().unwrap().kind() == breezy_osutils::Kind::TreeReference
+        {
+            return Err(InventoryDeltaParseError::Incompatible(
+                "Tree reference not allowed".to_string(),
+            ));
+        }
+        if !ids.insert(item.file_id.clone()) {
+            return Err(InventoryDeltaParseError::Invalid(format!(
+                "duplicate file id: {:?}",
+                item.file_id
+            )));
+        }
+        result.push(item);
     }
 
     Ok((
