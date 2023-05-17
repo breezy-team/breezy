@@ -54,10 +54,10 @@ def read_colordiffrc(path):
             val = val.strip()
 
             tmp = val
-            if val.startswith('dark'):
-                tmp = val[4:]
 
-            if tmp not in terminal.colors:
+            try:
+                terminal.string_to_color(tmp)
+            except ValueError:
                 continue
 
             colors[key] = val
