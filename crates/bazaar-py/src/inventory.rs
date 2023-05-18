@@ -854,6 +854,10 @@ impl InventoryDelta {
         Ok(Self(bazaar::inventory_delta::InventoryDelta::from(delta)))
     }
 
+    fn __nonzero__(slf: PyRef<Self>) -> bool {
+        !slf.0.is_empty()
+    }
+
     fn sort(&mut self) {
         self.0.sort();
     }
