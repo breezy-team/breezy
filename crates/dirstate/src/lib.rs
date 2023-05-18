@@ -199,6 +199,10 @@ impl Kind {
         }
     }
 
+    pub fn to_byte(&self) -> u8 {
+        self.to_char() as u8
+    }
+
     pub fn to_str(&self) -> &str {
         match self {
             Kind::Absent => "absent",
@@ -207,6 +211,17 @@ impl Kind {
             Kind::Relocated => "relocated",
             Kind::Symlink => "symlink",
             Kind::TreeReference => "tree-reference",
+        }
+    }
+}
+
+impl From<breezy_osutils::Kind> for Kind {
+    fn from(k: breezy_osutils::Kind) -> Self {
+        match k {
+            breezy_osutils::Kind::File => Kind::File,
+            breezy_osutils::Kind::Directory => Kind::Directory,
+            breezy_osutils::Kind::Symlink => Kind::Symlink,
+            breezy_osutils::Kind::TreeReference => Kind::TreeReference,
         }
     }
 }
@@ -361,15 +376,6 @@ impl IdIndex {
     }
 }
 
-fn kind_to_minikind(kind: breezy_osutils::Kind) -> u8 {
-    match kind {
-        breezy_osutils::Kind::File => b'f',
-        breezy_osutils::Kind::Directory => b'd',
-        breezy_osutils::Kind::Symlink => b'l',
-        breezy_osutils::Kind::TreeReference => b't',
-    }
-}
-
 /// Convert an inventory entry (from a revision tree) to state details.
 ///
 /// Args:
@@ -377,8 +383,7 @@ fn kind_to_minikind(kind: breezy_osutils::Kind) -> u8 {
 ///     relied upon, and which has a revision set.
 /// Returns: A details tuple - the details for a single tree at a path id.
 pub fn inv_entry_to_details(e: InventoryEntry) -> (u8, Vec<u8>, u64, bool, Vec<u8>) {
-    let kind = e.kind();
-    let minikind = kind_to_minikind(kind);
+    let minikind = Kind::from(e.kind()).to_byte();
     let tree_data = e.revision().map_or_else(Vec::new, |r| r.bytes().to_vec());
     let (fingerprint, size, executable) = match e {
         InventoryEntry::Directory { .. } => (Vec::new(), 0, false),
