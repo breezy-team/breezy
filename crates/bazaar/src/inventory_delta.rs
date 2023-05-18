@@ -527,7 +527,7 @@ pub fn parse_inventory_delta(
         .map(|x| x.strip_suffix(b"\n").unwrap())
         .collect::<Vec<_>>();
 
-    if lines.is_empty() || lines[0] != vec![b"format: ", FORMAT_1.as_bytes()].concat() {
+    if lines.is_empty() || lines[0] != vec![&b"format: "[..], FORMAT_1.as_bytes()].concat() {
         return Err(InventoryDeltaParseError::Invalid(format!(
             "unknown format: {}",
             String::from_utf8_lossy(&lines[0][8..])
