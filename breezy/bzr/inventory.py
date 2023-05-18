@@ -24,6 +24,7 @@
 # it would be nice not to need to hold the backpointer here.
 
 from collections import deque
+from typing import TYPE_CHECKING
 
 from ..lazy_import import lazy_import
 
@@ -39,6 +40,9 @@ from .. import errors, osutils
 from .._bzr_rs import ROOT_ID
 from .._bzr_rs import inventory as _mod_inventory_rs
 from .static_tuple import StaticTuple
+
+if TYPE_CHECKING:
+    from .inventory_delta import InventoryDelta
 
 InventoryEntry = _mod_inventory_rs.InventoryEntry
 InventoryFile = _mod_inventory_rs.InventoryFile
@@ -328,55 +332,6 @@ class CHKInventory:
                 # or raise an error?
                 return None
         return parent
-
-    def path2id(self, relpath):
-        """Walk down through directories to return entry of last component.
-
-        :param relpath: may be either a list of path components, or a single
-            string, in which case it is automatically split.
-
-        This returns the entry of the last component in the path,
-        which may be either a file or a directory.
-
-        Returns None IFF the path is not found.
-        """
-        ie = self.get_entry_by_path(relpath)
-        if ie is None:
-            return None
-        return ie.file_id
-
-    def filter(self, specific_fileids):
-        """Get an inventory view filtered against a set of file-ids.
-
-        Children of directories and parents are included.
-
-        The result may or may not reference the underlying inventory
-        so it should be treated as immutable.
-        """
-        interesting_parents = set()
-        for fileid in specific_fileids:
-            try:
-                interesting_parents.update(self.get_idpath(fileid))
-            except errors.NoSuchId:
-                # This fileid is not in the inventory - that's ok
-                pass
-        entries = self.iter_entries()
-        if self.root is None:
-            return Inventory(root_id=None)
-        other = Inventory(next(entries)[1].file_id)
-        other.root.revision = self.root.revision
-        other.revision_id = self.revision_id
-        directories_to_expand = set()
-        for _path, entry in entries:
-            file_id = entry.file_id
-            if (file_id in specific_fileids or
-                    entry.parent_id in directories_to_expand):
-                if entry.kind == 'directory':
-                    directories_to_expand.add(file_id)
-            elif file_id not in interesting_parents:
-                continue
-            other.add(entry.copy())
-        return other
 
     def get_idpath(self, file_id):
         """Return a list of file_ids for the path to an entry.
@@ -704,7 +659,7 @@ class CHKInventory:
         id_to_entry_delta = []
         # inventory_delta is only traversed once, so we just update the
         # variable.
-        check_delta(inventory_delta)
+        inventory_delta.check()
         # All changed entries need to have their parents be directories and be
         # at the right path. This set contains (path, id) tuples.
         parents = set()
@@ -1146,7 +1101,8 @@ class CHKInventory:
                 entry = None
                 new_path = None
             delta.append((old_path, new_path, file_id, entry))
-        return delta
+        from .inventory_delta import InventoryDelta
+        return InventoryDelta(delta)
 
     def path2id(self, relpath):
         # TODO: perhaps support negative hits?
@@ -1242,8 +1198,6 @@ def make_entry(kind, name, parent_id, file_id=None):
 
 ensure_normalized_name = _mod_inventory_rs.ensure_normalized_name
 is_valid_name = _mod_inventory_rs.is_valid_name
-
-check_delta = _mod_inventory_rs.check_delta
 
 def mutable_inventory_from_tree(tree):
     """Create a new inventory that has the same contents as a specified tree.

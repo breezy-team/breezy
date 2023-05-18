@@ -9,3 +9,4 @@ crate-type = ["cdylib"]
 [dependencies]
 pyo3 = { version = ">=0.17, <0.19", features = ["extension-module"]}
 bazaar-dirstate = { path = "../dirstate" }
+bazaar = { path = "../bazaar" }

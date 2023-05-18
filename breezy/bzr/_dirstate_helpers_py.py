@@ -19,7 +19,7 @@
 
 # We cannot import the dirstate module, because it loads this module
 # All we really need is the IN_MEMORY_MODIFIED constant
-from .dirstate import DirState, DirstateCorrupt
+from .dirstate import DirState, DirstateCorrupt, _fields_per_entry
 
 
 def _read_dirblocks(state):
@@ -54,7 +54,7 @@ def _read_dirblocks(state):
     #  + newline
     num_present_parents = state._num_present_parents()
     1 + num_present_parents
-    entry_size = state._fields_per_entry()
+    entry_size = _fields_per_entry(num_present_parents)
     expected_field_count = entry_size * state._num_entries
     field_count = len(fields)
     # this checks our adjustment, and also catches file too short.
