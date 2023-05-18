@@ -508,7 +508,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.build_tree(['tree/a', 'tree/b'])
         tree.add(['a'], ids=[b'a-id'])
         self.assertEqual('a', tree.id2path(b'a-id'))
-        self.assertRaises(errors.NoSuchId, tree.id2path, 'a')
+        self.assertRaises(errors.NoSuchId, tree.id2path, b'a')
         tree.commit('a')
         tree.add(['b'], ids=[b'b-id'])
 

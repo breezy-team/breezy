@@ -405,8 +405,8 @@ impl IdIndex {
 }
 
 /// Helpers for the dirstate module.
-#[pymodule]
-fn _dirstate_rs(_: Python, m: &PyModule) -> PyResult<()> {
+pub fn _dirstate_rs(py: Python) -> PyResult<&PyModule> {
+    let m = PyModule::new(py, "dirstate")?;
     m.add_wrapped(wrap_pyfunction!(lt_by_dirs))?;
     m.add_wrapped(wrap_pyfunction!(bisect_path_left))?;
     m.add_wrapped(wrap_pyfunction!(bisect_path_right))?;
@@ -419,5 +419,5 @@ fn _dirstate_rs(_: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(get_parents_line))?;
     m.add_class::<IdIndex>()?;
 
-    Ok(())
+    Ok(m)
 }

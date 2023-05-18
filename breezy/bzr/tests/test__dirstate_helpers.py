@@ -516,18 +516,6 @@ class TestUsingCompiledIfAvailable(tests.TestCase):
     not being used.
     """
 
-    def test__bisect_path_left(self):
-        from .._dirstate_rs import bisect_path_left
-        self.assertIs(bisect_path_left, dirstate.bisect_path_left)
-
-    def test__bisect_path_right(self):
-        from .._dirstate_rs import bisect_path_right
-        self.assertIs(bisect_path_right, dirstate.bisect_path_right)
-
-    def test_lt_by_dirs(self):
-        from .._dirstate_rs import lt_by_dirs
-        self.assertIs(lt_by_dirs, dirstate.lt_by_dirs)
-
     def test__read_dirblocks(self):
         if compiled_dirstate_helpers_feature.available():
             from .._dirstate_helpers_pyx import _read_dirblocks
