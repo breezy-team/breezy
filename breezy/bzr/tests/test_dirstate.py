@@ -743,7 +743,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         state = self.create_dirstate_with_root_and_subdir()
         self.addCleanup(state.unlock)
         id_index = state._get_id_index()
-        self.assertEqual([b'a-root-value', b'subdir-id'], sorted(id_index))
+        self.assertEqual([b'a-root-value', b'subdir-id'], sorted(id_index.file_ids()))
         state.add('file-name', b'file-id', 'file', None, '')
         self.assertEqual([b'a-root-value', b'file-id', b'subdir-id'],
                          sorted(id_index))

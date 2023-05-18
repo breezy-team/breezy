@@ -565,7 +565,7 @@ class DirState:
             self._ensure_block(block_index, entry_index, utf8path)
         self._mark_modified()
         if self._id_index:
-            self._add_to_id_index(self._id_index, entry_key)
+            self._id_index.add(entry_key)
 
     def _bisect(self, paths):
         """Bisect through the disk structure for specific rows.
@@ -1588,7 +1588,7 @@ class DirState:
             return
         id_index = self._get_id_index()
         for file_id in new_ids:
-            for key in id_index.get(file_id, ()):
+            for key in id_index.get(file_id):
                 block_i, entry_i, d_present, f_present = \
                     self._get_block_entry_index(key[0], key[1], tree_index)
                 if not f_present:
@@ -1699,7 +1699,7 @@ class DirState:
                 # we haven't been keeping it updated. However, it should be
                 # fine for tree0, and that gives us enough info for what we
                 # need
-                keys = id_index.get(file_id, ())
+                keys = id_index.get(file_id)
                 for key in keys:
                     block_i, entry_i, d_present, f_present = \
                         self._get_block_entry_index(key[0], key[1], 0)
@@ -2102,7 +2102,7 @@ class DirState:
                                           ' tree_index, file_id and path')
             return entry
         else:
-            possible_keys = self._get_id_index().get(fileid_utf8, ())
+            possible_keys = self._get_id_index().get(fileid_utf8)
             if not possible_keys:
                 return None, None
             for key in possible_keys:
@@ -2272,41 +2272,11 @@ class DirState:
         that file_id appears in one of the trees.
         """
         if self._id_index is None:
-            id_index = {}
+            id_index = IdIndex()
             for key, _tree_details in self._iter_entries():
-                self._add_to_id_index(id_index, key)
+                id_index.add(key)
             self._id_index = id_index
         return self._id_index
-
-    def _add_to_id_index(self, id_index, entry_key):
-        """Add this entry to the _id_index mapping."""
-        # This code used to use a set for every entry in the id_index. However,
-        # it is *rare* to have more than one entry. So a set is a large
-        # overkill. And even when we do, we won't ever have more than the
-        # number of parent trees. Which is still a small number (rarely >2). As
-        # such, we use a simple tuple, and do our own uniqueness checks. While
-        # the 'in' check is O(N) since N is nicely bounded it shouldn't ever
-        # cause quadratic failure.
-        file_id = entry_key[2]
-        entry_key = static_tuple.StaticTuple.from_sequence(entry_key)
-        if file_id not in id_index:
-            id_index[file_id] = static_tuple.StaticTuple(entry_key,)
-        else:
-            entry_keys = id_index[file_id]
-            if entry_key not in entry_keys:
-                id_index[file_id] = entry_keys + (entry_key,)
-
-    @staticmethod
-    def _remove_from_id_index(id_index, entry_key):
-        """Remove this entry from the _id_index mapping.
-
-        It is an programming error to call this when the entry_key is not
-        already present.
-        """
-        file_id = entry_key[2]
-        entry_keys = list(id_index[file_id])
-        entry_keys.remove(entry_key)
-        id_index[file_id] = static_tuple.StaticTuple.from_sequence(entry_keys)
 
     @classmethod
     def _get_output_lines(cls, lines):
@@ -2591,7 +2561,7 @@ class DirState:
         # - find other keys containing a path
         # We accumulate each entry via this dictionary, including the root
         by_path = {}
-        id_index = {}
+        id_index = IdIndex()
         # we could do parallel iterators, but because file id data may be
         # scattered throughout, we dont save on index overhead: we have to look
         # at everything anyway. We can probably save cycles by reusing parent
@@ -2616,7 +2586,7 @@ class DirState:
                 [DirState.NULL_PARENT_DETAILS] * parent_count
             # TODO: Possibly inline this, since we know it isn't present yet
             #       id_index[entry[0][2]] = (entry[0],)
-            self._add_to_id_index(id_index, entry[0])
+            id_index.add(entry[0])
 
         # now the parent trees:
         for tree_index, tree in enumerate(parent_trees):
@@ -2651,7 +2621,7 @@ class DirState:
                 new_entry_key = st(dirname, basename, file_id)
                 # tree index consistency: All other paths for this id in this tree
                 # index must point to the correct path.
-                entry_keys = id_index.get(file_id, ())
+                entry_keys = id_index.get(file_id)
                 for entry_key in entry_keys:
                     # TODO:PROFILING: It might be faster to just update
                     # rather than checking if we need to, and then overwrite
@@ -2698,7 +2668,7 @@ class DirState:
                     new_details.append(self._inv_entry_to_details(entry))
                     new_details.extend(new_location_suffix)
                     by_path[new_entry_key] = new_details
-                    self._add_to_id_index(id_index, new_entry_key)
+                    id_index.add(new_entry_key)
         # --- end generation of full tree mappings
 
         # sort and output all the entries
@@ -2919,7 +2889,7 @@ class DirState:
             block[1].pop(entry_index)
             # if we have an id_index in use, remove this key from it for this id.
             if self._id_index is not None:
-                self._remove_from_id_index(self._id_index, current_old[0])
+                self._id_index.remove(current_old[0])
         # update all remaining keys for this id to record it as absent. The
         # existing details may either be the record we are marking as deleted
         # (if there were other trees with the id present at this path), or may
@@ -2997,7 +2967,7 @@ class DirState:
                     else:
                         break
             # new entry, synthesis cross reference here,
-            existing_keys = id_index.get(key[2], ())
+            existing_keys = id_index.get(key[2])
             if not existing_keys:
                 # not currently in the state, simplest case
                 new_entry = key, [new_details] + self._empty_parent_info()
@@ -3075,7 +3045,7 @@ class DirState:
                         new_entry[1].append(
                             (b'r', pointer_path, 0, False, b''))
             block.insert(entry_index, new_entry)
-            self._add_to_id_index(id_index, key)
+            id_index.add(key)
         else:
             # Does the new state matter?
             block[entry_index][1][0] = new_details
@@ -3090,7 +3060,7 @@ class DirState:
             # converted to relocated.
             if path_utf8 is None:
                 raise AssertionError('no path')
-            existing_keys = id_index.get(key[2], ())
+            existing_keys = id_index.get(key[2])
             if key not in existing_keys:
                 raise AssertionError('We found the entry in the blocks, but'
                                      ' the key is not in the id_index.'
@@ -3138,7 +3108,7 @@ class DirState:
                 break
         if not present_in_row:
             block.pop(index)
-            self._remove_from_id_index(id_index, entry[0])
+            id_index.remove(entry[0])
             return True
         return False
 
@@ -3280,28 +3250,19 @@ class DirState:
                 raise AssertionError(
                     f"entry {entry!r} has no data for any tree.")
         if self._id_index is not None:
-            for file_id, entry_keys in self._id_index.items():
-                for entry_key in entry_keys:
-                    # Check that the entry in the map is pointing to the same
-                    # file_id
-                    if entry_key[2] != file_id:
-                        raise AssertionError(
-                            f'file_id {file_id!r} did not match entry key {entry_key}')
-                    # And that from this entry key, we can look up the original
-                    # record
-                    block_index, present = self._find_block_index_from_key(
-                        entry_key)
-                    if not present:
-                        raise AssertionError(
-                            'missing block for entry key: %r', entry_key)
-                    entry_index, present = self._find_entry_index(
-                        entry_key, self._dirblocks[block_index][1])
-                    if not present:
-                        raise AssertionError(
-                            'missing entry for key: %r', entry_key)
-                if len(entry_keys) != len(set(entry_keys)):
+            for entry_key in self._id_index.iter_all():
+                # And that from this entry key, we can look up the original
+                # record
+                block_index, present = self._find_block_index_from_key(
+                    entry_key)
+                if not present:
                     raise AssertionError(
-                        f'id_index contained non-unique data for {entry_keys}')
+                        'missing block for entry key: %r', entry_key)
+                entry_index, present = self._find_entry_index(
+                    entry_key, self._dirblocks[block_index][1])
+                if not present:
+                    raise AssertionError(
+                        'missing entry for key: %r', entry_key)
 
     def _wipe_state(self):
         """Forget all state information about the dirstate."""
@@ -4262,7 +4223,8 @@ from ._dirstate_rs import (DefaultSHA1Provider, bisect_dirblock,
                            bisect_path_left, bisect_path_right, lt_by_dirs,
                            pack_stat, fields_per_entry as _fields_per_entry,
                            get_ghosts_line as _get_ghosts_line,
-                           get_parents_line as _get_parents_line)
+                           get_parents_line as _get_parents_line,
+                           IdIndex)
 
 # Try to load the compiled form if possible
 try:
