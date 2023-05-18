@@ -288,3 +288,12 @@ pub fn get_ghosts_line(ghost_ids: &[&[u8]]) -> Vec<u8> {
     entries.extend_from_slice(ghost_ids);
     entries.join(&b"\0"[..])
 }
+
+pub fn get_parents_line(parent_ids: &[&[u8]]) -> Vec<u8> {
+    // Create a line for the state file for parents information.
+    let mut entries = Vec::new();
+    let l = format!("{}", parent_ids.len());
+    entries.push(l.as_bytes());
+    entries.extend_from_slice(parent_ids);
+    entries.join(&b"\0"[..])
+}

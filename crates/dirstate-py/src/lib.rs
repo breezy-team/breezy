@@ -322,6 +322,12 @@ fn get_ghosts_line(py: Python, ghost_ids: Vec<&[u8]>) -> PyResult<PyObject> {
     Ok(PyBytes::new(py, bs.as_slice()).to_object(py))
 }
 
+#[pyfunction]
+fn get_parents_line(py: Python, parent_ids: Vec<&[u8]>) -> PyResult<PyObject> {
+    let bs = bazaar_dirstate::get_parents_line(parent_ids.as_slice());
+    Ok(PyBytes::new(py, bs.as_slice()).to_object(py))
+}
+
 /// Helpers for the dirstate module.
 #[pymodule]
 fn _dirstate_rs(_: Python, m: &PyModule) -> PyResult<()> {
@@ -334,6 +340,7 @@ fn _dirstate_rs(_: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(pack_stat))?;
     m.add_wrapped(wrap_pyfunction!(fields_per_entry))?;
     m.add_wrapped(wrap_pyfunction!(get_ghosts_line))?;
+    m.add_wrapped(wrap_pyfunction!(get_parents_line))?;
 
     Ok(())
 }
