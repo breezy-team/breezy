@@ -89,6 +89,7 @@ dependencies = [
  "base64",
  "bazaar",
  "breezy-osutils",
+ "crc32fast",
  "lazy_static",
  "maplit",
 ]
@@ -114,6 +115,7 @@ name = "bazaar-py"
 version = "3.3.3"
 dependencies = [
  "bazaar",
+ "bazaar-dirstate",
  "breezy-osutils",
  "chrono",
  "pyo3",
@@ -465,15 +467,6 @@ dependencies = [
  "option-ext",
  "redox_users",
  "windows-sys 0.48.0",
-]
-
-[[package]]
-name = "dirstate-py"
-version = "3.3.3"
-dependencies = [
- "bazaar",
- "bazaar-dirstate",
- "pyo3",
 ]
 
 [[package]]

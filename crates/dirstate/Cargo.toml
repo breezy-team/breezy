@@ -17,3 +17,4 @@ base64 = "0.13.0"
 lazy_static = "1.4.0"
 maplit = "1.0.2"
 bazaar = { path = "../bazaar" }
+crc32fast = "1.2.0"
