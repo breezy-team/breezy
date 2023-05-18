@@ -267,13 +267,13 @@ class InventoryTree(Tree):
         """
         with self.lock_read():
             if specific_files is not None:
-                inventory_file_ids = []
+                inventory_file_ids = set()
                 for path in specific_files:
                     inventory, inv_file_id = self._path2inv_file_id(path)
                     if inventory and inventory is not self.root_inventory:
                         raise AssertionError("{!r} != {!r}".format(
                             inventory, self.root_inventory))
-                    inventory_file_ids.append(inv_file_id)
+                    inventory_file_ids.add(inv_file_id)
             else:
                 inventory_file_ids = None
             def iter_entries(inv):

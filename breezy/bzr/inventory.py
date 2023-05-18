@@ -157,19 +157,8 @@ class CHKInventory:
                 # if we finished all children, pop it off the stack
                 stack.pop()
 
-    def get_children(self, file_id):
-        raise NotImplementedError
-
     def iter_sorted_children(self, file_id):
         return (c for (_n, c) in sorted(self.get_children(file_id).items()))
-
-    def _preload_cache(self):
-        """Populate any caches, we are about to access all items.
-
-        The default implementation does nothing, because CommonInventory doesn't
-        have a cache.
-        """
-        pass
 
     def iter_entries_by_dir(self, from_dir=None, specific_file_ids=None):
         """Iterate over the entries in a directory first order.
@@ -251,25 +240,6 @@ class CHKInventory:
                     if parents is None or child_ie.file_id in parents:
                         child_dirs.append((child_relpath + '/', child_ie))
             stack.extend(reversed(child_dirs))
-
-    def _make_delta(self, old):
-        """Make an inventory delta from two inventories."""
-        old_ids = set(old.iter_all_ids())
-        new_ids = set(self.iter_all_ids())
-        adds = new_ids - old_ids
-        deletes = old_ids - new_ids
-        common = old_ids.intersection(new_ids)
-        delta = []
-        for file_id in deletes:
-            delta.append((old.id2path(file_id), None, file_id, None))
-        for file_id in adds:
-            delta.append((None, self.id2path(file_id),
-                          file_id, self.get_entry(file_id)))
-        for file_id in common:
-            if old.get_entry(file_id) != self.get_entry(file_id):
-                delta.append((old.id2path(file_id), self.id2path(file_id),
-                              file_id, self.get_entry(file_id)))
-        return delta
 
     def make_entry(self, kind, name, parent_id, file_id=None):
         """Simple thunk to breezy.bzr.inventory.make_entry."""
@@ -422,7 +392,6 @@ class CHKInventory:
         return p
 
     def __init__(self, search_key_name):
-        CommonInventory.__init__(self)
         self._fileid_to_entry_cache = {}
         self._fully_cached = False
         self._path_to_fileid_cache = {}
@@ -1011,22 +980,6 @@ class CHKInventory:
         for key, _ in self.id_to_entry.iteritems():
             yield key[-1]
 
-    def iter_just_entries(self):
-        """Iterate over all entries.
-
-        Unlike iter_entries(), just the entries are returned (not (path, ie))
-        and the order of entries is undefined.
-
-        XXX: We may not want to merge this into bzr.dev.
-        """
-        for key, entry in self.id_to_entry.iteritems():
-            file_id = key[0]
-            ie = self._fileid_to_entry_cache.get(file_id, None)
-            if ie is None:
-                ie = self._bytes_to_entry(entry)
-                self._fileid_to_entry_cache[file_id] = ie
-            yield ie
-
     def _preload_cache(self):
         """Make sure all file-ids are in _fileid_to_entry_cache."""
         if self._fully_cached:
@@ -1160,7 +1113,23 @@ class CHKInventory:
     def _make_delta(self, old):
         """Make an inventory delta from two inventories."""
         if not isinstance(old, CHKInventory):
-            return CommonInventory._make_delta(self, old)
+            old_ids = set(old.iter_all_ids())
+            new_ids = set(self.iter_all_ids())
+            adds = new_ids - old_ids
+            deletes = old_ids - new_ids
+            common = old_ids.intersection(new_ids)
+            delta = []
+            for file_id in deletes:
+                delta.append((old.id2path(file_id), None, file_id, None))
+            for file_id in adds:
+                delta.append((None, self.id2path(file_id),
+                              file_id, self.get_entry(file_id)))
+            for file_id in common:
+                if old.get_entry(file_id) != self.get_entry(file_id):
+                    delta.append((old.id2path(file_id), self.id2path(file_id),
+                                  file_id, self.get_entry(file_id)))
+            return delta
+
         delta = []
         for key, old_value, self_value in \
                 self.id_to_entry.iter_changes(old.id_to_entry):
@@ -1180,7 +1149,6 @@ class CHKInventory:
         return delta
 
     def path2id(self, relpath):
-        """See CommonInventory.path2id()."""
         # TODO: perhaps support negative hits?
         if isinstance(relpath, str):
             names = osutils.splitpath(relpath)

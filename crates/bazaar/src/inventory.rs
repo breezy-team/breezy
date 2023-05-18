@@ -452,6 +452,24 @@ pub fn is_valid_name(name: &str) -> bool {
     !(name.contains('/') || name == "." || name == "..")
 }
 
+pub fn find_interesting_parents<'a>(
+    inv: &'a MutableInventory,
+    file_ids: &HashSet<&'a FileId>,
+) -> HashSet<&'a FileId> {
+    let mut parents: HashSet<&'a FileId> = HashSet::new();
+    let mut todo = file_ids.iter().cloned().collect::<Vec<_>>();
+    while let Some(file_id) = todo.pop() {
+        let ie = inv.get_entry(file_id).unwrap();
+        if let Some(parent_id) = ie.parent_id() {
+            if !parents.contains(parent_id) {
+                todo.push(parent_id);
+                parents.insert(parent_id);
+            }
+        }
+    }
+    parents
+}
+
 #[derive(Clone)]
 pub struct MutableInventory {
     by_id: HashMap<FileId, Entry>,
@@ -491,6 +509,32 @@ impl MutableInventory {
             .iter()
             .map(|(k, v)| (k.as_str(), self.get_entry(v).unwrap()))
             .collect()
+    }
+
+    pub fn change_root_id(&mut self, new_root_id: FileId) {
+        let mut children = self
+            .children
+            .remove(self.root_id.as_ref().unwrap())
+            .unwrap();
+        self.by_id.remove(self.root_id.as_ref().unwrap());
+        self.root_id = Some(new_root_id.clone());
+        self.by_id.insert(
+            new_root_id.clone(),
+            Entry::Directory {
+                parent_id: None,
+                file_id: new_root_id.clone(),
+                name: "".to_string(),
+                revision: None,
+            },
+        );
+        for (_n, child) in children.iter_mut() {
+            self.by_id
+                .get_mut(child)
+                .unwrap()
+                .set_parent_id(Some(new_root_id.clone()));
+        }
+
+        self.children.insert(new_root_id, children);
     }
 
     pub fn iter_sorted_children(&self, file_id: &FileId) -> impl Iterator<Item = (&str, &Entry)> {
@@ -682,17 +726,21 @@ impl MutableInventory {
         from_dir: Option<&FileId>,
     ) -> impl Iterator<Item = (String, &'a Entry)> {
         let mut stack = VecDeque::new();
-        let from_dir = if from_dir.is_none() {
-            self.root_id.as_ref()
+        let mut from_dir = if from_dir.is_none() {
+            self.root_id.clone()
         } else {
-            from_dir
+            from_dir.cloned()
         };
-        if let Some(from_dir) = from_dir {
+        if let Some(from_dir) = from_dir.as_ref() {
             let children = self.iter_sorted_children(from_dir).collect::<VecDeque<_>>();
             stack.push_back((String::new(), children));
         }
 
         std::iter::from_fn(move || -> Option<(String, &Entry)> {
+            if let Some(from_dir) = from_dir.take() {
+                let entry = self.by_id.get(&from_dir)?;
+                return Some((String::new(), entry));
+            }
             loop {
                 if let Some((base, children)) = stack.back_mut() {
                     if let Some((name, ie)) = children.pop_front() {
@@ -731,22 +779,8 @@ impl MutableInventory {
         from_dir: Option<&'a FileId>,
         specific_file_ids: Option<&'a HashSet<&FileId>>,
     ) -> impl Iterator<Item = (String, &'a Entry)> + '_ {
-        let parents = if let Some(specific_file_ids) = specific_file_ids {
-            let mut parents = HashSet::new();
-            let mut todo = specific_file_ids.iter().cloned().collect::<Vec<_>>();
-            while let Some(file_id) = todo.pop() {
-                let ie = self.get_entry(file_id).unwrap();
-                if let Some(parent_id) = ie.parent_id() {
-                    if !parents.contains(parent_id) {
-                        todo.push(parent_id);
-                        parents.insert(parent_id);
-                    }
-                }
-            }
-            Some(parents)
-        } else {
-            None
-        };
+        let parents = specific_file_ids
+            .map(|specific_file_ids| find_interesting_parents(self, specific_file_ids));
 
         let mut stack: Vec<(String, &FileId)> = vec![];
 
@@ -957,14 +991,11 @@ impl MutableInventory {
         Ok(new_inv)
     }
 
-    fn set_root(&mut self, ie: Entry) {
-        assert!(ie.parent_id().is_none());
+    fn set_root(&mut self, mut ie: Entry) {
+        ie.set_parent_id(None);
         self.root_id = Some(ie.file_id().clone());
         self.by_id = HashMap::new();
         self.by_id.insert(ie.file_id().clone(), ie.clone());
-        if self.children.contains_key(ie.file_id()) {
-            panic!("Root id already in children");
-        }
         self.children = HashMap::new();
         self.children
             .insert(self.root_id.clone().unwrap(), HashMap::new());
@@ -995,13 +1026,19 @@ impl MutableInventory {
     }
 
     fn iter_file_id_parents<'a>(&'a self, id: &'a FileId) -> impl Iterator<Item = &'a Entry> + 'a {
-        let mut id: &'a FileId = id;
+        let mut id: Option<&'a FileId> = Some(id);
         std::iter::from_fn(move || {
-            let entry = self.by_id.get(id)?;
-            if let Some(parent_id) = entry.parent_id() {
-                id = parent_id;
+            if let Some(fid) = id {
+                let entry = self.by_id.get(fid)?;
+                if let Some(parent_id) = entry.parent_id() {
+                    id = Some(parent_id);
+                } else {
+                    id = None;
+                }
+                Some(entry)
+            } else {
+                None
             }
-            Some(entry)
         })
     }
 
@@ -1081,7 +1118,7 @@ impl MutableInventory {
         kind: Kind,
         file_id: Option<FileId>,
         parent_id: Option<FileId>,
-    ) -> Result<(), Error> {
+    ) -> Result<FileId, Error> {
         let parts = breezy_osutils::path::splitpath(relpath).unwrap();
 
         if parts.is_empty() {
@@ -1094,13 +1131,10 @@ impl MutableInventory {
             );
             self.by_id = HashMap::new();
             self.by_id.insert(root.file_id().clone(), root);
-            if self.children.contains_key(self.root_id.as_ref().unwrap()) {
-                panic!("Root id already in children");
-            }
             self.children = HashMap::new();
             self.children
                 .insert(self.root_id.as_ref().unwrap().clone(), HashMap::new());
-            Ok(())
+            Ok(self.root_id.as_ref().unwrap().clone())
         } else {
             let (basename, parent_path) = parts.split_last().unwrap();
             let parent_id = self.path2id_segments(parent_path);
@@ -1108,7 +1142,9 @@ impl MutableInventory {
                 return Err(Error::ParentNotVersioned(parent_path.join("/")));
             }
             let ie = make_entry(kind, basename.to_string(), parent_id.cloned(), file_id);
-            self.add(ie)
+            let file_id = ie.file_id().clone();
+            self.add(ie)?;
+            Ok(file_id)
         }
     }
 

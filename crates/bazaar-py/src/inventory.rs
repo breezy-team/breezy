@@ -5,7 +5,7 @@ use bazaar::inventory::{
 use bazaar::{FileId, RevisionId};
 use breezy_osutils::Kind;
 use pyo3::class::basic::CompareOp;
-use pyo3::exceptions::{PyNotImplementedError, PyValueError};
+use pyo3::exceptions::{PyNotImplementedError, PyTypeError, PyValueError};
 use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::pyclass_init::PyClassInitializer;
@@ -13,6 +13,7 @@ use pyo3::types::{PyBytes, PyDict};
 use pyo3::wrap_pyfunction;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::collections::VecDeque;
 
 import_exception!(breezy.bzr.inventory, InvalidEntryName);
 import_exception!(breezy.bzr.inventory, DuplicateFileId);
@@ -1015,7 +1016,7 @@ impl Inventory {
         kind: &str,
         file_id: Option<Vec<u8>>,
         parent_id: Option<Vec<u8>>,
-    ) -> PyResult<()> {
+    ) -> PyResult<PyObject> {
         let kind = match kind {
             "file" => breezy_osutils::Kind::File,
             "directory" => breezy_osutils::Kind::Directory,
@@ -1023,7 +1024,8 @@ impl Inventory {
             "tree-reference" => breezy_osutils::Kind::TreeReference,
             _ => return Err(PyValueError::new_err("invalid kind")),
         };
-        self.0
+        let file_id = self
+            .0
             .add_path(
                 relpath,
                 kind,
@@ -1031,7 +1033,7 @@ impl Inventory {
                 parent_id.map(FileId::from),
             )
             .map_err(|e| inventory_err_to_py_err(e, py))?;
-        Ok(())
+        Ok(self.get_entry(py, file_id.bytes().to_vec()).unwrap())
     }
 
     #[getter]
@@ -1116,44 +1118,50 @@ impl Inventory {
 
     fn get_entry_by_path_partial(
         &self,
-        relpath: &str,
-    ) -> Option<(PyObject, Vec<String>, Vec<String>)> {
-        self.0
-            .get_entry_by_path_partial(relpath)
-            .map(|(entry, segments, missing)| {
-                (
-                    entry_to_py(Python::acquire_gil().python(), entry.clone()).unwrap(),
-                    segments,
-                    missing,
-                )
-            })
+        py: Python,
+        relpath: PyObject,
+    ) -> PyResult<Option<(PyObject, Vec<String>, Vec<String>)>> {
+        if let Ok(relpath) = relpath.extract::<&str>(py) {
+            Ok(self
+                .0
+                .get_entry_by_path_partial(relpath)
+                .map(|(entry, segments, missing)| {
+                    (
+                        entry_to_py(Python::acquire_gil().python(), entry.clone()).unwrap(),
+                        segments,
+                        missing,
+                    )
+                }))
+        } else if let Ok(segments) = relpath.extract::<Vec<&str>>(py) {
+            Ok(self
+                .0
+                .get_entry_by_path_segments_partial(segments.as_slice())
+                .map(|(entry, segments, missing)| {
+                    (
+                        entry_to_py(Python::acquire_gil().python(), entry.clone()).unwrap(),
+                        segments,
+                        missing,
+                    )
+                }))
+        } else {
+            Err(PyTypeError::new_err("expected str or list of str"))
+        }
     }
 
-    fn get_entry_by_path_segments_partial(
-        &self,
-        segments: Vec<&str>,
-    ) -> Option<(PyObject, Vec<String>, Vec<String>)> {
-        self.0
-            .get_entry_by_path_segments_partial(segments.as_slice())
-            .map(|(entry, segments, missing)| {
-                (
-                    entry_to_py(Python::acquire_gil().python(), entry.clone()).unwrap(),
-                    segments,
-                    missing,
-                )
-            })
-    }
-
-    fn get_entry_by_path(&self, relpath: &str) -> Option<PyObject> {
-        self.0
-            .get_entry_by_path(relpath)
-            .map(|entry| entry_to_py(Python::acquire_gil().python(), entry.clone()).unwrap())
-    }
-
-    fn get_entry_by_path_segments(&self, segments: Vec<&str>) -> Option<PyObject> {
-        self.0
-            .get_entry_by_path_segments(segments.as_slice())
-            .map(|entry| entry_to_py(Python::acquire_gil().python(), entry.clone()).unwrap())
+    fn get_entry_by_path(&self, py: Python, relpath: PyObject) -> PyResult<Option<PyObject>> {
+        if let Ok(relpath) = relpath.extract::<&str>(py) {
+            Ok(self
+                .0
+                .get_entry_by_path(relpath)
+                .map(|entry| entry_to_py(Python::acquire_gil().python(), entry.clone()).unwrap()))
+        } else if let Ok(segments) = relpath.extract::<Vec<&str>>(py) {
+            Ok(self
+                .0
+                .get_entry_by_path_segments(segments.as_slice())
+                .map(|entry| entry_to_py(Python::acquire_gil().python(), entry.clone()).unwrap()))
+        } else {
+            Err(PyTypeError::new_err("expected str or list of str"))
+        }
     }
 
     fn apply_delta(
@@ -1239,7 +1247,7 @@ impl Inventory {
             .map_err(|e| inventory_err_to_py_err(e, py))
     }
 
-    fn make_delta(
+    fn _make_delta(
         &self,
         py: Python,
         old: &Inventory,
@@ -1279,6 +1287,237 @@ impl Inventory {
         self.0
             .rename(&file_id, &new_parent_id, new_name)
             .map_err(|e| inventory_err_to_py_err(e, py))
+    }
+
+    fn iter_sorted_children(&self, py: Python, file_id: Vec<u8>) -> PyResult<PyObject> {
+        let file_id = FileId::from(file_id);
+        let children = self.0.iter_sorted_children(&file_id);
+        Ok(children
+            .into_iter()
+            .map(|(_n, e)| entry_to_py(py, e.clone()))
+            .collect::<PyResult<Vec<_>>>()?
+            .to_object(py))
+    }
+
+    fn iter_all_ids(&self, py: Python) -> PyResult<PyObject> {
+        let ids = self.0.iter_all_ids();
+        ids.into_iter()
+            .map(|id| PyBytes::new(py, id.bytes()).to_object(py))
+            .collect::<Vec<_>>()
+            .to_object(py)
+            .call_method0(py, "__iter__")
+    }
+
+    fn iter_entries(
+        slf: Py<Inventory>,
+        py: Python,
+        from_dir: Option<&[u8]>,
+        recursive: Option<bool>,
+    ) -> PyResult<PyObject> {
+        let from_dir = from_dir.map(FileId::from);
+        let recursive = recursive.unwrap_or(true);
+
+        Ok(PyCell::new(py, IterEntriesIterator::new(py, slf, from_dir, recursive))?.to_object(py))
+    }
+
+    fn iter_entries_by_dir(
+        slf: Py<Inventory>,
+        py: Python,
+        from_dir: Option<Vec<u8>>,
+        specific_file_ids: Option<HashSet<Vec<u8>>>,
+    ) -> PyResult<PyObject> {
+        let from_dir = from_dir.map(FileId::from);
+        let specific_file_ids =
+            specific_file_ids.map(|fids| fids.iter().map(FileId::from).collect());
+
+        Ok(PyCell::new(
+            py,
+            IterEntriesByDirIterator::new(py, slf, from_dir, specific_file_ids),
+        )?
+        .to_object(py))
+    }
+
+    fn change_root_id(&mut self, new_root_id: Vec<u8>) -> PyResult<()> {
+        let new_root_id = FileId::from(new_root_id);
+        self.0.change_root_id(new_root_id);
+        Ok(())
+    }
+
+    fn copy(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+#[pyclass]
+struct IterEntriesByDirIterator {
+    inv: Py<Inventory>,
+    parents: Option<HashSet<FileId>>,
+    stack: Vec<(String, FileId)>,
+    children: VecDeque<(String, Entry)>,
+    specific_file_ids: Option<HashSet<FileId>>,
+    from_dir: Option<FileId>,
+}
+
+impl IterEntriesByDirIterator {
+    fn new(
+        py: Python,
+        inv: Py<Inventory>,
+        from_dir: Option<FileId>,
+        specific_file_ids: Option<HashSet<FileId>>,
+    ) -> Self {
+        let parents = specific_file_ids.as_ref().map(|specific_file_ids| {
+            bazaar::inventory::find_interesting_parents(
+                &inv.borrow(py).0,
+                &specific_file_ids.iter().collect(),
+            )
+            .into_iter()
+            .cloned()
+            .collect()
+        });
+
+        let mut stack: Vec<(String, FileId)> = vec![];
+        let from_dir = if from_dir.is_none() {
+            inv.borrow(py).0.root().map(|e| e.file_id().clone())
+        } else {
+            from_dir
+        };
+
+        let mut children = VecDeque::new();
+
+        if let Some(from_dir) = from_dir.as_ref() {
+            stack.push(("".to_string(), from_dir.clone()));
+            children.extend(
+                inv.borrow(py)
+                    .0
+                    .iter_sorted_children(&from_dir.clone())
+                    .map(|(p, ie)| (p.to_string(), ie.clone())),
+            );
+        }
+
+        Self {
+            inv,
+            parents,
+            children,
+            stack,
+            specific_file_ids,
+            from_dir,
+        }
+    }
+}
+
+#[pymethods]
+impl IterEntriesByDirIterator {
+    fn __iter__(slf: PyRef<Self>) -> PyResult<Py<IterEntriesByDirIterator>> {
+        Ok(slf.into())
+    }
+
+    fn __next__(&mut self, py: Python) -> PyResult<Option<(String, PyObject)>> {
+        loop {
+            if let Some((relpath, ie)) = self.children.pop_front() {
+                return Ok(Some((relpath, entry_to_py(py, ie)?)));
+            }
+            if let Some((cur_relpath, cur_dir)) = self.stack.pop() {
+                for (child_name, child_ie) in self.inv.borrow(py).0.iter_sorted_children(&cur_dir) {
+                    let child_relpath = cur_relpath.to_string() + child_name;
+                    let mut child_dirs = Vec::new();
+
+                    if self.specific_file_ids.is_none()
+                        || self
+                            .specific_file_ids
+                            .as_ref()
+                            .unwrap()
+                            .contains(child_ie.file_id())
+                    {
+                        self.children
+                            .push_back((child_relpath.clone(), child_ie.clone()));
+                    }
+
+                    if child_ie.kind() == Kind::Directory
+                        && (self.parents.is_none()
+                            || self.parents.as_ref().unwrap().contains(child_ie.file_id()))
+                    {
+                        child_dirs.push((child_relpath + "/", child_ie.file_id()))
+                    }
+
+                    child_dirs.reverse();
+                    self.stack
+                        .extend(child_dirs.into_iter().map(|(n, f)| (n, f.clone())));
+                }
+            } else {
+                return Ok(None);
+            }
+        }
+    }
+}
+
+#[pyclass]
+struct IterEntriesIterator {
+    inv: Py<Inventory>,
+    stack: VecDeque<(String, VecDeque<(String, Entry)>)>,
+    recursive: bool,
+    from_dir: Option<FileId>,
+}
+
+impl IterEntriesIterator {
+    fn new(py: Python, inv: Py<Inventory>, from_dir: Option<FileId>, recursive: bool) -> Self {
+        let mut stack = VecDeque::new();
+
+        if let Some(from_dir) = from_dir.as_ref() {
+            let children = inv
+                .borrow(py)
+                .0
+                .iter_sorted_children(&from_dir)
+                .map(|(p, ie)| (p.to_string(), ie.clone()))
+                .collect::<VecDeque<_>>();
+            stack.push_back((String::new(), children));
+        }
+
+        Self {
+            inv,
+            stack,
+            recursive,
+            from_dir,
+        }
+    }
+}
+
+#[pymethods]
+impl IterEntriesIterator {
+    fn __iter__(slf: PyRef<Self>) -> PyResult<Py<IterEntriesIterator>> {
+        Ok(slf.into())
+    }
+
+    fn __next__(&mut self, py: Python) -> PyResult<Option<(String, PyObject)>> {
+        if let Some(from_dir) = self.from_dir.take() {
+            let ie = self.inv.borrow(py).0.get_entry(&from_dir).cloned().unwrap();
+            return Ok(Some((String::new(), entry_to_py(py, ie)?)));
+        }
+        loop {
+            if let Some((base, children)) = self.stack.back_mut() {
+                if let Some((name, ie)) = children.pop_front() {
+                    let path = if base.is_empty() {
+                        name
+                    } else {
+                        format!("{}/{}", base, name)
+                    };
+                    if ie.kind() == Kind::Directory && self.recursive {
+                        let children = self
+                            .inv
+                            .borrow(py)
+                            .0
+                            .iter_sorted_children(ie.file_id())
+                            .map(|(p, ie)| (p.to_string(), ie.clone()))
+                            .collect::<VecDeque<_>>();
+                        self.stack.push_back((path.clone(), children));
+                    }
+                    return Ok(Some((path, entry_to_py(py, ie)?)));
+                } else {
+                    self.stack.pop_back();
+                }
+            } else {
+                return Ok(None);
+            }
+        }
     }
 }
 

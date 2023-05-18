@@ -56,12 +56,12 @@ class TestAddInventoryByDelta(TestCaseWithRepository):
         """Make an inventory delta from two inventories."""
         by_id = getattr(old, '_byid', None)
         if by_id is None:
-            old_ids = {entry.file_id for entry in old.iter_just_entries()}
+            old_ids = {entry.file_id for (_n, entry) in old.iter_entries()}
         else:
             old_ids = set(by_id)
         by_id = getattr(new, '_byid', None)
         if by_id is None:
-            new_ids = {entry.file_id for entry in new.iter_just_entries()}
+            new_ids = {entry.file_id for (_n, entry) in new.iter_entries()}
         else:
             new_ids = set(by_id)
 
