@@ -1,3 +1,4 @@
+use crate::inventory_delta::{InventoryDelta, InventoryDeltaEntry, InventoryDeltaInconsistency};
 use crate::{FileId, RevisionId};
 use breezy_osutils::Kind;
 use std::collections::HashMap;
@@ -882,7 +883,7 @@ impl MutableInventory {
         // done within the loops below but it's safer to validate the delta
         // before starting to mutate the inventory, as there isn't a rollback
         // facility.
-        check_delta_consistency(delta)?;
+        delta.check()?;
 
         let mut children = HashMap::new();
         // Remove all affected items which were in the original inventory,
@@ -1211,7 +1212,7 @@ impl MutableInventory {
             });
         }
 
-        delta
+        InventoryDelta(delta)
     }
 
     pub fn remove_recursive_id(&mut self, file_id: &FileId) -> Vec<Entry> {
@@ -1346,115 +1347,6 @@ pub fn ensure_normalized_name(name: &std::path::Path) -> Result<std::path::PathB
     }
 
     Ok(name.to_path_buf())
-}
-
-pub struct InventoryDeltaEntry {
-    pub old_path: Option<String>,
-    pub new_path: Option<String>,
-    pub file_id: FileId,
-    pub new_entry: Option<Entry>,
-}
-
-pub type InventoryDelta = Vec<InventoryDeltaEntry>;
-
-pub enum InventoryDeltaInconsistency {
-    DuplicateFileId(String, FileId),
-    DuplicateOldPath(String, FileId),
-    DuplicateNewPath(String, FileId),
-    NoPath,
-    MismatchedId(String, FileId, FileId),
-    EntryWithoutPath(String, FileId),
-    PathWithoutEntry(String, FileId),
-    PathMismatch(FileId, String, String),
-    OrphanedChild(FileId),
-    ParentNotDirectory(String, FileId),
-    ParentMissing(FileId),
-    NoSuchId(FileId),
-    InvalidEntryName(String),
-    FileIdCycle(FileId, String, String),
-    PathAlreadyVersioned(String, String),
-}
-
-pub fn check_delta_consistency(delta: &InventoryDelta) -> Result<(), InventoryDeltaInconsistency> {
-    let mut ids = HashSet::new();
-    let mut old_paths = HashSet::new();
-    let mut new_paths = HashSet::new();
-    for entry in delta {
-        let path = if let Some(old_path) = &entry.old_path {
-            old_path
-        } else if let Some(new_path) = &entry.new_path {
-            new_path
-        } else {
-            return Err(InventoryDeltaInconsistency::NoPath);
-        };
-
-        if ids.contains(&entry.file_id) {
-            return Err(InventoryDeltaInconsistency::DuplicateFileId(
-                path.clone(),
-                entry.file_id.clone(),
-            ));
-        }
-        ids.insert(&entry.file_id);
-
-        if entry.old_path.is_some() {
-            let old_path = entry.old_path.as_ref().unwrap();
-            if old_paths.contains(old_path) {
-                return Err(InventoryDeltaInconsistency::DuplicateOldPath(
-                    old_path.clone(),
-                    entry.file_id.clone(),
-                ));
-            }
-            old_paths.insert(old_path);
-        }
-
-        if entry.new_path.is_some() {
-            let new_path = entry.new_path.as_ref().unwrap();
-            if new_paths.contains(new_path) {
-                return Err(InventoryDeltaInconsistency::DuplicateNewPath(
-                    new_path.clone(),
-                    entry.file_id.clone(),
-                ));
-            }
-            new_paths.insert(new_path);
-        }
-
-        if let Some(ref new_entry) = entry.new_entry {
-            if &entry.file_id != new_entry.file_id() {
-                return Err(InventoryDeltaInconsistency::MismatchedId(
-                    path.clone(),
-                    entry.file_id.clone(),
-                    new_entry.file_id().clone(),
-                ));
-            }
-        }
-
-        if entry.new_entry.is_some() && entry.new_path.is_none() {
-            return Err(InventoryDeltaInconsistency::EntryWithoutPath(
-                path.clone(),
-                entry.file_id.clone(),
-            ));
-        }
-
-        if entry.new_entry.is_none() && entry.new_path.is_some() {
-            return Err(InventoryDeltaInconsistency::PathWithoutEntry(
-                path.clone(),
-                entry.file_id.clone(),
-            ));
-        }
-    }
-    Ok(())
-}
-
-pub fn sort_inventory_delta(delta: &mut InventoryDelta) {
-    fn key(entry: &InventoryDeltaEntry) -> (&str, &str, &FileId, Option<&Entry>) {
-        (
-            entry.old_path.as_deref().unwrap_or(""),
-            entry.new_path.as_deref().unwrap_or(""),
-            &entry.file_id,
-            entry.new_entry.as_ref(),
-        )
-    }
-    delta.sort_by(|x, y| key(x).cmp(&key(y)));
 }
 
 pub fn make_entry(
