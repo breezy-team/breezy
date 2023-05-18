@@ -746,13 +746,13 @@ class TestDirStateManipulations(TestCaseWithDirState):
         self.assertEqual([b'a-root-value', b'subdir-id'], sorted(id_index.file_ids()))
         state.add('file-name', b'file-id', 'file', None, '')
         self.assertEqual([b'a-root-value', b'file-id', b'subdir-id'],
-                         sorted(id_index))
+                         sorted(id_index.file_ids()))
         state.update_minimal((b'', b'new-name', b'file-id'), b'f',
                              path_utf8=b'new-name')
         self.assertEqual([b'a-root-value', b'file-id', b'subdir-id'],
-                         sorted(id_index))
+                         sorted(id_index.file_ids()))
         self.assertEqual([(b'', b'new-name', b'file-id')],
-                         sorted(id_index[b'file-id']))
+                         sorted(id_index.get(b'file-id')))
         state._validate()
 
     def test_set_state_from_inventory_no_content_no_parents(self):
