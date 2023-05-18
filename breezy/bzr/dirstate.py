@@ -593,7 +593,7 @@ class DirState:
         # We end up with 2 extra fields, we should have a trailing '\n' to
         # ensure that we read the whole record, and we should have a precursur
         # b'' which ensures that we start after the previous '\n'
-        entry_field_count = self._fields_per_entry() + 1
+        entry_field_count = _fields_per_entry(self._num_present_parents()) + 1
 
         low = self._end_of_header
         high = file_size - 1  # Ignore the final '\0'
@@ -785,7 +785,7 @@ class DirState:
         # We end up with 2 extra fields, we should have a trailing '\n' to
         # ensure that we read the whole record, and we should have a precursur
         # b'' which ensures that we start after the previous '\n'
-        entry_field_count = self._fields_per_entry() + 1
+        entry_field_count = _fields_per_entry(self._num_present_parents()) + 1
 
         low = self._end_of_header
         high = file_size - 1  # Ignore the final '\0'
@@ -1168,20 +1168,6 @@ class DirState:
             # executable
             entire_entry[tree_offset + 3] = DirState._to_yesno[tree_data[3]]
         return b'\0'.join(entire_entry)
-
-    def _fields_per_entry(self):
-        """How many null separated fields should be in each entry row.
-
-        Each line now has an extra '\\n' field which is not used
-        so we just skip over it
-
-        entry size::
-            3 fields for the key
-            + number of fields per tree_data (5) * tree count
-            + newline
-        """
-        tree_count = 1 + self._num_present_parents()
-        return 3 + 5 * tree_count + 1
 
     def _find_block(self, key, add_if_missing=False):
         """Return the block that key should be present in.
@@ -1894,7 +1880,8 @@ class DirState:
         self._cutoff_time = int(time.time()) - 3
         return self._cutoff_time
 
-    def _lstat(self, abspath, entry):
+    @staticmethod
+    def _lstat(abspath, entry):
         """Return the os.lstat value for this path."""
         return os.lstat(abspath)
 
@@ -1947,11 +1934,13 @@ class DirState:
         lines.extend(self._iter_entry_lines())
         return self._get_output_lines(lines)
 
-    def _get_ghosts_line(self, ghost_ids):
+    @staticmethod
+    def _get_ghosts_line(ghost_ids):
         """Create a line for the state file for ghost information."""
         return b'\0'.join([b'%d' % len(ghost_ids)] + ghost_ids)
 
-    def _get_parents_line(self, parent_ids):
+    @staticmethod
+    def _get_parents_line(parent_ids):
         """Create a line for the state file for parents information."""
         return b'\0'.join([b'%d' % len(parent_ids)] + parent_ids)
 
@@ -2317,7 +2306,8 @@ class DirState:
             if entry_key not in entry_keys:
                 id_index[file_id] = entry_keys + (entry_key,)
 
-    def _remove_from_id_index(self, id_index, entry_key):
+    @staticmethod
+    def _remove_from_id_index(id_index, entry_key):
         """Remove this entry from the _id_index mapping.
 
         It is an programming error to call this when the entry_key is not
@@ -2729,7 +2719,8 @@ class DirState:
         self._mark_modified(header_modified=True)
         self._id_index = id_index
 
-    def _sort_entries(self, entry_list):
+    @staticmethod
+    def _sort_entries(entry_list):
         """Given a list of entries, sort them into the right order.
 
         This is done when constructing a new dirstate from trees - normally we
@@ -4279,7 +4270,7 @@ class ProcessEntryPython:
 
 from ._dirstate_rs import (DefaultSHA1Provider, bisect_dirblock,
                            bisect_path_left, bisect_path_right, lt_by_dirs,
-                           pack_stat)
+                           pack_stat, fields_per_entry as _fields_per_entry)
 
 # Try to load the compiled form if possible
 try:

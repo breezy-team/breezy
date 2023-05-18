@@ -265,3 +265,17 @@ pub enum MemoryState {
     InMemoryModified,
     InMemoryHashModified,
 }
+
+pub fn fields_per_entry(num_present_parents: usize) -> usize {
+    // How many null separated fields should be in each entry row.
+    //
+    // Each line now has an extra '\n' field which is not used
+    // so we just skip over it
+    //
+    // entry size:
+    //     3 fields for the key
+    //     + number of fields per tree_data (5) * tree count
+    //     + newline
+    let tree_count = 1 + num_present_parents;
+    return 3 + 5 * tree_count + 1;
+}

@@ -311,6 +311,11 @@ fn pack_stat(stat_result: &PyAny) -> PyResult<PyObject> {
     Ok(PyBytes::new(stat_result.py(), s.as_bytes()).to_object(stat_result.py()))
 }
 
+#[pyfunction]
+fn fields_per_entry(num_present_parents: usize) -> usize {
+    bazaar_dirstate::fields_per_entry(num_present_parents)
+}
+
 /// Helpers for the dirstate module.
 #[pymodule]
 fn _dirstate_rs(_: Python, m: &PyModule) -> PyResult<()> {
@@ -321,6 +326,7 @@ fn _dirstate_rs(_: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(bisect_dirblock))?;
     m.add_wrapped(wrap_pyfunction!(DefaultSHA1Provider))?;
     m.add_wrapped(wrap_pyfunction!(pack_stat))?;
+    m.add_wrapped(wrap_pyfunction!(fields_per_entry))?;
 
     Ok(())
 }
