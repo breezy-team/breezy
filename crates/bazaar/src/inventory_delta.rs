@@ -206,8 +206,8 @@ pub fn serialize_inventory_delta(
 ) -> Result<Vec<Vec<u8>>, InventoryDeltaSerializeError> {
     let mut lines = vec![
         format!("format: {}\n", FORMAT_1).into_bytes(),
-        vec![b"parent: ", old_name.bytes(), b"\n"].concat(),
-        vec![b"version: ", new_name.bytes(), b"\n"].concat(),
+        vec![&b"parent: "[..], old_name.bytes(), &b"\n"[..]].concat(),
+        vec![&b"version: "[..], new_name.bytes(), &b"\n"[..]].concat(),
         format!("versioned_root: {}\n", serialize_bool(versioned_root)).into_bytes(),
         format!("tree_references: {}\n", serialize_bool(tree_references)).into_bytes(),
     ];
