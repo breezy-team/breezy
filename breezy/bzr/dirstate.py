@@ -1150,7 +1150,8 @@ class DirState:
             entry_index += 1
         return result
 
-    def _entry_to_line(self, entry):
+    @staticmethod
+    def _entry_to_line(entry):
         """Serialize entry to a NULL delimited line ready for _get_output_lines.
 
         :param entry: An entry_tuple as defined in the module docstring.
@@ -1291,19 +1292,6 @@ class DirState:
             raise
         return result
 
-    def _check_delta_is_valid(self, delta):
-        inventory.check_delta(delta)
-
-        def delta_key(d):
-            (old_path, new_path, file_id, new_entry) = d
-            if old_path is None:
-                old_path = ''
-            if new_path is None:
-                new_path = ''
-            return (old_path, new_path, file_id, new_entry)
-        delta.sort(key=delta_key, reverse=True)
-        return delta
-
     def update_by_delta(self, delta):
         """Apply an inventory delta to the dirstate for tree 0.
 
@@ -1326,7 +1314,8 @@ class DirState:
         new_ids = set()
         # This loop transforms the delta to single atomic operations that can
         # be executed and validated.
-        delta = self._check_delta_is_valid(delta)
+        delta.check()
+        delta.sort()
         for old_path, new_path, file_id, inv_entry in delta:
             if not isinstance(file_id, bytes):
                 raise AssertionError(
@@ -1375,7 +1364,7 @@ class DirState:
                                                       child_basename)
                     insertions[child[0][2]] = (key, minikind, executable,
                                                fingerprint, new_child_path)
-        self._check_delta_ids_absent(new_ids, delta, 0)
+        self._check_delta_ids_absent(new_ids, 0)
         try:
             self._apply_removals(removals.items())
             self._apply_insertions(insertions.values())
@@ -1463,7 +1452,8 @@ class DirState:
 
         self._parents[0] = new_revid
 
-        delta = self._check_delta_is_valid(delta)
+        delta.check()
+        delta.sort()
         adds = []
         changes = []
         deletes = []
@@ -1572,7 +1562,7 @@ class DirState:
                 deletes.append(
                     (old_path_utf8, new_path_utf8, file_id, None, False))
 
-        self._check_delta_ids_absent(new_ids, delta, 1)
+        self._check_delta_ids_absent(new_ids, 1)
         try:
             # Finish expunging deletes/first half of renames.
             self._update_basis_apply_deletes(deletes)
@@ -1596,7 +1586,7 @@ class DirState:
         self._id_index = None
         return
 
-    def _check_delta_ids_absent(self, new_ids, delta, tree_index):
+    def _check_delta_ids_absent(self, new_ids, tree_index):
         """Check that none of the file_ids in new_ids are present in a tree."""
         if not new_ids:
             return

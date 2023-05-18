@@ -19,6 +19,7 @@ from fastimport import helpers, processor
 
 from ... import debug, errors, osutils, revision
 from ...bzr import generate_ids, inventory, serializer
+from ...bzr.inventory_delta import InventoryDelta
 from ...trace import mutter, note, warning
 from .helpers import mode_to_kind
 
@@ -557,7 +558,7 @@ class CommitHandler(processor.CommitHandler):
             while candidates:
                 never_born = set()
                 parent_dirs_that_might_become_empty = set()
-                for path, file_id in self._empty_after_delta(delta, candidates):
+                for path, file_id in self._empty_after_delta(InventoryDelta(delta), candidates):
                     newly_added = self._new_file_ids.get(path)
                     if newly_added:
                         never_born.add(newly_added)
@@ -570,7 +571,7 @@ class CommitHandler(processor.CommitHandler):
                 # Clean up entries that got deleted before they were ever added
                 if never_born:
                     delta = [de for de in delta if de[2] not in never_born]
-        return delta
+        return InventoryDelta(delta)
 
     def _empty_after_delta(self, delta, candidates):
         #self.mutter("delta so far is:\n%s" % "\n".join([str(de) for de in delta]))
