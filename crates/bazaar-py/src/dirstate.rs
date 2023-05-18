@@ -421,6 +421,14 @@ fn inv_entry_to_details(
     )
 }
 
+#[pyfunction]
+fn get_output_lines(py: Python, lines: Vec<&[u8]>) -> Vec<PyObject> {
+    bazaar_dirstate::get_output_lines(lines)
+        .into_iter()
+        .map(|x| PyBytes::new(py, x.as_slice()).to_object(py))
+        .collect()
+}
+
 /// Helpers for the dirstate module.
 pub fn _dirstate_rs(py: Python) -> PyResult<&PyModule> {
     let m = PyModule::new(py, "dirstate")?;
@@ -436,6 +444,7 @@ pub fn _dirstate_rs(py: Python) -> PyResult<&PyModule> {
     m.add_wrapped(wrap_pyfunction!(get_parents_line))?;
     m.add_class::<IdIndex>()?;
     m.add_wrapped(wrap_pyfunction!(inv_entry_to_details))?;
+    m.add_wrapped(wrap_pyfunction!(get_output_lines))?;
 
     Ok(m)
 }

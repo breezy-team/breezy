@@ -89,6 +89,7 @@ dependencies = [
  "base64",
  "bazaar",
  "breezy-osutils",
+ "crc32fast",
  "lazy_static",
  "maplit",
 ]

@@ -1150,7 +1150,8 @@ class DirState:
             entry_index += 1
         return result
 
-    def _entry_to_line(self, entry):
+    @staticmethod
+    def _entry_to_line(entry):
         """Serialize entry to a NULL delimited line ready for _get_output_lines.
 
         :param entry: An entry_tuple as defined in the module docstring.
@@ -1277,7 +1278,8 @@ class DirState:
             raise
         return result
 
-    def _check_delta_is_valid(self, delta):
+    @staticmethod
+    def _check_delta_is_valid(delta):
         inventory.check_delta(delta)
 
         def delta_key(d):
@@ -1898,7 +1900,8 @@ class DirState:
         else:
             return old_executable
 
-    def _read_link(self, abspath, old_link):
+    @staticmethod
+    def _read_link(abspath, old_link):
         """Read the target of a symlink."""
         # TODO: jam 200700301 On Win32, this could just return the value
         #       already in memory. However, this really needs to be done at a
@@ -1931,12 +1934,8 @@ class DirState:
         lines = []
         lines.append(_get_parents_line(self.get_parent_ids()))
         lines.append(_get_ghosts_line(self._ghosts))
-        lines.extend(self._iter_entry_lines())
-        return self._get_output_lines(lines)
-
-    def _iter_entry_lines(self):
-        """Create lines for entries."""
-        return map(self._entry_to_line, self._iter_entries())
+        lines.extend(map(self._entry_to_line, self._iter_entries()))
+        return _get_output_lines(lines)
 
     def _get_fields_to_entry(self):
         """Get a function which converts entry fields into a entry record.
@@ -2241,23 +2240,6 @@ class DirState:
                 id_index.add(key)
             self._id_index = id_index
         return self._id_index
-
-    @classmethod
-    def _get_output_lines(cls, lines):
-        """Format lines for final output.
-
-        :param lines: A sequence of lines containing the parents list and the
-            path lines.
-        """
-        output_lines = [DirState.HEADER_FORMAT_3]
-        lines.append(b'')  # a final newline
-        inventory_text = b'\0\n\0'.join(lines)
-        output_lines.append(b'crc32: %d\n' % (zlib.crc32(inventory_text),))
-        # -3, 1 for num parents, 1 for ghosts, 1 for final newline
-        num_entries = len(lines) - 3
-        output_lines.append(b'num_entries: %d\n' % (num_entries,))
-        output_lines.append(inventory_text)
-        return output_lines
 
     @classmethod
     def _make_deleted_row(cls, fileid_utf8, parents):
@@ -4196,6 +4178,7 @@ _get_ghosts_line = _dirstate_rs.get_ghosts_line
 _get_parents_line = _dirstate_rs.get_parents_line
 IdIndex = _dirstate_rs.IdIndex
 _inv_entry_to_details = _dirstate_rs.inv_entry_to_details
+_get_output_lines = _dirstate_rs.get_output_lines
 
 # Try to load the compiled form if possible
 try:

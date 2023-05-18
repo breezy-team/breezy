@@ -417,3 +417,32 @@ pub fn inv_entry_to_details(e: &InventoryEntry) -> (u8, Vec<u8>, u64, bool, Vec<
 
     (minikind, fingerprint, size, executable, tree_data)
 }
+
+fn _crc32(bit: &[u8]) -> u32 {
+    let mut hasher = crc32fast::Hasher::new();
+    hasher.update(bit);
+    hasher.finalize()
+}
+
+/// Format lines for final output.
+///
+/// Args:
+///   lines: A sequence of lines containing the parents list and the path lines.
+pub fn get_output_lines(mut lines: Vec<&[u8]>) -> Vec<Vec<u8>> {
+    // Format lines for final output.
+    let mut output_lines = vec![HEADER_FORMAT_3];
+    lines.push(b"");
+
+    let inventory_text = lines.join(&b"\0\n\0"[..]).to_vec();
+
+    let crc32 = _crc32(inventory_text.as_slice());
+    let crc32_line = format!("crc32: {}\n", crc32).into_bytes();
+    output_lines.push(crc32_line.as_slice());
+
+    let num_entries = lines.len() - 3;
+    let num_entries_line = format!("num_entries: {}\n", num_entries).into_bytes();
+    output_lines.push(num_entries_line.as_slice());
+    output_lines.push(inventory_text.as_slice());
+
+    output_lines.into_iter().map(|l| l.to_vec()).collect()
+}
