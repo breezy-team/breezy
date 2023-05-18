@@ -55,9 +55,7 @@ def read_colordiffrc(path):
 
             tmp = val
 
-            try:
-                terminal.string_to_color(tmp)
-            except ValueError:
+            if not terminal.color_exists(tmp):
                 continue
 
             colors[key] = val

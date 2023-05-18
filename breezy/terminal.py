@@ -19,6 +19,7 @@ from . import _osutils_rs
 
 has_ansi_colors = _osutils_rs.has_ansi_colors
 colorstring = _osutils_rs.colorstring
+color_exists = _osutils_rs.color_exists
 
 
 class FG:
