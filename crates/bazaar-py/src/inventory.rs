@@ -72,7 +72,7 @@ fn common_ie_check(
 }
 
 #[pyclass(subclass)]
-pub struct InventoryEntry(Entry);
+pub struct InventoryEntry(pub Entry);
 
 #[pymethods]
 impl InventoryEntry {

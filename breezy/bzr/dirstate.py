@@ -565,7 +565,7 @@ class DirState:
             self._ensure_block(block_index, entry_index, utf8path)
         self._mark_modified()
         if self._id_index:
-            self._add_to_id_index(self._id_index, entry_key)
+            self._id_index.add(entry_key)
 
     def _bisect(self, paths):
         """Bisect through the disk structure for specific rows.
@@ -593,7 +593,7 @@ class DirState:
         # We end up with 2 extra fields, we should have a trailing '\n' to
         # ensure that we read the whole record, and we should have a precursur
         # b'' which ensures that we start after the previous '\n'
-        entry_field_count = self._fields_per_entry() + 1
+        entry_field_count = _fields_per_entry(self._num_present_parents()) + 1
 
         low = self._end_of_header
         high = file_size - 1  # Ignore the final '\0'
@@ -785,7 +785,7 @@ class DirState:
         # We end up with 2 extra fields, we should have a trailing '\n' to
         # ensure that we read the whole record, and we should have a precursur
         # b'' which ensures that we start after the previous '\n'
-        entry_field_count = self._fields_per_entry() + 1
+        entry_field_count = _fields_per_entry(self._num_present_parents()) + 1
 
         low = self._end_of_header
         high = file_size - 1  # Ignore the final '\0'
@@ -1170,20 +1170,6 @@ class DirState:
             entire_entry[tree_offset + 3] = DirState._to_yesno[tree_data[3]]
         return b'\0'.join(entire_entry)
 
-    def _fields_per_entry(self):
-        """How many null separated fields should be in each entry row.
-
-        Each line now has an extra '\\n' field which is not used
-        so we just skip over it
-
-        entry size::
-            3 fields for the key
-            + number of fields per tree_data (5) * tree count
-            + newline
-        """
-        tree_count = 1 + self._num_present_parents()
-        return 3 + 5 * tree_count + 1
-
     def _find_block(self, key, add_if_missing=False):
         """Return the block that key should be present in.
 
@@ -1460,7 +1446,7 @@ class DirState:
         # The paths this function accepts are unicode and must be encoded as we
         # go.
         encode = cache_utf8.encode
-        inv_to_entry = self._inv_entry_to_details
+        inv_to_entry = _inv_entry_to_details
         # delta is now (deletes, changes), (adds) in reverse lexographical
         # order.
         # deletes in reverse lexographic order are safe to process in situ.
@@ -1592,7 +1578,7 @@ class DirState:
             return
         id_index = self._get_id_index()
         for file_id in new_ids:
-            for key in id_index.get(file_id, ()):
+            for key in id_index.get(file_id):
                 block_i, entry_i, d_present, f_present = \
                     self._get_block_entry_index(key[0], key[1], tree_index)
                 if not f_present:
@@ -1703,7 +1689,7 @@ class DirState:
                 # we haven't been keeping it updated. However, it should be
                 # fine for tree0, and that gives us enough info for what we
                 # need
-                keys = id_index.get(file_id, ())
+                keys = id_index.get(file_id)
                 for key in keys:
                     block_i, entry_i, d_present, f_present = \
                         self._get_block_entry_index(key[0], key[1], 0)
@@ -1884,7 +1870,8 @@ class DirState:
         self._cutoff_time = int(time.time()) - 3
         return self._cutoff_time
 
-    def _lstat(self, abspath, entry):
+    @staticmethod
+    def _lstat(abspath, entry):
         """Return the os.lstat value for this path."""
         return os.lstat(abspath)
 
@@ -1901,7 +1888,8 @@ class DirState:
         else:
             return old_executable
 
-    def _read_link(self, abspath, old_link):
+    @staticmethod
+    def _read_link(abspath, old_link):
         """Read the target of a symlink."""
         # TODO: jam 200700301 On Win32, this could just return the value
         #       already in memory. However, this really needs to be done at a
@@ -1932,22 +1920,10 @@ class DirState:
             self._state_file.seek(0)
             return self._state_file.readlines()
         lines = []
-        lines.append(self._get_parents_line(self.get_parent_ids()))
-        lines.append(self._get_ghosts_line(self._ghosts))
-        lines.extend(self._iter_entry_lines())
-        return self._get_output_lines(lines)
-
-    def _get_ghosts_line(self, ghost_ids):
-        """Create a line for the state file for ghost information."""
-        return b'\0'.join([b'%d' % len(ghost_ids)] + ghost_ids)
-
-    def _get_parents_line(self, parent_ids):
-        """Create a line for the state file for parents information."""
-        return b'\0'.join([b'%d' % len(parent_ids)] + parent_ids)
-
-    def _iter_entry_lines(self):
-        """Create lines for entries."""
-        return map(self._entry_to_line, self._iter_entries())
+        lines.append(_get_parents_line(self.get_parent_ids()))
+        lines.append(_get_ghosts_line(self._ghosts))
+        lines.extend(map(self._entry_to_line, self._iter_entries()))
+        return _get_output_lines(lines)
 
     def _get_fields_to_entry(self):
         """Get a function which converts entry fields into a entry record.
@@ -2113,7 +2089,7 @@ class DirState:
                                           ' tree_index, file_id and path')
             return entry
         else:
-            possible_keys = self._get_id_index().get(fileid_utf8, ())
+            possible_keys = self._get_id_index().get(fileid_utf8)
             if not possible_keys:
                 return None, None
             for key in possible_keys:
@@ -2189,42 +2165,6 @@ class DirState:
             raise
         return result
 
-    @staticmethod
-    def _inv_entry_to_details(inv_entry):
-        """Convert an inventory entry (from a revision tree) to state details.
-
-        :param inv_entry: An inventory entry whose sha1 and link targets can be
-            relied upon, and which has a revision set.
-        :return: A details tuple - the details for a single tree at a path +
-            id.
-        """
-        kind = inv_entry.kind
-        minikind = DirState._kind_to_minikind[kind]
-        tree_data = inv_entry.revision
-        if kind == 'directory':
-            fingerprint = b''
-            size = 0
-            executable = False
-        elif kind == 'symlink':
-            if inv_entry.symlink_target is None:
-                fingerprint = b''
-            else:
-                fingerprint = inv_entry.symlink_target.encode('utf8')
-            size = 0
-            executable = False
-        elif kind == 'file':
-            fingerprint = inv_entry.text_sha1 or b''
-            size = inv_entry.text_size or 0
-            executable = inv_entry.executable
-        elif kind == 'tree-reference':
-            fingerprint = inv_entry.reference_revision or b''
-            size = 0
-            executable = False
-        else:
-            raise Exception(f"can't pack {inv_entry}")
-        return static_tuple.StaticTuple(minikind, fingerprint, size,
-                                        executable, tree_data)
-
     def _iter_child_entries(self, tree_index, path_utf8):
         """Iterate over all the entries that are children of path_utf.
 
@@ -2283,57 +2223,11 @@ class DirState:
         that file_id appears in one of the trees.
         """
         if self._id_index is None:
-            id_index = {}
+            id_index = IdIndex()
             for key, _tree_details in self._iter_entries():
-                self._add_to_id_index(id_index, key)
+                id_index.add(key)
             self._id_index = id_index
         return self._id_index
-
-    def _add_to_id_index(self, id_index, entry_key):
-        """Add this entry to the _id_index mapping."""
-        # This code used to use a set for every entry in the id_index. However,
-        # it is *rare* to have more than one entry. So a set is a large
-        # overkill. And even when we do, we won't ever have more than the
-        # number of parent trees. Which is still a small number (rarely >2). As
-        # such, we use a simple tuple, and do our own uniqueness checks. While
-        # the 'in' check is O(N) since N is nicely bounded it shouldn't ever
-        # cause quadratic failure.
-        file_id = entry_key[2]
-        entry_key = static_tuple.StaticTuple.from_sequence(entry_key)
-        if file_id not in id_index:
-            id_index[file_id] = static_tuple.StaticTuple(entry_key,)
-        else:
-            entry_keys = id_index[file_id]
-            if entry_key not in entry_keys:
-                id_index[file_id] = entry_keys + (entry_key,)
-
-    def _remove_from_id_index(self, id_index, entry_key):
-        """Remove this entry from the _id_index mapping.
-
-        It is an programming error to call this when the entry_key is not
-        already present.
-        """
-        file_id = entry_key[2]
-        entry_keys = list(id_index[file_id])
-        entry_keys.remove(entry_key)
-        id_index[file_id] = static_tuple.StaticTuple.from_sequence(entry_keys)
-
-    @classmethod
-    def _get_output_lines(cls, lines):
-        """Format lines for final output.
-
-        :param lines: A sequence of lines containing the parents list and the
-            path lines.
-        """
-        output_lines = [DirState.HEADER_FORMAT_3]
-        lines.append(b'')  # a final newline
-        inventory_text = b'\0\n\0'.join(lines)
-        output_lines.append(b'crc32: %d\n' % (zlib.crc32(inventory_text),))
-        # -3, 1 for num parents, 1 for ghosts, 1 for final newline
-        num_entries = len(lines) - 3
-        output_lines.append(b'num_entries: %d\n' % (num_entries,))
-        output_lines.append(inventory_text)
-        return output_lines
 
     @classmethod
     def _make_deleted_row(cls, fileid_utf8, parents):
@@ -2601,7 +2495,7 @@ class DirState:
         # - find other keys containing a path
         # We accumulate each entry via this dictionary, including the root
         by_path = {}
-        id_index = {}
+        id_index = IdIndex()
         # we could do parallel iterators, but because file id data may be
         # scattered throughout, we dont save on index overhead: we have to look
         # at everything anyway. We can probably save cycles by reusing parent
@@ -2626,7 +2520,7 @@ class DirState:
                 [DirState.NULL_PARENT_DETAILS] * parent_count
             # TODO: Possibly inline this, since we know it isn't present yet
             #       id_index[entry[0][2]] = (entry[0],)
-            self._add_to_id_index(id_index, entry[0])
+            id_index.add(entry[0])
 
         # now the parent trees:
         for tree_index, tree in enumerate(parent_trees):
@@ -2661,7 +2555,7 @@ class DirState:
                 new_entry_key = st(dirname, basename, file_id)
                 # tree index consistency: All other paths for this id in this tree
                 # index must point to the correct path.
-                entry_keys = id_index.get(file_id, ())
+                entry_keys = id_index.get(file_id)
                 for entry_key in entry_keys:
                     # TODO:PROFILING: It might be faster to just update
                     # rather than checking if we need to, and then overwrite
@@ -2680,7 +2574,7 @@ class DirState:
                     # there is already an entry where this data belongs, just
                     # insert it.
                     by_path[new_entry_key][tree_index] = \
-                        self._inv_entry_to_details(entry)
+                        _inv_entry_to_details(entry)
                 else:
                     # add relocated entries to the horizontal axis - this row
                     # mapping from path,id. We need to look up the correct path
@@ -2705,10 +2599,10 @@ class DirState:
                                 real_path = (b'/'.join(a_key[0:2])).strip(b'/')
                                 new_details.append(st(b'r', real_path, 0, False,
                                                       b''))
-                    new_details.append(self._inv_entry_to_details(entry))
+                    new_details.append(_inv_entry_to_details(entry))
                     new_details.extend(new_location_suffix)
                     by_path[new_entry_key] = new_details
-                    self._add_to_id_index(id_index, new_entry_key)
+                    id_index.add(new_entry_key)
         # --- end generation of full tree mappings
 
         # sort and output all the entries
@@ -2719,7 +2613,8 @@ class DirState:
         self._mark_modified(header_modified=True)
         self._id_index = id_index
 
-    def _sort_entries(self, entry_list):
+    @staticmethod
+    def _sort_entries(entry_list):
         """Given a list of entries, sort them into the right order.
 
         This is done when constructing a new dirstate from trees - normally we
@@ -2928,7 +2823,7 @@ class DirState:
             block[1].pop(entry_index)
             # if we have an id_index in use, remove this key from it for this id.
             if self._id_index is not None:
-                self._remove_from_id_index(self._id_index, current_old[0])
+                self._id_index.remove(current_old[0])
         # update all remaining keys for this id to record it as absent. The
         # existing details may either be the record we are marking as deleted
         # (if there were other trees with the id present at this path), or may
@@ -3006,7 +2901,7 @@ class DirState:
                     else:
                         break
             # new entry, synthesis cross reference here,
-            existing_keys = id_index.get(key[2], ())
+            existing_keys = id_index.get(key[2])
             if not existing_keys:
                 # not currently in the state, simplest case
                 new_entry = key, [new_details] + self._empty_parent_info()
@@ -3084,7 +2979,7 @@ class DirState:
                         new_entry[1].append(
                             (b'r', pointer_path, 0, False, b''))
             block.insert(entry_index, new_entry)
-            self._add_to_id_index(id_index, key)
+            id_index.add(key)
         else:
             # Does the new state matter?
             block[entry_index][1][0] = new_details
@@ -3099,7 +2994,7 @@ class DirState:
             # converted to relocated.
             if path_utf8 is None:
                 raise AssertionError('no path')
-            existing_keys = id_index.get(key[2], ())
+            existing_keys = id_index.get(key[2])
             if key not in existing_keys:
                 raise AssertionError('We found the entry in the blocks, but'
                                      ' the key is not in the id_index.'
@@ -3147,7 +3042,7 @@ class DirState:
                 break
         if not present_in_row:
             block.pop(index)
-            self._remove_from_id_index(id_index, entry[0])
+            id_index.remove(entry[0])
             return True
         return False
 
@@ -3289,28 +3184,19 @@ class DirState:
                 raise AssertionError(
                     f"entry {entry!r} has no data for any tree.")
         if self._id_index is not None:
-            for file_id, entry_keys in self._id_index.items():
-                for entry_key in entry_keys:
-                    # Check that the entry in the map is pointing to the same
-                    # file_id
-                    if entry_key[2] != file_id:
-                        raise AssertionError(
-                            f'file_id {file_id!r} did not match entry key {entry_key}')
-                    # And that from this entry key, we can look up the original
-                    # record
-                    block_index, present = self._find_block_index_from_key(
-                        entry_key)
-                    if not present:
-                        raise AssertionError(
-                            'missing block for entry key: %r', entry_key)
-                    entry_index, present = self._find_entry_index(
-                        entry_key, self._dirblocks[block_index][1])
-                    if not present:
-                        raise AssertionError(
-                            'missing entry for key: %r', entry_key)
-                if len(entry_keys) != len(set(entry_keys)):
+            for entry_key in self._id_index.iter_all():
+                # And that from this entry key, we can look up the original
+                # record
+                block_index, present = self._find_block_index_from_key(
+                    entry_key)
+                if not present:
                     raise AssertionError(
-                        f'id_index contained non-unique data for {entry_keys}')
+                        'missing block for entry key: %r', entry_key)
+                entry_index, present = self._find_entry_index(
+                    entry_key, self._dirblocks[block_index][1])
+                if not present:
+                    raise AssertionError(
+                        'missing entry for key: %r', entry_key)
 
     def _wipe_state(self):
         """Forget all state information about the dirstate."""
@@ -4267,9 +4153,21 @@ class ProcessEntryPython:
         return dir_info
 
 
-from ._dirstate_rs import (DefaultSHA1Provider, bisect_dirblock,
-                           bisect_path_left, bisect_path_right, lt_by_dirs,
-                           pack_stat)
+from .._bzr_rs import dirstate as _dirstate_rs
+
+DefaultSHA1Provider = _dirstate_rs.DefaultSHA1Provider
+bisect_dirblock = _dirstate_rs.bisect_dirblock
+bisect_path_left = _dirstate_rs.bisect_path_left
+bisect_path_right = _dirstate_rs.bisect_path_right
+lt_by_dirs = _dirstate_rs.lt_by_dirs
+lt_path_by_dirblock = _dirstate_rs.lt_path_by_dirblock
+pack_stat = _dirstate_rs.pack_stat
+_fields_per_entry = _dirstate_rs.fields_per_entry
+_get_ghosts_line = _dirstate_rs.get_ghosts_line
+_get_parents_line = _dirstate_rs.get_parents_line
+IdIndex = _dirstate_rs.IdIndex
+_inv_entry_to_details = _dirstate_rs.inv_entry_to_details
+_get_output_lines = _dirstate_rs.get_output_lines
 
 # Try to load the compiled form if possible
 try:

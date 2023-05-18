@@ -24,7 +24,6 @@
 # it would be nice not to need to hold the backpointer here.
 
 from collections import deque
-
 from typing import TYPE_CHECKING
 
 from ..lazy_import import lazy_import
@@ -250,7 +249,7 @@ class CommonInventory:
                         child_dirs.append((child_relpath + '/', child_ie))
             stack.extend(reversed(child_dirs))
 
-    def _make_delta(self, old: "CommonInventory") -> "InventoryDelta":
+    def _make_delta(self, old: "CommonInventory"):
         """Make an inventory delta from two inventories."""
         old_ids = set(old.iter_all_ids())
         new_ids = set(self.iter_all_ids())
@@ -419,6 +418,12 @@ class CommonInventory:
         for parent in self._iter_file_id_parents(file_id):
             p.insert(0, parent.file_id)
         return p
+
+    def get_entry(self, file_id):
+        raise NotImplementedError(self.get_entry)
+
+    def iter_all_ids(self):
+        raise NotImplementedError(self.iter_all_ids)
 
 
 class Inventory(CommonInventory):
@@ -769,7 +774,7 @@ class Inventory(CommonInventory):
     def has_id(self, file_id):
         return (file_id in self._byid)
 
-    def _make_delta(self, old: CommonInventory) -> "InventoryDelta":
+    def _make_delta(self, old: CommonInventory):
         """Make an inventory delta from two inventories."""
         old_getter = old.get_entry
         new_getter = self.get_entry
@@ -1623,7 +1628,7 @@ class CHKInventory(CommonInventory):
         """Return the number of entries in the inventory."""
         return len(self.id_to_entry)
 
-    def _make_delta(self, old: CommonInventory) -> "InventoryDelta":
+    def _make_delta(self, old: CommonInventory):
         """Make an inventory delta from two inventories."""
         if not isinstance(old, CHKInventory):
             return CommonInventory._make_delta(self, old)

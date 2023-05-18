@@ -1,5 +1,7 @@
 #![allow(non_snake_case)]
 
+use bazaar::inventory::Entry as InventoryEntry;
+use bazaar::FileId;
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyDict, PyList, PyString, PyTuple};
@@ -311,9 +313,125 @@ fn pack_stat(stat_result: &PyAny) -> PyResult<PyObject> {
     Ok(PyBytes::new(stat_result.py(), s.as_bytes()).to_object(stat_result.py()))
 }
 
+#[pyfunction]
+fn fields_per_entry(num_present_parents: usize) -> usize {
+    bazaar_dirstate::fields_per_entry(num_present_parents)
+}
+
+#[pyfunction]
+fn get_ghosts_line(py: Python, ghost_ids: Vec<&[u8]>) -> PyResult<PyObject> {
+    let bs = bazaar_dirstate::get_ghosts_line(ghost_ids.as_slice());
+    Ok(PyBytes::new(py, bs.as_slice()).to_object(py))
+}
+
+#[pyfunction]
+fn get_parents_line(py: Python, parent_ids: Vec<&[u8]>) -> PyResult<PyObject> {
+    let bs = bazaar_dirstate::get_parents_line(parent_ids.as_slice());
+    Ok(PyBytes::new(py, bs.as_slice()).to_object(py))
+}
+
+#[pyclass]
+struct IdIndex(bazaar_dirstate::IdIndex);
+
+#[pymethods]
+impl IdIndex {
+    #[new]
+    fn new() -> Self {
+        IdIndex(bazaar_dirstate::IdIndex::new())
+    }
+
+    fn add(&mut self, py: Python, entry: PyObject) -> PyResult<()> {
+        if entry.as_ref(py).len()? != 3 {
+            return Err(PyTypeError::new_err("Not a tuple of 3 items"));
+        }
+        let entry = (
+            entry.as_ref(py).get_item(0)?.extract::<&[u8]>()?,
+            entry.as_ref(py).get_item(1)?.extract::<&[u8]>()?,
+            entry.as_ref(py).get_item(2)?.extract::<&[u8]>()?,
+        );
+
+        let _file_id = FileId::from(entry.2);
+        self.0.add((entry.0, entry.1, &FileId::from(entry.2)));
+        Ok(())
+    }
+
+    fn remove(&mut self, py: Python, entry: PyObject) -> PyResult<()> {
+        if entry.as_ref(py).len()? != 3 {
+            return Err(PyTypeError::new_err("Not a tuple of 3 items"));
+        }
+        let entry = (
+            entry.as_ref(py).get_item(0)?.extract::<&[u8]>()?,
+            entry.as_ref(py).get_item(1)?.extract::<&[u8]>()?,
+            entry.as_ref(py).get_item(2)?.extract::<&[u8]>()?,
+        );
+        let file_id = FileId::from(entry.2);
+        self.0.remove((entry.0, entry.1, &file_id));
+        Ok(())
+    }
+
+    fn get(&self, py: Python, file_id: &[u8]) -> PyResult<Vec<(PyObject, PyObject, PyObject)>> {
+        let file_id = FileId::from(file_id);
+        let ret = self.0.get(&file_id);
+        Ok(ret
+            .iter()
+            .map(|(a, b, c)| {
+                (
+                    PyBytes::new(py, a).to_object(py),
+                    PyBytes::new(py, b).to_object(py),
+                    PyBytes::new(py, c.bytes()).to_object(py),
+                )
+            })
+            .collect())
+    }
+
+    fn iter_all(&self, py: Python) -> PyResult<Vec<(PyObject, PyObject, PyObject)>> {
+        let ret = self.0.iter_all();
+        Ok(ret
+            .map(|(a, b, c)| {
+                (
+                    PyBytes::new(py, a).to_object(py),
+                    PyBytes::new(py, b).to_object(py),
+                    PyBytes::new(py, c.bytes()).to_object(py),
+                )
+            })
+            .collect())
+    }
+
+    fn file_ids(&self, py: Python) -> Vec<PyObject> {
+        self.0
+            .file_ids()
+            .map(|x| PyBytes::new(py, x.bytes()).into_py(py))
+            .collect()
+    }
+}
+
+#[pyfunction]
+fn inv_entry_to_details(
+    py: Python,
+    e: &crate::inventory::InventoryEntry,
+) -> (PyObject, PyObject, u64, bool, PyObject) {
+    let ret = bazaar_dirstate::inv_entry_to_details(&e.0);
+
+    (
+        PyBytes::new(py, &[ret.0]).to_object(py),
+        PyBytes::new(py, ret.1.as_slice()).to_object(py),
+        ret.2,
+        ret.3,
+        PyBytes::new(py, ret.4.as_slice()).to_object(py),
+    )
+}
+
+#[pyfunction]
+fn get_output_lines(py: Python, lines: Vec<&[u8]>) -> Vec<PyObject> {
+    bazaar_dirstate::get_output_lines(lines)
+        .into_iter()
+        .map(|x| PyBytes::new(py, x.as_slice()).to_object(py))
+        .collect()
+}
+
 /// Helpers for the dirstate module.
-#[pymodule]
-fn _dirstate_rs(_: Python, m: &PyModule) -> PyResult<()> {
+pub fn _dirstate_rs(py: Python) -> PyResult<&PyModule> {
+    let m = PyModule::new(py, "dirstate")?;
     m.add_wrapped(wrap_pyfunction!(lt_by_dirs))?;
     m.add_wrapped(wrap_pyfunction!(bisect_path_left))?;
     m.add_wrapped(wrap_pyfunction!(bisect_path_right))?;
@@ -321,6 +439,12 @@ fn _dirstate_rs(_: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(bisect_dirblock))?;
     m.add_wrapped(wrap_pyfunction!(DefaultSHA1Provider))?;
     m.add_wrapped(wrap_pyfunction!(pack_stat))?;
+    m.add_wrapped(wrap_pyfunction!(fields_per_entry))?;
+    m.add_wrapped(wrap_pyfunction!(get_ghosts_line))?;
+    m.add_wrapped(wrap_pyfunction!(get_parents_line))?;
+    m.add_class::<IdIndex>()?;
+    m.add_wrapped(wrap_pyfunction!(inv_entry_to_details))?;
+    m.add_wrapped(wrap_pyfunction!(get_output_lines))?;
 
-    Ok(())
+    Ok(m)
 }
