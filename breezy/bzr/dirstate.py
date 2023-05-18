@@ -1930,14 +1930,9 @@ class DirState:
             return self._state_file.readlines()
         lines = []
         lines.append(self._get_parents_line(self.get_parent_ids()))
-        lines.append(self._get_ghosts_line(self._ghosts))
+        lines.append(_get_ghosts_line(self._ghosts))
         lines.extend(self._iter_entry_lines())
         return self._get_output_lines(lines)
-
-    @staticmethod
-    def _get_ghosts_line(ghost_ids):
-        """Create a line for the state file for ghost information."""
-        return b'\0'.join([b'%d' % len(ghost_ids)] + ghost_ids)
 
     @staticmethod
     def _get_parents_line(parent_ids):
@@ -4270,7 +4265,8 @@ class ProcessEntryPython:
 
 from ._dirstate_rs import (DefaultSHA1Provider, bisect_dirblock,
                            bisect_path_left, bisect_path_right, lt_by_dirs,
-                           pack_stat, fields_per_entry as _fields_per_entry)
+                           pack_stat, fields_per_entry as _fields_per_entry,
+                           get_ghosts_line as _get_ghosts_line)
 
 # Try to load the compiled form if possible
 try:

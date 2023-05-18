@@ -316,6 +316,12 @@ fn fields_per_entry(num_present_parents: usize) -> usize {
     bazaar_dirstate::fields_per_entry(num_present_parents)
 }
 
+#[pyfunction]
+fn get_ghosts_line(py: Python, ghost_ids: Vec<&[u8]>) -> PyResult<PyObject> {
+    let bs = bazaar_dirstate::get_ghosts_line(ghost_ids.as_slice());
+    Ok(PyBytes::new(py, bs.as_slice()).to_object(py))
+}
+
 /// Helpers for the dirstate module.
 #[pymodule]
 fn _dirstate_rs(_: Python, m: &PyModule) -> PyResult<()> {
@@ -327,6 +333,7 @@ fn _dirstate_rs(_: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(DefaultSHA1Provider))?;
     m.add_wrapped(wrap_pyfunction!(pack_stat))?;
     m.add_wrapped(wrap_pyfunction!(fields_per_entry))?;
+    m.add_wrapped(wrap_pyfunction!(get_ghosts_line))?;
 
     Ok(())
 }

@@ -277,5 +277,14 @@ pub fn fields_per_entry(num_present_parents: usize) -> usize {
     //     + number of fields per tree_data (5) * tree count
     //     + newline
     let tree_count = 1 + num_present_parents;
-    return 3 + 5 * tree_count + 1;
+    3 + 5 * tree_count + 1
+}
+
+pub fn get_ghosts_line(ghost_ids: &[&[u8]]) -> Vec<u8> {
+    // Create a line for the state file for ghost information.
+    let mut entries = Vec::new();
+    let l = format!("{}", ghost_ids.len());
+    entries.push(l.as_bytes());
+    entries.extend_from_slice(ghost_ids);
+    entries.join(&b"\0"[..])
 }
