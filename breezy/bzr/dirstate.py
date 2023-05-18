@@ -4219,12 +4219,12 @@ class ProcessEntryPython:
         return dir_info
 
 
-from ._dirstate_rs import (DefaultSHA1Provider, bisect_dirblock,
-                           bisect_path_left, bisect_path_right, lt_by_dirs,
-                           pack_stat, fields_per_entry as _fields_per_entry,
-                           get_ghosts_line as _get_ghosts_line,
-                           get_parents_line as _get_parents_line,
-                           IdIndex)
+from ._dirstate_rs import (DefaultSHA1Provider, IdIndex, bisect_dirblock,
+                           bisect_path_left, bisect_path_right)
+from ._dirstate_rs import fields_per_entry as _fields_per_entry
+from ._dirstate_rs import get_ghosts_line as _get_ghosts_line
+from ._dirstate_rs import get_parents_line as _get_parents_line
+from ._dirstate_rs import lt_by_dirs, pack_stat
 
 # Try to load the compiled form if possible
 try:
