@@ -4225,6 +4225,7 @@ bisect_dirblock = dirstate.bisect_dirblock
 bisect_path_left = dirstate.bisect_path_left
 bisect_path_right = dirstate.bisect_path_right
 lt_by_dirs = dirstate.lt_by_dirs
+lt_path_by_dirblock = dirstate.lt_path_by_dirblock
 pack_stat = dirstate.pack_stat
 _fields_per_entry = dirstate.fields_per_entry
 _get_ghosts_line = dirstate.get_ghosts_line

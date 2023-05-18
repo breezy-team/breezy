@@ -213,7 +213,7 @@ class TestBisectPathLeft(tests.TestCase, TestBisectPathMixin):
     """Run all Bisect Path tests against bisect_path_left."""
 
     def get_bisect_path(self):
-        from .._dirstate_rs import bisect_path_left
+        from ..dirstate import bisect_path_left
         return bisect_path_left
 
     def get_bisect(self):
@@ -224,7 +224,7 @@ class TestBisectPathRight(tests.TestCase, TestBisectPathMixin):
     """Run all Bisect Path tests against bisect_path_right."""
 
     def get_bisect_path(self):
-        from .._dirstate_rs import bisect_path_right
+        from ..dirstate import bisect_path_right
         return bisect_path_right
 
     def get_bisect(self):
@@ -341,7 +341,7 @@ class TestLtPathByDirblock(tests.TestCase):
 
     def get_lt_path_by_dirblock(self):
         """Get a specific implementation of lt_path_by_dirblock."""
-        from .._dirstate_rs import lt_path_by_dirblock
+        from ..dirstate import lt_path_by_dirblock
         return lt_path_by_dirblock
 
     def assertLtPathByDirblock(self, paths):
