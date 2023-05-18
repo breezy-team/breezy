@@ -26,6 +26,7 @@ from dulwich.objects import (S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Commit, Tag,
 from .. import debug, osutils, trace
 from ..bzr.inventory import (InventoryDirectory, InventoryFile, InventoryLink,
                              TreeReference)
+from ..bzr.inventory_delta import InventoryDelta
 from ..bzr.inventorytree import InventoryRevisionTree
 from ..bzr.testament import StrictTestament3
 from ..bzr.versionedfile import ChunkedContentFactory
@@ -386,6 +387,7 @@ def import_git_commit(repo, mapping, head, lookup_object,
         base_bzr_inventory = None
     else:
         base_bzr_inventory = base_bzr_tree.root_inventory
+    inv_delta = InventoryDelta(inv_delta)
     rev.inventory_sha1, inv = repo.add_inventory_by_delta(
         basis_id, inv_delta, rev.revision_id, rev.parent_ids,
         base_bzr_inventory)

@@ -28,6 +28,7 @@ from ... import tests
 from ...tests import features, test_osutils
 from ...tests.scenarios import load_tests_apply_scenarios
 from .. import dirstate, inventory, inventorytree, workingtree_4
+from ..inventory_delta import InventoryDelta
 
 # TODO:
 # TESTS to write:
@@ -2529,7 +2530,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
                 continue
             ie = self.path_to_ie(new_path, file_id, rev_id, dir_ids)
             inv_delta.append((old_path, new_path, file_id, ie))
-        return inv_delta
+        return InventoryDelta(inv_delta)
 
     def assertUpdate(self, active, basis, target):
         """Assert that update_basis_by_delta works how we want.
