@@ -4166,6 +4166,7 @@ class ProcessEntryPython:
 
 
 from .._bzr_rs import dirstate as _dirstate_rs
+
 DefaultSHA1Provider = _dirstate_rs.DefaultSHA1Provider
 bisect_dirblock = _dirstate_rs.bisect_dirblock
 bisect_path_left = _dirstate_rs.bisect_path_left
