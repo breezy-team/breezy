@@ -1,3 +1,4 @@
+use bazaar::inventory::Entry as InventoryEntry;
 use bazaar::FileId;
 use breezy_osutils::sha::{sha_file, sha_file_by_name};
 use std::cmp::Ordering;
@@ -358,4 +359,52 @@ impl IdIndex {
     pub fn file_ids(&self) -> impl Iterator<Item = &FileId> {
         self.id_index.keys()
     }
+}
+
+fn kind_to_minikind(kind: breezy_osutils::Kind) -> u8 {
+    match kind {
+        breezy_osutils::Kind::File => b'f',
+        breezy_osutils::Kind::Directory => b'd',
+        breezy_osutils::Kind::Symlink => b'l',
+        breezy_osutils::Kind::TreeReference => b't',
+    }
+}
+
+/// Convert an inventory entry (from a revision tree) to state details.
+///
+/// Args:
+///   inv_entry: An inventory entry whose sha1 and link targets can be
+///     relied upon, and which has a revision set.
+/// Returns: A details tuple - the details for a single tree at a path id.
+pub fn inv_entry_to_details(e: InventoryEntry) -> (u8, Vec<u8>, u64, bool, Vec<u8>) {
+    let kind = e.kind();
+    let minikind = kind_to_minikind(kind);
+    let tree_data = e.revision().map_or_else(Vec::new, |r| r.bytes().to_vec());
+    let (fingerprint, size, executable) = match e {
+        InventoryEntry::Directory { .. } => (Vec::new(), 0, false),
+        InventoryEntry::File {
+            text_sha1,
+            text_size,
+            executable,
+            ..
+        } => (
+            text_sha1.map_or_else(Vec::new, |f| f.to_vec()),
+            text_size.unwrap_or(0),
+            executable,
+        ),
+        InventoryEntry::Link { symlink_target, .. } => (
+            symlink_target.map_or_else(Vec::new, |f| f.as_bytes().to_vec()),
+            0,
+            false,
+        ),
+        InventoryEntry::TreeReference {
+            reference_revision, ..
+        } => (
+            reference_revision.map_or_else(Vec::new, |f| f.bytes().to_vec()),
+            0,
+            false,
+        ),
+    };
+
+    (minikind, fingerprint, size, executable, tree_data)
 }

@@ -403,6 +403,7 @@ impl IdIndex {
             .collect()
     }
 }
+
 /// Helpers for the dirstate module.
 #[pymodule]
 fn _dirstate_rs(_: Python, m: &PyModule) -> PyResult<()> {
