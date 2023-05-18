@@ -26,6 +26,7 @@ __all__ = ['InventoryDeltaSerializer']
 
 from .._bzr_rs import inventory as _inventory_delta_rs
 
+
 InventoryDeltaError = _inventory_delta_rs.InventoryDeltaError
 IncompatibleInventoryDelta = _inventory_delta_rs.IncompatibleInventoryDelta
 parse_inventory_entry = _inventory_delta_rs.parse_inventory_entry

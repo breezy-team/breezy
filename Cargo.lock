@@ -87,6 +87,7 @@ name = "bazaar-dirstate"
 version = "3.3.3"
 dependencies = [
  "base64",
+ "bazaar",
  "breezy-osutils",
  "lazy_static",
  "maplit",
@@ -470,6 +471,7 @@ dependencies = [
 name = "dirstate-py"
 version = "3.3.3"
 dependencies = [
+ "bazaar",
  "bazaar-dirstate",
  "pyo3",
 ]

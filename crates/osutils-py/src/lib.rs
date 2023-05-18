@@ -1041,6 +1041,11 @@ fn string_to_color(name: &str) -> PyResult<&dyn Color> {
 }
 
 #[pyfunction]
+fn color_exists(name: &str) -> bool {
+    string_to_color(name).is_ok()
+}
+
+#[pyfunction]
 fn colorstring(
     py: Python,
     text: &[u8],
@@ -1236,6 +1241,7 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     )?;
     m.add_wrapped(wrap_pyfunction!(get_home_dir))?;
     m.add_wrapped(wrap_pyfunction!(colorstring))?;
+    m.add_wrapped(wrap_pyfunction!(color_exists))?;
     m.add_wrapped(wrap_pyfunction!(lexists))?;
     m.add_wrapped(wrap_pyfunction!(pathjoin))?;
     m.add_wrapped(wrap_pyfunction!(joinpath))?;
