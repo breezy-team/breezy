@@ -1870,6 +1870,7 @@ class StreamSink:
                 mutter("Incompatible delta: %s", err.msg)
                 raise errors.IncompatibleRevision(self.target_repo._format)
             basis_id, new_id, rich_root, tree_refs, inv_delta = parse_result
+            inv_delta = InventoryDelta(inv_delta)
             revision_id = new_id
             parents = [key[0] for key in record.parents]
             self.target_repo.add_inventory_by_delta(

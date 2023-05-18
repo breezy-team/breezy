@@ -1150,7 +1150,8 @@ class DirState:
             entry_index += 1
         return result
 
-    def _entry_to_line(self, entry):
+    @staticmethod
+    def _entry_to_line(entry):
         """Serialize entry to a NULL delimited line ready for _get_output_lines.
 
         :param entry: An entry_tuple as defined in the module docstring.
@@ -1363,7 +1364,7 @@ class DirState:
                                                       child_basename)
                     insertions[child[0][2]] = (key, minikind, executable,
                                                fingerprint, new_child_path)
-        self._check_delta_ids_absent(new_ids, delta, 0)
+        self._check_delta_ids_absent(new_ids, 0)
         try:
             self._apply_removals(removals.items())
             self._apply_insertions(insertions.values())
@@ -1561,7 +1562,7 @@ class DirState:
                 deletes.append(
                     (old_path_utf8, new_path_utf8, file_id, None, False))
 
-        self._check_delta_ids_absent(new_ids, delta, 1)
+        self._check_delta_ids_absent(new_ids, 1)
         try:
             # Finish expunging deletes/first half of renames.
             self._update_basis_apply_deletes(deletes)
@@ -1585,7 +1586,7 @@ class DirState:
         self._id_index = None
         return
 
-    def _check_delta_ids_absent(self, new_ids, delta, tree_index):
+    def _check_delta_ids_absent(self, new_ids, tree_index):
         """Check that none of the file_ids in new_ids are present in a tree."""
         if not new_ids:
             return

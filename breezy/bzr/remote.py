@@ -45,6 +45,7 @@ from . import testament as _mod_testament
 from . import vf_repository, vf_search
 from .branch import BranchReferenceFormat
 from .inventory import Inventory
+from .inventory_delta import InventoryDelta
 from .inventorytree import InventoryRevisionTree
 from .lockable_files import LockableFiles
 from .serializer import revision_format_registry
@@ -2090,6 +2091,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         for record in substream:
             (parent_id, new_id, versioned_root, tree_references, invdelta) = (
                 deserializer.parse_text_bytes(record.get_bytes_as("lines")))
+            invdelta = InventoryDelta(invdelta)
             if parent_id != prev_inv.revision_id:
                 raise AssertionError("invalid base {!r} != {!r}".format(parent_id,
                                                                 prev_inv.revision_id))

@@ -452,6 +452,7 @@ class MutableInventoryTree(MutableTree, InventoryTree):
         :return None:
         :seealso Inventory.apply_delta: For details on the changes parameter.
         """
+        from .inventory_delta import InventoryDelta
         with self.lock_tree_write():
             self.flush()
             inv = self.root_inventory

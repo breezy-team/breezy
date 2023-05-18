@@ -64,34 +64,31 @@ impl InventoryDelta {
                 return Err(InventoryDeltaInconsistency::NoPath);
             };
 
-            if ids.contains(&entry.file_id) {
+            if !ids.insert(&entry.file_id) {
                 return Err(InventoryDeltaInconsistency::DuplicateFileId(
                     path.clone(),
                     entry.file_id.clone(),
                 ));
             }
-            ids.insert(&entry.file_id);
 
             if entry.old_path.is_some() {
                 let old_path = entry.old_path.as_ref().unwrap();
-                if old_paths.contains(old_path) {
+                if !old_paths.insert(old_path) {
                     return Err(InventoryDeltaInconsistency::DuplicateOldPath(
                         old_path.clone(),
                         entry.file_id.clone(),
                     ));
                 }
-                old_paths.insert(old_path);
             }
 
             if entry.new_path.is_some() {
                 let new_path = entry.new_path.as_ref().unwrap();
-                if new_paths.contains(new_path) {
+                if !new_paths.insert(new_path) {
                     return Err(InventoryDeltaInconsistency::DuplicateNewPath(
                         new_path.clone(),
                         entry.file_id.clone(),
                     ));
                 }
-                new_paths.insert(new_path);
             }
 
             if let Some(ref new_entry) = entry.new_entry {

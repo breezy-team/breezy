@@ -872,7 +872,9 @@ impl InventoryDelta {
         match op {
             CompareOp::Eq => Ok(Some(self.0 == other.0)),
             CompareOp::Ne => Ok(Some(self.0 != other.0)),
-            _ => Ok(None),
+            _ => Err(PyNotImplementedError::new_err(
+                "Only == and != are supported",
+            )),
         }
     }
 
