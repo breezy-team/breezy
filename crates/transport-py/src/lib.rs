@@ -183,7 +183,7 @@ impl PyFile {
 
     fn writelines(&mut self, py: Python, lines: &PyList) -> PyResult<()> {
         for line in lines.iter() {
-            self.write(py, line.extract::<&[u8]>().unwrap())?;
+            self.write(py, line.extract::<&[u8]>()?)?;
         }
         Ok(())
     }

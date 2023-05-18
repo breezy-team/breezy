@@ -7,6 +7,7 @@ use pyo3::types::{PyBytes, PyList, PyString};
 use pyo3_file::PyFileLikeObject;
 use std::collections::HashMap;
 
+mod dirstate;
 mod inventory;
 
 import_exception!(breezy.errors, ReservedId);
@@ -493,5 +494,8 @@ fn _bzr_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(check_not_reserved_id))?;
     m.add_wrapped(wrap_pyfunction!(escape_invalid_chars))?;
     m.add_wrapped(wrap_pyfunction!(encode_and_escape))?;
+
+    let dirstatem = dirstate::_dirstate_rs(py)?;
+    m.add_submodule(dirstatem)?;
     Ok(())
 }

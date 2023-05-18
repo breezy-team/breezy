@@ -3507,7 +3507,7 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
             entry = inv.make_entry(
                 'directory', 'newdir', inv.root.file_id, b'newdir-id')
             entry.revision = b'ghost'
-            delta = [(None, 'newdir', b'newdir-id', entry)]
+            delta = inventory_delta.InventoryDelta([(None, 'newdir', b'newdir-id', entry)])
             serializer = inventory_delta.InventoryDeltaSerializer(
                 versioned_root=True, tree_references=False)
             lines = serializer.delta_to_lines(b'rev1', b'rev2', delta)
@@ -4389,7 +4389,7 @@ class TestRepositoryIterInventories(TestRemoteRepository):
         repo._format = fmt
         stream = [('inventory-deltas', [
             versionedfile.FulltextContentFactory(b'somerevid', None, None,
-                                                 self._serialize_inv_delta(b'null:', b'somerevid', []))])]
+                                                 self._serialize_inv_delta(b'null:', b'somerevid', inventory_delta.InventoryDelta([])))])]
         client.add_expected_call(
             b'VersionedFileRepository.get_inventories', (
                 b'quack/', b'unordered'),
@@ -4431,7 +4431,7 @@ class TestRepositoryRevisionTreeArchive(TestRemoteRepository):
         repo._format = fmt
         stream = [('inventory-deltas', [
             versionedfile.FulltextContentFactory(b'somerevid', None, None,
-                                                 self._serialize_inv_delta(b'null:', b'somerevid', []))])]
+                                                 self._serialize_inv_delta(b'null:', b'somerevid', inventory_delta.InventoryDelta([])))])]
         client.add_expected_call(
             b'VersionedFileRepository.get_inventories', (
                 b'quack/', b'unordered'),
@@ -4472,7 +4472,7 @@ class TestRepositoryAnnotate(TestRemoteRepository):
             ('inventory-deltas', [
                 versionedfile.FulltextContentFactory(
                     b'somerevid', None, None,
-                    self._serialize_inv_delta(b'null:', b'somerevid', []))])]
+                    self._serialize_inv_delta(b'null:', b'somerevid', inventory_delta.InventoryDelta([])))])]
         client.add_expected_call(
             b'VersionedFileRepository.get_inventories', (
                 b'quack/', b'unordered'),

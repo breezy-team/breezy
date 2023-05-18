@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
 
+use bazaar::inventory::Entry as InventoryEntry;
 use bazaar::FileId;
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
@@ -404,9 +405,33 @@ impl IdIndex {
     }
 }
 
+#[pyfunction]
+fn inv_entry_to_details(
+    py: Python,
+    e: &crate::inventory::InventoryEntry,
+) -> (PyObject, PyObject, u64, bool, PyObject) {
+    let ret = bazaar_dirstate::inv_entry_to_details(&e.0);
+
+    (
+        PyBytes::new(py, &[ret.0]).to_object(py),
+        PyBytes::new(py, ret.1.as_slice()).to_object(py),
+        ret.2,
+        ret.3,
+        PyBytes::new(py, ret.4.as_slice()).to_object(py),
+    )
+}
+
+#[pyfunction]
+fn get_output_lines(py: Python, lines: Vec<&[u8]>) -> Vec<PyObject> {
+    bazaar_dirstate::get_output_lines(lines)
+        .into_iter()
+        .map(|x| PyBytes::new(py, x.as_slice()).to_object(py))
+        .collect()
+}
+
 /// Helpers for the dirstate module.
-#[pymodule]
-fn _dirstate_rs(_: Python, m: &PyModule) -> PyResult<()> {
+pub fn _dirstate_rs(py: Python) -> PyResult<&PyModule> {
+    let m = PyModule::new(py, "dirstate")?;
     m.add_wrapped(wrap_pyfunction!(lt_by_dirs))?;
     m.add_wrapped(wrap_pyfunction!(bisect_path_left))?;
     m.add_wrapped(wrap_pyfunction!(bisect_path_right))?;
@@ -418,6 +443,8 @@ fn _dirstate_rs(_: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(get_ghosts_line))?;
     m.add_wrapped(wrap_pyfunction!(get_parents_line))?;
     m.add_class::<IdIndex>()?;
+    m.add_wrapped(wrap_pyfunction!(inv_entry_to_details))?;
+    m.add_wrapped(wrap_pyfunction!(get_output_lines))?;
 
-    Ok(())
+    Ok(m)
 }

@@ -1446,7 +1446,7 @@ class DirState:
         # The paths this function accepts are unicode and must be encoded as we
         # go.
         encode = cache_utf8.encode
-        inv_to_entry = self._inv_entry_to_details
+        inv_to_entry = _inv_entry_to_details
         # delta is now (deletes, changes), (adds) in reverse lexographical
         # order.
         # deletes in reverse lexographic order are safe to process in situ.
@@ -1888,7 +1888,8 @@ class DirState:
         else:
             return old_executable
 
-    def _read_link(self, abspath, old_link):
+    @staticmethod
+    def _read_link(abspath, old_link):
         """Read the target of a symlink."""
         # TODO: jam 200700301 On Win32, this could just return the value
         #       already in memory. However, this really needs to be done at a
@@ -1921,12 +1922,8 @@ class DirState:
         lines = []
         lines.append(_get_parents_line(self.get_parent_ids()))
         lines.append(_get_ghosts_line(self._ghosts))
-        lines.extend(self._iter_entry_lines())
-        return self._get_output_lines(lines)
-
-    def _iter_entry_lines(self):
-        """Create lines for entries."""
-        return map(self._entry_to_line, self._iter_entries())
+        lines.extend(map(self._entry_to_line, self._iter_entries()))
+        return _get_output_lines(lines)
 
     def _get_fields_to_entry(self):
         """Get a function which converts entry fields into a entry record.
@@ -2168,42 +2165,6 @@ class DirState:
             raise
         return result
 
-    @staticmethod
-    def _inv_entry_to_details(inv_entry):
-        """Convert an inventory entry (from a revision tree) to state details.
-
-        :param inv_entry: An inventory entry whose sha1 and link targets can be
-            relied upon, and which has a revision set.
-        :return: A details tuple - the details for a single tree at a path +
-            id.
-        """
-        kind = inv_entry.kind
-        minikind = DirState._kind_to_minikind[kind]
-        tree_data = inv_entry.revision
-        if kind == 'directory':
-            fingerprint = b''
-            size = 0
-            executable = False
-        elif kind == 'symlink':
-            if inv_entry.symlink_target is None:
-                fingerprint = b''
-            else:
-                fingerprint = inv_entry.symlink_target.encode('utf8')
-            size = 0
-            executable = False
-        elif kind == 'file':
-            fingerprint = inv_entry.text_sha1 or b''
-            size = inv_entry.text_size or 0
-            executable = inv_entry.executable
-        elif kind == 'tree-reference':
-            fingerprint = inv_entry.reference_revision or b''
-            size = 0
-            executable = False
-        else:
-            raise Exception(f"can't pack {inv_entry}")
-        return static_tuple.StaticTuple(minikind, fingerprint, size,
-                                        executable, tree_data)
-
     def _iter_child_entries(self, tree_index, path_utf8):
         """Iterate over all the entries that are children of path_utf.
 
@@ -2267,23 +2228,6 @@ class DirState:
                 id_index.add(key)
             self._id_index = id_index
         return self._id_index
-
-    @classmethod
-    def _get_output_lines(cls, lines):
-        """Format lines for final output.
-
-        :param lines: A sequence of lines containing the parents list and the
-            path lines.
-        """
-        output_lines = [DirState.HEADER_FORMAT_3]
-        lines.append(b'')  # a final newline
-        inventory_text = b'\0\n\0'.join(lines)
-        output_lines.append(b'crc32: %d\n' % (zlib.crc32(inventory_text),))
-        # -3, 1 for num parents, 1 for ghosts, 1 for final newline
-        num_entries = len(lines) - 3
-        output_lines.append(b'num_entries: %d\n' % (num_entries,))
-        output_lines.append(inventory_text)
-        return output_lines
 
     @classmethod
     def _make_deleted_row(cls, fileid_utf8, parents):
@@ -2630,7 +2574,7 @@ class DirState:
                     # there is already an entry where this data belongs, just
                     # insert it.
                     by_path[new_entry_key][tree_index] = \
-                        self._inv_entry_to_details(entry)
+                        _inv_entry_to_details(entry)
                 else:
                     # add relocated entries to the horizontal axis - this row
                     # mapping from path,id. We need to look up the correct path
@@ -2655,7 +2599,7 @@ class DirState:
                                 real_path = (b'/'.join(a_key[0:2])).strip(b'/')
                                 new_details.append(st(b'r', real_path, 0, False,
                                                       b''))
-                    new_details.append(self._inv_entry_to_details(entry))
+                    new_details.append(_inv_entry_to_details(entry))
                     new_details.extend(new_location_suffix)
                     by_path[new_entry_key] = new_details
                     id_index.add(new_entry_key)
@@ -4209,12 +4153,21 @@ class ProcessEntryPython:
         return dir_info
 
 
-from ._dirstate_rs import (DefaultSHA1Provider, IdIndex, bisect_dirblock,
-                           bisect_path_left, bisect_path_right)
-from ._dirstate_rs import fields_per_entry as _fields_per_entry
-from ._dirstate_rs import get_ghosts_line as _get_ghosts_line
-from ._dirstate_rs import get_parents_line as _get_parents_line
-from ._dirstate_rs import lt_by_dirs, pack_stat
+from .._bzr_rs import dirstate as _dirstate_rs
+
+DefaultSHA1Provider = _dirstate_rs.DefaultSHA1Provider
+bisect_dirblock = _dirstate_rs.bisect_dirblock
+bisect_path_left = _dirstate_rs.bisect_path_left
+bisect_path_right = _dirstate_rs.bisect_path_right
+lt_by_dirs = _dirstate_rs.lt_by_dirs
+lt_path_by_dirblock = _dirstate_rs.lt_path_by_dirblock
+pack_stat = _dirstate_rs.pack_stat
+_fields_per_entry = _dirstate_rs.fields_per_entry
+_get_ghosts_line = _dirstate_rs.get_ghosts_line
+_get_parents_line = _dirstate_rs.get_parents_line
+IdIndex = _dirstate_rs.IdIndex
+_inv_entry_to_details = _dirstate_rs.inv_entry_to_details
+_get_output_lines = _dirstate_rs.get_output_lines
 
 # Try to load the compiled form if possible
 try:

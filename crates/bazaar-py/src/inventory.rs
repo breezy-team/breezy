@@ -1,12 +1,14 @@
-use bazaar::inventory::{
-    check_delta_consistency, describe_change, detect_changes, Entry, Error, InventoryDeltaEntry,
-    InventoryDeltaInconsistency,
+use bazaar::inventory::{check_delta_consistency, describe_change, detect_changes, Entry, Error};
+use bazaar::inventory_delta::{
+    InventoryDeltaEntry, InventoryDeltaInconsistency, InventoryDeltaParseError,
+    InventoryDeltaSerializeError,
 };
-use bazaar::inventory_delta::{InventoryDeltaEntry, InventoryDeltaInconsistency};
 use bazaar::{FileId, RevisionId};
 use breezy_osutils::Kind;
 use pyo3::class::basic::CompareOp;
-use pyo3::exceptions::{PyIndexError, PyNotImplementedError, PyTypeError, PyValueError};
+use pyo3::exceptions::{
+    PyIndexError, PyKeyError, PyNotImplementedError, PyTypeError, PyValueError,
+};
 use pyo3::prelude::*;
 use pyo3::pyclass_init::PyClassInitializer;
 use pyo3::types::{PyBytes, PyDict};
@@ -23,6 +25,9 @@ import_exception!(breezy.errors, BzrCheckError);
 import_exception!(breezy.errors, InvalidNormalization);
 import_exception!(breezy.errors, InconsistentDelta);
 import_exception!(breezy.errors, PathAlreadyVersioned);
+import_exception!(breezy.errors, BzrError);
+create_exception!(breezy.inventory_delta, IncompatibleInventoryDelta, BzrError);
+create_exception!(breezy.inventory_delta, InventoryDeltaError, BzrError);
 
 fn kind_from_str(kind: &str) -> Option<Kind> {
     match kind {
@@ -73,7 +78,7 @@ fn common_ie_check(
 }
 
 #[pyclass(subclass)]
-pub struct InventoryEntry(Entry);
+pub struct InventoryEntry(pub Entry);
 
 #[pymethods]
 impl InventoryEntry {
@@ -1640,6 +1645,92 @@ impl IterEntriesIterator {
     }
 }
 
+#[pyfunction]
+fn parse_inventory_delta(
+    py: Python,
+    lines: Vec<Vec<u8>>,
+    allow_versioned_root: Option<bool>,
+    allow_tree_references: Option<bool>,
+) -> PyResult<(PyObject, PyObject, bool, bool, PyObject)> {
+    let (parent, version, versioned_root, tree_references, result) =
+        bazaar::inventory_delta::parse_inventory_delta(
+            lines
+                .iter()
+                .map(|x| x.as_slice())
+                .collect::<Vec<_>>()
+                .as_slice(),
+            allow_versioned_root,
+            allow_tree_references,
+        )
+        .map_err(|e| match e {
+            InventoryDeltaParseError::Invalid(m) => InventoryDeltaError::new_err((m,)),
+            InventoryDeltaParseError::Incompatible(m) => IncompatibleInventoryDelta::new_err((m,)),
+        })?;
+
+    let parent = PyBytes::new(py, parent.bytes()).to_object(py);
+    let version = PyBytes::new(py, version.bytes()).to_object(py);
+
+    let result = PyCell::new(py, InventoryDelta(result))?.to_object(py);
+
+    Ok((parent, version, versioned_root, tree_references, result))
+}
+
+#[pyfunction]
+fn parse_inventory_entry(
+    file_id: Vec<u8>,
+    name: String,
+    parent_id: Option<Vec<u8>>,
+    revision: Option<Vec<u8>>,
+    lines: &[u8],
+) -> InventoryEntry {
+    InventoryEntry(bazaar::inventory_delta::parse_inventory_entry(
+        FileId::from(file_id),
+        name,
+        parent_id.map(FileId::from),
+        revision.map(RevisionId::from),
+        lines,
+    ))
+}
+
+#[pyfunction]
+fn serialize_inventory_entry(py: Python, entry: &InventoryEntry) -> PyResult<PyObject> {
+    Ok(PyBytes::new(
+        py,
+        bazaar::inventory_delta::serialize_inventory_entry(&entry.0)
+            .map_err(|e| match e {
+                InventoryDeltaSerializeError::Invalid(m) => InventoryDeltaError::new_err((m,)),
+                InventoryDeltaSerializeError::UnsupportedKind(k) => PyKeyError::new_err((k,)),
+            })?
+            .as_slice(),
+    )
+    .to_object(py))
+}
+
+#[pyfunction]
+fn serialize_inventory_delta(
+    py: Python,
+    old_name: Vec<u8>,
+    new_name: Vec<u8>,
+    delta_to_new: &InventoryDelta,
+    versioned_root: bool,
+    tree_references: bool,
+) -> PyResult<Vec<PyObject>> {
+    Ok(bazaar::inventory_delta::serialize_inventory_delta(
+        &RevisionId::from(old_name),
+        &RevisionId::from(new_name),
+        &delta_to_new.0,
+        versioned_root,
+        tree_references,
+    )
+    .map_err(|e| match e {
+        InventoryDeltaSerializeError::Invalid(m) => InventoryDeltaError::new_err((m,)),
+        InventoryDeltaSerializeError::UnsupportedKind(m) => PyKeyError::new_err((m,)),
+    })?
+    .into_iter()
+    .map(|x| PyBytes::new(py, x.as_slice()).to_object(py))
+    .collect())
+}
+
 pub fn _inventory_rs(py: Python) -> PyResult<&PyModule> {
     let m = PyModule::new(py, "inventory")?;
 
@@ -1656,5 +1747,15 @@ pub fn _inventory_rs(py: Python) -> PyResult<&PyModule> {
     m.add_class::<Inventory>()?;
 
     m.add_class::<InventoryDelta>()?;
+    m.add_wrapped(wrap_pyfunction!(parse_inventory_delta))?;
+    m.add_wrapped(wrap_pyfunction!(parse_inventory_entry))?;
+    m.add_wrapped(wrap_pyfunction!(serialize_inventory_delta))?;
+    m.add_wrapped(wrap_pyfunction!(serialize_inventory_entry))?;
+    m.add("InventoryDeltaError", py.get_type::<InventoryDeltaError>())?;
+    m.add(
+        "IncompatibleInventoryDelta",
+        py.get_type::<IncompatibleInventoryDelta>(),
+    )?;
+
     Ok(m)
 }

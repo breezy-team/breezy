@@ -12,3 +12,4 @@ pyo3-file = { git = "https://github.com/omerbenamram/pyo3-file" }
 bazaar = { path = "../bazaar" }
 chrono = ">= 0.4"
 breezy-osutils = { path = "../osutils" }
+bazaar-dirstate = { path = "../dirstate" }

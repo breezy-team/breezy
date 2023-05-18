@@ -199,6 +199,10 @@ impl Kind {
         }
     }
 
+    pub fn to_byte(&self) -> u8 {
+        self.to_char() as u8
+    }
+
     pub fn to_str(&self) -> &str {
         match self {
             Kind::Absent => "absent",
@@ -207,6 +211,17 @@ impl Kind {
             Kind::Relocated => "relocated",
             Kind::Symlink => "symlink",
             Kind::TreeReference => "tree-reference",
+        }
+    }
+}
+
+impl From<breezy_osutils::Kind> for Kind {
+    fn from(k: breezy_osutils::Kind) -> Self {
+        match k {
+            breezy_osutils::Kind::File => Kind::File,
+            breezy_osutils::Kind::Directory => Kind::Directory,
+            breezy_osutils::Kind::Symlink => Kind::Symlink,
+            breezy_osutils::Kind::TreeReference => Kind::TreeReference,
         }
     }
 }
@@ -361,24 +376,14 @@ impl IdIndex {
     }
 }
 
-fn kind_to_minikind(kind: breezy_osutils::Kind) -> u8 {
-    match kind {
-        breezy_osutils::Kind::File => b'f',
-        breezy_osutils::Kind::Directory => b'd',
-        breezy_osutils::Kind::Symlink => b'l',
-        breezy_osutils::Kind::TreeReference => b't',
-    }
-}
-
 /// Convert an inventory entry (from a revision tree) to state details.
 ///
 /// Args:
 ///   inv_entry: An inventory entry whose sha1 and link targets can be
 ///     relied upon, and which has a revision set.
 /// Returns: A details tuple - the details for a single tree at a path id.
-pub fn inv_entry_to_details(e: InventoryEntry) -> (u8, Vec<u8>, u64, bool, Vec<u8>) {
-    let kind = e.kind();
-    let minikind = kind_to_minikind(kind);
+pub fn inv_entry_to_details(e: &InventoryEntry) -> (u8, Vec<u8>, u64, bool, Vec<u8>) {
+    let minikind = Kind::from(e.kind()).to_byte();
     let tree_data = e.revision().map_or_else(Vec::new, |r| r.bytes().to_vec());
     let (fingerprint, size, executable) = match e {
         InventoryEntry::Directory { .. } => (Vec::new(), 0, false),
@@ -388,23 +393,56 @@ pub fn inv_entry_to_details(e: InventoryEntry) -> (u8, Vec<u8>, u64, bool, Vec<u
             executable,
             ..
         } => (
-            text_sha1.map_or_else(Vec::new, |f| f.to_vec()),
+            text_sha1.as_ref().map_or_else(Vec::new, |f| f.to_vec()),
             text_size.unwrap_or(0),
-            executable,
+            *executable,
         ),
         InventoryEntry::Link { symlink_target, .. } => (
-            symlink_target.map_or_else(Vec::new, |f| f.as_bytes().to_vec()),
+            symlink_target
+                .as_ref()
+                .map_or_else(Vec::new, |f| f.as_bytes().to_vec()),
             0,
             false,
         ),
         InventoryEntry::TreeReference {
             reference_revision, ..
         } => (
-            reference_revision.map_or_else(Vec::new, |f| f.bytes().to_vec()),
+            reference_revision
+                .as_ref()
+                .map_or_else(Vec::new, |f| f.bytes().to_vec()),
             0,
             false,
         ),
     };
 
     (minikind, fingerprint, size, executable, tree_data)
+}
+
+fn _crc32(bit: &[u8]) -> u32 {
+    let mut hasher = crc32fast::Hasher::new();
+    hasher.update(bit);
+    hasher.finalize()
+}
+
+/// Format lines for final output.
+///
+/// Args:
+///   lines: A sequence of lines containing the parents list and the path lines.
+pub fn get_output_lines(mut lines: Vec<&[u8]>) -> Vec<Vec<u8>> {
+    // Format lines for final output.
+    let mut output_lines = vec![HEADER_FORMAT_3];
+    lines.push(b"");
+
+    let inventory_text = lines.join(&b"\0\n\0"[..]).to_vec();
+
+    let crc32 = _crc32(inventory_text.as_slice());
+    let crc32_line = format!("crc32: {}\n", crc32).into_bytes();
+    output_lines.push(crc32_line.as_slice());
+
+    let num_entries = lines.len() - 3;
+    let num_entries_line = format!("num_entries: {}\n", num_entries).into_bytes();
+    output_lines.push(num_entries_line.as_slice());
+    output_lines.push(inventory_text.as_slice());
+
+    output_lines.into_iter().map(|l| l.to_vec()).collect()
 }

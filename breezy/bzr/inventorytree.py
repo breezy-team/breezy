@@ -27,6 +27,7 @@ from ..controldir import ControlDir
 from ..mutabletree import MutableTree
 from ..revisiontree import RevisionTree
 from ..transport.local import file_kind, file_stat
+from .inventory_delta import InventoryDelta
 
 lazy_import.lazy_import(globals(), """
 from breezy import (
