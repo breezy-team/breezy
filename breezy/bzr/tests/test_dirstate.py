@@ -2409,7 +2409,7 @@ class TestDiscardMergeParents(TestCaseWithDirState):
 class Test_InvEntryToDetails(tests.TestCase):
 
     def assertDetails(self, expected, inv_entry):
-        details = dirstate.DirState._inv_entry_to_details(inv_entry)
+        details = dirstate._inv_entry_to_details(inv_entry)
         self.assertEqual(expected, details)
         # details should always allow join() and always be a plain str when
         # finished

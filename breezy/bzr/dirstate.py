@@ -1456,7 +1456,7 @@ class DirState:
         # The paths this function accepts are unicode and must be encoded as we
         # go.
         encode = cache_utf8.encode
-        inv_to_entry = self._inv_entry_to_details
+        inv_to_entry = _inv_entry_to_details
         # delta is now (deletes, changes), (adds) in reverse lexographical
         # order.
         # deletes in reverse lexographic order are safe to process in situ.
@@ -2178,42 +2178,6 @@ class DirState:
             raise
         return result
 
-    @staticmethod
-    def _inv_entry_to_details(inv_entry):
-        """Convert an inventory entry (from a revision tree) to state details.
-
-        :param inv_entry: An inventory entry whose sha1 and link targets can be
-            relied upon, and which has a revision set.
-        :return: A details tuple - the details for a single tree at a path +
-            id.
-        """
-        kind = inv_entry.kind
-        minikind = DirState._kind_to_minikind[kind]
-        tree_data = inv_entry.revision
-        if kind == 'directory':
-            fingerprint = b''
-            size = 0
-            executable = False
-        elif kind == 'symlink':
-            if inv_entry.symlink_target is None:
-                fingerprint = b''
-            else:
-                fingerprint = inv_entry.symlink_target.encode('utf8')
-            size = 0
-            executable = False
-        elif kind == 'file':
-            fingerprint = inv_entry.text_sha1 or b''
-            size = inv_entry.text_size or 0
-            executable = inv_entry.executable
-        elif kind == 'tree-reference':
-            fingerprint = inv_entry.reference_revision or b''
-            size = 0
-            executable = False
-        else:
-            raise Exception(f"can't pack {inv_entry}")
-        return static_tuple.StaticTuple(minikind, fingerprint, size,
-                                        executable, tree_data)
-
     def _iter_child_entries(self, tree_index, path_utf8):
         """Iterate over all the entries that are children of path_utf.
 
@@ -2640,7 +2604,7 @@ class DirState:
                     # there is already an entry where this data belongs, just
                     # insert it.
                     by_path[new_entry_key][tree_index] = \
-                        self._inv_entry_to_details(entry)
+                        _inv_entry_to_details(entry)
                 else:
                     # add relocated entries to the horizontal axis - this row
                     # mapping from path,id. We need to look up the correct path
@@ -2665,7 +2629,7 @@ class DirState:
                                 real_path = (b'/'.join(a_key[0:2])).strip(b'/')
                                 new_details.append(st(b'r', real_path, 0, False,
                                                       b''))
-                    new_details.append(self._inv_entry_to_details(entry))
+                    new_details.append(_inv_entry_to_details(entry))
                     new_details.extend(new_location_suffix)
                     by_path[new_entry_key] = new_details
                     id_index.add(new_entry_key)
@@ -4219,18 +4183,19 @@ class ProcessEntryPython:
         return dir_info
 
 
-from .._bzr_rs import dirstate
-DefaultSHA1Provider = dirstate.DefaultSHA1Provider
-bisect_dirblock = dirstate.bisect_dirblock
-bisect_path_left = dirstate.bisect_path_left
-bisect_path_right = dirstate.bisect_path_right
-lt_by_dirs = dirstate.lt_by_dirs
-lt_path_by_dirblock = dirstate.lt_path_by_dirblock
-pack_stat = dirstate.pack_stat
-_fields_per_entry = dirstate.fields_per_entry
-_get_ghosts_line = dirstate.get_ghosts_line
-_get_parents_line = dirstate.get_parents_line
-IdIndex = dirstate.IdIndex
+from .._bzr_rs import dirstate as _dirstate_rs
+DefaultSHA1Provider = _dirstate_rs.DefaultSHA1Provider
+bisect_dirblock = _dirstate_rs.bisect_dirblock
+bisect_path_left = _dirstate_rs.bisect_path_left
+bisect_path_right = _dirstate_rs.bisect_path_right
+lt_by_dirs = _dirstate_rs.lt_by_dirs
+lt_path_by_dirblock = _dirstate_rs.lt_path_by_dirblock
+pack_stat = _dirstate_rs.pack_stat
+_fields_per_entry = _dirstate_rs.fields_per_entry
+_get_ghosts_line = _dirstate_rs.get_ghosts_line
+_get_parents_line = _dirstate_rs.get_parents_line
+IdIndex = _dirstate_rs.IdIndex
+_inv_entry_to_details = _dirstate_rs.inv_entry_to_details
 
 # Try to load the compiled form if possible
 try:

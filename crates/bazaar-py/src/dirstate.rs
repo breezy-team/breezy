@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
 
+use bazaar::inventory::Entry as InventoryEntry;
 use bazaar::FileId;
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
@@ -404,6 +405,22 @@ impl IdIndex {
     }
 }
 
+#[pyfunction]
+fn inv_entry_to_details(
+    py: Python,
+    e: &crate::inventory::InventoryEntry,
+) -> (PyObject, PyObject, u64, bool, PyObject) {
+    let ret = bazaar_dirstate::inv_entry_to_details(&e.0);
+
+    (
+        PyBytes::new(py, &[ret.0]).to_object(py),
+        PyBytes::new(py, ret.1.as_slice()).to_object(py),
+        ret.2,
+        ret.3,
+        PyBytes::new(py, ret.4.as_slice()).to_object(py),
+    )
+}
+
 /// Helpers for the dirstate module.
 pub fn _dirstate_rs(py: Python) -> PyResult<&PyModule> {
     let m = PyModule::new(py, "dirstate")?;
@@ -418,6 +435,7 @@ pub fn _dirstate_rs(py: Python) -> PyResult<&PyModule> {
     m.add_wrapped(wrap_pyfunction!(get_ghosts_line))?;
     m.add_wrapped(wrap_pyfunction!(get_parents_line))?;
     m.add_class::<IdIndex>()?;
+    m.add_wrapped(wrap_pyfunction!(inv_entry_to_details))?;
 
     Ok(m)
 }

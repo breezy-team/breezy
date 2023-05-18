@@ -382,7 +382,7 @@ impl IdIndex {
 ///   inv_entry: An inventory entry whose sha1 and link targets can be
 ///     relied upon, and which has a revision set.
 /// Returns: A details tuple - the details for a single tree at a path id.
-pub fn inv_entry_to_details(e: InventoryEntry) -> (u8, Vec<u8>, u64, bool, Vec<u8>) {
+pub fn inv_entry_to_details(e: &InventoryEntry) -> (u8, Vec<u8>, u64, bool, Vec<u8>) {
     let minikind = Kind::from(e.kind()).to_byte();
     let tree_data = e.revision().map_or_else(Vec::new, |r| r.bytes().to_vec());
     let (fingerprint, size, executable) = match e {
@@ -393,19 +393,23 @@ pub fn inv_entry_to_details(e: InventoryEntry) -> (u8, Vec<u8>, u64, bool, Vec<u
             executable,
             ..
         } => (
-            text_sha1.map_or_else(Vec::new, |f| f.to_vec()),
+            text_sha1.as_ref().map_or_else(Vec::new, |f| f.to_vec()),
             text_size.unwrap_or(0),
-            executable,
+            *executable,
         ),
         InventoryEntry::Link { symlink_target, .. } => (
-            symlink_target.map_or_else(Vec::new, |f| f.as_bytes().to_vec()),
+            symlink_target
+                .as_ref()
+                .map_or_else(Vec::new, |f| f.as_bytes().to_vec()),
             0,
             false,
         ),
         InventoryEntry::TreeReference {
             reference_revision, ..
         } => (
-            reference_revision.map_or_else(Vec::new, |f| f.bytes().to_vec()),
+            reference_revision
+                .as_ref()
+                .map_or_else(Vec::new, |f| f.bytes().to_vec()),
             0,
             false,
         ),
