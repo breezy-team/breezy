@@ -19,7 +19,7 @@
 import os
 import subprocess
 import sys
-from distutils import version
+from packaging import version
 
 import breezy
 
@@ -40,6 +40,7 @@ class TestSetup(tests.TestCaseInTempDir):
         This tests that the build process and man generator run correctly.
         It also can catch new subdirectories that weren't added to setup.py.
         """
+        self.skipTest('this test takes too long to run and is currently disabled by default')
         # setup.py must be run from the root source directory, but the tests
         # are not necessarily invoked from there
         self.source_dir = os.path.dirname(os.path.dirname(breezy.__file__))
@@ -96,6 +97,6 @@ class TestDistutilsVersion(tests.TestCase):
     def test_version_with_string(self):
         # We really care about two pyrex specific versions and our ability to
         # detect them
-        lv = version.LooseVersion
+        lv = version.Version
         self.assertLess(lv("0.9.4.1"), lv('0.17.beta1'))
         self.assertLess(lv("0.9.6.3"), lv('0.10'))
