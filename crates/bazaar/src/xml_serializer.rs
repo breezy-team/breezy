@@ -27,7 +27,7 @@ fn unicode_escape_replace(cap: &regex::Captures) -> String {
     let m = cap.get(0).unwrap();
     assert_eq!(m.as_str().chars().count(), 1,);
     let c = m.as_str().chars().next().unwrap();
-    if m.len() == 1 {
+    if m.as_str().len() == 1 {
         if let Some(ret) = escape_low(m.as_str().as_bytes()[0]) {
             return ret.to_string();
         }

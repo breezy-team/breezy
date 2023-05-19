@@ -1,5 +1,8 @@
+use bazaar::inventory::Entry as InventoryEntry;
+use bazaar::FileId;
 use breezy_osutils::sha::{sha_file, sha_file_by_name};
 use std::cmp::Ordering;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::fs::Metadata;
 use std::os::unix::fs::MetadataExt;
@@ -196,6 +199,10 @@ impl Kind {
         }
     }
 
+    pub fn to_byte(&self) -> u8 {
+        self.to_char() as u8
+    }
+
     pub fn to_str(&self) -> &str {
         match self {
             Kind::Absent => "absent",
@@ -204,6 +211,17 @@ impl Kind {
             Kind::Relocated => "relocated",
             Kind::Symlink => "symlink",
             Kind::TreeReference => "tree-reference",
+        }
+    }
+}
+
+impl From<breezy_osutils::Kind> for Kind {
+    fn from(k: breezy_osutils::Kind) -> Self {
+        match k {
+            breezy_osutils::Kind::File => Kind::File,
+            breezy_osutils::Kind::Directory => Kind::Directory,
+            breezy_osutils::Kind::Symlink => Kind::Symlink,
+            breezy_osutils::Kind::TreeReference => Kind::TreeReference,
         }
     }
 }
@@ -264,4 +282,167 @@ pub enum MemoryState {
     /// indicates that we have a modified version of what is on disk.
     InMemoryModified,
     InMemoryHashModified,
+}
+
+pub fn fields_per_entry(num_present_parents: usize) -> usize {
+    // How many null separated fields should be in each entry row.
+    //
+    // Each line now has an extra '\n' field which is not used
+    // so we just skip over it
+    //
+    // entry size:
+    //     3 fields for the key
+    //     + number of fields per tree_data (5) * tree count
+    //     + newline
+    let tree_count = 1 + num_present_parents;
+    3 + 5 * tree_count + 1
+}
+
+pub fn get_ghosts_line(ghost_ids: &[&[u8]]) -> Vec<u8> {
+    // Create a line for the state file for ghost information.
+    let mut entries = Vec::new();
+    let l = format!("{}", ghost_ids.len());
+    entries.push(l.as_bytes());
+    entries.extend_from_slice(ghost_ids);
+    entries.join(&b"\0"[..])
+}
+
+pub fn get_parents_line(parent_ids: &[&[u8]]) -> Vec<u8> {
+    // Create a line for the state file for parents information.
+    let mut entries = Vec::new();
+    let l = format!("{}", parent_ids.len());
+    entries.push(l.as_bytes());
+    entries.extend_from_slice(parent_ids);
+    entries.join(&b"\0"[..])
+}
+
+pub struct IdIndex {
+    id_index: HashMap<FileId, Vec<(Vec<u8>, Vec<u8>, FileId)>>,
+}
+
+impl Default for IdIndex {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl IdIndex {
+    pub fn new() -> Self {
+        IdIndex {
+            id_index: HashMap::new(),
+        }
+    }
+
+    pub fn add(&mut self, entry_key: (&[u8], &[u8], &FileId)) {
+        // Add this entry to the _id_index mapping.
+        //
+        // This code used to use a set for every entry in the id_index. However,
+        // it is *rare* to have more than one entry. So a set is a large
+        // overkill. And even when we do, we won't ever have more than the
+        // number of parent trees. Which is still a small number (rarely >2). As
+        // such, we use a simple vector, and do our own uniqueness checks. While
+        // the 'contains' check is O(N), since N is nicely bounded it shouldn't ever
+        // cause quadratic failure.
+        let file_id = entry_key.2;
+        let entry_keys = self
+            .id_index
+            .entry(file_id.clone())
+            .or_insert_with(Vec::new);
+        entry_keys.push((entry_key.0.to_vec(), entry_key.1.to_vec(), file_id.clone()));
+    }
+
+    pub fn remove(&mut self, entry_key: (&[u8], &[u8], &FileId)) {
+        // Remove this entry from the _id_index mapping.
+        //
+        // It is a programming error to call this when the entry_key is not
+        // already present.
+        let file_id = entry_key.2;
+        let entry_keys = self.id_index.get_mut(file_id).unwrap();
+        entry_keys.retain(|key| (key.0.as_slice(), key.1.as_slice(), &key.2) != entry_key);
+    }
+
+    pub fn get(&self, file_id: &FileId) -> Vec<(Vec<u8>, Vec<u8>, FileId)> {
+        self.id_index
+            .get(file_id)
+            .map_or_else(Vec::new, |v| v.clone())
+    }
+
+    pub fn iter_all(&self) -> impl Iterator<Item = &(Vec<u8>, Vec<u8>, FileId)> {
+        self.id_index.values().flatten()
+    }
+
+    pub fn file_ids(&self) -> impl Iterator<Item = &FileId> {
+        self.id_index.keys()
+    }
+}
+
+/// Convert an inventory entry (from a revision tree) to state details.
+///
+/// Args:
+///   inv_entry: An inventory entry whose sha1 and link targets can be
+///     relied upon, and which has a revision set.
+/// Returns: A details tuple - the details for a single tree at a path id.
+pub fn inv_entry_to_details(e: &InventoryEntry) -> (u8, Vec<u8>, u64, bool, Vec<u8>) {
+    let minikind = Kind::from(e.kind()).to_byte();
+    let tree_data = e.revision().map_or_else(Vec::new, |r| r.bytes().to_vec());
+    let (fingerprint, size, executable) = match e {
+        InventoryEntry::Directory { .. } => (Vec::new(), 0, false),
+        InventoryEntry::File {
+            text_sha1,
+            text_size,
+            executable,
+            ..
+        } => (
+            text_sha1.as_ref().map_or_else(Vec::new, |f| f.to_vec()),
+            text_size.unwrap_or(0),
+            *executable,
+        ),
+        InventoryEntry::Link { symlink_target, .. } => (
+            symlink_target
+                .as_ref()
+                .map_or_else(Vec::new, |f| f.as_bytes().to_vec()),
+            0,
+            false,
+        ),
+        InventoryEntry::TreeReference {
+            reference_revision, ..
+        } => (
+            reference_revision
+                .as_ref()
+                .map_or_else(Vec::new, |f| f.bytes().to_vec()),
+            0,
+            false,
+        ),
+    };
+
+    (minikind, fingerprint, size, executable, tree_data)
+}
+
+fn _crc32(bit: &[u8]) -> u32 {
+    let mut hasher = crc32fast::Hasher::new();
+    hasher.update(bit);
+    hasher.finalize()
+}
+
+/// Format lines for final output.
+///
+/// Args:
+///   lines: A sequence of lines containing the parents list and the path lines.
+pub fn get_output_lines(mut lines: Vec<&[u8]>) -> Vec<Vec<u8>> {
+    // Format lines for final output.
+    let mut output_lines = vec![HEADER_FORMAT_3];
+    lines.push(b"");
+
+    let inventory_text = lines.join(&b"\0\n\0"[..]).to_vec();
+
+    let crc32 = _crc32(inventory_text.as_slice());
+    let crc32_line = format!("crc32: {}\n", crc32).into_bytes();
+    output_lines.push(crc32_line.as_slice());
+
+    let num_entries = lines.len() - 3;
+    let num_entries_line = format!("num_entries: {}\n", num_entries).into_bytes();
+    output_lines.push(num_entries_line.as_slice());
+    output_lines.push(inventory_text.as_slice());
+
+    output_lines.into_iter().map(|l| l.to_vec()).collect()
 }

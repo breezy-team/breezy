@@ -1,23 +1,27 @@
-use bazaar::inventory::{
-    check_delta_consistency, describe_change, detect_changes, Entry, InventoryDeltaEntry,
-    InventoryDeltaInconsistency,
+use bazaar::inventory::{describe_change, detect_changes, Entry};
+use bazaar::inventory_delta::{
+    InventoryDeltaEntry, InventoryDeltaInconsistency, InventoryDeltaParseError,
+    InventoryDeltaSerializeError,
 };
 use bazaar::{FileId, RevisionId};
 use breezy_osutils::Kind;
 use pyo3::class::basic::CompareOp;
-use pyo3::exceptions::PyNotImplementedError;
-use pyo3::import_exception;
+use pyo3::exceptions::{PyIndexError, PyKeyError, PyNotImplementedError};
 use pyo3::prelude::*;
 use pyo3::pyclass_init::PyClassInitializer;
 use pyo3::types::{PyBytes, PyDict};
 use pyo3::wrap_pyfunction;
-
+use pyo3::{create_exception, import_exception};
 use std::collections::HashMap;
 
 import_exception!(breezy.bzr.inventory, InvalidEntryName);
 import_exception!(breezy.errors, NoSuchId);
 import_exception!(breezy.errors, BzrCheckError);
+import_exception!(breezy.errors, InvalidNormalization);
 import_exception!(breezy.errors, InconsistentDelta);
+import_exception!(breezy.errors, BzrError);
+create_exception!(breezy.inventory_delta, IncompatibleInventoryDelta, BzrError);
+create_exception!(breezy.inventory_delta, InventoryDeltaError, BzrError);
 
 fn kind_from_str(kind: &str) -> Option<Kind> {
     match kind {
@@ -68,7 +72,7 @@ fn common_ie_check(
 }
 
 #[pyclass(subclass)]
-pub struct InventoryEntry(Entry);
+pub struct InventoryEntry(pub Entry);
 
 #[pymethods]
 impl InventoryEntry {
@@ -113,7 +117,7 @@ impl InventoryEntry {
     }
 
     #[setter]
-    fn set_file_id(&mut self, file_id: Vec<u8>) {
+    fn set__file_id(&mut self, py: Python, file_id: &[u8]) {
         match &mut self.0 {
             Entry::File { file_id: f, .. } => *f = FileId::from(file_id),
             Entry::Directory { file_id: f, .. } => *f = FileId::from(file_id),
@@ -398,11 +402,16 @@ impl InventoryFile {
                     .to_object(py)
                     .as_ref(py)
                     .repr()?,
-                text_sha1.to_object(py).as_ref(py).repr()?,
+                text_sha1
+                    .as_ref()
+                    .map(|r| PyBytes::new(py, r).to_object(py))
+                    .to_object(py)
+                    .as_ref(py)
+                    .repr()?,
                 text_size.to_object(py).as_ref(py).repr()?,
                 revision
                     .as_ref()
-                    .map(|r| r.bytes())
+                    .map(|r| PyBytes::new(py, r.bytes()).to_object(py))
                     .to_object(py)
                     .as_ref(py)
                     .repr()?,
@@ -810,96 +819,213 @@ fn is_valid_name(name: &str) -> bool {
 }
 
 #[pyfunction]
-fn check_delta(
-    delta: Vec<(
-        Option<String>,
-        Option<String>,
-        Vec<u8>,
-        Option<PyRef<InventoryEntry>>,
-    )>,
-) -> PyResult<()> {
-    let delta = delta
-        .iter()
-        .map(|(old_name, new_name, file_id, entry)| {
-            let old_name = old_name.as_ref().map(|s| s.as_str());
-            let new_name = new_name.as_ref().map(|s| s.as_str());
-            let file_id = file_id.as_slice();
-            let entry = entry.as_ref().map(|e| e.0.clone());
-            InventoryDeltaEntry {
-                old_path: old_name.map(|s| s.to_string()),
-                new_path: new_name.map(|s| s.to_string()),
-                file_id: FileId::from(file_id),
-                new_entry: entry,
+fn ensure_normalized_name(name: std::path::PathBuf) -> PyResult<std::path::PathBuf> {
+    bazaar::inventory::ensure_normalized_name(name.as_path())
+        .map_err(|_e| InvalidNormalization::new_err(name))
+}
+
+#[pyclass]
+struct InventoryDelta(bazaar::inventory_delta::InventoryDelta);
+
+#[pymethods]
+impl InventoryDelta {
+    #[new]
+    fn new(
+        py: Python,
+        delta: Option<
+            Vec<(
+                Option<String>,
+                Option<String>,
+                Vec<u8>,
+                Option<PyRef<InventoryEntry>>,
+            )>,
+        >,
+    ) -> PyResult<Self> {
+        let mut delta = delta.unwrap_or_else(Vec::new);
+        let mut delta = delta
+            .iter()
+            .map(|(old_name, new_name, file_id, entry)| {
+                let old_name = old_name.as_ref().map(|s| s.as_str());
+                let new_name = new_name.as_ref().map(|s| s.as_str());
+                let file_id = file_id.as_slice();
+                let entry = entry.as_ref().map(|e| e.0.clone());
+                InventoryDeltaEntry {
+                    old_path: old_name.map(|s| s.to_string()),
+                    new_path: new_name.map(|s| s.to_string()),
+                    file_id: FileId::from(file_id),
+                    new_entry: entry,
+                }
+            })
+            .collect::<Vec<_>>();
+        Ok(Self(bazaar::inventory_delta::InventoryDelta::from(delta)))
+    }
+
+    fn __nonzero__(slf: PyRef<Self>) -> bool {
+        !slf.0.is_empty()
+    }
+
+    fn sort(&mut self) {
+        self.0.sort();
+    }
+
+    fn __len__(&self) -> usize {
+        self.0.len()
+    }
+
+    fn __richcmp__(&self, other: PyRef<InventoryDelta>, op: CompareOp) -> PyResult<Option<bool>> {
+        match op {
+            CompareOp::Eq => Ok(Some(self.0 == other.0)),
+            CompareOp::Ne => Ok(Some(self.0 != other.0)),
+            _ => Err(PyNotImplementedError::new_err(
+                "Only == and != are supported",
+            )),
+        }
+    }
+
+    fn __getitem__(
+        &self,
+        py: Python,
+        index: isize,
+    ) -> PyResult<(Option<String>, Option<String>, PyObject, PyObject)> {
+        let index: usize = if index < 0 {
+            (self.0.len() as isize + index) as usize
+        } else {
+            index as usize
+        };
+        let entry = self
+            .0
+            .get(index)
+            .ok_or(PyIndexError::new_err("Index out of bounds"))?;
+        Ok((
+            entry.old_path.clone(),
+            entry.new_path.clone(),
+            PyBytes::new(py, entry.file_id.bytes()).to_object(py),
+            entry
+                .new_entry
+                .as_ref()
+                .map_or_else(|| Ok(py.None()), |e| entry_to_py(py, e.clone()))?,
+        ))
+    }
+
+    fn check(&self) -> PyResult<()> {
+        self.0.check().map_err(|e| match e {
+            InventoryDeltaInconsistency::NoPath => {
+                InconsistentDelta::new_err(("", "", "No path in entry"))
+            }
+            InventoryDeltaInconsistency::DuplicateFileId(ref path, ref fid) => {
+                InconsistentDelta::new_err((path.clone(), fid.bytes().to_vec(), "repeated file_id"))
+            }
+            InventoryDeltaInconsistency::DuplicateOldPath(path, fid) => {
+                InconsistentDelta::new_err((path, fid.bytes().to_vec(), "repeated path"))
+            }
+            InventoryDeltaInconsistency::DuplicateNewPath(path, fid) => {
+                InconsistentDelta::new_err((path, fid.bytes().to_vec(), "repeated path"))
+            }
+            InventoryDeltaInconsistency::MismatchedId(path, fid1, fid2) => {
+                InconsistentDelta::new_err((
+                    path,
+                    fid1.bytes().to_vec(),
+                    format!("mismatched id with entry {}", fid2),
+                ))
+            }
+            InventoryDeltaInconsistency::EntryWithoutPath(path, fid) => {
+                InconsistentDelta::new_err((path, fid.bytes().to_vec(), "Entry with no new_path"))
+            }
+            InventoryDeltaInconsistency::PathWithoutEntry(path, fid) => {
+                InconsistentDelta::new_err((path, fid.bytes().to_vec(), "new_path with no entry"))
             }
         })
-        .collect::<Vec<_>>();
-    check_delta_consistency(&delta).map_err(|e| match e {
-        InventoryDeltaInconsistency::NoPath => {
-            InconsistentDelta::new_err(("", "", "No path in entry"))
-        }
-        InventoryDeltaInconsistency::DuplicateFileId(ref path, ref fid) => {
-            InconsistentDelta::new_err((path.clone(), fid.bytes().to_vec(), "repeated file_id"))
-        }
-        InventoryDeltaInconsistency::DuplicateOldPath(path, fid) => {
-            InconsistentDelta::new_err((path, fid.bytes().to_vec(), "repeated path"))
-        }
-        InventoryDeltaInconsistency::DuplicateNewPath(path, fid) => {
-            InconsistentDelta::new_err((path, fid.bytes().to_vec(), "repeated path"))
-        }
-        InventoryDeltaInconsistency::MismatchedId(path, fid1, fid2) => {
-            InconsistentDelta::new_err((
-                path,
-                fid1.bytes().to_vec(),
-                format!("mismatched id with entry {}", fid2),
-            ))
-        }
-        InventoryDeltaInconsistency::EntryWithoutPath(path, fid) => {
-            InconsistentDelta::new_err((path, fid.bytes().to_vec(), "Entry with no new_path"))
-        }
-        InventoryDeltaInconsistency::PathWithoutEntry(path, fid) => {
-            InconsistentDelta::new_err((path, fid.bytes().to_vec(), "new_path with no entry"))
-        }
-    })
+    }
+
+    fn __repr__(&self) -> String {
+        format!("{:?}", self.0)
+    }
 }
 
 #[pyfunction]
-fn sort_inventory_delta(
+fn parse_inventory_delta(
     py: Python,
-    delta: Vec<(
-        Option<String>,
-        Option<String>,
-        Vec<u8>,
-        Option<PyRef<InventoryEntry>>,
-    )>,
-) -> PyResult<Vec<(Option<String>, Option<String>, PyObject, PyObject)>> {
-    let mut delta = delta
-        .iter()
-        .map(|(old_name, new_name, file_id, entry)| {
-            let old_name = old_name.as_ref().map(|s| s.as_str());
-            let new_name = new_name.as_ref().map(|s| s.as_str());
-            let file_id = file_id.as_slice();
-            let entry = entry.as_ref().map(|e| e.0.clone());
-            InventoryDeltaEntry {
-                old_path: old_name.map(|s| s.to_string()),
-                new_path: new_name.map(|s| s.to_string()),
-                file_id: FileId::from(file_id),
-                new_entry: entry,
-            }
-        })
-        .collect::<Vec<_>>();
-    bazaar::inventory::sort_inventory_delta(&mut delta);
-    delta
-        .into_iter()
-        .map(|e| {
-            Ok((
-                e.old_path,
-                e.new_path,
-                PyBytes::new(py, e.file_id.bytes()).to_object(py),
-                e.new_entry
-                    .map_or_else(|| Ok(py.None()), |e| entry_to_py(py, e))?,
-            ))
-        })
-        .collect::<PyResult<Vec<_>>>()
+    lines: Vec<Vec<u8>>,
+    allow_versioned_root: Option<bool>,
+    allow_tree_references: Option<bool>,
+) -> PyResult<(PyObject, PyObject, bool, bool, PyObject)> {
+    let (parent, version, versioned_root, tree_references, result) =
+        bazaar::inventory_delta::parse_inventory_delta(
+            lines
+                .iter()
+                .map(|x| x.as_slice())
+                .collect::<Vec<_>>()
+                .as_slice(),
+            allow_versioned_root,
+            allow_tree_references,
+        )
+        .map_err(|e| match e {
+            InventoryDeltaParseError::Invalid(m) => InventoryDeltaError::new_err((m,)),
+            InventoryDeltaParseError::Incompatible(m) => IncompatibleInventoryDelta::new_err((m,)),
+        })?;
+
+    let parent = PyBytes::new(py, parent.bytes()).to_object(py);
+    let version = PyBytes::new(py, version.bytes()).to_object(py);
+
+    let result = PyCell::new(py, InventoryDelta(result))?.to_object(py);
+
+    Ok((parent, version, versioned_root, tree_references, result))
+}
+
+#[pyfunction]
+fn parse_inventory_entry(
+    file_id: Vec<u8>,
+    name: String,
+    parent_id: Option<Vec<u8>>,
+    revision: Option<Vec<u8>>,
+    lines: &[u8],
+) -> InventoryEntry {
+    InventoryEntry(bazaar::inventory_delta::parse_inventory_entry(
+        FileId::from(file_id),
+        name,
+        parent_id.map(FileId::from),
+        revision.map(RevisionId::from),
+        lines,
+    ))
+}
+
+#[pyfunction]
+fn serialize_inventory_entry(py: Python, entry: &InventoryEntry) -> PyResult<PyObject> {
+    Ok(PyBytes::new(
+        py,
+        bazaar::inventory_delta::serialize_inventory_entry(&entry.0)
+            .map_err(|e| match e {
+                InventoryDeltaSerializeError::Invalid(m) => InventoryDeltaError::new_err((m,)),
+                InventoryDeltaSerializeError::UnsupportedKind(k) => PyKeyError::new_err((k,)),
+            })?
+            .as_slice(),
+    )
+    .to_object(py))
+}
+
+#[pyfunction]
+fn serialize_inventory_delta(
+    py: Python,
+    old_name: Vec<u8>,
+    new_name: Vec<u8>,
+    delta_to_new: &InventoryDelta,
+    versioned_root: bool,
+    tree_references: bool,
+) -> PyResult<Vec<PyObject>> {
+    Ok(bazaar::inventory_delta::serialize_inventory_delta(
+        &RevisionId::from(old_name),
+        &RevisionId::from(new_name),
+        &delta_to_new.0,
+        versioned_root,
+        tree_references,
+    )
+    .map_err(|e| match e {
+        InventoryDeltaSerializeError::Invalid(m) => InventoryDeltaError::new_err((m,)),
+        InventoryDeltaSerializeError::UnsupportedKind(m) => PyKeyError::new_err((m,)),
+    })?
+    .into_iter()
+    .map(|x| PyBytes::new(py, x.as_slice()).to_object(py))
+    .collect())
 }
 
 pub fn _inventory_rs(py: Python) -> PyResult<&PyModule> {
@@ -912,8 +1038,17 @@ pub fn _inventory_rs(py: Python) -> PyResult<&PyModule> {
     m.add_class::<TreeReference>()?;
     m.add_wrapped(wrap_pyfunction!(make_entry))?;
     m.add_wrapped(wrap_pyfunction!(is_valid_name))?;
-    m.add_wrapped(wrap_pyfunction!(check_delta))?;
-    m.add_wrapped(wrap_pyfunction!(sort_inventory_delta))?;
+    m.add_wrapped(wrap_pyfunction!(ensure_normalized_name))?;
+    m.add_class::<InventoryDelta>()?;
+    m.add_wrapped(wrap_pyfunction!(parse_inventory_delta))?;
+    m.add_wrapped(wrap_pyfunction!(parse_inventory_entry))?;
+    m.add_wrapped(wrap_pyfunction!(serialize_inventory_delta))?;
+    m.add_wrapped(wrap_pyfunction!(serialize_inventory_entry))?;
+    m.add("InventoryDeltaError", py.get_type::<InventoryDeltaError>())?;
+    m.add(
+        "IncompatibleInventoryDelta",
+        py.get_type::<IncompatibleInventoryDelta>(),
+    )?;
 
     Ok(m)
 }

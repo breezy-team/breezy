@@ -60,6 +60,7 @@ from ..workingtree import WorkingTree
 from . import dirstate
 from .inventory import (ROOT_ID, DuplicateFileId, Inventory, InventoryEntry,
                         entry_factory)
+from .inventory_delta import InventoryDelta
 from .inventorytree import (InterInventoryTree, InventoryRevisionTree,
                             InventoryTree)
 from .lockable_files import LockableFiles
@@ -1306,7 +1307,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         """See MutableTree.apply_inventory_delta."""
         with self.lock_tree_write():
             state = self.current_dirstate()
-            state.update_by_delta(changes)
+            state.update_by_delta(InventoryDelta(changes))
             self._make_dirty(reset_inventory=True)
 
     def update_basis_by_delta(self, new_revid, delta):
@@ -1720,7 +1721,7 @@ class DirStateRevisionTree(InventoryTree):
             ie = inv.get_entry(inv_file_id)
             if ie.kind != 'directory':
                 raise errors.NotADirectory(path)
-            return ie.children.values()
+            return inv.iter_sorted_children(inv_file_id)
 
     def _comparison_data(self, entry, path):
         """See Tree._comparison_data."""

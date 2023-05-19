@@ -21,6 +21,7 @@ import os
 import time
 
 from ... import errors, osutils
+from ...bzr.inventory_delta import InventoryDelta
 from ...lockdir import LockDir
 from ...tests import TestCaseWithTransport, TestSkipped, features
 from ...tree import InterTree
@@ -508,7 +509,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.build_tree(['tree/a', 'tree/b'])
         tree.add(['a'], ids=[b'a-id'])
         self.assertEqual('a', tree.id2path(b'a-id'))
-        self.assertRaises(errors.NoSuchId, tree.id2path, 'a')
+        self.assertRaises(errors.NoSuchId, tree.id2path, b'a')
         tree.commit('a')
         tree.add(['b'], ids=[b'b-id'])
 
@@ -842,9 +843,9 @@ class TestCorruptDirstate(TestCaseWithTransport):
         self.assertRaises(
             errors.InconsistentDelta,
             tree.update_basis_by_delta, b'new-revision-id',
-            [('dir', 'new-dir', b'dir-id', new_dir),
+            InventoryDelta([('dir', 'new-dir', b'dir-id', new_dir),
              ('dir/file', 'new-dir/new-file', b'file-id', new_file),
-             ])
+             ]))
         del state
 
         # Now when we re-read the file it should not have been modified

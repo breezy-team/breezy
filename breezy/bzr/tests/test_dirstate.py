@@ -28,6 +28,7 @@ from ... import tests
 from ...tests import features, test_osutils
 from ...tests.scenarios import load_tests_apply_scenarios
 from .. import dirstate, inventory, inventorytree, workingtree_4
+from ..inventory_delta import InventoryDelta
 
 # TODO:
 # TESTS to write:
@@ -743,16 +744,16 @@ class TestDirStateManipulations(TestCaseWithDirState):
         state = self.create_dirstate_with_root_and_subdir()
         self.addCleanup(state.unlock)
         id_index = state._get_id_index()
-        self.assertEqual([b'a-root-value', b'subdir-id'], sorted(id_index))
+        self.assertEqual([b'a-root-value', b'subdir-id'], sorted(id_index.file_ids()))
         state.add('file-name', b'file-id', 'file', None, '')
         self.assertEqual([b'a-root-value', b'file-id', b'subdir-id'],
-                         sorted(id_index))
+                         sorted(id_index.file_ids()))
         state.update_minimal((b'', b'new-name', b'file-id'), b'f',
                              path_utf8=b'new-name')
         self.assertEqual([b'a-root-value', b'file-id', b'subdir-id'],
-                         sorted(id_index))
+                         sorted(id_index.file_ids()))
         self.assertEqual([(b'', b'new-name', b'file-id')],
-                         sorted(id_index[b'file-id']))
+                         sorted(id_index.get(b'file-id')))
         state._validate()
 
     def test_set_state_from_inventory_no_content_no_parents(self):
@@ -2409,7 +2410,7 @@ class TestDiscardMergeParents(TestCaseWithDirState):
 class Test_InvEntryToDetails(tests.TestCase):
 
     def assertDetails(self, expected, inv_entry):
-        details = dirstate.DirState._inv_entry_to_details(inv_entry)
+        details = dirstate._inv_entry_to_details(inv_entry)
         self.assertEqual(expected, details)
         # details should always allow join() and always be a plain str when
         # finished
@@ -2501,12 +2502,10 @@ class TestUpdateBasisByDelta(tests.TestCase):
                 path, file_id, ie_rev_id = info
             if path == '':
                 # Replace the root entry
-                del inv._byid[inv.root.file_id]
-                inv.root.file_id = file_id
-                inv._byid[file_id] = inv.root
+                inv.rename_id(inv.root.file_id, file_id)
                 dir_ids[''] = file_id
-                continue
-            inv.add(self.path_to_ie(path, file_id, ie_rev_id, dir_ids))
+            else:
+                inv.add(self.path_to_ie(path, file_id, ie_rev_id, dir_ids))
         return inventorytree.InventoryRevisionTree(_Repo(), inv, rev_id)
 
     def create_empty_dirstate(self):
@@ -2531,7 +2530,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
                 continue
             ie = self.path_to_ie(new_path, file_id, rev_id, dir_ids)
             inv_delta.append((old_path, new_path, file_id, ie))
-        return inv_delta
+        return InventoryDelta(inv_delta)
 
     def assertUpdate(self, active, basis, target):
         """Assert that update_basis_by_delta works how we want.

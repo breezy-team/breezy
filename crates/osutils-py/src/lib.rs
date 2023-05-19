@@ -185,11 +185,21 @@ fn size_sha_file(py: Python, file: PyObject) -> PyResult<(usize, PyObject)> {
 }
 
 #[pyfunction]
-fn normalized_filename(filename: &PyAny) -> PyResult<(PathBuf, bool)> {
-    if breezy_osutils::path::normalizes_filenames() {
+fn normalized_filename(filename: &PyAny, policy: Option<&str>) -> PyResult<(PathBuf, bool)> {
+    if policy.is_none() {
+        if breezy_osutils::path::normalizes_filenames() {
+            _accessible_normalized_filename(filename)
+        } else {
+            _inaccessible_normalized_filename(filename)
+        }
+    } else if policy == Some("accessible") {
         _accessible_normalized_filename(filename)
-    } else {
+    } else if policy == Some("inaccessible") {
         _inaccessible_normalized_filename(filename)
+    } else {
+        Err(PyValueError::new_err(
+            "policy must be 'accessible', 'inaccessible' or None",
+        ))
     }
 }
 
@@ -1031,6 +1041,11 @@ fn string_to_color(name: &str) -> PyResult<&dyn Color> {
 }
 
 #[pyfunction]
+fn color_exists(name: &str) -> bool {
+    string_to_color(name).is_ok()
+}
+
+#[pyfunction]
 fn colorstring(
     py: Python,
     text: &[u8],
@@ -1226,6 +1241,7 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     )?;
     m.add_wrapped(wrap_pyfunction!(get_home_dir))?;
     m.add_wrapped(wrap_pyfunction!(colorstring))?;
+    m.add_wrapped(wrap_pyfunction!(color_exists))?;
     m.add_wrapped(wrap_pyfunction!(lexists))?;
     m.add_wrapped(wrap_pyfunction!(pathjoin))?;
     m.add_wrapped(wrap_pyfunction!(joinpath))?;
