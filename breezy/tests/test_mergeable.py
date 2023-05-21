@@ -58,7 +58,7 @@ class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
         # We don't really care what the url is since the server will close the
         # connection without interpreting it
         url = sock_server.get_url()
-        self.assertRaises(errors.ConnectionReset, read_mergeable_from_url, url)
+        self.assertRaises(ConnectionResetError, read_mergeable_from_url, url)
 
 
 class DisconnectingHandler(socketserver.BaseRequestHandler):

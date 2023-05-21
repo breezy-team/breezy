@@ -281,7 +281,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
                     'decoder state: buf[:10]=%r, state_accept=%s',
                     self._protocol_decoder._get_in_buffer()[:10],
                     self._protocol_decoder.state_accept.__name__)
-            raise errors.ConnectionReset(
+            raise ConnectionResetError(
                 "Unexpected end of message. "
                 "Please check connectivity and permissions, and report a bug "
                 "if problems persist.")

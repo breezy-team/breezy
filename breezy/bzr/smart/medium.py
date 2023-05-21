@@ -642,7 +642,7 @@ class SmartClientMediumRequest:
         line = self._read_line()
         if not line.endswith(b'\n'):
             # end of file encountered reading from server
-            raise errors.ConnectionReset(
+            raise ConnectionResetError(
                 "Unexpected end of message. Please check connectivity "
                 "and permissions, and report a bug if problems persist.")
         return line
@@ -924,7 +924,7 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
             self._writeable_pipe.write(data)
         except OSError as e:
             if e.errno in (errno.EINVAL, errno.EPIPE):
-                raise errors.ConnectionReset(
+                raise ConnectionResetError(
                     "Error trying to write to subprocess", e)
             raise
         self._report_activity(len(data), 'write')
@@ -1121,8 +1121,7 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
                                            socket.SOCK_STREAM, 0, 0)
         except socket.gaierror as xxx_todo_changeme:
             (err_num, err_msg) = xxx_todo_changeme.args
-            raise errors.ConnectionError("failed to lookup %s:%d: %s" %
-                                         (self._host, port, err_msg))
+            raise ConnectionError("failed to lookup %s:%d: %s" % (self._host, port, err_msg))
         # Initialize err in case there are no addresses returned:
         last_err = socket.error(f"no address found for {self._host}")
         for (family, socktype, proto, _canonname, sockaddr) in sockaddrs:
@@ -1145,8 +1144,9 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
                 err_msg = last_err.args
             else:
                 err_msg = last_err.args[1]
-            raise errors.ConnectionError("failed to connect to %s:%d: %s" %
-                                         (self._host, port, err_msg))
+            if isinstance(last_err, ConnectionError):
+                raise last_err
+            raise ConnectionError("failed to connect to %s:%d: %s" % (self._host, port, err_msg))
         self._connected = True
         for hook in transport.Transport.hooks["post_connect"]:
             hook(self)
