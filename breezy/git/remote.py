@@ -22,11 +22,10 @@ from dulwich.refs import SymrefLoop
 
 from .. import config, debug, errors, osutils, trace, ui, urlutils
 from ..controldir import BranchReferenceLoop
-from ..errors import (AlreadyBranchError, BzrError, ConnectionReset,
-                      DivergedBranches, InProcessTransport, InvalidRevisionId,
-                      LockContention, NoSuchRevision, NoSuchTag,
-                      NotBranchError, NotLocalUrl, PermissionDenied,
-                      TransportError, UnexpectedHttpStatus,
+from ..errors import (AlreadyBranchError, BzrError, DivergedBranches,
+                      InProcessTransport, InvalidRevisionId, LockContention,
+                      NoSuchRevision, NoSuchTag, NotBranchError, NotLocalUrl,
+                      PermissionDenied, TransportError, UnexpectedHttpStatus,
                       UninitializableFormat)
 from ..push import PushResult
 from ..revision import NULL_REVISION
@@ -160,7 +159,7 @@ def parse_git_error(url, message):
     if message == 'Host key verification failed.':
         return TransportError('Host key verification failed')
     if message == '[Errno 104] Connection reset by peer':
-        return ConnectionReset(message)
+        return ConnectionResetError(message)
     if message == 'The remote server unexpectedly closed the connection.':
         return TransportError(message)
     m = re.match(r'unexpected http resp ([0-9]+) for (.*)', message)
@@ -181,7 +180,7 @@ def parse_git_hangup(url, e):
     """
     stderr_lines = getattr(e, 'stderr_lines', None)
     if not stderr_lines:
-        return ConnectionReset('Connection closed early', e)
+        return ConnectionResetError('Connection closed early')
     if all(line.startswith(b'remote: ') for line in stderr_lines):
         stderr_lines = [
             line[len(b'remote: '):] for line in stderr_lines]

@@ -571,7 +571,7 @@ class AbstractHTTPHandler(urllib.request.AbstractHTTPHandler):
         if exc_type == socket.gaierror:
             # No need to retry, that will not help
             origin_req_host = request.origin_req_host
-            raise errors.ConnectionError(f"Couldn't resolve host '{origin_req_host}'",
+            raise ConnectionError(f"Couldn't resolve host '{origin_req_host}'",
                                          orig_error=exc_val)
         elif isinstance(exc_val, http.client.ImproperConnectionState):
             # The http.client pipeline is in incorrect state, it's a bug in our
@@ -606,7 +606,7 @@ class AbstractHTTPHandler(urllib.request.AbstractHTTPHandler):
                       and exc_val.args[0] in (errno.ECONNRESET, 10053, 10054)):
                     # 10053 == WSAECONNABORTED
                     # 10054 == WSAECONNRESET
-                    raise errors.ConnectionReset(
+                    raise ConnectionResetError(
                         "Connection lost while sending request.")
                 else:
                     # All other exception are considered connection related.
@@ -616,9 +616,8 @@ class AbstractHTTPHandler(urllib.request.AbstractHTTPHandler):
                     # connection and retrying is the best we can
                     # do.
                     selector = request.selector
-                    my_exception = errors.ConnectionError(
-                        msg=f'while sending {request.get_method()} {selector}:',
-                        orig_error=exc_val)
+                    my_exception = ConnectionError(
+                        f'while sending {request.get_method()} {selector}:')
 
                 if self._debuglevel >= 2:
                     print(f'On connection: [{request.connection!r}]')
@@ -766,7 +765,7 @@ class HTTPSHandler(AbstractHTTPHandler):
             connect = _ConnectRequest(request)
             response = self.parent.open(connect)
             if response.code != 200:
-                raise errors.ConnectionError("Can't connect to {} via proxy {}".format(
+                raise ConnectionError("Can't connect to {} via proxy {}".format(
                     connect.proxied_host, self.host))
             # Housekeeping
             connection.cleanup_pipe()
@@ -2438,7 +2437,7 @@ class SmartClientHTTPMedium(medium.SmartClientMedium):
             if code != 200:
                 raise errors.UnexpectedHttpStatus(
                     t._remote_path('.bzr/smart'), code)
-        except (errors.InvalidHttpResponse, errors.ConnectionReset) as e:
+        except (errors.InvalidHttpResponse, ConnectionResetError) as e:
             raise errors.SmartProtocolError(str(e))
         return body_filelike
 

@@ -1025,13 +1025,13 @@ def send_all(sock, bytes, report_activity=None):
             sent = sock.send(view[sent_total:sent_total + MAX_SOCKET_CHUNK])
         except OSError as e:
             if e.args[0] in _end_of_stream_errors:
-                raise errors.ConnectionReset(
+                raise ConnectionResetError(
                     "Error trying to write to socket", e)
             if e.args[0] != errno.EINTR:
                 raise
         else:
             if sent == 0:
-                raise errors.ConnectionReset(f'Sending to {sock} returned 0 bytes')
+                raise ConnectionResetError(f'Sending to {sock} returned 0 bytes')
             sent_total += sent
             if report_activity is not None:
                 report_activity(sent, 'write')

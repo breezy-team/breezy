@@ -738,7 +738,7 @@ class TestSendAll(tests.TestCase):
                 errs.append(err_cls(errnum))
         for err in errs:
             sock = DisconnectedSocket(err)
-            self.assertRaises(errors.ConnectionReset,
+            self.assertRaises(ConnectionResetError,
                               osutils.send_all, sock, b'some more content')
 
     def test_send_with_no_progress(self):
@@ -756,7 +756,7 @@ class TestSendAll(tests.TestCase):
                     raise RuntimeError('too many calls')
                 return 0
         sock = NoSendingSocket()
-        self.assertRaises(errors.ConnectionReset,
+        self.assertRaises(ConnectionResetError,
                           osutils.send_all, sock, b'content')
         self.assertEqual(1, sock.call_count)
 

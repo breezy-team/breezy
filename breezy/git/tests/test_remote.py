@@ -27,9 +27,8 @@ from dulwich.repo import Repo as GitRepo
 
 from ...branch import Branch
 from ...controldir import ControlDir
-from ...errors import (ConnectionReset, DivergedBranches, NoSuchTag,
-                       NotBranchError, PermissionDenied, TransportError,
-                       UnexpectedHttpStatus)
+from ...errors import (DivergedBranches, NoSuchTag, NotBranchError,
+                       PermissionDenied, TransportError, UnexpectedHttpStatus)
 from ...tests import TestCase, TestCaseWithTransport
 from ...tests.features import ExecutableFeature
 from ...urlutils import join as urljoin
@@ -177,12 +176,12 @@ Email support@github.com for help
                     'Host key verification failed.')))
 
     def test_connection_reset_by_peer(self):
-        self.assertEqual(
-            ConnectionReset('[Errno 104] Connection reset by peer'),
-            parse_git_error(
-                'url',
-                RemoteGitError(
-                    '[Errno 104] Connection reset by peer')))
+        got = parse_git_error(
+            'url',
+            RemoteGitError(
+                '[Errno 104] Connection reset by peer'))
+        self.assertIsInstance(got, ConnectionResetError)
+        self.assertEqual('[Errno 104] Connection reset by peer', got.args[0])
 
     def test_http_unexpected(self):
         self.assertEqual(
@@ -208,7 +207,7 @@ class ParseHangupTests(TestCase):
 
     def test_not_set(self):
         self.assertIsInstance(
-            parse_git_hangup('http://', HangupException()), ConnectionReset)
+            parse_git_hangup('http://', HangupException()), ConnectionResetError)
 
     def test_single_line(self):
         self.assertEqual(

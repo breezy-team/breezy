@@ -81,9 +81,9 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
     # support that.
     if ('password' not in supported_auth_types and
             'keyboard-interactive' not in supported_auth_types):
-        raise errors.ConnectionError('Unable to authenticate to SSH host as'
-                                     '\n  %s@%s\nsupported auth types: %s'
-                                     % (username, host, supported_auth_types))
+        raise ConnectionError('Unable to authenticate to SSH host as'
+                              '\n  %s@%s\nsupported auth types: %s'
+                              % (username, host, supported_auth_types))
 
     if password:
         try:
@@ -99,10 +99,10 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
         try:
             paramiko_transport.auth_password(username, password)
         except paramiko.SSHException as e:
-            raise errors.ConnectionError(
+            raise ConnectionError(
                 f'Unable to authenticate to SSH host as\n  {username}@{host}\n', e)
     else:
-        raise errors.ConnectionError('Unable to authenticate to SSH host as'
+        raise ConnectionError('Unable to authenticate to SSH host as'
                                      '  %s@%s' % (username, host))
 
 
