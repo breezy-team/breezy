@@ -22,11 +22,10 @@ from dulwich.refs import SymrefLoop
 
 from .. import config, debug, errors, osutils, trace, ui, urlutils
 from ..controldir import BranchReferenceLoop
-from ..errors import (AlreadyBranchError, BzrError,
-                      DivergedBranches, InProcessTransport, InvalidRevisionId,
-                      LockContention, NoSuchRevision, NoSuchTag,
-                      NotBranchError, NotLocalUrl, PermissionDenied,
-                      TransportError, UnexpectedHttpStatus,
+from ..errors import (AlreadyBranchError, BzrError, DivergedBranches,
+                      InProcessTransport, InvalidRevisionId, LockContention,
+                      NoSuchRevision, NoSuchTag, NotBranchError, NotLocalUrl,
+                      PermissionDenied, TransportError, UnexpectedHttpStatus,
                       UninitializableFormat)
 from ..push import PushResult
 from ..revision import NULL_REVISION

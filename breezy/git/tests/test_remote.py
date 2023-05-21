@@ -27,9 +27,8 @@ from dulwich.repo import Repo as GitRepo
 
 from ...branch import Branch
 from ...controldir import ControlDir
-from ...errors import (DivergedBranches, NoSuchTag,
-                       NotBranchError, PermissionDenied, TransportError,
-                       UnexpectedHttpStatus)
+from ...errors import (DivergedBranches, NoSuchTag, NotBranchError,
+                       PermissionDenied, TransportError, UnexpectedHttpStatus)
 from ...tests import TestCase, TestCaseWithTransport
 from ...tests.features import ExecutableFeature
 from ...urlutils import join as urljoin
