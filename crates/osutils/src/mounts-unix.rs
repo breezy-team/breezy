@@ -1,5 +1,6 @@
 use lazy_static::lazy_static;
 use log::{debug, warn};
+use std::collections::HashSet;
 use std::ffi::OsString;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -40,9 +41,43 @@ pub fn read_mtab<P: AsRef<Path>>(path: P) -> impl Iterator<Item = MountEntry> {
         })
 }
 
+fn sort_mounts(mounts: &mut [MountEntry]) {
+    mounts.sort_by(|a, b| b.path.as_os_str().len().cmp(&a.path.as_os_str().len()));
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn test_sort_mounts() {
+    let mut mounts = vec![
+        MountEntry {
+            path: PathBuf::from("/"),
+            fs_type: "ext4".to_string(),
+            options: "rw,relatime,errors=remount-ro".to_string(),
+        },
+        MountEntry {
+            path: PathBuf::from("/var"),
+            fs_type: "ext4".to_string(),
+            options: "rw,relatime,errors=remount-ro".to_string(),
+        },
+        MountEntry {
+            path: PathBuf::from("/var/blah"),
+            fs_type: "ext4".to_string(),
+            options: "rw,relatime,errors=remount-ro".to_string(),
+        },
+    ];
+    sort_mounts(&mut mounts);
+    assert_eq!(
+        vec!["/var/blah", "/var", "/"],
+        mounts
+            .iter()
+            .map(|m| m.path.to_str().unwrap())
+            .collect::<Vec<_>>()
+    );
+}
+
 fn load_mounts() -> Vec<MountEntry> {
     let mut mounts: Vec<MountEntry> = read_mtab("/proc/mounts").collect();
-    mounts.sort_by(|a, b| a.path.as_os_str().len().cmp(&b.path.as_os_str().len()));
+    sort_mounts(&mut mounts);
     mounts
 }
 
@@ -51,7 +86,7 @@ fn load_mounts() -> Vec<MountEntry> {
 fn test_load_mounts() {
     let mounts = load_mounts();
     assert!(!mounts.is_empty());
-    assert!(mounts[0].path == PathBuf::from("/"));
+    assert!(mounts[mounts.len() - 1].path == PathBuf::from("/"));
 }
 
 pub fn find_mount_entry<P: AsRef<Path>>(entries: &[MountEntry], path: P) -> Option<&MountEntry> {
@@ -77,17 +112,70 @@ fn extract_option<'a>(options: &'a str, name: &str) -> Option<&'a str> {
     None
 }
 
-pub fn get_fs_type<P: AsRef<Path>>(path: P) -> Option<String> {
-    let entry = find_mount_entry(&MOUNTS, path);
-    if let Some(entry) = entry {
+fn get_fs_type_ext<P: AsRef<Path>>(entries: &[MountEntry], path: P) -> Option<&str> {
+    let mut seen = HashSet::new();
+    let mut path = path.as_ref().to_path_buf();
+    loop {
+        let entry = find_mount_entry(entries, path)?;
         if entry.fs_type == "overlay" {
-            get_fs_type(PathBuf::from(extract_option(&entry.options, "upperdir")?))
+            path = extract_option(&entry.options, "upperdir").map(PathBuf::from)?;
+            if !seen.insert(path.clone()) {
+                warn!("Loop in overlayfs mounts {:?}", seen);
+                return None;
+            }
         } else {
-            Some(entry.fs_type.clone())
+            return Some(entry.fs_type.as_str());
         }
-    } else {
-        None
     }
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn test_get_fs_type() {
+    let mounts = vec![MountEntry {
+        path: PathBuf::from("/"),
+        fs_type: "ext4".to_string(),
+        options: "rw,relatime,errors=remount-ro".to_string(),
+    }];
+    assert!(get_fs_type_ext(&mounts, "/") == Some("ext4"));
+    assert!(get_fs_type_ext(&mounts, "/etc/passwd") == Some("ext4"));
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn test_get_fs_type_overlay() {
+    let mut mounts = vec![
+        MountEntry {
+            path: PathBuf::from("/var/blah"),
+            fs_type: "ext4".to_string(),
+            options: "rw,relatime,errors=remount-ro".to_string(),
+        },
+        MountEntry {
+            path: PathBuf::from("/"),
+            fs_type: "overlay".to_string(),
+            options: "rw,relatime,errors=remount-ro,upperdir=/var/blah".to_string(),
+        },
+    ];
+    sort_mounts(&mut mounts);
+    assert_eq!(get_fs_type_ext(&mounts, "/var/blah"), Some("ext4"));
+    assert_eq!(get_fs_type_ext(&mounts, "/"), Some("ext4"));
+    assert_eq!(get_fs_type_ext(&mounts, "/etc/passwd"), Some("ext4"));
+    let mounts = vec![MountEntry {
+        path: PathBuf::from("/"),
+        fs_type: "overlay".to_string(),
+        options: "rw,relatime,errors=remount-ro".to_string(),
+    }];
+    assert!(get_fs_type_ext(&mounts, "/").is_none());
+    let mounts = vec![MountEntry {
+        path: PathBuf::from("/"),
+        fs_type: "overlay".to_string(),
+        options: "rw,relatime,errors=remount-ro,upperdir=/foo".to_string(),
+    }];
+    assert!(get_fs_type_ext(&mounts, "/").is_none());
+}
+
+pub fn get_fs_type<P: AsRef<Path>>(path: P) -> Option<String> {
+    get_fs_type_ext(&MOUNTS, path.as_ref()).map(|s| s.to_string())
 }
 
 pub fn supports_hardlinks<P: AsRef<Path>>(path: P) -> Option<bool> {
