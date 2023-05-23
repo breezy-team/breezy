@@ -1112,44 +1112,9 @@ class CHKInventory(CommonInventory):
                 remaining_children.extend(parent_to_children[file_id])
         return other
 
-    @staticmethod
-    def _bytes_to_utf8name_key(data):
-        """Get the file_id, revision_id key out of data."""
-        # We don't normally care about name, except for times when we want
-        # to filter out empty names because of non rich-root...
-        sections = data.split(b'\n')
-        kind, file_id = sections[0].split(b': ')
-        return (sections[2], file_id, sections[3])
-
     def _bytes_to_entry(self, bytes):
         """Deserialise a serialised entry."""
-        sections = bytes.split(b'\n')
-        if sections[0].startswith(b"file: "):
-            result = InventoryFile(sections[0][6:],
-                                   sections[2].decode('utf8'),
-                                   sections[1])
-            result.text_sha1 = sections[4]
-            result.text_size = int(sections[5])
-            result.executable = sections[6] == b"Y"
-        elif sections[0].startswith(b"dir: "):
-            result = InventoryDirectory(sections[0][5:],
-                                           sections[2].decode('utf8'),
-                                           sections[1])
-        elif sections[0].startswith(b"symlink: "):
-            result = InventoryLink(sections[0][9:],
-                                   sections[2].decode('utf8'),
-                                   sections[1])
-            result.symlink_target = sections[4].decode('utf8')
-        elif sections[0].startswith(b"tree: "):
-            result = TreeReference(sections[0][6:],
-                                   sections[2].decode('utf8'),
-                                   sections[1])
-            result.reference_revision = sections[4]
-        else:
-            raise ValueError(f"Not a serialised entry {bytes!r}")
-        result.revision = sections[3]
-        if result.parent_id == b'':
-            result.parent_id = None
+        result = chk_inventory_bytes_to_entry(bytes)
         self._fileid_to_entry_cache[result.file_id] = result
         return result
 
@@ -1757,3 +1722,45 @@ def mutable_inventory_from_tree(tree):
     for _path, inv_entry in entries:
         inv.add(inv_entry.copy())
     return inv
+
+
+def chk_inventory_bytes_to_utf8name_key(data):
+    """Get the file_id, revision_id key out of data."""
+    # We don't normally care about name, except for times when we want
+    # to filter out empty names because of non rich-root...
+    sections = data.split(b'\n')
+    kind, file_id = sections[0].split(b': ')
+    return (sections[2], file_id, sections[3])
+
+
+def chk_inventory_bytes_to_entry(bytes):
+    """Deserialise a serialised entry."""
+    sections = bytes.split(b'\n')
+    if sections[0].startswith(b"file: "):
+        result = InventoryFile(sections[0][6:],
+                               sections[2].decode('utf8'),
+                               sections[1])
+        result.text_sha1 = sections[4]
+        result.text_size = int(sections[5])
+        result.executable = sections[6] == b"Y"
+    elif sections[0].startswith(b"dir: "):
+        result = CHKInventoryDirectory(sections[0][5:],
+                                       sections[2].decode('utf8'),
+                                       sections[1])
+    elif sections[0].startswith(b"symlink: "):
+        result = InventoryLink(sections[0][9:],
+                               sections[2].decode('utf8'),
+                               sections[1])
+        result.symlink_target = sections[4].decode('utf8')
+    elif sections[0].startswith(b"tree: "):
+        result = TreeReference(sections[0][6:],
+                               sections[2].decode('utf8'),
+                               sections[1])
+        result.reference_revision = sections[4]
+    else:
+        raise ValueError(f"Not a serialised entry {bytes!r}")
+    result.file_id = result.file_id
+    result.revision = sections[3]
+    if result.parent_id == b'':
+        result.parent_id = None
+    return result

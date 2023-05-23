@@ -21,7 +21,8 @@ from .. import chk_map, groupcompress, inventory
 from ..inventory import (ROOT_ID, CHKInventory, DuplicateFileId,
                          InvalidEntryName, Inventory, InventoryDirectory,
                          InventoryEntry, InventoryFile, TreeReference,
-                         mutable_inventory_from_tree)
+                         mutable_inventory_from_tree,
+                         chk_inventory_bytes_to_utf8name_key)
 from ..inventory_delta import InventoryDelta
 from . import TestCase, TestCaseWithTransport
 
@@ -1192,7 +1193,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         self.assertEqual(ie, ie2)
         self.assertIsInstance(ie2.name, str)
         self.assertEqual((b'filename', b'file-id', b'file-rev-id'),
-                         inv._bytes_to_utf8name_key(bytes))
+                         chk_inventory_bytes_to_utf8name_key(bytes))
 
     def test_file2_entry_to_bytes(self):
         inv = CHKInventory(None)
@@ -1209,7 +1210,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         self.assertEqual(ie, ie2)
         self.assertIsInstance(ie2.name, str)
         self.assertEqual((b'\xce\xa9name', b'file-id', b'file-rev-id'),
-                         inv._bytes_to_utf8name_key(bytes))
+                         chk_inventory_bytes_to_utf8name_key(bytes))
 
     def test_dir_entry_to_bytes(self):
         inv = CHKInventory(None)
@@ -1221,7 +1222,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         self.assertEqual(ie, ie2)
         self.assertIsInstance(ie2.name, str)
         self.assertEqual((b'dirname', b'dir-id', b'dir-rev-id'),
-                         inv._bytes_to_utf8name_key(bytes))
+                         chk_inventory_bytes_to_utf8name_key(bytes))
 
     def test_dir2_entry_to_bytes(self):
         inv = CHKInventory(None)
@@ -1236,7 +1237,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         self.assertIsInstance(ie2.name, str)
         self.assertIsNone(ie2.parent_id)
         self.assertEqual((b'dir\xce\xa9name', b'dir-id', b'dir-rev-id'),
-                         inv._bytes_to_utf8name_key(bytes))
+                         chk_inventory_bytes_to_utf8name_key(bytes))
 
     def test_symlink_entry_to_bytes(self):
         inv = CHKInventory(None)
@@ -1251,7 +1252,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         self.assertIsInstance(ie2.name, str)
         self.assertIsInstance(ie2.symlink_target, str)
         self.assertEqual((b'linkname', b'link-id', b'link-rev-id'),
-                         inv._bytes_to_utf8name_key(bytes))
+                         chk_inventory_bytes_to_utf8name_key(bytes))
 
     def test_symlink2_entry_to_bytes(self):
         inv = CHKInventory(None)
@@ -1267,7 +1268,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         self.assertIsInstance(ie2.name, str)
         self.assertIsInstance(ie2.symlink_target, str)
         self.assertEqual((b'link\xce\xa9name', b'link-id', b'link-rev-id'),
-                         inv._bytes_to_utf8name_key(bytes))
+                         chk_inventory_bytes_to_utf8name_key(bytes))
 
     def test_tree_reference_entry_to_bytes(self):
         inv = CHKInventory(None)
@@ -1282,7 +1283,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         self.assertEqual(ie, ie2)
         self.assertIsInstance(ie2.name, str)
         self.assertEqual((b'tree\xce\xa9name', b'tree-root-id', b'tree-rev-id'),
-                         inv._bytes_to_utf8name_key(bytes))
+                         chk_inventory_bytes_to_utf8name_key(bytes))
 
     def make_basic_utf8_inventory(self):
         inv = Inventory()

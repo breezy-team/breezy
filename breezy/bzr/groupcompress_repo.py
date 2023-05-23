@@ -992,7 +992,7 @@ class CHKInventoryRepository(PackRepository):
             altered it listed explicitly.
         """
         rich_root = self.supports_rich_root()
-        bytes_to_info = inventory.CHKInventory._bytes_to_utf8name_key
+        bytes_to_info = inventory.chk_inventory_bytes_to_utf8name_key
         file_id_revisions = {}
         with ui.ui_factory.nested_progress_bar() as pb:
             revision_keys = [(r,) for r in revision_ids]
