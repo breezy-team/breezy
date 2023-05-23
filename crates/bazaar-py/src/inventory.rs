@@ -1028,6 +1028,38 @@ fn serialize_inventory_delta(
     .collect())
 }
 
+#[pyfunction]
+fn chk_inventory_entry_to_bytes(py: Python, entry: &InventoryEntry) -> PyResult<PyObject> {
+    Ok(PyBytes::new(
+        py,
+        bazaar::chk_inventory::chk_inventory_entry_to_bytes(&entry.0).as_slice(),
+    )
+    .to_object(py))
+}
+
+#[pyfunction]
+pub fn chk_inventory_bytes_to_entry(py: Python, data: &[u8]) -> PyResult<PyObject> {
+    entry_to_py(
+        py,
+        bazaar::chk_inventory::chk_inventory_bytes_to_entry(data),
+    )
+}
+
+#[pyfunction]
+fn chk_inventory_bytes_to_utf8name_key(
+    py: Python,
+    data: &[u8],
+) -> PyResult<(PyObject, PyObject, PyObject)> {
+    let (name, file_id, revision_id) =
+        bazaar::chk_inventory::chk_inventory_bytes_to_utf8_name_key(data);
+
+    Ok((
+        PyBytes::new(py, name).to_object(py),
+        PyBytes::new(py, file_id.as_bytes()).to_object(py),
+        PyBytes::new(py, revision_id.as_bytes()).to_object(py),
+    ))
+}
+
 pub fn _inventory_rs(py: Python) -> PyResult<&PyModule> {
     let m = PyModule::new(py, "inventory")?;
 
@@ -1049,6 +1081,9 @@ pub fn _inventory_rs(py: Python) -> PyResult<&PyModule> {
         "IncompatibleInventoryDelta",
         py.get_type::<IncompatibleInventoryDelta>(),
     )?;
+    m.add_wrapped(wrap_pyfunction!(chk_inventory_entry_to_bytes))?;
+    m.add_wrapped(wrap_pyfunction!(chk_inventory_bytes_to_entry))?;
+    m.add_wrapped(wrap_pyfunction!(chk_inventory_bytes_to_utf8name_key))?;
 
     Ok(m)
 }

@@ -1850,7 +1850,10 @@ class DirStateRevisionTree(InventoryTree):
         if current_entry[parent_index][0] != b'd':
             raise AssertionError()
         inv = Inventory(root_id=current_id, revision_id=self._revision_id)
-        inv.root.revision = current_entry[parent_index][4]
+        if current_entry[parent_index][4] == b"":
+            inv.root.revision = None
+        else:
+            inv.root.revision = current_entry[parent_index][4]
         # Turn some things into local variables
         minikind_to_kind = dirstate.DirState._minikind_to_kind
         factory = entry_factory

@@ -862,7 +862,7 @@ class CHKInventoryRepository(PackRepository):
         serializer = self._format._inventory_serializer
         new_inv = inventory.CHKInventory(serializer.search_key_name)
         new_inv.revision_id = revision_id
-        entry_to_bytes = new_inv._entry_to_bytes
+        entry_to_bytes = inventory._chk_inventory_entry_to_bytes
         id_to_entry_dict = {}
         parent_id_basename_dict = {}
         for old_path, new_path, file_id, entry in delta:
@@ -992,7 +992,7 @@ class CHKInventoryRepository(PackRepository):
             altered it listed explicitly.
         """
         rich_root = self.supports_rich_root()
-        bytes_to_info = inventory.CHKInventory._bytes_to_utf8name_key
+        bytes_to_info = inventory.chk_inventory_bytes_to_utf8name_key
         file_id_revisions = {}
         with ui.ui_factory.nested_progress_bar() as pb:
             revision_keys = [(r,) for r in revision_ids]
