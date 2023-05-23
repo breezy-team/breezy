@@ -12,3 +12,4 @@ homepage = "https://www.breezy-vcs.org/"
 [dependencies]
 breezy-osutils = { path = "../osutils" }
 breezy-urlutils = { path = "../urlutils" }
+breezy = { path = "../.." }

@@ -191,6 +191,7 @@ dependencies = [
 name = "breezy-git"
 version = "3.3.3"
 dependencies = [
+ "breezy",
  "breezy-osutils",
  "breezy-urlutils",
 ]

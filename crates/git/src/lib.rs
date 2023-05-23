@@ -6,3 +6,12 @@ pub fn bzr_url_to_git_url(
     let ref_ = target_params.get("revno").map(|s| s.to_string());
     Ok((target_url.to_string(), branch, ref_))
 }
+
+pub fn get_cache_dir() -> std::io::Result<std::path::PathBuf> {
+    let path = breezy::bedding::cache_dir()?.join("git");
+
+    if !path.is_dir() {
+        std::fs::create_dir_all(&path)?;
+    }
+    Ok(path)
+}
