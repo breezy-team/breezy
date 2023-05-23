@@ -19,6 +19,9 @@ External Compatibility Breaks
   These imports have long been broken.
   (Jelmer Vernooĳ)
 
+* Fix support for newer versions of Dulwich.
+  (Jelmer Vernooĳ)
+
 brz 3.3.2
 #########
 
