@@ -488,7 +488,11 @@ class TransportRepo(BaseRepo):
         return True
 
     def _determine_symlinks(self):
-        return osutils.supports_symlinks(self.path)
+        try:
+            return osutils.supports_symlinks(self.path)
+        except NotLocalUrl:
+            # TODO(jelmer): Query the transport
+            return sys.platform != 'win32'
 
     def get_named_file(self, path):
         """Get a file from the control dir with a specific name.
