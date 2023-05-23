@@ -1,6 +1,5 @@
 #![allow(non_snake_case)]
 
-use bazaar::inventory::Entry as InventoryEntry;
 use bazaar::FileId;
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;

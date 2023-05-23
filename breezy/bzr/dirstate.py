@@ -226,7 +226,6 @@ import os
 import stat
 import sys
 import time
-import zlib
 from stat import S_IEXEC
 
 from .. import (cache_utf8, config, debug, errors, lock, osutils, trace,

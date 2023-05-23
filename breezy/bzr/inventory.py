@@ -24,7 +24,6 @@
 # it would be nice not to need to hold the backpointer here.
 
 from collections import deque
-from typing import TYPE_CHECKING
 
 from ..lazy_import import lazy_import
 
@@ -40,9 +39,6 @@ from .. import errors, osutils
 from .._bzr_rs import ROOT_ID
 from .._bzr_rs import inventory as _mod_inventory_rs
 from .static_tuple import StaticTuple
-
-if TYPE_CHECKING:
-    from .inventory_delta import InventoryDelta
 
 InventoryEntry = _mod_inventory_rs.InventoryEntry
 InventoryFile = _mod_inventory_rs.InventoryFile
