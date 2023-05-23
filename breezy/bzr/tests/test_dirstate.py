@@ -1190,13 +1190,13 @@ class TestDirStateManipulations(TestCaseWithDirState):
             ((b'', b'', b'TREE_ROOT'), [
              (b'd', b'', 0, False, dirstate.DirState.NULLSTAT),  # current tree
              ]),
-            ((b'', b'a dir', b'a dir id'), [
+            ((b'', b'a dir', b'a-dir-id'), [
              (b'd', b'', 0, False, dirstate.pack_stat(stat)),  # current tree
              ]),
             ]
         state = dirstate.DirState.initialize('dirstate')
         try:
-            state.add('a dir', b'a dir id', 'directory', stat, None)
+            state.add('a dir', b'a-dir-id', 'directory', stat, None)
             # having added it, it should be in the output of iter_entries.
             self.assertEqual(expected_entries, list(state._iter_entries()))
             # saving and reloading should not affect this.
@@ -1220,14 +1220,14 @@ class TestDirStateManipulations(TestCaseWithDirState):
             ((b'', b'', b'TREE_ROOT'), [
              (b'd', b'', 0, False, dirstate.DirState.NULLSTAT),  # current tree
              ]),
-            ((b'', link_name.encode('UTF-8'), b'a link id'), [
+            ((b'', link_name.encode('UTF-8'), b'a-link-id'), [
              (b'l', target.encode('UTF-8'), stat[6],
               False, dirstate.pack_stat(stat)),  # current tree
              ]),
             ]
         state = dirstate.DirState.initialize('dirstate')
         try:
-            state.add(link_name, b'a link id', 'symlink', stat,
+            state.add(link_name, b'a-link-id', 'symlink', stat,
                       target.encode('UTF-8'))
             # having added it, it should be in the output of iter_entries.
             self.assertEqual(expected_entries, list(state._iter_entries()))
@@ -1258,7 +1258,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
             ((b'', b'', b'TREE_ROOT'), [
              (b'd', b'', 0, False, dirstate.DirState.NULLSTAT),  # current tree
              ]),
-            ((b'', b'a dir', b'a dir id'), [
+            ((b'', b'a dir', b'a-dir-id'), [
              (b'd', b'', 0, False, dirstate.pack_stat(dirstat)),  # current tree
              ]),
             ((b'a dir', b'a file', b'a-file-id'), [
@@ -1268,7 +1268,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
             ]
         state = dirstate.DirState.initialize('dirstate')
         try:
-            state.add('a dir', b'a dir id', 'directory', dirstat, None)
+            state.add('a dir', b'a-dir-id', 'directory', dirstat, None)
             state.add('a dir/a file', b'a-file-id',
                       'file', filestat, b'1' * 20)
             # added it, it should be in the output of iter_entries.

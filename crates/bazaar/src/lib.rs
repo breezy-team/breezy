@@ -1,6 +1,7 @@
 use std::fmt::{Debug, Error, Formatter};
 
 pub mod bencode_serializer;
+pub mod chk_inventory;
 pub mod filters;
 pub mod gen_ids;
 pub mod globbing;
@@ -21,6 +22,7 @@ impl Debug for FileId {
 
 impl From<Vec<u8>> for FileId {
     fn from(v: Vec<u8>) -> Self {
+        check_valid(&v);
         FileId(v)
     }
 }
@@ -33,6 +35,7 @@ impl From<FileId> for Vec<u8> {
 
 impl From<&[u8]> for FileId {
     fn from(v: &[u8]) -> Self {
+        check_valid(v);
         FileId(v.to_vec())
     }
 }
@@ -42,7 +45,12 @@ impl FileId {
         Self::from(gen_ids::gen_file_id(name))
     }
 
+    #[deprecated]
     pub fn bytes(&self) -> &[u8] {
+        &self.0
+    }
+
+    pub fn as_bytes(&self) -> &[u8] {
         &self.0
     }
 }
@@ -70,12 +78,14 @@ impl std::fmt::Display for RevisionId {
 
 impl From<Vec<u8>> for RevisionId {
     fn from(v: Vec<u8>) -> Self {
+        check_valid(&v);
         RevisionId(v)
     }
 }
 
 impl From<&[u8]> for RevisionId {
     fn from(v: &[u8]) -> Self {
+        check_valid(v);
         RevisionId(v.to_vec())
     }
 }
@@ -89,6 +99,28 @@ impl From<RevisionId> for Vec<u8> {
 pub const NULL_REVISION: &[u8] = b"null:";
 pub const CURRENT_REVISION: &[u8] = b"current:";
 
+pub fn is_valid(id: &[u8]) -> bool {
+    if id.contains(&b' ') || id.contains(&b'\t') || id.contains(&b'\n') || id.contains(&b'\r') {
+        return false;
+    }
+
+    if id.is_empty() {
+        return false;
+    }
+
+    true
+}
+
+pub fn check_valid(id: &[u8]) {
+    if !is_valid(id) {
+        if let Ok(id) = String::from_utf8(id.to_vec()) {
+            panic!("Invalid id: {:?}", id);
+        } else {
+            panic!("Invalid id: {:?}", id);
+        }
+    }
+}
+
 impl RevisionId {
     pub fn is_null(&self) -> bool {
         self.0 == NULL_REVISION
@@ -98,7 +130,12 @@ impl RevisionId {
         Self::from(gen_ids::gen_revision_id(username, timestamp))
     }
 
+    #[deprecated]
     pub fn bytes(&self) -> &[u8] {
+        &self.0
+    }
+
+    pub fn as_bytes(&self) -> &[u8] {
         &self.0
     }
 
