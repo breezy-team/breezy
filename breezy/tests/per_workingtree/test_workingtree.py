@@ -34,7 +34,7 @@ from ...errors import PathsNotVersionedError, UnsupportedOperation
 from ...mutabletree import MutableTree
 from ...osutils import getcwd, pathjoin, supports_symlinks
 from ...tree import TreeDirectory, TreeFile, TreeLink
-from ...workingtree import SettingFileIdUnsupported, WorkingTree
+from ...workingtree import WorkingTree
 from .. import TestNotApplicable, TestSkipped, features
 from . import TestCaseWithWorkingTree
 

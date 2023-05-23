@@ -117,7 +117,7 @@ impl InventoryEntry {
     }
 
     #[setter]
-    fn set__file_id(&mut self, py: Python, file_id: &[u8]) {
+    fn set__file_id(&mut self, _py: Python, file_id: &[u8]) {
         match &mut self.0 {
             Entry::File { file_id: f, .. } => *f = FileId::from(file_id),
             Entry::Directory { file_id: f, .. } => *f = FileId::from(file_id),
@@ -265,7 +265,7 @@ impl InventoryEntry {
         }
         let ret = PyDict::new(py);
         for (revision, entry) in candidates.iter() {
-            ret.set_item(PyBytes::new(py, &revision.bytes()), entry)?;
+            ret.set_item(PyBytes::new(py, revision.bytes()), entry)?;
         }
         Ok(ret.into_py(py))
     }
@@ -831,7 +831,7 @@ struct InventoryDelta(bazaar::inventory_delta::InventoryDelta);
 impl InventoryDelta {
     #[new]
     fn new(
-        py: Python,
+        _py: Python,
         delta: Option<
             Vec<(
                 Option<String>,
@@ -841,8 +841,8 @@ impl InventoryDelta {
             )>,
         >,
     ) -> PyResult<Self> {
-        let mut delta = delta.unwrap_or_else(Vec::new);
-        let mut delta = delta
+        let delta = delta.unwrap_or_default();
+        let delta = delta
             .iter()
             .map(|(old_name, new_name, file_id, entry)| {
                 let old_name = old_name.as_ref().map(|s| s.as_str());

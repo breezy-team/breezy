@@ -2,7 +2,7 @@ use bazaar::inventory::Entry as InventoryEntry;
 use bazaar::FileId;
 use breezy_osutils::sha::{sha_file, sha_file_by_name};
 use std::cmp::Ordering;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fs::File;
 use std::fs::Metadata;
 use std::os::unix::fs::MetadataExt;
