@@ -21,10 +21,10 @@ from .. import chk_map, groupcompress, inventory
 from ..inventory import (ROOT_ID, CHKInventory, DuplicateFileId,
                          InvalidEntryName, Inventory, InventoryDirectory,
                          InventoryEntry, InventoryFile, TreeReference,
-                         mutable_inventory_from_tree,
-                         chk_inventory_bytes_to_utf8name_key,
+                         _chk_inventory_bytes_to_entry,
                          _chk_inventory_entry_to_bytes,
-                         _chk_inventory_bytes_to_entry)
+                         chk_inventory_bytes_to_utf8name_key,
+                         mutable_inventory_from_tree)
 from ..inventory_delta import InventoryDelta
 from . import TestCase, TestCaseWithTransport
 
