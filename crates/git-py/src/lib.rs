@@ -4,7 +4,7 @@ use std::path::PathBuf;
 #[pyfunction]
 fn bzr_url_to_git_url(location: &str) -> PyResult<(String, Option<String>, Option<String>)> {
     let (url, revno, branch) = breezy_git::bzr_url_to_git_url(location)
-        .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(("Invalid URL",)))?;
+        .map_err(|_e| PyErr::new::<pyo3::exceptions::PyValueError, _>(("Invalid URL",)))?;
     Ok((url, revno, branch))
 }
 
