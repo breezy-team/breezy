@@ -436,7 +436,7 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
             s = socket.socket()
             s.bind(('localhost', 0))
             t = self._transport('http://%s:%s/' % s.getsockname())
-            self.assertRaises(errors.ConnectionError, t.has, 'foo/bar')
+            self.assertRaises(ConnectionError, t.has, 'foo/bar')
         finally:
             socket.setdefaulttimeout(default_timeout)
 
@@ -554,13 +554,13 @@ class TestWallServer(TestSpecificRequestHandler):
         # socket and badly formatted status line, so we can't
         # just test for ConnectionError, we have to test
         # InvalidHttpResponse too.
-        self.assertRaises((errors.ConnectionError,
+        self.assertRaises((ConnectionError,
                            errors.InvalidHttpResponse),
                           t.has, 'foo/bar')
 
     def test_http_get(self):
         t = self.get_readonly_transport()
-        self.assertRaises((errors.ConnectionError, errors.ConnectionReset,
+        self.assertRaises((ConnectionError, ConnectionResetError,
                            errors.InvalidHttpResponse),
                           t.get, 'foo/bar')
 
@@ -594,13 +594,13 @@ class TestBadStatusServer(TestSpecificRequestHandler):
 
     def test_http_has(self):
         t = self.get_readonly_transport()
-        self.assertRaises((errors.ConnectionError, errors.ConnectionReset,
+        self.assertRaises((ConnectionError, ConnectionResetError,
                            errors.InvalidHttpResponse),
                           t.has, 'foo/bar')
 
     def test_http_get(self):
         t = self.get_readonly_transport()
-        self.assertRaises((errors.ConnectionError, errors.ConnectionReset,
+        self.assertRaises((ConnectionError, ConnectionResetError,
                            errors.InvalidHttpResponse),
                           t.get, 'foo/bar')
 

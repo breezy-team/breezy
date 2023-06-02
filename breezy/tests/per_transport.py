@@ -28,7 +28,7 @@ from io import BytesIO
 from .. import errors, osutils, pyutils
 from .. import transport as _mod_transport
 from .. import urlutils
-from ..errors import ConnectionError, PathError, TransportNotPossible
+from ..errors import PathError, TransportNotPossible
 from ..osutils import getcwd
 from ..transport import (ConnectedTransport, FileExists, NoSuchFile, Transport,
                          _get_transport_modules)

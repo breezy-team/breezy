@@ -1,7 +1,5 @@
 use crate::{FileId, RevisionId};
 use breezy_osutils::Kind;
-use std::collections::HashMap;
-use std::collections::HashSet;
 
 // This should really be an id randomly assigned when the tree is
 // created, but it's not for now.

@@ -1,4 +1,4 @@
-use std::io::{Read, Write};
+use std::io::Read;
 
 /// diff-delta.rs: generate a delta between two buffers
 ///

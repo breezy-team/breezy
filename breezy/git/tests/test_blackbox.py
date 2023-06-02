@@ -306,7 +306,7 @@ class TestGitBlackBox(ExternalBase):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a'])
         tree.add(['a'])
-        output, error = self.run_bzr(['diff', '--format=git'], retcode=1)
+        output, error = self.run_bzr(['diff', '--color=never', '--format=git'], retcode=1)
         self.assertEqual(error, '')
         # Some older versions of Dulwich (< 0.19.12) formatted diffs slightly
         # differently.
@@ -601,7 +601,7 @@ class GrepTests(ExternalBase):
         tree = self.make_branch_and_tree('.', format='git')
         self.build_tree_contents([('a', 'text for a\n')])
         tree.add(['a'])
-        output, error = self.run_bzr('grep text')
+        output, error = self.run_bzr('grep --color=never text')
         self.assertEqual(output, 'a:text for a\n')
         self.assertEqual(error, '')
 

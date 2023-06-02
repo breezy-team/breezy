@@ -273,7 +273,7 @@ class TestBzrServe(TestBzrServeBase):
         # Now, we wait for timeout to trigger
         err = process.stderr.readline()
         self.assertEqual(
-            b'Connection Timeout: disconnecting client after 0.2 seconds\n',
+            b'disconnecting client after 0.2 seconds\n',
             err)
         self.assertServerFinishesCleanly(process)
 
@@ -293,7 +293,7 @@ class TestBzrServe(TestBzrServeBase):
         # Now, we wait for timeout to trigger
         err = process.stderr.readline()
         self.assertEqual(
-            b'Connection Timeout: disconnecting client after 0.1 seconds\n',
+            b'disconnecting client after 0.1 seconds\n',
             err)
         self.assertServerFinishesCleanly(process)
 

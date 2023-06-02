@@ -117,7 +117,7 @@ impl InventoryEntry {
     }
 
     #[setter]
-    fn set__file_id(&mut self, py: Python, file_id: &[u8]) {
+    fn set__file_id(&mut self, _py: Python, file_id: &[u8]) {
         match &mut self.0 {
             Entry::File { file_id: f, .. } => *f = FileId::from(file_id),
             Entry::Directory { file_id: f, .. } => *f = FileId::from(file_id),
@@ -831,7 +831,7 @@ struct InventoryDelta(bazaar::inventory_delta::InventoryDelta);
 impl InventoryDelta {
     #[new]
     fn new(
-        py: Python,
+        _py: Python,
         delta: Option<
             Vec<(
                 Option<String>,
@@ -841,8 +841,8 @@ impl InventoryDelta {
             )>,
         >,
     ) -> PyResult<Self> {
-        let mut delta = delta.unwrap_or_else(Vec::new);
-        let mut delta = delta
+        let delta = delta.unwrap_or_default();
+        let delta = delta
             .iter()
             .map(|(old_name, new_name, file_id, entry)| {
                 let old_name = old_name.as_ref().map(|s| s.as_str());
@@ -1028,6 +1028,38 @@ fn serialize_inventory_delta(
     .collect())
 }
 
+#[pyfunction]
+fn chk_inventory_entry_to_bytes(py: Python, entry: &InventoryEntry) -> PyResult<PyObject> {
+    Ok(PyBytes::new(
+        py,
+        bazaar::chk_inventory::chk_inventory_entry_to_bytes(&entry.0).as_slice(),
+    )
+    .to_object(py))
+}
+
+#[pyfunction]
+pub fn chk_inventory_bytes_to_entry(py: Python, data: &[u8]) -> PyResult<PyObject> {
+    entry_to_py(
+        py,
+        bazaar::chk_inventory::chk_inventory_bytes_to_entry(data),
+    )
+}
+
+#[pyfunction]
+fn chk_inventory_bytes_to_utf8name_key(
+    py: Python,
+    data: &[u8],
+) -> PyResult<(PyObject, PyObject, PyObject)> {
+    let (name, file_id, revision_id) =
+        bazaar::chk_inventory::chk_inventory_bytes_to_utf8_name_key(data);
+
+    Ok((
+        PyBytes::new(py, name).to_object(py),
+        PyBytes::new(py, file_id.as_bytes()).to_object(py),
+        PyBytes::new(py, revision_id.as_bytes()).to_object(py),
+    ))
+}
+
 pub fn _inventory_rs(py: Python) -> PyResult<&PyModule> {
     let m = PyModule::new(py, "inventory")?;
 
@@ -1049,6 +1081,9 @@ pub fn _inventory_rs(py: Python) -> PyResult<&PyModule> {
         "IncompatibleInventoryDelta",
         py.get_type::<IncompatibleInventoryDelta>(),
     )?;
+    m.add_wrapped(wrap_pyfunction!(chk_inventory_entry_to_bytes))?;
+    m.add_wrapped(wrap_pyfunction!(chk_inventory_bytes_to_entry))?;
+    m.add_wrapped(wrap_pyfunction!(chk_inventory_bytes_to_utf8name_key))?;
 
     Ok(m)
 }

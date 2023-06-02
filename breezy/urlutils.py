@@ -56,13 +56,13 @@ unquote_to_bytes = urlparse.unquote_to_bytes
 unquote = urlparse.unquote
 
 
-from ._urlutils_rs import (  # noqa: F401  # noqa: F401  # noqa: F401  # noqa: F401  # noqa: F401  # noqa: F401  # noqa: F401  # noqa: F401
+from ._urlutils_rs import (  # noqa: F401
     _find_scheme_and_separator, basename, combine_paths, derive_to_location,
     dirname, escape, file_relpath, is_url, join, join_segment_parameters,
     join_segment_parameters_raw, joinpath, local_path_from_url,
     local_path_to_url, normalize_url)
 from ._urlutils_rs import posix as posix_rs
-from ._urlutils_rs import (  # noqa: F401  # noqa: F401  # noqa: F401  # noqa: F401  # noqa: F401  # noqa: F401  # noqa: F401  # noqa: F401
+from ._urlutils_rs import (  # noqa: F401
     relative_url, split, split_segment_parameters,
     split_segment_parameters_raw, strip_segment_parameters,
     strip_trailing_slash, unescape)

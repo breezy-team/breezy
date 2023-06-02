@@ -285,7 +285,7 @@ class SSHVendorBadConnection(TestCaseWithTransport):
         from breezy.transport.ssh.paramiko import ParamikoVendor
         self.set_vendor(ParamikoVendor())
         t = _mod_transport.get_transport_from_url(self.bogus_url)
-        self.assertRaises(errors.ConnectionError, t.get, 'foobar')
+        self.assertRaises(ConnectionError, t.get, 'foobar')
 
     def test_bad_connection_ssh(self):
         """None => auto-detect vendor."""
@@ -294,7 +294,7 @@ class SSHVendorBadConnection(TestCaseWithTransport):
         self.set_vendor(None, f)
         t = _mod_transport.get_transport_from_url(self.bogus_url)
         try:
-            self.assertRaises(errors.ConnectionError, t.get, 'foobar')
+            self.assertRaises(ConnectionError, t.get, 'foobar')
         except NameError as e:
             if "global name 'SSHException'" in str(e):
                 self.knownFailure('Known NameError bug in paramiko 1.6.1')

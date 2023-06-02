@@ -1132,14 +1132,7 @@ class TransportNotPossible(TransportError):
     _fmt = "Transport operation not possible: %(msg)s %(orig_error)s"
 
 
-class ConnectionError(TransportError):
-
-    _fmt = "Connection error: %(msg)s %(orig_error)s"
-
-
 class SocketConnectionError(ConnectionError):
-
-    _fmt = "%(msg)s %(host)s%(port)s%(orig_error)s"
 
     def __init__(self, host, port=None, msg=None, orig_error=None):
         if msg is None:
@@ -1148,19 +1141,13 @@ class SocketConnectionError(ConnectionError):
             orig_error = ''
         else:
             orig_error = '; ' + str(orig_error)
-        ConnectionError.__init__(self, msg=msg, orig_error=orig_error)
         self.host = host
         if port is None:
-            self.port = ''
+            port = ''
         else:
-            self.port = f':{port}'
-
-
-# XXX: This is also used for unexpected end of file, which is different at the
-# TCP level from "connection reset".
-class ConnectionReset(TransportError):
-
-    _fmt = "Connection closed: %(msg)s %(orig_error)s"
+            port = f':{port}'
+        self.port = port
+        ConnectionError.__init__(self, f"{msg} {host}{port}{orig_error}")
 
 
 class ConnectionTimeout(ConnectionError):
