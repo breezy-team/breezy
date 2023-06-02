@@ -107,7 +107,7 @@ pub fn get_umask() -> Mode {
     mask
 }
 
-#[derive(PartialEq)]
+#[derive(Debug,PartialEq)]
 pub enum Kind {
     File,
     Directory,

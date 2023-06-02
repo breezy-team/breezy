@@ -17,6 +17,7 @@ use pyo3::{create_exception, import_exception};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::VecDeque;
+use std::fmt::Display;
 use std::iter::FromIterator;
 
 import_exception!(breezy.bzr.inventory, InvalidEntryName);
@@ -27,6 +28,7 @@ import_exception!(breezy.errors, InvalidNormalization);
 import_exception!(breezy.errors, InconsistentDelta);
 import_exception!(breezy.errors, PathAlreadyVersioned);
 import_exception!(breezy.errors, BzrError);
+import_exception!(breezy.errors, NotADirectory);
 create_exception!(breezy.inventory_delta, IncompatibleInventoryDelta, BzrError);
 create_exception!(breezy.inventory_delta, InventoryDeltaError, BzrError);
 
@@ -68,7 +70,7 @@ fn common_ie_check(
             return Err(BzrCheckError::new_err(format!(
                 "missing parent {{{}}} in inventory for revision {{{}}}",
                 parent_id,
-                String::from_utf8(rev_id.to_vec()).unwrap()
+                RevisionId::from(rev_id)
             )));
         }
     }
@@ -376,6 +378,11 @@ impl InventoryFile {
             Entry::File { text_id: t, .. } => *t = text_id,
             _ => panic!("Not a file"),
         }
+    }
+
+    #[getter]
+    fn get_reference_revision(&self, py: Python) -> PyObject {
+        py.None()
     }
 
     fn copy(slf: PyRef<Self>, py: Python) -> PyResult<PyObject> {
@@ -831,58 +838,66 @@ fn ensure_normalized_name(name: std::path::PathBuf) -> PyResult<std::path::PathB
         .map_err(|_e| InvalidNormalization::new_err(name))
 }
 
-fn delta_err_to_py_err(e: InventoryDeltaInconsistency) -> PyErr {
+fn file_id_python(py: Python, file_id: &FileId) -> PyObject {
+    PyBytes::new(py, file_id.bytes()).to_object(py)
+}
+
+fn delta_err_to_py_err(py: Python, e: InventoryDeltaInconsistency) -> PyErr {
     match e {
         InventoryDeltaInconsistency::NoPath => {
             InconsistentDelta::new_err(("", "", "No path in entry"))
         }
         InventoryDeltaInconsistency::DuplicateFileId(ref path, ref fid) => {
-            InconsistentDelta::new_err((path.clone(), fid.bytes().to_vec(), "repeated file_id"))
+            InconsistentDelta::new_err((path.clone(), file_id_python(py, &fid), "repeated file_id"))
         }
         InventoryDeltaInconsistency::DuplicateOldPath(path, fid) => {
-            InconsistentDelta::new_err((path, fid.bytes().to_vec(), "repeated path"))
+            InconsistentDelta::new_err((path, file_id_python(py, &fid), "repeated path"))
         }
         InventoryDeltaInconsistency::DuplicateNewPath(path, fid) => {
-            InconsistentDelta::new_err((path, fid.bytes().to_vec(), "repeated path"))
+            InconsistentDelta::new_err((path, file_id_python(py, &fid), "repeated path"))
         }
         InventoryDeltaInconsistency::MismatchedId(path, fid1, fid2) => {
             InconsistentDelta::new_err((
                 path,
-                fid1.bytes().to_vec(),
+                file_id_python(py, &fid1),
                 format!("mismatched id with entry {}", fid2),
             ))
         }
         InventoryDeltaInconsistency::EntryWithoutPath(path, fid) => {
-            InconsistentDelta::new_err((path, fid.bytes().to_vec(), "Entry with no new_path"))
+            InconsistentDelta::new_err((path, file_id_python(py, &fid), "Entry with no new_path"))
         }
         InventoryDeltaInconsistency::PathWithoutEntry(path, fid) => {
-            InconsistentDelta::new_err((path, fid.bytes().to_vec(), "new_path with no entry"))
+            InconsistentDelta::new_err((path, file_id_python(py, &fid), "new_path with no entry"))
         }
         InventoryDeltaInconsistency::OrphanedChild(fid) => {
-            InconsistentDelta::new_err(("<deleted>", fid.bytes().to_vec(), "orphaned child"))
+            InconsistentDelta::new_err(("<deleted>", file_id_python(py, &fid), "orphaned child"))
         }
-        InventoryDeltaInconsistency::NoSuchId(fid) => NoSuchId::new_err((fid.bytes().to_vec())),
+        InventoryDeltaInconsistency::NoSuchId(fid) => {
+            NoSuchId::new_err((py.None(), file_id_python(py, &fid)))
+        }
         InventoryDeltaInconsistency::PathMismatch(fid, path1, path2) => {
             InconsistentDelta::new_err((
                 path1,
-                fid.bytes().to_vec(),
+                file_id_python(py, &fid),
                 format!("path mismatch != {}", path2),
             ))
         }
         InventoryDeltaInconsistency::ParentMissing(fid) => {
-            InconsistentDelta::new_err(("", fid.bytes().to_vec(), "parent missing"))
+            InconsistentDelta::new_err(("", file_id_python(py, &fid), "parent missing"))
         }
         InventoryDeltaInconsistency::InvalidEntryName(name) => InvalidEntryName::new_err((name,)),
         InventoryDeltaInconsistency::FileIdCycle(fid, path, parent_path) => {
             InconsistentDelta::new_err((
                 path,
-                fid.bytes().to_vec(),
+                file_id_python(py, &fid),
                 format!("file_id cycle with {}", parent_path),
             ))
         }
-        InventoryDeltaInconsistency::ParentNotDirectory(path, fid) => {
-            InconsistentDelta::new_err((path, fid.bytes().to_vec(), "parent is not a directory"))
-        }
+        InventoryDeltaInconsistency::ParentNotDirectory(path, fid) => InconsistentDelta::new_err((
+            path,
+            file_id_python(py, &fid),
+            "parent is not a directory",
+        )),
         InventoryDeltaInconsistency::PathAlreadyVersioned(name, parent_path) => {
             PathAlreadyVersioned::new_err((name, parent_path))
         }
@@ -971,19 +986,23 @@ impl InventoryDelta {
         ))
     }
 
-    fn check(&self) -> PyResult<()> {
-        self.0.check().map_err(|e| match e {
+    fn check(slf: PyRef<Self>, py: Python) -> PyResult<()> {
+        slf.0.check().map_err(|e| match e {
             InventoryDeltaInconsistency::NoPath => {
                 InconsistentDelta::new_err(("", "", "No path in entry"))
             }
             InventoryDeltaInconsistency::DuplicateFileId(ref path, ref fid) => {
-                InconsistentDelta::new_err((path.clone(), fid.bytes().to_vec(), "repeated file_id"))
+                InconsistentDelta::new_err((
+                    path.clone(),
+                    file_id_python(py, &fid),
+                    "repeated file_id",
+                ))
             }
             InventoryDeltaInconsistency::DuplicateOldPath(path, fid) => {
-                InconsistentDelta::new_err((path, fid.bytes().to_vec(), "repeated path"))
+                InconsistentDelta::new_err((path, file_id_python(py, &fid), "repeated path"))
             }
             InventoryDeltaInconsistency::DuplicateNewPath(path, fid) => {
-                InconsistentDelta::new_err((path, fid.bytes().to_vec(), "repeated path"))
+                InconsistentDelta::new_err((path, file_id_python(py, &fid), "repeated path"))
             }
             InventoryDeltaInconsistency::MismatchedId(path, fid1, fid2) => {
                 InconsistentDelta::new_err((
@@ -992,11 +1011,41 @@ impl InventoryDelta {
                     format!("mismatched id with entry {}", fid2),
                 ))
             }
-            InventoryDeltaInconsistency::EntryWithoutPath(path, fid) => {
-                InconsistentDelta::new_err((path, fid.bytes().to_vec(), "Entry with no new_path"))
+            InventoryDeltaInconsistency::EntryWithoutPath(path, fid) => InconsistentDelta::new_err(
+                (path, file_id_python(py, &fid), "Entry with no new_path"),
+            ),
+            InventoryDeltaInconsistency::PathWithoutEntry(path, fid) => InconsistentDelta::new_err(
+                (path, file_id_python(py, &fid), "new_path with no entry"),
+            ),
+            InventoryDeltaInconsistency::PathMismatch(fid, path1, path2) => {
+                InconsistentDelta::new_err((
+                    path1,
+                    file_id_python(py, &fid),
+                    format!("mismatched path with entry {}", path2),
+                ))
             }
-            InventoryDeltaInconsistency::PathWithoutEntry(path, fid) => {
-                InconsistentDelta::new_err((path, fid.bytes().to_vec(), "new_path with no entry"))
+            InventoryDeltaInconsistency::OrphanedChild(fid) => {
+                InconsistentDelta::new_err(("", file_id_python(py, &fid), "orphaned child"))
+            }
+            InventoryDeltaInconsistency::ParentNotDirectory(path, fid) => {
+                InconsistentDelta::new_err((path, file_id_python(py, &fid), "parent not directory"))
+            }
+            InventoryDeltaInconsistency::ParentMissing(fid) => {
+                InconsistentDelta::new_err(("", file_id_python(py, &fid), "parent missing"))
+            }
+            InventoryDeltaInconsistency::NoSuchId(fid) => {
+                NoSuchId::new_err((py.None(), file_id_python(py, &fid)))
+            }
+            InventoryDeltaInconsistency::InvalidEntryName(n) => InvalidEntryName::new_err((n,)),
+            InventoryDeltaInconsistency::FileIdCycle(fid, path, parent_path) => {
+                InconsistentDelta::new_err((
+                    path,
+                    file_id_python(py, &fid),
+                    format!("file_id cycle with {}", parent_path),
+                ))
+            }
+            InventoryDeltaInconsistency::PathAlreadyVersioned(path, fid) => {
+                InconsistentDelta::new_err((path, fid, "path already versioned"))
             }
         })
     }
@@ -1009,18 +1058,20 @@ impl InventoryDelta {
 fn inventory_err_to_py_err(e: Error, py: Python) -> PyErr {
     match e {
         Error::InvalidEntryName(name) => InvalidEntryName::new_err((name,)),
-        Error::DuplicateFileId(fid) => DuplicateFileId::new_err((fid.bytes().to_vec(),)),
-        Error::NoSuchId(fid) => NoSuchId::new_err((fid.bytes().to_vec(),)),
+        Error::DuplicateFileId(fid, path) => {
+            DuplicateFileId::new_err((file_id_python(py, &fid), path))
+        }
+        Error::NoSuchId(fid) => NoSuchId::new_err((py.None(), file_id_python(py, &fid))),
         Error::ParentNotDirectory(path, fid) => {
-            InconsistentDelta::new_err((path, fid.bytes().to_vec(), "parent not directory"))
+            InconsistentDelta::new_err((path, file_id_python(py, &fid), "parent not directory"))
         }
         Error::FileIdCycle(fid, path, parent_path) => InconsistentDelta::new_err((
             path,
-            fid.bytes().to_vec(),
+            file_id_python(py, &fid),
             format!("file_id cycle with {}", parent_path),
         )),
         Error::ParentMissing(fid) => {
-            InconsistentDelta::new_err(("", fid.bytes().to_vec(), "parent missing"))
+            InconsistentDelta::new_err(("", file_id_python(py, &fid), "parent missing"))
         }
         Error::PathAlreadyVersioned(name, parent_path) => {
             PathAlreadyVersioned::new_err((name, parent_path))
@@ -1037,17 +1088,18 @@ struct Inventory(bazaar::inventory::MutableInventory);
 #[pymethods]
 impl Inventory {
     #[new]
-    fn new(root_id: Option<Vec<u8>>, revision_id: Option<Vec<u8>>) -> Self {
+    #[pyo3(signature = (root_id=b"TREE_ROOT".to_vec(), revision_id=None))]
+    fn new(root_id: Option<Vec<u8>>, revision_id: Option<Vec<u8>>) -> PyResult<Self> {
         let mut inv = Inventory(bazaar::inventory::MutableInventory::new());
-        let root = bazaar::inventory::Entry::directory(
-            FileId::from(root_id.unwrap_or(bazaar::inventory::ROOT_ID.to_vec())),
-            None,
-            None,
-            "".to_string(),
-        );
-        inv.0.add(root).unwrap();
+
+        let root_id = root_id.map(FileId::from);
+
+        if let Some(root_id) = root_id {
+            let root = bazaar::inventory::Entry::directory(root_id, None, None, "".to_string());
+            inv.0.add(root).unwrap();
+        }
         inv.0.revision_id = revision_id.map(RevisionId::from);
-        inv
+        Ok(inv)
     }
 
     #[getter]
@@ -1072,7 +1124,6 @@ impl Inventory {
         relpath: &str,
         kind: &str,
         file_id: Option<Vec<u8>>,
-        parent_id: Option<Vec<u8>>,
     ) -> PyResult<PyObject> {
         let kind = match kind {
             "file" => breezy_osutils::Kind::File,
@@ -1083,12 +1134,7 @@ impl Inventory {
         };
         let file_id = self
             .0
-            .add_path(
-                relpath,
-                kind,
-                file_id.map(FileId::from),
-                parent_id.map(FileId::from),
-            )
+            .add_path(relpath, kind, file_id.map(FileId::from))
             .map_err(|e| inventory_err_to_py_err(e, py))?;
         Ok(self.get_entry(py, file_id.bytes().to_vec()).unwrap())
     }
@@ -1130,6 +1176,10 @@ impl Inventory {
     fn get_children(&self, py: Python, file_id: Vec<u8>) -> PyResult<HashMap<String, PyObject>> {
         let file_id = FileId::from(file_id);
         let children = self.0.get_children(&file_id);
+        if children.is_none() {
+            return Err(NoSuchId::new_err((py.None(), file_id_python(py, &file_id))));
+        }
+        let children = children.unwrap();
         let mut result = HashMap::with_capacity(children.len());
         for (name, child) in children {
             result.insert(name.to_string(), entry_to_py(py, child.clone())?);
@@ -1223,6 +1273,7 @@ impl Inventory {
 
     fn apply_delta(
         &mut self,
+        py: Python,
         delta: Vec<(
             Option<String>,
             Option<String>,
@@ -1238,11 +1289,14 @@ impl Inventory {
                 new_entry: entry.map(|entry| entry.0.clone()),
             },
         ));
-        self.0.apply_delta(&delta).map_err(delta_err_to_py_err)
+        self.0
+            .apply_delta(&delta)
+            .map_err(|e| delta_err_to_py_err(py, e))
     }
 
     fn create_by_apply_delta(
         &self,
+        py: Python,
         delta: Vec<(
             Option<String>,
             Option<String>,
@@ -1263,7 +1317,7 @@ impl Inventory {
         let result = self
             .0
             .create_by_apply_delta(&delta, new_revision_id)
-            .map_err(delta_err_to_py_err)?;
+            .map_err(|e| delta_err_to_py_err(py, e))?;
         Ok(Self(result))
     }
 
@@ -1271,11 +1325,12 @@ impl Inventory {
         self.0.len()
     }
 
-    fn get_entry(&self, py: Python, file_id: Vec<u8>) -> Option<PyObject> {
+    fn get_entry(&self, py: Python, file_id: Vec<u8>) -> PyResult<PyObject> {
         let file_id = FileId::from(file_id);
         self.0
             .get_entry(&file_id)
             .map(|entry| entry_to_py(py, entry.clone()).unwrap())
+            .ok_or_else(|| NoSuchId::new_err((py.None(), file_id_python(py, &file_id))))
     }
 
     fn get_file_kind(&self, file_id: Vec<u8>) -> Option<&str> {
@@ -1333,7 +1388,11 @@ impl Inventory {
     fn iter_sorted_children(&self, py: Python, file_id: Vec<u8>) -> PyResult<PyObject> {
         let file_id = FileId::from(file_id);
         let children = self.0.iter_sorted_children(&file_id);
+        if children.is_none() {
+            return Err(NoSuchId::new_err((py.None(), file_id_python(py, &file_id))));
+        }
         Ok(children
+            .unwrap()
             .into_iter()
             .map(|(_n, e)| entry_to_py(py, e.clone()))
             .collect::<PyResult<Vec<_>>>()?
@@ -1358,7 +1417,7 @@ impl Inventory {
         let from_dir = from_dir.map(FileId::from);
         let recursive = recursive.unwrap_or(true);
 
-        Ok(PyCell::new(py, IterEntriesIterator::new(py, slf, from_dir, recursive))?.to_object(py))
+        Ok(PyCell::new(py, IterEntriesIterator::new(py, slf, from_dir, recursive)?)?.to_object(py))
     }
 
     fn iter_entries_by_dir(
@@ -1373,7 +1432,7 @@ impl Inventory {
 
         Ok(PyCell::new(
             py,
-            IterEntriesByDirIterator::new(py, slf, from_dir, specific_file_ids),
+            IterEntriesByDirIterator::new(py, slf, from_dir, specific_file_ids)?,
         )?
         .to_object(py))
     }
@@ -1387,6 +1446,26 @@ impl Inventory {
     fn copy(&self) -> Self {
         Self(self.0.clone())
     }
+
+    fn make_entry(
+        &self,
+        kind: &str,
+        name: &str,
+        parent_id: Option<&[u8]>,
+        file_id: Option<&[u8]>,
+    ) -> PyResult<PyObject> {
+        let parent_id = parent_id.map(FileId::from);
+        let file_id = file_id.map(FileId::from);
+        let kind = match kind {
+            "directory" => Kind::Directory,
+            "file" => Kind::File,
+            "symlink" => Kind::Symlink,
+            "tree-reference" => Kind::TreeReference,
+            _ => return Err(PyValueError::new_err(format!("Unknown kind: {}", kind))),
+        };
+        let entry = bazaar::inventory::make_entry(kind, name.to_string(), parent_id, file_id);
+        entry_to_py(Python::acquire_gil().python(), entry)
+    }
 }
 
 #[pyclass]
@@ -1396,7 +1475,6 @@ struct IterEntriesByDirIterator {
     stack: Vec<(String, FileId)>,
     children: VecDeque<(String, Entry)>,
     specific_file_ids: Option<HashSet<FileId>>,
-    from_dir: Option<FileId>,
 }
 
 impl IterEntriesByDirIterator {
@@ -1405,7 +1483,7 @@ impl IterEntriesByDirIterator {
         inv: Py<Inventory>,
         from_dir: Option<FileId>,
         specific_file_ids: Option<HashSet<FileId>>,
-    ) -> Self {
+    ) -> PyResult<Self> {
         let parents = specific_file_ids.as_ref().map(|specific_file_ids| {
             bazaar::inventory::find_interesting_parents(
                 &inv.borrow(py).0,
@@ -1420,29 +1498,52 @@ impl IterEntriesByDirIterator {
         let from_dir = if from_dir.is_none() {
             inv.borrow(py).0.root().map(|e| e.file_id().clone())
         } else {
+            let inv = &inv.borrow(py).0;
+            let e = inv.get_entry(from_dir.as_ref().unwrap());
+
+            if e.is_none() {
+                return Err(NoSuchId::new_err((
+                    py.None(),
+                    file_id_python(py, from_dir.as_ref().unwrap()),
+                )));
+            }
+
+            let e = e.unwrap();
+
+            if e.kind() != Kind::Directory {
+                return Err(NotADirectory::new_err((file_id_python(
+                    py,
+                    from_dir.as_ref().unwrap(),
+                ),)));
+            }
             from_dir
         };
 
         let mut children = VecDeque::new();
 
         if let Some(from_dir) = from_dir.as_ref() {
-            stack.push(("".to_string(), from_dir.clone()));
-            children.extend(
-                inv.borrow(py)
-                    .0
-                    .iter_sorted_children(&from_dir.clone())
-                    .map(|(p, ie)| (p.to_string(), ie.clone())),
+            assert!(
+                inv.borrow(py).0.get_children(from_dir).is_some(),
+                "from_dir {:?} must be a directory",
+                from_dir
             );
+            stack.push(("".to_string(), from_dir.clone()));
+            if specific_file_ids.is_none() || specific_file_ids.as_ref().unwrap().contains(from_dir)
+            {
+                children.push_front((
+                    "".to_string(),
+                    inv.borrow(py).0.get_entry(from_dir).unwrap().clone(),
+                ));
+            }
         }
 
-        Self {
+        Ok(Self {
             inv,
             parents,
             children,
             stack,
             specific_file_ids,
-            from_dir,
-        }
+        })
     }
 }
 
@@ -1458,7 +1559,13 @@ impl IterEntriesByDirIterator {
                 return Ok(Some((relpath, entry_to_py(py, ie)?)));
             }
             if let Some((cur_relpath, cur_dir)) = self.stack.pop() {
-                for (child_name, child_ie) in self.inv.borrow(py).0.iter_sorted_children(&cur_dir) {
+                for (child_name, child_ie) in self
+                    .inv
+                    .borrow(py)
+                    .0
+                    .iter_sorted_children(&cur_dir)
+                    .expect("should be known directory")
+                {
                     let child_relpath = cur_relpath.to_string() + child_name;
                     let mut child_dirs = Vec::new();
 
@@ -1477,6 +1584,12 @@ impl IterEntriesByDirIterator {
                         && (self.parents.is_none()
                             || self.parents.as_ref().unwrap().contains(child_ie.file_id()))
                     {
+                        assert!(self
+                            .inv
+                            .borrow(py)
+                            .0
+                            .get_children(child_ie.file_id())
+                            .is_some());
                         child_dirs.push((child_relpath + "/", child_ie.file_id()))
                     }
 
@@ -1496,29 +1609,46 @@ struct IterEntriesIterator {
     inv: Py<Inventory>,
     stack: VecDeque<(String, VecDeque<(String, Entry)>)>,
     recursive: bool,
-    from_dir: Option<FileId>,
+    first_entry: Option<Entry>,
 }
 
 impl IterEntriesIterator {
-    fn new(py: Python, inv: Py<Inventory>, from_dir: Option<FileId>, recursive: bool) -> Self {
+    fn new(
+        py: Python,
+        inv: Py<Inventory>,
+        mut from_dir: Option<FileId>,
+        recursive: bool,
+    ) -> PyResult<Self> {
         let mut stack = VecDeque::new();
 
+        let first_entry = if from_dir.is_none() {
+            from_dir = inv.borrow(py).0.root().map(|e| e.file_id().clone());
+            inv.borrow(py).0.root().cloned()
+        } else {
+            None
+        };
+
         if let Some(from_dir) = from_dir.as_ref() {
-            let children = inv
-                .borrow(py)
-                .0
-                .iter_sorted_children(&from_dir)
-                .map(|(p, ie)| (p.to_string(), ie.clone()))
-                .collect::<VecDeque<_>>();
-            stack.push_back((String::new(), children));
+            let inv = &inv.borrow(py).0;
+            let children = inv.iter_sorted_children(from_dir);
+            if children.is_none() {
+                return Err(NoSuchId::new_err((py.None(), file_id_python(py, from_dir))));
+            }
+            stack.push_back((
+                String::new(),
+                children
+                    .unwrap()
+                    .map(|(p, ie)| (p.to_string(), ie.clone()))
+                    .collect::<VecDeque<_>>(),
+            ));
         }
 
-        Self {
+        Ok(Self {
             inv,
             stack,
             recursive,
-            from_dir,
-        }
+            first_entry,
+        })
     }
 }
 
@@ -1529,9 +1659,8 @@ impl IterEntriesIterator {
     }
 
     fn __next__(&mut self, py: Python) -> PyResult<Option<(String, PyObject)>> {
-        if let Some(from_dir) = self.from_dir.take() {
-            let ie = self.inv.borrow(py).0.get_entry(&from_dir).cloned().unwrap();
-            return Ok(Some((String::new(), entry_to_py(py, ie)?)));
+        if let Some(first_entry) = self.first_entry.take() {
+            return Ok(Some((String::new(), entry_to_py(py, first_entry)?)));
         }
         loop {
             if let Some((base, children)) = self.stack.back_mut() {
@@ -1547,6 +1676,7 @@ impl IterEntriesIterator {
                             .borrow(py)
                             .0
                             .iter_sorted_children(ie.file_id())
+                            .unwrap()
                             .map(|(p, ie)| (p.to_string(), ie.clone()))
                             .collect::<VecDeque<_>>();
                         self.stack.push_back((path.clone(), children));
