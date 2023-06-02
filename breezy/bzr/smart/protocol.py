@@ -306,10 +306,6 @@ def _send_chunks(stream, write_func):
                 f'Chunks must be str or FailedSmartServerResponse, got {chunk!r}')
 
 
-def _encode_bulk_data(body):
-    """Encode body as a bulk data chunk."""
-    return b''.join((b'%d\n' % len(body), body, b'done\n'))
-
 def _serialise_offsets(offsets):
     """Serialise a readv offset list."""
     txt = []

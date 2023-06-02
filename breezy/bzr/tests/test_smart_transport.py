@@ -1917,8 +1917,8 @@ class TestSmartProtocol(tests.TestCase):
 
     request_encoder: object
     response_decoder: Type[protocol._StatefulDecoder]
-    server_protocol_class = None
-    client_protocol_class = None
+    server_protocol_class = Type[object]
+    client_protocol_class = Type[object]
 
     def make_client_protocol_and_output(self, input_bytes=None):
         """:returns: a Request"""
