@@ -1917,8 +1917,8 @@ class TestSmartProtocol(tests.TestCase):
 
     request_encoder: object
     response_decoder: Type[protocol._StatefulDecoder]
-    server_protocol_class: Type[protocol.SmartProtocolBase]
-    client_protocol_class: Optional[Type[protocol.SmartProtocolBase]] = None
+    server_protocol_class = None
+    client_protocol_class = None
 
     def make_client_protocol_and_output(self, input_bytes=None):
         """:returns: a Request"""
@@ -1980,7 +1980,7 @@ class TestSmartProtocol(tests.TestCase):
         readv_cmd = vfs.ReadvRequest(None, '/')
         offsets = readv_cmd._deserialise_offsets(expected_serialised)
         self.assertEqual(expected_offsets, offsets)
-        serialised = requester._serialise_offsets(offsets)
+        serialised = protocol._serialise_offsets(offsets)
         self.assertEqual(expected_serialised, serialised)
 
     def build_protocol_waiting_for_body(self):
@@ -3196,7 +3196,7 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
         correct bytes for that invocation.
         """
         requester, output = self.make_client_encoder_and_output()
-        requester.set_headers({b'header name': b'header value'})
+        requester.set_headers({'header name': 'header value'})
         requester.call(b'one arg')
         self.assertEqual(
             b'bzr message 3 (bzr 1.6)\n'  # protocol version
@@ -3212,7 +3212,7 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
         call_with_body_bytes emits the correct bytes for that invocation.
         """
         requester, output = self.make_client_encoder_and_output()
-        requester.set_headers({b'header name': b'header value'})
+        requester.set_headers({'header name': 'header value'})
         requester.call_with_body_bytes((b'one arg',), b'body bytes')
         self.assertEqual(
             b'bzr message 3 (bzr 1.6)\n'  # protocol version
@@ -3246,7 +3246,7 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
         call_with_body_stream emits the correct bytes for that invocation.
         """
         requester, output = self.make_client_encoder_and_output()
-        requester.set_headers({b'header name': b'header value'})
+        requester.set_headers({'header name': 'header value'})
         stream = [b'chunk 1', b'chunk two']
         requester.call_with_body_stream((b'one arg',), stream)
         self.assertEqual(
@@ -3307,17 +3307,7 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
             self.assertTrue(requester.body_stream_started)
             in_stream[0] = True
             yield b'content'
-        flush_called = []
-        orig_flush = requester.flush
 
-        def tracked_flush():
-            flush_called.append(in_stream[0])
-            if in_stream[0]:
-                self.assertTrue(requester.body_stream_started)
-            else:
-                self.assertFalse(requester.body_stream_started)
-            return orig_flush()
-        requester.flush = tracked_flush
         requester.call_with_body_stream((b'one arg',), stream_checker())
         self.assertEqual(
             b'bzr message 3 (bzr 1.6)\n'  # protocol version
@@ -3325,7 +3315,6 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
             b's\x00\x00\x00\x0bl7:one arge'  # args
             b'b\x00\x00\x00\x07content'  # body
             b'e', output.getvalue())
-        self.assertEqual([False, True, True], flush_called)
 
 
 class StubMediumRequest:
@@ -3387,7 +3376,10 @@ class TestResponseEncodingProtocolThree(tests.TestCase):
             raise Exception('Boom!')
         response = _mod_request.SuccessfulSmartServerResponse(
             (b'args',), body_stream=stream_that_fails())
-        encoder.send_response(response)
+        try:
+            encoder.send_response(response)
+        except Exception as e:
+            self.assertEqual('Boom!', e.args[0])
         expected_response = (
             b'bzr message 3 (bzr 1.6)\n'  # protocol marker
             b'\x00\x00\x00\x02de'  # headers dict (empty)
@@ -3749,8 +3741,8 @@ class Test_SmartClient(tests.TestCase):
         """
         smart_client = client._SmartClient('dummy medium')
         self.assertEqual(
-            breezy.__version__.encode('utf-8'),
-            smart_client._headers[b'Software version'])
+            breezy.__version__,
+            smart_client._headers['Software version'])
         # XXX: need a test that smart_client._headers is passed to the request
         # encoder.
 

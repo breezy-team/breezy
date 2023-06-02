@@ -29,8 +29,7 @@ class _SmartClient:
         """
         self._medium = medium
         if headers is None:
-            self._headers = {
-                b'Software version': breezy.__version__.encode('utf-8')}
+            self._headers = {'Software version': breezy.__version__}
         else:
             self._headers = dict(headers)
 
@@ -184,8 +183,7 @@ class _SmartClientRequest:
             self.client._medium.reset()
             if not self._is_safe_to_send_twice():
                 raise
-            trace.warning('ConnectionReset reading response for %r, retrying'
-                          % (self.method,))
+            trace.warning('ConnectionReset reading response for %r, retrying', self.method)
             trace.log_exception_quietly()
             encoder, response_handler = self._construct_protocol(
                 protocol_version)
@@ -212,8 +210,8 @@ class _SmartClientRequest:
                 # we recognise the protocol version.
                 trace.warning(
                     'Server does not understand Bazaar network protocol %d,'
-                    ' reconnecting.  (Upgrade the server to avoid this.)'
-                    % (protocol_version,))
+                    ' reconnecting.  (Upgrade the server to avoid this.)',
+                    protocol_version)
                 self.client._medium.disconnect()
                 last_err = err
                 continue
@@ -275,7 +273,7 @@ class _SmartClientRequest:
                 #   SmartClientRequestProtocolOne or Two, because they don't
                 #   support client-side body streams.
                 raise
-            trace.warning(f'ConnectionReset calling {self.method!r}, retrying')
+            trace.warning('ConnectionReset calling %r, retrying', self.method)
             trace.log_exception_quietly()
             encoder, response_handler = self._construct_protocol(
                 protocol_version)

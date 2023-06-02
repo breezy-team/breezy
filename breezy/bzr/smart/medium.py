@@ -37,7 +37,6 @@ from ...lazy_import import lazy_import
 
 lazy_import(globals(), """
 import select
-import socket
 import weakref
 
 from breezy import (
@@ -922,10 +921,13 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
         """See SmartClientStreamMedium.accept_bytes."""
         try:
             self._writeable_pipe.write(data)
-        except OSError as e:
-            if e.errno in (errno.EINVAL, errno.EPIPE):
+        except BrokenPipeError as ex:
+            raise ConnectionResetError(
+                "Error trying to write to subprocess") from ex
+        except OSError as ex:
+            if ex.errno == errno.EINVAL:
                 raise ConnectionResetError(
-                    "Error trying to write to subprocess", e)
+                    "Error trying to write to subprocess") from ex
             raise
         self._report_activity(len(data), 'write')
 
@@ -1110,6 +1112,7 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
 
     def _ensure_connection(self):
         """Connect this medium if not already connected."""
+        import socket
         if self._connected:
             return
         if self._port is None:

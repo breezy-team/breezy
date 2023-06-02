@@ -114,24 +114,12 @@ class Requester:
         raise NotImplementedError(self.set_headers)
 
 
-class SmartProtocolBase:
-    """Methods common to client and server."""
-
-    # TODO: this only actually accomodates a single block; possibly should
-    # support multiple chunks?
-    def _encode_bulk_data(self, body):
-        """Encode body as a bulk data chunk."""
-        return b''.join((b'%d\n' % len(body), body, b'done\n'))
-
-    def _serialise_offsets(self, offsets):
-        """Serialise a readv offset list."""
-        txt = []
-        for start, length in offsets:
-            txt.append(b'%d,%d' % (start, length))
-        return b'\n'.join(txt)
+def _encode_bulk_data(body):
+    """Encode body as a bulk data chunk."""
+    return b''.join((b'%d\n' % len(body), body, b'done\n'))
 
 
-class SmartServerRequestProtocolOne(SmartProtocolBase):
+class SmartServerRequestProtocolOne:
     """Server-side encoding and decoding logic for smart version 1."""
 
     def __init__(self, backing_transport, write_func, root_client_path='/',
@@ -229,7 +217,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
         if body is not None:
             if not isinstance(body, bytes):
                 raise ValueError(body)
-            data = self._encode_bulk_data(body)
+            data = _encode_bulk_data(body)
             self._write_func(data)
 
     def _write_protocol_version(self):
@@ -292,7 +280,7 @@ class SmartServerRequestProtocolTwo(SmartServerRequestProtocolOne):
             if response.body_stream is not None:
                 raise AssertionError(
                     'body_stream and body cannot both be set')
-            data = self._encode_bulk_data(response.body)
+            data = _encode_bulk_data(response.body)
             self._write_func(data)
         elif response.body_stream is not None:
             _send_stream(response.body_stream, self._write_func)
@@ -316,6 +304,18 @@ def _send_chunks(stream, write_func):
         else:
             raise errors.BzrError(
                 f'Chunks must be str or FailedSmartServerResponse, got {chunk!r}')
+
+
+def _encode_bulk_data(body):
+    """Encode body as a bulk data chunk."""
+    return b''.join((b'%d\n' % len(body), body, b'done\n'))
+
+def _serialise_offsets(offsets):
+    """Serialise a readv offset list."""
+    txt = []
+    for start, length in offsets:
+        txt.append(b'%d,%d' % (start, length))
+    return b'\n'.join(txt)
 
 
 class _NeedMoreBytes(Exception):
@@ -614,7 +614,7 @@ class LengthPrefixedBodyDecoder(_StatefulDecoder):
         return result
 
 
-class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
+class SmartClientRequestProtocolOne(Requester,
                                     message.ResponseHandler):
     """The client-side protocol for smart version 1."""
 
@@ -658,7 +658,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
             if 'hpssdetail' in debug.debug_flags:
                 mutter('hpss body content: %s', body)
         self._write_args(args)
-        bytes = self._encode_bulk_data(body)
+        bytes = _encode_bulk_data(body)
         self._request.accept_bytes(bytes)
         self._request.finished_writing()
         self._last_verb = args[0]
@@ -676,8 +676,8 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
                        self._request._medium._path)
             self._request_start_time = osutils.perf_counter()
         self._write_args(args)
-        readv_bytes = self._serialise_offsets(body)
-        bytes = self._encode_bulk_data(readv_bytes)
+        readv_bytes = _serialise_offsets(body)
+        bytes = _encode_bulk_data(readv_bytes)
         self._request.accept_bytes(bytes)
         self._request.finished_writing()
         if 'hpss' in debug.debug_flags:
@@ -1127,7 +1127,7 @@ class _ProtocolThreeEncoder:
         self._write_func(bytes)
 
     def _write_headers(self, headers):
-        self._write_prefixed_bencode(headers)
+        self._write_prefixed_bencode({k.encode('utf-8'): v.encode('utf-8') for (k, v) in headers.items()})
 
     def _write_structure(self, args):
         self._write_func(b's')
@@ -1164,7 +1164,7 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
         _ProtocolThreeEncoder.__init__(self, write_func)
         self.response_sent = False
         self._headers = {
-            b'Software version': breezy.__version__.encode('utf-8')}
+            'Software version': breezy.__version__}
         if 'hpss' in debug.debug_flags:
             self._thread_id = _thread.get_ident()
             self._response_start_time = None
