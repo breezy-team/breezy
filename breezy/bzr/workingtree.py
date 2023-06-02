@@ -360,15 +360,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         self._inventory_is_modified = True
         # we preserve the root inventory entry object, but
         # unlinkit from the byid index
-        children = inv._children.pop(inv.root.file_id)
-        del inv._byid[inv.root.file_id]
-        inv.root = InventoryDirectory(file_id, '', None)
-        # and link it into the index with the new changed id.
-        inv._byid[inv.root.file_id] = inv.root
-        inv._children[inv.root.file_id] = children
-        # and finally update all children to reference the new id.
-        for child in children.values():
-            child.parent_id = file_id
+        inv.change_root_id(file_id)
 
     def remove(self, files, verbose=False, to_file=None, keep_files=True,
                force=False):
