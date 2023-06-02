@@ -331,7 +331,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         try:
             return Branch.open(bound_loc,
                                possible_transports=possible_transports)
-        except (errors.NotBranchError, errors.ConnectionError) as exc:
+        except (errors.NotBranchError, ConnectionError) as exc:
             raise errors.BoundBranchConnectionFailure(
                 self, bound_loc, exc) from exc
 

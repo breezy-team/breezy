@@ -177,7 +177,7 @@ dependencies = [
 
 [[package]]
 name = "breezy"
-version = "3.3.3"
+version = "3.3.4"
 dependencies = [
  "breezy-osutils",
  "chrono",
@@ -185,6 +185,15 @@ dependencies = [
  "log",
  "nix",
  "pyo3",
+]
+
+[[package]]
+name = "breezy-git"
+version = "3.3.3"
+dependencies = [
+ "breezy",
+ "breezy-osutils",
+ "breezy-urlutils",
 ]
 
 [[package]]
@@ -614,6 +623,14 @@ name = "gimli"
 version = "0.27.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ad0a93d233ebf96623465aad4046a8d3aa4da22d4f4beba5388838c8a434bbb4"
+
+[[package]]
+name = "git-py"
+version = "3.3.3"
+dependencies = [
+ "breezy-git",
+ "pyo3",
+]
 
 [[package]]
 name = "glob"

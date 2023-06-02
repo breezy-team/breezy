@@ -24,7 +24,6 @@
 # it would be nice not to need to hold the backpointer here.
 
 from collections import deque
-from typing import TYPE_CHECKING
 
 from ..lazy_import import lazy_import
 
@@ -40,9 +39,6 @@ from .. import errors, osutils
 from .._bzr_rs import ROOT_ID
 from .._bzr_rs import inventory as _mod_inventory_rs
 from .static_tuple import StaticTuple
-
-if TYPE_CHECKING:
-    from .inventory_delta import InventoryDelta
 
 InventoryEntry = _mod_inventory_rs.InventoryEntry
 InventoryFile = _mod_inventory_rs.InventoryFile
@@ -411,48 +407,6 @@ class CHKInventory:
         # TODO(jelmer): Implement a version that doesn't load all children.
         return self.get_children(dir_id).get(name)
 
-    def _entry_to_bytes(self, entry):
-        """Serialise entry as a single bytestring.
-
-        :param Entry: An inventory entry.
-        :return: A bytestring for the entry.
-
-        The BNF:
-        ENTRY ::= FILE | DIR | SYMLINK | TREE
-        FILE ::= "file: " COMMON SEP SHA SEP SIZE SEP EXECUTABLE
-        DIR ::= "dir: " COMMON
-        SYMLINK ::= "symlink: " COMMON SEP TARGET_UTF8
-        TREE ::= "tree: " COMMON REFERENCE_REVISION
-        COMMON ::= FILE_ID SEP PARENT_ID SEP NAME_UTF8 SEP REVISION
-        SEP ::= "\n"
-        """
-        if entry.parent_id is not None:
-            parent_str = entry.parent_id
-        else:
-            parent_str = b''
-        name_str = entry.name.encode("utf8")
-        if entry.kind == 'file':
-            if entry.executable:
-                exec_str = b"Y"
-            else:
-                exec_str = b"N"
-            return b"file: %s\n%s\n%s\n%s\n%s\n%d\n%s" % (
-                entry.file_id, parent_str, name_str, entry.revision,
-                entry.text_sha1, entry.text_size, exec_str)
-        elif entry.kind == 'directory':
-            return b"dir: %s\n%s\n%s\n%s" % (
-                entry.file_id, parent_str, name_str, entry.revision)
-        elif entry.kind == 'symlink':
-            return b"symlink: %s\n%s\n%s\n%s\n%s" % (
-                entry.file_id, parent_str, name_str, entry.revision,
-                entry.symlink_target.encode("utf8"))
-        elif entry.kind == 'tree-reference':
-            return b"tree: %s\n%s\n%s\n%s\n%s" % (
-                entry.file_id, parent_str, name_str, entry.revision,
-                entry.reference_revision)
-        else:
-            raise ValueError(f"unknown kind {entry.kind!r}")
-
     def _expand_fileids_to_parents_and_children(self, file_ids):
         """Give a more wholistic view starting with the given file_ids.
 
@@ -565,44 +519,9 @@ class CHKInventory:
                 remaining_children.extend(parent_to_children[file_id])
         return other
 
-    @staticmethod
-    def _bytes_to_utf8name_key(data):
-        """Get the file_id, revision_id key out of data."""
-        # We don't normally care about name, except for times when we want
-        # to filter out empty names because of non rich-root...
-        sections = data.split(b'\n')
-        kind, file_id = sections[0].split(b': ')
-        return (sections[2], file_id, sections[3])
-
     def _bytes_to_entry(self, bytes):
         """Deserialise a serialised entry."""
-        sections = bytes.split(b'\n')
-        if sections[0].startswith(b"file: "):
-            result = InventoryFile(sections[0][6:],
-                                   sections[2].decode('utf8'),
-                                   sections[1])
-            result.text_sha1 = sections[4]
-            result.text_size = int(sections[5])
-            result.executable = sections[6] == b"Y"
-        elif sections[0].startswith(b"dir: "):
-            result = InventoryDirectory(sections[0][5:],
-                                           sections[2].decode('utf8'),
-                                           sections[1])
-        elif sections[0].startswith(b"symlink: "):
-            result = InventoryLink(sections[0][9:],
-                                   sections[2].decode('utf8'),
-                                   sections[1])
-            result.symlink_target = sections[4].decode('utf8')
-        elif sections[0].startswith(b"tree: "):
-            result = TreeReference(sections[0][6:],
-                                   sections[2].decode('utf8'),
-                                   sections[1])
-            result.reference_revision = sections[4]
-        else:
-            raise ValueError(f"Not a serialised entry {bytes!r}")
-        result.revision = sections[3]
-        if result.parent_id == b'':
-            result.parent_id = None
+        result = _chk_inventory_bytes_to_entry(bytes)
         self._fileid_to_entry_cache[result.file_id] = result
         return result
 
@@ -686,7 +605,7 @@ class CHKInventory:
                 deletes.add(file_id)
             else:
                 new_key = StaticTuple(file_id,)
-                new_value = result._entry_to_bytes(entry)
+                new_value = _chk_inventory_entry_to_bytes(entry)
                 # Update caches. It's worth doing this whether
                 # we're propagating the old caches or not.
                 result._path_to_fileid_cache[new_path] = file_id
@@ -837,13 +756,12 @@ class CHKInventory:
         result.revision_id = inventory.revision_id
         result.root_id = inventory.root.file_id
 
-        entry_to_bytes = result._entry_to_bytes
         parent_id_basename_key = result._parent_id_basename_key
         id_to_entry_dict = {}
         parent_id_basename_dict = {}
         for _path, entry in inventory.iter_entries():
             key = StaticTuple(entry.file_id,).intern()
-            id_to_entry_dict[key] = entry_to_bytes(entry)
+            id_to_entry_dict[key] = _chk_inventory_entry_to_bytes(entry)
             p_id_key = parent_id_basename_key(entry)
             parent_id_basename_dict[p_id_key] = entry.file_id
 
@@ -1209,3 +1127,8 @@ def mutable_inventory_from_tree(tree):
     for _path, inv_entry in entries:
         inv.add(inv_entry.copy())
     return inv
+
+
+chk_inventory_bytes_to_utf8name_key = _mod_inventory_rs.chk_inventory_bytes_to_utf8name_key
+_chk_inventory_bytes_to_entry = _mod_inventory_rs.chk_inventory_bytes_to_entry
+_chk_inventory_entry_to_bytes = _mod_inventory_rs.chk_inventory_entry_to_bytes

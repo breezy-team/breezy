@@ -785,7 +785,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
             bytes = self._request.read_bytes(_body_decoder.next_read_size())
             if bytes == b'':
                 # end of file encountered reading from server
-                raise errors.ConnectionReset(
+                raise ConnectionResetError(
                     "Connection lost while reading response body.")
             _body_decoder.accept_bytes(bytes)
         self._request.finished_reading()
@@ -873,7 +873,7 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
             bytes = self._request.read_bytes(_body_decoder.next_read_size())
             if bytes == b'':
                 # end of file encountered reading from server
-                raise errors.ConnectionReset(
+                raise ConnectionResetError(
                     "Connection lost while reading streamed body.")
             _body_decoder.accept_bytes(bytes)
             for body_bytes in iter(_body_decoder.read_next_chunk, None):

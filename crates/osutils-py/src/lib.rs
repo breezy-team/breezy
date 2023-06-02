@@ -779,10 +779,11 @@ fn supports_executable(path: PathBuf) -> Option<bool> {
 ///   Tuples with mountpoints (as bytestrings) and filesystem names
 #[pyfunction]
 fn read_mtab(py: Python, path: PathBuf) -> PyResult<PyObject> {
-    let it: Vec<(PathBuf, String)> = breezy_osutils::mounts::read_mtab(path).collect();
+    let it: Vec<breezy_osutils::mounts::MountEntry> =
+        breezy_osutils::mounts::read_mtab(path).collect();
     let list = PyList::empty(py);
-    for (path, fs_type) in it {
-        let tuple = PyTuple::new(py, &[path.into_py(py), fs_type.into_py(py)]);
+    for entry in it {
+        let tuple = PyTuple::new(py, &[entry.path.into_py(py), entry.fs_type.into_py(py)]);
         list.append(tuple)?;
     }
     Ok(list.as_ref().iter()?.to_object(py))

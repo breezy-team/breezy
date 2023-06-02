@@ -5,10 +5,15 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+brz 3.3.4
+#########
+
+:3.3.4: UNRELEASED
+
 brz 3.3.3
 #########
 
-:3.3.3: UNRELEASED
+:3.3.3: 2023-05-23
 
 External Compatibility Breaks
 *****************************
@@ -17,6 +22,9 @@ External Compatibility Breaks
 
 * Drop support for the ubuntu: and debianlp: aliases.
   These imports have long been broken.
+  (Jelmer Vernooĳ)
+
+* Fix support for newer versions of Dulwich.
   (Jelmer Vernooĳ)
 
 brz 3.3.2

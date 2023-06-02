@@ -454,7 +454,7 @@ def report_extension_load_failures():
 
 
 from ._osutils_rs import \
-    _accessible_normalized_filename  # noqa: F401; noqa: F401
+    _accessible_normalized_filename  # noqa: F401; noqa: F401; noqa: F401
 from ._osutils_rs import (_inaccessible_normalized_filename, check_legal_path,
                           chunks_to_lines, chunks_to_lines_iter, get_host_name,
                           link_or_copy, local_concurrency, normalized_filename,
@@ -1025,13 +1025,13 @@ def send_all(sock, bytes, report_activity=None):
             sent = sock.send(view[sent_total:sent_total + MAX_SOCKET_CHUNK])
         except OSError as e:
             if e.args[0] in _end_of_stream_errors:
-                raise errors.ConnectionReset(
+                raise ConnectionResetError(
                     "Error trying to write to socket", e)
             if e.args[0] != errno.EINTR:
                 raise
         else:
             if sent == 0:
-                raise errors.ConnectionReset(f'Sending to {sock} returned 0 bytes')
+                raise ConnectionResetError(f'Sending to {sock} returned 0 bytes')
             sent_total += sent
             if report_activity is not None:
                 report_activity(sent, 'write')

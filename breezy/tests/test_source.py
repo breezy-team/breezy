@@ -202,7 +202,7 @@ class TestSource(TestSourceHelper):
                          " breezy/tests/test_source.py",
                          # this is broken to prevent a false match
                          "or add '# Copyright (C)"
-                         " 2007 Bazaar hackers' to these files:",
+                         " 2023 Breezy developers ' to these files:",
                          "",
                          ]
             for fname, comment in incorrect:

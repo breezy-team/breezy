@@ -176,7 +176,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         self.disable_verb(b'Repository.insert_stream_1.19')
         try:
             self.test_fetch_parent_inventories_at_stacking_boundary()
-        except errors.ConnectionReset:
+        except ConnectionResetError:
             self.knownFailure("Random spurious failure, see bug 874153")
 
     def test_fetch_parent_inventories_at_stacking_boundary(self):

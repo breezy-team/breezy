@@ -355,7 +355,6 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         """
         from .inventory import InventoryDirectory
         inv = self._inventory
-        orig_root_id = inv.root.file_id
         # TODO: it might be nice to exit early if there was nothing
         # to do, saving us from trigger a sync on unlock.
         self._inventory_is_modified = True
