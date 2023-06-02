@@ -40,9 +40,19 @@ impl From<&[u8]> for FileId {
     }
 }
 
+impl From<&Vec<u8>> for FileId {
+    fn from(v: &Vec<u8>) -> Self {
+        FileId::from(v.as_slice())
+    }
+}
+
 impl FileId {
     pub fn generate(name: &str) -> Self {
         Self::from(gen_ids::gen_file_id(name))
+    }
+
+    pub fn generate_root_id() -> Self {
+        Self::from(gen_ids::gen_root_id())
     }
 
     #[deprecated]

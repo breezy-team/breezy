@@ -582,6 +582,7 @@ pub fn realpath(f: &Path) -> std::io::Result<PathBuf> {
     return posix::realpath(f);
 }
 
+#[derive(Debug)]
 pub struct InvalidPathSegmentError(pub String);
 
 pub fn splitpath(p: &str) -> std::result::Result<Vec<&str>, InvalidPathSegmentError> {
