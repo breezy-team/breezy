@@ -239,11 +239,17 @@ name = "breezy-transport"
 version = "3.3.3"
 dependencies = [
  "breezy-osutils",
- "byteorder",
+ "breezy-urlutils",
  "lazy_static",
  "log",
  "nix",
+ "path-clean",
+ "pyo3",
+ "pyo3-file",
  "sftp",
+ "tempfile",
+ "url",
+ "walkdir",
 ]
 
 [[package]]
@@ -1512,9 +1518,11 @@ version = "3.3.3"
 dependencies = [
  "breezy-transport",
  "log",
+ "nix",
  "pyo3",
  "pyo3-file",
  "sftp",
+ "url",
 ]
 
 [[package]]

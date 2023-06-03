@@ -16,15 +16,9 @@
 
 """Test for setup.py build process."""
 
-from distutils import version
+from packaging import version
 
 from .. import tests
-
-# TODO: Run bzr from the installed copy to see if it works.  Really we need to
-# run something that exercises every module, just starting it may not detect
-# some missing modules.
-#
-# TODO: Check that the version numbers are in sync.  (Or avoid this...)
 
 
 class TestDistutilsVersion(tests.TestCase):
@@ -32,6 +26,6 @@ class TestDistutilsVersion(tests.TestCase):
     def test_version_with_string(self):
         # We really care about two pyrex specific versions and our ability to
         # detect them
-        lv = version.LooseVersion
+        lv = version.Version
         self.assertLess(lv("0.9.4.1"), lv('0.17.beta1'))
         self.assertLess(lv("0.9.6.3"), lv('0.10'))

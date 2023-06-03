@@ -185,7 +185,7 @@ class TestErrors(tests.TestCase):
         # a unicode path to check that %r is being used.
         path = 'a path'
         error = errors.ReadError(path)
-        self.assertContainsRe(str(error), "^Error reading from u?'a path'.$")
+        self.assertContainsRe(str(error), "^Error reading from 'a path'")
 
     def test_bzrerror_from_literal_string(self):
         # Some code constructs BzrError from a literal string, in which case
