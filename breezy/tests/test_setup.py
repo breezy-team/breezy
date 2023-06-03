@@ -18,8 +18,6 @@
 
 from distutils import version
 
-import breezy
-
 from .. import tests
 
 # TODO: Run bzr from the installed copy to see if it works.  Really we need to
