@@ -5,10 +5,16 @@ authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@j
 edition = "2021"
 default-run = "brz"
 license = "GPL-2.0+"
+license-file = "COPYING.txt"
 description = "Friendly distributed version control system"
 repository = "https://code.launchpad.net/brz"
 homepage = "https://www.breezy-vcs.org/"
 documentation = "https://www.breezy-vcs.org/doc/"
+include = [
+	"src/*.rs",
+	"breezy/main.rs",
+	"README.rst",
+]
 
 [workspace]
 members = ["crates/*"]
