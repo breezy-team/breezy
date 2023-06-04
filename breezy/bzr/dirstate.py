@@ -228,8 +228,8 @@ import sys
 import time
 from stat import S_IEXEC
 
-from .. import (cache_utf8, config, debug, errors, lock, osutils, trace,
-                urlutils)
+from .. import (_transport_rs, cache_utf8, config, debug, errors, lock,
+                osutils, trace, urlutils)
 from . import inventory, static_tuple
 from .inventorytree import InventoryTreeChange
 
@@ -3219,7 +3219,7 @@ class DirState:
         #       already in memory, we could read just the header and check for
         #       any modification. If not modified, we can just leave things
         #       alone
-        self._lock_token = lock.ReadLock(self._filename)
+        self._lock_token = _transport_rs.ReadLock(self._filename)
         self._lock_state = 'r'
         self._state_file = self._lock_token.f
         self._wipe_state()
@@ -3233,7 +3233,7 @@ class DirState:
         #       already in memory, we could read just the header and check for
         #       any modification. If not modified, we can just leave things
         #       alone
-        self._lock_token = lock.WriteLock(self._filename)
+        self._lock_token = _transport_rs.WriteLock(self._filename)
         self._lock_state = 'w'
         self._state_file = self._lock_token.f
         self._wipe_state()

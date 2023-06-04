@@ -32,6 +32,9 @@ log = "0.4"
 breezy-osutils = { path = "crates/osutils" }
 chrono = "0.4"
 bazaar = { path = "crates/bazaar" }
+percent-encoding = "2"
+url = "2"
+regex = "1"
 
 [target.'cfg(unix)'.dependencies]
 nix = ">=0.26"

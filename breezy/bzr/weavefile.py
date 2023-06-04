@@ -129,7 +129,10 @@ def _read_weave_v5(f, w):
     ver = 0
     # read weave header.
     while True:
-        l = next(lines)
+        try:
+            l = next(lines)
+        except StopIteration:
+            raise WeaveFormatError('unexpected end of file')
         if l[0:1] == b'i':
             if len(l) > 2:
                 w._parents.append(list(map(int, l[2:].split(b' '))))
@@ -150,7 +153,10 @@ def _read_weave_v5(f, w):
 
     # read weave body
     while True:
-        l = next(lines)
+        try:
+            l = next(lines)
+        except StopIteration:
+            raise WeaveFormatError('unexpected end of file')
         if l == b'W\n':
             break
         elif b'. ' == l[0:2]:

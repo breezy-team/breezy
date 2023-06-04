@@ -311,6 +311,9 @@ class FileFileStream(FileStream):
         osutils.pump_string_file(bytes, F(self.file_handle))
         return len(bytes)
 
+    def flush(self):
+        self.file_handle.flush()
+
 
 class AppendBasedFileStream(FileStream):
     """A file stream object returned by open_write_stream.
@@ -321,6 +324,9 @@ class AppendBasedFileStream(FileStream):
     def write(self, bytes):
         self.transport.append_bytes(self.relpath, bytes)
         return len(bytes)
+
+    def flush(self):
+        pass
 
 
 class TransportHooks(hooks.Hooks):
@@ -1450,7 +1456,10 @@ def get_transport_from_url(url, possible_transports=None):
     transport = None
     if possible_transports is not None:
         for t in possible_transports:
-            t_same_connection = t._reuse_for(url)
+            try:
+                t_same_connection = t._reuse_for(url)
+            except AttributeError:
+                continue
             if t_same_connection is not None:
                 # Add only new transports
                 if t_same_connection not in possible_transports:

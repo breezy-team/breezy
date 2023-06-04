@@ -318,7 +318,7 @@ class TestBzrServe(TestBzrServeBase):
                       (b'', b'Waiting for 1 client(s) to finish\n'))
         body = response_handler.read_body_bytes()
         if body != big_contents:
-            self.fail('Failed to properly read the contents of "bigfile"')
+            self.fail('Failed to properly read the contents of "bigfile": read %d of %d' % (len(body), len(big_contents)))
         # Now that our request is finished, the medium should notice it has
         # been disconnected.
         self.assertEqual(b'', m.read_bytes(1))

@@ -187,7 +187,6 @@ add_cython_extension('breezy._known_graph_pyx')
 if sys.platform == 'win32':
     add_cython_extension('breezy.bzr._dirstate_helpers_pyx',
                          libraries=['Ws2_32'])
-    add_cython_extension('breezy._walkdirs_win32')
 else:
     add_cython_extension('breezy.bzr._dirstate_helpers_pyx')
     add_cython_extension('breezy._readdir_pyx')
@@ -228,6 +227,7 @@ rust_extensions = [
     RustExtension("breezy.bzr._groupcompress_rs", "crates/groupcompress-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy._cmd_rs", "crates/cmd-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy._osutils_rs", "crates/osutils-py/Cargo.toml", binding=Binding.PyO3),
+    RustExtension("breezy._transport_rs", "crates/transport-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy._graph_rs", "crates/graph-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy._patch_rs", "crates/patch-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy.zlib_util", "crates/zlib-util-py/Cargo.toml", binding=Binding.PyO3),

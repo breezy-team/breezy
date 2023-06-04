@@ -319,7 +319,6 @@ class TestTrace(TestCase):
         self.expectFailure(
                 "This test currently fails because brz's testsuite doesn't capture "
                 "error output from rust",
-                AssertionError,
                 self.assertContainsRe,
                 sys.stderr.getvalue(),
                 "failed to open trace file: .* '/no-such-dir/brz.log'$")
@@ -342,7 +341,6 @@ class TestTrace(TestCase):
         self.expectFailure(
                 "This test currently fails because brz's testsuite doesn't capture "
                 "error output from rust",
-                AssertionError,
                 self.assertContainsRe,
                 sys.stderr.getvalue(),
                 "failed to open trace file: .* /no-such-dir.*$")

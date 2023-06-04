@@ -222,20 +222,8 @@ _win32_getcwd = _osutils_rs.win32.getcwd
 getuser_unicode = _osutils_rs.get_user_name
 
 
-def wrap_stat(st):
-    return st
-
-
 if sys.platform == 'win32':
     rename = _rename_wrap_exception(_win32_rename)
-    try:
-        from . import _walkdirs_win32
-    except ImportError:
-        pass
-    else:
-        lstat = _walkdirs_win32.lstat
-        fstat = _walkdirs_win32.fstat
-        wrap_stat = _walkdirs_win32.wrap_stat
 
     def _win32_delete_readonly(function, path, excinfo):
         """Error handler for shutil.rmtree function [for win32]
@@ -453,8 +441,7 @@ def report_extension_load_failures():
     # https://bugs.launchpad.net/bzr/+bug/430529
 
 
-from ._osutils_rs import \
-    _accessible_normalized_filename  # noqa: F401; noqa: F401; noqa: F401
+from ._osutils_rs import _accessible_normalized_filename  # noqa: F401
 from ._osutils_rs import (_inaccessible_normalized_filename, check_legal_path,
                           chunks_to_lines, chunks_to_lines_iter, get_host_name,
                           link_or_copy, local_concurrency, normalized_filename,
@@ -856,13 +843,7 @@ def _walkdirs_utf8(top, prefix="", fs_enc=None):
     if _selected_dir_reader is None:
         if fs_enc is None:
             fs_enc = sys.getfilesystemencoding()
-        if sys.platform == "win32":
-            try:
-                from ._walkdirs_win32 import Win32ReadDir
-                _selected_dir_reader = Win32ReadDir()
-            except ImportError:
-                pass
-        elif fs_enc in ('utf-8', 'ascii'):
+        if fs_enc in ('utf-8', 'ascii'):
             try:
                 from ._readdir_pyx import UTF8DirReader
                 _selected_dir_reader = UTF8DirReader()

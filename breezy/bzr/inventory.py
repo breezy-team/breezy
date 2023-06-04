@@ -466,6 +466,18 @@ class Inventory(CommonInventory):
             self._set_root(InventoryDirectory(root_id, '', None))
         self.revision_id = revision_id
 
+    def change_root_id(self, file_id):
+        # unlinkit from the byid index
+        children = self._children.pop(self.root.file_id)
+        del self._byid[self.root.file_id]
+        self.root = InventoryDirectory(file_id, '', None)
+        # and link it into the index with the new changed id.
+        self._byid[self.root.file_id] = self.root
+        self._children[self.root.file_id] = children
+        # and finally update all children to reference the new id.
+        for child in children.values():
+            child.parent_id = file_id
+
     def rename_id(self, old_file_id, new_file_id):
         self._byid[new_file_id] = self._byid.pop(old_file_id)
         if self._byid[new_file_id].kind == 'directory':

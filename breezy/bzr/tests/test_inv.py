@@ -1182,7 +1182,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
             dict(chk_inv.parent_id_basename_to_file_id.iteritems()))
 
     def test_file_entry_to_bytes(self):
-        inv = CHKInventory(None)
+        CHKInventory(None)
         ie = inventory.InventoryFile(b'file-id', 'filename', b'parent-id')
         ie.executable = True
         ie.revision = b'file-rev-id'
@@ -1198,7 +1198,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
                          chk_inventory_bytes_to_utf8name_key(bytes))
 
     def test_file2_entry_to_bytes(self):
-        inv = CHKInventory(None)
+        CHKInventory(None)
         # \u30a9 == 'omega'
         ie = inventory.InventoryFile(b'file-id', '\u03a9name', b'parent-id')
         ie.executable = False
@@ -1215,7 +1215,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
                          chk_inventory_bytes_to_utf8name_key(bytes))
 
     def test_dir_entry_to_bytes(self):
-        inv = CHKInventory(None)
+        CHKInventory(None)
         ie = inventory.InventoryDirectory(b'dir-id', 'dirname', b'parent-id')
         ie.revision = b'dir-rev-id'
         bytes = _chk_inventory_entry_to_bytes(ie)
@@ -1227,7 +1227,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
                          chk_inventory_bytes_to_utf8name_key(bytes))
 
     def test_dir2_entry_to_bytes(self):
-        inv = CHKInventory(None)
+        CHKInventory(None)
         ie = inventory.InventoryDirectory(b'dir-id', 'dir\u03a9name',
                                           None)
         ie.revision = b'dir-rev-id'
@@ -1242,7 +1242,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
                          chk_inventory_bytes_to_utf8name_key(bytes))
 
     def test_symlink_entry_to_bytes(self):
-        inv = CHKInventory(None)
+        CHKInventory(None)
         ie = inventory.InventoryLink(b'link-id', 'linkname', b'parent-id')
         ie.revision = b'link-rev-id'
         ie.symlink_target = 'target/path'
@@ -1257,7 +1257,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
                          chk_inventory_bytes_to_utf8name_key(bytes))
 
     def test_symlink2_entry_to_bytes(self):
-        inv = CHKInventory(None)
+        CHKInventory(None)
         ie = inventory.InventoryLink(
             b'link-id', 'link\u03a9name', b'parent-id')
         ie.revision = b'link-rev-id'
@@ -1273,7 +1273,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
                          chk_inventory_bytes_to_utf8name_key(bytes))
 
     def test_tree_reference_entry_to_bytes(self):
-        inv = CHKInventory(None)
+        CHKInventory(None)
         ie = inventory.TreeReference(b'tree-root-id', 'tree\u03a9name',
                                      b'parent-id')
         ie.revision = b'tree-rev-id'

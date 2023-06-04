@@ -128,7 +128,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         # the root if the repo format does not support rich roots.
         rich_root = branch_repo._format.rich_root_data
         all_texts = [
-            (ie.file_id, ie.revision) for ie in inv.iter_just_entries()
+            (ie.file_id, ie.revision) for (_n, ie) in inv.iter_entries()
             if rich_root or inv.id2path(ie.file_id) != '']
         repo.texts.insert_record_stream(
             branch_repo.texts.get_record_stream(all_texts, 'unordered', False))
