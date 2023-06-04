@@ -17,10 +17,8 @@
 
 """UI location string handling."""
 
-from . import urlutils
+from . import _cmd_rs, urlutils
 from .hooks import Hooks
-
-from . import _cmd_rs
 
 
 class LocationHooks(Hooks):
