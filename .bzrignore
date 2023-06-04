@@ -64,7 +64,6 @@ breezy/_readdir_pyx.c
 breezy/bzr/_simple_set_pyx.c
 breezy/bzr/_simple_set_pyx.h
 breezy/bzr/_simple_set_pyx_api.h
-breezy/_walkdirs_win32.c
 # built extension modules
 breezy/_*.dll
 breezy/_*.so
