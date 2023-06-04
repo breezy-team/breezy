@@ -21,3 +21,13 @@ pub mod bedding;
 pub mod trace;
 
 pub mod progress;
+
+pub mod branch;
+pub mod repository;
+pub mod tree;
+
+#[cfg(feature = "pyo3")]
+pub mod pytree;
+
+#[cfg(feature = "pyo3")]
+pub mod pybranch;
