@@ -184,7 +184,10 @@ dependencies = [
  "gettext-rs",
  "log",
  "nix",
+ "percent-encoding",
  "pyo3",
+ "regex",
+ "url",
 ]
 
 [[package]]

@@ -30,6 +30,9 @@ gettext-rs = { version = "0.7", optional = true }
 log = "0.4"
 breezy-osutils = { path = "crates/osutils" }
 chrono = "0.4"
+percent-encoding = "2"
+url = "2"
+regex = "1"
 
 [target.'cfg(unix)'.dependencies]
 nix = ">=0.26"

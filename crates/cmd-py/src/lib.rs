@@ -1,4 +1,5 @@
 use log::Log;
+use pyo3::exceptions::PyValueError;
 use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::{PyString, PyTuple};
@@ -318,6 +319,33 @@ fn debug_memory_proc(message: &str, short: bool) {
     breezy::trace::debug_memory_proc(message, short)
 }
 
+#[pyfunction]
+fn rcp_location_to_url(location: &str, scheme: Option<&str>) -> PyResult<String> {
+    let scheme = scheme.unwrap_or("ssh");
+    breezy::location::rcp_location_to_url(location, scheme)
+        .map_err(|e| PyValueError::new_err(format!("{:?}", e)))
+        .map(|s| s.to_string())
+}
+
+#[pyfunction]
+fn parse_cvs_location(location: &str) -> PyResult<(String, String, Option<String>, String)> {
+    breezy::location::parse_cvs_location(location)
+        .map_err(|e| PyValueError::new_err(format!("{:?}", e)))
+}
+
+#[pyfunction]
+fn cvs_to_url(location: &str) -> PyResult<String> {
+    breezy::location::cvs_to_url(location)
+        .map_err(|e| PyValueError::new_err(format!("{:?}", e)))
+        .map(|s| s.to_string())
+}
+
+#[pyfunction]
+fn parse_rcp_location(location: &str) -> PyResult<(String, Option<String>, String)> {
+    breezy::location::parse_rcp_location(location)
+        .map_err(|e| PyValueError::new_err(format!("{:?}", e)))
+}
+
 #[pymodule]
 fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     let i18n = PyModule::new(_py, "i18n")?;
@@ -350,6 +378,10 @@ fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<BreezyTraceHandler>()?;
     m.add_function(wrap_pyfunction!(str_tdelta, m)?)?;
     m.add_function(wrap_pyfunction!(debug_memory_proc, m)?)?;
+    m.add_function(wrap_pyfunction!(rcp_location_to_url, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_cvs_location, m)?)?;
+    m.add_function(wrap_pyfunction!(cvs_to_url, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_rcp_location, m)?)?;
 
     Ok(())
 }

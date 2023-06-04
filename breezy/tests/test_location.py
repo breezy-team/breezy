@@ -74,8 +74,8 @@ class TestLocationToUrl(tests.TestCase):
             'cvs+pserver://anonymous@odessa.cvs.sourceforge.net/cvsroot/odess',
             location_to_url(
                 ':pserver:anonymous@odessa.cvs.sourceforge.net:/cvsroot/odess'))
-        self.assertRaises(urlutils.InvalidURL, location_to_url, ':pserver:blah')
-        self.assertRaises(urlutils.InvalidURL, location_to_url, ':pserver:blah:bloe')
+        self.assertRaises(ValueError, location_to_url, ':pserver:blah')
+        self.assertRaises(ValueError, location_to_url, ':pserver:blah:bloe')
 
     def test_extssh(self):
         self.assertEqual(
