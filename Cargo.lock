@@ -179,6 +179,7 @@ dependencies = [
 name = "breezy"
 version = "3.3.4"
 dependencies = [
+ "bazaar",
  "breezy-osutils",
  "chrono",
  "gettext-rs",

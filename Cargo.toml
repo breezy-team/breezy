@@ -26,8 +26,9 @@ path = "breezy/main.rs"
 [lib]
 
 [features]
-default = ["i18n"]
+default = ["i18n", "pyo3"]
 i18n = ["dep:gettext-rs"]
+pyo3 = []
 
 [dependencies]
 pyo3 = ">=0.17, <0.19"
@@ -35,6 +36,7 @@ gettext-rs = { version = "0.7", optional = true }
 log = "0.4"
 breezy-osutils = { path = "crates/osutils", version = ">=3.3.4" }
 chrono = "0.4"
+bazaar = { path = "crates/bazaar" }
 percent-encoding = "2"
 url = "2"
 regex = "1"
