@@ -26,6 +26,7 @@ pub mod branch;
 pub mod forge;
 pub mod location;
 pub mod repository;
+pub mod tags;
 pub mod tree;
 
 #[cfg(feature = "pyo3")]
@@ -33,3 +34,9 @@ pub mod pytree;
 
 #[cfg(feature = "pyo3")]
 pub mod pybranch;
+
+#[cfg(feature = "pyo3")]
+pub mod pyforge;
+
+#[cfg(feature = "pyo3")]
+pub mod pytags;
