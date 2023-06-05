@@ -3,13 +3,18 @@ name = "breezy"
 version = "3.3.4"
 authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@jelmer.uk>"]
 edition = "2021"
-publish = false
 default-run = "brz"
 license = "GPL-2.0+"
+license-file = "COPYING.txt"
 description = "Friendly distributed version control system"
 repository = "https://code.launchpad.net/brz"
 homepage = "https://www.breezy-vcs.org/"
 documentation = "https://www.breezy-vcs.org/doc/"
+include = [
+	"src/*.rs",
+	"breezy/main.rs",
+	"README.rst",
+]
 
 [workspace]
 members = ["crates/*"]
@@ -28,7 +33,7 @@ i18n = ["dep:gettext-rs"]
 pyo3 = ">=0.17, <0.19"
 gettext-rs = { version = "0.7", optional = true }
 log = "0.4"
-breezy-osutils = { path = "crates/osutils" }
+breezy-osutils = { path = "crates/osutils", version = ">=3.3.4" }
 chrono = "0.4"
 percent-encoding = "2"
 url = "2"
