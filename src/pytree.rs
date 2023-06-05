@@ -1,4 +1,4 @@
-use crate::tree::{Tree, WorkingTree};
+use crate::tree::{MutableTree, RevisionTree, Tree, WorkingTree};
 use bazaar::RevisionId;
 use pyo3::prelude::*;
 
@@ -17,6 +17,8 @@ impl Tree for PyTree {
     }
 }
 
+impl MutableTree for PyTree {}
+
 impl WorkingTree for PyTree {
     fn abspath(&self, path: &str) -> std::path::PathBuf {
         Python::with_gil(|py| {
@@ -34,6 +36,20 @@ impl WorkingTree for PyTree {
             let pytree = self.0.as_ref(py);
             pytree
                 .call_method0("last_revision")
+                .unwrap()
+                .extract()
+                .unwrap()
+        });
+        RevisionId::from(revid)
+    }
+}
+
+impl RevisionTree for PyTree {
+    fn get_revision_id(&self) -> RevisionId {
+        let revid: Vec<u8> = Python::with_gil(|py| {
+            let pytree = self.0.as_ref(py);
+            pytree
+                .call_method0("get_revision_id")
                 .unwrap()
                 .extract()
                 .unwrap()

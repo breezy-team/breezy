@@ -8,9 +8,13 @@ pub trait Tree {
     fn supports_rename_tracking(&self) -> bool;
 }
 
-pub trait MutableTree {}
+pub trait MutableTree: Tree {}
 
-pub trait WorkingTree {
+pub trait RevisionTree: Tree {
+    fn get_revision_id(&self) -> RevisionId;
+}
+
+pub trait WorkingTree: MutableTree {
     fn abspath(&self, path: &str) -> std::path::PathBuf;
 
     fn last_revision(&self) -> RevisionId;
