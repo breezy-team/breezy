@@ -13,4 +13,12 @@ impl Branch for PyBranch {
             bazaar::RevisionId::from(revision_id)
         })
     }
+
+    fn name(&self) -> String {
+        Python::with_gil(|py| {
+            let py_branch = self.0.as_ref(py);
+            let py_name = py_branch.getattr("name").unwrap();
+            py_name.extract::<String>().unwrap()
+        })
+    }
 }
