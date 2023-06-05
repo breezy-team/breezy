@@ -1,3 +1,5 @@
+use bazaar::RevisionId;
+
 pub trait Tree {
     /// Whether this tree supports rename tracking.
     ///
@@ -8,4 +10,8 @@ pub trait Tree {
 
 pub trait MutableTree {}
 
-pub trait WorkingTree {}
+pub trait WorkingTree {
+    fn abspath(&self, path: &str) -> std::path::PathBuf;
+
+    fn last_revision(&self) -> RevisionId;
+}
