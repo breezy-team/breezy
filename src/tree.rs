@@ -11,7 +11,7 @@ pub trait Tree {
 pub trait MutableTree {}
 
 pub trait WorkingTree {
-    fn local_abspath(&self, path: &str) -> std::path::PathBuf;
+    fn abspath(&self, path: &str) -> std::path::PathBuf;
 
     fn last_revision(&self) -> RevisionId;
 }

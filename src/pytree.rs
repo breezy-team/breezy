@@ -18,11 +18,11 @@ impl Tree for PyTree {
 }
 
 impl WorkingTree for PyTree {
-    fn local_abspath(&self, path: &str) -> std::path::PathBuf {
+    fn abspath(&self, path: &str) -> std::path::PathBuf {
         Python::with_gil(|py| {
             let pytree = self.0.as_ref(py);
             pytree
-                .call_method1("local_abspath", (path,))
+                .call_method1("abspath", (path,))
                 .unwrap()
                 .extract()
                 .unwrap()
