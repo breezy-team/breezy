@@ -335,20 +335,7 @@ size_sha_file = _osutils_rs.size_sha_file
 sha_file_by_name = _osutils_rs.sha_file_by_name
 sha_strings = _osutils_rs.sha_strings
 sha_string = _osutils_rs.sha_string
-
-
-def compare_files(a, b):
-    """Returns true if equal in contents."""
-    BUFSIZE = 4096
-    while True:
-        ai = a.read(BUFSIZE)
-        bi = b.read(BUFSIZE)
-        if ai != bi:
-            return False
-        if not ai:
-            return True
-
-
+compare_files = _osutils_rs.compare_files
 local_time_offset = _osutils_rs.local_time_offset
 format_date = _osutils_rs.format_date
 format_date_with_offset_in_original_timezone = _osutils_rs.format_date_with_offset_in_original_timezone
