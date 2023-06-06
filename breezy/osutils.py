@@ -461,24 +461,9 @@ def delete_any(path):
         _delete_file_or_dir(path)
 
 
-def readlink(abspath):
-    """Return a string representing the path to which the symbolic link points.
-
-    :param abspath: The link absolute unicode path.
-
-    This his guaranteed to return the symbolic link in unicode in all python
-    versions.
-    """
-    link = os.fsencode(abspath)
-    target = os.readlink(link)
-    target = os.fsdecode(target)
-    return target
-
-
+readlink = _osutils_rs.readlink
 contains_whitespace = _osutils_rs.contains_whitespace
 contains_linebreaks = _osutils_rs.contains_linebreaks
-
-
 relpath = _osutils_rs.relpath
 
 
