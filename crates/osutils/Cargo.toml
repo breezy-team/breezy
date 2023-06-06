@@ -27,3 +27,4 @@ whoami = "1"
 
 [target.'cfg(unix)'.dependencies]
 nix = ">=0.26"
+termios = "0.3"

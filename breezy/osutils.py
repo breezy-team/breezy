@@ -428,8 +428,8 @@ def report_extension_load_failures():
     # https://bugs.launchpad.net/bzr/+bug/430529
 
 
-from ._osutils_rs import _accessible_normalized_filename  # noqa: F401
-from ._osutils_rs import (_inaccessible_normalized_filename, check_legal_path,
+from ._osutils_rs import (_accessible_normalized_filename  ,  # noqa: F401
+                          _inaccessible_normalized_filename, check_legal_path,
                           chunks_to_lines, chunks_to_lines_iter, get_host_name,
                           link_or_copy, local_concurrency, normalized_filename,
                           normalizes_filenames, split_lines)
@@ -1052,22 +1052,7 @@ file_kind_from_stat_mode = _osutils_rs.kind_from_mode
 MIN_ABS_PATHLENGTH = _osutils_rs.MIN_ABS_PATHLENGTH
 
 
-if sys.platform == "win32":
-    def getchar():
-        import msvcrt
-        return msvcrt.getch()
-else:
-    def getchar():
-        import termios
-        import tty
-        fd = sys.stdin.fileno()
-        settings = termios.tcgetattr(fd)
-        try:
-            tty.setraw(fd)
-            ch = sys.stdin.read(1)
-        finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, settings)
-        return ch
+getchar = _osutils_rs.getchar
 
 
 class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
