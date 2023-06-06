@@ -20,8 +20,6 @@
 
 from breezy import config, i18n, tests
 
-from ..test_i18n import ZzzTranslations
-
 
 class TestHelp(tests.TestCaseWithTransport):
 
@@ -179,8 +177,8 @@ class TestTranslatedHelp(tests.TestCaseWithTransport):
 
     def setUp(self):
         super().setUp()
-        self.overrideAttr(i18n, 'gettext', ZzzTranslations().gettext)
-        self.overrideAttr(i18n, 'ngettext', ZzzTranslations().ngettext)
+        i18n.install_zzz()
+        self.addCleanup(i18n.install)
 
     def test_help_command_utf8(self):
         out, err = self.run_bzr_raw(["help", "push"], encoding="utf-8")

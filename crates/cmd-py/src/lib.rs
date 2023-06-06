@@ -26,6 +26,18 @@ fn i18n_install(lang: Option<&str>, locale_base: Option<PathBuf>) -> PyResult<()
     Ok(())
 }
 
+#[pyfunction(name = "install_zzz")]
+fn i18n_install_zzz() -> PyResult<()> {
+    breezy::i18n::install_zzz();
+    Ok(())
+}
+
+#[pyfunction(name = "install_zzz_for_doc")]
+fn i18n_install_zzz_for_doc() -> PyResult<()> {
+    breezy::i18n::install_zzz_for_doc();
+    Ok(())
+}
+
 #[pyfunction(name = "install_plugin")]
 fn i18n_install_plugin(name: &str, locale_base: Option<PathBuf>) -> PyResult<()> {
     let locale_base = locale_base.as_deref();
@@ -41,6 +53,16 @@ fn i18n_gettext(msgid: &str) -> PyResult<String> {
 #[pyfunction(name = "ngettext")]
 fn i18n_ngettext(msgid: &str, msgid_plural: &str, n: u32) -> PyResult<String> {
     Ok(breezy::i18n::ngettext(msgid, msgid_plural, n))
+}
+
+#[pyfunction(name = "gettext_per_paragraph")]
+fn i18n_gettext_per_paragraph(text: &str) -> PyResult<String> {
+    Ok(breezy::i18n::gettext_per_paragraph(text))
+}
+
+#[pyfunction(name = "zzz")]
+fn i18n_zzz(msgid: &str) -> PyResult<String> {
+    Ok(breezy::i18n::zzz(msgid))
 }
 
 #[pyfunction]
@@ -355,6 +377,10 @@ fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     i18n.add_function(wrap_pyfunction!(i18n_ngettext, i18n)?)?;
     i18n.add_function(wrap_pyfunction!(i18n_disable_i18n, i18n)?)?;
     i18n.add_function(wrap_pyfunction!(i18n_dgettext, i18n)?)?;
+    i18n.add_function(wrap_pyfunction!(i18n_gettext_per_paragraph, i18n)?)?;
+    i18n.add_function(wrap_pyfunction!(i18n_install_zzz, i18n)?)?;
+    i18n.add_function(wrap_pyfunction!(i18n_install_zzz_for_doc, i18n)?)?;
+    i18n.add_function(wrap_pyfunction!(i18n_zzz, i18n)?)?;
     m.add_submodule(i18n)?;
     m.add_function(wrap_pyfunction!(ensure_config_dir_exists, m)?)?;
     m.add_function(wrap_pyfunction!(config_dir, m)?)?;
