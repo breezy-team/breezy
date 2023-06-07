@@ -69,7 +69,7 @@ class TestHelp(tests.TestCaseWithTransport):
     def test_help_repositories(self):
         """Smoke test for 'brz help repositories'."""
         out, err = self.run_bzr('help repositories')
-        from breezy.help_topics import topic_registry, help_as_plain_text
+        from breezy.help_topics import help_as_plain_text, topic_registry
         repositories = topic_registry.get('repositories').get_contents()
         expected = help_as_plain_text(repositories)
         self.assertEqual(expected, out)
@@ -77,7 +77,7 @@ class TestHelp(tests.TestCaseWithTransport):
     def test_help_working_trees(self):
         """Smoke test for 'brz help working-trees'."""
         out, err = self.run_bzr('help working-trees')
-        from breezy.help_topics import topic_registry, help_as_plain_text
+        from breezy.help_topics import help_as_plain_text, topic_registry
         working_trees = topic_registry.get('working-trees').get_contents()
         expected = help_as_plain_text(working_trees)
         self.assertEqual(expected, out)
