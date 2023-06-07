@@ -35,9 +35,10 @@ rendering on the screen naturally.
 
 import breezy
 from breezy import config
-from breezy._cmd_rs import help as _help_rs
+from breezy._cmd_rs import help as _help_rs, help_as_plain_text, format_see_also as _format_see_also
 
 
+known_env_variables = _help_rs.known_env_variables
 HelpTopicRegistry = _help_rs.HelpTopicRegistry
 
 # Section identifiers (map topics to the right place in the manual)

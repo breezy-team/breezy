@@ -1,4 +1,5 @@
 use regex::Regex;
+use std::borrow::Cow;
 use std::convert::TryFrom;
 
 pub enum HelpContents {
@@ -48,13 +49,39 @@ pub struct HelpTopic {
     pub section: Section,
 }
 
-impl HelpTopic {
-    pub fn get_contents(&self) -> std::borrow::Cow<str> {
-        match self.contents {
-            HelpContents::Text(text) => text.into(),
-            HelpContents::Callback(ref callback) => callback(self.name).into(),
-            HelpContents::Closure(ref callback) => callback(self.name).into(),
+pub struct DynamicHelpTopic {
+    pub name: String,
+    pub contents: HelpContents,
+    pub summary: String,
+    pub section: Section,
+}
+
+impl HelpContents {
+    fn get_contents(&self, topic: &str) -> Cow<str> {
+        match self {
+            HelpContents::Text(text) => Cow::Borrowed(text),
+            HelpContents::Callback(ref callback) => callback(topic).into(),
+            HelpContents::Closure(ref callback) => callback(topic).into(),
         }
+    }
+}
+
+impl HelpTopic {
+    pub const fn new(
+        section: Section,
+        name: &'static str,
+        summary: &'static str,
+        contents: HelpContents,
+    ) -> Self {
+        Self {
+            name,
+            contents,
+            summary,
+            section,
+        }
+    }
+    pub fn get_contents(&self) -> std::borrow::Cow<str> {
+        self.contents.get_contents(self.name)
     }
 
     pub fn get_summary(&self) -> String {
@@ -76,11 +103,13 @@ impl HelpTopic {
     ///   cross-referenced.
     /// plain: if False, raw help (reStructuredText) is
     ///   returned instead of plain text.
-    pub fn get_help_text(&self, additional_see_also: Vec<&str>, plain: bool) -> String {
+    pub fn get_help_text(&self, additional_see_also: Option<&[&str]>, plain: bool) -> String {
         let mut text = String::new();
         text.push_str(self.get_contents().as_ref());
-        let see_also = format_see_also(&additional_see_also);
-        text.push_str(see_also.as_str());
+        if let Some(additional_see_also) = additional_see_also {
+            let see_also = format_see_also(additional_see_also);
+            text.push_str(see_also.as_str());
+        }
         if plain {
             text = help_as_plain_text(text.as_str());
         }
@@ -95,7 +124,9 @@ impl HelpTopic {
 pub fn format_see_also(additional_see_also: &[&str]) -> String {
     let mut text = String::new();
     if !additional_see_also.is_empty() {
-        text.push_str("\nSee also: ");
+        let mut additional_see_also = additional_see_also.to_vec();
+        additional_see_also.sort();
+        text.push_str("\n:See also: ");
         text.push_str(additional_see_also.join(", ").as_str());
         text.push('\n');
     }
@@ -133,19 +164,33 @@ pub fn help_as_plain_text(text: &str) -> String {
     ret
 }
 
-impl HelpTopic {
-    pub const fn new(
-        section: Section,
-        name: &'static str,
-        summary: &'static str,
-        contents: HelpContents,
-    ) -> Self {
-        Self {
-            name,
-            contents,
-            summary,
-            section,
+impl DynamicHelpTopic {
+    pub fn get_contents(&self) -> std::borrow::Cow<str> {
+        self.contents.get_contents(self.name.as_str())
+    }
+
+    /// Return a string with the help for this topic.
+    ///
+    /// Args:
+    ///   additional_see_also: Additional help topics to be
+    ///   cross-referenced.
+    /// plain: if False, raw help (reStructuredText) is
+    ///   returned instead of plain text.
+    pub fn get_help_text(&self, additional_see_also: Option<&[&str]>, plain: bool) -> String {
+        let mut text = String::new();
+        text.push_str(self.get_contents().as_ref());
+        if let Some(additional_see_also) = additional_see_also {
+            let see_also = format_see_also(additional_see_also);
+            text.push_str(see_also.as_str());
         }
+        if plain {
+            text = help_as_plain_text(text.as_str());
+        }
+        #[cfg(feature = "i18n")]
+        {
+            text = crate::i18n::gettext_per_paragraph(text.as_str());
+        }
+        text
     }
 }
 
@@ -772,7 +817,7 @@ inventory::submit! {
     )
 }
 
-const KNOWN_ENV_VARIABLES: &[(&str, &str)] = &[
+pub const KNOWN_ENV_VARIABLES: &[(&str, &str)] = &[
     (
         "BRZPATH",
         "Path where brz is to look for shell plugin external commands.",
@@ -878,27 +923,28 @@ inventory::submit! {
         )
 }
 
-pub fn get_topic(name: &str) -> Option<&HelpTopic> {
-    if let Some(topic) = iter_static_topics().find(|t| t.name == name) {
-        Some(topic)
-    } else {
-        unsafe { DYNAMIC_TOPICS.get(name) }
-    }
+pub fn get_static_topic(name: &str) -> Option<&'static HelpTopic> {
+    iter_static_topics().find(|t| t.name == name)
 }
 
-pub fn register_topic(topic: HelpTopic) {
+pub fn get_dynamic_topic(name: &str) -> Option<std::sync::Arc<DynamicHelpTopic>> {
+    unsafe { DYNAMIC_TOPICS.get(name) }.map(std::sync::Arc::clone)
+}
+
+pub fn register_topic(topic: DynamicHelpTopic) {
     unsafe {
-        DYNAMIC_TOPICS.insert(topic.name.to_string(), topic);
+        DYNAMIC_TOPICS.insert(topic.name.to_string(), std::sync::Arc::new(topic));
     }
 }
 
-fn iter_static_topics() -> impl Iterator<Item = &'static HelpTopic> {
-    inventory::iter::<HelpTopic>.into_iter()
+pub fn iter_static_topics() -> impl Iterator<Item = &'static HelpTopic> {
+    inventory::iter::<HelpTopic>()
 }
 
-pub fn iter_topics() -> impl Iterator<Item = &'static HelpTopic> {
-    iter_static_topics().chain(unsafe { DYNAMIC_TOPICS.iter().map(|(_, v)| v) })
+pub fn iter_dynamic_topics() -> impl Iterator<Item = std::sync::Arc<DynamicHelpTopic>> {
+    unsafe { DYNAMIC_TOPICS.iter().map(|(_, v)| std::sync::Arc::clone(v)) }
 }
 
-static mut DYNAMIC_TOPICS: once_cell::sync::Lazy<std::collections::HashMap<String, HelpTopic>> =
-    once_cell::sync::Lazy::new(std::collections::HashMap::<String, HelpTopic>::new);
+static mut DYNAMIC_TOPICS: once_cell::sync::Lazy<
+    std::collections::HashMap<String, std::sync::Arc<DynamicHelpTopic>>,
+> = once_cell::sync::Lazy::new(std::collections::HashMap::new);

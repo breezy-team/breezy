@@ -69,22 +69,25 @@ class TestHelp(tests.TestCaseWithTransport):
     def test_help_repositories(self):
         """Smoke test for 'brz help repositories'."""
         out, err = self.run_bzr('help repositories')
-        from breezy.help_topics import _repositories, help_as_plain_text
-        expected = help_as_plain_text(_repositories)
+        from breezy.help_topics import topic_registry, help_as_plain_text
+        repositories = topic_registry.get('repositories').get_contents()
+        expected = help_as_plain_text(repositories)
         self.assertEqual(expected, out)
 
     def test_help_working_trees(self):
         """Smoke test for 'brz help working-trees'."""
         out, err = self.run_bzr('help working-trees')
-        from breezy.help_topics import _working_trees, help_as_plain_text
-        expected = help_as_plain_text(_working_trees)
+        from breezy.help_topics import topic_registry, help_as_plain_text
+        working_trees = topic_registry.get('working-trees').get_contents()
+        expected = help_as_plain_text(working_trees)
         self.assertEqual(expected, out)
 
     def test_help_status_flags(self):
         """Smoke test for 'brz help status-flags'."""
         out, err = self.run_bzr('help status-flags')
-        from breezy.help_topics import _status_flags, help_as_plain_text
-        expected = help_as_plain_text(_status_flags)
+        from breezy.help_topics import help_as_plain_text, topic_registry
+        status_flags = topic_registry.get('status-flags').get_contents()
+        expected = help_as_plain_text(status_flags)
         self.assertEqual(expected, out)
 
     def test_help_commands(self):
