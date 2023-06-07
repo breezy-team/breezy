@@ -54,7 +54,7 @@ fn common_ie_check(
             .call_method1(
                 py,
                 "has_id",
-                (PyBytes::new(py, parent_id.bytes()).to_object(py),),
+                (PyBytes::new(py, parent_id.as_bytes()).to_object(py),),
             )?
             .extract::<bool>(py)?;
         if !present {
@@ -113,7 +113,7 @@ impl InventoryEntry {
     fn get_file_id(&self, py: Python) -> PyObject {
         let file_id = &self.0.file_id();
 
-        PyBytes::new(py, file_id.bytes()).into()
+        PyBytes::new(py, file_id.as_bytes()).into()
     }
 
     #[setter]
@@ -132,7 +132,7 @@ impl InventoryEntry {
 
         parent_id
             .as_ref()
-            .map(|parent_id| PyBytes::new(py, parent_id.bytes()).into())
+            .map(|parent_id| PyBytes::new(py, parent_id.as_bytes()).into())
     }
 
     #[setter]
@@ -151,7 +151,7 @@ impl InventoryEntry {
 
         revision
             .as_ref()
-            .map(|revision| PyBytes::new(py, revision.bytes()).into())
+            .map(|revision| PyBytes::new(py, revision.as_bytes()).into())
     }
 
     #[setter]
@@ -265,7 +265,7 @@ impl InventoryEntry {
         }
         let ret = PyDict::new(py);
         for (revision, entry) in candidates.iter() {
-            ret.set_item(PyBytes::new(py, revision.bytes()), entry)?;
+            ret.set_item(PyBytes::new(py, revision.as_bytes()), entry)?;
         }
         Ok(ret.into_py(py))
     }
@@ -391,14 +391,14 @@ impl InventoryFile {
                 ..
             } => format!(
                 "InventoryFile({}, {}, parent_id={}, sha1={}, len={}, revision={})",
-                PyBytes::new(py, file_id.bytes())
+                PyBytes::new(py, file_id.as_bytes())
                     .to_object(py)
                     .as_ref(py)
                     .repr()?,
                 name.to_object(py).as_ref(py).repr()?,
                 parent_id
                     .as_ref()
-                    .map(|p| PyBytes::new(py, p.bytes()))
+                    .map(|p| PyBytes::new(py, p.as_bytes()))
                     .to_object(py)
                     .as_ref(py)
                     .repr()?,
@@ -411,7 +411,7 @@ impl InventoryFile {
                 text_size.to_object(py).as_ref(py).repr()?,
                 revision
                     .as_ref()
-                    .map(|r| PyBytes::new(py, r.bytes()).to_object(py))
+                    .map(|r| PyBytes::new(py, r.as_bytes()).to_object(py))
                     .to_object(py)
                     .as_ref(py)
                     .repr()?,

@@ -457,6 +457,9 @@ fn encode_and_escape(py: Python, unicode_or_utf8_str: PyObject) -> PyResult<&PyB
     Ok(PyBytes::new(py, ret.as_bytes()))
 }
 
+mod hashcache;
+mod rio;
+
 #[pymodule]
 fn _bzr_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(_next_id_suffix))?;
@@ -494,6 +497,14 @@ fn _bzr_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(check_not_reserved_id))?;
     m.add_wrapped(wrap_pyfunction!(escape_invalid_chars))?;
     m.add_wrapped(wrap_pyfunction!(encode_and_escape))?;
+
+    let riom = PyModule::new(py, "rio")?;
+    rio::rio(riom)?;
+    m.add_submodule(riom)?;
+
+    let hashcachem = PyModule::new(py, "hashcache")?;
+    hashcache::hashcache(hashcachem)?;
+    m.add_submodule(hashcachem)?;
 
     let dirstatem = dirstate::_dirstate_rs(py)?;
     m.add_submodule(dirstatem)?;

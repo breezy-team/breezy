@@ -17,7 +17,7 @@
 """A generator which creates a rio stanza of the current tree info."""
 
 from breezy import errors, hooks
-from breezy.bzr.rio import Stanza
+from breezy.bzr import rio
 from breezy.version_info_formats import VersionInfoBuilder, create_date_str
 
 from ..revision import NULL_REVISION
@@ -27,7 +27,7 @@ class RioVersionInfoBuilder(VersionInfoBuilder):
     """This writes a rio stream out."""
 
     def generate(self, to_file):
-        info = Stanza()
+        info = rio.Stanza()
         revision_id = self._get_revision_id()
         if revision_id != NULL_REVISION:
             info.add('revision-id', revision_id.decode('utf-8'))
@@ -59,7 +59,7 @@ class RioVersionInfoBuilder(VersionInfoBuilder):
                 info.add('clean', 'False')
 
         if self._include_history:
-            log = Stanza()
+            log = rio.Stanza()
             for (revision_id, message,
                  timestamp, timezone) in self._iter_revision_history():
                 log.add('id', revision_id.decode('utf-8'))
@@ -68,7 +68,7 @@ class RioVersionInfoBuilder(VersionInfoBuilder):
             info.add('revisions', log)
 
         if self._include_file_revs:
-            files = Stanza()
+            files = rio.Stanza()
             for path in sorted(self._file_revisions.keys()):
                 files.add('path', path)
                 files.add('revision', self._file_revisions[path])
