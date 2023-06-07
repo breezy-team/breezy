@@ -17,6 +17,8 @@ pub mod i18n {
 }
 
 pub mod bedding;
+pub mod bugtracker;
+
 pub mod branch;
 pub mod controldir;
 pub mod forge;
