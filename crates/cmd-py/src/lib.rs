@@ -368,6 +368,11 @@ fn parse_rcp_location(location: &str) -> PyResult<(String, Option<String>, Strin
         .map_err(|e| PyValueError::new_err(format!("{:?}", e)))
 }
 
+#[pyfunction]
+fn help_as_plain_text(text: &str) -> PyResult<String> {
+    Ok(breezy::help::help_as_plain_text(text))
+}
+
 #[pymodule]
 fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     let i18n = PyModule::new(_py, "i18n")?;
@@ -408,6 +413,7 @@ fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(parse_cvs_location, m)?)?;
     m.add_function(wrap_pyfunction!(cvs_to_url, m)?)?;
     m.add_function(wrap_pyfunction!(parse_rcp_location, m)?)?;
+    m.add_function(wrap_pyfunction!(help_as_plain_text, m)?)?;
 
     Ok(())
 }

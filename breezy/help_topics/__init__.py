@@ -36,6 +36,8 @@ rendering on the screen naturally.
 import breezy
 from breezy import config, i18n, osutils, registry
 
+from .._cmd_rs import help_as_plain_text
+
 # Section identifiers (map topics to the right place in the manual)
 SECT_COMMAND = "command"
 SECT_CONCEPT = "concept"
@@ -900,25 +902,6 @@ class RegisteredTopic:
     def get_help_topic(self):
         """Return the help topic this can be found under."""
         return self.topic
-
-
-def help_as_plain_text(text):
-    """Minimal converter of reStructuredText to plain text."""
-    import re
-
-    # Remove the standalone code block marker
-    text = re.sub(r"(?m)^\s*::\n\s*$", "", text)
-    lines = text.splitlines()
-    result = []
-    for line in lines:
-        if line.startswith(':'):
-            line = line[1:]
-        elif line.endswith('::'):
-            line = line[:-1]
-        # Map :doc:`xxx-help` to ``brz help xxx``
-        line = re.sub(":doc:`(.+?)-help`", r'``brz help \1``', line)
-        result.append(line)
-    return "\n".join(result) + "\n"
 
 
 class ConfigOptionHelpIndex:

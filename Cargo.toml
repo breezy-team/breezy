@@ -40,6 +40,7 @@ bazaar = { path = "crates/bazaar" }
 percent-encoding = "2"
 url = "2"
 regex = "1"
+inventory = "0.3"
 lazy_static = "1.4"
 once_cell = "1"
 

@@ -20,6 +20,7 @@ pub mod bedding;
 pub mod branch;
 pub mod controldir;
 pub mod forge;
+pub mod help;
 pub mod location;
 pub mod progress;
 pub mod repository;
