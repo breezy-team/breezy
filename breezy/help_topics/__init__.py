@@ -219,13 +219,6 @@ topic_registry.register('other-formats', get_other_formats_topic,
 topic_registry.register('urlspec', _help_on_transport,
                         "Supported transport protocols")
 
-def get_bugs_topic(topic):
-    from breezy import bugtracker
-    return ("Bug Tracker Settings\n\n"
-            + bugtracker.tracker_registry.help_topic(topic))
-
-
-topic_registry.register('bugs', get_bugs_topic, 'Bug tracker settings')
 topic_registry.register_lazy('hooks', 'breezy.hooks', 'hooks_help_text',
                              'Points at which custom processing can be added')
 topic_registry.register_lazy('location-alias', 'breezy.directory_service',
