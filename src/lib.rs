@@ -24,6 +24,7 @@ pub mod progress;
 
 pub mod branch;
 pub mod forge;
+pub mod help;
 pub mod location;
 pub mod repository;
 pub mod tags;
