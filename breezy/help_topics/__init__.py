@@ -35,6 +35,7 @@ rendering on the screen naturally.
 
 import breezy
 from breezy import config, i18n, osutils, registry
+
 from .._cmd_rs import help_as_plain_text
 
 # Section identifiers (map topics to the right place in the manual)
