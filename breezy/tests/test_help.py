@@ -21,7 +21,6 @@ import textwrap
 
 from .. import (builtins, commands, config, errors, help, help_topics, i18n,
                 plugin, tests)
-from .test_i18n import ZzzTranslations
 
 
 class TestErrors(tests.TestCase):
@@ -323,27 +322,13 @@ Description:
                              helptext)
 
 
-class ZzzTranslationsForDoc(ZzzTranslations):
-
-    _section_pat = re.compile(':\\w+:\\n\\s+')
-    _indent_pat = re.compile('\\s+')
-
-    def zzz(self, s):
-        m = self._section_pat.match(s)
-        if m is None:
-            m = self._indent_pat.match(s)
-        if m:
-            return f'{m.group(0)}zz{{{{{s[m.end():]}}}}}'
-        return 'zz{{%s}}' % s
-
-
 class TestCommandHelpI18n(tests.TestCase):
     """Tests for help on translated commands."""
 
     def setUp(self):
         super().setUp()
-        self.overrideAttr(i18n, 'gettext', ZzzTranslationsForDoc().gettext)
-        self.overrideAttr(i18n, 'ngettext', ZzzTranslationsForDoc().ngettext)
+        i18n.install_zzz_for_doc()
+        self.addCleanup(i18n.install)
 
     def assertCmdHelp(self, expected, cmd):
         self.assertEqualDiff(textwrap.dedent(expected), cmd.get_help_text())
