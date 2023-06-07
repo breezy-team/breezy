@@ -43,6 +43,7 @@ regex = "1"
 inventory = "0.3"
 lazy_static = "1.4"
 once_cell = "1"
+textwrap = ">=0.13"
 
 [target.'cfg(unix)'.dependencies]
 nix = ">=0.26"

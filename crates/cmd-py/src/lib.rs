@@ -373,6 +373,17 @@ fn help_as_plain_text(text: &str) -> PyResult<String> {
     Ok(breezy::help::help_as_plain_text(text))
 }
 
+#[pyfunction]
+fn format_see_also(see_also: Option<Vec<&str>>) -> PyResult<String> {
+    if see_also.is_none() {
+        return Ok("".to_string());
+    }
+
+    Ok(breezy::help::format_see_also(see_also.unwrap().as_slice()))
+}
+
+mod help;
+
 #[pymodule]
 fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     let i18n = PyModule::new(_py, "i18n")?;
@@ -414,6 +425,11 @@ fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(cvs_to_url, m)?)?;
     m.add_function(wrap_pyfunction!(parse_rcp_location, m)?)?;
     m.add_function(wrap_pyfunction!(help_as_plain_text, m)?)?;
+    m.add_function(wrap_pyfunction!(format_see_also, m)?)?;
+
+    let helpm = PyModule::new(_py, "help")?;
+    help::help_topics(helpm)?;
+    m.add_submodule(helpm)?;
 
     Ok(())
 }
