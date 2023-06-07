@@ -5,9 +5,11 @@ pub mod chk_inventory;
 pub mod filters;
 pub mod gen_ids;
 pub mod globbing;
+pub mod hashcache;
 pub mod inventory;
 pub mod inventory_delta;
 pub mod revision;
+pub mod rio;
 pub mod serializer;
 pub mod xml_serializer;
 

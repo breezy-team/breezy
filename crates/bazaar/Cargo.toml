@@ -17,3 +17,9 @@ fancy-regex = ">=0.7"
 chrono = "0.4"
 bendy = "0.3"
 xmltree = "0.10"
+sha1 = "0.10"
+tempfile = "3"
+log = "0.4"
+
+[target.'cfg(unix)'.dependencies]
+nix = ">= 0.26"

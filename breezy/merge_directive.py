@@ -30,9 +30,9 @@ from breezy import (
     patch as _mod_patch,
     )
 from breezy.bzr import (
-    rio,
     rio_patch,
     )
+from breezy.bzr import rio
 from breezy.bzr.bundle import (
     serializer as bundle_serializer,
     )

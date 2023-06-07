@@ -1,4 +1,4 @@
-use bazaar::filters::{ContentFilter, ContentFilterProvider, ContentFilterStack};
+use crate::filters::{ContentFilter, ContentFilterProvider, ContentFilterStack};
 use breezy_osutils::sha::sha_string;
 use log::{debug, info};
 use nix::sys::stat::SFlag;
