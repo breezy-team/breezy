@@ -1120,6 +1120,7 @@ impl MutableInventory {
                 }
             }
         } else {
+            assert_eq!(ie.kind(), Kind::Directory);
             self.root_id = Some(ie.file_id().clone());
         }
 

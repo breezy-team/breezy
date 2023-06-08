@@ -53,6 +53,9 @@ class InventorySerializer_v5(xml6.InventorySerializer_v6):
         for e in elt:
             ie = unpack_inventory_entry(e, entry_cache=entry_cache,
                                         return_from_cache=return_from_cache)
+            parent_id = ie.parent_id
+            if parent_id is None:
+                ie.parent_id = parent_id = root_id
             inv.add(ie)
         if revision_id is not None:
             inv.root.revision = revision_id
