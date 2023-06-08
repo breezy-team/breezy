@@ -29,6 +29,7 @@ pub mod repository;
 pub mod tags;
 pub mod trace;
 pub mod tree;
+pub mod treebuilder;
 
 #[cfg(feature = "pyo3")]
 pub mod pytree;
