@@ -23,7 +23,7 @@ from io import BytesIO, StringIO
 import yaml
 
 from .. import registry, tests, version_info_formats
-from ..bzr.rio import read_stanzas
+from ..bzr import rio
 from ..version_info_formats.format_custom import (CustomVersionInfoBuilder,
                                                   MissingTemplateVariable,
                                                   NoTemplate)
@@ -135,7 +135,7 @@ class TestVersionInfoRio(VersionInfoTestCase):
         builder = RioVersionInfoBuilder(wt.branch, working_tree=wt, **kwargs)
         builder.generate(bio)
         bio.seek(0)
-        stanzas = list(read_stanzas(bio))
+        stanzas = list(rio.read_stanzas(bio))
         self.assertEqual(1, len(stanzas))
         return stanzas[0]
 
@@ -150,7 +150,7 @@ class TestVersionInfoRio(VersionInfoTestCase):
         self.assertEqual(['bloe'], stanza.get_all('bla'))
 
     def get_one_stanza(self, stanza, key):
-        new_stanzas = list(read_stanzas(BytesIO(stanza.get(key).encode('utf8'))))
+        new_stanzas = list(rio.read_stanzas(BytesIO(stanza.get(key).encode('utf8'))))
         self.assertEqual(1, len(new_stanzas))
         return new_stanzas[0]
 

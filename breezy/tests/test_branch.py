@@ -438,12 +438,21 @@ class BzrBranch8(tests.TestCaseWithTransport):
 
     @staticmethod
     def instrument_branch(branch, gets):
-        old_get = branch._transport.get
+        class WrapTransport(object):
 
-        def get(*args, **kwargs):
-            gets.append((args, kwargs))
-            return old_get(*args, **kwargs)
-        branch._transport.get = get
+            __slots__ = ('t', )
+
+            def __init__(self, t):
+                self.t = t
+
+            def get(self, *args, **kwargs):
+                gets.append((args, kwargs))
+                return self.t.get(*args, **kwargs)
+
+            def __getattr__(self, n):
+                return getattr(self.t, n)
+
+        branch._transport = WrapTransport(branch._transport)
 
     def test_reference_info_caching_read_locked(self):
         gets = []

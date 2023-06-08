@@ -25,7 +25,7 @@ import time
 from io import BytesIO
 
 from .. import errors, osutils, tests, trace
-from . import features, file_utils, test__walkdirs_win32
+from . import features, file_utils
 from .scenarios import load_tests_apply_scenarios
 
 
@@ -72,15 +72,6 @@ def dir_reader_scenarios():
                           {'_dir_reader_class': _readdir_pyx.UTF8DirReader,
                                '_native_to_unicode': _utf8_to_unicode}))
 
-    if test__walkdirs_win32.win32_readdir_feature.available():
-        try:
-            from .. import _walkdirs_win32
-            scenarios.append(
-                ('win32',
-                 {'_dir_reader_class': _walkdirs_win32.Win32ReadDir,
-                      '_native_to_unicode': _already_unicode}))
-        except ModuleNotFoundError:
-            pass
     return scenarios
 
 
@@ -233,11 +224,6 @@ class TestLstat(tests.TestCaseInTempDir):
         # On Windows, lstat and fstat don't always agree, primarily in the
         # 'st_ino' and 'st_dev' fields. So we force them to be '0' in our
         # custom implementation.
-        if sys.platform == 'win32':
-            # We only have special lstat/fstat if we have the extension.
-            # Without it, we may end up re-reading content when we don't have
-            # to, but otherwise it doesn't effect correctness.
-            self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         with open('test-file.txt', 'wb') as f:
             f.write(b'some content\n')
             f.flush()
@@ -1211,13 +1197,6 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self._save_platform_info()
         self.assertDirReaderIs(osutils.UnicodeDirReader, ".", fs_enc='iso-8859-1')
 
-    def test_force_walkdirs_utf8_nt(self):
-        # Disabled because the thunk of the whole walkdirs api is disabled.
-        self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
-        self._save_platform_info()
-        from .._walkdirs_win32 import Win32ReadDir
-        self.assertDirReaderIs(Win32ReadDir, ".")
-
     def test_unicode_walkdirs(self):
         """Walkdirs should always return unicode paths."""
         self.requireFeature(features.UnicodeFilenameFeature)
@@ -1368,98 +1347,6 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         result = list(osutils._walkdirs_utf8('.'))
         self._filter_out_stat(result)
         self.assertEqual(expected_dirblocks, result)
-
-    def test__walkdirs_utf8_win32readdir(self):
-        self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
-        self.requireFeature(features.UnicodeFilenameFeature)
-        from .._walkdirs_win32 import Win32ReadDir
-        self._save_platform_info()
-        osutils._selected_dir_reader = Win32ReadDir()
-        name0u = '0file-\xb6'
-        name1u = '1dir-\u062c\u0648'
-        name2u = '2file-\u0633'
-        tree = [
-            name0u,
-            name1u + '/',
-            name1u + '/' + name0u,
-            name1u + '/' + name1u + '/',
-            name2u,
-            ]
-        self.build_tree(tree)
-        name0 = name0u.encode('utf8')
-        name1 = name1u.encode('utf8')
-        name2 = name2u.encode('utf8')
-
-        # All of the abspaths should be in unicode, all of the relative paths
-        # should be in utf8
-        expected_dirblocks = [
-            (('', '.'),
-             [(name0, name0, 'file', './' + name0u),
-              (name1, name1, 'directory', './' + name1u),
-              (name2, name2, 'file', './' + name2u),
-              ]
-             ),
-            ((name1, './' + name1u),
-             [(name1 + '/' + name0, name0, 'file', './' + name1u
-               + '/' + name0u),
-              (name1 + '/' + name1, name1, 'directory', './' + name1u
-               + '/' + name1u),
-              ]
-             ),
-            ((name1 + '/' + name1, './' + name1u + '/' + name1u),
-             [
-                ]
-             ),
-            ]
-        result = list(osutils._walkdirs_utf8('.'))
-        self._filter_out_stat(result)
-        self.assertEqual(expected_dirblocks, result)
-
-    def assertStatIsCorrect(self, path, win32stat):
-        os_stat = os.stat(path)
-        self.assertEqual(os_stat.st_size, win32stat.st_size)
-        self.assertAlmostEqual(os_stat.st_mtime, win32stat.st_mtime, places=4)
-        self.assertAlmostEqual(os_stat.st_ctime, win32stat.st_ctime, places=4)
-        self.assertAlmostEqual(os_stat.st_atime, win32stat.st_atime, places=4)
-        self.assertEqual(os_stat.st_dev, win32stat.st_dev)
-        self.assertEqual(os_stat.st_ino, win32stat.st_ino)
-        self.assertEqual(os_stat.st_mode, win32stat.st_mode)
-
-    def test__walkdirs_utf_win32_find_file_stat_file(self):
-        """Make sure our Stat values are valid."""
-        self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
-        self.requireFeature(features.UnicodeFilenameFeature)
-        from .._walkdirs_win32 import Win32ReadDir
-        name0u = '0file-\xb6'
-        name0 = name0u.encode('utf8')
-        self.build_tree([name0u])
-        # I hate to sleep() here, but I'm trying to make the ctime different
-        # from the mtime
-        time.sleep(2)
-        with open(name0u, 'ab') as f:
-            f.write(b'just a small update')
-
-        result = Win32ReadDir().read_dir('', '.')
-        entry = result[0]
-        self.assertEqual((name0, name0, 'file'), entry[:3])
-        self.assertEqual('./' + name0u, entry[4])
-        self.assertStatIsCorrect(entry[4], entry[3])
-        self.assertNotEqual(entry[3].st_mtime, entry[3].st_ctime)
-
-    def test__walkdirs_utf_win32_find_file_stat_directory(self):
-        """Make sure our Stat values are valid."""
-        self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
-        self.requireFeature(features.UnicodeFilenameFeature)
-        from .._walkdirs_win32 import Win32ReadDir
-        name0u = '0dir-\u062c\u0648'
-        name0 = name0u.encode('utf8')
-        self.build_tree([name0u + '/'])
-
-        result = Win32ReadDir().read_dir('', '.')
-        entry = result[0]
-        self.assertEqual((name0, name0, 'directory'), entry[:3])
-        self.assertEqual('./' + name0u, entry[4])
-        self.assertStatIsCorrect(entry[4], entry[3])
 
 
 class TestCopyTree(tests.TestCaseInTempDir):

@@ -11,4 +11,8 @@ pyo3 = { version = ">=0.17, <0.19", features = ["extension-module"]}
 breezy-transport = { path = "../transport" }
 pyo3-file = { git = "https://github.com/omerbenamram/pyo3-file" }
 sftp = "0.2.0"
+url = "2.2"
 log = "0.4"
+
+[target.'cfg(unix)'.dependencies]
+nix = ">=0.26"

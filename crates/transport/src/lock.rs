@@ -8,6 +8,8 @@ pub enum LockError {
     IoError(std::io::Error),
 }
 
+pub type LockResult<L> = std::result::Result<L, LockError>;
+
 impl From<std::io::Error> for LockError {
     fn from(err: std::io::Error) -> LockError {
         LockError::IoError(err)

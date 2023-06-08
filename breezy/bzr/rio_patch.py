@@ -32,7 +32,7 @@
 
 import re
 
-from .rio import read_stanza
+from . import rio
 
 
 def to_patch_lines(stanza, max_width=72):
@@ -121,4 +121,4 @@ def read_patch_stanza(line_iter):
 
     :return: a Stanza
     """
-    return read_stanza(_patch_stanza_iter(line_iter))
+    return rio.read_stanza(_patch_stanza_iter(line_iter))

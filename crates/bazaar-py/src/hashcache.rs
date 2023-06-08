@@ -8,7 +8,7 @@ use std::path::Path;
 
 #[pyclass]
 struct HashCache {
-    hashcache: Box<bazaar_hashcache::HashCache>,
+    hashcache: Box<bazaar::hashcache::HashCache>,
 }
 
 pub struct PyContentFilter {
@@ -127,7 +127,7 @@ impl HashCache {
         content_filter_provider: Option<PyObject>,
     ) -> Self {
         Self {
-            hashcache: Box::new(bazaar_hashcache::HashCache::new(
+            hashcache: Box::new(bazaar::hashcache::HashCache::new(
                 Path::new(root),
                 Path::new(cache_file_name),
                 mode.map(Permissions::from_mode),
@@ -156,7 +156,7 @@ impl HashCache {
     ) -> PyResult<PyObject> {
         let sha1;
         if let Some(stat_value) = stat_value {
-            let fp = bazaar_hashcache::Fingerprint {
+            let fp = bazaar::hashcache::Fingerprint {
                 size: stat_value.getattr("st_size")?.extract()?,
                 mtime: extract_fs_time(stat_value.getattr("st_mtime")?)?,
                 ctime: extract_fs_time(stat_value.getattr("st_ctime")?)?,
@@ -215,8 +215,7 @@ impl HashCache {
     }
 }
 
-#[pymodule]
-fn hashcache(_: Python, m: &PyModule) -> PyResult<()> {
+pub(crate) fn hashcache(m: &PyModule) -> PyResult<()> {
     m.add_class::<HashCache>()?;
     Ok(())
 }

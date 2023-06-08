@@ -57,7 +57,6 @@ from breezy.bzr import (
     conflicts as _mod_bzr_conflicts,
     generate_ids,
     inventory,
-    rio as _mod_rio,
     serializer,
     )
 """)
@@ -71,6 +70,7 @@ from ..transport.local import file_kind
 from ..tree import (MissingNestedTree, TreeDirectory, TreeEntry, TreeFile,
                     TreeLink, TreeReference, get_canonical_path)
 from ..workingtree import WorkingTree, WorkingTreeFormat, format_registry
+from . import rio as _mod_rio
 from .inventorytree import InventoryRevisionTree, MutableInventoryTree
 
 MERGE_MODIFIED_HEADER_1 = b"BZR merge-modified list format 1"
