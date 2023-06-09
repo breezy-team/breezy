@@ -21,16 +21,20 @@ pub fn versionable_kind(kind: Kind) -> bool {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Entry {
+    Root {
+        file_id: FileId,
+        revision: Option<RevisionId>,
+    },
     Directory {
         file_id: FileId,
         revision: Option<RevisionId>,
-        parent_id: Option<FileId>,
+        parent_id: FileId,
         name: String,
     },
     File {
         file_id: FileId,
         revision: Option<RevisionId>,
-        parent_id: Option<FileId>,
+        parent_id: FileId,
         name: String,
         text_sha1: Option<Vec<u8>>,
         text_size: Option<u64>,
@@ -40,7 +44,7 @@ pub enum Entry {
     Link {
         file_id: FileId,
         name: String,
-        parent_id: Option<FileId>,
+        parent_id: FileId,
         symlink_target: Option<String>,
         revision: Option<RevisionId>,
     },
@@ -49,7 +53,7 @@ pub enum Entry {
         revision: Option<RevisionId>,
         reference_revision: Option<RevisionId>,
         name: String,
-        parent_id: Option<FileId>,
+        parent_id: FileId,
     },
 }
 
@@ -100,10 +104,16 @@ impl Entry {
             panic!("Invalid name: {}", name);
         }
         match kind {
-            Kind::File => Entry::file(file_id, name, parent_id),
-            Kind::Directory => Entry::directory(file_id, None, parent_id, name),
-            Kind::Symlink => Entry::link(file_id, name, parent_id),
-            Kind::TreeReference => Entry::tree_reference(file_id, name, parent_id),
+            Kind::File => Entry::file(file_id, name, parent_id.unwrap()),
+            Kind::Directory => {
+                if parent_id.is_none() {
+                    Entry::root(file_id)
+                } else {
+                    Entry::directory(file_id, None, parent_id.unwrap(), name)
+                }
+            }
+            Kind::Symlink => Entry::link(file_id, name, parent_id.unwrap()),
+            Kind::TreeReference => Entry::tree_reference(file_id, name, parent_id.unwrap()),
         }
     }
 
@@ -120,6 +130,7 @@ impl Entry {
             Entry::File { .. } => true,
             Entry::Link { .. } => false,
             Entry::TreeReference { .. } => false,
+            Entry::Root { .. } => false,
         }
     }
 
@@ -129,13 +140,14 @@ impl Entry {
             Entry::File { .. } => Kind::File,
             Entry::Link { .. } => Kind::Symlink,
             Entry::TreeReference { .. } => Kind::TreeReference,
+            Entry::Root { .. } => Kind::Directory,
         }
     }
 
     pub fn directory(
         file_id: FileId,
         revision: Option<RevisionId>,
-        parent_id: Option<FileId>,
+        parent_id: FileId,
         name: String,
     ) -> Self {
         Self::Directory {
@@ -146,7 +158,14 @@ impl Entry {
         }
     }
 
-    pub fn file(file_id: FileId, name: String, parent_id: Option<FileId>) -> Self {
+    pub fn root(file_id: FileId) -> Self {
+        Entry::Root {
+            file_id,
+            revision: None,
+        }
+    }
+
+    pub fn file(file_id: FileId, name: String, parent_id: FileId) -> Self {
         Entry::File {
             file_id,
             name,
@@ -159,7 +178,7 @@ impl Entry {
         }
     }
 
-    pub fn tree_reference(file_id: FileId, name: String, parent_id: Option<FileId>) -> Self {
+    pub fn tree_reference(file_id: FileId, name: String, parent_id: FileId) -> Self {
         Entry::TreeReference {
             file_id,
             revision: None,
@@ -169,7 +188,7 @@ impl Entry {
         }
     }
 
-    pub fn link(file_id: FileId, name: String, parent_id: Option<FileId>) -> Self {
+    pub fn link(file_id: FileId, name: String, parent_id: FileId) -> Self {
         Entry::Link {
             file_id,
             name,
@@ -185,6 +204,7 @@ impl Entry {
             Entry::File { file_id, .. } => file_id,
             Entry::Link { file_id, .. } => file_id,
             Entry::TreeReference { file_id, .. } => file_id,
+            Entry::Root { file_id, .. } => file_id,
         }
     }
 
@@ -207,10 +227,11 @@ impl Entry {
 
     pub fn parent_id(&self) -> Option<&FileId> {
         match self {
-            Entry::Directory { parent_id, .. } => parent_id.as_ref(),
-            Entry::File { parent_id, .. } => parent_id.as_ref(),
-            Entry::Link { parent_id, .. } => parent_id.as_ref(),
-            Entry::TreeReference { parent_id, .. } => parent_id.as_ref(),
+            Entry::Directory { parent_id, .. } => Some(&parent_id),
+            Entry::File { parent_id, .. } => Some(&parent_id),
+            Entry::Link { parent_id, .. } => Some(&parent_id),
+            Entry::TreeReference { parent_id, .. } => Some(&parent_id),
+            Entry::Root { .. } => None,
         }
     }
 
@@ -237,6 +258,7 @@ impl Entry {
             Entry::File { name, .. } => name,
             Entry::Link { name, .. } => name,
             Entry::TreeReference { name, .. } => name,
+            Entry::Root { .. } => "",
         }
     }
 
@@ -263,6 +285,7 @@ impl Entry {
             Entry::File { revision, .. } => revision.as_ref(),
             Entry::Link { revision, .. } => revision.as_ref(),
             Entry::TreeReference { revision, .. } => revision.as_ref(),
+            Entry::Root { revision, .. } => revision.as_ref(),
         }
     }
 
@@ -272,6 +295,7 @@ impl Entry {
             Entry::File { .. } => None,
             Entry::Link { symlink_target, .. } => symlink_target.as_ref().map(|s| s.as_str()),
             Entry::TreeReference { .. } => None,
+            Entry::Root { .. } => None,
         }
     }
 
@@ -445,7 +469,9 @@ pub fn detect_changes(old_entry: &Entry, new_entry: &Entry) -> (bool, bool) {
             }
             _ => panic!("old_entry is not a file"),
         },
-        Entry::Directory { .. } | Entry::TreeReference { .. } => (false, false),
+        Entry::Directory { .. } | Entry::Root { .. } | Entry::TreeReference { .. } => {
+            (false, false)
+        }
     }
 }
 

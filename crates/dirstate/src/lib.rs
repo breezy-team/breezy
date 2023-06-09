@@ -386,7 +386,7 @@ pub fn inv_entry_to_details(e: &InventoryEntry) -> (u8, Vec<u8>, u64, bool, Vec<
     let minikind = Kind::from(e.kind()).to_byte();
     let tree_data = e.revision().map_or_else(Vec::new, |r| r.bytes().to_vec());
     let (fingerprint, size, executable) = match e {
-        InventoryEntry::Directory { .. } => (Vec::new(), 0, false),
+        InventoryEntry::Directory { .. } | InventoryEntry::Root { .. } => (Vec::new(), 0, false),
         InventoryEntry::File {
             text_sha1,
             text_size,
