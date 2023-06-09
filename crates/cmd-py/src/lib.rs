@@ -1,3 +1,5 @@
+use breezy::pytree::PyTree;
+use breezy::tree::MutableTree;
 use log::Log;
 use pyo3::exceptions::PyValueError;
 use pyo3::import_exception;
@@ -384,6 +386,30 @@ fn format_see_also(see_also: Option<Vec<&str>>) -> PyResult<String> {
 
 mod help;
 
+#[pyclass]
+struct TreeBuilder(breezy::treebuilder::TreeBuilder<PyTree>);
+
+#[pymethods]
+impl TreeBuilder {
+    #[new]
+    fn new() -> Self {
+        TreeBuilder(breezy::treebuilder::TreeBuilder::new())
+    }
+
+    fn build(&mut self, recipe: Vec<&str>) {
+        self.0.build(recipe.as_slice());
+    }
+
+    fn start_tree(&mut self, tree: PyObject) {
+        let tree = PyTree::new(tree);
+        self.0.start_tree(tree);
+    }
+
+    fn finish_tree(&mut self) {
+        self.0.finish_tree();
+    }
+}
+
 #[pymodule]
 fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     let i18n = PyModule::new(_py, "i18n")?;
@@ -430,6 +456,8 @@ fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     let helpm = PyModule::new(_py, "help")?;
     help::help_topics(helpm)?;
     m.add_submodule(helpm)?;
+
+    m.add_class::<TreeBuilder>()?;
 
     Ok(())
 }

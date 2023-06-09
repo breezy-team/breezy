@@ -9,6 +9,6 @@ crate-type = ["cdylib"]
 [dependencies]
 pyo3 = { version = ">=0.17, <0.19", features = ["extension-module"]}
 pyo3-file = { git = "https://github.com/omerbenamram/pyo3-file" }
-breezy = { path = "../.." }
+breezy = { path = "../..", features = ["pyo3"] }
 gettext-rs = "0.7"
 log = { version="0.4", features=["std"]}
