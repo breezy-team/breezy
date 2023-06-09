@@ -55,7 +55,7 @@ pub fn chk_inventory_entry_to_bytes(entry: &Entry) -> Vec<u8> {
         ),
         Entry::Root { revision, .. } => (
             &b"dir"[..],
-            vec![b"", b"", revision.as_ref().unwrap().as_bytes()],
+            vec![&b""[..], &b""[..], revision.as_ref().unwrap().as_bytes()],
         ),
         Entry::Link {
             name,
