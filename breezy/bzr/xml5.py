@@ -54,15 +54,12 @@ class InventorySerializer_v5(xml6.InventorySerializer_v6):
         children = inv._children
         for e in elt:
             ie = unpack_inventory_entry(e, entry_cache=entry_cache,
-                                        return_from_cache=return_from_cache)
-            parent_id = ie.parent_id
-            if parent_id is None:
-                ie.parent_id = parent_id = root_id
+                                        return_from_cache=return_from_cache, root_id=root_id)
             try:
-                parent = byid[parent_id]
+                parent = byid[ie.parent_id]
             except KeyError:
                 raise errors.BzrError("parent_id {%s} not in inventory"
-                                      % (parent_id,))
+                                      % (ie.parent_id,))
             if ie.file_id in byid:
                 raise inventory.DuplicateFileId(ie.file_id, byid[ie.file_id])
             siblings = children[parent.file_id]
@@ -70,7 +67,7 @@ class InventorySerializer_v5(xml6.InventorySerializer_v6):
                 raise errors.BzrError(
                     "{} is already versioned".format(
                         osutils.pathjoin(
-                            inv.id2path(parent_id), ie.name).encode('utf-8')))
+                            inv.id2path(ie.parent_id), ie.name).encode('utf-8')))
             siblings[ie.name] = ie
             byid[ie.file_id] = ie
             if ie.kind == 'directory':

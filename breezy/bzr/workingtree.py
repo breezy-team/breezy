@@ -353,7 +353,6 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             present in the current inventory or an error will occur. It must
             not be None, but rather a valid file id.
         """
-        from .inventory import InventoryDirectory
         inv = self._inventory
         # TODO: it might be nice to exit early if there was nothing
         # to do, saving us from trigger a sync on unlock.
@@ -962,6 +961,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 hashfile.close()
 
     def subsume(self, other_tree):
+        from .inventory import InventoryDirectory
         def add_children(inventory, other_inventory, entry):
             for child_entry in other_inventory.get_children(entry.file_id).values():
                 inventory._byid[child_entry.file_id] = child_entry
@@ -986,9 +986,10 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             if not self.branch.repository.supports_rich_root():
                 raise errors.SubsumeTargetNeedsUpgrade(other_tree)
             with other_tree.lock_tree_write():
-                other_root = other_tree.root_inventory.root
-                other_root.parent_id = new_root_parent
-                other_root.name = osutils.basename(other_tree_path)
+                other_root = InventoryDirectory(
+                    other_tree.root_inventory.root.file_id,
+                    osutils.basename(other_tree_path),
+                    new_root_parent)
                 self.root_inventory.add(other_root)
                 add_children(self.root_inventory, other_tree.root_inventory, other_root)
                 self._write_inventory(self.root_inventory)
@@ -1004,6 +1005,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
         A new branch will be created, relative to the path for this tree.
         """
+        from .inventory import InventoryDirectory
         def mkdirs(path):
             segments = osutils.splitpath(path)
             transport = self.branch.controldir.root_transport
@@ -1043,8 +1045,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             # Recursively migrate everything under the new root to the child inv
             for ie in my_inv.remove_recursive_id(new_root.file_id):
                 if ie.file_id == new_root.file_id:
-                    ie.parent_id = None
-                    ie.name = ''
+                    ie = InventoryDirectory(ie.file_id, "", None)
                 child_inv.add(ie)
             self._write_inventory(my_inv)
             wt._write_inventory(child_inv)
@@ -1766,7 +1767,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 if ie.kind == 'directory':
                     blocked_parent_ids.add(ie.file_id)
                 continue
-            if (ie.kind == 'directory' and
+            if (ie.kind == 'directory' and ie.parent_id is not None and
                     self._directory_is_tree_reference(path)):
 
                 # This InventoryDirectory needs to be a TreeReference

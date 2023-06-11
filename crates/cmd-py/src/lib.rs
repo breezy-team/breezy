@@ -1,5 +1,5 @@
 use breezy::pytree::PyTree;
-use breezy::tree::MutableTree;
+
 use log::Log;
 use pyo3::exceptions::PyValueError;
 use pyo3::import_exception;

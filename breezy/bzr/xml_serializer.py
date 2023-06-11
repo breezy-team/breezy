@@ -122,7 +122,7 @@ def get_utf8_or_ascii(a_str):
 from .._bzr_rs import encode_and_escape, escape_invalid_chars  # noqa: F401
 
 
-def unpack_inventory_entry(elt, entry_cache=None, return_from_cache=False):
+def unpack_inventory_entry(elt, entry_cache=None, return_from_cache=False, root_id=None):
     elt_get = elt.get
     file_id = elt_get('file_id')
     revision = elt_get('revision')
@@ -182,6 +182,8 @@ def unpack_inventory_entry(elt, entry_cache=None, return_from_cache=False):
     parent_id = elt_get('parent_id')
     if parent_id is not None:
         parent_id = get_utf8_or_ascii(parent_id)
+    else:
+        parent_id = root_id
 
     if kind == 'directory':
         ie = inventory.InventoryDirectory(file_id,

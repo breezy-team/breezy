@@ -1104,7 +1104,7 @@ fn joinpath(py: Python, parts: Vec<PyObject>) -> PyResult<PathBuf> {
 
 #[pyfunction(args = "*")]
 fn pathjoin(py: Python, args: Vec<PyObject>) -> PyResult<PyObject> {
-    let return_bytes = args[0].as_ref(py).is_instance_of::<PyBytes>()?;
+    let return_bytes = args[0].as_ref(py).is_instance_of::<PyBytes>();
     let parts = args
         .into_iter()
         .map(|p| extract_osstring(py, p))

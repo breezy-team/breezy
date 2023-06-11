@@ -16,7 +16,6 @@
 
 """Unit tests for the breezy.help module."""
 
-import re
 import textwrap
 
 from .. import (builtins, commands, config, errors, help, help_topics, i18n,

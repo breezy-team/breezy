@@ -141,7 +141,7 @@ const FORMAT_1: &str = "bzr inventory delta v1 (bzr 1.14)";
 
 pub fn serialize_inventory_entry(e: &Entry) -> Result<Vec<u8>, InventoryDeltaSerializeError> {
     Ok(match e {
-        Entry::Directory { .. } => b"dir".to_vec(),
+        Entry::Directory { .. } | Entry::Root { .. } => b"dir".to_vec(),
         Entry::File {
             executable,
             text_size,
@@ -345,12 +345,18 @@ pub fn parse_inventory_entry(
     let mut parts = data.split(|&c| c == b'\x00');
     let entry_type = parts.next().unwrap();
     match entry_type {
-        b"dir" => Entry::Directory {
-            file_id,
-            name,
-            parent_id,
-            revision,
-        },
+        b"dir" => {
+            if parent_id.is_none() {
+                Entry::Root { file_id, revision }
+            } else {
+                Entry::Directory {
+                    file_id,
+                    name,
+                    parent_id: parent_id.unwrap(),
+                    revision,
+                }
+            }
+        }
         b"file" => {
             let text_size = parts.next().unwrap();
             let executable = parts.next().unwrap();
@@ -358,7 +364,7 @@ pub fn parse_inventory_entry(
             Entry::File {
                 file_id,
                 name,
-                parent_id,
+                parent_id: parent_id.unwrap(),
                 executable: executable == b"Y",
                 text_id: None,
                 text_size: Some(
@@ -376,7 +382,7 @@ pub fn parse_inventory_entry(
             Entry::Link {
                 file_id,
                 name,
-                parent_id,
+                parent_id: parent_id.unwrap(),
                 symlink_target: Some(String::from_utf8(symlink_target.to_vec()).unwrap()),
                 revision,
             }
@@ -386,7 +392,7 @@ pub fn parse_inventory_entry(
             Entry::TreeReference {
                 file_id,
                 name,
-                parent_id,
+                parent_id: parent_id.unwrap(),
                 reference_revision: Some(RevisionId::from(reference_revision)),
                 revision,
             }

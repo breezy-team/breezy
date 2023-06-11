@@ -14,8 +14,6 @@ use crate::inventory::Entry;
 /// COMMON ::= FILE_ID SEP PARENT_ID SEP NAME_UTF8 SEP REVISION
 /// SEP ::= "\n"
 pub fn chk_inventory_entry_to_bytes(entry: &Entry) -> Vec<u8> {
-    let parent_str = entry.parent_id().map(|p| p.as_bytes()).unwrap_or(b"");
-
     let ts;
 
     let (header, mut lines) = match entry {
@@ -25,6 +23,7 @@ pub fn chk_inventory_entry_to_bytes(entry: &Entry) -> Vec<u8> {
             revision,
             text_sha1,
             text_size,
+            parent_id,
             ..
         } => {
             ts = format!("{}", text_size.unwrap());
@@ -32,7 +31,7 @@ pub fn chk_inventory_entry_to_bytes(entry: &Entry) -> Vec<u8> {
             (
                 &b"file"[..],
                 vec![
-                    parent_str,
+                    parent_id.as_bytes(),
                     name.as_bytes(),
                     revision.as_ref().unwrap().as_bytes(),
                     text_sha1.as_ref().unwrap().as_slice(),
@@ -41,23 +40,33 @@ pub fn chk_inventory_entry_to_bytes(entry: &Entry) -> Vec<u8> {
                 ],
             )
         }
-        Entry::Directory { revision, name, .. } => (
+        Entry::Directory {
+            revision,
+            name,
+            parent_id,
+            ..
+        } => (
             &b"dir"[..],
             vec![
-                parent_str,
+                parent_id.as_bytes(),
                 name.as_bytes(),
                 revision.as_ref().unwrap().as_bytes(),
             ],
+        ),
+        Entry::Root { revision, .. } => (
+            &b"dir"[..],
+            vec![&b""[..], &b""[..], revision.as_ref().unwrap().as_bytes()],
         ),
         Entry::Link {
             name,
             revision,
             symlink_target,
+            parent_id,
             ..
         } => (
             &b"symlink"[..],
             vec![
-                parent_str,
+                parent_id.as_bytes(),
                 name.as_bytes(),
                 revision.as_ref().unwrap().as_bytes(),
                 symlink_target.as_ref().unwrap().as_bytes(),
@@ -67,11 +76,12 @@ pub fn chk_inventory_entry_to_bytes(entry: &Entry) -> Vec<u8> {
             revision,
             name,
             reference_revision,
+            parent_id,
             ..
         } => (
             &b"tree"[..],
             vec![
-                parent_str,
+                parent_id.as_bytes(),
                 name.as_bytes(),
                 revision.as_ref().unwrap().as_bytes(),
                 reference_revision.as_ref().unwrap().as_bytes(),
@@ -108,7 +118,7 @@ pub fn chk_inventory_bytes_to_entry(data: &[u8]) -> Entry {
         "file" => Entry::File {
             name,
             file_id,
-            parent_id,
+            parent_id: parent_id.unwrap(),
             text_sha1: Some(sections[4].to_vec()),
             text_size: Some(
                 String::from_utf8(sections[5].to_vec())
@@ -120,23 +130,29 @@ pub fn chk_inventory_bytes_to_entry(data: &[u8]) -> Entry {
             revision,
             text_id: None,
         },
-        "dir" => Entry::Directory {
-            name,
-            file_id,
-            parent_id,
-            revision,
-        },
+        "dir" => {
+            if let Some(parent_id) = parent_id {
+                Entry::Directory {
+                    name,
+                    file_id,
+                    parent_id,
+                    revision,
+                }
+            } else {
+                Entry::Root { file_id, revision }
+            }
+        }
         "symlink" => Entry::Link {
             name,
             file_id,
-            parent_id,
+            parent_id: parent_id.unwrap(),
             symlink_target: Some(String::from_utf8(sections[4].to_vec()).unwrap()),
             revision,
         },
         "tree" => Entry::TreeReference {
             name,
             file_id,
-            parent_id,
+            parent_id: parent_id.unwrap(),
             reference_revision: Some(crate::RevisionId::from(sections[4])),
             revision,
         },

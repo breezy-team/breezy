@@ -92,6 +92,7 @@ impl InventoryEntry {
             Entry::Directory { name, .. } => name,
             Entry::TreeReference { name, .. } => name,
             Entry::Link { name, .. } => name,
+            Entry::Root { .. } => "",
         }
     }
 
@@ -102,6 +103,11 @@ impl InventoryEntry {
             Entry::Directory { name: n, .. } => *n = name,
             Entry::TreeReference { name: n, .. } => *n = name,
             Entry::Link { name: n, .. } => *n = name,
+            Entry::Root { .. } => {
+                if !name.is_empty() {
+                    panic!("Root entry name must be empty");
+                }
+            }
         }
     }
 
@@ -119,6 +125,7 @@ impl InventoryEntry {
             Entry::Directory { file_id: f, .. } => *f = file_id,
             Entry::TreeReference { file_id: f, .. } => *f = file_id,
             Entry::Link { file_id: f, .. } => *f = file_id,
+            Entry::Root { file_id: f, .. } => *f = file_id,
         }
     }
 
@@ -132,10 +139,15 @@ impl InventoryEntry {
     #[setter]
     fn set_parent_id(&mut self, parent_id: Option<FileId>) {
         match &mut self.0 {
-            Entry::File { parent_id: p, .. } => *p = parent_id,
-            Entry::Directory { parent_id: p, .. } => *p = parent_id,
-            Entry::TreeReference { parent_id: p, .. } => *p = parent_id,
-            Entry::Link { parent_id: p, .. } => *p = parent_id,
+            Entry::File { parent_id: p, .. } => *p = parent_id.unwrap().into(),
+            Entry::Directory { parent_id: p, .. } => *p = parent_id.unwrap().into(),
+            Entry::TreeReference { parent_id: p, .. } => *p = parent_id.unwrap().into(),
+            Entry::Link { parent_id: p, .. } => *p = parent_id.unwrap().into(),
+            Entry::Root { .. } => {
+                if parent_id.is_some() {
+                    panic!("Root entry cannot have a parent")
+                }
+            }
         }
     }
 
@@ -153,6 +165,7 @@ impl InventoryEntry {
             Entry::Directory { revision: r, .. } => *r = revision,
             Entry::TreeReference { revision: r, .. } => *r = revision,
             Entry::Link { revision: r, .. } => *r = revision,
+            Entry::Root { revision: r, .. } => *r = revision,
         }
     }
 
@@ -269,16 +282,12 @@ struct InventoryFile();
 #[pymethods]
 impl InventoryFile {
     #[new]
-    fn new(
-        file_id: FileId,
-        name: String,
-        parent_id: Option<FileId>,
-    ) -> PyResult<(Self, InventoryEntry)> {
+    fn new(file_id: FileId, name: String, parent_id: FileId) -> PyResult<(Self, InventoryEntry)> {
         check_name(name.as_str())?;
         let entry = Entry::File {
             file_id,
             name,
-            parent_id,
+            parent_id: parent_id.into(),
             revision: None,
             text_sha1: None,
             text_size: None,
@@ -385,12 +394,7 @@ impl InventoryFile {
                 "InventoryFile({}, {}, parent_id={}, sha1={}, len={}, revision={})",
                 file_id.to_object(py).as_ref(py).repr()?,
                 name.to_object(py).as_ref(py).repr()?,
-                parent_id
-                    .as_ref()
-                    .map(|p| p.to_object(py))
-                    .to_object(py)
-                    .as_ref(py)
-                    .repr()?,
+                parent_id.to_object(py).as_ref(py).repr()?,
                 text_sha1
                     .as_ref()
                     .map(|r| PyBytes::new(py, r).to_object(py))
@@ -471,11 +475,18 @@ impl InventoryDirectory {
         parent_id: Option<FileId>,
     ) -> PyResult<(Self, InventoryEntry)> {
         check_name(name.as_str())?;
-        let entry = Entry::Directory {
-            file_id,
-            name,
-            parent_id,
-            revision: None,
+        let entry = if let Some(parent_id) = parent_id {
+            Entry::Directory {
+                file_id,
+                name,
+                parent_id,
+                revision: None,
+            }
+        } else {
+            Entry::Root {
+                file_id,
+                revision: None,
+            }
         };
         Ok((Self(), InventoryEntry(entry)))
     }
@@ -511,6 +522,13 @@ impl InventoryDirectory {
                 file_id.to_object(py).as_ref(py).repr()?,
                 name.to_object(py).as_ref(py).repr()?,
                 parent_id.to_object(py).as_ref(py).repr()?,
+                revision.to_object(py).as_ref(py).repr()?,
+            ),
+            Entry::Root {
+                file_id, revision, ..
+            } => format!(
+                "InventoryDirectory({}, \"\", parent_id=None, revision={})",
+                file_id.to_object(py).as_ref(py).repr()?,
                 revision.to_object(py).as_ref(py).repr()?,
             ),
             _ => panic!("Not a directory"),
@@ -563,7 +581,7 @@ impl TreeReference {
     fn new(
         file_id: FileId,
         name: String,
-        parent_id: Option<FileId>,
+        parent_id: FileId,
         revision: Option<RevisionId>,
         reference_revision: Option<RevisionId>,
     ) -> PyResult<(Self, InventoryEntry)> {
@@ -617,11 +635,7 @@ struct InventoryLink();
 #[pymethods]
 impl InventoryLink {
     #[new]
-    fn new(
-        file_id: FileId,
-        name: String,
-        parent_id: Option<FileId>,
-    ) -> PyResult<(Self, InventoryEntry)> {
+    fn new(file_id: FileId, name: String, parent_id: FileId) -> PyResult<(Self, InventoryEntry)> {
         check_name(name.as_str())?;
         let entry = Entry::Link {
             file_id,
