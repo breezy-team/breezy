@@ -384,7 +384,9 @@ impl IdIndex {
 /// Returns: A details tuple - the details for a single tree at a path id.
 pub fn inv_entry_to_details(e: &InventoryEntry) -> (u8, Vec<u8>, u64, bool, Vec<u8>) {
     let minikind = Kind::from(e.kind()).to_byte();
-    let tree_data = e.revision().map_or_else(Vec::new, |r| r.bytes().to_vec());
+    let tree_data = e
+        .revision()
+        .map_or_else(Vec::new, |r| r.as_bytes().to_vec());
     let (fingerprint, size, executable) = match e {
         InventoryEntry::Directory { .. } | InventoryEntry::Root { .. } => (Vec::new(), 0, false),
         InventoryEntry::File {
@@ -409,7 +411,7 @@ pub fn inv_entry_to_details(e: &InventoryEntry) -> (u8, Vec<u8>, u64, bool, Vec<
         } => (
             reference_revision
                 .as_ref()
-                .map_or_else(Vec::new, |f| f.bytes().to_vec()),
+                .map_or_else(Vec::new, |f| f.as_bytes().to_vec()),
             0,
             false,
         ),

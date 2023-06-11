@@ -1,3 +1,4 @@
+use bazaar::RevisionId;
 use chrono::NaiveDateTime;
 use pyo3::class::basic::CompareOp;
 use pyo3::exceptions::{PyNotImplementedError, PyRuntimeError, PyTypeError, PyValueError};
@@ -19,7 +20,7 @@ import_exception!(breezy.errors, ReservedId);
 /// process adds 1 to a serial number we append to that unique value.
 #[pyfunction]
 fn _next_id_suffix(py: Python, suffix: Option<&str>) -> PyObject {
-    PyBytes::new(py, &bazaar::gen_ids::next_id_suffix(suffix)).into_py(py)
+    PyBytes::new(py, bazaar::gen_ids::next_id_suffix(suffix).as_slice()).into_py(py)
 }
 
 /// Return new file id for the basename 'name'.
@@ -27,13 +28,13 @@ fn _next_id_suffix(py: Python, suffix: Option<&str>) -> PyObject {
 /// The uniqueness is supplied from _next_id_suffix.
 #[pyfunction]
 fn gen_file_id(py: Python, name: &str) -> PyObject {
-    PyBytes::new(py, &bazaar::gen_ids::gen_file_id(name)).into_py(py)
+    bazaar::FileId::generate(name).to_object(py)
 }
 
 /// Return a new tree-root file id.
 #[pyfunction]
 fn gen_root_id(py: Python) -> PyObject {
-    PyBytes::new(py, &bazaar::gen_ids::gen_root_id()).into_py(py)
+    bazaar::FileId::generate_root_id().to_object(py)
 }
 
 /// Return new revision-id.
@@ -60,7 +61,7 @@ fn gen_revision_id(py: Python, username: &str, timestamp: Option<PyObject>) -> P
         }
         None => None,
     };
-    Ok(PyBytes::new(py, &bazaar::gen_ids::gen_revision_id(username, timestamp)).into_py(py))
+    Ok(bazaar::RevisionId::generate(username, timestamp).to_object(py))
 }
 
 #[pyfunction]
@@ -152,8 +153,8 @@ impl Revision {
     #[new]
     fn new(
         py: Python,
-        revision_id: &PyBytes,
-        parent_ids: Vec<&PyBytes>,
+        revision_id: RevisionId,
+        parent_ids: Vec<RevisionId>,
         committer: Option<String>,
         message: String,
         properties: Option<HashMap<String, PyObject>>,
@@ -183,11 +184,8 @@ impl Revision {
             ));
         }
         Ok(Self(bazaar::revision::Revision {
-            revision_id: bazaar::RevisionId::from(revision_id.as_bytes().to_vec()),
-            parent_ids: parent_ids
-                .iter()
-                .map(|id| bazaar::RevisionId::from(id.as_bytes().to_vec()))
-                .collect(),
+            revision_id,
+            parent_ids,
             committer,
             message,
             properties: cproperties,
@@ -213,19 +211,12 @@ impl Revision {
 
     #[getter]
     fn revision_id(&self, py: Python) -> PyObject {
-        PyBytes::new(py, self.0.revision_id.bytes()).into_py(py)
+        self.0.revision_id.to_object(py)
     }
 
     #[getter]
     fn parent_ids(&self, py: Python) -> PyObject {
-        PyList::new(
-            py,
-            self.0
-                .parent_ids
-                .iter()
-                .map(|id| PyBytes::new(py, id.bytes())),
-        )
-        .into_py(py)
+        self.0.parent_ids.to_object(py)
     }
 
     #[getter]
@@ -406,13 +397,13 @@ impl RevisionSerializer {
 }
 
 #[pyfunction(name = "is_null")]
-fn is_null_revision(revision_id: &PyBytes) -> bool {
-    bazaar::RevisionId::from(revision_id.as_bytes().to_vec()).is_null()
+fn is_null_revision(revision_id: RevisionId) -> bool {
+    revision_id.is_null()
 }
 
 #[pyfunction(name = "is_reserved_id")]
-fn is_reserved_revision_id(revision_id: &PyBytes) -> bool {
-    bazaar::RevisionId::from(revision_id.as_bytes().to_vec()).is_reserved()
+fn is_reserved_revision_id(revision_id: RevisionId) -> bool {
+    revision_id.is_reserved()
 }
 
 #[pyfunction(name = "check_not_reserved_id")]
@@ -420,8 +411,8 @@ fn check_not_reserved_id(py: Python, revision_id: PyObject) -> PyResult<()> {
     if revision_id.is_none(py) {
         return Ok(());
     }
-    if let Ok(revision_id) = revision_id.extract::<&PyBytes>(py) {
-        if bazaar::RevisionId::from(revision_id.as_bytes().to_vec()).is_reserved() {
+    if let Ok(revision_id) = revision_id.extract::<RevisionId>(py) {
+        if revision_id.is_reserved() {
             Err(ReservedId::new_err((revision_id.as_bytes().into_py(py),)))
         } else {
             Ok(())

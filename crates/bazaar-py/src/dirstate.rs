@@ -180,7 +180,7 @@ fn bisect_dirblock(
 
     while lo < hi {
         let mid = (lo + hi) / 2;
-        let dirblock = dirblocks.get_item(mid)?.cast_as::<PyTuple>()?;
+        let dirblock = dirblocks.get_item(mid)?.downcast::<PyTuple>()?;
         let cur = dirblock.get_item(0)?;
 
         let cur_split = match cache.get_item(cur) {
@@ -346,11 +346,10 @@ impl IdIndex {
         let entry = (
             entry.as_ref(py).get_item(0)?.extract::<&[u8]>()?,
             entry.as_ref(py).get_item(1)?.extract::<&[u8]>()?,
-            entry.as_ref(py).get_item(2)?.extract::<&[u8]>()?,
+            entry.as_ref(py).get_item(2)?.extract::<FileId>()?,
         );
 
-        let _file_id = FileId::from(entry.2);
-        self.0.add((entry.0, entry.1, &FileId::from(entry.2)));
+        self.0.add((entry.0, entry.1, &entry.2));
         Ok(())
     }
 
@@ -361,15 +360,13 @@ impl IdIndex {
         let entry = (
             entry.as_ref(py).get_item(0)?.extract::<&[u8]>()?,
             entry.as_ref(py).get_item(1)?.extract::<&[u8]>()?,
-            entry.as_ref(py).get_item(2)?.extract::<&[u8]>()?,
+            entry.as_ref(py).get_item(2)?.extract::<FileId>()?,
         );
-        let file_id = FileId::from(entry.2);
-        self.0.remove((entry.0, entry.1, &file_id));
+        self.0.remove((entry.0, entry.1, &entry.2));
         Ok(())
     }
 
-    fn get(&self, py: Python, file_id: &[u8]) -> PyResult<Vec<(PyObject, PyObject, PyObject)>> {
-        let file_id = FileId::from(file_id);
+    fn get(&self, py: Python, file_id: FileId) -> PyResult<Vec<(PyObject, PyObject, PyObject)>> {
         let ret = self.0.get(&file_id);
         Ok(ret
             .iter()
@@ -377,7 +374,7 @@ impl IdIndex {
                 (
                     PyBytes::new(py, a).to_object(py),
                     PyBytes::new(py, b).to_object(py),
-                    PyBytes::new(py, c.bytes()).to_object(py),
+                    c.to_object(py),
                 )
             })
             .collect())
@@ -390,17 +387,14 @@ impl IdIndex {
                 (
                     PyBytes::new(py, a).to_object(py),
                     PyBytes::new(py, b).to_object(py),
-                    PyBytes::new(py, c.bytes()).to_object(py),
+                    c.to_object(py),
                 )
             })
             .collect())
     }
 
     fn file_ids(&self, py: Python) -> Vec<PyObject> {
-        self.0
-            .file_ids()
-            .map(|x| PyBytes::new(py, x.bytes()).into_py(py))
-            .collect()
+        self.0.file_ids().map(|x| x.to_object(py)).collect()
     }
 }
 

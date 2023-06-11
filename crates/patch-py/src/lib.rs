@@ -139,7 +139,7 @@ fn get_patch_names(
 ) -> PyResult<((PyObject, Option<PyObject>), (PyObject, Option<PyObject>))> {
     let names = breezy_patch::parse::get_patch_names(
         patch_contents
-            .cast_as::<PyIterator>(py)?
+            .downcast::<PyIterator>(py)?
             .map(|x| x.unwrap().extract::<Vec<u8>>().unwrap()),
     )
     .map_err(parse_err_to_py_err)?;
