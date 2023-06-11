@@ -7,8 +7,8 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = ">=0.17, <0.19", features = ["extension-module", "chrono"]}
-pyo3-file = { git = "https://github.com/omerbenamram/pyo3-file" }
+pyo3 = { version = ">=0.19", features = ["extension-module", "chrono"]}
+pyo3-file = { git = "https://github.com/breezy-team/pyo3-file" }
 bazaar = { path = "../bazaar" }
 chrono = ">= 0.4"
 breezy-osutils = { path = "../osutils" }

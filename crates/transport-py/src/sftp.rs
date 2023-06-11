@@ -45,7 +45,7 @@ impl SFTPAttributes {
 
 #[pyclass]
 struct SFTPClient {
-    sftp: Arc<sftp::SftpClient>,
+    sftp: Arc<sftp::SftpClient<std::fs::File>>,
     cwd: Option<String>,
 }
 
@@ -66,7 +66,7 @@ fn sftp_error_to_py_err(e: sftp::Error, path: Option<&str>) -> PyErr {
 
 #[pyclass]
 struct SFTPFile {
-    sftp: Arc<sftp::SftpClient>,
+    sftp: Arc<sftp::SftpClient<std::fs::File>>,
     file: sftp::File,
     offset: u64,
 }
@@ -168,7 +168,7 @@ impl SFTPFile {
         #[pyclass]
         struct ReadvIter {
             offsets: VecDeque<(u64, u32)>,
-            sftp: Arc<sftp::SftpClient>,
+            sftp: Arc<sftp::SftpClient<std::fs::File>>,
             file: sftp::File,
         }
 
@@ -246,7 +246,7 @@ impl SFTPFile {
 }
 
 #[pyclass]
-struct SFTPDir(Arc<sftp::SftpClient>, sftp::Directory);
+struct SFTPDir(Arc<sftp::SftpClient<std::fs::File>>, sftp::Directory);
 
 #[pymethods]
 impl SFTPDir {
@@ -274,7 +274,7 @@ impl SFTPDir {
 impl SFTPClient {
     #[new]
     fn new(py: Python, fd: i32) -> PyResult<Self> {
-        let session = py.allow_threads(|| sftp::SftpClient::from_fd(fd))?;
+        let session = py.allow_threads(|| sftp::SftpClient::<std::fs::File>::from_fd(fd))?;
         Ok(Self {
             sftp: Arc::new(session),
             cwd: None,

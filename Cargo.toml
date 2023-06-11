@@ -30,7 +30,7 @@ i18n = ["dep:gettext-rs"]
 pyo3 = []
 
 [dependencies]
-pyo3 = ">=0.17, <0.19"
+pyo3 = ">=0.19"
 gettext-rs = { version = "0.7", optional = true }
 log = "0.4"
 breezy-osutils = { path = "crates/osutils", version = ">=3.3.4" }
