@@ -20,7 +20,7 @@ import_exception!(breezy.errors, ReservedId);
 /// process adds 1 to a serial number we append to that unique value.
 #[pyfunction]
 fn _next_id_suffix(py: Python, suffix: Option<&str>) -> PyObject {
-    bazaar::gen_ids::next_id_suffix(suffix).into_py(py)
+    PyBytes::new(py, bazaar::gen_ids::next_id_suffix(suffix).as_slice()).into_py(py)
 }
 
 /// Return new file id for the basename 'name'.
@@ -28,13 +28,13 @@ fn _next_id_suffix(py: Python, suffix: Option<&str>) -> PyObject {
 /// The uniqueness is supplied from _next_id_suffix.
 #[pyfunction]
 fn gen_file_id(py: Python, name: &str) -> PyObject {
-    bazaar::gen_ids::gen_file_id(name).into_py(py)
+    bazaar::FileId::generate(name).to_object(py)
 }
 
 /// Return a new tree-root file id.
 #[pyfunction]
 fn gen_root_id(py: Python) -> PyObject {
-    bazaar::gen_ids::gen_root_id().into_py(py)
+    bazaar::FileId::generate_root_id().to_object(py)
 }
 
 /// Return new revision-id.
@@ -61,7 +61,7 @@ fn gen_revision_id(py: Python, username: &str, timestamp: Option<PyObject>) -> P
         }
         None => None,
     };
-    Ok(bazaar::gen_ids::gen_revision_id(username, timestamp).into_py(py))
+    Ok(bazaar::RevisionId::generate(username, timestamp).to_object(py))
 }
 
 #[pyfunction]

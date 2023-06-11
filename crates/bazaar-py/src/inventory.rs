@@ -439,7 +439,7 @@ impl InventoryFile {
             "add_pending_item",
             (
                 rev_id.to_object(py),
-                ("texts", file_id.to_object(py)),
+                ("texts", file_id.to_object(py), revision.to_object(py)),
                 PyBytes::new(py, b"text").to_object(py),
                 text_sha1
                     .as_ref()
@@ -703,7 +703,7 @@ impl InventoryLink {
                 "append",
                 (format!(
                     "symlink {} has no target in revision {}",
-                    spr.0.file_id().to_string(),
+                    spr.0.file_id(),
                     spr.0
                         .revision()
                         .map(|p| p.to_string())
@@ -721,7 +721,7 @@ impl InventoryLink {
                 (
                     "texts",
                     spr.0.file_id().to_object(py),
-                    spr.0.revision().map(|r| r.to_object(py)),
+                    spr.0.revision().to_object(py),
                 ),
                 PyBytes::new(py, b"text").to_object(py),
                 PyBytes::new(py, b"da39a3ee5e6b4b0d3255bfef95601890afd80709").to_object(py),
