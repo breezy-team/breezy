@@ -1228,16 +1228,15 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
 
     def test_dir2_entry_to_bytes(self):
         CHKInventory(None)
-        ie = inventory.InventoryDirectory(b'dir-id', 'dir\u03a9name',
-                                          None)
+        ie = inventory.InventoryDirectory(b'dir-id', 'dir\u03a9name', b'pid')
         ie.revision = b'dir-rev-id'
         bytes = _chk_inventory_entry_to_bytes(ie)
-        self.assertEqual(b'dir: dir-id\n\ndir\xce\xa9name\n'
+        self.assertEqual(b'dir: dir-id\npid\ndir\xce\xa9name\n'
                          b'dir-rev-id', bytes)
         ie2 = _chk_inventory_bytes_to_entry(bytes)
         self.assertEqual(ie, ie2)
         self.assertIsInstance(ie2.name, str)
-        self.assertIsNone(ie2.parent_id)
+        self.assertEqual(b'pid', ie2.parent_id)
         self.assertEqual((b'dir\xce\xa9name', b'dir-id', b'dir-rev-id'),
                          chk_inventory_bytes_to_utf8name_key(bytes))
 
