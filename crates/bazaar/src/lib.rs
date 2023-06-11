@@ -1,3 +1,5 @@
+#[cfg(feature = "pyo3")]
+use pyo3::{prelude::*, types::PyBytes, ToPyObject};
 use std::fmt::{Debug, Error, Formatter};
 
 pub mod bencode_serializer;
@@ -67,6 +69,21 @@ impl FileId {
     }
 }
 
+#[cfg(feature = "pyo3")]
+impl FromPyObject<'_> for FileId {
+    fn extract(ob: &PyAny) -> PyResult<Self> {
+        let s: Vec<u8> = ob.extract()?;
+        Ok(FileId::from(s))
+    }
+}
+
+#[cfg(feature = "pyo3")]
+impl ToPyObject for FileId {
+    fn to_object(&self, py: Python) -> PyObject {
+        PyBytes::new(py, &self.0).to_object(py)
+    }
+}
+
 impl std::fmt::Display for FileId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", String::from_utf8(self.0.clone()).unwrap())
@@ -105,6 +122,21 @@ impl From<&[u8]> for RevisionId {
 impl From<RevisionId> for Vec<u8> {
     fn from(v: RevisionId) -> Self {
         v.0
+    }
+}
+
+#[cfg(feature = "pyo3")]
+impl FromPyObject<'_> for RevisionId {
+    fn extract(ob: &PyAny) -> PyResult<Self> {
+        let s: Vec<u8> = ob.extract()?;
+        Ok(RevisionId::from(s))
+    }
+}
+
+#[cfg(feature = "pyo3")]
+impl ToPyObject for RevisionId {
+    fn to_object(&self, py: Python) -> PyObject {
+        PyBytes::new(py, &self.0).to_object(py)
     }
 }
 

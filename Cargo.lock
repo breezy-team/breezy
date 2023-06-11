@@ -84,6 +84,7 @@ dependencies = [
  "lazy_static",
  "log",
  "nix",
+ "pyo3",
  "regex",
  "sha1",
  "tempfile",
