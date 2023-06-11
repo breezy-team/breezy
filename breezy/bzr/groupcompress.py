@@ -1919,7 +1919,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
 
     def keys(self):
         """See VersionedFiles.keys."""
-        if 'evil' in debug.debug_flags:
+        if debug.debug_flag_enabled('evil'):
             trace.mutter_callsite(2, "keys scales with size of history")
         sources = [self._index] + self._immediate_fallback_vfs
         result = set()

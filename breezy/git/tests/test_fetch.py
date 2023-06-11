@@ -334,7 +334,7 @@ class ImportObjects(TestCaseWithTransport):
         objs = {"blobname": blob}
         ret = import_git_blob(self._texts, self._mapping, b"bla", b"bla",
                               (None, "blobname"),
-                              None, None, b"somerevid", [], objs.__getitem__,
+                              None, b"parentid", b"somerevid", [], objs.__getitem__,
                               (None, DEFAULT_FILE_MODE), DummyStoreUpdater(),
                               self._mapping.generate_file_id)
         self.assertEqual({(b'git:bla', b'somerevid')}, self._texts.keys())

@@ -104,7 +104,7 @@ class GCPack(NewPack):
         # open an output stream for the data added to the pack.
         self.write_stream = self.upload_transport.open_write_stream(
             self.random_name, mode=self._file_mode)
-        if 'pack' in debug.debug_flags:
+        if debug.debug_flag_enabled('pack'):
             trace.mutter('%s: create_pack: pack stream open: %s%s t+%6.3fs',
                          time.ctime(), self.upload_transport.base, self.random_name,
                          time.time() - self.start_time)

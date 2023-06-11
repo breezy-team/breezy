@@ -426,7 +426,7 @@ def _load_plugin_module(name, dir):
         return record_plugin_warning(warning_message)
     except Exception as e:
         trace.log_exception_quietly()
-        if 'error' in debug.debug_flags:
+        if debug.debug_flag_enabled('error'):
             trace.print_exception(sys.exc_info(), sys.stderr)
         return record_plugin_warning(
             f'Unable to load plugin {name!r} from {dir!r}: {e}')

@@ -174,7 +174,7 @@ def environment_variables():
     yield ".SH \"ENVIRONMENT\"\n"
 
     from breezy.help_topics import known_env_variables
-    for k, desc in known_env_variables:
+    for k, desc in known_env_variables():
         yield ".TP\n"
         yield f".I \"{k}\"\n"
         yield man_escape(desc) + "\n"

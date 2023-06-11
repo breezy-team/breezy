@@ -67,7 +67,7 @@ class CommitHandler(processor.CommitHandler):
 
     def debug(self, msg, *args):
         """Output a mutter if the appropriate -D option was given."""
-        if "fast-import" in debug.debug_flags:
+        if debug.debug_flag_enabled('fast-import'):
             msg = f"{msg} ({self.command.id})"
             mutter(msg, *args)
 

@@ -29,9 +29,6 @@ from breezy import (
     textfile,
     ui,
     )
-from breezy.bzr import (
-    generate_ids,
-    )
 from breezy.i18n import gettext
 """)
 from . import decorators, errors, hooks, osutils, registry
@@ -1570,7 +1567,7 @@ class WeaveMerger(Merge3Merger):
         else:
             base = None
         plan = self._generate_merge_plan(this_path, base)
-        if 'merge' in debug.debug_flags:
+        if debug.debug_flag_enabled('merge'):
             plan = list(plan)
             trans_id = self.tt.trans_id_file_id(file_id)
             name = self.tt.final_name(trans_id) + '.plan'
@@ -1793,11 +1790,12 @@ class MergeIntoMergeType(Merge3Merger):
         if target_id is None:
             raise PathNotInTree(self._target_subdir, "Target tree")
         name_in_target = osutils.basename(self._target_subdir)
+        from .bzr import generate_ids
+        from .bzr.inventory import InventoryDirectory
         try:
             self.this_tree.id2path(subdir.file_id)
         except errors.NoSuchId:
-            merge_into_root = subdir.copy()
-            merge_into_root.name = name_in_target
+            file_id = subdir.file_id
         else:
             # Give the root a new file-id.
             # This can happen fairly easily if the directory we are
@@ -1807,11 +1805,11 @@ class MergeIntoMergeType(Merge3Merger):
             # Non-root file-ids could potentially conflict too.  That's really
             # an edge case, so we don't do anything special for those.  We let
             # them cause conflicts.
-            from .bzr.inventory import InventoryDirectory
-            merge_into_root = InventoryDirectory(
-                generate_ids.gen_file_id(name_in_target),
-                name_in_target, subdir.parent_id)
-            merge_into_root.revision = subdir.revision
+            file_id = generate_ids.gen_file_id(name_in_target)
+        merge_into_root = InventoryDirectory(
+            file_id,
+            name_in_target, target_id)
+        merge_into_root.revision = subdir.revision
         yield (merge_into_root, target_id, '')
         if subdir.kind != 'directory':
             # No children, so we are done.

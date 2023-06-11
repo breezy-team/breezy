@@ -21,26 +21,6 @@ import io
 from .. import errors, i18n, tests, workingtree
 
 
-class ZzzTranslations:
-    """Special Zzz translation for debugging i18n stuff.
-
-    This class can be used to confirm that the message is properly translated
-    during black box tests.
-    """
-
-    def zzz(self, s):
-        return 'zz\xe5{{%s}}' % s
-
-    def gettext(self, s):
-        return self.zzz(s)
-
-    def ngettext(self, s1, s2, n):
-        if n == 1:
-            return self.zzz(s1)
-        else:
-            return self.zzz(s2)
-
-
 class TestZzzTranslation(tests.TestCase):
 
     def _check_exact(self, expected, source):
@@ -48,20 +28,21 @@ class TestZzzTranslation(tests.TestCase):
         self.assertEqual(type(expected), type(source))
 
     def test_translation(self):
-        trans = ZzzTranslations()
+        self.addCleanup(i18n.install)
+        i18n.install_zzz()
 
-        t = trans.zzz('msg')
+        t = i18n.zzz('msg')
         self._check_exact('zz\xe5{{msg}}', t)
 
-        t = trans.gettext('msg')
+        t = i18n.gettext('msg')
         self._check_exact('zz\xe5{{msg}}', t)
 
-        t = trans.ngettext('msg1', 'msg2', 0)
+        t = i18n.ngettext('msg1', 'msg2', 0)
         self._check_exact('zz\xe5{{msg2}}', t)
-        t = trans.ngettext('msg1', 'msg2', 2)
+        t = i18n.ngettext('msg1', 'msg2', 2)
         self._check_exact('zz\xe5{{msg2}}', t)
 
-        t = trans.ngettext('msg1', 'msg2', 1)
+        t = i18n.ngettext('msg1', 'msg2', 1)
         self._check_exact('zz\xe5{{msg1}}', t)
 
 
@@ -69,7 +50,8 @@ class TestGetText(tests.TestCase):
 
     def setUp(self):
         super().setUp()
-        self.overrideAttr(i18n, 'gettext', ZzzTranslations().gettext)
+        self.addCleanup(i18n.install)
+        i18n.install_zzz()
 
     def test_oneline(self):
         self.assertEqual("zz\xe5{{spam ham eggs}}",
@@ -84,8 +66,8 @@ class TestGetTextPerParagraph(tests.TestCase):
 
     def setUp(self):
         super().setUp()
-        self.overrideAttr(i18n, 'gettext', ZzzTranslations().gettext)
-        self.overrideAttr(i18n, 'ngettext', ZzzTranslations().ngettext)
+        self.addCleanup(i18n.install)
+        i18n.install_zzz()
 
     def test_oneline(self):
         self.assertEqual("zz\xe5{{spam ham eggs}}",
@@ -100,8 +82,8 @@ class TestTranslate(tests.TestCaseWithTransport):
 
     def setUp(self):
         super().setUp()
-        self.overrideAttr(i18n, 'gettext', ZzzTranslations().gettext)
-        self.overrideAttr(i18n, 'ngettext', ZzzTranslations().ngettext)
+        self.addCleanup(i18n.install)
+        i18n.install_zzz()
 
     def test_error_message_translation(self):
         """Do errors get translated?"""

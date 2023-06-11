@@ -1,14 +1,14 @@
 [package]
 name = "cmd-py"
 version = "3.3.3"
-edition = "2018"
+edition = "2021"
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = ">=0.17, <0.19", features = ["extension-module"]}
-pyo3-file = { git = "https://github.com/omerbenamram/pyo3-file" }
-breezy = { path = "../.." }
+pyo3 = { version = ">=0.19", features = ["extension-module"]}
+pyo3-file = { git = "https://github.com/breezy-team/pyo3-file" }
+breezy = { path = "../..", features = ["pyo3"] }
 gettext-rs = "0.7"
 log = { version="0.4", features=["std"]}

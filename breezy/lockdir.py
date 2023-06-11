@@ -671,7 +671,7 @@ class LockDir(lock.Lock):
                 self._trace("revalidated by token %r", token)
 
     def _trace(self, format, *args):
-        if 'lock' not in debug.debug_flags:
+        if not debug.debug_flag_enabled('lock'):
             return
         mutter(str(self) + ": " + (format % args))
 

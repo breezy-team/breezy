@@ -288,7 +288,7 @@ class SmartServerRequestHandler:
         self.response = None
         self.finished_reading = False
         self._command = None
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             self._request_start_time = osutils.perf_counter()
             self._thread_id = get_ident()
 
@@ -316,7 +316,7 @@ class SmartServerRequestHandler:
             # no active command object, so ignore the event.
             return
         self._run_handler_code(self._command.do_chunk, (bytes,), {})
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             self._trace('accept body',
                         f'{len(bytes)} bytes', bytes)
 
@@ -325,7 +325,7 @@ class SmartServerRequestHandler:
         self._run_handler_code(self._command.do_end, (), {})
         # cannot read after this.
         self.finished_reading = True
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             self._trace('end of body', '', include_time=True)
 
     def _run_handler_code(self, callable, args, kwargs):
@@ -361,7 +361,7 @@ class SmartServerRequestHandler:
 
     def headers_received(self, headers):
         # Just a no-op at the moment.
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             self._trace('headers', repr(headers))
 
     def args_received(self, args):
@@ -370,11 +370,11 @@ class SmartServerRequestHandler:
         try:
             command = self._commands.get(cmd)
         except LookupError:
-            if 'hpss' in debug.debug_flags:
+            if debug.debug_flag_enabled('hpss'):
                 self._trace('hpss unknown request',
                             cmd, repr(args)[1:-1])
             raise errors.UnknownSmartMethod(cmd)
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             from . import vfs
             if issubclass(command, vfs.VfsRequest):
                 action = 'hpss vfs req'
@@ -390,7 +390,7 @@ class SmartServerRequestHandler:
             # no active command object, so ignore the event.
             return
         self._run_handler_code(self._command.do_end, (), {})
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             self._trace('end', '', include_time=True)
 
     def post_body_error_received(self, error_args):

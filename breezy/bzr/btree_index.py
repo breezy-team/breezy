@@ -334,7 +334,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
             # division point, then we need a new root:
             if new_row:
                 # We need a new row
-                if 'index' in debug.debug_flags:
+                if debug.debug_flag_enabled('index'):
                     trace.mutter('Inserting new global row.')
                 new_row = _InternalBuilderRow()
                 reserved_bytes = 0
@@ -444,7 +444,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
             no defined order for the result iteration - it will be in the most
             efficient order for the index (in this case dictionary hash order).
         """
-        if 'evil' in debug.debug_flags:
+        if debug.debug_flag_enabled('evil'):
             trace.mutter_callsite(
                 3, "iter_all_entries scales with size of history.")
         # Doing serial rather than ordered would be faster; but this shouldn't
@@ -767,18 +767,18 @@ class BTreeGraphIndex:
         :param offsets: The offsets to be read
         :return: A list of offsets to download
         """
-        if 'index' in debug.debug_flags:
+        if debug.debug_flag_enabled('index'):
             trace.mutter('expanding: %s\toffsets: %s', self._name, offsets)
 
         if len(offsets) >= self._recommended_pages:
             # Don't add more, we are already requesting more than enough
-            if 'index' in debug.debug_flags:
+            if debug.debug_flag_enabled('index'):
                 trace.mutter('  not expanding large request (%s >= %s)',
                              len(offsets), self._recommended_pages)
             return offsets
         if self._size is None:
             # Don't try anything, because we don't know where the file ends
-            if 'index' in debug.debug_flags:
+            if debug.debug_flag_enabled('index'):
                 trace.mutter('  not expanding without knowing index size')
             return offsets
         total_pages = self._compute_total_pages_in_index()
@@ -792,7 +792,7 @@ class BTreeGraphIndex:
                             if x not in cached_offsets]
             else:
                 expanded = list(range(total_pages))
-            if 'index' in debug.debug_flags:
+            if debug.debug_flag_enabled('index'):
                 trace.mutter('  reading all unread pages: %s', expanded)
             return expanded
 
@@ -812,14 +812,14 @@ class BTreeGraphIndex:
                 # then it isn't worth expanding our request. Once we've read at
                 # least 2 nodes, then we are probably doing a search, and we
                 # start expanding our requests.
-                if 'index' in debug.debug_flags:
+                if debug.debug_flag_enabled('index'):
                     trace.mutter('  not expanding on first reads')
                 return offsets
             final_offsets = self._expand_to_neighbors(offsets, cached_offsets,
                                                       total_pages)
 
         final_offsets = sorted(final_offsets)
-        if 'index' in debug.debug_flags:
+        if debug.debug_flag_enabled('index'):
             trace.mutter('expanded:  %s', final_offsets)
         return final_offsets
 
@@ -974,7 +974,7 @@ class BTreeGraphIndex:
             There is no defined order for the result iteration - it will be in
             the most efficient order for the index.
         """
-        if 'evil' in debug.debug_flags:
+        if debug.debug_flag_enabled('evil'):
             trace.mutter_callsite(
                 3, "iter_all_entries scales with size of history.")
         if not self.key_count():

@@ -634,12 +634,12 @@ class TestEnsureStaticTuple(tests.TestCase):
         self.assertEqual(t, st)
 
     def test_flagged_is_static_tuple(self):
-        debug.debug_flags.add('static_tuple')
+        debug.set_debug_flag('static_tuple')
         st = static_tuple.StaticTuple('foo')
         st2 = static_tuple.expect_static_tuple(st)
         self.assertIs(st, st2)
 
     def test_flagged_is_tuple(self):
-        debug.debug_flags.add('static_tuple')
+        debug.set_debug_flag('static_tuple')
         t = ('foo',)
         self.assertRaises(TypeError, static_tuple.expect_static_tuple, t)

@@ -204,7 +204,7 @@ struct TopoSorter {
 impl TopoSorter {
     #[new]
     fn new(py: Python, graph: PyObject) -> PyResult<TopoSorter> {
-        let iter = if graph.as_ref(py).is_instance_of::<PyDict>()? {
+        let iter = if graph.as_ref(py).is_instance_of::<PyDict>() {
             graph.cast_as::<PyDict>(py)?.call_method0("items")?.iter()?
         } else {
             graph.as_ref(py).iter()?
@@ -272,7 +272,7 @@ impl MergeSorter {
         mainline_revisions: Option<PyObject>,
         generate_revno: Option<bool>,
     ) -> PyResult<MergeSorter> {
-        let iter = if graph.as_ref(py).is_instance_of::<PyDict>()? {
+        let iter = if graph.as_ref(py).is_instance_of::<PyDict>() {
             graph.cast_as::<PyDict>(py)?.call_method0("items")?.iter()?
         } else {
             graph.as_ref(py).iter()?

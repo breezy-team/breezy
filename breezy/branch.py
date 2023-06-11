@@ -287,7 +287,7 @@ class Branch(ControlComponent):
 
     def _lefthand_history(self, revision_id, last_rev=None,
                           other_branch=None):
-        if 'evil' in debug.debug_flags:
+        if debug.debug_flag_enabled('evil'):
             mutter_callsite(4, "_lefthand_history scales with history.")
         # stop_revision must be a descendant of last_revision
         graph = self.repository.get_graph()
@@ -414,7 +414,7 @@ class Branch(ControlComponent):
         Returns: A dictionary mapping revision_id => dotted revno.
             This dictionary should not be modified by the caller.
         """
-        if 'evil' in debug.debug_flags:
+        if debug.debug_flag_enabled('evil'):
             mutter_callsite(
                 3, "get_revision_id_to_revno_map scales with ancestry.")
         with self.lock_read():
@@ -857,7 +857,7 @@ class Branch(ControlComponent):
         raise NotImplementedError(self._gen_revision_history)
 
     def _revision_history(self) -> List[RevisionID]:
-        if 'evil' in debug.debug_flags:
+        if debug.debug_flag_enabled('evil'):
             mutter_callsite(3, "revision_history scales with history.")
         if self._revision_history_cache is not None:
             history = self._revision_history_cache

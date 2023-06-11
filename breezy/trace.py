@@ -330,7 +330,7 @@ def report_exception(exc_info, err_file):
     """
     # Log the full traceback to brz.log
     log_exception_quietly()
-    if 'error' in debug.debug_flags:
+    if debug.debug_flag_enabled('error'):
         print_exception(exc_info, err_file)
         return errors.EXIT_ERROR
     exc_type, exc_object, exc_tb = exc_info
@@ -339,7 +339,7 @@ def report_exception(exc_info, err_file):
         return errors.EXIT_ERROR
     elif isinstance(exc_object, MemoryError):
         err_file.write("brz: out of memory\n")
-        if 'mem_dump' in debug.debug_flags:
+        if debug.debug_flag_enabled('mem_dump'):
             _dump_memory_usage(err_file)
         else:
             err_file.write("Use -Dmem_dump to dump memory to a file.\n")

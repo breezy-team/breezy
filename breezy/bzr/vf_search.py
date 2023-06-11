@@ -239,7 +239,7 @@ class EverythingResult(AbstractSearchResult):
         return (b'everything',)
 
     def get_keys(self):
-        if 'evil' in debug.debug_flags:
+        if debug.debug_flag_enabled('evil'):
             from . import remote
             if isinstance(self._repo, remote.RemoteRepository):
                 # warn developers (not users) not to do this

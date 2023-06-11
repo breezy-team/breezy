@@ -799,7 +799,7 @@ class KnitPacker(Packer):
             # eat the iterator to cause it to execute.
             list(inv_lines)
             self._text_filter = None
-        if 'pack' in debug.debug_flags:
+        if debug.debug_flag_enabled('pack'):
             trace.mutter('%s: create_pack: inventories copied: %s%s %d items t+%6.3fs',
                          time.ctime(), self._pack_collection._upload_transport.base,
                          self.new_pack.random_name,
@@ -825,7 +825,7 @@ class KnitPacker(Packer):
                 packs.append(index_to_pack_map[index])
                 seen_indexes.add(index)
         if len(packs) == len(self.packs):
-            if 'pack' in debug.debug_flags:
+            if debug.debug_flag_enabled('pack'):
                 trace.mutter('Not changing pack list, all packs used.')
             return
         seen_packs = set(packs)
@@ -833,7 +833,7 @@ class KnitPacker(Packer):
             if pack not in seen_packs:
                 packs.append(pack)
                 seen_packs.add(pack)
-        if 'pack' in debug.debug_flags:
+        if debug.debug_flag_enabled('pack'):
             old_names = [p.access_tuple()[1] for p in self.packs]
             new_names = [p.access_tuple()[1] for p in packs]
             trace.mutter('Reordering packs\nfrom: %s\n  to: %s',
@@ -859,7 +859,7 @@ class KnitPacker(Packer):
             revision_nodes)
         list(self._copy_nodes_graph(revision_index_map, self.new_pack._writer,
                                     self.new_pack.revision_index, readv_group_iter, total_items))
-        if 'pack' in debug.debug_flags:
+        if debug.debug_flag_enabled('pack'):
             trace.mutter('%s: create_pack: revisions copied: %s%s %d items t+%6.3fs',
                          time.ctime(), self._pack_collection._upload_transport.base,
                          self.new_pack.random_name,
@@ -909,7 +909,7 @@ class KnitPacker(Packer):
         # buffer data - we won't be reading-back during the pack creation and
         # this makes a significant difference on sftp pushes.
         new_pack.set_write_cache_size(1024 * 1024)
-        if 'pack' in debug.debug_flags:
+        if debug.debug_flag_enabled('pack'):
             plain_pack_list = [f'{a_pack.pack_transport.base}{a_pack.name}'
                                for a_pack in self.packs]
             if self.revision_ids is not None:
@@ -933,7 +933,7 @@ class KnitPacker(Packer):
         self.pb.update("Copying signature texts", 4)
         self._copy_nodes(signature_nodes, signature_index_map, new_pack._writer,
                          new_pack.signature_index)
-        if 'pack' in debug.debug_flags:
+        if debug.debug_flag_enabled('pack'):
             trace.mutter('%s: create_pack: revision signatures copied: %s%s %d items t+%6.3fs',
                          time.ctime(), self._pack_collection._upload_transport.base, new_pack.random_name,
                          new_pack.signature_index.key_count(),

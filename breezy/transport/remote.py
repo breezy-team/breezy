@@ -98,7 +98,7 @@ class RemoteTransport(transport.ConnectedTransport):
             credentials = None
             if medium is None:
                 medium, credentials = self._build_medium()
-                if 'hpss' in debug.debug_flags:
+                if debug.debug_flag_enabled('hpss'):
                     trace.mutter('hpss: Built a new medium: %s',
                                  medium.__class__.__name__)
             self._shared_connection = transport._SharedConnection(medium,
@@ -338,7 +338,7 @@ class RemoteTransport(transport.ConnectedTransport):
             cur_len += c.length
         if cur_request:
             requests.append(cur_request)
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             trace.mutter('%s.readv %s offsets => %s coalesced'
                          ' => %s requests (%s)',
                          self.__class__.__name__, len(offsets), len(coalesced),

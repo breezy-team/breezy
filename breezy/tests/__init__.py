@@ -544,7 +544,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         #                thread debugging would be nice. Tests under subunit
         #                need something not using stream, perhaps adding a
         #                testtools details object would be fitting.
-        if 'threads' in selftest_debug_flags:
+        if 'threads' in selftest_debug_flags.debug_flag_enabled('threads'):
             self.stream.write('%s is leaking, active is now %d\n' %
                               (test.id(), len(active_threads)))
 
@@ -1020,11 +1020,16 @@ class TestCase(testtools.TestCase):
         debug_flags set during setup/teardown.
         """
         # Start with a copy of the current debug flags we can safely modify.
-        self.overrideAttr(debug, 'debug_flags', set(debug.debug_flags))
+        flags = debug.get_debug_flags()
+        def restore_debug_flags(flags):
+            debug.clear_debug_flags()
+            for flag in flags:
+                debug.set_debug_flag(flag)
+        self.addCleanup(restore_debug_flags, flags)
         if 'allow_debug' not in selftest_debug_flags:
-            debug.debug_flags.clear()
+            debug.clear_debug_flags()
         if 'disable_lock_checks' not in selftest_debug_flags:
-            debug.debug_flags.add('strict_locks')
+            debug.set_debug_flag('strict_locks')
 
     def _clear_hooks(self):
         # prevent hooks affecting tests
@@ -1675,7 +1680,7 @@ class TestCase(testtools.TestCase):
         This should be used sparingly, it is much better to fix the locking
         issues rather than papering over the problem by calling this function.
         """
-        debug.debug_flags.discard('strict_locks')
+        debug.unset_debug_flag('strict_locks')
 
     def overrideAttr(self, obj, attr_name, new=_unitialized_attr):
         """Overrides an object attribute restoring it after the test.

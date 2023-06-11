@@ -1337,7 +1337,7 @@ class TestTestCase(tests.TestCase):
         flags = set()
         if self._lock_check_thorough:
             flags.add('strict_locks')
-        self.assertEqual(flags, breezy.debug.debug_flags)
+        self.assertEqual(flags, breezy.debug.get_debug_flags())
 
     def change_selftest_debug_flags(self, new_flags):
         self.overrideAttr(tests, 'selftest_debug_flags', set(new_flags))
@@ -1347,11 +1347,12 @@ class TestTestCase(tests.TestCase):
         sanitised (i.e. cleared) before running a test.
         """
         self.change_selftest_debug_flags({'allow_debug'})
-        breezy.debug.debug_flags = {'a-flag'}
+        breezy.debug.clear_debug_flags()
+        breezy.debug.set_debug_flag('a-flag')
 
         class TestThatRecordsFlags(tests.TestCase):
             def test_foo(nested_self):
-                self.flags = set(breezy.debug.debug_flags)
+                self.flags = breezy.debug.get_debug_flags()
         test = TestThatRecordsFlags('test_foo')
         test.run(self.make_test_result())
         flags = {'a-flag'}
@@ -1363,7 +1364,7 @@ class TestTestCase(tests.TestCase):
         """The -Edisable_lock_checks flag disables thorough checks."""
         class TestThatRecordsFlags(tests.TestCase):
             def test_foo(nested_self):
-                self.flags = set(breezy.debug.debug_flags)
+                self.flags = breezy.debug.get_debug_flags()
                 self.test_lock_check_thorough = nested_self._lock_check_thorough
         self.change_selftest_debug_flags(set())
         test = TestThatRecordsFlags('test_foo')
@@ -1382,9 +1383,9 @@ class TestTestCase(tests.TestCase):
     def test_this_fails_strict_lock_check(self):
         class TestThatRecordsFlags(tests.TestCase):
             def test_foo(nested_self):
-                self.flags1 = set(breezy.debug.debug_flags)
+                self.flags1 = breezy.debug.get_debug_flags()
                 self.thisFailsStrictLockCheck()
-                self.flags2 = set(breezy.debug.debug_flags)
+                self.flags2 = breezy.debug.get_debug_flags()
         # Make sure lock checking is active
         self.change_selftest_debug_flags(set())
         test = TestThatRecordsFlags('test_foo')
@@ -1398,14 +1399,16 @@ class TestTestCase(tests.TestCase):
         """
         self.change_selftest_debug_flags({'allow_debug'})
         # Now run a test that modifies debug.debug_flags.
-        breezy.debug.debug_flags = {'original-state'}
+        breezy.debug.clear_debug_flags()
+        breezy.debug.set_debug_flag('original-state')
 
         class TestThatModifiesFlags(tests.TestCase):
             def test_foo(self):
-                breezy.debug.debug_flags = {'modified'}
+                breezy.debug.clear_debug_flags()
+                breezy.debug.set_debug_flag('modified')
         test = TestThatModifiesFlags('test_foo')
         test.run(self.make_test_result())
-        self.assertEqual({'original-state'}, breezy.debug.debug_flags)
+        self.assertEqual({'original-state'}, breezy.debug.get_debug_flags())
 
     def make_test_result(self):
         """Get a test result that writes to a StringIO."""

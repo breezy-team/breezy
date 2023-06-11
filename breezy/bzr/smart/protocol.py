@@ -634,7 +634,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
         self._headers = dict(headers)
 
     def call(self, *args):
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             mutter('hpss call:   %s', repr(args)[1:-1])
             if getattr(self._request._medium, 'base', None) is not None:
                 mutter('             (to %s)', self._request._medium.base)
@@ -648,14 +648,14 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
 
         After calling this, call read_response_tuple to find the result out.
         """
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             mutter('hpss call w/body: %s (%r...)', repr(args)[1:-1], body[:20])
             if getattr(self._request._medium, '_path', None) is not None:
                 mutter('                  (to %s)',
                        self._request._medium._path)
             mutter('              %d bytes', len(body))
             self._request_start_time = osutils.perf_counter()
-            if 'hpssdetail' in debug.debug_flags:
+            if debug.debug_flag_enabled('hpssdetail'):
                 mutter('hpss body content: %s', body)
         self._write_args(args)
         bytes = self._encode_bulk_data(body)
@@ -669,7 +669,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
         The body is encoded with one line per readv offset pair. The numbers in
         each pair are separated by a comma, and no trailing \\n is emitted.
         """
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             mutter('hpss call w/readv: %s', repr(args)[1:-1])
             if getattr(self._request._medium, '_path', None) is not None:
                 mutter('                  (to %s)',
@@ -680,7 +680,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
         bytes = self._encode_bulk_data(readv_bytes)
         self._request.accept_bytes(bytes)
         self._request.finished_writing()
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             mutter('              %d bytes in readv request', len(readv_bytes))
         self._last_verb = args[0]
 
@@ -703,7 +703,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
 
     def _read_response_tuple(self):
         result = self._recv_tuple()
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             if self._request_start_time is not None:
                 mutter('   result:   %6.3fs  %s',
                        osutils.perf_counter() - self._request_start_time,
@@ -791,7 +791,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
         self._request.finished_reading()
         self._body_buffer = BytesIO(_body_decoder.read_pending_data())
         # XXX: TODO check the trailer result.
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             mutter('              %d body bytes read',
                    len(self._body_buffer.getvalue()))
         return self._body_buffer.read(count)
@@ -877,7 +877,7 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
                     "Connection lost while reading streamed body.")
             _body_decoder.accept_bytes(bytes)
             for body_bytes in iter(_body_decoder.read_next_chunk, None):
-                if 'hpss' in debug.debug_flags and isinstance(body_bytes, str):
+                if debug.debug_flag_enabled('hpss') and isinstance(body_bytes, str):
                     mutter('              %d byte chunk read',
                            len(body_bytes))
                 yield body_bytes
@@ -1165,7 +1165,7 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
         self.response_sent = False
         self._headers = {
             b'Software version': breezy.__version__.encode('utf-8')}
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             self._thread_id = _thread.get_ident()
             self._response_start_time = None
 
@@ -1194,7 +1194,7 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
                 (b'UnknownMethod', exception.verb))
             self.send_response(failure)
             return
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             self._trace('error', str(exception))
         self.response_sent = True
         self._write_protocol_version()
@@ -1215,12 +1215,12 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
             self._write_success_status()
         else:
             self._write_error_status()
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             self._trace('response', repr(response.args))
         self._write_structure(response.args)
         if response.body is not None:
             self._write_prefixed_body(response.body)
-            if 'hpss' in debug.debug_flags:
+            if debug.debug_flag_enabled('hpss'):
                 self._trace('body', f'{len(response.body)} bytes',
                             response.body, include_time=True)
         elif response.body_stream is not None:
@@ -1243,18 +1243,18 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
                         first_chunk = chunk
                     self._write_prefixed_body(chunk)
                     self.flush()
-                    if 'hpssdetail' in debug.debug_flags:
+                    if debug.debug_flag_enabled('hpssdetail'):
                         # Not worth timing separately, as _write_func is
                         # actually buffered
                         self._trace('body chunk',
                                     f'{len(chunk)} bytes',
                                     chunk, suppress_time=True)
-            if 'hpss' in debug.debug_flags:
+            if debug.debug_flag_enabled('hpss'):
                 self._trace('body stream',
                             '%d bytes %d chunks' % (num_bytes, count),
                             first_chunk)
         self._write_end()
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             self._trace('response end', '', include_time=True)
 
 
@@ -1309,7 +1309,7 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
         self._headers = headers.copy()
 
     def call(self, *args):
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             mutter('hpss call:   %s', repr(args)[1:-1])
             base = getattr(self._medium_request._medium, 'base', None)
             if base is not None:
@@ -1326,7 +1326,7 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
 
         After calling this, call read_response_tuple to find the result out.
         """
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             mutter('hpss call w/body: %s (%r...)', repr(args)[1:-1], body[:20])
             path = getattr(self._medium_request._medium, '_path', None)
             if path is not None:
@@ -1346,7 +1346,7 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
         The body is encoded with one line per readv offset pair. The numbers in
         each pair are separated by a comma, and no trailing \\n is emitted.
         """
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             mutter('hpss call w/readv: %s', repr(args)[1:-1])
             path = getattr(self._medium_request._medium, '_path', None)
             if path is not None:
@@ -1356,14 +1356,14 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
         self._write_headers(self._headers)
         self._write_structure(args)
         readv_bytes = self._serialise_offsets(body)
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             mutter('              %d bytes in readv request', len(readv_bytes))
         self._write_prefixed_body(readv_bytes)
         self._write_end()
         self._medium_request.finished_writing()
 
     def call_with_body_stream(self, args, stream):
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             mutter('hpss call w/body stream: %r', args)
             path = getattr(self._medium_request._medium, '_path', None)
             if path is not None:

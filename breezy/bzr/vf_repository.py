@@ -1793,7 +1793,7 @@ class StreamSink:
             else:
                 new_pack.set_write_cache_size(1024 * 1024)
         for substream_type, substream in stream:
-            if 'stream' in debug.debug_flags:
+            if debug.debug_flag_enabled('stream'):
                 mutter('inserting substream: %s', substream_type)
             if substream_type == 'texts':
                 self.target_repo.texts.insert_record_stream(substream)
@@ -2066,7 +2066,7 @@ class StreamSource:
                 and from_format.network_name() == self.to_format.network_name()):
             raise AssertionError(
                 "this case should be handled by GroupCHKStreamSource")
-        elif 'forceinvdeltas' in debug.debug_flags:
+        elif debug.debug_flag_enabled('forceinvdeltas'):
             return self._get_convertable_inventory_stream(revision_ids,
                                                           delta_versus_null=missing)
         elif from_format.network_name() == self.to_format.network_name():
@@ -2428,7 +2428,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
         # This is redundant with format.check_conversion_target(), however that
         # raises an exception, and we just want to say "False" as in we won't
         # support converting between these formats.
-        if 'IDS_never' in debug.debug_flags:
+        if debug.debug_flag_enabled('IDS_never'):
             return False
         if source.supports_rich_root() and not target.supports_rich_root():
             return False
@@ -2439,7 +2439,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
             # IDS doesn't know how to copy CHKs for the parent inventories it
             # adds to stacked repos.
             return False
-        if 'IDS_always' in debug.debug_flags:
+        if debug.debug_flag_enabled('IDS_always'):
             return True
         # Only use this code path for local source and target.  IDS does far
         # too much IO (both bandwidth and roundtrips) over a network.

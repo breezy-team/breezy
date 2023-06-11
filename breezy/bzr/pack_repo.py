@@ -413,7 +413,7 @@ class NewPack(Pack):
         # open an output stream for the data added to the pack.
         self.write_stream = self.upload_transport.open_write_stream(
             self.random_name, mode=self._file_mode)
-        if 'pack' in debug.debug_flags:
+        if debug.debug_flag_enabled('pack'):
             mutter('%s: create_pack: pack stream open: %s%s t+%6.3fs',
                    time.ctime(), self.upload_transport.base, self.random_name,
                    time.time() - self.start_time)
@@ -529,7 +529,7 @@ class NewPack(Pack):
             new_name = '../packs/' + new_name
         self.upload_transport.move(self.random_name, new_name)
         self._state = 'finished'
-        if 'pack' in debug.debug_flags:
+        if debug.debug_flag_enabled('pack'):
             # XXX: size might be interesting?
             mutter('%s: create_pack: pack finished: %s%s->%s t+%6.3fs',
                    time.ctime(), self.upload_transport.base, self.random_name,
@@ -569,7 +569,7 @@ class NewPack(Pack):
         write_stream.close(
             want_fdatasync=self._pack_collection.config_stack.get('repository.fdatasync'))
         self.index_sizes[self.index_offset(index_type)] = len(index_bytes)
-        if 'pack' in debug.debug_flags:
+        if debug.debug_flag_enabled('pack'):
             # XXX: size might be interesting?
             mutter('%s: create_pack: wrote %s index: %s%s t+%6.3fs',
                    time.ctime(), label, self.upload_transport.base,
@@ -769,7 +769,7 @@ class Packer:
         raise NotImplementedError(self._create_pack_from_packs)
 
     def _log_copied_texts(self):
-        if 'pack' in debug.debug_flags:
+        if debug.debug_flag_enabled('pack'):
             mutter('%s: create_pack: file texts copied: %s%s %d items t+%6.3fs',
                    time.ctime(), self._pack_collection._upload_transport.base,
                    self.new_pack.random_name,
@@ -1791,7 +1791,7 @@ class PackRepository(MetaDirVersionedFileRepository):
         if self._write_lock_count == 1:
             self._transaction = transactions.WriteTransaction()
         if not locked:
-            if 'relock' in debug.debug_flags and self._prev_lock == 'w':
+            if debug.debug_flag_enabled('relock') and self._prev_lock == 'w':
                 note('%r was write locked again', self)
             self._prev_lock = 'w'
             self._unstacked_provider.enable_cache()
@@ -1812,7 +1812,7 @@ class PackRepository(MetaDirVersionedFileRepository):
         else:
             self.control_files.lock_read()
         if not locked:
-            if 'relock' in debug.debug_flags and self._prev_lock == 'r':
+            if debug.debug_flag_enabled('relock') and self._prev_lock == 'r':
                 note('%r was read locked again', self)
             self._prev_lock = 'r'
             self._unstacked_provider.enable_cache()

@@ -26,6 +26,10 @@ import sys
 
 from ._cmd_rs import i18n as _i18n_rs
 
+install_zzz = _i18n_rs.install_zzz
+install_zzz_for_doc = _i18n_rs.install_zzz_for_doc
+zzz = _i18n_rs.zzz
+
 
 def disable_i18n():
     """Disable i18n support.
@@ -61,16 +65,7 @@ def N_(msg):
     return msg
 
 
-def gettext_per_paragraph(message):
-    """Translate message per paragraph.
-
-    :returns: concatenated translated message as unicode.
-    """
-    install()
-    paragraphs = message.split('\n\n')
-    # Be careful not to translate the empty string -- it holds the
-    # meta data of the .po file.
-    return '\n\n'.join(gettext(p) if p else '' for p in paragraphs)
+gettext_per_paragraph = _i18n_rs.gettext_per_paragraph
 
 
 _installed = False

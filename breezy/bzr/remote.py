@@ -507,7 +507,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         Used before calls to self._real_bzrdir.
         """
         if not self._real_bzrdir:
-            if 'hpssvfs' in debug.debug_flags:
+            if debug.debug_flag_enabled('hpssvfs'):
                 import traceback
                 warning('VFS BzrDir access triggered\n%s',
                         ''.join(traceback.format_stack()))
@@ -1468,7 +1468,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         invocation. If in doubt chat to the bzr network team.
         """
         if self._real_repository is None:
-            if 'hpssvfs' in debug.debug_flags:
+            if debug.debug_flag_enabled('hpssvfs'):
                 import traceback
                 warning('VFS Repository access triggered\n%s',
                         ''.join(traceback.format_stack()))

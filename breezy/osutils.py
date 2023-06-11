@@ -33,7 +33,6 @@ import socket
 
 from breezy import (
     config,
-    trace,
     )
 """)
 
@@ -409,7 +408,8 @@ def failed_to_load_extension(exception):
     # with 10 warnings.
     exception_str = str(exception)
     if exception_str not in _extension_load_failures:
-        trace.mutter(f"failed to load compiled extension: {exception_str}")
+        from .trace import mutter
+        mutter(f"failed to load compiled extension: {exception_str}")
         _extension_load_failures.append(exception_str)
 
 
@@ -1110,7 +1110,8 @@ def fdatasync(fileno):
             # raise ENOTSUP. However, we are calling fdatasync to be helpful
             # and reduce the chance of corruption-on-powerloss situations. It
             # is not a mandatory call, so it is ok to suppress failures.
-            trace.mutter(f"ignoring error calling fdatasync: {e}")
+            from .trace import mutter
+            mutter(f"ignoring error calling fdatasync: {e}")
             if getattr(e, 'errno', None) not in _fdatasync_ignored:
                 raise
 

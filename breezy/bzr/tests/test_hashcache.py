@@ -20,7 +20,7 @@ import time
 from ... import osutils
 from ...tests import TestCaseInTempDir
 from ...tests.features import OsFifoFeature
-from ..hashcache import HashCache
+from .. import hashcache
 
 sha1 = osutils.sha_string
 
@@ -35,11 +35,11 @@ class TestHashCache(TestCaseInTempDir):
     def make_hashcache(self):
         # make a dummy bzr directory just to hold the cache
         os.mkdir('.bzr')
-        hc = HashCache('.', '.bzr/stat-cache')
+        hc = hashcache.HashCache('.', '.bzr/stat-cache')
         return hc
 
     def reopen_hashcache(self):
-        hc = HashCache('.', '.bzr/stat-cache')
+        hc = hashcache.HashCache('.', '.bzr/stat-cache')
         hc.read()
         return hc
 

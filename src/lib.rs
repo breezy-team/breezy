@@ -17,17 +17,22 @@ pub mod i18n {
 }
 
 pub mod bedding;
-
-pub mod trace;
-
-pub mod progress;
+pub mod bugtracker;
 
 pub mod branch;
+pub mod controldir;
 pub mod forge;
+pub mod help;
 pub mod location;
+pub mod progress;
 pub mod repository;
 pub mod tags;
+pub mod trace;
+
+pub mod debug;
+
 pub mod tree;
+pub mod treebuilder;
 
 #[cfg(feature = "pyo3")]
 pub mod pytree;
@@ -40,3 +45,6 @@ pub mod pyforge;
 
 #[cfg(feature = "pyo3")]
 pub mod pytags;
+
+#[cfg(feature = "pyo3")]
+pub mod pycontroldir;

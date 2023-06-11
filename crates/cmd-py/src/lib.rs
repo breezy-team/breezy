@@ -1,3 +1,5 @@
+use breezy::pytree::PyTree;
+
 use log::Log;
 use pyo3::exceptions::PyValueError;
 use pyo3::import_exception;
@@ -26,6 +28,18 @@ fn i18n_install(lang: Option<&str>, locale_base: Option<PathBuf>) -> PyResult<()
     Ok(())
 }
 
+#[pyfunction(name = "install_zzz")]
+fn i18n_install_zzz() -> PyResult<()> {
+    breezy::i18n::install_zzz();
+    Ok(())
+}
+
+#[pyfunction(name = "install_zzz_for_doc")]
+fn i18n_install_zzz_for_doc() -> PyResult<()> {
+    breezy::i18n::install_zzz_for_doc();
+    Ok(())
+}
+
 #[pyfunction(name = "install_plugin")]
 fn i18n_install_plugin(name: &str, locale_base: Option<PathBuf>) -> PyResult<()> {
     let locale_base = locale_base.as_deref();
@@ -41,6 +55,16 @@ fn i18n_gettext(msgid: &str) -> PyResult<String> {
 #[pyfunction(name = "ngettext")]
 fn i18n_ngettext(msgid: &str, msgid_plural: &str, n: u32) -> PyResult<String> {
     Ok(breezy::i18n::ngettext(msgid, msgid_plural, n))
+}
+
+#[pyfunction(name = "gettext_per_paragraph")]
+fn i18n_gettext_per_paragraph(text: &str) -> PyResult<String> {
+    Ok(breezy::i18n::gettext_per_paragraph(text))
+}
+
+#[pyfunction(name = "zzz")]
+fn i18n_zzz(msgid: &str) -> PyResult<String> {
+    Ok(breezy::i18n::zzz(msgid))
 }
 
 #[pyfunction]
@@ -310,6 +334,34 @@ impl BreezyTraceHandler {
 }
 
 #[pyfunction]
+fn set_debug_flag(flag: &str) -> PyResult<()> {
+    breezy::debug::set_debug_flag(flag);
+    Ok(())
+}
+
+#[pyfunction]
+fn unset_debug_flag(flag: &str) -> PyResult<()> {
+    breezy::debug::unset_debug_flag(flag);
+    Ok(())
+}
+
+#[pyfunction]
+fn get_debug_flags() -> PyResult<std::collections::HashSet<String>> {
+    Ok(breezy::debug::get_debug_flags())
+}
+
+#[pyfunction]
+fn clear_debug_flags() -> PyResult<()> {
+    breezy::debug::clear_debug_flags();
+    Ok(())
+}
+
+#[pyfunction]
+fn debug_flag_enabled(flag: &str) -> PyResult<bool> {
+    Ok(breezy::debug::debug_flag_enabled(flag))
+}
+
+#[pyfunction]
 fn str_tdelta(delt: Option<f64>) -> PyResult<String> {
     Ok(breezy::progress::str_tdelta(delt))
 }
@@ -346,6 +398,46 @@ fn parse_rcp_location(location: &str) -> PyResult<(String, Option<String>, Strin
         .map_err(|e| PyValueError::new_err(format!("{:?}", e)))
 }
 
+#[pyfunction]
+fn help_as_plain_text(text: &str) -> PyResult<String> {
+    Ok(breezy::help::help_as_plain_text(text))
+}
+
+#[pyfunction]
+fn format_see_also(see_also: Option<Vec<&str>>) -> PyResult<String> {
+    if see_also.is_none() {
+        return Ok("".to_string());
+    }
+
+    Ok(breezy::help::format_see_also(see_also.unwrap().as_slice()))
+}
+
+mod help;
+
+#[pyclass]
+struct TreeBuilder(breezy::treebuilder::TreeBuilder<PyTree>);
+
+#[pymethods]
+impl TreeBuilder {
+    #[new]
+    fn new() -> Self {
+        TreeBuilder(breezy::treebuilder::TreeBuilder::new())
+    }
+
+    fn build(&mut self, recipe: Vec<&str>) {
+        self.0.build(recipe.as_slice());
+    }
+
+    fn start_tree(&mut self, tree: PyObject) {
+        let tree = PyTree::new(tree);
+        self.0.start_tree(tree);
+    }
+
+    fn finish_tree(&mut self) {
+        self.0.finish_tree();
+    }
+}
+
 #[pymodule]
 fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     let i18n = PyModule::new(_py, "i18n")?;
@@ -355,6 +447,10 @@ fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     i18n.add_function(wrap_pyfunction!(i18n_ngettext, i18n)?)?;
     i18n.add_function(wrap_pyfunction!(i18n_disable_i18n, i18n)?)?;
     i18n.add_function(wrap_pyfunction!(i18n_dgettext, i18n)?)?;
+    i18n.add_function(wrap_pyfunction!(i18n_gettext_per_paragraph, i18n)?)?;
+    i18n.add_function(wrap_pyfunction!(i18n_install_zzz, i18n)?)?;
+    i18n.add_function(wrap_pyfunction!(i18n_install_zzz_for_doc, i18n)?)?;
+    i18n.add_function(wrap_pyfunction!(i18n_zzz, i18n)?)?;
     m.add_submodule(i18n)?;
     m.add_function(wrap_pyfunction!(ensure_config_dir_exists, m)?)?;
     m.add_function(wrap_pyfunction!(config_dir, m)?)?;
@@ -376,12 +472,25 @@ fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_brz_log_filename, m)?)?;
     m.add_function(wrap_pyfunction!(get_brz_log_filename, m)?)?;
     m.add_class::<BreezyTraceHandler>()?;
+    m.add_function(wrap_pyfunction!(set_debug_flag, m)?)?;
+    m.add_function(wrap_pyfunction!(unset_debug_flag, m)?)?;
+    m.add_function(wrap_pyfunction!(clear_debug_flags, m)?)?;
+    m.add_function(wrap_pyfunction!(get_debug_flags, m)?)?;
+    m.add_function(wrap_pyfunction!(debug_flag_enabled, m)?)?;
     m.add_function(wrap_pyfunction!(str_tdelta, m)?)?;
     m.add_function(wrap_pyfunction!(debug_memory_proc, m)?)?;
     m.add_function(wrap_pyfunction!(rcp_location_to_url, m)?)?;
     m.add_function(wrap_pyfunction!(parse_cvs_location, m)?)?;
     m.add_function(wrap_pyfunction!(cvs_to_url, m)?)?;
     m.add_function(wrap_pyfunction!(parse_rcp_location, m)?)?;
+    m.add_function(wrap_pyfunction!(help_as_plain_text, m)?)?;
+    m.add_function(wrap_pyfunction!(format_see_also, m)?)?;
+
+    let helpm = PyModule::new(_py, "help")?;
+    help::help_topics(helpm)?;
+    m.add_submodule(helpm)?;
+
+    m.add_class::<TreeBuilder>()?;
 
     Ok(())
 }

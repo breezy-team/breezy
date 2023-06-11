@@ -48,7 +48,7 @@ class FullHistoryBzrBranch(BzrBranch):
             return (0, _mod_revision.NULL_REVISION)
 
     def _set_revision_history(self, rev_history):
-        if 'evil' in debug.debug_flags:
+        if debug.debug_flag_enabled('evil'):
             mutter_callsite(3, "set_revision_history scales with history.")
         check_not_reserved_id = _mod_revision.check_not_reserved_id
         for rev_id in rev_history:

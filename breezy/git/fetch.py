@@ -411,7 +411,7 @@ def import_git_commit(repo, mapping, head, lookup_object,
     store_updater.finish()
     trees_cache.add(ret_tree)
     repo.add_revision(rev.revision_id, rev)
-    if "verify" in debug.debug_flags:
+    if debug.debug_flag_enabled('verify'):
         verify_commit_reconstruction(
             target_git_object_retriever, lookup_object, o, rev, ret_tree,
             parent_trees, mapping, unusual_modes, verifiers)
