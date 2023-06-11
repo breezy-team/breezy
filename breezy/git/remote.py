@@ -201,7 +201,7 @@ class GitSmartTransport(Transport):
         Transport.__init__(self, url)
         (self._host, self._port, self._username, self._path) = \
             split_git_url(url)
-        if 'transport' in debug.debug_flags:
+        if debug.debug_flag_enabled('transport'):
             trace.mutter('host: %r, user: %r, port: %r, path: %r',
                          self._host, self._username, self._port, self._path)
         self._client = _client

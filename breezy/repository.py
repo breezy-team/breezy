@@ -350,7 +350,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         revisions that might be present.  There is no direct replacement
         method.
         """
-        if 'evil' in debug.debug_flags:
+        if debug.debug_flag_enabled('evil'):
             mutter_callsite(2, "all_revision_ids is linear with history.")
         return self._all_revision_ids()
 

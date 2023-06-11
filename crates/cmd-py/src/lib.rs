@@ -334,6 +334,34 @@ impl BreezyTraceHandler {
 }
 
 #[pyfunction]
+fn set_debug_flag(flag: &str) -> PyResult<()> {
+    breezy::debug::set_debug_flag(flag);
+    Ok(())
+}
+
+#[pyfunction]
+fn unset_debug_flag(flag: &str) -> PyResult<()> {
+    breezy::debug::unset_debug_flag(flag);
+    Ok(())
+}
+
+#[pyfunction]
+fn get_debug_flags() -> PyResult<std::collections::HashSet<String>> {
+    Ok(breezy::debug::get_debug_flags())
+}
+
+#[pyfunction]
+fn clear_debug_flags() -> PyResult<()> {
+    breezy::debug::clear_debug_flags();
+    Ok(())
+}
+
+#[pyfunction]
+fn debug_flag_enabled(flag: &str) -> PyResult<bool> {
+    Ok(breezy::debug::debug_flag_enabled(flag))
+}
+
+#[pyfunction]
 fn str_tdelta(delt: Option<f64>) -> PyResult<String> {
     Ok(breezy::progress::str_tdelta(delt))
 }
@@ -444,6 +472,11 @@ fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_brz_log_filename, m)?)?;
     m.add_function(wrap_pyfunction!(get_brz_log_filename, m)?)?;
     m.add_class::<BreezyTraceHandler>()?;
+    m.add_function(wrap_pyfunction!(set_debug_flag, m)?)?;
+    m.add_function(wrap_pyfunction!(unset_debug_flag, m)?)?;
+    m.add_function(wrap_pyfunction!(clear_debug_flags, m)?)?;
+    m.add_function(wrap_pyfunction!(get_debug_flags, m)?)?;
+    m.add_function(wrap_pyfunction!(debug_flag_enabled, m)?)?;
     m.add_function(wrap_pyfunction!(str_tdelta, m)?)?;
     m.add_function(wrap_pyfunction!(debug_memory_proc, m)?)?;
     m.add_function(wrap_pyfunction!(rcp_location_to_url, m)?)?;

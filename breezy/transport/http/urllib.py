@@ -290,7 +290,7 @@ class HTTPConnection(AbstractHTTPConnection, http.client.HTTPConnection):  # typ
         # ca_certs is ignored, it's only relevant for https
 
     def connect(self):
-        if 'http' in debug.debug_flags:
+        if debug.debug_flag_enabled('http'):
             self._mutter_connect()
         http.client.HTTPConnection.connect(self)
         self._wrap_socket_for_reporting(self.sock)
@@ -308,7 +308,7 @@ class HTTPSConnection(AbstractHTTPConnection, http.client.HTTPSConnection):  # t
         self.ca_certs = ca_certs
 
     def connect(self):
-        if 'http' in debug.debug_flags:
+        if debug.debug_flag_enabled('http'):
             self._mutter_connect()
         http.client.HTTPConnection.connect(self)
         self._wrap_socket_for_reporting(self.sock)
@@ -659,8 +659,8 @@ class AbstractHTTPHandler(urllib.request.AbstractHTTPHandler):
                                      request.data,
                                      headers,
                                      encode_chunked=(headers.get('Transfer-Encoding') == 'chunked'))
-            if 'http' in debug.debug_flags:
-                trace.mutter(f'> {method} {url}')
+            if debug.debug_flag_enabled('http'):
+                trace.mutter('> %s %s', method, url)
                 hdrs = []
                 for k, v in headers.items():
                     # People are often told to paste -Dhttp output to help
@@ -712,9 +712,10 @@ class AbstractHTTPHandler(urllib.request.AbstractHTTPHandler):
             resp.msg = r.reason
             resp.version = r.version
             if self._debuglevel >= 2:
-                print(f'Create addinfourl: {resp!r}')
-                print(f'  For: {request.get_method()!r}({request.get_full_url()!r})')
-            if 'http' in debug.debug_flags:
+                print('Create addinfourl: %r' % resp)
+                print('  For: {!r}({!r})'.format(request.get_method(),
+                                         request.get_full_url()))
+            if debug.debug_flag_enabled('http'):
                 version = 'HTTP/%d.%d'
                 try:
                     version = version % (resp.version / 10,
@@ -1857,7 +1858,7 @@ class HttpTransport(ConnectedTransport):
                     return self.data.decode()
 
             def read(self, amt=None):
-                if amt is None and 'evil' in debug.debug_flags:
+                if amt is None and debug.debug_flag_enabled('evil'):
                     mutter_callsite(4, "reading full response.")
                 return self._actual.read(amt)
 
@@ -2023,7 +2024,7 @@ class HttpTransport(ConnectedTransport):
 
             # Turn it into a list, we will iterate it several times
             coalesced = list(coalesced)
-            if 'http' in debug.debug_flags:
+            if debug.debug_flag_enabled('http'):
                 mutter('http readv of %s  offsets => %s collapsed %s',
                        relpath, len(offsets), len(coalesced))
 

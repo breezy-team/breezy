@@ -422,7 +422,7 @@ class TestPull(tests.TestCaseWithTransport):
         # this simulates what would happen across the network, where
         # interdifferingserializer is not active
 
-        debug.debug_flags.add('IDS_never')
+        debug.set_debug_flag('IDS_never')
         # TestCase take care of restoring them
 
         from_tree = self.make_branch_and_tree('from', format='2a')

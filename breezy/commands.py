@@ -775,7 +775,7 @@ class Command:
             # inherit state. Before we reset it, log any activity, so that it
             # gets properly tracked.
             ui.ui_factory.log_transport_activity(
-                display=('bytes' in debug.debug_flags))
+                display=(debug.debug_flag_enabled('bytes')))
             trace.set_verbosity_level(0)
 
     def _setup_run(self):
@@ -1157,7 +1157,7 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         elif a == '--profile-imports':
             pass  # already handled in startup script Bug #588277
         elif a.startswith('-D'):
-            debug.debug_flags.add(a[2:])
+            debug.set_debug_flag(a[2:])
         elif a.startswith('-O'):
             override_config.append(a[2:])
         else:
@@ -1224,7 +1224,7 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         # reset, in case we may do other commands later within the same
         # process. Commands that want to execute sub-commands must propagate
         # --verbose in their own way.
-        if 'memory' in debug.debug_flags:
+        if debug.debug_flag_enabled('memory'):
             trace.debug_memory('Process status after command:', short=False)
         option._verbosity_level = saved_verbosity_level
         # Reset the overrides

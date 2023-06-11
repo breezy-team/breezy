@@ -461,8 +461,8 @@ class TextProgressView:
             else:
                 completion_fraction = \
                     self._last_task._overall_completion_fraction() or 0
-            if (completion_fraction < self._fraction and 'progress' in
-                    debug.debug_flags):
+            if (completion_fraction < self._fraction and
+                    debug.debug_flags_enabled('progress')):
                 debug.set_trace()
             self._fraction = completion_fraction
             markers = int(round(float(cols) * completion_fraction)) - 1
@@ -573,7 +573,7 @@ class TextProgressView:
             self._bytes_by_direction[direction] += byte_count
         else:
             self._bytes_by_direction['unknown'] += byte_count
-        if 'no_activity' in debug.debug_flags:
+        if debug.debug_flag_enabled('no_activity'):
             # Can be used as a workaround if
             # <https://launchpad.net/bugs/321935> reappears and transport
             # activity is cluttering other output.  However, thanks to

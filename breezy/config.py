@@ -1629,7 +1629,7 @@ class AuthenticationConfig:
             # Decode the password in the credentials (or get one)
             self.decode_password(credentials,
                                  auth_def.get('password_encoding', None))
-            if 'auth' in debug.debug_flags:
+            if debug.debug_flag_enabled('auth'):
                 trace.mutter("Using authentication section: %r", auth_def_name)
             break
 

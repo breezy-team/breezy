@@ -426,7 +426,7 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
     def _write_out(self, bytes):
         tstart = osutils.perf_counter()
         osutils.send_all(self.socket, bytes, self._report_activity)
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             thread_id = _thread.get_ident()
             trace.mutter('%12s: [%s] %d bytes to the socket in %.3fs'
                          % ('wrote', thread_id, len(bytes),
@@ -752,12 +752,12 @@ class SmartClientMedium(SmartMedium):
         # can be based on what we've seen so far.
         self._remote_version_is_before = None
         # Install debug hook function if debug flag is set.
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             global _debug_counter
             if _debug_counter is None:
                 _debug_counter = _DebugCounter()
             _debug_counter.track(self)
-        if 'hpss_client_no_vfs' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss_client_no_vfs'):
             global _vfs_refuser
             if _vfs_refuser is None:
                 _vfs_refuser = _VfsRefuser()
@@ -798,7 +798,7 @@ class SmartClientMedium(SmartMedium):
             trace.mutter(
                 "_remember_remote_is_before(%r) called, but "
                 "_remember_remote_is_before(%r) was called previously.", version_tuple, self._remote_version_is_before)
-            if 'hpss' in debug.debug_flags:
+            if debug.debug_flag_enabled('hpss'):
                 ui.ui_factory.show_warning(
                     "_remember_remote_is_before(%r) called, but "
                     "_remember_remote_is_before(%r) was called previously."

@@ -631,7 +631,7 @@ class Commit:
             self.pb_stage_name = "Running %s hooks [%s]" % \
                 (hook_name, Branch.hooks.get_hook_name(hook))
             self._emit_progress()
-            if 'hooks' in debug.debug_flags:
+            if debug.debug_flag_enabled('hooks'):
                 mutter("Invoking commit hook: %r", hook)
             if hook_name == "post_commit":
                 hook(hook_local, hook_master, old_revno, old_revid, new_revno,

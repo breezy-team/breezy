@@ -55,7 +55,7 @@ from . import bedding, debug, osutils, plugin, trace
 
 
 def report_bug(exc_info, stderr):
-    if ('no_apport' in debug.debug_flags) or \
+    if (debug.debug_flag_enabled('no_apport')) or \
             os.environ.get('APPORT_DISABLE', None):
         return report_bug_legacy(exc_info, stderr)
     try:

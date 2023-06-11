@@ -276,7 +276,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         data = self._medium_request.read_bytes(next_read_size)
         if data == b'':
             # end of file encountered reading from server
-            if 'hpss' in debug.debug_flags:
+            if debug.debug_flag_enabled('hpss'):
                 mutter(
                     'decoder state: buf[:10]=%r, state_accept=%s',
                     self._protocol_decoder._get_in_buffer()[:10],
@@ -298,7 +298,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         self._wait_for_response_args()
         if not expect_body:
             self._wait_for_response_end()
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             mutter('   result:   %r', self.args)
         if self.status == b'E':
             self._wait_for_response_end()
@@ -319,7 +319,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         if self._body is None:
             self._wait_for_response_end()
             body_bytes = b''.join(self._bytes_parts)
-            if 'hpss' in debug.debug_flags:
+            if debug.debug_flag_enabled('hpss'):
                 mutter('              %d body bytes read', len(body_bytes))
             self._body = BytesIO(body_bytes)
             self._bytes_parts = None
@@ -329,7 +329,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         while not self.finished_reading:
             while self._bytes_parts:
                 bytes_part = self._bytes_parts.popleft()
-                if 'hpssdetail' in debug.debug_flags:
+                if debug.debug_flag_enabled('hpssdetail'):
                     mutter('              %d byte part read', len(bytes_part))
                 yield bytes_part
             self._read_more()

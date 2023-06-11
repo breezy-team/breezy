@@ -148,7 +148,7 @@ class _SmartClientRequest:
 
     def _is_safe_to_send_twice(self):
         """Check if the current method is re-entrant safe."""
-        if self.body_stream is not None or 'noretry' in debug.debug_flags:
+        if self.body_stream is not None or debug.debug_flag_enabled('noretry'):
             # We can't restart a body stream that has already been consumed.
             return False
         from breezy.bzr.smart import request as _mod_request
@@ -266,7 +266,7 @@ class _SmartClientRequest:
 
             # Connection is dead, so close our end of it.
             self.client._medium.reset()
-            if (('noretry' in debug.debug_flags) or
+            if ((debug.debug_flag_enabled('noretry')) or
                 (self.body_stream is not None and
                     encoder.body_stream_started)):
                 # We can't restart a body_stream that has been partially
