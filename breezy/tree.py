@@ -699,7 +699,7 @@ class Tree:
             return []
         prefs = next(self.iter_search_rules([path], filter_pref_names))
         stk = filters._get_filter_stack_for(prefs)
-        if 'filters' in debug.debug_flags:
+        if debug.debug_flag_enabled('filters'):
             trace.note("*** {0} content-filter: {1} => {2!r}").format(path, prefs, stk)
         return stk
 

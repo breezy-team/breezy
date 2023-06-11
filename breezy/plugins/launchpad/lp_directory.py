@@ -116,7 +116,7 @@ class LaunchpadDirectory:
         path = _expand_user(path, url, _lp_login)
         if _lp_login is not None:
             result = self._resolve_locally(path, url, _api_resolver)
-            if 'launchpad' in debug.debug_flags:
+            if debug.debug_flag_enabled('launchpad'):
                 local_res = result
                 result = _api_resolver(path, url)
                 trace.note(gettext(
@@ -125,7 +125,7 @@ class LaunchpadDirectory:
         else:
             result = _api_resolver(path, url)
 
-        if 'launchpad' in debug.debug_flags:
+        if debug.debug_flag_enabled('launchpad'):
             trace.mutter("resolve_lp_path(%r) == %r", url, result)
 
         _warned_login = False

@@ -506,7 +506,7 @@ class GraphIndex:
         if self._nodes is not None:
             # We already did this
             return
-        if 'index' in debug.debug_flags:
+        if debug.debug_flag_enabled('index'):
             trace.mutter('Reading entire index %s',
                          self._transport.abspath(self._name))
         if stream is None:
@@ -592,7 +592,7 @@ class GraphIndex:
             There is no defined order for the result iteration - it will be in
             the most efficient order for the index.
         """
-        if 'evil' in debug.debug_flags:
+        if debug.debug_flag_enabled('evil'):
             trace.mutter_callsite(3,
                                   "iter_all_entries scales with size of history.")
         if self._nodes is None:
@@ -1462,7 +1462,7 @@ class CombinedGraphIndex:
         Returns a list of names corresponding to the hit_indices param.
         """
         indices_info = zip(self._index_names, self._indices)
-        if 'index' in debug.debug_flags:
+        if debug.debug_flag_enabled('index'):
             indices_info = list(indices_info)
             trace.mutter('CombinedGraphIndex reordering: currently %r, '
                          'promoting %r', indices_info, hit_indices)
@@ -1487,7 +1487,7 @@ class CombinedGraphIndex:
 
         self._indices = new_hit_indices + unhit_indices
         self._index_names = hit_names + unhit_names
-        if 'index' in debug.debug_flags:
+        if debug.debug_flag_enabled('index'):
             trace.mutter('CombinedGraphIndex reordered: %r', self._indices)
         return hit_names
 
@@ -1645,7 +1645,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
             defined order for the result iteration - it will be in the most
             efficient order for the index (in this case dictionary hash order).
         """
-        if 'evil' in debug.debug_flags:
+        if debug.debug_flag_enabled('evil'):
             trace.mutter_callsite(3,
                                   "iter_all_entries scales with size of history.")
         if self.reference_lists:

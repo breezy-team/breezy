@@ -376,7 +376,7 @@ class DirState:
         self._split_path_cache = {}
         self._bisect_page_size = DirState.BISECT_PAGE_SIZE
         self._sha1_provider = sha1_provider
-        if 'hashcache' in debug.debug_flags:
+        if debug.debug_flag_enabled('hashcache'):
             self._sha1_file = self._sha1_file_and_mutter
         else:
             self._sha1_file = self._sha1_provider.sha1
@@ -2645,10 +2645,10 @@ class DirState:
 
         :param new_inv: The inventory object to set current state from.
         """
-        if 'evil' in debug.debug_flags:
+        if debug.debug_flag_enabled('evil'):
             trace.mutter_callsite(1,
                                   "set_state_from_inventory called; please mutate the tree instead")
-        tracing = 'dirstate' in debug.debug_flags
+        tracing = debug.debug_flag_enabled('dirstate')
         if tracing:
             trace.mutter("set_state_from_inventory trace:")
         self._read_dirblocks_if_needed()

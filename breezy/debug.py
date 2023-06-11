@@ -23,7 +23,23 @@ See `bzr help debug-flags` or `breezy/help_topics/en/debug-flags.txt`
 for a list of the available options.
 """
 
-debug_flags = set()
+from . import _cmd_rs
+
+set_debug_flag = _cmd_rs.set_debug_flag
+unset_debug_flag = _cmd_rs.unset_debug_flag
+clear_debug_flags = _cmd_rs.clear_debug_flags
+get_debug_flags = _cmd_rs.get_debug_flags
+debug_flag_enabled = _cmd_rs.debug_flag_enabled
+
+
+def set_debug_flags(flags):
+    """Set the debug flags to the given list.
+
+    :param flags: A list of debug flags to enable.
+    """
+    clear_debug_flags()
+    for f in flags:
+        set_debug_flag(f)
 
 
 def set_debug_flags_from_config():
@@ -32,7 +48,7 @@ def set_debug_flags_from_config():
 
     c = config.GlobalStack()
     for f in c.get('debug_flags'):
-        debug_flags.add(f)
+        set_debug_flag(f)
 
 
 def set_trace():

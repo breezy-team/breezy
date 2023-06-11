@@ -457,7 +457,7 @@ class Graph:
         self._refine_unique_nodes(unique_searcher, all_unique_searcher,
                                   unique_tip_searchers, common_searcher)
         true_unique_nodes = unique_nodes.difference(common_searcher.seen)
-        if 'graph' in debug.debug_flags:
+        if debug.debug_flag_enabled('graph'):
             trace.mutter('Found %d truly unique nodes out of %d',
                          len(true_unique_nodes), len(unique_nodes))
         return true_unique_nodes
@@ -553,7 +553,7 @@ class Graph:
             for searcher in unique_tip_searchers:
                 total_stopped += len(searcher.stop_searching_any(
                     searcher.find_seen_ancestors(ancestor_all_unique)))
-        if 'graph' in debug.debug_flags:
+        if debug.debug_flag_enabled('graph'):
             trace.mutter('For %d unique nodes, created %d + 1 unique searchers'
                          ' (%d stopped search tips, %d common ancestors'
                          ' (%d stopped common)',
@@ -600,7 +600,7 @@ class Graph:
             tstart = osutils.perf_counter()
             nodes = all_unique_searcher.step()
             common_to_all_unique_nodes.update(nodes)
-            if 'graph' in debug.debug_flags:
+            if debug.debug_flag_enabled('graph'):
                 tdelta = osutils.perf_counter() - tstart
                 trace.mutter('all_unique_searcher step() took %.3fs'
                              'for %d nodes (%d total), iteration: %s',
@@ -625,7 +625,7 @@ class Graph:
             stopped = searcher.stop_searching_any(common_to_all_unique_nodes)
             will_search_set = frozenset(searcher._next_query)
             if not will_search_set:
-                if 'graph' in debug.debug_flags:
+                if debug.debug_flag_enabled('graph'):
                     trace.mutter('Unique searcher %s was stopped.'
                                  ' (%s iterations) %d nodes stopped',
                                  searcher._label,
@@ -651,7 +651,7 @@ class Graph:
                 next_searcher = searchers[0]
                 for searcher in searchers[1:]:
                     next_searcher.seen.intersection_update(searcher.seen)
-                if 'graph' in debug.debug_flags:
+                if debug.debug_flag_enabled('graph'):
                     trace.mutter('Combining %d searchers into a single'
                                  ' searcher searching %d nodes with'
                                  ' %d ancestry',
@@ -705,7 +705,7 @@ class Graph:
             next_unique_searchers = self._collapse_unique_searchers(
                 unique_tip_searchers, common_to_all_unique_nodes)
             if len(unique_tip_searchers) != len(next_unique_searchers):
-                if 'graph' in debug.debug_flags:
+                if debug.debug_flag_enabled('graph'):
                     trace.mutter('Collapsed %d unique searchers => %d'
                                  ' at %s iterations',
                                  len(unique_tip_searchers),

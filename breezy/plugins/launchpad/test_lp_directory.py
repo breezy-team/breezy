@@ -146,8 +146,8 @@ class LocalDirectoryURLTests(TestCaseInTempDir):
     def test_debug_launchpad_uses_resolver(self):
         self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/bzr',
                            'lp:bzr')
-        debug.debug_flags.add('launchpad')
-        self.addCleanup(debug.debug_flags.discard, 'launchpad')
+        debug.set_debug_flag('launchpad')
+        self.addCleanup(debug.unset_debug_flag, 'launchpad')
         self.assertResolve('bzr+ssh://fake-resolved', 'lp:bzr')
 
 

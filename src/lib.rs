@@ -28,6 +28,9 @@ pub mod progress;
 pub mod repository;
 pub mod tags;
 pub mod trace;
+
+pub mod debug;
+
 pub mod tree;
 pub mod treebuilder;
 

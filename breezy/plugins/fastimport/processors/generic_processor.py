@@ -563,7 +563,7 @@ class GenericProcessor(processor.ImportProcessor):
 
     def debug(self, msg, *args):
         """Output a debug message if the appropriate -D option was given."""
-        if "fast-import" in debug.debug_flags:
+        if debug.debug_flag_enabled('fast-import'):
             msg = f"{self._time_of_day()} DEBUG: {msg}"
             mutter(msg, *args)
 

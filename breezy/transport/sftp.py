@@ -126,7 +126,7 @@ class _SFTPReadvHelper:
             (c_offset.start, c_offset.length)
             for c_offset in coalesced]
 
-        if 'sftp' in debug.debug_flags:
+        if debug.debug_flag_enabled('sftp'):
             mutter('SFTP.readv(%s) %s offsets => %s coalesced => %s requests',
                    self.relpath, len(sorted_offsets), len(coalesced),
                    len(requests))
@@ -236,7 +236,7 @@ class _SFTPReadvHelper:
             del buffered_data[:]
             data_chunks.append((input_start, buffered))
         if data_chunks:
-            if 'sftp' in debug.debug_flags:
+            if debug.debug_flag_enabled('sftp'):
                 mutter('SFTP readv left with %d out-of-order bytes',
                        sum(len(x[1]) for x in data_chunks))
             # We've processed all the readv data, at this point, anything we
@@ -394,7 +394,7 @@ class SFTPTransport(ConnectedTransport):
             readv = getattr(fp, 'readv', None)
             if readv:
                 return self._sftp_readv(fp, offsets, relpath)
-            if 'sftp' in debug.debug_flags:
+            if debug.debug_flag_enabled('sftp'):
                 mutter('seek and read %s offsets', len(offsets))
             return self._seek_and_read(fp, offsets, relpath)
         except (OSError, SFTPError) as e:

@@ -3794,7 +3794,7 @@ class Test_SmartClientRequest(tests.TestCase):
         self.assertEqual(b'content\n', response_handler.read_body_bytes())
 
     def test__call_noretry_get_bytes(self):
-        debug.debug_flags.add('noretry')
+        debug.set_debug_flag('noretry')
         response = self.make_response((b'ok',), b'content\n')
         output, vendor, smart_client = self.make_client_with_failing_medium(
             fail_at_write=False, response=response)
@@ -3931,7 +3931,7 @@ class Test_SmartClientRequest(tests.TestCase):
                          output.getvalue())
 
     def test__send_disabled_retry(self):
-        debug.debug_flags.add('noretry')
+        debug.set_debug_flag('noretry')
         output, vendor, smart_client = self.make_client_with_failing_medium()
         smart_request = client._SmartClientRequest(smart_client, b'hello', ())
         self.assertRaises(ConnectionResetError, smart_request._send, 3)

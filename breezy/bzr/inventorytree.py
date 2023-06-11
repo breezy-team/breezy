@@ -239,7 +239,7 @@ class InventoryTree(Tree):
             return inventory.id2path(file_id)
         except errors.NoSuchId:
             if recurse == 'down':
-                if 'evil' in debug.debug_flags:
+                if debug.debug_flag_enabled('evil'):
                     trace.mutter_callsite(
                         2, "id2path with nested trees scales with tree size.")
                 for path in self.iter_references():

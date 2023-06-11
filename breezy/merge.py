@@ -1570,7 +1570,7 @@ class WeaveMerger(Merge3Merger):
         else:
             base = None
         plan = self._generate_merge_plan(this_path, base)
-        if 'merge' in debug.debug_flags:
+        if debug.debug_flag_enabled('merge'):
             plan = list(plan)
             trans_id = self.tt.trans_id_file_id(file_id)
             name = self.tt.final_name(trans_id) + '.plan'

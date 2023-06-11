@@ -101,7 +101,7 @@ class AllInOneRepository(VersionedFileRepository):
 
     def _all_possible_ids(self):
         """Return all the possible revisions that we could find."""
-        if 'evil' in debug.debug_flags:
+        if debug.debug_flag_enabled('evil'):
             trace.mutter_callsite(
                 3, "_all_possible_ids scales with size of history.")
         with self.lock_read():
@@ -186,7 +186,7 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
 
     def _all_possible_ids(self):
         """Return all the possible revisions that we could find."""
-        if 'evil' in debug.debug_flags:
+        if debug.debug_flag_enabled('evil'):
             trace.mutter_callsite(
                 3, "_all_possible_ids scales with size of history.")
         with self.lock_read():

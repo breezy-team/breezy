@@ -415,7 +415,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
 
     def _get_root_inventory(self):
         """Get the inventory for the tree. This is only valid within a lock."""
-        if 'evil' in debug.debug_flags:
+        if debug.debug_flag_enabled('evil'):
             trace.mutter_callsite(
                 2, "accessing .inventory forces a size of tree translation.")
         if self._inventory is not None:
@@ -458,7 +458,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             entry = self._get_entry(file_id=file_id)
             if entry == (None, None):
                 if recurse == 'down':
-                    if 'evil' in debug.debug_flags:
+                    if debug.debug_flag_enabled('evil'):
                         trace.mutter_callsite(
                             2, "Tree.id2path scans all nested trees.")
                     for nested_path in self.iter_references():
@@ -1753,7 +1753,7 @@ class DirStateRevisionTree(InventoryTree):
             entry = self._get_entry(file_id=file_id)
             if entry == (None, None):
                 if recurse == 'down':
-                    if 'evil' in debug.debug_flags:
+                    if debug.debug_flag_enabled('evil'):
                         trace.mutter_callsite(
                             2, "Tree.id2path scans all nested trees.")
 

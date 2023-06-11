@@ -1463,9 +1463,6 @@ class TestShaFileByName(tests.TestCaseInTempDir):
 class TestResourceLoading(tests.TestCaseInTempDir):
 
     def test_resource_string(self):
-        # test resource in breezy
-        text = osutils.resource_string('breezy', 'debug.py')
-        self.assertContainsRe(text, "debug_flags = set()")
         # test resource under breezy
         text = osutils.resource_string('breezy.ui', 'text.py')
         self.assertContainsRe(text, "class TextUIFactory")
