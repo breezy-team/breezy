@@ -33,7 +33,6 @@ import socket
 
 from breezy import (
     config,
-    trace,
     )
 """)
 
@@ -422,7 +421,8 @@ def failed_to_load_extension(exception):
     # with 10 warnings.
     exception_str = str(exception)
     if exception_str not in _extension_load_failures:
-        trace.mutter(f"failed to load compiled extension: {exception_str}")
+        from .trace import mutter
+        mutter(f"failed to load compiled extension: {exception_str}")
         _extension_load_failures.append(exception_str)
 
 
@@ -441,8 +441,8 @@ def report_extension_load_failures():
     # https://bugs.launchpad.net/bzr/+bug/430529
 
 
-from ._osutils_rs import _accessible_normalized_filename  # noqa: F401
-from ._osutils_rs import (_inaccessible_normalized_filename, check_legal_path,
+from ._osutils_rs import (_accessible_normalized_filename,  # noqa: F401
+                          _inaccessible_normalized_filename, check_legal_path,
                           chunks_to_lines, chunks_to_lines_iter, get_host_name,
                           link_or_copy, local_concurrency, normalized_filename,
                           normalizes_filenames, split_lines)
@@ -1153,7 +1153,8 @@ def fdatasync(fileno):
             # raise ENOTSUP. However, we are calling fdatasync to be helpful
             # and reduce the chance of corruption-on-powerloss situations. It
             # is not a mandatory call, so it is ok to suppress failures.
-            trace.mutter(f"ignoring error calling fdatasync: {e}")
+            from .trace import mutter
+            mutter(f"ignoring error calling fdatasync: {e}")
             if getattr(e, 'errno', None) not in _fdatasync_ignored:
                 raise
 

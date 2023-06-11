@@ -21,7 +21,6 @@ import os
 import socket
 import sys
 import tempfile
-import time
 from io import BytesIO
 
 from .. import errors, osutils, tests, trace
