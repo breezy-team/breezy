@@ -353,7 +353,6 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             present in the current inventory or an error will occur. It must
             not be None, but rather a valid file id.
         """
-        from .inventory import InventoryDirectory
         inv = self._inventory
         # TODO: it might be nice to exit early if there was nothing
         # to do, saving us from trigger a sync on unlock.

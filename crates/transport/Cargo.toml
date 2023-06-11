@@ -15,8 +15,8 @@ authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@j
 breezy-osutils = { path = "../osutils" }
 url = "2.2.2"
 tempfile = "3"
-pyo3 = { version = ">= 0.17, <0.19", optional = true }
-pyo3-file = { git = "https://github.com/omerbenamram/pyo3-file", optional = true }
+pyo3 = { version = ">= 0.19", optional = true }
+pyo3-file = { git = "https://github.com/breezy-team/pyo3-file", optional = true }
 breezy-urlutils = { path = "../urlutils" }
 path-clean = "1"
 walkdir = "2.3"
