@@ -138,8 +138,7 @@ class CommitHandler(processor.CommitHandler):
             # Need to explicitly add the root entry for the first revision
             # and for non rich-root inventories
             root_id = inventory.ROOT_ID
-            root_ie = inventory.InventoryDirectory(root_id, '', None)
-            root_ie.revision = self.revision_id
+            root_ie = inventory.InventoryDirectory(root_id, '', None, self.revision_id)
             self._add_entry((old_path, '', root_id, root_ie))
 
     def _init_inventory(self):
@@ -347,21 +346,22 @@ class CommitHandler(processor.CommitHandler):
         # Create the new InventoryEntry
         basename, parent_id = self._ensure_directory(path, inv)
         file_id = self.bzr_file_id(path)
-        ie = inventory.make_entry(kind, basename, parent_id, file_id)
-        ie.revision = self.revision_id
         if kind == 'file':
-            ie.executable = is_executable
+            ie = inventory.InventoryFile(
+                file_id, basename, parent_id, self.revision_id, executable=is_executable,
+                text_sha1=osutils.sha_string(data), text_size=len(data))
             # lines = osutils.split_lines(data)
-            ie.text_sha1 = osutils.sha_string(data)
-            ie.text_size = len(data)
             self.data_for_commit[file_id] = data
         elif kind == 'directory':
+            ie = inventory.InventoryDirectory(
+                file_id, basename, parent_id, self.revision_id)
             self.directory_entries[path] = ie
             # There are no lines stored for a directory so
             # make sure the cache used by get_lines knows that
             self.data_for_commit[file_id] = b''
         elif kind == 'symlink':
-            ie.symlink_target = self._decode_path(data)
+            ie = inventory.InventoryLink(
+                file_id, basename, parent_id, self.revision_id, symlink_target=self._decode_path(data))
             # There are no lines stored for a symlink so
             # make sure the cache used by get_lines knows that
             self.data_for_commit[file_id] = b''
@@ -741,16 +741,16 @@ class CommitHandler(processor.CommitHandler):
 
         # Create the new InventoryEntry
         kind = old_ie.kind
-        basename, parent_id = self._ensure_directory(new_path,
-                                                     self.basis_inventory)
-        ie = inventory.make_entry(kind, basename, parent_id, file_id)
-        ie.revision = self.revision_id
+        basename, parent_id = self._ensure_directory(new_path, self.basis_inventory)
         if kind == 'file':
-            ie.executable = old_ie.executable
-            ie.text_sha1 = old_ie.text_sha1
-            ie.text_size = old_ie.text_size
+            ie = inventory.InventoryFile(
+                file_id, basename, parent_id, self.revision_id,
+                executable=old_ie.executable, text_sha1=old_ie.text_sha1,
+                text_size=old_ie.text_size)
         elif kind == 'symlink':
-            ie.symlink_target = old_ie.symlink_target
+            ie = inventory.InventoryLink(
+                file_id, basename, parent_id, self.revision_id,
+                symlink_target=old_ie.symlink_target)
 
         # Record it
         self.record_new(new_path, ie)
