@@ -26,15 +26,15 @@ pub fn chk_inventory_entry_to_bytes(entry: &Entry) -> Vec<u8> {
             parent_id,
             ..
         } => {
-            ts = format!("{}", text_size.unwrap());
+            ts = format!("{}", text_size.expect("no text size set"));
 
             (
                 &b"file"[..],
                 vec![
                     parent_id.as_bytes(),
                     name.as_bytes(),
-                    revision.as_ref().unwrap().as_bytes(),
-                    text_sha1.as_ref().unwrap().as_slice(),
+                    revision.as_ref().expect("no revision set").as_bytes(),
+                    text_sha1.as_ref().expect("no text sha1 set").as_slice(),
                     ts.as_bytes(),
                     if *executable { b"Y" } else { b"N" },
                 ],
@@ -50,12 +50,16 @@ pub fn chk_inventory_entry_to_bytes(entry: &Entry) -> Vec<u8> {
             vec![
                 parent_id.as_bytes(),
                 name.as_bytes(),
-                revision.as_ref().unwrap().as_bytes(),
+                revision.as_ref().expect("no revision set").as_bytes(),
             ],
         ),
         Entry::Root { revision, .. } => (
             &b"dir"[..],
-            vec![&b""[..], &b""[..], revision.as_ref().unwrap().as_bytes()],
+            vec![
+                &b""[..],
+                &b""[..],
+                revision.as_ref().expect("no revision set").as_bytes(),
+            ],
         ),
         Entry::Link {
             name,
@@ -68,8 +72,11 @@ pub fn chk_inventory_entry_to_bytes(entry: &Entry) -> Vec<u8> {
             vec![
                 parent_id.as_bytes(),
                 name.as_bytes(),
-                revision.as_ref().unwrap().as_bytes(),
-                symlink_target.as_ref().unwrap().as_bytes(),
+                revision.as_ref().expect("no revision set").as_bytes(),
+                symlink_target
+                    .as_ref()
+                    .expect("no symlink target set")
+                    .as_bytes(),
             ],
         ),
         Entry::TreeReference {
@@ -83,8 +90,11 @@ pub fn chk_inventory_entry_to_bytes(entry: &Entry) -> Vec<u8> {
             vec![
                 parent_id.as_bytes(),
                 name.as_bytes(),
-                revision.as_ref().unwrap().as_bytes(),
-                reference_revision.as_ref().unwrap().as_bytes(),
+                revision.as_ref().expect("no revision set").as_bytes(),
+                reference_revision
+                    .as_ref()
+                    .expect("no reference revision set")
+                    .as_bytes(),
             ],
         ),
     };
