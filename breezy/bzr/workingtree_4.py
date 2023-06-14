@@ -1857,14 +1857,15 @@ class DirStateRevisionTree(InventoryTree):
         current_id = root_key[2]
         if current_entry[parent_index][0] != b'd':
             raise AssertionError()
-        inv = Inventory(root_id=current_id, revision_id=self._revision_id)
         if current_entry[parent_index][4] == b"":
-            inv.root.revision = None
+            root_revision = None
         else:
-            inv.root.revision = current_entry[parent_index][4]
+            root_revision = current_entry[parent_index][4]
+        inv = Inventory(revision_id=self._revision_id, root_id=None)
+        root = InventoryDirectory(current_id, "", None, root_revision)
+        inv.add(root)
         # Turn some things into local variables
         minikind_to_kind = dirstate.DirState._minikind_to_kind
-        factory = entry_factory
         utf8_decode = cache_utf8._utf8_decode
         # we could do this straight out of the dirstate; it might be fast
         # and should be profiled - RBC 20070216
@@ -1886,19 +1887,26 @@ class DirStateRevisionTree(InventoryTree):
                 name_unicode = utf8_decode(name)[0]
                 file_id = key[2]
                 kind = minikind_to_kind[minikind]
-                inv_entry = factory[kind](file_id, name_unicode,
-                                          parent_ie.file_id)
-                inv_entry.revision = revid
                 if kind == 'file':
-                    inv_entry.executable = bool(executable)
-                    inv_entry.text_size = size
-                    inv_entry.text_sha1 = fingerprint
+                    inv_entry = InventoryFile(
+                        file_id, name_unicode,
+                        parent_ie.file_id, revision=revid,
+                        executable=bool(executable),
+                        text_size=size, text_sha1=fingerprint)
                 elif kind == 'directory':
+                    inv_entry = InventoryDirectory(
+                        file_id, name_unicode, parent_ie.file_id, revision=revid)
+
                     parent_ies[(dirname + b'/' + name).strip(b'/')] = inv_entry
                 elif kind == 'symlink':
-                    inv_entry.symlink_target = utf8_decode(fingerprint)[0]
+                    inv_entry = InventoryLink(
+                        file_id, name_unicode, parent_ie.file_id,
+                        revision=revid,
+                        symlink_target=utf8_decode(fingerprint)[0])
                 elif kind == 'tree-reference':
-                    inv_entry.reference_revision = fingerprint or None
+                    inv_entry = TreeReference(
+                        file_id, name_unicode, parent_ie.file_id,
+                        revision=revid, reference_revision=fingerprint or None)
                 else:
                     raise AssertionError(
                         f"cannot convert entry {entry!r} into an InventoryEntry")
