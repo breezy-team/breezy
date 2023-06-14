@@ -59,7 +59,8 @@ from ..tree import FileTimestampUnavailable, InterTree, MissingNestedTree
 from ..workingtree import WorkingTree
 from . import dirstate
 from .inventory import (ROOT_ID, DuplicateFileId, Inventory, InventoryEntry,
-                        entry_factory)
+                        entry_factory, InventoryFile, InventoryDirectory,
+                        TreeReference, InventoryLink)
 from .inventory_delta import InventoryDelta
 from .inventorytree import (InterInventoryTree, InventoryRevisionTree,
                             InventoryTree)
@@ -318,7 +319,6 @@ class DirStateWorkingTree(InventoryWorkingTree):
         inv = Inventory(root_id=current_id)
         # Turn some things into local variables
         minikind_to_kind = dirstate.DirState._minikind_to_kind
-        factory = entry_factory
         utf8_decode = cache_utf8._utf8_decode
         # we could do this straight out of the dirstate; it might be fast
         # and should be profiled - RBC 20070216
@@ -339,21 +339,31 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 name_unicode = utf8_decode(name)[0]
                 file_id = key[2]
                 kind = minikind_to_kind[minikind]
-                inv_entry = factory[kind](file_id, name_unicode,
-                                          parent_ie.file_id)
                 if kind == 'file':
-                    # This is only needed on win32, where this is the only way
+                    # The executable bit is only needed on win32, where this is the only way
                     # we know the executable bit.
-                    inv_entry.executable = bool(executable)
-                    # not strictly needed: working tree
-                    # inv_entry.text_size = size
-                    # inv_entry.text_sha1 = sha1
+                    # the text {sha1,size} fields are optional
+                    inv_entry = InventoryFile(
+                        file_id, name_unicode, parent_ie.file_id,
+                        revision=None,
+                        executable=(executable != 0))
                 elif kind == 'directory':
+                    inv_entry = InventoryDirectory(
+                        file_id, name_unicode, parent_ie.file_id,
+                        revision=None)
                     # add this entry to the parent map.
                     parent_ies[(dirname + b'/' + name).strip(b'/')] = inv_entry
                 elif kind == 'tree-reference':
-                    inv_entry.reference_revision = link_or_sha1 or None
-                elif kind != 'symlink':
+                    inv_entry = TreeReference(
+                        file_id, name_unicode, parent_ie.file_id,
+                        revision=None,
+                        reference_revision=link_or_sha1 or None)
+                elif kind == 'symlink':
+                    inv_entry = InventoryLink(
+                        file_id, name_unicode, parent_ie.file_id,
+                        revision=None,
+                        symlink_target=utf8_decode(link_or_sha1)[0])
+                else:
                     raise AssertionError(f"unknown kind {kind!r}")
                 try:
                     inv.add(inv_entry)
