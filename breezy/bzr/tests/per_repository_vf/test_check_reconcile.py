@@ -829,15 +829,14 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         if root_revision is not None:
             inv.root.revision = root_revision
         file_id = b'a-file-id'
-        entry = InventoryFile(file_id, 'a file name', b'TREE_ROOT')
         if inv_revision is not None:
-            entry.revision = inv_revision
+            entry_revision = inv_revision
         else:
-            entry.revision = revision
-        entry.text_size = 0
+            entry_revision = revision
         if file_contents is None:
-            file_contents = b'%sline\n' % entry.revision
-        entry.text_sha1 = osutils.sha_string(file_contents)
+            file_contents = b'%sline\n' % entry_revision
+        text_sha1 = osutils.sha_string(file_contents)
+        entry = InventoryFile(file_id, 'a file name', b'TREE_ROOT', revision=entry_revision, text_size=0, text_sha1=text_sha1)
         inv.add(entry)
         if make_file_version:
             repo.texts.add_lines((file_id, revision),

@@ -28,7 +28,7 @@ from ....tests.matchers import MatchesAncestry
 from ....tests.scenarios import load_tests_apply_scenarios
 from ....uncommit import uncommit
 from ...bzrdir import BzrDir
-from ...inventory import Inventory
+from ...inventory import Inventory, InventoryDirectory
 from .helpers import TestCaseWithBrokenRevisionIndex
 
 load_tests = load_tests_apply_scenarios
@@ -87,8 +87,9 @@ class TestsNeedingReweave(TestReconcile):
         repo = self.make_repository('inventory_without_revision')
         repo.lock_write()
         repo.start_write_group()
-        inv = Inventory(revision_id=b'missing')
-        inv.root.revision = b'missing'
+        inv = Inventory(revision_id=b'missing', root_id=None)
+        root = InventoryDirectory(b'TREE_ROOT', "", None, b'missing')
+        inv.add(root)
         repo.add_inventory(b'missing', inv, [])
         repo.commit_write_group()
         repo.unlock()
@@ -96,8 +97,9 @@ class TestsNeedingReweave(TestReconcile):
         def add_commit(repo, revision_id, parent_ids):
             repo.lock_write()
             repo.start_write_group()
-            inv = Inventory(revision_id=revision_id)
-            inv.root.revision = revision_id
+            inv = Inventory(revision_id=revision_id, root_id=None)
+            root = InventoryDirectory(b'TREE_ROOT', "", None, revision_id)
+            inv.add(root)
             root_id = inv.root.file_id
             sha1 = repo.add_inventory(revision_id, inv, parent_ids)
             repo.texts.add_lines((root_id, revision_id), [], [])
@@ -291,8 +293,9 @@ class TestsNeedingReweave(TestReconcile):
 
     def test_text_from_ghost_revision(self):
         repo = self.make_repository('text-from-ghost')
-        inv = Inventory(revision_id=b'final-revid')
-        inv.root.revision = b'root-revid'
+        inv = Inventory(revision_id=b'final-revid', root_id=None)
+        root = InventoryDirectory(b'TREE_ROOT', "", None, b'root-revid')
+        inv.add(root)
         ie = inv.add_path('bla', 'file', b'myfileid')
         ie.revision = b'ghostrevid'
         ie.text_size = 42
@@ -364,8 +367,9 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         repo = self.first_tree.branch.repository
         repo.lock_write()
         repo.start_write_group()
-        inv = Inventory(revision_id=b'wrong-first-parent')
-        inv.root.revision = b'wrong-first-parent'
+        inv = Inventory(revision_id=b'wrong-first-parent', root_id=None)
+        root = InventoryDirectory(b'TREE_ROOT', "", None, b'wrong-first-parent')
+        inv.add(root)
         if repo.supports_rich_root():
             root_id = inv.root.file_id
             repo.texts.add_lines((root_id, b'wrong-first-parent'), [], [])
@@ -386,8 +390,9 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         repo = repo_secondary
         repo.lock_write()
         repo.start_write_group()
-        inv = Inventory(revision_id=b'wrong-secondary-parent')
-        inv.root.revision = b'wrong-secondary-parent'
+        inv = Inventory(revision_id=b'wrong-secondary-parent', root_id=None)
+        root = InventoryDirectory(b'TREE_ROOT', "", None, b'wrong-secondary-parent')
+        inv.add(root)
         if repo.supports_rich_root():
             root_id = inv.root.file_id
             repo.texts.add_lines((root_id, b'wrong-secondary-parent'), [], [])
