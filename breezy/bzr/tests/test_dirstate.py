@@ -2485,9 +2485,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
             ie = inventory.InventoryDirectory(file_id, basename, dir_id)
             dir_ids[path] = file_id
         else:
-            ie = inventory.InventoryFile(file_id, basename, dir_id)
-            ie.text_size = 0
-            ie.text_sha1 = b''
+            ie = inventory.InventoryFile(file_id, basename, dir_id, text_size=0, text_sha1=b'')
         ie.revision = rev_id
         return ie
 
