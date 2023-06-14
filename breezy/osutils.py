@@ -334,20 +334,7 @@ size_sha_file = _osutils_rs.size_sha_file
 sha_file_by_name = _osutils_rs.sha_file_by_name
 sha_strings = _osutils_rs.sha_strings
 sha_string = _osutils_rs.sha_string
-
-
-def compare_files(a, b):
-    """Returns true if equal in contents."""
-    BUFSIZE = 4096
-    while True:
-        ai = a.read(BUFSIZE)
-        bi = b.read(BUFSIZE)
-        if ai != bi:
-            return False
-        if not ai:
-            return True
-
-
+compare_files = _osutils_rs.compare_files
 local_time_offset = _osutils_rs.local_time_offset
 format_date = _osutils_rs.format_date
 format_date_with_offset_in_original_timezone = _osutils_rs.format_date_with_offset_in_original_timezone
@@ -474,24 +461,9 @@ def delete_any(path):
         _delete_file_or_dir(path)
 
 
-def readlink(abspath):
-    """Return a string representing the path to which the symbolic link points.
-
-    :param abspath: The link absolute unicode path.
-
-    This his guaranteed to return the symbolic link in unicode in all python
-    versions.
-    """
-    link = os.fsencode(abspath)
-    target = os.readlink(link)
-    target = os.fsdecode(target)
-    return target
-
-
+readlink = _osutils_rs.readlink
 contains_whitespace = _osutils_rs.contains_whitespace
 contains_linebreaks = _osutils_rs.contains_linebreaks
-
-
 relpath = _osutils_rs.relpath
 
 
@@ -1080,22 +1052,7 @@ file_kind_from_stat_mode = _osutils_rs.kind_from_mode
 MIN_ABS_PATHLENGTH = _osutils_rs.MIN_ABS_PATHLENGTH
 
 
-if sys.platform == "win32":
-    def getchar():
-        import msvcrt
-        return msvcrt.getch()
-else:
-    def getchar():
-        import termios
-        import tty
-        fd = sys.stdin.fileno()
-        settings = termios.tcgetattr(fd)
-        try:
-            tty.setraw(fd)
-            ch = sys.stdin.read(1)
-        finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, settings)
-        return ch
+getchar = _osutils_rs.getchar
 
 
 class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):

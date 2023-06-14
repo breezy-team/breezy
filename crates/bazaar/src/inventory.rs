@@ -81,21 +81,50 @@ pub enum Entry {
 /// (reading a version 4 tree created a text_id field.)
 
 impl Entry {
-    pub fn new(kind: Kind, name: String, file_id: FileId, parent_id: Option<FileId>) -> Self {
+    pub fn new(
+        kind: Kind,
+        name: String,
+        file_id: FileId,
+        parent_id: Option<FileId>,
+        revision: Option<RevisionId>,
+        text_sha1: Option<Vec<u8>>,
+        text_size: Option<u64>,
+        executable: Option<bool>,
+        text_id: Option<Vec<u8>>,
+        symlink_target: Option<String>,
+        reference_revision: Option<RevisionId>,
+    ) -> Self {
         if !is_valid_name(&name) {
             panic!("Invalid name: {}", name);
         }
         match kind {
-            Kind::File => Entry::file(file_id, name, parent_id.unwrap()),
+            Kind::File => Entry::file(
+                file_id,
+                name,
+                parent_id.unwrap(),
+                revision,
+                text_sha1,
+                text_size,
+                executable,
+                text_id,
+            ),
             Kind::Directory => {
                 if let Some(parent_id) = parent_id {
-                    Entry::directory(file_id, None, parent_id, name)
+                    Entry::directory(file_id, name, parent_id, revision)
                 } else {
-                    Entry::root(file_id)
+                    Entry::root(file_id, revision)
                 }
             }
-            Kind::Symlink => Entry::link(file_id, name, parent_id.unwrap()),
-            Kind::TreeReference => Entry::tree_reference(file_id, name, parent_id.unwrap()),
+            Kind::Symlink => {
+                Entry::link(file_id, name, parent_id.unwrap(), revision, symlink_target)
+            }
+            Kind::TreeReference => Entry::tree_reference(
+                file_id,
+                name,
+                parent_id.unwrap(),
+                revision,
+                reference_revision,
+            ),
         }
     }
 
@@ -128,9 +157,9 @@ impl Entry {
 
     pub fn directory(
         file_id: FileId,
-        revision: Option<RevisionId>,
-        parent_id: FileId,
         name: String,
+        parent_id: FileId,
+        revision: Option<RevisionId>,
     ) -> Self {
         Self::Directory {
             file_id,
@@ -140,43 +169,62 @@ impl Entry {
         }
     }
 
-    pub fn root(file_id: FileId) -> Self {
-        Entry::Root {
-            file_id,
-            revision: None,
-        }
+    pub fn root(file_id: FileId, revision: Option<RevisionId>) -> Self {
+        Entry::Root { file_id, revision }
     }
 
-    pub fn file(file_id: FileId, name: String, parent_id: FileId) -> Self {
+    pub fn file(
+        file_id: FileId,
+        name: String,
+        parent_id: FileId,
+        revision: Option<RevisionId>,
+        text_sha1: Option<Vec<u8>>,
+        text_size: Option<u64>,
+        executable: Option<bool>,
+        text_id: Option<Vec<u8>>,
+    ) -> Self {
+        let executable = executable.unwrap_or(false);
         Entry::File {
             file_id,
             name,
             parent_id,
-            revision: None,
-            text_sha1: None,
-            text_size: None,
-            text_id: None,
-            executable: false,
+            revision,
+            text_sha1,
+            text_size,
+            text_id,
+            executable,
         }
     }
 
-    pub fn tree_reference(file_id: FileId, name: String, parent_id: FileId) -> Self {
+    pub fn tree_reference(
+        file_id: FileId,
+        name: String,
+        parent_id: FileId,
+        revision: Option<RevisionId>,
+        reference_revision: Option<RevisionId>,
+    ) -> Self {
         Entry::TreeReference {
             file_id,
-            revision: None,
-            reference_revision: None,
+            revision,
+            reference_revision,
             name,
             parent_id,
         }
     }
 
-    pub fn link(file_id: FileId, name: String, parent_id: FileId) -> Self {
+    pub fn link(
+        file_id: FileId,
+        name: String,
+        parent_id: FileId,
+        revision: Option<RevisionId>,
+        symlink_target: Option<String>,
+    ) -> Self {
         Entry::Link {
             file_id,
             name,
             parent_id,
-            symlink_target: None,
-            revision: None,
+            symlink_target,
+            revision,
         }
     }
 

@@ -9,7 +9,7 @@ use pyo3::class::basic::CompareOp;
 use pyo3::exceptions::{PyIndexError, PyKeyError, PyNotImplementedError};
 use pyo3::prelude::*;
 use pyo3::pyclass_init::PyClassInitializer;
-use pyo3::types::{PyBytes, PyDict};
+use pyo3::types::{PyBytes, PyDict, PyString};
 use pyo3::wrap_pyfunction;
 use pyo3::{create_exception, import_exception};
 use std::collections::HashMap;
@@ -281,17 +281,27 @@ struct InventoryFile();
 #[pymethods]
 impl InventoryFile {
     #[new]
-    fn new(file_id: FileId, name: String, parent_id: FileId) -> PyResult<(Self, InventoryEntry)> {
+    fn new(
+        file_id: FileId,
+        name: String,
+        parent_id: FileId,
+        revision: Option<RevisionId>,
+        text_sha1: Option<Vec<u8>>,
+        text_size: Option<u64>,
+        executable: Option<bool>,
+        text_id: Option<Vec<u8>>,
+    ) -> PyResult<(Self, InventoryEntry)> {
+        let executable = executable.unwrap_or(false);
         check_name(name.as_str())?;
         let entry = Entry::File {
             file_id,
             name,
             parent_id,
-            revision: None,
-            text_sha1: None,
-            text_size: None,
-            text_id: None,
-            executable: false,
+            revision,
+            text_sha1,
+            text_size,
+            text_id,
+            executable,
         };
         Ok((Self(), InventoryEntry(entry)))
     }
@@ -396,10 +406,8 @@ impl InventoryFile {
                 parent_id.to_object(py).as_ref(py).repr()?,
                 text_sha1
                     .as_ref()
-                    .map(|r| PyBytes::new(py, r).to_object(py))
-                    .to_object(py)
-                    .as_ref(py)
-                    .repr()?,
+                    .map(|s| PyBytes::new(py, s.as_slice()).repr())
+                    .unwrap_or_else(|| Ok(PyString::new(py, "None")))?,
                 text_size.to_object(py).as_ref(py).repr()?,
                 revision
                     .as_ref()
@@ -438,11 +446,13 @@ impl InventoryFile {
             "add_pending_item",
             (
                 rev_id.to_object(py),
-                ("texts", file_id.to_object(py), revision.to_object(py)),
+                (
+                    "texts",
+                    file_id.to_object(py),
+                    revision.as_ref().map(|p| p.to_object(py)),
+                ),
                 PyBytes::new(py, b"text").to_object(py),
-                text_sha1
-                    .as_ref()
-                    .map(|t| PyBytes::new(py, t.as_slice()).to_object(py)),
+                PyBytes::new(py, text_sha1.as_ref().unwrap()).to_object(py),
             ),
         )?;
 
@@ -471,6 +481,7 @@ impl InventoryDirectory {
         file_id: FileId,
         name: String,
         parent_id: Option<FileId>,
+        revision: Option<RevisionId>,
     ) -> PyResult<(Self, InventoryEntry)> {
         check_name(name.as_str())?;
         let entry = if let Some(parent_id) = parent_id {
@@ -478,13 +489,10 @@ impl InventoryDirectory {
                 file_id,
                 name,
                 parent_id,
-                revision: None,
+                revision,
             }
         } else {
-            Entry::Root {
-                file_id,
-                revision: None,
-            }
+            Entry::Root { file_id, revision }
         };
         Ok((Self(), InventoryEntry(entry)))
     }
@@ -633,14 +641,20 @@ struct InventoryLink();
 #[pymethods]
 impl InventoryLink {
     #[new]
-    fn new(file_id: FileId, name: String, parent_id: FileId) -> PyResult<(Self, InventoryEntry)> {
+    fn new(
+        file_id: FileId,
+        name: String,
+        parent_id: FileId,
+        revision: Option<RevisionId>,
+        symlink_target: Option<String>,
+    ) -> PyResult<(Self, InventoryEntry)> {
         check_name(name.as_str())?;
         let entry = Entry::Link {
             file_id,
             name,
             parent_id,
-            symlink_target: None,
-            revision: None,
+            symlink_target,
+            revision,
         };
         Ok((Self(), InventoryEntry(entry)))
     }
@@ -758,7 +772,14 @@ fn make_entry(
     kind: &str,
     name: &str,
     parent_id: Option<FileId>,
+    revision: Option<RevisionId>,
     file_id: Option<FileId>,
+    text_sha1: Option<Vec<u8>>,
+    text_size: Option<u64>,
+    executable: Option<bool>,
+    text_id: Option<Vec<u8>>,
+    symlink_target: Option<String>,
+    reference_revision: Option<RevisionId>,
 ) -> PyResult<PyObject> {
     let kind = match kind {
         "file" => Kind::File,
@@ -767,8 +788,24 @@ fn make_entry(
         "symlink" => Kind::Symlink,
         _ => panic!("Unknown kind"),
     };
-    let file_id = file_id.unwrap_or_else(|| FileId::generate(name));
-    entry_to_py(py, Entry::new(kind, name.to_string(), file_id, parent_id))
+    let parent_id = parent_id.map(FileId::from);
+    let file_id = file_id.map_or_else(|| FileId::generate(name), FileId::from);
+    entry_to_py(
+        py,
+        Entry::new(
+            kind,
+            name.to_string(),
+            file_id,
+            parent_id,
+            revision,
+            text_sha1,
+            text_size,
+            executable,
+            text_id,
+            symlink_target,
+            reference_revision,
+        ),
+    )
 }
 
 #[pyfunction]
