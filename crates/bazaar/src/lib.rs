@@ -59,11 +59,6 @@ impl FileId {
         Self::from(gen_ids::gen_root_id())
     }
 
-    #[deprecated]
-    pub fn bytes(&self) -> &[u8] {
-        &self.0
-    }
-
     pub fn as_bytes(&self) -> &[u8] {
         &self.0
     }
@@ -172,11 +167,6 @@ impl RevisionId {
 
     pub fn generate(username: &str, timestamp: Option<u64>) -> Self {
         Self::from(gen_ids::gen_revision_id(username, timestamp))
-    }
-
-    #[deprecated]
-    pub fn bytes(&self) -> &[u8] {
-        &self.0
     }
 
     pub fn as_bytes(&self) -> &[u8] {

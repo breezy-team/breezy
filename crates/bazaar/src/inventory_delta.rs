@@ -191,7 +191,7 @@ pub fn serialize_inventory_entry(e: &Entry) -> Result<Vec<u8>, InventoryDeltaSer
                     "reference_revision is None".to_string(),
                 ));
             }
-            v.extend_from_slice(reference_revision.as_ref().unwrap().bytes());
+            v.extend_from_slice(reference_revision.as_ref().unwrap().as_bytes());
             v
         }
     })
@@ -206,8 +206,8 @@ pub fn serialize_inventory_delta(
 ) -> Result<Vec<Vec<u8>>, InventoryDeltaSerializeError> {
     let mut lines = vec![
         format!("format: {}\n", FORMAT_1).into_bytes(),
-        vec![&b"parent: "[..], old_name.bytes(), &b"\n"[..]].concat(),
-        vec![&b"version: "[..], new_name.bytes(), &b"\n"[..]].concat(),
+        vec![&b"parent: "[..], old_name.as_bytes(), &b"\n"[..]].concat(),
+        vec![&b"version: "[..], new_name.as_bytes(), &b"\n"[..]].concat(),
         format!("versioned_root: {}\n", serialize_bool(versioned_root)).into_bytes(),
         format!("tree_references: {}\n", serialize_bool(tree_references)).into_bytes(),
     ];
@@ -292,7 +292,7 @@ fn delta_entry_to_line(
         parent_id = new_entry
             .parent_id()
             .as_ref()
-            .map_or(&b""[..], |x| x.bytes());
+            .map_or(&b""[..], |x| x.as_bytes());
         // Serialize unknown revisions as NULL_REVISION
         if new_entry.revision().is_none() {
             return Err(InventoryDeltaSerializeError::Invalid(format!(
@@ -325,9 +325,9 @@ fn delta_entry_to_line(
     let entries = vec![
         oldpath_utf8.as_bytes(),
         newpath_utf8.as_bytes(),
-        delta_item.file_id.bytes(),
+        delta_item.file_id.as_bytes(),
         parent_id,
-        last_modified.bytes(),
+        last_modified.as_bytes(),
         content.as_slice(),
     ];
     let mut line = entries.join(&b"\x00"[..]);

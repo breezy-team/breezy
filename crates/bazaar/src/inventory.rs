@@ -88,10 +88,10 @@ impl Entry {
         match kind {
             Kind::File => Entry::file(file_id, name, parent_id.unwrap()),
             Kind::Directory => {
-                if parent_id.is_none() {
-                    Entry::root(file_id)
+                if let Some(parent_id) = parent_id {
+                    Entry::directory(file_id, None, parent_id, name)
                 } else {
-                    Entry::directory(file_id, None, parent_id.unwrap(), name)
+                    Entry::root(file_id)
                 }
             }
             Kind::Symlink => Entry::link(file_id, name, parent_id.unwrap()),
