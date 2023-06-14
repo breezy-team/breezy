@@ -4,7 +4,7 @@ use pyo3::class::basic::CompareOp;
 use pyo3::exceptions::{PyNotImplementedError, PyRuntimeError, PyTypeError, PyValueError};
 use pyo3::import_exception;
 use pyo3::prelude::*;
-use pyo3::types::{PyBytes, PyList, PyString};
+use pyo3::types::{PyBytes, PyString};
 use pyo3_file::PyFileLikeObject;
 use std::collections::HashMap;
 

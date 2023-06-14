@@ -56,8 +56,7 @@ fn common_ie_check(
         if !present {
             return Err(BzrCheckError::new_err(format!(
                 "missing parent {{{}}} in inventory for revision {{{}}}",
-                parent_id,
-                rev_id.to_string()
+                parent_id, rev_id
             )));
         }
     }
@@ -139,10 +138,10 @@ impl InventoryEntry {
     #[setter]
     fn set_parent_id(&mut self, parent_id: Option<FileId>) {
         match &mut self.0 {
-            Entry::File { parent_id: p, .. } => *p = parent_id.unwrap().into(),
-            Entry::Directory { parent_id: p, .. } => *p = parent_id.unwrap().into(),
-            Entry::TreeReference { parent_id: p, .. } => *p = parent_id.unwrap().into(),
-            Entry::Link { parent_id: p, .. } => *p = parent_id.unwrap().into(),
+            Entry::File { parent_id: p, .. } => *p = parent_id.unwrap(),
+            Entry::Directory { parent_id: p, .. } => *p = parent_id.unwrap(),
+            Entry::TreeReference { parent_id: p, .. } => *p = parent_id.unwrap(),
+            Entry::Link { parent_id: p, .. } => *p = parent_id.unwrap(),
             Entry::Root { .. } => {
                 if parent_id.is_some() {
                     panic!("Root entry cannot have a parent")
@@ -287,7 +286,7 @@ impl InventoryFile {
         let entry = Entry::File {
             file_id,
             name,
-            parent_id: parent_id.into(),
+            parent_id,
             revision: None,
             text_sha1: None,
             text_size: None,
@@ -453,8 +452,7 @@ impl InventoryFile {
                 "append",
                 (format!(
                     "fileid {{{}}} in {{{}}} has None for text_size",
-                    file_id.to_string(),
-                    rev_id.to_string()
+                    file_id, rev_id
                 ),),
             )?;
         }
@@ -805,8 +803,8 @@ impl InventoryDelta {
         let delta = delta
             .into_iter()
             .map(|(old_name, new_name, file_id, entry)| {
-                let old_name = old_name.as_ref().map(|s| s.as_str());
-                let new_name = new_name.as_ref().map(|s| s.as_str());
+                let old_name = old_name.as_deref();
+                let new_name = new_name.as_deref();
                 let entry = entry.as_ref().map(|e| e.0.clone());
                 InventoryDeltaEntry {
                     old_path: old_name.map(|s| s.to_string()),

@@ -192,10 +192,10 @@ impl Entry {
 
     pub fn parent_id(&self) -> Option<&FileId> {
         match self {
-            Entry::Directory { parent_id, .. } => Some(&parent_id),
-            Entry::File { parent_id, .. } => Some(&parent_id),
-            Entry::Link { parent_id, .. } => Some(&parent_id),
-            Entry::TreeReference { parent_id, .. } => Some(&parent_id),
+            Entry::Directory { parent_id, .. } => Some(parent_id),
+            Entry::File { parent_id, .. } => Some(parent_id),
+            Entry::Link { parent_id, .. } => Some(parent_id),
+            Entry::TreeReference { parent_id, .. } => Some(parent_id),
             Entry::Root { .. } => None,
         }
     }
