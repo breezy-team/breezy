@@ -109,10 +109,10 @@ impl Entry {
                 text_id,
             ),
             Kind::Directory => {
-                if parent_id.is_none() {
-                    Entry::root(file_id, revision)
+                if let Some(parent_id) = parent_id {
+                    Entry::directory(file_id, name, parent_id, revision)
                 } else {
-                    Entry::directory(file_id, name, parent_id.unwrap(), revision)
+                    Entry::root(file_id, revision)
                 }
             }
             Kind::Symlink => {
@@ -240,10 +240,10 @@ impl Entry {
 
     pub fn parent_id(&self) -> Option<&FileId> {
         match self {
-            Entry::Directory { parent_id, .. } => Some(&parent_id),
-            Entry::File { parent_id, .. } => Some(&parent_id),
-            Entry::Link { parent_id, .. } => Some(&parent_id),
-            Entry::TreeReference { parent_id, .. } => Some(&parent_id),
+            Entry::Directory { parent_id, .. } => Some(parent_id),
+            Entry::File { parent_id, .. } => Some(parent_id),
+            Entry::Link { parent_id, .. } => Some(parent_id),
+            Entry::TreeReference { parent_id, .. } => Some(parent_id),
             Entry::Root { .. } => None,
         }
     }

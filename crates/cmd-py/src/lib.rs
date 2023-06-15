@@ -1,7 +1,7 @@
 use breezy::pytree::PyTree;
 
 use log::Log;
-use pyo3::exceptions::PyValueError;
+use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::{PyString, PyTuple};
@@ -424,8 +424,11 @@ impl TreeBuilder {
         TreeBuilder(breezy::treebuilder::TreeBuilder::new())
     }
 
-    fn build(&mut self, recipe: Vec<&str>) {
-        self.0.build(recipe.as_slice());
+    fn build(&mut self, recipe: Vec<&str>) -> PyResult<()> {
+        Ok(self
+            .0
+            .build(recipe.as_slice())
+            .map_err(|e| PyRuntimeError::new_err(format!("Failed to build tree: {:?}", e)))?)
     }
 
     fn start_tree(&mut self, tree: PyObject) {

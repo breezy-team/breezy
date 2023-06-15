@@ -266,7 +266,7 @@ impl<T: XMLRevisionSerializer> RevisionSerializer for T {
         buf.write_all(
             format!(
                 "revision_id=\"{}\" timestamp=\"{:.3}\"",
-                encode_and_escape_bytes(rev.revision_id.bytes()),
+                encode_and_escape_bytes(rev.revision_id.as_bytes()),
                 rev.timestamp,
             )
             .as_bytes(),
@@ -290,7 +290,7 @@ impl<T: XMLRevisionSerializer> RevisionSerializer for T {
                 buf.write_all(
                     format!(
                         "<revision_ref revision_id=\"{}\" />\n",
-                        encode_and_escape_bytes(parent_id.bytes())
+                        encode_and_escape_bytes(parent_id.as_bytes())
                     )
                     .as_bytes(),
                 )?;
