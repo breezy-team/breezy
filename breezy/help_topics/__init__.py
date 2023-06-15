@@ -36,8 +36,8 @@ rendering on the screen naturally.
 __all__ = ['help_as_plain_text', '_format_see_also']
 
 from breezy import config
-from breezy._cmd_rs import help as _help_rs
 from breezy._cmd_rs import format_see_also as _format_see_also
+from breezy._cmd_rs import help as _help_rs
 from breezy._cmd_rs import help_as_plain_text
 
 known_env_variables = _help_rs.known_env_variables
