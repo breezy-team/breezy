@@ -3,7 +3,7 @@ use std::env;
 
 use std::fs::create_dir;
 
-use std::io::BufRead;
+use std::io::{BufRead};
 
 use std::path::{Path, PathBuf};
 
@@ -213,31 +213,29 @@ pub fn cache_dir() -> std::io::Result<PathBuf> {
     // Return the cache directory to use.
     let mut base: Option<PathBuf> = env::var("BRZ_HOME").ok().map(PathBuf::from);
 
-    if base.is_none() {
-        #[cfg(windows)]
-        {
-            if base.is_none() {
-                base = win32utils::get_local_appdata_location();
-            }
-            if base.is_none() {
-                base = win32utils::get_home_location();
-            }
+    #[cfg(windows)]
+    {
+        if base.is_none() {
+            base = win32utils::get_local_appdata_location();
         }
+        if base.is_none() {
+            base = win32utils::get_home_location();
+        }
+    }
 
-        #[cfg(not(windows))]
-        {
-            if let Ok(xdg_cache_home) = env::var("XDG_CACHE_HOME") {
-                base = Some(PathBuf::from(xdg_cache_home));
-            } else {
-                base = None;
-            }
-            if base.is_none() {
-                base = Some(
-                    breezy_osutils::get_home_dir()
-                        .expect("no home directory")
-                        .join(".cache"),
-                );
-            }
+    #[cfg(not(windows))]
+    {
+        if let Ok(xdg_cache_home) = env::var("XDG_CACHE_HOME") {
+            base = Some(PathBuf::from(xdg_cache_home));
+        } else {
+            base = None;
+        }
+        if base.is_none() {
+            base = Some(
+                breezy_osutils::get_home_dir()
+                    .expect("no home directory")
+                    .join(".cache"),
+            );
         }
     }
 
