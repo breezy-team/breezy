@@ -26,5 +26,5 @@ pyo3 = { version = ">=0.17", optional = true }
 nix = ">= 0.26"
 
 [features]
-default-features = ["pyo3"]
+default = ["pyo3"]
 pyo3 = ["dep:pyo3"]
