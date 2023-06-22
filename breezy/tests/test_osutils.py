@@ -1459,19 +1459,6 @@ class TestShaFileByName(tests.TestCaseInTempDir):
         self.assertEqual(expected_sha, osutils.sha_file_by_name('foo'))
 
 
-class TestResourceLoading(tests.TestCaseInTempDir):
-
-    def test_resource_string(self):
-        # test resource under breezy
-        text = osutils.resource_string('breezy.ui', 'text.py')
-        self.assertContainsRe(text, "class TextUIFactory")
-        # test unsupported package
-        self.assertRaises(errors.BzrError, osutils.resource_string, 'zzzz',
-                          'yyy.xx')
-        # test unknown resource
-        self.assertRaises(IOError, osutils.resource_string, 'breezy', 'yyy.xx')
-
-
 class TestDirReader(tests.TestCaseInTempDir):
 
     scenarios = dir_reader_scenarios()

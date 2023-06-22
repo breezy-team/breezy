@@ -306,21 +306,6 @@ def isdir(f):
         return False
 
 
-def isfile(f):
-    """True if f is a regular file."""
-    try:
-        return stat.S_ISREG(os.lstat(f)[stat.ST_MODE])
-    except OSError:
-        return False
-
-
-def islink(f):
-    """True if f is a symlink."""
-    try:
-        return stat.S_ISLNK(os.lstat(f)[stat.ST_MODE])
-    except OSError:
-        return False
-
 is_inside = _osutils_rs.is_inside
 is_inside_any = _osutils_rs.is_inside_any
 is_inside_or_parent_of_any = _osutils_rs.is_inside_or_parent_of_any
@@ -343,32 +328,6 @@ format_delta = _osutils_rs.format_delta
 compact_date = _osutils_rs.compact_date
 format_highres_date = _osutils_rs.format_highres_date
 unpack_highres_date = _osutils_rs.unpack_highres_date
-
-
-def filesize(f):
-    """Return size of given open file."""
-    return os.fstat(f.fileno())[stat.ST_SIZE]
-
-
-# Alias os.urandom to support platforms (which?) without /dev/urandom and
-# override if it doesn't work. Avoid checking on windows where there is
-# significant initialisation cost that can be avoided for some bzr calls.
-
-rand_bytes = os.urandom
-
-if rand_bytes.__module__ != "nt":
-    try:
-        rand_bytes(1)
-    except NotImplementedError:
-        # not well seeded, but better than nothing
-        def rand_bytes(n):
-            import random
-            s = ''
-            while n:
-                s += chr(random.randint(0, 255))
-                n -= 1
-            return s
-
 
 rand_chars = _osutils_rs.rand_chars
 
@@ -988,35 +947,6 @@ def connect_socket(address):
 
 
 dereference_path = _osutils_rs.dereference_path
-
-
-def resource_string(package, resource_name):
-    """Load a resource from a package and return it as a string.
-
-    Note: Only packages that start with breezy are currently supported.
-
-    This is designed to be a lightweight implementation of resource
-    loading in a way which is API compatible with the same API from
-    pkg_resources. See
-    http://peak.telecommunity.com/DevCenter/PkgResources#basic-resource-access.
-    If and when pkg_resources becomes a standard library, this routine
-    can delegate to it.
-    """
-    # Check package name is within breezy
-    if package == "breezy":
-        resource_relpath = resource_name
-    elif package.startswith("breezy."):
-        package = package[len("breezy."):].replace('.', os.sep)
-        resource_relpath = pathjoin(package, resource_name)
-    else:
-        raise errors.BzrError(f'resource package {package} not in breezy')
-
-    # Map the resource to a file and read its contents
-    base = dirname(breezy.__file__)
-    if getattr(sys, 'frozen', None):    # bzr.exe
-        base = abspath(pathjoin(base, '..', '..'))
-    with open(pathjoin(base, resource_relpath)) as f:
-        return f.read()
 
 
 file_kind_from_stat_mode = _osutils_rs.kind_from_mode
