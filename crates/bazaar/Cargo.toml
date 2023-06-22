@@ -6,6 +6,7 @@ edition = "2018"
 description = "Rust implementation of the Bazaar formats and protocols"
 license = "GPL-2.0+"
 homepage = "https://www.breezy-vcs.org/"
+repository = "https://github.com/breezy-team/breezy"
 
 [lib]
 

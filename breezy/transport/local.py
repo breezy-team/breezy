@@ -28,10 +28,8 @@ from .. import osutils, transport, urlutils
 def file_stat(f, _lstat=os.lstat):
     try:
         return _lstat(f)
-    except OSError as e:
-        if getattr(e, 'errno', None) in (errno.ENOENT, errno.ENOTDIR):
-            raise transport.NoSuchFile(f)
-        raise
+    except (FileNotFoundError, NotADirectoryError):
+        raise transport.NoSuchFile(f)
 
 
 def file_kind(f, _lstat=os.lstat):

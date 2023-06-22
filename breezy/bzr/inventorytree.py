@@ -18,6 +18,7 @@
 
 import os
 import re
+import stat
 from collections import deque
 
 from .. import branch as _mod_branch
@@ -92,6 +93,11 @@ class InventoryTreeChange(TreeChange):
             (self.name[0], None), (self.kind[0], None),
             (self.executable[0], None),
             copied=False)
+
+
+def _filesize(f) -> int:
+    """Return size of given open file."""
+    return os.fstat(f.fileno())[stat.ST_SIZE]
 
 
 class InventoryTree(Tree):
@@ -351,7 +357,7 @@ class InventoryTree(Tree):
         with self.get_file(path) as f:
             vf.add_content(
                 versionedfile.FileContentFactory(
-                    (file_id, last_revision), parent_keys, f, size=osutils.filesize(f)))
+                    (file_id, last_revision), parent_keys, f, size=_filesize(f)))
         repo = self.branch.repository
         base_vf = repo.texts
         if base_vf not in vf.fallback_versionedfiles:
