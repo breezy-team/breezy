@@ -21,8 +21,8 @@ TransportTestProviderAdapter.
 """
 
 import os
-import stat
 import random
+import stat
 import sys
 from io import BytesIO
 
