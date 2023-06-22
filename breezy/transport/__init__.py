@@ -393,6 +393,8 @@ class Transport:
                 raise errors.DirectoryNotEmpty(path, extra=e)
             if e.errno == errno.EBUSY:
                 raise errors.ResourceBusy(path, extra=e)
+        if isinstance(e, (NotADirectoryError, FileNotFoundError)):
+            raise NoSuchFile(path, extra=e)
         if raise_generic:
             raise errors.TransportError(orig_error=e)
 

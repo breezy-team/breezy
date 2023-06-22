@@ -348,7 +348,7 @@ class ScriptRunner:
         try:
             output = self._write_output(output, out_name, out_mode)
         except (FileNotFoundError, ValueError):
-            # If out_name cannot be created, we may get 'ENOENT', however if
+            # If out_name cannot be created, we may get FileNotFoundError, however if
             # out_name is something like '', we can get EINVAL
             return 1, None, f'{out_name}: No such file or directory\n'
         return 0, output, None

@@ -859,7 +859,7 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
         os.chdir('a')
         # You can't rename the working directory
         # doing rename non-existant . usually
-        # just raises ENOENT, since non-existant
+        # just raises FileNotFoundError, since non-existant
         # doesn't exist.
         try:
             osutils._win32_rename('b', '.')

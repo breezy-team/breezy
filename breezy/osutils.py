@@ -433,35 +433,7 @@ from ._osutils_rs import \
 from ._osutils_rs import (_inaccessible_normalized_filename, check_legal_path,
                           chunks_to_lines, chunks_to_lines_iter, get_host_name,
                           link_or_copy, local_concurrency, normalized_filename,
-                          normalizes_filenames, split_lines)
-
-
-def delete_any(path):
-    """Delete a file, symlink or directory.
-
-    Will delete even if readonly.
-    """
-    def _delete_file_or_dir(path):
-        # Look Before You Leap (LBYL) is appropriate here instead of Easier to Ask for
-        # Forgiveness than Permission (EAFP) because:
-        # - root can damage a solaris file system by using unlink,
-        # - unlink raises different exceptions on different OSes (linux: EISDIR, win32:
-        #   EACCES, OSX: EPERM) when invoked on a directory.
-        if isdir(path):  # Takes care of symlinks
-            os.rmdir(path)
-        else:
-            os.unlink(path)
-    try:
-        _delete_file_or_dir(path)
-    except PermissionError:
-        # make writable and try again
-        try:
-            make_writable(path)
-        except PermissionError:
-            pass
-        _delete_file_or_dir(path)
-
-
+                          normalizes_filenames, split_lines, delete_any)
 readlink = _osutils_rs.readlink
 contains_whitespace = _osutils_rs.contains_whitespace
 contains_linebreaks = _osutils_rs.contains_linebreaks
