@@ -1,6 +1,6 @@
 [package]
 name = "breezy-zlib-util"
-version = "3.3.3"
+version = "3.4.0"
 edition = "2018"
 description = "Zlib utility functions"
 license = "GPLv2+"
