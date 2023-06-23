@@ -566,18 +566,6 @@ fn check_text_lines(py: Python, lines: &PyAny) -> PyResult<()> {
 }
 
 #[pyfunction]
-fn format_delta(py: Python, delta: PyObject) -> PyResult<String> {
-    let delta = if let Ok(delta) = delta.extract::<f64>(py) {
-        delta as i64
-    } else if let Ok(delta) = delta.extract::<i64>(py) {
-        delta
-    } else {
-        return Err(PyValueError::new_err("delta must be a float or int"));
-    };
-    Ok(breezy_osutils::time::format_delta(delta))
-}
-
-#[pyfunction]
 fn format_date_with_offset_in_original_timezone(
     py: Python,
     date: PyObject,
@@ -1142,9 +1130,13 @@ fn get_user_name() -> PyResult<String> {
     Ok(breezy_osutils::get_user_name())
 }
 
+#[cfg(unix)]
 #[pyfunction]
 fn is_local_pid_dead(pid: i32) -> PyResult<bool> {
-    Ok(breezy_osutils::is_local_pid_dead(pid))
+    #[cfg(unix)]
+    use nix::unistd::Pid;
+
+    Ok(breezy_osutils::is_local_pid_dead(Pid::from_raw(pid)))
 }
 
 #[pyfunction]
@@ -1193,7 +1185,6 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(IterableFile))?;
     m.add_wrapped(wrap_pyfunction!(check_text_path))?;
     m.add_wrapped(wrap_pyfunction!(check_text_lines))?;
-    m.add_wrapped(wrap_pyfunction!(format_delta))?;
     m.add_wrapped(wrap_pyfunction!(file_iterator))?;
     m.add_wrapped(wrap_pyfunction!(
         format_date_with_offset_in_original_timezone
