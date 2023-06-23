@@ -1147,6 +1147,23 @@ fn is_local_pid_dead(pid: i32) -> PyResult<bool> {
     Ok(breezy_osutils::is_local_pid_dead(pid))
 }
 
+#[pyfunction]
+fn compare_files(a: PyObject, b: PyObject) -> PyResult<bool> {
+    let a = PyFileLikeObject::with_requirements(a, true, false, false)?;
+    let b = PyFileLikeObject::with_requirements(b, true, false, false)?;
+    Ok(breezy_osutils::file::compare_files(a, b)?)
+}
+
+#[pyfunction]
+fn readlink(path: PathBuf) -> PyResult<PathBuf> {
+    path.read_link().map_err(|e| e.into())
+}
+
+#[pyfunction]
+fn getchar() -> PyResult<char> {
+    Ok(breezy_osutils::terminal::getchar()?)
+}
+
 #[pymodule]
 fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -1249,5 +1266,8 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(splitpath))?;
     m.add_wrapped(wrap_pyfunction!(is_local_pid_dead))?;
     m.add_wrapped(wrap_pyfunction!(get_user_name))?;
+    m.add_wrapped(wrap_pyfunction!(compare_files))?;
+    m.add_wrapped(wrap_pyfunction!(readlink))?;
+    m.add_wrapped(wrap_pyfunction!(getchar))?;
     Ok(())
 }

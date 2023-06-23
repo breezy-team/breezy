@@ -190,15 +190,18 @@ pub fn kind_from_mode(mode: SFlag) -> &'static str {
 pub fn delete_any<P: AsRef<Path>>(path: P) -> std::io::Result<()> {
     fn delete_file_or_dir<P: AsRef<Path>>(path: P) -> std::io::Result<()> {
         let path = path.as_ref();
-        if path.is_dir() {
-            std::fs::remove_dir(path)?;
-        } else {
-            std::fs::remove_file(path)?;
-        }
-        Ok(())
-    }
+        // Look Before You Leap (LBYL) is appropriate here instead of Easier to Ask for
+        // Forgiveness than Permission (EAFP) because:
+        // - root can damage a solaris file system by using unlink,
+        // - unlink raises different exceptions on different OSes (linux: EISDIR, win32:
+        // EACCES, OSX: EPERM) when invoked on a directory.
 
-    delete_file_or_dir(path.as_ref())?;
+        if path.is_dir() {
+            std::fs::remove_dir(path)
+        } else {
+            std::fs::remove_file(path)
+        }
+    }
 
     // handle errors due to read-only files/directories
     match delete_file_or_dir(path.as_ref()) {
@@ -252,4 +255,23 @@ pub fn ensure_empty_directory_exists(path: &Path) -> std::io::Result<()> {
 
 pub fn lexists(path: &Path) -> std::io::Result<bool> {
     symlink_metadata(path).map(|_| true).or_else(|_e| Ok(false))
+}
+
+pub fn compare_files<T: Read, U: Read>(mut a: T, mut b: U) -> std::io::Result<bool> {
+    const BUFSIZE: usize = 4096;
+    let mut buf_a = [0; BUFSIZE];
+    let mut buf_b = [0; BUFSIZE];
+
+    loop {
+        let n_a = a.read(&mut buf_a)?;
+        let n_b = b.read(&mut buf_b)?;
+
+        if buf_a[..n_a] != buf_b[..n_b] {
+            return Ok(false);
+        }
+
+        if n_a == 0 {
+            return Ok(n_b == 0);
+        }
+    }
 }

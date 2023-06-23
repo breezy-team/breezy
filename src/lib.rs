@@ -1,3 +1,9 @@
+#![warn(
+    rust_2018_idioms,
+    unused_lifetimes,
+    semicolon_in_expressions_from_macros
+)]
+
 #[cfg(feature = "i18n")]
 pub mod i18n;
 

@@ -1,6 +1,6 @@
 [package]
 name = "bazaar-dirstate"
-version = "3.3.3"
+version = "3.4.0"
 edition = "2018"
 description = "The dirstate format used by Bazaar"
 license = "GPL-2.0+"
@@ -13,7 +13,7 @@ authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@j
 
 [dependencies]
 breezy-osutils = { path = "../osutils" }
-base64 = "0.13.0"
+base64 = "0.21.0"
 lazy_static = "1.4.0"
 maplit = "1.0.2"
 bazaar = { path = "../bazaar" }
