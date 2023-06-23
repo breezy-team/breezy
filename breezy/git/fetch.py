@@ -62,32 +62,30 @@ def import_git_blob(texts, mapping, path, name, hexshas,
         # If nothing has changed since the base revision, we're done
         return []
     file_id = lookup_file_id(decoded_path)
+    decoded_name = decode_git_path(name)
     if stat.S_ISLNK(mode):
-        cls = InventoryLink
+        ie = InventoryLink(file_id, decoded_name, parent_id)
     else:
-        cls = InventoryFile
-    ie = cls(file_id, decode_git_path(name), parent_id)
-    if ie.kind == "file":
-        ie.executable = mode_is_executable(mode)
+        ie = InventoryFile(file_id, decoded_name, parent_id, executable=mode_is_executable(mode))
     if base_hexsha == hexsha and mode_kind(base_mode) == mode_kind(mode):
         base_exec = base_bzr_tree.is_executable(decoded_path)
         if ie.kind == "symlink":
-            ie.symlink_target = base_bzr_tree.get_symlink_target(decoded_path)
+            ie._symlink_target = base_bzr_tree.get_symlink_target(decoded_path)
         else:
-            ie.text_size = base_bzr_tree.get_file_size(decoded_path)
-            ie.text_sha1 = base_bzr_tree.get_file_sha1(decoded_path)
+            ie._text_size = base_bzr_tree.get_file_size(decoded_path)
+            ie._text_sha1 = base_bzr_tree.get_file_sha1(decoded_path)
         if ie.kind == "symlink" or ie.executable == base_exec:
-            ie.revision = base_bzr_tree.get_file_revision(decoded_path)
+            ie._revision = base_bzr_tree.get_file_revision(decoded_path)
         else:
             blob = lookup_object(hexsha)
     else:
         blob = lookup_object(hexsha)
         if ie.kind == "symlink":
-            ie.revision = None
-            ie.symlink_target = decode_git_path(blob.data)
+            ie._revision = None
+            ie._symlink_target = decode_git_path(blob.data)
         else:
-            ie.text_size = sum(map(len, blob.chunked))
-            ie.text_sha1 = osutils.sha_strings(blob.chunked)
+            ie._text_size = sum(map(len, blob.chunked))
+            ie._text_sha1 = osutils.sha_strings(blob.chunked)
     # Check what revision we should store
     parent_keys = []
     for ptree in parent_bzr_trees:
@@ -104,14 +102,14 @@ def import_git_blob(texts, mapping, path, name, hexshas,
              (pkind == "file" and ptree.get_file_sha1(ppath) == ie.text_sha1 and
                 ptree.is_executable(ppath) == ie.executable))):
             # found a revision in one of the parents to use
-            ie.revision = ptree.get_file_revision(ppath)
+            ie._revision = ptree.get_file_revision(ppath)
             break
         parent_key = (file_id, ptree.get_file_revision(ppath))
         if parent_key not in parent_keys:
             parent_keys.append(parent_key)
     if ie.revision is None:
         # Need to store a new revision
-        ie.revision = revision_id
+        ie._revision = revision_id
         if ie.revision is None:
             raise ValueError("no file revision set")
         if ie.kind == 'symlink':
@@ -154,8 +152,7 @@ def import_git_submodule(texts, mapping, path, name, hexshas,
     path = decode_git_path(path)
     file_id = lookup_file_id(path)
     invdelta = []
-    ie = TreeReference(file_id, decode_git_path(name), parent_id)
-    ie.revision = revision_id
+    ie = TreeReference(file_id, decode_git_path(name), parent_id, revision_id, reference_revision=mapping.revision_id_foreign_to_bzr(hexsha))
     if base_hexsha is not None:
         old_path = path  # Renames are not supported yet
         if stat.S_ISDIR(base_mode):
@@ -164,7 +161,6 @@ def import_git_submodule(texts, mapping, path, name, hexshas,
                 lookup_object))
     else:
         old_path = None
-    ie.reference_revision = mapping.revision_id_foreign_to_bzr(hexsha)
     texts.insert_record_stream([
         ChunkedContentFactory((file_id, ie.revision), (), None, [])])
     invdelta.append((old_path, path, file_id, ie))
@@ -236,7 +232,7 @@ def import_git_tree(texts, mapping, path, name, hexshas,
         old_path = decode_git_path(path)  # Renames aren't supported yet
     new_path = decode_git_path(path)
     if base_tree is None or type(base_tree) is not Tree:
-        ie.revision = revision_id
+        ie._revision = revision_id
         invdelta.append((old_path, new_path, ie.file_id, ie))
         texts.insert_record_stream([
             ChunkedContentFactory((ie.file_id, ie.revision), (), None, [])])

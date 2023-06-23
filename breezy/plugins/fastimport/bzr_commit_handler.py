@@ -403,9 +403,8 @@ class CommitHandler(processor.CommitHandler):
         # the parent exists
         dir_basename, parent_id = self._ensure_directory(dirname, inv)
         dir_file_id = self.bzr_file_id(dirname)
-        ie = inventory.entry_factory['directory'](dir_file_id,
-                                                  dir_basename, parent_id)
-        ie.revision = self.revision_id
+        ie = inventory.InventoryDirectory(dir_file_id,
+                                                  dir_basename, parent_id, self.revision_id)
         self.directory_entries[dirname] = ie
         # There are no lines stored for a directory so
         # make sure the cache used by get_lines knows that

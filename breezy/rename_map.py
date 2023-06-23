@@ -253,7 +253,7 @@ class RenameMap:
             if entry.name == new_name and entry.parent_id == parent_id:
                 continue
             new_entry = entry.copy()
-            new_entry.parent_id = parent_id
-            new_entry.name = new_name
+            new_entry._parent_id = parent_id
+            new_entry._name = new_name
             delta.append((old_path, new_path, new_entry.file_id, new_entry))
         return delta

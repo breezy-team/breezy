@@ -265,9 +265,9 @@ class CommonInventory:
         from .inventory_delta import InventoryDelta
         return InventoryDelta(delta)
 
-    def make_entry(self, kind, name, parent_id, file_id=None):
+    def make_entry(self, kind, name, parent_id, file_id=None, revision=None, **kwargs):
         """Simple thunk to breezy.bzr.inventory.make_entry."""
-        return make_entry(kind, name, parent_id, file_id)
+        return make_entry(kind, name, parent_id, file_id, revision, **kwargs)
 
     def entries(self):
         """Return list of (path, ie) for all entries except the root.
@@ -477,14 +477,14 @@ class Inventory(CommonInventory):
         self._children[self.root.file_id] = children
         # and finally update all children to reference the new id.
         for child in children.values():
-            child.parent_id = file_id
+            child._parent_id = file_id
 
     def rename_id(self, old_file_id, new_file_id):
         self._byid[new_file_id] = self._byid.pop(old_file_id)
         if self._byid[new_file_id].kind == 'directory':
             self._children[new_file_id] = self._children.pop(old_file_id)
             for child in self._children[new_file_id].values():
-                child.parent_id = new_file_id
+                child._parent_id = new_file_id
         self._byid[new_file_id]._file_id = new_file_id
 
     def __repr__(self):
@@ -874,8 +874,8 @@ class Inventory(CommonInventory):
         del self._children[old_parent.file_id][file_ie.name]
         self._children[new_parent.file_id][new_name] = file_ie
 
-        file_ie.name = new_name
-        file_ie.parent_id = new_parent_id
+        file_ie._name = new_name
+        file_ie._parent_id = new_parent_id
 
     def is_root(self, file_id):
         return self.root is not None and file_id == self.root.file_id
@@ -1659,7 +1659,7 @@ entry_factory = {
 }
 
 
-def make_entry(kind, name, parent_id, file_id=None, **kwargs):
+def make_entry(kind, name, parent_id, file_id=None, revision=None, **kwargs):
     """Create an inventory entry.
 
     :param kind: the type of inventory entry to create.
@@ -1674,7 +1674,7 @@ def make_entry(kind, name, parent_id, file_id=None, **kwargs):
         factory = entry_factory[kind]
     except KeyError:
         raise errors.BadFileKindError(name, kind)
-    return factory(file_id, name, parent_id, **kwargs)
+    return factory(file_id, name, parent_id, revision, **kwargs)
 
 
 ensure_normalized_name = _mod_inventory_rs.ensure_normalized_name

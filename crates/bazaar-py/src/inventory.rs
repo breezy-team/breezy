@@ -97,7 +97,7 @@ impl InventoryEntry {
     }
 
     #[setter]
-    fn set_name(&mut self, name: String) {
+    fn set__name(&mut self, name: String) {
         match &mut self.0 {
             Entry::File { name: n, .. } => *n = name,
             Entry::Directory { name: n, .. } => *n = name,
@@ -137,7 +137,7 @@ impl InventoryEntry {
     }
 
     #[setter]
-    fn set_parent_id(&mut self, parent_id: Option<FileId>) {
+    fn set__parent_id(&mut self, parent_id: Option<FileId>) {
         match &mut self.0 {
             Entry::File { parent_id: p, .. } => *p = parent_id.unwrap().into(),
             Entry::Directory { parent_id: p, .. } => *p = parent_id.unwrap().into(),
@@ -159,7 +159,7 @@ impl InventoryEntry {
     }
 
     #[setter]
-    fn set_revision(&mut self, revision: Option<RevisionId>) {
+    fn set__revision(&mut self, revision: Option<RevisionId>) {
         match &mut self.0 {
             Entry::File { revision: r, .. } => *r = revision,
             Entry::Directory { revision: r, .. } => *r = revision,
@@ -308,7 +308,7 @@ impl InventoryFile {
     }
 
     #[setter]
-    fn set_executable(slf: PyRefMut<Self>, executable: bool) {
+    fn set__executable(slf: PyRefMut<Self>, executable: bool) {
         let mut s = slf.into_super();
         match &mut s.0 {
             Entry::File { executable: e, .. } => *e = executable,
@@ -336,7 +336,7 @@ impl InventoryFile {
     }
 
     #[setter]
-    fn set_text_sha1(slf: PyRefMut<Self>, text_sha1: Option<Vec<u8>>) {
+    fn set__text_sha1(slf: PyRefMut<Self>, text_sha1: Option<Vec<u8>>) {
         let mut s = slf.into_super();
         match &mut s.0 {
             Entry::File { text_sha1: t, .. } => *t = text_sha1,
@@ -354,7 +354,7 @@ impl InventoryFile {
     }
 
     #[setter]
-    fn set_text_size(slf: PyRefMut<Self>, text_size: Option<u64>) {
+    fn set__text_size(slf: PyRefMut<Self>, text_size: Option<u64>) {
         let mut s = slf.into_super();
         match &mut s.0 {
             Entry::File { text_size: t, .. } => *t = text_size,
@@ -374,7 +374,7 @@ impl InventoryFile {
     }
 
     #[setter]
-    fn set_text_id(slf: PyRefMut<Self>, text_id: Option<Vec<u8>>) {
+    fn set__text_id(slf: PyRefMut<Self>, text_id: Option<Vec<u8>>) {
         let mut s = slf.into_super();
         match &mut s.0 {
             Entry::File { text_id: t, .. } => *t = text_id,
@@ -618,7 +618,7 @@ impl TreeReference {
     }
 
     #[setter]
-    fn set_reference_revision(slf: PyRefMut<Self>, reference_revision: Option<RevisionId>) {
+    fn set__reference_revision(slf: PyRefMut<Self>, reference_revision: Option<RevisionId>) {
         let mut s = slf.into_super();
         match &mut s.0 {
             Entry::TreeReference {
@@ -673,7 +673,7 @@ impl InventoryLink {
     }
 
     #[setter]
-    fn set_symlink_target(slf: PyRefMut<Self>, target: Option<String>) {
+    fn set__symlink_target(slf: PyRefMut<Self>, target: Option<String>) {
         match slf.into_super().0 {
             Entry::Link {
                 ref mut symlink_target,

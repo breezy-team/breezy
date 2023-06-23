@@ -1806,7 +1806,7 @@ class InventoryTreeTransform(DiskTreeTransform):
                     old_path = None
                 new_executability = self._new_executability.get(trans_id)
                 if new_executability is not None:
-                    new_entry.executable = bool(new_executability)
+                    new_entry._executable = bool(new_executability)
                 inventory_delta.append(
                     (old_path, path, new_entry.file_id, new_entry))
         return inventory_delta

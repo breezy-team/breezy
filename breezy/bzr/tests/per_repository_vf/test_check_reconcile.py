@@ -27,7 +27,7 @@ from breezy.tests import TestNotApplicable, multiply_scenarios
 from ....repository import WriteGroup
 from ....revision import NULL_REVISION, Revision
 from ....tests.scenarios import load_tests_apply_scenarios
-from ...inventory import Inventory, InventoryFile
+from ...inventory import Inventory, InventoryFile, InventoryDirectory, ROOT_ID
 
 load_tests = load_tests_apply_scenarios
 
@@ -825,9 +825,9 @@ class TestFileParentReconciliation(TestCaseWithRepository):
             Otherwise a unique default (based on revision ID) will be
             generated.
         """
-        inv = Inventory(revision_id=revision)
-        if root_revision is not None:
-            inv.root.revision = root_revision
+        inv = Inventory(revision_id=revision, root_id=None)
+        root = InventoryDirectory(ROOT_ID, "", None, root_revision)
+        inv.add(root)
         file_id = b'a-file-id'
         if inv_revision is not None:
             entry_revision = inv_revision

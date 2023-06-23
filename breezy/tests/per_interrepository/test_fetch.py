@@ -101,10 +101,10 @@ class TestInterRepository(TestCaseWithInterRepository):
                                                      b'contents')])
             basis = source.revision_tree(revid)
             parent_id = basis.path2id('')
-            entry = inventory.make_entry('file', 'foo-path', parent_id, b'foo')
-            entry.revision = revid
-            entry.text_size = len('contents')
-            entry.text_sha1 = osutils.sha_string(b'contents')
+            entry = inventory.make_entry(
+                'file', 'foo-path', parent_id, b'foo', revid,
+                text_size=len('contents'),
+                text_sha1=osutils.sha_string(b'contents'))
             inv_sha1, _ = source.add_inventory_by_delta(revid, InventoryDelta([
                 (None, 'foo-path', b'foo', entry)]), b'new', [revid])
             rev = Revision(timestamp=0,

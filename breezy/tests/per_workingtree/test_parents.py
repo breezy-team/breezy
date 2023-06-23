@@ -458,24 +458,20 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
             builder.finish_inventory()
             builder.commit("Message")
 
-    def add_entry(self, inv, rev_id, entry):
-        entry.revision = rev_id
+    def add_entry(self, inv, entry):
         inv.add(entry)
 
     def add_dir(self, inv, rev_id, file_id, parent_id, name):
-        new_dir = InventoryDirectory(file_id, name, parent_id)
-        self.add_entry(inv, rev_id, new_dir)
+        new_dir = InventoryDirectory(file_id, name, parent_id, rev_id)
+        self.add_entry(inv, new_dir)
 
     def add_file(self, inv, rev_id, file_id, parent_id, name, sha, size):
-        new_file = InventoryFile(file_id, name, parent_id)
-        new_file.text_sha1 = sha
-        new_file.text_size = size
-        self.add_entry(inv, rev_id, new_file)
+        new_file = InventoryFile(file_id, name, parent_id, rev_id, text_sha1=sha, text_size=size)
+        self.add_entry(inv, new_file)
 
     def add_link(self, inv, rev_id, file_id, parent_id, name, target):
-        new_link = InventoryLink(file_id, name, parent_id)
-        new_link.symlink_target = target
-        self.add_entry(inv, rev_id, new_link)
+        new_link = InventoryLink(file_id, name, parent_id, rev_id, symlink_target=target)
+        self.add_entry(inv, new_link)
 
     def add_new_root(self, new_shape, old_revid, new_revid):
         if self.bzrdir_format.repository_format.rich_root_data:

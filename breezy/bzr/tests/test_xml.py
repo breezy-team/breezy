@@ -337,18 +337,12 @@ class TestSerializer(TestCase):
         self.assertEqual(props, new_rev.properties)
 
     def get_sample_inventory(self):
-        inv = Inventory(b'tree-root-321', revision_id=b'rev_outer')
-        inv.add(inventory.InventoryFile(b'file-id', 'file', b'tree-root-321'))
+        inv = Inventory(root_id=None, revision_id=b'rev_outer')
+        inv.add(inventory.InventoryDirectory(b'tree-root-321', "", None, b'rev_outer'))
+        inv.add(inventory.InventoryFile(b'file-id', 'file', b'tree-root-321', b'rev_outer', text_sha1=b'A', text_size=1))
         inv.add(inventory.InventoryDirectory(b'dir-id', 'dir',
-                                             b'tree-root-321'))
-        inv.add(inventory.InventoryLink(b'link-id', 'link', b'tree-root-321'))
-        inv.get_entry(b'tree-root-321').revision = b'rev_outer'
-        inv.get_entry(b'dir-id').revision = b'rev_outer'
-        inv.get_entry(b'file-id').revision = b'rev_outer'
-        inv.get_entry(b'file-id').text_sha1 = b'A'
-        inv.get_entry(b'file-id').text_size = 1
-        inv.get_entry(b'link-id').revision = b'rev_outer'
-        inv.get_entry(b'link-id').symlink_target = 'a'
+                                             b'tree-root-321', b'rev_outer'))
+        inv.add(inventory.InventoryLink(b'link-id', 'link', b'tree-root-321', b'rev_outer', symlink_target='a'))
         return inv
 
     def test_roundtrip_inventory_v7(self):
