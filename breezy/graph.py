@@ -818,11 +818,11 @@ class Graph:
             order if they need it.
         """
         candidate_heads = set(keys)
-        if revision.NULL_REVISION in candidate_heads:
+        if _mod_revision.NULL_REVISION in candidate_heads:
             # NULL_REVISION is only a head if it is the only entry
-            candidate_heads.remove(revision.NULL_REVISION)
+            candidate_heads.remove(_mod_revision.NULL_REVISION)
             if not candidate_heads:
-                return {revision.NULL_REVISION}
+                return {_mod_revision.NULL_REVISION}
         if len(candidate_heads) < 2:
             return candidate_heads
         searchers = {c: self._make_breadth_first_searcher([c])
