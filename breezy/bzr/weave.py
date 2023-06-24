@@ -849,7 +849,7 @@ class Weave(VersionedFile):
             # For creating the ancestry, IntSet is much faster (3.7s vs 0.17s)
             # The problem is that set membership is much more expensive
             name = self._idx_to_name(i)
-            sha1s[name] = hashlib.sha1()
+            sha1s[name] = hashlib.sha1()  # noqa: S324
             texts[name] = []
             new_inc = {name}
             for p in self._parents[i]:

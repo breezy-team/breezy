@@ -1052,7 +1052,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                 self.assertFalse(tree.is_executable('filename'))
             finally:
                 tree.unlock()
-            os.chmod('filename', 0o755)
+            os.chmod('filename', 0o755)  # noqa: S103
             self.addCleanup(tree.lock_read().unlock)
             self.assertTrue(tree.is_executable('filename'))
         else:

@@ -158,7 +158,8 @@ class cmd_rebase(Command):
                     raise CommandError(gettext(
                         "Rebasing more than one pending merge not supported"))
                 stop_revid = wt_parents[1]
-                assert stop_revid is not None, "stop revid invalid"
+                if stop_revid is None:
+                    raise AssertionError("stop revid invalid")
 
             # Check for changes in the working tree.
             if (not pending_merges and

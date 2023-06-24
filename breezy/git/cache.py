@@ -481,7 +481,7 @@ class SqliteGitShaMap(GitShaMap):
     def sha1s(self):
         """List the SHA1s."""
         for table in ("blobs", "commits", "trees"):
-            for (sha,) in self.db.execute(f"select sha1 from {table}"):
+            for (sha,) in self.db.execute(f"select sha1 from {table}"):  # noqa: S608
                 yield sha.encode('ascii')
 
 
@@ -815,7 +815,7 @@ class IndexGitShaMap(GitShaMap):
         if self._builder is not None:
             raise bzr_errors.BzrError('builder already open')
         self._builder = _mod_btree_index.BTreeBuilder(0, key_elements=3)
-        self._name = hashlib.sha1()
+        self._name = hashlib.sha1()  # noqa: S324
 
     def commit_write_group(self):
         if self._builder is None:

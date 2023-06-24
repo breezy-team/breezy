@@ -1432,7 +1432,7 @@ def get_digest_algorithm_impls(algorithm):
     H = None
     KD = None
     if algorithm == 'MD5':
-        def H(x): return hashlib.md5(x).hexdigest()
+        def H(x): return hashlib.md5(x).hexdigest()  # noqa: S324
     elif algorithm == 'SHA':
         H = osutils.sha_string
     if H is not None:

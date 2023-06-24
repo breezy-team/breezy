@@ -334,7 +334,7 @@ class TestRegistryWithDirs(tests.TestCaseInTempDir):
         # By default the plugin won't be in the search path
         self.assertRaises(ImportError, a_registry.get, 'obj')
 
-        plugin_path = self.test_dir + '/tmp'
+        plugin_path = self.test_dir + '/tmp'   # noqa: S108
         sys.path.append(plugin_path)
         try:
             obj = a_registry.get('obj')

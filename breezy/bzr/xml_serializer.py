@@ -50,7 +50,7 @@ class XMLRevisionSerializer(serializer.RevisionSerializer):
         return self._unpack_revision(self._read_element(f))
 
     def read_revision_from_string(self, xml_string):
-        return self._unpack_revision(fromstring(xml_string))
+        return self._unpack_revision(fromstring(xml_string))  # noqa: S314
 
     def _read_element(self, f):
         return ElementTree().parse(f)

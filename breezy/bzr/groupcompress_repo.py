@@ -93,7 +93,7 @@ class GCPack(NewPack):
         # What file mode to upload the pack and indices with.
         self._file_mode = file_mode
         # tracks the content written to the .pack file.
-        self._hash = hashlib.md5()
+        self._hash = hashlib.md5()  # noqa: S324
         # a four-tuple with the length in bytes of the indices, once the pack
         # is finalised. (rev, inv, text, sigs)
         self.index_sizes = None

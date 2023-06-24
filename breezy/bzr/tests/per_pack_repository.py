@@ -751,7 +751,7 @@ class TestPackRepository(TestCaseWithTransport):
         upload_transport = repo._pack_collection._upload_transport
         limbo_files = upload_transport.list_dir('')
         self.assertEqual(sorted(expected_names), sorted(limbo_files))
-        md5 = hashlib.md5(upload_transport.get_bytes(expected_pack_name))
+        md5 = hashlib.md5(upload_transport.get_bytes(expected_pack_name))  # noqa: S324
         self.assertEqual(wg_tokens[0], md5.hexdigest())
 
     def test_resume_chk_bytes(self):

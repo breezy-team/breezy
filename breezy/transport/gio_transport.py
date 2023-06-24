@@ -286,7 +286,7 @@ class GioTransport(ConnectedTransport):
         if debug.debug_flag_enabled('gio'):
             mutter("GIO put_file %s" % relpath)
         tmppath = '%s.tmp.%.9f.%d.%d' % (relpath, time.time(),
-                                         os.getpid(), random.randint(0, 0x7FFFFFFF))
+                                         os.getpid(), random.randint(0, 0x7FFFFFFF))  # noqa: S311
         f = None
         fout = None
         try:
@@ -373,7 +373,7 @@ class GioTransport(ConnectedTransport):
         if debug.debug_flag_enabled('gio'):
             mutter("GIO append_file: %s" % relpath)
         tmppath = '%s.tmp.%.9f.%d.%d' % (relpath, time.time(),
-                                         os.getpid(), random.randint(0, 0x7FFFFFFF))
+                                              os.getpid(), random.randint(0, 0x7FFFFFFF))  # noqa: S311
         try:
             result = 0
             fo = self._get_GIO(tmppath)

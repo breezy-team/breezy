@@ -105,6 +105,7 @@ select = [
     "N",  # naming
     "B",  # bugbear
     "I",  # isort
+    "S",  # bandit
     "TCH", # typecheck
     "INT", # gettext
 #   "SIM", # simplify
@@ -142,6 +143,14 @@ ignore = [
     "N806",  # Naming convention violation: invalid lowercase function name
     "N818",  # Naming convention violation: invalid argument name
     "N999",  # Naming convention violation: invalid module name
+
+    "S602",  # subprocess with shell=True
+    "S603",  # check for execution of untrusted input
+    "S105",  # "hardcoded password"; false positives on "pwd"
+    "S106",  # "hardcoded password"; false positives on "pwd"
+    "S110",  # "consider logging exception"
+
+    "S317",  # use defusedxml
 
     # This triggers for docstrings that uses __doc__
     "D104", # Missing docstring in public package

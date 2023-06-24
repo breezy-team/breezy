@@ -31,7 +31,7 @@ class TestZLibEstimator(tests.TestCase):
         The output should be deterministic, but the data stream is effectively
         random.
         """
-        h = hashlib.md5(seed)
+        h = hashlib.md5(seed)  # noqa: S324
         hex_content = []
         count = 0
         while count < length:

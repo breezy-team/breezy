@@ -40,7 +40,8 @@ from breezy.bzr.index import (
 """)
 from .. import debug, errors, lockdir, osutils
 from .. import transport as _mod_transport
-from ..bzr import btree_index, index as _mod_index, lockable_files
+from ..bzr import btree_index, lockable_files
+from ..bzr import index as _mod_index
 from ..decorators import only_raises
 from ..lock import LogicalLockResult
 from ..repository import RepositoryWriteLockResult, _LazyListJoin
@@ -399,7 +400,7 @@ class NewPack(Pack):
         # What file mode to upload the pack and indices with.
         self._file_mode = file_mode
         # tracks the content written to the .pack file.
-        self._hash = hashlib.md5()
+        self._hash = hashlib.md5()  # noqa: S324
         # a tuple with the length in bytes of the indices, once the pack
         # is finalised. (rev, inv, text, sigs, chk_if_in_use)
         self.index_sizes = None

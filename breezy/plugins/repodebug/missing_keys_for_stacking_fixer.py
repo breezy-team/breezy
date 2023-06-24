@@ -73,7 +73,8 @@ class cmd_fix_missing_keys_for_stacking(Command):
             self.outf.write(f"Missing inventories: {needed!r}\n")
             if dry_run:
                 return
-            assert raw_r._format.network_name() == b.repository._format.network_name()
+            if raw_r._format.network_name() != b.repository._format.network_name():
+                raise AssertionError(f"Network names don't match: {raw_r._format.network_name()!r} != {b.repository._format.network_name()!r}")
             stream = b.repository.inventories.get_record_stream(
                 needed, 'topological', True)
             with WriteGroup(raw_r):

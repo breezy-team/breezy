@@ -431,7 +431,7 @@ class HttpDavTransport(urllib.HttpTransport):
         # handle it).
         stamp = '.tmp.%.9f.%d.%d' % (time.time(),
                                      os.getpid(),
-                                     random.randint(0, 0x7FFFFFFF))
+                                     random.randint(0, 0x7FFFFFFF))  # noqa: S311
         # A temporary file to hold  all the data to guard against
         # client death
         tmp_relpath = relpath + stamp

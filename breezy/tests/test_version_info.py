@@ -444,7 +444,7 @@ class PythonVersionInfoTests(VersionInfoTestCase):
         outf = StringIO()
         builder.generate(outf)
         local_vars = {}
-        exec(outf.getvalue(), {}, local_vars)
+        exec(outf.getvalue(), {}, local_vars)  # noqa: S102
         return local_vars
 
     def test_python_version(self):

@@ -220,9 +220,9 @@ class TestLoadingPlugins(BaseTestPlugins):
             self.assertPluginUnknown('pluginone')
             self.assertPluginUnknown('plugintwo')
             self.update_module_paths(['first', 'second'])
-            exec(f"import {self.module_prefix}pluginone")
+            exec(f"import {self.module_prefix}pluginone")  # noqa: S102
             self.assertEqual(['first'], self.activeattributes[tempattribute])
-            exec(f"import {self.module_prefix}plugintwo")
+            exec(f"import {self.module_prefix}plugintwo")  # noqa: S102
             self.assertEqual(['first', 'second'],
                              self.activeattributes[tempattribute])
         finally:

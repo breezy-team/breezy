@@ -933,7 +933,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         self.assertReadableByAttrib(tree.basedir, 'file', r'work\\tree\\file$')
 
     def assertReadableByAttrib(self, cwd, relpath, regex):
-        proc = subprocess.Popen(['attrib', relpath],
+        proc = subprocess.Popen(['attrib', relpath],  # noqa: S607
                                 stdout=subprocess.PIPE,
                                 cwd=cwd)
         (result, err) = proc.communicate()

@@ -32,12 +32,12 @@ def brz():
     if BRZ_EXE is not None:
         return BRZ_EXE
     try:
-        subprocess.call(['brz', '--version'], stdout=subprocess.PIPE,
+        subprocess.call(['brz', '--version'], stdout=subprocess.PIPE,  # noqa: S607
                         stderr=subprocess.PIPE)
         BRZ_EXE = 'brz'
     except OSError:
         try:
-            subprocess.call(['brz.bat', '--version'], stdout=subprocess.PIPE,
+            subprocess.call(['brz.bat', '--version'], stdout=subprocess.PIPE,  # noqa: S607
                             stderr=subprocess.PIPE)
             BRZ_EXE = 'brz.bat'
         except OSError as err:
