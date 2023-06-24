@@ -168,11 +168,6 @@ def _win32_rename(old, new):
         raise
 
 
-def _mac_getcwd():
-    import unicodedata
-    return unicodedata.normalize('NFC', os.getcwd())
-
-
 def _rename_wrap_exception(rename_func):
     """Adds extra information to any exceptions that come from rename().
 
@@ -241,10 +236,6 @@ if sys.platform == 'win32':
         """Replacer for shutil.rmtree: could remove readonly dirs/files."""
         return shutil.rmtree(path, ignore_errors, onerror)
 
-elif sys.platform == 'darwin':
-    getcwd = _mac_getcwd
-
-
 def get_terminal_encoding(trace=False):
     """Find the best encoding for printing to the screen.
 
@@ -298,14 +289,7 @@ def get_terminal_encoding(trace=False):
     return output_encoding
 
 
-def isdir(f):
-    """True if f is an accessible directory."""
-    try:
-        return stat.S_ISDIR(os.lstat(f)[stat.ST_MODE])
-    except OSError:
-        return False
-
-
+isdir = _osutils_rs.isdir
 is_inside = _osutils_rs.is_inside
 is_inside_any = _osutils_rs.is_inside_any
 is_inside_or_parent_of_any = _osutils_rs.is_inside_or_parent_of_any

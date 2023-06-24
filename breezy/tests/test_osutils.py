@@ -856,23 +856,6 @@ class TestParentDirectories(tests.TestCaseInTempDir):
         self.assertEqual(['a1/b2/c3', 'a1/b2', 'a1'], osutils.parent_directories('a1/b2/c3/d4'))
 
 
-class TestMacFuncsDirs(tests.TestCaseInTempDir):
-    """Test mac special functions that require directories."""
-
-    def test_getcwd(self):
-        self.requireFeature(features.UnicodeFilenameFeature)
-        os.mkdir('B\xe5gfors')
-        os.chdir('B\xe5gfors')
-        self.assertEndsWith(osutils._mac_getcwd(), 'B\xe5gfors')
-
-    def test_getcwd_nonnorm(self):
-        self.requireFeature(features.UnicodeFilenameFeature)
-        # Test that _mac_getcwd() will normalize this path
-        os.mkdir('Ba\u030agfors')
-        os.chdir('Ba\u030agfors')
-        self.assertEndsWith(osutils._mac_getcwd(), 'B\xe5gfors')
-
-
 class TestChunksToLines(tests.TestCase):
 
     def assertChunksToLines(self, lines, chunks, already_lines=False):
