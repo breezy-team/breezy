@@ -1156,6 +1156,11 @@ fn getchar() -> PyResult<char> {
     Ok(breezy_osutils::terminal::getchar()?)
 }
 
+#[pyfunction]
+fn isdir(path: PathBuf) -> PyResult<bool> {
+    Ok(breezy_osutils::file::isdir(path.as_path()))
+}
+
 #[pymodule]
 fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -1260,5 +1265,6 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(compare_files))?;
     m.add_wrapped(wrap_pyfunction!(readlink))?;
     m.add_wrapped(wrap_pyfunction!(getchar))?;
+    m.add_wrapped(wrap_pyfunction!(isdir))?;
     Ok(())
 }

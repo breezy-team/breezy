@@ -81,7 +81,7 @@ checksum = "604178f6c5c21f02dc555784810edfb88d34ac2c73b2eae109655649ee73ce3d"
 
 [[package]]
 name = "bazaar"
-version = "3.3.4"
+version = "3.4.0"
 dependencies = [
  "bendy",
  "breezy-osutils",
@@ -99,14 +99,14 @@ dependencies = [
 
 [[package]]
 name = "bazaar-chk-map"
-version = "3.3.3"
+version = "3.4.0"
 dependencies = [
  "crc32fast",
 ]
 
 [[package]]
 name = "bazaar-dirstate"
-version = "3.3.3"
+version = "3.4.0"
 dependencies = [
  "base64",
  "bazaar",
@@ -118,11 +118,11 @@ dependencies = [
 
 [[package]]
 name = "bazaar-groupcompress"
-version = "3.3.3"
+version = "3.4.0"
 
 [[package]]
 name = "bazaar-py"
-version = "3.3.3"
+version = "3.4.0"
 dependencies = [
  "bazaar",
  "bazaar-dirstate",
@@ -179,7 +179,7 @@ dependencies = [
 
 [[package]]
 name = "breezy"
-version = "3.3.4"
+version = "3.4.0"
 dependencies = [
  "bazaar",
  "breezy-osutils",
@@ -201,7 +201,7 @@ dependencies = [
 
 [[package]]
 name = "breezy-git"
-version = "3.3.3"
+version = "3.4.0"
 dependencies = [
  "breezy",
  "breezy-osutils",
@@ -210,11 +210,11 @@ dependencies = [
 
 [[package]]
 name = "breezy-graph"
-version = "3.3.3"
+version = "3.4.0"
 
 [[package]]
 name = "breezy-osutils"
-version = "3.3.4"
+version = "3.4.0"
 dependencies = [
  "chrono",
  "dirs",
@@ -238,7 +238,7 @@ dependencies = [
 
 [[package]]
 name = "breezy-patch"
-version = "3.3.3"
+version = "3.4.0"
 dependencies = [
  "breezy-osutils",
  "chrono",
@@ -249,7 +249,7 @@ dependencies = [
 
 [[package]]
 name = "breezy-transport"
-version = "3.3.3"
+version = "3.4.0"
 dependencies = [
  "breezy-osutils",
  "breezy-urlutils",
@@ -267,7 +267,7 @@ dependencies = [
 
 [[package]]
 name = "breezy-urlutils"
-version = "3.3.3"
+version = "3.4.0"
 dependencies = [
  "breezy-osutils",
  "lazy_static",
@@ -278,7 +278,7 @@ dependencies = [
 
 [[package]]
 name = "breezy-zlib-util"
-version = "3.3.3"
+version = "3.4.0"
 dependencies = [
  "flate2",
 ]
@@ -346,7 +346,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "chk-map-py"
-version = "3.3.3"
+version = "3.4.0"
 dependencies = [
  "bazaar-chk-map",
  "pyo3",
@@ -369,7 +369,7 @@ dependencies = [
 
 [[package]]
 name = "cmd-py"
-version = "3.3.3"
+version = "3.4.0"
 dependencies = [
  "breezy",
  "gettext-rs",
@@ -602,7 +602,7 @@ checksum = "b6c80984affa11d98d1b88b66ac8853f143217b399d3c74116778ff8fdb4ed2e"
 
 [[package]]
 name = "git-py"
-version = "3.3.3"
+version = "3.4.0"
 dependencies = [
  "breezy-git",
  "pyo3",
@@ -616,7 +616,7 @@ checksum = "d2fabcfbdc87f4758337ca535fb41a6d701b65693ce38287d856d1674551ec9b"
 
 [[package]]
 name = "graph-py"
-version = "3.3.3"
+version = "3.4.0"
 dependencies = [
  "breezy-graph",
  "pyo3",
@@ -624,7 +624,7 @@ dependencies = [
 
 [[package]]
 name = "groupcompress-py"
-version = "3.3.3"
+version = "3.4.0"
 dependencies = [
  "bazaar-groupcompress",
  "pyo3",
@@ -959,7 +959,7 @@ checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 
 [[package]]
 name = "osutils-py"
-version = "3.3.3"
+version = "3.4.0"
 dependencies = [
  "breezy-osutils",
  "memchr",
@@ -994,7 +994,7 @@ dependencies = [
 
 [[package]]
 name = "patch-py"
-version = "3.3.3"
+version = "3.4.0"
 dependencies = [
  "breezy-patch",
  "pyo3",
@@ -1496,7 +1496,7 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "transport-py"
-version = "3.3.3"
+version = "3.4.0"
 dependencies = [
  "breezy-transport",
  "log",
@@ -1590,7 +1590,7 @@ dependencies = [
 
 [[package]]
 name = "urlutils-py"
-version = "3.3.3"
+version = "3.4.0"
 dependencies = [
  "breezy-urlutils",
  "pyo3",
@@ -1821,7 +1821,7 @@ dependencies = [
 
 [[package]]
 name = "zlib-util-py"
-version = "3.3.3"
+version = "3.4.0"
 dependencies = [
  "breezy-zlib-util",
  "pyo3",

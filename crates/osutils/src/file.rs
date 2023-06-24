@@ -275,3 +275,10 @@ pub fn compare_files<T: Read, U: Read>(mut a: T, mut b: U) -> std::io::Result<bo
         }
     }
 }
+
+pub fn isdir(f: &Path) -> bool {
+    match std::fs::symlink_metadata(f) {
+        Ok(metadata) => metadata.is_dir(),
+        Err(_) => false,
+    }
+}
