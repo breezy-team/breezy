@@ -1,11 +1,11 @@
 use breezy::pytree::PyTree;
 
 use log::Log;
-use pyo3::exceptions::{PyRuntimeError, PyValueError, PyNotImplementedError};
+use pyo3::exceptions::{PyNotImplementedError, PyRuntimeError, PyValueError};
 use pyo3::import_exception;
 use pyo3::prelude::*;
-use pyo3::types::{PyString, PyTuple, PyType, PyBytes};
 use pyo3::pyclass::CompareOp;
+use pyo3::types::{PyBytes, PyString, PyTuple, PyType};
 use pyo3_file::PyFileLikeObject;
 use std::io::Write;
 use std::path::PathBuf;
@@ -449,8 +449,12 @@ struct LockHeldInfo(breezy::lockdir::LockHeldInfo);
 #[pymethods]
 impl LockHeldInfo {
     #[classmethod]
-    fn for_this_process(cls: &PyType, extra_holder_info: Option<std::collections::HashMap<String, String>>) -> Self {
-        let mut extra_holder_info = extra_holder_info.unwrap_or_else(std::collections::HashMap::new);
+    fn for_this_process(
+        cls: &PyType,
+        extra_holder_info: Option<std::collections::HashMap<String, String>>,
+    ) -> Self {
+        let mut extra_holder_info =
+            extra_holder_info.unwrap_or_else(std::collections::HashMap::new);
         let pid = if let Some(pid) = extra_holder_info.remove("pid") {
             Some(pid.parse::<u32>().unwrap())
         } else {
@@ -520,19 +524,23 @@ impl LockHeldInfo {
         match op {
             CompareOp::Eq => Ok(self.0 == other.0),
             CompareOp::Ne => Ok(self.0 != other.0),
-            _ => Err(PyNotImplementedError::new_err("Only == and != are supported"))
+            _ => Err(PyNotImplementedError::new_err(
+                "Only == and != are supported",
+            )),
         }
     }
 
     #[classmethod]
     fn from_info_file_bytes(_cls: &PyType, py: Python, info_file_bytes: &[u8]) -> PyResult<Self> {
-        Ok(Self(breezy::lockdir::LockHeldInfo::from_info_file_bytes(info_file_bytes).map_err(
-            |e| {
-            let fb = PyBytes::new(py, info_file_bytes).to_object(py);
+        Ok(Self(
+            breezy::lockdir::LockHeldInfo::from_info_file_bytes(info_file_bytes).map_err(|e| {
+                let fb = PyBytes::new(py, info_file_bytes).to_object(py);
 
-            match e {
-                breezy::lockdir::Error::LockCorrupt(s) => LockCorrupt::new_err((s, fb))
-            }})?))
+                match e {
+                    breezy::lockdir::Error::LockCorrupt(s) => LockCorrupt::new_err((s, fb)),
+                }
+            })?,
+        ))
     }
 
     fn is_locked_by_this_process(&self) -> bool {
