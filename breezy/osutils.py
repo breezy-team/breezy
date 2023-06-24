@@ -323,7 +323,6 @@ local_time_offset = _osutils_rs.local_time_offset
 format_date = _osutils_rs.format_date
 format_date_with_offset_in_original_timezone = _osutils_rs.format_date_with_offset_in_original_timezone
 format_local_date = _osutils_rs.format_local_date
-format_delta = _osutils_rs.format_delta
 compact_date = _osutils_rs.compact_date
 format_highres_date = _osutils_rs.format_highres_date
 unpack_highres_date = _osutils_rs.unpack_highres_date
