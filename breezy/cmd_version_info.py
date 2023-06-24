@@ -40,11 +40,11 @@ def _parse_version_info_format(format):
     from . import version_info_formats
     try:
         return version_info_formats.get_builder(format)
-    except KeyError:
+    except KeyError as err:
         formats = version_info_formats.get_builder_formats()
         raise errors.CommandError(
             gettext('No known version info format {0}.'
-                    ' Supported types are: {1}').format(format, formats))
+                    ' Supported types are: {1}').format(format, formats)) from err
 
 
 class cmd_version_info(Command):

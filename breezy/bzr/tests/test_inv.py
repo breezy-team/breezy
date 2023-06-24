@@ -18,13 +18,21 @@
 from ... import errors, osutils, repository, revision, tests, workingtree
 from ...tests.scenarios import load_tests_apply_scenarios
 from .. import chk_map, groupcompress, inventory
-from ..inventory import (ROOT_ID, CHKInventory, DuplicateFileId,
-                         InvalidEntryName, Inventory, InventoryDirectory,
-                         InventoryEntry, InventoryFile, TreeReference,
-                         _chk_inventory_bytes_to_entry,
-                         _chk_inventory_entry_to_bytes,
-                         chk_inventory_bytes_to_utf8name_key,
-                         mutable_inventory_from_tree)
+from ..inventory import (
+    ROOT_ID,
+    CHKInventory,
+    DuplicateFileId,
+    InvalidEntryName,
+    Inventory,
+    InventoryDirectory,
+    InventoryEntry,
+    InventoryFile,
+    TreeReference,
+    _chk_inventory_bytes_to_entry,
+    _chk_inventory_entry_to_bytes,
+    chk_inventory_bytes_to_utf8name_key,
+    mutable_inventory_from_tree,
+)
 from ..inventory_delta import InventoryDelta
 from . import TestCase, TestCaseWithTransport
 

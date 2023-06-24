@@ -151,8 +151,8 @@ Using shared repository: {}
         # Make sure getcwd can handle unicode filenames
         try:
             os.mkdir('mu-\xb5')
-        except UnicodeError:
-            raise TestSkipped("Unable to create Unicode filename")
+        except UnicodeError as err:
+            raise TestSkipped("Unable to create Unicode filename") from err
         # try to init unicode dir
         self.run_bzr(['init', '-q', 'mu-\xb5'])
 
@@ -164,7 +164,7 @@ Using shared repository: {}
         return tree
 
     def test_init_create_prefix(self):
-        """'brz init --create-prefix; will create leading directories."""
+        """'brz init --create-prefix; will create leading directories."""  # noqa: D403
         self.create_simple_tree()
 
         self.run_bzr_error(['Parent directory of ../new/tree does not exist'],
@@ -184,7 +184,7 @@ default_format = 1.9
         self.assertContainsRe(out, b'1.9')
 
     def test_init_no_tree(self):
-        """'brz init --no-tree' creates a branch with no working tree."""
+        """'brz init --no-tree' creates a branch with no working tree."""  # noqa: D403
         out, err = self.run_bzr('init --no-tree')
         self.assertStartsWith(out, 'Created a standalone branch')
 

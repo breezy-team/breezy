@@ -45,7 +45,7 @@ class TestGetRootID(TestCaseWithTree):
     def test_get_root_id_fixed(self):
         try:
             tree = self.make_tree_with_fixed_root_id()
-        except SettingFileIdUnsupported:
-            raise TestNotApplicable('file ids not supported')
+        except SettingFileIdUnsupported as err:
+            raise TestNotApplicable('file ids not supported') from err
         with tree.lock_read():
             self.assertEqual(b'custom-tree-root-id', tree.path2id(''))

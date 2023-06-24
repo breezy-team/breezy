@@ -572,14 +572,14 @@ class TestModuleHelpTopic(tests.TestCase):
                          topic.get_help_text())
 
     def test_get_help_text_no_carriage_return(self):
-        """ModuleHelpTopic.get_help_text adds a \n if needed."""
+        r"""ModuleHelpTopic.get_help_text adds a \n if needed."""
         mod = FakeModule('one line of help', 'demo')
         topic = plugin.ModuleHelpTopic(mod)
         self.assertEqual("one line of help\n",
                          topic.get_help_text())
 
     def test_get_help_text_carriage_return(self):
-        """ModuleHelpTopic.get_help_text adds a \n if needed."""
+        r"""ModuleHelpTopic.get_help_text adds a \n if needed."""
         mod = FakeModule('two lines of help\nand more\n', 'demo')
         topic = plugin.ModuleHelpTopic(mod)
         self.assertEqual("two lines of help\nand more\n",

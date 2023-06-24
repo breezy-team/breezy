@@ -18,9 +18,8 @@
 
 import os
 
-from breezy import errors, osutils, repository
+from breezy import errors, osutils, repository, tests
 from breezy import revision as _mod_revision
-from breezy import tests
 from breezy.bzr import inventorytree
 from breezy.tests import features, per_repository
 from breezy.transport.local import file_kind
@@ -775,10 +774,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         try:
             self._check_kind_change(self.make_dir, self.make_file,
                                     expect_fs_hash=True)
-        except errors.UnsupportedKindChange:
+        except errors.UnsupportedKindChange as err:
             raise tests.TestSkipped(
                 "tree does not support changing entry kind from "
-                "directory to file")
+                "directory to file") from err
 
     def test_last_modified_dir_link(self):
         if not self.repository_format.supports_versioned_directories:
@@ -788,10 +787,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 'format does not support versioned directories')
         try:
             self._check_kind_change(self.make_dir, self.make_link)
-        except errors.UnsupportedKindChange:
+        except errors.UnsupportedKindChange as err:
             raise tests.TestSkipped(
                 "tree does not support changing entry kind from "
-                "directory to link")
+                "directory to link") from err
 
     def test_last_modified_link_file(self):
         self._check_kind_change(self.make_link, self.make_file,
@@ -836,9 +835,9 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             builder.finish_inventory()
             try:
                 rev_id = builder.commit('foo bar blah')
-            except NotImplementedError:
+            except NotImplementedError as err:
                 raise tests.TestNotApplicable(
-                    'Format does not support revision properties')
+                    'Format does not support revision properties') from err
         rev = tree.branch.repository.get_revision(rev_id)
         self.assertEqual('foo bar blah', rev.message)
 
@@ -871,8 +870,8 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         repo_local = branch.repository
         try:
             repo_local.add_fallback_repository(repo_basis)
-        except errors.UnstackableRepositoryFormat:
-            raise tests.TestNotApplicable("not a stackable format.")
+        except errors.UnstackableRepositoryFormat as err:
+            raise tests.TestNotApplicable("not a stackable format.") from err
         self.addCleanup(repo_local.lock_write().unlock)
         if not repo_local._format.supports_chks:
             self.assertRaises(errors.BzrError, repo_local.get_commit_builder,

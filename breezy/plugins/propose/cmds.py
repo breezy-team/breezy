@@ -19,11 +19,10 @@
 from io import StringIO
 
 from ... import branch as _mod_branch
-from ... import controldir, errors
+from ... import controldir, errors, msgeditor, urlutils
 from ... import forge as _mod_forge
 from ... import log as _mod_log
 from ... import missing as _mod_missing
-from ... import msgeditor, urlutils
 from ...commands import Command
 from ...i18n import gettext
 from ...option import ListOption, Option, RegistryOption

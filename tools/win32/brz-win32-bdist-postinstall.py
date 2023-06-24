@@ -1,3 +1,4 @@
+# noqa: N999
 # (c) Canonical Ltd, 2006
 # written by Alexander Belchenko for brz project
 #

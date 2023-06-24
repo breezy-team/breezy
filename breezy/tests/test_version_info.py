@@ -24,9 +24,11 @@ import yaml
 
 from .. import registry, tests, version_info_formats
 from ..bzr import rio
-from ..version_info_formats.format_custom import (CustomVersionInfoBuilder,
-                                                  MissingTemplateVariable,
-                                                  NoTemplate)
+from ..version_info_formats.format_custom import (
+    CustomVersionInfoBuilder,
+    MissingTemplateVariable,
+    NoTemplate,
+)
 from ..version_info_formats.format_python import PythonVersionInfoBuilder
 from ..version_info_formats.format_rio import RioVersionInfoBuilder
 from ..version_info_formats.format_yaml import YamlVersionInfoBuilder

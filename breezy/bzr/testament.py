@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Testament - a summary of a revision for signing.
+r"""Testament - a summary of a revision for signing.
 
 A testament can be defined as "something that serves as tangible
 proof or evidence."  In bzr we use them to allow people to certify

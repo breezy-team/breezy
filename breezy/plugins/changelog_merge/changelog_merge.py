@@ -183,10 +183,10 @@ def merge_entries(base_entries, this_entries, other_entries,
             for old_entry, new_entry in edits_in_other:
                 try:
                     index = updated_this.index(old_entry)
-                except ValueError:
+                except ValueError as e:
                     # edited entry no longer present in this!  Just give up and
                     # declare a conflict.
-                    raise EntryConflict()
+                    raise EntryConflict() from e
                 updated_this[index] = new_entry
             if debug.debug_flag_enabled('changelog_merge'):
                 mutter('updated_this: %r', updated_this)

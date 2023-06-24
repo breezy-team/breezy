@@ -40,7 +40,9 @@ class TestLocale(tests.TestCaseWithTransport):
                     timestamp=1156451297.96, timezone=0)
         self.tree = tree
 
-    def run_log_quiet_long(self, args, env_changes={}):
+    def run_log_quiet_long(self, args, env_changes=None):
+        if env_changes is None:
+            env_changes = {}
         cmd = ['--no-aliases', '--no-plugins', '-Oprogress_bar=none',
                'log', '-q', '--log-format=long']
         cmd.extend(args)

@@ -180,7 +180,7 @@ class EmailMessage:
 
     @staticmethod
     def string_with_encoding(string_):
-        """Return a str object together with an encoding.
+        r"""Return a str object together with an encoding.
 
         :param string\\_: A str or unicode object.
         :return: A tuple (str, encoding), where encoding is one of 'ascii',

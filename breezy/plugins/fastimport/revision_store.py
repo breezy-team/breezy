@@ -108,10 +108,10 @@ class _TreeShim:
             # probably is better to optimize for that
             try:
                 old_ie = basis_inv.get_entry(file_id)
-            except errors.NoSuchId:
+            except errors.NoSuchId as e:
                 old_ie = None
                 if ie is None:
-                    raise AssertionError('How is both old and new None?')
+                    raise AssertionError('How is both old and new None?') from e
                     change = InventoryTreeChange(
                         file_id,
                         (old_path, new_path),

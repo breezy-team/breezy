@@ -17,8 +17,7 @@
 """Bazaar command-line subcommands."""
 
 from ...commands import Command, display_command
-from ...errors import (CommandError, ConflictsInTree, NoWorkingTree,
-                       UncommittedChanges)
+from ...errors import CommandError, ConflictsInTree, NoWorkingTree, UncommittedChanges
 from ...i18n import gettext
 from ...option import Option
 from ...trace import note
@@ -30,11 +29,11 @@ def finish_rebase(state, wt, replace_map, replayer):
     try:
         # Start executing plan from current Branch.last_revision()
         rebase(wt.branch.repository, replace_map, replayer)
-    except ConflictsInTree:
+    except ConflictsInTree as e:
         raise CommandError(gettext(
             "A conflict occurred replaying a commit."
             " Resolve the conflict and run 'brz rebase-continue' or "
-            "run 'brz rebase-abort'."))
+            "run 'brz rebase-abort'.")) from e
     # Remove plan file
     state.remove_plan()
 
@@ -103,9 +102,13 @@ class cmd_rebase(Command):
         from ...branch import Branch
         from ...revisionspec import RevisionSpec
         from ...workingtree import WorkingTree
-        from .rebase import (RebaseState1, WorkingTreeRevisionRewriter,
-                             generate_simple_plan, rebase_todo,
-                             regenerate_default_revid)
+        from .rebase import (
+            RebaseState1,
+            WorkingTreeRevisionRewriter,
+            generate_simple_plan,
+            rebase_todo,
+            regenerate_default_revid,
+        )
         if revision is not None and pending_merges:
             raise CommandError(gettext(
                 "--revision and --pending-merges are mutually exclusive"))
@@ -236,8 +239,8 @@ class cmd_rebase_abort(Command):
             # Read plan file and set last revision
             try:
                 last_rev_info = state.read_plan()[0]
-            except NoSuchFile:
-                raise CommandError("No rebase to abort")
+            except NoSuchFile as e:
+                raise CommandError("No rebase to abort") from e
             complete_revert(wt, [last_rev_info[1]])
             state.remove_plan()
         finally:
@@ -271,8 +274,8 @@ class cmd_rebase_continue(Command):
             # Read plan file
             try:
                 replace_map = state.read_plan()[1]
-            except NoSuchFile:
-                raise CommandError(gettext("No rebase to continue"))
+            except NoSuchFile as e:
+                raise CommandError(gettext("No rebase to continue")) from e
             oldrevid = state.read_active_revid()
             if oldrevid is not None:
                 oldrev = wt.branch.repository.get_revision(oldrevid)
@@ -303,8 +306,8 @@ class cmd_rebase_todo(Command):
             state = RebaseState1(wt)
             try:
                 replace_map = state.read_plan()[1]
-            except NoSuchFile:
-                raise CommandError(gettext("No rebase in progress"))
+            except NoSuchFile as err:
+                raise CommandError(gettext("No rebase in progress")) from err
             currentrevid = state.read_active_revid()
             if currentrevid is not None:
                 note(gettext("Currently replaying: %s") % currentrevid)
@@ -329,8 +332,11 @@ class cmd_replay(Command):
         from ... import ui
         from ...branch import Branch
         from ...workingtree import WorkingTree
-        from .rebase import (RebaseState1, WorkingTreeRevisionRewriter,
-                             regenerate_default_revid)
+        from .rebase import (
+            RebaseState1,
+            WorkingTreeRevisionRewriter,
+            regenerate_default_revid,
+        )
 
         from_branch = Branch.open_containing(location)[0]
 
@@ -416,9 +422,11 @@ class cmd_rebase_foreign(Command):
         from ...branch import Branch
         from ...foreign import update_workingtree_fileids
         from ...workingtree import WorkingTree
-        from .pseudonyms import (find_pseudonyms,
-                                 generate_rebase_map_from_pseudonyms,
-                                 pseudonyms_as_dict)
+        from .pseudonyms import (
+            find_pseudonyms,
+            generate_rebase_map_from_pseudonyms,
+            pseudonyms_as_dict,
+        )
         from .upgrade import create_deterministic_revid, upgrade_branch
 
         try:

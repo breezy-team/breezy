@@ -17,9 +17,10 @@
 """Tests for the SSL support in the urllib HTTP transport."""
 
 import os
+import ssl
 
 from .. import config, tests, trace
-from ..transport.http import opt_ssl_ca_certs, ssl
+from ..transport.http import opt_ssl_ca_certs
 
 
 class CaCertsConfigTests(tests.TestCaseInTempDir):

@@ -25,10 +25,19 @@ from dulwich.refs import SymrefLoop
 from .. import branch as _mod_branch
 from .. import errors as brz_errors
 from .. import osutils, trace, urlutils
-from ..controldir import (BranchReferenceLoop, ControlDir, ControlDirFormat,
-                          RepositoryAcquisitionPolicy, format_registry)
-from ..transport import (FileExists, NoSuchFile, do_catching_redirections,
-                         get_transport_from_path)
+from ..controldir import (
+    BranchReferenceLoop,
+    ControlDir,
+    ControlDirFormat,
+    RepositoryAcquisitionPolicy,
+    format_registry,
+)
+from ..transport import (
+    FileExists,
+    NoSuchFile,
+    do_catching_redirections,
+    get_transport_from_path,
+)
 from .mapping import decode_git_path, encode_git_path
 from .push import GitPushResult
 from .transportgit import OBJECTDIR, TransportObjectStore
@@ -407,7 +416,7 @@ class LocalGitControlDirFormat(GitControlDirFormat):
                                      refs_text=getattr(self, "_refs_text", None))
             except ValueError as e:
                 if e.args == ('Expected file to start with \'gitdir: \'', ):
-                    raise brz_errors.NotBranchError(path=transport.base)
+                    raise brz_errors.NotBranchError(path=transport.base) from e
                 raise
 
         def redirected(transport, e, redirection_notice):
@@ -469,8 +478,8 @@ class LocalGitControlDirFormat(GitControlDirFormat):
     def supports_transport(self, transport):
         try:
             external_url = transport.external_url()
-        except brz_errors.InProcessTransport:
-            raise brz_errors.NotBranchError(path=transport.base)
+        except brz_errors.InProcessTransport as err:
+            raise brz_errors.NotBranchError(path=transport.base) from err
         return external_url.startswith("file:")
 
     def is_control_filename(self, filename):
@@ -540,9 +549,9 @@ class LocalGitDir(GitDir):
                 target_path = (
                     target_branch.controldir.control_transport.local_abspath(
                         '.'))
-            except brz_errors.NotLocalUrl:
+            except brz_errors.NotLocalUrl as err:
                 raise brz_errors.IncompatibleFormat(
-                    target_branch._format, self._format)
+                    target_branch._format, self._format) from err
             # TODO(jelmer): Do some consistency checking across branches..
             self.control_transport.put_bytes(
                 'commondir', encode_git_path(target_path))
@@ -568,8 +577,8 @@ class LocalGitDir(GitDir):
         ref = self._get_selected_ref(name)
         try:
             target_ref = self._get_symref(ref)
-        except SymrefLoop:
-            raise BranchReferenceLoop(self)
+        except SymrefLoop as err:
+            raise BranchReferenceLoop(self) from err
         if target_ref is not None:
             from .refs import ref_to_branch_name
             try:
@@ -588,7 +597,10 @@ class LocalGitDir(GitDir):
                 base_url = self.user_url.rstrip('/')
             else:
                 base_url = urlutils.local_path_to_url(
-                    decode_git_path(commondir)).rstrip('/.git/') + '/'
+                    decode_git_path(commondir))
+                if base_url.endswith('/.git/'):
+                    base_url = base_url[:-len('/.git/')]
+                base_url += '/'
             return urlutils.join_segment_parameters(base_url, params)
         return None
 
@@ -619,7 +631,7 @@ class LocalGitDir(GitDir):
 
     def open_branch(self, name=None, unsupported=False, ignore_fallbacks=None,
                     ref=None, possible_transports=None, nascent_ok=False):
-        """'create' a branch for this dir."""
+        """'create' a branch for this dir."""  # noqa: D403
         repo = self.find_repository()
         from .branch import LocalGitBranch
         ref = self._get_selected_ref(name, ref)
@@ -628,8 +640,8 @@ class LocalGitDir(GitDir):
                 self.root_transport.base, controldir=self)
         try:
             ref_chain, unused_sha = self._git.refs.follow(ref)
-        except SymrefLoop:
-            raise BranchReferenceLoop(self)
+        except SymrefLoop as err:
+            raise BranchReferenceLoop(self) from err
         if ref_chain[-1] == b'HEAD':
             controldir = self
         else:
@@ -644,9 +656,9 @@ class LocalGitDir(GitDir):
                 self.destroy_branch, self)
         try:
             del self._git.refs[refname]
-        except KeyError:
+        except KeyError as err:
             raise brz_errors.NotBranchError(
-                self.root_transport.base, controldir=self)
+                self.root_transport.base, controldir=self) from err
 
     def destroy_repository(self):
         raise brz_errors.UnsupportedOperation(self.destroy_repository, self)
@@ -662,7 +674,7 @@ class LocalGitDir(GitDir):
         return not isinstance(self._format, format.__class__)
 
     def open_repository(self):
-        """'open' a repository for this dir."""
+        """'open' a repository for this dir."""  # noqa: D403
         if self.control_transport.has('commondir'):
             raise brz_errors.NoRepositoryPresent(self)
         return self._gitrepository_class(self)

@@ -21,16 +21,22 @@ import warnings
 from io import BytesIO
 from shutil import copy2, copytree, rmtree
 
-from .. import osutils
+from .. import osutils, transform
 from .. import revision as _mod_revision
-from .. import transform
 from ..controldir import ControlDir
 from ..export import export
 from ..transport.local import file_kind
-from ..upstream_import import (NotArchiveType, ZipFileWrapper,
-                               common_directory, get_archive_type,
-                               import_archive, import_dir, import_tar,
-                               import_zip, top_path)
+from ..upstream_import import (
+    NotArchiveType,
+    ZipFileWrapper,
+    common_directory,
+    get_archive_type,
+    import_archive,
+    import_dir,
+    import_tar,
+    import_zip,
+    top_path,
+)
 from . import TestCaseInTempDir, TestCaseWithTransport
 from .features import UnicodeFilenameFeature
 

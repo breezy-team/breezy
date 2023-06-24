@@ -479,8 +479,8 @@ class Commit:
                 self.master_branch.tags)
             if tag_conflicts:
                 warning_lines = ['    ' + name for name, _, _ in tag_conflicts]
-                note(gettext("Conflicting tags in bound branch:\n{}".format(
-                    "\n".join(warning_lines))))
+                note(gettext("Conflicting tags in bound branch:\n{}").format(
+                    "\n".join(warning_lines)))
 
     def _select_reporter(self):
         """Select the CommitReporter to use."""
@@ -723,7 +723,7 @@ class Commit:
                 raise StrictCommitFailed()
 
     def _commit_nested_tree(self, path):
-        "Commit a nested tree."
+        """Commit a nested tree."""
         sub_tree = self.work_tree.get_nested_tree(path)
         # FIXME: be more comprehensive here:
         # this works when both trees are in --trees repository,

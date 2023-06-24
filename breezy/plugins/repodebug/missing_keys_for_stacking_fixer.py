@@ -41,16 +41,16 @@ class cmd_fix_missing_keys_for_stacking(Command):
         try:
             bd = ControlDir.open(branch_url)
             b = bd.open_branch(ignore_fallbacks=True)
-        except (errors.NotBranchError, errors.InvalidURL):
+        except (errors.NotBranchError, errors.InvalidURL) as e:
             raise errors.CommandError(
-                f"Not a branch or invalid URL: {branch_url}")
+                f"Not a branch or invalid URL: {branch_url}") from e
         b.lock_read()
         try:
             b.get_stacked_on_url()
         except (errors.UnstackableRepositoryFormat, errors.NotStacked,
-                errors.UnstackableBranchFormat):
+                errors.UnstackableBranchFormat) as e:
             b.unlock()
-            raise errors.CommandError(f"Not stacked: {branch_url}")
+            raise errors.CommandError(f"Not stacked: {branch_url}") from e
         raw_r = b.repository.controldir.open_repository()
         if dry_run:
             raw_r.lock_read()

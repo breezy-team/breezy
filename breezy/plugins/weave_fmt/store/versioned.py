@@ -33,14 +33,13 @@ class VersionedFileStore(TransportStore):
     def __init__(self, transport, prefixed=False, precious=False,
                  dir_mode=None, file_mode=None,
                  versionedfile_class=None,
-                 versionedfile_kwargs={},
+                 versionedfile_kwargs=None,
                  escaped=False):
-        super().__init__(transport,
-                                                 dir_mode=dir_mode, file_mode=file_mode,
-                                                 prefixed=prefixed, compressed=False, escaped=escaped)
+        super().__init__(transport, dir_mode=dir_mode, file_mode=file_mode,
+                         prefixed=prefixed, compressed=False, escaped=escaped)
         self._precious = precious
         self._versionedfile_class = versionedfile_class
-        self._versionedfile_kwargs = versionedfile_kwargs
+        self._versionedfile_kwargs = versionedfile_kwargs or {}
         # Used for passing get_scope to versioned file constructors;
         self.get_scope = None
 

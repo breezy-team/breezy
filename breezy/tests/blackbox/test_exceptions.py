@@ -48,7 +48,7 @@ class TestExceptionReporting(tests.TestCaseInTempDir):
 
 
 class TestOptParseBugHandling(tests.TestCase):
-    "Test that we handle http://bugs.python.org/issue2931."
+    """Test that we handle http://bugs.python.org/issue2931."""
 
     def test_nonascii_optparse(self):
         """Reasonable error raised when non-ascii in option name on Python 2."""

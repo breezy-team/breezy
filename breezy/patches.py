@@ -57,9 +57,14 @@ class MalformedHunkHeader(PatchSyntax):
         self.line = line
 
 
-from ._patch_rs import (BinaryFiles, MalformedPatchHeader,  # noqa: F401
-                        difference_index, get_patch_names,
-                        iter_lines_handle_nl, parse_range)
+from ._patch_rs import (  # noqa: F401
+    BinaryFiles,
+    MalformedPatchHeader,
+    difference_index,
+    get_patch_names,
+    iter_lines_handle_nl,
+    parse_range,
+)
 
 
 def hunk_from_header(line):
@@ -70,14 +75,14 @@ def hunk_from_header(line):
     try:
         (orig, mod) = matches.group(1).split(b" ")
     except (ValueError, IndexError) as e:
-        raise MalformedHunkHeader(str(e), line)
+        raise MalformedHunkHeader(str(e), line) from e
     if not orig.startswith(b'-') or not mod.startswith(b'+'):
         raise MalformedHunkHeader("Positions don't start with + or -.", line)
     try:
         (orig_pos, orig_range) = parse_range(orig[1:].decode('utf-8'))
         (mod_pos, mod_range) = parse_range(mod[1:].decode('utf-8'))
     except (ValueError, IndexError) as e:
-        raise MalformedHunkHeader(str(e), line)
+        raise MalformedHunkHeader(str(e), line) from e
     if mod_range < 0 or orig_range < 0:
         raise MalformedHunkHeader("Hunk range is negative", line)
     tail = matches.group(3)
@@ -217,11 +222,11 @@ class Hunk:
 
 
 def iter_hunks(iter_lines, allow_dirty=False):
-    ''':arg iter_lines: iterable of lines to parse for hunks
+    """:arg iter_lines: iterable of lines to parse for hunks
     :kwarg allow_dirty: If True, when we encounter something that is not
         a hunk header when we're looking for one, assume the rest of the lines
         are not part of the patch (comments or other junk).  Default False.
-    '''
+    """
     hunk = None
     for line in iter_lines:
         if line == b"\n":
@@ -333,10 +338,10 @@ class Patch(BinaryPatch):
 
 
 def parse_patch(iter_lines, allow_dirty=False):
-    ''':arg iter_lines: iterable of lines to parse
+    """:arg iter_lines: iterable of lines to parse
     :kwarg allow_dirty: If True, allow the patch to have trailing junk.
         Default False.
-    '''
+    """
     iter_lines = iter_lines_handle_nl(iter_lines)
     try:
         ((orig_name, orig_ts), (mod_name, mod_ts)) = get_patch_names(
@@ -351,13 +356,13 @@ def parse_patch(iter_lines, allow_dirty=False):
 
 
 def iter_file_patch(iter_lines: Iterator[bytes], allow_dirty: bool = False, keep_dirty: bool = False):
-    ''':arg iter_lines: iterable of lines to parse for patches
+    """:arg iter_lines: iterable of lines to parse for patches
     :kwarg allow_dirty: If True, allow comments and other non-patch text
         before the first patch.  Note that the algorithm here can only find
         such text before any patches have been found.  Comments after the
         first patch are stripped away in iter_hunks() if it is also passed
         allow_dirty=True.  Default False.
-    '''
+    """
     # FIXME: Docstring is not quite true.  We allow certain comments no
     # matter what, If they startwith '===', '***', or '#' Someone should
     # reexamine this logic and decide if we should include those in
@@ -420,13 +425,13 @@ def iter_file_patch(iter_lines: Iterator[bytes], allow_dirty: bool = False, keep
 
 
 def parse_patches(iter_lines, allow_dirty=False, keep_dirty=False):
-    ''':arg iter_lines: iterable of lines to parse for patches
+    """:arg iter_lines: iterable of lines to parse for patches
     :kwarg allow_dirty: If True, allow text that's not part of the patch at
         selected places.  This includes comments before and after a patch
         for instance.  Default False.
     :kwarg keep_dirty: If True, returns a dict of patches with dirty headers.
         Default False.
-    '''
+    """
     for patch_lines in iter_file_patch(iter_lines, allow_dirty, keep_dirty):
         if 'dirty_head' in patch_lines:
             yield ({'patch': parse_patch(patch_lines['saved_lines'], allow_dirty),

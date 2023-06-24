@@ -40,8 +40,8 @@ def brz():
             subprocess.call(['brz.bat', '--version'], stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE)
             BRZ_EXE = 'brz.bat'
-        except OSError:
-            raise RuntimeError('Could not find brz or brz.bat on your path.')
+        except OSError as err:
+            raise RuntimeError('Could not find brz or brz.bat on your path.') from err
     return BRZ_EXE
 
 

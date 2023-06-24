@@ -41,7 +41,7 @@ class NoTemplate(errors.BzrError):
 
 
 class Template:
-    """A simple template engine.
+    r"""A simple template engine.
 
     >>> t = Template()
     >>> t.add('test', 'xxx')
@@ -84,8 +84,8 @@ class Template:
             name = match.group(1)
             try:
                 data = self._data[name]
-            except KeyError:
-                raise MissingTemplateVariable(name)
+            except KeyError as err:
+                raise MissingTemplateVariable(name) from err
             if not isinstance(data, str):
                 data = str(data)
             yield data

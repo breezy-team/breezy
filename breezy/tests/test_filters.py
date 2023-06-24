@@ -17,10 +17,15 @@
 from io import BytesIO
 
 from .. import filters
-from ..filters import (ContentFilter, ContentFilterContext,
-                       _get_filter_stack_for, _get_registered_names,
-                       filtered_input_file, filtered_output_bytes,
-                       internal_size_sha_file_byname)
+from ..filters import (
+    ContentFilter,
+    ContentFilterContext,
+    _get_filter_stack_for,
+    _get_registered_names,
+    filtered_input_file,
+    filtered_output_bytes,
+    internal_size_sha_file_byname,
+)
 from ..osutils import sha_string
 from . import TestCase, TestCaseInTempDir
 

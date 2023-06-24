@@ -33,11 +33,9 @@ from breezy import (
     multiparent,
     )
 """)
-from .. import errors
+from .. import errors, osutils, revision, urlutils
 from .. import graph as _mod_graph
-from .. import osutils, revision
 from .. import transport as _mod_transport
-from .. import urlutils
 from ..registry import Registry
 from ..textmerge import TextMerge
 from . import index
@@ -476,7 +474,7 @@ class VersionedFile:
     def add_lines(self, version_id, parents, lines, parent_texts=None,
                   left_matching_blocks=None, nostore_sha=None, random_id=False,
                   check_content=True):
-        """Add a single text on top of the versioned file.
+        r"""Add a single text on top of the versioned file.
 
         Must raise RevisionAlreadyPresent if the new version is
         already present in file history.
@@ -573,8 +571,8 @@ class VersionedFile:
         for version_id in version_ids:
             try:
                 knit_versions.update(parent_map[version_id])
-            except KeyError:
-                raise errors.RevisionNotPresent(version_id, self)
+            except KeyError as e:
+                raise errors.RevisionNotPresent(version_id, self) from e
         # We need to filter out ghosts, because we can't diff against them.
         knit_versions = set(self.get_parent_map(knit_versions))
         lines = dict(zip(knit_versions,
@@ -585,12 +583,12 @@ class VersionedFile:
             try:
                 parents = [lines[p] for p in parent_map[version_id] if p in
                            knit_versions]
-            except KeyError:
+            except KeyError as e:
                 # I don't know how this could ever trigger.
                 # parent_map[version_id] was already triggered in the previous
                 # for loop, and lines[p] has the 'if p in knit_versions' check,
                 # so we again won't have a KeyError.
-                raise errors.RevisionNotPresent(version_id, self)
+                raise errors.RevisionNotPresent(version_id, self) from e
             if len(parents) > 0:
                 left_parent_blocks = self._extract_blocks(version_id,
                                                           parents[0], target)
@@ -617,7 +615,7 @@ class VersionedFile:
             versions.append(version)
             mpvf.add_diff(mpdiff, version, parent_ids)
         needed_parents = set()
-        for version, parent_ids, _expected_sha1, mpdiff in records:
+        for _version, parent_ids, _expected_sha1, _mpdiff in records:
             needed_parents.update(p for p in parent_ids
                                   if not mpvf.has_version(p))
         present_parents = set(self.get_parent_map(needed_parents))
@@ -643,7 +641,7 @@ class VersionedFile:
                                                     left_matching_blocks=left_matching_blocks)
             vf_parents[version] = version_text
         sha1s = self.get_sha1s(versions)
-        for version, parent_ids, expected_sha1, mpdiff in records:
+        for version, _parent_ids, expected_sha1, _mpdiff in records:
             if expected_sha1 != sha1s[version]:
                 raise errors.VersionedFileInvalidChecksum(version)
 
@@ -715,8 +713,8 @@ class VersionedFile:
         """
         try:
             return list(self.get_parent_map([version_id])[version_id])
-        except KeyError:
-            raise errors.RevisionNotPresent(version_id, self)
+        except KeyError as e:
+            raise errors.RevisionNotPresent(version_id, self) from e
 
     def annotate(self, version_id):
         """Return a list of (version-id, line) tuples for version_id.
@@ -728,7 +726,7 @@ class VersionedFile:
 
     def iter_lines_added_or_present_in_versions(self, version_ids=None,
                                                 pb=None):
-        """Iterate over the lines in the versioned file from version_ids.
+        r"""Iterate over the lines in the versioned file from version_ids.
 
         This may return lines from other versions. Each item the returned
         iterator yields is a tuple of a line and a text version that that line
@@ -1026,7 +1024,7 @@ class VersionedFiles:
     def add_lines(self, key, parents, lines, parent_texts=None,
                   left_matching_blocks=None, nostore_sha=None, random_id=False,
                   check_content=True):
-        """Add a text to the store.
+        r"""Add a text to the store.
 
         :param key: The key tuple of the text to add. If the last element is
             None, a CHK string will be generated during the addition.
@@ -1107,7 +1105,7 @@ class VersionedFiles:
             versions.append(version)
             mpvf.add_diff(mpdiff, version, parent_ids)
         needed_parents = set()
-        for version, parent_ids, _expected_sha1, mpdiff in records:
+        for _version, parent_ids, _expected_sha1, _mpdiff in records:
             needed_parents.update(p for p in parent_ids
                                   if not mpvf.has_version(p))
         # It seems likely that adding all the present parents as fulltexts can
@@ -1245,7 +1243,7 @@ class VersionedFiles:
         raise NotImplementedError
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
-        """Iterate over the lines in the versioned files from keys.
+        r"""Iterate over the lines in the versioned files from keys.
 
         This may return lines from other keys. Each item the returned
         iterator yields is a tuple of a line and a text version that that line
@@ -1490,7 +1488,7 @@ class ThunkedVersionedFiles(VersionedFiles):
             vf.insert_record_stream([thunk_record])
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
-        """Iterate over the lines in the versioned files from keys.
+        r"""Iterate over the lines in the versioned files from keys.
 
         This may return lines from other keys. Each item the returned
         iterator yields is a tuple of a line and a text version that that line

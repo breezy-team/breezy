@@ -16,8 +16,7 @@
 """A Simple bzr plugin to generate statistics about the history."""
 
 
-from ... import (branch, commands, config, errors, option, trace, tsort, ui,
-                 workingtree)
+from ... import branch, commands, config, errors, option, trace, tsort, ui, workingtree
 from ...revision import NULL_REVISION
 from .classify import classify_delta
 
@@ -122,7 +121,7 @@ def collapse_email_and_users(email_users, combo_count):
                     collapse_ids(user_id, cur_id, id_combos)
             username_to_id[low_user] = cur_id
     combo_to_best_combo = {}
-    for cur_id, combos in id_to_combos.items():
+    for _cur_id, combos in id_to_combos.items():
         best_combo = sorted(combos,
                             key=lambda x: combo_count[x],
                             reverse=True)[0]

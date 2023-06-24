@@ -237,9 +237,9 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         try:
             creator.transform()
             self.check_shelve_creation(creator, tree)
-        except transform.MalformedTransform:
+        except transform.MalformedTransform as err:
             raise KnownFailure(
-                'shelving directory with ignored file: see bug #611739')
+                'shelving directory with ignored file: see bug #611739') from err
 
     def _test_shelve_symlink_creation(self, link_name, link_target,
                                       shelve_change=False):

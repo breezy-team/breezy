@@ -24,8 +24,13 @@ from dulwich.objects import Blob, Commit, Tree
 from ...revision import Revision
 from ...tests import TestCase, TestCaseInTempDir, UnavailableFeature
 from ...transport import get_transport
-from ..cache import (DictBzrGitCache, IndexBzrGitCache, IndexGitCacheFormat,
-                     SqliteBzrGitCache, TdbBzrGitCache)
+from ..cache import (
+    DictBzrGitCache,
+    IndexBzrGitCache,
+    IndexGitCacheFormat,
+    SqliteBzrGitCache,
+    TdbBzrGitCache,
+)
 
 
 class TestGitShaMap:
@@ -140,8 +145,8 @@ class TdbGitShaMapTests(TestCaseInTempDir, TestGitShaMap):
         TestCaseInTempDir.setUp(self)
         try:
             self.cache = TdbBzrGitCache(os.path.join(self.test_dir, 'foo.tdb'))
-        except ModuleNotFoundError:
-            raise UnavailableFeature("Missing tdb")
+        except ModuleNotFoundError as err:
+            raise UnavailableFeature("Missing tdb") from err
         self.map = self.cache.idmap
 
 

@@ -32,8 +32,15 @@ from io import BytesIO
 from stat import S_ISDIR
 from typing import Any, Callable, Dict, TypeVar
 
-from .. import _transport_rs  # type: ignore
-from .. import errors, hooks, osutils, registry, ui, urlutils
+from .. import (
+    _transport_rs,  # type: ignore
+    errors,
+    hooks,
+    osutils,
+    registry,
+    ui,
+    urlutils,
+)
 from ..trace import mutter
 
 # a dictionary of open file streams. Keys are absolute paths, values are
@@ -223,7 +230,7 @@ class LateReadError:
         # If there was an error raised, prefer the original one
         try:
             self.close()
-        except:
+        except BaseException:
             if exc_type is None:
                 raise
         return False
@@ -297,8 +304,8 @@ class FileFileStream(FileStream):
         self.file_handle.flush()
         try:
             fileno = self.file_handle.fileno()
-        except AttributeError:
-            raise errors.TransportNotPossible()
+        except AttributeError as err:
+            raise errors.TransportNotPossible() from err
         osutils.fdatasync(fileno)
 
     def write(self, bytes):

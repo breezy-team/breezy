@@ -44,8 +44,8 @@ class BasicTags(Tags):
         td = self.get_tag_dict()
         try:
             return td[tag_name]
-        except KeyError:
-            raise errors.NoSuchTag(tag_name)
+        except KeyError as e:
+            raise errors.NoSuchTag(tag_name) from e
 
     def get_tag_dict(self):
         with self.branch.lock_read():
@@ -66,8 +66,8 @@ class BasicTags(Tags):
             d = self.get_tag_dict()
             try:
                 del d[tag_name]
-            except KeyError:
-                raise errors.NoSuchTag(tag_name)
+            except KeyError as e:
+                raise errors.NoSuchTag(tag_name) from e
             master = self.branch.get_master_branch()
             if master is not None:
                 try:
@@ -104,4 +104,4 @@ class BasicTags(Tags):
             return r
         except ValueError as e:
             raise ValueError("failed to deserialize tag dictionary %r: %s"
-                             % (tag_content, e))
+                             % (tag_content, e)) from e

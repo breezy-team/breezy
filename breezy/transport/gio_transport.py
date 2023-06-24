@@ -34,17 +34,16 @@ from urllib.parse import urlparse, urlunparse
 from .. import config, debug, errors, osutils, ui, urlutils
 from ..tests.test_server import TestServer
 from ..trace import mutter
-from . import (ConnectedTransport, FileExists, FileStream, NoSuchFile,
-               _file_streams)
+from . import ConnectedTransport, FileExists, FileStream, NoSuchFile, _file_streams
 
 try:
     import glib
 except ModuleNotFoundError as e:
-    raise errors.DependencyNotPresent('glib', e)
+    raise errors.DependencyNotPresent('glib', e) from e
 try:
     import gio
 except ModuleNotFoundError as e:
-    raise errors.DependencyNotPresent('gio', e)
+    raise errors.DependencyNotPresent('gio', e) from e
 
 
 class GioLocalURLServer(TestServer):
@@ -82,7 +81,7 @@ class GioFileStream(FileStream):
             osutils.pumpfile(BytesIO(bytes), self.stream)
         except gio.Error as e:
             # self.transport._translate_gio_error(e,self.relpath)
-            raise errors.BzrError(str(e))
+            raise errors.BzrError(str(e)) from e
 
 
 class GioStatResult:
@@ -189,7 +188,7 @@ class GioTransport(ConnectedTransport):
         except gio.Error as e:
             self.loop.quit()
             raise errors.BzrError(
-                "Failed to mount the given location: " + str(e))
+                "Failed to mount the given location: " + str(e)) from e
 
     def _create_connection(self, credentials=None):
         if credentials is None:
@@ -216,7 +215,7 @@ class GioTransport(ConnectedTransport):
                     self.loop.run()
         except gio.Error as e:
             raise errors.TransportError(msg="Error setting up connection:"
-                                        " %s" % str(e), orig_error=e)
+                                        " %s" % str(e), orig_error=e) from e
         return connection, (user, password)
 
     def disconnect(self):
@@ -274,7 +273,7 @@ class GioTransport(ConnectedTransport):
             if (e.code == gio.ERROR_NOT_MOUNTED):
                 raise errors.PathError(relpath,
                                        extra='Failed to get file, make sure the path is correct. '
-                                       + str(e))
+                                       + str(e)) from e
             else:
                 self._translate_gio_error(e, relpath)
 
@@ -363,7 +362,7 @@ class GioTransport(ConnectedTransport):
             raise e
         except Exception as e:
             mutter(f'failed to rmdir {relpath}: {e}')
-            raise errors.PathError(relpath)
+            raise errors.PathError(relpath) from e
 
     def append_file(self, relpath, file, mode=None):
         """Append the text in the file-like object into the final

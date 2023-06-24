@@ -62,10 +62,10 @@ def load_fastimport():
     """Load the fastimport module or raise an appropriate exception."""
     try:
         import fastimport
-    except ModuleNotFoundError:
+    except ModuleNotFoundError as e:
         from ...errors import DependencyNotPresent
         raise DependencyNotPresent("fastimport",
-                                   "fastimport requires the fastimport python module")
+                                   "fastimport requires the fastimport python module") from e
     if fastimport.__version__ < (0, 9, 8):
         from ...errors import DependencyNotPresent
         raise DependencyNotPresent("fastimport",

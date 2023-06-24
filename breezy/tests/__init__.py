@@ -51,26 +51,33 @@ from io import BytesIO, StringIO, TextIOWrapper
 from typing import Callable, Set
 
 import testtools
-
-# nb: check this before importing anything else from within it
-_testtools_version = getattr(testtools, '__version__', ())
-if _testtools_version < (0, 9, 5):
-    raise ImportError("need at least testtools 0.9.5: %s is %r"
-                      % (testtools.__file__, _testtools_version))
 from testtools import content
 
 import breezy
 from breezy.bzr import chk_map
 
-from .. import branchbuilder
+from .. import (
+    branchbuilder,
+    config,
+    controldir,
+    debug,
+    errors,
+    i18n,
+    lockdir,
+    osutils,
+    pyutils,
+    registry,
+    symbol_versioning,
+    trace,
+    ui,
+    urlutils,
+    workingtree,
+)
 from .. import commands as _mod_commands
-from .. import config, controldir, debug, errors, hooks, i18n
+from .. import hooks as _mod_hooks
 from .. import lock as _mod_lock
-from .. import lockdir, osutils
 from .. import plugin as _mod_plugin
-from .. import pyutils, registry, symbol_versioning, trace
 from .. import transport as _mod_transport
-from .. import ui, urlutils, workingtree
 
 try:
     import breezy.lsprof
@@ -326,11 +333,11 @@ class ExtendedTestResult(testtools.TextTestResult):
     def getDescription(self, test):
         return test.id()
 
-    def _extractBenchmarkTime(self, testCase, details=None):
+    def _extractBenchmarkTime(self, test_case, details=None):
         """Add a benchmark time for the current test case."""
         if details and 'benchtime' in details:
             return float(''.join(details['benchtime'].iter_bytes()))
-        return getattr(testCase, "_benchtime", None)
+        return getattr(test_case, "_benchtime", None)
 
     def _delta_to_float(self, a_timedelta, precision):
         # This calls ceiling to ensure that the most pessimistic view of time
@@ -347,8 +354,8 @@ class ExtendedTestResult(testtools.TextTestResult):
         return self._formatTime(self._delta_to_float(
             self._now() - self._start_datetime, 3))
 
-    def _testTimeString(self, testCase):
-        benchmark_time = self._extractBenchmarkTime(testCase)
+    def _testTimeString(self, test_case):
+        benchmark_time = self._extractBenchmarkTime(test_case)
         if benchmark_time is not None:
             return self._formatTime(benchmark_time) + "*"
         else:
@@ -761,7 +768,7 @@ class TextTestRunner:
         self._result_decorators = result_decorators or []
 
     def run(self, test):
-        "Run the given test case or test suite."
+        """Run the given test case or test suite."""
         if self.verbosity == 1:
             result_class = TextTestResult
         elif self.verbosity >= 2:
@@ -898,7 +905,7 @@ class TestCase(testtools.TestCase):
     # record lsprof data when performing benchmark calls.
     _gather_lsprof_in_benchmarks = False
 
-    def __init__(self, methodName='testMethod'):
+    def __init__(self, methodName='testMethod'):  # noqa: N803
         super().__init__(methodName)
         self._directory_isolation = True
         self.exception_handlers.insert(
@@ -995,8 +1002,8 @@ class TestCase(testtools.TestCase):
         def increment_counter(*args, **kwargs):
             _counters[counter_name] += 1
         label = f'count {counter_name} calls'
-        hooks.install_named_hook(name, increment_counter, label)
-        self.addCleanup(hooks.uninstall_named_hook, name, label)
+        _mod_hooks.install_named_hook(name, increment_counter, label)
+        self.addCleanup(_mod_hooks.uninstall_named_hook, name, label)
 
     def _install_config_stats_hooks(self):
         """Install config hooks to count hook calls."""
@@ -1033,13 +1040,13 @@ class TestCase(testtools.TestCase):
 
     def _clear_hooks(self):
         # prevent hooks affecting tests
-        known_hooks = hooks.known_hooks
+        known_hooks = _mod_hooks.known_hooks
         self._preserved_hooks = {}
         for _key, (parent, name) in known_hooks.iter_parent_objects():
             current_hooks = getattr(parent, name)
             self._preserved_hooks[parent] = (name, current_hooks)
-        self._preserved_lazy_hooks = hooks._lazy_hooks
-        hooks._lazy_hooks = {}
+        self._preserved_lazy_hooks = _mod_hooks._lazy_hooks
+        _mod_hooks._lazy_hooks = {}
         self.addCleanup(self._restoreHooks)
         for key, (parent, name) in known_hooks.iter_parent_objects():
             factory = known_hooks.get(key)
@@ -1145,8 +1152,8 @@ class TestCase(testtools.TestCase):
         try:
             try:
                 workingtree.WorkingTree.open(path)
-            except (errors.NotBranchError, errors.NoWorkingTree):
-                raise TestSkipped('Needs a working tree of brz sources')
+            except (errors.NotBranchError, errors.NoWorkingTree) as e:
+                raise TestSkipped('Needs a working tree of brz sources') from e
         finally:
             self.enable_directory_isolation()
 
@@ -1275,7 +1282,7 @@ class TestCase(testtools.TestCase):
 
     # FIXME: This is deprecated in unittest2 but plugins may still use it so we
     # need a deprecation period for them -- vila 2016-02-01
-    assertEquals = assertEqual
+    assertEquals = assertEqual  # noqa: N815
 
     def assertEqualDiff(self, a, b, message=None):
         """Assert two texts are equal, if not raise an exception.
@@ -1404,7 +1411,7 @@ class TestCase(testtools.TestCase):
             raise AssertionError("value(s) %r not present in container %r" %
                                  (missing, superlist))
 
-    def assertListRaises(self, excClass, func, *args, **kwargs):
+    def assertListRaises(self, excClass, func, *args, **kwargs):  # noqa: N803
         """Fail unless excClass is raised when the iterator from func is used.
 
         Many functions can return generators this makes sure
@@ -1422,7 +1429,7 @@ class TestCase(testtools.TestCase):
                 excName = str(excClass)
             raise self.failureException(f"{excName} not raised")
 
-    def assertRaises(self, excClass, callableObj, *args, **kwargs):
+    def assertRaises(self, excClass, callableObj, *args, **kwargs):  # noqa: N803
         """Assert that a callable raises a particular exception.
 
         :param excClass: As for the except statement, this may be either an
@@ -1926,7 +1933,7 @@ class TestCase(testtools.TestCase):
         return result
 
     def run_bzr_raw(self, args, retcode=0, stdin=None, encoding=None,
-                    working_dir=None, error_regexes=[]):
+                    working_dir=None, error_regexes=None):
         """Invoke brz, as if it were run from the command line.
 
         The argument list should not include the brz program name - the
@@ -1958,6 +1965,8 @@ class TestCase(testtools.TestCase):
         :keyword error_regexes: A list of expected error messages.  If
             specified they must be seen in the error output of the command.
         """
+        if error_regexes is None:
+            error_regexes = []
         if isinstance(args, str):
             args = shlex.split(args)
 
@@ -1999,7 +2008,7 @@ class TestCase(testtools.TestCase):
         return out, err
 
     def run_bzr(self, args, retcode=0, stdin=None, encoding=None,
-                working_dir=None, error_regexes=[]):
+                working_dir=None, error_regexes=None):
         """Invoke brz, as if it were run from the command line.
 
         The argument list should not include the brz program name - the
@@ -2031,6 +2040,8 @@ class TestCase(testtools.TestCase):
         :keyword error_regexes: A list of expected error messages.  If
             specified they must be seen in the error output of the command.
         """
+        if error_regexes is None:
+            error_regexes = []
         if isinstance(args, str):
             args = shlex.split(args)
 
@@ -2242,7 +2253,7 @@ class TestCase(testtools.TestCase):
                 log_file_bytes = log_file.read()
             detail_content = content.Content(
                 content.ContentType("text", "plain", {"charset": "utf8"}),
-                lambda: [log_file_bytes])
+                lambda: [log_file_bytes])  # noqa: B023
             self.addDetail("start_brz_subprocess-log-%d" % (count,),
                            detail_content)
 
@@ -2435,7 +2446,7 @@ class TestCaseWithMemoryTransport(TestCase):
     TEST_ROOT = None
     _TEST_NAME = 'test'
 
-    def __init__(self, methodName='runTest'):
+    def __init__(self, methodName='runTest'):  # noqa: N803
         # allow test parameterization after test construction and before test
         # execution. Variables that the parameterizer sets need to be
         # ones that are not set by setUp, or setUp will trash them.
@@ -2722,8 +2733,8 @@ class TestCaseWithMemoryTransport(TestCase):
                 t.ensure_base()
             format = self.resolve_format(format)
             return format.initialize_on_transport(t)
-        except errors.UninitializableFormat:
-            raise TestSkipped(f"Format {format} is not initializable.")
+        except errors.UninitializableFormat as err:
+            raise TestSkipped(f"Format {format} is not initializable.") from err
 
     def make_repository(self, relpath, shared=None, format=None):
         """Create a repository on our default transport at relpath.
@@ -3567,7 +3578,7 @@ def fork_for_tests(suite):
                 subunit_result = AutoTimingTestResultDecorator(
                     SubUnitBzrProtocolClientv1(stream))
                 process_suite.run(subunit_result)
-            except:
+            except BaseException:
                 # Try and report traceback on stream, but exit with error even
                 # if stream couldn't be created or something else goes wrong.
                 # The traceback is formatted to a string and written in one go
@@ -3784,8 +3795,8 @@ def load_test_id_list(file_name):
     test_list = []
     try:
         ftest = open(file_name)
-    except FileNotFoundError:
-        raise _mod_transport.NoSuchFile(file_name)
+    except FileNotFoundError as err:
+        raise _mod_transport.NoSuchFile(file_name) from err
 
     for test_name in ftest.readlines():
         test_list.append(test_name.strip())
@@ -3903,9 +3914,9 @@ class TestPrefixAliasRegistry(registry.Registry):
         parts = id_start.split('.')
         try:
             parts[0] = self.get(parts[0])
-        except KeyError:
+        except KeyError as err:
             raise errors.CommandError(
-                f'{parts[0]} is not a known test prefix alias')
+                f'{parts[0]} is not a known test prefix alias') from err
         return '.'.join(parts)
 
 

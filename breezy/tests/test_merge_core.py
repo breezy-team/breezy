@@ -157,7 +157,7 @@ class MergeBuilder:
             tt.adjust_path(tt.final_name(trans_id), parent_id, trans_id)
 
     def change_contents(self, trans_id, base=None, this=None, other=None):
-        for trans_id, (contents, tt) in zip(trans_id, self.selected_transforms(this, base, other)):
+        for trans_id, (contents, tt) in zip(trans_id, self.selected_transforms(this, base, other)):  # noqa: B020
             tt.cancel_creation(trans_id)
             tt.create_file([contents], trans_id)
 
@@ -287,8 +287,8 @@ class MergeTest(TestCaseWithTransport):
                               " and therefore always fails on win32")
         try:
             self.do_contents_test(Diff3Merger)
-        except errors.NoDiff3:
-            raise TestSkipped("diff3 not available")
+        except errors.NoDiff3 as err:
+            raise TestSkipped("diff3 not available") from err
 
     def test_contents_merge3(self):
         """Test diff3 merging."""

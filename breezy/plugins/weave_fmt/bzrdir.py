@@ -22,8 +22,13 @@ from io import BytesIO
 from ... import errors, osutils, trace
 from ...bzr import lockable_files
 from ...bzr.bzrdir import BzrDir, BzrDirFormat, BzrDirMetaFormat1
-from ...controldir import (ControlDir, Converter, MustHaveWorkingTree,
-                           NoColocatedBranchSupport, format_registry)
+from ...controldir import (
+    ControlDir,
+    Converter,
+    MustHaveWorkingTree,
+    NoColocatedBranchSupport,
+    format_registry,
+)
 from ...i18n import gettext
 from ...lazy_import import lazy_import
 from ...transport import NoSuchFile, get_transport, local
@@ -595,7 +600,7 @@ class ConvertBzrDir6ToMeta(Converter):
         if not has_checkout:
             ui.ui_factory.note(gettext('No working tree.'))
             # If some checkout files are there, we may as well get rid of them.
-            for name, mandatory in checkout_files:
+            for name, _mandatory in checkout_files:
                 if name in bzrcontents:
                     self.controldir.transport.delete(name)
         else:

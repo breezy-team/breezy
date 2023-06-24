@@ -286,9 +286,9 @@ class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
         branch2 = self.make_branch('bind-probe')
         try:
             branch2.bind(branch1)
-        except branch.BindingUnsupported:
+        except branch.BindingUnsupported as e:
             raise tests.TestNotApplicable(
-                f"format {branch2._format} doesn't support bound branches")
+                f"format {branch2._format} doesn't support bound branches") from e
 
     def test_merge_to_propagates_tags(self):
         """merge_to(child) also merges tags to the master."""

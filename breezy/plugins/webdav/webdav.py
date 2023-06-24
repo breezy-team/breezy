@@ -231,7 +231,7 @@ def _extract_stat_info(url, infile):
         parser.parse(infile)
     except xml.sax.SAXParseException as e:
         raise errors.InvalidHttpResponse(
-            url, msg=f'Malformed xml response: {e}')
+            url, msg=f'Malformed xml response: {e}') from e
     if handler.is_dir:
         size = -1 # directory sizes are meaningless for bzr
         is_exec = True
@@ -287,7 +287,7 @@ def _extract_dir_content(url, infile):
         parser.parse(infile)
     except xml.sax.SAXParseException as e:
         raise errors.InvalidHttpResponse(
-            url, msg=f'Malformed xml response: {e}')
+            url, msg=f'Malformed xml response: {e}') from e
     # Reformat for bzr needs
     dir_content = handler.dir_content
     (dir_name, is_dir) = dir_content[0][:2]
@@ -449,8 +449,8 @@ class HttpDavTransport(urllib.HttpTransport):
             exc_type, exc_val, exc_tb = sys.exc_info()
             try:
                 self.delete(tmp_relpath)
-            except:
-                raise exc_type(exc_val).with_traceback(exc_tb)
+            except BaseException as err:
+                raise exc_type(exc_val).with_traceback(exc_tb) from err
             raise # raise the original with its traceback if we can.
 
     def put_file_non_atomic(self, relpath, f,

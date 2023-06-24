@@ -7,7 +7,7 @@ pub enum Error {
 }
 
 impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Error::NotVersioned(path) => write!(f, "Not versioned: {}", path),
             Error::Other(msg) => write!(f, "{}", msg),

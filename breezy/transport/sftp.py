@@ -37,8 +37,14 @@ from .._transport_rs import sftp as _sftp_rs
 from ..errors import LockError, PathError
 from ..osutils import fancy_rename, pumpfile
 from ..trace import mutter, warning
-from ..transport import (ConnectedTransport, FileExists, FileFileStream,
-                         NoSuchFile, _file_streams, ssh)
+from ..transport import (
+    ConnectedTransport,
+    FileExists,
+    FileFileStream,
+    NoSuchFile,
+    _file_streams,
+    ssh,
+)
 
 SFTPError = _sftp_rs.SFTPError
 
@@ -72,8 +78,8 @@ class SFTPLock:
             # RBC 20060103 FIXME should we be using private methods here ?
             abspath = transport._remote_path(self.lock_path)
             self.lock_file = transport._sftp_open_exclusive(abspath)
-        except FileExists:
-            raise LockError(f'File {self.path!r} already locked')
+        except FileExists as err:
+            raise LockError(f'File {self.path!r} already locked') from err
 
     def unlock(self):
         if not self.lock_file:
@@ -470,7 +476,7 @@ class SFTPTransport(ConnectedTransport):
                 if not closed:
                     fout.close()
                 self._get_sftp().remove(tmp_abspath)
-            except:
+            except BaseException:
                 # raise the saved except
                 raise e
             # raise the original with its traceback if we can.

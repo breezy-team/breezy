@@ -32,18 +32,16 @@ from testtools.matchers import DocTestMatches
 
 import breezy
 
-from ... import controldir, debug, errors, osutils, tests
+from ... import controldir, debug, errors, osutils, tests, urlutils
 from ... import transport as _mod_transport
-from ... import urlutils
 from ...tests import features, test_server
 from ...transport import local, memory, remote, ssh
 from ...transport.http import urllib
 from .. import bzrdir
 from ..remote import UnknownErrorFromSmartServer
-from ..smart import client, medium, message, protocol
+from ..smart import client, medium, message, protocol, vfs
 from ..smart import request as _mod_request
 from ..smart import server as _mod_server
-from ..smart import vfs
 from . import test_smart
 
 
@@ -1818,7 +1816,7 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
         self.assertEqual(None, handler.response.body)
 
     def test_readv_accept_body(self):
-        """'readv' should set finished_reading after reading offsets."""
+        """'readv' should set finished_reading after reading offsets."""  # noqa: D403
         self.build_tree(['a-file'])
         handler = self.build_handler(self.get_readonly_transport())
         handler.args_received((b'readv', b'a-file'))
@@ -1833,7 +1831,7 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
         self.assertEqual(b'nte', handler.response.body)
 
     def test_readv_short_read_response_contents(self):
-        """'readv' when a short read occurs sets the response appropriately."""
+        """'readv' when a short read occurs sets the response appropriately."""  # noqa: D403
         self.build_tree(['a-file'])
         handler = self.build_handler(self.get_readonly_transport())
         handler.args_received((b'readv', b'a-file'))
@@ -1991,7 +1989,7 @@ class TestSmartProtocol(tests.TestCase):
         # GZ 2010-08-10: Cycle with closure affects 4 tests
 
         class FakeCommand(_mod_request.SmartServerRequest):
-            def do_body(self_cmd, body_bytes):
+            def do_body(self_cmd, body_bytes):  # noqa: N805
                 self.end_received = True
                 self.assertEqual(b'abcdefg', body_bytes)
                 return _mod_request.SuccessfulSmartServerResponse((b'ok', ))
@@ -2034,7 +2032,7 @@ class CommonSmartProtocolTestMixin:
                          str(ex))
 
     def test_server_offset_serialisation(self):
-        """The Smart protocol serialises offsets as a comma and \n string.
+        r"""The Smart protocol serialises offsets as a comma and \n string.
 
         We check a number of boundary cases are as expected: empty, one offset,
         one with the order of reads not increasing (an out of order read), and
@@ -2616,7 +2614,7 @@ class TestSmartProtocolTwoSpecificsMixin:
         self.assertBodyStreamRoundTrips(stream)
 
     def test__send_response_includes_failure_marker(self):
-        """FailedSmartServerResponse have 'failed\n' after the version."""
+        r"""FailedSmartServerResponse have 'failed\n' after the version."""
         out_stream = BytesIO()
         smart_protocol = protocol.SmartServerRequestProtocolTwo(
             None, out_stream.write)
@@ -2626,7 +2624,7 @@ class TestSmartProtocolTwoSpecificsMixin:
                          out_stream.getvalue())
 
     def test__send_response_includes_success_marker(self):
-        """SuccessfulSmartServerResponse have 'success\n' after the version."""
+        r"""SuccessfulSmartServerResponse have 'success\n' after the version."""
         out_stream = BytesIO()
         smart_protocol = protocol.SmartServerRequestProtocolTwo(
             None, out_stream.write)
@@ -3551,10 +3549,10 @@ class MockMedium(medium.SmartClientMedium):
         """
         try:
             expected_event = self._expected_events.pop(0)
-        except IndexError:
+        except IndexError as e:
             raise AssertionError(
                 'Mock medium observed event %r, but no more events expected'
-                % (observed_event,))
+                % (observed_event,)) from e
         if expected_event[0] == 'read response (partial)':
             if observed_event[0] != 'read response':
                 raise AssertionError(
@@ -4024,7 +4022,7 @@ class TestChunkedBodyDecoder(tests.TestCase):
         self.assertEqual(b'', decoder.unused_data)
 
     def test_empty_content(self):
-        """'chunked\nEND\n' is the complete encoding of a zero-length body."""
+        r"""'chunked\nEND\n' is the complete encoding of a zero-length body."""
         decoder = protocol.ChunkedBodyDecoder()
         decoder.accept_bytes(b'chunked\n')
         decoder.accept_bytes(b'END\n')
@@ -4196,7 +4194,7 @@ class TestSuccessfulSmartServerResponse(tests.TestCase):
         self.assertEqual(bytes_iterable, response.body_stream)
 
     def test_construct_rejects_body_and_body_stream(self):
-        """'body' and 'body_stream' are mutually exclusive."""
+        """'body' and 'body_stream' are mutually exclusive."""  # noqa: D403
         self.assertRaises(
             errors.BzrError,
             _mod_request.SuccessfulSmartServerResponse, (), b'body', [b'stream'])

@@ -250,9 +250,9 @@ class BisectTestCase(TestCaseWithTransport):
         self.run_bzr(['bisect', 'run', './test_script'])
         try:
             self.assertRevno(2)
-        except AssertionError:
+        except AssertionError as err:
             raise KnownFailure("bisect does not drill down into merge commits: "
-                               "https://bugs.launchpad.net/bzr-bisect/+bug/539937")
+                               "https://bugs.launchpad.net/bzr-bisect/+bug/539937") from err
 
     def testRunScriptSubtree(self):
         """Make a test script and run it."""
@@ -268,6 +268,6 @@ class BisectTestCase(TestCaseWithTransport):
         self.run_bzr(['bisect', 'run', './test_script'])
         try:
             self.assertRevno(1.2)
-        except AssertionError:
+        except AssertionError as err:
             raise KnownFailure("bisect does not drill down into merge commits: "
-                               "https://bugs.launchpad.net/bzr-bisect/+bug/539937")
+                               "https://bugs.launchpad.net/bzr-bisect/+bug/539937") from err

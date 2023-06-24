@@ -56,9 +56,9 @@ class cmd_gitlab_login(Command):
         if name is None:
             try:
                 name = urlutils.parse_url(url)[3].split('.')[-2]
-            except (ValueError, IndexError):
+            except (ValueError, IndexError) as e:
                 raise errors.CommandError(
-                    'please specify a site name with --name')
+                    'please specify a site name with --name') from e
         if private_token is None:
             note("Please visit %s to obtain a private token.",
                  urlutils.join(url, "-/profile/personal_access_tokens"))

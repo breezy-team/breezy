@@ -31,12 +31,12 @@ _TXT_HEADER = "   CallCount    Recursive    Total(ms)   " + \
 
 
 def _junk_callable():
-    "A simple routine to profile."
+    """A simple routine to profile."""
     sorted(['abc', 'def', 'ghi'])
 
 
 def _collect_stats():
-    "Collect and return some dummy profile data."
+    """Collect and return some dummy profile data."""
     ret, stats = lsprof.profile(_junk_callable)
     return stats
 

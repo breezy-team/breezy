@@ -87,8 +87,6 @@ def main():
     import _winreg
     user_encoding = locale.getpreferredencoding() or 'ascii'
 
-    import ctypes
-
     hkey_str = {_winreg.HKEY_LOCAL_MACHINE: 'HKEY_LOCAL_MACHINE',
                 _winreg.HKEY_CURRENT_USER: 'HKEY_CURRENT_USER',
                 _winreg.HKEY_CLASSES_ROOT: 'HKEY_CLASSES_ROOT',

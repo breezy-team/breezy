@@ -14,7 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from . import debug, errors, osutils, revision, trace
+from . import debug, errors, osutils, trace
+from . import revision as _mod_revision
 
 STEP_UNIQUE_SEARCHER_EVERY = 5
 
@@ -349,7 +350,7 @@ class Graph:
         known_revnos = dict(known_revision_ids)
         cur_tip = target_revision_id
         num_steps = 0
-        NULL_REVISION = revision.NULL_REVISION
+        NULL_REVISION = _mod_revision.NULL_REVISION
         known_revnos[NULL_REVISION] = 0
 
         searching_known_tips = list(known_revnos)
@@ -1022,8 +1023,8 @@ class Graph:
         def get_parents(key):
             try:
                 return self._parents_provider.get_parent_map([key])[key]
-            except KeyError:
-                raise errors.RevisionNotPresent(next_key, self)
+            except KeyError as err:
+                raise errors.RevisionNotPresent(next_key, self) from err
         while True:
             if next_key in stop_keys:
                 return

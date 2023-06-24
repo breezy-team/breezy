@@ -43,8 +43,8 @@ class TestIterMergeSortedRevisionsSimpleGraph(per_branch.TestCaseWithBranch):
     def make_builder_with_merges(self, relpath):
         try:
             builder = self.make_branch_builder(relpath)
-        except (errors.TransportNotPossible, errors.UninitializableFormat):
-            raise tests.TestNotApplicable('format not directly constructable')
+        except (errors.TransportNotPossible, errors.UninitializableFormat) as e:
+            raise tests.TestNotApplicable('format not directly constructable') from e
         builder.start_series()
         # 1
         # |\
@@ -155,8 +155,8 @@ class TestIterMergeSortedRevisionsBushyGraph(per_branch.TestCaseWithBranch):
     def make_branch_builder(self, relpath):
         try:
             builder = super().make_branch_builder(relpath)
-        except (errors.TransportNotPossible, errors.UninitializableFormat):
-            raise tests.TestNotApplicable('format not directly constructable')
+        except (errors.TransportNotPossible, errors.UninitializableFormat) as e:
+            raise tests.TestNotApplicable('format not directly constructable') from e
         return builder
 
     def make_snapshot(self, builder, parents, revid_name):

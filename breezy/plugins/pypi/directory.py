@@ -63,7 +63,7 @@ class PypiDirectory:
                 data = json.load(f)
         except HTTPError as e:
             if e.status == 404:
-                raise NoSuchPypiProject(name, url=url)
+                raise NoSuchPypiProject(name, url=url) from e
             raise
         url = find_repo_url(data)
         if url is None:

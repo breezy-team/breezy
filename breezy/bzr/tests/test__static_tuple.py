@@ -300,10 +300,10 @@ class TestStaticTuple(tests.TestCase):
         self.assertNotEqual(k1, k2)
         if not self.check_strict_compare(k1, k2, mismatched_types):
             # Do the comparison, but we don't care about the result
-            k1 >= k2
-            k1 > k2
-            k1 <= k2
-            k1 < k2
+            k1 >= k2  # noqa: B015
+            k1 > k2  # noqa: B015
+            k1 <= k2  # noqa: B015
+            k1 < k2  # noqa: B015
 
     def test_compare_vs_none(self):
         k1 = self.module.StaticTuple('baz', 'bing')

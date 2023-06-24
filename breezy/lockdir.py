@@ -114,9 +114,18 @@ import yaml
 
 from . import config, debug, errors, lock, osutils, ui, urlutils
 from .decorators import only_raises
-from .errors import (DirectoryNotEmpty, LockBreakMismatch, LockBroken,
-                     LockContention, LockCorrupt, LockFailed, LockNotHeld,
-                     PathError, ResourceBusy, TransportError)
+from .errors import (
+    DirectoryNotEmpty,
+    LockBreakMismatch,
+    LockBroken,
+    LockContention,
+    LockCorrupt,
+    LockFailed,
+    LockNotHeld,
+    PathError,
+    ResourceBusy,
+    TransportError,
+)
 from .i18n import gettext
 from .osutils import format_delta, get_host_name, rand_chars
 from .trace import mutter, note
@@ -189,7 +198,7 @@ class LockDir(lock.Lock):
         try:
             self.transport.mkdir(self.path, mode=mode)
         except (TransportError, PathError) as e:
-            raise LockFailed(self, e)
+            raise LockFailed(self, e) from e
 
     def _attempt_lock(self):
         """Make the pending directory and attempt to rename into place.
@@ -212,7 +221,7 @@ class LockDir(lock.Lock):
             tmpname = self._create_pending_dir()
         except (errors.TransportError, PathError) as e:
             self._trace("... failed to create pending dir, %s", e)
-            raise LockFailed(self, e)
+            raise LockFailed(self, e) from e
         while True:
             try:
                 self.transport.rename(tmpname, self._held_dir)
@@ -765,7 +774,7 @@ class LockHeldInfo:
             lines = osutils.split_lines(info_file_bytes)
             mutter('Corrupt lock info file: %r', lines)
             raise LockCorrupt("could not parse lock info file: " + str(e),
-                              lines)
+                              lines) from e
         if ret is None:
             # see bug 185013; we fairly often end up with the info file being
             # empty after an interruption; we could log a message here but

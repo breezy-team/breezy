@@ -20,9 +20,8 @@ __docformat__ = "google"
 
 from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Union, cast
 
-from . import errors, lock, osutils
+from . import errors, lock, osutils, trace
 from . import revision as _mod_revision
-from . import trace
 from .inter import InterObject
 
 
@@ -583,7 +582,7 @@ class Tree:
         """
         raise NotImplementedError(self.is_versioned)
 
-    def find_related_paths_across_trees(self, paths, trees=[],
+    def find_related_paths_across_trees(self, paths, trees=None,
                                         require_versioned=True):
         """Find related paths in tree corresponding to specified filenames in any
         of `lookup_trees`.
@@ -841,7 +840,7 @@ class InterTree(InterObject[Tree]):
 
     def iter_changes(self, include_unchanged: bool = False,
                      specific_files: Optional[List[str]] = None,
-                     pb=None, extra_trees: List[Tree] = [],
+                     pb=None, extra_trees: Optional[List[Tree]] = None,
                      require_versioned: bool = True,
                      want_unversioned: bool = False):
         """Generate an iterator of changes between trees.

@@ -26,13 +26,17 @@ import stat
 import sys
 from io import BytesIO
 
-from .. import errors, osutils, pyutils
+from .. import errors, osutils, pyutils, urlutils
 from .. import transport as _mod_transport
-from .. import urlutils
 from ..errors import PathError, TransportNotPossible
 from ..osutils import getcwd
-from ..transport import (ConnectedTransport, FileExists, NoSuchFile, Transport,
-                         _get_transport_modules)
+from ..transport import (
+    ConnectedTransport,
+    FileExists,
+    NoSuchFile,
+    Transport,
+    _get_transport_modules,
+)
 from ..transport.memory import MemoryTransport
 from ..transport.remote import RemoteTransport
 from . import TestNotApplicable, TestSkipped, multiply_tests, test_server
@@ -906,9 +910,9 @@ class TransportTests(TestTransportImplementation):
         """
         try:
             url = self._server.get_bogus_url()
-        except NotImplementedError:
+        except NotImplementedError as err:
             raise TestSkipped("Transport %s has no bogus URL support." %
-                              self._server.__class__)
+                              self._server.__class__) from err
         t = _mod_transport.get_transport_from_url(url)
         self.assertRaises((ConnectionError, NoSuchFile), t.get, '.bzr/branch')
 
@@ -967,9 +971,9 @@ class TransportTests(TestTransportImplementation):
                 self.assertEqual(st[ST_NLINK], 2)
             except errors.NotLocalUrl:
                 pass
-        except TransportNotPossible:
+        except TransportNotPossible as err:
             raise TestSkipped("Transport %s does not support hardlinks." %
-                              self._server.__class__)
+                              self._server.__class__) from err
 
     def test_symlink(self):
         from stat import S_ISLNK
@@ -990,9 +994,9 @@ class TransportTests(TestTransportImplementation):
             st = t.stat(link_name)
             self.assertTrue(S_ISLNK(st.st_mode),
                             f"expected symlink, got mode {st.st_mode:o}")
-        except TransportNotPossible:
+        except TransportNotPossible as err:
             raise TestSkipped("Transport %s does not support symlinks." %
-                              self._server.__class__)
+                              self._server.__class__) from err
 
         self.assertEqual(source_name, t.readlink(link_name))
 
@@ -1000,9 +1004,9 @@ class TransportTests(TestTransportImplementation):
         t = self.get_transport()
         try:
             self.assertRaises(NoSuchFile, t.readlink, 'nonexistent')
-        except TransportNotPossible:
+        except TransportNotPossible as err:
             raise TestSkipped("Transport %s does not support symlinks." %
-                              self._server.__class__)
+                              self._server.__class__) from err
 
     def test_list_dir(self):
         # TODO: Test list_dir, just try once, and if it throws, stop testing
@@ -1432,9 +1436,9 @@ class TransportTests(TestTransportImplementation):
 
         try:
             self.build_tree(files, transport=t, line_endings='binary')
-        except UnicodeError:
+        except UnicodeError as err:
             raise TestSkipped(
-                "cannot handle unicode paths in current encoding")
+                "cannot handle unicode paths in current encoding") from err
 
         # A plain unicode string is not a valid url
         for fname in files:
@@ -1691,8 +1695,8 @@ class TransportTests(TestTransportImplementation):
         t = self.get_transport()
         try:
             t.symlink('target', 'link')
-        except TransportNotPossible:
-            raise TestSkipped("symlinks not supported")
+        except TransportNotPossible as err:
+            raise TestSkipped("symlinks not supported") from err
         t2 = t.clone('link')
         st = t2.stat('')
         self.assertTrue(stat.S_ISLNK(st.st_mode))

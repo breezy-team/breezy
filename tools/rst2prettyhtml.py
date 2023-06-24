@@ -5,13 +5,13 @@ from io import StringIO
 
 try:
     from docutils.core import publish_file
-    from docutils.parsers import rst
+    from docutils.parsers import rst  # noqa: F401
 except ModuleNotFoundError:
     print("Missing dependency.  Please install docutils.")
     sys.exit(1)
 try:
     from elementtree import HTMLTreeBuilder
-    from elementtree.ElementTree import XML
+    from elementtree.ElementTree import XML  # noqa: F401
 except ModuleNotFoundError:
     print("Missing dependency.  Please install ElementTree.")
     sys.exit(1)

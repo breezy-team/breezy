@@ -106,16 +106,16 @@ class TestCommands(TestCaseWithTransport):
         self.run_bzr('revert')
         os.chdir('..')
 
-    def example_branch(test):
-        test.run_bzr('init')
+    def example_branch(self):
+        self.run_bzr('init')
         with open('hello', 'w') as f:
             f.write('foo')
-        test.run_bzr('add hello')
-        test.run_bzr('commit -m setup hello')
+        self.run_bzr('add hello')
+        self.run_bzr('commit -m setup hello')
         with open('goodbye', 'w') as f:
             f.write('baz')
-        test.run_bzr('add goodbye')
-        test.run_bzr('commit -m setup goodbye')
+        self.run_bzr('add goodbye')
+        self.run_bzr('commit -m setup goodbye')
 
     def test_pull_verbose(self):
         """Pull changes from one branch to another and watch the output."""

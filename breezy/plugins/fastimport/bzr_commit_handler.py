@@ -190,7 +190,7 @@ class CommitHandler(processor.CommitHandler):
                 try:
                     inv = self.get_inventory(revision_id)
                     present.append(revision_id)
-                except:
+                except BaseException:
                     inv = self._init_inventory()
                 self.cache_mgr.inventories[revision_id] = inv
             inventories.append(inv)
@@ -429,9 +429,9 @@ class CommitHandler(processor.CommitHandler):
                 raise KeyError
             try:
                 file_id = inv.path2id(dirname)
-            except errors.NoSuchId:
+            except errors.NoSuchId as e:
                 # In a CHKInventory, this is raised if there's no root yet
-                raise KeyError
+                raise KeyError from e
             if file_id is None:
                 raise KeyError
             result = inv.get_entry(file_id)

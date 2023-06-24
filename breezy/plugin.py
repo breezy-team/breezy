@@ -43,7 +43,8 @@ from importlib import util as importlib_util
 
 import breezy
 
-from . import debug, errors, osutils, trace
+from . import debug, osutils, trace
+from . import errors as _mod_errors
 
 _MODULE_PREFIX = "breezy.plugins."
 
@@ -418,7 +419,7 @@ def _load_plugin_module(name, dir):
         return
     try:
         __import__(_MODULE_PREFIX + name)
-    except errors.IncompatibleVersion as e:
+    except _mod_errors.IncompatibleVersion as e:
         warning_message = (
             "Unable to load plugin %r. It supports %s "
             "versions %r but the current version is %s" %

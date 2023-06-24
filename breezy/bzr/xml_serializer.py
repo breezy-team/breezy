@@ -23,9 +23,14 @@
 # ElementTree bits
 
 from typing import Optional
-from xml.etree.ElementTree import (Element, ElementTree,  # noqa: F401
-                                   ParseError, SubElement, fromstring,
-                                   fromstringlist)
+from xml.etree.ElementTree import (  # noqa: F401
+    Element,
+    ElementTree,
+    ParseError,
+    SubElement,
+    fromstring,
+    fromstringlist,
+)
 
 from . import inventory, serializer
 
@@ -79,7 +84,7 @@ class XMLInventorySerializer(serializer.InventorySerializer):
                                           entry_cache=entry_cache,
                                           return_from_cache=return_from_cache)
         except ParseError as e:
-            raise serializer.UnexpectedInventoryFormat(str(e))
+            raise serializer.UnexpectedInventoryFormat(str(e)) from e
 
     def _unpack_inventory(self, element, revision_id: Optional[bytes] = None, entry_cache=None, return_from_cache=False):
         raise NotImplementedError(self._unpack_inventory)
@@ -92,7 +97,7 @@ class XMLInventorySerializer(serializer.InventorySerializer):
             finally:
                 f.close()
         except ParseError as e:
-            raise serializer.UnexpectedInventoryFormat(str(e))
+            raise serializer.UnexpectedInventoryFormat(str(e)) from e
 
     def _read_element(self, f):
         return ElementTree().parse(f)

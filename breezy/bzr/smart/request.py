@@ -35,9 +35,8 @@ import threading
 from _thread import get_ident
 
 from ... import branch as _mod_branch
-from ... import debug, errors, osutils, registry, revision, trace
+from ... import debug, errors, osutils, registry, revision, trace, urlutils
 from ... import transport as _mod_transport
-from ... import urlutils
 
 jail_info = threading.local()
 jail_info.transports = None
@@ -369,11 +368,11 @@ class SmartServerRequestHandler:
         args = args[1:]
         try:
             command = self._commands.get(cmd)
-        except LookupError:
+        except LookupError as e:
             if debug.debug_flag_enabled('hpss'):
                 self._trace('hpss unknown request',
                             cmd, repr(args)[1:-1])
-            raise errors.UnknownSmartMethod(cmd)
+            raise errors.UnknownSmartMethod(cmd) from e
         if debug.debug_flag_enabled('hpss'):
             from . import vfs
             if issubclass(command, vfs.VfsRequest):

@@ -27,7 +27,7 @@ from breezy.tests import TestCaseWithTransport
 class TestCommands(TestCaseWithTransport):
 
     def test_ignore_absolutes(self):
-        """'ignore' with an absolute path returns an error."""
+        """'ignore' with an absolute path returns an error."""  # noqa: D403
         self.make_branch_and_tree('.')
         self.run_bzr_error(('brz: ERROR: NAME_PATTERN should not '
                             'be an absolute path\n',),
@@ -80,7 +80,7 @@ class TestCommands(TestCaseWithTransport):
         self.check_file_contents('.bzrignore', b'*.blah\ngarh\n')
 
     def test_ignore_multiple_arguments(self):
-        """'ignore' works with multiple arguments."""
+        """'ignore' works with multiple arguments."""  # noqa: D403
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b', 'c', 'd'])
         self.assertEqual(list(tree.unknowns()), ['a', 'b', 'c', 'd'])
@@ -89,7 +89,7 @@ class TestCommands(TestCaseWithTransport):
         self.check_file_contents('.bzrignore', b'a\nb\nc\n')
 
     def test_ignore_no_arguments(self):
-        """'ignore' with no arguments returns an error."""
+        """'ignore' with no arguments returns an error."""  # noqa: D403
         self.make_branch_and_tree('.')
         self.run_bzr_error(('brz: ERROR: ignore requires at least one '
                             'NAME_PATTERN or --default-rules.\n',),

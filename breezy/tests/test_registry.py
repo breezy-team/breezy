@@ -250,7 +250,7 @@ class TestRegistryIter(tests.TestCase):
 
         class InvasiveGetter(registry._ObjectGetter):
 
-            def get_obj(inner_self):
+            def get_obj(inner_self):  # noqa: N805
                 # Surprise ! Getting a registered object (think lazy loaded
                 # module) register yet another object !
                 _registry.register('more hidden', None)

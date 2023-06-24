@@ -22,7 +22,6 @@ There are separate implementation modules for each http client implementation.
 DEBUG = 0
 
 import os
-import ssl  # noqa: F401
 import sys
 
 from ... import config
@@ -76,8 +75,8 @@ def cert_reqs_from_store(unicode_str):
     try:
         return {"required": ssl.CERT_REQUIRED,
                 "none": ssl.CERT_NONE}[unicode_str]
-    except KeyError:
-        raise ValueError(f"invalid value {unicode_str}")
+    except KeyError as e:
+        raise ValueError(f"invalid value {unicode_str}") from e
 
 
 def default_ca_reqs():

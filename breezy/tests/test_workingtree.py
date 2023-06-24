@@ -19,10 +19,9 @@ import os
 from io import BytesIO
 
 from .. import conflicts, errors, osutils, trace, workingtree
-from ..bzr import bzrdir
+from ..bzr import bzrdir, workingtree_3, workingtree_4
 from ..bzr import conflicts as _mod_bzr_conflicts
 from ..bzr import workingtree as bzrworkingtree
-from ..bzr import workingtree_3, workingtree_4
 from ..lock import write_locked
 from ..lockdir import LockDir
 from ..tree import TreeDirectory, TreeEntry, TreeFile, TreeLink
@@ -345,7 +344,7 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         # correctly and last-revision file becomes present.
 
     def test_uses_lockdir(self):
-        """WorkingTreeFormat3 uses its own LockDir:
+        """WorkingTreeFormat3 uses its own LockDir.
 
         - lock is a directory
         - when the WorkingTree is locked, LockDir can see that
@@ -357,8 +356,8 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         dir.create_branch()
         try:
             tree = workingtree_3.WorkingTreeFormat3().initialize(dir)
-        except errors.NotLocalUrl:
-            raise TestSkipped('Not a local URL')
+        except errors.NotLocalUrl as err:
+            raise TestSkipped('Not a local URL') from err
         self.assertIsDirectory('.bzr', t)
         self.assertIsDirectory('.bzr/checkout', t)
         self.assertIsDirectory('.bzr/checkout/lock', t)

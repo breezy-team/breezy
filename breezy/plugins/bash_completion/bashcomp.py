@@ -19,7 +19,9 @@ import sys
 
 import breezy
 
-from ... import cmdline, commands, config, help_topics, option, plugin
+from ... import cmdline, commands, config, help_topics
+from ... import option as _mod_option
+from ... import plugin as _mod_plugin
 
 
 class BashCodeGen:
@@ -246,7 +248,7 @@ class PluginData:
         if version is None:
             try:
                 version = breezy.plugin.plugins()[name].__version__
-            except:
+            except BaseException:
                 version = 'unknown'
         self.name = name
         self.version = version
@@ -348,11 +350,11 @@ class DataCollector:
 
     def option(self, opt):
         optswitches = {}
-        parser = option.get_optparser([opt])
+        parser = _mod_option.get_optparser([opt])
         parser = self.wrap_parser(optswitches, parser)
         optswitches.clear()
         opt.add_option(parser, opt.short_name())
-        if isinstance(opt, option.RegistryOption) and opt.enum_switch:
+        if isinstance(opt, _mod_option.RegistryOption) and opt.enum_switch:
             enum_switch = f'--{opt.name}'
             enum_data = optswitches.get(enum_switch)
             if enum_data:
@@ -407,13 +409,13 @@ class cmd_bash_completion(commands.Command):
     """
 
     takes_options = [
-        option.Option("function-name", short_name="f", type=str, argname="name",
+        _mod_option.Option("function-name", short_name="f", type=str, argname="name",
                       help="Name of the generated function (default: _brz)"),
-        option.Option("function-only", short_name="o", type=None,
+        _mod_option.Option("function-only", short_name="o", type=None,
                       help="Generate only the shell function, don't enable it"),
-        option.Option("debug", type=None, hidden=True,
+        _mod_option.Option("debug", type=None, hidden=True,
                       help="Enable shell code useful for debugging"),
-        option.ListOption("plugin", type=str, argname="name",
+        _mod_option.ListOption("plugin", type=str, argname="name",
                           # param_name="selected_plugins", # doesn't work, bug #387117
                           help="Enable completions for the selected plugin"
                           + " (default: all plugins)"),
@@ -464,6 +466,6 @@ if __name__ == '__main__':
 
     locale.setlocale(locale.LC_ALL, '')
     if not kwargs.get('no_plugins', False):
-        plugin.load_plugins()
+        _mod_plugin.load_plugins()
     commands.install_bzr_command_hooks()
     bash_completion_function(sys.stdout, **kwargs)
