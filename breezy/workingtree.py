@@ -1259,4 +1259,17 @@ class WorkingTreeFormat(ControlComponentFormat):
         return self._matchingcontroldir
 
 
+def patch_tree(tree: WorkingTree, patches, strip: int = 0, reverse: bool = False, dry_run: bool = False,
+               quiet: bool = False, out=None):
+    """Apply a patch to a tree.
 
+    Args:
+      tree: A MutableTree object
+      patches: list of patches as bytes
+      strip: Strip X segments of paths
+      reverse: Apply reversal of patch
+      dry_run: Dry run
+    """
+    from .patch import run_patch
+    return run_patch(tree.basedir, patches=patches, strip=strip,
+                     reverse=reverse, dry_run=dry_run, quiet=quiet, out=out)

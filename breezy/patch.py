@@ -17,21 +17,10 @@
 
 """Diff and patch functionality."""
 
-from ._patch_rs import (PatchFailed, PatchInvokeError, diff3,  # noqa: F401
+__all__ = ['PatchFailed', 'PatchInvokeError', 'diff3',
+           'format_patch_date', 'iter_patched_from_hunks', 'parse_patch_date',
+           'patch', 'run_patch']
+
+from ._patch_rs import (PatchFailed, PatchInvokeError, diff3,
                         format_patch_date, iter_patched_from_hunks,
                         parse_patch_date, patch, run_patch)
-
-
-def patch_tree(tree, patches, strip=0, reverse=False, dry_run=False,
-               quiet=False, out=None):
-    """Apply a patch to a tree.
-
-    Args:
-      tree: A MutableTree object
-      patches: list of patches as bytes
-      strip: Strip X segments of paths
-      reverse: Apply reversal of patch
-      dry_run: Dry run
-    """
-    return run_patch(tree.basedir, patches=patches, strip=strip,
-                     reverse=reverse, dry_run=dry_run, quiet=quiet, out=out)

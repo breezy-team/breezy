@@ -360,3 +360,4 @@ class PostCommitHookParams:
     def __init__(self, mutable_tree):
         """Create the parameters for the post_commit hook."""
         self.mutable_tree = mutable_tree
+
