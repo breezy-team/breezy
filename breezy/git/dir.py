@@ -597,10 +597,7 @@ class LocalGitDir(GitDir):
                 base_url = self.user_url.rstrip('/')
             else:
                 base_url = urlutils.local_path_to_url(
-                    decode_git_path(commondir))
-                if base_url.endswith('/.git/'):
-                    base_url = base_url[:-len('/.git/')]
-                base_url += '/'
+                    decode_git_path(commondir)).rstrip('/.git/') + '/'
             return urlutils.join_segment_parameters(base_url, params)
         return None
 

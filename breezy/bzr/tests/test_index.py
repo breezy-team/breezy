@@ -1581,7 +1581,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
 class TestInMemoryGraphIndex(tests.TestCaseWithMemoryTransport):
 
     def make_index(self, ref_lists=0, key_elements=1, nodes=None):
-        if nods is None:
+        if nodes is None:
             nodes = []
         result = _mod_index.InMemoryGraphIndex(
             ref_lists, key_elements=key_elements)

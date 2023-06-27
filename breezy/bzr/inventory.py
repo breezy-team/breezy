@@ -1609,7 +1609,7 @@ class CHKInventory(CommonInventory):
             if file_id is None:
                 key_filter = [StaticTuple(current_id, basename_utf8)]
                 items = parent_id_index.iteritems(key_filter)
-                for (parent_id, name_utf8), _file_id in items:
+                for (parent_id, name_utf8), file_id in items:  # noqa: B007
                     if parent_id != current_id or name_utf8 != basename_utf8:
                         raise errors.BzrError("corrupt inventory lookup! "
                                               "%r %r %r %r" % (parent_id, current_id, name_utf8,

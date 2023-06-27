@@ -1002,8 +1002,8 @@ class TestCase(testtools.TestCase):
         def increment_counter(*args, **kwargs):
             _counters[counter_name] += 1
         label = f'count {counter_name} calls'
-        _mod_hooks.install_named_hook(name, increment_counter, label)
-        self.addCleanup(_mod_hooks.uninstall_named_hook, name, label)
+        hooks.install_named_hook(name, increment_counter, label)
+        self.addCleanup(hooks.uninstall_named_hook, name, label)
 
     def _install_config_stats_hooks(self):
         """Install config hooks to count hook calls."""

@@ -159,7 +159,7 @@ class BTreeBuilder(_mod_index.GraphIndexBuilder):
         # we don't care about absent_references
         node_refs, _ = self._check_key_ref_value(key, references, value)
         if key in self._nodes:
-            raise index.BadIndexDuplicateKey(key, self)
+            raise _mod_index.BadIndexDuplicateKey(key, self)
         self._nodes[key] = static_tuple.StaticTuple(node_refs, value)
         if self._nodes_by_key is not None and self._key_length > 1:
             self._update_nodes_by_key(key, value, node_refs)
@@ -264,7 +264,7 @@ class BTreeBuilder(_mod_index.GraphIndexBuilder):
             # undecorate back to (pos, node)
             selected = selected[1]
             if last == selected[1][1]:
-                raise index.BadIndexDuplicateKey(last, self)
+                raise _mod_index.BadIndexDuplicateKey(last, self)
             last = selected[1][1]
             # Yield, with self as the index
             yield (self,) + selected[1][1:]
@@ -315,7 +315,7 @@ class BTreeBuilder(_mod_index.GraphIndexBuilder):
             # then line is too big. raising the error avoids infinite recursion
             # searching for a suitably large page that will not be found.
             if new_leaf:
-                raise index.BadIndexKey(string_key)
+                raise _mod_index.BadIndexKey(string_key)
             # this key did not fit in the node:
             rows[-1].finish_node()
             key_line = string_key + b"\n"
@@ -525,7 +525,7 @@ class BTreeBuilder(_mod_index.GraphIndexBuilder):
                 yield (self,) + node[1:]
         if self._key_length == 1:
             for key in keys:
-                index._sanity_check_key(self, key)
+                _mod_index._sanity_check_key(self, key)
                 try:
                     node = self._nodes[key]
                 except KeyError:
@@ -536,7 +536,7 @@ class BTreeBuilder(_mod_index.GraphIndexBuilder):
                     yield self, key, node[1]
             return
         nodes_by_key = self._get_nodes_by_key()
-        yield from index._iter_entries_prefix(self, nodes_by_key, keys)
+        yield from _mod_index._iter_entries_prefix(self, nodes_by_key, keys)
 
     def _get_nodes_by_key(self):
         if self._nodes_by_key is None:
@@ -548,7 +548,7 @@ class BTreeBuilder(_mod_index.GraphIndexBuilder):
                         key_dict = key_dict.setdefault(subkey, {})
                     key_dict[key[-1]] = key, value, references
             else:
-                for key, (_references, value) in self._nodes.items():
+                for key, (references, value) in self._nodes.items():  # noqa: B007
                     key_dict = nodes_by_key
                     for subkey in key[:-1]:
                         key_dict = key_dict.setdefault(subkey, {})
@@ -985,7 +985,7 @@ class BTreeGraphIndex:
                 for key, (value, refs) in self._root_node.all_items():
                     yield (self, key, value, refs)
             else:
-                for key, (value, _refs) in self._root_node.all_items():
+                for key, (value, refs) in self._root_node.all_items():  # noqa: B007
                     yield (self, key, value)
             return
         start_of_leaves = self._row_offsets[-2]
@@ -1005,7 +1005,7 @@ class BTreeGraphIndex:
                     yield (self, key, value, refs)
         else:
             for _, node in nodes:
-                for key, (value, _refs) in node.all_items():
+                for key, (value, refs) in node.all_items():  # noqa: B007
                     yield (self, key, value)
 
     @staticmethod

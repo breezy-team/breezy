@@ -2209,7 +2209,7 @@ class _ContentMapGenerator:
 
             content = None
             for (component_id, record, record_details,
-                 _digest) in reversed(components):
+                 digest) in reversed(components):  # noqa: B007
                 if component_id in self._contents_map:
                     content = self._contents_map[component_id]
                 else:
@@ -2996,7 +2996,7 @@ class _KnitGraphIndex:
             for key, (value, node_refs) in keys.items():
                 result.append((key, value, node_refs))
         else:
-            for key, (value, _node_refs) in keys.items():
+            for key, (value, node_refs) in keys.items():  # noqa: B007
                 result.append((key, value))
         self._add_callback(result)
         if missing_compression_parents:

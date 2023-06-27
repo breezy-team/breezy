@@ -2074,17 +2074,17 @@ class _GCGraphIndex:
                 for key, (value, node_refs) in keys.items():
                     result.append((key, value, node_refs))
             else:
-                for key, (value, _node_refs) in keys.items():
+                for key, (value, node_refs) in keys.items():  # noqa: B007
                     result.append((key, value))
             records = result
         key_dependencies = self._key_dependencies
         if key_dependencies is not None:
             if self._parents:
-                for key, _value, refs in records:
+                for key, value, refs in records:  # noqa: B007
                     parents = refs[0]
                     key_dependencies.add_references(key, parents)
             else:
-                for key, _value, _refs in records:
+                for key, value, refs in records:  # noqa: B007
                     new_keys.add_key(key)
         self._add_callback(records)
 
