@@ -1,5 +1,5 @@
-use bazaar::inventory::Entry as InventoryEntry;
-use bazaar::FileId;
+use crate::inventory::Entry as InventoryEntry;
+use crate::FileId;
 use breezy_osutils::sha::{sha_file, sha_file_by_name};
 use std::cmp::Ordering;
 use std::collections::HashMap;

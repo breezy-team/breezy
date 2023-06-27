@@ -4,9 +4,12 @@ use std::fmt::{Debug, Error, Formatter};
 
 pub mod bencode_serializer;
 pub mod chk_inventory;
+pub mod chk_map;
+pub mod dirstate;
 pub mod filters;
 pub mod gen_ids;
 pub mod globbing;
+pub mod groupcompress;
 pub mod hashcache;
 pub mod inventory;
 pub mod inventory_delta;

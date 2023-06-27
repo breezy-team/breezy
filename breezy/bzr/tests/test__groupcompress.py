@@ -19,9 +19,10 @@
 import sys
 
 from ... import tests
+from ..._bzr_rs import groupcompress as _groupcompress_rs
 from ...tests import features
 from ...tests.scenarios import load_tests_apply_scenarios
-from .. import _groupcompress_py, _groupcompress_rs
+from .. import _groupcompress_py
 
 
 def module_scenarios():

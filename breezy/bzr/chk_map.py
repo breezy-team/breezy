@@ -1704,8 +1704,11 @@ def iter_interesting_nodes(store, interesting_root_keys,
     return iterator.process()
 
 
-from ._chk_map_rs import (_bytes_to_text_key, _search_key_16,  # noqa: F401
-                          _search_key_255)
+from .._bzr_rs import chk_map as _chk_map_rs
+
+_bytes_to_text_key = _chk_map_rs._bytes_to_text_key
+_search_key_16 = _chk_map_rs._search_key_16
+_search_key_255 = _chk_map_rs._search_key_255
 
 try:
     from ._chk_map_pyx import (_deserialise_internal_node,
