@@ -22,6 +22,7 @@ useless stuff.
 
 from .. import osutils
 from .._bzr_rs import groupcompress as _groupcompress_rs
+
 encode_base128_int = _groupcompress_rs.encode_base128_int
 encode_copy_instruction = _groupcompress_rs.encode_copy_instruction
 
