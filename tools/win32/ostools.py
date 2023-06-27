@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
-"""Cross-platform os tools: files/directories manipulations
+"""Cross-platform os tools: files/directories manipulations.
+
 Usage:
 
     ostools.py help

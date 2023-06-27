@@ -17,8 +17,9 @@
 """Tests for get_rev_id_for_revno."""
 
 from breezy import errors
-from breezy.tests.per_repository_reference import \
-    TestCaseWithExternalReferenceRepository
+from breezy.tests.per_repository_reference import (
+    TestCaseWithExternalReferenceRepository,
+)
 
 
 class TestGetRevIdForRevno(TestCaseWithExternalReferenceRepository):

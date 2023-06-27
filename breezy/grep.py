@@ -24,9 +24,8 @@ lazy_import(globals(), """
 from breezy.terminal import color_string, FG
 
 """)
-from . import controldir, errors, osutils
+from . import controldir, errors, osutils, trace
 from . import revision as _mod_revision
-from . import trace
 from .revisionspec import RevisionSpec, RevisionSpec_revid, RevisionSpec_revno
 
 _user_encoding = osutils.get_user_encoding()
@@ -142,8 +141,8 @@ def _graph_view_revisions(branch, start_rev_id, end_rev_id,
 def compile_pattern(pattern, flags=0):
     try:
         return re.compile(pattern, flags)
-    except re.error:
-        raise errors.BzrError(f"Invalid pattern: '{pattern}'")
+    except re.error as err:
+        raise errors.BzrError(f"Invalid pattern: '{pattern}'") from err
     return None
 
 

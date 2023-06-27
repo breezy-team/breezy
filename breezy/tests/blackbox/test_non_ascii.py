@@ -97,17 +97,17 @@ class TestNonAscii(tests.TestCaseWithTransport):
         for thing in [fname, dir_name]:
             try:
                 thing.encode(fs_enc)
-            except UnicodeEncodeError:
+            except UnicodeEncodeError as err:
                 raise tests.TestSkipped(
                     'Unable to represent path %r in filesystem encoding "%s"'
-                    % (thing, fs_enc))
+                    % (thing, fs_enc)) from err
             try:
                 thing.encode(terminal_enc)
-            except UnicodeEncodeError:
+            except UnicodeEncodeError as err:
                 raise tests.TestSkipped(
                     'Unable to represent path %r in terminal encoding "%s"'
                     ' (even though it is valid in filesystem encoding "%s")'
-                    % (thing, terminal_enc, fs_enc))
+                    % (thing, terminal_enc, fs_enc)) from err
 
     def create_base(self):
         wt = self.make_branch_and_tree('.')

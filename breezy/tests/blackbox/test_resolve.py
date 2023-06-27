@@ -93,8 +93,8 @@ $ brz resolve --all -d tree
             self.run_script("""\
 $ brz status tree
 """)
-        except AssertionError:
-            raise KnownFailure("bug #842575")
+        except AssertionError as err:
+            raise KnownFailure("bug #842575") from err
 
     def test_bug_842575_take_other(self):
         self.run_script("""\
@@ -122,8 +122,8 @@ $ brz status tree
 $ echo mustignore > tree/foo
 $ brz status tree
 """)
-        except AssertionError:
-            raise KnownFailure("bug 842575")
+        except AssertionError as err:
+            raise KnownFailure("bug 842575") from err
 
 
 class TestBug788000(script.TestCaseWithTransportAndScript):

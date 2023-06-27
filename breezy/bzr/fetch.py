@@ -242,6 +242,7 @@ def _new_root_data_stream(
     Used in fetches that do rich-root upgrades.
 
     Args:
+      repo: Repository
       root_keys_to_create: iterable of (root_id, rev_id) pairs describing
         the root entries to create.
       rev_id_to_root_id_map: dict of known rev_id -> root_id mappings for

@@ -101,7 +101,7 @@ class TestPermissions(tests.TestCaseWithTransport):
             raise tests.TestNotApplicable(
                 "Only applicable to bzr branches")
         os.mkdir('b')
-        os.chmod('b', 0o2777)
+        os.chmod('b', 0o2777)  # noqa: S103
         b = self.make_branch('b')
         self.assertEqualMode(0o2777, b.controldir._get_dir_mode())
         self.assertEqualMode(0o0666, b.controldir._get_file_mode())
@@ -110,7 +110,7 @@ class TestPermissions(tests.TestCaseWithTransport):
         check_mode_r(self, 'b/.bzr', 0o0666, 0o2777)
 
         os.mkdir('c')
-        os.chmod('c', 0o2750)
+        os.chmod('c', 0o2750)  # noqa: S103
         b = self.make_branch('c')
         self.assertEqualMode(0o2750, b.controldir._get_dir_mode())
         self.assertEqualMode(0o0640, b.controldir._get_file_mode())

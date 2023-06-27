@@ -925,7 +925,7 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
         except OSError as e:
             if e.errno in (errno.EINVAL, errno.EPIPE):
                 raise ConnectionResetError(
-                    "Error trying to write to subprocess", e)
+                    "Error trying to write to subprocess", e) from e
             raise
         self._report_activity(len(data), 'write')
 
@@ -1119,9 +1119,9 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
         try:
             sockaddrs = socket.getaddrinfo(self._host, port, socket.AF_UNSPEC,
                                            socket.SOCK_STREAM, 0, 0)
-        except socket.gaierror as xxx_todo_changeme:
-            (err_num, err_msg) = xxx_todo_changeme.args
-            raise ConnectionError("failed to lookup %s:%d: %s" % (self._host, port, err_msg))
+        except socket.gaierror as e:
+            (err_num, err_msg) = e.args
+            raise ConnectionError("failed to lookup %s:%d: %s" % (self._host, port, err_msg)) from e
         # Initialize err in case there are no addresses returned:
         last_err = socket.error(f"no address found for {self._host}")
         for (family, socktype, proto, _canonname, sockaddr) in sockaddrs:

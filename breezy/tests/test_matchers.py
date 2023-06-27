@@ -16,10 +16,10 @@
 
 """Tests of breezy test matchers."""
 
-from testtools.matchers import *
+from testtools.matchers import *  # noqa: F403
 
 from . import TestCase, TestCaseWithTransport
-from .matchers import *
+from .matchers import *  # noqa: F403
 
 
 class StubTree:

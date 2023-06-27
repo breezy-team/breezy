@@ -101,14 +101,9 @@ def _simple_graph(parent_map):
     return graph.Graph(graph.DictParentsProvider(parent_map))
 
 if opts.quick:
-    if known_python['heads'] != known_pyrex['heads']:
-        import pdb; pdb.set_trace()
     print(f"ratio: {known_python['elapsed'] / known_pyrex['elapsed']:.1f}:1 faster")
 else:
     orig = combi_graph(_simple_graph, combinations)
     report('Orig', orig)
-
-    if orig['heads'] != known_pyrex['heads']:
-        import pdb; pdb.set_trace()
 
     print(f"ratio: {orig['elapsed'] / known_pyrex['elapsed']:.1f}:1 faster")

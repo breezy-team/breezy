@@ -42,8 +42,8 @@ class ExpectShelver(shelf_ui.Shelver):
     def prompt(self, message, choices, default):
         try:
             expected_message, response = self.expected.pop(0)
-        except IndexError:
-            raise AssertionError(f'Unexpected prompt: {message}')
+        except IndexError as err:
+            raise AssertionError(f'Unexpected prompt: {message}') from err
         if message != expected_message:
             raise AssertionError(f'Wrong prompt: {message}')
         if choices != '&yes\n&No\n&finish\n&quit':

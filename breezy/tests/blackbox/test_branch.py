@@ -19,9 +19,8 @@
 
 import os
 
-from breezy import branch, controldir, errors
+from breezy import branch, controldir, errors, tests
 from breezy import revision as _mod_revision
-from breezy import tests
 from breezy.bzr import bzrdir
 from breezy.tests import fixtures, test_server
 from breezy.tests.blackbox import test_switch

@@ -21,7 +21,9 @@ That is, tests for reconcile and check.
 
 from breezy import osutils
 from breezy.bzr.tests.per_repository_vf import (
-    TestCaseWithRepository, all_repository_vf_format_scenarios)
+    TestCaseWithRepository,
+    all_repository_vf_format_scenarios,
+)
 from breezy.tests import TestNotApplicable, multiply_scenarios
 
 from ....repository import WriteGroup

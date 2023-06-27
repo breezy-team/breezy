@@ -329,8 +329,8 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         if tree.branch.repository._format.supports_setting_revision_ids:
             try:
                 tree.commit('in\xedtial', rev_id='r\xe9v-1'.encode())
-            except errors.NonAsciiRevisionId:
-                raise TestSkipped('non-ascii revision ids not supported')
+            except errors.NonAsciiRevisionId as err:
+                raise TestSkipped('non-ascii revision ids not supported') from err
         else:
             tree.commit('in\xedtial')
 

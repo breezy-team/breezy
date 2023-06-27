@@ -32,8 +32,13 @@ from ...tests import TestCase, TestCaseWithTransport
 from ...transport import NoSuchFile
 from . import xml4
 from .bzrdir import BzrDirFormat6
-from .repository import (InterWeaveRepo, RepositoryFormat4, RepositoryFormat5,
-                         RepositoryFormat6, RepositoryFormat7)
+from .repository import (
+    InterWeaveRepo,
+    RepositoryFormat4,
+    RepositoryFormat5,
+    RepositoryFormat6,
+    RepositoryFormat7,
+)
 
 
 class TestFormat6(TestCaseWithTransport):

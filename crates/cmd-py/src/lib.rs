@@ -427,10 +427,9 @@ impl TreeBuilder {
     }
 
     fn build(&mut self, recipe: Vec<&str>) -> PyResult<()> {
-        Ok(self
-            .0
+        self.0
             .build(recipe.as_slice())
-            .map_err(|e| PyRuntimeError::new_err(format!("Failed to build tree: {:?}", e)))?)
+            .map_err(|e| PyRuntimeError::new_err(format!("Failed to build tree: {:?}", e)))
     }
 
     fn start_tree(&mut self, tree: PyObject) {

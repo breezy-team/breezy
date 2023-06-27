@@ -22,16 +22,26 @@ from dulwich.refs import SymrefLoop
 
 from .. import config, debug, errors, osutils, trace, ui, urlutils
 from ..controldir import BranchReferenceLoop
-from ..errors import (AlreadyBranchError, BzrError, DivergedBranches,
-                      InProcessTransport, InvalidRevisionId, LockContention,
-                      NoSuchRevision, NoSuchTag, NotBranchError, NotLocalUrl,
-                      PermissionDenied, TransportError, UnexpectedHttpStatus,
-                      UninitializableFormat)
+from ..errors import (
+    AlreadyBranchError,
+    BzrError,
+    DivergedBranches,
+    InProcessTransport,
+    InvalidRevisionId,
+    LockContention,
+    NoSuchRevision,
+    NoSuchTag,
+    NotBranchError,
+    NotLocalUrl,
+    PermissionDenied,
+    TransportError,
+    UnexpectedHttpStatus,
+    UninitializableFormat,
+)
 from ..push import PushResult
 from ..revision import NULL_REVISION
 from ..revisiontree import RevisionTree
-from ..transport import (NoSuchFile, Transport,
-                         register_urlparse_netloc_protocol)
+from ..transport import NoSuchFile, Transport, register_urlparse_netloc_protocol
 from . import is_github_url, lazy_check_versions, user_agent_for_github
 
 lazy_check_versions()
@@ -43,13 +53,22 @@ import urllib.parse as urlparse
 import dulwich
 import dulwich.client
 from dulwich.errors import GitProtocolError, HangupException
-from dulwich.pack import (PACK_SPOOL_FILE_MAX_SIZE, Pack, load_pack_index,
-                          pack_objects_to_data)
+from dulwich.pack import (
+    PACK_SPOOL_FILE_MAX_SIZE,
+    Pack,
+    load_pack_index,
+    pack_objects_to_data,
+)
 from dulwich.refs import SYMREF, DictRefsContainer
 from dulwich.repo import NotGitRepository
 
-from .branch import (GitBranch, GitBranchFormat, GitBranchPushResult, GitTags,
-                     _quick_lookup_revno)
+from .branch import (
+    GitBranch,
+    GitBranchFormat,
+    GitBranchPushResult,
+    GitTags,
+    _quick_lookup_revno,
+)
 from .dir import GitControlDirFormat, GitDir
 from .errors import GitSmartRemoteNotSupported
 from .mapping import encode_git_path, mapping_registry
@@ -401,9 +420,9 @@ class RemoteGitDir(GitDir):
                 subdirs=subdirs,
                 prefix=(encode_git_path(prefix) if prefix else None))
         except HangupException as e:
-            raise parse_git_hangup(self.transport.external_url(), e)
+            raise parse_git_hangup(self.transport.external_url(), e) from e
         except GitProtocolError as e:
-            raise parse_git_error(self.transport.external_url(), e)
+            raise parse_git_error(self.transport.external_url(), e) from e
         finally:
             if pb is not None:
                 pb.finished()
@@ -425,9 +444,9 @@ class RemoteGitDir(GitDir):
                 result.refs, result.symrefs)
             return result
         except HangupException as e:
-            raise parse_git_hangup(self.transport.external_url(), e)
+            raise parse_git_hangup(self.transport.external_url(), e) from e
         except GitProtocolError as e:
-            raise parse_git_error(self.transport.external_url(), e)
+            raise parse_git_error(self.transport.external_url(), e) from e
         finally:
             if pb is not None:
                 pb.finished()
@@ -459,9 +478,9 @@ class RemoteGitDir(GitDir):
                         result.ref_status[m.group(1)] = LockContention(m.group(1), m.group(2))
             return result
         except HangupException as e:
-            raise parse_git_hangup(self.transport.external_url(), e)
+            raise parse_git_hangup(self.transport.external_url(), e) from e
         except GitProtocolError as e:
-            raise parse_git_error(self.transport.external_url(), e)
+            raise parse_git_error(self.transport.external_url(), e) from e
         finally:
             if pb is not None:
                 pb.finished()
@@ -518,8 +537,8 @@ class RemoteGitDir(GitDir):
         ref = self._get_selected_ref(name)
         try:
             ref_chain, unused_sha = self.get_refs_container().follow(ref)
-        except SymrefLoop:
-            raise BranchReferenceLoop(self)
+        except SymrefLoop as err:
+            raise BranchReferenceLoop(self) from err
         if len(ref_chain) == 1:
             return None
         target_ref = ref_chain[1]
@@ -542,11 +561,10 @@ class RemoteGitDir(GitDir):
         ref = self._get_selected_ref(name, ref)
         try:
             ref_chain, sha = self.get_refs_container().follow(ref)
-        except SymrefLoop:
-            raise BranchReferenceLoop(self)
-        except NotGitRepository:
-            raise NotBranchError(self.root_transport.base,
-                                 controldir=self)
+        except SymrefLoop as err:
+            raise BranchReferenceLoop(self) from err
+        except NotGitRepository as err:
+            raise NotBranchError(self.root_transport.base, controldir=self) from err
         if not nascent_ok and sha is None:
             raise NotBranchError(
                 self.root_transport.base, controldir=self)
@@ -616,9 +634,9 @@ class RemoteGitDir(GitDir):
             else:
                 try:
                     new_sha = repo.lookup_bzr_revision_id(revision_id)[0]
-                except errors.NoSuchRevision:
+                except errors.NoSuchRevision as err:
                     raise errors.NoRoundtrippingSupport(
-                        source, self.open_branch(name=name, nascent_ok=True))
+                        source, self.open_branch(name=name, nascent_ok=True)) from err
             old_sha = remote_refs.get(actual_refname)
             if not overwrite:
                 if remote_divergence(old_sha, new_sha, source_store):
@@ -854,8 +872,8 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
     def supports_transport(self, transport):
         try:
             external_url = transport.external_url()
-        except InProcessTransport:
-            raise NotBranchError(path=transport.base)
+        except InProcessTransport as err:
+            raise NotBranchError(path=transport.base) from err
         return (external_url.startswith("http:")
                 or external_url.startswith("https:")
                 or external_url.startswith("git+")
@@ -951,8 +969,8 @@ class RemoteGitRepository(GitRepository):
         # start..
         try:
             return mapping_registry.revision_id_bzr_to_foreign(bzr_revid)
-        except InvalidRevisionId:
-            raise NoSuchRevision(self, bzr_revid)
+        except InvalidRevisionId as err:
+            raise NoSuchRevision(self, bzr_revid) from err
 
     def lookup_foreign_revision_id(self, foreign_revid, mapping=None):
         """Lookup a revision id."""
@@ -1080,7 +1098,9 @@ class RemoteGitBranch(GitBranch):
         self._sha = sha
 
 
-def remote_refs_dict_to_container(refs_dict, symrefs_dict={}):
+def remote_refs_dict_to_container(refs_dict, symrefs_dict=None):
+    if symrefs_dict is None:
+        symrefs_dict = {}
     base = {}
     peeled = {}
     for k, v in refs_dict.items():

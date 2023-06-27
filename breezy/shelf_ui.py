@@ -22,8 +22,19 @@ from io import BytesIO
 
 import patiencediff
 
-from . import (builtins, delta, diff, errors, osutils, patches, shelf,
-               textfile, trace, ui, workingtree)
+from . import (
+    builtins,
+    delta,
+    diff,
+    errors,
+    osutils,
+    patches,
+    shelf,
+    textfile,
+    trace,
+    ui,
+    workingtree,
+)
 from .i18n import gettext
 
 
@@ -384,8 +395,8 @@ class Unshelver:
             if shelf_id is not None:
                 try:
                     shelf_id = int(shelf_id)
-                except ValueError:
-                    raise shelf.InvalidShelfId(shelf_id)
+                except ValueError as err:
+                    raise shelf.InvalidShelfId(shelf_id) from err
             else:
                 shelf_id = manager.last_shelf()
                 if shelf_id is None:

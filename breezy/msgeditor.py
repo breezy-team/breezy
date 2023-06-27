@@ -178,8 +178,8 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
                     if stripped_line != "":
                         lastline = nlines
                     msg.append(line)
-            except UnicodeDecodeError:
-                raise BadCommitMessageEncoding()
+            except UnicodeDecodeError as e:
+                raise BadCommitMessageEncoding() from e
 
         if len(msg) == 0:
             return ""

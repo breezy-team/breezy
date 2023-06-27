@@ -140,7 +140,7 @@ def _set_branch_location(control, to_branch, current_branch, force=False):
                 raise errors.CommandError(gettext(
                     'Unable to connect to current master branch %(target)s: '
                     '%(error)s To switch anyway, use --force.') %
-                    e.__dict__)
+                    e.__dict__) from e
             with b.lock_write():
                 b.set_bound_location(None)
                 b.pull(to_branch, overwrite=True,

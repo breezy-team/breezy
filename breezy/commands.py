@@ -287,15 +287,15 @@ def get_cmd_object(
     """
     try:
         return _get_cmd_object(cmd_name, plugins_override)
-    except KeyError:
+    except KeyError as err:
         # No command found, see if this was a typo
         candidate = guess_command(cmd_name)
         if candidate is not None:
             raise errors.CommandError(
                 i18n.gettext('unknown command "%s". Perhaps you meant "%s"')
-                % (cmd_name, candidate))
+                % (cmd_name, candidate)) from err
         raise errors.CommandError(i18n.gettext('unknown command "%s"')
-                                  % cmd_name)
+                                  % cmd_name) from err
 
 
 def _get_cmd_object(
@@ -377,7 +377,7 @@ def probe_for_provider(cmd_name):
     raise NoPluginAvailable(cmd_name)
 
 
-def _get_bzr_command(cmd_or_None, cmd_name):
+def _get_bzr_command(cmd_or_none, cmd_name):
     """Get a command from bzr's core."""
     try:
         cmd_class = builtin_command_registry.get(cmd_name)
@@ -385,21 +385,21 @@ def _get_bzr_command(cmd_or_None, cmd_name):
         pass
     else:
         return cmd_class()
-    return cmd_or_None
+    return cmd_or_none
 
 
-def _get_external_command(cmd_or_None, cmd_name):
+def _get_external_command(cmd_or_none, cmd_name):
     """Lookup a command that is a shell script."""
     # Only do external command lookups when no command is found so far.
-    if cmd_or_None is not None:
-        return cmd_or_None
+    if cmd_or_none is not None:
+        return cmd_or_none
     from .externalcommand import ExternalCommand
     cmd_obj = ExternalCommand.find_command(cmd_name)
     if cmd_obj:
         return cmd_obj
 
 
-def _get_plugin_command(cmd_or_None, cmd_name):
+def _get_plugin_command(cmd_or_none, cmd_name):
     """Get a command from brz's plugins."""
     try:
         return plugin_cmds.get(cmd_name)()
@@ -409,7 +409,7 @@ def _get_plugin_command(cmd_or_None, cmd_name):
         info = plugin_cmds.get_info(key)
         if cmd_name in info.aliases:
             return plugin_cmds.get(key)()
-    return cmd_or_None
+    return cmd_or_none
 
 
 class Command:
@@ -871,8 +871,8 @@ class CommandHooks(Hooks):
         self.add_hook(
             'get_command',
             "Called when creating a single command. Called with "
-            "(cmd_or_None, command_name). get_command should either return "
-            "the cmd_or_None parameter, or a replacement Command object that "
+            "(cmd_or_none, command_name). get_command should either return "
+            "the cmd_or_none parameter, or a replacement Command object that "
             "should be used for the command. Note that the Command.hooks "
             "hooks are core infrastructure. Many users will prefer to use "
             "breezy.commands.register_command or plugin_cmds.register_lazy.",
@@ -923,9 +923,9 @@ def parse_args(command, argv, alias_argv=None):
     # option name is given.  See http://bugs.python.org/issue2931
     try:
         options, args = parser.parse_args(args)
-    except UnicodeEncodeError:
+    except UnicodeEncodeError as err:
         raise errors.CommandError(
-            i18n.gettext('Only ASCII permitted in option names'))
+            i18n.gettext('Only ASCII permitted in option names')) from err
 
     opts = {k: v for k, v in options.__dict__.items() if
                 v is not option.OptionParser.DEFAULT_VALUE}
@@ -1281,8 +1281,8 @@ def _specified_or_unicode_argv(argv):
             if not isinstance(a, str):
                 raise ValueError(f'not native str or unicode: {a!r}')
             new_argv.append(a)
-    except (ValueError, UnicodeDecodeError):
-        raise errors.BzrError("argv should be list of unicode strings.")
+    except (ValueError, UnicodeDecodeError) as err:
+        raise errors.BzrError("argv should be list of unicode strings.") from err
     return new_argv
 
 

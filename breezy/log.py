@@ -69,14 +69,18 @@ from breezy import (
 from breezy.i18n import gettext, ngettext
 """)
 
-from . import errors, registry
+from . import errors, registry, revisionspec, trace
 from . import revision as _mod_revision
-from . import revisionspec, trace
 from . import transport as _mod_transport
-from .osutils import (UnsupportedTimezoneFormat, format_date,
-                      format_date_with_offset_in_original_timezone,
-                      get_diff_header_encoding, get_terminal_encoding,
-                      is_inside, terminal_width)
+from .osutils import (
+    UnsupportedTimezoneFormat,
+    format_date,
+    format_date_with_offset_in_original_timezone,
+    get_diff_header_encoding,
+    get_terminal_encoding,
+    is_inside,
+    terminal_width,
+)
 from .tree import InterTree
 
 
@@ -170,14 +174,14 @@ def show_log(branch,
     if isinstance(start_revision, int):
         try:
             start_revision = revisionspec.RevisionInfo(branch, start_revision)
-        except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
-            raise errors.InvalidRevisionNumber(start_revision)
+        except (errors.NoSuchRevision, errors.RevnoOutOfBounds) as e:
+            raise errors.InvalidRevisionNumber(start_revision) from e
 
     if isinstance(end_revision, int):
         try:
             end_revision = revisionspec.RevisionInfo(branch, end_revision)
-        except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
-            raise errors.InvalidRevisionNumber(end_revision)
+        except (errors.NoSuchRevision, errors.RevnoOutOfBounds) as e:
+            raise errors.InvalidRevisionNumber(end_revision) from e
 
     if end_revision is not None and end_revision.revno == 0:
         raise errors.InvalidRevisionNumber(end_revision.revno)
@@ -354,7 +358,7 @@ class Logger:
         :param lf: The LogFormatter object to send the output to.
         """
         if not isinstance(lf, LogFormatter):
-            warn(f"not a LogFormatter instance: {lf!r}")
+            warn(f"not a LogFormatter instance: {lf!r}", stacklevel=1)
 
         with self.branch.lock_read():
             if getattr(lf, 'begin_log', None):
@@ -389,9 +393,9 @@ class Logger:
         try:
             for lr in generator.iter_log_revisions():
                 lf.log_revision(lr)
-        except errors.GhostRevisionUnusableHere:
+        except errors.GhostRevisionUnusableHere as e:
             raise errors.CommandError(
-                gettext('Further revision history missing.'))
+                gettext('Further revision history missing.')) from e
         lf.show_advice()
 
     def _generator_factory(self, branch, rqst):
@@ -675,11 +679,11 @@ def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
             else:
                 # No merged revisions found
                 return initial_revisions
-        except _StartNotLinearAncestor:
+        except _StartNotLinearAncestor as e:
             # A merge was never detected so the lower revision limit can't
             # be nested down somewhere
             raise errors.CommandError(gettext('Start revision not found in'
-                                              ' history of end revision.'))
+                                              ' history of end revision.')) from e
 
     # We exit the loop above because we encounter a revision with merges, from
     # this revision, we need to switch to _graph_view_revisions.
@@ -932,14 +936,14 @@ def _make_search_filter(branch, generate_delta, match, log_rev_iterator):
     return _filter_re(searchRE, log_rev_iterator)
 
 
-def _filter_re(searchRE, log_rev_iterator):
+def _filter_re(search_re, log_rev_iterator):
     for revs in log_rev_iterator:
-        new_revs = [rev for rev in revs if _match_filter(searchRE, rev[1])]
+        new_revs = [rev for rev in revs if _match_filter(search_re, rev[1])]
         if new_revs:
             yield new_revs
 
 
-def _match_filter(searchRE, rev):
+def _match_filter(search_re, rev):
     strings = {
         'message': (rev.message,),
         'committer': (rev.committer,),
@@ -948,7 +952,7 @@ def _match_filter(searchRE, rev):
         }
     strings[''] = [item for inner_list in strings.values()
                    for item in inner_list]
-    for k, v in searchRE:
+    for k, v in search_re:
         if k in strings and not _match_any_filter(strings[k], v):
             return False
     return True
@@ -1620,8 +1624,8 @@ class LongLogFormatter(LogFormatter):
         try:
             return format_date(rev.timestamp, rev.timezone or 0,
                                timezone=self.show_timezone)
-        except UnsupportedTimezoneFormat:
-            raise errors.CommandError(gettext(f'Unsupported timezone format "{self.show_timezone}", options are "utc", "original", "local".'))
+        except UnsupportedTimezoneFormat as e:
+            raise errors.CommandError(gettext('Unsupported timezone format "{}", options are "utc", "original", "local".').format(self.show_timezone)) from e
 
     def _date_string_original_timezone(self, rev):
         return format_date_with_offset_in_original_timezone(rev.timestamp,
@@ -1654,8 +1658,8 @@ class LongLogFormatter(LogFormatter):
 
         try:
             lines.append(f'timestamp: {self.date_string(revision.rev)}')
-        except UnsupportedTimezoneFormat:
-            raise errors.CommandError(gettext(f'Unsupported timezone format "{self.show_timezone}", options are "utc", "original", "local".'))
+        except UnsupportedTimezoneFormat as e:
+            raise errors.CommandError(gettext('Unsupported timezone format "{}", options are "utc", "original", "local".').format(self.show_timezone)) from e
 
         if revision.signature is not None:
             lines.append('signature: ' + revision.signature)
@@ -1906,9 +1910,9 @@ def log_formatter(name, *args, **kwargs):
     """
     try:
         return log_formatter_registry.make_formatter(name, *args, **kwargs)
-    except KeyError:
+    except KeyError as e:
         raise errors.CommandError(
-            gettext("unknown log formatter: %r") % name)
+            gettext("unknown log formatter: %r") % name) from e
 
 
 def author_list_all(rev):

@@ -22,7 +22,7 @@ import breezy
 from breezy import commands, osutils, tests
 from breezy.tests import features
 
-from ..bashcomp import *
+from ..bashcomp import *  # noqa: F403
 
 
 class BashCompletionMixin:

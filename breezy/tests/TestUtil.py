@@ -1,3 +1,4 @@
+# noqa: N999
 # Copyright (C) 2005-2011 Canonical Ltd
 #       Author: Robert Collins <robert.collins@canonical.com>
 #
@@ -135,7 +136,7 @@ def _run_and_collect_case(case, res):
 class TestLoader(unittest.TestLoader):
     """Custom TestLoader to extend the stock python one."""
 
-    suiteClass = TestSuite
+    suiteClass = TestSuite  # noqa: N815
     # Memoize test names by test class dict
     test_func_names: Dict[str, List[str]] = {}
 
@@ -192,8 +193,8 @@ class FilteredByModuleTestLoader(TestLoader):
 class TestVisitor:
     """A visitor for Tests."""
 
-    def visitSuite(self, aTestSuite):
+    def visitSuite(self, a_test_suite):  # noqa: N802
         pass
 
-    def visitCase(self, aTestCase):
+    def visitCase(self, a_test_case):  # noqa: N802
         pass

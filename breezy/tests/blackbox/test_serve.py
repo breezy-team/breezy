@@ -22,9 +22,8 @@ import sys
 import threading
 from _thread import interrupt_main  # type: ignore
 
-from ... import builtins, config, errors, osutils
+from ... import builtins, config, errors, osutils, trace, transport, urlutils
 from ... import revision as _mod_revision
-from ... import trace, transport, urlutils
 from ...branch import Branch
 from ...bzr.smart import client, medium
 from ...bzr.smart.server import BzrServerFactory, SmartTCPServer
@@ -334,7 +333,7 @@ class TestCmdServeChrooting(TestBzrServeBase):
         So requests that search up through the parent directories (like
         find_repositoryV3) will give "not found" responses, rather than
         InvalidURLJoin or jail break errors.
-        """
+        """  # noqa: D403
         t = self.get_transport()
         t.mkdir('server-root')
         self.run_bzr_serve_then_func(

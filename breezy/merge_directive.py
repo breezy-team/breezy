@@ -38,9 +38,8 @@ from breezy.bzr.bundle import (
     )
 """)
 from . import branch as _mod_branch
-from . import errors, hooks, registry
+from . import errors, hooks, registry, trace
 from . import revision as _mod_revision
-from . import trace
 
 
 class IllegalMergeDirectivePayload(errors.BzrError):
@@ -312,8 +311,8 @@ class BaseMergeDirective:
                     try:
                         submit_branch = \
                             _mod_branch.Branch.open(self.target_branch)
-                    except errors.NotBranchError:
-                        raise errors.TargetNotBranch(self.target_branch)
+                    except errors.NotBranchError as e:
+                        raise errors.TargetNotBranch(self.target_branch) from e
                     missing_revisions = []
                     bundle_revisions = {r.revision_id for r in
                                            info.real_revisions}

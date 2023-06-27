@@ -76,8 +76,8 @@ class TestCaseWithBranch(TestCaseWithControlDir):
     def make_branch(self, relpath, format=None):
         try:
             return super().make_branch(relpath, format)
-        except errors.UninitializableFormat:
-            raise tests.TestNotApplicable('Uninitializable branch format')
+        except errors.UninitializableFormat as err:
+            raise tests.TestNotApplicable('Uninitializable branch format') from err
 
     def create_tree_with_merge(self):
         """Create a branch with a simple ancestry.
@@ -112,7 +112,6 @@ class TestCaseWithBranch(TestCaseWithControlDir):
 
 
 def branch_scenarios():
-    """ """
     # Generate a list of branch formats and their associated bzrdir formats to
     # use.
     combinations = [(format, format._matchingcontroldir) for format in

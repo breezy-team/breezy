@@ -143,8 +143,12 @@ Known Issues
 # remote files...
 
 
-from ... import version_info  # noqa: F401
-from ... import commands, config, hooks
+from ... import (
+    commands,
+    config,
+    hooks,
+    version_info,  # noqa: F401
+)
 
 
 def register_option(key, member):

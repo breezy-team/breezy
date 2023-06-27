@@ -165,8 +165,8 @@ class TestCaseWithInterRepository(TestCaseWithControlDir):
             if format is None:
                 format = self.repository_format._matchingcontroldir
             return format.initialize(url)
-        except UninitializableFormat:
-            raise TestSkipped(f"Format {format} is not initializable.")
+        except UninitializableFormat as err:
+            raise TestSkipped(f"Format {format} is not initializable.") from err
 
     def make_repository(self, relpath, format=None):
         made_control = self.make_controldir(relpath, format=format)

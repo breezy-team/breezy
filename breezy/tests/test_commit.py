@@ -24,8 +24,13 @@ from .. import config, controldir, errors, osutils, trace
 from .. import transport as _mod_transport
 from ..branch import Branch
 from ..bzr.bzrdir import BzrDirMetaFormat1
-from ..commit import (CannotCommitSelectedFileMerge, Commit,
-                      NullCommitReporter, PointlessCommit, filter_excluded)
+from ..commit import (
+    CannotCommitSelectedFileMerge,
+    Commit,
+    NullCommitReporter,
+    PointlessCommit,
+    filter_excluded,
+)
 from ..errors import BzrError, LockContention
 from ..tree import TreeChange
 from . import TestCase, TestCaseWithTransport, test_foreign

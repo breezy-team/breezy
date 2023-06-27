@@ -284,8 +284,8 @@ class TestGetCommandHook(tests.TestCase):
         class ACommand(commands.Command):
             __doc__ = """A sample command."""
 
-        def get_cmd(cmd_or_None, cmd_name):
-            hook_calls.append(('called', cmd_or_None, cmd_name))
+        def get_cmd(cmd_or_none, cmd_name):
+            hook_calls.append(('called', cmd_or_none, cmd_name))
             if cmd_name in ('foo', 'info'):
                 return ACommand()
         commands.Command.hooks.install_named_hook(

@@ -77,10 +77,15 @@ from ..errors import RevisionAlreadyPresent, RevisionNotPresent
 from ..osutils import dirname, sha_strings
 from ..revision import NULL_REVISION
 from ..trace import mutter
-from .versionedfile import (AbsentContentFactory, ContentFactory,
-                            ExistingContent, UnavailableRepresentation,
-                            VersionedFile, adapter_registry,
-                            sort_groupcompress)
+from .versionedfile import (
+    AbsentContentFactory,
+    ContentFactory,
+    ExistingContent,
+    UnavailableRepresentation,
+    VersionedFile,
+    adapter_registry,
+    sort_groupcompress,
+)
 from .weavefile import _read_weave_v5, write_weave_v5
 
 
@@ -338,8 +343,8 @@ class Weave(VersionedFile):
             self.check_not_reserved_id(name)
         try:
             return self._name_map[name]
-        except KeyError:
-            raise RevisionNotPresent(name, self._weave_name)
+        except KeyError as e:
+            raise RevisionNotPresent(name, self._weave_name) from e
 
     def versions(self):
         """See VersionedFile.versions."""
@@ -591,8 +596,8 @@ class Weave(VersionedFile):
         for i in indexes:
             try:
                 self._parents[i]
-            except IndexError:
-                raise IndexError(f"invalid version number {i!r}")
+            except IndexError as err:
+                raise IndexError(f"invalid version number {i!r}") from err
 
     def _compatible_parents(self, my_parents, other_parents):
         """During join check that other_parents are joinable with my_parents.
@@ -844,7 +849,7 @@ class Weave(VersionedFile):
             # For creating the ancestry, IntSet is much faster (3.7s vs 0.17s)
             # The problem is that set membership is much more expensive
             name = self._idx_to_name(i)
-            sha1s[name] = hashlib.sha1()
+            sha1s[name] = hashlib.sha1()  # noqa: S324
             texts[name] = []
             new_inc = {name}
             for p in self._parents[i]:

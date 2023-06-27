@@ -250,7 +250,7 @@ class TestRegistryIter(tests.TestCase):
 
         class InvasiveGetter(registry._ObjectGetter):
 
-            def get_obj(inner_self):
+            def get_obj(inner_self):  # noqa: N805
                 # Surprise ! Getting a registered object (think lazy loaded
                 # module) register yet another object !
                 _registry.register('more hidden', None)
@@ -334,7 +334,7 @@ class TestRegistryWithDirs(tests.TestCaseInTempDir):
         # By default the plugin won't be in the search path
         self.assertRaises(ImportError, a_registry.get, 'obj')
 
-        plugin_path = self.test_dir + '/tmp'
+        plugin_path = self.test_dir + '/tmp'   # noqa: S108
         sys.path.append(plugin_path)
         try:
             obj = a_registry.get('obj')
