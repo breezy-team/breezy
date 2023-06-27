@@ -109,7 +109,7 @@ but helps protect against colliding host names.
 
 import time
 
-from . import config, debug, errors, lock, osutils, ui, urlutils
+from . import config, debug, errors, lock, ui, urlutils
 from ._cmd_rs import LockHeldInfo
 from .decorators import only_raises
 from .errors import (

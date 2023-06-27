@@ -130,7 +130,7 @@ class BTreeBuilder(_mod_index.GraphIndexBuilder):
         :param spill_at: Optional parameter controlling the maximum number
             of nodes that BTreeBuilder will hold in memory.
         """
-        index.GraphIndexBuilder.__init__(self, reference_lists=reference_lists,
+        _mod_index.GraphIndexBuilder.__init__(self, reference_lists=reference_lists,
                                          key_elements=key_elements)
         self._spill_at = spill_at
         self._backing_indices = []
