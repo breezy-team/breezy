@@ -2234,14 +2234,14 @@ class _GCGraphIndex:
 GroupCompressor: Type[_CommonGroupCompressor]
 
 
+from .._bzr_rs import groupcompress
 from ._groupcompress_py import LinesDeltaIndex
-from ._groupcompress_rs import (
-    apply_delta,
-    apply_delta_to_source,
-    decode_base128_int,
-    decode_copy_instruction,
-    encode_base128_int,
-)
+
+apply_delta = groupcompress.apply_delta
+apply_delta_to_source = groupcompress.apply_delta_to_source
+decode_base128_int = groupcompress.decode_base128_int
+decode_copy_instruction = groupcompress.decode_copy_instruction
+encode_base128_int = groupcompress.encode_base128_int
 
 try:
     from ._groupcompress_pyx import DeltaIndex

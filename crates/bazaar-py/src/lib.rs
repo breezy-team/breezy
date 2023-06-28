@@ -8,7 +8,9 @@ use pyo3::types::{PyBytes, PyString};
 use pyo3_file::PyFileLikeObject;
 use std::collections::HashMap;
 
+mod chk_map;
 mod dirstate;
+mod groupcompress;
 mod inventory;
 
 import_exception!(breezy.errors, ReservedId);
@@ -499,5 +501,11 @@ fn _bzr_rs(py: Python, m: &PyModule) -> PyResult<()> {
 
     let dirstatem = dirstate::_dirstate_rs(py)?;
     m.add_submodule(dirstatem)?;
+
+    let groupcompressm = groupcompress::_groupcompress_rs(py)?;
+    m.add_submodule(groupcompressm)?;
+
+    let chk_mapm = chk_map::_chk_map_rs(py)?;
+    m.add_submodule(chk_mapm)?;
     Ok(())
 }

@@ -223,8 +223,6 @@ import site
 site.ENABLE_USER_SITE = "--user" in sys.argv
 
 rust_extensions = [
-    RustExtension("breezy.bzr._chk_map_rs", "crates/chk-map-py/Cargo.toml", binding=Binding.PyO3),
-    RustExtension("breezy.bzr._groupcompress_rs", "crates/groupcompress-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy._cmd_rs", "crates/cmd-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy._osutils_rs", "crates/osutils-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy._transport_rs", "crates/transport-py/Cargo.toml", binding=Binding.PyO3),

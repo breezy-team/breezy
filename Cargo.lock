@@ -83,12 +83,15 @@ checksum = "604178f6c5c21f02dc555784810edfb88d34ac2c73b2eae109655649ee73ce3d"
 name = "bazaar"
 version = "3.4.0"
 dependencies = [
+ "base64",
  "bendy",
  "breezy-osutils",
  "chrono",
+ "crc32fast",
  "fancy-regex",
  "lazy_static",
  "log",
+ "maplit",
  "nix",
  "pyo3",
  "regex",
@@ -98,34 +101,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "bazaar-chk-map"
-version = "3.4.0"
-dependencies = [
- "crc32fast",
-]
-
-[[package]]
-name = "bazaar-dirstate"
-version = "3.4.0"
-dependencies = [
- "base64",
- "bazaar",
- "breezy-osutils",
- "crc32fast",
- "lazy_static",
- "maplit",
-]
-
-[[package]]
-name = "bazaar-groupcompress"
-version = "3.4.0"
-
-[[package]]
 name = "bazaar-py"
 version = "3.4.0"
 dependencies = [
  "bazaar",
- "bazaar-dirstate",
  "breezy-osutils",
  "chrono",
  "pyo3",
@@ -343,14 +322,6 @@ name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
-
-[[package]]
-name = "chk-map-py"
-version = "3.4.0"
-dependencies = [
- "bazaar-chk-map",
- "pyo3",
-]
 
 [[package]]
 name = "chrono"
@@ -619,14 +590,6 @@ name = "graph-py"
 version = "3.4.0"
 dependencies = [
  "breezy-graph",
- "pyo3",
-]
-
-[[package]]
-name = "groupcompress-py"
-version = "3.4.0"
-dependencies = [
- "bazaar-groupcompress",
  "pyo3",
 ]
 
