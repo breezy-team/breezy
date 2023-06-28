@@ -728,7 +728,7 @@ class RemoteControlDirTests(TestCaseWithTransport):
 
         remote = ControlDir.open(self.remote_url)
         self.assertEqual(
-            {'master', 'blah', 'master'},
+            {'master', 'blah'},
             {b.name for b in remote.list_branches()})
 
     def test_get_branches(self):
