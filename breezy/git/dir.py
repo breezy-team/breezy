@@ -596,7 +596,7 @@ class LocalGitDir(GitDir):
             except NoSuchFile:
                 base_url = self.user_url.rstrip('/')
             else:
-                base_url = urlutils.local_path_to_url(
+                base_url = urlutils.local_path_to_url(  # noqa: B005
                     decode_git_path(commondir)).rstrip('/.git/') + '/'
             return urlutils.join_segment_parameters(base_url, params)
         return None

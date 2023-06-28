@@ -21,6 +21,13 @@ __all__ = ['PatchFailed', 'PatchInvokeError', 'diff3',
            'format_patch_date', 'iter_patched_from_hunks', 'parse_patch_date',
            'patch', 'run_patch']
 
-from ._patch_rs import (PatchFailed, PatchInvokeError, diff3,
-                        format_patch_date, iter_patched_from_hunks,
-                        parse_patch_date, patch, run_patch)
+from ._patch_rs import (
+    PatchFailed,
+    PatchInvokeError,
+    diff3,
+    format_patch_date,
+    iter_patched_from_hunks,
+    parse_patch_date,
+    patch,
+    run_patch,
+)

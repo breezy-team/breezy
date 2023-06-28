@@ -22,6 +22,9 @@ sha1 = "0.10"
 tempfile = "3"
 log = "0.4"
 pyo3 = { version = ">=0.17", optional = true }
+crc32fast = "1.2.0"
+base64 = "0.21.0"
+maplit = "1.0.2"
 
 [target.'cfg(unix)'.dependencies]
 nix = ">= 0.26"
