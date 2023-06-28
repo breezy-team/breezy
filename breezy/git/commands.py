@@ -228,7 +228,7 @@ class cmd_git_apply(Command):
         """
         from dulwich.patch import git_am_patch_split
 
-        from ..patch import patch_tree
+        from ..workingtree import patch_tree
         (c, diff, version) = git_am_patch_split(f)
         # FIXME: Cope with git-specific bits in patch
         # FIXME: Add new files to working tree

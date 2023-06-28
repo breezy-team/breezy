@@ -7095,8 +7095,7 @@ class cmd_patch(Command):
                      Option('silent', help='Suppress chatter.')]
 
     def run(self, filename=None, strip=None, silent=False):
-        from .patch import patch_tree
-        from .workingtree import WorkingTree
+        from .workingtree import WorkingTree, patch_tree
         wt = WorkingTree.open_containing('.')[0]
         if strip is None:
             strip = 1
