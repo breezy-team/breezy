@@ -17,7 +17,6 @@
 import codecs
 import errno
 import os
-import stat
 import sys
 import time
 from typing import List
