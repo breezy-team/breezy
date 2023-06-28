@@ -434,8 +434,8 @@ class ShelfManager:
         filename = self.get_shelf_filename(shelf_id)
         try:
             return open(self.transport.local_abspath(filename), 'rb')
-        except FileNotFoundError:
-            raise NoSuchShelfId(shelf_id)
+        except FileNotFoundError as err:
+            raise NoSuchShelfId(shelf_id) from err
 
     def get_unshelver(self, shelf_id):
         """Return an unshelver for a given shelf_id.

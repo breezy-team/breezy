@@ -109,12 +109,21 @@ but helps protect against colliding host names.
 
 import time
 
-from . import config, debug, errors, lock, osutils, ui, urlutils
+from . import config, debug, errors, lock, ui, urlutils
 from ._cmd_rs import LockHeldInfo
 from .decorators import only_raises
-from .errors import (DirectoryNotEmpty, LockBreakMismatch, LockBroken,
-                     LockContention, LockCorrupt, LockFailed, LockNotHeld,
-                     PathError, ResourceBusy, TransportError)
+from .errors import (
+    DirectoryNotEmpty,
+    LockBreakMismatch,
+    LockBroken,
+    LockContention,
+    LockCorrupt,
+    LockFailed,
+    LockNotHeld,
+    PathError,
+    ResourceBusy,
+    TransportError,
+)
 from .i18n import gettext
 from .osutils import rand_chars
 from .trace import mutter, note
@@ -187,7 +196,7 @@ class LockDir(lock.Lock):
         try:
             self.transport.mkdir(self.path, mode=mode)
         except (TransportError, PathError) as e:
-            raise LockFailed(self, e)
+            raise LockFailed(self, e) from e
 
     def _attempt_lock(self):
         """Make the pending directory and attempt to rename into place.
@@ -210,7 +219,7 @@ class LockDir(lock.Lock):
             tmpname = self._create_pending_dir()
         except (errors.TransportError, PathError) as e:
             self._trace("... failed to create pending dir, %s", e)
-            raise LockFailed(self, e)
+            raise LockFailed(self, e) from e
         while True:
             try:
                 self.transport.rename(tmpname, self._held_dir)

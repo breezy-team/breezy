@@ -51,8 +51,14 @@ from breezy.bzr.testament import Testament
 
 from .. import debug, errors, osutils
 from ..decorators import only_raises
-from ..repository import (CommitBuilder, FetchResult, InterRepository,
-                          Repository, RepositoryFormat, WriteGroup)
+from ..repository import (
+    CommitBuilder,
+    FetchResult,
+    InterRepository,
+    Repository,
+    RepositoryFormat,
+    WriteGroup,
+)
 from ..trace import mutter, note
 from .inventory import Inventory, entry_factory
 from .inventory_delta import InventoryDelta
@@ -1076,7 +1082,7 @@ class VersionedFileRepository(Repository):
         against the revision one as get_revision does: but it should only
         be used by reconcile, or reconcile-alike commands that are correcting
         or testing the revision graph.
-        """
+        """  # noqa: D403
         with self.lock_read():
             return self.get_revisions([revision_id])[0]
 
@@ -1868,7 +1874,7 @@ class StreamSink:
                     inventory_delta_bytes)
             except inventory_delta.IncompatibleInventoryDelta as err:
                 mutter("Incompatible delta: %s", err.msg)
-                raise errors.IncompatibleRevision(self.target_repo._format)
+                raise errors.IncompatibleRevision(self.target_repo._format) from err
             basis_id, new_id, rich_root, tree_refs, inv_delta = parse_result
             inv_delta = InventoryDelta(inv_delta)
             revision_id = new_id
@@ -2020,7 +2026,7 @@ class StreamSource:
             # violation of the requirements for repository integrity.
             raise AssertionError(
                 f"cannot copy revisions to fill in missing deltas {keys['revisions']}")
-        for substream_kind, keys in keys.items():
+        for substream_kind, keys in keys.items():  # noqa: B020
             vf = getattr(self.from_repository, substream_kind)
             if vf is None and keys:
                 raise AssertionError(
@@ -2582,7 +2588,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
                         root_keys_to_create.add((file_id, entry.revision))
                         continue
                 texts_possibly_new_in_tree.add((file_id, entry.revision))
-            for basis_id, basis_tree in possible_trees:
+            for _basis_id, basis_tree in possible_trees:
                 basis_inv = basis_tree.root_inventory
                 for file_key in list(texts_possibly_new_in_tree):
                     file_id, file_revision = file_key

@@ -318,13 +318,13 @@ def do_import(source, tree_directory=None):
 
         try:
             archive, external_compressor = get_archive_type(source)
-        except NotArchiveType:
+        except NotArchiveType as err:
             if file_kind(source) == 'directory':
                 s = BytesIO(source.encode('utf-8'))
                 s.seek(0)
                 import_dir(tree, s)
             else:
-                raise CommandError('Unhandled import source')
+                raise CommandError('Unhandled import source') from err
         else:
             if archive == 'zip':
                 import_zip(tree, open_from_url(source))
@@ -337,8 +337,8 @@ def do_import(source, tree_directory=None):
                     elif external_compressor == 'lzma':
                         import lzma
                         tar_input = BytesIO(lzma.decompress(tar_input.read()))
-                except FileNotFoundError:
-                    raise NoSuchFile(source)
+                except FileNotFoundError as err:
+                    raise NoSuchFile(source) from err
                 try:
                     import_tar(tree, tar_input)
                 finally:

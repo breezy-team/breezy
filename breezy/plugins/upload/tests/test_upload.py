@@ -17,8 +17,17 @@
 import os
 import sys
 
-from .... import (bedding, controldir, errors, osutils, revisionspec, tests,
-                  transport, uncommit, workingtree)
+from .... import (
+    bedding,
+    controldir,
+    errors,
+    osutils,
+    revisionspec,
+    tests,
+    transport,
+    uncommit,
+    workingtree,
+)
 from ....tests import features, per_branch, per_transport
 from .. import cmds
 

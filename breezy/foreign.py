@@ -169,8 +169,8 @@ class ForeignVcsRegistry(registry.Registry):
             raise errors.InvalidRevisionId(revid, None)
         try:
             foreign_vcs = self.get(revid.split(b"-")[0].decode('ascii'))
-        except KeyError:
-            raise errors.InvalidRevisionId(revid, None)
+        except KeyError as e:
+            raise errors.InvalidRevisionId(revid, None) from e
         return foreign_vcs.mapping_registry.revision_id_bzr_to_foreign(revid)
 
 

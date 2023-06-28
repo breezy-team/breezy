@@ -172,9 +172,9 @@ class cmd_git_object(Command):
             if sha1 is not None:
                 try:
                     obj = object_store[sha1.encode('ascii')]
-                except KeyError:
+                except KeyError as err:
                     raise CommandError(
-                        gettext("Object not found: %s") % sha1)
+                        gettext("Object not found: %s") % sha1) from err
                 if pretty:
                     text = obj.as_pretty_string()
                 else:
@@ -272,8 +272,10 @@ class cmd_git_push_pristine_tar_deltas(Command):
         from ..trace import warning
         from .mapping import encode_git_path
         from .object_store import get_object_store
-        from .pristine_tar import (revision_pristine_tar_data,
-                                   store_git_pristine_tar_data)
+        from .pristine_tar import (
+            revision_pristine_tar_data,
+            store_git_pristine_tar_data,
+        )
         source = Branch.open_containing(directory)[0]
         target_bzr = Repository.open(target)
         target = getattr(target_bzr, '_git', None)

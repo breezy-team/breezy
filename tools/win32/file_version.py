@@ -30,8 +30,8 @@ def get_file_version(filename):
 
     try:
         version_info = win32api.GetFileVersionInfo(filename, '\\')
-    except pywintypes.error:
-        raise VersionNotAvailable
+    except pywintypes.error as err:
+        raise VersionNotAvailable from err
 
     return (divmod(version_info['FileVersionMS'], 65536) +
             divmod(version_info['FileVersionLS'], 65536))

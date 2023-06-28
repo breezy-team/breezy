@@ -70,10 +70,10 @@ def location_to_url(location, purpose=None):
     # Catch any URLs which are passing Unicode rather than ASCII
     try:
         location = location.encode('ascii')
-    except UnicodeError:
+    except UnicodeError as err:
         if urlutils.is_url(location):
             raise urlutils.InvalidURL(
-                path=location, extra='URLs must be properly escaped')
+                path=location, extra='URLs must be properly escaped') from err
         location = urlutils.local_path_to_url(location)
     else:
         location = location.decode('ascii')

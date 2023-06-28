@@ -481,7 +481,7 @@ class SqliteGitShaMap(GitShaMap):
     def sha1s(self):
         """List the SHA1s."""
         for table in ("blobs", "commits", "trees"):
-            for (sha,) in self.db.execute(f"select sha1 from {table}"):
+            for (sha,) in self.db.execute(f"select sha1 from {table}"):  # noqa: S608
                 yield sha.encode('ascii')
 
 
@@ -560,10 +560,10 @@ class TdbGitCacheFormat(BzrGitCacheFormat):
             basepath = get_cache_dir()
         try:
             return TdbBzrGitCache(os.path.join(basepath, "idmap.tdb"))
-        except ImportError:
+        except ImportError as err:
             raise ImportError(
                 "Unable to open existing bzr-git cache because 'tdb' is not "
-                "installed.")
+                "installed.") from err
 
 
 class TdbGitShaMap(GitShaMap):
@@ -618,8 +618,8 @@ class TdbGitShaMap(GitShaMap):
     def lookup_commit(self, revid):
         try:
             return sha_to_hex(self.db[b"commit\0" + revid][:20])
-        except KeyError:
-            raise KeyError(f"No cache entry for {revid!r}")
+        except KeyError as err:
+            raise KeyError(f"No cache entry for {revid!r}") from err
 
     def lookup_blob_id(self, fileid, revision):
         return sha_to_hex(self.db[b"\0".join((b"blob", fileid, revision))])
@@ -815,7 +815,7 @@ class IndexGitShaMap(GitShaMap):
         if self._builder is not None:
             raise bzr_errors.BzrError('builder already open')
         self._builder = _mod_btree_index.BTreeBuilder(0, key_elements=3)
-        self._name = hashlib.sha1()
+        self._name = hashlib.sha1()  # noqa: S324
 
     def commit_write_group(self):
         if self._builder is None:
@@ -847,14 +847,14 @@ class IndexGitShaMap(GitShaMap):
         entries = self._index.iter_entries([key])
         try:
             return next(entries)[2]
-        except StopIteration:
+        except StopIteration as err:
             if self._builder is None:
-                raise KeyError
+                raise KeyError from err
             entries = self._builder.iter_entries([key])
             try:
                 return next(entries)[2]
-            except StopIteration:
-                raise KeyError
+            except StopIteration as err:
+                raise KeyError from err
 
     def _iter_entries_prefix(self, prefix):
         for entry in self._index.iter_entries_prefix([prefix]):
@@ -958,8 +958,8 @@ def remove_readonly_transport_decorator(transport):
     if transport.is_readonly():
         try:
             return transport._decorated
-        except AttributeError:
-            raise bzr_errors.ReadOnlyError(transport)
+        except AttributeError as err:
+            raise bzr_errors.ReadOnlyError(transport) from err
     return transport
 
 

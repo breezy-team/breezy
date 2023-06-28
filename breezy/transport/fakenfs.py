@@ -24,9 +24,8 @@ To get a fake nfs transport use get_transport('fakenfs+' + real_url)
 
 from stat import S_ISDIR
 
-from .. import errors
+from .. import errors, urlutils
 from .. import transport as _mod_transport
-from .. import urlutils
 from . import decorator
 
 
@@ -46,12 +45,12 @@ class FakeNFSTransportDecorator(decorator.TransportDecorator):
         """
         try:
             self._decorated.rename(rel_from, rel_to)
-        except (errors.DirectoryNotEmpty, _mod_transport.FileExists):
+        except (errors.DirectoryNotEmpty, _mod_transport.FileExists) as e:
             # if this is a directory rename, raise
             # resourcebusy rather than DirectoryNotEmpty
             stat = self._decorated.stat(rel_to)
             if S_ISDIR(stat.st_mode):
-                raise errors.ResourceBusy(rel_to)
+                raise errors.ResourceBusy(rel_to) from e
             else:
                 raise
 

@@ -128,9 +128,9 @@ class TestRevisionTreeKind(per_workingtree.TestCaseWithWorkingTree):
                          [basis.kind('b'), basis.kind('b/c')])
         try:
             other = tree.revision_tree(parents[1])
-        except errors.NoSuchRevisionInTree:
+        except errors.NoSuchRevisionInTree as err:
             raise tests.TestNotApplicable(
-                f'Tree type {type(tree)} caches only the basis revision tree.')
+                f'Tree type {type(tree)} caches only the basis revision tree.') from err
         other.lock_read()
         self.addCleanup(other.unlock)
         self.assertRaises(_mod_transport.NoSuchFile, other.kind, 'b')

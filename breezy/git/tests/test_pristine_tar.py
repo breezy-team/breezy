@@ -24,9 +24,12 @@ from dulwich.repo import MemoryRepo as GitMemoryRepo
 
 from ...revision import Revision
 from ...tests import TestCase
-from ..pristine_tar import (get_pristine_tar_tree, read_git_pristine_tar_data,
-                            revision_pristine_tar_data,
-                            store_git_pristine_tar_data)
+from ..pristine_tar import (
+    get_pristine_tar_tree,
+    read_git_pristine_tar_data,
+    revision_pristine_tar_data,
+    store_git_pristine_tar_data,
+)
 
 
 class RevisionPristineTarDataTests(TestCase):

@@ -16,8 +16,7 @@
 """A Simple bzr plugin to generate statistics about the history."""
 
 
-from ... import (branch, commands, config, errors, option, trace, tsort, ui,
-                 workingtree)
+from ... import branch, commands, config, errors, option, trace, tsort, ui, workingtree
 from ...revision import NULL_REVISION
 from .classify import classify_delta
 
@@ -74,14 +73,17 @@ def collapse_email_and_users(email_users, combo_count):
             if (old_user and old_user != user):
                 low_old_user = old_user.lower()
                 old_user_id = username_to_id[low_old_user]
-                assert old_user_id in (old_id, new_id)
+                if old_user_id not in (old_id, new_id):
+                    raise AssertionError(f"{old_user_id} not in {old_id}, {new_id}")
                 username_to_id[low_old_user] = new_id
             if (old_email and old_email != email):
                 old_email_id = email_to_id[old_email]
-                assert old_email_id in (old_id, new_id)
+                if old_email_id not in (old_id, new_id):
+                    raise AssertionError(f"{old_email_id} not in {old_id}, {new_id}")
                 email_to_id[old_email] = cur_id
     for email, usernames in email_users.items():
-        assert email not in email_to_id
+        if email in email_to_id:
+            raise AssertionError(f"{email} is already in {email_to_id}")
         if not email:
             # We use a different algorithm for usernames that have no email
             # address, we just try to match by username, and not at all by
@@ -122,7 +124,7 @@ def collapse_email_and_users(email_users, combo_count):
                     collapse_ids(user_id, cur_id, id_combos)
             username_to_id[low_user] = cur_id
     combo_to_best_combo = {}
-    for cur_id, combos in id_to_combos.items():
+    for _cur_id, combos in id_to_combos.items():
         best_combo = sorted(combos,
                             key=lambda x: combo_count[x],
                             reverse=True)[0]

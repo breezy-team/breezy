@@ -169,8 +169,8 @@ class RemoteHelper:
         else:
             try:
                 self.commands[argv[0].decode()](self, outf, argv)
-            except KeyError:
-                raise Exception(f"Unknown remote command {argv!r}")
+            except KeyError as err:
+                raise Exception(f"Unknown remote command {argv!r}") from err
         outf.flush()
 
 

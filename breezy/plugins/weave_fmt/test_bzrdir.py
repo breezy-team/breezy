@@ -22,8 +22,7 @@ For interface contract tests, see tests/per_bzr_dir.
 import os
 import sys
 
-from ... import (branch, controldir, errors, repository, upgrade, urlutils,
-                 workingtree)
+from ... import branch, controldir, errors, repository, upgrade, urlutils, workingtree
 from ...bzr import bzrdir
 from ...bzr.tests import test_bundle
 from ...osutils import getcwd

@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-__docformat__ = "google"
-
 """Working tree content filtering support.
 
 A filter consists of a read converter, write converter pair.
@@ -39,6 +37,8 @@ where:
 
 Note that context is currently only supported for write converters.
 """
+
+__docformat__ = "google"
 
 
 from io import BytesIO

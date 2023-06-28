@@ -19,8 +19,12 @@ import time
 
 from breezy import patch, tests
 
-from ..osutils import (format_date, format_highres_date, local_time_offset,
-                       unpack_highres_date)
+from ..osutils import (
+    format_date,
+    format_highres_date,
+    local_time_offset,
+    unpack_highres_date,
+)
 
 
 class TestPatchHeader(tests.TestCase):
@@ -145,7 +149,7 @@ class UnpackHighresDateTests(tests.TestCase):
         t -= 24 * 3600 * 365 * 2  # Start 2 years ago
         o = -12 * 3600
         for _count in range(500):
-            t += random.random() * 24 * 3600 * 30
+            t += random.random() * 24 * 3600 * 30  # noqa: S311
             try:
                 time.gmtime(t + o)
             except (OverflowError, ValueError):

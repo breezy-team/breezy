@@ -68,7 +68,7 @@ def rm_f(path):
     """Rm -f path."""
     try:
         os.unlink(path)
-    except:
+    except BaseException:
         pass
 
 

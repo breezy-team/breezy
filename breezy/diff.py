@@ -200,7 +200,7 @@ def _spawn_external_diff(diffcmd, capture_errors=True):
                                 stderr=stderr,
                                 env=env)
     except FileNotFoundError as e:
-        raise errors.NoDiff(str(e))
+        raise errors.NoDiff(str(e)) from e
 
     return pipe
 
@@ -764,7 +764,6 @@ class DiffFromTool(DiffPath):
         import tempfile
         DiffPath.__init__(self, old_tree, new_tree, to_file, path_encoding)
         self.command_template = command_template
-        import tempfile
         self._root = tempfile.mkdtemp(prefix='brz-diff-')
 
     @classmethod
@@ -807,8 +806,8 @@ class DiffFromTool(DiffPath):
         try:
             proc = subprocess.Popen(command, stdout=subprocess.PIPE,
                                     cwd=self._root)
-        except FileNotFoundError:
-            raise errors.ExecutableMissing(command[0])
+        except FileNotFoundError as e:
+            raise errors.ExecutableMissing(command[0]) from e
         self.to_file.write(proc.stdout.read())
         proc.stdout.close()
         return proc.wait()

@@ -219,9 +219,9 @@ class RangeFile(ResponseFile):
         """Helper to set the new range from its description in the headers."""
         try:
             rtype, values = content_range.split()
-        except ValueError:
+        except ValueError as e:
             raise errors.InvalidHttpRange(self._path, content_range,
-                                          'Malformed header')
+                                          'Malformed header') from e
         if rtype != 'bytes':
             raise errors.InvalidHttpRange(self._path, content_range,
                                           f"Unsupported range type '{rtype}'")
@@ -233,9 +233,9 @@ class RangeFile(ResponseFile):
             start, end = start_end.split('-')
             start = int(start)
             end = int(end)
-        except ValueError:
+        except ValueError as e:
             raise errors.InvalidHttpRange(self._path, content_range,
-                                          'Invalid range values')
+                                          'Invalid range values') from e
         size = end - start + 1
         if size <= 0:
             raise errors.InvalidHttpRange(self._path, content_range,

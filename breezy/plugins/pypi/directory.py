@@ -59,11 +59,11 @@ class PypiDirectory:
     def look_up(self, name, url, purpose=None):
         """See DirectoryService.look_up."""
         try:
-            with urlopen(f'https://pypi.org/pypi/{name}/json') as f:
+            with urlopen(f'https://pypi.org/pypi/{name}/json') as f:  # noqa: S310
                 data = json.load(f)
         except HTTPError as e:
             if e.status == 404:
-                raise NoSuchPypiProject(name, url=url)
+                raise NoSuchPypiProject(name, url=url) from e
             raise
         url = find_repo_url(data)
         if url is None:

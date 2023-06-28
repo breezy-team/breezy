@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""DirState objects record the state of a directory and its bzr metadata.
+r"""DirState objects record the state of a directory and its bzr metadata.
 
 Pseudo EBNF grammar for the state file. Fields are separated by NULLs, and
 lines by NL. The field delimiters are ommitted in the grammar, line delimiters
@@ -23,8 +23,8 @@ are not - this is done for clarity of reading. All string data is in utf8.
 ::
 
     MINIKIND = "f" | "d" | "l" | "a" | "r" | "t";
-    NL = "\\n";
-    NULL = "\\0";
+    NL = "\n";
+    NULL = "\0";
     WHOLE_NUMBER = {digit}, digit;
     BOOLEAN = "y" | "n";
     REVISION_ID = a non-empty utf8 string;
@@ -228,8 +228,17 @@ import sys
 import time
 from stat import S_IEXEC
 
-from .. import (_transport_rs, cache_utf8, config, debug, errors, lock,
-                osutils, trace, urlutils)
+from .. import (
+    _transport_rs,
+    cache_utf8,
+    config,
+    debug,
+    errors,
+    lock,
+    osutils,
+    trace,
+    urlutils,
+)
 from . import inventory, static_tuple
 from .inventorytree import InventoryTreeChange
 
@@ -1362,8 +1371,7 @@ class DirState:
             # _get_entry raises BzrError when a request is inconsistent; we
             # want such errors to be shown as InconsistentDelta - and that
             # fits the behaviour we trigger.
-            raise errors.InconsistentDeltaDelta(delta,
-                                                f"error from _get_entry. {e}")
+            raise errors.InconsistentDeltaDelta(delta, f"error from _get_entry. {e}") from e
 
     def _apply_removals(self, removals):
         for file_id, path in sorted(removals, reverse=True,
@@ -1564,8 +1572,7 @@ class DirState:
             # _get_entry raises BzrError when a request is inconsistent; we
             # want such errors to be shown as InconsistentDelta - and that
             # fits the behaviour we trigger.
-            raise errors.InconsistentDeltaDelta(delta,
-                                                f"error from _get_entry. {e}")
+            raise errors.InconsistentDeltaDelta(delta, f"error from _get_entry. {e}") from e
 
         self._mark_modified(header_modified=True)
         self._id_index = None
@@ -3554,7 +3561,7 @@ class ProcessEntryPython:
             else:
                 try:
                     target_parent_id = self.new_dirname_to_file_id[new_dirname]
-                except KeyError:
+                except KeyError as e:
                     # TODO: We don't always need to do the lookup, because the
                     #       parent entry will be the same as the source entry.
                     target_parent_entry = self.state._get_entry(self.target_index,
@@ -3562,7 +3569,7 @@ class ProcessEntryPython:
                     if target_parent_entry == (None, None):
                         raise AssertionError(
                             "Could not find target parent in wt: %s\nparent of: %s"
-                            % (new_dirname, entry))
+                            % (new_dirname, entry)) from e
                     target_parent_id = target_parent_entry[0][2]
                 if target_parent_id == entry[0][2]:
                     # This is the root, so the parent is None
@@ -4170,7 +4177,7 @@ _get_output_lines = _dirstate_rs.get_output_lines
 
 # Try to load the compiled form if possible
 try:
-    from ._dirstate_helpers_pyx import ProcessEntryC as _process_entry
+    from ._dirstate_helpers_pyx import ProcessEntryC as _process_entry  # noqa: N813
     from ._dirstate_helpers_pyx import _read_dirblocks
     from ._dirstate_helpers_pyx import update_entry as update_entry
 except ImportError as e:

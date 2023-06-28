@@ -5,13 +5,13 @@ from io import StringIO
 
 try:
     from docutils.core import publish_file
-    from docutils.parsers import rst
+    from docutils.parsers import rst  # noqa: F401
 except ModuleNotFoundError:
     print("Missing dependency.  Please install docutils.")
     sys.exit(1)
 try:
     from elementtree import HTMLTreeBuilder
-    from elementtree.ElementTree import XML
+    from elementtree.ElementTree import XML  # noqa: F401
 except ModuleNotFoundError:
     print("Missing dependency.  Please install ElementTree.")
     sys.exit(1)
@@ -32,8 +32,10 @@ def kidified_rest(rest_file, template_name):
     xml = HTMLTreeBuilder.parse(xhtml_file)
     head = xml.find('head')
     body = xml.find('body')
-    assert head is not None
-    assert body is not None
+    if head is None:
+        raise AssertionError("No head found in the document")
+    if body is None:
+        raise AssertionError("No body found in the document")
     template = kid.Template(file=template_name, head=head, body=body)
     return (template.serialize(output="html"))
 
@@ -57,7 +59,9 @@ def main(template, source=None, target=None):
         out_file = sys.stdout
     out_file.write(kidified_rest(rest_file, template))
 
-assert len(sys.argv) > 1
+if len(sys.argv) <= 1:
+    print("Usage: rst2prettyhtml.py <template> [source] [target]")
+    sys.exit(2)
 
 # Strip options so only the arguments are passed
 args = [x for x in sys.argv[1:] if not x.startswith('-')]

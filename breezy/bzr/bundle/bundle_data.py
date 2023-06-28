@@ -27,8 +27,7 @@ from ...osutils import pathjoin, sha_string, sha_strings
 from ...revision import NULL_REVISION, Revision
 from ...trace import mutter, warning
 from ...tree import InterTree
-from ..inventory import (Inventory, InventoryDirectory, InventoryFile,
-                         InventoryLink)
+from ..inventory import Inventory, InventoryDirectory, InventoryFile, InventoryLink
 from ..inventorytree import InventoryTree
 from ..testament import StrictTestament
 from ..xml5 import inventory_serializer_v5
@@ -321,8 +320,8 @@ class BundleInfo:
             for info_item in info:
                 try:
                     name, value = info_item.split(':', 1)
-                except ValueError:
-                    raise ValueError(f'Value {info_item!r} has no colon')
+                except ValueError as e:
+                    raise ValueError(f'Value {info_item!r} has no colon') from e
                 if name == 'last-changed':
                     last_changed = value
                 elif name == 'executable':

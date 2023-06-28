@@ -51,8 +51,8 @@ def stack_finish(this, cost):
     """Finish a given entry, and record its cost in time."""
     global _parent_stack
 
-    assert _parent_stack[-1] == this, \
-        f'import stack does not end with this {this}: {_parent_stack}'
+    if _parent_stack[-1] != this:
+        raise AssertionError(f'import stack does not end with this {this}: {_parent_stack}')
     _parent_stack.pop()
     _info[this].append(cost)
 

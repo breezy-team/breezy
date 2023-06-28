@@ -100,7 +100,7 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
             paramiko_transport.auth_password(username, password)
         except paramiko.SSHException as e:
             raise ConnectionError(
-                f'Unable to authenticate to SSH host as\n  {username}@{host}\n', e)
+                f'Unable to authenticate to SSH host as\n  {username}@{host}\n', e) from e
     else:
         raise ConnectionError('Unable to authenticate to SSH host as'
                                      '  %s@%s' % (username, host))
@@ -177,8 +177,12 @@ class ParamikoVendor(SSHVendor):
     def _connect(self, username, password, host, port):
         global SYSTEM_HOSTKEYS, BRZ_HOSTKEYS
 
-        from .paramiko import (_paramiko_auth, _ssh_host_keys_config_dir,
-                               load_host_keys, save_host_keys)
+        from .paramiko import (
+            _paramiko_auth,
+            _ssh_host_keys_config_dir,
+            load_host_keys,
+            save_host_keys,
+        )
 
         load_host_keys()
 

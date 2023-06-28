@@ -138,8 +138,8 @@ class AliasDirectory(Directory):
             extra = None
         try:
             method = self.branch_aliases.get(name[1:])
-        except KeyError:
-            raise InvalidLocationAlias(url)
+        except KeyError as e:
+            raise InvalidLocationAlias(url) from e
         else:
             result = method(branch)
         if result is None:

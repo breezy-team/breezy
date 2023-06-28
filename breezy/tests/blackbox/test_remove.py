@@ -19,8 +19,13 @@ import os
 import sys
 
 from breezy import osutils
-from breezy.tests import (TestCaseWithTransport, TestNotApplicable,
-                          TestSkipped, features, script)
+from breezy.tests import (
+    TestCaseWithTransport,
+    TestNotApplicable,
+    TestSkipped,
+    features,
+    script,
+)
 
 from ...workingtree import WorkingTree
 

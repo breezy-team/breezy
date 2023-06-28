@@ -31,6 +31,7 @@ __all__ = ['deprecated_function',
 
 
 import warnings
+
 # Import the 'warn' symbol so breezy can call it even if we redefine it
 from warnings import warn
 
@@ -259,23 +260,23 @@ def deprecated_list(deprecation_version, variable_name,
             return func(self, *args, **kwargs)
 
         def append(self, obj):
-            f"""appending to {variable_name} is deprecated"""
+            """Appending to {variable_name} is deprecated."""
             return self._warn_deprecated(list.append, obj)
 
         def insert(self, index, obj):
-            f"""inserting to {variable_name} is deprecated"""
+            """Inserting to {variable_name} is deprecated."""
             return self._warn_deprecated(list.insert, index, obj)
 
         def extend(self, iterable):
-            f"""extending {variable_name} is deprecated"""
+            """Extending {variable_name} is deprecated."""
             return self._warn_deprecated(list.extend, iterable)
 
         def remove(self, value):
-            f"""removing from {variable_name} is deprecated"""
+            """Removing from {variable_name} is deprecated."""
             return self._warn_deprecated(list.remove, value)
 
         def pop(self, index=None):
-            f"""pop'ing from {variable_name} is deprecated"""
+            """Pop'ing from {variable_name} is deprecated."""
             if index:
                 return self._warn_deprecated(list.pop, index)
             else:

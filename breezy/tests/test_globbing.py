@@ -17,8 +17,13 @@
 import re
 
 from .. import lazy_regex
-from ..globbing import (ExceptionGlobster, Globster, Replacer,
-                        _OrderedGlobster, normalize_pattern)
+from ..globbing import (
+    ExceptionGlobster,
+    Globster,
+    Replacer,
+    _OrderedGlobster,
+    normalize_pattern,
+)
 from . import TestCase
 
 

@@ -16,8 +16,19 @@
 
 """Classes to provide name-to-object registry-like support."""
 
-from typing import (Any, Callable, Dict, Generic, Iterator, List, Optional,
-                    Tuple, TypeVar, Union, cast)
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generic,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+    cast,
+)
 
 from .pyutils import get_named_object
 

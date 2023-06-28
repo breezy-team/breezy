@@ -32,10 +32,12 @@ from .. import errors as brz_errors
 from .. import trace, urlutils
 from ..commands import plugin_cmds
 from ..controldir import ControlDirFormat, Prober, format_registry
-from ..controldir import \
-    network_format_registry as controldir_network_format_registry
-from ..transport import (register_lazy_transport, register_transport_proto,
-                         transport_server_registry)
+from ..controldir import network_format_registry as controldir_network_format_registry
+from ..transport import (
+    register_lazy_transport,
+    register_transport_proto,
+    transport_server_registry,
+)
 
 if getattr(sys, "frozen", None):
     # allow import additional libs from ./_lib for bzr.exe only
@@ -46,10 +48,10 @@ if getattr(sys, "frozen", None):
 def import_dulwich():
     try:
         from dulwich import __version__ as dulwich_version
-    except ModuleNotFoundError:
+    except ModuleNotFoundError as e:
         raise brz_errors.DependencyNotPresent(
             "dulwich",
-            "bzr-git: Please install dulwich, https://www.dulwich.io/")
+            "bzr-git: Please install dulwich, https://www.dulwich.io/") from e
     else:
         if dulwich_version < dulwich_minimum_version:
             raise brz_errors.DependencyNotPresent(
@@ -95,8 +97,8 @@ class LocalGitProber(Prober):
     def probe_transport(self, transport):
         try:
             external_url = transport.external_url()
-        except brz_errors.InProcessTransport:
-            raise brz_errors.NotBranchError(path=transport.base)
+        except brz_errors.InProcessTransport as err:
+            raise brz_errors.NotBranchError(path=transport.base) from err
         if (external_url.startswith("http:") or
                 external_url.startswith("https:")):
             # Already handled by RemoteGitProber
@@ -181,8 +183,8 @@ class RemoteGitProber(Prober):
     def probe_transport(self, transport):
         try:
             external_url = transport.external_url()
-        except brz_errors.InProcessTransport:
-            raise brz_errors.NotBranchError(path=transport.base)
+        except brz_errors.InProcessTransport as err:
+            raise brz_errors.NotBranchError(path=transport.base) from err
 
         if (external_url.startswith("http:") or
                 external_url.startswith("https:")):
@@ -290,8 +292,7 @@ transport_server_registry.register_lazy(
     help='Git Smart server upload pack command. (inetd mode only)')
 
 from ..repository import format_registry as repository_format_registry
-from ..repository import \
-    network_format_registry as repository_network_format_registry
+from ..repository import network_format_registry as repository_network_format_registry
 
 repository_network_format_registry.register_lazy(
     b'git', __name__ + '.repository', 'GitRepositoryFormat')
