@@ -21,9 +21,8 @@ import zlib
 from ... import config, osutils, tests, trace
 from ...osutils import sha_string
 from ...tests.scenarios import load_tests_apply_scenarios
-from .. import btree_index, groupcompress
+from .. import btree_index, groupcompress, knit, versionedfile
 from .. import index as _mod_index
-from .. import knit, versionedfile
 from .test__groupcompress import compiled_groupcompress_feature
 
 
@@ -511,7 +510,9 @@ class TestCaseWithGroupCompressVersionedFiles(
 
 class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
 
-    def make_g_index(self, name, ref_lists=0, nodes=[]):
+    def make_g_index(self, name, ref_lists=0, nodes=None):
+        if nodes is None:
+            nodes = []
         builder = btree_index.BTreeBuilder(ref_lists)
         for node, references, value in nodes:
             builder.add_node(node, references, value)

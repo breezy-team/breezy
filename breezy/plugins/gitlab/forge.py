@@ -23,14 +23,20 @@ import time
 from datetime import datetime
 from typing import Optional
 
-from ... import bedding
+from ... import bedding, controldir, errors, urlutils
 from ... import branch as _mod_branch
-from ... import controldir, errors, urlutils
-from ...forge import (Forge, ForgeLoginRequired, MergeProposal,
-                      MergeProposalBuilder, MergeProposalExists, NoSuchProject,
-                      PrerequisiteBranchUnsupported,
-                      SourceNotDerivedFromTarget, UnsupportedForge,
-                      determine_title)
+from ...forge import (
+    Forge,
+    ForgeLoginRequired,
+    MergeProposal,
+    MergeProposalBuilder,
+    MergeProposalExists,
+    NoSuchProject,
+    PrerequisiteBranchUnsupported,
+    SourceNotDerivedFromTarget,
+    UnsupportedForge,
+    determine_title,
+)
 from ...git.urls import git_url_to_bzr_url
 from ...trace import mutter
 from ...transport import get_transport
@@ -712,8 +718,8 @@ class GitLab(Forge):
             project = self._get_project(base_project)['path']
         try:
             target_project = self._get_project(f'{owner}/{project}')
-        except NoSuchProject:
-            raise errors.NotBranchError(f'{self.base_url}/{owner}/{project}')
+        except NoSuchProject as e:
+            raise errors.NotBranchError(f'{self.base_url}/{owner}/{project}') from e
         if preferred_schemes is None:
             preferred_schemes = ['git+ssh']
         for scheme in preferred_schemes:
@@ -765,7 +771,7 @@ class GitLab(Forge):
             response = self._api_request('GET', 'user')
         except errors.UnexpectedHttpStatus as e:
             if e.code == 401:
-                raise GitLabLoginMissing(self.base_url)
+                raise GitLabLoginMissing(self.base_url) from e
             raise
         if response.status == 200:
             self._current_user = json.loads(response.data)
@@ -796,8 +802,8 @@ class GitLab(Forge):
     def probe_from_url(cls, url, possible_transports=None):
         try:
             (host, project) = parse_gitlab_url(url)
-        except NotGitLabUrl:
-            raise UnsupportedForge(url)
+        except NotGitLabUrl as e:
+            raise UnsupportedForge(url) from e
         transport = get_transport(
             f'https://{host}', possible_transports=possible_transports)
         credentials = get_credentials_by_url(transport.base)
@@ -808,11 +814,11 @@ class GitLab(Forge):
         try:
             resp = transport.request(
                 'GET', f"https://{host}/api/v4/projects/{urlutils.quote(str(project), '')}")
-        except errors.UnexpectedHttpStatus:
-            raise UnsupportedForge(url)
-        except errors.RedirectRequested:
+        except errors.UnexpectedHttpStatus as e:
+            raise UnsupportedForge(url) from e
+        except errors.RedirectRequested as e:
             # GitLab doesn't send redirects for these URLs
-            raise UnsupportedForge(url)
+            raise UnsupportedForge(url) from e
         else:
             if not resp.getheader('X-Gitlab-Feature-Category'):
                 raise UnsupportedForge(url)
@@ -848,13 +854,13 @@ class GitLab(Forge):
     def get_proposal_by_url(self, url: str) -> GitLabMergeProposal:
         try:
             (host, project, merge_id) = parse_gitlab_merge_request_url(url)
-        except NotGitLabUrl:
-            raise UnsupportedForge(url)
+        except NotGitLabUrl as e:
+            raise UnsupportedForge(url) from e
         except NotMergeRequestUrl as e:
             if self.base_hostname == e.host:
                 raise
             else:
-                raise UnsupportedForge(url)
+                raise UnsupportedForge(url) from e
         if self.base_hostname != host:
             raise UnsupportedForge(url)
         project = self._get_project(project)
@@ -946,7 +952,7 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
             if e.error == [
                     "Source project is not a fork of the target project"]:
                 raise SourceNotDerivedFromTarget(
-                    self.source_branch, self.target_branch)
+                    self.source_branch, self.target_branch) from e
             raise
         return GitLabMergeProposal(self.gl, merge_request)
 

@@ -19,8 +19,11 @@
 Currently limited to referencing tools for migration.
 """
 
-from ... import version_info  # noqa: F401
-from ... import controldir, errors
+from ... import (
+    controldir,
+    errors,
+    version_info,  # noqa: F401
+)
 from ...transport import register_transport_proto
 
 

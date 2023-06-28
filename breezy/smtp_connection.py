@@ -104,13 +104,11 @@ class SMTPConnection:
         """Create an SMTP connection."""
         try:
             self._connection = self._smtp_factory(host=self._smtp_server)
-        except ConnectionRefusedError:
+        except ConnectionRefusedError as err:
             if self._config_smtp_server is None:
-                raise DefaultSMTPConnectionRefused(socket.error,
-                                                   self._smtp_server)
+                raise DefaultSMTPConnectionRefused(socket.error, self._smtp_server) from err
             else:
-                raise SMTPConnectionRefused(socket.error,
-                                            self._smtp_server)
+                raise SMTPConnectionRefused(socket.error, self._smtp_server) from err
 
         # Say EHLO (falling back to HELO) to query the server's features.
         code, resp = self._connection.ehlo()
@@ -197,8 +195,8 @@ class SMTPConnection:
                                       message.as_string())
         except smtplib.SMTPRecipientsRefused as e:
             raise SMTPError('server refused recipient: %d %s' %
-                            next(iter(e.recipients.values())))
+                            next(iter(e.recipients.values()))) from er
         except smtplib.SMTPResponseException as e:
-            raise SMTPError('%d %s' % (e.smtp_code, e.smtp_error))
+            raise SMTPError('%d %s' % (e.smtp_code, e.smtp_error)) from e
         except smtplib.SMTPException as e:
-            raise SMTPError(str(e))
+            raise SMTPError(str(e)) from e

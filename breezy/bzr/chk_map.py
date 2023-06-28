@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Persistent maps from tuple_of_strings->string using CHK stores.
+r"""Persistent maps from tuple_of_strings->string using CHK stores.
 
 Overview and current status:
 
@@ -135,7 +135,7 @@ class CHKMap:
             if old is not None and old != new:
                 self.unmap(old, check_remap=False)
                 has_deletes = True
-        for old, new, value in delta:
+        for _old, new, value in delta:
             if new is not None:
                 self.map(new, value)
         if has_deletes:
@@ -1081,7 +1081,7 @@ class InternalNode(Node):
             # 0.105us   for key in key_filter: break
             #       no func() overhead, might malloc an iterator, probably
             #       avoids checking an 'else' clause as part of the for
-            for key in key_filter:
+            for key in key_filter:  # noqa: B007
                 break
             search_prefix = self._search_prefix_filter(key)
             if len(search_prefix) == self._node_width:
@@ -1711,8 +1711,7 @@ _search_key_16 = _chk_map_rs._search_key_16
 _search_key_255 = _chk_map_rs._search_key_255
 
 try:
-    from ._chk_map_pyx import (_deserialise_internal_node,
-                               _deserialise_leaf_node)
+    from ._chk_map_pyx import _deserialise_internal_node, _deserialise_leaf_node
 except ImportError as e:
     osutils.failed_to_load_extension(e)
     from ._chk_map_py import _deserialise_internal_node, _deserialise_leaf_node

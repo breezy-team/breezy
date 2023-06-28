@@ -18,8 +18,12 @@ from datetime import datetime
 
 from breezy.tests import TestCase
 
-from ..forge import (NotGitLabUrl, NotMergeRequestUrl,
-                     parse_gitlab_merge_request_url, parse_timestring)
+from ..forge import (
+    NotGitLabUrl,
+    NotMergeRequestUrl,
+    parse_gitlab_merge_request_url,
+    parse_timestring,
+)
 
 
 class ParseGitLabMergeRequestUrlTests(TestCase):

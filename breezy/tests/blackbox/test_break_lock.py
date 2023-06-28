@@ -53,9 +53,9 @@ class TestBreakLock(tests.TestCaseWithTransport):
             'repo/branch')
         try:
             local_branch.bind(self.master_branch)
-        except branch.BindingUnsupported:
+        except branch.BindingUnsupported as err:
             raise tests.TestNotApplicable(
-                'default format does not support bound branches')
+                'default format does not support bound branches') from err
         checkoutdir = controldir.ControlDir.create('checkout')
         checkoutdir.set_branch_reference(local_branch)
         self.wt = checkoutdir.create_workingtree()

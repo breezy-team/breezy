@@ -17,7 +17,6 @@
 import codecs
 import errno
 import os
-import stat
 import sys
 import time
 from typing import List
@@ -36,7 +35,6 @@ from breezy import (
     )
 """)
 
-import breezy
 
 from . import _osutils_rs, errors
 
@@ -370,13 +368,20 @@ def report_extension_load_failures():
     # https://bugs.launchpad.net/bzr/+bug/430529
 
 
-from ._osutils_rs import \
-    _accessible_normalized_filename  # noqa: F401; noqa: F401
-from ._osutils_rs import (_inaccessible_normalized_filename, check_legal_path,
-                          chunks_to_lines, chunks_to_lines_iter, delete_any,
-                          get_host_name, link_or_copy, local_concurrency,
-                          normalized_filename, normalizes_filenames,
-                          split_lines)
+from ._osutils_rs import (  # noqa: F401
+    _accessible_normalized_filename,  # noqa: F401; noqa: F401
+    _inaccessible_normalized_filename,
+    check_legal_path,
+    chunks_to_lines,  # noqa: F401
+    chunks_to_lines_iter,
+    delete_any,
+    get_host_name,  # noqa: F401
+    link_or_copy,
+    local_concurrency,
+    normalized_filename,  # noqa: F401
+    normalizes_filenames,
+    split_lines,  # noqa: F401
+)
 
 readlink = _osutils_rs.readlink
 contains_whitespace = _osutils_rs.contains_whitespace
@@ -463,8 +468,8 @@ def safe_unicode(unicode_or_utf8_string):
         return unicode_or_utf8_string
     try:
         return unicode_or_utf8_string.decode('utf8')
-    except UnicodeDecodeError:
-        raise errors.BzrBadParameterNotUnicode(unicode_or_utf8_string)
+    except UnicodeDecodeError as e:
+        raise errors.BzrBadParameterNotUnicode(unicode_or_utf8_string) from e
 
 
 def safe_utf8(unicode_or_utf8_string):
@@ -480,8 +485,8 @@ def safe_utf8(unicode_or_utf8_string):
         try:
             # Make sure it is a valid utf-8 string
             unicode_or_utf8_string.decode('utf-8')
-        except UnicodeDecodeError:
-            raise errors.BzrBadParameterNotUnicode(unicode_or_utf8_string)
+        except UnicodeDecodeError as e:
+            raise errors.BzrBadParameterNotUnicode(unicode_or_utf8_string) from e
         return unicode_or_utf8_string
     return unicode_or_utf8_string.encode('utf-8')
 
@@ -896,7 +901,7 @@ def send_all(sock, bytes, report_activity=None):
         except OSError as e:
             if e.args[0] in _end_of_stream_errors:
                 raise ConnectionResetError(
-                    "Error trying to write to socket", e)
+                    "Error trying to write to socket", e) from e
             if e.args[0] != errno.EINTR:
                 raise
         else:

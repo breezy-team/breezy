@@ -25,8 +25,17 @@ from io import BytesIO
 import breezy.transport.trace
 
 from .. import errors, osutils, tests, transport, urlutils
-from ..transport import (FileExists, NoSuchFile, UnsupportedProtocol, chroot,
-                         fakenfs, local, memory, pathfilter, readonly)
+from ..transport import (
+    FileExists,
+    NoSuchFile,
+    UnsupportedProtocol,
+    chroot,
+    fakenfs,
+    local,
+    memory,
+    pathfilter,
+    readonly,
+)
 from ..transport.local import file_kind
 from . import features, test_server
 

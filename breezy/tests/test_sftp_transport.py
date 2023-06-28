@@ -20,9 +20,8 @@ import socket
 import sys
 import time
 
-from breezy import config, controldir, errors, tests
+from breezy import config, controldir, errors, tests, ui
 from breezy import transport as _mod_transport
-from breezy import ui
 from breezy.tests import TestCase, TestCaseWithTransport, TestSkipped, features
 
 from ..osutils import lexists

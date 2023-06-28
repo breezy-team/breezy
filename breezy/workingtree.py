@@ -49,8 +49,12 @@ from breezy import (
 
 from . import errors, mutabletree, osutils
 from . import revision as _mod_revision
-from .controldir import (ControlComponent, ControlComponentFormat,
-                         ControlComponentFormatRegistry, ControlDir)
+from .controldir import (
+    ControlComponent,
+    ControlComponentFormat,
+    ControlComponentFormatRegistry,
+    ControlDir,
+)
 from .i18n import gettext
 from .trace import mutter, note
 from .transport import NoSuchFile
@@ -357,8 +361,8 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         abspath = self.abspath(path)
         try:
             file_obj = open(abspath, 'rb')
-        except FileNotFoundError:
-            raise NoSuchFile(path)
+        except FileNotFoundError as err:
+            raise NoSuchFile(path) from err
         stat_value = _fstat(file_obj.fileno())
         if filtered and self.supports_content_filtering():
             filters = self._content_filter_stack(path)
@@ -444,8 +448,8 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
                     fullpath = osutils.normpath(self.abspath(f))
                     try:
                         kinds[pos] = file_kind(fullpath)
-                    except FileNotFoundError:
-                        raise NoSuchFile(fullpath)
+                    except FileNotFoundError as err:
+                        raise NoSuchFile(fullpath) from err
 
     def add_parent_tree_id(self, revision_id, allow_leftmost_as_ghost=False):
         """Add revision_id as a parent.
@@ -658,8 +662,8 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         abspath = self.abspath(path)
         try:
             return osutils.readlink(abspath)
-        except FileNotFoundError:
-            raise NoSuchFile(path)
+        except FileNotFoundError as err:
+            raise NoSuchFile(path) from err
 
     def subsume(self, other_tree):
         raise NotImplementedError(self.subsume)

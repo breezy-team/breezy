@@ -18,17 +18,21 @@ import os
 
 import fastbencode as bencode
 
-from .. import osutils
+from .. import osutils, tests, trace, transform
 from .. import revision as _mod_revision
-from .. import tests, trace, transform
 from ..bzr import generate_ids
 from ..controldir import ControlDir
 from ..errors import StrictCommitFailed
 from ..merge import Merge3Merger
 from ..mutabletree import MutableTree
 from ..osutils import pathjoin
-from ..transform import (ROOT_PARENT, MalformedTransform,
-                         TransformRenameFailed, _FileMover, resolve_conflicts)
+from ..transform import (
+    ROOT_PARENT,
+    MalformedTransform,
+    TransformRenameFailed,
+    _FileMover,
+    resolve_conflicts,
+)
 from ..transport import FileExists
 from ..transport.local import file_kind
 from . import TestCaseInTempDir, features

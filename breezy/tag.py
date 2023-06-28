@@ -297,8 +297,8 @@ class MemoryTags(Tags):
         td = self.get_tag_dict()
         try:
             return td[tag_name]
-        except KeyError:
-            raise errors.NoSuchTag(tag_name)
+        except KeyError as e:
+            raise errors.NoSuchTag(tag_name) from e
 
     def set_tag(self, name, revid):
         self._tag_dict[name] = revid
@@ -306,8 +306,8 @@ class MemoryTags(Tags):
     def delete_tag(self, name):
         try:
             del self._tag_dict[name]
-        except KeyError:
-            raise errors.NoSuchTag(name)
+        except KeyError as err:
+            raise errors.NoSuchTag(name) from err
 
     def rename_revisions(self, revid_map):
         self._tag_dict = {

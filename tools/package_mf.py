@@ -31,7 +31,11 @@ class CustomModuleFinder(modulefinder.ModuleFinder):
                     if not specified, python standard library only is used.
     """
 
-    def __init__(self, path=None, debug=0, excludes=[], replace_paths=[]):
+    def __init__(self, path=None, debug=0, excludes=None, replace_paths=None):
+        if excludes is None:
+            excludes = []
+        if replace_paths is None:
+            replace_paths = []
         if path is None:
             path = [os.path.dirname(os.__file__)]    # only python std lib
         modulefinder.ModuleFinder.__init__(
@@ -58,7 +62,7 @@ class CustomModuleFinder(modulefinder.ModuleFinder):
                 self.import_module(
                     partname, ".".join(path),
                     self.modules.get(parent_path, None))
-            except:
+            except BaseException:
                 pass
         stack = [(fqname, parent_path)]
         while stack:

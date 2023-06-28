@@ -36,10 +36,15 @@ from breezy.bzr import (
 from .. import errors, osutils, trace
 from ..lru_cache import LRUSizeCache
 from .btree_index import BTreeBuilder
-from .versionedfile import (AbsentContentFactory, ChunkedContentFactory,
-                            ExistingContent, UnavailableRepresentation,
-                            VersionedFilesWithFallbacks, _KeyRefs,
-                            adapter_registry)
+from .versionedfile import (
+    AbsentContentFactory,
+    ChunkedContentFactory,
+    ExistingContent,
+    UnavailableRepresentation,
+    VersionedFilesWithFallbacks,
+    _KeyRefs,
+    adapter_registry,
+)
 
 # Minimum number of uncompressed bytes to try fetch at once when retrieving
 # groupcompress blocks.
@@ -445,7 +450,7 @@ class _LazyGroupCompressFactory:
         try:
             self._manager._prepare_for_extract()
         except zlib.error as value:
-            raise DecompressCorruption("zlib: " + str(value))
+            raise DecompressCorruption("zlib: " + str(value)) from value
         block = self._manager._block
         self._chunks = block.extract(self.key, self._start, self._end)
         # There are code paths that first extract as fulltext, and then
@@ -1261,14 +1266,14 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
     def add_lines(self, key, parents, lines, parent_texts=None,
                   left_matching_blocks=None, nostore_sha=None, random_id=False,
                   check_content=True):
-        """Add a text to the store.
+        r"""Add a text to the store.
 
         :param key: The key tuple of the text to add.
         :param parents: The parents key tuples of the text to add.
         :param lines: A list of lines. Each line must be a bytestring. And all
-            of them except the last must be terminated with \\n and contain no
-            other \\n's. The last line may either contain no \\n's or a single
-            terminating \\n. If the lines list does meet this constraint the
+            of them except the last must be terminated with \n and contain no
+            other \n's. The last line may either contain no \n's or a single
+            terminating \n. If the lines list does meet this constraint the
             add routine may error or may succeed - but you will be unable to
             read the data back accurately. (Checking the lines have been split
             correctly is expensive and extremely unlikely to catch bugs so it
@@ -1879,7 +1884,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         self._compressor = None
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
-        """Iterate over the lines in the versioned files from keys.
+        r"""Iterate over the lines in the versioned files from keys.
 
         This may return lines from other keys. Each item the returned
         iterator yields is a tuple of a line and a text version that that line
@@ -2069,17 +2074,17 @@ class _GCGraphIndex:
                 for key, (value, node_refs) in keys.items():
                     result.append((key, value, node_refs))
             else:
-                for key, (value, node_refs) in keys.items():
+                for key, (value, node_refs) in keys.items():  # noqa: B007
                     result.append((key, value))
             records = result
         key_dependencies = self._key_dependencies
         if key_dependencies is not None:
             if self._parents:
-                for key, value, refs in records:
+                for key, value, refs in records:  # noqa: B007
                     parents = refs[0]
                     key_dependencies.add_references(key, parents)
             else:
-                for key, value, refs in records:
+                for key, value, refs in records:  # noqa: B007
                     new_keys.add_key(key)
         self._add_callback(records)
 

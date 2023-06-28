@@ -32,15 +32,31 @@ from http.server import SimpleHTTPRequestHandler
 
 import breezy
 
-from .. import (config, controldir, debug, errors, osutils, tests, trace,
-                transport, ui, urlutils)
+from .. import (
+    config,
+    controldir,
+    debug,
+    errors,
+    osutils,
+    tests,
+    trace,
+    transport,
+    ui,
+    urlutils,
+)
 from ..bzr import remote as _mod_remote
 from ..transport import remote
 from ..transport.http import urllib
-from ..transport.http.urllib import (AbstractAuthHandler, BasicAuthHandler,
-                                     HTTPAuthHandler, HTTPConnection,
-                                     HTTPSConnection, HttpTransport,
-                                     ProxyHandler, Request)
+from ..transport.http.urllib import (
+    AbstractAuthHandler,
+    BasicAuthHandler,
+    HTTPAuthHandler,
+    HTTPConnection,
+    HTTPSConnection,
+    HttpTransport,
+    ProxyHandler,
+    Request,
+)
 from . import features, http_server, http_utils, test_server
 from .scenarios import load_tests_apply_scenarios, multiply_scenarios
 
@@ -488,7 +504,9 @@ class TestPost(tests.TestCase):
 class TestRangeHeader(tests.TestCase):
     """Test range_header method."""
 
-    def check_header(self, value, ranges=[], tail=0):
+    def check_header(self, value, ranges=None, tail=0):
+        if ranges is None:
+            ranges = []
         offsets = [(start, end - start + 1) for start, end in ranges]
         coalesce = transport.Transport._coalesce_offsets
         coalesced = list(coalesce(offsets, limit=0, fudge_factor=0))

@@ -92,9 +92,9 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
         try:
             result = tree.branch.create_clone_on_transport(target_transport,
                                                            stacked_on=trunk.base)
-        except branch.UnstackableBranchFormat:
+        except branch.UnstackableBranchFormat as e:
             if not trunk.repository._format.supports_full_versioned_files:
-                raise tests.TestNotApplicable("can not stack on format")
+                raise tests.TestNotApplicable("can not stack on format") from e
             raise
         self.assertEqual(revid, result.last_revision())
         self.assertEqual(trunk.base, result.get_stacked_on_url())
@@ -102,8 +102,8 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
     def test_create_clone_of_multiple_roots(self):
         try:
             builder = self.make_branch_builder('local')
-        except (errors.TransportNotPossible, errors.UninitializableFormat):
-            raise tests.TestNotApplicable('format not directly constructable')
+        except (errors.TransportNotPossible, errors.UninitializableFormat) as e:
+            raise tests.TestNotApplicable('format not directly constructable') from e
         builder.start_series()
         rev1 = builder.build_snapshot(None, [
             ('add', ('', None, 'directory', ''))])
@@ -133,9 +133,9 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
         try:
             result = tree.branch.create_clone_on_transport(
                 target_transport, stacked_on=trunk.base)
-        except branch.UnstackableBranchFormat:
+        except branch.UnstackableBranchFormat as e:
             if not trunk.repository._format.supports_full_versioned_files:
-                raise tests.TestNotApplicable("can not stack on format")
+                raise tests.TestNotApplicable("can not stack on format") from e
             raise
         self.assertEqual(revid, result.last_revision())
         self.assertEqual(trunk.base, result.get_stacked_on_url())

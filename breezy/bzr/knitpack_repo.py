@@ -39,13 +39,24 @@ from breezy.bzr.knit import (
 """)
 
 from ..bzr import btree_index
-from ..bzr.index import (CombinedGraphIndex, GraphIndex,
-                         GraphIndexPrefixAdapter, InMemoryGraphIndex)
+from ..bzr.index import (
+    CombinedGraphIndex,
+    GraphIndex,
+    GraphIndexPrefixAdapter,
+    InMemoryGraphIndex,
+)
 from ..bzr.vf_repository import StreamSource
 from .knitrepo import KnitRepository
-from .pack_repo import (NewPack, PackCommitBuilder, Packer, PackRepository,
-                        RepositoryFormatPack, RepositoryPackCollection,
-                        ResumedPack, _DirectPackAccess)
+from .pack_repo import (
+    NewPack,
+    PackCommitBuilder,
+    Packer,
+    PackRepository,
+    RepositoryFormatPack,
+    RepositoryPackCollection,
+    ResumedPack,
+    _DirectPackAccess,
+)
 
 
 class KnitPackRepository(PackRepository, KnitRepository):

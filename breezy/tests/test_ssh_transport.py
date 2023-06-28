@@ -18,9 +18,14 @@ from breezy import config
 from breezy.tests import TestCase, TestCaseWithTransport
 
 from ..errors import SSHVendorNotFound, UnknownSSH
-from ..transport.ssh import (LSHSubprocessVendor, OpenSSHSubprocessVendor,
-                             PLinkSubprocessVendor, SSHCorpSubprocessVendor,
-                             SSHVendorManager, StrangeHostname)
+from ..transport.ssh import (
+    LSHSubprocessVendor,
+    OpenSSHSubprocessVendor,
+    PLinkSubprocessVendor,
+    SSHCorpSubprocessVendor,
+    SSHVendorManager,
+    StrangeHostname,
+)
 
 
 class TestSSHVendorManager(SSHVendorManager):

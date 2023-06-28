@@ -91,8 +91,8 @@ class GitFileParentProvider:
                 text_revision))
         try:
             path = encode_git_path(mapping.parse_file_id(file_id))
-        except ValueError:
-            raise KeyError(file_id)
+        except ValueError as err:
+            raise KeyError(file_id) from err
         text_parents = []
         for commit_parent in self.store[commit_id].parents:
             try:

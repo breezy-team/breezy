@@ -70,7 +70,8 @@ class _TreeShim:
             return self._content_provider(file_id)
         except KeyError:
             # The content wasn't shown as 'new'. Just validate this fact
-            assert file_id not in self._new_info_by_id
+            if file_id in self._new_info_by_id:
+                raise AssertionError(f"file_id {file_id} was in {self._new_info_by_id}") from None
             old_ie = self._basis_inv.get_entry(file_id)
             old_text_key = (file_id, old_ie.revision)
             stream = self._repo.texts.get_record_stream([old_text_key],
@@ -108,10 +109,10 @@ class _TreeShim:
             # probably is better to optimize for that
             try:
                 old_ie = basis_inv.get_entry(file_id)
-            except errors.NoSuchId:
+            except errors.NoSuchId as e:
                 old_ie = None
                 if ie is None:
-                    raise AssertionError('How is both old and new None?')
+                    raise AssertionError('How is both old and new None?') from e
                     change = InventoryTreeChange(
                         file_id,
                         (old_path, new_path),

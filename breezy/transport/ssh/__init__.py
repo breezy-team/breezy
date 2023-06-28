@@ -57,10 +57,10 @@ class SSHVendorManager(registry.Registry[str, "SSHVendor"]):
         if vendor_name is not None:
             try:
                 vendor = self.get(vendor_name)
-            except KeyError:
+            except KeyError as err:
                 vendor = self._get_vendor_from_path(vendor_name)
                 if vendor is None:
-                    raise errors.UnknownSSH(vendor_name)
+                    raise errors.UnknownSSH(vendor_name) from err
                 vendor.executable_path = vendor_name
             return vendor
         return None

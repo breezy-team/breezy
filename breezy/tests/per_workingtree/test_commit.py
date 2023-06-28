@@ -17,9 +17,8 @@
 
 import os
 
-from breezy import branch, controldir, errors, mutabletree, osutils
+from breezy import branch, controldir, errors, mutabletree, osutils, tests, ui
 from breezy import revision as _mod_revision
-from breezy import tests, ui
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 from ...commit import CannotCommitSelectedFileMerge, PointlessCommit

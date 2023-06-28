@@ -14,7 +14,7 @@ impl PyTree {
 
 import_exception!(breezy.errors, NotVersionedError);
 
-fn map_py_err_to_err(py: Python, py_err: PyErr) -> Error {
+fn map_py_err_to_err(py: Python<'_>, py_err: PyErr) -> Error {
     if py_err.is_instance_of::<NotVersionedError>(py) {
         Error::NotVersioned(py_err.value(py).getattr("path").unwrap().to_string())
     } else {

@@ -72,8 +72,8 @@ class ExportTest:
 
         try:
             tree.add_reference(subtree)
-        except UnsupportedOperation:
-            raise TestNotApplicable('format does not supported nested trees')
+        except UnsupportedOperation as err:
+            raise TestNotApplicable('format does not supported nested trees') from err
         tree.commit('2')
         export(tree, 'output', self.exporter, recurse_nested=recurse_nested)
 

@@ -866,16 +866,16 @@ class BzrDirMeta1(BzrDir):
                 branches = self._read_branch_list()
                 try:
                     branches.remove(name)
-                except ValueError:
-                    raise errors.NotBranchError(name)
+                except ValueError as e:
+                    raise errors.NotBranchError(name) from e
                 self._write_branch_list(branches)
             finally:
                 self.control_files.unlock()
         try:
             self.transport.delete_tree(path)
-        except _mod_transport.NoSuchFile:
+        except _mod_transport.NoSuchFile as e:
             raise errors.NotBranchError(
-                path=urlutils.join(self.transport.base, path), controldir=self)
+                path=urlutils.join(self.transport.base, path), controldir=self) from e
 
     def create_repository(self, shared=False):
         """See BzrDir.create_repository."""
@@ -885,8 +885,8 @@ class BzrDirMeta1(BzrDir):
         """See BzrDir.destroy_repository."""
         try:
             self.transport.delete_tree('repository')
-        except _mod_transport.NoSuchFile:
-            raise errors.NoRepositoryPresent(self)
+        except _mod_transport.NoSuchFile as e:
+            raise errors.NoRepositoryPresent(self) from e
 
     def create_workingtree(self, revision_id=None, from_branch=None,
                            accelerator_tree=None, hardlink=False):
@@ -947,8 +947,8 @@ class BzrDirMeta1(BzrDir):
             return self.transport.clone(path)
         try:
             branch_format.get_format_string()
-        except NotImplementedError:
-            raise errors.IncompatibleFormat(branch_format, self._format)
+        except NotImplementedError as e:
+            raise errors.IncompatibleFormat(branch_format, self._format) from e
         if name != "":
             branches = self._read_branch_list()
             if name not in branches:
@@ -981,8 +981,8 @@ class BzrDirMeta1(BzrDir):
             return self.transport.clone('repository')
         try:
             repository_format.get_format_string()
-        except NotImplementedError:
-            raise errors.IncompatibleFormat(repository_format, self._format)
+        except NotImplementedError as e:
+            raise errors.IncompatibleFormat(repository_format, self._format) from e
         try:
             self.transport.mkdir('repository', mode=self._get_mkdir_mode())
         except _mod_transport.FileExists:
@@ -995,8 +995,8 @@ class BzrDirMeta1(BzrDir):
             return self.transport.clone('checkout')
         try:
             workingtree_format.get_format_string()
-        except NotImplementedError:
-            raise errors.IncompatibleFormat(workingtree_format, self._format)
+        except NotImplementedError as e:
+            raise errors.IncompatibleFormat(workingtree_format, self._format) from e
         try:
             self.transport.mkdir('checkout', mode=self._get_mkdir_mode())
         except _mod_transport.FileExists:
@@ -1181,9 +1181,9 @@ class BzrFormat:
         for lineno, line in enumerate(lines):
             try:
                 (necessity, feature) = line.split(b" ", 1)
-            except ValueError:
+            except ValueError as e:
                 raise errors.ParseFormatError(format=cls, lineno=lineno + 2,
-                                              line=line, text=text)
+                                              line=line, text=text) from e
             ret.features[feature] = necessity
         return ret
 
@@ -1202,8 +1202,8 @@ class BzrFormat:
             first_line = format_string
         try:
             cls = registry.get(first_line)
-        except KeyError:
-            raise errors.UnknownFormatError(format=first_line, kind=kind)
+        except KeyError as e:
+            raise errors.UnknownFormatError(format=first_line, kind=kind) from e
         return cls.from_string(format_string)
 
     def network_name(self):
@@ -1386,8 +1386,8 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
                                           # FIXME: RBC 20060121 don't peek under
                                           # the covers
                                           mode=temp_control._dir_mode)
-        except _mod_transport.FileExists:
-            raise errors.AlreadyControlDirError(transport.base)
+        except _mod_transport.FileExists as e:
+            raise errors.AlreadyControlDirError(transport.base) from e
         if sys.platform == 'win32' and isinstance(transport, local.LocalTransport):
             win32utils.set_file_attr_hidden(transport._abspath('.bzr'))
         file_mode = temp_control._file_mode

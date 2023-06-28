@@ -51,9 +51,9 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
 
     # FIXME: [] as a default is bad, as it is mutable, but I want
     # to use None to mean "don't check this".
-    def assertChanges(self, branch, revno, expected_added=[],
-                      expected_removed=[], expected_modified=[],
-                      expected_renamed=[], expected_kind_changed=[]):
+    def assertChanges(self, branch, revno, expected_added=[],  # noqa: B006
+                      expected_removed=[], expected_modified=[],  # noqa: B006
+                      expected_renamed=[], expected_kind_changed=[]):  # noqa: B006
         """Check the changes introduced in a revision of a branch.
 
         This method checks that a revision introduces expected changes.
@@ -85,9 +85,9 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
                             expected_modified, expected_renamed, expected_kind_changed)
         return revtree1, revtree2
 
-    def _check_changes(self, changes, expected_added=[],
-                       expected_removed=[], expected_modified=[],
-                       expected_renamed=[], expected_kind_changed=[]):
+    def _check_changes(self, changes, expected_added=[],  # noqa: B006
+                       expected_removed=[], expected_modified=[],  # noqa: B006
+                       expected_renamed=[], expected_kind_changed=[]):  # noqa: B006
         """Check the changes in a TreeDelta.
 
         This method checks that the TreeDelta contains the expected

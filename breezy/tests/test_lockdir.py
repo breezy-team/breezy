@@ -22,8 +22,13 @@ import time
 import breezy
 
 from .. import config, errors, lock, lockdir, osutils, tests, transport
-from ..errors import (LockBreakMismatch, LockBroken, LockContention,
-                      LockFailed, LockNotHeld)
+from ..errors import (
+    LockBreakMismatch,
+    LockBroken,
+    LockContention,
+    LockFailed,
+    LockNotHeld,
+)
 from ..lockdir import LockDir, LockHeldInfo
 from . import TestCaseInTempDir, TestCaseWithTransport, features
 

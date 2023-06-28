@@ -1,1 +1,1 @@
-True
+"""Tests for util."""

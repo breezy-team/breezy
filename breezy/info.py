@@ -21,12 +21,10 @@ import time
 from io import StringIO
 
 from . import branch as _mod_branch
-from . import controldir, errors
+from . import controldir, errors, osutils, urlutils
 from . import hooks as _mod_hooks
-from . import osutils, urlutils
 from .bzr import bzrdir
-from .errors import (NoRepositoryPresent, NotBranchError, NotLocalUrl,
-                     NoWorkingTree)
+from .errors import NoRepositoryPresent, NotBranchError, NotLocalUrl, NoWorkingTree
 from .missing import find_unmerged
 
 

@@ -26,13 +26,30 @@ import hashlib
 from stat import S_ISDIR
 
 import breezy
-from breezy import controldir, errors, osutils, repository
+from breezy import (
+    controldir,
+    errors,
+    osutils,
+    repository,
+    tests,
+    transport,
+    upgrade,
+    workingtree,
+)
 from breezy import revision as _mod_revision
-from breezy import tests, transport, upgrade, workingtree
-from breezy.bzr import (btree_index, bzrdir, groupcompress_repo, inventory,
-                        knitpack_repo, knitrepo, pack_repo)
+from breezy.bzr import (
+    btree_index,
+    bzrdir,
+    groupcompress_repo,
+    inventory,
+    knitpack_repo,
+    knitrepo,
+    pack_repo,
+    versionedfile,
+    vf_repository,
+    vf_search,
+)
 from breezy.bzr import repository as bzrrepository
-from breezy.bzr import versionedfile, vf_repository, vf_search
 from breezy.tests import TestCase, TestCaseWithTransport
 
 from ...errors import UnknownFormatError
@@ -1415,7 +1432,7 @@ class TestNewPack(TestCaseWithTransport):
         self.addCleanup(pack.abort)  # Make sure the write stream gets closed
         self.assertIsInstance(pack.revision_index, BTreeBuilder)
         self.assertIsInstance(pack.inventory_index, BTreeBuilder)
-        self.assertIsInstance(pack._hash, type(hashlib.md5()))
+        self.assertIsInstance(pack._hash, type(hashlib.md5()))  # noqa: S324
         self.assertIs(pack.upload_transport, upload_transport)
         self.assertIs(pack.index_transport, index_transport)
         self.assertIs(pack.pack_transport, pack_transport)

@@ -188,11 +188,11 @@ impl Default for BreezyTraceLogger<Box<dyn Write + Send>> {
 }
 
 impl<F: Write + Send> log::Log for BreezyTraceLogger<F> {
-    fn enabled(&self, metadata: &log::Metadata) -> bool {
+    fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
         metadata.level() <= log::Level::Debug
     }
 
-    fn log(&self, record: &log::Record) {
+    fn log(&self, record: &log::Record<'_>) {
         if self.enabled(record.metadata()) {
             // Mimic the python log format:
             // r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s'
@@ -250,11 +250,11 @@ impl Default for BreezyStderrLogger {
 }
 
 impl log::Log for BreezyStderrLogger {
-    fn enabled(&self, metadata: &log::Metadata) -> bool {
+    fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
         metadata.level() <= log::Level::Info
     }
 
-    fn log(&self, record: &log::Record) {
+    fn log(&self, record: &log::Record<'_>) {
         if self.enabled(record.metadata()) {
             eprintln!("{}", record.args());
         }

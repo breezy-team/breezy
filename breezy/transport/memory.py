@@ -28,8 +28,13 @@ from stat import S_IFDIR, S_IFLNK, S_IFREG, S_ISDIR
 
 from .. import transport, urlutils
 from ..errors import InProcessTransport, LockError
-from ..transport import (AppendBasedFileStream, FileExists, LateReadError,
-                         NoSuchFile, _file_streams)
+from ..transport import (
+    AppendBasedFileStream,
+    FileExists,
+    LateReadError,
+    NoSuchFile,
+    _file_streams,
+)
 
 
 class MemoryStat:
@@ -304,8 +309,8 @@ class MemoryTransport(transport.Transport):
         _abspath = self._abspath(link_name)
         try:
             return '/'.join(self._symlinks[_abspath])
-        except KeyError:
-            raise NoSuchFile(link_name)
+        except KeyError as err:
+            raise NoSuchFile(link_name) from err
 
 
 class _MemoryLock:

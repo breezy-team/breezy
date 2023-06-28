@@ -486,7 +486,7 @@ class _StraceFeature(Feature):
 
     def _probe(self):
         try:
-            proc = subprocess.Popen(['strace'],
+            proc = subprocess.Popen(['strace'],  # noqa: S607
                                     stderr=subprocess.PIPE,
                                     stdout=subprocess.PIPE)
             proc.communicate()
@@ -508,7 +508,7 @@ class _AttribFeature(Feature):
         if (sys.platform not in ('cygwin', 'win32')):
             return False
         try:
-            proc = subprocess.Popen(['attrib', '.'], stdout=subprocess.PIPE)
+            proc = subprocess.Popen(['attrib', '.'], stdout=subprocess.PIPE)  # noqa: S607
         except OSError:
             return False
         return (0 == proc.wait())

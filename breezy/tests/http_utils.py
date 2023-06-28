@@ -457,7 +457,7 @@ class DigestAuthServer(AuthServer):
         A2 = f"{command}:{auth['uri']}".encode('utf-8')
 
         def H(x):
-            return hashlib.md5(x).hexdigest()
+            return hashlib.md5(x).hexdigest()  # noqa: S324
 
         def KD(secret, data):
             return H(f"{secret}:{data}".encode('utf-8'))

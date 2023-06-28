@@ -551,7 +551,7 @@ class MAPIClient(BodyExternalMailClient):
         except simplemapi.MAPIError as e:
             if e.code != simplemapi.MAPI_USER_ABORT:
                 raise MailClientNotFound(['MAPI supported mail client'
-                                          ' (error %d)' % (e.code,)])
+                                          ' (error %d)' % (e.code,)]) from e
 
 
 mail_client_registry.register('mapi', MAPIClient,

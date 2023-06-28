@@ -27,17 +27,30 @@ from dulwich.repo import Repo as GitRepo
 
 from ...branch import Branch
 from ...controldir import ControlDir
-from ...errors import (DivergedBranches, NoSuchTag, NotBranchError,
-                       PermissionDenied, TransportError, UnexpectedHttpStatus)
+from ...errors import (
+    DivergedBranches,
+    NoSuchTag,
+    NotBranchError,
+    PermissionDenied,
+    TransportError,
+    UnexpectedHttpStatus,
+)
 from ...tests import TestCase, TestCaseWithTransport
 from ...tests.features import ExecutableFeature
 from ...urlutils import join as urljoin
 from ..mapping import default_mapping
-from ..remote import (GitRemoteRevisionTree, GitSmartRemoteNotSupported,
-                      HeadUpdateFailed, ProtectedBranchHookDeclined,
-                      RemoteGitBranchFormat, RemoteGitError,
-                      _git_url_and_path_from_transport, parse_git_error,
-                      parse_git_hangup, split_git_url)
+from ..remote import (
+    GitRemoteRevisionTree,
+    GitSmartRemoteNotSupported,
+    HeadUpdateFailed,
+    ProtectedBranchHookDeclined,
+    RemoteGitBranchFormat,
+    RemoteGitError,
+    _git_url_and_path_from_transport,
+    parse_git_error,
+    parse_git_hangup,
+    split_git_url,
+)
 from ..tree import MissingNestedTree
 
 
@@ -574,8 +587,8 @@ class PushToRemoteBase:
         branch = builder.get_branch()
         try:
             branch.tags.set_tag('atag', rev_2)
-        except TagsNotSupported:
-            raise TestNotApplicable('source format does not support tags')
+        except TagsNotSupported as err:
+            raise TestNotApplicable('source format does not support tags') from err
 
         branch.get_config_stack().set('branch.fetch_tags', True)
         if self._from_format == 'git':

@@ -40,9 +40,9 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         self.create_branch(bzrdir, 'colo')
         try:
             bzrdir.destroy_branch("colo")
-        except (errors.UnsupportedOperation, errors.TransportNotPossible):
+        except (errors.UnsupportedOperation, errors.TransportNotPossible) as e:
             raise tests.TestNotApplicable(
-                'Format does not support destroying branch')
+                'Format does not support destroying branch') from e
         self.assertRaises(errors.NotBranchError, bzrdir.open_branch,
                           "colo")
 
@@ -56,9 +56,9 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         t = self.get_transport()
         try:
             made_control = self.bzrdir_format.initialize(t.base)
-        except errors.UninitializableFormat:
+        except errors.UninitializableFormat as e:
             raise tests.TestNotApplicable(
-                'Control dir does not support creating new branches.')
+                'Control dir does not support creating new branches.') from e
         made_control.create_repository()
         made_branch = made_control.create_branch("colo")
         self.assertIsInstance(made_branch, Branch)
@@ -75,9 +75,9 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         t = self.get_transport()
         try:
             made_control = self.bzrdir_format.initialize(t.base)
-        except errors.UninitializableFormat:
+        except errors.UninitializableFormat as e:
             raise tests.TestNotApplicable(
-                'Control dir does not support creating new branches.')
+                'Control dir does not support creating new branches.') from e
         made_control.create_repository()
         made_branch = self.create_branch(made_control, name="colo")
         other_branch = self.create_branch(made_control, name="othercolo")
@@ -101,9 +101,9 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         revid = from_tree.commit("rev1")
         try:
             other_branch = self.make_branch("to")
-        except errors.UninitializableFormat:
+        except errors.UninitializableFormat as e:
             raise tests.TestNotApplicable(
-                'Control dir does not support creating new branches.')
+                'Control dir does not support creating new branches.') from e
         to_dir = from_tree.controldir.sprout(
             urlutils.join_segment_parameters(
                 other_branch.user_url, {"branch": "target"}))
@@ -128,9 +128,9 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         revid2 = from_tree.commit("rev2")
         try:
             other_branch = self.make_branch_and_tree("to")
-        except errors.UninitializableFormat:
+        except errors.UninitializableFormat as e:
             raise tests.TestNotApplicable(
-                'Control dir does not support creating new branches.')
+                'Control dir does not support creating new branches.') from e
 
         result = other_branch.controldir.push_branch(
             from_tree.branch, revision_id=revid1)
@@ -157,9 +157,9 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         t = self.get_transport()
         try:
             made_control = self.bzrdir_format.initialize(t.base)
-        except errors.UninitializableFormat:
+        except errors.UninitializableFormat as e:
             raise tests.TestNotApplicable(
-                'Control dir does not support creating new branches.')
+                'Control dir does not support creating new branches.') from e
         made_control.create_repository()
         made_branch = self.create_branch(made_control, name="col\xe9")
         self.assertIn(
@@ -185,9 +185,9 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         repo = self.make_repository('branch-1')
         try:
             target_branch = self.create_branch(repo.controldir, name='foo/bar')
-        except errors.InvalidBranchName:
+        except errors.InvalidBranchName as e:
             raise tests.TestNotApplicable(
-                "format does not support branches with / in their name")
+                "format does not support branches with / in their name") from e
         self.assertIn('foo/bar', list(repo.controldir.get_branches()))
         self.assertEqual(
             target_branch.base, repo.controldir.open_branch(name='foo/bar').base)
@@ -197,9 +197,9 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         repo = self.make_repository('repo')
         try:
             repo.controldir.set_branch_reference(referenced, name='foo')
-        except errors.IncompatibleFormat:
+        except errors.IncompatibleFormat as e:
             raise tests.TestNotApplicable(
-                'Control dir does not support creating branch references.')
+                'Control dir does not support creating branch references.') from e
         self.assertEqual(referenced.user_url,
                          repo.controldir.get_branch_reference('foo'))
 
@@ -211,6 +211,6 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
                 BranchReferenceLoop,
                 repo.controldir.set_branch_reference,
                 to_branch, name='somebranch')
-        except errors.IncompatibleFormat:
+        except errors.IncompatibleFormat as e:
             raise tests.TestNotApplicable(
-                'Control dir does not support creating branch references.')
+                'Control dir does not support creating branch references.') from e
