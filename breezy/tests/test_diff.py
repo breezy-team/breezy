@@ -22,9 +22,8 @@ import sys
 import tempfile
 from io import BytesIO
 
-from .. import diff, errors, osutils
+from .. import diff, errors, osutils, revisionspec, revisiontree, tests
 from .. import revision as _mod_revision
-from .. import revisionspec, revisiontree, tests
 from ..tests import EncodingAdapter, features
 from ..tests.scenarios import load_tests_apply_scenarios
 

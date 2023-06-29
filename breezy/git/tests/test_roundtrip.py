@@ -18,9 +18,13 @@
 """Tests for roundtripping text parsing."""
 
 from ...tests import TestCase
-from ..roundtrip import (CommitSupplement, extract_bzr_metadata,
-                         generate_roundtripping_metadata, inject_bzr_metadata,
-                         parse_roundtripping_metadata)
+from ..roundtrip import (
+    CommitSupplement,
+    extract_bzr_metadata,
+    generate_roundtripping_metadata,
+    inject_bzr_metadata,
+    parse_roundtripping_metadata,
+)
 
 
 class RoundtripTests(TestCase):

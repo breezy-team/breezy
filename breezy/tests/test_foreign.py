@@ -18,8 +18,17 @@
 """Tests for foreign VCS utility code."""
 
 
-from .. import (branch, controldir, errors, foreign, lockdir, repository,
-                revision, tests, trace)
+from .. import (
+    branch,
+    controldir,
+    errors,
+    foreign,
+    lockdir,
+    repository,
+    revision,
+    tests,
+    trace,
+)
 from .. import transport as _mod_transport
 from ..bzr import branch as bzrbranch
 from ..bzr import bzrdir, groupcompress_repo, lockable_files

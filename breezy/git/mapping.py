@@ -29,8 +29,7 @@ from ..foreign import ForeignRevision, ForeignVcs, VcsMappingRegistry
 from ..revision import NULL_REVISION
 from .errors import NoPushSupport
 from .hg import extract_hg_metadata, format_hg_metadata
-from .roundtrip import (CommitSupplement, extract_bzr_metadata,
-                        inject_bzr_metadata)
+from .roundtrip import CommitSupplement, extract_bzr_metadata, inject_bzr_metadata
 
 DEFAULT_FILE_MODE = stat.S_IFREG | 0o644
 HG_RENAME_SOURCE = b"HG:rename-source"

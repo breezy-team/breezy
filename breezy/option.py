@@ -23,9 +23,8 @@ import optparse
 import re
 from typing import Callable, Dict
 
-from . import errors
+from . import errors, revisionspec
 from . import registry as _mod_registry
-from . import revisionspec
 
 
 class BadOptionValue(errors.BzrError):

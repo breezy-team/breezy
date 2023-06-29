@@ -28,21 +28,27 @@ from collections import defaultdict
 from dulwich.config import ConfigFile as GitConfigFile
 from dulwich.file import FileLocked, GitFile
 from dulwich.ignore import IgnoreFilterManager
-from dulwich.index import (FLAG_STAGEMASK, Index, IndexEntry, SHA1Writer,
-                           build_index_from_tree, index_entry_from_path,
-                           index_entry_from_stat, read_submodule_head,
-                           validate_path, write_index_dict)
+from dulwich.index import (
+    FLAG_STAGEMASK,
+    Index,
+    IndexEntry,
+    SHA1Writer,
+    build_index_from_tree,
+    index_entry_from_path,
+    index_entry_from_stat,
+    read_submodule_head,
+    validate_path,
+    write_index_dict,
+)
 from dulwich.object_store import iter_tree_contents
 from dulwich.objects import S_ISGITLINK
 
 from .. import branch as _mod_branch
 from .. import conflicts as _mod_conflicts
 from .. import controldir as _mod_controldir
-from .. import errors, globbing, lock, osutils
+from .. import errors, globbing, lock, osutils, trace, tree, urlutils, workingtree
 from .. import revision as _mod_revision
-from .. import trace
 from .. import transport as _mod_transport
-from .. import tree, urlutils, workingtree
 from ..decorators import only_raises
 from ..mutabletree import BadReferenceTarget, MutableTree
 from ..transport.local import file_kind

@@ -57,9 +57,14 @@ class MalformedHunkHeader(PatchSyntax):
         self.line = line
 
 
-from ._patch_rs import (BinaryFiles, MalformedPatchHeader,  # noqa: F401
-                        difference_index, get_patch_names,
-                        iter_lines_handle_nl, parse_range)
+from ._patch_rs import (  # noqa: F401
+    BinaryFiles,
+    MalformedPatchHeader,
+    difference_index,
+    get_patch_names,
+    iter_lines_handle_nl,
+    parse_range,
+)
 
 
 def hunk_from_header(line):

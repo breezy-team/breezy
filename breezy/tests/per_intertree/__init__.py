@@ -26,8 +26,11 @@ import breezy
 from breezy import revisiontree, tests
 from breezy.bzr import inventorytree
 from breezy.tests import default_transport, multiply_tests
-from breezy.tests.per_tree import (TestCaseWithTree, return_parameter,
-                                   revision_tree_from_workingtree)
+from breezy.tests.per_tree import (
+    TestCaseWithTree,
+    return_parameter,
+    revision_tree_from_workingtree,
+)
 
 from ...bzr.workingtree_3 import WorkingTreeFormat3
 from ...bzr.workingtree_4 import WorkingTreeFormat4

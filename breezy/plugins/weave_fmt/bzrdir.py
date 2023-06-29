@@ -22,8 +22,13 @@ from io import BytesIO
 from ... import errors, osutils, trace
 from ...bzr import lockable_files
 from ...bzr.bzrdir import BzrDir, BzrDirFormat, BzrDirMetaFormat1
-from ...controldir import (ControlDir, Converter, MustHaveWorkingTree,
-                           NoColocatedBranchSupport, format_registry)
+from ...controldir import (
+    ControlDir,
+    Converter,
+    MustHaveWorkingTree,
+    NoColocatedBranchSupport,
+    format_registry,
+)
 from ...i18n import gettext
 from ...lazy_import import lazy_import
 from ...transport import NoSuchFile, get_transport, local

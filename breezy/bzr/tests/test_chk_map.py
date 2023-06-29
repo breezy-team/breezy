@@ -18,8 +18,15 @@
 
 from ... import errors, osutils, tests
 from .. import chk_map, groupcompress
-from ..chk_map import (CHKMap, InternalNode, LeafNode, Node,
-                       _bytes_to_text_key, _search_key_16, _search_key_255)
+from ..chk_map import (
+    CHKMap,
+    InternalNode,
+    LeafNode,
+    Node,
+    _bytes_to_text_key,
+    _search_key_16,
+    _search_key_255,
+)
 from ..static_tuple import StaticTuple
 
 stuple = StaticTuple

@@ -20,7 +20,7 @@ import stat
 from ... import controldir
 
 
-def escape_commit_message(message):
+def escape_commit_message(message: str) -> str:
     """Replace xml-incompatible control characters."""
     # This really ought to be provided by breezy.
     # Code copied from breezy.commit.

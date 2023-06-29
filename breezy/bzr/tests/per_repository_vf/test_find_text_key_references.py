@@ -19,7 +19,9 @@
 
 
 from breezy.bzr.tests.per_repository_vf import (
-    TestCaseWithRepository, all_repository_vf_format_scenarios)
+    TestCaseWithRepository,
+    all_repository_vf_format_scenarios,
+)
 
 from ....tests.scenarios import load_tests_apply_scenarios
 

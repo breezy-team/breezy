@@ -36,7 +36,6 @@ from breezy import (
     )
 """)
 
-import breezy
 
 from . import _osutils_rs, errors
 
@@ -387,13 +386,9 @@ def report_extension_load_failures():
     # https://bugs.launchpad.net/bzr/+bug/430529
 
 
-from ._osutils_rs import \
-    _accessible_normalized_filename  # noqa: F401; noqa: F401
-from ._osutils_rs import (_inaccessible_normalized_filename, check_legal_path,
-                          chunks_to_lines, chunks_to_lines_iter, delete_any,
-                          get_host_name, link_or_copy, local_concurrency,
-                          normalized_filename, normalizes_filenames,
-                          split_lines)
+from ._osutils_rs import (
+    _accessible_normalized_filename,  # noqa: F401; noqa: F401
+    )
 
 readlink = _osutils_rs.readlink
 contains_whitespace = _osutils_rs.contains_whitespace

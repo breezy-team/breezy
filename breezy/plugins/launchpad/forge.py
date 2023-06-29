@@ -24,9 +24,16 @@ from typing import Any, List, Optional
 
 from ... import branch as _mod_branch
 from ... import controldir, errors, urlutils
-from ...forge import (AutoMergeUnsupported, Forge, LabelsUnsupported,
-                      MergeProposal, MergeProposalBuilder, MergeProposalExists,
-                      TitleUnsupported, UnsupportedForge)
+from ...forge import (
+    AutoMergeUnsupported,
+    Forge,
+    LabelsUnsupported,
+    MergeProposal,
+    MergeProposalBuilder,
+    MergeProposalExists,
+    TitleUnsupported,
+    UnsupportedForge,
+)
 from ...git.urls import git_url_to_bzr_url
 from ...lazy_import import lazy_import
 from ...trace import mutter

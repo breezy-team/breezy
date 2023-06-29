@@ -15,6 +15,8 @@
 
 """CommitHandlers that build and save revisions & their inventories."""
 
+from typing import Dict, List, Set, Tuple
+
 from fastimport import helpers, processor
 
 from ... import debug, errors, osutils, revision
@@ -38,8 +40,8 @@ def copy_inventory(inv):
 class CommitHandler(processor.CommitHandler):
     """Base class for Bazaar CommitHandlers."""
 
-    def __init__(self, command, cache_mgr, rev_store, verbose=False,
-                 prune_empty_dirs=True):
+    def __init__(self, command, cache_mgr, rev_store, verbose: bool = False,
+                 prune_empty_dirs: bool = True) -> None:
         super().__init__(command)
         self.cache_mgr = cache_mgr
         self.rev_store = rev_store
@@ -50,15 +52,15 @@ class CommitHandler(processor.CommitHandler):
         # If the same path is created multiple times, we need to warn the
         # user and add it just once.
         # If a path is added then renamed or copied, we need to handle that.
-        self._new_file_ids = {}
+        self._new_file_ids: Dict[str, inventory.FileID] = {}
         # This tracks path->file-id for things we're modifying this commit.
         # If a path is modified then renamed or copied, we need the make
         # sure we grab the new content.
-        self._modified_file_ids = {}
+        self._modified_file_ids: Dict[str, inventory.FileID] = {}
         # This tracks the paths for things we're deleting this commit.
         # If the same path is added or the destination of a rename say,
         # then a fresh file-id is required.
-        self._paths_deleted_this_commit = set()
+        self._paths_deleted_this_commit: Set[str] = set()
 
     def mutter(self, msg, *args):
         """Output a mutter but add context."""
@@ -76,18 +78,18 @@ class CommitHandler(processor.CommitHandler):
         msg = f"{msg} ({self.command.id})"
         note(msg, *args)
 
-    def warning(self, msg, *args):
+    def warning(self, msg, *args) -> None:
         """Output a warning but add context."""
         msg = f"{msg} ({self.command.id})"
         warning(msg, *args)
 
-    def pre_process_files(self):
+    def pre_process_files(self) -> None:
         """Prepare for committing."""
         self.revision_id = self.gen_revision_id()
         # cache of texts for this commit, indexed by file-id
-        self.data_for_commit = {}
+        self.data_for_commit: Dict[bytes, bytes] = {}
         # if self.rev_store.expects_rich_root():
-        self.data_for_commit[inventory.ROOT_ID] = []
+        self.data_for_commit[inventory.ROOT_ID] = b''
 
         # Track the heads and get the real parent list
         parents = self.cache_mgr.reftracker.track_heads(self.command)
@@ -108,9 +110,9 @@ class CommitHandler(processor.CommitHandler):
                                           self.parent_invs)
 
         # cache of per-file parents for this commit, indexed by file-id
-        self.per_file_parents_for_commit = {}
+        self.per_file_parents_for_commit: Dict[inventory.FileID, List[inventory.FileID]] = {}
         if self.rev_store.expects_rich_root():
-            self.per_file_parents_for_commit[inventory.ROOT_ID] = ()
+            self.per_file_parents_for_commit[inventory.ROOT_ID] = []
 
         # Keep the basis inventory. This needs to be treated as read-only.
         if len(self.parents) == 0:
@@ -123,13 +125,13 @@ class CommitHandler(processor.CommitHandler):
             self.inventory_root_id = self.basis_inventory.root.file_id
 
         # directory-path -> inventory-entry for current inventory
-        self.directory_entries = {}
+        self.directory_entries: Dict[str, inventory.InventoryEntry] = {}
 
-        self._dirs_that_might_become_empty = set()
+        self._dirs_that_might_become_empty: Set[str] = set()
 
         # A given file-id can only appear once so we accumulate
         # the entries in a dict then build the actual delta at the end
-        self._delta_entries_by_fileid = {}
+        self._delta_entries_by_fileid: Dict[inventory.FileID, Tuple[str, str, inventory.FileID, inventory.InventoryEntry | None]] = {}
         if len(self.parents) == 0 or not self.rev_store.expects_rich_root():
             if self.parents:
                 old_path = ''
@@ -156,15 +158,15 @@ class CommitHandler(processor.CommitHandler):
             self.cache_mgr.inventories[revision_id] = inv
         return inv
 
-    def _get_data(self, file_id):
+    def _get_data(self, file_id: inventory.FileID) -> bytes:
         """Get the data bytes for a file-id."""
         return self.data_for_commit[file_id]
 
-    def _get_lines(self, file_id):
+    def _get_lines(self, file_id: inventory.FileID) -> None:
         """Get the lines for a file-id."""
         return osutils.split_lines(self._get_data(file_id))
 
-    def _get_per_file_parents(self, file_id):
+    def _get_per_file_parents(self, file_id: inventory.FileID) -> List[inventory.FileID]:
         """Get the lines for a file-id."""
         return self.per_file_parents_for_commit[file_id]
 
@@ -220,7 +222,7 @@ class CommitHandler(processor.CommitHandler):
                         return id, False
 
         # Doesn't exist yet so create it
-        dirname, basename = osutils.split(path)
+        basename = osutils.basename(path)
         id = generate_ids.gen_file_id(basename)
         self.debug("Generated new file id %s for '%s' in revision-id '%s'",
                    id, path, self.revision_id)
@@ -383,7 +385,7 @@ class CommitHandler(processor.CommitHandler):
         else:
             if old_ie.kind == 'directory':
                 self.record_delete(path, old_ie)
-            self.record_changed(path, ie, parent_id)
+            self.record_changed(path, ie)
 
     def _ensure_directory(self, path, inv):
         """Ensure that the containing directory exists for 'path'."""
@@ -475,6 +477,8 @@ class CommitHandler(processor.CommitHandler):
                              src_path, dest_path)
                 return
             ie = inv.get_entry(file_id)
+        if ie is None:
+            raise AssertionError
         kind = ie.kind
         if kind == 'file':
             if newly_changed:
@@ -551,7 +555,7 @@ class CommitHandler(processor.CommitHandler):
         Smart post-processing of changes, e.g. pruning of directories
         that would become empty, goes here.
         """
-        delta = list(self._delta_entries_by_fileid.values())
+        delta: List[Tuple[str | None, str | None, inventory.FileID, inventory.InventoryEntry]] = list(self._delta_entries_by_fileid.values())
         if self.prune_empty_dirs and self._dirs_that_might_become_empty:
             candidates = self._dirs_that_might_become_empty
             while candidates:
@@ -606,7 +610,7 @@ class CommitHandler(processor.CommitHandler):
             new_inv.apply_delta(delta)
         return new_inv
 
-    def _add_entry(self, entry):
+    def _add_entry(self, entry: Tuple[str | None, str | None, inventory.FileID, inventory.InventoryEntry | None]) -> None:
         # We need to combine the data if multiple entries have the same file-id.
         # For example, a rename followed by a modification looks like:
         #
@@ -633,10 +637,12 @@ class CommitHandler(processor.CommitHandler):
             old_path = existing[0]
             entry = (old_path, new_path, file_id, ie)
         if new_path is None and old_path is None:
+            if existing is None:
+                raise AssertionError
             # This is a delete cancelling a previous add
             del self._delta_entries_by_fileid[file_id]
             parent_dir = osutils.dirname(existing[1])
-            self.mutter(f"cancelling add of {existing[1]} with parent {parent_dir}")
+            self.mutter("cancelling add of %s with parent %s", existing[1], parent_dir)
             if parent_dir:
                 self._dirs_that_might_become_empty.add(parent_dir)
             return
@@ -645,6 +651,8 @@ class CommitHandler(processor.CommitHandler):
 
         # Collect parent directories that might become empty
         if new_path is None:
+            if old_path is None:
+                raise AssertionError
             # delete
             parent_dir = osutils.dirname(old_path)
             # note: no need to check the root
@@ -682,14 +690,14 @@ class CommitHandler(processor.CommitHandler):
                 self.rev_store.get_parents_and_revision_for_entry(ie)
             self.per_file_parents_for_commit[file_id] = per_file_parents
 
-    def record_new(self, path, ie):
+    def record_new(self, path: str, ie: inventory.InventoryEntry) -> None:
         self._add_entry((None, path, ie.file_id, ie))
 
-    def record_changed(self, path, ie, parent_id=None):
+    def record_changed(self, path: str, ie: inventory.InventoryEntry) -> None:
         self._add_entry((path, path, ie.file_id, ie))
         self._modified_file_ids[path] = ie.file_id
 
-    def record_delete(self, path, ie):
+    def record_delete(self, path: str, ie: inventory.InventoryEntry) -> None:
         self._add_entry((path, None, ie.file_id, None))
         self._paths_deleted_this_commit.add(path)
         if ie.kind == 'directory':
@@ -709,7 +717,7 @@ class CommitHandler(processor.CommitHandler):
                         except KeyError:
                             pass
 
-    def record_rename(self, old_path, new_path, file_id, old_ie):
+    def record_rename(self, old_path: str, new_path: str, file_id: inventory.FileID, old_ie: inventory.InventoryEntry) -> None:
         new_ie = old_ie.copy()
         new_basename, new_parent_id = self._ensure_directory(new_path,
                                                              self.basis_inventory)
@@ -722,7 +730,7 @@ class CommitHandler(processor.CommitHandler):
         if new_ie.kind == 'directory':
             self.directory_entries[new_path] = new_ie
 
-    def _rename_pending_change(self, old_path, new_path, file_id):
+    def _rename_pending_change(self, old_path: str, new_path: str, file_id: inventory.FileID) -> None:
         """Instead of adding/modifying old-path, add new-path instead."""
         # note: delta entries look like (old, new, file-id, ie)
         old_ie = self._delta_entries_by_fileid[file_id][3]
@@ -754,7 +762,7 @@ class CommitHandler(processor.CommitHandler):
         # Record it
         self.record_new(new_path, ie)
 
-    def modify_handler(self, filecmd):
+    def modify_handler(self, filecmd) -> None:
         (kind, executable) = mode_to_kind(filecmd.mode)
         if filecmd.dataref is not None:
             if kind == "directory":
@@ -770,12 +778,12 @@ class CommitHandler(processor.CommitHandler):
         self._modify_item(decoded_path, kind,
                           executable, data, self.basis_inventory)
 
-    def delete_handler(self, filecmd):
+    def delete_handler(self, filecmd) -> None:
         self.debug("deleting %s", filecmd.path)
         self._delete_item(
             self._decode_path(filecmd.path), self.basis_inventory)
 
-    def copy_handler(self, filecmd):
+    def copy_handler(self, filecmd) -> None:
         src_path = self._decode_path(filecmd.src_path)
         dest_path = self._decode_path(filecmd.dest_path)
         self.debug("copying %s to %s", src_path, dest_path)

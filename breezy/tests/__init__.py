@@ -62,15 +62,28 @@ from testtools import content
 import breezy
 from breezy.bzr import chk_map
 
-from .. import branchbuilder
+from .. import (
+    branchbuilder,
+    config,
+    controldir,
+    debug,
+    errors,
+    hooks,
+    i18n,
+    lockdir,
+    osutils,
+    pyutils,
+    registry,
+    symbol_versioning,
+    trace,
+    ui,
+    urlutils,
+    workingtree,
+)
 from .. import commands as _mod_commands
-from .. import config, controldir, debug, errors, hooks, i18n
 from .. import lock as _mod_lock
-from .. import lockdir, osutils
 from .. import plugin as _mod_plugin
-from .. import pyutils, registry, symbol_versioning, trace
 from .. import transport as _mod_transport
-from .. import ui, urlutils, workingtree
 
 try:
     import breezy.lsprof

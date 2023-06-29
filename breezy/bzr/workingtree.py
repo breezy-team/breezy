@@ -41,6 +41,7 @@ from collections import deque
 from io import BytesIO
 
 from .. import lazy_import
+
 # Explicitly import breezy.bzrdir so that the BzrProber
 # is guaranteed to be registered.
 from . import bzrdir
@@ -67,8 +68,15 @@ from .. import transport as _mod_transport
 from ..lock import LogicalLockResult
 from ..trace import mutter, note
 from ..transport.local import file_kind
-from ..tree import (MissingNestedTree, TreeDirectory, TreeEntry, TreeFile,
-                    TreeLink, TreeReference, get_canonical_path)
+from ..tree import (
+    MissingNestedTree,
+    TreeDirectory,
+    TreeEntry,
+    TreeFile,
+    TreeLink,
+    TreeReference,
+    get_canonical_path,
+)
 from ..workingtree import WorkingTree, WorkingTreeFormat, format_registry
 from . import rio as _mod_rio
 from .inventorytree import InventoryRevisionTree, MutableInventoryTree
@@ -269,8 +277,12 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     # XXX: This method should be deprecated in favour of taking in a proper
     # new Inventory object.
     def set_inventory(self, new_inventory_list):
-        from .inventory import (Inventory, InventoryDirectory, InventoryFile,
-                                InventoryLink)
+        from .inventory import (
+            Inventory,
+            InventoryDirectory,
+            InventoryFile,
+            InventoryLink,
+        )
         with self.lock_tree_write():
             inv = Inventory(self.path2id(''))
             for path, file_id, parent, kind in new_inventory_list:

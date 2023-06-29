@@ -31,9 +31,8 @@ from breezy import (
     )
 from breezy.i18n import gettext
 """)
-from . import decorators, errors, hooks, osutils, registry
+from . import decorators, errors, hooks, osutils, registry, trace, transform
 from . import revision as _mod_revision
-from . import trace, transform
 from . import transport as _mod_transport
 from . import tree as _mod_tree
 

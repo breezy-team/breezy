@@ -32,8 +32,11 @@ from breezy.tests import features
 from breezy.tests.per_workingtree import make_scenario as wt_make_scenario
 from breezy.tests.per_workingtree import make_scenarios as wt_make_scenarios
 
-from ...bzr.workingtree_4 import (DirStateRevisionTree, WorkingTreeFormat4,
-                                  WorkingTreeFormat5)
+from ...bzr.workingtree_4 import (
+    DirStateRevisionTree,
+    WorkingTreeFormat4,
+    WorkingTreeFormat5,
+)
 from ...git.tree import GitRevisionTree
 from ...git.workingtree import GitWorkingTreeFormat
 from ...revisiontree import RevisionTree

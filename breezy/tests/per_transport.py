@@ -26,13 +26,17 @@ import stat
 import sys
 from io import BytesIO
 
-from .. import errors, osutils, pyutils
+from .. import errors, osutils, pyutils, urlutils
 from .. import transport as _mod_transport
-from .. import urlutils
 from ..errors import PathError, TransportNotPossible
 from ..osutils import getcwd
-from ..transport import (ConnectedTransport, FileExists, NoSuchFile, Transport,
-                         _get_transport_modules)
+from ..transport import (
+    ConnectedTransport,
+    FileExists,
+    NoSuchFile,
+    Transport,
+    _get_transport_modules,
+)
 from ..transport.memory import MemoryTransport
 from ..transport.remote import RemoteTransport
 from . import TestNotApplicable, TestSkipped, multiply_tests, test_server

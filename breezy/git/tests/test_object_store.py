@@ -29,9 +29,14 @@ from ...graph import DictParentsProvider, Graph
 from ...tests import TestCase, TestCaseWithTransport
 from ...tests.features import SymlinkFeature
 from ..cache import DictGitShaMap
-from ..object_store import (BazaarObjectStore, LRUTreeCache,
-                            _check_expected_sha, _find_missing_bzr_revids,
-                            _tree_to_objects, directory_to_tree)
+from ..object_store import (
+    BazaarObjectStore,
+    LRUTreeCache,
+    _check_expected_sha,
+    _find_missing_bzr_revids,
+    _tree_to_objects,
+    directory_to_tree,
+)
 
 
 class ExpectedShaTests(TestCase):

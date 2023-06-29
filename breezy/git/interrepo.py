@@ -34,9 +34,14 @@ except ImportError:  # dulwich < 0.21.3
 from dulwich.walk import Walker
 
 from .. import config, trace, ui
-from ..errors import (DivergedBranches, FetchLimitUnsupported,
-                      InvalidRevisionId, LossyPushToSameVCS,
-                      NoRoundtrippingSupport, NoSuchRevision)
+from ..errors import (
+    DivergedBranches,
+    FetchLimitUnsupported,
+    InvalidRevisionId,
+    LossyPushToSameVCS,
+    NoRoundtrippingSupport,
+    NoSuchRevision,
+)
 from ..repository import AbstractSearchResult, FetchResult, InterRepository
 from ..revision import NULL_REVISION, RevisionID
 from .errors import NoPushSupport

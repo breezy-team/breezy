@@ -60,7 +60,7 @@ class TestInventory(TestCaseWithInventory):
             if args[1] == 'file':
                 kwargs['text_sha1'] = osutils.sha_string(b'content\n')
                 kwargs['text_size'] = len(b'content\n')
-            ie = inv.add_path(*args, revision=b'revision', **kwargs)
+            inv.add_path(*args, revision=b'revision', **kwargs)
         return self.inv_to_test_inv(inv)
 
 

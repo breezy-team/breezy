@@ -22,9 +22,8 @@ import os
 import struct
 import tempfile
 
-from ... import controldir, errors, memorytree, osutils
+from ... import controldir, errors, memorytree, osutils, tests
 from ... import revision as _mod_revision
-from ... import tests
 from ...tests import features, test_osutils
 from ...tests.scenarios import load_tests_apply_scenarios
 from .. import dirstate, inventory, inventorytree, workingtree_4

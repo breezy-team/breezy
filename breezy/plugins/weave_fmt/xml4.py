@@ -19,8 +19,13 @@ from typing import List
 from ... import revision as _mod_revision
 from ...bzr import inventory
 from ...bzr.inventory import ROOT_ID, Inventory
-from ...bzr.xml_serializer import (Element, SubElement, XMLInventorySerializer,
-                                   XMLRevisionSerializer, escape_invalid_chars)
+from ...bzr.xml_serializer import (
+    Element,
+    SubElement,
+    XMLInventorySerializer,
+    XMLRevisionSerializer,
+    escape_invalid_chars,
+)
 from ...errors import BzrError
 
 

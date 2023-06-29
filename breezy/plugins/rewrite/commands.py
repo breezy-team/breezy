@@ -17,8 +17,7 @@
 """Bazaar command-line subcommands."""
 
 from ...commands import Command, display_command
-from ...errors import (CommandError, ConflictsInTree, NoWorkingTree,
-                       UncommittedChanges)
+from ...errors import CommandError, ConflictsInTree, NoWorkingTree, UncommittedChanges
 from ...i18n import gettext
 from ...option import Option
 from ...trace import note
@@ -103,9 +102,13 @@ class cmd_rebase(Command):
         from ...branch import Branch
         from ...revisionspec import RevisionSpec
         from ...workingtree import WorkingTree
-        from .rebase import (RebaseState1, WorkingTreeRevisionRewriter,
-                             generate_simple_plan, rebase_todo,
-                             regenerate_default_revid)
+        from .rebase import (
+            RebaseState1,
+            WorkingTreeRevisionRewriter,
+            generate_simple_plan,
+            rebase_todo,
+            regenerate_default_revid,
+        )
         if revision is not None and pending_merges:
             raise CommandError(gettext(
                 "--revision and --pending-merges are mutually exclusive"))
@@ -329,8 +332,11 @@ class cmd_replay(Command):
         from ... import ui
         from ...branch import Branch
         from ...workingtree import WorkingTree
-        from .rebase import (RebaseState1, WorkingTreeRevisionRewriter,
-                             regenerate_default_revid)
+        from .rebase import (
+            RebaseState1,
+            WorkingTreeRevisionRewriter,
+            regenerate_default_revid,
+        )
 
         from_branch = Branch.open_containing(location)[0]
 
@@ -416,9 +422,11 @@ class cmd_rebase_foreign(Command):
         from ...branch import Branch
         from ...foreign import update_workingtree_fileids
         from ...workingtree import WorkingTree
-        from .pseudonyms import (find_pseudonyms,
-                                 generate_rebase_map_from_pseudonyms,
-                                 pseudonyms_as_dict)
+        from .pseudonyms import (
+            find_pseudonyms,
+            generate_rebase_map_from_pseudonyms,
+            pseudonyms_as_dict,
+        )
         from .upgrade import create_deterministic_revid, upgrade_branch
 
         try:

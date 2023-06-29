@@ -177,8 +177,12 @@ class ParamikoVendor(SSHVendor):
     def _connect(self, username, password, host, port):
         global SYSTEM_HOSTKEYS, BRZ_HOSTKEYS
 
-        from .paramiko import (_paramiko_auth, _ssh_host_keys_config_dir,
-                               load_host_keys, save_host_keys)
+        from .paramiko import (
+            _paramiko_auth,
+            _ssh_host_keys_config_dir,
+            load_host_keys,
+            save_host_keys,
+        )
 
         load_host_keys()
 

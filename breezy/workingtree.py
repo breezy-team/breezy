@@ -49,8 +49,12 @@ from breezy import (
 
 from . import errors, mutabletree, osutils
 from . import revision as _mod_revision
-from .controldir import (ControlComponent, ControlComponentFormat,
-                         ControlComponentFormatRegistry, ControlDir)
+from .controldir import (
+    ControlComponent,
+    ControlComponentFormat,
+    ControlComponentFormatRegistry,
+    ControlDir,
+)
 from .i18n import gettext
 from .trace import mutter, note
 from .transport import NoSuchFile

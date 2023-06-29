@@ -23,21 +23,41 @@ import time
 from stat import S_IEXEC, S_ISREG
 from typing import Any, Dict, Optional, Set, Tuple
 
-from .. import annotate, controldir, errors, multiparent, osutils
+from .. import (
+    annotate,
+    controldir,
+    errors,
+    multiparent,
+    osutils,
+    trace,
+    tree,
+    ui,
+    urlutils,
+)
 from .. import revision as _mod_revision
-from .. import trace
 from .. import transport as _mod_transport
-from .. import tree, ui, urlutils
 from ..filters import ContentFilterContext, filtered_output_bytes
 from ..i18n import gettext
 from ..mutabletree import MutableTree
 from ..progress import ProgressPhase
-from ..transform import (ROOT_PARENT, FinalPaths, ImmortalLimbo,
-                         MalformedTransform, NoFinalPath, PreviewTree,
-                         ReusingTransform, TransformRenameFailed,
-                         TreeTransform, _FileMover, _reparent_children,
-                         _TransformResults, joinpath, new_by_entry,
-                         resolve_conflicts, unique_add)
+from ..transform import (
+    ROOT_PARENT,
+    FinalPaths,
+    ImmortalLimbo,
+    MalformedTransform,
+    NoFinalPath,
+    PreviewTree,
+    ReusingTransform,
+    TransformRenameFailed,
+    TreeTransform,
+    _FileMover,
+    _reparent_children,
+    _TransformResults,
+    joinpath,
+    new_by_entry,
+    resolve_conflicts,
+    unique_add,
+)
 from ..transport.local import file_kind
 from ..tree import find_previous_path
 from . import inventory, inventorytree

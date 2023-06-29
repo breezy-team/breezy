@@ -36,14 +36,23 @@ from testtools.matchers import DocTestMatches, Equals
 
 import breezy
 
-from .. import (branchbuilder, controldir, errors, hooks, lockdir, memorytree,
-                osutils, repository, symbol_versioning, tests, transport,
-                workingtree)
-from ..bzr import (bzrdir, groupcompress_repo, remote, workingtree_3,
-                   workingtree_4)
+from .. import (
+    branchbuilder,
+    controldir,
+    errors,
+    hooks,
+    lockdir,
+    memorytree,
+    osutils,
+    repository,
+    symbol_versioning,
+    tests,
+    transport,
+    workingtree,
+)
+from ..bzr import bzrdir, groupcompress_repo, remote, workingtree_3, workingtree_4
 from ..git import workingtree as git_workingtree
-from ..symbol_versioning import (deprecated_function, deprecated_in,
-                                 deprecated_method)
+from ..symbol_versioning import deprecated_function, deprecated_in, deprecated_method
 from ..trace import mutter, note
 from ..transport import memory
 from . import TestUtil, features, test_server
@@ -352,10 +361,14 @@ class TestTreeScenarios(tests.TestCase):
         # 'return_parameter' and the revision one set to
         # revision_tree_from_workingtree.
 
-        from .per_tree import (_dirstate_tree_from_workingtree, make_scenarios,
-                               preview_tree_post, preview_tree_pre,
-                               return_parameter,
-                               revision_tree_from_workingtree)
+        from .per_tree import (
+            _dirstate_tree_from_workingtree,
+            make_scenarios,
+            preview_tree_post,
+            preview_tree_pre,
+            return_parameter,
+            revision_tree_from_workingtree,
+        )
         server1 = "a"
         server2 = "b"
         smart_server = test_server.SmartTCPServer_for_testing

@@ -23,24 +23,50 @@ from io import BytesIO
 
 from dulwich.errors import NoIndexPresent
 from dulwich.file import FileLocked, _GitFile
-from dulwich.object_store import (PACK_MODE, PACKDIR, PackBasedObjectStore,
-                                  read_packs_file)
+from dulwich.object_store import (
+    PACK_MODE,
+    PACKDIR,
+    PackBasedObjectStore,
+    read_packs_file,
+)
 from dulwich.objects import ShaFile
-from dulwich.pack import (Pack, PackData, PackIndexer, PackStreamCopier,
-                          extend_pack, iter_sha1, load_pack_index_file,
-                          write_pack_index)
+from dulwich.pack import (
+    Pack,
+    PackData,
+    PackIndexer,
+    PackStreamCopier,
+    extend_pack,
+    iter_sha1,
+    load_pack_index_file,
+    write_pack_index,
+)
 from dulwich.refs import SymrefLoop
-from dulwich.repo import (BASE_DIRECTORIES, COMMONDIR, CONTROLDIR,
-                          INDEX_FILENAME, OBJECTDIR, SYMREF, BaseRepo,
-                          InfoRefsContainer, RefsContainer, check_ref_format,
-                          read_packed_refs, read_packed_refs_with_peeled,
-                          write_packed_refs)
+from dulwich.repo import (
+    BASE_DIRECTORIES,
+    COMMONDIR,
+    CONTROLDIR,
+    INDEX_FILENAME,
+    OBJECTDIR,
+    SYMREF,
+    BaseRepo,
+    InfoRefsContainer,
+    RefsContainer,
+    check_ref_format,
+    read_packed_refs,
+    read_packed_refs_with_peeled,
+    write_packed_refs,
+)
 
-from .. import osutils
+from .. import osutils, urlutils
 from .. import transport as _mod_transport
-from .. import urlutils
-from ..errors import (AlreadyControlDirError, LockBroken, LockContention,
-                      NotLocalUrl, ReadError, TransportNotPossible)
+from ..errors import (
+    AlreadyControlDirError,
+    LockBroken,
+    LockContention,
+    NotLocalUrl,
+    ReadError,
+    TransportNotPossible,
+)
 from ..lock import LogicalLockResult
 from ..trace import warning
 from ..transport import FileExists, NoSuchFile

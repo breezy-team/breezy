@@ -32,10 +32,12 @@ from .. import errors as brz_errors
 from .. import trace, urlutils
 from ..commands import plugin_cmds
 from ..controldir import ControlDirFormat, Prober, format_registry
-from ..controldir import \
-    network_format_registry as controldir_network_format_registry
-from ..transport import (register_lazy_transport, register_transport_proto,
-                         transport_server_registry)
+from ..controldir import network_format_registry as controldir_network_format_registry
+from ..transport import (
+    register_lazy_transport,
+    register_transport_proto,
+    transport_server_registry,
+)
 
 if getattr(sys, "frozen", None):
     # allow import additional libs from ./_lib for bzr.exe only
@@ -290,8 +292,7 @@ transport_server_registry.register_lazy(
     help='Git Smart server upload pack command. (inetd mode only)')
 
 from ..repository import format_registry as repository_format_registry
-from ..repository import \
-    network_format_registry as repository_network_format_registry
+from ..repository import network_format_registry as repository_network_format_registry
 
 repository_network_format_registry.register_lazy(
     b'git', __name__ + '.repository', 'GitRepositoryFormat')

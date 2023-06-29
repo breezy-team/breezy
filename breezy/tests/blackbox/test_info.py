@@ -20,8 +20,7 @@
 import shutil
 import sys
 
-from breezy import (branch, controldir, errors, info, osutils, tests, upgrade,
-                    urlutils)
+from breezy import branch, controldir, errors, info, osutils, tests, upgrade, urlutils
 from breezy.bzr import bzrdir
 from breezy.transport import memory
 

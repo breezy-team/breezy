@@ -272,8 +272,10 @@ class cmd_git_push_pristine_tar_deltas(Command):
         from ..trace import warning
         from .mapping import encode_git_path
         from .object_store import get_object_store
-        from .pristine_tar import (revision_pristine_tar_data,
-                                   store_git_pristine_tar_data)
+        from .pristine_tar import (
+            revision_pristine_tar_data,
+            store_git_pristine_tar_data,
+        )
         source = Branch.open_containing(directory)[0]
         target_bzr = Repository.open(target)
         target = getattr(target_bzr, '_git', None)

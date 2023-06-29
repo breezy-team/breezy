@@ -20,12 +20,15 @@ import posixpath
 import stat
 
 from dulwich.object_store import tree_lookup_path
-from dulwich.objects import (S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Commit, Tag,
-                             Tree)
+from dulwich.objects import S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Commit, Tag, Tree
 
 from .. import debug, osutils, trace
-from ..bzr.inventory import (InventoryDirectory, InventoryFile, InventoryLink,
-                             TreeReference)
+from ..bzr.inventory import (
+    InventoryDirectory,
+    InventoryFile,
+    InventoryLink,
+    TreeReference,
+)
 from ..bzr.inventory_delta import InventoryDelta
 from ..bzr.inventorytree import InventoryRevisionTree
 from ..bzr.testament import StrictTestament3
@@ -35,8 +38,13 @@ from ..revision import NULL_REVISION
 from ..transport import NoSuchFile
 from ..tree import InterTree
 from ..tsort import topo_sort
-from .mapping import (DEFAULT_FILE_MODE, decode_git_path, mode_is_executable,
-                      mode_kind, warn_unusual_mode)
+from .mapping import (
+    DEFAULT_FILE_MODE,
+    decode_git_path,
+    mode_is_executable,
+    mode_kind,
+    warn_unusual_mode,
+)
 from .object_store import LRUTreeCache, _tree_to_objects
 
 

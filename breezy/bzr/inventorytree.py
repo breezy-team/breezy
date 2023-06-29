@@ -37,8 +37,14 @@ from breezy.bzr import (
     inventory as _mod_inventory,
     )
 """)
-from ..tree import (FileTimestampUnavailable, InterTree, MissingNestedTree,
-                    Tree, TreeChange, TreeFile)
+from ..tree import (
+    FileTimestampUnavailable,
+    InterTree,
+    MissingNestedTree,
+    Tree,
+    TreeChange,
+    TreeFile,
+)
 
 
 class InventoryTreeChange(TreeChange):

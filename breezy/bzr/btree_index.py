@@ -27,8 +27,7 @@ import tempfile
 import zlib
 """)
 
-from .. import (chunk_writer, debug, fifo_cache, lru_cache, osutils, trace,
-                transport)
+from .. import chunk_writer, debug, fifo_cache, lru_cache, osutils, trace, transport
 from . import index, static_tuple
 from .index import _OPTION_KEY_ELEMENTS, _OPTION_LEN, _OPTION_NODE_REFS
 

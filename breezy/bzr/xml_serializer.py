@@ -23,9 +23,14 @@
 # ElementTree bits
 
 from typing import Optional
-from xml.etree.ElementTree import (Element, ElementTree,  # noqa: F401
-                                   ParseError, SubElement, fromstring,
-                                   fromstringlist)
+from xml.etree.ElementTree import (  # noqa: F401
+    Element,
+    ElementTree,
+    ParseError,
+    SubElement,
+    fromstring,
+    fromstringlist,
+)
 
 from . import inventory, serializer
 

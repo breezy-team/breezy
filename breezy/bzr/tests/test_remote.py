@@ -31,29 +31,43 @@ from io import BytesIO
 
 import fastbencode as bencode
 
-from ... import branch, config, controldir, errors, repository, tests
+from ... import branch, config, controldir, errors, repository, tests, treebuilder
 from ... import transport as _mod_transport
-from ... import treebuilder
 from ..._bzr_rs import revision_bencode_serializer
 from ...branch import Branch
 from ...revision import NULL_REVISION, Revision
 from ...tests import test_server
 from ...tests.scenarios import load_tests_apply_scenarios
 from ...transport.memory import MemoryTransport
-from ...transport.remote import (RemoteSSHTransport, RemoteTCPTransport,
-                                 RemoteTransport)
-from .. import (RemoteBzrProber, bzrdir, groupcompress_repo, inventory,
-                inventory_delta, knitpack_repo, remote, versionedfile,
-                vf_search)
+from ...transport.remote import RemoteSSHTransport, RemoteTCPTransport, RemoteTransport
+from .. import (
+    RemoteBzrProber,
+    bzrdir,
+    groupcompress_repo,
+    inventory,
+    inventory_delta,
+    knitpack_repo,
+    remote,
+    versionedfile,
+    vf_search,
+)
 from ..bzrdir import BzrDir, BzrDirFormat
-from ..remote import (RemoteBranch, RemoteBranchFormat, RemoteBzrDir,
-                      RemoteBzrDirFormat, RemoteRepository,
-                      RemoteRepositoryFormat, UnknownErrorFromSmartServer)
+from ..remote import (
+    RemoteBranch,
+    RemoteBranchFormat,
+    RemoteBzrDir,
+    RemoteBzrDirFormat,
+    RemoteRepository,
+    RemoteRepositoryFormat,
+    UnknownErrorFromSmartServer,
+)
 from ..smart import medium, request
 from ..smart.client import _SmartClient
-from ..smart.repository import (SmartServerRepositoryGetParentMap,
-                                SmartServerRepositoryGetStream_1_19,
-                                _stream_to_byte_stream)
+from ..smart.repository import (
+    SmartServerRepositoryGetParentMap,
+    SmartServerRepositoryGetStream_1_19,
+    _stream_to_byte_stream,
+)
 
 load_tests = load_tests_apply_scenarios
 

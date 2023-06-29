@@ -34,8 +34,7 @@ from urllib.parse import urlparse, urlunparse
 from .. import config, debug, errors, osutils, ui, urlutils
 from ..tests.test_server import TestServer
 from ..trace import mutter
-from . import (ConnectedTransport, FileExists, FileStream, NoSuchFile,
-               _file_streams)
+from . import ConnectedTransport, FileExists, FileStream, NoSuchFile, _file_streams
 
 try:
     import glib

@@ -37,8 +37,14 @@ from .._transport_rs import sftp as _sftp_rs
 from ..errors import LockError, PathError
 from ..osutils import fancy_rename, pumpfile
 from ..trace import mutter, warning
-from ..transport import (ConnectedTransport, FileExists, FileFileStream,
-                         NoSuchFile, _file_streams, ssh)
+from ..transport import (
+    ConnectedTransport,
+    FileExists,
+    FileFileStream,
+    NoSuchFile,
+    _file_streams,
+    ssh,
+)
 
 SFTPError = _sftp_rs.SFTPError
 

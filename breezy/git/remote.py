@@ -22,16 +22,26 @@ from dulwich.refs import SymrefLoop
 
 from .. import config, debug, errors, osutils, trace, ui, urlutils
 from ..controldir import BranchReferenceLoop
-from ..errors import (AlreadyBranchError, BzrError, DivergedBranches,
-                      InProcessTransport, InvalidRevisionId, LockContention,
-                      NoSuchRevision, NoSuchTag, NotBranchError, NotLocalUrl,
-                      PermissionDenied, TransportError, UnexpectedHttpStatus,
-                      UninitializableFormat)
+from ..errors import (
+    AlreadyBranchError,
+    BzrError,
+    DivergedBranches,
+    InProcessTransport,
+    InvalidRevisionId,
+    LockContention,
+    NoSuchRevision,
+    NoSuchTag,
+    NotBranchError,
+    NotLocalUrl,
+    PermissionDenied,
+    TransportError,
+    UnexpectedHttpStatus,
+    UninitializableFormat,
+)
 from ..push import PushResult
 from ..revision import NULL_REVISION
 from ..revisiontree import RevisionTree
-from ..transport import (NoSuchFile, Transport,
-                         register_urlparse_netloc_protocol)
+from ..transport import NoSuchFile, Transport, register_urlparse_netloc_protocol
 from . import is_github_url, lazy_check_versions, user_agent_for_github
 
 lazy_check_versions()
@@ -43,13 +53,22 @@ import urllib.parse as urlparse
 import dulwich
 import dulwich.client
 from dulwich.errors import GitProtocolError, HangupException
-from dulwich.pack import (PACK_SPOOL_FILE_MAX_SIZE, Pack, load_pack_index,
-                          pack_objects_to_data)
+from dulwich.pack import (
+    PACK_SPOOL_FILE_MAX_SIZE,
+    Pack,
+    load_pack_index,
+    pack_objects_to_data,
+)
 from dulwich.refs import SYMREF, DictRefsContainer
 from dulwich.repo import NotGitRepository
 
-from .branch import (GitBranch, GitBranchFormat, GitBranchPushResult, GitTags,
-                     _quick_lookup_revno)
+from .branch import (
+    GitBranch,
+    GitBranchFormat,
+    GitBranchPushResult,
+    GitTags,
+    _quick_lookup_revno,
+)
 from .dir import GitControlDirFormat, GitDir
 from .errors import GitSmartRemoteNotSupported
 from .mapping import encode_git_path, mapping_registry

@@ -20,8 +20,7 @@
 import os
 import sys
 
-from breezy import (branch, debug, osutils, tests, uncommit, urlutils,
-                    workingtree)
+from breezy import branch, debug, osutils, tests, uncommit, urlutils, workingtree
 from breezy.bzr import remote
 from breezy.tests import fixtures, script
 

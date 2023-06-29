@@ -16,8 +16,7 @@
 """A Simple bzr plugin to generate statistics about the history."""
 
 
-from ... import (branch, commands, config, errors, option, trace, tsort, ui,
-                 workingtree)
+from ... import branch, commands, config, errors, option, trace, tsort, ui, workingtree
 from ...revision import NULL_REVISION
 from .classify import classify_delta
 

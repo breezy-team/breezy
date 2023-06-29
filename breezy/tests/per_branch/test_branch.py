@@ -19,10 +19,20 @@
 import contextlib
 
 from breezy import branch as _mod_branch
-from breezy import (config, controldir, errors, lock, osutils, repository,
-                    revision, shelf, tests, transport)
+from breezy import (
+    config,
+    controldir,
+    errors,
+    lock,
+    osutils,
+    repository,
+    revision,
+    shelf,
+    tests,
+    transport,
+    urlutils,
+)
 from breezy import tree as _mod_tree
-from breezy import urlutils
 from breezy.bzr import remote
 from breezy.tests import per_branch
 from breezy.transport import memory

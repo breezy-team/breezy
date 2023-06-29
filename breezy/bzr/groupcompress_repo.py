@@ -19,19 +19,24 @@
 import hashlib
 import time
 
-from .. import _bzr_rs, controldir, debug, errors, osutils
+from .. import _bzr_rs, controldir, debug, errors, osutils, trace, ui
 from .. import revision as _mod_revision
-from .. import trace, ui
-from ..bzr import chk_map, chk_serializer
+from ..bzr import chk_map, chk_serializer, inventory, pack, versionedfile
 from ..bzr import index as _mod_index
-from ..bzr import inventory, pack, versionedfile
 from ..bzr.btree_index import BTreeBuilder, BTreeGraphIndex
 from ..bzr.groupcompress import GroupCompressVersionedFiles, _GCGraphIndex
 from ..bzr.vf_repository import StreamSource
-from .pack_repo import (NewPack, Pack, PackCommitBuilder, Packer,
-                        PackRepository, RepositoryFormatPack,
-                        RepositoryPackCollection, ResumedPack,
-                        _DirectPackAccess)
+from .pack_repo import (
+    NewPack,
+    Pack,
+    PackCommitBuilder,
+    Packer,
+    PackRepository,
+    RepositoryFormatPack,
+    RepositoryPackCollection,
+    ResumedPack,
+    _DirectPackAccess,
+)
 from .static_tuple import StaticTuple
 
 

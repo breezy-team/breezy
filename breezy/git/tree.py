@@ -28,24 +28,32 @@ from dulwich.config import ConfigFile as GitConfigFile
 from dulwich.config import parse_submodules
 from dulwich.diff_tree import RenameDetector, tree_changes
 from dulwich.errors import NotTreeError
-from dulwich.index import (IndexEntry, blob_from_path_and_stat, cleanup_mode,
-                           commit_tree, index_entry_from_stat)
-from dulwich.object_store import (BaseObjectStore, OverlayObjectStore,
-                                  iter_tree_contents)
+from dulwich.index import (
+    IndexEntry,
+    blob_from_path_and_stat,
+    cleanup_mode,
+    commit_tree,
+    index_entry_from_stat,
+)
+from dulwich.object_store import BaseObjectStore, OverlayObjectStore, iter_tree_contents
 from dulwich.objects import S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Blob, Tree
 
 from .. import controldir as _mod_controldir
-from .. import delta, errors, mutabletree, osutils, revisiontree, trace
+from .. import delta, errors, mutabletree, osutils, revisiontree, trace, urlutils
 from .. import transport as _mod_transport
 from .. import tree as _mod_tree
-from .. import urlutils
 from ..bzr.inventorytree import InventoryTreeChange
 from ..revision import CURRENT_REVISION, NULL_REVISION
 from ..transport import get_transport
 from ..transport.local import file_kind
 from ..tree import MissingNestedTree
-from .mapping import (decode_git_path, default_mapping, encode_git_path,
-                      mode_is_executable, mode_kind)
+from .mapping import (
+    decode_git_path,
+    default_mapping,
+    encode_git_path,
+    mode_is_executable,
+    mode_kind,
+)
 
 
 class GitTreeDirectory(_mod_tree.TreeDirectory):

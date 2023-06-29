@@ -27,17 +27,30 @@ from dulwich.repo import Repo as GitRepo
 
 from ...branch import Branch
 from ...controldir import ControlDir
-from ...errors import (DivergedBranches, NoSuchTag, NotBranchError,
-                       PermissionDenied, TransportError, UnexpectedHttpStatus)
+from ...errors import (
+    DivergedBranches,
+    NoSuchTag,
+    NotBranchError,
+    PermissionDenied,
+    TransportError,
+    UnexpectedHttpStatus,
+)
 from ...tests import TestCase, TestCaseWithTransport
 from ...tests.features import ExecutableFeature
 from ...urlutils import join as urljoin
 from ..mapping import default_mapping
-from ..remote import (GitRemoteRevisionTree, GitSmartRemoteNotSupported,
-                      HeadUpdateFailed, ProtectedBranchHookDeclined,
-                      RemoteGitBranchFormat, RemoteGitError,
-                      _git_url_and_path_from_transport, parse_git_error,
-                      parse_git_hangup, split_git_url)
+from ..remote import (
+    GitRemoteRevisionTree,
+    GitSmartRemoteNotSupported,
+    HeadUpdateFailed,
+    ProtectedBranchHookDeclined,
+    RemoteGitBranchFormat,
+    RemoteGitError,
+    _git_url_and_path_from_transport,
+    parse_git_error,
+    parse_git_hangup,
+    split_git_url,
+)
 from ..tree import MissingNestedTree
 
 

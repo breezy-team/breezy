@@ -76,11 +76,17 @@ from breezy.i18n import gettext
 """)
 from .. import annotate, debug, errors, osutils, trace
 from .. import transport as _mod_transport
-from ..bzr.versionedfile import (AbsentContentFactory, ConstantMapper,
-                                 ContentFactory, ExistingContent,
-                                 UnavailableRepresentation,
-                                 VersionedFilesWithFallbacks, _KeyRefs,
-                                 adapter_registry, sort_groupcompress)
+from ..bzr.versionedfile import (
+    AbsentContentFactory,
+    ConstantMapper,
+    ContentFactory,
+    ExistingContent,
+    UnavailableRepresentation,
+    VersionedFilesWithFallbacks,
+    _KeyRefs,
+    adapter_registry,
+    sort_groupcompress,
+)
 from ..errors import InternalBzrError, InvalidRevisionId, RevisionNotPresent
 from ..osutils import contains_whitespace, sha_string, sha_strings
 from ..transport import NoSuchFile

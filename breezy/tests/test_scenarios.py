@@ -19,8 +19,11 @@
 
 from breezy.tests import TestCase, TestLoader, iter_suite_tests, multiply_tests
 
-from .scenarios import load_tests_apply_scenarios  # noqa: F401
-from .scenarios import multiply_scenarios, multiply_tests_by_their_scenarios
+from .scenarios import (
+    load_tests_apply_scenarios,  # noqa: F401
+    multiply_scenarios,
+    multiply_tests_by_their_scenarios,
+)
 
 # There aren't any actually parameterized tests here, but this exists as a
 # demonstration; so that you can interactively observe them being multiplied;

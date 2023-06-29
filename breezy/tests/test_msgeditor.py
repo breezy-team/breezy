@@ -21,12 +21,21 @@ import sys
 
 from .. import commit, config, msgeditor, osutils, trace
 from .. import transport as _mod_transport
-from ..msgeditor import (edit_commit_message_encoded,
-                         make_commit_message_template_encoded)
+from ..msgeditor import (
+    edit_commit_message_encoded,
+    make_commit_message_template_encoded,
+)
 from ..trace import mutter
-from . import (TestCaseInTempDir, TestCaseWithTransport, TestNotApplicable,
-               features, multiply_tests, probe_bad_non_ascii,
-               probe_unicode_in_user_encoding, split_suite_by_re)
+from . import (
+    TestCaseInTempDir,
+    TestCaseWithTransport,
+    TestNotApplicable,
+    features,
+    multiply_tests,
+    probe_bad_non_ascii,
+    probe_unicode_in_user_encoding,
+    split_suite_by_re,
+)
 from .EncodingAdapter import encoding_scenarios
 
 

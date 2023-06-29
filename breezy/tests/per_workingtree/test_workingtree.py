@@ -21,11 +21,9 @@ import os
 from io import StringIO
 
 from ... import branch as _mod_branch
-from ... import config, controldir, errors, merge, osutils
+from ... import config, controldir, errors, merge, osutils, tests, trace, urlutils
 from ... import revision as _mod_revision
-from ... import tests, trace
 from ... import transport as _mod_transport
-from ... import urlutils
 from ...bzr import bzrdir
 from ...bzr.conflicts import ConflictList, ContentsConflict, TextConflict
 from ...bzr.inventory import Inventory

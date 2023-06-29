@@ -22,8 +22,19 @@ from io import BytesIO
 
 import patiencediff
 
-from . import (builtins, delta, diff, errors, osutils, patches, shelf,
-               textfile, trace, ui, workingtree)
+from . import (
+    builtins,
+    delta,
+    diff,
+    errors,
+    osutils,
+    patches,
+    shelf,
+    textfile,
+    trace,
+    ui,
+    workingtree,
+)
 from .i18n import gettext
 
 

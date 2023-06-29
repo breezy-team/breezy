@@ -31,6 +31,7 @@ __all__ = ['deprecated_function',
 
 
 import warnings
+
 # Import the 'warn' symbol so breezy can call it even if we redefine it
 from warnings import warn
 

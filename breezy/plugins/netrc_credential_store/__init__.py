@@ -17,8 +17,10 @@
 __doc__ = """Use ~/.netrc as a credential store for authentication.conf."""
 
 # Since we are a built-in plugin we share the breezy version
-from ... import version_info  # noqa: F401
-from ... import config
+from ... import (
+    config,
+    version_info,  # noqa: F401
+)
 from ... import transport as _mod_transport
 
 

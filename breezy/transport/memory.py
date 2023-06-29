@@ -28,8 +28,13 @@ from stat import S_IFDIR, S_IFLNK, S_IFREG, S_ISDIR
 
 from .. import transport, urlutils
 from ..errors import InProcessTransport, LockError
-from ..transport import (AppendBasedFileStream, FileExists, LateReadError,
-                         NoSuchFile, _file_streams)
+from ..transport import (
+    AppendBasedFileStream,
+    FileExists,
+    LateReadError,
+    NoSuchFile,
+    _file_streams,
+)
 
 
 class MemoryStat:

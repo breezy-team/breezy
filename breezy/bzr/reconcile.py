@@ -23,9 +23,8 @@ __all__ = [
     'VersionedFileRepoReconciler',
     ]
 
-from .. import errors
+from .. import errors, ui
 from .. import revision as _mod_revision
-from .. import ui
 from ..i18n import gettext
 from ..reconcile import ReconcileResult
 from ..trace import mutter

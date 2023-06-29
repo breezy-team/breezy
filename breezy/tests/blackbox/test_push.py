@@ -19,8 +19,18 @@
 
 import re
 
-from breezy import (branch, controldir, directory_service, errors, osutils,
-                    tests, transport, uncommit, urlutils, workingtree)
+from breezy import (
+    branch,
+    controldir,
+    directory_service,
+    errors,
+    osutils,
+    tests,
+    transport,
+    uncommit,
+    urlutils,
+    workingtree,
+)
 from breezy.bzr import bzrdir, knitrepo
 from breezy.tests import http_server, scenarios, script, test_foreign
 from breezy.transport import memory

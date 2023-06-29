@@ -228,8 +228,17 @@ import sys
 import time
 from stat import S_IEXEC
 
-from .. import (_transport_rs, cache_utf8, config, debug, errors, lock,
-                osutils, trace, urlutils)
+from .. import (
+    _transport_rs,
+    cache_utf8,
+    config,
+    debug,
+    errors,
+    lock,
+    osutils,
+    trace,
+    urlutils,
+)
 from . import inventory, static_tuple
 from .inventorytree import InventoryTreeChange
 

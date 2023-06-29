@@ -24,8 +24,12 @@ Specific tests for individual formats are in the tests/test_bzrdir.py file
 rather than in tests/per_branch/*.py.
 """
 
-from breezy.tests import (TestCaseWithTransport, default_transport,
-                          multiply_tests, test_server)
+from breezy.tests import (
+    TestCaseWithTransport,
+    default_transport,
+    multiply_tests,
+    test_server,
+)
 from breezy.transport import memory
 
 from ...controldir import ControlDirFormat

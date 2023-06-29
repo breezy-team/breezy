@@ -27,8 +27,7 @@ from ...osutils import pathjoin, sha_string, sha_strings
 from ...revision import NULL_REVISION, Revision
 from ...trace import mutter, warning
 from ...tree import InterTree
-from ..inventory import (Inventory, InventoryDirectory, InventoryFile,
-                         InventoryLink)
+from ..inventory import Inventory, InventoryDirectory, InventoryFile, InventoryLink
 from ..inventorytree import InventoryTree
 from ..testament import StrictTestament
 from ..xml5 import inventory_serializer_v5

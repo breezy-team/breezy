@@ -28,9 +28,8 @@ import re
 from bisect import bisect_right
 from io import BytesIO
 
-from .. import debug, errors
+from .. import debug, errors, trace
 from .. import revision as _mod_revision
-from .. import trace
 from .. import transport as _mod_transport
 from .static_tuple import StaticTuple
 

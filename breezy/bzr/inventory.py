@@ -40,6 +40,7 @@ from .._bzr_rs import ROOT_ID
 from .._bzr_rs import inventory as _mod_inventory_rs
 from .static_tuple import StaticTuple
 
+FileID = bytes
 InventoryEntry = _mod_inventory_rs.InventoryEntry
 InventoryFile = _mod_inventory_rs.InventoryFile
 InventoryDirectory = _mod_inventory_rs.InventoryDirectory

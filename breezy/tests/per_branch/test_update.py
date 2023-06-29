@@ -15,9 +15,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from breezy import branch, errors
+from breezy import branch, errors, tests
 from breezy import revision as _mod_revision
-from breezy import tests
 from breezy.tests import per_branch
 
 """Tests for branch.update()"""

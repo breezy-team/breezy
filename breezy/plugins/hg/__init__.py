@@ -19,8 +19,11 @@
 Currently only tells the user that Mercurial is not supported.
 """
 
-from ... import version_info  # noqa: F401
-from ... import controldir, errors
+from ... import (
+    controldir,
+    errors,
+    version_info,  # noqa: F401
+)
 from ... import transport as _mod_transport
 
 

@@ -35,9 +35,8 @@ import threading
 from _thread import get_ident
 
 from ... import branch as _mod_branch
-from ... import debug, errors, osutils, registry, revision, trace
+from ... import debug, errors, osutils, registry, revision, trace, urlutils
 from ... import transport as _mod_transport
-from ... import urlutils
 
 jail_info = threading.local()
 jail_info.transports = None

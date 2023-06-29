@@ -20,10 +20,9 @@ from io import BytesIO
 
 import fastbencode as bencode
 
-from .... import errors, lru_cache, multiparent, osutils
+from .... import errors, lru_cache, multiparent, osutils, trace, ui
 from .... import repository as _mod_repository
 from .... import revision as _mod_revision
-from .... import trace, ui
 from ....i18n import ngettext
 from ... import pack, serializer
 from ... import versionedfile as _mod_versionedfile

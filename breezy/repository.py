@@ -29,15 +29,13 @@ from breezy import (
 from breezy.i18n import gettext
 """)
 
-from . import controldir, debug, errors, graph, osutils, registry
+from . import controldir, debug, errors, graph, osutils, registry, ui
 from . import revision as _mod_revision
-from . import ui
 from .decorators import only_raises
 from .inter import InterObject
 from .lock import LogicalLockResult, _RelockDebugMixin
 from .revisiontree import RevisionTree
-from .trace import (log_exception_quietly, mutter, mutter_callsite, note,
-                    warning)
+from .trace import log_exception_quietly, mutter, mutter_callsite, note, warning
 
 # Old formats display a warning, but only once
 _deprecation_warning_done = False

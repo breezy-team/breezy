@@ -49,8 +49,7 @@ from breezy.i18n import gettext, ngettext
 """)
 
 from .commands import Command, builtin_command_registry, display_command
-from .option import (ListOption, Option, RegistryOption, _parse_revision_str,
-                     custom_help)
+from .option import ListOption, Option, RegistryOption, _parse_revision_str, custom_help
 from .revisionspec import RevisionInfo, RevisionSpec
 from .trace import get_verbosity_level, is_quiet, mutter, note, warning
 
@@ -2379,8 +2378,7 @@ class cmd_diff(Command):
     def run(self, revision=None, file_list=None, diff_options=None,
             prefix=None, old=None, new=None, using=None, format=None,
             context=None, color='auto'):
-        from .diff import (get_trees_and_branches_to_diff_locked,
-                           show_diff_trees)
+        from .diff import get_trees_and_branches_to_diff_locked, show_diff_trees
 
         if prefix == '0':
             # diff -p0 format
@@ -3660,10 +3658,12 @@ class cmd_commit(Command):
 
         from .commit import PointlessCommit
         from .errors import ConflictsInTree, StrictCommitFailed
-        from .msgeditor import (edit_commit_message_encoded,
-                                generate_commit_message_template,
-                                make_commit_message_template_encoded,
-                                set_commit_message)
+        from .msgeditor import (
+            edit_commit_message_encoded,
+            generate_commit_message_template,
+            make_commit_message_template_encoded,
+            set_commit_message,
+        )
         from .workingtree import WorkingTree
 
         commit_stamp = offset = None

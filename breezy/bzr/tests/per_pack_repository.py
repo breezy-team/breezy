@@ -22,9 +22,8 @@ These tests are repeated for all pack-based repository formats.
 import hashlib
 from stat import S_ISDIR
 
-from ... import controldir, errors, gpg, osutils, repository
+from ... import controldir, errors, gpg, osutils, repository, tests, transport, ui
 from ... import revision as _mod_revision
-from ... import tests, transport, ui
 from ...tests import TestCaseWithTransport, TestNotApplicable, test_server
 from ...transport import memory
 from .. import inventory

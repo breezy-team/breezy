@@ -42,6 +42,7 @@ from ...bzr.smart import medium
 from ...trace import mutter, mutter_callsite
 from ...transport import ConnectedTransport, NoSuchFile, UnusableRedirect
 from . import default_user_agent, ssl
+
 # TODO: handle_response should be integrated into the http/__init__.py
 from .response import handle_response
 

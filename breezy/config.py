@@ -101,8 +101,18 @@ from breezy import (
     )
 from breezy.i18n import gettext
 """)
-from . import (bedding, commands, debug, errors, hooks, lazy_regex, osutils,
-               registry, trace, transport)
+from . import (
+    bedding,
+    commands,
+    debug,
+    errors,
+    hooks,
+    lazy_regex,
+    osutils,
+    registry,
+    trace,
+    transport,
+)
 from .option import Option as CommandOption
 
 CHECK_IF_POSSIBLE = 0

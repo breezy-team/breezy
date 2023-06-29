@@ -18,9 +18,8 @@
 
 import os
 
-from breezy import errors, osutils, repository
+from breezy import errors, osutils, repository, tests
 from breezy import revision as _mod_revision
-from breezy import tests
 from breezy.bzr import inventorytree
 from breezy.tests import features, per_repository
 from breezy.transport.local import file_kind

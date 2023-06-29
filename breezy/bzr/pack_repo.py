@@ -47,9 +47,11 @@ from ..repository import RepositoryWriteLockResult, _LazyListJoin
 from ..trace import mutter, note, warning
 from .repository import MetaDirRepository, RepositoryFormatMetaDir
 from .serializer import InventorySerializer, RevisionSerializer
-from .vf_repository import (MetaDirVersionedFileRepository,
-                            MetaDirVersionedFileRepositoryFormat,
-                            VersionedFileCommitBuilder)
+from .vf_repository import (
+    MetaDirVersionedFileRepository,
+    MetaDirVersionedFileRepositoryFormat,
+    VersionedFileCommitBuilder,
+)
 
 
 class RetryWithNewPacks(errors.BzrError):

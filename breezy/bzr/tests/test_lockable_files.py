@@ -20,8 +20,11 @@ import breezy.branch
 from ... import errors, lockdir, osutils, transport
 from ...tests import TestCaseInTempDir, TestNotApplicable
 from ...tests.test_transactions import DummyWeave
-from ...transactions import (PassThroughTransaction, ReadOnlyTransaction,
-                             WriteTransaction)
+from ...transactions import (
+    PassThroughTransaction,
+    ReadOnlyTransaction,
+    WriteTransaction,
+)
 from ..lockable_files import LockableFiles, TransportLock
 from .test_smart import TestCaseWithSmartMedium
 

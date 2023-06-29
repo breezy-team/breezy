@@ -23,17 +23,35 @@ from io import BytesIO
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 from ... import osutils, tests, trace, urlutils
-from ...bzr.conflicts import (DeletingParent, DuplicateEntry, DuplicateID,
-                              MissingParent, NonDirectoryParent, ParentLoop,
-                              UnversionedParent)
+from ...bzr.conflicts import (
+    DeletingParent,
+    DuplicateEntry,
+    DuplicateID,
+    MissingParent,
+    NonDirectoryParent,
+    ParentLoop,
+    UnversionedParent,
+)
 from ...bzr.transform import resolve_checkout
-from ...errors import (DuplicateKey, ExistingLimbo, ExistingPendingDeletion,
-                       ImmortalPendingDeletion, LockError)
+from ...errors import (
+    DuplicateKey,
+    ExistingLimbo,
+    ExistingPendingDeletion,
+    ImmortalPendingDeletion,
+    LockError,
+)
 from ...osutils import pathjoin
-from ...transform import (ROOT_PARENT, FinalPaths, ImmortalLimbo,
-                          MalformedTransform, NoFinalPath, ReusingTransform,
-                          TransformRenameFailed, create_from_tree,
-                          resolve_conflicts)
+from ...transform import (
+    ROOT_PARENT,
+    FinalPaths,
+    ImmortalLimbo,
+    MalformedTransform,
+    NoFinalPath,
+    ReusingTransform,
+    TransformRenameFailed,
+    create_from_tree,
+    resolve_conflicts,
+)
 from ...transport import FileExists
 from ...transport.local import file_kind
 from ...tree import TreeChange

@@ -22,8 +22,11 @@ from ... import errors
 from ... import revision as _mod_revision
 from ... import transport as _mod_transport
 from ...controldir import ControlDir
-from .request import (FailedSmartServerResponse, SmartServerRequest,
-                      SuccessfulSmartServerResponse)
+from .request import (
+    FailedSmartServerResponse,
+    SmartServerRequest,
+    SuccessfulSmartServerResponse,
+)
 
 
 class SmartServerBranchRequest(SmartServerRequest):

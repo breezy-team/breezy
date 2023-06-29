@@ -21,9 +21,15 @@ from dulwich.tests.utils import make_object
 
 from ...revision import Revision
 from .. import tests
-from ..mapping import (BzrGitMappingv1, UnknownCommitEncoding,
-                       UnknownCommitExtra, UnknownMercurialCommitExtra,
-                       escape_file_id, fix_person_identifier, unescape_file_id)
+from ..mapping import (
+    BzrGitMappingv1,
+    UnknownCommitEncoding,
+    UnknownCommitExtra,
+    UnknownMercurialCommitExtra,
+    escape_file_id,
+    fix_person_identifier,
+    unescape_file_id,
+)
 
 
 class TestRevidConversionV1(tests.TestCase):

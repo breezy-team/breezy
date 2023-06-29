@@ -33,11 +33,9 @@ from breezy import (
     multiparent,
     )
 """)
-from .. import errors
+from .. import errors, osutils, revision, urlutils
 from .. import graph as _mod_graph
-from .. import osutils, revision
 from .. import transport as _mod_transport
-from .. import urlutils
 from ..registry import Registry
 from ..textmerge import TextMerge
 from . import index

@@ -19,8 +19,17 @@
 import os
 from io import BytesIO
 
-from ... import (branch, builtins, check, controldir, errors, push, revision,
-                 tests, transport)
+from ... import (
+    branch,
+    builtins,
+    check,
+    controldir,
+    errors,
+    push,
+    revision,
+    tests,
+    transport,
+)
 from ...bzr import branch as bzrbranch
 from ...bzr.smart import client
 from .. import per_branch, test_server

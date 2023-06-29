@@ -18,13 +18,21 @@
 
 import breezy.branch
 from breezy import branch as _mod_branch
-from breezy import check, controldir, errors, gpg, osutils
+from breezy import (
+    check,
+    controldir,
+    errors,
+    gpg,
+    osutils,
+    transport,
+    ui,
+    urlutils,
+    workingtree,
+)
 from breezy import repository as _mod_repository
 from breezy import revision as _mod_revision
-from breezy import transport, ui, urlutils, workingtree
 from breezy.bzr import bzrdir as _mod_bzrdir
-from breezy.tests import (ChrootedTestCase, TestNotApplicable, TestSkipped,
-                          fixtures)
+from breezy.tests import ChrootedTestCase, TestNotApplicable, TestSkipped, fixtures
 from breezy.tests.per_controldir import TestCaseWithControlDir
 from breezy.ui import CannedInputUIFactory
 

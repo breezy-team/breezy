@@ -25,10 +25,19 @@ from dulwich.refs import SymrefLoop
 from .. import branch as _mod_branch
 from .. import errors as brz_errors
 from .. import osutils, trace, urlutils
-from ..controldir import (BranchReferenceLoop, ControlDir, ControlDirFormat,
-                          RepositoryAcquisitionPolicy, format_registry)
-from ..transport import (FileExists, NoSuchFile, do_catching_redirections,
-                         get_transport_from_path)
+from ..controldir import (
+    BranchReferenceLoop,
+    ControlDir,
+    ControlDirFormat,
+    RepositoryAcquisitionPolicy,
+    format_registry,
+)
+from ..transport import (
+    FileExists,
+    NoSuchFile,
+    do_catching_redirections,
+    get_transport_from_path,
+)
 from .mapping import decode_git_path, encode_git_path
 from .push import GitPushResult
 from .transportgit import OBJECTDIR, TransportObjectStore

@@ -24,7 +24,7 @@ import breezy.gpg
 from breezy.tests import TestNotApplicable, TestSkipped
 from breezy.tests.per_interrepository import TestCaseWithInterRepository
 
-from ...bzr.inventory import Inventory, InventoryDirectory, ROOT_ID
+from ...bzr.inventory import ROOT_ID, Inventory, InventoryDirectory
 from ...repository import WriteGroup
 from ...revision import NULL_REVISION
 from ...workingtree import WorkingTree

@@ -21,15 +21,22 @@ import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from ... import bedding
+from ... import bedding, controldir, errors, urlutils
 from ... import branch as _mod_branch
-from ... import controldir, errors, urlutils
 from ...config import AuthenticationConfig
 from ...errors import PermissionDenied, UnexpectedHttpStatus
-from ...forge import (Forge, ForgeLoginRequired, MergeProposal,
-                      MergeProposalBuilder, MergeProposalExists, NoSuchProject,
-                      PrerequisiteBranchUnsupported, ReopenFailed,
-                      UnsupportedForge, determine_title)
+from ...forge import (
+    Forge,
+    ForgeLoginRequired,
+    MergeProposal,
+    MergeProposalBuilder,
+    MergeProposalExists,
+    NoSuchProject,
+    PrerequisiteBranchUnsupported,
+    ReopenFailed,
+    UnsupportedForge,
+    determine_title,
+)
 from ...git.urls import git_url_to_bzr_url
 from ...i18n import gettext
 from ...trace import note

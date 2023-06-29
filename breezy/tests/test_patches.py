@@ -20,13 +20,28 @@ import os.path
 from breezy.tests import TestCase, TestCaseWithTransport
 
 from ..osutils import IterableFile
-from ..patches import (NO_NL, AppliedPatches, BinaryFiles, BinaryPatch,
-                       ContextLine, InsertLine, MalformedHunkHeader,
-                       MalformedLine, MalformedPatchHeader, Patch, RemoveLine,
-                       difference_index, get_patch_names, hunk_from_header,
-                       iter_lines_handle_nl, iter_patched,
-                       iter_patched_from_hunks, parse_line, parse_patch,
-                       parse_patches)
+from ..patches import (
+    NO_NL,
+    AppliedPatches,
+    BinaryFiles,
+    BinaryPatch,
+    ContextLine,
+    InsertLine,
+    MalformedHunkHeader,
+    MalformedLine,
+    MalformedPatchHeader,
+    Patch,
+    RemoveLine,
+    difference_index,
+    get_patch_names,
+    hunk_from_header,
+    iter_lines_handle_nl,
+    iter_patched,
+    iter_patched_from_hunks,
+    parse_line,
+    parse_patch,
+    parse_patches,
+)
 
 
 class PatchesTester(TestCase):

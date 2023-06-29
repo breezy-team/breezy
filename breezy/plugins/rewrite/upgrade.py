@@ -19,8 +19,12 @@
 
 from ... import osutils, trace, ui
 from ...errors import BzrError
-from .rebase import (CommitBuilderRevisionRewriter, generate_transpose_plan,
-                     rebase, rebase_todo)
+from .rebase import (
+    CommitBuilderRevisionRewriter,
+    generate_transpose_plan,
+    rebase,
+    rebase_todo,
+)
 
 
 class UpgradeChangesContent(BzrError):

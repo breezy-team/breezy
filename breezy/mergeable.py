@@ -24,8 +24,7 @@ from breezy.i18n import gettext
 
 from . import errors, urlutils
 from .trace import note
-from .transport import (do_catching_redirections, get_transport,
-                        get_transport_from_url)
+from .transport import do_catching_redirections, get_transport, get_transport_from_url
 
 
 class Mergeable:

@@ -24,21 +24,34 @@ from stat import S_IEXEC, S_ISREG
 from dulwich.index import blob_from_path_and_stat, commit_tree
 from dulwich.objects import Blob
 
-from .. import annotate, errors, osutils
+from .. import annotate, errors, osutils, trace, ui, urlutils
 from .. import revision as _mod_revision
-from .. import trace
 from .. import transport as _mod_transport
-from .. import ui, urlutils
 from ..i18n import gettext
 from ..mutabletree import MutableTree
-from ..transform import (ROOT_PARENT, FinalPaths, ImmortalLimbo,
-                         MalformedTransform, PreviewTree, ReusingTransform,
-                         TransformRenameFailed, TreeTransform, _FileMover,
-                         _TransformResults, joinpath, unique_add)
+from ..transform import (
+    ROOT_PARENT,
+    FinalPaths,
+    ImmortalLimbo,
+    MalformedTransform,
+    PreviewTree,
+    ReusingTransform,
+    TransformRenameFailed,
+    TreeTransform,
+    _FileMover,
+    _TransformResults,
+    joinpath,
+    unique_add,
+)
 from ..transport.local import file_kind
 from ..tree import InterTree, TreeChange
-from .mapping import (decode_git_path, encode_git_path, mode_is_executable,
-                      mode_kind, object_mode)
+from .mapping import (
+    decode_git_path,
+    encode_git_path,
+    mode_is_executable,
+    mode_kind,
+    object_mode,
+)
 from .tree import GitTree, GitTreeDirectory, GitTreeFile, GitTreeSymlink
 
 

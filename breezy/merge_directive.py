@@ -38,9 +38,8 @@ from breezy.bzr.bundle import (
     )
 """)
 from . import branch as _mod_branch
-from . import errors, hooks, registry
+from . import errors, hooks, registry, trace
 from . import revision as _mod_revision
-from . import trace
 
 
 class IllegalMergeDirectivePayload(errors.BzrError):

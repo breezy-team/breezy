@@ -36,10 +36,15 @@ from breezy.bzr import (
 from .. import errors, osutils, trace
 from ..lru_cache import LRUSizeCache
 from .btree_index import BTreeBuilder
-from .versionedfile import (AbsentContentFactory, ChunkedContentFactory,
-                            ExistingContent, UnavailableRepresentation,
-                            VersionedFilesWithFallbacks, _KeyRefs,
-                            adapter_registry)
+from .versionedfile import (
+    AbsentContentFactory,
+    ChunkedContentFactory,
+    ExistingContent,
+    UnavailableRepresentation,
+    VersionedFilesWithFallbacks,
+    _KeyRefs,
+    adapter_registry,
+)
 
 # Minimum number of uncompressed bytes to try fetch at once when retrieving
 # groupcompress blocks.
@@ -2230,9 +2235,13 @@ GroupCompressor: Type[_CommonGroupCompressor]
 
 
 from ._groupcompress_py import LinesDeltaIndex
-from ._groupcompress_rs import (apply_delta, apply_delta_to_source,
-                                decode_base128_int, decode_copy_instruction,
-                                encode_base128_int)
+from ._groupcompress_rs import (
+    apply_delta,
+    apply_delta_to_source,
+    decode_base128_int,
+    decode_copy_instruction,
+    encode_base128_int,
+)
 
 try:
     from ._groupcompress_pyx import DeltaIndex

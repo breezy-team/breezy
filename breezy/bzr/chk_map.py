@@ -1704,12 +1704,14 @@ def iter_interesting_nodes(store, interesting_root_keys,
     return iterator.process()
 
 
-from ._chk_map_rs import (_bytes_to_text_key, _search_key_16,  # noqa: F401
-                          _search_key_255)
+from ._chk_map_rs import (  # noqa: F401
+    _bytes_to_text_key,
+    _search_key_16,
+    _search_key_255,
+)
 
 try:
-    from ._chk_map_pyx import (_deserialise_internal_node,
-                               _deserialise_leaf_node)
+    from ._chk_map_pyx import _deserialise_internal_node, _deserialise_leaf_node
 except ImportError as e:
     osutils.failed_to_load_extension(e)
     from ._chk_map_py import _deserialise_internal_node, _deserialise_leaf_node

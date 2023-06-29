@@ -18,15 +18,17 @@ __docformat__ = "google"
 
 import contextlib
 import itertools
-from typing import (TYPE_CHECKING, Dict, List, Optional, TextIO, Tuple, Union,
-                    cast)
+from typing import TYPE_CHECKING, Dict, List, Optional, TextIO, Tuple, Union, cast
 
 from . import config as _mod_config
-from . import debug, errors, registry, repository
+from . import debug, errors, registry, repository, urlutils
 from . import revision as _mod_revision
-from . import urlutils
-from .controldir import (ControlComponent, ControlComponentFormat,
-                         ControlComponentFormatRegistry, ControlDir)
+from .controldir import (
+    ControlComponent,
+    ControlComponentFormat,
+    ControlComponentFormatRegistry,
+    ControlDir,
+)
 from .hooks import Hooks
 from .inter import InterObject
 from .lock import LogicalLockResult

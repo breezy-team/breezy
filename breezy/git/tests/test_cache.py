@@ -24,8 +24,13 @@ from dulwich.objects import Blob, Commit, Tree
 from ...revision import Revision
 from ...tests import TestCase, TestCaseInTempDir, UnavailableFeature
 from ...transport import get_transport
-from ..cache import (DictBzrGitCache, IndexBzrGitCache, IndexGitCacheFormat,
-                     SqliteBzrGitCache, TdbBzrGitCache)
+from ..cache import (
+    DictBzrGitCache,
+    IndexBzrGitCache,
+    IndexGitCacheFormat,
+    SqliteBzrGitCache,
+    TdbBzrGitCache,
+)
 
 
 class TestGitShaMap:

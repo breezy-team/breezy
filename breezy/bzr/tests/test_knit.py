@@ -24,19 +24,37 @@ from patiencediff import PatienceSequenceMatcher
 
 from ... import errors, multiparent, osutils
 from ... import transport as _mod_transport
-from ...tests import (TestCase, TestCaseWithMemoryTransport,
-                      TestCaseWithTransport, TestNotApplicable, features)
+from ...tests import (
+    TestCase,
+    TestCaseWithMemoryTransport,
+    TestCaseWithTransport,
+    TestNotApplicable,
+    features,
+)
 from .. import knit, knitpack_repo, pack, pack_repo
 from ..index import *
-from ..knit import (AnnotatedKnitContent, KnitContent, KnitCorrupt,
-                    KnitDataStreamIncompatible, KnitDataStreamUnknown,
-                    KnitHeaderError, KnitIndexUnknownMethod,
-                    KnitVersionedFiles, PlainKnitContent, _KndxIndex,
-                    _KnitGraphIndex, _KnitKeyAccess, _VFContentMapGenerator,
-                    make_file_factory)
-from ..versionedfile import (AbsentContentFactory, ConstantMapper,
-                             RecordingVersionedFilesDecorator,
-                             network_bytes_to_kind_and_offset)
+from ..knit import (
+    AnnotatedKnitContent,
+    KnitContent,
+    KnitCorrupt,
+    KnitDataStreamIncompatible,
+    KnitDataStreamUnknown,
+    KnitHeaderError,
+    KnitIndexUnknownMethod,
+    KnitVersionedFiles,
+    PlainKnitContent,
+    _KndxIndex,
+    _KnitGraphIndex,
+    _KnitKeyAccess,
+    _VFContentMapGenerator,
+    make_file_factory,
+)
+from ..versionedfile import (
+    AbsentContentFactory,
+    ConstantMapper,
+    RecordingVersionedFilesDecorator,
+    network_bytes_to_kind_and_offset,
+)
 
 compiled_knit_feature = features.ModuleAvailableFeature(
     'breezy.bzr._knit_load_data_pyx')

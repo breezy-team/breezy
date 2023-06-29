@@ -77,10 +77,15 @@ from ..errors import RevisionAlreadyPresent, RevisionNotPresent
 from ..osutils import dirname, sha_strings
 from ..revision import NULL_REVISION
 from ..trace import mutter
-from .versionedfile import (AbsentContentFactory, ContentFactory,
-                            ExistingContent, UnavailableRepresentation,
-                            VersionedFile, adapter_registry,
-                            sort_groupcompress)
+from .versionedfile import (
+    AbsentContentFactory,
+    ContentFactory,
+    ExistingContent,
+    UnavailableRepresentation,
+    VersionedFile,
+    adapter_registry,
+    sort_groupcompress,
+)
 from .weavefile import _read_weave_v5, write_weave_v5
 
 

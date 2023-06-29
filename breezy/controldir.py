@@ -40,9 +40,8 @@ from breezy import (
 from breezy.i18n import gettext
 """)
 
-from . import errors, hooks, registry
+from . import errors, hooks, registry, trace
 from . import revision as _mod_revision
-from . import trace
 from . import transport as _mod_transport
 
 if TYPE_CHECKING:

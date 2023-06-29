@@ -27,17 +27,22 @@ import zlib
 
 import fastbencode as bencode
 
-from ... import errors, osutils
+from ... import errors, osutils, trace, ui, zlib_util
 from ... import revision as _mod_revision
-from ... import trace, ui, zlib_util
 from ...repository import _strip_NULL_ghosts, network_format_registry
 from .. import inventory as _mod_inventory
 from .. import inventory_delta, pack, vf_search
 from ..bzrdir import BzrDir
-from ..versionedfile import (ChunkedContentFactory, NetworkRecordStream,
-                             record_to_fulltext_bytes)
-from .request import (FailedSmartServerResponse, SmartServerRequest,
-                      SuccessfulSmartServerResponse)
+from ..versionedfile import (
+    ChunkedContentFactory,
+    NetworkRecordStream,
+    record_to_fulltext_bytes,
+)
+from .request import (
+    FailedSmartServerResponse,
+    SmartServerRequest,
+    SuccessfulSmartServerResponse,
+)
 
 
 class SmartServerRepositoryRequest(SmartServerRequest):

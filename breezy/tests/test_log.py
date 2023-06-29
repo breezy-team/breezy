@@ -17,8 +17,7 @@
 import os
 from io import StringIO
 
-from .. import (branchbuilder, errors, gpg, log, registry, revision,
-                revisionspec, tests)
+from .. import branchbuilder, errors, gpg, log, registry, revision, revisionspec, tests
 
 
 class TestLogMixin:

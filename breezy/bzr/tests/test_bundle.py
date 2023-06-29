@@ -20,20 +20,18 @@ import sys
 import tempfile
 from io import BytesIO
 
-from ... import diff, errors, merge, osutils
+from ... import diff, errors, merge, osutils, tests, treebuilder
 from ... import revision as _mod_revision
-from ... import tests
 from ... import transport as _mod_transport
-from ... import treebuilder
 from ...tests import features, test_commit
 from ...tree import InterTree
 from .. import bzrdir, inventory, knitrepo
 from ..bundle.apply_bundle import install_bundle, merge_bundle
 from ..bundle.bundle_data import BundleTree
-from ..bundle.serializer import read_bundle, v4, v09, write_bundle
-from ..bundle.serializer.v4 import BundleSerializerV4
+from ..bundle.serializer import read_bundle, v09, v4, write_bundle
 from ..bundle.serializer.v08 import BundleSerializerV08
 from ..bundle.serializer.v09 import BundleSerializerV09
+from ..bundle.serializer.v4 import BundleSerializerV4
 from ..inventorytree import InventoryTree
 
 
@@ -103,8 +101,7 @@ class MockTree(InventoryTree):
         return kind
 
     def make_entry(self, file_id, path):
-        from ..inventory import (InventoryDirectory, InventoryFile,
-                                 InventoryLink)
+        from ..inventory import InventoryDirectory, InventoryFile, InventoryLink
         if not isinstance(file_id, bytes):
             raise TypeError(file_id)
         name = os.path.basename(path)

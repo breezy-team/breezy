@@ -19,7 +19,6 @@
 This is a fairly thin wrapper on regular file IO.
 """
 
-import errno
 import os
 
 from .. import osutils, transport, urlutils

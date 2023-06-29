@@ -18,8 +18,7 @@ from breezy._bzr_rs import revision_serializer_v5  # noqa: F401
 
 from .. import errors, osutils
 from . import inventory, xml6
-from .xml_serializer import (encode_and_escape, get_utf8_or_ascii,
-                             unpack_inventory_entry)
+from .xml_serializer import encode_and_escape, get_utf8_or_ascii, unpack_inventory_entry
 
 
 class InventorySerializer_v5(xml6.InventorySerializer_v6):
