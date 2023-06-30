@@ -93,7 +93,7 @@ class GCPack(NewPack):
         # What file mode to upload the pack and indices with.
         self._file_mode = file_mode
         # tracks the content written to the .pack file.
-        self._hash = hashlib.md5()
+        self._hash = hashlib.md5()  # noqa: S324
         # a four-tuple with the length in bytes of the indices, once the pack
         # is finalised. (rev, inv, text, sigs)
         self.index_sizes = None
@@ -271,10 +271,10 @@ class GCCHKPacker(Packer):
                         # TODO: consider how to treat externally referenced chk
                         #       pages as 'external_references' so that we
                         #       always fill them in for stacked branches
-                        if value not in next_keys and value in remaining_keys:
-                            keys_by_search_prefix.setdefault(prefix,
+                        if value not in next_keys and value in remaining_keys:  # noqa: B023
+                            keys_by_search_prefix.setdefault(prefix,  # noqa: B023
                                                              []).append(value)
-                            next_keys.add(value)
+                            next_keys.add(value)  # noqa: B023
 
                 def handle_leaf_node(node):
                     # Store is None, because we know we have a LeafNode, and we
@@ -283,7 +283,7 @@ class GCCHKPacker(Packer):
                         self._text_refs.add(chk_map._bytes_to_text_key(bytes))
 
                 def next_stream():
-                    stream = source_vf.get_record_stream(cur_keys,
+                    stream = source_vf.get_record_stream(cur_keys,  # noqa: B023
                                                          'as-requested', True)
                     for record in stream:
                         if record.storage_kind == 'absent':
@@ -356,7 +356,7 @@ class GCCHKPacker(Packer):
             add_callback = index.add_nodes
         else:
             indices = []
-            for pack in self.packs:
+            for pack in self.packs:  # noqa: F402
                 sub_index = getattr(pack, index_name)
                 index_to_pack[sub_index] = pack.access_tuple()
                 indices.append(sub_index)
@@ -644,7 +644,7 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
                 if search_key_name is None:
                     # Find the name corresponding to the search_key_func
                     search_key_reg = chk_map.search_key_registry
-                    for search_key_name, func in search_key_reg.items():
+                    for search_key_name, func in search_key_reg.items():  # noqa: B007
                         if func == chk_inv.id_to_entry._search_key_func:
                             break
                 canonical_inv = inventory.CHKInventory.from_inventory(

@@ -824,14 +824,14 @@ class DiskTreeTransform(TreeTransformBase):
                     pass
             try:
                 osutils.delete_any(self._limbodir)
-            except OSError:
+            except OSError as err:
                 # We don't especially care *why* the dir is immortal.
-                raise ImmortalLimbo(self._limbodir)
+                raise ImmortalLimbo(self._limbodir) from err
             try:
                 if self._deletiondir is not None:
                     osutils.delete_any(self._deletiondir)
-            except OSError:
-                raise errors.ImmortalPendingDeletion(self._deletiondir)
+            except OSError as err:
+                raise errors.ImmortalPendingDeletion(self._deletiondir) from err
         finally:
             TreeTransformBase.finalize(self)
 
@@ -946,8 +946,8 @@ class DiskTreeTransform(TreeTransformBase):
         name = self._limbo_name(trans_id)
         try:
             os.link(path, name)
-        except PermissionError:
-            raise errors.HardLinkNotSupported(path)
+        except PermissionError as err:
+            raise errors.HardLinkNotSupported(path) from err
         try:
             unique_add(self._new_contents, trans_id, 'file')
         except BaseException:
@@ -1173,15 +1173,15 @@ class GitTreeTransform(DiskTreeTransform):
             try:
                 osutils.ensure_empty_directory_exists(
                     limbodir)
-            except errors.DirectoryNotEmpty:
-                raise errors.ExistingLimbo(limbodir)
+            except errors.DirectoryNotEmpty as err:
+                raise errors.ExistingLimbo(limbodir) from err
             deletiondir = urlutils.local_path_from_url(
                 tree._transport.abspath('pending-deletion'))
             try:
                 osutils.ensure_empty_directory_exists(
                     deletiondir)
-            except errors.DirectoryNotEmpty:
-                raise errors.ExistingPendingDeletion(deletiondir)
+            except errors.DirectoryNotEmpty as err:
+                raise errors.ExistingPendingDeletion(deletiondir) from err
         except BaseException:
             tree.unlock()
             raise
@@ -1428,7 +1428,7 @@ class GitTreeTransform(DiskTreeTransform):
                     st = osutils.lstat(full_path)
                     self._observed_sha1s[trans_id] = (o_sha1, st)
                 if trans_id in self._new_reference_revision:
-                    for (submodule_path, _submodule_url, submodule_name) in self._tree._submodule_config():
+                    for (submodule_path, _submodule_url, _submodule_name) in self._tree._submodule_config():
                         if decode_git_path(submodule_path) == path:
                             break
                     else:
@@ -1443,7 +1443,7 @@ class GitTreeTransform(DiskTreeTransform):
                     with open(os.path.join(full_path, '.git'), 'w') as f:
                         submodule_abspath = submodule_transport.local_abspath('.')
                         f.write(f'gitdir: {os.path.relpath(submodule_abspath, full_path)}\n')
-        for path, trans_id in new_paths:
+        for _path, trans_id in new_paths:
             # new_paths includes stuff like workingtree conflicts. Only the
             # stuff in new_contents actually comes from limbo.
             if trans_id in self._limbo_files:

@@ -264,8 +264,10 @@ class GitTree(_mod_tree.Tree):
         from .transform import GitTransformPreview
         return GitTransformPreview(self, pb=pb)
 
-    def find_related_paths_across_trees(self, paths, trees=[],
+    def find_related_paths_across_trees(self, paths, trees=None,
                                         require_versioned=True):
+        if trees is None:
+            trees = []
         if paths is None:
             return None
 
@@ -337,8 +339,8 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         else:
             try:
                 commit = self.store[self.commit_id]
-            except KeyError:
-                raise errors.NoSuchRevision(repository, revision_id)
+            except KeyError as err:
+                raise errors.NoSuchRevision(repository, revision_id) from err
             self.tree = commit.tree
 
     def git_snapshot(self, want_unversioned=False):
@@ -404,8 +406,8 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         try:
             (store, unused_path, commit_id) = change_scanner.find_last_change_revision(
                 encode_git_path(path), self.commit_id)
-        except KeyError:
-            raise _mod_transport.NoSuchFile(path)
+        except KeyError as err:
+            raise _mod_transport.NoSuchFile(path) from err
         commit = store[commit_id]
         return commit.commit_time
 
@@ -451,8 +453,8 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
                 raise NotTreeError(hexsha)
             try:
                 mode, hexsha = obj[p]
-            except KeyError:
-                raise _mod_transport.NoSuchFile(path)
+            except KeyError as err:
+                raise _mod_transport.NoSuchFile(path) from err
             if S_ISGITLINK(mode) and i != len(parts) - 1:
                 store = self._get_submodule_store(b'/'.join(parts[:i + 1]))
                 hexsha = store[hexsha].tree
@@ -1040,8 +1042,10 @@ class InterGitTrees(_mod_tree.InterTree):
                 source_extras=source_extras, target_extras=target_extras)
 
     def iter_changes(self, include_unchanged=False, specific_files=None,
-                     pb=None, extra_trees=[], require_versioned=True,
+                     pb=None, extra_trees=None, require_versioned=True,
                      want_unversioned=False):
+        if extra_trees is None:
+            extra_trees = []
         with self.lock_read():
             changes, source_extras, target_extras = self._iter_git_changes(
                 want_unchanged=include_unchanged,
@@ -1583,9 +1587,9 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             if not after:
                 try:
                     self._rename_one(from_rel, to_rel)
-                except FileNotFoundError:
+                except FileNotFoundError as err:
                     raise errors.BzrMoveFailedError(
-                        from_rel, to_rel, _mod_transport.NoSuchFile(to_rel))
+                        from_rel, to_rel, _mod_transport.NoSuchFile(to_rel)) from err
             if kind != 'directory':
                 (index, from_index_path) = self._lookup_index(from_path)
                 try:

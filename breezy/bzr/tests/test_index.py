@@ -418,7 +418,9 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
                 (self.make_key(counter), self.make_value(counter), ()))
         return nodes
 
-    def make_index(self, ref_lists=0, key_elements=1, nodes=[]):
+    def make_index(self, ref_lists=0, key_elements=1, nodes=None):
+        if nodes is None:
+            nodes = []
         builder = _mod_index.GraphIndexBuilder(
             ref_lists, key_elements=key_elements)
         for key, value, references in nodes:
@@ -428,8 +430,10 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
         size = trans.put_file('index', stream)
         return _mod_index.GraphIndex(trans, 'index', size)
 
-    def make_index_with_offset(self, ref_lists=0, key_elements=1, nodes=[],
+    def make_index_with_offset(self, ref_lists=0, key_elements=1, nodes=None,
                                offset=0):
+        if nodes is None:
+            nodes = []
         builder = _mod_index.GraphIndexBuilder(
             ref_lists, key_elements=key_elements)
         for key, value, references in nodes:
@@ -1101,7 +1105,9 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
 
 class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
 
-    def make_index(self, name, ref_lists=0, key_elements=1, nodes=[]):
+    def make_index(self, name, ref_lists=0, key_elements=1, nodes=None):
+        if nodes is None:
+            nodes = []
         builder = _mod_index.GraphIndexBuilder(
             ref_lists, key_elements=key_elements)
         for key, value, references in nodes:
@@ -1111,7 +1117,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         size = trans.put_file(name, stream)
         return _mod_index.GraphIndex(trans, name, size)
 
-    def make_combined_index_with_missing(self, missing=['1', '2']):
+    def make_combined_index_with_missing(self, missing=None):
         """Create a CombinedGraphIndex which will have missing indexes.
 
         This creates a CGI which thinks it has 2 indexes, however they have
@@ -1121,6 +1127,8 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         :param missing: The underlying indexes to delete
         :return: (CombinedGraphIndex, reload_counter)
         """
+        if missing is None:
+            missing = ['1', '2']
         idx1 = self.make_index('1', nodes=[((b'1',), b'', ())])
         idx2 = self.make_index('2', nodes=[((b'2',), b'', ())])
         idx3 = self.make_index('3', nodes=[
@@ -1572,7 +1580,9 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
 
 class TestInMemoryGraphIndex(tests.TestCaseWithMemoryTransport):
 
-    def make_index(self, ref_lists=0, key_elements=1, nodes=[]):
+    def make_index(self, ref_lists=0, key_elements=1, nodes=None):
+        if nodes is None:
+            nodes = []
         result = _mod_index.InMemoryGraphIndex(
             ref_lists, key_elements=key_elements)
         result.add_nodes(nodes)
@@ -1704,8 +1714,10 @@ class TestInMemoryGraphIndex(tests.TestCaseWithMemoryTransport):
 
 class TestGraphIndexPrefixAdapter(tests.TestCaseWithMemoryTransport):
 
-    def make_index(self, ref_lists=1, key_elements=2, nodes=[],
+    def make_index(self, ref_lists=1, key_elements=2, nodes=None,
                    add_callback=False):
+        if nodes is None:
+            nodes = []
         result = _mod_index.InMemoryGraphIndex(
             ref_lists, key_elements=key_elements)
         result.add_nodes(nodes)

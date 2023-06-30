@@ -129,7 +129,7 @@ class BundleSerializerV08(BundleSerializer):
         f.write(b'#\n')
 
     def _write(self, key, value, indent=1, trailing_space_when_empty=False):
-        """Write out meta information, with proper indenting, etc.
+        r"""Write out meta information, with proper indenting, etc.
 
         :param trailing_space_when_empty: To work around a bug in earlier
             bundle readers, when writing an empty property, we use "prop: \n"

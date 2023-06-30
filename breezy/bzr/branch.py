@@ -797,7 +797,7 @@ class BzrBranch8(BzrBranch):
         with self.lock_read():
             try:
                 index = self._partial_revision_history_cache.index(revision_id)
-            except ValueError:
+            except ValueError as e:
                 try:
                     self._extend_partial_history(stop_revision=revision_id)
                 except errors.RevisionNotPresent as exc:
@@ -805,9 +805,9 @@ class BzrBranch8(BzrBranch):
                         revision_id, exc.revision_id) from exc
                 index = len(self._partial_revision_history_cache) - 1
                 if index < 0:
-                    raise errors.NoSuchRevision(self, revision_id)
+                    raise errors.NoSuchRevision(self, revision_id) from e
                 if self._partial_revision_history_cache[index] != revision_id:
-                    raise errors.NoSuchRevision(self, revision_id)
+                    raise errors.NoSuchRevision(self, revision_id) from e
             return self.revno() - index
 
 
@@ -1140,12 +1140,12 @@ class BranchReferenceFormat(BranchFormatMetadir):
         self._run_post_branch_init_hooks(a_controldir, name, branch)
         return branch
 
-    def _make_reference_clone_function(format, a_branch):
+    def _make_reference_clone_function(self, a_branch):
         """Create a clone() routine for a branch dynamically."""
         def clone(to_bzrdir, revision_id=None, repository_policy=None, name=None,
                   tag_selector=None):
             """See Branch.clone()."""
-            return format.initialize(to_bzrdir, target_branch=a_branch, name=name)
+            return self.initialize(to_bzrdir, target_branch=a_branch, name=name)
             # cannot obey revision_id limits when cloning a reference ...
             # FIXME RBC 20060210 either nuke revision_id for clone, or
             # emit some sort of warning/error to the caller ?!

@@ -727,8 +727,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('master')
         try:
             tree.set_conflicts(example_conflicts)
-        except UnsupportedOperation:
-            raise TestSkipped('set_conflicts not supported')
+        except UnsupportedOperation as err:
+            raise TestSkipped('set_conflicts not supported') from err
 
         tree2 = WorkingTree.open('master')
         self.assertEqual(tree2.conflicts(), example_conflicts)
@@ -769,16 +769,16 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(len(tree.conflicts()), 1)
         try:
             tree.set_conflicts([])
-        except UnsupportedOperation:
-            raise TestSkipped('unsupported operation')
+        except UnsupportedOperation as err:
+            raise TestSkipped('unsupported operation') from err
         self.assertEqual(tree.conflicts(), ConflictList())
 
     def test_add_conflicts(self):
         tree = self.make_branch_and_tree('tree')
         try:
             tree.add_conflicts([TextConflict('path_a')])
-        except UnsupportedOperation:
-            raise TestSkipped('unsupported operation')
+        except UnsupportedOperation as err:
+            raise TestSkipped('unsupported operation') from err
         self.assertEqual(ConflictList([TextConflict('path_a')]),
                          tree.conflicts())
         tree.add_conflicts([TextConflict('path_a')])
@@ -849,8 +849,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_non_normalized_add_accessible(self):
         try:
             self.build_tree(['a\u030a'])
-        except UnicodeError:
-            raise TestSkipped('Filesystem does not support unicode filenames')
+        except UnicodeError as err:
+            raise TestSkipped('Filesystem does not support unicode filenames') from err
         tree = self.make_branch_and_tree('.')
         orig = osutils.normalized_filename
         if not osutils.normalizes_filenames():
@@ -867,8 +867,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_non_normalized_add_inaccessible(self):
         try:
             self.build_tree(['a\u030a'])
-        except UnicodeError:
-            raise TestSkipped('Filesystem does not support unicode filenames')
+        except UnicodeError as err:
+            raise TestSkipped('Filesystem does not support unicode filenames') from err
         tree = self.make_branch_and_tree('.')
         orig = osutils.normalized_filename
         osutils.normalized_filename = osutils._inaccessible_normalized_filename
@@ -1052,7 +1052,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                 self.assertFalse(tree.is_executable('filename'))
             finally:
                 tree.unlock()
-            os.chmod('filename', 0o755)
+            os.chmod('filename', 0o755)  # noqa: S103
             self.addCleanup(tree.lock_read().unlock)
             self.assertTrue(tree.is_executable('filename'))
         else:
@@ -1153,9 +1153,9 @@ class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
             final_branch, stop_revision=branch_revid, overwrite=True)
         try:
             wt.branch.bind(master)
-        except _mod_branch.BindingUnsupported:
+        except _mod_branch.BindingUnsupported as err:
             raise TestNotApplicable(
-                f"Can't bind {wt.branch._format.__class__}")
+                f"Can't bind {wt.branch._format.__class__}") from err
         return wt, master
 
     def test_update_remove_commit(self):
@@ -1310,8 +1310,8 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
         subtree.commit('a change')
         try:
             tree.add_reference(subtree)
-        except errors.UnsupportedOperation:
-            raise tests.TestNotApplicable('Tree cannot hold references.')
+        except errors.UnsupportedOperation as err:
+            raise tests.TestNotApplicable('Tree cannot hold references.') from err
         if not getattr(tree.branch._format, 'supports_reference_locations', False):
             raise tests.TestNotApplicable('Branch cannot hold reference locations.')
         tree.commit('Add reference.')
@@ -1327,8 +1327,8 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
         subtree.commit('a change')
         try:
             tree.add_reference(subtree)
-        except errors.UnsupportedOperation:
-            raise tests.TestNotApplicable('Tree cannot hold references.')
+        except errors.UnsupportedOperation as err:
+            raise tests.TestNotApplicable('Tree cannot hold references.') from err
         if not getattr(tree.branch._format, 'supports_reference_locations', False):
             raise tests.TestNotApplicable('Branch cannot hold reference locations.')
         tree.commit('Add reference')
@@ -1342,8 +1342,8 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('branch')
         try:
             loc = tree.get_reference_info('file')
-        except errors.UnsupportedOperation:
-            raise tests.TestNotApplicable('Branch cannot hold references.')
+        except errors.UnsupportedOperation as err:
+            raise tests.TestNotApplicable('Branch cannot hold references.') from err
         self.assertIs(None, loc)
 
     def test_set_reference_info(self):
@@ -1364,8 +1364,8 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
         tree.add(['file'])
         try:
             tree.set_reference_info('file', 'path/to/location')
-        except errors.UnsupportedOperation:
-            raise tests.TestNotApplicable('Branch cannot hold references.')
+        except errors.UnsupportedOperation as err:
+            raise tests.TestNotApplicable('Branch cannot hold references.') from err
         tree.set_reference_info('file', None)
         branch_location = tree.get_reference_info('file')
         self.assertIs(None, branch_location)
@@ -1374,15 +1374,15 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('branch')
         try:
             branch_location = tree.get_reference_info('file')
-        except errors.UnsupportedOperation:
-            raise tests.TestNotApplicable('Branch cannot hold references.')
+        except errors.UnsupportedOperation as err:
+            raise tests.TestNotApplicable('Branch cannot hold references.') from err
         self.assertIs(None, branch_location)
         self.build_tree(['branch/file'])
         tree.add(['file'])
         try:
             tree.set_reference_info('file', None)
-        except errors.UnsupportedOperation:
-            raise tests.TestNotApplicable('Branch cannot hold references.')
+        except errors.UnsupportedOperation as err:
+            raise tests.TestNotApplicable('Branch cannot hold references.') from err
 
     def make_tree_with_reference(self, location, reference_location):
         tree = self.make_branch_and_tree(location)
@@ -1392,8 +1392,8 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
         tree.add(['path', 'path/to', 'path/to/file'])
         try:
             tree.set_reference_info('path/to/file', reference_location)
-        except errors.UnsupportedOperation:
-            raise tests.TestNotApplicable('Branch cannot hold references.')
+        except errors.UnsupportedOperation as err:
+            raise tests.TestNotApplicable('Branch cannot hold references.') from err
         tree.commit('commit reference')
         return tree
 

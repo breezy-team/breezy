@@ -172,9 +172,9 @@ class cmd_git_object(Command):
             if sha1 is not None:
                 try:
                     obj = object_store[sha1.encode('ascii')]
-                except KeyError:
+                except KeyError as err:
                     raise CommandError(
-                        gettext("Object not found: %s") % sha1)
+                        gettext("Object not found: %s") % sha1) from err
                 if pretty:
                     text = obj.as_pretty_string()
                 else:
@@ -228,7 +228,7 @@ class cmd_git_apply(Command):
         """
         from dulwich.patch import git_am_patch_split
 
-        from ..patch import patch_tree
+        from ..workingtree import patch_tree
         (c, diff, version) = git_am_patch_split(f)
         # FIXME: Cope with git-specific bits in patch
         # FIXME: Add new files to working tree

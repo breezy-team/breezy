@@ -83,8 +83,8 @@ class GitCommitBuilder(CommitBuilder):
                 continue
             try:
                 entry_kls = entry_factory[change.kind[1]]
-            except KeyError:
-                raise KeyError(f"unknown kind {change.kind[1]}")
+            except KeyError as err:
+                raise KeyError(f"unknown kind {change.kind[1]}") from err
             entry = entry_kls(file_id, change.name[1], parent_id_new)
             if change.kind[1] == "file":
                 entry.executable = change.executable[1]

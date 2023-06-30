@@ -223,8 +223,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             try:
                 self._index_file = GitFile(
                     self.control_transport.local_abspath('index'), 'wb')
-            except FileLocked:
-                raise errors.LockContention('index')
+            except FileLocked as err:
+                raise errors.LockContention('index') from err
             self._read_index()
         elif self._lock_mode == 'r':
             raise errors.ReadOnlyError(self)
@@ -310,7 +310,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             merges = [self.branch.lookup_bzr_revision_id(
                 revid)[0] for revid in rhs_parent_ids]
         except errors.NoSuchRevision as e:
-            raise errors.GhostRevisionUnusableHere(e.revision)
+            raise errors.GhostRevisionUnusableHere(e.revision) from e
         if merges:
             self.control_transport.put_bytes(
                 'MERGE_HEAD', b'\n'.join(merges),
@@ -646,8 +646,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     fullpath = osutils.normpath(self.abspath(f))
                     try:
                         kind = file_kind(fullpath)
-                    except FileNotFoundError:
-                        raise _mod_transport.NoSuchFile(fullpath)
+                    except FileNotFoundError as err:
+                        raise _mod_transport.NoSuchFile(fullpath) from err
                     if f != '' and self._directory_is_tree_reference(f):
                         kind = 'tree-reference'
                     kinds[pos] = kind
@@ -676,8 +676,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         """See Tree.get_file_mtime."""
         try:
             return self._lstat(path).st_mtime
-        except FileNotFoundError:
-            raise _mod_transport.NoSuchFile(path)
+        except FileNotFoundError as err:
+            raise _mod_transport.NoSuchFile(path) from err
 
     def is_ignored(self, filename):
         r"""Check whether the filename matches an ignore pattern.
@@ -729,8 +729,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         _mod_revision.check_not_reserved_id(revid)
         try:
             self.branch.generate_revision_history(revid)
-        except errors.NoSuchRevision:
-            raise errors.GhostRevisionUnusableHere(revid)
+        except errors.NoSuchRevision as err:
+            raise errors.GhostRevisionUnusableHere(revid) from err
 
     def _reset_data(self):
         pass
@@ -740,10 +740,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             (index, subpath) = self._lookup_index(encode_git_path(path))
             try:
                 return ("GIT", index[subpath].sha)
-            except KeyError:
+            except KeyError as err:
                 if self._has_dir(path):
                     return ("GIT", None)
-                raise _mod_transport.NoSuchFile(path)
+                raise _mod_transport.NoSuchFile(path) from err
 
     def get_file_sha1(self, path, stat_value=None):
         with self.lock_read():
@@ -771,11 +771,11 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             (index, subpath) = self._lookup_index(encoded_path)
             try:
                 return mode_kind(index[subpath].mode)
-            except KeyError:
+            except KeyError as err:
                 # Maybe it's a directory?
                 if self._has_dir(encoded_path):
                     return "directory"
-                raise _mod_transport.NoSuchFile(path)
+                raise _mod_transport.NoSuchFile(path) from err
 
     def _lstat(self, path):
         return os.lstat(self.abspath(path))
@@ -949,9 +949,9 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     try:
                         self._set_conflicted(
                             encode_git_path(conflict.path), True)
-                    except KeyError:
+                    except KeyError as err:
                         raise errors.UnsupportedOperation(
-                            self.add_conflicts, self)
+                            self.add_conflicts, self) from err
                 else:
                     raise errors.UnsupportedOperation(self.add_conflicts, self)
 
@@ -1261,9 +1261,9 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         with self.lock_tree_write():
             try:
                 sub_tree_path = self.relpath(sub_tree.basedir)
-            except errors.PathNotChild:
+            except errors.PathNotChild as err:
                 raise BadReferenceTarget(
-                    self, sub_tree, 'Target not inside tree.')
+                    self, sub_tree, 'Target not inside tree.') from err
 
             path, can_access = osutils.normalized_filename(sub_tree_path)
             if not can_access:

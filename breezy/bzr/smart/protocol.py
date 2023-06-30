@@ -664,10 +664,10 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
         self._last_verb = args[0]
 
     def call_with_body_readv_array(self, args, body):
-        """Make a remote call with a readv array.
+        r"""Make a remote call with a readv array.
 
         The body is encoded with one line per readv offset pair. The numbers in
-        each pair are separated by a comma, and no trailing \\n is emitted.
+        each pair are separated by a comma, and no trailing \n is emitted.
         """
         if debug.debug_flag_enabled('hpss'):
             mutter('hpss call w/readv: %s', repr(args)[1:-1])
@@ -969,9 +969,8 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         prefixed_bytes = self._extract_length_prefixed_bytes()
         try:
             decoded = bdecode_as_tuple(prefixed_bytes)
-        except ValueError:
-            raise errors.SmartProtocolError(
-                f'Bytes {prefixed_bytes!r} not bencoded')
+        except ValueError as e:
+            raise errors.SmartProtocolError(f'Bytes {prefixed_bytes!r} not bencoded') from e
         return decoded
 
     def _extract_single_byte(self):
@@ -1012,8 +1011,8 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         self.state_accept = self._state_accept_expecting_message_part
         try:
             self.message_handler.headers_received(decoded)
-        except:
-            raise SmartMessageHandlerError(sys.exc_info())
+        except BaseException as e:
+            raise SmartMessageHandlerError(sys.exc_info()) from e
 
     def _state_accept_expecting_message_part(self):
         message_part_kind = self._extract_single_byte()
@@ -1034,8 +1033,8 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         self.state_accept = self._state_accept_expecting_message_part
         try:
             self.message_handler.byte_part_received(byte)
-        except:
-            raise SmartMessageHandlerError(sys.exc_info())
+        except BaseException as e:
+            raise SmartMessageHandlerError(sys.exc_info()) from e
 
     def _state_accept_expecting_bytes(self):
         # XXX: this should not buffer whole message part, but instead deliver
@@ -1044,16 +1043,16 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         self.state_accept = self._state_accept_expecting_message_part
         try:
             self.message_handler.bytes_part_received(prefixed_bytes)
-        except:
-            raise SmartMessageHandlerError(sys.exc_info())
+        except BaseException as e:
+            raise SmartMessageHandlerError(sys.exc_info()) from e
 
     def _state_accept_expecting_structure(self):
         structure = self._extract_prefixed_bencoded_data()
         self.state_accept = self._state_accept_expecting_message_part
         try:
             self.message_handler.structure_part_received(structure)
-        except:
-            raise SmartMessageHandlerError(sys.exc_info())
+        except BaseException as e:
+            raise SmartMessageHandlerError(sys.exc_info()) from e
 
     def done(self):
         self.unused_data = self._get_in_buffer()
@@ -1061,8 +1060,8 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         self.state_accept = self._state_accept_reading_unused
         try:
             self.message_handler.end_received()
-        except:
-            raise SmartMessageHandlerError(sys.exc_info())
+        except BaseException as e:
+            raise SmartMessageHandlerError(sys.exc_info()) from e
 
     def _state_accept_reading_unused(self):
         self.unused_data += self._get_in_buffer()
@@ -1341,10 +1340,10 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
         self._medium_request.finished_writing()
 
     def call_with_body_readv_array(self, args, body):
-        """Make a remote call with a readv array.
+        r"""Make a remote call with a readv array.
 
         The body is encoded with one line per readv offset pair. The numbers in
-        each pair are separated by a comma, and no trailing \\n is emitted.
+        each pair are separated by a comma, and no trailing \n is emitted.
         """
         if debug.debug_flag_enabled('hpss'):
             mutter('hpss call w/readv: %s', repr(args)[1:-1])

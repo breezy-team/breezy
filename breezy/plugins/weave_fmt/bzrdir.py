@@ -600,7 +600,7 @@ class ConvertBzrDir6ToMeta(Converter):
         if not has_checkout:
             ui.ui_factory.note(gettext('No working tree.'))
             # If some checkout files are there, we may as well get rid of them.
-            for name, mandatory in checkout_files:
+            for name, _mandatory in checkout_files:
                 if name in bzrcontents:
                     self.controldir.transport.delete(name)
         else:

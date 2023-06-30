@@ -109,7 +109,7 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
         return state
 
     def create_complex_dirstate(self):
-        """This dirstate contains multiple files and directories.
+        r"""This dirstate contains multiple files and directories.
 
          /        a-root-value
          a/       a-dir
@@ -1631,7 +1631,7 @@ class TestGetEntry(TestCaseWithDirState):
 class TestIterChildEntries(TestCaseWithDirState):
 
     def create_dirstate_with_two_trees(self):
-        """This dirstate contains multiple files and directories.
+        r"""This dirstate contains multiple files and directories.
 
          /        a-root-value
          a/       a-dir

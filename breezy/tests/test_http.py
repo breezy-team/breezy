@@ -504,7 +504,9 @@ class TestPost(tests.TestCase):
 class TestRangeHeader(tests.TestCase):
     """Test range_header method."""
 
-    def check_header(self, value, ranges=[], tail=0):
+    def check_header(self, value, ranges=None, tail=0):
+        if ranges is None:
+            ranges = []
         offsets = [(start, end - start + 1) for start, end in ranges]
         coalesce = transport.Transport._coalesce_offsets
         coalesced = list(coalesce(offsets, limit=0, fudge_factor=0))

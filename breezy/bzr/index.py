@@ -192,7 +192,7 @@ class GraphIndexBuilder:
                         key_dict = key_dict.setdefault(subkey, {})
                     key_dict[key[-1]] = key, value, references
             else:
-                for key, (absent, references, value) in self._nodes.items():
+                for key, (absent, _references, value) in self._nodes.items():
                     if absent:
                         continue
                     key_dict = nodes_by_key
@@ -258,7 +258,7 @@ class GraphIndexBuilder:
         return as_st(node_refs), absent_references
 
     def add_node(self, key, value, references=()):
-        """Add a node to the index.
+        r"""Add a node to the index.
 
         :param key: The key. keys are non-empty tuples containing
             as many whitespace-free utf8 bytestrings as the key length
@@ -266,7 +266,7 @@ class GraphIndexBuilder:
         :param references: An iterable of iterables of keys. Each is a
             reference to another key.
         :param value: The value to associate with the key. It may be any
-            bytes as long as it does not contain \\0 or \\n.
+            bytes as long as it does not contain \0 or \n.
         """
         (node_refs,
          absent_references) = self._check_key_ref_value(key, references, value)
@@ -612,22 +612,22 @@ class GraphIndex:
             raise BadIndexOptions(self)
         try:
             self.node_ref_lists = int(options_line[len(_OPTION_NODE_REFS):-1])
-        except ValueError:
-            raise BadIndexOptions(self)
+        except ValueError as e:
+            raise BadIndexOptions(self) from e
         options_line = stream.readline()
         if not options_line.startswith(_OPTION_KEY_ELEMENTS):
             raise BadIndexOptions(self)
         try:
             self._key_length = int(options_line[len(_OPTION_KEY_ELEMENTS):-1])
-        except ValueError:
-            raise BadIndexOptions(self)
+        except ValueError as e:
+            raise BadIndexOptions(self) from e
         options_line = stream.readline()
         if not options_line.startswith(_OPTION_LEN):
             raise BadIndexOptions(self)
         try:
             self._key_count = int(options_line[len(_OPTION_LEN):-1])
-        except ValueError:
-            raise BadIndexOptions(self)
+        except ValueError as e:
+            raise BadIndexOptions(self) from e
 
     def _resolve_references(self, references):
         """Return the resolved key references for references.
@@ -963,22 +963,22 @@ class GraphIndex:
             raise BadIndexOptions(self)
         try:
             self.node_ref_lists = int(options_line[len(_OPTION_NODE_REFS):])
-        except ValueError:
-            raise BadIndexOptions(self)
+        except ValueError as e:
+            raise BadIndexOptions(self) from e
         options_line = lines[1]
         if not options_line.startswith(_OPTION_KEY_ELEMENTS):
             raise BadIndexOptions(self)
         try:
             self._key_length = int(options_line[len(_OPTION_KEY_ELEMENTS):])
-        except ValueError:
-            raise BadIndexOptions(self)
+        except ValueError as e:
+            raise BadIndexOptions(self) from e
         options_line = lines[2]
         if not options_line.startswith(_OPTION_LEN):
             raise BadIndexOptions(self)
         try:
             self._key_count = int(options_line[len(_OPTION_LEN):])
-        except ValueError:
-            raise BadIndexOptions(self)
+        except ValueError as e:
+            raise BadIndexOptions(self) from e
         # calculate the bytes we have processed
         header_end = (len(signature) + len(lines[0]) + len(lines[1]) +
                       len(lines[2]) + 3)
@@ -1652,7 +1652,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
                 if not absent:
                     yield self, key, value, references
         else:
-            for key, (absent, references, value) in self._nodes.items():
+            for key, (absent, _references, value) in self._nodes.items():
                 if not absent:
                     yield self, key, value
 
@@ -1776,7 +1776,7 @@ class GraphIndexPrefixAdapter:
         self.add_nodes_callback(translated_nodes)
 
     def add_node(self, key, value, references=()):
-        """Add a node to the index.
+        r"""Add a node to the index.
 
         :param key: The key. keys are non-empty tuples containing
             as many whitespace-free utf8 bytestrings as the key length

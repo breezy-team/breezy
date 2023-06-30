@@ -309,8 +309,8 @@ class MemoryTransport(transport.Transport):
         _abspath = self._abspath(link_name)
         try:
             return '/'.join(self._symlinks[_abspath])
-        except KeyError:
-            raise NoSuchFile(link_name)
+        except KeyError as err:
+            raise NoSuchFile(link_name) from err
 
 
 class _MemoryLock:

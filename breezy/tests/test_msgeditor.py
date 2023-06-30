@@ -147,7 +147,7 @@ added:
             name = basename + '.sh'
             with open(name, 'wb') as f:
                 f.write(b'#!/bin/sh\n')
-            os.chmod(name, 0o755)
+            os.chmod(name, 0o755)  # noqa: S103
             return './' + name
 
     def test_run_editor(self):
@@ -193,7 +193,7 @@ if len(sys.argv) == 2:
             self.overrideEnv('BRZ_EDITOR', 'fed.bat')
         else:
             # [non-win32] make python script executable and set BRZ_EDITOR
-            os.chmod('fed.py', 0o755)
+            os.chmod('fed.py', 0o755)  # noqa: S103
             mutter('Setting BRZ_EDITOR to %r', f'{sys.executable} ./fed.py')
             self.overrideEnv('BRZ_EDITOR', f'{sys.executable} ./fed.py')
 

@@ -117,15 +117,15 @@ class TestSprout(TestCaseWithBranch):
         """Sprout preserves tags, even tags of absent revisions."""
         try:
             builder = self.make_branch_builder('source')
-        except errors.UninitializableFormat:
-            raise tests.TestSkipped('Uninitializable branch format')
+        except errors.UninitializableFormat as e:
+            raise tests.TestSkipped('Uninitializable branch format') from e
         builder.build_commit(message="Rev 1")
         source = builder.get_branch()
         try:
             source.tags.set_tag('tag-a', b'missing-rev')
-        except (errors.TagsNotSupported, errors.GhostTagsNotSupported):
+        except (errors.TagsNotSupported, errors.GhostTagsNotSupported) as e:
             raise tests.TestNotApplicable(
-                'Branch format does not support tags or tags to ghosts.')
+                'Branch format does not support tags or tags to ghosts.') from e
         # Now source has a tag pointing to an absent revision.  Sprout it.
         target_bzrdir = self.make_repository('target').controldir
         new_branch = source.sprout(target_bzrdir)
@@ -205,10 +205,10 @@ class TestSprout(TestCaseWithBranch):
             dir = source.controldir.sprout(target_transport.base,
                                            source.last_revision(), possible_transports=[target_transport],
                                            source_branch=source, stacked=True)
-        except _mod_branch.UnstackableBranchFormat:
+        except _mod_branch.UnstackableBranchFormat as e:
             if not self.branch_format.supports_stacking():
                 raise tests.TestNotApplicable(
-                    "Format doesn't auto stack successfully.")
+                    "Format doesn't auto stack successfully.") from e
             else:
                 raise
         result = dir.open_branch()

@@ -291,7 +291,7 @@ class TestPush(tests.TestCaseWithTransport):
         return tree
 
     def test_push_create_prefix(self):
-        """'brz push --create-prefix' will create leading directories."""
+        """'brz push --create-prefix' will create leading directories."""  # noqa: D403
         tree = self.create_simple_tree()
 
         self.run_bzr_error(['Parent directory of ../new/tree does not exist'],
@@ -307,7 +307,7 @@ class TestPush(tests.TestCaseWithTransport):
         """'brz push --use-existing-dir' can push into an existing dir.
 
         By default, 'brz push' will not use an existing, non-versioned dir.
-        """
+        """  # noqa: D403
         tree = self.create_simple_tree()
         self.build_tree(['target/'])
 
@@ -327,7 +327,7 @@ class TestPush(tests.TestCaseWithTransport):
     def test_push_use_existing_into_empty_bzrdir(self):
         """'brz push --use-existing-dir' into a dir with an empty .bzr dir
         fails.
-        """
+        """  # noqa: D403
         self.create_simple_tree()
         self.build_tree(['target/', 'target/.bzr/'])
         self.run_bzr_error(

@@ -265,25 +265,25 @@ class LocalGitRepository(GitRepository):
         for revid, files in per_revision.items():
             try:
                 (commit_id, mapping) = self.lookup_bzr_revision_id(revid)
-            except errors.NoSuchRevision:
-                raise errors.RevisionNotPresent(revid, self)
+            except errors.NoSuchRevision as err:
+                raise errors.RevisionNotPresent(revid, self) from err
             try:
                 commit = self._git.object_store[commit_id]
-            except KeyError:
-                raise errors.RevisionNotPresent(revid, self)
+            except KeyError as err:
+                raise errors.RevisionNotPresent(revid, self) from err
             root_tree = commit.tree
             for fileid, identifier in files:
                 try:
                     path = mapping.parse_file_id(fileid)
-                except ValueError:
-                    raise errors.RevisionNotPresent((fileid, revid), self)
+                except ValueError as err:
+                    raise errors.RevisionNotPresent((fileid, revid), self) from err
                 try:
                     mode, item_id = tree_lookup_path(
                         self._git.object_store.__getitem__, root_tree,
                         encode_git_path(path))
                     obj = self._git.object_store[item_id]
-                except KeyError:
-                    raise errors.RevisionNotPresent((fileid, revid), self)
+                except KeyError as err:
+                    raise errors.RevisionNotPresent((fileid, revid), self) from err
                 else:
                     if obj.type_name == b"tree":
                         yield (identifier, [])
@@ -380,8 +380,8 @@ class LocalGitRepository(GitRepository):
         git_commit_id, mapping = self.lookup_bzr_revision_id(revision_id)
         try:
             commit = self._git.object_store[git_commit_id]
-        except KeyError:
-            raise errors.NoSuchRevision(self, revision_id)
+        except KeyError as err:
+            raise errors.NoSuchRevision(self, revision_id) from err
         if commit.gpgsig is None:
             raise errors.NoSuchRevision(self, revision_id)
         return commit.gpgsig
@@ -440,8 +440,8 @@ class LocalGitRepository(GitRepository):
             git_commit_id, mapping = self.lookup_bzr_revision_id(revision_id)
             try:
                 commit = self._git.object_store[git_commit_id]
-            except KeyError:
-                raise errors.NoSuchRevision(self, revision_id)
+            except KeyError as err:
+                raise errors.NoSuchRevision(self, revision_id) from err
 
             if commit.gpgsig is None:
                 return gpg.SIGNATURE_NOT_SIGNED, None
@@ -464,8 +464,8 @@ class LocalGitRepository(GitRepository):
         try:
             (git_sha, mapping) = mapping_registry.revision_id_bzr_to_foreign(
                 bzr_revid)
-        except errors.InvalidRevisionId:
-            raise errors.NoSuchRevision(self, bzr_revid)
+        except errors.InvalidRevisionId as err:
+            raise errors.NoSuchRevision(self, bzr_revid) from err
         else:
             return (git_sha, mapping)
 
@@ -475,8 +475,8 @@ class LocalGitRepository(GitRepository):
         git_commit_id, mapping = self.lookup_bzr_revision_id(revision_id)
         try:
             commit = self._git.object_store[git_commit_id]
-        except KeyError:
-            raise errors.NoSuchRevision(self, revision_id)
+        except KeyError as err:
+            raise errors.NoSuchRevision(self, revision_id) from err
         revision, roundtrip_revid, verifiers = mapping.import_commit(
             commit, self.lookup_foreign_revision_id, strict=False)
         if revision is None:

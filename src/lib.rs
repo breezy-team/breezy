@@ -30,6 +30,7 @@ pub mod controldir;
 pub mod forge;
 pub mod help;
 pub mod location;
+pub mod lockdir;
 pub mod progress;
 pub mod repository;
 pub mod tags;

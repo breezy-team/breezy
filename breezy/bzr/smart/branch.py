@@ -192,7 +192,7 @@ class SmartServerBranchRequestGetStackedOnURL(SmartServerBranchRequest):
 class SmartServerRequestRevisionHistory(SmartServerBranchRequest):
 
     def do_with_branch(self, branch):
-        """Get the revision history for the branch.
+        r"""Get the revision history for the branch.
 
         The revision list is returned as the body content,
         with each revision utf8 encoded and \x00 joined.

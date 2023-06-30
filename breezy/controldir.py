@@ -818,8 +818,8 @@ class ControlDir(ControlComponent):
         try:
             transport, format = _mod_transport.do_catching_redirections(
                 find_format, transport, redirected)
-        except errors.TooManyRedirections:
-            raise errors.NotBranchError(base)
+        except errors.TooManyRedirections as e:
+            raise errors.NotBranchError(base) from e
 
         format.check_support_status(_unsupported)
         return cast("ControlDir", format.open(transport, _found=True))
@@ -863,9 +863,9 @@ class ControlDir(ControlComponent):
                 pass
             try:
                 new_t = a_transport.clone('..')
-            except urlutils.InvalidURLJoin:
+            except urlutils.InvalidURLJoin as e:
                 # reached the root, whatever that may be
-                raise errors.NotBranchError(path=url)
+                raise errors.NotBranchError(path=url) from e
             if new_t.base == a_transport.base:
                 # reached the root, whatever that may be
                 raise errors.NotBranchError(path=url)
@@ -920,8 +920,8 @@ class ControlDir(ControlComponent):
             try:
                 repo = controldir.find_repository()
                 return None, None, repo, relpath
-            except (errors.NoRepositoryPresent):
-                raise errors.NotBranchError(location)
+            except (errors.NoRepositoryPresent) as e:
+                raise errors.NotBranchError(location) from e
         return tree, branch, branch.repository, relpath
 
     @classmethod

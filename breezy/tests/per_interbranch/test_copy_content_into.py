@@ -35,10 +35,10 @@ class TestCopyContentInto(TestCaseWithInterBranch):
         branch2 = self.make_to_branch('tree2')
         try:
             branch2.repository.fetch(self.tree1.branch.repository)
-        except NoRoundtrippingSupport:
+        except NoRoundtrippingSupport as e:
             raise TestNotApplicable(
                 'lossless cross-vcs fetch from %r to %r unsupported' %
-                (self.tree1.branch, branch2))
+                (self.tree1.branch, branch2)) from e
         self.tree1.branch.copy_content_into(branch2, revision_id=rev1)
 
     def test_inter_is_used(self):

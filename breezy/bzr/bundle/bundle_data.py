@@ -320,8 +320,8 @@ class BundleInfo:
             for info_item in info:
                 try:
                     name, value = info_item.split(':', 1)
-                except ValueError:
-                    raise ValueError(f'Value {info_item!r} has no colon')
+                except ValueError as e:
+                    raise ValueError(f'Value {info_item!r} has no colon') from e
                 if name == 'last-changed':
                     last_changed = value
                 elif name == 'executable':

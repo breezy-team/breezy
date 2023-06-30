@@ -2302,7 +2302,9 @@ class _PlanMerge(_PlanMergeBase):
 
 
 class _PlanLCAMerge(_PlanMergeBase):
-    """This merge algorithm differs from _PlanMerge in that:
+    """Merger that uses LCA.
+
+    This merge algorithm differs from _PlanMerge in that:
 
     1. comparisons are done against LCAs only
     2. cases where a contested line is new versus one LCA but old versus

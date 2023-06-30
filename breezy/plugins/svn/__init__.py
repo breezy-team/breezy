@@ -73,8 +73,8 @@ class SvnWorkingTreeProber(controldir.Prober):
     def probe_transport(self, transport):
         try:
             transport.local_abspath('.')
-        except errors.NotLocalUrl:
-            raise errors.NotBranchError(path=transport.base)
+        except errors.NotLocalUrl as err:
+            raise errors.NotBranchError(path=transport.base) from err
         else:
             if transport.has(".svn"):
                 return SvnWorkingTreeDirFormat()
@@ -126,8 +126,8 @@ class SvnRepositoryProber(controldir.Prober):
     def probe_transport(self, transport):
         try:
             url = transport.external_url()
-        except errors.InProcessTransport:
-            raise errors.NotBranchError(path=transport.base)
+        except errors.InProcessTransport as err:
+            raise errors.NotBranchError(path=transport.base) from err
 
         scheme = url.split(":")[0]
         if scheme.startswith("svn+") or scheme == "svn":
@@ -162,8 +162,8 @@ class SvnRepositoryProber(controldir.Prober):
             try:
                 headers = priv_transport._options('.')
             except (errors.InProcessTransport, _mod_transport.NoSuchFile,
-                    errors.InvalidHttpResponse):
-                raise errors.NotBranchError(path=transport.base)
+                    errors.InvalidHttpResponse) as err:
+                raise errors.NotBranchError(path=transport.base) from err
             else:
                 dav_entries = set()
                 for key, value in headers:

@@ -7,7 +7,7 @@ import re
 import sys
 
 try:
-    from launchpadlib.launchpad import Launchpad
+    from launchpadlib.launchpad import Launchpad  # noqa: F401
     from lazr.restfulclient import errors
 except ModuleNotFoundError:
     print("Please install launchpadlib from lp:launchpadlib")

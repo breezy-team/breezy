@@ -36,9 +36,9 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         b2 = self.make_to_branch('b2')
         try:
             b2.fetch(b1)
-        except NoRoundtrippingSupport:
+        except NoRoundtrippingSupport as e:
             raise TestNotApplicable(
-                f'lossless cross-vcs fetch {b1!r} to {b2!r} not supported')
+                f'lossless cross-vcs fetch {b1!r} to {b2!r} not supported') from e
 
         # fetch does not update the last revision
         self.assertEqual(NULL_REVISION, b2.last_revision())
@@ -62,12 +62,12 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         b2 = self.make_to_branch('b2')
         try:
             b2.fetch(b1, limit=1)
-        except FetchLimitUnsupported:
+        except FetchLimitUnsupported as e:
             raise TestNotApplicable(
-                'interbranch does not support fetch limits')
-        except NoRoundtrippingSupport:
+                'interbranch does not support fetch limits') from e
+        except NoRoundtrippingSupport as e:
             raise TestNotApplicable(
-                f'lossless cross-vcs fetch {b1!r} to {b2!r} not supported')
+                f'lossless cross-vcs fetch {b1!r} to {b2!r} not supported') from e
 
         # fetch does not update the last revision
         self.assertEqual(NULL_REVISION, b2.last_revision())
@@ -86,12 +86,12 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         b2 = self.make_to_branch('b2')
         try:
             b2.fetch(b1, limit=1)
-        except FetchLimitUnsupported:
+        except FetchLimitUnsupported as e:
             raise TestNotApplicable(
-                'interbranch does not support fetch limits')
-        except NoRoundtrippingSupport:
+                'interbranch does not support fetch limits') from e
+        except NoRoundtrippingSupport as e:
             raise TestNotApplicable(
-                f'lossless cross-vcs fetch {b1!r} to {b2!r} not supported')
+                f'lossless cross-vcs fetch {b1!r} to {b2!r} not supported') from e
 
         self.assertEqual(
             {rev1},

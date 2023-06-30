@@ -58,10 +58,10 @@ class TestSignatures(per_repository.TestCaseWithRepository):
             try:
                 branch.repository.store_revision_signature(
                     gpg.LoopbackGPGStrategy(None), b'FOO', b'A')
-            except errors.NoSuchRevision:
+            except errors.NoSuchRevision as err:
                 raise tests.TestNotApplicable(
                     "repository does not support signing non-present"
-                    "revisions")
+                    "revisions") from err
         # A signature without a revision should not be accessible.
         self.assertRaises(errors.NoSuchRevision,
                           branch.repository.has_signature_for_revision_id,

@@ -108,8 +108,8 @@ class InterToGitRepository(InterRepository):
                     continue
                 try:
                     git_sha = self.source_store._lookup_revision_sha1(revid)
-                except KeyError:
-                    raise NoSuchRevision(revid, self.source)
+                except KeyError as err:
+                    raise NoSuchRevision(revid, self.source) from err
                 git_shas.append(git_sha)
             walker = Walker(
                 self.source_store,
@@ -303,8 +303,8 @@ class InterToLocalGitRepository(InterToGitRepository):
         self._warn_slow()
         try:
             revidmap = self.fetch_revs(stop_revisions, lossy=lossy)
-        except NoPushSupport:
-            raise NoRoundtrippingSupport(self.source, self.target)
+        except NoPushSupport as err:
+            raise NoRoundtrippingSupport(self.source, self.target) from err
         return FetchResult(revidmap)
 
     @staticmethod

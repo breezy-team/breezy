@@ -740,9 +740,9 @@ class IniBasedConfig(Config):
         try:
             self._parser = ConfigObj(co_input, encoding='utf-8')
         except configobj.ConfigObjError as e:
-            raise ParseConfigError(e.errors, e.config.filename)
-        except UnicodeDecodeError:
-            raise ConfigContentError(self.file_name)
+            raise ParseConfigError(e.errors, e.config.filename) from e
+        except UnicodeDecodeError as e:
+            raise ConfigContentError(self.file_name) from e
         # Make sure self.reload() will use the right file name
         self._parser.filename = self.file_name
         for hook in OldConfigHooks['load']:
@@ -915,8 +915,8 @@ class IniBasedConfig(Config):
             section = parser[section_name]
         try:
             del section[option_name]
-        except KeyError:
-            raise NoSuchConfigOption(option_name)
+        except KeyError as e:
+            raise NoSuchConfigOption(option_name) from e
         self._write_config_file()
         for hook in OldConfigHooks['remove']:
             hook(self, option_name)
@@ -1508,9 +1508,9 @@ class AuthenticationConfig:
             # encoded, but the values in the ConfigObj are always Unicode.
             self._config = ConfigObj(self._input, encoding='utf-8')
         except configobj.ConfigObjError as e:
-            raise ParseConfigError(e.errors, e.config.filename)
-        except UnicodeError:
-            raise ConfigContentError(self._filename)
+            raise ParseConfigError(e.errors, e.config.filename) from e
+        except UnicodeError as e:
+            raise ConfigContentError(self._filename) from e
         return self._config
 
     def _check_permissions(self):
@@ -1596,15 +1596,15 @@ class AuthenticationConfig:
                 a_port = auth_def.as_int('port')
             except KeyError:
                 a_port = None
-            except ValueError:
-                raise ValueError(f"'port' not numeric in {auth_def_name}")
+            except ValueError as e:
+                raise ValueError(f"'port' not numeric in {auth_def_name}") from e
             try:
                 a_verify_certificates = auth_def.as_bool('verify_certificates')
             except KeyError:
                 a_verify_certificates = True
-            except ValueError:
+            except ValueError as e:
                 raise ValueError(
-                    f"'verify_certificates' not boolean in {auth_def_name}")
+                    f"'verify_certificates' not boolean in {auth_def_name}") from e
 
             # Attempt matching
             if a_scheme is not None and scheme != a_scheme:
@@ -1774,8 +1774,8 @@ class AuthenticationConfig:
     def decode_password(self, credentials, encoding):
         try:
             cs = credential_store_registry.get_credential_store(encoding)
-        except KeyError:
-            raise ValueError(f'{encoding!r} is not a known password_encoding')
+        except KeyError as e:
+            raise ValueError(f'{encoding!r} is not a known password_encoding') from e
         credentials['password'] = cs.decode_password(credentials)
         return credentials
 
@@ -2036,9 +2036,9 @@ class TransportConfig:
             try:
                 conf = ConfigObj(f, encoding='utf-8')
             except configobj.ConfigObjError as e:
-                raise ParseConfigError(e.errors, self._external_url())
-            except UnicodeDecodeError:
-                raise ConfigContentError(self._external_url())
+                raise ParseConfigError(e.errors, self._external_url()) from e
+            except UnicodeDecodeError as e:
+                raise ConfigContentError(self._external_url()) from e
         finally:
             f.close()
         return conf
@@ -2233,9 +2233,9 @@ def int_SI_from_store(unicode_str):
         if unit:
             try:
                 coeff = _unit_suffixes[unit.upper()]
-            except KeyError:
+            except KeyError as e:
                 raise ValueError(
-                    gettext('{0} is not an SI unit.').format(unit))
+                    gettext('{0} is not an SI unit.').format(unit)) from e
             val *= coeff
     return val
 
@@ -2309,11 +2309,11 @@ class RegistryOption(Option):
             raise TypeError
         try:
             return self.registry.get(unicode_str)
-        except KeyError:
+        except KeyError as e:
             raise ValueError(
                 "Invalid value %s for %s."
                 "See help for a list of possible values." % (unicode_str,
-                                                             self.name))
+                                                             self.name)) from e
 
     @property
     def help(self):
@@ -2775,9 +2775,9 @@ class MutableSection(Section):
                 # storage.
                 trace.warning(gettext(
                     "Option {} in section {} of {} was changed"
-                    " from {} to {}. The {} value will be saved.".format(
+                    " from {} to {}. The {} value will be saved.").format(
                         k, self.id, store.external_url(), expected,
-                        reloaded, actual)))
+                        reloaded, actual))
         # No need to keep track of these changes
         self.reset_changes()
 
@@ -2918,10 +2918,10 @@ class CommandLineStore(Store):
         for over in overrides:
             try:
                 name, value = over.split('=', 1)
-            except ValueError:
+            except ValueError as e:
                 raise errors.CommandError(
                     gettext("Invalid '%s', should be of the form 'name=value'")
-                    % (over,))
+                    % (over,)) from e
             self.options[name] = value
 
     def external_url(self):
@@ -2996,9 +2996,9 @@ class IniFileStore(Store):
                                          list_values=False)
         except configobj.ConfigObjError as e:
             self._config_obj = None
-            raise ParseConfigError(e.errors, self.external_url())
-        except UnicodeDecodeError:
-            raise ConfigContentError(self.external_url())
+            raise ParseConfigError(e.errors, self.external_url()) from e
+        except UnicodeDecodeError as e:
+            raise ConfigContentError(self.external_url()) from e
 
     def save_changes(self):
         if not self.is_loaded():
@@ -4035,8 +4035,8 @@ class cmd_config(commands.Command):
             conf.remove(name)
             # Explicitly save the changes
             conf.store.save_changes()
-        except KeyError:
-            raise NoSuchConfigOption(name)
+        except KeyError as e:
+            raise NoSuchConfigOption(name) from e
 
 
 # Test registries

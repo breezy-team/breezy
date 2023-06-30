@@ -196,7 +196,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         inventory_serializer_v5.write_inventory(
             self._inventory, out_file, working=True)
 
-    def _deserialize(selt, in_file):
+    def _deserialize(self, in_file):
         from .xml5 import inventory_serializer_v5
         return inventory_serializer_v5.read_inventory(in_file)
 
@@ -594,8 +594,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 try:
                     if next(confile) != CONFLICT_HEADER_1 + b'\n':
                         raise errors.ConflictFormatError()
-                except StopIteration:
-                    raise errors.ConflictFormatError()
+                except StopIteration as err:
+                    raise errors.ConflictFormatError() from err
                 reader = _mod_rio.RioReader(confile)
                 return _mod_bzr_conflicts.ConflictList.from_stanzas(reader)
             finally:
@@ -754,8 +754,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         """See Tree.get_file_mtime."""
         try:
             return os.lstat(self.abspath(path)).st_mtime
-        except FileNotFoundError:
-            raise _mod_transport.NoSuchFile(path)
+        except FileNotFoundError as err:
+            raise _mod_transport.NoSuchFile(path) from err
 
     def path_content_summary(self, path, _lstat=os.lstat,
                              _mapper=osutils.file_kind_from_stat_mode):
@@ -955,8 +955,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 try:
                     if next(hashfile) != MERGE_MODIFIED_HEADER_1 + b'\n':
                         raise errors.MergeModifiedFormatError()
-                except StopIteration:
-                    raise errors.MergeModifiedFormatError()
+                except StopIteration as err:
+                    raise errors.MergeModifiedFormatError() from err
                 for s in _mod_rio.RioReader(hashfile):
                     # RioReader reads in Unicode, so convert file_ids back to
                     # utf8
@@ -985,9 +985,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                                               'Trees have the same root')
             try:
                 other_tree_path = self.relpath(other_tree.basedir)
-            except errors.PathNotChild:
+            except errors.PathNotChild as err:
                 raise errors.BadSubsumeSource(
-                    self, other_tree, 'Tree is not contained by the other')
+                    self, other_tree, 'Tree is not contained by the other') from err
             new_root_parent = self.path2id(osutils.dirname(other_tree_path))
             if new_root_parent is None:
                 raise errors.BadSubsumeSource(
@@ -1503,7 +1503,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     '', '', "Rollback failed."
                     " The working tree is in an inconsistent state."
                     " Please consider doing a 'bzr revert'."
-                    " Error message is: %s" % e)
+                    " Error message is: %s" % e) from e
 
     def _move_entry(self, entry):
         inv = self.root_inventory
@@ -1518,7 +1518,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 osutils.rename(from_rel_abs, to_rel_abs)
             except OSError as e:
                 raise errors.BzrMoveFailedError(
-                    entry.from_rel, entry.to_rel, e[1])
+                    entry.from_rel, entry.to_rel, e[1]) from e
         if entry.change_id:
             to_id = inv.path2id(entry.to_rel)
             inv.remove_recursive_id(to_id)
@@ -2122,8 +2122,8 @@ class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
         try:
             transport = controldir.get_workingtree_transport(None)
             return transport.get_bytes("format")
-        except _mod_transport.NoSuchFile:
-            raise errors.NoWorkingTree(base=transport.base)
+        except _mod_transport.NoSuchFile as e:
+            raise errors.NoWorkingTree(base=transport.base) from e
 
     @classmethod
     def find_format(klass, controldir):

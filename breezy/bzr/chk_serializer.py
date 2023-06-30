@@ -61,7 +61,7 @@ class CHKSerializer(serializer.InventorySerializer):
                 entry_cache=entry_cache,
                 return_from_cache=return_from_cache)
         except ParseError as e:
-            raise serializer.UnexpectedInventoryFormat(e)
+            raise serializer.UnexpectedInventoryFormat(e) from e
 
     def read_inventory(self, f, revision_id=None):
         """Read an inventory from a file-like object."""
@@ -73,7 +73,7 @@ class CHKSerializer(serializer.InventorySerializer):
             finally:
                 f.close()
         except ParseError as e:
-            raise serializer.UnexpectedInventoryFormat(e)
+            raise serializer.UnexpectedInventoryFormat(e) from e
 
     def write_inventory_to_lines(self, inv):
         """Return a list of lines with the encoded inventory."""

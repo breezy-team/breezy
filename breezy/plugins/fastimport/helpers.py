@@ -100,7 +100,7 @@ def open_destination_directory(location, format=None, verbose=True):
             os.mkdir(location)
         except OSError as ex:
             raise errors.CommandError(
-                f"Unable to create {location}: {ex}")
+                f"Unable to create {location}: {ex}") from ex
 
     # Create a repository for the nominated format.
     trace.note("Creating destination repository ...")

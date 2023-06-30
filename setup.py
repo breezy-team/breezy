@@ -12,7 +12,7 @@ import os.path
 import sys
 
 try:
-    import setuptools
+    import setuptools  # noqa: F401
 except ModuleNotFoundError as e:
     sys.stderr.write(f"[ERROR] Please install setuptools ({e})\n")
     sys.exit(1)
@@ -137,7 +137,7 @@ command_classes['build_ext'] = build_ext
 unavailable_files = []
 
 
-def add_cython_extension(module_name, libraries=None, extra_source=[]):
+def add_cython_extension(module_name, libraries=None, extra_source=None):
     """Add a cython module to build.
 
     This will use Cython to auto-generate the .c file if it is available.
@@ -150,6 +150,8 @@ def add_cython_extension(module_name, libraries=None, extra_source=[]):
     :param module_name: The python path to the module. This will be used to
         determine the .pyx and .c files to use.
     """
+    if extra_source is None:
+        extra_source = []
     path = module_name.replace('.', '/')
     cython_name = path + '.pyx'
     c_name = path + '.c'
@@ -221,8 +223,6 @@ import site
 site.ENABLE_USER_SITE = "--user" in sys.argv
 
 rust_extensions = [
-    RustExtension("breezy.bzr._chk_map_rs", "crates/chk-map-py/Cargo.toml", binding=Binding.PyO3),
-    RustExtension("breezy.bzr._groupcompress_rs", "crates/groupcompress-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy._cmd_rs", "crates/cmd-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy._osutils_rs", "crates/osutils-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy._transport_rs", "crates/transport-py/Cargo.toml", binding=Binding.PyO3),

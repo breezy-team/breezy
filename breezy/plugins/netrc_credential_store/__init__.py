@@ -32,7 +32,7 @@ class NetrcCredentialStore(config.CredentialStore):
         try:
             self._netrc = netrc.netrc()
         except FileNotFoundError as e:
-            raise _mod_transport.NoSuchFile(e.filename)
+            raise _mod_transport.NoSuchFile(e.filename) from e
 
     def decode_password(self, credentials):
         auth = self._netrc.authenticators(credentials['host'])

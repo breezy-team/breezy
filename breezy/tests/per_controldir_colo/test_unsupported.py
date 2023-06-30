@@ -36,9 +36,9 @@ class TestNoColocatedSupport(per_controldir.TestCaseWithControlDir):
         self.get_transport()
         try:
             made_control = self.make_controldir('.', format=self.bzrdir_format)
-        except errors.UninitializableFormat:
+        except errors.UninitializableFormat as e:
             raise tests.TestNotApplicable(
-                'Control dir format not initializable')
+                'Control dir format not initializable') from e
         self.assertEqual(made_control._format, self.bzrdir_format)
         made_control.create_repository()
         return made_control

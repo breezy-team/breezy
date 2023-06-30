@@ -68,7 +68,7 @@ def pre_merge_quilt(merger):
         merger.this_tree, this_dir = tree_unapply_patches(
             merger.this_tree, merger.this_branch, force=True)
     except QuiltError as e:
-        raise QuiltUnapplyError("this", e.stderr)
+        raise QuiltUnapplyError("this", e.stderr) from e
     else:
         if this_dir is not None:
             merger._quilt_tempdirs.append(this_dir)
@@ -76,7 +76,7 @@ def pre_merge_quilt(merger):
         merger.base_tree, base_dir = tree_unapply_patches(
             merger.base_tree, merger.this_branch, force=True)
     except QuiltError as e:
-        raise QuiltUnapplyError("base", e.stderr)
+        raise QuiltUnapplyError("base", e.stderr) from e
     else:
         if base_dir is not None:
             merger._quilt_tempdirs.append(base_dir)
@@ -87,7 +87,7 @@ def pre_merge_quilt(merger):
         merger.other_tree, other_dir = tree_unapply_patches(
             merger.other_tree, other_branch, force=True)
     except QuiltError as e:
-        raise QuiltUnapplyError("other", e.stderr)
+        raise QuiltUnapplyError("other", e.stderr) from e
     else:
         if other_dir is not None:
             merger._quilt_tempdirs.append(other_dir)

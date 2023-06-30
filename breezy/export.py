@@ -173,11 +173,11 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
     """
     try:
         os.mkdir(dest)
-    except FileExistsError:
+    except FileExistsError as e:
         # check if directory empty
         if os.listdir(dest) != []:
             raise errors.BzrError(
-                "Can't export tree to non-empty directory.")
+                "Can't export tree to non-empty directory.") from e
     # Iterate everything, building up the files we will want to export, and
     # creating the directories and symlinks that we need.
     # This tracks (None, (destination_path, executable))
@@ -199,7 +199,7 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
             except OSError as e:
                 raise errors.BzrError(
                     "Failed to create symlink %r -> %r, error: %s"
-                    % (fullpath, symlink_target, e))
+                    % (fullpath, symlink_target, e)) from e
         else:
             raise errors.BzrError("don't know how to export {%s} of kind %r" %
                                   (tp, ie.kind))

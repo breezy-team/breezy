@@ -29,11 +29,11 @@ def finish_rebase(state, wt, replace_map, replayer):
     try:
         # Start executing plan from current Branch.last_revision()
         rebase(wt.branch.repository, replace_map, replayer)
-    except ConflictsInTree:
+    except ConflictsInTree as e:
         raise CommandError(gettext(
             "A conflict occurred replaying a commit."
             " Resolve the conflict and run 'brz rebase-continue' or "
-            "run 'brz rebase-abort'."))
+            "run 'brz rebase-abort'.")) from e
     # Remove plan file
     state.remove_plan()
 
@@ -158,7 +158,8 @@ class cmd_rebase(Command):
                     raise CommandError(gettext(
                         "Rebasing more than one pending merge not supported"))
                 stop_revid = wt_parents[1]
-                assert stop_revid is not None, "stop revid invalid"
+                if stop_revid is None:
+                    raise AssertionError("stop revid invalid")
 
             # Check for changes in the working tree.
             if (not pending_merges and
@@ -239,8 +240,8 @@ class cmd_rebase_abort(Command):
             # Read plan file and set last revision
             try:
                 last_rev_info = state.read_plan()[0]
-            except NoSuchFile:
-                raise CommandError("No rebase to abort")
+            except NoSuchFile as e:
+                raise CommandError("No rebase to abort") from e
             complete_revert(wt, [last_rev_info[1]])
             state.remove_plan()
         finally:
@@ -274,8 +275,8 @@ class cmd_rebase_continue(Command):
             # Read plan file
             try:
                 replace_map = state.read_plan()[1]
-            except NoSuchFile:
-                raise CommandError(gettext("No rebase to continue"))
+            except NoSuchFile as e:
+                raise CommandError(gettext("No rebase to continue")) from e
             oldrevid = state.read_active_revid()
             if oldrevid is not None:
                 oldrev = wt.branch.repository.get_revision(oldrevid)
@@ -306,8 +307,8 @@ class cmd_rebase_todo(Command):
             state = RebaseState1(wt)
             try:
                 replace_map = state.read_plan()[1]
-            except NoSuchFile:
-                raise CommandError(gettext("No rebase in progress"))
+            except NoSuchFile as err:
+                raise CommandError(gettext("No rebase in progress")) from err
             currentrevid = state.read_active_revid()
             if currentrevid is not None:
                 note(gettext("Currently replaying: %s") % currentrevid)

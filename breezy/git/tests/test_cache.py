@@ -145,8 +145,8 @@ class TdbGitShaMapTests(TestCaseInTempDir, TestGitShaMap):
         TestCaseInTempDir.setUp(self)
         try:
             self.cache = TdbBzrGitCache(os.path.join(self.test_dir, 'foo.tdb'))
-        except ModuleNotFoundError:
-            raise UnavailableFeature("Missing tdb")
+        except ModuleNotFoundError as err:
+            raise UnavailableFeature("Missing tdb") from err
         self.map = self.cache.idmap
 
 

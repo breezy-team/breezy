@@ -100,7 +100,7 @@ def hook(config, tree_delta, future_tree):
     try:
         from flake8.main import application
     except ModuleNotFoundError as e:
-        raise DependencyNotPresent('flake8', e)
+        raise DependencyNotPresent('flake8', e) from e
     import tempfile
 
     strict = config.get("flake8.strict")

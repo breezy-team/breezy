@@ -587,8 +587,8 @@ class PushToRemoteBase:
         branch = builder.get_branch()
         try:
             branch.tags.set_tag('atag', rev_2)
-        except TagsNotSupported:
-            raise TestNotApplicable('source format does not support tags')
+        except TagsNotSupported as err:
+            raise TestNotApplicable('source format does not support tags') from err
 
         branch.get_config_stack().set('branch.fetch_tags', True)
         if self._from_format == 'git':
@@ -728,7 +728,7 @@ class RemoteControlDirTests(TestCaseWithTransport):
 
         remote = ControlDir.open(self.remote_url)
         self.assertEqual(
-            {'master', 'blah', 'master'},
+            {'master', 'blah'},
             {b.name for b in remote.list_branches()})
 
     def test_get_branches(self):

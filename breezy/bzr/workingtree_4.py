@@ -155,9 +155,9 @@ class DirStateWorkingTree(InventoryWorkingTree):
         with self.lock_tree_write():
             try:
                 sub_tree_path = self.relpath(sub_tree.basedir)
-            except errors.PathNotChild:
+            except errors.PathNotChild as e:
                 raise BadReferenceTarget(self, sub_tree,
-                                         'Target not inside tree.')
+                                         'Target not inside tree.') from e
             sub_tree_id = sub_tree.path2id('')
             if sub_tree_id == self.path2id(''):
                 raise BadReferenceTarget(self, sub_tree,
@@ -195,11 +195,11 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     # try for a write lock - need permission to get one anyhow
                     # to break locks.
                     state.lock_write()
-                except errors.LockContention:
+                except errors.LockContention as err:
                     # oslocks fail when a process is still live: fail.
                     # TODO: get the locked lockdir info and give to the user to
                     # assist in debugging.
-                    raise errors.LockActive(self.basedir)
+                    raise errors.LockActive(self.basedir) from err
                 else:
                     state.unlock()
         finally:
@@ -372,12 +372,12 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     raise AssertionError(f"unknown kind {kind!r}")
                 try:
                     inv.add(inv_entry)
-                except DuplicateFileId:
+                except DuplicateFileId as err:
                     raise AssertionError(
                         'file_id %s already in'
-                        ' inventory as %s' % (file_id, inv.get_entry(file_id)))
-                except errors.InconsistentDelta:
-                    raise AssertionError(f'name {name_unicode!r} already in parent')
+                        ' inventory as %s' % (file_id, inv.get_entry(file_id))) from err
+                except errors.InconsistentDelta as err:
+                    raise AssertionError(f'name {name_unicode!r} already in parent') from err
         self._inventory = inv
 
     def _get_entry(self, file_id=None, path=None):
@@ -454,20 +454,20 @@ class DirStateWorkingTree(InventoryWorkingTree):
         # referenced tree's revision is whatever's currently there
         try:
             return self.get_nested_tree(path).last_revision()
-        except MissingNestedTree:
+        except MissingNestedTree as err:
             entry = self._get_entry(path=path)
             if entry == (None, None):
-                raise NoSuchFile(self, path)
+                raise NoSuchFile(self, path) from err
             return entry[1][0][1]
 
     def get_nested_tree(self, path):
         try:
             return WorkingTree.open(self.abspath(path))
-        except errors.NotBranchError:
-            raise MissingNestedTree(path)
+        except errors.NotBranchError as err:
+            raise MissingNestedTree(path) from err
 
     def id2path(self, file_id, recurse='down'):
-        "Convert a file-id to a path."
+        """Convert a file-id to a path."""
         with self.lock_read():
             self.current_dirstate()
             entry = self._get_entry(file_id=file_id)
@@ -773,7 +773,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     try:
                         osutils.rename(from_rel_abs, to_rel_abs)
                     except OSError as e:
-                        raise errors.BzrMoveFailedError(from_rel, to_rel, e[1])
+                        raise errors.BzrMoveFailedError(from_rel, to_rel, e[1]) from e
                     rollbacks.callback(
                         osutils.rename, to_rel_abs, from_rel_abs)
                 try:
@@ -897,12 +897,14 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 return None
             return entry[0][2]
 
-    def paths2ids(self, paths, trees=[], require_versioned=True):
+    def paths2ids(self, paths, trees=None, require_versioned=True):
         """See Tree.paths2ids().
 
         This specialisation fast-paths the case where all the trees are in the
         dirstate.
         """
+        if trees is None:
+            trees = []
         if paths is None:
             return None
         parents = self.get_parent_ids()
@@ -1763,7 +1765,7 @@ class DirStateRevisionTree(InventoryTree):
         return {p for p in paths if not pred(p)}
 
     def id2path(self, file_id, recurse='down'):
-        "Convert a file-id to a path."
+        """Convert a file-id to a path."""
         with self.lock_read():
             entry = self._get_entry(file_id=file_id)
             if entry == (None, None):
@@ -1831,8 +1833,8 @@ class DirStateRevisionTree(InventoryTree):
             path = path.encode('utf8')
         try:
             parent_index = self._get_parent_index()
-        except ValueError:
-            raise errors.NoSuchRevisionInTree(self._dirstate, self._revision_id)
+        except ValueError as err:
+            raise errors.NoSuchRevisionInTree(self._dirstate, self._revision_id) from err
         return self._dirstate._get_entry(parent_index, fileid_utf8=file_id,
                                          path_utf8=path)
 
@@ -1917,12 +1919,12 @@ class DirStateRevisionTree(InventoryTree):
                         f"cannot convert entry {entry!r} into an InventoryEntry")
                 try:
                     inv.add(inv_entry)
-                except DuplicateFileId:
+                except DuplicateFileId as err:
                     raise AssertionError(
                         'file_id %s already in'
-                        ' inventory as %s' % (file_id, inv.get_entry(file_id)))
-                except errors.InconsistentDelta:
-                    raise AssertionError(f'name {name_unicode!r} already in parent')
+                        ' inventory as %s' % (file_id, inv.get_entry(file_id))) from err
+                except errors.InconsistentDelta as err:
+                    raise AssertionError(f'name {name_unicode!r} already in parent') from err
         self._inventory = inv
 
     def get_file_mtime(self, path):
@@ -1941,8 +1943,8 @@ class DirStateRevisionTree(InventoryTree):
         last_changed_revision = entry[1][parent_index][4]
         try:
             rev = self._repository.get_revision(last_changed_revision)
-        except errors.NoSuchRevision:
-            raise FileTimestampUnavailable(path)
+        except errors.NoSuchRevision as err:
+            raise FileTimestampUnavailable(path) from err
         return rev.timestamp
 
     def get_file_sha1(self, path, stat_value=None):
@@ -2232,7 +2234,7 @@ class InterDirStateTree(InterInventoryTree):
         raise NotImplementedError
 
     def iter_changes(self, include_unchanged=False,
-                     specific_files=None, pb=None, extra_trees=[],
+                     specific_files=None, pb=None, extra_trees=None,
                      require_versioned=True, want_unversioned=False):
         """Return the changes from source to target.
 
@@ -2253,6 +2255,8 @@ class InterDirStateTree(InterInventoryTree):
             output. An unversioned file is defined as one with (False, False)
             for the versioned pair.
         """
+        if extra_trees is None:
+            extra_trees = []
         # TODO: handle extra trees in the dirstate.
         if (extra_trees or specific_files == []):
             # we can't fast-path these cases (yet)

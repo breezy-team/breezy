@@ -50,7 +50,7 @@ class XMLRevisionSerializer(serializer.RevisionSerializer):
         return self._unpack_revision(self._read_element(f))
 
     def read_revision_from_string(self, xml_string):
-        return self._unpack_revision(fromstring(xml_string))
+        return self._unpack_revision(fromstring(xml_string))  # noqa: S314
 
     def _read_element(self, f):
         return ElementTree().parse(f)
@@ -84,7 +84,7 @@ class XMLInventorySerializer(serializer.InventorySerializer):
                                           entry_cache=entry_cache,
                                           return_from_cache=return_from_cache)
         except ParseError as e:
-            raise serializer.UnexpectedInventoryFormat(str(e))
+            raise serializer.UnexpectedInventoryFormat(str(e)) from e
 
     def _unpack_inventory(self, element, revision_id: Optional[bytes] = None, entry_cache=None, return_from_cache=False):
         raise NotImplementedError(self._unpack_inventory)
@@ -97,7 +97,7 @@ class XMLInventorySerializer(serializer.InventorySerializer):
             finally:
                 f.close()
         except ParseError as e:
-            raise serializer.UnexpectedInventoryFormat(str(e))
+            raise serializer.UnexpectedInventoryFormat(str(e)) from e
 
     def _read_element(self, f):
         return ElementTree().parse(f)

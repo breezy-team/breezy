@@ -1472,7 +1472,9 @@ class TestGetChildMap(TestGraphBase):
 
 
 class TestCachingParentsProvider(tests.TestCase):
-    """These tests run with:
+    """Test CachingParentsProvider.
+
+    These tests run with:
 
     self.inst_pp, a recording parents provider with a graph of a->b, and b is a
     ghost.

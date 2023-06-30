@@ -1772,7 +1772,7 @@ class TestInternalNode(TestCaseWithStore):
         child.map(None, (b"bar",), b"baz")
         node.add_node(b"b", child)
 
-        for child, node_key_filter in node._iter_nodes(None, key_filter=None):
+        for _child, node_key_filter in node._iter_nodes(None, key_filter=None):
             self.assertEqual(None, node_key_filter)
 
     def test__iter_nodes_splits_key_filter(self):
@@ -1789,7 +1789,7 @@ class TestInternalNode(TestCaseWithStore):
         # foo and bar both match exactly one leaf node, but 'cat' should not
         # match any, and should not be placed in one.
         key_filter = ((b'foo',), (b'bar',), (b'cat',))
-        for child, node_key_filter in node._iter_nodes(None,
+        for _child, node_key_filter in node._iter_nodes(None,
                                                        key_filter=key_filter):
             # each child could only match one key filter, so make sure it was
             # properly filtered
@@ -1811,7 +1811,7 @@ class TestInternalNode(TestCaseWithStore):
         # Note that 'ram' doesn't match anything, so it should be freely
         # ignored
         key_filter = ((b'foo',), (b'fob',), (b'bar',), (b'baz',), (b'ram',))
-        for child, node_key_filter in node._iter_nodes(None,
+        for _child, node_key_filter in node._iter_nodes(None,
                                                        key_filter=key_filter):
             # each child could match two key filters, so make sure they were
             # both included.
@@ -1865,7 +1865,7 @@ class TestInternalNode(TestCaseWithStore):
         key_filter = [(b'foo',), (b'faa',), (b'baz',)]
         nodes = list(node._iter_nodes(None, key_filter=key_filter))
         self.assertEqual(2, len(nodes))
-        for node, matches in nodes:
+        for _node, matches in nodes:
             self.assertEqual(1, len(matches))
 
     def test_iteritems_empty_new(self):

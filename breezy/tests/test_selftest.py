@@ -1364,7 +1364,7 @@ class TestTestCase(tests.TestCase):
         breezy.debug.set_debug_flag('a-flag')
 
         class TestThatRecordsFlags(tests.TestCase):
-            def test_foo(nested_self):
+            def test_foo(nested_self):  # noqa: N805
                 self.flags = breezy.debug.get_debug_flags()
         test = TestThatRecordsFlags('test_foo')
         test.run(self.make_test_result())
@@ -1376,7 +1376,7 @@ class TestTestCase(tests.TestCase):
     def test_disable_lock_checks(self):
         """The -Edisable_lock_checks flag disables thorough checks."""
         class TestThatRecordsFlags(tests.TestCase):
-            def test_foo(nested_self):
+            def test_foo(nested_self):  # noqa: N805
                 self.flags = breezy.debug.get_debug_flags()
                 self.test_lock_check_thorough = nested_self._lock_check_thorough
         self.change_selftest_debug_flags(set())
@@ -1395,7 +1395,7 @@ class TestTestCase(tests.TestCase):
 
     def test_this_fails_strict_lock_check(self):
         class TestThatRecordsFlags(tests.TestCase):
-            def test_foo(nested_self):
+            def test_foo(nested_self):  # noqa: N805
                 self.flags1 = breezy.debug.get_debug_flags()
                 self.thisFailsStrictLockCheck()
                 self.flags2 = breezy.debug.get_debug_flags()
@@ -2038,7 +2038,7 @@ class TestWarningTests(tests.TestCase):
 
     def test_callCatchWarnings(self):
         def meth(a, b):
-            warnings.warn("this is your last warning")
+            warnings.warn("this is your last warning", stacklevel=1)
             return a + b
         wlist, result = self.callCatchWarnings(meth, 1, 2)
         self.assertEqual(3, result)
@@ -2128,7 +2128,7 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
             def b(self):
                 pass
 
-            def c(telf):
+            def c(self):
                 pass
         return TestUtil.TestSuite([Test("a"), Test("b"), Test("c")])
 
@@ -2154,10 +2154,10 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
         results = []
 
         class Test:
-            def __call__(test, result):
+            def __call__(test, result):  # noqa: N805
                 test.run(result)
 
-            def run(test, result):
+            def run(test, result):  # noqa: N805
                 results.append(result)
 
             def countTestCases(self):

@@ -301,8 +301,8 @@ class TestShowLog(tests.TestCaseWithTransport):
         log.show_log(trunk.branch, lf, file_id)
         try:
             self.assertEqual(['2', '1.1.1'], [r.revno for r in lf.revisions])
-        except AssertionError:
-            raise tests.KnownFailure("bug #842695")
+        except AssertionError as err:
+            raise tests.KnownFailure("bug #842695") from err
 
 
 class TestFormatSignatureValidity(tests.TestCaseWithTransport):

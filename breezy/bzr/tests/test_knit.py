@@ -32,7 +32,7 @@ from ...tests import (
     features,
 )
 from .. import knit, knitpack_repo, pack, pack_repo
-from ..index import *
+from ..index import *  # noqa: F403
 from ..knit import (
     AnnotatedKnitContent,
     KnitContent,
@@ -1610,7 +1610,9 @@ class TestKnitIndex(KnitTests):
 class TestGraphIndexKnit(KnitTests):
     """Tests for knits using a GraphIndex rather than a KnitIndex."""
 
-    def make_g_index(self, name, ref_lists=0, nodes=[]):
+    def make_g_index(self, name, ref_lists=0, nodes=None):
+        if nodes is None:
+            nodes = []
         builder = GraphIndexBuilder(ref_lists)
         for node, references, value in nodes:
             builder.add_node(node, references, value)
@@ -1916,7 +1918,9 @@ class TestGraphIndexKnit(KnitTests):
 class TestNoParentsGraphIndexKnit(KnitTests):
     """Tests for knits using _KnitGraphIndex with no parents."""
 
-    def make_g_index(self, name, ref_lists=0, nodes=[]):
+    def make_g_index(self, name, ref_lists=0, nodes=None):
+        if nodes is None:
+            nodes = []
         builder = GraphIndexBuilder(ref_lists)
         for node, references in nodes:
             builder.add_node(node, references)

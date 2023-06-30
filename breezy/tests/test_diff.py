@@ -51,8 +51,8 @@ def external_udiff_lines(old, new, use_stringio=False):
         output = tempfile.TemporaryFile()
     try:
         diff.external_diff('old', old, 'new', new, output, diff_opts=['-u'])
-    except errors.NoDiff:
-        raise tests.TestSkipped('external "diff" not present to test')
+    except errors.NoDiff as err:
+        raise tests.TestSkipped('external "diff" not present to test') from err
     output.seek(0, 0)
     lines = output.readlines()
     output.close()
@@ -933,7 +933,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         self.assertReadableByAttrib(tree.basedir, 'file', r'work\\tree\\file$')
 
     def assertReadableByAttrib(self, cwd, relpath, regex):
-        proc = subprocess.Popen(['attrib', relpath],
+        proc = subprocess.Popen(['attrib', relpath],  # noqa: S607
                                 stdout=subprocess.PIPE,
                                 cwd=cwd)
         (result, err) = proc.communicate()
@@ -987,7 +987,7 @@ class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):
             dirname = scenario['info']['directory']
             filename = scenario['info']['filename']
 
-            self.overrideAttr(diffobj, '_fenc', lambda: encoding)
+            self.overrideAttr(diffobj, '_fenc', lambda: encoding)  # noqa: B023
             relpath = dirname + '/' + filename
             fullpath = diffobj._safe_filename('safe', relpath)
             self.assertEqual(fullpath,
@@ -1007,7 +1007,7 @@ class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):
             else:
                 encoding = 'iso-8859-1'
 
-            self.overrideAttr(diffobj, '_fenc', lambda: encoding)
+            self.overrideAttr(diffobj, '_fenc', lambda: encoding)  # noqa: B023
             relpath = dirname + '/' + filename
             fullpath = diffobj._safe_filename('safe', relpath)
             self.assertEqual(fullpath,

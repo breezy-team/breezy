@@ -28,7 +28,8 @@ import zlib
 """)
 
 from .. import chunk_writer, debug, fifo_cache, lru_cache, osutils, trace, transport
-from . import index, static_tuple
+from . import index as _mod_index
+from . import static_tuple
 from .index import _OPTION_KEY_ELEMENTS, _OPTION_LEN, _OPTION_NODE_REFS
 
 _BTSIGNATURE = b"B+Tree Graph Index 2\n"
@@ -95,7 +96,7 @@ class _LeafBuilderRow(_BuilderRow):
     """The stored state accumulated while writing out a leaf rows."""
 
 
-class BTreeBuilder(index.GraphIndexBuilder):
+class BTreeBuilder(_mod_index.GraphIndexBuilder):
     """A Builder for B+Tree based Graph indices.
 
     The resulting graph has the structure:
@@ -129,7 +130,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
         :param spill_at: Optional parameter controlling the maximum number
             of nodes that BTreeBuilder will hold in memory.
         """
-        index.GraphIndexBuilder.__init__(self, reference_lists=reference_lists,
+        _mod_index.GraphIndexBuilder.__init__(self, reference_lists=reference_lists,
                                          key_elements=key_elements)
         self._spill_at = spill_at
         self._backing_indices = []
@@ -140,7 +141,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
         self._optimize_for_size = False
 
     def add_node(self, key, value, references=()):
-        """Add a node to the index.
+        r"""Add a node to the index.
 
         If adding the node causes the builder to reach its spill_at threshold,
         disk spilling will be triggered.
@@ -151,14 +152,14 @@ class BTreeBuilder(index.GraphIndexBuilder):
         :param references: An iterable of iterables of keys. Each is a
             reference to another key.
         :param value: The value to associate with the key. It may be any
-            bytes as long as it does not contain \\0 or \\n.
+            bytes as long as it does not contain \0 or \n.
         """
         # Ensure that 'key' is a StaticTuple
         key = static_tuple.StaticTuple.from_sequence(key).intern()
         # we don't care about absent_references
         node_refs, _ = self._check_key_ref_value(key, references, value)
         if key in self._nodes:
-            raise index.BadIndexDuplicateKey(key, self)
+            raise _mod_index.BadIndexDuplicateKey(key, self)
         self._nodes[key] = static_tuple.StaticTuple(node_refs, value)
         if self._nodes_by_key is not None and self._key_length > 1:
             self._update_nodes_by_key(key, value, node_refs)
@@ -194,7 +195,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
             if len(self._backing_indices) == backing_pos:
                 self._backing_indices.append(None)
             self._backing_indices[backing_pos] = new_backing
-            for backing_pos in range(backing_pos):
+            for backing_pos in range(backing_pos):  # noqa: B020
                 self._backing_indices[backing_pos] = None
         else:
             self._backing_indices.append(new_backing)
@@ -263,7 +264,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
             # undecorate back to (pos, node)
             selected = selected[1]
             if last == selected[1][1]:
-                raise index.BadIndexDuplicateKey(last, self)
+                raise _mod_index.BadIndexDuplicateKey(last, self)
             last = selected[1][1]
             # Yield, with self as the index
             yield (self,) + selected[1][1:]
@@ -314,7 +315,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
             # then line is too big. raising the error avoids infinite recursion
             # searching for a suitably large page that will not be found.
             if new_leaf:
-                raise index.BadIndexKey(string_key)
+                raise _mod_index.BadIndexKey(string_key)
             # this key did not fit in the node:
             rows[-1].finish_node()
             key_line = string_key + b"\n"
@@ -524,7 +525,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
                 yield (self,) + node[1:]
         if self._key_length == 1:
             for key in keys:
-                index._sanity_check_key(self, key)
+                _mod_index._sanity_check_key(self, key)
                 try:
                     node = self._nodes[key]
                 except KeyError:
@@ -535,7 +536,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
                     yield self, key, node[1]
             return
         nodes_by_key = self._get_nodes_by_key()
-        yield from index._iter_entries_prefix(self, nodes_by_key, keys)
+        yield from _mod_index._iter_entries_prefix(self, nodes_by_key, keys)
 
     def _get_nodes_by_key(self):
         if self._nodes_by_key is None:
@@ -547,7 +548,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
                         key_dict = key_dict.setdefault(subkey, {})
                     key_dict[key[-1]] = key, value, references
             else:
-                for key, (references, value) in self._nodes.items():
+                for key, (references, value) in self._nodes.items():  # noqa: B007
                     key_dict = nodes_by_key
                     for subkey in key[:-1]:
                         key_dict = key_dict.setdefault(subkey, {})
@@ -984,7 +985,7 @@ class BTreeGraphIndex:
                 for key, (value, refs) in self._root_node.all_items():
                     yield (self, key, value, refs)
             else:
-                for key, (value, refs) in self._root_node.all_items():
+                for key, (value, refs) in self._root_node.all_items():  # noqa: B007
                     yield (self, key, value)
             return
         start_of_leaves = self._row_offsets[-2]
@@ -1004,7 +1005,7 @@ class BTreeGraphIndex:
                     yield (self, key, value, refs)
         else:
             for _, node in nodes:
-                for key, (value, refs) in node.all_items():
+                for key, (value, refs) in node.all_items():  # noqa: B007
                     yield (self, key, value)
 
     @staticmethod
@@ -1370,7 +1371,7 @@ class BTreeGraphIndex:
                     key_dict[key[-1]] = key_value
         if self._key_length == 1:
             for key in keys:
-                index._sanity_check_key(self, key)
+                _mod_index._sanity_check_key(self, key)
                 try:
                     if self.node_ref_lists:
                         value, node_refs = nodes[key]
@@ -1380,7 +1381,7 @@ class BTreeGraphIndex:
                 except KeyError:
                     pass
             return
-        yield from index._iter_entries_prefix(self, nodes_by_key, keys)
+        yield from _mod_index._iter_entries_prefix(self, nodes_by_key, keys)
 
     def key_count(self):
         """Return an estimate of the number of keys in this index.
@@ -1411,39 +1412,39 @@ class BTreeGraphIndex:
         """
         signature = bytes[0:len(self._signature())]
         if not signature == self._signature():
-            raise index.BadIndexFormatSignature(self._name, BTreeGraphIndex)
+            raise _mod_index.BadIndexFormatSignature(self._name, BTreeGraphIndex)
         lines = bytes[len(self._signature()):].splitlines()
         options_line = lines[0]
         if not options_line.startswith(_OPTION_NODE_REFS):
-            raise index.BadIndexOptions(self)
+            raise _mod_index.BadIndexOptions(self)
         try:
             self.node_ref_lists = int(options_line[len(_OPTION_NODE_REFS):])
-        except ValueError:
-            raise index.BadIndexOptions(self)
+        except ValueError as e:
+            raise _mod_index.BadIndexOptions(self) from e
         options_line = lines[1]
         if not options_line.startswith(_OPTION_KEY_ELEMENTS):
-            raise index.BadIndexOptions(self)
+            raise _mod_index.BadIndexOptions(self)
         try:
             self._key_length = int(options_line[len(_OPTION_KEY_ELEMENTS):])
-        except ValueError:
-            raise index.BadIndexOptions(self)
+        except ValueError as e:
+            raise _mod_index.BadIndexOptions(self) from e
         options_line = lines[2]
         if not options_line.startswith(_OPTION_LEN):
-            raise index.BadIndexOptions(self)
+            raise _mod_index.BadIndexOptions(self)
         try:
             self._key_count = int(options_line[len(_OPTION_LEN):])
-        except ValueError:
-            raise index.BadIndexOptions(self)
+        except ValueError as e:
+            raise _mod_index.BadIndexOptions(self) from e
         options_line = lines[3]
         if not options_line.startswith(_OPTION_ROW_LENGTHS):
-            raise index.BadIndexOptions(self)
+            raise _mod_index.BadIndexOptions(self)
         try:
             self._row_lengths = [int(length) for length in
                                  options_line[len(_OPTION_ROW_LENGTHS):].split(
                                      b',')
                                  if length]
-        except ValueError:
-            raise index.BadIndexOptions(self)
+        except ValueError as e:
+            raise _mod_index.BadIndexOptions(self) from e
         self._compute_row_offsets()
 
         # calculate the bytes we have processed

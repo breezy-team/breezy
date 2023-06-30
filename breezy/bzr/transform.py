@@ -1161,14 +1161,14 @@ class DiskTreeTransform(TreeTransformBase):
                     pass
             try:
                 osutils.delete_any(self._limbodir)
-            except OSError:
+            except OSError as e:
                 # We don't especially care *why* the dir is immortal.
-                raise ImmortalLimbo(self._limbodir)
+                raise ImmortalLimbo(self._limbodir) from e
             try:
                 if self._deletiondir is not None:
                     osutils.delete_any(self._deletiondir)
-            except OSError:
-                raise errors.ImmortalPendingDeletion(self._deletiondir)
+            except OSError as e:
+                raise errors.ImmortalPendingDeletion(self._deletiondir) from e
         finally:
             TreeTransformBase.finalize(self)
 
@@ -1283,8 +1283,8 @@ class DiskTreeTransform(TreeTransformBase):
         name = self._limbo_name(trans_id)
         try:
             os.link(path, name)
-        except PermissionError:
-            raise errors.HardLinkNotSupported(path)
+        except PermissionError as e:
+            raise errors.HardLinkNotSupported(path) from e
         try:
             unique_add(self._new_contents, trans_id, 'file')
         except BaseException:
@@ -1420,15 +1420,15 @@ class InventoryTreeTransform(DiskTreeTransform):
             try:
                 osutils.ensure_empty_directory_exists(
                     limbodir)
-            except errors.DirectoryNotEmpty:
-                raise errors.ExistingLimbo(limbodir)
+            except errors.DirectoryNotEmpty as e:
+                raise errors.ExistingLimbo(limbodir) from e
             deletiondir = urlutils.local_path_from_url(
                 tree._transport.abspath('pending-deletion'))
             try:
                 osutils.ensure_empty_directory_exists(
                     deletiondir)
-            except errors.DirectoryNotEmpty:
-                raise errors.ExistingPendingDeletion(deletiondir)
+            except errors.DirectoryNotEmpty as e:
+                raise errors.ExistingPendingDeletion(deletiondir) from e
         except BaseException:
             tree.unlock()
             raise
@@ -1700,7 +1700,7 @@ class InventoryTreeTransform(DiskTreeTransform):
                     o_sha1, o_st_val = self._observed_sha1s[trans_id]
                     st = osutils.lstat(full_path)
                     self._observed_sha1s[trans_id] = (o_sha1, st)
-        for path, trans_id in new_paths:
+        for _path, trans_id in new_paths:
             # new_paths includes stuff like workingtree conflicts. Only the
             # stuff in new_contents actually comes from limbo.
             if trans_id in self._limbo_files:
@@ -1970,8 +1970,8 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         trans_id = self._transform.trans_id_file_id(file_id)
         try:
             return self._final_paths._determine_path(trans_id)
-        except NoFinalPath:
-            raise errors.NoSuchId(self, file_id)
+        except NoFinalPath as e:
+            raise errors.NoSuchId(self, file_id) from e
 
     def extras(self):
         possible_extras = {self._transform.trans_id_tree_path(p) for p
@@ -2020,7 +2020,7 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
             raise _mod_transport.NoSuchFile(path)
         todo = [(child_trans_id, trans_id) for child_trans_id in
                 self._all_children(trans_id)]
-        for entry, trans_id in self._make_inv_entries(todo):
+        for entry, _trans_id in self._make_inv_entries(todo):
             yield entry
 
     def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):

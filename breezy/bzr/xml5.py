@@ -59,9 +59,9 @@ class InventorySerializer_v5(xml6.InventorySerializer_v6):
                                         return_from_cache=return_from_cache, root_id=root_id)
             try:
                 parent = byid[ie.parent_id]
-            except KeyError:
+            except KeyError as err:
                 raise errors.BzrError("parent_id {%s} not in inventory"
-                                      % (ie.parent_id,))
+                                      % (ie.parent_id,)) from err
             if ie.file_id in byid:
                 raise inventory.DuplicateFileId(ie.file_id, byid[ie.file_id])
             siblings = children[parent.file_id]

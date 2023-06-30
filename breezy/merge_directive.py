@@ -311,8 +311,8 @@ class BaseMergeDirective:
                     try:
                         submit_branch = \
                             _mod_branch.Branch.open(self.target_branch)
-                    except errors.NotBranchError:
-                        raise errors.TargetNotBranch(self.target_branch)
+                    except errors.NotBranchError as e:
+                        raise errors.TargetNotBranch(self.target_branch) from e
                     missing_revisions = []
                     bundle_revisions = {r.revision_id for r in
                                            info.real_revisions}

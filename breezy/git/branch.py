@@ -304,8 +304,8 @@ class GitTags(Tags):
         td = self.get_tag_dict()
         try:
             return td[tag_name]
-        except KeyError:
-            raise errors.NoSuchTag(tag_name)
+        except KeyError as err:
+            raise errors.NoSuchTag(tag_name) from err
 
 
 class LocalGitTagDict(GitTags):
@@ -332,8 +332,8 @@ class LocalGitTagDict(GitTags):
     def set_tag(self, name, revid):
         try:
             git_sha, mapping = self.branch.lookup_bzr_revision_id(revid)
-        except errors.NoSuchRevision:
-            raise errors.GhostTagsNotSupported(self)
+        except errors.NoSuchRevision as err:
+            raise errors.GhostTagsNotSupported(self) from err
         self.refs[tag_name_to_ref(name)] = git_sha
         self.branch._tag_refs = None
 
@@ -774,7 +774,7 @@ class LocalGitBranch(GitBranch):
             ret = list(graph.iter_lefthand_ancestry(
                 last_revid, (revision.NULL_REVISION, )))
         except errors.RevisionNotPresent as e:
-            raise errors.GhostRevisionsHaveNoRevno(last_revid, e.revision_id)
+            raise errors.GhostRevisionsHaveNoRevno(last_revid, e.revision_id) from e
         ret.reverse()
         return ret
 
@@ -1446,8 +1446,8 @@ class InterToGitBranch(branch.GenericInterBranch):
         if getattr(self.interrepo, 'fetch_revs', None):
             try:
                 revidmap = self.interrepo.fetch_revs(ret, lossy=lossy, limit=limit)
-            except NoPushSupport:
-                raise errors.NoRoundtrippingSupport(self.source, self.target)
+            except NoPushSupport as err:
+                raise errors.NoRoundtrippingSupport(self.source, self.target) from err
             return _mod_repository.FetchResult(revidmap={
                 old_revid: new_revid
                 for (old_revid, (new_sha, new_revid)) in revidmap.items()})
@@ -1478,8 +1478,8 @@ class InterToGitBranch(branch.GenericInterBranch):
             try:
                 result.revidmap, old_refs, new_refs = (
                     self.interrepo.fetch_refs(update_refs, lossy=False))
-            except NoPushSupport:
-                raise errors.NoRoundtrippingSupport(self.source, self.target)
+            except NoPushSupport as err:
+                raise errors.NoRoundtrippingSupport(self.source, self.target) from err
             (old_sha1, result.old_revid) = old_refs.get(
                 main_ref, (ZERO_SHA, NULL_REVISION))
             if result.old_revid is None:
@@ -1510,8 +1510,8 @@ class InterToGitBranch(branch.GenericInterBranch):
                 result.revidmap, old_refs, new_refs = (
                     self.interrepo.fetch_refs(
                         update_refs, lossy=lossy, overwrite=overwrite))
-            except NoPushSupport:
-                raise errors.NoRoundtrippingSupport(self.source, self.target)
+            except NoPushSupport as err:
+                raise errors.NoRoundtrippingSupport(self.source, self.target) from err
             (old_sha1, result.old_revid) = old_refs.get(
                 main_ref, (ZERO_SHA, NULL_REVISION))
             if lossy or result.old_revid is None:

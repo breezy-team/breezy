@@ -79,7 +79,7 @@ class DirtyTracker:
             self._wm = WatchManager()
         except OSError as e:
             if "EMFILE" in e.args[0]:
-                raise TooManyOpenFiles()
+                raise TooManyOpenFiles() from e
             raise
         self._process = _Process()
         self._notifier = Notifier(self._wm, self._process)

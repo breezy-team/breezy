@@ -74,12 +74,12 @@ def read_mergeable_from_transport(transport, filename, _do_directive=True):
     try:
         bytef, transport = do_catching_redirections(
             get_bundle, transport, redirected_transport)
-    except errors.TooManyRedirections:
-        raise errors.NotABundle(transport.clone(filename).base)
+    except errors.TooManyRedirections as e:
+        raise errors.NotABundle(transport.clone(filename).base) from e
     except (ConnectionResetError, ConnectionError):
         raise
     except (errors.TransportError, errors.PathError) as e:
-        raise errors.NotABundle(str(e))
+        raise errors.NotABundle(str(e)) from e
     except OSError as e:
         # jam 20060707
         # Abstraction leakage, SFTPTransport.get('directory')
@@ -88,7 +88,7 @@ def read_mergeable_from_transport(transport, filename, _do_directive=True):
         # just the string 'Failure'
         # StubSFTPServer does fail during get() (because of prefetch)
         # so it has an opportunity to translate the error.
-        raise errors.NotABundle(str(e))
+        raise errors.NotABundle(str(e)) from e
 
     if _do_directive:
         from .merge_directive import MergeDirective

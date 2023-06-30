@@ -66,10 +66,10 @@ class _TestLockableFiles_mixin:
         self.lockable.lock_write()
         try:
             self.assertRaises(AssertionError, self.lockable.break_lock)
-        except NotImplementedError:
+        except NotImplementedError as e:
             # this lock cannot be broken
             self.lockable.unlock()
-            raise TestNotApplicable(f"{self.lockable!r} is not breakable")
+            raise TestNotApplicable(f"{self.lockable!r} is not breakable") from e
         l2 = self.get_lockable()
         orig_factory = breezy.ui.ui_factory
         # silent ui - no need for stdout

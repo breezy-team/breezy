@@ -41,7 +41,7 @@ from ... import config, debug, errors, osutils, trace, transport, ui, urlutils
 from ...bzr.smart import medium
 from ...trace import mutter, mutter_callsite
 from ...transport import ConnectedTransport, NoSuchFile, UnusableRedirect
-from . import default_user_agent, ssl
+from . import default_user_agent
 
 # TODO: handle_response should be integrated into the http/__init__.py
 from .response import handle_response
@@ -374,9 +374,11 @@ class Request(urllib.request.Request):
        been made.
     """
 
-    def __init__(self, method, url, data=None, headers={},
+    def __init__(self, method, url, data=None, headers=None,
                  origin_req_host=None, unverifiable=False,
                  connection=None, parent=None):
+        if headers is None:
+            headers = {}
         urllib.request.Request.__init__(
             self, url, data, headers,
             origin_req_host, unverifiable)
@@ -484,10 +486,10 @@ class ConnectionHandler(urllib.request.BaseHandler):
                 host, proxied_host=request.proxied_host,
                 report_activity=self._report_activity,
                 ca_certs=self.ca_certs)
-        except http.client.InvalidURL:
+        except http.client.InvalidURL as e:
             # There is only one occurrence of InvalidURL in http.client
             raise urlutils.InvalidURL(request.get_full_url(),
-                                      extra='nonnumeric port')
+                                      extra='nonnumeric port') from e
 
         return connection
 
@@ -721,7 +723,7 @@ class AbstractHTTPHandler(urllib.request.AbstractHTTPHandler):
                 try:
                     version = version % (resp.version / 10,
                                          resp.version % 10)
-                except:
+                except BaseException:
                     version = f'HTTP/{resp.version!r}'
                 trace.mutter(f'< {version} {resp.code} {resp.msg}')
                 # Use the raw header lines instead of treating resp.info() as a
@@ -1430,7 +1432,7 @@ def get_digest_algorithm_impls(algorithm):
     H = None
     KD = None
     if algorithm == 'MD5':
-        def H(x): return hashlib.md5(x).hexdigest()
+        def H(x): return hashlib.md5(x).hexdigest()  # noqa: S324
     elif algorithm == 'SHA':
         H = osutils.sha_string
     if H is not None:
@@ -2440,7 +2442,7 @@ class SmartClientHTTPMedium(medium.SmartClientMedium):
                 raise errors.UnexpectedHttpStatus(
                     t._remote_path('.bzr/smart'), code)
         except (errors.InvalidHttpResponse, ConnectionResetError) as e:
-            raise errors.SmartProtocolError(str(e))
+            raise errors.SmartProtocolError(str(e)) from e
         return body_filelike
 
     def _report_activity(self, bytes, direction):

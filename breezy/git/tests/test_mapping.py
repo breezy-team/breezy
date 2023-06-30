@@ -121,7 +121,7 @@ class TestImportCommit(tests.TestCase):
         c.author_timezone = 60 * 3
         c.author = b"Author"
         try:
-            c.id
+            c.id  # noqa: B018
         except TypeError:  # old version of dulwich
             self.skipTest('dulwich too old')
         mapping = BzrGitMappingv1()

@@ -230,7 +230,7 @@ class LateReadError:
         # If there was an error raised, prefer the original one
         try:
             self.close()
-        except:
+        except BaseException:
             if exc_type is None:
                 raise
         return False
@@ -304,8 +304,8 @@ class FileFileStream(FileStream):
         self.file_handle.flush()
         try:
             fileno = self.file_handle.fileno()
-        except AttributeError:
-            raise errors.TransportNotPossible()
+        except AttributeError as err:
+            raise errors.TransportNotPossible() from err
         osutils.fdatasync(fileno)
 
     def write(self, bytes):

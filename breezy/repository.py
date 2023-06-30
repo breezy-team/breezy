@@ -16,7 +16,7 @@
 
 __docformat__ = "google"
 
-from typing import Iterable, Optional
+from typing import TYPE_CHECKING, Iterable, Optional
 
 from .lazy_import import lazy_import
 
@@ -36,6 +36,9 @@ from .inter import InterObject
 from .lock import LogicalLockResult, _RelockDebugMixin
 from .revisiontree import RevisionTree
 from .trace import log_exception_quietly, mutter, mutter_callsite, note, warning
+
+if TYPE_CHECKING:
+    from .revisiontree import RevisionTree
 
 # Old formats display a warning, but only once
 _deprecation_warning_done = False
@@ -863,7 +866,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         against the revision one as get_revision does: but it should only
         be used by reconcile, or reconcile-alike commands that are correcting
         or testing the revision graph.
-        """
+        """  # noqa: D403
         raise NotImplementedError(self.get_revision_reconcile)
 
     def get_revisions(self, revision_ids):
@@ -991,7 +994,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         except errors.RevisionNotPresent as err:
             if err.revision_id == known_revid:
                 # The start revision (known_revid) wasn't found.
-                raise errors.NoSuchRevision(self, known_revid)
+                raise errors.NoSuchRevision(self, known_revid) from err
             # This is a stacked repository with no fallbacks, or a there's a
             # left-hand ghost.  Either way, even though the revision named in
             # the error isn't in this repo, we know it's the next step in this
@@ -1227,13 +1230,13 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             if isinstance(revision_id, str):
                 try:
                     revision_id.encode('ascii')
-                except UnicodeEncodeError:
-                    raise errors.NonAsciiRevisionId(method, self)
+                except UnicodeEncodeError as err:
+                    raise errors.NonAsciiRevisionId(method, self) from err
             else:
                 try:
                     revision_id.decode('ascii')
-                except UnicodeDecodeError:
-                    raise errors.NonAsciiRevisionId(method, self)
+                except UnicodeDecodeError as err:
+                    raise errors.NonAsciiRevisionId(method, self) from err
 
 
 class RepositoryFormatRegistry(controldir.ControlComponentFormatRegistry):

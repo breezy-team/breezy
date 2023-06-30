@@ -103,7 +103,7 @@ class UTextWrapper(textwrap.TextWrapper):
         return s, ''
 
     def _fix_sentence_endings(self, chunks):
-        """_fix_sentence_endings(chunks : [string]).
+        r"""_fix_sentence_endings(chunks : [string]).
 
         Correct for sentence endings buried in 'chunks'.  Eg. when the
         original text contains "... foo.\nBar ...", munge_whitespace()

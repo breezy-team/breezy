@@ -131,13 +131,13 @@ def show_tree_status(wt,
             try:
                 old = revision[0].as_tree(wt.branch)
             except errors.NoSuchRevision as e:
-                raise errors.CommandError(str(e))
+                raise errors.CommandError(str(e)) from e
             if (len(revision) > 1) and (revision[1].spec is not None):
                 try:
                     new = revision[1].as_tree(wt.branch)
                     new_is_working_tree = False
                 except errors.NoSuchRevision as e:
-                    raise errors.CommandError(str(e))
+                    raise errors.CommandError(str(e)) from e
             else:
                 new = wt
         with old.lock_read(), new.lock_read():

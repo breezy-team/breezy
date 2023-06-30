@@ -416,13 +416,13 @@ class BzrGitMapping(foreign.VcsMapping):
             nonlocal committer, message, git_metadata
             try:
                 committer = commit.committer.decode(encoding)
-            except LookupError:
-                raise UnknownCommitEncoding(encoding)
+            except LookupError as err:
+                raise UnknownCommitEncoding(encoding) from err
             try:
                 if commit.committer != commit.author:
                     properties['author'] = commit.author.decode(encoding)
-            except LookupError:
-                raise UnknownCommitEncoding(encoding)
+            except LookupError as err:
+                raise UnknownCommitEncoding(encoding) from err
             message, git_metadata = self._decode_commit_message(
                 properties, commit.message, encoding)
 
@@ -545,8 +545,8 @@ class BzrGitMappingExperimental(BzrGitMappingv1):
         message, metadata = self._extract_bzr_metadata(properties, message)
         try:
             return message.decode(encoding), metadata
-        except LookupError:
-            raise UnknownCommitEncoding(encoding)
+        except LookupError as err:
+            raise UnknownCommitEncoding(encoding) from err
 
     def _encode_commit_message(self, rev, message, encoding):
         ret = message.encode(encoding)

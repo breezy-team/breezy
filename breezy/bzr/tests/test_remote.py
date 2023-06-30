@@ -233,8 +233,8 @@ class FakeClient(_SmartClient):
     def _get_next_response(self):
         try:
             response_tuple = self.responses.pop(0)
-        except IndexError:
-            raise AssertionError(f"{self!r} didn't expect any more calls")
+        except IndexError as e:
+            raise AssertionError(f"{self!r} didn't expect any more calls") from e
         if response_tuple[0] == b'unknown':
             raise errors.UnknownSmartMethod(response_tuple[1])
         elif response_tuple[0] == b'error':
@@ -247,10 +247,10 @@ class FakeClient(_SmartClient):
             return
         try:
             next_call = self._expected_calls.pop(0)
-        except IndexError:
+        except IndexError as e:
             raise AssertionError("%r didn't expect any more calls "
                                  "but got %r%r"
-                                 % (self, method, args,))
+                                 % (self, method, args,)) from e
         if next_call is None:
             return
         if method != next_call[0] or args != next_call[1]:

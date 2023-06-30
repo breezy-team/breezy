@@ -149,7 +149,7 @@ class UnpackHighresDateTests(tests.TestCase):
         t -= 24 * 3600 * 365 * 2  # Start 2 years ago
         o = -12 * 3600
         for _count in range(500):
-            t += random.random() * 24 * 3600 * 30
+            t += random.random() * 24 * 3600 * 30  # noqa: S311
             try:
                 time.gmtime(t + o)
             except (OverflowError, ValueError):

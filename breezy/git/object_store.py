@@ -674,13 +674,13 @@ class BazaarObjectStore(BaseObjectStore):
                     (revid, tree_sha, verifiers) = type_data
                     try:
                         rev = self.repository.get_revision(revid)
-                    except errors.NoSuchRevision:
+                    except errors.NoSuchRevision as err:
                         if revid == NULL_REVISION:
                             raise AssertionError(
-                                "should not try to look up NULL_REVISION")
+                                "should not try to look up NULL_REVISION") from err
                         trace.mutter('entry for %s %s in shamap: %r, but not '
                                      'found in repository', kind, sha, type_data)
-                        raise KeyError(sha)
+                        raise KeyError(sha) from err
                     # FIXME: the type data should say whether conversion was
                     # lossless
                     commit = self._reconstruct_commit(
@@ -697,17 +697,17 @@ class BazaarObjectStore(BaseObjectStore):
                     try:
                         tree = self.tree_cache.revision_tree(revid)
                         rev = self.repository.get_revision(revid)
-                    except errors.NoSuchRevision:
+                    except errors.NoSuchRevision as err:
                         trace.mutter(
                             'entry for %s %s in shamap: %r, but not found in '
                             'repository', kind, sha, type_data)
-                        raise KeyError(sha)
+                        raise KeyError(sha) from err
                     unusual_modes = extract_unusual_modes(rev)
                     try:
                         return self._reconstruct_tree(
                             fileid, revid, tree, unusual_modes, expected_sha=sha)
-                    except errors.NoSuchRevision:
-                        raise KeyError(sha)
+                    except errors.NoSuchRevision as err:
+                        raise KeyError(sha) from err
                 else:
                     raise AssertionError(f"Unknown object type '{kind}'")
             else:

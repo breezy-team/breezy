@@ -56,7 +56,7 @@ unquote_to_bytes = urlparse.unquote_to_bytes
 unquote = urlparse.unquote
 
 
-from ._urlutils_rs import (  # noqa: F401  # noqa: F401  # noqa: F401  # noqa: F401  # noqa: F401  # noqa: F401  # noqa: F401  # noqa: F401  # noqa: F401  # noqa: F401  # noqa: F401  # noqa: F401  # noqa: F401  # noqa: F401  # noqa: F401  # noqa: F401
+from ._urlutils_rs import (  # noqa: F401
     _find_scheme_and_separator,
     basename,
     combine_paths,
@@ -92,7 +92,6 @@ _posix_local_path_from_url = posix_rs.local_path_from_url  # noqa: F401
 MIN_ABS_FILEURL_LENGTH = len('file:///')
 WIN32_MIN_ABS_FILEURL_LENGTH = len('file:///C:/')
 
-local_path_from_url = _posix_local_path_from_url
 if sys.platform == 'win32':
     MIN_ABS_FILEURL_LENGTH = WIN32_MIN_ABS_FILEURL_LENGTH
 
@@ -241,7 +240,7 @@ def determine_relative_path(from_path, to_path):
     from_segments = osutils.splitpath(from_path)
     to_segments = osutils.splitpath(to_path)
     count = -1
-    for count, (from_element, to_element) in enumerate(zip(from_segments,
+    for count, (from_element, to_element) in enumerate(zip(from_segments,  # noqa: B007
                                                            to_segments)):
         if from_element != to_element:
             break
@@ -307,8 +306,8 @@ class URL:
         elif isinstance(url, str):
             try:
                 url = url.encode()
-            except UnicodeEncodeError:
-                raise InvalidURL(url)
+            except UnicodeEncodeError as err:
+                raise InvalidURL(url) from err
         else:
             raise InvalidURL(url)
         (scheme, netloc, path, params,
@@ -327,8 +326,8 @@ class URL:
             if port:
                 try:
                     port = int(port)
-                except ValueError:
-                    raise InvalidURL(f'invalid port number {port} in url:\n{url}')
+                except ValueError as err:
+                    raise InvalidURL(f'invalid port number {port} in url:\n{url}') from err
             else:
                 port = None
         if host != "" and host[0] == '[' and host[-1] == ']':  # IPv6

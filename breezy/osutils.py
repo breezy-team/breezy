@@ -17,7 +17,6 @@
 import codecs
 import errno
 import os
-import stat
 import sys
 import time
 from typing import List
@@ -167,11 +166,6 @@ def _win32_rename(old, new):
         raise
 
 
-def _mac_getcwd():
-    import unicodedata
-    return unicodedata.normalize('NFC', os.getcwd())
-
-
 def _rename_wrap_exception(rename_func):
     """Adds extra information to any exceptions that come from rename().
 
@@ -240,10 +234,6 @@ if sys.platform == 'win32':
         """Replacer for shutil.rmtree: could remove readonly dirs/files."""
         return shutil.rmtree(path, ignore_errors, onerror)
 
-elif sys.platform == 'darwin':
-    getcwd = _mac_getcwd
-
-
 def get_terminal_encoding(trace=False):
     """Find the best encoding for printing to the screen.
 
@@ -297,14 +287,7 @@ def get_terminal_encoding(trace=False):
     return output_encoding
 
 
-def isdir(f):
-    """True if f is an accessible directory."""
-    try:
-        return stat.S_ISDIR(os.lstat(f)[stat.ST_MODE])
-    except OSError:
-        return False
-
-
+isdir = _osutils_rs.isdir
 is_inside = _osutils_rs.is_inside
 is_inside_any = _osutils_rs.is_inside_any
 is_inside_or_parent_of_any = _osutils_rs.is_inside_or_parent_of_any
@@ -323,7 +306,6 @@ local_time_offset = _osutils_rs.local_time_offset
 format_date = _osutils_rs.format_date
 format_date_with_offset_in_original_timezone = _osutils_rs.format_date_with_offset_in_original_timezone
 format_local_date = _osutils_rs.format_local_date
-format_delta = _osutils_rs.format_delta
 compact_date = _osutils_rs.compact_date
 format_highres_date = _osutils_rs.format_highres_date
 unpack_highres_date = _osutils_rs.unpack_highres_date
@@ -386,9 +368,20 @@ def report_extension_load_failures():
     # https://bugs.launchpad.net/bzr/+bug/430529
 
 
-from ._osutils_rs import (
-    _accessible_normalized_filename,  # noqa: F401; noqa: F401
-    )
+from ._osutils_rs import (  # noqa: F401
+    _accessible_normalized_filename,  # noqa: F401
+    _inaccessible_normalized_filename,
+    check_legal_path,
+    chunks_to_lines,  # noqa: F401
+    chunks_to_lines_iter,
+    delete_any,
+    get_host_name,  # noqa: F401
+    link_or_copy,
+    local_concurrency,
+    normalized_filename,  # noqa: F401
+    normalizes_filenames,
+    split_lines,  # noqa: F401
+)
 
 readlink = _osutils_rs.readlink
 contains_whitespace = _osutils_rs.contains_whitespace
@@ -475,8 +468,8 @@ def safe_unicode(unicode_or_utf8_string):
         return unicode_or_utf8_string
     try:
         return unicode_or_utf8_string.decode('utf8')
-    except UnicodeDecodeError:
-        raise errors.BzrBadParameterNotUnicode(unicode_or_utf8_string)
+    except UnicodeDecodeError as e:
+        raise errors.BzrBadParameterNotUnicode(unicode_or_utf8_string) from e
 
 
 def safe_utf8(unicode_or_utf8_string):
@@ -492,8 +485,8 @@ def safe_utf8(unicode_or_utf8_string):
         try:
             # Make sure it is a valid utf-8 string
             unicode_or_utf8_string.decode('utf-8')
-        except UnicodeDecodeError:
-            raise errors.BzrBadParameterNotUnicode(unicode_or_utf8_string)
+        except UnicodeDecodeError as e:
+            raise errors.BzrBadParameterNotUnicode(unicode_or_utf8_string) from e
         return unicode_or_utf8_string
     return unicode_or_utf8_string.encode('utf-8')
 
@@ -908,7 +901,7 @@ def send_all(sock, bytes, report_activity=None):
         except OSError as e:
             if e.args[0] in _end_of_stream_errors:
                 raise ConnectionResetError(
-                    "Error trying to write to socket", e)
+                    "Error trying to write to socket", e) from e
             if e.args[0] != errno.EINTR:
                 raise
         else:

@@ -510,7 +510,9 @@ class TestCaseWithGroupCompressVersionedFiles(
 
 class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
 
-    def make_g_index(self, name, ref_lists=0, nodes=[]):
+    def make_g_index(self, name, ref_lists=0, nodes=None):
+        if nodes is None:
+            nodes = []
         builder = btree_index.BTreeBuilder(ref_lists)
         for node, references, value in nodes:
             builder.add_node(node, references, value)

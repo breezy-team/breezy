@@ -404,23 +404,23 @@ class TransportRefsContainer(RefsContainer):
         try:
             transport.local_abspath(
                 urlutils.quote_from_bytes(name))
-        except NotLocalUrl:
+        except NotLocalUrl as err:
             # This is racy, but what can we do?
             if transport.has(lockname):
-                raise LockContention(name)
+                raise LockContention(name) from err
             transport.put_bytes(lockname, b'Locked by brz-git')
             return LogicalLockResult(lambda: transport.delete(lockname))
         else:
             try:
                 gf = TransportGitFile(transport, urlutils.quote_from_bytes(name), 'wb')
             except FileLocked as e:
-                raise LockContention(name, e)
+                raise LockContention(name, e) from e
             else:
                 def unlock():
                     try:
                         transport.delete(lockname)
-                    except NoSuchFile:
-                        raise LockBroken(lockname)
+                    except NoSuchFile as err:
+                        raise LockBroken(lockname) from err
                     # GitFile.abort doesn't care if the lock has already
                     # disappeared
                     gf.abort()
@@ -580,8 +580,8 @@ class TransportRepo(BaseRepo):
         if not bare:
             try:
                 transport.mkdir(".git")
-            except FileExists:
-                raise AlreadyControlDirError(transport.base)
+            except FileExists as err:
+                raise AlreadyControlDirError(transport.base) from err
             control_transport = transport.clone(".git")
         else:
             control_transport = transport
@@ -592,8 +592,8 @@ class TransportRepo(BaseRepo):
                 pass
         try:
             control_transport.mkdir(OBJECTDIR)
-        except FileExists:
-            raise AlreadyControlDirError(transport.base)
+        except FileExists as err:
+            raise AlreadyControlDirError(transport.base) from err
         TransportObjectStore.init(control_transport.clone(OBJECTDIR))
         ret = cls(transport, bare)
         ret.refs.set_symbolic_ref(b"HEAD", b"refs/heads/master")

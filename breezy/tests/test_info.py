@@ -299,8 +299,8 @@ class TestInfo(tests.TestCaseWithTransport):
             'repo/bound_branch')
         try:
             bound_branch.bind(branch)
-        except _mod_branch.BindingUnsupported:
-            raise tests.TestNotApplicable('format does not support bound branches')
+        except _mod_branch.BindingUnsupported as err:
+            raise tests.TestNotApplicable('format does not support bound branches') from err
         self.assertEqual(
             [('shared repository', bound_branch.repository.controldir.user_url),
              ('repository branch', bound_branch.controldir.user_url),

@@ -54,7 +54,8 @@ class SubversionBranchUrlFinder:
         root = self.find_root(uuid, url)
         if root is None:
             return None
-        assert url.startswith(root)
+        if not url.startswith(root):
+            raise AssertionError(f"URL {url} does not start with root {root}")
         return url[len(root):].strip("/")
 
 

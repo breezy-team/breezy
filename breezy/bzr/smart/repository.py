@@ -315,7 +315,7 @@ class SmartServerRepositoryGetRevIdForRevno(SmartServerRepositoryReadLocked):
             if err.revision != known_pair[1]:
                 raise AssertionError(
                     'get_rev_id_for_revno raised RevisionNotPresent for '
-                    'non-initial revision: ' + err.revision)
+                    'non-initial revision: ' + err.revision) from err
             return FailedSmartServerResponse(
                 (b'nosuchrevision', err.revision))
         except errors.RevnoOutOfBounds as e:
@@ -880,7 +880,7 @@ class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
             self.insert_result = self.repository._get_sink().insert_stream(
                 stream, src_format, self.tokens)
             self.insert_ok = True
-        except:
+        except BaseException:
             self.insert_exception = sys.exc_info()
             self.insert_ok = False
 
@@ -1136,7 +1136,7 @@ class SmartServerRepositoryPack(SmartServerRepositoryRequest):
 
 
 class SmartServerRepositoryIterFilesBytes(SmartServerRepositoryRequest):
-    """Iterate over the contents of files.
+    r"""Iterate over the contents of files.
 
     The client sends a list of desired files to stream, one
     per line, and as tuples of file id and revision, separated by
