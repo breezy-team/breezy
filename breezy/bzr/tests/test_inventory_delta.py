@@ -136,8 +136,7 @@ None\x00/\x00an-id\x00\x00a@e\xc3\xa5ample.com--2004\x00dir\x00\x00
         deserializer = inventory_delta.InventoryDeltaDeserializer()
         parse_result = deserializer.parse_text_bytes(osutils.split_lines(root_only_lines))
         expected_entry = inventory.make_entry(
-            'directory', '', None, b'an-id')
-        expected_entry.revision = b'a@e\xc3\xa5ample.com--2004'
+            'directory', '', None, b'an-id', revision=b'a@e\xc3\xa5ample.com--2004')
         self.assertEqual(
             (b'null:', b'entry-version', True, True,
              InventoryDelta([(None, '', b'an-id', expected_entry)])),
@@ -189,8 +188,7 @@ None\x00/\x00an-id\x00\x00parent-id\x00dir\x00\x00
         parse_result = deserializer.parse_text_bytes(
             osutils.split_lines(root_only_unversioned))
         expected_entry = inventory.make_entry(
-            'directory', '', None, b'TREE_ROOT')
-        expected_entry.revision = b'entry-version'
+            'directory', '', None, b'TREE_ROOT', revision=b'entry-version')
         self.assertEqual(
             (b'null:', b'entry-version', False, False,
              InventoryDelta([(None, '', b'TREE_ROOT', expected_entry)])),
@@ -279,10 +277,7 @@ None\x00/\x00TREE_ROOT\x00\x00a@e\xc3\xa5ample.com--2004\x00dir
         deserializer = inventory_delta.InventoryDeltaDeserializer()
         parse_result = deserializer.parse_text_bytes(osutils.split_lines(lines))
         expected_entry = inventory.make_entry(
-            'file', 'new', b'an-id', b'file-id')
-        expected_entry.revision = b'version'
-        expected_entry.text_size = 123
-        expected_entry.text_sha1 = fake_sha
+            'file', 'new', b'an-id', b'file-id', revision=b'version', text_size=123, text_sha1=fake_sha)
         delta = parse_result[4]
         self.assertEqual(
             (None, 'new', b'file-id', expected_entry), delta[-1])
@@ -313,8 +308,7 @@ class TestSerialization(TestCase):
     def test_root_only_to_lines(self):
         old_inv = Inventory(None)
         new_inv = Inventory(None)
-        root = new_inv.make_entry('directory', '', None, b'an-id')
-        root.revision = b'a@e\xc3\xa5ample.com--2004'
+        root = new_inv.make_entry('directory', '', None, b'an-id', revision=b'a@e\xc3\xa5ample.com--2004')
         new_inv.add(root)
         delta = new_inv._make_delta(old_inv)
         serializer = inventory_delta.InventoryDeltaSerializer(
@@ -325,9 +319,8 @@ class TestSerialization(TestCase):
     def test_unversioned_root(self):
         old_inv = Inventory(None)
         new_inv = Inventory(None)
-        root = new_inv.make_entry('directory', '', None, b'TREE_ROOT')
         # Implicit roots are considered modified in every revision.
-        root.revision = b'entry-version'
+        root = new_inv.make_entry('directory', '', None, b'TREE_ROOT', revision=b'entry-version')
         new_inv.add(root)
         delta = new_inv._make_delta(old_inv)
         serializer = inventory_delta.InventoryDeltaSerializer(
@@ -344,8 +337,7 @@ class TestSerialization(TestCase):
     def test_unversioned_non_root_errors(self):
         old_inv = Inventory(None)
         new_inv = Inventory(None)
-        root = new_inv.make_entry('directory', '', None, b'TREE_ROOT')
-        root.revision = b'a@e\xc3\xa5ample.com--2004'
+        root = new_inv.make_entry('directory', '', None, b'TREE_ROOT', revision=b'a@e\xc3\xa5ample.com--2004')
         new_inv.add(root)
         non_root = new_inv.make_entry('directory', 'foo', root.file_id, b'id')
         new_inv.add(non_root)
@@ -372,8 +364,7 @@ class TestSerialization(TestCase):
     def test_nonrichroot_versioned_root_errors(self):
         old_inv = Inventory(None)
         new_inv = Inventory(None)
-        root = new_inv.make_entry('directory', '', None, b'TREE_ROOT')
-        root.revision = b'a@e\xc3\xa5ample.com--2004'
+        root = new_inv.make_entry('directory', '', None, b'TREE_ROOT', revision=b'a@e\xc3\xa5ample.com--2004')
         new_inv.add(root)
         delta = new_inv._make_delta(old_inv)
         serializer = inventory_delta.InventoryDeltaSerializer(
@@ -386,13 +377,10 @@ class TestSerialization(TestCase):
     def test_tree_reference_disabled(self):
         old_inv = Inventory(None)
         new_inv = Inventory(None)
-        root = new_inv.make_entry('directory', '', None, b'TREE_ROOT')
-        root.revision = b'a@e\xc3\xa5ample.com--2004'
+        root = new_inv.make_entry('directory', '', None, b'TREE_ROOT', revision=b'a@e\xc3\xa5ample.com--2004')
         new_inv.add(root)
         non_root = new_inv.make_entry(
-            'tree-reference', 'foo', root.file_id, b'id')
-        non_root.revision = b'changed'
-        non_root.reference_revision = b'subtree-version'
+            'tree-reference', 'foo', root.file_id, b'id', revision=b'changed', reference_revision=b'subtree-version')
         new_inv.add(non_root)
         delta = new_inv._make_delta(old_inv)
         serializer = inventory_delta.InventoryDeltaSerializer(
@@ -406,13 +394,10 @@ class TestSerialization(TestCase):
     def test_tree_reference_enabled(self):
         old_inv = Inventory(None)
         new_inv = Inventory(None)
-        root = new_inv.make_entry('directory', '', None, b'TREE_ROOT')
-        root.revision = b'a@e\xc3\xa5ample.com--2004'
+        root = new_inv.make_entry('directory', '', None, b'TREE_ROOT', revision=b'a@e\xc3\xa5ample.com--2004')
         new_inv.add(root)
         non_root = new_inv.make_entry(
-            'tree-reference', 'foo', root.file_id, b'id')
-        non_root.revision = b'changed'
-        non_root.reference_revision = b'subtree-version'
+            'tree-reference', 'foo', root.file_id, b'id', revision=b'changed', reference_revision=b'subtree-version')
         new_inv.add(non_root)
         delta = new_inv._make_delta(old_inv)
         serializer = inventory_delta.InventoryDeltaSerializer(
@@ -421,8 +406,7 @@ class TestSerialization(TestCase):
                          serializer.delta_to_lines(NULL_REVISION, b'entry-version', delta))
 
     def test_to_inventory_root_id_versioned_not_permitted(self):
-        root_entry = inventory.make_entry('directory', '', None, b'TREE_ROOT')
-        root_entry.revision = b'some-version'
+        root_entry = inventory.make_entry('directory', '', None, b'TREE_ROOT', revision=b'some-version')
         delta = InventoryDelta([(None, '', b'TREE_ROOT', root_entry)])
         serializer = inventory_delta.InventoryDeltaSerializer(
             versioned_root=False, tree_references=True)

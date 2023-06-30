@@ -296,9 +296,9 @@ class TestsNeedingReweave(TestReconcile):
     def test_text_from_ghost_revision(self):
         repo = self.make_repository('text-from-ghost')
         inv = Inventory(revision_id=b'final-revid', root_id=None)
-        root = InventoryDirectory(b'TREE_ROOT', "", None, b'root-revid')
+        root = InventoryDirectory(b'TREE_ROOT', "", None, revision=b'root-revid')
         inv.add(root)
-        ie = inv.add_path('bla', 'file', b'myfileid', b'ghostrevid', text_size=42, text_sha1=b"bee68c8acd989f5f1765b4660695275948bf5c00")
+        inv.add_path('bla', 'file', b'myfileid', revision=b'ghostrevid', text_size=42, text_sha1=b"bee68c8acd989f5f1765b4660695275948bf5c00")
         rev = breezy.revision.Revision(timestamp=0,
                                        timezone=None,
                                        committer="Foo Bar <foo@example.com>",

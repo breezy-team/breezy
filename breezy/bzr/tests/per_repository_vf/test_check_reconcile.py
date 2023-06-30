@@ -19,6 +19,8 @@
 That is, tests for reconcile and check.
 """
 
+from typing import List
+
 from breezy import osutils
 from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository,
@@ -27,7 +29,7 @@ from breezy.bzr.tests.per_repository_vf import (
 from breezy.tests import TestNotApplicable, multiply_scenarios
 
 from ....repository import WriteGroup
-from ....revision import NULL_REVISION, Revision
+from ....revision import NULL_REVISION, Revision, RevisionID
 from ....tests.scenarios import load_tests_apply_scenarios
 from ...inventory import ROOT_ID, Inventory, InventoryDirectory, InventoryFile
 
@@ -787,7 +789,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
             factory(repo)
             return repo
 
-    def add_revision(self, repo, revision_id, inv, parent_ids):
+    def add_revision(self, repo, revision_id: RevisionID, inv: Inventory, parent_ids: List[RevisionID]) -> None:
         """Add a revision with a given inventory and parents to a repository.
 
         :param repo: a repository.

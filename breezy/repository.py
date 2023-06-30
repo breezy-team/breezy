@@ -34,7 +34,6 @@ from . import revision as _mod_revision
 from .decorators import only_raises
 from .inter import InterObject
 from .lock import LogicalLockResult, _RelockDebugMixin
-from .revisiontree import RevisionTree
 from .trace import log_exception_quietly, mutter, mutter_callsite, note, warning
 
 if TYPE_CHECKING:

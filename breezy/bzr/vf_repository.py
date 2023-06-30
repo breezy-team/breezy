@@ -60,7 +60,13 @@ from ..repository import (
     WriteGroup,
 )
 from ..trace import mutter, note
-from .inventory import Inventory, InventoryDirectory, InventoryFile, InventoryLink, TreeReference
+from .inventory import (
+    Inventory,
+    InventoryDirectory,
+    InventoryFile,
+    InventoryLink,
+    TreeReference,
+)
 from .inventory_delta import InventoryDelta
 from .inventorytree import InventoryTreeChange
 from .repository import MetaDirRepository, RepositoryFormatMetaDir
