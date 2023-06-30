@@ -6,5 +6,5 @@ pub trait Branch {
 
     fn name(&self) -> String;
 
-    fn get_tags(&self) -> Box<dyn Tags>;
+    fn tags(&self) -> Box<dyn Tags>;
 }
