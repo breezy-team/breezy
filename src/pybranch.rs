@@ -4,6 +4,12 @@ use pyo3::prelude::*;
 
 pub struct PyBranch(PyObject);
 
+impl PyBranch {
+    pub fn new(o: PyObject) -> Self {
+        PyBranch(o)
+    }
+}
+
 impl Branch for PyBranch {
     fn last_revision(&self) -> RevisionId {
         Python::with_gil(|py| {
@@ -22,7 +28,7 @@ impl Branch for PyBranch {
         })
     }
 
-    fn get_tags(&self) -> Box<dyn crate::tags::Tags> {
+    fn tags(&self) -> Box<dyn crate::tags::Tags> {
         Python::with_gil(|py| {
             let py_branch = self.0.as_ref(py);
             let py_tags = py_branch.getattr("tags").unwrap();

@@ -82,6 +82,13 @@ impl ToPyObject for FileId {
     }
 }
 
+#[cfg(feature = "pyo3")]
+impl IntoPy<PyObject> for FileId {
+    fn into_py(self, py: Python) -> PyObject {
+        PyBytes::new(py, &self.0).to_object(py)
+    }
+}
+
 impl std::fmt::Display for FileId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", String::from_utf8(self.0.clone()).unwrap())
@@ -134,6 +141,13 @@ impl FromPyObject<'_> for RevisionId {
 #[cfg(feature = "pyo3")]
 impl ToPyObject for RevisionId {
     fn to_object(&self, py: Python) -> PyObject {
+        PyBytes::new(py, &self.0).to_object(py)
+    }
+}
+
+#[cfg(feature = "pyo3")]
+impl IntoPy<PyObject> for RevisionId {
+    fn into_py(self, py: Python) -> PyObject {
         PyBytes::new(py, &self.0).to_object(py)
     }
 }
