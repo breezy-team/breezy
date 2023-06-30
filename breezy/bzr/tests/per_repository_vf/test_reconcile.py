@@ -298,10 +298,7 @@ class TestsNeedingReweave(TestReconcile):
         inv = Inventory(revision_id=b'final-revid', root_id=None)
         root = InventoryDirectory(b'TREE_ROOT', "", None, b'root-revid')
         inv.add(root)
-        ie = inv.add_path('bla', 'file', b'myfileid')
-        ie.revision = b'ghostrevid'
-        ie.text_size = 42
-        ie.text_sha1 = b"bee68c8acd989f5f1765b4660695275948bf5c00"
+        ie = inv.add_path('bla', 'file', b'myfileid', b'ghostrevid', text_size=42, text_sha1=b"bee68c8acd989f5f1765b4660695275948bf5c00")
         rev = breezy.revision.Revision(timestamp=0,
                                        timezone=None,
                                        committer="Foo Bar <foo@example.com>",

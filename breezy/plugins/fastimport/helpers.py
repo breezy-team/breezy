@@ -31,9 +31,9 @@ def escape_commit_message(message: str) -> str:
     # (http://www.w3.org/TR/REC-xml/#NT-Char).
     import re
     message, _ = re.subn(
-        '[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
-        lambda match: match.group(0).encode('unicode_escape'),
-        message)
+        '[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',  # type: ignore
+        lambda match: match.group(0).encode('unicode_escape'),  # type: ignore
+        message)  # type: ignore
     return message
 
 
