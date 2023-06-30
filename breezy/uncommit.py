@@ -20,12 +20,11 @@
 
 from . import errors
 from . import revision as _mod_revision
+from ._cmd_rs import uncommit as _uncommit_rs
 from .branch import Branch
 from .errors import BoundBranchOutOfDate
 
-from ._cmd_rs import uncommit
-
-remove_tags = uncommit.remove_tags
+remove_tags = _uncommit_rs.remove_tags
 
 
 def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None,
