@@ -13,13 +13,14 @@ impl DirtyTracker {
         })
     }
 
-    pub fn relpaths(&self) -> Vec<std::path::PathBuf> {
+    pub fn relpaths(&self) -> impl IntoIterator<Item = std::path::PathBuf> {
         Python::with_gil(|py| {
             self.0
                 .call_method0(py, "relpaths")
                 .unwrap()
-                .extract(py)
+                .extract::<std::collections::HashSet<_>>(py)
                 .unwrap()
+                .into_iter()
         })
     }
 }
