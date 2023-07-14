@@ -50,7 +50,7 @@ pub trait Tree {
         })
     }
 
-    fn is_ignored(&self, path: &std::path::Path) -> bool {
+    fn is_ignored(&self, path: &std::path::Path) -> Option<String> {
         Python::with_gil(|py| {
             self.obj()
                 .call_method1(py, "is_ignored", (path,))
