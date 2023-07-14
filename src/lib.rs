@@ -1,11 +1,21 @@
+mod branch;
+mod controldir;
 mod dirty_tracker;
+mod forge;
 mod lock;
 mod revisionid;
+mod transport;
 mod tree;
+mod urlutils;
 mod workspace;
 
+pub use branch::Branch;
+pub use controldir::{ControlDir, Prober};
 pub use dirty_tracker::DirtyTracker;
+pub use forge::{get_forge, Forge, MergeProposal, MergeProposalStatus};
 pub use lock::Lock;
 pub use revisionid::RevisionId;
+pub use transport::{get_transport, Transport};
 pub use tree::{RevisionTree, Tree, WorkingTree};
+pub use urlutils::{join_segment_parameters, split_segment_parameters};
 pub use workspace::reset_tree;

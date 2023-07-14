@@ -5,6 +5,15 @@ use pyo3::prelude::*;
 pub trait Tree {
     fn obj(&self) -> &PyObject;
 
+    fn get_tag_dict(&self) -> Result<std::collections::HashMap<String, RevisionId>, PyErr> {
+        Python::with_gil(|py| {
+            let branch = self.obj().getattr(py, "branch")?;
+            let tags = branch.getattr(py, "tags")?;
+            let tag_dict = tags.call_method0(py, "get_tag_dict")?;
+            tag_dict.extract(py)
+        })
+    }
+
     fn get_file(&self, path: &std::path::Path) -> PyResult<Box<dyn std::io::Read>> {
         Python::with_gil(|py| {
             let f = self.obj().call_method1(py, "get_file", (path,))?;
@@ -135,14 +144,8 @@ impl WorkingTree {
         })
     }
 
-    pub fn abspath(&self, path: &std::path::Path) -> std::path::PathBuf {
-        Python::with_gil(|py| {
-            self.0
-                .call_method1(py, "abspath", (path,))
-                .unwrap()
-                .extract(py)
-                .unwrap()
-        })
+    pub fn abspath(&self, path: &std::path::Path) -> PyResult<std::path::PathBuf> {
+        Python::with_gil(|py| Ok(self.0.call_method1(py, "abspath", (path,))?.extract(py)?))
     }
 
     pub fn supports_setting_file_ids(&self) -> bool {
@@ -200,6 +203,13 @@ impl WorkingTree {
                 .call_method(py, "commit", (message,), Some(kwargs))
                 .unwrap()
                 .extract(py)
+        })
+    }
+
+    pub fn last_revision(&self) -> Result<RevisionId, PyErr> {
+        Python::with_gil(|py| {
+            let last_revision = self.0.call_method0(py, "last_revision")?;
+            Ok(RevisionId::from(last_revision.extract::<Vec<u8>>(py)?))
         })
     }
 }

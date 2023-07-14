@@ -8,3 +8,4 @@ license = "GPL-2.0-or-later"
 pyo3 = { version = ">=0.19", features = ["serde"] }
 pyo3-file = "0.7.0"
 serde = { version = "1.0.171", features = ["derive"] }
+url = { version = "2.4.0", features = ["serde"] }
