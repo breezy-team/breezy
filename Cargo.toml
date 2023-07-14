@@ -2,7 +2,12 @@
 name = "breezyshim"
 version = "0.1.0"
 edition = "2021"
-license = "GPL-2.0-or-later"
+license = "GPL-2.0+"
+description = "Rust shim around the Breezy Python API"
+homepage = "https://www.breezy-vcs.org/"
+repository = "https://code.launchpad.net/breezyshim"
+documentation = "https://www.breezy-vcs.org/doc/"
+authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@jelmer.uk>"]
 
 [dependencies]
 pyo3 = { version = ">=0.19", features = ["serde"] }
