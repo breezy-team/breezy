@@ -2,7 +2,7 @@
 name = "breezyshim"
 version = "0.1.0"
 edition = "2021"
-license = "GPL-3.0-or-later"
+license = "GPL-2.0-or-later"
 
 [dependencies]
 pyo3 = { version = ">=0.19", features = ["serde"] }
