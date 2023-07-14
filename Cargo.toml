@@ -1,0 +1,10 @@
+[package]
+name = "breezyshim"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+
+[dependencies]
+pyo3 = { version = ">=0.19", features = ["extension-module"] }
+pyo3-file = "0.7.0"
+serde = { version = "1.0.171", features = ["derive"] }
