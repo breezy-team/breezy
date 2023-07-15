@@ -1,4 +1,5 @@
 use crate::controldir::ControlDir;
+use crate::repository::Repository;
 use crate::revisionid::RevisionId;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
@@ -9,6 +10,10 @@ pub struct Branch(pub PyObject);
 impl Branch {
     pub fn new(obj: PyObject) -> Self {
         Branch(obj)
+    }
+
+    pub fn repository(&self) -> Repository {
+        Python::with_gil(|py| Repository(self.0.getattr(py, "repository").unwrap()))
     }
 
     pub fn last_revision(&self) -> RevisionId {

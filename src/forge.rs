@@ -3,6 +3,7 @@ use crate::revisionid::RevisionId;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
+#[derive(Clone)]
 pub struct Forge(PyObject);
 
 pub enum MergeProposalStatus {
