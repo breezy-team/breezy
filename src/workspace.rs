@@ -11,12 +11,25 @@ pub fn reset_tree(
     Python::with_gil(|py| {
         let workspace_m = py.import("breezy.workspace")?;
         let reset_tree = workspace_m.getattr("reset_tree")?;
-        reset_tree.call1((
-            &local_tree.0,
-            basis_tree.map(|o| o.obj()),
-            subpath,
-            &dirty_tracker.map(|dt| dt.0.clone()),
-        ))?;
+        let local_tree: PyObject = local_tree.obj().clone_ref(py);
+        let basis_tree: Option<PyObject> = basis_tree.map(|o| o.obj().clone_ref(py));
+        let dirty_tracker: Option<PyObject> = dirty_tracker.map(|dt| dt.0.clone());
+        reset_tree.call1((local_tree, basis_tree, subpath, dirty_tracker))?;
+        Ok(())
+    })
+}
+
+pub fn check_clean_tree(
+    local_tree: &WorkingTree,
+    basis_tree: &Box<dyn Tree>,
+    subpath: &std::path::Path,
+) -> PyResult<()> {
+    Python::with_gil(|py| {
+        let workspace_m = py.import("breezy.workspace")?;
+        let check_clean_tree = workspace_m.getattr("check_clean_tree")?;
+        let local_tree: PyObject = local_tree.obj().clone_ref(py);
+        let basis_tree: PyObject = basis_tree.obj().clone_ref(py);
+        check_clean_tree.call1((local_tree, basis_tree, subpath.to_path_buf()))?;
         Ok(())
     })
 }

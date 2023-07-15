@@ -1,6 +1,9 @@
 use crate::lock::Lock;
 use crate::revisionid::RevisionId;
+use pyo3::import_exception;
 use pyo3::prelude::*;
+
+import_exception!(breezy.commit, PointlessCommit);
 
 pub trait Tree {
     fn obj(&self) -> &PyObject;
@@ -95,7 +98,16 @@ pub trait Tree {
 
                 fn next(&mut self) -> Option<Self::Item> {
                     Python::with_gil(|py| {
-                        let next = self.0.call_method0(py, "__next__").unwrap();
+                        let next = match self.0.call_method0(py, "__next__") {
+                            Ok(v) => v,
+                            Err(e) => {
+                                if e.is_instance_of::<pyo3::exceptions::PyStopIteration>(py) {
+                                    return None;
+                                }
+                                return Some(Err(e));
+                            }
+                        };
+
                         if next.is_none(py) {
                             None
                         } else {
@@ -134,9 +146,30 @@ impl Tree for RevisionTree {
     }
 }
 
+#[derive(Debug)]
+pub enum CommitError {
+    PointlessCommit,
+    Other(PyErr),
+}
+
+impl std::fmt::Display for CommitError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            CommitError::PointlessCommit => write!(f, "Pointless commit"),
+            CommitError::Other(e) => write!(f, "Other error: {}", e),
+        }
+    }
+}
+
+impl std::error::Error for CommitError {}
+
 pub struct WorkingTree(pub PyObject);
 
 impl WorkingTree {
+    pub fn new(obj: PyObject) -> Result<WorkingTree, PyErr> {
+        Ok(WorkingTree(obj))
+    }
+
     pub fn basis_tree(&self) -> Box<dyn Tree> {
         Python::with_gil(|py| {
             let tree = self.0.call_method0(py, "basis_tree").unwrap();
@@ -144,8 +177,17 @@ impl WorkingTree {
         })
     }
 
+    pub fn get_tag_dict(&self) -> Result<std::collections::HashMap<String, RevisionId>, PyErr> {
+        Python::with_gil(|py| {
+            let branch = self.0.getattr(py, "branch")?;
+            let tags = branch.getattr(py, "tags")?;
+            let tag_dict = tags.call_method0(py, "get_tag_dict")?;
+            tag_dict.extract(py)
+        })
+    }
+
     pub fn abspath(&self, path: &std::path::Path) -> PyResult<std::path::PathBuf> {
-        Python::with_gil(|py| Ok(self.0.call_method1(py, "abspath", (path,))?.extract(py)?))
+        Python::with_gil(|py| self.0.call_method1(py, "abspath", (path,))?.extract(py))
     }
 
     pub fn supports_setting_file_ids(&self) -> bool {
@@ -180,7 +222,7 @@ impl WorkingTree {
         allow_pointless: Option<bool>,
         committer: Option<&str>,
         specific_files: Option<&[&std::path::Path]>,
-    ) -> PyResult<RevisionId> {
+    ) -> Result<RevisionId, CommitError> {
         Python::with_gil(|py| {
             let kwargs = pyo3::types::PyDict::new(py);
             if let Some(committer) = committer {
@@ -194,15 +236,26 @@ impl WorkingTree {
             }
 
             let null_commit_reporter = py
-                .import("breezy.commit")?
-                .getattr("NullCommitReporter")?
-                .call0()?;
+                .import("breezy.commit")
+                .unwrap()
+                .getattr("NullCommitReporter")
+                .unwrap()
+                .call0()
+                .unwrap();
             kwargs.set_item("reporter", null_commit_reporter).unwrap();
 
-            self.0
+            Ok(self
+                .0
                 .call_method(py, "commit", (message,), Some(kwargs))
-                .unwrap()
+                .map_err(|e| {
+                    if e.is_instance_of::<PointlessCommit>(py) {
+                        CommitError::PointlessCommit
+                    } else {
+                        CommitError::Other(e)
+                    }
+                })?
                 .extract(py)
+                .unwrap())
         })
     }
 

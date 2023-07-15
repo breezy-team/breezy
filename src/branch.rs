@@ -3,11 +3,22 @@ use crate::revisionid::RevisionId;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
+#[derive(Clone)]
 pub struct Branch(pub PyObject);
 
 impl Branch {
     pub fn new(obj: PyObject) -> Self {
         Branch(obj)
+    }
+
+    pub fn last_revision(&self) -> RevisionId {
+        Python::with_gil(|py| {
+            self.0
+                .call_method0(py, "last_revision")
+                .unwrap()
+                .extract(py)
+                .unwrap()
+        })
     }
 
     pub fn name(&self) -> Option<String> {

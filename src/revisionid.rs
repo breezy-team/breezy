@@ -52,3 +52,10 @@ impl IntoPy<PyObject> for RevisionId {
         pyo3::types::PyBytes::new(py, self.0.as_slice()).to_object(py)
     }
 }
+
+impl std::fmt::Display for RevisionId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = String::from_utf8(self.0.clone()).unwrap();
+        write!(f, "{}", s)
+    }
+}

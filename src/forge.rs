@@ -21,6 +21,7 @@ impl ToString for MergeProposalStatus {
     }
 }
 
+#[derive(Clone)]
 pub struct MergeProposal(PyObject);
 
 impl MergeProposal {
@@ -31,6 +32,13 @@ impl MergeProposal {
     pub fn reopen(&self) -> PyResult<()> {
         Python::with_gil(|py| {
             self.0.call_method0(py, "reopen")?;
+            Ok(())
+        })
+    }
+
+    pub fn close(&self) -> PyResult<()> {
+        Python::with_gil(|py| {
+            self.0.call_method0(py, "close")?;
             Ok(())
         })
     }
@@ -174,6 +182,16 @@ impl ProposalBuilder {
 impl Forge {
     pub fn new(obj: PyObject) -> Self {
         Forge(obj)
+    }
+
+    pub fn merge_proposal_description_format(&self) -> String {
+        Python::with_gil(|py| {
+            let merge_proposal_description_format = self
+                .0
+                .getattr(py, "merge_proposal_description_format")
+                .unwrap();
+            merge_proposal_description_format.extract(py).unwrap()
+        })
     }
 
     pub fn supports_merge_proposal_commit_message(&self) -> bool {
