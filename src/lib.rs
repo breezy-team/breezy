@@ -1,13 +1,13 @@
-mod branch;
-mod controldir;
-mod dirty_tracker;
-mod forge;
-mod lock;
-mod revisionid;
-mod transport;
-mod tree;
-mod urlutils;
-mod workspace;
+pub mod branch;
+pub mod controldir;
+pub mod dirty_tracker;
+pub mod forge;
+pub mod lock;
+pub mod revisionid;
+pub mod transport;
+pub mod tree;
+pub mod urlutils;
+pub mod workspace;
 
 pub use branch::Branch;
 pub use controldir::{ControlDir, Prober};

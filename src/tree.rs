@@ -220,15 +220,15 @@ impl Tree for WorkingTree {
     }
 }
 
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Debug)]
 pub struct TreeChange {
     pub path: (Option<std::path::PathBuf>, Option<std::path::PathBuf>),
     pub changed_content: bool,
-    pub versioned: (bool, bool),
+    pub versioned: (Option<bool>, Option<bool>),
     pub name: (Option<std::ffi::OsString>, Option<std::ffi::OsString>),
     pub kind: (Option<String>, Option<String>),
-    pub executable: (bool, bool),
-    pub copied: (bool, bool),
+    pub executable: (Option<bool>, Option<bool>),
+    pub copied: bool,
 }
 
 impl ToPyObject for TreeChange {
@@ -248,21 +248,38 @@ impl ToPyObject for TreeChange {
 
 impl FromPyObject<'_> for TreeChange {
     fn extract(obj: &PyAny) -> PyResult<Self> {
-        let path = obj.get_item("path")?;
-        let changed_content = obj.get_item("changed_content")?;
-        let versioned = obj.get_item("versioned")?;
-        let name = obj.get_item("name")?;
-        let kind = obj.get_item("kind")?;
-        let executable = obj.get_item("executable")?;
-        let copied = obj.get_item("copied")?;
+        fn from_bool(o: &PyAny) -> PyResult<bool> {
+            if let Ok(b) = o.extract::<isize>() {
+                Ok(b != 0)
+            } else {
+                o.extract::<bool>()
+            }
+        }
+
+        fn from_opt_bool_tuple(o: &PyAny) -> PyResult<(Option<bool>, Option<bool>)> {
+            let tuple = o.extract::<(Option<&PyAny>, Option<&PyAny>)>()?;
+            Ok((
+                tuple.0.map(from_bool).transpose()?,
+                tuple.1.map(from_bool).transpose()?,
+            ))
+        }
+
+        let path = obj.getattr("path")?;
+        let changed_content = from_bool(obj.getattr("changed_content")?)?;
+
+        let versioned = from_opt_bool_tuple(obj.getattr("versioned")?)?;
+        let name = obj.getattr("name")?;
+        let kind = obj.getattr("kind")?;
+        let executable = from_opt_bool_tuple(obj.getattr("executable")?)?;
+        let copied = obj.getattr("copied")?;
 
         Ok(TreeChange {
             path: path.extract()?,
-            changed_content: changed_content.extract()?,
-            versioned: versioned.extract()?,
+            changed_content,
+            versioned,
             name: name.extract()?,
             kind: kind.extract()?,
-            executable: executable.extract()?,
+            executable,
             copied: copied.extract()?,
         })
     }
