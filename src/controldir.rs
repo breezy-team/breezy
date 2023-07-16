@@ -1,7 +1,12 @@
 use crate::branch::{py_tag_selector, Branch};
 use crate::transport::Transport;
+use crate::tree::WorkingTree;
+use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
+
+import_exception!(breezy.errors, NotBranchError);
+import_exception!(breezy.controldir, NoColocatedBranchSupport);
 
 pub struct Prober(PyObject);
 
@@ -11,7 +16,52 @@ impl Prober {
     }
 }
 
-pub struct ControlDir(PyObject);
+#[derive(Debug)]
+pub enum BranchOpenError {
+    NotBranchError,
+    NoColocatedBranchSupport,
+    Other(PyErr),
+}
+
+impl From<PyErr> for BranchOpenError {
+    fn from(err: PyErr) -> Self {
+        Python::with_gil(|py| {
+            if err.is_instance_of::<NotBranchError>(py) {
+                BranchOpenError::NotBranchError
+            } else if err.is_instance_of::<NoColocatedBranchSupport>(py) {
+                BranchOpenError::NoColocatedBranchSupport
+            } else {
+                BranchOpenError::Other(err)
+            }
+        })
+    }
+}
+
+impl From<BranchOpenError> for PyErr {
+    fn from(err: BranchOpenError) -> Self {
+        match err {
+            BranchOpenError::NotBranchError => NotBranchError::new_err("NotBranchError"),
+            BranchOpenError::NoColocatedBranchSupport => {
+                NoColocatedBranchSupport::new_err("NoColocatedBranchSupport")
+            }
+            BranchOpenError::Other(err) => err,
+        }
+    }
+}
+
+impl std::fmt::Display for BranchOpenError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BranchOpenError::NotBranchError => write!(f, "NotBranchError"),
+            BranchOpenError::NoColocatedBranchSupport => write!(f, "NoColocatedBranchSupport"),
+            BranchOpenError::Other(err) => write!(f, "Other({})", err),
+        }
+    }
+}
+
+impl std::error::Error for BranchOpenError {}
+
+pub struct ControlDir(pub(crate) PyObject);
 
 impl ControlDir {
     pub fn new(obj: PyObject) -> PyResult<Self> {
@@ -57,7 +107,17 @@ impl ControlDir {
         })
     }
 
-    pub fn open_branch(&self, branch_name: Option<&str>) -> PyResult<Branch> {
+    pub fn create_branch(&self, name: Option<&str>) -> PyResult<Branch> {
+        Python::with_gil(|py| {
+            let branch = self
+                .0
+                .call_method(py, "create_branch", (name,), None)?
+                .extract(py)?;
+            Ok(Branch(branch))
+        })
+    }
+
+    pub fn open_branch(&self, branch_name: Option<&str>) -> Result<Branch, BranchOpenError> {
         Python::with_gil(|py| {
             let branch = self
                 .0
@@ -89,6 +149,42 @@ impl ControlDir {
                 self.0
                     .call_method(py, "push_branch", (&source_branch.0,), Some(kwargs))?;
             Ok(Branch(result.getattr(py, "target_branch")?))
+        })
+    }
+
+    pub fn sprout(
+        &self,
+        target: url::Url,
+        source_branch: Option<&Branch>,
+        create_tree_if_local: Option<bool>,
+        stacked: Option<bool>,
+    ) -> ControlDir {
+        Python::with_gil(|py| {
+            let kwargs = PyDict::new(py);
+            if let Some(create_tree_if_local) = create_tree_if_local {
+                kwargs
+                    .set_item("create_tree_if_local", create_tree_if_local)
+                    .unwrap();
+            }
+            if let Some(stacked) = stacked {
+                kwargs.set_item("stacked", stacked).unwrap();
+            }
+            if let Some(source_branch) = source_branch {
+                kwargs.set_item("source_branch", &source_branch.0).unwrap();
+            }
+
+            let cd = self
+                .0
+                .call_method(py, "sprout", (target.to_string(),), Some(kwargs))
+                .unwrap();
+            ControlDir(cd)
+        })
+    }
+
+    pub fn open_workingtree(&self) -> PyResult<WorkingTree> {
+        Python::with_gil(|py| {
+            let wt = self.0.call_method0(py, "open_workingtree")?.extract(py)?;
+            Ok(WorkingTree(wt))
         })
     }
 }

@@ -1,8 +1,24 @@
 use crate::controldir::ControlDir;
+use crate::lock::Lock;
 use crate::repository::Repository;
 use crate::revisionid::RevisionId;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
+
+#[derive(Clone)]
+pub struct BranchFormat(pub PyObject);
+
+impl BranchFormat {
+    pub fn supports_stacking(&self) -> bool {
+        Python::with_gil(|py| {
+            self.0
+                .call_method0(py, "supports_stacking")
+                .unwrap()
+                .extract(py)
+                .unwrap()
+        })
+    }
+}
 
 #[derive(Clone)]
 pub struct Branch(pub PyObject);
@@ -10,6 +26,14 @@ pub struct Branch(pub PyObject);
 impl Branch {
     pub fn new(obj: PyObject) -> Self {
         Branch(obj)
+    }
+
+    pub fn format(&self) -> BranchFormat {
+        Python::with_gil(|py| BranchFormat(self.0.getattr(py, "_format").unwrap()))
+    }
+
+    pub fn lock_read(&self) -> PyResult<Lock> {
+        Python::with_gil(|py| Ok(Lock(self.0.call_method0(py, "lock_read")?)))
     }
 
     pub fn repository(&self) -> Repository {
@@ -28,13 +52,11 @@ impl Branch {
 
     pub fn name(&self) -> Option<String> {
         Python::with_gil(|py| {
-            let name = self
-                .0
+            self.0
                 .getattr(py, "name")
                 .unwrap()
                 .extract::<Option<String>>(py)
-                .unwrap();
-            name
+                .unwrap()
         })
     }
 
@@ -50,7 +72,7 @@ impl Branch {
         })
     }
 
-    pub fn get_controldir(&self) -> ControlDir {
+    pub fn controldir(&self) -> ControlDir {
         Python::with_gil(|py| ControlDir::new(self.0.getattr(py, "controldir").unwrap()).unwrap())
     }
 

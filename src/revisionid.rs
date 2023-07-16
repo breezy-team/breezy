@@ -41,7 +41,7 @@ impl FromPyObject<'_> for RevisionId {
     }
 }
 
-impl ToPyObject for RevisionId {
+impl ToPyObject for &RevisionId {
     fn to_object(&self, py: Python) -> PyObject {
         pyo3::types::PyBytes::new(py, &self.0).to_object(py)
     }
