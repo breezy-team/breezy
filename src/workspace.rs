@@ -5,7 +5,7 @@ use pyo3::prelude::*;
 
 pub fn reset_tree(
     local_tree: &WorkingTree,
-    basis_tree: Option<&dyn Tree>,
+    basis_tree: Option<&Box<dyn Tree>>,
     subpath: Option<&std::path::Path>,
     dirty_tracker: Option<&DirtyTracker>,
 ) -> PyResult<()> {
@@ -48,7 +48,7 @@ impl From<PyErr> for CheckCleanTreeError {
 
 pub fn check_clean_tree(
     local_tree: &WorkingTree,
-    basis_tree: &dyn Tree,
+    basis_tree: &Box<dyn Tree>,
     subpath: &std::path::Path,
 ) -> Result<(), CheckCleanTreeError> {
     Python::with_gil(|py| {
