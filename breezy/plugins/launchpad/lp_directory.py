@@ -132,7 +132,7 @@ def _resolve(url, _lp_login=None):
 class LaunchpadDirectory:
 
     def look_up(self, name, url, purpose=None):
-        """See DirectoryService.look_up"""
+        """See DirectoryService.look_up."""
         return _resolve(url)
 
 def get_test_permutations():
