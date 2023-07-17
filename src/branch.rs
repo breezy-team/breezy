@@ -40,6 +40,17 @@ impl Branch {
         Python::with_gil(|py| Repository(self.0.getattr(py, "repository").unwrap()))
     }
 
+    pub fn open(&self, url: &url::Url) -> PyResult<Branch> {
+        Python::with_gil(|py| {
+            Ok(Branch(self.0.call_method(
+                py,
+                "open",
+                (url.to_string(),),
+                None,
+            )?))
+        })
+    }
+
     pub fn last_revision(&self) -> RevisionId {
         Python::with_gil(|py| {
             self.0

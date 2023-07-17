@@ -68,6 +68,15 @@ impl ControlDir {
         Ok(Self(obj))
     }
 
+    pub fn create_branch_convenience(base: &url::Url) -> PyResult<Branch> {
+        Python::with_gil(|py| {
+            let m = py.import("breezy.controldir")?;
+            let cd = m.getattr("ControlDir")?;
+            let branch = cd.call_method("create_branch_convenience", (base.to_string(),), None)?;
+            Ok(Branch(branch.to_object(py)))
+        })
+    }
+
     pub fn open_containing_from_transport(
         transport: &Transport,
         probers: Option<&[Prober]>,
@@ -186,5 +195,25 @@ impl ControlDir {
             let wt = self.0.call_method0(py, "open_workingtree")?.extract(py)?;
             Ok(WorkingTree(wt))
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_create_branch_convenience() {
+        Python::with_gil(|py| {
+            py.import("breezy.bzr").unwrap();
+        });
+        let td = tempfile::tempdir().unwrap();
+        let b = ControlDir::create_branch_convenience(&url::Url::from_directory_path(td).unwrap())
+            .unwrap();
+        assert!(b.name().is_none());
+        let cd = b.controldir();
+        let branch = cd.create_branch(Some("foo")).unwrap();
+        assert_eq!(branch.name().unwrap(), "foo");
+        let same_branch = cd.open_branch(Some("foo")).unwrap();
+        assert_eq!(branch.name().unwrap(), same_branch.name().unwrap());
     }
 }

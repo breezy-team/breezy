@@ -1,10 +1,11 @@
 use crate::dirty_tracker::DirtyTracker;
 use crate::tree::{Tree, WorkingTree};
+use pyo3::import_exception;
 use pyo3::prelude::*;
 
 pub fn reset_tree(
     local_tree: &WorkingTree,
-    basis_tree: Option<&Box<dyn Tree>>,
+    basis_tree: Option<&dyn Tree>,
     subpath: Option<&std::path::Path>,
     dirty_tracker: Option<&DirtyTracker>,
 ) -> PyResult<()> {
@@ -19,11 +20,37 @@ pub fn reset_tree(
     })
 }
 
+pub enum CheckCleanTreeError {
+    WorkspaceDirty(std::path::PathBuf),
+    Python(PyErr),
+}
+
+import_exception!(breezy.workspace, WorkspaceDirty);
+
+impl From<PyErr> for CheckCleanTreeError {
+    fn from(e: PyErr) -> Self {
+        Python::with_gil(|py| {
+            if e.is_instance_of::<WorkspaceDirty>(py) {
+                let tree = e.value(py).getattr("tree").unwrap();
+                let path = e.value(py).getattr("path").unwrap();
+                let path = tree
+                    .call_method1("abspath", (path,))
+                    .unwrap()
+                    .extract::<String>()
+                    .unwrap();
+                CheckCleanTreeError::WorkspaceDirty(std::path::PathBuf::from(path))
+            } else {
+                CheckCleanTreeError::Python(e)
+            }
+        })
+    }
+}
+
 pub fn check_clean_tree(
     local_tree: &WorkingTree,
-    basis_tree: &Box<dyn Tree>,
+    basis_tree: &dyn Tree,
     subpath: &std::path::Path,
-) -> PyResult<()> {
+) -> Result<(), CheckCleanTreeError> {
     Python::with_gil(|py| {
         let workspace_m = py.import("breezy.workspace")?;
         let check_clean_tree = workspace_m.getattr("check_clean_tree")?;
