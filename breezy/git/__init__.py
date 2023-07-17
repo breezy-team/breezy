@@ -264,11 +264,28 @@ install_lazy_named_hook(
 
 
 def rewrite_instead_of(location, purpose):
-    from dulwich.config import StackedConfig, apply_instead_of
+    from dulwich.config import StackedConfig, iter_instead_of
 
     config = StackedConfig.default()
 
-    return apply_instead_of(config, location, push=(purpose == "push"))
+    push = (purpose != "read")
+
+    longest_needle = ""
+    updated_url = location
+    for needle, replacement in iter_instead_of(config, push):
+        if not location.startswith(needle):
+            continue
+        if len(longest_needle) < len(needle):
+            longest_needle = needle
+            if longest_needle == "lp:":
+                # Leave the lp: prefix to the launchpad plugin, if loaded
+                import breezy.plugins
+                if hasattr(breezy.plugins, "launchpad"):
+                    trace.warning(
+                        "Ignoring insteadOf lp: in git config, because the Launchpad plugin is loaded.")
+                    continue
+            updated_url = replacement + location[len(needle):]
+    return updated_url
 
 
 from ..location import hooks as location_hooks
