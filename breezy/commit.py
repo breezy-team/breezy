@@ -56,8 +56,7 @@ from . import debug, errors, trace, ui
 from .branch import Branch
 from .errors import BzrError, ConflictsInTree, StrictCommitFailed
 from .i18n import gettext
-from .osutils import (get_user_encoding, is_inside_any, minimum_path_selection,
-                      supports_symlinks)
+from .osutils import get_user_encoding, is_inside_any, minimum_path_selection
 from .trace import is_quiet, mutter, note
 from .urlutils import unescape_for_display
 
@@ -480,8 +479,8 @@ class Commit:
                 self.master_branch.tags)
             if tag_conflicts:
                 warning_lines = ['    ' + name for name, _, _ in tag_conflicts]
-                note(gettext("Conflicting tags in bound branch:\n{}".format(
-                    "\n".join(warning_lines))))
+                note(gettext("Conflicting tags in bound branch:\n{}").format(
+                    "\n".join(warning_lines)))
 
     def _select_reporter(self):
         """Select the CommitReporter to use."""
@@ -592,7 +591,7 @@ class Commit:
             hooks = post_commit.split(' ')
             # this would be nicer with twisted.python.reflect.namedAny
             for hook in hooks:
-                result = eval(hook + '(branch, rev_id)',
+                eval(hook + '(branch, rev_id)',
                               {'branch': self.branch,
                                'breezy': breezy,
                                'rev_id': self.rev_id})
@@ -632,7 +631,7 @@ class Commit:
             self.pb_stage_name = "Running %s hooks [%s]" % \
                 (hook_name, Branch.hooks.get_hook_name(hook))
             self._emit_progress()
-            if 'hooks' in debug.debug_flags:
+            if debug.debug_flag_enabled('hooks'):
                 mutter("Invoking commit hook: %r", hook)
             if hook_name == "post_commit":
                 hook(hook_local, hook_master, old_revno, old_revid, new_revno,
@@ -643,8 +642,7 @@ class Commit:
                      tree_delta, future_tree)
 
     def _update_builder_with_changes(self):
-        """Update the commit builder with the data about what has changed.
-        """
+        """Update the commit builder with the data about what has changed."""
         specific_files = self.specific_files
         mutter("Selecting files for commit with filter %r", specific_files)
 
@@ -721,11 +719,11 @@ class Commit:
         # selected_files).
         if self.strict:
             # raise an exception as soon as we find a single unknown.
-            for unknown in self.work_tree.unknowns():
+            for _unknown in self.work_tree.unknowns():
                 raise StrictCommitFailed()
 
     def _commit_nested_tree(self, path):
-        "Commit a nested tree."
+        """Commit a nested tree."""
         sub_tree = self.work_tree.get_nested_tree(path)
         # FIXME: be more comprehensive here:
         # this works when both trees are in --trees repository,

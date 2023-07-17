@@ -29,9 +29,14 @@ from ...graph import DictParentsProvider, Graph
 from ...tests import TestCase, TestCaseWithTransport
 from ...tests.features import SymlinkFeature
 from ..cache import DictGitShaMap
-from ..object_store import (BazaarObjectStore, LRUTreeCache,
-                            _check_expected_sha, _find_missing_bzr_revids,
-                            _tree_to_objects, directory_to_tree)
+from ..object_store import (
+    BazaarObjectStore,
+    LRUTreeCache,
+    _check_expected_sha,
+    _find_missing_bzr_revids,
+    _tree_to_objects,
+    directory_to_tree,
+)
 
 
 class ExpectedShaTests(TestCase):
@@ -158,10 +163,10 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
             ('foo/', ),
             ('foo/bar', b'a\nb\nc\nd\ne\n')])
         tree.add(['foo', 'foo/bar'])
-        revid1 = tree.commit('commit 1')
+        tree.commit('commit 1')
         shutil.rmtree('foo')
         os.symlink('trgt', 'foo')
-        revid2 = tree.commit('commit 2')
+        tree.commit('commit 2')
         # read locks cache
         self.assertRaises(KeyError, self.store.__getitem__, b.id)
         self.store.unlock()
@@ -196,7 +201,7 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
         b.data = b'a\nb\nc\nd\ne\n'
         self.store.lock_read()
         self.addCleanup(self.store.unlock)
-        self.assertFalse(b.id in self.store)
+        self.assertNotIn(b.id, self.store)
         bb = BranchBuilder(branch=self.branch)
         bb.start_series()
         bb.build_snapshot(None,
@@ -205,10 +210,10 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
                            ])
         bb.finish_series()
         # read locks cache
-        self.assertFalse(b.id in self.store)
+        self.assertNotIn(b.id, self.store)
         self.store.unlock()
         self.store.lock_read()
-        self.assertTrue(b.id in self.store)
+        self.assertIn(b.id, self.store)
 
 
 class TreeToObjectsTests(TestCaseWithTransport):
@@ -272,7 +277,7 @@ class TreeToObjectsTests(TestCaseWithTransport):
 
         with tree_a.lock_write():
             tree_a.merge_from_branch(tree_b.branch)
-        rev_merge = tree_a.commit('merge')
+        tree_a.commit('merge')
 
         revtree_merge = tree_a.branch.basis_tree()
         self.addCleanup(revtree_merge.lock_read().unlock)
@@ -304,7 +309,7 @@ class DirectoryToTreeTests(TestCase):
         child_ie = InventoryDirectory(b'bar', 'bar', b'bar')
         t = directory_to_tree('', [child_ie], lambda p, x: None, {}, ".mydummy",
                               allow_empty=False)
-        self.assertTrue(".mydummy" in t)
+        self.assertIn(".mydummy", t)
 
     def test_empty_root(self):
         child_ie = InventoryDirectory(b'bar', 'bar', b'bar')

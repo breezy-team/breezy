@@ -20,27 +20,21 @@
 import os
 import re
 
-import breezy
-from breezy import ignores, osutils
-from breezy.branch import Branch
-from breezy.errors import CommandError
-from breezy.osutils import pathjoin
+from breezy import ignores
 from breezy.tests import TestCaseWithTransport
-from breezy.tests.test_sftp_transport import TestCaseWithSFTPServer
-from breezy.workingtree import WorkingTree
 
 
 class TestCommands(TestCaseWithTransport):
 
     def test_ignore_absolutes(self):
-        """'ignore' with an absolute path returns an error"""
+        """'ignore' with an absolute path returns an error."""  # noqa: D403
         self.make_branch_and_tree('.')
         self.run_bzr_error(('brz: ERROR: NAME_PATTERN should not '
                             'be an absolute path\n',),
                            'ignore /crud')
 
     def test_ignore_directories(self):
-        """ignoring a directory should ignore directory tree.
+        """Ignoring a directory should ignore directory tree.
 
         Also check that trailing slashes on directories are stripped.
         """
@@ -86,7 +80,7 @@ class TestCommands(TestCaseWithTransport):
         self.check_file_contents('.bzrignore', b'*.blah\ngarh\n')
 
     def test_ignore_multiple_arguments(self):
-        """'ignore' works with multiple arguments"""
+        """'ignore' works with multiple arguments."""  # noqa: D403
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b', 'c', 'd'])
         self.assertEqual(list(tree.unknowns()), ['a', 'b', 'c', 'd'])
@@ -95,7 +89,7 @@ class TestCommands(TestCaseWithTransport):
         self.check_file_contents('.bzrignore', b'a\nb\nc\n')
 
     def test_ignore_no_arguments(self):
-        """'ignore' with no arguments returns an error"""
+        """'ignore' with no arguments returns an error."""  # noqa: D403
         self.make_branch_and_tree('.')
         self.run_bzr_error(('brz: ERROR: ignore requires at least one '
                             'NAME_PATTERN or --default-rules.\n',),
@@ -150,8 +144,8 @@ class TestCommands(TestCaseWithTransport):
                          " unless you 'brz remove' them.\n")
 
     def test_ignore_directory(self):
-        """Test --directory option"""
-        tree = self.make_branch_and_tree('a')
+        """Test --directory option."""
+        self.make_branch_and_tree('a')
         self.run_bzr(['ignore', '--directory=a', 'README'])
         self.check_file_contents('a/.bzrignore', b'README\n')
 
@@ -162,7 +156,7 @@ class TestCommands(TestCaseWithTransport):
         Invalid pattern should show clear error message.
         Invalid pattern should not be added to .bzrignore file.
         """
-        tree = self.make_branch_and_tree('.')
+        self.make_branch_and_tree('.')
         out, err = self.run_bzr(['ignore', 'RE:*.cpp', 'foo', 'RE:['], 3)
         self.assertEqual(out, '')
         self.assertContainsRe(err,

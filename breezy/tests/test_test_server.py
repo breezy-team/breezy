@@ -21,7 +21,8 @@ import threading
 
 from breezy import osutils, tests
 from breezy.tests import test_server
-from breezy.tests.scenarios import load_tests_apply_scenarios
+
+from .scenarios import load_tests_apply_scenarios
 
 load_tests = load_tests_apply_scenarios
 
@@ -48,8 +49,7 @@ class TCPClient:
 
     def connect(self, addr):
         if self.sock is not None:
-            raise AssertionError('Already connected to %r'
-                                 % (self.sock.getsockname(),))
+            raise AssertionError(f'Already connected to {self.sock.getsockname()!r}')
         self.sock = osutils.connect_socket(addr)
 
     def disconnect(self):
@@ -69,7 +69,12 @@ class TCPClient:
         return self.sock.sendall(s)
 
     def read(self, bufsize=4096):
-        return self.sock.recv(bufsize)
+        try:
+            return self.sock.recv(bufsize)
+        except socket.error as e:
+            if e.errno == errno.ECONNRESET:
+                return b""
+            raise
 
 
 class TCPConnectionHandler(socketserver.BaseRequestHandler):
@@ -88,7 +93,7 @@ class TCPConnectionHandler(socketserver.BaseRequestHandler):
         # An empty string is allowed, to indicate the end of the connection
         if not req or (req.endswith(b'\n') and req.count(b'\n') == 1):
             return req
-        raise ValueError('[{!r}] not a simple line'.format(req))
+        raise ValueError(f'[{req!r}] not a simple line')
 
     def handle_connection(self):
         req = self.readline()
@@ -97,7 +102,7 @@ class TCPConnectionHandler(socketserver.BaseRequestHandler):
         elif req == b'ping\n':
             self.request.sendall(b'pong\n')
         else:
-            raise ValueError('[%s] not understood' % req)
+            raise ValueError(f'[{req}] not understood')
 
 
 class TestTCPServerInAThread(tests.TestCase):
@@ -209,12 +214,12 @@ class TestTCPServerInAThread(tests.TestCase):
 
             # We use 'request' instead of 'self' below because the test matters
             # more and we need a container to properly set connection_thread.
-            def handle_connection(request):
+            def handle_connection(request):  # noqa: N805
                 request.readline()
                 # Capture the thread and make it use 'caught' so we can wait on
                 # the event that will be set when the exception is caught. We
                 # also capture the thread to know where to look.
-                self.connection_thread = threading.currentThread()
+                self.connection_thread = threading.current_thread()
                 self.connection_thread.set_sync_event(caught)
                 raise FailToRespond()
 
@@ -252,11 +257,11 @@ class TestTCPServerInAThread(tests.TestCase):
 
             # We use 'request' instead of 'self' below because the test matters
             # more and we need a container to properly set connection_thread.
-            def handle(request):
+            def handle(request):  # noqa: N805
                 # Capture the thread and make it use 'caught' so we can wait on
                 # the event that will be set when the exception is caught. We
                 # also capture the thread to know where to look.
-                self.connection_thread = threading.currentThread()
+                self.connection_thread = threading.current_thread()
                 self.connection_thread.set_sync_event(caught)
                 raise CantServe()
 
@@ -307,7 +312,7 @@ class TestTestingSmartServer(tests.TestCase):
 
 
 class FakeServer:
-    """Minimal implementation to pass to TestingSmartConnectionHandler"""
+    """Minimal implementation to pass to TestingSmartConnectionHandler."""
     backing_transport = None
     root_client_path = '/'
 

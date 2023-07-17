@@ -26,19 +26,31 @@ from dulwich.errors import HangupException
 from dulwich.repo import Repo as GitRepo
 
 from ...branch import Branch
-from ...controldir import BranchReferenceLoop, ControlDir
-from ...errors import (ConnectionReset, DivergedBranches, NoSuchTag,
-                       NotBranchError, PermissionDenied, TransportError,
-                       UnexpectedHttpStatus)
+from ...controldir import ControlDir
+from ...errors import (
+    DivergedBranches,
+    NoSuchTag,
+    NotBranchError,
+    PermissionDenied,
+    TransportError,
+    UnexpectedHttpStatus,
+)
 from ...tests import TestCase, TestCaseWithTransport
 from ...tests.features import ExecutableFeature
 from ...urlutils import join as urljoin
 from ..mapping import default_mapping
-from ..remote import (GitRemoteRevisionTree, GitSmartRemoteNotSupported,
-                      HeadUpdateFailed, ProtectedBranchHookDeclined,
-                      RemoteGitBranchFormat, RemoteGitError,
-                      _git_url_and_path_from_transport, parse_git_error,
-                      parse_git_hangup, split_git_url)
+from ..remote import (
+    GitRemoteRevisionTree,
+    GitSmartRemoteNotSupported,
+    HeadUpdateFailed,
+    ProtectedBranchHookDeclined,
+    RemoteGitBranchFormat,
+    RemoteGitError,
+    _git_url_and_path_from_transport,
+    parse_git_error,
+    parse_git_hangup,
+    split_git_url,
+)
 from ..tree import MissingNestedTree
 
 
@@ -177,12 +189,12 @@ Email support@github.com for help
                     'Host key verification failed.')))
 
     def test_connection_reset_by_peer(self):
-        self.assertEqual(
-            ConnectionReset('[Errno 104] Connection reset by peer'),
-            parse_git_error(
-                'url',
-                RemoteGitError(
-                    '[Errno 104] Connection reset by peer')))
+        got = parse_git_error(
+            'url',
+            RemoteGitError(
+                '[Errno 104] Connection reset by peer'))
+        self.assertIsInstance(got, ConnectionResetError)
+        self.assertEqual('[Errno 104] Connection reset by peer', got.args[0])
 
     def test_http_unexpected(self):
         self.assertEqual(
@@ -208,7 +220,7 @@ class ParseHangupTests(TestCase):
 
     def test_not_set(self):
         self.assertIsInstance(
-            parse_git_hangup('http://', HangupException()), ConnectionReset)
+            parse_git_hangup('http://', HangupException()), ConnectionResetError)
 
     def test_single_line(self):
         self.assertEqual(
@@ -273,7 +285,7 @@ class TestRemoteGitBranch(TestCaseWithTransport):
     def setUp(self):
         TestCaseWithTransport.setUp(self)
         self.remote_real = GitRepo.init('remote', mkdir=True)
-        self.remote_url = 'git://%s/' % os.path.abspath(self.remote_real.path)
+        self.remote_url = f'git://{os.path.abspath(self.remote_real.path)}/'
         self.permit_url(self.remote_url)
 
     def test_set_last_revision_info(self):
@@ -308,7 +320,7 @@ class FetchFromRemoteTestBase:
     def setUp(self):
         TestCaseWithTransport.setUp(self)
         self.remote_real = GitRepo.init('remote', mkdir=True)
-        self.remote_url = 'git://%s/' % os.path.abspath(self.remote_real.path)
+        self.remote_url = f'git://{os.path.abspath(self.remote_real.path)}/'
         self.permit_url(self.remote_url)
 
     def test_sprout_simple(self):
@@ -448,7 +460,7 @@ class FetchFromRemoteTestBase:
             message=b'message',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>')
-        c2 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'another commit',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>')
@@ -495,7 +507,7 @@ class PushToRemoteBase:
     def setUp(self):
         TestCaseWithTransport.setUp(self)
         self.remote_real = GitRepo.init('remote', mkdir=True)
-        self.remote_url = 'git://%s/' % os.path.abspath(self.remote_real.path)
+        self.remote_url = f'git://{os.path.abspath(self.remote_real.path)}/'
         self.permit_url(self.remote_url)
 
     def test_push_branch_new(self):
@@ -503,7 +515,7 @@ class PushToRemoteBase:
         wt = self.make_branch_and_tree('local', format=self._from_format)
         self.build_tree(['local/blah'])
         wt.add(['blah'])
-        revid = wt.commit('blah')
+        wt.commit('blah')
 
         if self._from_format == 'git':
             result = remote.push_branch(wt.branch, name='newbranch')
@@ -529,7 +541,7 @@ class PushToRemoteBase:
         cfg.set((b'core', ), b'bare', True)
         cfg.write_to_path()
         self.remote_real.refs.set_symbolic_ref(b'HEAD', b'refs/heads/master')
-        c1 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'message',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>',
@@ -538,7 +550,7 @@ class PushToRemoteBase:
         wt = self.make_branch_and_tree('local', format=self._from_format)
         self.build_tree(['local/blah'])
         wt.add(['blah'])
-        revid = wt.commit('blah')
+        wt.commit('blah')
 
         if self._from_format == 'git':
             result = remote.push_branch(wt.branch, overwrite=True)
@@ -569,14 +581,14 @@ class PushToRemoteBase:
             ('add', ('filename', None, 'file', b'content'))])
         rev_2 = builder.build_snapshot(
             [rev_1], [('modify', ('filename', b'new-content\n'))])
-        rev_3 = builder.build_snapshot(
+        builder.build_snapshot(
             [rev_1], [('modify', ('filename', b'new-new-content\n'))])
         builder.finish_series()
         branch = builder.get_branch()
         try:
             branch.tags.set_tag('atag', rev_2)
-        except TagsNotSupported:
-            raise TestNotApplicable('source format does not support tags')
+        except TagsNotSupported as err:
+            raise TestNotApplicable('source format does not support tags') from err
 
         branch.get_config_stack().set('branch.fetch_tags', True)
         if self._from_format == 'git':
@@ -598,7 +610,7 @@ class PushToRemoteBase:
             set(self.remote_real.get_refs().keys()))
 
     def test_push(self):
-        c1 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'message',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>')
@@ -643,7 +655,7 @@ class PushToRemoteBase:
         wt = self.make_branch_and_tree('local', format=self._from_format)
         self.build_tree(['local/blah'])
         wt.add(['blah'])
-        revid = wt.commit('blah')
+        wt.commit('blah')
 
         newbranch = remote.open_branch('newbranch')
         if self._from_format == 'git':
@@ -681,15 +693,15 @@ class RemoteControlDirTests(TestCaseWithTransport):
     def setUp(self):
         TestCaseWithTransport.setUp(self)
         self.remote_real = GitRepo.init('remote', mkdir=True)
-        self.remote_url = 'git://%s/' % os.path.abspath(self.remote_real.path)
+        self.remote_url = f'git://{os.path.abspath(self.remote_real.path)}/'
         self.permit_url(self.remote_url)
 
     def test_remove_branch(self):
-        c1 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'message',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>')
-        c2 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'another commit',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>',
@@ -704,11 +716,11 @@ class RemoteControlDirTests(TestCaseWithTransport):
              })
 
     def test_list_branches(self):
-        c1 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'message',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>')
-        c2 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'another commit',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>',
@@ -716,15 +728,15 @@ class RemoteControlDirTests(TestCaseWithTransport):
 
         remote = ControlDir.open(self.remote_url)
         self.assertEqual(
-            {'master', 'blah', 'master'},
+            {'master', 'blah'},
             {b.name for b in remote.list_branches()})
 
     def test_get_branches(self):
-        c1 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'message',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>')
-        c2 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'another commit',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>',
@@ -738,11 +750,11 @@ class RemoteControlDirTests(TestCaseWithTransport):
             {'', 'blah', 'master'}, set(remote.branch_names()))
 
     def test_remove_tag(self):
-        c1 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'message',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>')
-        c2 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'another commit',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>',
@@ -763,14 +775,14 @@ class RemoteControlDirTests(TestCaseWithTransport):
             message=b'message',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>')
-        c2 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'another commit',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>')
 
         remote = ControlDir.open(self.remote_url)
         remote.open_branch().tags.set_tag(
-            b'blah', default_mapping.revision_id_foreign_to_bzr(c1))
+            'blah', default_mapping.revision_id_foreign_to_bzr(c1))
         self.assertEqual(
             self.remote_real.get_refs(),
             {b'refs/heads/master': self.remote_real.head(),
@@ -779,7 +791,7 @@ class RemoteControlDirTests(TestCaseWithTransport):
              })
 
     def test_annotated_tag(self):
-        c1 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'message',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>')
@@ -805,11 +817,11 @@ class RemoteControlDirTests(TestCaseWithTransport):
             remote_branch.tags.get_tag_dict())
 
     def test_get_branch_reference(self):
-        c1 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'message',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>')
-        c2 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'another commit',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>')
@@ -820,7 +832,7 @@ class RemoteControlDirTests(TestCaseWithTransport):
         self.assertEqual(None, remote.get_branch_reference('master'))
 
     def test_get_branch_nick(self):
-        c1 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'message',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>')
@@ -866,9 +878,9 @@ class RemoteRevisionTreeTests(TestCaseWithTransport):
     def setUp(self):
         TestCaseWithTransport.setUp(self)
         self.remote_real = GitRepo.init('remote', mkdir=True)
-        self.remote_url = 'git://%s/' % os.path.abspath(self.remote_real.path)
+        self.remote_url = f'git://{os.path.abspath(self.remote_real.path)}/'
         self.permit_url(self.remote_url)
-        c1 = self.remote_real.do_commit(
+        self.remote_real.do_commit(
             message=b'message',
             committer=b'committer <committer@example.com>',
             author=b'author <author@example.com>')

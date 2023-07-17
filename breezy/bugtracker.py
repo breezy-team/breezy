@@ -32,111 +32,6 @@ of converting bug IDs into URLs.
 """
 
 
-_bugs_help = """\
-When making a commit, metadata about bugs fixed by that change can be
-recorded by using the ``--fixes`` option. For each bug marked as fixed, an
-entry is included in the 'bugs' revision property stating '<url> <status>'.
-(The only ``status`` value currently supported is ``fixed.``)
-
-The ``--fixes`` option allows you to specify a bug tracker and a bug identifier
-rather than a full URL. This looks like::
-
-    bzr commit --fixes <tracker>:<id>
-
-or::
-
-    bzr commit --fixes <id>
-
-where "<tracker>" is an identifier for the bug tracker, and "<id>" is the
-identifier for that bug within the bugtracker, usually the bug number.
-If "<tracker>" is not specified the ``bugtracker`` set in the branch
-or global configuration is used.
-
-Bazaar knows about a few bug trackers that have many users. If
-you use one of these bug trackers then there is no setup required to
-use this feature, you just need to know the tracker identifier to use.
-These are the bugtrackers that are built in:
-
-  ============================ ============ ============
-  URL                          Abbreviation Example
-  ============================ ============ ============
-  https://bugs.launchpad.net/  lp           lp:12345
-  http://bugs.debian.org/      deb          deb:12345
-  http://bugzilla.gnome.org/   gnome        gnome:12345
-  ============================ ============ ============
-
-For the bug trackers not listed above configuration is required.
-Support for generating the URLs for any project using Bugzilla or Trac
-is built in, along with a template mechanism for other bugtrackers with
-simple URL schemes. If your bug tracker can't be described by one
-of the schemes described below then you can write a plugin to support
-it.
-
-If you use Bugzilla or Trac, then you only need to set a configuration
-variable which contains the base URL of the bug tracker. These options
-can go into ``breezy.conf``, ``branch.conf`` or into a branch-specific
-configuration section in ``locations.conf``.  You can set up these values
-for each of the projects you work on.
-
-Note: As you provide a short name for each tracker, you can specify one or
-more bugs in one or more trackers at commit time if you wish.
-
-Launchpad
----------
-
-Use ``bzr commit --fixes lp:2`` to record that this commit fixes bug 2.
-
-bugzilla_<tracker>_url
-----------------------
-
-If present, the location of the Bugzilla bug tracker referred to by
-<tracker>. This option can then be used together with ``bzr commit
---fixes`` to mark bugs in that tracker as being fixed by that commit. For
-example::
-
-    bugzilla_squid_url = http://bugs.squid-cache.org
-
-would allow ``bzr commit --fixes squid:1234`` to mark Squid's bug 1234 as
-fixed.
-
-trac_<tracker>_url
-------------------
-
-If present, the location of the Trac instance referred to by
-<tracker>. This option can then be used together with ``bzr commit
---fixes`` to mark bugs in that tracker as being fixed by that commit. For
-example::
-
-    trac_twisted_url = http://www.twistedmatrix.com/trac
-
-would allow ``bzr commit --fixes twisted:1234`` to mark Twisted's bug 1234 as
-fixed.
-
-bugtracker_<tracker>_url
-------------------------
-
-If present, the location of a generic bug tracker instance referred to by
-<tracker>. The location must contain an ``{id}`` placeholder,
-which will be replaced by a specific bug ID. This option can then be used
-together with ``bzr commit --fixes`` to mark bugs in that tracker as being
-fixed by that commit. For example::
-
-    bugtracker_python_url = http://bugs.python.org/issue{id}
-
-would allow ``bzr commit --fixes python:1234`` to mark bug 1234 in Python's
-Roundup bug tracker as fixed, or::
-
-    bugtracker_cpan_url = http://rt.cpan.org/Public/Bug/Display.html?id={id}
-
-would allow ``bzr commit --fixes cpan:1234`` to mark bug 1234 in CPAN's
-RT bug tracker as fixed, or::
-
-    bugtracker_hudson_url = http://issues.hudson-ci.org/browse/{id}
-
-would allow ``bzr commit --fixes hudson:HUDSON-1234`` to mark bug HUDSON-1234
-in Hudson's JIRA bug tracker as fixed.
-"""
-
 
 class MalformedBugIdentifier(errors.BzrError):
 
@@ -266,8 +161,7 @@ class UniqueIntegerBugTracker(IntegerBugTracker):
         self.base_url = base_url
 
     def get(self, abbreviated_bugtracker_name, branch):
-        """Returns the tracker if the abbreviation matches, otherwise ``None``.
-        """
+        """Returns the tracker if the abbreviation matches, otherwise ``None``."""
         if abbreviated_bugtracker_name != self.abbreviation:
             return None
         return self
@@ -290,8 +184,7 @@ class ProjectIntegerBugTracker(IntegerBugTracker):
         self._base_url = base_url
 
     def get(self, abbreviated_bugtracker_name, branch):
-        """Returns the tracker if the abbreviation matches, otherwise ``None``.
-        """
+        """Returns the tracker if the abbreviation matches, otherwise ``None``."""
         if abbreviated_bugtracker_name != self.abbreviation:
             return None
         return self
@@ -347,7 +240,7 @@ class URLParametrizedBugTracker(BugTracker):
     def get(self, abbreviation, branch):
         config = branch.get_config()
         url = config.get_user_option(
-            "{}_{}_url".format(self.type_name, abbreviation), expand=False)
+            f"{self.type_name}_{abbreviation}_url", expand=False)
         if url is None:
             return None
         self._base_url = url
@@ -422,17 +315,17 @@ def encode_fixes_bug_urls(bug_urls):
     for (url, tag) in bug_urls:
         if ' ' in url:
             raise InvalidBugUrl(url)
-        lines.append('{} {}'.format(url, tag))
+        lines.append(f'{url} {tag}')
     return '\n'.join(lines)
 
 
-def decode_bug_urls(bug_text):
+def decode_bug_urls(bug_lines):
     """Decode a bug property text.
 
-    :param bug_text: Contents of a bugs property
+    :param bug_lines: Contents of a bugs property
     :return: iterator over (url, status) tuples
     """
-    for line in bug_text.splitlines():
+    for line in bug_lines:
         try:
             url, status = line.split(None, 2)
         except ValueError as exc:

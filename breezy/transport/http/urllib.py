@@ -24,6 +24,7 @@ DEBUG = 0
 import base64
 import cgi
 import errno
+import hashlib
 import http.client
 import os
 import re
@@ -36,12 +37,12 @@ import urllib.request
 import weakref
 from urllib.parse import urlencode, urljoin, urlparse
 
-from ... import __version__ as breezy_version
 from ... import config, debug, errors, osutils, trace, transport, ui, urlutils
 from ...bzr.smart import medium
 from ...trace import mutter, mutter_callsite
 from ...transport import ConnectedTransport, NoSuchFile, UnusableRedirect
-from . import default_user_agent, ssl
+from . import default_user_agent
+
 # TODO: handle_response should be integrated into the http/__init__.py
 from .response import handle_response
 
@@ -174,7 +175,7 @@ class Response(http.client.HTTPResponse):
                 body = self.read(self.length)
                 if self.debuglevel >= 9:
                     # This one can be huge and is generally not interesting
-                    print("Consumed body: [%s]" % body)
+                    print(f"Consumed body: [{body}]")
             self.close()
         elif self.status == 200:
             # Whatever the request is, it went ok, so we surely don't want to
@@ -217,7 +218,7 @@ class Response(http.client.HTTPResponse):
 
 # Not inheriting from 'object' because http.client.HTTPConnection doesn't.
 class AbstractHTTPConnection:
-    """A custom HTTP(S) Connection, which can reset itself on a bad response"""
+    """A custom HTTP(S) Connection, which can reset itself on a bad response."""
 
     response_class = Response
 
@@ -231,13 +232,13 @@ class AbstractHTTPConnection:
         self._ranges_received_whole_file = None
 
     def _mutter_connect(self):
-        netloc = '{}:{}'.format(self.host, self.port)
+        netloc = f'{self.host}:{self.port}'
         if self.proxied_host is not None:
-            netloc += '(proxy for %s)' % self.proxied_host
-        trace.mutter('* About to connect() to %s' % netloc)
+            netloc += f'(proxy for {self.proxied_host})'
+        trace.mutter(f'* About to connect() to {netloc}')
 
     def getresponse(self):
-        """Capture the response to be able to cleanup"""
+        """Capture the response to be able to cleanup."""
         self._response = http.client.HTTPConnection.getresponse(self)
         return self._response
 
@@ -290,7 +291,7 @@ class HTTPConnection(AbstractHTTPConnection, http.client.HTTPConnection):  # typ
         # ca_certs is ignored, it's only relevant for https
 
     def connect(self):
-        if 'http' in debug.debug_flags:
+        if debug.debug_flag_enabled('http'):
             self._mutter_connect()
         http.client.HTTPConnection.connect(self)
         self._wrap_socket_for_reporting(self.sock)
@@ -308,7 +309,7 @@ class HTTPSConnection(AbstractHTTPConnection, http.client.HTTPSConnection):  # t
         self.ca_certs = ca_certs
 
     def connect(self):
-        if 'http' in debug.debug_flags:
+        if debug.debug_flag_enabled('http'):
             self._mutter_connect()
         http.client.HTTPConnection.connect(self)
         self._wrap_socket_for_reporting(self.sock)
@@ -373,9 +374,11 @@ class Request(urllib.request.Request):
        been made.
     """
 
-    def __init__(self, method, url, data=None, headers={},
+    def __init__(self, method, url, data=None, headers=None,
                  origin_req_host=None, unverifiable=False,
                  connection=None, parent=None):
+        if headers is None:
+            headers = {}
         urllib.request.Request.__init__(
             self, url, data, headers,
             origin_req_host, unverifiable)
@@ -408,7 +411,7 @@ class Request(urllib.request.Request):
             else:
                 conn_class = HTTPConnection
             port = conn_class.default_port
-        self.proxied_host = '{}:{}'.format(host, port)
+        self.proxied_host = f'{host}:{port}'
         urllib.request.Request.set_proxy(self, proxy, type)
         # When urllib.request makes a https request with our wrapper code and a proxy,
         # it sets Host to the https proxy, not the host we want to talk to.
@@ -420,7 +423,7 @@ class Request(urllib.request.Request):
 class _ConnectRequest(Request):
 
     def __init__(self, request):
-        """Constructor
+        """Constructor.
 
         :param request: the first request sent to the proxied host, already
             processed by the opener (i.e. proxied_host is already set).
@@ -484,10 +487,10 @@ class ConnectionHandler(urllib.request.BaseHandler):
                 host, proxied_host=request.proxied_host,
                 report_activity=self._report_activity,
                 ca_certs=self.ca_certs)
-        except http.client.InvalidURL as exception:
+        except http.client.InvalidURL as e:
             # There is only one occurrence of InvalidURL in http.client
             raise urlutils.InvalidURL(request.get_full_url(),
-                                      extra='nonnumeric port')
+                                      extra='nonnumeric port') from e
 
         return connection
 
@@ -546,8 +549,7 @@ class AbstractHTTPHandler(urllib.request.AbstractHTTPHandler):
         urllib.request.AbstractHTTPHandler.__init__(self, debuglevel=DEBUG)
 
     def http_request(self, request):
-        """Common headers setting"""
-
+        """Common headers setting."""
         for name, value in self._default_headers.items():
             if name not in request.headers:
                 request.headers[name] = value
@@ -573,8 +575,7 @@ class AbstractHTTPHandler(urllib.request.AbstractHTTPHandler):
         if exc_type == socket.gaierror:
             # No need to retry, that will not help
             origin_req_host = request.origin_req_host
-            raise errors.ConnectionError("Couldn't resolve host '%s'"
-                                         % origin_req_host,
+            raise ConnectionError(f"Couldn't resolve host '{origin_req_host}'",
                                          orig_error=exc_val)
         elif isinstance(exc_val, http.client.ImproperConnectionState):
             # The http.client pipeline is in incorrect state, it's a bug in our
@@ -583,17 +584,17 @@ class AbstractHTTPHandler(urllib.request.AbstractHTTPHandler):
         else:
             if first_try:
                 if self._debuglevel >= 2:
-                    print('Received exception: [%r]' % exc_val)
-                    print('  On connection: [%r]' % request.connection)
+                    print(f'Received exception: [{exc_val!r}]')
+                    print(f'  On connection: [{request.connection!r}]')
                     method = request.get_method()
                     url = request.get_full_url()
-                    print('  Will retry, {} {!r}'.format(method, url))
+                    print(f'  Will retry, {method} {url!r}')
                 request.connection.close()
                 response = self.do_open(http_class, request, False)
             else:
                 if self._debuglevel >= 2:
-                    print('Received second exception: [%r]' % exc_val)
-                    print('  On connection: [%r]' % request.connection)
+                    print(f'Received second exception: [{exc_val!r}]')
+                    print(f'  On connection: [{request.connection!r}]')
                 if exc_type in (http.client.BadStatusLine, http.client.UnknownProtocol):
                     # http.client.BadStatusLine and
                     # http.client.UnknownProtocol indicates that a
@@ -609,7 +610,7 @@ class AbstractHTTPHandler(urllib.request.AbstractHTTPHandler):
                       and exc_val.args[0] in (errno.ECONNRESET, 10053, 10054)):
                     # 10053 == WSAECONNABORTED
                     # 10054 == WSAECONNRESET
-                    raise errors.ConnectionReset(
+                    raise ConnectionResetError(
                         "Connection lost while sending request.")
                 else:
                     # All other exception are considered connection related.
@@ -619,17 +620,15 @@ class AbstractHTTPHandler(urllib.request.AbstractHTTPHandler):
                     # connection and retrying is the best we can
                     # do.
                     selector = request.selector
-                    my_exception = errors.ConnectionError(
-                        msg='while sending {} {}:'.format(request.get_method(),
-                                                      selector),
-                        orig_error=exc_val)
+                    my_exception = ConnectionError(
+                        f'while sending {request.get_method()} {selector}:')
 
                 if self._debuglevel >= 2:
-                    print('On connection: [%r]' % request.connection)
+                    print(f'On connection: [{request.connection!r}]')
                     method = request.get_method()
                     url = request.get_full_url()
-                    print('  Failed again, {} {!r}'.format(method, url))
-                    print('  Will raise: [%r]' % my_exception)
+                    print(f'  Failed again, {method} {url!r}')
+                    print(f'  Will raise: [{my_exception!r}]')
                 raise my_exception.with_traceback(exc_tb)
         return response
 
@@ -664,15 +663,15 @@ class AbstractHTTPHandler(urllib.request.AbstractHTTPHandler):
                                      request.data,
                                      headers,
                                      encode_chunked=(headers.get('Transfer-Encoding') == 'chunked'))
-            if 'http' in debug.debug_flags:
-                trace.mutter('> {} {}'.format(method, url))
+            if debug.debug_flag_enabled('http'):
+                trace.mutter('> %s %s', method, url)
                 hdrs = []
                 for k, v in headers.items():
                     # People are often told to paste -Dhttp output to help
                     # debug. Don't compromise credentials.
                     if k in ('Authorization', 'Proxy-Authorization'):
                         v = '<masked>'
-                    hdrs.append('{}: {}'.format(k, v))
+                    hdrs.append(f'{k}: {v}')
                 trace.mutter('> ' + '\n> '.join(hdrs) + '\n')
             if self._debuglevel >= 1:
                 print('Request sent: [%r] from (%s)'
@@ -703,9 +702,8 @@ class AbstractHTTPHandler(urllib.request.AbstractHTTPHandler):
 #            response = connection.getresponse()
 
         if self._debuglevel >= 2:
-            print('Receives response: %r' % response)
-            print('  For: {!r}({!r})'.format(request.get_method(),
-                                     request.get_full_url()))
+            print(f'Receives response: {response!r}')
+            print(f'  For: {request.get_method()!r}({request.get_full_url()!r})')
 
         if convert_to_addinfourl:
             # Shamelessly copied from urllib.request
@@ -721,15 +719,14 @@ class AbstractHTTPHandler(urllib.request.AbstractHTTPHandler):
                 print('Create addinfourl: %r' % resp)
                 print('  For: {!r}({!r})'.format(request.get_method(),
                                          request.get_full_url()))
-            if 'http' in debug.debug_flags:
+            if debug.debug_flag_enabled('http'):
                 version = 'HTTP/%d.%d'
                 try:
                     version = version % (resp.version / 10,
                                          resp.version % 10)
-                except:
-                    version = 'HTTP/%r' % resp.version
-                trace.mutter('< {} {} {}'.format(version, resp.code,
-                                             resp.msg))
+                except BaseException:
+                    version = f'HTTP/{resp.version!r}'
+                trace.mutter(f'< {version} {resp.code} {resp.msg}')
                 # Use the raw header lines instead of treating resp.info() as a
                 # dict since we may miss duplicated headers otherwise.
                 hdrs = [h.rstrip('\r\n') for h in resp.info().headers]
@@ -740,14 +737,14 @@ class AbstractHTTPHandler(urllib.request.AbstractHTTPHandler):
 
 
 class HTTPHandler(AbstractHTTPHandler):
-    """A custom handler that just thunks into HTTPConnection"""
+    """A custom handler that just thunks into HTTPConnection."""
 
     def http_open(self, request):
         return self.do_open(HTTPConnection, request)
 
 
 class HTTPSHandler(AbstractHTTPHandler):
-    """A custom handler that just thunks into HTTPSConnection"""
+    """A custom handler that just thunks into HTTPSConnection."""
 
     https_request = AbstractHTTPHandler.http_request
 
@@ -773,7 +770,7 @@ class HTTPSHandler(AbstractHTTPHandler):
             connect = _ConnectRequest(request)
             response = self.parent.open(connect)
             if response.code != 200:
-                raise errors.ConnectionError("Can't connect to {} via proxy {}".format(
+                raise ConnectionError("Can't connect to {} via proxy {}".format(
                     connect.proxied_host, self.host))
             # Housekeeping
             connection.cleanup_pipe()
@@ -801,7 +798,7 @@ class HTTPRedirectHandler(urllib.request.HTTPRedirectHandler):
     # of the RFC if not its letter.
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
-        """See urllib.request.HTTPRedirectHandler.redirect_request"""
+        """See urllib.request.HTTPRedirectHandler.redirect_request."""
         # We would have preferred to update the request instead
         # of creating a new one, but the urllib.request.Request object
         # has a too complicated creation process to provide a
@@ -871,8 +868,7 @@ class HTTPRedirectHandler(urllib.request.HTTPRedirectHandler):
         newurl = urljoin(req.get_full_url(), newurl)
 
         if self._debuglevel >= 1:
-            print('Redirected to: {} (followed: {!r})'.format(newurl,
-                                                        req.follow_redirections))
+            print(f'Redirected to: {newurl} (followed: {req.follow_redirections!r})')
         if req.follow_redirections is False:
             req.redirected_to = newurl
             return fp
@@ -932,15 +928,15 @@ class ProxyHandler(urllib.request.ProxyHandler):
         # First, let's get rid of urllib.request implementation
         for type, proxy in self.proxies.items():
             if self._debuglevel >= 3:
-                print('Will unbind {}_open for {!r}'.format(type, proxy))
-            delattr(self, '%s_open' % type)
+                print(f'Will unbind {type}_open for {proxy!r}')
+            delattr(self, f'{type}_open')
 
         def bind_scheme_request(proxy, scheme):
             if proxy is None:
                 return
             scheme_request = scheme + '_request'
             if self._debuglevel >= 3:
-                print('Will bind {} for {!r}'.format(scheme_request, proxy))
+                print(f'Will bind {scheme_request} for {proxy!r}')
             setattr(self, scheme_request,
                     lambda request: self.set_proxy(request, scheme))
         # We are interested only by the http[s] proxies
@@ -1021,7 +1017,7 @@ class ProxyHandler(urllib.request.ProxyHandler):
 
         proxy = self.get_proxy_env_var(type)
         if self._debuglevel >= 3:
-            print('set_proxy {}_request for {!r}'.format(type, proxy))
+            print(f'set_proxy {type}_request for {proxy!r}')
         # FIXME: python 2.5 urlparse provides a better _parse_proxy which can
         # grok user:password@host:port as well as
         # http://user:password@host:port
@@ -1048,7 +1044,7 @@ class ProxyHandler(urllib.request.ProxyHandler):
             phost = parsed_url.host + ':%d' % parsed_url.port
         request.set_proxy(phost, type)
         if self._debuglevel >= 3:
-            print('set_proxy: proxy set to {}://{}'.format(type, phost))
+            print(f'set_proxy: proxy set to {type}://{phost}')
         return request
 
 
@@ -1127,7 +1123,7 @@ class AbstractAuthHandler(urllib.request.BaseHandler):
         return (scheme.lower(), remainder)
 
     def update_auth(self, auth, key, value):
-        """Update a value in auth marking the auth as modified if needed"""
+        """Update a value in auth marking the auth as modified if needed."""
         old_value = auth.get(key, None)
         if old_value != value:
             auth[key] = value
@@ -1216,7 +1212,7 @@ class AbstractAuthHandler(urllib.request.BaseHandler):
         return None
 
     def add_auth_header(self, request, header):
-        """Add the authentication header to the request"""
+        """Add the authentication header to the request."""
         request.add_unredirected_header(self.auth_header, header)
 
     def auth_match(self, header, auth):
@@ -1297,10 +1293,10 @@ class AbstractAuthHandler(urllib.request.BaseHandler):
         user. The daughter classes should implements a public
         build_password_prompt using this method.
         """
-        prompt = '%s' % auth['protocol'].upper() + ' %(user)s@%(host)s'
+        prompt = f"{auth['protocol'].upper()}" + ' %(user)s@%(host)s'
         realm = auth['realm']
         if realm is not None:
-            prompt += ", Realm: '%s'" % realm
+            prompt += f", Realm: '{realm}'"
         prompt += ' password'
         return prompt
 
@@ -1315,15 +1311,15 @@ class AbstractAuthHandler(urllib.request.BaseHandler):
         user. The daughter classes should implements a public
         build_username_prompt using this method.
         """
-        prompt = '%s' % auth['protocol'].upper() + ' %(host)s'
+        prompt = f"{auth['protocol'].upper()}" + ' %(host)s'
         realm = auth['realm']
         if realm is not None:
-            prompt += ", Realm: '%s'" % realm
+            prompt += f", Realm: '{realm}'"
         prompt += ' username'
         return prompt
 
     def http_request(self, request):
-        """Insert an authentication header if information is available"""
+        """Insert an authentication header if information is available."""
         auth = self.get_auth(request)
         if self.auth_params_reusable(auth):
             self.add_auth_header(
@@ -1367,7 +1363,7 @@ class NegotiateAuthHandler(AbstractAuthHandler):
             checked_kerberos = True
         if kerberos is None:
             return None
-        ret, vc = kerberos.authGSSClientInit("HTTP@%(host)s" % auth)
+        ret, vc = kerberos.authGSSClientInit(f"HTTP@{auth['host']}")
         if ret < 1:
             trace.warning('Unable to create GSSAPI context for %s: %d',
                           auth['host'], ret)
@@ -1379,7 +1375,7 @@ class NegotiateAuthHandler(AbstractAuthHandler):
         return kerberos.authGSSClientResponse(vc)
 
     def build_auth_header(self, auth, request):
-        return "Negotiate %s" % auth['negotiate_response']
+        return f"Negotiate {auth['negotiate_response']}"
 
     def auth_params_reusable(self, auth):
         # If the auth scheme is known, it means a previous
@@ -1397,7 +1393,7 @@ class BasicAuthHandler(AbstractAuthHandler):
     auth_regexp = re.compile('realm="([^"]*)"', re.I)
 
     def build_auth_header(self, auth, request):
-        raw = '{}:{}'.format(auth['user'], auth['password'])
+        raw = f"{auth['user']}:{auth['password']}"
         auth_header = 'Basic ' + \
             base64.b64encode(raw.encode('utf-8')).decode('ascii')
         return auth_header
@@ -1437,12 +1433,12 @@ def get_digest_algorithm_impls(algorithm):
     H = None
     KD = None
     if algorithm == 'MD5':
-        def H(x): return osutils.md5(x).hexdigest()
+        def H(x): return hashlib.md5(x).hexdigest()  # noqa: S324
     elif algorithm == 'SHA':
         H = osutils.sha_string
     if H is not None:
         def KD(secret, data): return H(
-            ("{}:{}".format(secret, data)).encode('utf-8'))
+            f"{secret}:{data}".encode('utf-8'))
     return H, KD
 
 
@@ -1511,35 +1507,34 @@ class DigestAuthHandler(AbstractAuthHandler):
     def build_auth_header(self, auth, request):
         uri = urlparse(request.selector).path
 
-        A1 = ('%s:%s:%s' %
-              (auth['user'], auth['realm'], auth['password'])).encode('utf-8')
-        A2 = ('{}:{}'.format(request.get_method(), uri)).encode('utf-8')
+        A1 = f"{auth['user']}:{auth['realm']}:{auth['password']}".encode('utf-8')
+        A2 = f'{request.get_method()}:{uri}'.encode('utf-8')
 
         nonce = auth['nonce']
         qop = auth['qop']
 
         nonce_count = auth['nonce_count'] + 1
-        ncvalue = '%08x' % nonce_count
+        ncvalue = f'{nonce_count:08x}'
         cnonce = get_new_cnonce(nonce, nonce_count)
 
         H, KD = get_digest_algorithm_impls(auth.get('algorithm', 'MD5'))
-        nonce_data = '{}:{}:{}:{}:{}'.format(nonce, ncvalue, cnonce, qop, H(A2))
+        nonce_data = f'{nonce}:{ncvalue}:{cnonce}:{qop}:{H(A2)}'
         request_digest = KD(H(A1), nonce_data)
 
         header = 'Digest '
         header += 'username="{}", realm="{}", nonce="{}"'.format(auth['user'],
                                                              auth['realm'],
                                                              nonce)
-        header += ', uri="%s"' % uri
-        header += ', cnonce="{}", nc={}'.format(cnonce, ncvalue)
-        header += ', qop="%s"' % qop
-        header += ', response="%s"' % request_digest
+        header += f', uri="{uri}"'
+        header += f', cnonce="{cnonce}", nc={ncvalue}'
+        header += f', qop="{qop}"'
+        header += f', response="{request_digest}"'
         # Append the optional fields
         opaque = auth.get('opaque', None)
         if opaque:
-            header += ', opaque="%s"' % opaque
+            header += f', opaque="{opaque}"'
         if auth.get('algorithm', None):
-            header += ', algorithm="%s"' % auth.get('algorithm')
+            header += f", algorithm=\"{auth.get('algorithm')}\""
 
         # We have used the nonce once more, update the count
         auth['nonce_count'] = nonce_count
@@ -1559,11 +1554,11 @@ class HTTPAuthHandler(AbstractAuthHandler):
     auth_header = 'Authorization'
 
     def get_auth(self, request):
-        """Get the auth params from the request"""
+        """Get the auth params from the request."""
         return request.auth
 
     def set_auth(self, request, auth):
-        """Set the auth params for the request"""
+        """Set the auth params for the request."""
         request.auth = auth
 
     def build_password_prompt(self, auth):
@@ -1591,11 +1586,11 @@ class ProxyAuthHandler(AbstractAuthHandler):
     auth_header = 'Proxy-authorization'
 
     def get_auth(self, request):
-        """Get the auth params from the request"""
+        """Get the auth params from the request."""
         return request.proxy_auth
 
     def set_auth(self, request, auth):
-        """Set the auth params for the request"""
+        """Set the auth params for the request."""
         request.proxy_auth = auth
 
     def build_password_prompt(self, auth):
@@ -1613,27 +1608,27 @@ class ProxyAuthHandler(AbstractAuthHandler):
 
 
 class HTTPBasicAuthHandler(BasicAuthHandler, HTTPAuthHandler):
-    """Custom http basic authentication handler"""
+    """Custom http basic authentication handler."""
 
 
 class ProxyBasicAuthHandler(BasicAuthHandler, ProxyAuthHandler):
-    """Custom proxy basic authentication handler"""
+    """Custom proxy basic authentication handler."""
 
 
 class HTTPDigestAuthHandler(DigestAuthHandler, HTTPAuthHandler):
-    """Custom http basic authentication handler"""
+    """Custom http basic authentication handler."""
 
 
 class ProxyDigestAuthHandler(DigestAuthHandler, ProxyAuthHandler):
-    """Custom proxy basic authentication handler"""
+    """Custom proxy basic authentication handler."""
 
 
 class HTTPNegotiateAuthHandler(NegotiateAuthHandler, HTTPAuthHandler):
-    """Custom http negotiate authentication handler"""
+    """Custom http negotiate authentication handler."""
 
 
 class ProxyNegotiateAuthHandler(NegotiateAuthHandler, ProxyAuthHandler):
-    """Custom proxy negotiate authentication handler"""
+    """Custom proxy negotiate authentication handler."""
 
 
 class HTTPErrorProcessor(urllib.request.HTTPErrorProcessor):
@@ -1678,7 +1673,7 @@ class HTTPErrorProcessor(urllib.request.HTTPErrorProcessor):
 
 
 class HTTPDefaultErrorHandler(urllib.request.HTTPDefaultErrorHandler):
-    """Translate common errors into Breezy Exceptions"""
+    """Translate common errors into Breezy Exceptions."""
 
     def http_error_default(self, req, fp, code, msg, hdrs):
         if code == 403:
@@ -1688,12 +1683,12 @@ class HTTPDefaultErrorHandler(urllib.request.HTTPDefaultErrorHandler):
         else:
             raise errors.UnexpectedHttpStatus(
                 req.get_full_url(), code,
-                'Unable to handle http code: %s' % msg,
+                f'Unable to handle http code: {msg}',
                 headers=hdrs)
 
 
 class Opener:
-    """A wrapper around urllib.request.build_opener
+    """A wrapper around urllib.request.build_opener.
 
     Daughter classes can override to build their own specific opener
     """
@@ -1747,7 +1742,7 @@ class HttpTransport(ConnectedTransport):
         """Set the base path where files will be stored."""
         proto_match = re.match(r'^(https?)(\+\w+)?://', base)
         if not proto_match:
-            raise AssertionError("not a http url: %r" % base)
+            raise AssertionError(f"not a http url: {base!r}")
         self._unqualified_scheme = proto_match.group(1)
         super().__init__(
             base, _from_transport=_from_transport)
@@ -1782,7 +1777,7 @@ class HttpTransport(ConnectedTransport):
         request.follow_redirections = (urlopen_kw.pop('retries', 0) > 0)
         if urlopen_kw:
             raise NotImplementedError(
-                'unknown arguments: %r' % urlopen_kw.keys())
+                f'unknown arguments: {urlopen_kw.keys()!r}')
         connection = self._get_connection()
         if connection is not None:
             # Give back shared info
@@ -1796,7 +1791,7 @@ class HttpTransport(ConnectedTransport):
             # scheme and realm will be set by the _urllib2_wrappers.AuthHandler
             auth = self._create_auth()
             # Proxy initialization will be done by the first proxied request
-            proxy_auth = dict()
+            proxy_auth = {}
         # Ensure authentication info is provided
         request.auth = auth
         request.proxy_auth = proxy_auth
@@ -1867,7 +1862,7 @@ class HttpTransport(ConnectedTransport):
                     return self.data.decode()
 
             def read(self, amt=None):
-                if amt is None and 'evil' in debug.debug_flags:
+                if amt is None and debug.debug_flag_enabled('evil'):
                     mutter_callsite(4, "reading full response.")
                 return self._actual.read(amt)
 
@@ -1885,8 +1880,7 @@ class HttpTransport(ConnectedTransport):
             connection.close()
 
     def has(self, relpath):
-        """Does the target location exist?
-        """
+        """Does the target location exist?"""
         response = self._head(relpath)
 
         code = response.status
@@ -1961,10 +1955,10 @@ class HttpTransport(ConnectedTransport):
 
     def _create_auth(self):
         """Returns a dict containing the credentials provided at build time."""
-        auth = dict(host=self._parsed_url.host, port=self._parsed_url.port,
-                    user=self._parsed_url.user, password=self._parsed_url.password,
-                    protocol=self._unqualified_scheme,
-                    path=self._parsed_url.path)
+        auth = {'host': self._parsed_url.host, 'port': self._parsed_url.port,
+                    'user': self._parsed_url.user, 'password': self._parsed_url.password,
+                    'protocol': self._unqualified_scheme,
+                    'path': self._parsed_url.path}
         return auth
 
     def get_smart_medium(self):
@@ -1980,10 +1974,10 @@ class HttpTransport(ConnectedTransport):
     def _degrade_range_hint(self, relpath, ranges):
         if self._range_hint == 'multi':
             self._range_hint = 'single'
-            mutter('Retry "%s" with single range request' % relpath)
+            mutter(f'Retry "{relpath}" with single range request')
         elif self._range_hint == 'single':
             self._range_hint = None
-            mutter('Retry "%s" without ranges' % relpath)
+            mutter(f'Retry "{relpath}" without ranges')
         else:
             # We tried all the tricks, but nothing worked, caller must reraise.
             return False
@@ -2034,7 +2028,7 @@ class HttpTransport(ConnectedTransport):
 
             # Turn it into a list, we will iterate it several times
             coalesced = list(coalesced)
-            if 'http' in debug.debug_flags:
+            if debug.debug_flag_enabled('http'):
                 mutter('http readv of %s  offsets => %s collapsed %s',
                        relpath, len(offsets), len(coalesced))
 
@@ -2098,12 +2092,12 @@ class HttpTransport(ConnectedTransport):
                         raise
                 # Some offsets may have been already processed, so we retry
                 # only the unsuccessful ones.
-                offsets = [cur_offset_and_size] + [o for o in iter_offsets]
+                offsets = [cur_offset_and_size] + list(iter_offsets)
                 retried_offset = cur_offset_and_size
                 try_again = True
 
     def _coalesce_readv(self, relpath, coalesced):
-        """Issue several GET requests to satisfy the coalesced offsets"""
+        """Issue several GET requests to satisfy the coalesced offsets."""
 
         def get_and_yield(relpath, coalesced):
             if coalesced:
@@ -2125,8 +2119,7 @@ class HttpTransport(ConnectedTransport):
             elif self._range_hint == 'single':
                 max_ranges = total
             else:
-                raise AssertionError("Unknown _range_hint %r"
-                                     % (self._range_hint,))
+                raise AssertionError(f"Unknown _range_hint {self._range_hint!r}")
             # TODO: Some web servers may ignore the range requests and return
             # the whole file, we may want to detect that and avoid further
             # requests.
@@ -2211,7 +2204,7 @@ class HttpTransport(ConnectedTransport):
         raise errors.TransportNotPossible('http does not support append()')
 
     def copy(self, rel_from, rel_to):
-        """Copy the item at rel_from to the location at rel_to"""
+        """Copy the item at rel_from to the location at rel_to."""
         raise errors.TransportNotPossible('http does not support copy()')
 
     def copy_to(self, relpaths, other, mode=None, pb=None):
@@ -2233,11 +2226,11 @@ class HttpTransport(ConnectedTransport):
                 copy_to(relpaths, other, mode=mode, pb=pb)
 
     def move(self, rel_from, rel_to):
-        """Move the item at rel_from to the location at rel_to"""
+        """Move the item at rel_from to the location at rel_to."""
         raise errors.TransportNotPossible('http does not support move()')
 
     def delete(self, relpath):
-        """Delete the item at relpath"""
+        """Delete the item at relpath."""
         raise errors.TransportNotPossible('http does not support delete()')
 
     def external_url(self):
@@ -2257,13 +2250,12 @@ class HttpTransport(ConnectedTransport):
         return False
 
     def stat(self, relpath):
-        """Return the stat information for a file.
-        """
+        """Return the stat information for a file."""
         raise errors.TransportNotPossible('http does not support stat()')
 
     def lock_read(self, relpath):
         """Lock the given file for shared (read) access.
-        :return: A lock object, which should be passed to Transport.unlock()
+        :return: A lock object, which should be passed to Transport.unlock().
         """
         # The old RemoteBranch ignore lock for reading, so we will
         # continue that tradition and return a bogus lock object.
@@ -2277,7 +2269,7 @@ class HttpTransport(ConnectedTransport):
 
     def lock_write(self, relpath):
         """Lock the given file for exclusive (write) access.
-        WARNING: many transports do not support this, so trying avoid using it
+        WARNING: many transports do not support this, so trying avoid using it.
 
         :return: A lock object, which should be passed to Transport.unlock()
         """
@@ -2289,7 +2281,6 @@ class HttpTransport(ConnectedTransport):
         :return: the range header representing offsets/tail_amount or None if
             no header can be built.
         """
-
         if self._range_hint == 'multi':
             # Generate the header describing all offsets
             return self._range_header(offsets, tail_amount)
@@ -2451,8 +2442,8 @@ class SmartClientHTTPMedium(medium.SmartClientMedium):
             if code != 200:
                 raise errors.UnexpectedHttpStatus(
                     t._remote_path('.bzr/smart'), code)
-        except (errors.InvalidHttpResponse, errors.ConnectionReset) as e:
-            raise errors.SmartProtocolError(str(e))
+        except (errors.InvalidHttpResponse, ConnectionResetError) as e:
+            raise errors.SmartProtocolError(str(e)) from e
         return body_filelike
 
     def _report_activity(self, bytes, direction):

@@ -21,8 +21,10 @@ These were formats present in pre-1.0 version of Bazaar.
 
 # Since we are a built-in plugin we share the breezy version
 from ... import branch as _mod_branch
-from ... import version_info  # noqa: F401
-from ... import controldir
+from ... import (
+    controldir,
+    version_info,  # noqa: F401
+)
 from ... import repository as _mod_repository
 from ... import workingtree as _mod_workingtree
 from ...bzr import BzrProber, register_metadir, serializer
@@ -105,8 +107,8 @@ _mod_workingtree.format_registry.register_extra_lazy(
     'breezy.plugins.weave_fmt.workingtree',
     'WorkingTreeFormat2')
 
-serializer.format_registry.register_lazy('4', 'breezy.plugins.weave_fmt.xml4',
-                                         'serializer_v4')
+serializer.revision_format_registry.register_lazy('4', 'breezy.plugins.weave_fmt.xml4', 'revision_serializer_v4')
+serializer.inventory_format_registry.register_lazy('4', 'breezy.plugins.weave_fmt.xml4', 'inventory_serializer_v4')
 
 
 def load_tests(loader, basic_tests, pattern):
@@ -117,5 +119,5 @@ def load_tests(loader, basic_tests, pattern):
         'test_workingtree',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["{}.{}".format(__name__, tmn) for tmn in testmod_names]))
+        [f"{__name__}.{tmn}" for tmn in testmod_names]))
     return basic_tests

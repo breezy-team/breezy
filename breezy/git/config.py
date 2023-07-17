@@ -20,7 +20,7 @@ from .. import config
 
 
 class GitBranchConfig(config.BranchConfig):
-    """BranchConfig that uses locations.conf in place of branch.conf"""
+    """BranchConfig that uses locations.conf in place of branch.conf."""
 
     def __init__(self, branch):
         super().__init__(branch)
@@ -28,11 +28,11 @@ class GitBranchConfig(config.BranchConfig):
         self.option_sources = self.option_sources[0], self.option_sources[2]
 
     def __repr__(self):
-        return "<{} of {!r}>".format(self.__class__.__name__, self.branch)
+        return f"<{self.__class__.__name__} of {self.branch!r}>"
 
     def set_user_option(self, name, value, store=config.STORE_BRANCH,
                         warn_masked=False):
-        """Force local to True"""
+        """Force local to True."""
         config.BranchConfig.set_user_option(
             self, name, value, store=config.STORE_LOCATION,
             warn_masked=warn_masked)
@@ -43,7 +43,7 @@ class GitBranchConfig(config.BranchConfig):
 
 
 class GitConfigSectionDefault(config.Section):
-    """The "default" config section in git config file"""
+    """The "default" config section in git config file."""
 
     id = None
 
@@ -60,7 +60,7 @@ class GitConfigSectionDefault(config.Section):
                 name = self._config.get((b'user', ), b'name')
             except KeyError:
                 return email.decode()
-            return '{} <{}>'.format(name.decode(), email.decode())
+            return f'{name.decode()} <{email.decode()}>'
         if name == 'gpg_signing_key':
             try:
                 key = self._config.get((b'user', ), b'signingkey')

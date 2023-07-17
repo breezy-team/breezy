@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-__docformat__ = "google"
-
 """Working tree content filtering support.
 
 A filter consists of a read converter, write converter pair.
@@ -40,11 +38,13 @@ where:
 Note that context is currently only supported for write converters.
 """
 
+__docformat__ = "google"
+
 
 from io import BytesIO
 from typing import Callable, Dict, List, Tuple
 
-from .. import errors, osutils, registry
+from .. import osutils, registry
 
 
 class ContentFilter:
@@ -60,7 +60,7 @@ class ContentFilter:
         self.writer = writer
 
     def __repr__(self):
-        return "reader: {}, writer: {}".format(self.reader, self.writer)
+        return f"reader: {self.reader}, writer: {self.writer}"
 
 
 Preferences = List[Tuple[str, str]]
@@ -113,7 +113,7 @@ class ContentFilterContext:
         return self._revision
 
 
-def filtered_input_file(f, filters):
+def filtered_input_file(f, filters) -> tuple[BytesIO, int]:
     """Get an input file that converts external to internal content.
 
     Args:

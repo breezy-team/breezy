@@ -17,7 +17,6 @@
 """Export a tree to a tarball."""
 
 import os
-import sys
 import tarfile
 from contextlib import closing
 from io import BytesIO
@@ -27,7 +26,7 @@ from ..export import _export_iter_entries
 
 
 def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=None):
-    """Prepare a tarball item for exporting
+    """Prepare a tarball item for exporting.
 
     :param tree: Tree to export
     :param final_path: Final path to place item
@@ -80,13 +79,16 @@ def tarball_generator(tree, root, subdir=None, force_mtime=None, format='', recu
 
     Args:
       tree: Tree to export
+      root: Root directory to export
       subdir: Sub directory to export
       force_mtime: Option mtime to force, instead of using tree
         timestamps.
+      format: Tarball format to use (tgz, tar, tbz, etc)
+      recurse_nested: Whether to recurse into nested trees.
     Returns: A generator that will produce file content chunks.
     """
     buf = BytesIO()
-    with closing(tarfile.open(None, "w:%s" % format, buf)) as ball, tree.lock_read():
+    with closing(tarfile.open(None, f"w:{format}", buf)) as ball, tree.lock_read():
         for final_path, tree_path, entry in _export_iter_entries(
                 tree, subdir, recurse_nested=recurse_nested):
             (item, fileobj) = prepare_tarball_item(
@@ -119,7 +121,6 @@ def tgz_generator(tree, dest, root, subdir, force_mtime=None, recurse_nested=Fal
         else:
             root_mtime = None
 
-        is_stdout = False
         basename = None
         # gzip file is used with an explicit fileobj so that
         # the basename can be stored in the gzip file rather than

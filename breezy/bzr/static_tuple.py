@@ -35,10 +35,10 @@ def expect_static_tuple(obj):
     As apis are improved, we will probably eventually stop calling this as it
     adds overhead we shouldn't need.
     """
-    if 'static_tuple' not in debug.debug_flags:
+    if not debug.debug_flag_enabled('static_tuple'):
         return StaticTuple.from_sequence(obj)
     if not isinstance(obj, StaticTuple):
-        raise TypeError('We expected a StaticTuple not a {}'.format(type(obj)))
+        raise TypeError(f'We expected a StaticTuple not a {type(obj)}')
     return obj
 
 

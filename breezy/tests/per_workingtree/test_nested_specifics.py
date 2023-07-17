@@ -16,7 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from breezy.bzr import inventory, inventorytree
+from breezy.bzr import inventorytree
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
@@ -51,7 +51,7 @@ class TestNestedSupport(TestCaseWithWorkingTree):
         self.addCleanup(tree.unlock)
         self.build_tree(['subtree/'])
         tree.add(['subtree'])
-        subtree = tree.extract('subtree')
+        tree.extract('subtree')
 
     def prepare_with_subtree(self):
         tree = self.make_branch_and_tree('.')

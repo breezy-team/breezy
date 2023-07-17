@@ -20,17 +20,12 @@ from io import BytesIO
 from .lazy_import import lazy_import
 
 lazy_import(globals(), """
-from fnmatch import fnmatch
 
-from breezy._termcolor import color_string, FG
+from breezy.terminal import color_string, FG
 
-from breezy import (
-    diff,
-    )
 """)
-from . import controldir, errors, osutils
+from . import controldir, errors, osutils, trace
 from . import revision as _mod_revision
-from . import trace
 from .revisionspec import RevisionSpec, RevisionSpec_revid, RevisionSpec_revno
 
 _user_encoding = osutils.get_user_encoding()
@@ -77,7 +72,7 @@ class GrepOptions:
 
 
 def _rev_on_mainline(rev_tuple):
-    """returns True is rev tuple is on mainline"""
+    """Returns True is rev tuple is on mainline."""
     if len(rev_tuple) == 1:
         return True
     return rev_tuple[1] == 0 and rev_tuple[2] == 0
@@ -119,7 +114,7 @@ def _graph_view_revisions(branch, start_rev_id, end_rev_id,
         start_revision_id=end_rev_id, stop_revision_id=start_rev_id,
         stop_rule="with-merges")
     if not rebase_initial_depths:
-        for (rev_id, merge_depth, revno, end_of_merge
+        for (rev_id, merge_depth, revno, _end_of_merge
              ) in view_revisions:
             yield rev_id, '.'.join(map(str, revno)), merge_depth
     else:
@@ -128,7 +123,7 @@ def _graph_view_revisions(branch, start_rev_id, end_rev_id,
         # a depth less than it. Then we use that depth as the adjustment.
         # If and when we reach the mainline, depth adjustment ends.
         depth_adjustment = None
-        for (rev_id, merge_depth, revno, end_of_merge
+        for (rev_id, merge_depth, revno, _end_of_merge
              ) in view_revisions:
             if depth_adjustment is None:
                 depth_adjustment = merge_depth
@@ -146,8 +141,8 @@ def _graph_view_revisions(branch, start_rev_id, end_rev_id,
 def compile_pattern(pattern, flags=0):
     try:
         return re.compile(pattern, flags)
-    except re.error as e:
-        raise errors.BzrError("Invalid pattern: '%s'" % pattern)
+    except re.error as err:
+        raise errors.BzrError(f"Invalid pattern: '{pattern}'") from err
     return None
 
 
@@ -158,8 +153,7 @@ def is_fixed_string(s):
 
 
 class _GrepDiffOutputter:
-    """Precalculate formatting based on options given for diff grep.
-    """
+    """Precalculate formatting based on options given for diff grep."""
 
     def __init__(self, opts):
         self.opts = opts
@@ -179,7 +173,7 @@ class _GrepDiffOutputter:
             self.get_writer = self._get_writer_plain
 
     def get_file_header_writer(self):
-        """Get function for writing file headers"""
+        """Get function for writing file headers."""
         write = self.outf.write
         eol_marker = self.opts.eol_marker
 
@@ -195,7 +189,7 @@ class _GrepDiffOutputter:
         return _line_writer
 
     def get_revision_header_writer(self):
-        """Get function for writing revno lines"""
+        """Get function for writing revno lines."""
         write = self.outf.write
         eol_marker = self.opts.eol_marker
 
@@ -211,7 +205,7 @@ class _GrepDiffOutputter:
         return _line_writer
 
     def _get_writer_plain(self):
-        """Get function for writing uncoloured output"""
+        """Get function for writing uncoloured output."""
         write = self.outf.write
         eol_marker = self.opts.eol_marker
 
@@ -220,22 +214,22 @@ class _GrepDiffOutputter:
         return _line_writer
 
     def _get_writer_regexp_highlighted(self):
-        """Get function for writing output with regexp match highlighted"""
+        """Get function for writing output with regexp match highlighted."""
         _line_writer = self._get_writer_plain()
         sub, highlight = self._sub, self._highlight
 
         def _line_writer_regexp_highlighted(line):
-            """Write formatted line with matched pattern highlighted"""
+            """Write formatted line with matched pattern highlighted."""
             return _line_writer(line=sub(highlight, line))
         return _line_writer_regexp_highlighted
 
     def _get_writer_fixed_highlighted(self):
-        """Get function for writing output with search string highlighted"""
+        """Get function for writing output with search string highlighted."""
         _line_writer = self._get_writer_plain()
         old, new = self._old, self._new
 
         def _line_writer_fixed_highlighted(line):
-            """Write formatted line with string searched for highlighted"""
+            """Write formatted line with string searched for highlighted."""
             return _line_writer(line=line.replace(old, new))
         return _line_writer_fixed_highlighted
 
@@ -243,6 +237,7 @@ class _GrepDiffOutputter:
 def grep_diff(opts):
     wt, branch, relpath = \
         controldir.ControlDir.open_containing_tree_or_branch('.')
+    from breezy import diff
     with branch.lock_read():
         if opts.revision:
             start_rev = opts.revision[0]
@@ -324,14 +319,14 @@ def grep_diff(opts):
                     display_file = True
                 elif diff_pattern.search(line):
                     if display_revno:
-                        writerevno("=== revno:{} ===".format(revno))
+                        writerevno(f"=== revno:{revno} ===")
                         display_revno = False
                     if display_file:
                         writefileheader(
-                            "  {}".format(file_header.decode(file_encoding, 'replace')))
+                            f"  {file_header.decode(file_encoding, 'replace')}")
                         display_file = False
                     line = line.decode(file_encoding, 'replace')
-                    writeline("    {}".format(line))
+                    writeline(f"    {line}")
 
 
 def versioned_grep(opts):
@@ -437,15 +432,13 @@ def _skip_file(include, exclude, path):
 
 def dir_grep(tree, path, relpath, opts, revno, path_prefix):
     # setup relpath to open files relative to cwd
-    rpath = relpath
     if relpath:
-        rpath = osutils.pathjoin('..', relpath)
+        osutils.pathjoin('..', relpath)
 
     from_dir = osutils.pathjoin(relpath, path)
     if opts.from_root:
         # start searching recursively from root
         from_dir = None
-        recursive = True
 
     to_grep = []
     to_grep_append = to_grep.append
@@ -453,7 +446,7 @@ def dir_grep(tree, path, relpath, opts, revno, path_prefix):
     #                and hits manually refilled. Could do this again if it was
     #                for a good reason, otherwise cache might want purging.
     outputter = opts.outputter
-    for fp, fc, fkind, entry in tree.list_files(
+    for fp, fc, fkind, _entry in tree.list_files(
             include_root=False, from_dir=from_dir, recursive=opts.recursive):
 
         if _skip_file(opts.include, opts.exclude, fp):
@@ -511,15 +504,14 @@ def _make_display_path(relpath, path):
 
 
 def versioned_file_grep(tree, tree_path, relpath, path, opts, revno, path_prefix=None):
-    """Create a file object for the specified id and pass it on to _file_grep.
-    """
-
+    """Create a file object for the specified id and pass it on to _file_grep."""
     path = _make_display_path(relpath, path)
     file_text = tree.get_file_text(tree_path)
     _file_grep(file_text, path, opts, revno, path_prefix)
 
 
-def _path_in_glob_list(path, glob_list):
+def _path_in_glob_list(path, glob_list) -> bool:
+    from fnmatch import fnmatch
     for glob in glob_list:
         if fnmatch(path, glob):
             return True
@@ -557,7 +549,7 @@ def _file_grep_list_only_wtree(file, path, opts, path_prefix=None):
 
 
 class _Outputter:
-    """Precalculate formatting based on options given
+    """Precalculate formatting based on options given.
 
     The idea here is to do this work only once per run, and finally return a
     function that will do the minimum amount possible for each match.
@@ -615,7 +607,7 @@ class _Outputter:
         self._format_perline = "".join(parts)
 
     def _get_writer_plain(self, path, revno, cache_id):
-        """Get function for writing uncoloured output"""
+        """Get function for writing uncoloured output."""
         per_line = self._format_perline
         start = self._format_initial % {"path": path, "revno": revno}
         write = self.outf.write
@@ -625,19 +617,19 @@ class _Outputter:
             add_to_cache = result_list.append
 
             def _line_cache_and_writer(**kwargs):
-                """Write formatted line and cache arguments"""
+                """Write formatted line and cache arguments."""
                 end = per_line % kwargs
                 add_to_cache(end)
                 write(start + end)
             return _line_cache_and_writer
 
         def _line_writer(**kwargs):
-            """Write formatted line from arguments given by underlying opts"""
+            """Write formatted line from arguments given by underlying opts."""
             write(start + per_line % kwargs)
         return _line_writer
 
     def write_cached_lines(self, cache_id, revno):
-        """Write cached results out again for new revision"""
+        """Write cached results out again for new revision."""
         cached_path, cached_matches = self.cache[cache_id]
         start = self._format_initial % {"path": cached_path, "revno": revno}
         write = self.outf.write
@@ -645,22 +637,22 @@ class _Outputter:
             write(start + end)
 
     def _get_writer_regexp_highlighted(self, path, revno, cache_id):
-        """Get function for writing output with regexp match highlighted"""
+        """Get function for writing output with regexp match highlighted."""
         _line_writer = self._get_writer_plain(path, revno, cache_id)
         sub, highlight = self._sub, self._highlight
 
         def _line_writer_regexp_highlighted(line, **kwargs):
-            """Write formatted line with matched pattern highlighted"""
+            """Write formatted line with matched pattern highlighted."""
             return _line_writer(line=sub(highlight, line), **kwargs)
         return _line_writer_regexp_highlighted
 
     def _get_writer_fixed_highlighted(self, path, revno, cache_id):
-        """Get function for writing output with search string highlighted"""
+        """Get function for writing output with search string highlighted."""
         _line_writer = self._get_writer_plain(path, revno, cache_id)
         old, new = self._old, self._new
 
         def _line_writer_fixed_highlighted(line, **kwargs):
-            """Write formatted line with string searched for highlighted"""
+            """Write formatted line with string searched for highlighted."""
             return _line_writer(line=line.replace(old, new), **kwargs)
         return _line_writer_fixed_highlighted
 

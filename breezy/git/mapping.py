@@ -24,13 +24,12 @@ from typing import Optional
 
 import fastbencode as bencode
 
-from .. import errors, foreign, trace, urlutils
+from .. import errors, foreign, trace
 from ..foreign import ForeignRevision, ForeignVcs, VcsMappingRegistry
-from ..revision import NULL_REVISION, Revision
+from ..revision import NULL_REVISION
 from .errors import NoPushSupport
 from .hg import extract_hg_metadata, format_hg_metadata
-from .roundtrip import (CommitSupplement, extract_bzr_metadata,
-                        inject_bzr_metadata)
+from .roundtrip import CommitSupplement, extract_bzr_metadata, inject_bzr_metadata
 
 DEFAULT_FILE_MODE = stat.S_IFREG | 0o644
 HG_RENAME_SOURCE = b"HG:rename-source"
@@ -98,8 +97,7 @@ def unescape_file_id(file_id):
             elif file_id[i + 1:i + 2] == b'c':
                 ret.append(b"\x0c"[0])
             else:
-                raise ValueError("unknown escape character %s" %
-                                 file_id[i + 1:i + 2])
+                raise ValueError(f"unknown escape character {file_id[i + 1:i + 2]}")
             i += 1
         i += 1
     return bytes(ret)
@@ -145,7 +143,7 @@ class BzrGitMapping(foreign.VcsMapping):
     """Class that maps between Git and Bazaar semantics."""
     experimental = False
 
-    BZR_DUMMY_FILE = None  # type: Optional[str]
+    BZR_DUMMY_FILE: Optional[str] = None
 
     def is_special_file(self, filename):
         return (filename in (self.BZR_DUMMY_FILE, ))
@@ -208,7 +206,7 @@ class BzrGitMapping(foreign.VcsMapping):
         except KeyError:
             return ""
         else:
-            return "\ngit-svn-id: %s\n" % git_svn_id.encode(encoding)
+            return f"\ngit-svn-id: {git_svn_id.encode(encoding)}\n"
 
     def _generate_hg_message_tail(self, rev):
         extra = {}
@@ -229,33 +227,33 @@ class BzrGitMapping(foreign.VcsMapping):
             raise TypeError(ret)
         return ret
 
-    def _extract_git_svn_metadata(self, rev, message):
+    def _extract_git_svn_metadata(self, properties, message):
         lines = message.split("\n")
         if not (lines[-1] == "" and len(lines) >= 2 and
                 lines[-2].startswith("git-svn-id:")):
             return message
         git_svn_id = lines[-2].split(": ", 1)[1]
-        rev.properties['git-svn-id'] = git_svn_id
+        properties['git-svn-id'] = git_svn_id
         (url, rev, uuid) = parse_git_svn_id(git_svn_id)
         # FIXME: Convert this to converted-from property somehow..
         return "\n".join(lines[:-2])
 
-    def _extract_hg_metadata(self, rev, message):
+    def _extract_hg_metadata(self, properties, message):
         (message, renames, branch, extra) = extract_hg_metadata(message)
         if branch is not None:
-            rev.properties['hg:extra:branch'] = branch
+            properties['hg:extra:branch'] = branch
         for name, value in extra.items():
-            rev.properties['hg:extra:' + name] = base64.b64encode(value)
+            properties['hg:extra:' + name] = base64.b64encode(value)
         if renames:
-            rev.properties['hg:renames'] = base64.b64encode(bencode.bencode(
+            properties['hg:renames'] = base64.b64encode(bencode.bencode(
                 [(new, old) for (old, new) in renames.items()]))
         return message
 
-    def _extract_bzr_metadata(self, rev, message):
+    def _extract_bzr_metadata(self, properties, message):
         (message, metadata) = extract_bzr_metadata(message)
         return message, metadata
 
-    def _decode_commit_message(self, rev, message, encoding):
+    def _decode_commit_message(self, properties, message, encoding):
         if message is None:
             decoded_message = None
         else:
@@ -270,7 +268,7 @@ class BzrGitMapping(foreign.VcsMapping):
 
     def export_commit(self, rev, tree_sha, parent_lookup, lossy,
                       verifiers):
-        """Turn a Bazaar revision in to a Git commit
+        """Turn a Bazaar revision in to a Git commit.
 
         :param tree_sha: Tree sha for the commit
         :param parent_lookup: Function for looking up the GIT sha equiv of a
@@ -297,7 +295,7 @@ class BzrGitMapping(foreign.VcsMapping):
                     metadata.explicit_parent_ids = rev.parent_ids
             if git_p is not None:
                 if len(git_p) != 40:
-                    raise AssertionError("unexpected length for %r" % git_p)
+                    raise AssertionError(f"unexpected length for {git_p!r}")
                 parents.append(git_p)
         commit.parents = parents
         try:
@@ -335,8 +333,13 @@ class BzrGitMapping(foreign.VcsMapping):
         if 'git-gpg-signature' in rev.properties:
             commit.gpgsig = rev.properties['git-gpg-signature'].encode(
                 'utf-8', 'surrogateescape')
-        commit.message = self._encode_commit_message(rev, rev.message,
-                                                     encoding)
+        if 'git-missing-message' in rev.properties:
+            if commit.message != '':
+                raise AssertionError('git-missing-message set but message is not empty')
+            commit.message = None
+        else:
+            commit.message = self._encode_commit_message(rev, rev.message,
+                                                         encoding)
         if not isinstance(commit.message, bytes):
             raise TypeError(commit.message)
         if metadata is not None:
@@ -404,74 +407,76 @@ class BzrGitMapping(foreign.VcsMapping):
         """
         if commit is None:
             raise AssertionError("Commit object can't be None")
-        rev = ForeignRevision(commit.id, self,
-                              self.revision_id_foreign_to_bzr(commit.id))
-        rev.git_metadata = None
+        committer = None
+        message = None
+        git_metadata = None
+        properties = {}
 
-        def decode_using_encoding(rev, commit, encoding):
+        def decode_using_encoding(properties, commit, encoding):
+            nonlocal committer, message, git_metadata
             try:
-                rev.committer = commit.committer.decode(encoding)
-            except LookupError:
-                raise UnknownCommitEncoding(encoding)
+                committer = commit.committer.decode(encoding)
+            except LookupError as err:
+                raise UnknownCommitEncoding(encoding) from err
             try:
                 if commit.committer != commit.author:
-                    rev.properties['author'] = commit.author.decode(encoding)
-            except LookupError:
-                raise UnknownCommitEncoding(encoding)
-            rev.message, rev.git_metadata = self._decode_commit_message(
-                rev, commit.message, encoding)
+                    properties['author'] = commit.author.decode(encoding)
+            except LookupError as err:
+                raise UnknownCommitEncoding(encoding) from err
+            message, git_metadata = self._decode_commit_message(
+                properties, commit.message, encoding)
 
         if commit.encoding is not None:
-            rev.properties['git-explicit-encoding'] = commit.encoding.decode(
+            properties['git-explicit-encoding'] = commit.encoding.decode(
                 'ascii')
         if commit.encoding is not None and commit.encoding != b'false':
-            decode_using_encoding(rev, commit, commit.encoding.decode('ascii'))
+            decode_using_encoding(properties, commit, commit.encoding.decode('ascii'))
         else:
             for encoding in ('utf-8', 'latin1'):
                 try:
-                    decode_using_encoding(rev, commit, encoding)
+                    decode_using_encoding(properties, commit, encoding)
                 except UnicodeDecodeError:
                     pass
                 else:
                     if encoding != 'utf-8':
-                        rev.properties['git-implicit-encoding'] = encoding
+                        properties['git-implicit-encoding'] = encoding
                     break
         if commit.commit_time != commit.author_time:
-            rev.properties['author-timestamp'] = str(commit.author_time)
+            properties['author-timestamp'] = str(commit.author_time)
         if commit.commit_timezone != commit.author_timezone:
-            rev.properties['author-timezone'] = "%d" % commit.author_timezone
+            properties['author-timezone'] = "%d" % commit.author_timezone
         if commit._author_timezone_neg_utc:
-            rev.properties['author-timezone-neg-utc'] = ""
+            properties['author-timezone-neg-utc'] = ""
         if commit._commit_timezone_neg_utc:
-            rev.properties['commit-timezone-neg-utc'] = ""
+            properties['commit-timezone-neg-utc'] = ""
         if commit.gpgsig:
-            rev.properties['git-gpg-signature'] = commit.gpgsig.decode(
+            properties['git-gpg-signature'] = commit.gpgsig.decode(
                 'utf-8', 'surrogateescape')
         if commit.mergetag:
             for i, tag in enumerate(commit.mergetag):
-                rev.properties['git-mergetag-%d' % i] = tag.as_raw_string().decode(
+                properties['git-mergetag-%d' % i] = tag.as_raw_string().decode(
                     'utf-8', 'surrogateescape')
-        rev.timestamp = commit.commit_time
-        rev.timezone = commit.commit_timezone
-        rev.parent_ids = None
-        if rev.git_metadata is not None:
-            md = rev.git_metadata
+        timestamp = commit.commit_time
+        timezone = commit.commit_timezone
+        parent_ids = None
+        if git_metadata is not None:
+            md = git_metadata
             roundtrip_revid = md.revision_id
             if md.explicit_parent_ids:
-                rev.parent_ids = md.explicit_parent_ids
-            rev.properties.update(md.properties)
+                parent_ids = md.explicit_parent_ids
+            properties.update(md.properties)
             verifiers = md.verifiers
         else:
             roundtrip_revid = None
             verifiers = {}
-        if rev.parent_ids is None:
+        if parent_ids is None:
             parents = []
             for p in commit.parents:
                 try:
                     parents.append(lookup_parent_revid(p))
                 except KeyError:
                     parents.append(self.revision_id_foreign_to_bzr(p))
-            rev.parent_ids = list(parents)
+            parent_ids = list(parents)
         unknown_extra_fields = []
         extra_lines = []
         try:
@@ -500,7 +505,22 @@ class BzrGitMapping(foreign.VcsMapping):
                 commit,
                 [f.decode('ascii', 'replace') for f in unknown_extra_fields])
         if extra_lines:
-            rev.properties['git-extra'] = ''.join(extra_lines)
+            properties['git-extra'] = ''.join(extra_lines)
+
+        if message is None:
+            properties['git-missing-message'] = 'true'
+            message = ''
+
+        rev = ForeignRevision(
+            foreign_revid=commit.id, mapping=self,
+            revision_id=self.revision_id_foreign_to_bzr(commit.id),
+            properties=properties,
+            parent_ids=parent_ids,
+            timestamp=timestamp,
+            timezone=timezone,
+            committer=committer,
+            message=message,)
+        rev.git_metadata = git_metadata
         return rev, roundtrip_revid, verifiers
 
 
@@ -519,16 +539,14 @@ class BzrGitMappingExperimental(BzrGitMappingv1):
 
     BZR_DUMMY_FILE = '.bzrdummy'
 
-    def _decode_commit_message(self, rev, message, encoding):
-        if rev is None:
-            rev = Revision()
-        message = self._extract_hg_metadata(rev, message)
-        message = self._extract_git_svn_metadata(rev, message)
-        message, metadata = self._extract_bzr_metadata(rev, message)
+    def _decode_commit_message(self, properties, message, encoding):
+        message = self._extract_hg_metadata(properties, message)
+        message = self._extract_git_svn_metadata(properties, message)
+        message, metadata = self._extract_bzr_metadata(properties, message)
         try:
             return message.decode(encoding), metadata
-        except LookupError:
-            raise UnknownCommitEncoding(encoding)
+        except LookupError as err:
+            raise UnknownCommitEncoding(encoding) from err
 
     def _encode_commit_message(self, rev, message, encoding):
         ret = message.encode(encoding)
@@ -539,7 +557,7 @@ class BzrGitMappingExperimental(BzrGitMappingv1):
     def import_commit(self, commit, lookup_parent_revid, strict=True):
         rev, roundtrip_revid, verifiers = super().import_commit(
                 commit, lookup_parent_revid, strict)
-        rev.properties['converted_revision'] = "git %s\n" % commit.id
+        rev.properties['converted_revision'] = f"git {commit.id}\n"
         return rev, roundtrip_revid, verifiers
 
 
@@ -574,7 +592,7 @@ mapping_registry.set_default(b'git-v1')
 
 
 class ForeignGit(ForeignVcs):
-    """The Git Stupid Content Tracker"""
+    """The Git Stupid Content Tracker."""
 
     @property
     def branch_format(self):
@@ -637,7 +655,7 @@ def mode_kind(mode):
                 "Unknown file kind %d, perms=%o." % (file_kind, mode,))
     else:
         raise AssertionError(
-            "Unknown kind, perms={!r}.".format(mode))
+            f"Unknown kind, perms={mode!r}.")
 
 
 def object_mode(kind, executable):

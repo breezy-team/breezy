@@ -20,8 +20,10 @@
 For more generic per-repository tests, see breezy.tests.per_repository.
 """
 
-from breezy.tests.per_repository import (TestCaseWithRepository,
-                                         all_repository_format_scenarios)
+from breezy.tests.per_repository import (
+    TestCaseWithRepository,  # noqa: F401
+    all_repository_format_scenarios,
+)
 
 
 def all_repository_vf_format_scenarios():
@@ -49,5 +51,5 @@ def load_tests(loader, basic_tests, pattern):
         'test_write_group',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["{}.{}".format(__name__, tmn) for tmn in testmod_names]))
+        [f"{__name__}.{tmn}" for tmn in testmod_names]))
     return basic_tests

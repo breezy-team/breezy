@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for the Registry classes"""
+"""Tests for the Registry classes."""
 
 import os
 import sys
@@ -34,7 +34,7 @@ class TestRegistry(tests.TestCase):
         a_registry = registry.Registry()
         self.register_stuff(a_registry)
 
-        self.assertTrue(a_registry.default_key is None)
+        self.assertIsNone(a_registry.default_key)
 
         # test get() (self.default_key is None)
         self.assertRaises(KeyError, a_registry.get)
@@ -44,7 +44,7 @@ class TestRegistry(tests.TestCase):
 
         # test _set_default_key
         a_registry.default_key = 'five'
-        self.assertTrue(a_registry.default_key == 'five')
+        self.assertEqual(a_registry.default_key, 'five')
         self.assertEqual(5, a_registry.get())
         self.assertEqual(5, a_registry.get(None))
         # If they ask for a specific entry, they should get KeyError
@@ -59,9 +59,9 @@ class TestRegistry(tests.TestCase):
         a_registry = registry.Registry()
         self.register_stuff(a_registry)
 
-        self.assertTrue('one' in a_registry)
+        self.assertIn('one', a_registry)
         a_registry.remove('one')
-        self.assertFalse('one' in a_registry)
+        self.assertNotIn('one', a_registry)
         self.assertRaises(KeyError, a_registry.get, 'one')
 
         a_registry.register('one', 'one')
@@ -101,7 +101,7 @@ class TestRegistry(tests.TestCase):
 
         def generic_help(reg, key):
             help_calls.append(key)
-            return 'generic help for {}'.format(key)
+            return f'generic help for {key}'
         a_registry.register('three', 3, help=generic_help)
         a_registry.register_lazy('four', 'nonexistent_module', 'member2',
                                  help=generic_help)
@@ -250,7 +250,7 @@ class TestRegistryIter(tests.TestCase):
 
         class InvasiveGetter(registry._ObjectGetter):
 
-            def get_obj(inner_self):
+            def get_obj(inner_self):  # noqa: N805
                 # Surprise ! Getting a registered object (think lazy loaded
                 # module) register yet another object !
                 _registry.register('more hidden', None)
@@ -268,7 +268,7 @@ class TestRegistryIter(tests.TestCase):
         count = 0
         for name, func in iter_func():
             count += 1
-            self.assertFalse(name in ('hidden', 'more hidden'))
+            self.assertNotIn(name, ('hidden', 'more hidden'))
             if func is not None:
                 # Using an object register another one as a side effect
                 func()
@@ -284,7 +284,7 @@ class TestRegistryIter(tests.TestCase):
 
 
 class TestRegistryWithDirs(tests.TestCaseInTempDir):
-    """Registry tests that require temporary dirs"""
+    """Registry tests that require temporary dirs."""
 
     def create_plugin_file(self, contents):
         """Create a file to be used as a plugin.
@@ -293,7 +293,7 @@ class TestRegistryWithDirs(tests.TestCaseInTempDir):
         are sure that it doesn't start in the plugin path.
         """
         os.mkdir('tmp')
-        plugin_name = 'bzr_plugin_a_{}'.format(osutils.rand_chars(4))
+        plugin_name = f'bzr_plugin_a_{osutils.rand_chars(4)}'
         with open('tmp/' + plugin_name + '.py', 'wb') as f:
             f.write(contents)
         return plugin_name
@@ -329,17 +329,17 @@ class TestRegistryWithDirs(tests.TestCaseInTempDir):
         self.assertEqual(['function', 'klass', 'module', 'obj'],
                          sorted(a_registry.keys()))
         # The plugin should not be loaded until we grab the first object
-        self.assertFalse(plugin_name in sys.modules)
+        self.assertNotIn(plugin_name, sys.modules)
 
         # By default the plugin won't be in the search path
         self.assertRaises(ImportError, a_registry.get, 'obj')
 
-        plugin_path = self.test_dir + '/tmp'
+        plugin_path = self.test_dir + '/tmp'   # noqa: S108
         sys.path.append(plugin_path)
         try:
             obj = a_registry.get('obj')
             self.assertEqual('foo', obj)
-            self.assertTrue(plugin_name in sys.modules)
+            self.assertIn(plugin_name, sys.modules)
 
             # Now grab another object
             func = a_registry.get('function')
@@ -372,7 +372,7 @@ class TestRegistryWithDirs(tests.TestCaseInTempDir):
 
     def test_normal_get_module(self):
         class AThing:
-            """Something"""
+            """Something."""
         a_registry = registry.Registry()
         a_registry.register("obj", AThing())
         self.assertEqual("breezy.tests.test_registry",

@@ -16,10 +16,10 @@
 
 """Tests of breezy test matchers."""
 
-from testtools.matchers import *
+from testtools.matchers import *  # noqa: F403
 
-from . import CapturedCall, TestCase, TestCaseWithTransport
-from .matchers import *
+from . import TestCase, TestCaseWithTransport
+from .matchers import *  # noqa: F403
 
 
 class StubTree:
@@ -68,8 +68,7 @@ class TestMatchesAncestry(TestCaseWithTransport):
     def test__str__(self):
         matcher = MatchesAncestry("A repository", b"arevid")
         self.assertEqual(
-            "MatchesAncestry(repository='A repository', "
-            "revision_id=%r)" % (b'arevid', ),
+            f"MatchesAncestry(repository='A repository', revision_id={b'arevid'!r})",
             str(matcher))
 
     def test_match(self):
@@ -91,7 +90,7 @@ class TestMatchesAncestry(TestCaseWithTransport):
         b = self.make_branch_builder('.')
         b.start_series()
         revid1 = b.build_commit()
-        revid2 = b.build_commit()
+        b.build_commit()
         b.finish_series()
         branch = b.get_branch()
         m = MatchesAncestry(branch.repository, revid1)
@@ -107,7 +106,7 @@ class TestHasLayout(TestCaseWithTransport):
 
     def test__str__(self):
         matcher = HasLayout([(b"a", b"a-id")])
-        self.assertEqual("HasLayout({!r})".format([(b'a', b'a-id')]), str(matcher))
+        self.assertEqual(f"HasLayout({[(b'a', b'a-id')]!r})", str(matcher))
 
     def test_match(self):
         t = self.make_branch_and_tree('.')
@@ -150,8 +149,7 @@ class TestHasPathRelations(TestCaseWithTransport):
     def test__str__(self):
         t = self.make_branch_and_tree('.')
         matcher = HasPathRelations(t, [("a", "b")])
-        self.assertEqual("HasPathRelations(%r, %r)" %
-                         (t, [('a', 'b')]), str(matcher))
+        self.assertEqual(f"HasPathRelations({t!r}, {[('a', 'b')]!r})", str(matcher))
 
     def test_match(self):
         t = self.make_branch_and_tree('.')

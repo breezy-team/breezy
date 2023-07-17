@@ -13,7 +13,7 @@ import sys
 sys.path = [os.path.abspath('../..'), os.path.abspath('api')] + sys.path
 
 # Most of the configuration for Breezy docs is defined here ...
-from breezy.doc_generate.conf import *
+from breezy.doc_generate.conf import *  # noqa: F403
 
 ## Configuration specific to this site ##
 
@@ -21,7 +21,7 @@ from breezy.doc_generate.conf import *
 brz_locale = 'en'
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
-html_short_title = "Developer Document Catalog ({})".format(release)
+html_short_title = f"Developer Document Catalog ({release})"
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.

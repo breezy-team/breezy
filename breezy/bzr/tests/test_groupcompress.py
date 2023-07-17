@@ -18,12 +18,11 @@
 
 import zlib
 
-from ... import config, errors, osutils, tests, trace
+from ... import config, osutils, tests, trace
 from ...osutils import sha_string
 from ...tests.scenarios import load_tests_apply_scenarios
-from .. import btree_index, groupcompress
+from .. import btree_index, groupcompress, knit, versionedfile
 from .. import index as _mod_index
-from .. import knit, versionedfile
 from .test__groupcompress import compiled_groupcompress_feature
 
 
@@ -59,7 +58,7 @@ class TestGroupCompressor(tests.TestCase):
 
 
 class TestAllGroupCompressors(TestGroupCompressor):
-    """Tests for GroupCompressor"""
+    """Tests for GroupCompressor."""
 
     scenarios = group_compress_implementation_scenarios()
     compressor = None  # Set by scenario
@@ -94,7 +93,7 @@ class TestAllGroupCompressors(TestGroupCompressor):
         # Even after adding some content
         text = b'some\nbytes\n'
         compressor.compress(('content',), [text], len(text), None)
-        self.assertTrue(compressor.endpoint > 0)
+        self.assertGreater(compressor.endpoint, 0)
         sha1, start_point, end_point, kind = compressor.compress(
             ('empty2',), [], 0, None)
         self.assertEqual(0, start_point)
@@ -109,7 +108,7 @@ class TestAllGroupCompressors(TestGroupCompressor):
         text = b'strange\ncommon long line\nthat needs a 16 byte match\n'
         sha1_1, _, _, _ = compressor.compress(
             ('label',), [text], len(text), None)
-        expected_lines = list(compressor.chunks)
+        list(compressor.chunks)
         text = b'common long line\nthat needs a 16 byte match\ndifferent\n'
         sha1_2, _, end_point, _ = compressor.compress(
             ('newlabel',), [text], len(text), None)
@@ -308,7 +307,6 @@ class TestGroupCompressBlock(tests.TestCase):
     def make_block(self, key_to_text):
         """Create a GroupCompressBlock, filling it with the given texts."""
         compressor = groupcompress.GroupCompressor()
-        start = 0
         for key in sorted(key_to_text):
             compressor.compress(
                 key, [key_to_text[key]], len(key_to_text[key]), None)
@@ -433,9 +431,9 @@ class TestGroupCompressBlock(tests.TestCase):
         block._ensure_content(100)
         self.assertIsNot(None, block._content)
         # We have decompressed at least 100 bytes
-        self.assertTrue(len(block._content) >= 100)
+        self.assertGreaterEqual(len(block._content), 100)
         # We have not decompressed the whole content
-        self.assertTrue(len(block._content) < 158634)
+        self.assertLess(len(block._content), 158634)
         self.assertEqualDiff(content[:len(block._content)], block._content)
         # ensuring content that we already have shouldn't cause any more data
         # to be extracted
@@ -445,8 +443,8 @@ class TestGroupCompressBlock(tests.TestCase):
         # Now we want a bit more content
         cur_len += 10
         block._ensure_content(cur_len)
-        self.assertTrue(len(block._content) >= cur_len)
-        self.assertTrue(len(block._content) < 158634)
+        self.assertGreaterEqual(len(block._content), cur_len)
+        self.assertLess(len(block._content), 158634)
         self.assertEqualDiff(content[:len(block._content)], block._content)
         # And now lets finish
         block._ensure_content(158634)
@@ -512,7 +510,9 @@ class TestCaseWithGroupCompressVersionedFiles(
 
 class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
 
-    def make_g_index(self, name, ref_lists=0, nodes=[]):
+    def make_g_index(self, name, ref_lists=0, nodes=None):
+        if nodes is None:
+            nodes = []
         builder = btree_index.BTreeBuilder(ref_lists)
         for node, references, value in nodes:
             builder.add_node(node, references, value)
@@ -576,7 +576,7 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
         vf.writer.end()
         vf._max_bytes_to_index = 1234
         record = next(vf.get_record_stream([(b'a',)], 'unordered', True))
-        self.assertEqual(dict(max_bytes_to_index=1234),
+        self.assertEqual({'max_bytes_to_index': 1234},
                          record._manager._get_compressor_settings())
 
     @staticmethod
@@ -738,7 +738,7 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
         target = self.make_test_vf(True, dir='target',
                                    inconsistency_fatal=inconsistency_fatal)
         for x in range(2):
-            source = self.make_source_with_b(x == 1, 'source%s' % x)
+            source = self.make_source_with_b(x == 1, f'source{x}')
             target.insert_record_stream(source.get_record_stream(
                 [(b'b',)], 'unordered', False))
 
@@ -771,10 +771,10 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
     def test_clear_cache(self):
         vf = self.make_source_with_b(True, 'source')
         vf.writer.end()
-        for record in vf.get_record_stream([(b'a',), (b'b',)], 'unordered',
+        for _record in vf.get_record_stream([(b'a',), (b'b',)], 'unordered',
                                            True):
             pass
-        self.assertTrue(len(vf._group_cache) > 0)
+        self.assertGreater(len(vf._group_cache), 0)
         vf.clear_cache()
         self.assertEqual(0, len(vf._group_cache))
 
@@ -950,7 +950,6 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
     def make_block(self, key_to_text):
         """Create a GroupCompressBlock, filling it with the given texts."""
         compressor = groupcompress.GroupCompressor()
-        start = 0
         for key in sorted(key_to_text):
             compressor.compress(
                 key, [key_to_text[key]], len(key_to_text[key]), None)
@@ -1002,7 +1001,7 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         block_length = len(block.to_bytes())
         # We should have triggered a strip, since we aren't using any content
         stripped_block = manager._block.to_bytes()
-        self.assertTrue(block_length > len(stripped_block))
+        self.assertGreater(block_length, len(stripped_block))
         empty_z_header = zlib.compress(b'')
         self.assertEqual(b'groupcompress-block\n'
                          b'8\n'  # len(compress(''))
@@ -1079,7 +1078,7 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         self.add_key_to_manager((b'key1',), locations, block, manager)
         manager._check_rebuild_block()
         self.assertIsNot(block, manager._block)
-        self.assertTrue(block._content_length > manager._block._content_length)
+        self.assertGreater(block._content_length, manager._block._content_length)
         # We should be able to still get the content out of this block, though
         # it should only have 1 entry
         for record in manager.get_record_stream():
@@ -1094,7 +1093,7 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         self.add_key_to_manager((b'key4',), locations, block, manager)
         manager._check_rebuild_block()
         self.assertIsNot(block, manager._block)
-        self.assertTrue(block._content_length > manager._block._content_length)
+        self.assertGreater(block._content_length, manager._block._content_length)
         for record in manager.get_record_stream():
             self.assertEqual((b'key4',), record.key)
             self.assertEqual(self._texts[record.key],
@@ -1118,7 +1117,6 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
             return (10,)
         manager = groupcompress._LazyGroupContentManager(old_block,
                                                          get_compressor_settings=compressor_settings)
-        gcvf = groupcompress.GroupCompressVersionedFiles
         # It doesn't greedily evaluate compressor_settings
         self.assertIs(None, manager._compressor_settings)
         self.assertEqual((10,), manager._get_compressor_settings())
@@ -1134,7 +1132,7 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
                                           ' does not handle compressor_settings')
         locations, old_block = self.make_block(self._texts)
         manager = groupcompress._LazyGroupContentManager(old_block,
-                                                         get_compressor_settings=lambda: dict(max_bytes_to_index=32))
+                                                         get_compressor_settings=lambda: {'max_bytes_to_index': 32})
         gc = manager._make_group_compressor()
         self.assertEqual(32, gc._delta_index._max_bytes_to_index)
         self.add_key_to_manager((b'key3',), locations, old_block, manager)
@@ -1147,7 +1145,7 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         # Because of the new max_bytes_to_index, we do a poor job of
         # rebuilding. This is a side-effect of the change, but at least it does
         # show the setting had an effect.
-        self.assertTrue(old_block._content_length < new_block._content_length)
+        self.assertLess(old_block._content_length, new_block._content_length)
 
     def test_check_is_well_utilized_all_keys(self):
         block, manager = self.make_block_and_full_manager(self._texts)
@@ -1216,3 +1214,37 @@ class Test_GCBuildDetails(tests.TestCase):
         self.assertEqual("_GCBuildDetails(('INDEX', 10, 20, 0, 5),"
                          " (('parent1',), ('parent2',)))",
                          repr(bd))
+
+
+class TestBase128Int(tests.TestCase):
+
+    def assertEqualEncode(self, bytes, val):
+        self.assertEqual(bytes, groupcompress.encode_base128_int(val))
+
+    def assertEqualDecode(self, val, num_decode, bytes):
+        self.assertEqual((val, num_decode),
+                         groupcompress.decode_base128_int(bytes))
+
+    def test_encode(self):
+        self.assertEqualEncode(b'\x01', 1)
+        self.assertEqualEncode(b'\x02', 2)
+        self.assertEqualEncode(b'\x7f', 127)
+        self.assertEqualEncode(b'\x80\x01', 128)
+        self.assertEqualEncode(b'\xff\x01', 255)
+        self.assertEqualEncode(b'\x80\x02', 256)
+        self.assertEqualEncode(b'\xff\xff\xff\xff\x0f', 0xFFFFFFFF)
+
+    def test_decode(self):
+        self.assertEqualDecode(1, 1, b'\x01')
+        self.assertEqualDecode(2, 1, b'\x02')
+        self.assertEqualDecode(127, 1, b'\x7f')
+        self.assertEqualDecode(128, 2, b'\x80\x01')
+        self.assertEqualDecode(255, 2, b'\xff\x01')
+        self.assertEqualDecode(256, 2, b'\x80\x02')
+        self.assertEqualDecode(0xFFFFFFFF, 5, b'\xff\xff\xff\xff\x0f')
+
+    def test_decode_with_trailing_bytes(self):
+        self.assertEqualDecode(1, 1, b'\x01abcdef')
+        self.assertEqualDecode(127, 1, b'\x7f\x01')
+        self.assertEqualDecode(128, 2, b'\x80\x01abcdef')
+        self.assertEqualDecode(255, 2, b'\xff\x01\xff')

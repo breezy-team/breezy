@@ -5,8 +5,7 @@
 # ==========
 # ::
 
-"""
-A front end to the Docutils Publisher, producing PDF.
+"""A front end to the Docutils Publisher, producing PDF.
 
 Produces a latex file with the "latex" writer and converts
 it to PDF with the "rubber" building system for LaTeX documents.
@@ -48,7 +47,7 @@ import os
 try:
     import locale
     locale.setlocale(locale.LC_ALL, '')
-except:
+except BaseException:
     pass
 
 import sys

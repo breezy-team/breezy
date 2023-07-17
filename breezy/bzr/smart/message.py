@@ -117,10 +117,10 @@ class ConventionalRequestHandler(MessageHandler):
                 self.expecting = 'error'
             else:
                 raise errors.SmartProtocolError(
-                    'Non-success status byte in request body: {!r}'.format(byte))
+                    f'Non-success status byte in request body: {byte!r}')
         else:
             raise errors.SmartProtocolError(
-                'Unexpected message part: byte({!r})'.format(byte))
+                f'Unexpected message part: byte({byte!r})')
 
     def structure_part_received(self, structure):
         if self.expecting == 'args':
@@ -129,7 +129,7 @@ class ConventionalRequestHandler(MessageHandler):
             self._error_received(structure)
         else:
             raise errors.SmartProtocolError(
-                'Unexpected message part: structure({!r})'.format(structure))
+                f'Unexpected message part: structure({structure!r})')
 
     def _args_received(self, args):
         self.expecting = 'body'
@@ -149,7 +149,7 @@ class ConventionalRequestHandler(MessageHandler):
             self.request_handler.accept_body(bytes)
         else:
             raise errors.SmartProtocolError(
-                'Unexpected message part: bytes({!r})'.format(bytes))
+                f'Unexpected message part: bytes({bytes!r})')
 
     def end_received(self):
         if self.expecting not in ['body', 'end']:
@@ -190,8 +190,7 @@ class ResponseHandler:
         raise NotImplementedError(self.read_body_bytes)
 
     def read_streamed_body(self):
-        """Returns an iterable that reads and returns a series of body chunks.
-        """
+        """Returns an iterable that reads and returns a series of body chunks."""
         raise NotImplementedError(self.read_streamed_body)
 
     def cancel_read_body(self):
@@ -227,16 +226,16 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
             raise TypeError(byte)
         if byte not in [b'E', b'S']:
             raise errors.SmartProtocolError(
-                'Unknown response status: {!r}'.format(byte))
+                f'Unknown response status: {byte!r}')
         if self._body_started:
             if self._body_stream_status is not None:
                 raise errors.SmartProtocolError(
-                    'Unexpected byte part received: {!r}'.format(byte))
+                    f'Unexpected byte part received: {byte!r}')
             self._body_stream_status = byte
         else:
             if self.status is not None:
                 raise errors.SmartProtocolError(
-                    'Unexpected byte part received: {!r}'.format(byte))
+                    f'Unexpected byte part received: {byte!r}')
             self.status = byte
 
     def bytes_part_received(self, bytes):
@@ -246,7 +245,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
     def structure_part_received(self, structure):
         if not isinstance(structure, tuple):
             raise errors.SmartProtocolError(
-                'Args structure is not a sequence: {!r}'.format(structure))
+                f'Args structure is not a sequence: {structure!r}')
         if not self._body_started:
             if self.args is not None:
                 raise errors.SmartProtocolError(
@@ -256,8 +255,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         else:
             if self._body_stream_status != b'E':
                 raise errors.SmartProtocolError(
-                    'Unexpected structure received after body: %r'
-                    % (structure,))
+                    f'Unexpected structure received after body: {structure!r}')
             self._body_error_args = structure
 
     def _wait_for_response_args(self):
@@ -278,12 +276,12 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         data = self._medium_request.read_bytes(next_read_size)
         if data == b'':
             # end of file encountered reading from server
-            if 'hpss' in debug.debug_flags:
+            if debug.debug_flag_enabled('hpss'):
                 mutter(
                     'decoder state: buf[:10]=%r, state_accept=%s',
                     self._protocol_decoder._get_in_buffer()[:10],
                     self._protocol_decoder.state_accept.__name__)
-            raise errors.ConnectionReset(
+            raise ConnectionResetError(
                 "Unexpected end of message. "
                 "Please check connectivity and permissions, and report a bug "
                 "if problems persist.")
@@ -300,7 +298,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         self._wait_for_response_args()
         if not expect_body:
             self._wait_for_response_end()
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             mutter('   result:   %r', self.args)
         if self.status == b'E':
             self._wait_for_response_end()
@@ -321,7 +319,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         if self._body is None:
             self._wait_for_response_end()
             body_bytes = b''.join(self._bytes_parts)
-            if 'hpss' in debug.debug_flags:
+            if debug.debug_flag_enabled('hpss'):
                 mutter('              %d body bytes read', len(body_bytes))
             self._body = BytesIO(body_bytes)
             self._bytes_parts = None
@@ -331,7 +329,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         while not self.finished_reading:
             while self._bytes_parts:
                 bytes_part = self._bytes_parts.popleft()
-                if 'hpssdetail' in debug.debug_flags:
+                if debug.debug_flag_enabled('hpssdetail'):
                     mutter('              %d byte part read', len(bytes_part))
                 yield bytes_part
             self._read_more()
@@ -343,7 +341,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
 
 
 def _raise_smart_server_error(error_tuple):
-    """Raise exception based on tuple received from smart server
+    """Raise exception based on tuple received from smart server.
 
     Specific error translation is handled by breezy.bzr.remote._translate_error
     """

@@ -20,12 +20,16 @@ import posixpath
 import stat
 
 from dulwich.object_store import tree_lookup_path
-from dulwich.objects import (S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Commit, Tag,
-                             Tree)
+from dulwich.objects import S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Commit, Tag, Tree
 
-from .. import debug, errors, osutils, trace
-from ..bzr.inventory import (InventoryDirectory, InventoryFile, InventoryLink,
-                             TreeReference)
+from .. import debug, osutils, trace
+from ..bzr.inventory import (
+    InventoryDirectory,
+    InventoryFile,
+    InventoryLink,
+    TreeReference,
+)
+from ..bzr.inventory_delta import InventoryDelta
 from ..bzr.inventorytree import InventoryRevisionTree
 from ..bzr.testament import StrictTestament3
 from ..bzr.versionedfile import ChunkedContentFactory
@@ -34,8 +38,13 @@ from ..revision import NULL_REVISION
 from ..transport import NoSuchFile
 from ..tree import InterTree
 from ..tsort import topo_sort
-from .mapping import (DEFAULT_FILE_MODE, decode_git_path, mode_is_executable,
-                      mode_kind, warn_unusual_mode)
+from .mapping import (
+    DEFAULT_FILE_MODE,
+    decode_git_path,
+    mode_is_executable,
+    mode_kind,
+    warn_unusual_mode,
+)
 from .object_store import LRUTreeCache, _tree_to_objects
 
 
@@ -119,7 +128,7 @@ def import_git_blob(texts, mapping, path, name, hexshas,
             chunks = blob.chunked
         texts.insert_record_stream([
             ChunkedContentFactory((file_id, ie.revision),
-                                  tuple(parent_keys), ie.text_sha1, chunks)])
+                                  tuple(parent_keys), getattr(ie, 'text_sha1', None), chunks)])
     invdelta = []
     if base_hexsha is not None:
         old_path = decoded_path  # Renames are not supported yet
@@ -307,11 +316,10 @@ def verify_commit_reconstruction(target_git_object_retriever, lookup_object,
     rec_o = target_git_object_retriever._reconstruct_commit(rev, o.tree, True,
                                                             verifiers)
     if rec_o != o:
-        raise AssertionError("Reconstructed commit differs: {!r} != {!r}".format(
-            rec_o, o))
+        raise AssertionError(f"Reconstructed commit differs: {rec_o!r} != {o!r}")
     diff = []
     new_objs = {}
-    for path, obj, ie in _tree_to_objects(
+    for path, obj, _ie in _tree_to_objects(
             ret_tree, parent_trees, target_git_object_retriever._cache.idmap,
             unusual_modes, mapping.BZR_DUMMY_FILE):
         old_obj_id = tree_lookup_path(lookup_object, o.tree, path)[1]
@@ -334,7 +342,7 @@ def verify_commit_reconstruction(target_git_object_retriever, lookup_object,
                     new_obj = new_objs[path]
                     break
         raise AssertionError(
-            "objects differ for {}: {!r} != {!r}".format(path, old_obj, new_obj))
+            f"objects differ for {path}: {old_obj!r} != {new_obj!r}")
 
 
 def ensure_inventories_in_repo(repo, trees):
@@ -387,6 +395,7 @@ def import_git_commit(repo, mapping, head, lookup_object,
         base_bzr_inventory = None
     else:
         base_bzr_inventory = base_bzr_tree.root_inventory
+    inv_delta = InventoryDelta(inv_delta)
     rev.inventory_sha1, inv = repo.add_inventory_by_delta(
         basis_id, inv_delta, rev.revision_id, rev.parent_ids,
         base_bzr_inventory)
@@ -410,7 +419,7 @@ def import_git_commit(repo, mapping, head, lookup_object,
     store_updater.finish()
     trees_cache.add(ret_tree)
     repo.add_revision(rev.revision_id, rev)
-    if "verify" in debug.debug_flags:
+    if debug.debug_flag_enabled('verify'):
         verify_commit_reconstruction(
             target_git_object_retriever, lookup_object, o, rev, ret_tree,
             parent_trees, mapping, unusual_modes, verifiers)
@@ -461,7 +470,7 @@ def import_git_objects(repo, mapping, object_iter,
             if o.object[1] not in checked:
                 heads.append(o.object[1])
         else:
-            trace.warning("Unable to import head object %r" % o)
+            trace.warning(f"Unable to import head object {o!r}")
         checked.add(o.id)
     del checked
     # Order the revisions

@@ -19,8 +19,11 @@
 Currently only tells the user that Mercurial is not supported.
 """
 
-from ... import version_info  # noqa: F401
-from ... import controldir, errors
+from ... import (
+    controldir,
+    errors,
+    version_info,  # noqa: F401
+)
 from ... import transport as _mod_transport
 
 
@@ -136,7 +139,7 @@ class SmartHgProber(controldir.Prober):
         :param externa_url: External URL for transport
         :return: Boolean indicating whether transport is backed onto hg
         """
-        from breezy.urlutils import urlparse
+        from ...urlutils import urlparse
         parsed_url = urlparse.urlparse(external_url)
         parsed_url = parsed_url._replace(query='cmd=capabilities')
         url = urlparse.urlunparse(parsed_url)
@@ -156,8 +159,8 @@ class SmartHgProber(controldir.Prober):
     def probe_transport(klass, transport):
         try:
             external_url = transport.external_url()
-        except errors.InProcessTransport:
-            raise errors.NotBranchError(path=transport.base)
+        except errors.InProcessTransport as e:
+            raise errors.NotBranchError(path=transport.base) from e
         scheme = external_url.split(":")[0]
         if scheme not in klass._supported_schemes:
             raise errors.NotBranchError(path=transport.base)

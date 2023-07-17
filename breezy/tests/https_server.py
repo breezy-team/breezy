@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""HTTPS test server, available when ssl python module is available"""
+"""HTTPS test server, available when ssl python module is available."""
 
 import ssl
 
@@ -28,7 +28,7 @@ class TestingHTTPSServerMixin:
         self.cert_file = cert_file
 
     def _get_ssl_request(self, sock, addr):
-        """Wrap the socket with SSL"""
+        """Wrap the socket with SSL."""
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         if self.cert_file:
             ssl_context.load_cert_chain(self.cert_file, self.key_file)
@@ -101,8 +101,8 @@ class HTTPSServer(http_server.HttpServer):
     # private key and a certificate to work.
     def __init__(self, request_handler=http_server.TestingHTTPRequestHandler,
                  protocol_version=None,
-                 key_file=ssl_certs.build_path('server_without_pass.key'),
-                 cert_file=ssl_certs.build_path('server.crt')):
+                 key_file=ssl_certs.build_path('server_without_pass.key'),  # noqa: B008
+                 cert_file=ssl_certs.build_path('server.crt')):  # noqa: B008
         http_server.HttpServer.__init__(self, request_handler=request_handler,
                                         protocol_version=protocol_version)
         self.key_file = key_file

@@ -15,7 +15,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-import doctest
 import os
 import sys
 from io import StringIO
@@ -45,12 +44,12 @@ class TestApportReporting(tests.TestCaseInTempDir):
 
         try:
             raise AssertionError("my error")
-        except AssertionError as e:
+        except AssertionError:
             crash_filename = crash.report_bug_to_apport(sys.exc_info(), stderr)
 
         # message explaining the crash
         self.assertContainsRe(stderr.getvalue(),
-                              "    apport-bug %s" % crash_filename)
+                              f"    apport-bug {crash_filename}")
 
         with open(crash_filename) as crash_file:
             report = crash_file.read()
@@ -86,7 +85,7 @@ class TestNonApportReporting(tests.TestCase):
         err_file = StringIO()
         try:
             raise AssertionError("my error")
-        except AssertionError as e:
+        except AssertionError:
             crash.report_bug_legacy(sys.exc_info(), err_file)
         report = err_file.getvalue()
         for needle in [

@@ -23,7 +23,7 @@ from breezy.tests.per_repository import TestCaseWithRepository
 class TestRevProps(TestCaseWithRepository):
 
     def test_simple_revprops(self):
-        """Simple revision properties"""
+        """Simple revision properties."""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
         b.nick = 'Nicholas'
@@ -39,7 +39,7 @@ class TestRevProps(TestCaseWithRepository):
                          allow_pointless=True)
         rev = b.repository.get_revision(rev1)
         if b.repository._format.supports_custom_revision_properties:
-            self.assertTrue('flavor' in rev.properties)
+            self.assertIn('flavor', rev.properties)
             self.assertEqual(rev.properties['flavor'], 'choc-mint')
             expected_revprops = {
                 'condiment': 'orange\n  mint\n\tcandy',
@@ -55,7 +55,7 @@ class TestRevProps(TestCaseWithRepository):
             self.assertEqual(rev.properties[name], value)
 
     def test_invalid_revprops(self):
-        """Invalid revision properties"""
+        """Invalid revision properties."""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
         if not b.repository._format.supports_custom_revision_properties:
@@ -68,7 +68,7 @@ class TestRevProps(TestCaseWithRepository):
         self.assertRaises(ValueError,
                           wt.commit,
                           message='invalid',
-                          revprops=dict(number=13))
+                          revprops={'number': 13})
 
 
 class TestRevisionAttributes(TestCaseWithRepository):

@@ -20,7 +20,6 @@ from breezy.tests.per_controldir import TestCaseWithControlDir
 
 from ...controldir import NoColocatedBranchSupport
 from ...errors import LossyPushToSameVCS, NoSuchRevision, TagsNotSupported
-from ...revision import NULL_REVISION
 from .. import TestNotApplicable
 
 
@@ -47,8 +46,8 @@ class TestPush(TestCaseWithControlDir):
         dir = self.make_repository('dir').controldir
         try:
             result = dir.push_branch(tree.branch, name='colo')
-        except NoColocatedBranchSupport:
-            raise TestNotApplicable('no colocated branch support')
+        except NoColocatedBranchSupport as e:
+            raise TestNotApplicable('no colocated branch support') from e
         self.assertEqual(tree.branch, result.source_branch)
         self.assertEqual(dir.open_branch(name='colo').base, result.target_branch.base)
         self.assertEqual(dir.open_branch(name='colo').base,
@@ -61,8 +60,8 @@ class TestPush(TestCaseWithControlDir):
         try:
             result = target_tree.branch.controldir.push_branch(
                 tree.branch, name='colo')
-        except NoColocatedBranchSupport:
-            raise TestNotApplicable('no colocated branch support')
+        except NoColocatedBranchSupport as e:
+            raise TestNotApplicable('no colocated branch support') from e
         target_branch = target_tree.branch.controldir.open_branch(
             name='colo')
         self.assertEqual(tree.branch, result.source_branch)
@@ -79,14 +78,14 @@ class TestPush(TestCaseWithControlDir):
         rev_o = target_tree.commit('another')
         try:
             target_tree.branch.controldir.create_branch(name='colo')
-        except NoColocatedBranchSupport:
-            raise TestNotApplicable('no colocated branch support')
+        except NoColocatedBranchSupport as e:
+            raise TestNotApplicable('no colocated branch support') from e
 
         try:
             result = target_tree.branch.controldir.push_branch(
                 tree.branch, name='colo')
-        except NoColocatedBranchSupport:
-            raise TestNotApplicable('no colocated branch support')
+        except NoColocatedBranchSupport as e:
+            raise TestNotApplicable('no colocated branch support') from e
         target_branch = target_tree.branch.controldir.open_branch(
             name='colo')
         self.assertEqual(tree.branch, result.source_branch)
@@ -116,8 +115,8 @@ class TestPush(TestCaseWithControlDir):
         branch = builder.get_branch()
         try:
             branch.tags.set_tag('atag', rev_2)
-        except TagsNotSupported:
-            raise TestNotApplicable('source format does not support tags')
+        except TagsNotSupported as e:
+            raise TestNotApplicable('source format does not support tags') from e
 
         dir = self.make_repository('target').controldir
         branch.get_config().set_user_option('branch.fetch_tags', True)
@@ -148,7 +147,7 @@ class TestPush(TestCaseWithControlDir):
         dir.push_branch(tree.branch)
         self.build_tree(['tree/b'])
         tree.add(['b'])
-        rev_2 = tree.commit('two')
+        tree.commit('two')
         result = dir.push_branch(tree.branch)
         self.assertEqual(tree.last_revision(),
                          result.branch_push_result.new_revid)
@@ -160,8 +159,8 @@ class TestPush(TestCaseWithControlDir):
         tree, rev1 = self.create_simple_tree()
         try:
             tree.branch.tags.set_tag('tag1', rev1)
-        except TagsNotSupported:
-            raise TestNotApplicable('tags not supported')
+        except TagsNotSupported as e:
+            raise TestNotApplicable('tags not supported') from e
         tree.branch.tags.set_tag('tag2', rev1)
         dir = self.make_repository('dir').controldir
         dir.push_branch(tree.branch, tag_selector=lambda x: x == 'tag1')

@@ -19,8 +19,9 @@
 import threading
 
 from breezy import strace, tests
-from breezy.strace import StraceResult, strace_detailed
-from breezy.tests.features import strace_feature
+
+from ..strace import StraceResult, strace_detailed
+from .features import strace_feature
 
 
 class TestStrace(tests.TestCaseWithTransport):
@@ -49,13 +50,13 @@ class TestStrace(tests.TestCaseWithTransport):
                 '%d active threads, bug #103133 needs to be fixed.' % active)
 
     def strace_detailed_or_skip(self, *args, **kwargs):
-        """Run strace, but cope if it's not allowed"""
+        """Run strace, but cope if it's not allowed."""
         try:
             return strace_detailed(*args, **kwargs)
         except strace.StraceError as e:
             if e.err_messages.startswith(
                     "attach: ptrace(PTRACE_ATTACH, ...): Operation not permitted"):
-                raise tests.TestSkipped("ptrace not permitted")
+                raise tests.TestSkipped("ptrace not permitted") from e
             else:
                 raise
 

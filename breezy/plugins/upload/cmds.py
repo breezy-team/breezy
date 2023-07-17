@@ -169,7 +169,7 @@ class BzrUploader:
             else:
                 mode = 0o664
         if not self.quiet:
-            self.outf.write('Uploading %s\n' % old_relpath)
+            self.outf.write(f'Uploading {old_relpath}\n')
         self._up_put_bytes(
             old_relpath, self.tree.get_file_text(new_relpath), mode)
 
@@ -203,8 +203,7 @@ class BzrUploader:
         self.to_transport.symlink(target, relpath)
 
     def upload_symlink_robustly(self, relpath, target):
-        """Handle uploading symlinks.
-        """
+        """Handle uploading symlinks."""
         self._force_clear(relpath)
         # Target might not be there at this time; dummy file should be
         # overwritten at some point, possibly by another upload.
@@ -241,12 +240,12 @@ class BzrUploader:
 
     def delete_remote_file(self, relpath):
         if not self.quiet:
-            self.outf.write('Deleting %s\n' % relpath)
+            self.outf.write(f'Deleting {relpath}\n')
         self._up_delete(relpath)
 
     def delete_remote_dir(self, relpath):
         if not self.quiet:
-            self.outf.write('Deleting %s\n' % relpath)
+            self.outf.write(f'Deleting {relpath}\n')
         self._up_rmdir(relpath)
         # XXX: Add a test where a subdir is ignored but we still want to
         # delete the dir -- vila 100106
@@ -286,9 +285,9 @@ class BzrUploader:
 
         stamp = '.tmp.%.9f.%d.%d' % (time.time(),
                                      os.getpid(),
-                                     random.randint(0, 0x7FFFFFFF))
+                                     random.randint(0, 0x7FFFFFFF))  # noqa: S311
         if not self.quiet:
-            self.outf.write('Renaming {} to {}\n'.format(old_relpath, new_relpath))
+            self.outf.write(f'Renaming {old_relpath} to {new_relpath}\n')
         self._up_rename(old_relpath, stamp)
         self._pending_renames.append((stamp, new_relpath))
 
@@ -311,7 +310,7 @@ class BzrUploader:
                     continue
                 if self.is_ignored(relpath):
                     if not self.quiet:
-                        self.outf.write('Ignoring %s\n' % relpath)
+                        self.outf.write(f'Ignoring {relpath}\n')
                     continue
                 if ie.kind == 'file':
                     self.upload_file_robustly(relpath)
@@ -356,7 +355,7 @@ class BzrUploader:
             for change in changes.removed:
                 if self.is_ignored(change.path[0]):
                     if not self.quiet:
-                        self.outf.write('Ignoring %s\n' % change.path[0])
+                        self.outf.write(f'Ignoring {change.path[0]}\n')
                     continue
                 if change.kind[0] == 'file':
                     self.delete_remote_file(change.path[0])
@@ -370,8 +369,8 @@ class BzrUploader:
             for change in changes.renamed:
                 if self.is_ignored(change.path[0]) and self.is_ignored(change.path[1]):
                     if not self.quiet:
-                        self.outf.write('Ignoring %s\n' % change.path[0])
-                        self.outf.write('Ignoring %s\n' % change.path[1])
+                        self.outf.write(f'Ignoring {change.path[0]}\n')
+                        self.outf.write(f'Ignoring {change.path[1]}\n')
                     continue
                 if change.changed_content:
                     # We update the change.path[0] content because renames and
@@ -384,7 +383,7 @@ class BzrUploader:
             for change in changes.kind_changed:
                 if self.is_ignored(change.path[1]):
                     if not self.quiet:
-                        self.outf.write('Ignoring %s\n' % change.path[1])
+                        self.outf.write(f'Ignoring {change.path[1]}\n')
                     continue
                 if change.kind[0] in ('file', 'symlink'):
                     self.delete_remote_file(change.path[0])
@@ -406,7 +405,7 @@ class BzrUploader:
             for change in changes.added + changes.copied:
                 if self.is_ignored(change.path[1]):
                     if not self.quiet:
-                        self.outf.write('Ignoring %s\n' % change.path[1])
+                        self.outf.write(f'Ignoring {change.path[1]}\n')
                     continue
                 if change.kind[1] == 'file':
                     self.upload_file(change.path[1], change.path[1])
@@ -427,7 +426,7 @@ class BzrUploader:
             for change in changes.modified:
                 if self.is_ignored(change.path[1]):
                     if not self.quiet:
-                        self.outf.write('Ignoring %s\n' % change.path[1])
+                        self.outf.write(f'Ignoring {change.path[1]}\n')
                     continue
                 if change.kind[1] == 'file':
                     self.upload_file(change.path[1], change.path[1])
@@ -510,7 +509,7 @@ class cmd_upload(commands.Command):
                     # FIXME: Not currently tested
                     display_url = urlutils.unescape_for_display(stored_loc,
                                                                 self.outf.encoding)
-                    self.outf.write("Using saved location: %s\n" % display_url)
+                    self.outf.write(f"Using saved location: {display_url}\n")
                     location = stored_loc
 
             to_transport = transport.get_transport(location)

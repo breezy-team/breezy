@@ -81,9 +81,9 @@ def send(target_branch, revision, public_branch, remember,
                 formatname = submit_branch.get_child_submit_format()
                 try:
                     format = format_registry.get(formatname)
-                except KeyError:
+                except KeyError as err:
                     raise errors.CommandError(
-                        gettext("No such send format '%s'.") % formatname)
+                        gettext("No such send format '%s'.") % formatname) from err
 
         stored_public_branch = branch.get_public_branch()
         if public_branch is None:
@@ -149,8 +149,9 @@ def _send_4(branch, revision_id, target_branch, public_branch,
             base_revision_id, local_target_branch=None):
     from breezy import merge_directive
     return merge_directive.MergeDirective2.from_objects(
-        branch.repository, revision_id, time.time(),
-        osutils.local_time_offset(), target_branch,
+        repository=branch.repository, revision_id=revision_id,
+        time=time.time(), timezone=osutils.local_time_offset(),
+        target_branch=target_branch,
         public_branch=public_branch,
         include_patch=not no_patch,
         include_bundle=not no_bundle, message=message,
@@ -174,8 +175,9 @@ def _send_0_9(branch, revision_id, submit_branch, public_branch,
             patch_type = None
     from breezy import merge_directive
     return merge_directive.MergeDirective.from_objects(
-        branch.repository, revision_id, time.time(),
-        osutils.local_time_offset(), submit_branch,
+        repository=branch.repository, revision_id=revision_id,
+        time=time.time(), timezone=osutils.local_time_offset(),
+        target_branch=submit_branch,
         public_branch=public_branch, patch_type=patch_type,
         message=message, local_target_branch=local_target_branch)
 

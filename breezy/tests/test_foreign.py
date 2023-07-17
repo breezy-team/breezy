@@ -18,11 +18,20 @@
 """Tests for foreign VCS utility code."""
 
 
-from .. import (branch, controldir, errors, foreign, lockable_files, lockdir,
-                repository, revision, tests, trace)
+from .. import (
+    branch,
+    controldir,
+    errors,
+    foreign,
+    lockdir,
+    repository,
+    revision,
+    tests,
+    trace,
+)
 from .. import transport as _mod_transport
 from ..bzr import branch as bzrbranch
-from ..bzr import bzrdir, groupcompress_repo, vf_repository
+from ..bzr import bzrdir, groupcompress_repo, lockable_files
 from ..bzr.pack_repo import PackCommitBuilder
 
 # This is the dummy foreign revision control system, used
@@ -183,7 +192,7 @@ class InterToDummyVcsBranch(branch.GenericInterBranch):
                 rev = self.source.repository.get_revision(revid)
                 tree = self.source.repository.revision_tree(revid)
                 def get_file_with_stat(path):
-                    return (tree.get_file(path), None)
+                    return (tree.get_file(path), None)  # noqa: B023
                 tree.get_file_with_stat = get_file_with_stat
                 new_revid = self.target.mapping.revision_id_foreign_to_bzr(
                     (b'%d' % rev.timestamp, str(rev.timezone).encode('ascii'),
@@ -246,8 +255,8 @@ class DummyForeignVcsBranchFormat(bzrbranch.BzrBranchFormat6):
                                          a_controldir=a_controldir,
                                          _repository=found_repository,
                                          name=name)
-        except _mod_transport.NoSuchFile:
-            raise errors.NotBranchError(path=transport.base)
+        except _mod_transport.NoSuchFile as err:
+            raise errors.NotBranchError(path=transport.base) from err
 
 
 class DummyForeignVcsDirFormat(bzrdir.BzrDirMetaFormat1):
@@ -396,8 +405,10 @@ class ForeignRevisionTests(tests.TestCase):
     def test_create(self):
         mapp = DummyForeignVcsMapping(DummyForeignVcs())
         rev = foreign.ForeignRevision((b"a", b"foreign", b"revid"),
-                                      mapp, b"roundtripped-revid")
-        self.assertEqual(b"", rev.inventory_sha1)
+                                      mapp, b"roundtripped-revid", parent_ids=[],
+                                      message="", committer="", properties={},
+                                      timestamp=0, timezone=0)
+        self.assertIs(None, rev.inventory_sha1)
         self.assertEqual((b"a", b"foreign", b"revid"), rev.foreign_revid)
         self.assertEqual(mapp, rev.mapping)
 

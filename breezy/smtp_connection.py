@@ -16,12 +16,11 @@
 
 """A convenience class around smtplib."""
 
-import errno
 import smtplib
 import socket
 from email.utils import getaddresses, parseaddr
 
-from . import config, osutils
+from . import config
 from .errors import BzrError, InternalBzrError
 
 smtp_password = config.Option('smtp_password', default=None,
@@ -105,16 +104,11 @@ class SMTPConnection:
         """Create an SMTP connection."""
         try:
             self._connection = self._smtp_factory(host=self._smtp_server)
-        except OSError as e:
-            if e.args[0] == errno.ECONNREFUSED:
-                if self._config_smtp_server is None:
-                    raise DefaultSMTPConnectionRefused(socket.error,
-                                                       self._smtp_server)
-                else:
-                    raise SMTPConnectionRefused(socket.error,
-                                                self._smtp_server)
+        except ConnectionRefusedError as err:
+            if self._config_smtp_server is None:
+                raise DefaultSMTPConnectionRefused(socket.error, self._smtp_server) from err
             else:
-                raise
+                raise SMTPConnectionRefused(socket.error, self._smtp_server) from err
 
         # Say EHLO (falling back to HELO) to query the server's features.
         code, resp = self._connection.ehlo()
@@ -153,8 +147,8 @@ class SMTPConnection:
         # strings.  The CRAM-MD5 spec doesn't give any guidance on
         # encodings, but the SASL PLAIN spec says UTF-8, so that's
         # what we'll use.
-        username = osutils.safe_utf8(self._smtp_username)
-        password = osutils.safe_utf8(self._smtp_password)
+        username = self._smtp_username.encode("utf-8")
+        password = self._smtp_password.encode("utf-8")
 
         self._connection.login(username, password)
 
@@ -201,8 +195,8 @@ class SMTPConnection:
                                       message.as_string())
         except smtplib.SMTPRecipientsRefused as e:
             raise SMTPError('server refused recipient: %d %s' %
-                            next(iter(e.recipients.values())))
+                            next(iter(e.recipients.values()))) from er
         except smtplib.SMTPResponseException as e:
-            raise SMTPError('%d %s' % (e.smtp_code, e.smtp_error))
+            raise SMTPError('%d %s' % (e.smtp_code, e.smtp_error)) from e
         except smtplib.SMTPException as e:
-            raise SMTPError(str(e))
+            raise SMTPError(str(e)) from e

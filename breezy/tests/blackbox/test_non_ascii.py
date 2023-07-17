@@ -21,7 +21,8 @@ import sys
 
 from breezy import osutils, tests, urlutils
 from breezy.tests import EncodingAdapter
-from breezy.tests.scenarios import load_tests_apply_scenarios
+
+from ..scenarios import load_tests_apply_scenarios
 
 load_tests = load_tests_apply_scenarios
 
@@ -55,7 +56,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
             out = self.run_bzr_raw(args, encoding=encoding,
                                    retcode=retcode, working_dir=working_dir)[0]
             return out.decode(encoding)
-        except UnicodeError as e:
+        except UnicodeError:
             if not fail:
                 raise
         else:
@@ -96,17 +97,17 @@ class TestNonAscii(tests.TestCaseWithTransport):
         for thing in [fname, dir_name]:
             try:
                 thing.encode(fs_enc)
-            except UnicodeEncodeError:
+            except UnicodeEncodeError as err:
                 raise tests.TestSkipped(
                     'Unable to represent path %r in filesystem encoding "%s"'
-                    % (thing, fs_enc))
+                    % (thing, fs_enc)) from err
             try:
                 thing.encode(terminal_enc)
-            except UnicodeEncodeError:
+            except UnicodeEncodeError as err:
                 raise tests.TestSkipped(
                     'Unable to represent path %r in terminal encoding "%s"'
                     ' (even though it is valid in filesystem encoding "%s")'
-                    % (thing, terminal_enc, fs_enc))
+                    % (thing, terminal_enc, fs_enc)) from err
 
     def create_base(self):
         wt = self.make_branch_and_tree('.')
@@ -135,7 +136,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
             [(self.info['filename'], b'changed something\n')])
         txt = self.run_bzr_decode('status')
         self._check_OSX_can_roundtrip(self.info['filename'])
-        self.assertEqual('modified:\n  {}\n'.format(self.info['filename']), txt)
+        self.assertEqual(f"modified:\n  {self.info['filename']}\n", txt)
 
         txt = self.run_bzr_decode('status', encoding='ascii')
         expected = 'modified:\n  {}\n'.format(
@@ -155,21 +156,24 @@ class TestNonAscii(tests.TestCaseWithTransport):
     def test_cat_revision(self):
         committer = self.info['committer']
         txt = self.run_bzr_decode('cat-revision -r 1')
-        self.assertTrue(committer in txt,
-                        'failed to find {!r} in {!r}'.format(committer, txt))
+        self.assertIn(
+            committer,
+            txt,
+            f'failed to find {committer!r} in {txt!r}'
+        )
 
         msg = self.info['message']
         txt = self.run_bzr_decode('cat-revision -r 2')
-        self.assertTrue(msg in txt, 'failed to find {!r} in {!r}'.format(msg, txt))
+        self.assertIn(msg, txt, f'failed to find {msg!r} in {txt!r}')
 
     def test_mkdir(self):
         txt = self.run_bzr_decode(['mkdir', self.info['directory']])
-        self.assertEqual('added %s\n' % self.info['directory'], txt)
+        self.assertEqual(f"added {self.info['directory']}\n", txt)
 
         # The text should be garbled, but the command should succeed
         txt = self.run_bzr_raw(['mkdir', self.info['directory'] + '2'],
                                encoding='ascii')[0]
-        expected = 'added {}2\n'.format(self.info['directory'])
+        expected = f"added {self.info['directory']}2\n"
         expected = expected.encode('ascii', 'replace')
         self.assertEqual(expected, txt)
 
@@ -215,7 +219,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         self.run_bzr_decode(['mv', 'a', fname1], fail=True)
 
         txt = self.run_bzr_decode(['mv', 'a', fname2])
-        self.assertEqual('a => %s\n' % fname2, txt)
+        self.assertEqual(f'a => {fname2}\n', txt)
         self.assertPathDoesNotExist('a')
         self.assertPathExists(fname2)
 
@@ -227,11 +231,11 @@ class TestNonAscii(tests.TestCaseWithTransport):
         self.wt.add(dirname)
         txt = self.run_bzr_decode(['mv', fname1, fname2, dirname])
         self._check_OSX_can_roundtrip(self.info['filename'])
-        self.assertEqual(['{} => {}/{}'.format(fname1, dirname, fname1),
-                          '{} => {}/{}'.format(fname2, dirname, fname2)], txt.splitlines())
+        self.assertEqual([f'{fname1} => {dirname}/{fname1}',
+                          f'{fname2} => {dirname}/{fname2}'], txt.splitlines())
 
         # The rename should still succeed
-        newpath = '{}/{}'.format(dirname, fname2)
+        newpath = f'{dirname}/{fname2}'
         txt = self.run_bzr_raw(['mv', newpath, 'a'], encoding='ascii')[0]
         self.assertPathExists('a')
         self.assertEqual(newpath.encode('ascii', 'replace') + b' => a\n', txt)
@@ -308,27 +312,27 @@ class TestNonAscii(tests.TestCaseWithTransport):
         fname = self.info['filename'] + '2'
         self.wt.rename_one('a', fname)
         txt = self.run_bzr_decode('renames')
-        self.assertEqual('a => %s\n' % fname, txt)
+        self.assertEqual(f'a => {fname}\n', txt)
 
         self.run_bzr_decode('renames', fail=True, encoding='ascii')
 
     def test_remove(self):
         fname = self.info['filename']
-        txt = self.run_bzr_decode(['remove', fname], encoding='ascii')
+        self.run_bzr_decode(['remove', fname], encoding='ascii')
 
     def test_remove_verbose(self):
         fname = self.info['filename']
-        txt = self.run_bzr_decode(['remove', '--verbose', fname],
+        self.run_bzr_decode(['remove', '--verbose', fname],
                                   encoding='ascii')
 
     def test_file_id(self):
         fname = self.info['filename']
-        txt = self.run_bzr_decode(['file-id', fname])
+        self.run_bzr_decode(['file-id', fname])
 
         # TODO: jam 20060106 We don't support non-ascii file ids yet,
         #       so there is nothing which would fail in ascii encoding
         #       This *should* be retcode=3
-        txt = self.run_bzr_decode(['file-id', fname], encoding='ascii')
+        self.run_bzr_decode(['file-id', fname], encoding='ascii')
 
     def test_file_path(self):
         # Create a directory structure
@@ -336,7 +340,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         dirname = self.info['directory']
         self.build_tree_contents([
             ('base/', ),
-            (osutils.pathjoin('base', '{}/'.format(dirname)), )])
+            (osutils.pathjoin('base', f'{dirname}/'), )])
         self.wt.add('base')
         self.wt.add('base/' + dirname)
         path = osutils.pathjoin('base', dirname, fname)
@@ -344,22 +348,22 @@ class TestNonAscii(tests.TestCaseWithTransport):
         self.wt.rename_one(fname, path)
         self.wt.commit('moving things around')
 
-        txt = self.run_bzr_decode(['file-path', path])
+        self.run_bzr_decode(['file-path', path])
 
         # TODO: jam 20060106 We don't support non-ascii file ids yet,
         #       so there is nothing which would fail in ascii encoding
         #       This *should* be retcode=3
-        txt = self.run_bzr_decode(['file-path', path], encoding='ascii')
+        self.run_bzr_decode(['file-path', path], encoding='ascii')
 
     def test_revision_history(self):
         # TODO: jam 20060106 We don't support non-ascii revision ids yet,
         #       so there is nothing which would fail in ascii encoding
-        txt = self.run_bzr_decode('revision-history')
+        self.run_bzr_decode('revision-history')
 
     def test_ancestry(self):
         # TODO: jam 20060106 We don't support non-ascii revision ids yet,
         #       so there is nothing which would fail in ascii encoding
-        txt = self.run_bzr_decode('ancestry')
+        self.run_bzr_decode('ancestry')
 
     def test_diff(self):
         self._check_OSX_can_roundtrip(self.info['filename'])
@@ -367,7 +371,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         #       shouldn't encode the file contents, but it needs some sort
         #       of encoding for the paths, etc which are displayed.
         self.build_tree_contents([(self.info['filename'], b'newline\n')])
-        txt = self.run_bzr('diff', retcode=1)[0]
+        self.run_bzr('diff', retcode=1)[0]
 
     def test_deleted(self):
         self._check_OSX_can_roundtrip(self.info['filename'])
@@ -439,16 +443,14 @@ class TestNonAscii(tests.TestCaseWithTransport):
         fname = self.info['filename']
         txt = self.run_bzr_decode(['touching-revisions', fname])
         self._check_OSX_can_roundtrip(self.info['filename'])
-        self.assertEqual('     3 added {}\n'.format(fname), txt)
+        self.assertEqual(f'     3 added {fname}\n', txt)
 
         fname2 = self.info['filename'] + '2'
         self.wt.rename_one(fname, fname2)
-        self.wt.commit('Renamed {} => {}'.format(fname, fname2))
+        self.wt.commit(f'Renamed {fname} => {fname2}')
 
         txt = self.run_bzr_decode(['touching-revisions', fname2])
-        expected_txt = ('     3 added %s\n'
-                        '     4 renamed %s => %s\n'
-                        % (fname, fname, fname2))
+        expected_txt = f'     3 added {fname}\n     4 renamed {fname} => {fname2}\n'
         self.assertEqual(expected_txt, txt)
 
         self.run_bzr_decode(['touching-revisions', fname2], encoding='ascii',
@@ -474,7 +476,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         #       awilkins 20080521 added and modified do it now as well
         txt = self.run_bzr_decode('unknowns')
         self._check_OSX_can_roundtrip(self.info['filename'])
-        self.assertEqual('"{}"\n'.format(fname), txt)
+        self.assertEqual(f'"{fname}\"\n', txt)
 
         self.run_bzr_decode('unknowns', encoding='ascii', fail=True)
 

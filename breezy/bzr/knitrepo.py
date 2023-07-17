@@ -19,35 +19,27 @@ from typing import Type
 from ..lazy_import import lazy_import
 
 lazy_import(globals(), """
-import itertools
-
 from breezy import (
-    controldir,
-    lockable_files,
-    lockdir,
-    osutils,
-    revision as _mod_revision,
-    trace,
     transactions,
     )
 from breezy.bzr import (
     knit as _mod_knit,
+    lockable_files,
     versionedfile,
-    serializer,
-    xml5,
-    xml6,
-    xml7,
     )
 """)
-from .. import errors
+from .. import controldir, errors, lockdir, trace
+from .. import revision as _mod_revision
 from .. import transport as _mod_transport
 from ..repository import InterRepository, IsInWriteGroupError, Repository
 from .repository import RepositoryFormatMetaDir
-from .serializer import Serializer
-from .vf_repository import (InterSameDataRepository,
-                            MetaDirVersionedFileRepository,
-                            MetaDirVersionedFileRepositoryFormat,
-                            VersionedFileCommitBuilder)
+from .serializer import InventorySerializer, RevisionSerializer
+from .vf_repository import (
+    InterSameDataRepository,
+    MetaDirVersionedFileRepository,
+    MetaDirVersionedFileRepositoryFormat,
+    VersionedFileCommitBuilder,
+)
 
 
 class _KnitParentsProvider:
@@ -56,10 +48,10 @@ class _KnitParentsProvider:
         self._knit = knit
 
     def __repr__(self):
-        return 'KnitParentsProvider(%r)' % self._knit
+        return f'KnitParentsProvider({self._knit!r})'
 
     def get_parent_map(self, keys):
-        """See graph.StackedParentsProvider.get_parent_map"""
+        """See graph.StackedParentsProvider.get_parent_map."""
         parent_map = {}
         for revision_id in keys:
             if revision_id is None:
@@ -87,10 +79,10 @@ class _KnitsParentsProvider:
         self._prefix = prefix
 
     def __repr__(self):
-        return 'KnitsParentsProvider(%r)' % self._knit
+        return f'KnitsParentsProvider({self._knit!r})'
 
     def get_parent_map(self, keys):
-        """See graph.StackedParentsProvider.get_parent_map"""
+        """See graph.StackedParentsProvider.get_parent_map."""
         parent_map = self._knit.get_parent_map(
             [self._prefix + (key,) for key in keys])
         result = {}
@@ -115,14 +107,16 @@ class KnitRepository(MetaDirVersionedFileRepository):
     # them, or a subclass fails to call the constructor, that an error will
     # occur rather than the system working but generating incorrect data.
     _commit_builder_class: Type[VersionedFileCommitBuilder]
-    _serializer: Serializer
+    _revision_serializer: RevisionSerializer
+    _inventory_serializer: InventorySerializer
 
     def __init__(self, _format, a_controldir, control_files, _commit_builder_class,
-                 _serializer):
+                 _revision_serializer, _inventory_serializer):
         super().__init__(
             _format, a_controldir, control_files)
         self._commit_builder_class = _commit_builder_class
-        self._serializer = _serializer
+        self._revision_serializer = _revision_serializer
+        self._inventory_serializer = _inventory_serializer
         self._reconcile_fixes_text_parents = True
 
     def _all_revision_ids(self):
@@ -183,7 +177,7 @@ class KnitRepository(MetaDirVersionedFileRepository):
         return result
 
     def get_revision(self, revision_id):
-        """Return the Revision object for a named revision"""
+        """Return the Revision object for a named revision."""
         with self.lock_read():
             return self.get_revision_reconcile(revision_id)
 
@@ -236,8 +230,14 @@ class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
     # repository objects will have passed to their constructor.
 
     @property
-    def _serializer(self):
-        return xml5.serializer_v5
+    def _revision_serializer(self):
+        from .xml5 import revision_serializer_v5
+        return revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        from .xml5 import inventory_serializer_v5
+        return inventory_serializer_v5
     # Knit based repositories handle ghosts reasonably well.
     supports_ghosts = True
     # External lookups are not supported in this format.
@@ -300,9 +300,9 @@ class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
         self._upload_blank_content(
             a_controldir, dirs, files, utf8_files, shared)
         repo_transport = a_controldir.get_repository_transport(None)
-        control_files = lockable_files.LockableFiles(repo_transport,
+        lockable_files.LockableFiles(repo_transport,
                                                      'lock', lockdir.LockDir)
-        transaction = transactions.WriteTransaction()
+        transactions.WriteTransaction()
         result = self.open(a_controldir=a_controldir, _found=True)
         result.lock_write()
         # the revision id here is irrelevant: it will not be stored, and cannot
@@ -322,7 +322,7 @@ class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
                                     than normal. I.e. during 'upgrade'.
         """
         if not _found:
-            format = RepositoryFormatMetaDir.find_format(a_controldir)
+            RepositoryFormatMetaDir.find_format(a_controldir)
         if _override_transport is not None:
             repo_transport = _override_transport
         else:
@@ -333,7 +333,8 @@ class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
                                      a_controldir=a_controldir,
                                      control_files=control_files,
                                      _commit_builder_class=self._commit_builder_class,
-                                     _serializer=self._serializer)
+                                     _revision_serializer=self._revision_serializer,
+                                     _inventory_serializer=self._inventory_serializer)
         repo.revisions = self._get_revisions(repo_transport, repo)
         repo.signatures = self._get_signatures(repo_transport, repo)
         repo.inventories = self._get_inventories(repo_transport, repo)
@@ -363,8 +364,14 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
     _commit_builder_class = VersionedFileCommitBuilder
 
     @property
-    def _serializer(self):
-        return xml5.serializer_v5
+    def _revision_serializer(self):
+        from .xml5 import revision_serializer_v5
+        return revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        from .xml5 import inventory_serializer_v5
+        return inventory_serializer_v5
 
     def __ne__(self, other):
         return self.__class__ is not other.__class__
@@ -402,8 +409,14 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
     supports_tree_reference = True
 
     @property
-    def _serializer(self):
-        return xml7.serializer_v7
+    def _revision_serializer(self):
+        from .xml5 import revision_serializer_v5
+        return revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        from .xml7 import inventory_serializer_v7
+        return inventory_serializer_v7
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir('dirstate-with-subtree')
@@ -446,8 +459,14 @@ class RepositoryFormatKnit4(RepositoryFormatKnit):
     supports_tree_reference = False
 
     @property
-    def _serializer(self):
-        return xml6.serializer_v6
+    def _revision_serializer(self):
+        from .xml5 import revision_serializer_v5
+        return revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        from .xml6 import inventory_serializer_v6
+        return inventory_serializer_v6
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir('rich-root')
@@ -472,7 +491,7 @@ class InterKnitRepo(InterSameDataRepository):
     """Optimised code paths between Knit based repositories."""
 
     @classmethod
-    def _get_repo_format_to_test(self):
+    def _get_repo_format_to_test(cls):
         return RepositoryFormatKnit1()
 
     @staticmethod
@@ -494,6 +513,7 @@ class InterKnitRepo(InterSameDataRepository):
                                     find_ghosts=True, revision_ids=None, if_present_ids=None,
                                     limit=None):
         """See InterRepository.search_missing_revision_ids()."""
+        import itertools
         with self.lock_read():
             source_ids_set = self._present_source_revisions_for(
                 revision_ids, if_present_ids)

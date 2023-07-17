@@ -21,23 +21,44 @@ import os
 import tempfile
 import time
 from stat import S_IEXEC, S_ISREG
+from typing import Any, Dict, Optional, Set, Tuple
 
-from .. import (annotate, conflicts, controldir, errors, lock, multiparent,
-                osutils)
+from .. import (
+    annotate,
+    controldir,
+    errors,
+    multiparent,
+    osutils,
+    trace,
+    tree,
+    ui,
+    urlutils,
+)
 from .. import revision as _mod_revision
-from .. import trace
 from .. import transport as _mod_transport
-from .. import tree, ui, urlutils
 from ..filters import ContentFilterContext, filtered_output_bytes
 from ..i18n import gettext
 from ..mutabletree import MutableTree
 from ..progress import ProgressPhase
-from ..transform import (ROOT_PARENT, FinalPaths, ImmortalLimbo,
-                         MalformedTransform, NoFinalPath, PreviewTree,
-                         ReusingTransform, TransformRenameFailed,
-                         TreeTransform, _FileMover, _reparent_children,
-                         _TransformResults, joinpath, new_by_entry,
-                         resolve_conflicts, unique_add)
+from ..transform import (
+    ROOT_PARENT,
+    FinalPaths,
+    ImmortalLimbo,
+    MalformedTransform,
+    NoFinalPath,
+    PreviewTree,
+    ReusingTransform,
+    TransformRenameFailed,
+    TreeTransform,
+    _FileMover,
+    _reparent_children,
+    _TransformResults,
+    joinpath,
+    new_by_entry,
+    resolve_conflicts,
+    unique_add,
+)
+from ..transport.local import file_kind
 from ..tree import find_previous_path
 from . import inventory, inventorytree
 from .conflicts import Conflict
@@ -73,13 +94,13 @@ class TreeTransformBase(TreeTransform):
         """
         super().__init__(tree, pb=pb)
         # mapping of trans_id => (sha1 of content, stat_value)
-        self._observed_sha1s = {}
+        self._observed_sha1s: Dict[str, Tuple[bytes, Any]] = {}
         # Mapping of trans_id -> new file_id
-        self._new_id = {}
+        self._new_id: Dict[str, bytes] = {}
         # Mapping of old file-id -> trans_id
-        self._non_present_ids = {}
+        self._non_present_ids: Dict[bytes, str] = {}
         # Mapping of new file_id -> trans_id
-        self._r_new_id = {}
+        self._r_new_id: Dict[bytes, str] = {}
         # The trans_id that will be used as the tree root
         if tree.is_versioned(''):
             self._new_root = self.trans_id_tree_path('')
@@ -107,7 +128,7 @@ class TreeTransformBase(TreeTransform):
     root = property(__get_root)
 
     def create_path(self, name, parent):
-        """Assign a transaction id to a new path"""
+        """Assign a transaction id to a new path."""
         trans_id = self.assign_id()
         unique_add(self._new_name, trans_id, name)
         unique_add(self._new_parent, trans_id, parent)
@@ -146,7 +167,7 @@ class TreeTransformBase(TreeTransform):
         self.unversion_file(self._new_root)
 
     def fixup_new_roots(self):
-        """Reinterpret requests to change the root directory
+        """Reinterpret requests to change the root directory.
 
         Instead of creating a root directory, or moving an existing directory,
         all the attributes and children of the new root are applied to the
@@ -210,7 +231,7 @@ class TreeTransformBase(TreeTransform):
         """Determine or set the transaction id associated with a file ID.
         A new id is only created for file_ids that were never present.  If
         a transaction has been unversioned, it is deliberately still returned.
-        (this will likely lead to an unversioned parent conflict.)
+        (this will likely lead to an unversioned parent conflict.).
         """
         if file_id is None:
             raise ValueError('None is not a valid file id')
@@ -234,7 +255,7 @@ class TreeTransformBase(TreeTransform):
         raise NotImplementedError(self.version_file)
 
     def cancel_versioning(self, trans_id):
-        """Undo a previous versioning of a file"""
+        """Undo a previous versioning of a file."""
         raise NotImplementedError(self.cancel_versioning)
 
     def new_paths(self, filesystem_only=False):
@@ -259,7 +280,7 @@ class TreeTransformBase(TreeTransform):
         return sorted(FinalPaths(self).get_paths(new_ids))
 
     def tree_file_id(self, trans_id):
-        """Determine the file id associated with the trans_id in the tree"""
+        """Determine the file id associated with the trans_id in the tree."""
         path = self.tree_path(trans_id)
         if path is None:
             return None
@@ -297,7 +318,7 @@ class TreeTransformBase(TreeTransform):
                 return key
 
     def find_raw_conflicts(self):
-        """Find any violations of inventory or filesystem invariants"""
+        """Find any violations of inventory or filesystem invariants."""
         if self._done is True:
             raise ReusingTransform()
         conflicts = []
@@ -384,7 +405,7 @@ class TreeTransformBase(TreeTransform):
                 base, target_id, known_children))
 
     def _parent_loops(self):
-        """No entry should be its own ancestor"""
+        """No entry should be its own ancestor."""
         for trans_id in self._new_parent:
             seen = set()
             parent_id = trans_id
@@ -443,7 +464,7 @@ class TreeTransformBase(TreeTransform):
                     yield ('non-file executability', trans_id)
 
     def _overwrite_conflicts(self):
-        """Check for overwrites (not permitted on Win32)"""
+        """Check for overwrites (not permitted on Win32)."""
         for trans_id in self._new_contents:
             if self.tree_kind(trans_id) is None:
                 continue
@@ -476,7 +497,7 @@ class TreeTransformBase(TreeTransform):
                 last_trans_id = trans_id
 
     def _parent_type_conflicts(self, by_parent):
-        """Children must have a directory parent"""
+        """Children must have a directory parent."""
         for parent_id, children in by_parent.items():
             if parent_id == ROOT_PARENT:
                 continue
@@ -498,7 +519,7 @@ class TreeTransformBase(TreeTransform):
                 yield ('non-directory parent', parent_id)
 
     def _set_executability(self, path, trans_id):
-        """Set the executability of versioned files """
+        """Set the executability of versioned files."""
         if self._tree._supports_executable():
             new_executability = self._new_executability[trans_id]
             abspath = self._tree.abspath(path)
@@ -609,7 +630,7 @@ class TreeTransformBase(TreeTransform):
         return orphans
 
     def _affected_ids(self):
-        """Return the set of transform ids affected by the transform"""
+        """Return the set of transform ids affected by the transform."""
         trans_ids = set(self._removed_id)
         trans_ids.update(self._new_id)
         trans_ids.update(self._removed_contents)
@@ -620,7 +641,7 @@ class TreeTransformBase(TreeTransform):
         return trans_ids
 
     def _get_file_id_maps(self):
-        """Return mapping of file_ids to trans_ids in the to and from states"""
+        """Return mapping of file_ids to trans_ids in the to and from states."""
         trans_ids = self._affected_ids()
         from_trans_ids = {}
         to_trans_ids = {}
@@ -636,7 +657,7 @@ class TreeTransformBase(TreeTransform):
         return from_trans_ids, to_trans_ids
 
     def _from_file_data(self, from_trans_id, from_versioned, from_path):
-        """Get data about a file in the from (tree) state
+        """Get data about a file in the from (tree) state.
 
         Return a (name, parent, kind, executable) tuple
         """
@@ -668,7 +689,7 @@ class TreeTransformBase(TreeTransform):
         return from_name, from_parent, from_kind, from_executable
 
     def _to_file_data(self, to_trans_id, from_trans_id, from_executable):
-        """Get data about a file in the to (target) state
+        """Get data about a file in the to (target) state.
 
         Return a (name, parent, kind, executable) tuple
         """
@@ -971,7 +992,7 @@ class TreeTransformBase(TreeTransform):
         raise NotImplementedError(self.create_symlink)
 
     def create_hardlink(self, path, trans_id):
-        """Schedule creation of a hard link"""
+        """Schedule creation of a hard link."""
         raise NotImplementedError(self.create_hardlink)
 
     def cancel_creation(self, trans_id):
@@ -995,7 +1016,7 @@ class TreeTransformBase(TreeTransform):
         raise NotImplementedError(self.apply)
 
     def cook_conflicts(self, raw_conflicts):
-        """Generate a list of cooked conflicts, sorted by file path"""
+        """Generate a list of cooked conflicts, sorted by file path."""
         content_conflict_file_ids = set()
         cooked_conflicts = list(iter_cook_conflicts(raw_conflicts, self))
         for c in cooked_conflicts:
@@ -1106,17 +1127,17 @@ class DiskTreeTransform(TreeTransformBase):
         self._limbodir = limbodir
         self._deletiondir = None
         # A mapping of transform ids to their limbo filename
-        self._limbo_files = {}
-        self._possibly_stale_limbo_files = set()
+        self._limbo_files: Dict[str, str] = {}
+        self._possibly_stale_limbo_files: Set[str] = set()
         # A mapping of transform ids to a set of the transform ids of children
         # that their limbo directory has
-        self._limbo_children = {}
+        self._limbo_children: Dict[str, Set[str]] = {}
         # Map transform ids to maps of child filename to child transform id
-        self._limbo_children_names = {}
+        self._limbo_children_names: Dict[str, Dict[str, str]] = {}
         # List of transform ids that need to be renamed from limbo into place
-        self._needs_rename = set()
-        self._creation_mtime = None
-        self._create_symlinks = osutils.supports_symlinks(self._limbodir)
+        self._needs_rename: Set[str] = set()
+        self._creation_mtime: Optional[float] = None
+        self._create_symlinks: bool = osutils.supports_symlinks(self._limbodir)
 
     def finalize(self):
         """Release the working tree lock, if held, clean up limbo dir.
@@ -1133,22 +1154,21 @@ class DiskTreeTransform(TreeTransformBase):
             for path in limbo_paths:
                 try:
                     osutils.delete_any(path)
-                except OSError as e:
-                    if e.errno != errno.ENOENT:
-                        raise
+                except FileNotFoundError:
                     # XXX: warn? perhaps we just got interrupted at an
                     # inconvenient moment, but perhaps files are disappearing
                     # from under us?
+                    pass
             try:
                 osutils.delete_any(self._limbodir)
-            except OSError:
+            except OSError as e:
                 # We don't especially care *why* the dir is immortal.
-                raise ImmortalLimbo(self._limbodir)
+                raise ImmortalLimbo(self._limbodir) from e
             try:
                 if self._deletiondir is not None:
                     osutils.delete_any(self._deletiondir)
-            except OSError:
-                raise errors.ImmortalPendingDeletion(self._deletiondir)
+            except OSError as e:
+                raise errors.ImmortalPendingDeletion(self._deletiondir) from e
         finally:
             TreeTransformBase.finalize(self)
 
@@ -1157,7 +1177,7 @@ class DiskTreeTransform(TreeTransformBase):
         return osutils.supports_executable(self._limbodir)
 
     def _limbo_name(self, trans_id):
-        """Generate the limbo name of a file"""
+        """Generate the limbo name of a file."""
         limbo_name = self._limbo_files.get(trans_id)
         if limbo_name is None:
             limbo_name = self._generate_limbo_path(trans_id)
@@ -1259,14 +1279,12 @@ class DiskTreeTransform(TreeTransformBase):
         os.utime(path, (self._creation_mtime, self._creation_mtime))
 
     def create_hardlink(self, path, trans_id):
-        """Schedule creation of a hard link"""
+        """Schedule creation of a hard link."""
         name = self._limbo_name(trans_id)
         try:
             os.link(path, name)
-        except OSError as e:
-            if e.errno != errno.EPERM:
-                raise
-            raise errors.HardLinkNotSupported(path)
+        except PermissionError as e:
+            raise errors.HardLinkNotSupported(path) from e
         try:
             unique_add(self._new_contents, trans_id, 'file')
         except BaseException:
@@ -1297,7 +1315,7 @@ class DiskTreeTransform(TreeTransformBase):
             except KeyError:
                 path = None
             trace.warning(
-                'Unable to create symlink "{}" on this filesystem.'.format(path))
+                f'Unable to create symlink "{path}" on this filesystem.')
         # We add symlink to _new_contents even if they are unsupported
         # and not created. These entries are subsequently used to avoid
         # conflicts on platforms that don't support symlink
@@ -1399,28 +1417,32 @@ class InventoryTreeTransform(DiskTreeTransform):
         try:
             limbodir = urlutils.local_path_from_url(
                 tree._transport.abspath('limbo'))
-            osutils.ensure_empty_directory_exists(
-                limbodir,
-                errors.ExistingLimbo)
+            try:
+                osutils.ensure_empty_directory_exists(
+                    limbodir)
+            except errors.DirectoryNotEmpty as e:
+                raise errors.ExistingLimbo(limbodir) from e
             deletiondir = urlutils.local_path_from_url(
                 tree._transport.abspath('pending-deletion'))
-            osutils.ensure_empty_directory_exists(
-                deletiondir,
-                errors.ExistingPendingDeletion)
+            try:
+                osutils.ensure_empty_directory_exists(
+                    deletiondir)
+            except errors.DirectoryNotEmpty as e:
+                raise errors.ExistingPendingDeletion(deletiondir) from e
         except BaseException:
             tree.unlock()
             raise
 
         # Cache of realpath results, to speed up canonical_path
-        self._realpaths = {}
+        self._realpaths: Dict[str, str] = {}
         # Cache of relpath results, to speed up canonical_path
-        self._relpaths = {}
+        self._relpaths: Dict[str, str] = {}
         DiskTreeTransform.__init__(self, tree, limbodir, pb,
                                    tree.case_sensitive)
-        self._deletiondir = deletiondir
+        self._deletiondir: str = deletiondir
 
     def canonical_path(self, path):
-        """Get the canonical tree-relative path"""
+        """Get the canonical tree-relative path."""
         return self._tree.get_canonical_path(path)
 
     def tree_kind(self, trans_id):
@@ -1432,7 +1454,7 @@ class InventoryTreeTransform(DiskTreeTransform):
         if path is None:
             return None
         try:
-            return osutils.file_kind(self._tree.abspath(path))
+            return file_kind(self._tree.abspath(path))
         except _mod_transport.NoSuchFile:
             return None
 
@@ -1450,20 +1472,17 @@ class InventoryTreeTransform(DiskTreeTransform):
             return
         try:
             mode = os.stat(self._tree.abspath(old_path)).st_mode
-        except OSError as e:
-            if e.errno in (errno.ENOENT, errno.ENOTDIR):
-                # Either old_path doesn't exist, or the parent of the
-                # target is not a directory (but will be one eventually)
-                # Either way, we know it doesn't exist *right now*
-                # See also bug #248448
-                return
-            else:
-                raise
+        except (FileNotFoundError, NotADirectoryError):
+            # Either old_path doesn't exist, or the parent of the
+            # target is not a directory (but will be one eventually)
+            # Either way, we know it doesn't exist *right now*
+            # See also bug #248448
+            return
         if typefunc(mode):
             osutils.chmod_if_possible(self._limbo_name(trans_id), mode)
 
     def iter_tree_children(self, parent_id):
-        """Iterate through the entry's tree children, if any"""
+        """Iterate through the entry's tree children, if any."""
         try:
             path = self._tree_id_paths[parent_id]
         except KeyError:
@@ -1534,13 +1553,13 @@ class InventoryTreeTransform(DiskTreeTransform):
         unique_add(self._r_new_id, file_id, trans_id)
 
     def cancel_versioning(self, trans_id):
-        """Undo a previous versioning of a file"""
+        """Undo a previous versioning of a file."""
         file_id = self._new_id[trans_id]
         del self._new_id[trans_id]
         del self._r_new_id[file_id]
 
     def _duplicate_ids(self):
-        """Each inventory id may only be used once"""
+        """Each inventory id may only be used once."""
         conflicts = []
         try:
             all_ids = self._tree.all_file_ids()
@@ -1681,7 +1700,7 @@ class InventoryTreeTransform(DiskTreeTransform):
                     o_sha1, o_st_val = self._observed_sha1s[trans_id]
                     st = osutils.lstat(full_path)
                     self._observed_sha1s[trans_id] = (o_sha1, st)
-        for path, trans_id in new_paths:
+        for _path, trans_id in new_paths:
             # new_paths includes stuff like workingtree conflicts. Only the
             # stuff in new_contents actually comes from limbo.
             if trans_id in self._limbo_files:
@@ -1690,7 +1709,7 @@ class InventoryTreeTransform(DiskTreeTransform):
         return modified_paths
 
     def _apply_observed_sha1s(self):
-        """After we have finished renaming everything, update observed sha1s
+        """After we have finished renaming everything, update observed sha1s.
 
         This has to be done after self._tree.apply_inventory_delta, otherwise
         it doesn't know anything about the files we are updating. Also, we want
@@ -1807,7 +1826,7 @@ class InventoryTreeTransform(DiskTreeTransform):
                     old_path = None
                 new_executability = self._new_executability.get(trans_id)
                 if new_executability is not None:
-                    new_entry.executable = new_executability
+                    new_entry.executable = bool(new_executability)
                 inventory_delta.append(
                     (old_path, path, new_entry.file_id, new_entry))
         return inventory_delta
@@ -1848,27 +1867,24 @@ class TransformPreview(InventoryTreeTransform):
         pass
 
     def iter_tree_children(self, parent_id):
-        """Iterate through the entry's tree children, if any"""
+        """Iterate through the entry's tree children, if any."""
         try:
             path = self._tree_id_paths[parent_id]
         except KeyError:
             return
         try:
-            entry = next(self._tree.iter_entries_by_dir(
-                specific_files=[path]))[1]
-        except StopIteration:
-            return
-        children = getattr(entry, 'children', {})
-        for child in children:
-            childpath = joinpath(path, child)
-            yield self.trans_id_tree_path(childpath)
+            for child in self._tree.iter_child_entries(path):
+                childpath = joinpath(path, child.name)
+                yield self.trans_id_tree_path(childpath)
+        except (errors.NotADirectory, _mod_transport.NoSuchFile):
+            pass
 
     def new_orphan(self, trans_id, parent_id):
         raise NotImplementedError(self.new_orphan)
 
 
 class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
-    """Partial implementation of Tree to support show_diff_trees"""
+    """Partial implementation of Tree to support show_diff_trees."""
 
     def __init__(self, transform):
         PreviewTree.__init__(self, transform)
@@ -1888,7 +1904,7 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         return False
 
     def _content_change(self, file_id):
-        """Return True if the content of this file changed"""
+        """Return True if the content of this file changed."""
         changes = self._iter_changes_cache.get(file_id)
         return (changes is not None and changes.changed_content)
 
@@ -1914,7 +1930,7 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
             kind = None
             executable = False
         else:
-            file_id = self._transform.final_file_id(self._path2trans_id(path))
+            self._transform.final_file_id(self._path2trans_id(path))
             executable = self.is_executable(path)
         return kind, executable, None
 
@@ -1954,8 +1970,8 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         trans_id = self._transform.trans_id_file_id(file_id)
         try:
             return self._final_paths._determine_path(trans_id)
-        except NoFinalPath:
-            raise errors.NoSuchId(self, file_id)
+        except NoFinalPath as e:
+            raise errors.NoSuchId(self, file_id) from e
 
     def extras(self):
         possible_extras = {self._transform.trans_id_tree_path(p) for p
@@ -1967,10 +1983,11 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
                 yield self._final_paths._determine_path(trans_id)
 
     def _make_inv_entries(self, ordered_entries, specific_files=None):
-        for trans_id, parent_file_id in ordered_entries:
+        for trans_id, parent_trans_id in ordered_entries:
             file_id = self._transform.final_file_id(trans_id)
             if file_id is None:
                 continue
+            parent_file_id = self._transform.final_file_id(parent_trans_id)
             if (specific_files is not None
                     and self._final_paths.get_path(trans_id) not in specific_files):
                 continue
@@ -1989,13 +2006,12 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         ordered_ids = []
         while len(todo) > 0:
             parent = todo.pop()
-            parent_file_id = self._transform.final_file_id(parent)
             children = list(self._all_children(parent))
             paths = dict(zip(children, self._final_paths.get_paths(children)))
             children.sort(key=paths.get)
             todo.extend(reversed(children))
             for trans_id in children:
-                ordered_ids.append((trans_id, parent_file_id))
+                ordered_ids.append((trans_id, parent))
         return ordered_ids
 
     def iter_child_entries(self, path):
@@ -2004,7 +2020,7 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
             raise _mod_transport.NoSuchFile(path)
         todo = [(child_trans_id, trans_id) for child_trans_id in
                 self._all_children(trans_id)]
-        for entry, trans_id in self._make_inv_entries(todo):
+        for entry, _trans_id in self._make_inv_entries(todo):
             yield entry
 
     def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
@@ -2026,9 +2042,8 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         """Return path, entry for items in a directory without recursing down."""
         ordered_ids = []
         dir_trans_id = self._path2trans_id(dir_path)
-        dir_id = self._transform.final_file_id(dir_trans_id)
         for child_trans_id in self._all_children(dir_trans_id):
-            ordered_ids.append((child_trans_id, dir_id))
+            ordered_ids.append((child_trans_id, dir_trans_id))
         path_entries = []
         for entry, trans_id in self._make_inv_entries(ordered_ids):
             path_entries.append((self._final_paths.get_path(trans_id), entry))
@@ -2062,14 +2077,14 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         else:
             if from_dir is None and include_root is True:
                 root_entry = inventory.make_entry(
-                    'directory', '', ROOT_PARENT, self.path2id(''))
+                    'directory', '', None, self.path2id(''))
                 yield '', 'V', 'directory', root_entry
             entries = self._iter_entries_for_dir(from_dir or '')
             for path, entry in entries:
                 yield path, 'V', entry.kind, entry
 
     def get_file_mtime(self, path):
-        """See Tree.get_file_mtime"""
+        """See Tree.get_file_mtime."""
         file_id = self.path2id(path)
         if file_id is None:
             raise _mod_transport.NoSuchFile(path)
@@ -2180,11 +2195,11 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
             subdirs = []
             prefix = prefix.rstrip('/')
             parent_path = self._final_paths.get_path(parent_id)
-            parent_file_id = self._transform.final_file_id(parent_id)
+            self._transform.final_file_id(parent_id)
             for child_id in self._all_children(parent_id):
                 path_from_root = self._final_paths.get_path(child_id)
                 basename = self._transform.final_name(child_id)
-                file_id = self._transform.final_file_id(child_id)
+                self._transform.final_file_id(child_id)
                 kind = self._transform.final_kind(child_id)
                 if kind is not None:
                     versioned_kind = kind
@@ -2203,7 +2218,7 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
                                   reverse=True))
 
     def get_symlink_target(self, path):
-        """See Tree.get_symlink_target"""
+        """See Tree.get_symlink_target."""
         file_id = self.path2id(path)
         if not self._content_change(file_id):
             return self._transform._tree.get_symlink_target(path)
@@ -2212,7 +2227,7 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         return osutils.readlink(name)
 
     def get_file(self, path):
-        """See Tree.get_file"""
+        """See Tree.get_file."""
         file_id = self.path2id(path)
         if not self._content_change(file_id):
             return self._transform._tree.get_file(path)
@@ -2325,7 +2340,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
             # directory trees. (#501307)
             if total > 0:
                 existing_files = set()
-                for dir, files in wt.walkdirs():
+                for _dir, files in wt.walkdirs():
                     existing_files.update(f[0] for f in files)
             for num, (tree_path, entry) in \
                     enumerate(tree.iter_entries_by_dir()):
@@ -2339,7 +2354,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                     precomputed_delta.append((None, tree_path, file_id, entry))
                 if tree_path in existing_files:
                     target_path = wt.abspath(tree_path)
-                    kind = osutils.file_kind(target_path)
+                    kind = file_kind(target_path)
                     if kind == "directory":
                         try:
                             controldir.ControlDir.open(target_path)
@@ -2415,7 +2430,7 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
         unchanged = dict(unchanged)
         new_desired_files = []
         count = 0
-        for unused_tree_path, (trans_id, tree_path, text_sha1) in desired_files:
+        for _unused_tree_path, (trans_id, tree_path, text_sha1) in desired_files:
             accelerator_path = unchanged.get(tree_path)
             if accelerator_path is None:
                 new_desired_files.append((tree_path,

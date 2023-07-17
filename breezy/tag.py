@@ -84,13 +84,13 @@ class Tags:
         self.branch = branch
 
     def get_tag_dict(self) -> Dict[str, RevisionID]:
-        """Return a dictionary mapping tags to revision ids.
-        """
+        """Return a dictionary mapping tags to revision ids."""
         raise NotImplementedError(self.get_tag_dict)
 
     def get_reverse_tag_dict(self) -> Dict[RevisionID, Set[str]]:
         """Returns a dict with revisions as keys
-           and a list of tags for that revision as value"""
+        and a list of tags for that revision as value.
+        """
         d = self.get_tag_dict()
         rev = defaultdict(set)
         for key in d:
@@ -197,8 +197,7 @@ class DisabledTags(Tags):
 
 
 class InterTags(InterObject[Tags]):
-    """Operations between sets of tags.
-    """
+    """Operations between sets of tags."""
 
     _optimisers = []
     """The available optimised InterTags types."""
@@ -294,12 +293,12 @@ class MemoryTags(Tags):
         return self._tag_dict
 
     def lookup_tag(self, tag_name):
-        """Return the referent string of a tag"""
+        """Return the referent string of a tag."""
         td = self.get_tag_dict()
         try:
             return td[tag_name]
-        except KeyError:
-            raise errors.NoSuchTag(tag_name)
+        except KeyError as e:
+            raise errors.NoSuchTag(tag_name) from e
 
     def set_tag(self, name, revid):
         self._tag_dict[name] = revid
@@ -307,8 +306,8 @@ class MemoryTags(Tags):
     def delete_tag(self, name):
         try:
             del self._tag_dict[name]
-        except KeyError:
-            raise errors.NoSuchTag(name)
+        except KeyError as err:
+            raise errors.NoSuchTag(name) from err
 
     def rename_revisions(self, revid_map):
         self._tag_dict = {
@@ -357,7 +356,7 @@ def sort_time(branch, tags):
     :param tags: List of tuples with tag name and revision id.
     """
     timestamps = {}
-    for tag, revid in tags:
+    for _tag, revid in tags:
         try:
             revobj = branch.repository.get_revision(revid)
         except errors.NoSuchRevision:

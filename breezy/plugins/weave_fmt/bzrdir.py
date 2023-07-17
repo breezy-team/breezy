@@ -16,37 +16,38 @@
 
 """Weave-era BzrDir formats."""
 
+import os
 from io import BytesIO
 
-from ... import errors, lockable_files
+from ... import errors, osutils, trace
+from ...bzr import lockable_files
 from ...bzr.bzrdir import BzrDir, BzrDirFormat, BzrDirMetaFormat1
-from ...controldir import (ControlDir, Converter, MustHaveWorkingTree,
-                           NoColocatedBranchSupport, format_registry)
+from ...controldir import (
+    ControlDir,
+    Converter,
+    MustHaveWorkingTree,
+    NoColocatedBranchSupport,
+    format_registry,
+)
 from ...i18n import gettext
 from ...lazy_import import lazy_import
 from ...transport import NoSuchFile, get_transport, local
 
 lazy_import(globals(), """
-import os
-
 from breezy import (
     branch as _mod_branch,,
     graph,
     lockdir,
-    osutils,
     revision as _mod_revision,
-    trace,
     ui,
     urlutils,
     )
 from breezy.bzr import (
     versionedfile,
     weave,
-    xml5,
     )
 from breezy.plugins.weave_fmt.store.versioned import VersionedFileStore
 from breezy.transactions import WriteTransaction
-from breezy.plugins.weave_fmt import xml4
 """)
 
 
@@ -79,7 +80,7 @@ class BzrDirFormatAllInOne(BzrDirFormat):
     @classmethod
     def from_string(cls, format_string):
         if format_string != cls.get_format_string():
-            raise AssertionError("unexpected format string %r" % format_string)
+            raise AssertionError(f"unexpected format string {format_string!r}")
         return cls()
 
 
@@ -130,7 +131,7 @@ class BzrDirFormat5(BzrDirFormatAllInOne):
         result = (super().initialize_on_transport(transport))
         RepositoryFormat5().initialize(result, _internal=True)
         if not _cloning:
-            branch = BzrBranchFormat4().initialize(result)
+            BzrBranchFormat4().initialize(result)
             result._init_workingtree()
         return result
 
@@ -194,7 +195,7 @@ class BzrDirFormat6(BzrDirFormatAllInOne):
         result = super().initialize_on_transport(transport)
         RepositoryFormat6().initialize(result, _internal=True)
         if not _cloning:
-            branch = BzrBranchFormat4().initialize(result)
+            BzrBranchFormat4().initialize(result)
             result._init_workingtree()
         return result
 
@@ -293,10 +294,12 @@ class ConvertBzrDir4To5(Converter):
         self.controldir.transport.delete_tree('text-store')
 
     def _convert_working_inv(self):
-        inv = xml4.serializer_v4.read_inventory(
+        from .xml4 import inventory_serializer_v4
+        inv = inventory_serializer_v4.read_inventory(
             self.branch._transport.get('inventory'))
         f = BytesIO()
-        xml5.serializer_v5.write_inventory(inv, f, working=True)
+        from ...bzr.xml5 import inventory_serializer_v5
+        inventory_serializer_v5.write_inventory(inv, f, working=True)
         self.branch._transport.put_bytes('inventory', f.getvalue(),
                                          mode=self.controldir._get_file_mode())
 
@@ -327,16 +330,16 @@ class ConvertBzrDir4To5(Converter):
         self.controldir.transport.mkdir('revision-store')
         revision_transport = self.controldir.transport.clone('revision-store')
         # TODO permissions
-        from ...bzr.xml5 import serializer_v5
+        from ...bzr.xml5 import revision_serializer_v5
         from .repository import RevisionTextStore
         revision_store = RevisionTextStore(revision_transport,
-                                           serializer_v5, False, versionedfile.PrefixMapper(),
+                                           revision_serializer_v5, False, versionedfile.PrefixMapper(),
                                            lambda: True, lambda: True)
         try:
             for i, rev_id in enumerate(self.converted_revs):
                 self.pb.update(gettext('write revision'), i,
                                len(self.converted_revs))
-                lines = serializer_v5.write_revision_to_lines(
+                lines = revision_serializer_v5.write_revision_to_lines(
                     self.revisions[rev_id])
                 key = (rev_id,)
                 revision_store.add_lines(key, None, lines)
@@ -347,7 +350,8 @@ class ConvertBzrDir4To5(Converter):
         """Load a revision object into memory.
 
         Any parents not either loaded or abandoned get queued to be
-        loaded."""
+        loaded.
+        """
         self.pb.update(gettext('loading revision'),
                        len(self.revisions),
                        len(self.known_revisions))
@@ -365,15 +369,17 @@ class ConvertBzrDir4To5(Converter):
             self.revisions[rev_id] = rev
 
     def _load_old_inventory(self, rev_id):
+        from .xml4 import inventory_serializer_v4
         with self.branch.repository.inventory_store.get(rev_id) as f:
-            inv = xml4.serializer_v4.read_inventory(f)
+            inv = inventory_serializer_v4.read_inventory(f)
         inv.revision_id = rev_id
-        rev = self.revisions[rev_id]
+        self.revisions[rev_id]
         return inv
 
     def _load_updated_inventory(self, rev_id):
+        from ...bzr.xml5 import inventory_serializer_v5
         inv_xml = self.inv_weave.get_lines(rev_id)
-        inv = xml5.serializer_v5.read_inventory_from_lines(inv_xml, rev_id)
+        inv = inventory_serializer_v5.read_inventory_from_lines(inv_xml, rev_id)
         return inv
 
     def _convert_one_rev(self, rev_id):
@@ -387,7 +393,8 @@ class ConvertBzrDir4To5(Converter):
         self.converted_revs.add(rev_id)
 
     def _store_new_inv(self, rev, inv, present_parents):
-        new_inv_xml = xml5.serializer_v5.write_inventory_to_lines(inv)
+        from ...bzr.xml5 import inventory_serializer_v5
+        new_inv_xml = inventory_serializer_v5.write_inventory_to_lines(inv)
         new_inv_sha1 = osutils.sha_strings(new_inv_xml)
         self.inv_weave.add_lines(rev.revision_id,
                                  present_parents,
@@ -397,13 +404,14 @@ class ConvertBzrDir4To5(Converter):
     def _convert_revision_contents(self, rev, inv, present_parents):
         """Convert all the files within a revision.
 
-        Also upgrade the inventory to refer to the text revision ids."""
+        Also upgrade the inventory to refer to the text revision ids.
+        """
         rev_id = rev.revision_id
         trace.mutter('converting texts of revision {%s}', rev_id)
         parent_invs = list(map(self._load_updated_inventory, present_parents))
         entries = inv.iter_entries()
         next(entries)
-        for path, ie in entries:
+        for _path, ie in entries:
             self._convert_file_version(rev, ie, parent_invs)
 
     def _convert_file_version(self, rev, ie, parent_invs):
@@ -418,7 +426,6 @@ class ConvertBzrDir4To5(Converter):
         if w is None:
             w = weave.Weave(file_id)
             self.text_weaves[file_id] = w
-        text_changed = False
         parent_candiate_entries = ie.parent_candidates(parent_invs)
         heads = graph.Graph(self).heads(parent_candiate_entries)
         # XXX: Note that this is unordered - and this is tolerable because
@@ -428,7 +435,7 @@ class ConvertBzrDir4To5(Converter):
         self.snapshot_ie(previous_entries, ie, w, rev_id)
 
     def get_parent_map(self, revision_ids):
-        """See graph.StackedParentsProvider.get_parent_map"""
+        """See graph.StackedParentsProvider.get_parent_map."""
         return {revision_id: self.revisions[revision_id]
                     for revision_id in revision_ids
                     if revision_id in self.revisions}
@@ -467,7 +474,7 @@ class ConvertBzrDir4To5(Converter):
         while todo:
             # scan through looking for a revision whose parents
             # are all done
-            for rev_id in sorted(list(todo)):
+            for rev_id in sorted(todo):
                 rev = self.revisions[rev_id]
                 parent_ids = set(rev.parent_ids)
                 if parent_ids.issubset(done):
@@ -484,7 +491,7 @@ class ConvertBzrDir5To6(Converter):
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
         self.controldir = to_convert
-        with ui.ui_factory.nested_progress_bar() as pb:
+        with ui.ui_factory.nested_progress_bar():
             ui.ui_factory.note(gettext('starting upgrade from format 5 to 6'))
             self._convert_to_prefixed()
             return ControlDir.open(self.controldir.user_url)
@@ -593,7 +600,7 @@ class ConvertBzrDir6ToMeta(Converter):
         if not has_checkout:
             ui.ui_factory.note(gettext('No working tree.'))
             # If some checkout files are there, we may as well get rid of them.
-            for name, mandatory in checkout_files:
+            for name, _mandatory in checkout_files:
                 if name in bzrcontents:
                     self.controldir.transport.delete(name)
         else:
@@ -620,7 +627,7 @@ class ConvertBzrDir6ToMeta(Converter):
         """Make a lock for the new control dir name."""
         self.step(gettext('Make %s lock') % name)
         ld = lockdir.LockDir(self.controldir.transport,
-                             '%s/lock' % name,
+                             f'{name}/lock',
                              file_modebits=self.file_mode,
                              dir_modebits=self.dir_mode)
         ld.create()
@@ -631,13 +638,13 @@ class ConvertBzrDir6ToMeta(Converter):
         mandatory = entry[1]
         self.step(gettext('Moving %s') % name)
         try:
-            self.controldir.transport.move(name, '{}/{}'.format(new_dir, name))
+            self.controldir.transport.move(name, f'{new_dir}/{name}')
         except NoSuchFile:
             if mandatory:
                 raise
 
     def put_format(self, dirname, format):
-        self.controldir.transport.put_bytes('%s/format' % dirname,
+        self.controldir.transport.put_bytes(f'{dirname}/format',
                                             format.get_format_string(),
                                             self.file_mode)
 
@@ -703,7 +710,7 @@ class BzrDirFormat4(BzrDirFormat):
     @classmethod
     def from_string(cls, format_string):
         if format_string != cls.get_format_string():
-            raise AssertionError("unexpected format string %r" % format_string)
+            raise AssertionError(f"unexpected format string {format_string!r}")
         return cls()
 
 
@@ -756,7 +763,7 @@ class BzrDirPreSplitOut(BzrDir):
         """See ControlDir.create_branch."""
         if repository is not None:
             raise NotImplementedError(
-                "create_branch(repository=<not None>) on {!r}".format(self))
+                f"create_branch(repository=<not None>) on {self!r}")
         return self._format.get_branch_format().initialize(self, name=name,
                                                            append_revisions_only=append_revisions_only)
 
@@ -790,8 +797,7 @@ class BzrDirPreSplitOut(BzrDir):
         # happens for creating checkouts, which cannot be
         # done on this format anyway. So - acceptable wart.
         if hardlink:
-            warning("can't support hardlinked working trees in %r"
-                    % (self,))
+            warning(f"can't support hardlinked working trees in {self!r}")
         try:
             result = self.open_workingtree(recommend_upgrade=False)
         except NoSuchFile:

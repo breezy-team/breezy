@@ -16,7 +16,7 @@
 
 # Author: Martin Pool <mbp@canonical.com>
 
-"""Weave - storage of related text file versions"""
+"""Weave - storage of related text file versions."""
 
 # XXX: If we do weaves this way, will a merge still behave the same
 # way if it's done in a different order?  That's a pretty desirable
@@ -64,27 +64,28 @@
 
 # FIXME: the conflict markers should be *7* characters
 
+import hashlib
 import os
 from copy import copy
 from io import BytesIO
 
 import patiencediff
 
-from ..lazy_import import lazy_import
-
-lazy_import(globals(), """
-from breezy import tsort
-""")
-from .. import errors, osutils
+from .. import errors
 from .. import transport as _mod_transport
 from ..errors import RevisionAlreadyPresent, RevisionNotPresent
-from ..osutils import dirname, sha, sha_strings, split_lines
+from ..osutils import dirname, sha_strings
 from ..revision import NULL_REVISION
 from ..trace import mutter
-from .versionedfile import (AbsentContentFactory, ContentFactory,
-                            ExistingContent, UnavailableRepresentation,
-                            VersionedFile, adapter_registry,
-                            sort_groupcompress)
+from .versionedfile import (
+    AbsentContentFactory,
+    ContentFactory,
+    ExistingContent,
+    UnavailableRepresentation,
+    VersionedFile,
+    adapter_registry,
+    sort_groupcompress,
+)
 from .weavefile import _read_weave_v5, write_weave_v5
 
 
@@ -300,7 +301,7 @@ class Weave(VersionedFile):
         self._allow_reserved = allow_reserved
 
     def __repr__(self):
-        return "Weave(%r)" % self._weave_name
+        return f"Weave({self._weave_name!r})"
 
     def _check_write_ok(self):
         """Is the versioned file marked as 'finished' ? Raise if it is."""
@@ -312,7 +313,8 @@ class Weave(VersionedFile):
     def copy(self):
         """Return a deep copy of self.
 
-        The copy can be modified without affecting the original weave."""
+        The copy can be modified without affecting the original weave.
+        """
         other = Weave()
         other._weave = self._weave[:]
         other._parents = self._parents[:]
@@ -341,8 +343,8 @@ class Weave(VersionedFile):
             self.check_not_reserved_id(name)
         try:
             return self._name_map[name]
-        except KeyError:
-            raise RevisionNotPresent(name, self._weave_name)
+        except KeyError as e:
+            raise RevisionNotPresent(name, self._weave_name) from e
 
     def versions(self):
         """See VersionedFile.versions."""
@@ -367,6 +369,7 @@ class Weave(VersionedFile):
         :return: An iterator of ContentFactory objects, each of which is only
             valid until the iterator is advanced.
         """
+        from .. import tsort
         versions = [version[-1] for version in versions]
         if ordering == 'topological':
             parents = self.get_parent_map(versions)
@@ -514,12 +517,11 @@ class Weave(VersionedFile):
 
         ancestors = self._inclusions(parents)
 
-        l = self._weave
 
         # basis a list of (origin, lineno, line)
         basis_lineno = []
         basis_lines = []
-        for origin, lineno, line in self._extract(ancestors):
+        for _origin, lineno, line in self._extract(ancestors):
             basis_lineno.append(lineno)
             basis_lines.append(line)
 
@@ -590,12 +592,12 @@ class Weave(VersionedFile):
         return {self._idx_to_name(v) for v in i}
 
     def _check_versions(self, indexes):
-        """Check everything in the sequence of indexes is valid"""
+        """Check everything in the sequence of indexes is valid."""
         for i in indexes:
             try:
                 self._parents[i]
-            except IndexError:
-                raise IndexError("invalid version number %r" % i)
+            except IndexError as err:
+                raise IndexError(f"invalid version number {i!r}") from err
 
     def _compatible_parents(self, my_parents, other_parents):
         """During join check that other_parents are joinable with my_parents.
@@ -608,7 +610,8 @@ class Weave(VersionedFile):
     def annotate(self, version_id):
         """Return a list of (version-id, line) tuples for version_id.
 
-        The index indicates when the line originated in the weave."""
+        The index indicates when the line originated in the weave.
+        """
         incls = [self._lookup(version_id)]
         return [(self._idx_to_name(origin), text) for origin, lineno, text in
                 self._extract(incls)]
@@ -619,7 +622,7 @@ class Weave(VersionedFile):
         if version_ids is None:
             version_ids = self.versions()
         version_ids = set(version_ids)
-        for lineno, inserted, deletes, line in self._walk_internal(
+        for _lineno, inserted, _deletes, line in self._walk_internal(
                 version_ids):
             if inserted not in version_ids:
                 continue
@@ -630,7 +633,6 @@ class Weave(VersionedFile):
 
     def _walk_internal(self, version_ids=None):
         """Helper method for weave actions."""
-
         istack = []
         dset = set()
 
@@ -648,7 +650,7 @@ class Weave(VersionedFile):
                 elif c == b']':
                     dset.remove(self._names[v])
                 else:
-                    raise WeaveFormatError('unexpected instruction %r' % v)
+                    raise WeaveFormatError(f'unexpected instruction {v!r}')
             else:
                 yield lineno, istack[-1], frozenset(dset), l
             lineno += 1
@@ -658,7 +660,7 @@ class Weave(VersionedFile):
                                    "at end of weave: %s" % istack)
         if dset:
             raise WeaveFormatError(
-                "unclosed deletion blocks at end of weave: %s" % dset)
+                f"unclosed deletion blocks at end of weave: {dset}")
 
     def plan_merge(self, ver_a, ver_b):
         """Return pseudo-annotation indicating how the two versions merge.
@@ -672,7 +674,7 @@ class Weave(VersionedFile):
         inc_b = self.get_ancestry([ver_b])
         inc_c = inc_a & inc_b
 
-        for lineno, insert, deleteset, line in self._walk_internal(
+        for _lineno, insert, deleteset, line in self._walk_internal(
                 [ver_a, ver_b]):
             if deleteset & inc_c:
                 # killed in parent; can't be in either a or b
@@ -783,7 +785,7 @@ class Weave(VersionedFile):
                                    "at end of weave: %s" % istack)
         if dset:
             raise WeaveFormatError(
-                "unclosed deletion blocks at end of weave: %s" % dset)
+                f"unclosed deletion blocks at end of weave: {dset}")
         return result
 
     def _maybe_lookup(self, name_or_index):
@@ -847,7 +849,7 @@ class Weave(VersionedFile):
             # For creating the ancestry, IntSet is much faster (3.7s vs 0.17s)
             # The problem is that set membership is much more expensive
             name = self._idx_to_name(i)
-            sha1s[name] = sha()
+            sha1s[name] = hashlib.sha1()  # noqa: S324
             texts[name] = []
             new_inc = {name}
             for p in self._parents[i]:
@@ -855,8 +857,7 @@ class Weave(VersionedFile):
 
             if new_inc != self.get_ancestry(name):
                 raise AssertionError(
-                    'failed %s != %s'
-                    % (new_inc, self.get_ancestry(name)))
+                    f'failed {new_inc} != {self.get_ancestry(name)}')
             inclusions[name] = new_inc
 
         nlines = len(self._weave)
@@ -864,7 +865,7 @@ class Weave(VersionedFile):
         update_text = 'checking weave'
         if self._weave_name:
             short_name = os.path.basename(self._weave_name)
-            update_text = 'checking {}'.format(short_name)
+            update_text = f'checking {short_name}'
             update_text = update_text[:25]
 
         for lineno, insert, deleteset, line in self._walk_internal():
@@ -916,7 +917,8 @@ class Weave(VersionedFile):
 
         If present & correct return True;
         if not present in self return False;
-        if inconsistent raise error."""
+        if inconsistent raise error.
+        """
         this_idx = self._name_map.get(name, -1)
         if this_idx != -1:
             if self._sha1s[this_idx] != other._sha1s[other_idx]:
@@ -945,7 +947,7 @@ class Weave(VersionedFile):
         self._copy_weave_content(new_weave)
 
     def _copy_weave_content(self, otherweave):
-        """adsorb the content from otherweave."""
+        """Adsorb the content from otherweave."""
         for attr in self.__slots__:
             if attr != '_weave_name':
                 setattr(self, attr, copy(getattr(otherweave, attr)))
@@ -1033,6 +1035,7 @@ def _reweave(wa, wb, pb=None, msg=None):
     :param pb: An optional progress bar, indicating how far done we are
     :param msg: An optional message for the progress
     """
+    from .. import tsort
     wr = Weave()
     # first determine combined parents of all versions
     # map from version name -> all parent names
@@ -1068,7 +1071,8 @@ def _reweave(wa, wb, pb=None, msg=None):
 def _reweave_parent_graphs(wa, wb):
     """Return combined parent ancestry for two weaves.
 
-    Returned as a list of (version_name, set(parent_names))"""
+    Returned as a list of (version_name, set(parent_names))
+    """
     combined = {}
     for weave in [wa, wb]:
         for idx, name in enumerate(weave._names):

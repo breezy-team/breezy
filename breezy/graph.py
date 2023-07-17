@@ -14,9 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import time
-
-from . import debug, errors, osutils, revision, trace
+from . import debug, errors, osutils, trace
+from . import revision as _mod_revision
 
 STEP_UNIQUE_SEARCHER_EVERY = 5
 
@@ -50,7 +49,7 @@ class DictParentsProvider:
         self.ancestry = ancestry
 
     def __repr__(self):
-        return 'DictParentsProvider(%r)' % self.ancestry
+        return f'DictParentsProvider({self.ancestry!r})'
 
     # Note: DictParentsProvider does not implement get_cached_parent_map
     #       Arguably, the data is clearly cached in memory. However, this class
@@ -58,9 +57,9 @@ class DictParentsProvider:
     #       change it.
 
     def get_parent_map(self, keys):
-        """See StackedParentsProvider.get_parent_map"""
+        """See StackedParentsProvider.get_parent_map."""
         ancestry = self.ancestry
-        return {k: ancestry[k] for k in keys if k in ancestry}
+        return {k: tuple(ancestry[k]) for k in keys if k in ancestry}
 
 
 class StackedParentsProvider:
@@ -73,10 +72,10 @@ class StackedParentsProvider:
         self._parent_providers = parent_providers
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self._parent_providers)
+        return f"{self.__class__.__name__}({self._parent_providers!r})"
 
     def get_parent_map(self, keys):
-        """Get a mapping of keys => parents
+        """Get a mapping of keys => parents.
 
         A dictionary is returned with an entry for each key present in this
         source. If this source doesn't have information about a key, it should
@@ -147,7 +146,7 @@ class CachingParentsProvider:
         self.enable_cache(True)
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self._real_provider)
+        return f"{self.__class__.__name__}({self._real_provider!r})"
 
     def enable_cache(self, cache_misses=True):
         """Enable cache."""
@@ -220,7 +219,7 @@ class CallableToParentsProviderAdapter:
         self.callable = a_callable
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self.callable)
+        return f"{self.__class__.__name__}({self.callable!r})"
 
     def get_parent_map(self, keys):
         return self.callable(keys)
@@ -234,7 +233,7 @@ class Graph:
     """
 
     def __init__(self, parents_provider):
-        """Construct a Graph that uses several graphs as its input
+        """Construct a Graph that uses several graphs as its input.
 
         This should not normally be invoked directly, because there may be
         specialized implementations for particular repository types.  See
@@ -251,10 +250,10 @@ class Graph:
         self._parents_provider = parents_provider
 
     def __repr__(self):
-        return 'Graph(%r)' % self._parents_provider
+        return f'Graph({self._parents_provider!r})'
 
     def find_lca(self, *revisions):
-        """Determine the lowest common ancestors of the provided revisions
+        """Determine the lowest common ancestors of the provided revisions.
 
         A lowest common ancestor is a common ancestor none of whose
         descendants are common ancestors.  In graphs, unlike trees, there may
@@ -294,7 +293,7 @@ class Graph:
         return self.heads(border_common)
 
     def find_difference(self, left_revision, right_revision):
-        """Determine the graph difference between two revisions"""
+        """Determine the graph difference between two revisions."""
         border, common, searchers = self._find_border_ancestors(
             [left_revision, right_revision])
         self._search_for_extra_common(common, searchers)
@@ -351,7 +350,7 @@ class Graph:
         known_revnos = dict(known_revision_ids)
         cur_tip = target_revision_id
         num_steps = 0
-        NULL_REVISION = revision.NULL_REVISION
+        NULL_REVISION = _mod_revision.NULL_REVISION
         known_revnos[NULL_REVISION] = 0
 
         searching_known_tips = list(known_revnos)
@@ -459,7 +458,7 @@ class Graph:
         self._refine_unique_nodes(unique_searcher, all_unique_searcher,
                                   unique_tip_searchers, common_searcher)
         true_unique_nodes = unique_nodes.difference(common_searcher.seen)
-        if 'graph' in debug.debug_flags:
+        if debug.debug_flag_enabled('graph'):
             trace.mutter('Found %d truly unique nodes out of %d',
                          len(true_unique_nodes), len(unique_nodes))
         return true_unique_nodes
@@ -472,7 +471,6 @@ class Graph:
 
         :return: (unique_searcher, common_searcher)
         """
-
         unique_searcher = self._make_breadth_first_searcher(unique_revisions)
         # we know that unique_revisions aren't in common_revisions, so skip
         # past them.
@@ -556,7 +554,7 @@ class Graph:
             for searcher in unique_tip_searchers:
                 total_stopped += len(searcher.stop_searching_any(
                     searcher.find_seen_ancestors(ancestor_all_unique)))
-        if 'graph' in debug.debug_flags:
+        if debug.debug_flag_enabled('graph'):
             trace.mutter('For %d unique nodes, created %d + 1 unique searchers'
                          ' (%d stopped search tips, %d common ancestors'
                          ' (%d stopped common)',
@@ -568,7 +566,7 @@ class Graph:
     def _step_unique_and_common_searchers(self, common_searcher,
                                           unique_tip_searchers,
                                           unique_searcher):
-        """Step all the searchers"""
+        """Step all the searchers."""
         newly_seen_common = set(common_searcher.step())
         newly_seen_unique = set()
         for searcher in unique_tip_searchers:
@@ -603,7 +601,7 @@ class Graph:
             tstart = osutils.perf_counter()
             nodes = all_unique_searcher.step()
             common_to_all_unique_nodes.update(nodes)
-            if 'graph' in debug.debug_flags:
+            if debug.debug_flag_enabled('graph'):
                 tdelta = osutils.perf_counter() - tstart
                 trace.mutter('all_unique_searcher step() took %.3fs'
                              'for %d nodes (%d total), iteration: %s',
@@ -628,7 +626,7 @@ class Graph:
             stopped = searcher.stop_searching_any(common_to_all_unique_nodes)
             will_search_set = frozenset(searcher._next_query)
             if not will_search_set:
-                if 'graph' in debug.debug_flags:
+                if debug.debug_flag_enabled('graph'):
                     trace.mutter('Unique searcher %s was stopped.'
                                  ' (%s iterations) %d nodes stopped',
                                  searcher._label,
@@ -654,7 +652,7 @@ class Graph:
                 next_searcher = searchers[0]
                 for searcher in searchers[1:]:
                     next_searcher.seen.intersection_update(searcher.seen)
-                if 'graph' in debug.debug_flags:
+                if debug.debug_flag_enabled('graph'):
                     trace.mutter('Combining %d searchers into a single'
                                  ' searcher searching %d nodes with'
                                  ' %d ancestry',
@@ -708,7 +706,7 @@ class Graph:
             next_unique_searchers = self._collapse_unique_searchers(
                 unique_tip_searchers, common_to_all_unique_nodes)
             if len(unique_tip_searchers) != len(next_unique_searchers):
-                if 'graph' in debug.debug_flags:
+                if debug.debug_flag_enabled('graph'):
                     trace.mutter('Collapsed %d unique searchers => %d'
                                  ' at %s iterations',
                                  len(unique_tip_searchers),
@@ -820,11 +818,11 @@ class Graph:
             order if they need it.
         """
         candidate_heads = set(keys)
-        if revision.NULL_REVISION in candidate_heads:
+        if _mod_revision.NULL_REVISION in candidate_heads:
             # NULL_REVISION is only a head if it is the only entry
-            candidate_heads.remove(revision.NULL_REVISION)
+            candidate_heads.remove(_mod_revision.NULL_REVISION)
             if not candidate_heads:
-                return {revision.NULL_REVISION}
+                return {_mod_revision.NULL_REVISION}
         if len(candidate_heads) < 2:
             return candidate_heads
         searchers = {c: self._make_breadth_first_searcher([c])
@@ -1025,8 +1023,8 @@ class Graph:
         def get_parents(key):
             try:
                 return self._parents_provider.get_parent_map([key])[key]
-            except KeyError:
-                raise errors.RevisionNotPresent(next_key, self)
+            except KeyError as err:
+                raise errors.RevisionNotPresent(next_key, self) from err
         while True:
             if next_key in stop_keys:
                 return
@@ -1045,7 +1043,8 @@ class Graph:
         visible in the supplied list of revisions.
         """
         from breezy import tsort
-        sorter = tsort.TopoSorter(self.get_parent_map(revisions))
+        pm = self.get_parent_map(revisions)
+        sorter = tsort.TopoSorter(pm)
         return sorter.iter_topo_order()
 
     def is_ancestor(self, candidate_ancestor, candidate_descendant):
@@ -1219,7 +1218,7 @@ class Graph:
                 return
 
     def _remove_simple_descendants(self, revisions, parent_map):
-        """remove revisions which are children of other ones in the set
+        """Remove revisions which are children of other ones in the set.
 
         This doesn't do any graph searching, it just checks the immediate
         parent_map to find if there are any children which can be removed.
@@ -1342,7 +1341,7 @@ class _BreadthFirstSearcher:
             prefix = "searching"
         else:
             prefix = "starting"
-        search = '{}={!r}'.format(prefix, list(self._next_query))
+        search = f'{prefix}={list(self._next_query)!r}'
         return ('_BreadthFirstSearcher(iterations=%d, %s,'
                 ' seen=%r)' % (self._iterations, search, list(self.seen)))
 
@@ -1454,7 +1453,7 @@ class _BreadthFirstSearcher:
         seen.update(revisions)
         parent_map = self._parents_provider.get_parent_map(revisions)
         found_revisions.update(parent_map)
-        for rev_id, parents in parent_map.items():
+        for _rev_id, parents in parent_map.items():
             if parents is None:
                 continue
             new_found_parents = [p for p in parents if p not in seen]
@@ -1508,8 +1507,7 @@ class _BreadthFirstSearcher:
         return seen_ancestors
 
     def stop_searching_any(self, revisions):
-        """
-        Remove any of the specified revisions from the search list.
+        """Remove any of the specified revisions from the search list.
 
         None of the specified revisions are required to be present in the
         search list.
@@ -1583,91 +1581,7 @@ class _BreadthFirstSearcher:
             return revs, ghosts
 
 
-def invert_parent_map(parent_map):
-    """Given a map from child => parents, create a map of parent=>children"""
-    child_map = {}
-    for child, parents in parent_map.items():
-        for p in parents:
-            # Any given parent is likely to have only a small handful
-            # of children, many will have only one. So we avoid mem overhead of
-            # a list, in exchange for extra copying of tuples
-            if p not in child_map:
-                child_map[p] = (child,)
-            else:
-                child_map[p] = child_map[p] + (child,)
-    return child_map
-
-
-def collapse_linear_regions(parent_map):
-    """Collapse regions of the graph that are 'linear'.
-
-    For example::
-
-      A:[B], B:[C]
-
-    can be collapsed by removing B and getting::
-
-      A:[C]
-
-    :param parent_map: A dictionary mapping children to their parents
-    :return: Another dictionary with 'linear' chains collapsed
-    """
-    # Note: this isn't a strictly minimal collapse. For example:
-    #   A
-    #  / \
-    # B   C
-    #  \ /
-    #   D
-    #   |
-    #   E
-    # Will not have 'D' removed, even though 'E' could fit. Also:
-    #   A
-    #   |    A
-    #   B => |
-    #   |    C
-    #   C
-    # A and C are both kept because they are edges of the graph. We *could* get
-    # rid of A if we wanted.
-    #   A
-    #  / \
-    # B   C
-    # |   |
-    # D   E
-    #  \ /
-    #   F
-    # Will not have any nodes removed, even though you do have an
-    # 'uninteresting' linear D->B and E->C
-    children = {}
-    for child, parents in parent_map.items():
-        children.setdefault(child, [])
-        for p in parents:
-            children.setdefault(p, []).append(child)
-
-    removed = set()
-    result = dict(parent_map)
-    for node in parent_map:
-        parents = result[node]
-        if len(parents) == 1:
-            parent_children = children[parents[0]]
-            if len(parent_children) != 1:
-                # This is not the only child
-                continue
-            node_children = children[node]
-            if len(node_children) != 1:
-                continue
-            child_parents = result.get(node_children[0], None)
-            if len(child_parents) != 1:
-                # This is not its only parent
-                continue
-            # The child of this node only points at it, and the parent only has
-            # this as a child. remove this node, and join the others together
-            result[node_children[0]] = parents
-            children[parents[0]] = node_children
-            del result[node]
-            del children[node]
-            removed.add(node)
-
-    return result
+from ._graph_rs import collapse_linear_regions, invert_parent_map  # noqa: F401
 
 
 class GraphThunkIdsToKeys:
@@ -1680,7 +1594,7 @@ class GraphThunkIdsToKeys:
         return [r for (r,) in self._graph.topo_sort()]
 
     def heads(self, ids):
-        """See Graph.heads()"""
+        """See Graph.heads()."""
         as_keys = [(i,) for i in ids]
         head_keys = self._graph.heads(as_keys)
         return {h[0] for h in head_keys}

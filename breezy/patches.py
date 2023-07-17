@@ -17,7 +17,7 @@
 
 import os
 import re
-from typing import Iterator, List, Optional
+from typing import Iterator, List
 
 from .errors import BzrError
 
@@ -26,24 +26,6 @@ binary_files_re = b'Binary files (.*) and (.*) differ\n'
 
 class PatchSyntax(BzrError):
     """Base class for patch syntax errors."""
-
-
-class BinaryFiles(BzrError):
-
-    _fmt = 'Binary files section encountered.'
-
-    def __init__(self, orig_name, mod_name):
-        self.orig_name = orig_name
-        self.mod_name = mod_name
-
-
-class MalformedPatchHeader(PatchSyntax):
-
-    _fmt = "Malformed patch header.  %(desc)s\n%(line)r"
-
-    def __init__(self, desc, line):
-        self.desc = desc
-        self.line = line
 
 
 class MalformedLine(PatchSyntax):
@@ -75,54 +57,14 @@ class MalformedHunkHeader(PatchSyntax):
         self.line = line
 
 
-def get_patch_names(iter_lines):
-    line = next(iter_lines)
-    try:
-        match = re.match(binary_files_re, line)
-        if match is not None:
-            raise BinaryFiles(match.group(1), match.group(2))
-        if not line.startswith(b"--- "):
-            raise MalformedPatchHeader("No orig name", line)
-        else:
-            orig_name = line[4:].rstrip(b"\n")
-            try:
-                (orig_name, orig_ts) = orig_name.split(b'\t')
-            except ValueError:
-                orig_ts = None
-    except StopIteration:
-        raise MalformedPatchHeader("No orig line", "")
-    try:
-        line = next(iter_lines)
-        if not line.startswith(b"+++ "):
-            raise PatchSyntax("No mod name")
-        else:
-            mod_name = line[4:].rstrip(b"\n")
-            try:
-                (mod_name, mod_ts) = mod_name.split(b'\t')
-            except ValueError:
-                mod_ts = None
-    except StopIteration:
-        raise MalformedPatchHeader("No mod line", "")
-    return ((orig_name, orig_ts), (mod_name, mod_ts))
-
-
-def parse_range(textrange):
-    """Parse a patch range, handling the "1" special-case
-
-    :param textrange: The text to parse
-    :type textrange: str
-    :return: the position and range, as a tuple
-    :rtype: (int, int)
-    """
-    tmp = textrange.split(b',')
-    if len(tmp) == 1:
-        pos = tmp[0]
-        brange = b"1"
-    else:
-        (pos, brange) = tmp
-    pos = int(pos)
-    range = int(brange)
-    return (pos, range)
+from ._patch_rs import (  # noqa: F401
+    BinaryFiles,
+    MalformedPatchHeader,
+    difference_index,
+    get_patch_names,
+    iter_lines_handle_nl,
+    parse_range,
+)
 
 
 def hunk_from_header(line):
@@ -133,14 +75,14 @@ def hunk_from_header(line):
     try:
         (orig, mod) = matches.group(1).split(b" ")
     except (ValueError, IndexError) as e:
-        raise MalformedHunkHeader(str(e), line)
+        raise MalformedHunkHeader(str(e), line) from e
     if not orig.startswith(b'-') or not mod.startswith(b'+'):
         raise MalformedHunkHeader("Positions don't start with + or -.", line)
     try:
-        (orig_pos, orig_range) = parse_range(orig[1:])
-        (mod_pos, mod_range) = parse_range(mod[1:])
+        (orig_pos, orig_range) = parse_range(orig[1:].decode('utf-8'))
+        (mod_pos, mod_range) = parse_range(mod[1:].decode('utf-8'))
     except (ValueError, IndexError) as e:
-        raise MalformedHunkHeader(str(e), line)
+        raise MalformedHunkHeader(str(e), line) from e
     if mod_range < 0 or orig_range < 0:
         raise MalformedHunkHeader("Hunk range is negative", line)
     tail = matches.group(3)
@@ -218,7 +160,7 @@ class Hunk:
         self.mod_pos = mod_pos
         self.mod_range = mod_range
         self.tail = tail
-        self.lines = []
+        self.lines: List[bytes] = []
 
     def get_header(self):
         if self.tail is None:
@@ -280,12 +222,11 @@ class Hunk:
 
 
 def iter_hunks(iter_lines, allow_dirty=False):
-    '''
-    :arg iter_lines: iterable of lines to parse for hunks
+    """:arg iter_lines: iterable of lines to parse for hunks
     :kwarg allow_dirty: If True, when we encounter something that is not
         a hunk header when we're looking for one, assume the rest of the lines
-        are not part of the patch (comments or other junk).  Default False
-    '''
+        are not part of the patch (comments or other junk).  Default False.
+    """
     hunk = None
     for line in iter_lines:
         if line == b"\n":
@@ -334,7 +275,7 @@ class Patch(BinaryPatch):
         BinaryPatch.__init__(self, oldname, newname)
         self.oldts = oldts
         self.newts = newts
-        self.hunks = []
+        self.hunks: List[Hunk] = []
 
     def as_bytes(self):
         ret = self.get_header()
@@ -367,7 +308,7 @@ class Patch(BinaryPatch):
         return (inserts, removes, len(self.hunks))
 
     def stats_str(self):
-        """Return a string of patch statistics"""
+        """Return a string of patch statistics."""
         return "%i inserts, %i removes in %i hunks" % \
             self.stats_values()
 
@@ -381,7 +322,7 @@ class Patch(BinaryPatch):
         return newpos
 
     def iter_inserted(self):
-        """Iteraties through inserted lines
+        """Iteraties through inserted lines.
 
         :return: Pair of line number, line
         :rtype: iterator of (int, InsertLine)
@@ -397,17 +338,16 @@ class Patch(BinaryPatch):
 
 
 def parse_patch(iter_lines, allow_dirty=False):
-    '''
-    :arg iter_lines: iterable of lines to parse
+    """:arg iter_lines: iterable of lines to parse
     :kwarg allow_dirty: If True, allow the patch to have trailing junk.
-        Default False
-    '''
+        Default False.
+    """
     iter_lines = iter_lines_handle_nl(iter_lines)
     try:
         ((orig_name, orig_ts), (mod_name, mod_ts)) = get_patch_names(
             iter_lines)
     except BinaryFiles as e:
-        return BinaryPatch(e.orig_name, e.mod_name)
+        return BinaryPatch(e.args[0].encode('utf-8'), e.args[1].encode('utf-8'))
     else:
         patch = Patch(orig_name, mod_name, orig_ts, mod_ts)
         for hunk in iter_hunks(iter_lines, allow_dirty):
@@ -416,14 +356,13 @@ def parse_patch(iter_lines, allow_dirty=False):
 
 
 def iter_file_patch(iter_lines: Iterator[bytes], allow_dirty: bool = False, keep_dirty: bool = False):
-    '''
-    :arg iter_lines: iterable of lines to parse for patches
+    """:arg iter_lines: iterable of lines to parse for patches
     :kwarg allow_dirty: If True, allow comments and other non-patch text
         before the first patch.  Note that the algorithm here can only find
         such text before any patches have been found.  Comments after the
         first patch are stripped away in iter_hunks() if it is also passed
         allow_dirty=True.  Default False.
-    '''
+    """
     # FIXME: Docstring is not quite true.  We allow certain comments no
     # matter what, If they startwith '===', '***', or '#' Someone should
     # reexamine this logic and decide if we should include those in
@@ -485,62 +424,20 @@ def iter_file_patch(iter_lines: Iterator[bytes], allow_dirty: bool = False, keep
             yield saved_lines
 
 
-def iter_lines_handle_nl(iter_lines: Iterator[bytes]) -> Iterator[bytes]:
-    """
-    Iterates through lines, ensuring that lines that originally had no
-    terminating \n are produced without one.  This transformation may be
-    applied at any point up until hunk line parsing, and is safe to apply
-    repeatedly.
-    """
-    last_line: Optional[bytes] = None
-    line: Optional[bytes]
-    for line in iter_lines:
-        if line == NO_NL:
-            if last_line is None or not last_line.endswith(b'\n'):
-                raise AssertionError()
-            last_line = last_line[:-1]
-            line = None
-        if last_line is not None:
-            yield last_line
-        last_line = line
-    if last_line is not None:
-        yield last_line
-
-
 def parse_patches(iter_lines, allow_dirty=False, keep_dirty=False):
-    '''
-    :arg iter_lines: iterable of lines to parse for patches
+    """:arg iter_lines: iterable of lines to parse for patches
     :kwarg allow_dirty: If True, allow text that's not part of the patch at
         selected places.  This includes comments before and after a patch
         for instance.  Default False.
     :kwarg keep_dirty: If True, returns a dict of patches with dirty headers.
         Default False.
-    '''
+    """
     for patch_lines in iter_file_patch(iter_lines, allow_dirty, keep_dirty):
         if 'dirty_head' in patch_lines:
             yield ({'patch': parse_patch(patch_lines['saved_lines'], allow_dirty),
                     'dirty_head': patch_lines['dirty_head']})
         else:
             yield parse_patch(patch_lines, allow_dirty)
-
-
-def difference_index(atext, btext):
-    """Find the indext of the first character that differs between two texts
-
-    :param atext: The first text
-    :type atext: str
-    :param btext: The second text
-    :type str: str
-    :return: The index, or None if there are no differences within the range
-    :rtype: int or NoneType
-    """
-    length = len(atext)
-    if len(btext) < length:
-        length = len(btext)
-    for i in range(length):
-        if atext[i] != btext[i]:
-            return i
-    return None
 
 
 def iter_patched(orig_lines, patch_lines):
@@ -597,7 +494,7 @@ def apply_patches(tt, patches, prefix=1):
     def strip_prefix(p):
         return '/'.join(p.split('/')[1:])
 
-    from breezy.bzr.generate_ids import gen_file_id
+    from .bzr.generate_ids import gen_file_id
 
     # TODO(jelmer): Extract and set mode
     for patch in patches:
@@ -627,8 +524,7 @@ def apply_patches(tt, patches, prefix=1):
 
 
 class AppliedPatches:
-    """Context that provides access to a tree with patches applied.
-    """
+    """Context that provides access to a tree with patches applied."""
 
     def __init__(self, tree, patches, prefix=1):
         self.tree = tree

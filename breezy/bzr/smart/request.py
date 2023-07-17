@@ -35,18 +35,8 @@ import threading
 from _thread import get_ident
 
 from ... import branch as _mod_branch
-from ... import debug, errors, osutils, registry, revision, trace
+from ... import debug, errors, osutils, registry, revision, trace, urlutils
 from ... import transport as _mod_transport
-from ... import urlutils
-from ...lazy_import import lazy_import
-
-lazy_import(globals(), """
-from breezy.bzr import bzrdir
-from breezy.bzr.bundle import serializer
-
-import tempfile
-""")
-
 
 jail_info = threading.local()
 jail_info.transports = None
@@ -62,6 +52,7 @@ class DisabledMethod(errors.InternalBzrError):
 
 
 def _install_hook():
+    from breezy.bzr import bzrdir
     bzrdir.BzrDir.hooks.install_named_hook(
         'pre_open', _pre_open_hook, 'checking server jail')
 
@@ -243,8 +234,7 @@ class SmartServerResponse:
                 and other.body_stream is self.body_stream)
 
     def __repr__(self):
-        return "<{} args={!r} body={!r}>".format(self.__class__.__name__,
-                                         self.args, self.body)
+        return f"<{self.__class__.__name__} args={self.args!r} body={self.body!r}>"
 
 
 class FailedSmartServerResponse(SmartServerResponse):
@@ -297,7 +287,7 @@ class SmartServerRequestHandler:
         self.response = None
         self.finished_reading = False
         self._command = None
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             self._request_start_time = osutils.perf_counter()
             self._thread_id = get_ident()
 
@@ -307,7 +297,7 @@ class SmartServerRequestHandler:
         # that just putting it in a helper doesn't help a lot. And some state
         # is taken from the instance.
         if include_time:
-            t = '%5.3fs ' % (osutils.perf_counter() - self._request_start_time)
+            t = f'{osutils.perf_counter() - self._request_start_time:5.3f}s '
         else:
             t = ''
         if extra_bytes is None:
@@ -325,16 +315,16 @@ class SmartServerRequestHandler:
             # no active command object, so ignore the event.
             return
         self._run_handler_code(self._command.do_chunk, (bytes,), {})
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             self._trace('accept body',
-                        '%d bytes' % (len(bytes),), bytes)
+                        f'{len(bytes)} bytes', bytes)
 
     def end_of_body(self):
         """No more body data will be received."""
         self._run_handler_code(self._command.do_end, (), {})
         # cannot read after this.
         self.finished_reading = True
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             self._trace('end of body', '', include_time=True)
 
     def _run_handler_code(self, callable, args, kwargs):
@@ -370,7 +360,7 @@ class SmartServerRequestHandler:
 
     def headers_received(self, headers):
         # Just a no-op at the moment.
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             self._trace('headers', repr(headers))
 
     def args_received(self, args):
@@ -378,18 +368,18 @@ class SmartServerRequestHandler:
         args = args[1:]
         try:
             command = self._commands.get(cmd)
-        except LookupError:
-            if 'hpss' in debug.debug_flags:
+        except LookupError as e:
+            if debug.debug_flag_enabled('hpss'):
                 self._trace('hpss unknown request',
                             cmd, repr(args)[1:-1])
-            raise errors.UnknownSmartMethod(cmd)
-        if 'hpss' in debug.debug_flags:
+            raise errors.UnknownSmartMethod(cmd) from e
+        if debug.debug_flag_enabled('hpss'):
             from . import vfs
             if issubclass(command, vfs.VfsRequest):
                 action = 'hpss vfs req'
             else:
                 action = 'hpss request'
-            self._trace(action, '{} {}'.format(cmd, repr(args)[1:-1]))
+            self._trace(action, f'{cmd} {repr(args)[1:-1]}')
         self._command = command(
             self._backing_transport, self._root_client_path, self._jail_root)
         self._run_handler_code(self._command.execute, args, {})
@@ -399,7 +389,7 @@ class SmartServerRequestHandler:
             # no active command object, so ignore the event.
             return
         self._run_handler_code(self._command.do_end, (), {})
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             self._trace('end', '', include_time=True)
 
     def post_body_error_received(self, error_args):
@@ -418,10 +408,10 @@ def _translate_error(err):
         return (b'IncompatibleRepositories', str(err.source), str(err.target),
                 str(err.details))
     elif isinstance(err, errors.ShortReadvError):
-        return (b'ShortReadvError', err.path.encode('utf-8'),
-                str(err.offset).encode('ascii'),
-                str(err.length).encode('ascii'),
-                str(err.actual).encode('ascii'))
+        return (b'ShortReadvError', err.path.encode('utf-8') if err.path is not None else None,
+                str(err.offset).encode('ascii') if err.offset is not None else None,
+                str(err.length).encode('ascii') if err.length is not None else None,
+                str(err.actual).encode('ascii') if err.actual is not None else None)
     elif isinstance(err, errors.RevisionNotPresent):
         return (b'RevisionNotPresent', err.revision_id, err.file_id)
     elif isinstance(err, errors.UnstackableRepositoryFormat):
@@ -463,7 +453,7 @@ def _translate_error(err):
     elif isinstance(err, errors.GhostRevisionsHaveNoRevno):
         return (b'GhostRevisionsHaveNoRevno', err.revision_id, err.ghost_revision_id)
     elif isinstance(err, urlutils.InvalidURL):
-        return (b'InvalidURL', err.path.encode('utf-8'), err.extra.encode('ascii'))
+        return (b'InvalidURL', err.path.encode('utf-8'), err.extra.encode('utf-8'))
     elif isinstance(err, MemoryError):
         # GZ 2011-02-24: Copy breezy.trace -Dmem_dump functionality here?
         return (b'MemoryError',)
@@ -490,6 +480,11 @@ class GetBundleRequest(SmartServerRequest):
     """Get a bundle of from the null revision to the specified revision."""
 
     def do(self, path, revision_id):
+        import tempfile
+
+        from breezy.bzr import bzrdir
+        from breezy.bzr.bundle import serializer
+
         # open transport relative to our base
         t = self.transport_from_client_path(path)
         control, extra_path = bzrdir.BzrDir.open_containing_from_transport(t)

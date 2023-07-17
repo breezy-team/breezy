@@ -20,12 +20,12 @@ import socket
 import sys
 import time
 
-from breezy import config, controldir, errors, tests
+from breezy import config, controldir, errors, tests, ui
 from breezy import transport as _mod_transport
-from breezy import ui
-from breezy.osutils import lexists
 from breezy.tests import TestCase, TestCaseWithTransport, TestSkipped, features
-from breezy.tests.http_server import HttpServer
+
+from ..osutils import lexists
+from .http_server import HttpServer
 
 if features.paramiko.available():
     from breezy.tests import stub_sftp
@@ -55,7 +55,7 @@ class TestCaseWithSFTPServer(TestCaseWithTransport):
 class SFTPLockTests(TestCaseWithSFTPServer):
 
     def test_sftp_locks(self):
-        from breezy.errors import LockError
+        from ..errors import LockError
         t = self.get_transport()
 
         l = t.lock_write('bogus')
@@ -155,15 +155,16 @@ class SFTPNonServerTest(TestCase):
                           'sftp://user@host.com/~/rel/path/sub')
 
     def test_get_paramiko_vendor(self):
-        """Test that if no 'ssh' is available we get builtin paramiko"""
+        """Test that if no 'ssh' is available we get builtin paramiko."""
         from breezy.transport import ssh
+        from breezy.transport.ssh.paramiko import ParamikoVendor
 
         # set '.' as the only location in the path, forcing no 'ssh' to exist
         self.overrideAttr(ssh, '_ssh_vendor_manager')
         self.overrideEnv('PATH', '.')
         ssh._ssh_vendor_manager.clear_cache()
         vendor = ssh._get_ssh_vendor()
-        self.assertIsInstance(vendor, ssh.ParamikoVendor)
+        self.assertIsInstance(vendor, ParamikoVendor)
 
     def test_abspath_root_sibling_server(self):
         server = stub_sftp.SFTPSiblingAbsoluteServer()
@@ -177,7 +178,7 @@ class SFTPNonServerTest(TestCase):
 
 
 class SFTPBranchTest(TestCaseWithSFTPServer):
-    """Test some stuff when accessing a bzr Branch over sftp"""
+    """Test some stuff when accessing a bzr Branch over sftp."""
 
     def test_push_support(self):
         self.build_tree(['a/', 'a/foo'])
@@ -218,7 +219,7 @@ class SSHVendorConnection(TestCaseWithSFTPServer):
         super().setUp()
 
         def create_server():
-            """Just a wrapper so that when created, it will set _vendor"""
+            """Just a wrapper so that when created, it will set _vendor."""
             # SFTPFullAbsoluteServer can handle any vendor,
             # it just needs to be set between the time it is instantiated
             # and the time .setUp() is called
@@ -237,8 +238,8 @@ class SSHVendorConnection(TestCaseWithSFTPServer):
         self._test_vendor = vendor
 
     def test_connection_paramiko(self):
-        from breezy.transport import ssh
-        self.set_vendor(ssh.ParamikoVendor())
+        from breezy.transport.ssh.paramiko import ParamikoVendor
+        self.set_vendor(ParamikoVendor())
         t = self.get_transport()
         self.assertEqual(b'foobar\n', t.get('a_file').read())
 
@@ -253,7 +254,7 @@ class SSHVendorConnection(TestCaseWithSFTPServer):
 
 
 class SSHVendorBadConnection(TestCaseWithTransport):
-    """Test that the ssh vendors handle bad connection properly
+    """Test that the ssh vendors handle bad connection properly.
 
     We don't subclass TestCaseWithSFTPServer, because we don't actually
     need an SFTP connection.
@@ -279,20 +280,20 @@ class SSHVendorBadConnection(TestCaseWithTransport):
                               subprocess_stderr)
 
     def test_bad_connection_paramiko(self):
-        """Test that a real connection attempt raises the right error"""
-        from breezy.transport import ssh
-        self.set_vendor(ssh.ParamikoVendor())
+        """Test that a real connection attempt raises the right error."""
+        from breezy.transport.ssh.paramiko import ParamikoVendor
+        self.set_vendor(ParamikoVendor())
         t = _mod_transport.get_transport_from_url(self.bogus_url)
-        self.assertRaises(errors.ConnectionError, t.get, 'foobar')
+        self.assertRaises(ConnectionError, t.get, 'foobar')
 
     def test_bad_connection_ssh(self):
-        """None => auto-detect vendor"""
+        """None => auto-detect vendor."""
         f = open(os.devnull, "wb")
         self.addCleanup(f.close)
         self.set_vendor(None, f)
         t = _mod_transport.get_transport_from_url(self.bogus_url)
         try:
-            self.assertRaises(errors.ConnectionError, t.get, 'foobar')
+            self.assertRaises(ConnectionError, t.get, 'foobar')
         except NameError as e:
             if "global name 'SSHException'" in str(e):
                 self.knownFailure('Known NameError bug in paramiko 1.6.1')
@@ -310,7 +311,7 @@ class SFTPLatencyKnob(TestCaseWithSFTPServer):
         transport = self.get_transport()
         transport.has('not me')  # Force connection by issuing a request
         with_latency_knob_time = time.time() - start_time
-        self.assertTrue(with_latency_knob_time > 0.4)
+        self.assertGreater(with_latency_knob_time, 0.4)
 
     def test_default(self):
         # This test is potentially brittle: under extremely high machine load
@@ -320,7 +321,7 @@ class SFTPLatencyKnob(TestCaseWithSFTPServer):
         transport = self.get_transport()
         transport.has('not me')  # Force connection by issuing a request
         regular_time = time.time() - start_time
-        self.assertTrue(regular_time < 0.5)
+        self.assertLess(regular_time, 0.5)
 
 
 class FakeSocket:
@@ -396,7 +397,7 @@ class TestSocketDelay(TestCase):
 
 
 class ReadvFile:
-    """An object that acts like Paramiko's SFTPFile when readv() is used"""
+    """An object that acts like Paramiko's SFTPFile when readv() is used."""
 
     def __init__(self, data):
         self._data = data
@@ -431,7 +432,7 @@ class Test_SFTPReadvHelper(tests.TestCase):
         # Ranges larger than _max_request_size (32kB) are broken up into
         # multiple requests, even if it actually spans multiple logical
         # requests
-        self.checkGetRequests([(0, 32768), (32768, 32768), (65536, 464)],
+        self.checkGetRequests([(0, 66000)],
                               [(0, 40000), (40000, 100), (40100, 1900),
                                (42000, 24000)])
 

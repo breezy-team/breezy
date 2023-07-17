@@ -51,7 +51,7 @@ class TextMerge:
         raise NotImplementedError('_merge_struct is abstract')
 
     def struct_to_lines(self, struct_iter):
-        """Convert merge result tuples to lines"""
+        """Convert merge result tuples to lines."""
         for lines in struct_iter:
             if len(lines) == 1:
                 yield from lines[0]
@@ -85,7 +85,7 @@ class TextMerge:
         return self.struct_to_lines(struct), conflicts
 
     def merge_struct(self, reprocess=False):
-        """Produce structured merge info"""
+        """Produce structured merge info."""
         struct_iter = self.iter_useful(self._merge_struct())
         if reprocess is True:
             return self.reprocess_struct(struct_iter)
@@ -94,7 +94,7 @@ class TextMerge:
 
     @staticmethod
     def reprocess_struct(struct_iter):
-        """ Perform a two-way merge on structural merge info.
+        """Perform a two-way merge on structural merge info.
         This reduces the size of conflict regions, but breaks the connection
         between the BASE text and the conflict region.
 
@@ -109,7 +109,7 @@ class TextMerge:
 
 
 class Merge2(TextMerge):
-    """ Two-way merge.
+    """Two-way merge.
     In a two way merge, common regions are shown as unconflicting, and uncommon
     regions produce conflicts.
     """

@@ -16,7 +16,7 @@
 
 """Knit-based pack repository formats."""
 
-from .. import errors
+from .. import controldir, debug, errors, trace
 from .. import transport as _mod_transport
 from ..lazy_import import lazy_import
 
@@ -24,19 +24,12 @@ lazy_import(globals(), """
 import time
 
 from breezy import (
-    controldir,
-    debug,
-    osutils,
     revision as _mod_revision,
-    trace,
     tsort,
     ui,
     )
 from breezy.bzr import (
     pack,
-    xml5,
-    xml6,
-    xml7,
     )
 from breezy.bzr.knit import (
     _KnitGraphIndex,
@@ -46,21 +39,32 @@ from breezy.bzr.knit import (
 """)
 
 from ..bzr import btree_index
-from ..bzr.index import (CombinedGraphIndex, GraphIndex,
-                         GraphIndexPrefixAdapter, InMemoryGraphIndex)
+from ..bzr.index import (
+    CombinedGraphIndex,
+    GraphIndex,
+    GraphIndexPrefixAdapter,
+    InMemoryGraphIndex,
+)
 from ..bzr.vf_repository import StreamSource
 from .knitrepo import KnitRepository
-from .pack_repo import (NewPack, PackCommitBuilder, Packer, PackRepository,
-                        RepositoryFormatPack, RepositoryPackCollection,
-                        ResumedPack, _DirectPackAccess)
+from .pack_repo import (
+    NewPack,
+    PackCommitBuilder,
+    Packer,
+    PackRepository,
+    RepositoryFormatPack,
+    RepositoryPackCollection,
+    ResumedPack,
+    _DirectPackAccess,
+)
 
 
 class KnitPackRepository(PackRepository, KnitRepository):
 
     def __init__(self, _format, a_controldir, control_files, _commit_builder_class,
-                 _serializer):
+                 _revision_serializer, _inventory_serializer):
         PackRepository.__init__(self, _format, a_controldir, control_files,
-                                _commit_builder_class, _serializer)
+                                _commit_builder_class, _revision_serializer, _inventory_serializer)
         if self._format.supports_chks:
             raise AssertionError("chk not supported")
         index_transport = self._transport.clone('indices')
@@ -133,8 +137,15 @@ class RepositoryFormatKnitPack1(RepositoryFormatPack):
     _commit_builder_class = PackCommitBuilder
 
     @property
-    def _serializer(self):
-        return xml5.serializer_v5
+    def _revision_serializer(self):
+        from .xml5 import revision_serializer_v5
+        return revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        from .xml5 import inventory_serializer_v5
+        return inventory_serializer_v5
+
     # What index classes to use
     index_builder_class = InMemoryGraphIndex
     index_class = GraphIndex
@@ -175,8 +186,15 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
     supports_tree_reference = True
 
     @property
-    def _serializer(self):
-        return xml7.serializer_v7
+    def _revision_serializer(self):
+        from .xml5 import revision_serializer_v5
+        return revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        from .xml7 import inventory_serializer_v7
+        return inventory_serializer_v7
+
     # What index classes to use
     index_builder_class = InMemoryGraphIndex
     index_class = GraphIndex
@@ -216,8 +234,15 @@ class RepositoryFormatKnitPack4(RepositoryFormatPack):
     supports_tree_reference = False
 
     @property
-    def _serializer(self):
-        return xml6.serializer_v6
+    def _revision_serializer(self):
+        from .xml5 import revision_serializer_v5
+        return revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        from .xml6 import inventory_serializer_v6
+        return inventory_serializer_v6
+
     # What index classes to use
     index_builder_class = InMemoryGraphIndex
     index_class = GraphIndex
@@ -258,8 +283,14 @@ class RepositoryFormatKnitPack5(RepositoryFormatPack):
     index_class = GraphIndex
 
     @property
-    def _serializer(self):
-        return xml5.serializer_v5
+    def _revision_serializer(self):
+        from .xml5 import revision_serializer_v5
+        return revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        from .xml5 import inventory_serializer_v5
+        return inventory_serializer_v5
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir('1.6')
@@ -297,8 +328,14 @@ class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
     index_class = GraphIndex
 
     @property
-    def _serializer(self):
-        return xml6.serializer_v6
+    def _revision_serializer(self):
+        from .xml5 import revision_serializer_v5
+        return revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        from .xml6 import inventory_serializer_v6
+        return inventory_serializer_v6
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir(
@@ -341,8 +378,14 @@ class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
     index_class = GraphIndex
 
     @property
-    def _serializer(self):
-        return xml7.serializer_v7
+    def _revision_serializer(self):
+        from .xml5 import revision_serializer_v5
+        return revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        from .xml7 import inventory_serializer_v7
+        return inventory_serializer_v7
 
     def _get_matching_bzrdir(self):
         matching = controldir.format_registry.make_controldir(
@@ -384,8 +427,14 @@ class RepositoryFormatKnitPack6(RepositoryFormatPack):
     index_class = btree_index.BTreeGraphIndex
 
     @property
-    def _serializer(self):
-        return xml5.serializer_v5
+    def _revision_serializer(self):
+        from .xml5 import revision_serializer_v5
+        return revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        from .xml5 import inventory_serializer_v5
+        return inventory_serializer_v5
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir('1.9')
@@ -422,8 +471,14 @@ class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
     index_class = btree_index.BTreeGraphIndex
 
     @property
-    def _serializer(self):
-        return xml6.serializer_v6
+    def _revision_serializer(self):
+        from .xml5 import revision_serializer_v5
+        return revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        from .xml6 import inventory_serializer_v6
+        return inventory_serializer_v6
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir(
@@ -464,8 +519,14 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
     index_class = btree_index.BTreeGraphIndex
 
     @property
-    def _serializer(self):
-        return xml7.serializer_v7
+    def _revision_serializer(self):
+        from .xml5 import revision_serializer_v5
+        return revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        from .xml7 import inventory_serializer_v7
+        return inventory_serializer_v7
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir(
@@ -510,7 +571,7 @@ class KnitPackStreamSource(StreamSource):
         from_repo = self.from_repository
         parent_ids = from_repo._find_parent_ids_of_revisions(revision_ids)
         parent_keys = [(p,) for p in parent_ids]
-        find_text_keys = from_repo._serializer._find_text_key_references
+        find_text_keys = from_repo._inventory_serializer._find_text_key_references
         parent_text_keys = set(find_text_keys(
             from_repo._inventory_xml_lines_for_keys(parent_keys)))
         content_text_keys = set()
@@ -749,7 +810,7 @@ class KnitPacker(Packer):
             # eat the iterator to cause it to execute.
             list(inv_lines)
             self._text_filter = None
-        if 'pack' in debug.debug_flags:
+        if debug.debug_flag_enabled('pack'):
             trace.mutter('%s: create_pack: inventories copied: %s%s %d items t+%6.3fs',
                          time.ctime(), self._pack_collection._upload_transport.base,
                          self.new_pack.random_name,
@@ -775,7 +836,7 @@ class KnitPacker(Packer):
                 packs.append(index_to_pack_map[index])
                 seen_indexes.add(index)
         if len(packs) == len(self.packs):
-            if 'pack' in debug.debug_flags:
+            if debug.debug_flag_enabled('pack'):
                 trace.mutter('Not changing pack list, all packs used.')
             return
         seen_packs = set(packs)
@@ -783,7 +844,7 @@ class KnitPacker(Packer):
             if pack not in seen_packs:
                 packs.append(pack)
                 seen_packs.add(pack)
-        if 'pack' in debug.debug_flags:
+        if debug.debug_flag_enabled('pack'):
             old_names = [p.access_tuple()[1] for p in self.packs]
             new_names = [p.access_tuple()[1] for p in packs]
             trace.mutter('Reordering packs\nfrom: %s\n  to: %s',
@@ -809,7 +870,7 @@ class KnitPacker(Packer):
             revision_nodes)
         list(self._copy_nodes_graph(revision_index_map, self.new_pack._writer,
                                     self.new_pack.revision_index, readv_group_iter, total_items))
-        if 'pack' in debug.debug_flags:
+        if debug.debug_flag_enabled('pack'):
             trace.mutter('%s: create_pack: revisions copied: %s%s %d items t+%6.3fs',
                          time.ctime(), self._pack_collection._upload_transport.base,
                          self.new_pack.random_name,
@@ -859,8 +920,8 @@ class KnitPacker(Packer):
         # buffer data - we won't be reading-back during the pack creation and
         # this makes a significant difference on sftp pushes.
         new_pack.set_write_cache_size(1024 * 1024)
-        if 'pack' in debug.debug_flags:
-            plain_pack_list = ['{}{}'.format(a_pack.pack_transport.base, a_pack.name)
+        if debug.debug_flag_enabled('pack'):
+            plain_pack_list = [f'{a_pack.pack_transport.base}{a_pack.name}'
                                for a_pack in self.packs]
             if self.revision_ids is not None:
                 rev_count = len(self.revision_ids)
@@ -883,7 +944,7 @@ class KnitPacker(Packer):
         self.pb.update("Copying signature texts", 4)
         self._copy_nodes(signature_nodes, signature_index_map, new_pack._writer,
                          new_pack.signature_index)
-        if 'pack' in debug.debug_flags:
+        if debug.debug_flag_enabled('pack'):
             trace.mutter('%s: create_pack: revision signatures copied: %s%s %d items t+%6.3fs',
                          time.ctime(), self._pack_collection._upload_transport.base, new_pack.random_name,
                          new_pack.signature_index.key_count(),
@@ -958,7 +1019,7 @@ class KnitReconcilePacker(KnitPacker):
     def _process_inventory_lines(self, inv_lines):
         """Generate a text key reference map rather for reconciling with."""
         repo = self._pack_collection.repo
-        refs = repo._serializer._find_text_key_references(inv_lines)
+        refs = repo._inventory_serializer._find_text_key_references(inv_lines)
         self._text_refs = refs
         # during reconcile we:
         #  - convert unreferenced texts to full texts
@@ -969,7 +1030,7 @@ class KnitReconcilePacker(KnitPacker):
         self._text_filter = None
 
     def _copy_text_texts(self):
-        """generate what texts we should have and then copy."""
+        """Generate what texts we should have and then copy."""
         self.pb.update("Copying content texts", 3)
         # we have three major tasks here:
         # 1) generate the ideal index
@@ -1034,8 +1095,8 @@ class KnitReconcilePacker(KnitPacker):
         topo_order = tsort.topo_sort(ancestors)
         rev_order = dict(zip(topo_order, range(len(topo_order))))
         bad_texts.sort(key=lambda key: rev_order.get(key[0][1], 0))
-        transaction = repo.get_transaction()
-        file_id_index = GraphIndexPrefixAdapter(
+        repo.get_transaction()
+        GraphIndexPrefixAdapter(
             self.new_pack.text_index,
             ('blank', ), 1,
             add_nodes_callback=self.new_pack.text_index.add_nodes)

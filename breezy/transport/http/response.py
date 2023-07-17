@@ -94,8 +94,7 @@ class ResponseFile:
         if whence == os.SEEK_SET:
             if offset < self._pos:
                 raise AssertionError(
-                    "Can't seek backwards, pos: %s, offset: %s"
-                    % (self._pos, offset))
+                    f"Can't seek backwards, pos: {self._pos}, offset: {offset}")
             to_discard = offset - self._pos
         elif whence == os.SEEK_CUR:
             to_discard = offset
@@ -134,9 +133,6 @@ class RangeFile(ResponseFile):
     # 8k chunks should be fine.
     _discarded_buf_size = 8192
 
-    # maximum size of read requests -- used to avoid MemoryError issues in recv
-    _max_read_size = 512 * 1024
-
     def __init__(self, path, infile):
         """Constructor.
 
@@ -153,7 +149,7 @@ class RangeFile(ResponseFile):
         self.set_range(0, -1)
 
     def set_range(self, start, size):
-        """Change the range mapping"""
+        """Change the range mapping."""
         self._start = start
         self._size = size
         # Set the new _pos since that's what we want to expose
@@ -173,7 +169,7 @@ class RangeFile(ResponseFile):
         self.read_range_definition()
 
     def read_boundary(self):
-        """Read the boundary headers defining a new range"""
+        """Read the boundary headers defining a new range."""
         boundary_line = b'\r\n'
         while boundary_line == b'\r\n':
             # RFC2616 19.2 Additional CRLFs may precede the first boundary
@@ -220,15 +216,15 @@ class RangeFile(ResponseFile):
         self.set_range_from_header(content_range)
 
     def set_range_from_header(self, content_range):
-        """Helper to set the new range from its description in the headers"""
+        """Helper to set the new range from its description in the headers."""
         try:
             rtype, values = content_range.split()
-        except ValueError:
+        except ValueError as e:
             raise errors.InvalidHttpRange(self._path, content_range,
-                                          'Malformed header')
+                                          'Malformed header') from e
         if rtype != 'bytes':
             raise errors.InvalidHttpRange(self._path, content_range,
-                                          "Unsupported range type '%s'" % rtype)
+                                          f"Unsupported range type '{rtype}'")
         try:
             # We don't need total, but note that it may be either the file size
             # or '*' if the server can't or doesn't want to return the file
@@ -237,9 +233,9 @@ class RangeFile(ResponseFile):
             start, end = start_end.split('-')
             start = int(start)
             end = int(end)
-        except ValueError:
+        except ValueError as e:
             raise errors.InvalidHttpRange(self._path, content_range,
-                                          'Invalid range values')
+                                          'Invalid range values') from e
         size = end - start + 1
         if size <= 0:
             raise errors.InvalidHttpRange(self._path, content_range,
@@ -266,8 +262,7 @@ class RangeFile(ResponseFile):
         if self._boundary is None:
             # If we don't have a boundary, we can't find another range
             raise errors.InvalidRange(self._path, self._pos,
-                                      "Range (%s, %s) exhausted"
-                                      % (self._start, self._size))
+                                      f"Range ({self._start}, {self._size}) exhausted")
         self.read_boundary()
         self.read_range_definition()
 
@@ -291,8 +286,7 @@ class RangeFile(ResponseFile):
         elif self._pos < self._start:
             raise errors.InvalidRange(
                 self._path, self._pos,
-                "Can't read %s bytes before range (%s, %s)"
-                % (size, self._start, self._size))
+                f"Can't read {size} bytes before range ({self._start}, {self._size})")
         if self._size > 0:
             if size > 0 and self._pos + size > self._start + self._size:
                 raise errors.InvalidRange(
@@ -308,7 +302,7 @@ class RangeFile(ResponseFile):
             limited = self._start + self._size - self._pos
             if size >= 0:
                 limited = min(limited, size)
-        osutils.pumpfile(self._file, buf, limited, self._max_read_size)
+        osutils.pumpfile(self._file, buf, None if limited < 0 else limited)
         data = buf.getvalue()
 
         # Update _pos respecting the data effectively read
@@ -329,13 +323,13 @@ class RangeFile(ResponseFile):
                     self._path, self._pos,
                     "RangeFile: can't seek from end while size is unknown")
         else:
-            raise ValueError("Invalid value %s for whence." % whence)
+            raise ValueError(f"Invalid value {whence} for whence.")
 
         if final_pos < self._pos:
             # Can't seek backwards
             raise errors.InvalidRange(
                 self._path, self._pos,
-                'RangeFile: trying to seek backwards to %s' % final_pos)
+                f'RangeFile: trying to seek backwards to {final_pos}')
 
         if self._size > 0:
             cur_limit = self._start + self._size

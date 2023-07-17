@@ -17,15 +17,13 @@
 
 import os
 
-from breezy import branch, conflicts, controldir, errors, mutabletree, osutils
+from breezy import branch, controldir, errors, mutabletree, osutils, tests, ui
 from breezy import revision as _mod_revision
-from breezy import tests
-from breezy import transport as _mod_transport
-from breezy import ui
-from breezy.commit import CannotCommitSelectedFileMerge, PointlessCommit
-from breezy.tests.matchers import HasPathRelations
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
-from breezy.tests.testui import ProgressRecordingUIFactory
+
+from ...commit import CannotCommitSelectedFileMerge, PointlessCommit
+from ..matchers import HasPathRelations
+from ..testui import ProgressRecordingUIFactory
 
 
 class TestCommit(TestCaseWithWorkingTree):
@@ -34,7 +32,7 @@ class TestCommit(TestCaseWithWorkingTree):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/dir/', 'a/dir/f1', 'a/dir/f2'])
         tree_a.add(['dir', 'dir/f1', 'dir/f2'])
-        rev_id1 = tree_a.commit('init')
+        tree_a.commit('init')
         # Start off by renaming entries,
         # but then actually auto delete the whole tree
         # https://bugs.launchpad.net/bzr/+bug/114615
@@ -266,8 +264,6 @@ class TestCommit(TestCaseWithWorkingTree):
         rev_id = wt.commit('commit against a ghost first parent.')
         rev = wt.branch.repository.get_revision(rev_id)
         self.assertEqual(rev.parent_ids, [b'non:existent@rev--ision--0--2'])
-        # parent_sha1s is not populated now, WTF. rbc 20051003
-        self.assertEqual(len(rev.parent_sha1s), 0)
 
     def test_record_two_ghosts(self):
         """The working tree should preserve all the parents during commit."""
@@ -342,7 +338,7 @@ class TestCommit(TestCaseWithWorkingTree):
         self.assertFalse(wt.is_versioned('name1'))
 
     def test_nested_commit(self):
-        """Commit in multiply-nested trees"""
+        """Commit in multiply-nested trees."""
         tree = self.make_branch_and_tree('.')
         if not tree.supports_tree_reference():
             # inapplicable test.
@@ -521,7 +517,8 @@ class TestCommitProgress(TestCaseWithWorkingTree):
 
     def test_start_commit_hook(self):
         """Make sure a start commit hook can modify the tree that is
-        committed."""
+        committed.
+        """
         def start_commit_hook_adds_file(tree):
             with open(tree.abspath("newfile"), 'w') as f:
                 f.write("data")
@@ -535,17 +532,21 @@ class TestCommitProgress(TestCaseWithWorkingTree):
             'start_commit',
             start_commit_hook_adds_file,
             None)
-        revid = tree.commit('first post')
+        tree.commit('first post')
         committed_tree = tree.basis_tree()
         self.assertTrue(committed_tree.has_filename("newfile"))
 
     def test_post_commit_hook(self):
         """Make sure a post_commit hook is called after a commit."""
         def post_commit_hook_test_params(params):
-            self.assertTrue(isinstance(params,
-                                       mutabletree.PostCommitHookParams))
-            self.assertTrue(isinstance(params.mutable_tree,
-                                       mutabletree.MutableTree))
+            self.assertIsInstance(
+                params,
+                mutabletree.PostCommitHookParams
+            )
+            self.assertIsInstance(
+                params.mutable_tree,
+                mutabletree.MutableTree
+            )
             with open(tree.abspath("newfile"), 'w') as f:
                 f.write("data")
             params.mutable_tree.add(["newfile"])
@@ -555,7 +556,7 @@ class TestCommitProgress(TestCaseWithWorkingTree):
             post_commit_hook_test_params,
             None)
         self.assertFalse(tree.has_filename("newfile"))
-        revid = tree.commit('first post')
+        tree.commit('first post')
         self.assertTrue(tree.has_filename("newfile"))
         committed_tree = tree.basis_tree()
         self.assertFalse(committed_tree.has_filename("newfile"))

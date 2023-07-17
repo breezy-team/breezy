@@ -26,6 +26,7 @@ should be passed to `addCleanup` on the test.
 
 import itertools
 from contextlib import ExitStack
+from typing import List
 
 
 def generate_unicode_names():
@@ -88,7 +89,7 @@ class RecordingContextManager:
     """A context manager that records."""
 
     def __init__(self):
-        self._calls = []
+        self._calls: List[str] = []
 
     def __enter__(self):
         self._calls.append('__enter__')
@@ -141,7 +142,7 @@ def make_branch_and_populated_tree(testcase):
 
 
 class TimeoutException(Exception):
-    """Timeout expired"""
+    """Timeout expired."""
 
 
 class TimeoutFixture:

@@ -15,11 +15,10 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Tests for decorator functions"""
+"""Tests for decorator functions."""
 
-import inspect
 
-from .. import decorators, lock
+from .. import decorators
 from . import TestCase
 
 
@@ -30,7 +29,7 @@ class SampleUnlockError(Exception):
 class TestOnlyRaisesDecorator(TestCase):
 
     def raise_ZeroDivisionError(self):
-        1 / 0
+        1 / 0  # noqa: B018
 
     def test_raises_approved_error(self):
         decorator = decorators.only_raises(ZeroDivisionError)

@@ -16,9 +16,6 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from .... import tests
-from ....tests import (TestCaseInTempDir, TestCaseWithTransport, TestUtil,
-                       multiply_tests)
 from ....tests.features import ExecutableFeature
 
 quilt_feature = ExecutableFeature('quilt')
@@ -30,6 +27,6 @@ def load_tests(loader, basic_tests, pattern):
         'test_wrapper',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["{}.{}".format(__name__, i) for i in testmod_names]))
+        [f"{__name__}.{i}" for i in testmod_names]))
 
     return basic_tests

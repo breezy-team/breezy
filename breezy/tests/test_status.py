@@ -81,7 +81,7 @@ class TestStatus(TestCaseWithTransport):
                              output.getvalue())
 
     def test_with_pending_ghost(self):
-        """Test when a pending merge is itself a ghost"""
+        """Test when a pending merge is itself a ghost."""
         tree = self.make_branch_and_tree('a')
         tree.commit('first')
         tree.add_parent_tree_id(b'a-ghost-revision')
@@ -118,37 +118,37 @@ class TestStatus(TestCaseWithTransport):
             output.getvalue())
 
     def tests_revision_to_revision(self):
-        """doing a status between two revision trees should work."""
+        """Doing a status between two revision trees should work."""
         tree = self.make_branch_and_tree('.')
         r1_id = tree.commit('one', allow_pointless=True)
         r2_id = tree.commit('two', allow_pointless=True)
         output = StringIO()
         show_tree_status(tree, to_file=output, revision=[
-            RevisionSpec.from_string("revid:%s" % r1_id.decode('utf-8')),
-            RevisionSpec.from_string("revid:%s" % r2_id.decode('utf-8'))])
+            RevisionSpec.from_string(f"revid:{r1_id.decode('utf-8')}"),
+            RevisionSpec.from_string(f"revid:{r2_id.decode('utf-8')}")])
         # return does not matter as long as it did not raise.
 
 
 class TestHooks(TestCaseWithTransport):
 
     def test_constructor(self):
-        """Check that creating a StatusHooks instance has the right defaults.
-        """
+        """Check that creating a StatusHooks instance has the right defaults."""
         hooks = _mod_status.StatusHooks()
-        self.assertTrue("post_status" in hooks,
-                        "post_status not in %s" % hooks)
-        self.assertTrue("pre_status" in hooks, "pre_status not in %s" % hooks)
+        self.assertIn(
+            "post_status",
+            hooks,
+            f"post_status not in {hooks}"
+        )
+        self.assertIn("pre_status", hooks, f"pre_status not in {hooks}")
 
     def test_installed_hooks_are_StatusHooks(self):
-        """The installed hooks object should be a StatusHooks.
-        """
+        """The installed hooks object should be a StatusHooks."""
         # the installed hooks are saved in self._preserved_hooks.
         self.assertIsInstance(self._preserved_hooks[_mod_status][1],
                               _mod_status.StatusHooks)
 
     def test_post_status_hook(self):
-        """Ensure that post_status hook is invoked with the right args.
-        """
+        """Ensure that post_status hook is invoked with the right args."""
         calls = []
         _mod_status.hooks.install_named_hook('post_status', calls.append, None)
         self.assertLength(0, calls)
@@ -157,8 +157,8 @@ class TestHooks(TestCaseWithTransport):
         r2_id = tree.commit('two', allow_pointless=True)
         output = StringIO()
         show_tree_status(tree, to_file=output, revision=[
-            RevisionSpec.from_string("revid:%s" % r1_id.decode('utf-8')),
-            RevisionSpec.from_string("revid:%s" % r2_id.decode('utf-8'))])
+            RevisionSpec.from_string(f"revid:{r1_id.decode('utf-8')}"),
+            RevisionSpec.from_string(f"revid:{r2_id.decode('utf-8')}")])
         self.assertLength(1, calls)
         params = calls[0]
         self.assertIsInstance(params, _mod_status.StatusHookParams)
@@ -166,11 +166,10 @@ class TestHooks(TestCaseWithTransport):
                  'show_ids', 'short', 'verbose', 'specific_files']
         for a in attrs:
             self.assertTrue(hasattr(params, a),
-                            'Attribute "%s" not found in StatusHookParam' % a)
+                            f'Attribute "{a}" not found in StatusHookParam')
 
     def test_pre_status_hook(self):
-        """Ensure that pre_status hook is invoked with the right args.
-        """
+        """Ensure that pre_status hook is invoked with the right args."""
         calls = []
         _mod_status.hooks.install_named_hook('pre_status', calls.append, None)
         self.assertLength(0, calls)
@@ -181,8 +180,8 @@ class TestHooks(TestCaseWithTransport):
         show_tree_status(
             tree, to_file=output,
             revision=[
-                RevisionSpec.from_string("revid:%s" % r1_id.decode('utf-8')),
-                RevisionSpec.from_string("revid:%s" % r2_id.decode('utf-8'))])
+                RevisionSpec.from_string(f"revid:{r1_id.decode('utf-8')}"),
+                RevisionSpec.from_string(f"revid:{r2_id.decode('utf-8')}")])
         self.assertLength(1, calls)
         params = calls[0]
         self.assertIsInstance(params, _mod_status.StatusHookParams)
@@ -190,4 +189,4 @@ class TestHooks(TestCaseWithTransport):
                  'show_ids', 'short', 'verbose', 'specific_files']
         for a in attrs:
             self.assertTrue(hasattr(params, a),
-                            'Attribute "%s" not found in StatusHookParam' % a)
+                            f'Attribute "{a}" not found in StatusHookParam')

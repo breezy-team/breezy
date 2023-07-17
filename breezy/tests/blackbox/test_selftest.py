@@ -68,13 +68,13 @@ class TestOptions(tests.TestCase, SelfTestPatch):
 
     def test_parameters_passed_to_core(self):
         params = self.get_params_passed_to_core('selftest --list-only')
-        self.assertTrue("list_only" in params[1])
+        self.assertIn("list_only", params[1])
         params = self.get_params_passed_to_core(
             'selftest --list-only selftest')
-        self.assertTrue("list_only" in params[1])
+        self.assertIn("list_only", params[1])
         params = self.get_params_passed_to_core(['selftest', '--list-only',
                                                  '--exclude', 'selftest'])
-        self.assertTrue("list_only" in params[1])
+        self.assertIn("list_only", params[1])
         params = self.get_params_passed_to_core(['selftest', '--list-only',
                                                  'selftest', '--randomize', 'now'])
         self.assertSubset(["list_only", "random_seed"], params[1])
@@ -99,7 +99,7 @@ class TestOptions(tests.TestCase, SelfTestPatch):
         self.assertEqual(tests.SubUnitBzrRunnerv2, params[1]['runner_class'])
 
     def _parse_test_list(self, lines, newlines_in_header=0):
-        "Parse a list of lines into a tuple of 3 lists (header,body,footer)."
+        """Parse a list of lines into a tuple of 3 lists (header,body,footer)."""
         in_header = newlines_in_header != 0
         in_footer = False
         header = []
@@ -135,7 +135,7 @@ class TestOptions(tests.TestCase, SelfTestPatch):
         def outputs_nothing(cmdline):
             out, err = self.run_bzr(cmdline)
             (header, body, footer) = self._parse_test_list(out.splitlines())
-            num_tests = len(body)
+            len(body)
             self.assertLength(0, header)
             self.assertLength(0, footer)
             self.assertEqual('', err)

@@ -22,7 +22,8 @@ def map_file_ids(repository, old_parents, new_parents):
     :param old_parents: List of revision ids of old parents
     :param new_parents: List of revision ids of new parents
     """
-    assert len(old_parents) == len(new_parents)
+    if len(old_parents) != len(new_parents):
+        raise ValueError(f"Number of parents does not match: {len(old_parents)} != {len(new_parents)}")
     ret = {}
     for (oldp, newp) in zip(old_parents, new_parents):
         oldtree = repository.revision_tree(oldp)
@@ -35,8 +36,7 @@ def map_file_ids(repository, old_parents, new_parents):
 
 
 class MapTree:
-    """Wrapper around a tree that translates file ids.
-    """
+    """Wrapper around a tree that translates file ids."""
 
     def __init__(self, oldtree, fileid_map):
         """Create a new MapTree.

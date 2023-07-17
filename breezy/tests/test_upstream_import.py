@@ -21,23 +21,28 @@ import warnings
 from io import BytesIO
 from shutil import copy2, copytree, rmtree
 
-from .. import osutils
+from .. import osutils, transform
 from .. import revision as _mod_revision
-from .. import transform
 from ..controldir import ControlDir
 from ..export import export
-from ..upstream_import import (NotArchiveType, ZipFileWrapper,
-                               common_directory, get_archive_type,
-                               import_archive, import_dir, import_tar,
-                               import_zip, top_path)
+from ..transport.local import file_kind
+from ..upstream_import import (
+    NotArchiveType,
+    ZipFileWrapper,
+    common_directory,
+    get_archive_type,
+    import_archive,
+    import_dir,
+    import_tar,
+    import_zip,
+    top_path,
+)
 from . import TestCaseInTempDir, TestCaseWithTransport
 from .features import UnicodeFilenameFeature
 
 
 def import_tar_broken(tree, tar_input):
-    """
-    Import a tarfile with names that that end in //, e.g. Feisty Python 2.5
-    """
+    """Import a tarfile with names that that end in //, e.g. Feisty Python 2.5."""
     tar_file = tarfile.open('lala', 'r', tar_input)
     for member in tar_file.members:
         if member.name.endswith('/'):
@@ -66,7 +71,7 @@ class DirFileWriter:
         parent = osutils.dirname(target_path)
         if not os.path.exists(parent):
             os.makedirs(parent)
-        kind = osutils.file_kind(path)
+        kind = file_kind(path)
         if kind == 'file':
             copy2(path, target_path)
         if kind == 'directory':
@@ -183,7 +188,7 @@ class TestImport(TestCaseInTempDir):
 
     def test_common_directory(self):
         self.assertEqual(common_directory(['ab/c/d', 'ab/c/e']), 'ab')
-        self.assertIs(common_directory(['ab/c/d', 'ac/c/e']), None)
+        self.assertIsNone(common_directory(['ab/c/d', 'ac/c/e']))
         self.assertEqual('FEEDME', common_directory(['FEEDME']))
 
     def test_untar(self):

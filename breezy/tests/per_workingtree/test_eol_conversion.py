@@ -35,7 +35,7 @@ _sample_clean_crlf = _sample_text_on_win
 
 # Lists of formats for each storage policy
 _LF_IN_REPO = ['native', 'lf', 'crlf']
-_CRLF_IN_REPO = ['{}-with-crlf-in-repo'.format(f) for f in _LF_IN_REPO]
+_CRLF_IN_REPO = [f'{f}-with-crlf-in-repo' for f in _LF_IN_REPO]
 
 
 class TestEolConversion(TestCaseWithWorkingTree):
@@ -43,13 +43,12 @@ class TestEolConversion(TestCaseWithWorkingTree):
     def setUp(self):
         # formats that don't support content filtering can skip these tests
         fmt = self.workingtree_format
-        f = getattr(fmt, 'supports_content_filtering')
+        f = fmt.supports_content_filtering
         if f is None:
             raise TestSkipped("format %s doesn't declare whether it "
                               "supports content filtering, assuming not" % fmt)
         if not f():
-            raise TestSkipped("format %s doesn't support content filtering"
-                              % fmt)
+            raise TestSkipped(f"format {fmt} doesn't support content filtering")
         super().setUp()
 
     def patch_rules_searcher(self, eol):
@@ -60,7 +59,7 @@ class TestEolConversion(TestCaseWithWorkingTree):
             def custom_eol_rules_searcher(tree, default_searcher):
                 return rules._IniBasedRulesSearcher([
                     '[name *]\n',
-                    'eol=%s\n' % eol,
+                    f'eol={eol}\n',
                     ])
             WorkingTree._get_rules_searcher = custom_eol_rules_searcher
 
@@ -87,7 +86,7 @@ class TestEolConversion(TestCaseWithWorkingTree):
         if expected_win is None:
             expected_win = expected_unix
         self.patch_rules_searcher(eol)
-        wt2 = wt.controldir.sprout('tree-%s' % eol).open_workingtree()
+        wt2 = wt.controldir.sprout(f'tree-{eol}').open_workingtree()
         # To see exactly what got written to disk, we need an unfiltered read
         with wt2.get_file('file1', filtered=False) as f:
             content = f.read()

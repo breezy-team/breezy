@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
-"""Direct tests of the btree serializer extension"""
+"""Direct tests of the btree serializer extension."""
 
 import binascii
 import bisect
@@ -92,11 +92,9 @@ class Test_KeyToSha1(TestBtreeSerializer):
             expected_bin = binascii.unhexlify(expected)
         actual_sha1 = self.module._py_key_to_sha1(key)
         if expected_bin != actual_sha1:
-            actual_hex_sha1 = None
             if actual_sha1 is not None:
-                actual_hex_sha1 = binascii.hexlify(actual_sha1)
-            self.fail('_key_to_sha1 returned:\n    %s\n != %s'
-                      % (actual_sha1, expected))
+                binascii.hexlify(actual_sha1)
+            self.fail(f'_key_to_sha1 returned:\n    {actual_sha1}\n != {expected}')
 
     def test_simple(self):
         self.assertKeyToSha1(_hex_form, (b'sha1:' + _hex_form,))
@@ -198,7 +196,7 @@ class TestGCCKHSHA1LeafNode(TestBtreeSerializer):
         self.assertEqual([], leaf.all_items())
         self.assertEqual([], leaf.all_keys())
         # It should allow any key to be queried
-        self.assertFalse(('key',) in leaf)
+        self.assertNotIn(('key',), leaf)
 
     def test_one_key_leaf(self):
         leaf = self.module._parse_into_chk(_one_key_content, 1, 0)
@@ -206,7 +204,7 @@ class TestGCCKHSHA1LeafNode(TestBtreeSerializer):
         sha_key = (b'sha1:' + _hex_form,)
         self.assertEqual([sha_key], leaf.all_keys())
         self.assertEqual([(sha_key, (b'1 2 3 4', ()))], leaf.all_items())
-        self.assertTrue(sha_key in leaf)
+        self.assertIn(sha_key, leaf)
 
     def test_large_offsets(self):
         leaf = self.module._parse_into_chk(_large_offsets, 1, 0)
@@ -304,6 +302,6 @@ class TestGCCKHSHA1LeafNode(TestBtreeSerializer):
         leaf1 = self.module._parse_into_chk(_one_key_content, 1, 0)
         leafN = self.module._parse_into_chk(_multi_key_content, 1, 0)
         sizeof_1 = leaf1.__sizeof__() - leaf0.__sizeof__()
-        self.assertTrue(sizeof_1 > 0)
+        self.assertGreater(sizeof_1, 0)
         sizeof_N = leafN.__sizeof__() - leaf0.__sizeof__()
         self.assertEqual(sizeof_1 * len(leafN), sizeof_N)

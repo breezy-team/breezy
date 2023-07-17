@@ -14,13 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""A generator which creates a python script from the current tree info"""
+"""A generator which creates a python script from the current tree info."""
 
 import pprint
 
 from breezy import errors
-from breezy.revision import NULL_REVISION
 from breezy.version_info_formats import VersionInfoBuilder, create_date_str
+
+from ..revision import NULL_REVISION
 
 # Header and footer for the python format
 _py_version_header = '''#!/usr/bin/env python3
@@ -51,7 +52,6 @@ class PythonVersionInfoBuilder(VersionInfoBuilder):
                 'clean': None,
                 'date': None
                 }
-        revisions = []
 
         revision_id = self._get_revision_id()
         if revision_id == NULL_REVISION:

@@ -40,7 +40,7 @@ def shellcomplete_on_command(cmdname, outfile=None):
     doc = getdoc(cmdobj)
     if doc is None:
         raise NotImplementedError(
-            "sorry, no detailed shellcomplete yet for %r" % cmdname)
+            f"sorry, no detailed shellcomplete yet for {cmdname!r}")
 
     shellcomplete_on_options(cmdobj.options().values(), outfile=outfile)
     for aname in cmdobj.takes_args:
@@ -54,11 +54,11 @@ def shellcomplete_on_options(options, outfile=None):
             outfile.write('"(--%s -%s)"{--%s,-%s}\n'
                           % (opt.name, short_name, opt.name, short_name))
         else:
-            outfile.write('--%s\n' % opt.name)
+            outfile.write(f'--{opt.name}\n')
 
 
 def shellcomplete_commands(outfile=None):
-    """List all commands"""
+    """List all commands."""
     from inspect import getdoc
 
     from . import commands

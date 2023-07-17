@@ -164,8 +164,7 @@ class PendingAncestryResult(AbstractSearchResult):
             heads_repr += ', <%d more>...]' % (len(self.heads) - 5,)
         else:
             heads_repr = repr(self.heads)
-        return '<{} heads:{} repo:{!r}>'.format(
-            self.__class__.__name__, heads_repr, self.repo)
+        return f'<{self.__class__.__name__} heads:{heads_repr} repo:{self.repo!r}>'
 
     def get_recipe(self):
         """Return a recipe that can be used to replay this search.
@@ -231,7 +230,7 @@ class EverythingResult(AbstractSearchResult):
         self._repo = repo
 
     def __repr__(self):
-        return '{}({!r})'.format(self.__class__.__name__, self._repo)
+        return f'{self.__class__.__name__}({self._repo!r})'
 
     def get_recipe(self):
         raise NotImplementedError(self.get_recipe)
@@ -240,7 +239,7 @@ class EverythingResult(AbstractSearchResult):
         return (b'everything',)
 
     def get_keys(self):
-        if 'evil' in debug.debug_flags:
+        if debug.debug_flag_enabled('evil'):
             from . import remote
             if isinstance(self._repo, remote.RemoteRepository):
                 # warn developers (not users) not to do this

@@ -21,7 +21,6 @@ from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     branch,
-    version_info_formats,
     workingtree,
     )
 from breezy.i18n import gettext
@@ -38,13 +37,14 @@ def _parse_version_info_format(format):
     This looks in the version info format registry, and if the format
     cannot be found, generates a useful error exception.
     """
+    from . import version_info_formats
     try:
         return version_info_formats.get_builder(format)
-    except KeyError:
+    except KeyError as err:
         formats = version_info_formats.get_builder_formats()
         raise errors.CommandError(
             gettext('No known version info format {0}.'
-                    ' Supported types are: {1}').format(format, formats))
+                    ' Supported types are: {1}').format(format, formats)) from err
 
 
 class cmd_version_info(Command):
@@ -104,6 +104,7 @@ class cmd_version_info(Command):
             location = '.'
 
         if format is None:
+            from . import version_info_formats
             format = version_info_formats.format_registry.get()
 
         try:

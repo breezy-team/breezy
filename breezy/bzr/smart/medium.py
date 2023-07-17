@@ -41,8 +41,6 @@ import socket
 import weakref
 
 from breezy import (
-    debug,
-    trace,
     transport,
     ui,
     urlutils,
@@ -51,7 +49,7 @@ from breezy.i18n import gettext
 from breezy.bzr.smart import client, protocol, request, signals, vfs
 from breezy.transport import ssh
 """)
-from ... import errors, osutils
+from ... import debug, errors, osutils, trace
 
 # Throughout this module buffer size parameters are either limited to be at
 # most _MAX_READ_SIZE, or are ignored and _MAX_READ_SIZE is used instead.
@@ -247,19 +245,19 @@ class SmartServerStreamMedium(SmartMedium):
                 server_protocol = self._build_protocol()
                 self._serve_one_request(server_protocol)
         except errors.ConnectionTimeout as e:
-            trace.note('{}'.format(e))
+            trace.note(f'{e}')
             trace.log_exception_quietly()
             self._disconnect_client()
             # We reported it, no reason to make a big fuss.
             return
         except Exception as e:
-            stderr.write("{} terminating on exception {}\n".format(self, e))
+            stderr.write(f"{self} terminating on exception {e}\n")
             raise
         self._disconnect_client()
 
     def _stop_gracefully(self):
         """When we finish this message, stop looking for more."""
-        trace.mutter('Stopping {}'.format(self))
+        trace.mutter(f'Stopping {self}')
         self.finished = True
 
     def _disconnect_client(self):
@@ -301,7 +299,7 @@ class SmartServerStreamMedium(SmartMedium):
         return protocol
 
     def _wait_on_descriptor(self, fd, timeout_seconds):
-        """select() on a file descriptor, waiting for nonblocking read()
+        """select() on a file descriptor, waiting for nonblocking read().
 
         This will raise a ConnectionTimeout exception if we do not get a
         readable handle before timeout_seconds.
@@ -344,7 +342,7 @@ class SmartServerStreamMedium(SmartMedium):
             self._serve_one_request_unguarded(protocol)
         except KeyboardInterrupt:
             raise
-        except Exception as e:
+        except Exception:
             self.terminate_due_to_error()
 
     def terminate_due_to_error(self):
@@ -380,7 +378,7 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
             self._client_info = '<unknown>'
 
     def __str__(self):
-        return '{}(client={})'.format(self.__class__.__name__, self._client_info)
+        return f'{self.__class__.__name__}(client={self._client_info})'
 
     def __repr__(self):
         return '{}.{}(client={})'.format(self.__module__, self.__class__.__name__,
@@ -428,7 +426,7 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
     def _write_out(self, bytes):
         tstart = osutils.perf_counter()
         osutils.send_all(self.socket, bytes, self._report_activity)
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             thread_id = _thread.get_ident()
             trace.mutter('%12s: [%s] %d bytes to the socket in %.3fs'
                          % ('wrote', thread_id, len(bytes),
@@ -457,7 +455,7 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
         self._out = out_file
 
     def serve(self):
-        """See SmartServerStreamMedium.serve"""
+        """See SmartServerStreamMedium.serve."""
         # This is the regular serve, except it adds signal trapping for soft
         # shutdown.
         stop_gracefully = self._stop_gracefully
@@ -644,7 +642,7 @@ class SmartClientMediumRequest:
         line = self._read_line()
         if not line.endswith(b'\n'):
             # end of file encountered reading from server
-            raise errors.ConnectionReset(
+            raise ConnectionResetError(
                 "Unexpected end of message. Please check connectivity "
                 "and permissions, and report a bug if problems persist.")
         return line
@@ -659,9 +657,7 @@ class SmartClientMediumRequest:
 
 
 class _VfsRefuser:
-    """An object that refuses all VFS requests.
-
-    """
+    """An object that refuses all VFS requests."""
 
     def __init__(self):
         client._SmartClient.hooks.install_named_hook(
@@ -699,13 +695,13 @@ class _DebugCounter:
         """
         medium_repr = repr(medium)
         # Add this medium to the WeakKeyDictionary
-        self.counts[medium] = dict(count=0, vfs_count=0,
-                                   medium_repr=medium_repr)
+        self.counts[medium] = {"count": 0, "vfs_count": 0,
+                                   "medium_repr": medium_repr}
         # Weakref callbacks are fired in reverse order of their association
         # with the referenced object.  So we add a weakref *after* adding to
         # the WeakKeyDict so that we can report the value from it before the
         # entry is removed by the WeakKeyDict's own callback.
-        ref = weakref.ref(medium, self.done)
+        weakref.ref(medium, self.done)
 
     def increment_call_count(self, params):
         # Increment the count in the WeakKeyDictionary
@@ -756,12 +752,12 @@ class SmartClientMedium(SmartMedium):
         # can be based on what we've seen so far.
         self._remote_version_is_before = None
         # Install debug hook function if debug flag is set.
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             global _debug_counter
             if _debug_counter is None:
                 _debug_counter = _DebugCounter()
             _debug_counter.track(self)
-        if 'hpss_client_no_vfs' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss_client_no_vfs'):
             global _vfs_refuser
             if _vfs_refuser is None:
                 _vfs_refuser = _VfsRefuser()
@@ -802,7 +798,7 @@ class SmartClientMedium(SmartMedium):
             trace.mutter(
                 "_remember_remote_is_before(%r) called, but "
                 "_remember_remote_is_before(%r) was called previously.", version_tuple, self._remote_version_is_before)
-            if 'hpss' in debug.debug_flags:
+            if debug.debug_flag_enabled('hpss'):
                 ui.ui_factory.show_warning(
                     "_remember_remote_is_before(%r) called, but "
                     "_remember_remote_is_before(%r) was called previously."
@@ -928,8 +924,8 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
             self._writeable_pipe.write(data)
         except OSError as e:
             if e.errno in (errno.EINVAL, errno.EPIPE):
-                raise errors.ConnectionReset(
-                    "Error trying to write to subprocess", e)
+                raise ConnectionResetError(
+                    "Error trying to write to subprocess", e) from e
             raise
         self._report_activity(len(data), 'write')
 
@@ -990,11 +986,11 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         if self._ssh_params.port is None:
             maybe_port = ''
         else:
-            maybe_port = ':%s' % self._ssh_params.port
+            maybe_port = f':{self._ssh_params.port}'
         if self._ssh_params.username is None:
             maybe_user = ''
         else:
-            maybe_user = '%s@' % self._ssh_params.username
+            maybe_user = f'{self._ssh_params.username}@'
         return "{}({}://{}{}{}/)".format(
             self.__class__.__name__,
             self._scheme,
@@ -1039,8 +1035,7 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
                 read_from, write_to, self.base)
         else:
             raise AssertionError(
-                "Unexpected io_kind %r from %r"
-                % (io_kind, self._ssh_connection))
+                f"Unexpected io_kind {io_kind!r} from {self._ssh_connection!r}")
         for hook in transport.Transport.hooks["post_connect"]:
             hook(self)
 
@@ -1124,13 +1119,12 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
         try:
             sockaddrs = socket.getaddrinfo(self._host, port, socket.AF_UNSPEC,
                                            socket.SOCK_STREAM, 0, 0)
-        except socket.gaierror as xxx_todo_changeme:
-            (err_num, err_msg) = xxx_todo_changeme.args
-            raise errors.ConnectionError("failed to lookup %s:%d: %s" %
-                                         (self._host, port, err_msg))
+        except socket.gaierror as e:
+            (err_num, err_msg) = e.args
+            raise ConnectionError("failed to lookup %s:%d: %s" % (self._host, port, err_msg)) from e
         # Initialize err in case there are no addresses returned:
-        last_err = socket.error("no address found for %s" % self._host)
-        for (family, socktype, proto, canonname, sockaddr) in sockaddrs:
+        last_err = socket.error(f"no address found for {self._host}")
+        for (family, socktype, proto, _canonname, sockaddr) in sockaddrs:
             try:
                 self._socket = socket.socket(family, socktype, proto)
                 self._socket.setsockopt(socket.IPPROTO_TCP,
@@ -1150,8 +1144,9 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
                 err_msg = last_err.args
             else:
                 err_msg = last_err.args[1]
-            raise errors.ConnectionError("failed to connect to %s:%d: %s" %
-                                         (self._host, port, err_msg))
+            if isinstance(last_err, ConnectionError):
+                raise last_err
+            raise ConnectionError("failed to connect to %s:%d: %s" % (self._host, port, err_msg))
         self._connected = True
         for hook in transport.Transport.hooks["post_connect"]:
             hook(self)

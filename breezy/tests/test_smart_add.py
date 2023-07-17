@@ -27,13 +27,12 @@ class AddCustomIDAction(add.AddAction):
         # Now generate a custom id
         file_id = (kind + '-' + path.replace('/', '%')).encode('utf-8')
         if self.should_print:
-            self._to_file.write('added %s with id %s\n'
-                                % (path, file_id.decode('utf-8')))
+            self._to_file.write(f"added {path} with id {file_id.decode('utf-8')}\n")
         return file_id
 
 
 class TestAddFrom(tests.TestCaseWithTransport):
-    """Tests for AddFromBaseAction"""
+    """Tests for AddFromBaseAction."""
 
     def make_base_tree(self):
         self.base_tree = self.make_branch_and_tree('base')

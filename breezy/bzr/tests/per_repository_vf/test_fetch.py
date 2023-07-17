@@ -18,8 +18,11 @@
 
 from breezy.bzr import vf_search
 from breezy.bzr.tests.per_repository_vf import (
-    TestCaseWithRepository, all_repository_vf_format_scenarios)
-from breezy.tests.scenarios import load_tests_apply_scenarios
+    TestCaseWithRepository,
+    all_repository_vf_format_scenarios,
+)
+
+from ....tests.scenarios import load_tests_apply_scenarios
 
 load_tests = load_tests_apply_scenarios
 
@@ -50,4 +53,4 @@ class TestSource(TestCaseWithRepository):
         for substream_type, substream in stream:
             for record in substream:
                 self.assertNotEqual('absent', record.storage_kind,
-                                    "Absent record for {}".format((substream_type,) + record.key))
+                                    f"Absent record for {(substream_type,) + record.key}")

@@ -17,25 +17,32 @@
 """InterRepository operations."""
 
 import itertools
-from typing import Callable, Dict, Tuple, Optional
+from typing import Callable, Dict, Optional, Tuple
 
 from dulwich.errors import NotCommitError
-from dulwich.objects import ObjectID
 from dulwich.object_store import ObjectStoreGraphWalker
+from dulwich.objects import ObjectID
 from dulwich.pack import PACK_SPOOL_FILE_MAX_SIZE
 from dulwich.protocol import CAPABILITY_THIN_PACK, ZERO_SHA
 from dulwich.refs import SYMREF
+
 try:
     from dulwich.refs import PEELED_TAG_SUFFIX
 except ImportError:  # dulwich < 0.21.3
     from dulwich.refs import ANNOTATED_TAG_SUFFIX as PEELED_TAG_SUFFIX
+
 from dulwich.walk import Walker
 
 from .. import config, trace, ui
-from ..errors import (DivergedBranches, FetchLimitUnsupported,
-                      InvalidRevisionId, LossyPushToSameVCS,
-                      NoRoundtrippingSupport, NoSuchRevision)
-from ..repository import FetchResult, InterRepository, AbstractSearchResult
+from ..errors import (
+    DivergedBranches,
+    FetchLimitUnsupported,
+    InvalidRevisionId,
+    LossyPushToSameVCS,
+    NoRoundtrippingSupport,
+    NoSuchRevision,
+)
+from ..repository import AbstractSearchResult, FetchResult, InterRepository
 from ..revision import NULL_REVISION, RevisionID
 from .errors import NoPushSupport
 from .fetch import DetermineWantsRecorder, import_git_objects
@@ -46,7 +53,6 @@ from .refs import is_tag, ref_to_tag_name
 from .remote import RemoteGitError, RemoteGitRepository
 from .repository import GitRepository, GitRepositoryFormat, LocalGitRepository
 from .unpeel_map import UnpeelMap
-
 
 EitherId = Tuple[Optional[RevisionID], Optional[ObjectID]]
 EitherRefDict = Dict[bytes, EitherId]
@@ -102,8 +108,8 @@ class InterToGitRepository(InterRepository):
                     continue
                 try:
                     git_sha = self.source_store._lookup_revision_sha1(revid)
-                except KeyError:
-                    raise NoSuchRevision(revid, self.source)
+                except KeyError as err:
+                    raise NoSuchRevision(revid, self.source) from err
                 git_shas.append(git_sha)
             walker = Walker(
                 self.source_store,
@@ -170,7 +176,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                 stop_revids.append(revid)
             elif sha1 is not None:
                 if self._commit_needs_fetching(sha1):
-                    for (kind, (revid, tree_sha, verifiers)) in self.source_store.lookup_git_sha(sha1):
+                    for (_kind, (revid, _tree_sha, _verifiers)) in self.source_store.lookup_git_sha(sha1):
                         revid_sha_map[revid] = sha1
                         stop_revids.append(revid)
             else:
@@ -254,7 +260,7 @@ class InterToLocalGitRepository(InterToGitRepository):
 
     def fetch_revs(self, revs, lossy: bool, limit: Optional[int] = None) -> RevidMap:
         if not lossy and not self.mapping.roundtripping:
-            for git_sha, bzr_revid in revs:
+            for _git_sha, bzr_revid in revs:
                 if (bzr_revid is not None and
                         needs_roundtripping(self.source, bzr_revid)):
                     raise NoPushSupport(self.source, self.target, self.mapping,
@@ -290,15 +296,15 @@ class InterToLocalGitRepository(InterToGitRepository):
                 stop_revisions = [(None, revid) for revid in recipe[1]]
             else:
                 raise AssertionError(
-                    "Unsupported search result type %s" % recipe[0])
+                    f"Unsupported search result type {recipe[0]}")
         else:
             stop_revisions = [(None, revid)
                               for revid in self.source.all_revision_ids()]
         self._warn_slow()
         try:
             revidmap = self.fetch_revs(stop_revisions, lossy=lossy)
-        except NoPushSupport:
-            raise NoRoundtrippingSupport(self.source, self.target)
+        except NoPushSupport as err:
+            raise NoRoundtrippingSupport(self.source, self.target) from err
         return FetchResult(revidmap)
 
     @staticmethod
@@ -343,7 +349,7 @@ class InterToRemoteGitRepository(InterToGitRepository):
             for ref, error in result.ref_status.items():
                 if error:
                     raise RemoteGitError(
-                        'unable to update ref {!r}: {}'.format(ref, error))
+                        f'unable to update ref {ref!r}: {error}')
             new_refs = result.refs
         # FIXME: revidmap?
         return revidmap, self.old_refs, new_refs
@@ -439,7 +445,8 @@ class InterFromGitRepository(InterRepository):
 
 class InterGitNonGitRepository(InterFromGitRepository):
     """Base InterRepository that copies revisions from a Git into a non-Git
-    repository."""
+    repository.
+    """
 
     def _target_has_shas(self, shas):
         revids = {}
@@ -500,8 +507,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
             if recipe[0] in ("search", "proxy-search"):
                 interesting_heads = recipe[1]
             else:
-                raise AssertionError("Unsupported search result type %s" %
-                                     recipe[0])
+                raise AssertionError(f"Unsupported search result type {recipe[0]}")
         else:
             interesting_heads = None
 
@@ -522,7 +528,8 @@ class InterGitNonGitRepository(InterFromGitRepository):
 
 class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
     """InterRepository that copies revisions from a remote Git into a non-Git
-    repository."""
+    repository.
+    """
 
     def get_target_heads(self):
         # FIXME: This should be more efficient
@@ -570,7 +577,8 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
 
 class InterLocalGitNonGitRepository(InterGitNonGitRepository):
     """InterRepository that copies revisions from a local Git into a non-Git
-    repository."""
+    repository.
+    """
 
     def fetch_objects(self, determine_wants, mapping, limit=None, lossy=False):
         """See `InterGitNonGitRepository`."""
@@ -633,7 +641,7 @@ class InterGitGitRepository(InterFromGitRepository):
             ref_changes.update(new_refs)
             return ret
         self.fetch_objects(determine_wants)
-        for k, (git_sha, bzr_revid) in ref_changes.items():
+        for k, (git_sha, _bzr_revid) in ref_changes.items():
             self.target._git.refs[k] = git_sha  # type: ignore
         new_refs = self.target.controldir.get_refs_container()
         return {}, old_refs, new_refs
@@ -658,7 +666,7 @@ class InterGitGitRepository(InterFromGitRepository):
                 heads = recipe[1]
             else:
                 raise AssertionError(
-                    "Unsupported search result type %s" % recipe[0])
+                    f"Unsupported search result type {recipe[0]}")
             args = heads
         if branches is not None:
             determine_wants = self.get_determine_wants_branches(

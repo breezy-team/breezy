@@ -19,7 +19,6 @@
 import inspect
 import re
 import socket
-import sys
 
 from .. import controldir, errors, osutils, tests, urlutils
 
@@ -40,9 +39,11 @@ class TestErrors(tests.TestCase):
             fmt = getattr(c, '_fmt', None)
             if init:
                 args = inspect.getfullargspec(init)[0]
-                self.assertFalse('message' in args,
-                                 ('Argument name "message" not allowed for '
-                                  '"errors.%s.__init__"' % c.__name__))
+                self.assertNotIn(
+                    'message',
+                    args,
+                    'Argument name "message" not allowed for '
+                    f'"errors.{c.__name__}.__init__"')
             if fmt and fmt_pattern.search(fmt):
                 self.assertFalse(True, ('"message" not allowed in '
                                         '"errors.%s._fmt"' % c.__name__))
@@ -184,7 +185,7 @@ class TestErrors(tests.TestCase):
         # a unicode path to check that %r is being used.
         path = 'a path'
         error = errors.ReadError(path)
-        self.assertContainsRe(str(error), "^Error reading from u?'a path'.$")
+        self.assertContainsRe(str(error), "^Error reading from 'a path'")
 
     def test_bzrerror_from_literal_string(self):
         # Some code constructs BzrError from a literal string, in which case
@@ -223,13 +224,12 @@ class TestErrors(tests.TestCase):
                              ' readonly original error', str(error))
 
     def assertSocketConnectionError(self, expected, *args, **kwargs):
-        """Check the formatting of a SocketConnectionError exception"""
+        """Check the formatting of a SocketConnectionError exception."""
         e = errors.SocketConnectionError(*args, **kwargs)
         self.assertEqual(expected, str(e))
 
     def test_socket_connection_error(self):
-        """Test the formatting of SocketConnectionError"""
-
+        """Test the formatting of SocketConnectionError."""
         # There should be a default msg about failing to connect
         # we only require a host name.
         self.assertSocketConnectionError(
@@ -256,7 +256,7 @@ class TestErrors(tests.TestCase):
         # An exception object can be passed rather than a string
         orig_error = ValueError('bad value')
         self.assertSocketConnectionError(
-            'Failed to connect to ahost; {}'.format(str(orig_error)),
+            f'Failed to connect to ahost; {str(orig_error)}',
             host='ahost', orig_error=orig_error)
 
         # And we can supply a custom failure message
@@ -424,7 +424,7 @@ class TestErrorsUsingTransport(tests.TestCaseWithMemoryTransport):
         error = errors.NoPublicBranch(b)
         url = urlutils.unescape_for_display(b.base, 'ascii')
         self.assertEqualDiff(
-            'There is no public branch set for "%s".' % url, str(error))
+            f'There is no public branch set for "{url}".', str(error))
 
     def test_no_repo(self):
         dir = controldir.ControlDir.create(self.get_url())

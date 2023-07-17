@@ -22,8 +22,9 @@ import time
 
 from breezy import tests
 from breezy.bzr import hashcache
-from breezy.bzr.workingtree import InventoryWorkingTree
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
+
+from ...bzr.workingtree import InventoryWorkingTree
 
 
 class TestReadonly(TestCaseWithWorkingTree):
@@ -51,7 +52,7 @@ class TestReadonly(TestCaseWithWorkingTree):
         else:
             mode = 0o755
 
-        for root, dirs, files in os.walk(basedir, topdown=False):
+        for root, dirs, _files in os.walk(basedir, topdown=False):
             for d in dirs:
                 path = os.path.join(root, d)
                 os.chmod(path, mode)
@@ -87,7 +88,7 @@ class TestReadonly(TestCaseWithWorkingTree):
         the_hashcache = getattr(tree, '_hashcache', None)
         if the_hashcache is not None:
             self.assertIsInstance(the_hashcache, hashcache.HashCache)
-            the_hashcache._cutoff_time = self._custom_cutoff_time
+            the_hashcache.set_cutoff_offset(10)
             hack_dirstate = False
         else:
             # DirState trees don't have a HashCache, but they do have the same
@@ -106,5 +107,5 @@ class TestReadonly(TestCaseWithWorkingTree):
                 tree._dirstate._cutoff_time = self._custom_cutoff_time()
             # Make sure we check all the files
             for path in tree.all_versioned_paths():
-                size = tree.get_file_size(path)
-                sha1 = tree.get_file_sha1(path)
+                tree.get_file_size(path)
+                tree.get_file_sha1(path)

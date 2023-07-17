@@ -19,7 +19,6 @@
 
 """Quilt patch handling."""
 
-import errno
 import os
 import signal
 import subprocess
@@ -39,7 +38,7 @@ class QuiltError(errors.BzrError):
         self.retcode = retcode
         self.stderr = stderr
         if stdout is not None:
-            self.extra = "\n\n%s" % stdout
+            self.extra = f"\n\n{stdout}"
         else:
             self.extra = ""
         self.stdout = stdout
@@ -85,7 +84,7 @@ def run_quilt(
     command = [quilt_path] + args
     trace.mutter("running: %r", command)
     if not os.path.isdir(working_dir):
-        raise AssertionError("%s is not a valid directory" % working_dir)
+        raise AssertionError(f"{working_dir} is not a valid directory")
     try:
         proc = subprocess.Popen(
             command, cwd=working_dir, env=env,
@@ -199,20 +198,16 @@ def quilt_upgrade(working_dir):
 
 
 def quilt_applied(tree):
-    """Find the list of applied quilt patches.
-
-    """
+    """Find the list of applied quilt patches."""
     try:
         return [os.fsdecode(patch.rstrip(b"\n"))
                 for patch in tree.get_file_lines(".pc/applied-patches")
                 if patch.strip() != b""]
     except _mod_transport.NoSuchFile:
         return []
-    except OSError as e:
-        if e.errno == errno.ENOENT:
-            # File has already been removed
-            return []
-        raise
+    except FileNotFoundError:
+        # File has already been removed
+        return []
 
 
 def quilt_unapplied(working_dir, patches_dir=None, series_file=None):
@@ -250,10 +245,8 @@ def quilt_series(tree, series_path):
         return [os.fsdecode(patch.rstrip(b"\n")) for patch in
                 tree.get_file_lines(series_path)
                 if patch.strip() != b""]
-    except OSError as e:
-        if e.errno == errno.ENOENT:
-            # File has already been removed
-            return []
-        raise
+    except FileNotFoundError:
+        # File has already been removed
+        return []
     except _mod_transport.NoSuchFile:
         return []

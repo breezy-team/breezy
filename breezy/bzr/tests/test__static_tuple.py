@@ -54,8 +54,8 @@ class TestStaticTuple(tests.TestCase):
             self.assertEqual(count, sys.getrefcount(obj) - 2)
 
     def test_create(self):
-        k = self.module.StaticTuple('foo')
-        k = self.module.StaticTuple('foo', 'bar')
+        self.module.StaticTuple('foo')
+        self.module.StaticTuple('foo', 'bar')
 
     def test_create_bad_args(self):
         args_256 = ['a'] * 256
@@ -107,7 +107,7 @@ class TestStaticTuple(tests.TestCase):
         t = k.as_tuple()
         self.assertEqual(('foo',), t)
         self.assertIsInstance(t, tuple)
-        self.assertFalse(isinstance(t, self.module.StaticTuple))
+        self.assertNotIsInstance(t, self.module.StaticTuple)
         k = self.module.StaticTuple('foo', 'bar')
         t = k.as_tuple()
         self.assertEqual(('foo', 'bar'), t)
@@ -191,19 +191,19 @@ class TestStaticTuple(tests.TestCase):
         self.assertEqual("StaticTuple('foo', 'bar', 'baz', 'bing')", repr(k))
 
     def assertCompareEqual(self, k1, k2):
-        self.assertTrue(k1 == k2)
-        self.assertTrue(k1 <= k2)
-        self.assertTrue(k1 >= k2)
-        self.assertFalse(k1 != k2)
+        self.assertEqual(k1, k2)
+        self.assertLessEqual(k1, k2)
+        self.assertGreaterEqual(k1, k2)
+        self.assertEqual(k1, k2)
         self.assertFalse(k1 < k2)
         self.assertFalse(k1 > k2)
 
     def test_holds_None(self):
-        k1 = self.module.StaticTuple(None)
+        self.module.StaticTuple(None)
         # You cannot subclass None anyway
 
     def test_holds_int(self):
-        k1 = self.module.StaticTuple(1)
+        self.module.StaticTuple(1)
 
         class subint(int):
             pass
@@ -211,21 +211,21 @@ class TestStaticTuple(tests.TestCase):
         self.assertRaises(TypeError, self.module.StaticTuple, subint(2))
 
     def test_holds_float(self):
-        k1 = self.module.StaticTuple(1.2)
+        self.module.StaticTuple(1.2)
 
         class subfloat(float):
             pass
         self.assertRaises(TypeError, self.module.StaticTuple, subfloat(1.5))
 
     def test_holds_bytes(self):
-        k1 = self.module.StaticTuple(b'astring')
+        self.module.StaticTuple(b'astring')
 
         class substr(bytes):
             pass
         self.assertRaises(TypeError, self.module.StaticTuple, substr(b'a'))
 
     def test_holds_unicode(self):
-        k1 = self.module.StaticTuple('\xb5')
+        self.module.StaticTuple('\xb5')
 
         class subunicode(str):
             pass
@@ -233,8 +233,8 @@ class TestStaticTuple(tests.TestCase):
                           subunicode('\xb5'))
 
     def test_hold_bool(self):
-        k1 = self.module.StaticTuple(True)
-        k2 = self.module.StaticTuple(False)
+        self.module.StaticTuple(True)
+        self.module.StaticTuple(False)
         # Cannot subclass bool
 
     def test_compare_same_obj(self):
@@ -250,8 +250,8 @@ class TestStaticTuple(tests.TestCase):
         k1 = self.module.StaticTuple('foo', 'bar')
         k2 = self.module.StaticTuple('foo', 'bar')
         self.assertCompareEqual(k1, k2)
-        k3 = self.module.StaticTuple(k1, k2)
-        k4 = self.module.StaticTuple(k2, k1)
+        self.module.StaticTuple(k1, k2)
+        self.module.StaticTuple(k2, k1)
         self.assertCompareEqual(k1, k2)
         k5 = self.module.StaticTuple('foo', 1, None, '\xb5', 1.2, 2**65, True,
                                      k1)
@@ -281,13 +281,13 @@ class TestStaticTuple(tests.TestCase):
         return False
 
     def assertCompareDifferent(self, k_small, k_big, mismatched_types=False):
-        self.assertFalse(k_small == k_big)
-        self.assertTrue(k_small != k_big)
+        self.assertNotEqual(k_small, k_big)
+        self.assertNotEqual(k_small, k_big)
         if not self.check_strict_compare(k_small, k_big, mismatched_types):
             self.assertFalse(k_small >= k_big)
             self.assertFalse(k_small > k_big)
-            self.assertTrue(k_small <= k_big)
-            self.assertTrue(k_small < k_big)
+            self.assertLessEqual(k_small, k_big)
+            self.assertLess(k_small, k_big)
 
     def assertCompareNoRelation(self, k1, k2, mismatched_types=False):
         """Run the comparison operators, make sure they do something.
@@ -296,14 +296,14 @@ class TestStaticTuple(tests.TestCase):
         stuff like cross-class comparisons. We don't want to segfault/raise an
         exception, but we don't care about the sort order.
         """
-        self.assertFalse(k1 == k2)
-        self.assertTrue(k1 != k2)
+        self.assertNotEqual(k1, k2)
+        self.assertNotEqual(k1, k2)
         if not self.check_strict_compare(k1, k2, mismatched_types):
             # Do the comparison, but we don't care about the result
-            k1 >= k2
-            k1 > k2
-            k1 <= k2
-            k1 < k2
+            k1 >= k2  # noqa: B015
+            k1 > k2  # noqa: B015
+            k1 <= k2  # noqa: B015
+            k1 < k2  # noqa: B015
 
     def test_compare_vs_none(self):
         k1 = self.module.StaticTuple('baz', 'bing')
@@ -474,13 +474,13 @@ class TestStaticTuple(tests.TestCase):
         unique_str1 = 'unique str ' + osutils.rand_chars(20)
         unique_str2 = 'unique str ' + osutils.rand_chars(20)
         key = self.module.StaticTuple(unique_str1, unique_str2)
-        self.assertFalse(key in self.module._interned_tuples)
+        self.assertNotIn(key, self.module._interned_tuples)
         key2 = self.module.StaticTuple(unique_str1, unique_str2)
         self.assertEqual(key, key2)
         self.assertIsNot(key, key2)
         key3 = key.intern()
         self.assertIs(key, key3)
-        self.assertTrue(key in self.module._interned_tuples)
+        self.assertIn(key, self.module._interned_tuples)
         self.assertEqual(key, self.module._interned_tuples[key])
         key2 = key2.intern()
         self.assertIs(key, key2)
@@ -492,7 +492,7 @@ class TestStaticTuple(tests.TestCase):
         unique_str2 = 'unique str ' + osutils.rand_chars(20)
         key = self.module.StaticTuple(unique_str1, unique_str2)
         self.assertRefcount(1, key)
-        self.assertFalse(key in self.module._interned_tuples)
+        self.assertNotIn(key, self.module._interned_tuples)
         self.assertFalse(key._is_interned())
         key2 = self.module.StaticTuple(unique_str1, unique_str2)
         self.assertRefcount(1, key)
@@ -502,7 +502,7 @@ class TestStaticTuple(tests.TestCase):
 
         key3 = key.intern()
         self.assertIs(key, key3)
-        self.assertTrue(key in self.module._interned_tuples)
+        self.assertIn(key, self.module._interned_tuples)
         self.assertEqual(key, self.module._interned_tuples[key])
         # key and key3, but we 'hide' the one in _interned_tuples
         self.assertRefcount(2, key)
@@ -526,18 +526,18 @@ class TestStaticTuple(tests.TestCase):
         unique_str1 = 'unique str ' + osutils.rand_chars(20)
         unique_str2 = 'unique str ' + osutils.rand_chars(20)
         key = self.module.StaticTuple(unique_str1, unique_str2)
-        self.assertFalse(key in self.module._interned_tuples)
+        self.assertNotIn(key, self.module._interned_tuples)
         self.assertRefcount(1, key)
         key = key.intern()
         self.assertRefcount(1, key)
-        self.assertTrue(key in self.module._interned_tuples)
+        self.assertIn(key, self.module._interned_tuples)
         self.assertTrue(key._is_interned())
         del key
         # Create a new entry, which would point to the same location
         key = self.module.StaticTuple(unique_str1, unique_str2)
         self.assertRefcount(1, key)
         # This old entry in _interned_tuples should be gone
-        self.assertFalse(key in self.module._interned_tuples)
+        self.assertNotIn(key, self.module._interned_tuples)
         self.assertFalse(key._is_interned())
 
     def test__c_has_C_API(self):
@@ -594,19 +594,19 @@ class TestStaticTuple(tests.TestCase):
     def test_pickle(self):
         st = self.module.StaticTuple('foo', 'bar')
         pickled = pickle.dumps(st)
-        unpickled = pickle.loads(pickled)
+        unpickled = pickle.loads(pickled)  # noqa: S301
         self.assertEqual(unpickled, st)
 
     def test_pickle_empty(self):
         st = self.module.StaticTuple()
         pickled = pickle.dumps(st)
-        unpickled = pickle.loads(pickled)
+        unpickled = pickle.loads(pickled)  # noqa: S301
         self.assertIs(st, unpickled)
 
     def test_pickle_nested(self):
         st = self.module.StaticTuple('foo', self.module.StaticTuple('bar'))
         pickled = pickle.dumps(st)
-        unpickled = pickle.loads(pickled)
+        unpickled = pickle.loads(pickled)  # noqa: S301
         self.assertEqual(unpickled, st)
 
     def test_static_tuple_thunk(self):
@@ -634,12 +634,12 @@ class TestEnsureStaticTuple(tests.TestCase):
         self.assertEqual(t, st)
 
     def test_flagged_is_static_tuple(self):
-        debug.debug_flags.add('static_tuple')
+        debug.set_debug_flag('static_tuple')
         st = static_tuple.StaticTuple('foo')
         st2 = static_tuple.expect_static_tuple(st)
         self.assertIs(st, st2)
 
     def test_flagged_is_tuple(self):
-        debug.debug_flags.add('static_tuple')
+        debug.set_debug_flag('static_tuple')
         t = ('foo',)
         self.assertRaises(TypeError, static_tuple.expect_static_tuple, t)

@@ -22,20 +22,42 @@
 # importing this module is fairly slow because it has to load several
 # ElementTree bits
 
-import re
-from typing import Dict, Union
-from xml.etree.ElementTree import (Element, ElementTree, ParseError,
-                                   SubElement, fromstring, fromstringlist,
-                                   tostring, tostringlist)
+from typing import Optional
+from xml.etree.ElementTree import (  # noqa: F401
+    Element,
+    ElementTree,
+    ParseError,
+    SubElement,
+    fromstring,
+    fromstringlist,
+)
 
-from .. import errors, lazy_regex
 from . import inventory, serializer
 
 
-class XMLSerializer(serializer.Serializer):
-    """Abstract XML object serialize/deserialize"""
+class XMLRevisionSerializer(serializer.RevisionSerializer):
+    """Abstract XML object serialize/deserialize."""
 
     squashes_xml_invalid_characters = True
+
+    def _unpack_revision(self, element):
+        raise NotImplementedError(self._unpack_revision)
+
+    def write_revision_to_string(self, rev):
+        return b''.join(self.write_revision_to_lines(rev))
+
+    def read_revision(self, f):
+        return self._unpack_revision(self._read_element(f))
+
+    def read_revision_from_string(self, xml_string):
+        return self._unpack_revision(fromstring(xml_string))  # noqa: S314
+
+    def _read_element(self, f):
+        return ElementTree().parse(f)
+
+
+class XMLInventorySerializer(serializer.InventorySerializer):
+    """Abstract XML object serialize/deserialize."""
 
     def read_inventory_from_lines(self, lines, revision_id=None,
                                   entry_cache=None, return_from_cache=False):
@@ -62,7 +84,10 @@ class XMLSerializer(serializer.Serializer):
                                           entry_cache=entry_cache,
                                           return_from_cache=return_from_cache)
         except ParseError as e:
-            raise serializer.UnexpectedInventoryFormat(str(e))
+            raise serializer.UnexpectedInventoryFormat(str(e)) from e
+
+    def _unpack_inventory(self, element, revision_id: Optional[bytes] = None, entry_cache=None, return_from_cache=False):
+        raise NotImplementedError(self._unpack_inventory)
 
     def read_inventory(self, f, revision_id=None):
         try:
@@ -72,37 +97,10 @@ class XMLSerializer(serializer.Serializer):
             finally:
                 f.close()
         except ParseError as e:
-            raise serializer.UnexpectedInventoryFormat(str(e))
-
-    def write_revision_to_string(self, rev):
-        return b''.join(self.write_revision_to_lines(rev))
-
-    def read_revision(self, f):
-        return self._unpack_revision(self._read_element(f))
-
-    def read_revision_from_string(self, xml_string):
-        return self._unpack_revision(fromstring(xml_string))
+            raise serializer.UnexpectedInventoryFormat(str(e)) from e
 
     def _read_element(self, f):
         return ElementTree().parse(f)
-
-
-def escape_invalid_chars(message):
-    """Escape the XML-invalid characters in a commit message.
-
-    :param message: Commit message to escape
-    :return: tuple with escaped message and number of characters escaped
-    """
-    if message is None:
-        return None, 0
-    # Python strings can include characters that can't be
-    # represented in well-formed XML; escape characters that
-    # aren't listed in the XML specification
-    # (http://www.w3.org/TR/REC-xml/#NT-Char).
-    return re.subn('[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
-                   lambda match: match.group(0).encode(
-                       'unicode_escape').decode('ascii'),
-                   message)
 
 
 def get_utf8_or_ascii(a_str):
@@ -126,87 +124,10 @@ def get_utf8_or_ascii(a_str):
         return a_str
 
 
-_utf8_re = lazy_regex.lazy_compile(b'[&<>\'\"]|[\x80-\xff]+')
-_unicode_re = lazy_regex.lazy_compile('[&<>\'\"\u0080-\uffff]')
+from .._bzr_rs import encode_and_escape, escape_invalid_chars  # noqa: F401
 
 
-_xml_escape_map = {
-    "&": '&amp;',
-    "'": "&apos;",  # FIXME: overkill
-    "\"": "&quot;",
-    "<": "&lt;",
-    ">": "&gt;",
-    }
-
-
-def _unicode_escape_replace(match, _map=_xml_escape_map):
-    """Replace a string of non-ascii, non XML safe characters with their escape
-
-    This will escape both Standard XML escapes, like <>"', etc.
-    As well as escaping non ascii characters, because ElementTree did.
-    This helps us remain compatible to older versions of bzr. We may change
-    our policy in the future, though.
-    """
-    # jam 20060816 Benchmarks show that try/KeyError is faster if you
-    # expect the entity to rarely miss. There is about a 10% difference
-    # in overall time. But if you miss frequently, then if None is much
-    # faster. For our use case, we *rarely* have a revision id, file id
-    # or path name that is unicode. So use try/KeyError.
-    try:
-        return _map[match.group()]
-    except KeyError:
-        return "&#%d;" % ord(match.group())
-
-
-def _utf8_escape_replace(match, _map=_xml_escape_map):
-    """Escape utf8 characters into XML safe ones.
-
-    This uses 2 tricks. It is either escaping "standard" characters, like "&<>,
-    or it is handling characters with the high-bit set. For ascii characters,
-    we just lookup the replacement in the dictionary. For everything else, we
-    decode back into Unicode, and then use the XML escape code.
-    """
-    try:
-        return _map[match.group().decode('ascii', 'replace')].encode()
-    except KeyError:
-        return b''.join(b'&#%d;' % ord(uni_chr)
-                        for uni_chr in match.group().decode('utf8'))
-
-
-_to_escaped_map: Dict[Union[bytes, str], str] = {}
-
-
-def encode_and_escape(unicode_or_utf8_str, _map=_to_escaped_map):
-    """Encode the string into utf8, and escape invalid XML characters"""
-    # We frequently get entities we have not seen before, so it is better
-    # to check if None, rather than try/KeyError
-    text = _map.get(unicode_or_utf8_str)
-    if text is None:
-        if isinstance(unicode_or_utf8_str, str):
-            # The alternative policy is to do a regular UTF8 encoding
-            # and then escape only XML meta characters.
-            # Performance is equivalent once you use codecs. *However*
-            # this makes the serialized texts incompatible with old versions
-            # of bzr. So no net gain. (Perhaps the read code would handle utf8
-            # better than entity escapes, but cElementTree seems to do just
-            # fine either way)
-            text = _unicode_re.sub(
-                _unicode_escape_replace, unicode_or_utf8_str).encode()
-        else:
-            # Plain strings are considered to already be in utf-8 so we do a
-            # slightly different method for escaping.
-            text = _utf8_re.sub(_utf8_escape_replace,
-                                unicode_or_utf8_str)
-        _map[unicode_or_utf8_str] = text
-    return text
-
-
-def _clear_cache():
-    """Clean out the unicode => escaped map"""
-    _to_escaped_map.clear()
-
-
-def unpack_inventory_entry(elt, entry_cache=None, return_from_cache=False):
+def unpack_inventory_entry(elt, entry_cache=None, return_from_cache=False, root_id=None):
     elt_get = elt.get
     file_id = elt_get('file_id')
     revision = elt_get('revision')
@@ -258,7 +179,7 @@ def unpack_inventory_entry(elt, entry_cache=None, return_from_cache=False):
 
     kind = elt.tag
     if not inventory.InventoryEntry.versionable_kind(kind):
-        raise AssertionError('unsupported entry kind %s' % kind)
+        raise AssertionError(f'unsupported entry kind {kind}')
 
     file_id = get_utf8_or_ascii(file_id)
     if revision is not None:
@@ -266,6 +187,8 @@ def unpack_inventory_entry(elt, entry_cache=None, return_from_cache=False):
     parent_id = elt_get('parent_id')
     if parent_id is not None:
         parent_id = get_utf8_or_ascii(parent_id)
+    else:
+        parent_id = root_id
 
     if kind == 'directory':
         ie = inventory.InventoryDirectory(file_id,
@@ -275,9 +198,9 @@ def unpack_inventory_entry(elt, entry_cache=None, return_from_cache=False):
         ie = inventory.InventoryFile(file_id,
                                      elt_get('name'),
                                      parent_id)
-        ie.text_sha1 = elt_get('text_sha1')
-        if ie.text_sha1 is not None:
-            ie.text_sha1 = ie.text_sha1.encode('ascii')
+        text_sha1 = elt_get('text_sha1')
+        if text_sha1 is not None:
+            ie.text_sha1 = text_sha1.encode('ascii')
         if elt_get('executable') == 'yes':
             ie.executable = True
         v = elt_get('text_size')
@@ -320,11 +243,11 @@ def unpack_inventory_flat(elt, format_num, unpack_entry,
         encountered
     """
     if elt.tag != 'inventory':
-        raise serializer.UnexpectedInventoryFormat('Root tag is %r' % elt.tag)
+        raise serializer.UnexpectedInventoryFormat(f'Root tag is {elt.tag!r}')
     format = elt.get('format')
     if ((format is None and format_num is not None) or
             format.encode() != format_num):
-        raise serializer.UnexpectedInventoryFormat('Invalid format version %r' % format)
+        raise serializer.UnexpectedInventoryFormat(f'Invalid format version {format!r}')
     revision_id = elt.get('revision_id')
     if revision_id is not None:
         revision_id = revision_id.encode('utf-8')
@@ -346,7 +269,7 @@ def serialize_inventory_flat(inv, append, root_id, supported_kinds, working):
     entries = inv.iter_entries()
     # Skip the root
     root_path, root_ie = next(entries)
-    for path, ie in entries:
+    for _path, ie in entries:
         if ie.parent_id != root_id:
             parent_str = b''.join(
                 [b' parent_id="', encode_and_escape(ie.parent_id), b'"'])

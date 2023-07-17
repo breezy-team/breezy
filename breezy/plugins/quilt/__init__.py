@@ -68,7 +68,7 @@ def pre_merge_quilt(merger):
         merger.this_tree, this_dir = tree_unapply_patches(
             merger.this_tree, merger.this_branch, force=True)
     except QuiltError as e:
-        raise QuiltUnapplyError("this", e.stderr)
+        raise QuiltUnapplyError("this", e.stderr) from e
     else:
         if this_dir is not None:
             merger._quilt_tempdirs.append(this_dir)
@@ -76,7 +76,7 @@ def pre_merge_quilt(merger):
         merger.base_tree, base_dir = tree_unapply_patches(
             merger.base_tree, merger.this_branch, force=True)
     except QuiltError as e:
-        raise QuiltUnapplyError("base", e.stderr)
+        raise QuiltUnapplyError("base", e.stderr) from e
     else:
         if base_dir is not None:
             merger._quilt_tempdirs.append(base_dir)
@@ -87,7 +87,7 @@ def pre_merge_quilt(merger):
         merger.other_tree, other_dir = tree_unapply_patches(
             merger.other_tree, other_branch, force=True)
     except QuiltError as e:
-        raise QuiltUnapplyError("other", e.stderr)
+        raise QuiltUnapplyError("other", e.stderr) from e
     else:
         if other_dir is not None:
             merger._quilt_tempdirs.append(other_dir)
@@ -108,8 +108,7 @@ def post_merge_quilt_cleanup(merger):
 
 
 def start_commit_check_quilt(tree):
-    """start_commit hook which checks the state of quilt patches.
-    """
+    """start_commit hook which checks the state of quilt patches."""
     config = tree.get_config_stack()
     policy = config.get('quilt.commit_policy')
     from .merge import start_commit_quilt_patches
@@ -164,7 +163,7 @@ option_registry.register(
 
 def policy_from_store(s):
     if s not in ('applied', 'unapplied'):
-        raise ValueError('Invalid quilt.commit_policy: %s' % s)
+        raise ValueError(f'Invalid quilt.commit_policy: {s}')
     return s
 
 option_registry.register(

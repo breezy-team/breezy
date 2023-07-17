@@ -14,19 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for directory lookup through Launchpad.net"""
+"""Tests for directory lookup through Launchpad.net."""
 
-import os
-from http.client import parse_headers
-from xmlrpc.client import Fault
 
-import breezy
 
-from ... import debug, tests, transport, urlutils
+from ... import debug, transport, urlutils
 from ...branch import Branch
 from ...directory_service import directories
-from ...tests import (TestCaseInTempDir, TestCaseWithMemoryTransport, features,
-                      http_server, ssl_certs)
+from ...tests import TestCaseInTempDir, TestCaseWithMemoryTransport
 from . import _register_directory
 from .account import get_lp_login, set_lp_login
 from .lp_directory import LaunchpadDirectory
@@ -50,7 +45,7 @@ class LocalDirectoryURLTests(TestCaseInTempDir):
     def assertResolve(self, expected, url):
         path = url[url.index(':') + 1:].lstrip('/')
         factory = FakeResolveFactory(self, path,
-                                     dict(urls=['bzr+ssh://fake-resolved']))
+                                     {'urls': ['bzr+ssh://fake-resolved']})
         directory = LaunchpadDirectory()
         self.assertEqual(expected,
                          directory._resolve(url, factory, _lp_login='user'))
@@ -151,58 +146,58 @@ class LocalDirectoryURLTests(TestCaseInTempDir):
     def test_debug_launchpad_uses_resolver(self):
         self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/bzr',
                            'lp:bzr')
-        debug.debug_flags.add('launchpad')
-        self.addCleanup(debug.debug_flags.discard, 'launchpad')
+        debug.set_debug_flag('launchpad')
+        self.addCleanup(debug.unset_debug_flag, 'launchpad')
         self.assertResolve('bzr+ssh://fake-resolved', 'lp:bzr')
 
 
 class DirectoryUrlTests(TestCaseInTempDir):
-    """Tests for branch urls through Launchpad.net directory"""
+    """Tests for branch urls through Launchpad.net directory."""
 
     def test_short_form(self):
-        """A launchpad url should map to a http url"""
+        """A launchpad url should map to a http url."""
         factory = FakeResolveFactory(
-            self, 'apt', dict(urls=[
-                'http://bazaar.launchpad.net/~apt/apt/devel']))
+            self, 'apt', {'urls': [
+                'http://bazaar.launchpad.net/~apt/apt/devel']})
         directory = LaunchpadDirectory()
         self.assertEqual('http://bazaar.launchpad.net/~apt/apt/devel',
                          directory._resolve('lp:apt', factory))
 
     def test_qastaging(self):
-        """A launchpad url should map to a http url"""
+        """A launchpad url should map to a http url."""
         factory = FakeResolveFactory(
-            self, 'apt', dict(urls=[
-                'http://bazaar.qastaging.launchpad.net/~apt/apt/devel']))
+            self, 'apt', {'urls': [
+                'http://bazaar.qastaging.launchpad.net/~apt/apt/devel']})
         url = 'lp://qastaging/apt'
         directory = LaunchpadDirectory()
         self.assertEqual('http://bazaar.qastaging.launchpad.net/~apt/apt/devel',
                          directory._resolve(url, factory))
 
     def test_staging(self):
-        """A launchpad url should map to a http url"""
+        """A launchpad url should map to a http url."""
         factory = FakeResolveFactory(
-            self, 'apt', dict(urls=[
-                'http://bazaar.staging.launchpad.net/~apt/apt/devel']))
+            self, 'apt', {'urls': [
+                'http://bazaar.staging.launchpad.net/~apt/apt/devel']})
         url = 'lp://staging/apt'
         directory = LaunchpadDirectory()
         self.assertEqual('http://bazaar.staging.launchpad.net/~apt/apt/devel',
                          directory._resolve(url, factory))
 
     def test_url_from_directory(self):
-        """A launchpad url should map to a http url"""
+        """A launchpad url should map to a http url."""
         factory = FakeResolveFactory(
-            self, 'apt', dict(urls=[
-                'http://bazaar.launchpad.net/~apt/apt/devel']))
+            self, 'apt', {'urls': [
+                'http://bazaar.launchpad.net/~apt/apt/devel']})
         directory = LaunchpadDirectory()
         self.assertEqual('http://bazaar.launchpad.net/~apt/apt/devel',
                          directory._resolve('lp:///apt', factory))
 
     def test_directory_skip_bad_schemes(self):
         factory = FakeResolveFactory(
-            self, 'apt', dict(urls=[
+            self, 'apt', {'urls': [
                 'bad-scheme://bazaar.launchpad.net/~apt/apt/devel',
                 'http://bazaar.launchpad.net/~apt/apt/devel',
-                'http://another/location']))
+                'http://another/location']})
         directory = LaunchpadDirectory()
         self.assertEqual('http://bazaar.launchpad.net/~apt/apt/devel',
                          directory._resolve('lp:///apt', factory))
@@ -211,8 +206,8 @@ class DirectoryUrlTests(TestCaseInTempDir):
         # If the XMLRPC call does not return any protocols we support,
         # invalidURL is raised.
         factory = FakeResolveFactory(
-            self, 'apt', dict(urls=[
-                'bad-scheme://bazaar.launchpad.net/~apt/apt/devel']))
+            self, 'apt', {'urls': [
+                'bad-scheme://bazaar.launchpad.net/~apt/apt/devel']})
         directory = LaunchpadDirectory()
         self.assertRaises(urlutils.InvalidURL,
                           directory._resolve, 'lp:///apt', factory)
@@ -222,9 +217,9 @@ class DirectoryUrlTests(TestCaseInTempDir):
         # Bazaar does not know the user's Launchpad ID:
         self.assertEqual(None, get_lp_login())
         factory = FakeResolveFactory(
-            self, 'apt', dict(urls=[
+            self, 'apt', {'urls': [
                 'bzr+ssh://bazaar.launchpad.net/~apt/apt/devel',
-                'http://bazaar.launchpad.net/~apt/apt/devel']))
+                'http://bazaar.launchpad.net/~apt/apt/devel']})
         directory = LaunchpadDirectory()
         self.assertEqual('http://bazaar.launchpad.net/~apt/apt/devel',
                          directory._resolve('lp:///apt', factory))
@@ -234,9 +229,9 @@ class DirectoryUrlTests(TestCaseInTempDir):
         # Bazaar does not know the user's Launchpad ID:
         self.assertEqual(None, get_lp_login())
         factory = FakeResolveFactory(
-            self, 'apt', dict(urls=[
+            self, 'apt', {'urls': [
                 'sftp://bazaar.launchpad.net/~apt/apt/devel',
-                'http://bazaar.launchpad.net/~apt/apt/devel']))
+                'http://bazaar.launchpad.net/~apt/apt/devel']})
         directory = LaunchpadDirectory()
         self.assertEqual('http://bazaar.launchpad.net/~apt/apt/devel',
                          directory._resolve('lp:///apt', factory))
@@ -245,9 +240,9 @@ class DirectoryUrlTests(TestCaseInTempDir):
         # Test that bzr+ssh URLs get rewritten to include the user's
         # Launchpad ID (assuming we know the Launchpad ID).
         factory = FakeResolveFactory(
-            self, 'apt', dict(urls=[
+            self, 'apt', {'urls': [
                 'bzr+ssh://my-super-custom/special/devel',
-                'http://bazaar.launchpad.net/~apt/apt/devel']))
+                'http://bazaar.launchpad.net/~apt/apt/devel']})
         directory = LaunchpadDirectory()
         self.assertEqual(
             'bzr+ssh://bazaar.launchpad.net/+branch/apt',
@@ -257,9 +252,9 @@ class DirectoryUrlTests(TestCaseInTempDir):
         # Test that we don't rewrite bzr+ssh URLs for other
         self.assertEqual(None, get_lp_login())
         factory = FakeResolveFactory(
-            self, 'apt', dict(urls=[
+            self, 'apt', {'urls': [
                 'bzr+ssh://example.com/~apt/apt/devel',
-                'http://bazaar.launchpad.net/~apt/apt/devel']))
+                'http://bazaar.launchpad.net/~apt/apt/devel']})
         directory = LaunchpadDirectory()
         self.assertEqual('bzr+ssh://example.com/~apt/apt/devel',
                          directory._resolve('lp:///apt', factory))
@@ -273,8 +268,8 @@ class DirectoryUrlTests(TestCaseInTempDir):
 
     def test_resolve_tilde_to_user(self):
         factory = FakeResolveFactory(
-            self, '~username/apt/test', dict(urls=[
-                'bzr+ssh://bazaar.launchpad.net/~username/apt/test']))
+            self, '~username/apt/test', {'urls': [
+                'bzr+ssh://bazaar.launchpad.net/~username/apt/test']})
         directory = LaunchpadDirectory()
         self.assertEqual(
             'bzr+ssh://bazaar.launchpad.net/~username/apt/test',
@@ -287,8 +282,8 @@ class DirectoryUrlTests(TestCaseInTempDir):
 
     def test_tilde_fails_no_login(self):
         factory = FakeResolveFactory(
-            self, '~username/apt/test', dict(urls=[
-                'bzr+ssh://bazaar.launchpad.net/~username/apt/test']))
+            self, '~username/apt/test', {'urls': [
+                'bzr+ssh://bazaar.launchpad.net/~username/apt/test']})
         self.assertIs(None, get_lp_login())
         directory = LaunchpadDirectory()
         self.assertRaises(urlutils.InvalidURL,
@@ -302,7 +297,7 @@ class DirectoryOpenBranchTests(TestCaseWithMemoryTransport):
         target_branch = self.make_branch('target')
 
         class FooService:
-            """A directory service that maps the name to a FILE url"""
+            """A directory service that maps the name to a FILE url."""
 
             def look_up(self, name, url, purpose=None):
                 if 'lp:///apt' == url:

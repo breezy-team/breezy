@@ -32,7 +32,7 @@ if sys.platform == 'win32':
 
 
 def stack_add(name, frame_name, frame_lineno, scope_name=None):
-    """Start a new record on the stack"""
+    """Start a new record on the stack."""
     global _cur_id
     _cur_id += 1
     this_stack = (_cur_id, name)
@@ -48,11 +48,11 @@ def stack_add(name, frame_name, frame_lineno, scope_name=None):
 
 
 def stack_finish(this, cost):
-    """Finish a given entry, and record its cost in time"""
+    """Finish a given entry, and record its cost in time."""
     global _parent_stack
 
-    assert _parent_stack[-1] == this, \
-        'import stack does not end with this {}: {}'.format(this, _parent_stack)
+    if _parent_stack[-1] != this:
+        raise AssertionError(f'import stack does not end with this {this}: {_parent_stack}')
     _parent_stack.pop()
     _info[this].append(cost)
 
@@ -101,7 +101,7 @@ def log_stack_info(out_file, sorted=True, hide_fast=True):
 _real_import = __import__
 
 def timed_import(name, globals=None, locals=None, fromlist=None, level=0):
-    """Wrap around standard importer to log import time"""
+    """Wrap around standard importer to log import time."""
     # normally there are 4, but if this is called as __import__ eg by
     # /usr/lib/python2.6/email/__init__.py then there may be only one
     # parameter
@@ -137,7 +137,7 @@ def timed_import(name, globals=None, locals=None, fromlist=None, level=0):
         frame = sys._getframe(4)
         frame_name = frame.f_globals.get('__name__', '<unknown>')
     if fromlist:
-        extra += ' [{}]'.format(', '.join(map(str, fromlist)))
+        extra += f" [{', '.join(map(str, fromlist))}]"
     frame_lineno = frame.f_lineno
 
     this = stack_add(extra + name, frame_name, frame_lineno, scope_name)
@@ -162,8 +162,7 @@ _real_compile = re._compile  # type: ignore
 
 
 def timed_compile(*args, **kwargs):
-    """Log how long it takes to compile a regex"""
-
+    """Log how long it takes to compile a regex."""
     # And who is requesting this?
     frame = sys._getframe(2)
     frame_name = frame.f_globals.get('__name__', '<unknown>')

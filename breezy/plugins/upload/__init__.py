@@ -143,8 +143,12 @@ Known Issues
 # remote files...
 
 
-from ... import version_info  # noqa: F401
-from ... import commands, config, hooks
+from ... import (
+    commands,
+    config,
+    hooks,
+    version_info,  # noqa: F401
+)
 
 
 def register_option(key, member):
@@ -208,5 +212,5 @@ def load_tests(loader, basic_tests, pattern):
         'tests',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["{}.{}".format(__name__, tmn) for tmn in testmod_names]))
+        [f"{__name__}.{tmn}" for tmn in testmod_names]))
     return basic_tests

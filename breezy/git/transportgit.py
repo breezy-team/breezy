@@ -23,31 +23,53 @@ from io import BytesIO
 
 from dulwich.errors import NoIndexPresent
 from dulwich.file import FileLocked, _GitFile
-from dulwich.object_store import (PACK_MODE, PACKDIR, PackBasedObjectStore,
-                                  read_packs_file)
+from dulwich.object_store import (
+    PACK_MODE,
+    PACKDIR,
+    PackBasedObjectStore,
+    read_packs_file,
+)
 from dulwich.objects import ShaFile
-from dulwich.pack import (PACK_SPOOL_FILE_MAX_SIZE, MemoryPackIndex, Pack,
-                          PackData, PackIndexer, PackInflater,
-                          PackStreamCopier, compute_file_sha, extend_pack,
-                          iter_sha1, load_pack_index_file, write_pack_header,
-                          write_pack_index, write_pack_object,
-                          write_pack_objects)
+from dulwich.pack import (
+    Pack,
+    PackData,
+    PackIndexer,
+    PackStreamCopier,
+    extend_pack,
+    iter_sha1,
+    load_pack_index_file,
+    write_pack_index,
+)
 from dulwich.refs import SymrefLoop
-from dulwich.repo import (BASE_DIRECTORIES, COMMONDIR, CONTROLDIR,
-                          INDEX_FILENAME, OBJECTDIR, SYMREF, BaseRepo,
-                          InfoRefsContainer, RefsContainer, check_ref_format,
-                          read_packed_refs, read_packed_refs_with_peeled,
-                          write_packed_refs)
+from dulwich.repo import (
+    BASE_DIRECTORIES,
+    COMMONDIR,
+    CONTROLDIR,
+    INDEX_FILENAME,
+    OBJECTDIR,
+    SYMREF,
+    BaseRepo,
+    InfoRefsContainer,
+    RefsContainer,
+    check_ref_format,
+    read_packed_refs,
+    read_packed_refs_with_peeled,
+    write_packed_refs,
+)
 
-from .. import osutils
+from .. import osutils, urlutils
 from .. import transport as _mod_transport
-from .. import ui, urlutils
-from ..errors import (AlreadyControlDirError, LockBroken, LockContention,
-                      NotLocalUrl, ReadError, TransportNotPossible)
+from ..errors import (
+    AlreadyControlDirError,
+    LockBroken,
+    LockContention,
+    NotLocalUrl,
+    ReadError,
+    TransportNotPossible,
+)
 from ..lock import LogicalLockResult
 from ..trace import warning
 from ..transport import FileExists, NoSuchFile
-from ..transport.local import LocalTransport
 
 
 class _RemoteGitFile(object):
@@ -121,7 +143,7 @@ class TransportRefsContainer(RefsContainer):
         self._peeled_refs = None
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self.transport)
+        return f"{self.__class__.__name__}({self.transport!r})"
 
     def _ensure_dir_exists(self, path):
         self.transport.clone(posixpath.dirname(path)).create_prefix()
@@ -240,7 +262,7 @@ class TransportRefsContainer(RefsContainer):
                 return None
             if header == SYMREF:
                 # Read only the first line
-                return header + next(iter(f)).rstrip(b"\r\n")
+                return header + f.read().splitlines()[0].rstrip(b"\r\n")
             else:
                 # Read only the first 40 bytes
                 return header + f.read(40 - len(SYMREF))
@@ -380,25 +402,25 @@ class TransportRefsContainer(RefsContainer):
         self._ensure_dir_exists(urlutils.quote_from_bytes(name))
         lockname = urlutils.quote_from_bytes(name + b".lock")
         try:
-            local_path = transport.local_abspath(
+            transport.local_abspath(
                 urlutils.quote_from_bytes(name))
-        except NotLocalUrl:
+        except NotLocalUrl as err:
             # This is racy, but what can we do?
             if transport.has(lockname):
-                raise LockContention(name)
+                raise LockContention(name) from err
             transport.put_bytes(lockname, b'Locked by brz-git')
             return LogicalLockResult(lambda: transport.delete(lockname))
         else:
             try:
                 gf = TransportGitFile(transport, urlutils.quote_from_bytes(name), 'wb')
             except FileLocked as e:
-                raise LockContention(name, e)
+                raise LockContention(name, e) from e
             else:
                 def unlock():
                     try:
                         transport.delete(lockname)
-                    except NoSuchFile:
-                        raise LockBroken(lockname)
+                    except NoSuchFile as err:
+                        raise LockBroken(lockname) from err
                     # GitFile.abort doesn't care if the lock has already
                     # disappeared
                     gf.abort()
@@ -452,6 +474,7 @@ class TransportRepo(BaseRepo):
         object_store = TransportObjectStore.from_config(
             self._commontransport.clone(OBJECTDIR),
             config)
+        refs_container: RefsContainer
         if refs_text is not None:
             refs_container = InfoRefsContainer(BytesIO(refs_text))
             try:
@@ -491,8 +514,8 @@ class TransportRepo(BaseRepo):
         try:
             return osutils.supports_symlinks(self.path)
         except NotLocalUrl:
-            # TODO(jelmer): Query the transport
-            return sys.platform != 'win32'
+            # Assume yes?
+            return True
 
     def get_named_file(self, path):
         """Get a file from the control dir with a specific name.
@@ -550,15 +573,15 @@ class TransportRepo(BaseRepo):
         return StackedConfig(backends, writable=writable)
 
     def __repr__(self):
-        return "<{} for {!r}>".format(self.__class__.__name__, self.transport)
+        return f"<{self.__class__.__name__} for {self.transport!r}>"
 
     @classmethod
     def init(cls, transport, bare=False):
         if not bare:
             try:
                 transport.mkdir(".git")
-            except FileExists:
-                raise AlreadyControlDirError(transport.base)
+            except FileExists as err:
+                raise AlreadyControlDirError(transport.base) from err
             control_transport = transport.clone(".git")
         else:
             control_transport = transport
@@ -569,8 +592,8 @@ class TransportRepo(BaseRepo):
                 pass
         try:
             control_transport.mkdir(OBJECTDIR)
-        except FileExists:
-            raise AlreadyControlDirError(transport.base)
+        except FileExists as err:
+            raise AlreadyControlDirError(transport.base) from err
         TransportObjectStore.init(control_transport.clone(OBJECTDIR))
         ret = cls(transport, bare)
         ret.refs.set_symbolic_ref(b"HEAD", b"refs/heads/master")
@@ -619,7 +642,7 @@ class TransportObjectStore(PackBasedObjectStore):
         return self.transport == other.transport
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self.transport)
+        return f"{self.__class__.__name__}({self.transport!r})"
 
     @property
     def alternates(self):
@@ -718,12 +741,12 @@ class TransportObjectStore(PackBasedObjectStore):
 
     def _remove_loose_object(self, sha):
         path = osutils.joinpath(self._split_loose_object(sha))
-        self.transport.delete(urlutils.quote_from_bytes(path))
+        self.transport.delete(urlutils.quote(path))
 
     def _get_loose_object(self, sha):
         path = osutils.joinpath(self._split_loose_object(sha))
         try:
-            with self.transport.get(urlutils.quote_from_bytes(path)) as f:
+            with self.transport.get(urlutils.quote(path)) as f:
                 return ShaFile.from_file(f)
         except NoSuchFile:
             return None

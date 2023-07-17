@@ -18,8 +18,9 @@
 
 
 from breezy import controldir, errors
-from breezy.tag import DisabledTags, MemoryTags
 from breezy.tests import TestCase, TestCaseWithTransport
+
+from ..tag import DisabledTags, MemoryTags
 
 
 class TestTagRevisionRenames(TestCaseWithTransport):
@@ -55,9 +56,9 @@ class TestTagMerging(TestCaseWithTransport):
         new_branch = self.make_branch_supporting_tags('new')
         # just to make sure this test is valid
         self.assertFalse(old_branch.supports_tags(),
-                         "%s is expected to not support tags but does" % old_branch)
+                         f"{old_branch} is expected to not support tags but does")
         self.assertTrue(new_branch.supports_tags(),
-                        "%s is expected to support tags but does not" % new_branch)
+                        f"{new_branch} is expected to support tags but does not")
         # there are no tags in the old one, and we can merge from it into the
         # new one
         old_branch.tags.merge_to(new_branch.tags)

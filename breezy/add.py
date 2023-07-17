@@ -50,7 +50,7 @@ class AddAction:
         :param kind: The kind of the object being added.
         """
         if self.should_print:
-            self._to_file.write('adding %s\n' % _quote(path))
+            self._to_file.write(f'adding {_quote(path)}\n')
         return None
 
     def skip_file(self, tree, path, kind, stat_value=None):
@@ -69,25 +69,25 @@ class AddAction:
 
 
 class AddWithSkipLargeAction(AddAction):
-    """A class that can decide to skip a file if it's considered too large"""
+    """A class that can decide to skip a file if it's considered too large."""
 
-    _maxSize = None
+    _max_size = None
 
     def skip_file(self, tree, path, kind, stat_value=None):
         if kind != 'file':
             return False
         opt_name = 'add.maximum_file_size'
-        if self._maxSize is None:
+        if self._max_size is None:
             config = tree.get_config_stack()
-            self._maxSize = config.get(opt_name)
+            self._max_size = config.get(opt_name)
         if stat_value is None:
             file_size = os.path.getsize(path)
         else:
             file_size = stat_value.st_size
-        if self._maxSize > 0 and file_size > self._maxSize:
+        if self._max_size > 0 and file_size > self._max_size:
             ui.ui_factory.show_warning(gettext(
                 "skipping {0} (larger than {1} of {2} bytes)").format(
-                path, opt_name, self._maxSize))
+                path, opt_name, self._max_size))
             return True
         return False
 
@@ -107,8 +107,7 @@ class AddFromBaseAction(AddAction):
         file_id, base_path = self._get_base_file_id(path, parent_ie)
         if file_id is not None:
             if self.should_print:
-                self._to_file.write('adding %s w/ file id from %s\n'
-                                    % (path, base_path))
+                self._to_file.write(f'adding {path} w/ file id from {base_path}\n')
         else:
             # we aren't doing anything special, so let the default
             # reporter happen

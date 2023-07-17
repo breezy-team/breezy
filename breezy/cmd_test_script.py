@@ -39,7 +39,8 @@ class cmd_test_script(commands.Command):
     def run(self, infile, null_output=False):
         # local imports to defer testtools dependency
         from breezy import tests
-        from breezy.tests.script import TestCaseWithTransportAndScript
+
+        from .tests.script import TestCaseWithTransportAndScript
 
         with open(infile) as f:
             script = f.read()

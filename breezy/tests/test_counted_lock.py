@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for breezy.counted_lock"""
+"""Tests for breezy.counted_lock."""
 
 from ..counted_lock import CountedLock
 from ..errors import LockError, LockNotHeld, ReadOnlyError, TokenMismatch
@@ -59,12 +59,11 @@ class DummyLock:
 
     def _assert_locked(self):
         if not self._lock_mode:
-            raise LockError("{} is not locked".format(self))
+            raise LockError(f"{self} is not locked")
 
     def _assert_not_locked(self):
         if self._lock_mode:
-            raise LockError("%s is already locked in mode %r" %
-                            (self, self._lock_mode))
+            raise LockError(f"{self} is already locked in mode {self._lock_mode!r}")
 
     def validate_token(self, token):
         if token == 'token':

@@ -20,7 +20,7 @@ from .. import lru_cache, tests
 
 
 def walk_lru(lru):
-    """Test helper to walk the LRU list and assert its consistency"""
+    """Test helper to walk the LRU list and assert its consistency."""
     node = lru._most_recently_used
     if node is not None:
         if node.prev is not None:
@@ -67,18 +67,18 @@ class TestLRUCache(tests.TestCase):
     def test_missing(self):
         cache = lru_cache.LRUCache(max_cache=10)
 
-        self.assertFalse('foo' in cache)
+        self.assertNotIn('foo', cache)
         self.assertRaises(KeyError, cache.__getitem__, 'foo')
 
         cache['foo'] = 'bar'
         self.assertEqual('bar', cache['foo'])
-        self.assertTrue('foo' in cache)
-        self.assertFalse('bar' in cache)
+        self.assertIn('foo', cache)
+        self.assertNotIn('bar', cache)
 
     def test_map_None(self):
         # Make sure that we can properly map None as a key.
         cache = lru_cache.LRUCache(max_cache=10)
-        self.assertFalse(None in cache)
+        self.assertNotIn(None, cache)
         cache[None] = 1
         self.assertEqual(1, cache[None])
         cache[None] = 2
@@ -105,8 +105,8 @@ class TestLRUCache(tests.TestCase):
         # With a max cache of 1, adding 'baz' should pop out 'foo'
         cache['baz'] = 'biz'
 
-        self.assertFalse('foo' in cache)
-        self.assertTrue('baz' in cache)
+        self.assertNotIn('foo', cache)
+        self.assertIn('baz', cache)
 
         self.assertEqual('biz', cache['baz'])
 
@@ -122,7 +122,7 @@ class TestLRUCache(tests.TestCase):
         # This must kick out 'foo' because it was the last accessed
         cache['nub'] = 'in'
 
-        self.assertFalse('foo' in cache)
+        self.assertNotIn('foo', cache)
 
     def test_len(self):
         cache = lru_cache.LRUCache(max_cache=10, after_cleanup_count=10)
@@ -327,7 +327,7 @@ class TestLRUSizeCache(tests.TestCase):
         self.assertEqual({'test': 'key'}, cache.as_dict())
 
     def test_adding_clears_cache_based_on_size(self):
-        """The cache is cleared in LRU order until small enough"""
+        """The cache is cleared in LRU order until small enough."""
         cache = lru_cache.LRUSizeCache(max_size=20)
         cache['key1'] = 'value'  # 5 chars
         cache['key2'] = 'value2'  # 6 chars

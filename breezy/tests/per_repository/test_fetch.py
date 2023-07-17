@@ -18,9 +18,10 @@
 
 from breezy import controldir, errors, gpg, repository
 from breezy.bzr import remote
-from breezy.bzr.inventory import ROOT_ID
 from breezy.tests import TestNotApplicable, TestSkipped
 from breezy.tests.per_repository import TestCaseWithRepository
+
+from ...bzr.inventory import ROOT_ID
 
 
 class TestFetchSameRepository(TestCaseWithRepository):
@@ -32,7 +33,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])
         tree_a.add('foo')
-        rev1 = tree_a.commit('rev1')
+        tree_a.commit('rev1')
         # fetch with a default limit (grab everything)
         repo = self.make_repository('b')
         if (tree_a.branch.repository.supports_rich_root() and not
@@ -65,7 +66,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
             format.check_conversion_target(f.repository_format)
             # if we cannot convert data to knit3, skip the test.
         except errors.BadConversionTarget as e:
-            raise TestSkipped(str(e))
+            raise TestSkipped(str(e)) from e
         self.get_transport().mkdir('b')
         b_bzrdir = f.initialize(self.get_url('b'))
         knit3_repo = b_bzrdir.create_repository()
@@ -85,9 +86,9 @@ class TestFetchSameRepository(TestCaseWithRepository):
         except errors.NotLocalUrl:
             try:
                 tree_b = b_branch.create_checkout('b', lightweight=True)
-            except errors.NotLocalUrl:
+            except errors.NotLocalUrl as err:
                 raise TestSkipped("cannot make working tree with transport %r"
-                                  % b_bzrdir.transport)
+                                  % b_bzrdir.transport) from err
         rev2 = tree_b.commit('no change')
         rev2_tree = knit3_repo.revision_tree(rev2)
         self.assertEqual(rev1, rev2_tree.get_file_revision(''))
@@ -103,7 +104,8 @@ class TestFetchSameRepository(TestCaseWithRepository):
         :param result: A parents list for the inventories.get_parent_map call.
         :param snapshots: An iterable of snapshot parameters for
             BranchBuilder.build_snapshot.
-        '"""
+        '
+        """
         # This overlaps slightly with the tests for commit builder about graph
         # consistency.
         # Cases:
@@ -235,7 +237,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
 
     def test_fetch_all_from_self(self):
         tree = self.make_branch_and_tree('.')
-        rev_id = tree.commit('one')
+        tree.commit('one')
         # This needs to be a new copy of the repository, if this changes, the
         # test needs to be rewritten
         repo = tree.branch.repository.controldir.open_repository()
@@ -251,7 +253,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
 
     def test_fetch_missing_from_self(self):
         tree = self.make_branch_and_tree('.')
-        rev_id = tree.commit('one')
+        tree.commit('one')
         # Even though the fetch() is a NO-OP it should assert the revision id
         # is present
         repo = tree.branch.repository.controldir.open_repository()
@@ -266,10 +268,10 @@ class TestFetchSameRepository(TestCaseWithRepository):
         repo.start_write_group()
         try:
             repo.sign_revision(rev1, gpg.LoopbackGPGStrategy(None))
-        except errors.UnsupportedOperation:
+        except errors.UnsupportedOperation as err:
             self.assertFalse(repo._format.supports_revision_signatures)
             raise TestNotApplicable(
-                "repository format does not support signatures")
+                "repository format does not support signatures") from err
         repo.commit_write_group()
         repo.unlock()
         return repo, rev1
@@ -302,7 +304,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
         # no-op the second time.
         repo = self.make_repository('repo')
         tree = self.make_branch_and_tree('tree')
-        revision_id = tree.commit('test')
+        tree.commit('test')
         repo.fetch(tree.branch.repository)
         repo.fetch(tree.branch.repository)
 

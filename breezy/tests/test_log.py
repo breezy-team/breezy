@@ -15,11 +15,9 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-import re
-from io import BytesIO, StringIO
+from io import StringIO
 
-from .. import (branchbuilder, errors, gpg, log, registry, revision,
-                revisionspec, tests, trace)
+from .. import branchbuilder, errors, gpg, log, registry, revision, revisionspec, tests
 
 
 class TestLogMixin:
@@ -78,7 +76,7 @@ class TestCaseForLogFormatter(tests.TestCaseWithTransport, TestLogMixin):
         return wt
 
     def make_commits_with_trailing_newlines(self, wt):
-        """Helper method for LogFormatter tests"""
+        """Helper method for LogFormatter tests."""
         b = wt.branch
         b.nick = 'test'
         self.build_tree_contents([('a', b'hello moto\n')])
@@ -125,7 +123,7 @@ class LogCatcher(log.LogFormatter):
     preferred_levels = 0
 
     def __init__(self, *args, **kwargs):
-        kwargs.update(dict(to_file=None))
+        kwargs.update({'to_file': None})
         super().__init__(*args, **kwargs)
         self.revisions = []
 
@@ -216,9 +214,9 @@ class TestShowLog(tests.TestCaseWithTransport):
         lf = LogCatcher()
         log.show_log(wt.branch, lf, verbose=True)
         committed_msg = lf.revisions[0].rev.message
-        if wt.branch.repository._serializer.squashes_xml_invalid_characters:
+        if wt.branch.repository._revision_serializer.squashes_xml_invalid_characters:
             self.assertNotEqual(msg, committed_msg)
-            self.assertTrue(len(committed_msg) > len(msg))
+            self.assertGreater(len(committed_msg), len(msg))
         else:
             self.assertEqual(msg, committed_msg)
 
@@ -236,7 +234,7 @@ class TestShowLog(tests.TestCaseWithTransport):
         self.assertEqual(msg, committed_msg)
 
     def test_deltas_in_merge_revisions(self):
-        """Check deltas created for both mainline and merge revisions"""
+        """Check deltas created for both mainline and merge revisions."""
         wt = self.make_branch_and_tree('parent')
         self.build_tree(['parent/file1', 'parent/file2', 'parent/file3'])
         wt.add('file1')
@@ -303,8 +301,8 @@ class TestShowLog(tests.TestCaseWithTransport):
         log.show_log(trunk.branch, lf, file_id)
         try:
             self.assertEqual(['2', '1.1.1'], [r.revno for r in lf.revisions])
-        except AssertionError:
-            raise tests.KnownFailure("bug #842695")
+        except AssertionError as err:
+            raise tests.KnownFailure("bug #842695") from err
 
 
 class TestFormatSignatureValidity(tests.TestCaseWithTransport):
@@ -315,7 +313,8 @@ class TestFormatSignatureValidity(tests.TestCaseWithTransport):
 
     def test_format_signature_validity_utf(self):
         """Check that GPG signatures containing UTF-8 names are formatted
-        correctly."""
+        correctly.
+        """
         wt = self.make_branch_and_tree('.')
         revid = wt.commit('empty commit')
         repo = wt.branch.repository
@@ -374,7 +373,7 @@ class TestShortLogFormatter(TestCaseForLogFormatter):
 Use --include-merged or -n0 to see merged revisions.
 """,
                                    wt.branch, log.ShortLogFormatter,
-                                   formatter_kwargs=dict(show_advice=True))
+                                   formatter_kwargs={'show_advice': True})
 
     def test_short_log_with_merges_and_range(self):
         wt = self._prepare_tree_with_merges()
@@ -391,7 +390,7 @@ Use --include-merged or -n0 to see merged revisions.
 
 """,
                                    wt.branch, log.ShortLogFormatter,
-                                   show_log_kwargs=dict(start_revision=2, end_revision=3))
+                                   show_log_kwargs={'start_revision': 2, 'end_revision': 3})
 
     def test_short_log_with_tags(self):
         wt = self._prepare_tree_with_merges(with_tags=True)
@@ -418,7 +417,7 @@ Use --include-merged or -n0 to see merged revisions.
 
 """,
                                    wt.branch, log.ShortLogFormatter,
-                                   show_log_kwargs=dict(start_revision=rev, end_revision=rev))
+                                   show_log_kwargs={'start_revision': rev, 'end_revision': rev})
 
     def test_show_ids(self):
         wt = self.make_branch_and_tree('parent')
@@ -444,7 +443,7 @@ Use --include-merged or -n0 to see merged revisions.
 
 """,
                                    wt.branch, log.ShortLogFormatter,
-                                   formatter_kwargs=dict(levels=0, show_ids=True))
+                                   formatter_kwargs={'levels': 0, 'show_ids': True})
 
 
 class TestShortLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
@@ -466,7 +465,7 @@ class TestShortLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
 
 """,
                                    wt.branch, log.ShortLogFormatter,
-                                   formatter_kwargs=dict(levels=0))
+                                   formatter_kwargs={'levels': 0})
 
     def test_short_merge_revs_log_single_merge_revision(self):
         wt = self._prepare_tree_with_merges()
@@ -478,14 +477,14 @@ class TestShortLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
 
 """,
                                    wt.branch, log.ShortLogFormatter,
-                                   formatter_kwargs=dict(levels=0),
-                                   show_log_kwargs=dict(start_revision=rev, end_revision=rev))
+                                   formatter_kwargs={'levels': 0},
+                                   show_log_kwargs={'start_revision': rev, 'end_revision': rev})
 
 
 class TestLongLogFormatter(TestCaseForLogFormatter):
 
     def test_verbose_log(self):
-        """Verbose log includes changed files
+        """Verbose log includes changed files.
 
         bug #4676
         """
@@ -502,7 +501,7 @@ added:
   a
 ''',
                                    wt.branch, log.LongLogFormatter,
-                                   show_log_kwargs=dict(verbose=True))
+                                   show_log_kwargs={'verbose': True})
 
     def test_merges_are_indented_by_level(self):
         wt = self.make_branch_and_tree('parent')
@@ -554,8 +553,8 @@ message:
   first post
 """,
                                    wt.branch, log.LongLogFormatter,
-                                   formatter_kwargs=dict(levels=0),
-                                   show_log_kwargs=dict(verbose=True))
+                                   formatter_kwargs={'levels': 0},
+                                   show_log_kwargs={'verbose': True})
 
     def test_verbose_merge_revisions_contain_deltas(self):
         wt = self.make_branch_and_tree('parent')
@@ -603,8 +602,8 @@ added:
   f2
 """,
                                    wt.branch, log.LongLogFormatter,
-                                   formatter_kwargs=dict(levels=0),
-                                   show_log_kwargs=dict(verbose=True))
+                                   formatter_kwargs={'levels': 0},
+                                   show_log_kwargs={'verbose': True})
 
     def test_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
@@ -638,7 +637,7 @@ message:
 
     def test_author_in_log(self):
         """Log includes the author name if it's set in
-        the revision properties
+        the revision properties.
         """
         wt = self.make_standard_commit('test_author_log',
                                        authors=['John Doe <jdoe@example.com>',
@@ -780,13 +779,13 @@ message:
   first post
 """,
                                    wt.branch, log.LongLogFormatter,
-                                   formatter_kwargs=dict(levels=0, show_ids=True))
+                                   formatter_kwargs={'levels': 0, 'show_ids': True})
 
 
 class TestLongLogFormatterWithoutMergeRevisions(TestCaseForLogFormatter):
 
     def test_long_verbose_log(self):
-        """Verbose log includes changed files
+        """Verbose log includes changed files.
 
         bug #4676
         """
@@ -803,8 +802,8 @@ added:
   a
 """,
                                    wt.branch, log.LongLogFormatter,
-                                   formatter_kwargs=dict(levels=1),
-                                   show_log_kwargs=dict(verbose=True))
+                                   formatter_kwargs={'levels': 1},
+                                   show_log_kwargs={'verbose': True})
 
     def test_long_verbose_contain_deltas(self):
         wt = self.make_branch_and_tree('parent')
@@ -841,8 +840,8 @@ added:
   f2
 """,
                                    wt.branch, log.LongLogFormatter,
-                                   formatter_kwargs=dict(levels=1),
-                                   show_log_kwargs=dict(verbose=True))
+                                   formatter_kwargs={'levels': 1},
+                                   show_log_kwargs={'verbose': True})
 
     def test_long_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
@@ -873,11 +872,11 @@ message:
   simple log message
 """,
                                    b, log.LongLogFormatter,
-                                   formatter_kwargs=dict(levels=1))
+                                   formatter_kwargs={'levels': 1})
 
     def test_long_author_in_log(self):
         """Log includes the author name if it's set in
-        the revision properties
+        the revision properties.
         """
         wt = self.make_standard_commit('test_author_log')
         self.assertFormatterResult(b"""\
@@ -891,7 +890,7 @@ message:
   add a
 """,
                                    wt.branch, log.LongLogFormatter,
-                                   formatter_kwargs=dict(levels=1))
+                                   formatter_kwargs={'levels': 1})
 
     def test_long_properties_in_log(self):
         """Log includes the custom properties returned by the registered
@@ -917,13 +916,13 @@ message:
   add a
 """,
                                    wt.branch, log.LongLogFormatter,
-                                   formatter_kwargs=dict(levels=1))
+                                   formatter_kwargs={'levels': 1})
 
 
 class TestLineLogFormatter(TestCaseForLogFormatter):
 
     def test_line_log(self):
-        """Line log should show revno
+        """Line log should show revno.
 
         bug #5162
         """
@@ -953,7 +952,7 @@ class TestLineLogFormatter(TestCaseForLogFormatter):
 1.1.1: Joe Foo 2005-11-22 rev-merged
 """,
                                    wt.branch, log.LineLogFormatter,
-                                   show_log_kwargs=dict(start_revision=rev, end_revision=rev))
+                                   show_log_kwargs={'start_revision': rev, 'end_revision': rev})
 
     def test_line_log_with_tags(self):
         wt = self._prepare_tree_with_merges(with_tags=True)
@@ -968,7 +967,7 @@ class TestLineLogFormatter(TestCaseForLogFormatter):
 class TestLineLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
 
     def test_line_merge_revs_log(self):
-        """Line log should show revno
+        """Line log should show revno.
 
         bug #5162
         """
@@ -988,8 +987,8 @@ class TestLineLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
 1.1.1: Joe Foo 2005-11-22 rev-merged
 """,
                                    wt.branch, log.LineLogFormatter,
-                                   formatter_kwargs=dict(levels=0),
-                                   show_log_kwargs=dict(start_revision=rev, end_revision=rev))
+                                   formatter_kwargs={'levels': 0},
+                                   show_log_kwargs={'start_revision': rev, 'end_revision': rev})
 
     def test_line_merge_revs_log_with_merges(self):
         wt = self._prepare_tree_with_merges()
@@ -999,7 +998,7 @@ class TestLineLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
 1: Joe Foo 2005-11-22 rev-1
 """,
                                    wt.branch, log.LineLogFormatter,
-                                   formatter_kwargs=dict(levels=0))
+                                   formatter_kwargs={'levels': 0})
 
 
 class TestGnuChangelogFormatter(TestCaseForLogFormatter):
@@ -1037,7 +1036,7 @@ class TestGnuChangelogFormatter(TestCaseForLogFormatter):
 
 ''',
                                    wt.branch, log.GnuChangelogLogFormatter,
-                                   show_log_kwargs=dict(verbose=True))
+                                   show_log_kwargs={'verbose': True})
 
 
 class TestShowChangedRevisions(tests.TestCaseWithTransport):
@@ -1057,12 +1056,17 @@ class TestLogFormatter(tests.TestCase):
 
     def setUp(self):
         super().setUp()
-        self.rev = revision.Revision(b'a-id')
+        self.rev = revision.Revision(
+            b'a-id', parent_ids=[], properties={}, message='', committer='',
+            timestamp=0, timezone=0, inventory_sha1=None)
         self.lf = log.LogFormatter(None)
 
     def test_short_committer(self):
         def assertCommitter(expected, committer):
-            self.rev.committer = committer
+            self.rev = revision.Revision(
+                b'a-id', parent_ids=[], properties={}, message='',
+                committer=committer,
+                timestamp=0, timezone=0, inventory_sha1=None)
             self.assertEqual(expected, self.lf.short_committer(self.rev))
 
         assertCommitter('John Doe', 'John Doe <jdoe@example.com>')
@@ -1074,7 +1078,9 @@ class TestLogFormatter(tests.TestCase):
 
     def test_short_author(self):
         def assertAuthor(expected, author):
-            self.rev.properties['author'] = author
+            self.rev = revision.Revision(
+                b'a-id', parent_ids=[], properties={'author': author}, message='', committer='',
+                timestamp=0, timezone=0, inventory_sha1=None)
             self.assertEqual(expected, self.lf.short_author(self.rev))
 
         assertAuthor('John Smith', 'John Smith <jsmith@example.com>')
@@ -1084,12 +1090,19 @@ class TestLogFormatter(tests.TestCase):
         assertAuthor('John Smith', 'John Smith jsmith@example.com')
 
     def test_short_author_from_committer(self):
-        self.rev.committer = 'John Doe <jdoe@example.com>'
+        self.rev = revision.Revision(
+            b'a-id', parent_ids=[], properties={}, message='',
+            committer='John Doe <jdoe@example.com>', timestamp=0, timezone=0,
+            inventory_sha1=None)
         self.assertEqual('John Doe', self.lf.short_author(self.rev))
 
     def test_short_author_from_authors(self):
-        self.rev.properties['authors'] = ('John Smith <jsmith@example.com>\n'
-                                          'Jane Rey <jrey@example.com>')
+        self.rev = revision.Revision(
+            b'a-id', parent_ids=[],
+            properties={'authors': 'John Smith <jsmith@example.com>\nJane Rey <jrey@example.com>'},
+            message='', committer='',
+            timestamp=0, timezone=0,
+            inventory_sha1=None)
         self.assertEqual('John Smith', self.lf.short_author(self.rev))
 
 
@@ -1372,7 +1385,7 @@ class TestLogWithBugs(TestCaseForLogFormatter, TestLogMixin):
             log._bugs_properties_handler)
 
     def make_commits_with_bugs(self):
-        """Helper method for LogFormatter tests"""
+        """Helper method for LogFormatter tests."""
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b'])
         tree.add('a')
@@ -1490,7 +1503,7 @@ class TestLogForAuthors(TestCaseForLogFormatter):
                                                      'Jane Rey <jrey@example.com>'])
 
     def assertFormatterResult(self, formatter, who, result):
-        formatter_kwargs = dict()
+        formatter_kwargs = {}
         if who is not None:
             author_list_handler = log.author_list_registry.get(who)
             formatter_kwargs['author_list_handler'] = author_list_handler
@@ -1695,8 +1708,7 @@ class TestLogExcludeAncestry(tests.TestCaseWithTransport):
 
 class TestLogDefaults(TestCaseForLogFormatter):
     def test_default_log_level(self):
-        """
-        Test to ensure that specifying 'levels=1' to make_log_request_dict
+        """Test to ensure that specifying 'levels=1' to make_log_request_dict
         doesn't get overwritten when using a LogFormatter that supports more
         detail.
         Fixes bug #747958.

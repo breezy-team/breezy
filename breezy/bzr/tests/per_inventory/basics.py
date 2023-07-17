@@ -14,23 +14,24 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for different inventory implementations"""
+"""Tests for different inventory implementations."""
 
 # NOTE: Don't import Inventory here, to make sure that we don't accidentally
 # hardcode that when we should be using self.make_inventory
 
 from breezy import errors, osutils
 from breezy.bzr import inventory
-from breezy.bzr.inventory import (InventoryDirectory, InventoryEntry,
-                                  InventoryFile, InventoryLink, TreeReference)
 from breezy.bzr.tests.per_inventory import TestCaseWithInventory
+
+from ...inventory import InventoryFile, InventoryLink
+from ...inventory_delta import InventoryDelta
 
 
 class TestInventory(TestCaseWithInventory):
 
     def make_init_inventory(self):
         inv = inventory.Inventory(b'tree-root')
-        inv.revision = b'initial-rev'
+        inv.revision_id = b'initial-rev'
         inv.root.revision = b'initial-rev'
         return self.inv_to_test_inv(inv)
 
@@ -76,41 +77,41 @@ class TestInventoryCreateByApplyDelta(TestInventory):
 
     def test_add(self):
         inv = self.make_init_inventory()
-        inv = inv.create_by_apply_delta([
+        inv = inv.create_by_apply_delta(InventoryDelta([
             (None, "a", b"a-id", self.make_file(b'a-id', 'a', b'tree-root')),
-            ], b'new-test-rev')
+            ]), b'new-test-rev')
         self.assertEqual('a', inv.id2path(b'a-id'))
 
     def test_delete(self):
         inv = self.make_init_inventory()
-        inv = inv.create_by_apply_delta([
+        inv = inv.create_by_apply_delta(InventoryDelta([
             (None, "a", b"a-id", self.make_file(b'a-id', 'a', b'tree-root')),
-            ], b'new-rev-1')
+            ]), b'new-rev-1')
         self.assertEqual('a', inv.id2path(b'a-id'))
-        inv = inv.create_by_apply_delta([
+        inv = inv.create_by_apply_delta(InventoryDelta([
             ("a", None, b"a-id", None),
-            ], b'new-rev-2')
+            ]), b'new-rev-2')
         self.assertRaises(errors.NoSuchId, inv.id2path, b'a-id')
 
     def test_rename(self):
         inv = self.make_init_inventory()
-        inv = inv.create_by_apply_delta([
+        inv = inv.create_by_apply_delta(InventoryDelta([
             (None, "a", b"a-id", self.make_file(b'a-id', 'a', b'tree-root')),
-            ], b'new-rev-1')
+            ]), b'new-rev-1')
         self.assertEqual('a', inv.id2path(b'a-id'))
         a_ie = inv.get_entry(b'a-id')
         b_ie = self.make_file(a_ie.file_id, "b", a_ie.parent_id)
         inv = inv.create_by_apply_delta(
-            [("a", "b", b"a-id", b_ie)], b'new-rev-2')
+            InventoryDelta([("a", "b", b"a-id", b_ie)]), b'new-rev-2')
         self.assertEqual("b", inv.id2path(b'a-id'))
 
     def test_illegal(self):
         # A file-id cannot appear in a delta more than once
         inv = self.make_init_inventory()
-        self.assertRaises(errors.InconsistentDelta, inv.create_by_apply_delta, [
+        self.assertRaises(errors.InconsistentDelta, inv.create_by_apply_delta, InventoryDelta([
             (None, "a", b"id-1", self.make_file(b'id-1', 'a', b'tree-root')),
             (None, "b", b"id-1", self.make_file(b'id-1', 'b', b'tree-root')),
-            ], b'new-rev-1')
+            ]), b'new-rev-1')
 
 
 class TestInventoryReads(TestInventory):
@@ -121,9 +122,9 @@ class TestInventoryReads(TestInventory):
         self.assertTrue(inv.is_root(b'tree-root'))
         self.assertFalse(inv.is_root(b'booga'))
         ie = inv.get_entry(b'tree-root').copy()
-        ie.file_id = b'booga'
-        inv = inv.create_by_apply_delta([("", None, b"tree-root", None),
-                                         (None, "", b"booga", ie)], b'new-rev-2')
+        ie._file_id = b'booga'
+        inv = inv.create_by_apply_delta(InventoryDelta([("", None, b"tree-root", None),
+                                         (None, "", b"booga", ie)]), b'new-rev-2')
         self.assertFalse(inv.is_root(b'TREE_ROOT'))
         self.assertTrue(inv.is_root(b'booga'))
 
@@ -182,7 +183,7 @@ class TestInventoryReads(TestInventory):
         self.assertEqual((ie, resolved, remaining), (None, None, None))
 
     def test_non_directory_children(self):
-        """Test path2id when a parent directory has no children"""
+        """Test path2id when a parent directory has no children."""
         inv = inventory.Inventory(b'tree-root')
         inv.add(self.make_file(b'file-id', 'file', b'tree-root'))
         inv.add(self.make_link(b'link-id', 'link', b'tree-root'))
@@ -248,21 +249,6 @@ class TestInventoryReads(TestInventory):
             ], [(path, ie.file_id) for path, ie in inv.iter_entries(
                 from_dir=b'src-id', recursive=False)])
 
-    def test_iter_just_entries(self):
-        inv = self.prepare_inv_with_nested_dirs()
-        self.assertEqual([
-            b'a-id',
-            b'bye-id',
-            b'doc-id',
-            b'hello-id',
-            b'makefile-id',
-            b'src-id',
-            b'sub-id',
-            b'tree-root',
-            b'zz-id',
-            b'zzc-id',
-            ], sorted([ie.file_id for ie in inv.iter_just_entries()]))
-
     def test_iter_entries_by_dir(self):
         inv = self. prepare_inv_with_nested_dirs()
         self.assertEqual([
@@ -289,9 +275,9 @@ class TestInventoryReads(TestInventory):
             ('src/zz.c', b'zzc-id'),
             ('src/sub/a', b'a-id'),
             ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
-                specific_file_ids=(b'a-id', b'zzc-id', b'doc-id', b'tree-root',
+                specific_file_ids={b'a-id', b'zzc-id', b'doc-id', b'tree-root',
                                    b'hello-id', b'bye-id', b'zz-id', b'src-id', b'makefile-id',
-                                   b'sub-id'))])
+                                   b'sub-id'})])
 
         self.assertEqual([
             ('Makefile', b'makefile-id'),
@@ -302,39 +288,39 @@ class TestInventoryReads(TestInventory):
             ('src/zz.c', b'zzc-id'),
             ('src/sub/a', b'a-id'),
             ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
-                specific_file_ids=(b'a-id', b'zzc-id', b'doc-id',
-                                   b'hello-id', b'bye-id', b'zz-id', b'makefile-id'))])
+                specific_file_ids={b'a-id', b'zzc-id', b'doc-id',
+                                   b'hello-id', b'bye-id', b'zz-id', b'makefile-id'})])
 
         self.assertEqual([
             ('Makefile', b'makefile-id'),
             ('src/bye.c', b'bye-id'),
             ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
-                specific_file_ids=(b'bye-id', b'makefile-id'))])
+                specific_file_ids={b'bye-id', b'makefile-id'})])
 
         self.assertEqual([
             ('Makefile', b'makefile-id'),
             ('src/bye.c', b'bye-id'),
             ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
-                specific_file_ids=(b'bye-id', b'makefile-id'))])
+                specific_file_ids={b'bye-id', b'makefile-id'})])
 
         self.assertEqual([
             ('src/bye.c', b'bye-id'),
             ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
-                specific_file_ids=(b'bye-id',))])
+                specific_file_ids={b'bye-id'})])
 
 
 class TestInventoryFiltering(TestInventory):
 
     def test_inv_filter_empty(self):
         inv = self.prepare_inv_with_nested_dirs()
-        new_inv = inv.filter([])
+        new_inv = inv.filter(set())
         self.assertEqual([
             ('', b'tree-root'),
             ], [(path, ie.file_id) for path, ie in new_inv.iter_entries()])
 
     def test_inv_filter_files(self):
         inv = self.prepare_inv_with_nested_dirs()
-        new_inv = inv.filter([b'zz-id', b'hello-id', b'a-id'])
+        new_inv = inv.filter({b'zz-id', b'hello-id', b'a-id'})
         self.assertEqual([
             ('', b'tree-root'),
             ('src', b'src-id'),
@@ -346,7 +332,7 @@ class TestInventoryFiltering(TestInventory):
 
     def test_inv_filter_dirs(self):
         inv = self.prepare_inv_with_nested_dirs()
-        new_inv = inv.filter([b'doc-id', b'sub-id'])
+        new_inv = inv.filter({b'doc-id', b'sub-id'})
         self.assertEqual([
             ('', b'tree-root'),
             ('doc', b'doc-id'),
@@ -357,7 +343,7 @@ class TestInventoryFiltering(TestInventory):
 
     def test_inv_filter_files_and_dirs(self):
         inv = self.prepare_inv_with_nested_dirs()
-        new_inv = inv.filter([b'makefile-id', b'src-id'])
+        new_inv = inv.filter({b'makefile-id', b'src-id'})
         self.assertEqual([
             ('', b'tree-root'),
             ('Makefile', b'makefile-id'),
@@ -371,7 +357,7 @@ class TestInventoryFiltering(TestInventory):
 
     def test_inv_filter_entry_not_present(self):
         inv = self.prepare_inv_with_nested_dirs()
-        new_inv = inv.filter([b'not-present-id'])
+        new_inv = inv.filter({b'not-present-id'})
         self.assertEqual([
             ('', b'tree-root'),
             ], [(path, ie.file_id) for path, ie in new_inv.iter_entries()])

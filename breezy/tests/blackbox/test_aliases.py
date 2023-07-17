@@ -13,15 +13,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
-"""Black-box tests for brz aliases.
-"""
+"""Black-box tests for brz aliases."""
 
-import os
 
 from breezy import config
-from breezy.branch import Branch
 from breezy.tests import TestCaseWithTransport
-from breezy.trace import mutter
 
 
 class TestAliases(TestCaseWithTransport):
@@ -34,7 +30,7 @@ class TestAliases(TestCaseWithTransport):
         def bzr_catch_error(args, **kwargs):
             return self.run_bzr(args, **kwargs)[1]
 
-        conf = config.GlobalConfig.from_string(b'''[ALIASES]
+        config.GlobalConfig.from_string(b'''[ALIASES]
 c=cat
 c1=cat -r 1
 c2=cat -r 1 -r2

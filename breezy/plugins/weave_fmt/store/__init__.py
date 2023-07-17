@@ -17,8 +17,7 @@
 # TODO: Could remember a bias towards whether a particular store is typically
 # compressed or not.
 
-"""
-Stores are the main data-storage mechanism for Bazaar.
+"""Stores are the main data-storage mechanism for Bazaar.
 
 A store is a simple write-once container indexed by a universally
 unique ID.
@@ -26,10 +25,9 @@ unique ID.
 
 import os
 
-from .... import errors
 from .... import transport as _mod_transport
 from ....bzr import versionedfile
-from ....errors import BzrError, UnlistableStore
+from ....errors import BzrError
 from ....trace import mutter
 
 ######################################################################
@@ -62,7 +60,7 @@ class Store:
         raise NotImplementedError
 
     def add(self, f, fileid):
-        """Add a file object f to the store accessible from the given fileid"""
+        """Add a file object f to the store accessible from the given fileid."""
         raise NotImplementedError(
             'Children of Store must define their method of adding entries.')
 
@@ -70,7 +68,8 @@ class Store:
         """Return True or false for the presence of fileid in the store.
 
         suffix, if present, is a per file suffix, i.e. for digital signature
-        data."""
+        data.
+        """
         raise NotImplementedError
 
     def listable(self):
@@ -105,13 +104,12 @@ class TransportStore(Store):
 
     def _check_fileid(self, fileid):
         if not isinstance(fileid, bytes):
-            raise TypeError('Fileids should be bytestrings: {} {!r}'.format(
-                type(fileid), fileid))
+            raise TypeError(f'Fileids should be bytestrings: {type(fileid)} {fileid!r}')
         if b'\\' in fileid or b'/' in fileid:
-            raise ValueError("invalid store id %r" % fileid)
+            raise ValueError(f"invalid store id {fileid!r}")
 
     def _id_to_names(self, fileid, suffix):
-        """Return the names in the expected order"""
+        """Return the names in the expected order."""
         if suffix is not None:
             fn = self._relpath(fileid, [suffix])
         else:
@@ -179,8 +177,7 @@ class TransportStore(Store):
             self._mapper = versionedfile.HashPrefixMapper()
         elif self._escaped:
             raise ValueError(
-                "%r: escaped unprefixed stores are not permitted."
-                % (self,))
+                f"{self!r}: escaped unprefixed stores are not permitted.")
         else:
             self._mapper = versionedfile.PrefixMapper()
 
@@ -195,7 +192,7 @@ class TransportStore(Store):
             if name.endswith('.gz'):
                 name = name[:-3]
             skip = False
-            for count in range(len(self._suffixes)):
+            for _count in range(len(self._suffixes)):
                 for suffix in self._suffixes:
                     if name.endswith('.' + suffix):
                         skip = True
@@ -210,7 +207,7 @@ class TransportStore(Store):
         if suffixes:
             for suffix in suffixes:
                 if suffix not in self._suffixes:
-                    raise ValueError("Unregistered suffix %r" % suffix)
+                    raise ValueError(f"Unregistered suffix {suffix!r}")
                 self._check_fileid(suffix.encode('utf-8'))
         else:
             suffixes = []
@@ -220,9 +217,9 @@ class TransportStore(Store):
 
     def __repr__(self):
         if self._transport is None:
-            return "%s(None)" % (self.__class__.__name__)
+            return f"{self.__class__.__name__}(None)"
         else:
-            return "{}({!r})".format(self.__class__.__name__, self._transport.base)
+            return f"{self.__class__.__name__}({self._transport.base!r})"
 
     __str__ = __repr__
 
@@ -238,10 +235,11 @@ class TransportStore(Store):
         self._suffixes.add(suffix)
 
     def total_size(self):
-        """Return (count, bytes)
+        """Return (count, bytes).
 
         This is the (compressed) size stored on disk, not the size of
-        the content."""
+        the content.
+        """
         total = 0
         count = 0
         for relpath in self._transport.iter_files_recursive():

@@ -24,21 +24,23 @@ from dulwich.repo import MemoryRepo as GitMemoryRepo
 
 from ...revision import Revision
 from ...tests import TestCase
-from ..pristine_tar import (get_pristine_tar_tree, read_git_pristine_tar_data,
-                            revision_pristine_tar_data,
-                            store_git_pristine_tar_data)
+from ..pristine_tar import (
+    get_pristine_tar_tree,
+    read_git_pristine_tar_data,
+    revision_pristine_tar_data,
+    store_git_pristine_tar_data,
+)
 
 
 class RevisionPristineTarDataTests(TestCase):
 
     def test_pristine_tar_delta_unknown(self):
-        rev = Revision(b"myrevid")
+        rev = Revision(b"myrevid", properties={}, parent_ids=[], timestamp=0, timezone=0, committer="", inventory_sha1=None, message="")
         self.assertRaises(KeyError,
                           revision_pristine_tar_data, rev)
 
     def test_pristine_tar_delta_gz(self):
-        rev = Revision(b"myrevid")
-        rev.properties["deb-pristine-delta"] = standard_b64encode(b"bla")
+        rev = Revision(b"myrevid", properties={"deb-pristine-delta": standard_b64encode(b"bla").decode('ascii')}, parent_ids=[], timestamp=0, timezone=0, committer="", inventory_sha1=None, message="")
         self.assertEqual((b"bla", "gz"), revision_pristine_tar_data(rev))
 
 

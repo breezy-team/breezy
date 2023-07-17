@@ -98,7 +98,7 @@ class RemoteTransport(transport.ConnectedTransport):
             credentials = None
             if medium is None:
                 medium, credentials = self._build_medium()
-                if 'hpss' in debug.debug_flags:
+                if debug.debug_flag_enabled('hpss'):
                     trace.mutter('hpss: Built a new medium: %s',
                                  medium.__class__.__name__)
             self._shared_connection = transport._SharedConnection(medium,
@@ -160,7 +160,7 @@ class RemoteTransport(transport.ConnectedTransport):
 
     def _remote_path(self, relpath):
         """Returns the Unicode version of the absolute path for relpath."""
-        path = urlutils.URL._combine_paths(self._parsed_url.path, relpath)
+        path = urlutils.combine_paths(self._parsed_url.path, relpath)
         if not isinstance(path, bytes):
             path = path.encode()
         return path
@@ -232,7 +232,7 @@ class RemoteTransport(transport.ConnectedTransport):
             return ('%d' % mode).encode('ascii')
 
     def mkdir(self, relpath, mode=None):
-        resp = self._call2(b'mkdir', self._remote_path(relpath),
+        self._call2(b'mkdir', self._remote_path(relpath),
                            self._serialise_optional_mode(mode))
 
     def open_write_stream(self, relpath, mode=None):
@@ -245,7 +245,7 @@ class RemoteTransport(transport.ConnectedTransport):
     def put_bytes(self, relpath: str, raw_bytes: bytes, mode=None):
         if not isinstance(raw_bytes, bytes):
             raise TypeError(
-                'raw_bytes must be bytes string, not %s' % type(raw_bytes))
+                f'raw_bytes must be bytes string, not {type(raw_bytes)}')
         resp = self._call_with_body_bytes(
             b'put',
             (self._remote_path(relpath), self._serialise_optional_mode(mode)),
@@ -338,7 +338,7 @@ class RemoteTransport(transport.ConnectedTransport):
             cur_len += c.length
         if cur_request:
             requests.append(cur_request)
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             trace.mutter('%s.readv %s offsets => %s coalesced'
                          ' => %s requests (%s)',
                          self.__class__.__name__, len(offsets), len(coalesced),
@@ -420,7 +420,7 @@ class RemoteTransport(transport.ConnectedTransport):
                    self._remote_path(rel_to))
 
     def rmdir(self, relpath):
-        resp = self._call(b'rmdir', self._remote_path(relpath))
+        self._call(b'rmdir', self._remote_path(relpath))
 
     def _ensure_ok(self, resp):
         if resp[0] != b'ok':
@@ -577,7 +577,7 @@ class RemoteHTTPTransport(RemoteTransport):
                                    http_transport=self._http_transport)
 
     def _redirected_to(self, source, target):
-        """See transport._redirected_to"""
+        """See transport._redirected_to."""
         redirected = self._http_transport._redirected_to(source, target)
         if (redirected is not None
                 and isinstance(redirected, type(self._http_transport))):

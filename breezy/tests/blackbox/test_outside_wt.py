@@ -17,10 +17,9 @@
 
 """Black-box tests for running brz outside of a working tree."""
 
-import os
 import tempfile
 
-from breezy import osutils, tests, transport, urlutils
+from breezy import osutils, tests
 
 
 class TestOutsideWT(tests.ChrootedTestCase):
@@ -33,15 +32,13 @@ class TestOutsideWT(tests.ChrootedTestCase):
         self.permit_url('file:///')
         self.addCleanup(osutils.rmtree, tmp_dir)
         out, err = self.run_bzr('log', retcode=3, working_dir=tmp_dir)
-        self.assertEqual('brz: ERROR: Not a branch: "%s/".\n'
-                         % (tmp_dir,),
+        self.assertEqual(f'brz: ERROR: Not a branch: "{tmp_dir}/".\n',
                          err)
 
     def test_url_log(self):
         url = self.get_readonly_url() + 'subdir/'
         out, err = self.run_bzr(['log', url], retcode=3)
-        self.assertEqual('brz: ERROR: Not a branch:'
-                         ' "%s".\n' % url, err)
+        self.assertEqual(f'brz: ERROR: Not a branch: "{url}".\n', err)
 
     def test_diff_outside_tree(self):
         tree = self.make_branch_and_tree('branch1')
@@ -55,7 +52,7 @@ class TestOutsideWT(tests.ChrootedTestCase):
         self.addCleanup(osutils.rmtree, tmp_dir)
         # We expect a read-to-root attempt to occur.
         self.permit_url('file:///')
-        expected_error = 'brz: ERROR: Not a branch: "%s/branch2/".\n' % tmp_dir
+        expected_error = f'brz: ERROR: Not a branch: "{tmp_dir}/branch2/".\n'
         # -r X..Y
         out, err = self.run_bzr('diff -r revno:2:branch2..revno:1', retcode=3,
                                 working_dir=tmp_dir)
@@ -74,4 +71,4 @@ class TestOutsideWT(tests.ChrootedTestCase):
         # no -r at all.
         out, err = self.run_bzr('diff', retcode=3, working_dir=tmp_dir)
         self.assertEqual('', out)
-        self.assertEqual('brz: ERROR: Not a branch: "%s/".\n' % tmp_dir, err)
+        self.assertEqual(f'brz: ERROR: Not a branch: "{tmp_dir}/".\n', err)

@@ -18,10 +18,11 @@
 
 from breezy import errors, osutils, repository
 from breezy.bzr import btree_index
-from breezy.bzr.remote import RemoteRepository
 from breezy.bzr.tests.per_repository_chk import TestCaseWithRepositoryCHK
-from breezy.bzr.versionedfile import VersionedFiles
 from breezy.tests import TestNotApplicable
+
+from ...remote import RemoteRepository
+from ...versionedfile import VersionedFiles
 
 
 class TestCHKSupport(TestCaseWithRepositoryCHK):
@@ -301,11 +302,11 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
         for char in 'abc':
             name = char * 10000
             file_adds.append(
-                ('add', ('file-' + name, ('file-%s-id' % name).encode(), 'file',
-                         ('content %s\n' % name).encode())))
+                ('add', ('file-' + name, (f'file-{name}-id').encode(), 'file',
+                         f'content {name}\n'.encode())))
             file_modifies.append(
                 ('modify', ('file-' + name,
-                            ('new content %s\n' % name).encode())))
+                            f'new content {name}\n'.encode())))
         builder.build_snapshot(None, [
             ('add', ('', b'root-id', 'directory', None))] +
             file_adds,
@@ -315,8 +316,7 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
         return builder.get_branch()
 
     def test_missing_text_record(self):
-        """commit_write_group fails with BzrCheckError when a text is missing.
-        """
+        """commit_write_group fails with BzrCheckError when a text is missing."""
         repo = self.make_repository('damaged-repo')
         b = self.make_branch_with_multiple_chk_nodes()
         src_repo = b.repository

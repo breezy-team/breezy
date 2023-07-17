@@ -59,7 +59,7 @@ class TestFormat2WorkingTree(TestCaseWithTransport):
         self.assertEqual(list(tree.conflicts()), [expected])
 
     def test_detect_conflicts(self):
-        """Conflicts are detected properly"""
+        """Conflicts are detected properly."""
         tree = self.create_format2_tree('.')
         self.build_tree_contents([('hello', b'hello world4'),
                                   ('hello.THIS', b'hello world2'),
@@ -73,8 +73,8 @@ class TestFormat2WorkingTree(TestCaseWithTransport):
         tree.unlock()
         tree_conflicts = tree.conflicts()
         self.assertLength(2, tree_conflicts)
-        self.assertTrue('hello' in tree_conflicts[0].path)
-        self.assertTrue('hello.sploo' in tree_conflicts[1].path)
+        self.assertIn('hello', tree_conflicts[0].path)
+        self.assertIn('hello.sploo', tree_conflicts[1].path)
         conflicts.restore('hello')
         conflicts.restore('hello.sploo')
         self.assertLength(0, tree.conflicts())

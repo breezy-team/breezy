@@ -16,15 +16,16 @@
 
 """Conversion between refs and Bazaar revision pointers."""
 
-from dulwich.objects import Tag, object_class
-from dulwich.refs import (LOCAL_BRANCH_PREFIX, LOCAL_TAG_PREFIX)
+from dulwich.refs import LOCAL_BRANCH_PREFIX, LOCAL_TAG_PREFIX
+
 try:
     from dulwich.refs import PEELED_TAG_SUFFIX
 except ImportError:
     from dulwich.refs import ANNOTATED_TAG_SUFFIX as PEELED_TAG_SUFFIX
+
 from dulwich.repo import RefsContainer
 
-from .. import controldir, errors, osutils
+from .. import controldir, errors
 from .. import revision as _mod_revision
 
 
@@ -45,9 +46,9 @@ def branch_name_to_ref(name):
     if name == "":
         return b"HEAD"
     if not name.startswith("refs/"):
-        return LOCAL_BRANCH_PREFIX + osutils.safe_utf8(name)
+        return LOCAL_BRANCH_PREFIX + name.encode("utf-8")
     else:
-        return osutils.safe_utf8(name)
+        return name.encode("utf-8")
 
 
 def tag_name_to_ref(name):
@@ -56,11 +57,11 @@ def tag_name_to_ref(name):
     :param name: Tag name
     :return: ref string
     """
-    return LOCAL_TAG_PREFIX + osutils.safe_utf8(name)
+    return LOCAL_TAG_PREFIX + name.encode("utf-8")
 
 
 def ref_to_branch_name(ref):
-    """Map a ref to a branch name
+    """Map a ref to a branch name.
 
     :param ref: Ref
     :return: A branch name
@@ -71,13 +72,13 @@ def ref_to_branch_name(ref):
         return ref
     if ref.startswith(LOCAL_BRANCH_PREFIX):
         return ref[len(LOCAL_BRANCH_PREFIX):].decode('utf-8')
-    raise ValueError("unable to map ref %s back to branch name" % ref)
+    raise ValueError(f"unable to map ref {ref} back to branch name")
 
 
 def ref_to_tag_name(ref):
     if ref.startswith(LOCAL_TAG_PREFIX):
         return ref[len(LOCAL_TAG_PREFIX):].decode("utf-8")
-    raise ValueError("unable to map ref %s back to tag name" % ref)
+    raise ValueError(f"unable to map ref {ref} back to tag name")
 
 
 class BazaarRefsContainer(RefsContainer):

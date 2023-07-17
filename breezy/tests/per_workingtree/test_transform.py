@@ -20,25 +20,44 @@ import sys
 import time
 from io import BytesIO
 
-from breezy.bzr.transform import resolve_checkout
-from breezy.tests.matchers import MatchesTreeChanges
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
-from ... import osutils, tests, trace, transform, urlutils
-from ...bzr.conflicts import (DeletingParent, DuplicateEntry, DuplicateID,
-                              MissingParent, NonDirectoryParent, ParentLoop,
-                              UnversionedParent)
-from ...errors import (DuplicateKey, ExistingLimbo, ExistingPendingDeletion,
-                       ImmortalPendingDeletion, LockError)
-from ...osutils import file_kind, pathjoin
-from ...transform import (ROOT_PARENT, FinalPaths, ImmortalLimbo,
-                          MalformedTransform, NoFinalPath, ReusingTransform,
-                          TransformRenameFailed, create_from_tree,
-                          resolve_conflicts)
+from ... import osutils, tests, trace, urlutils
+from ...bzr.conflicts import (
+    DeletingParent,
+    DuplicateEntry,
+    DuplicateID,
+    MissingParent,
+    NonDirectoryParent,
+    ParentLoop,
+    UnversionedParent,
+)
+from ...bzr.transform import resolve_checkout
+from ...errors import (
+    DuplicateKey,
+    ExistingLimbo,
+    ExistingPendingDeletion,
+    ImmortalPendingDeletion,
+    LockError,
+)
+from ...osutils import pathjoin
+from ...transform import (
+    ROOT_PARENT,
+    FinalPaths,
+    ImmortalLimbo,
+    MalformedTransform,
+    NoFinalPath,
+    ReusingTransform,
+    TransformRenameFailed,
+    create_from_tree,
+    resolve_conflicts,
+)
 from ...transport import FileExists
+from ...transport.local import file_kind
 from ...tree import TreeChange
 from .. import TestSkipped, features
 from ..features import HardlinkFeature, SymlinkFeature
+from ..matchers import MatchesTreeChanges
 
 
 class TestTreeTransform(TestCaseWithWorkingTree):
@@ -103,7 +122,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             self.assertEqual(self.wt.path2id(''), transform.final_file_id(root))
         trans_id = transform.create_path('name', root)
         if self.wt.supports_setting_file_ids():
-            self.assertIs(transform.final_file_id(trans_id), None)
+            self.assertIsNone(transform.final_file_id(trans_id))
         self.assertFalse(transform.final_is_versioned(trans_id))
         self.assertIs(None, transform.final_kind(trans_id))
         transform.create_file([b'contents'], trans_id)
@@ -129,8 +148,8 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             self.assertEqual(b'contents', f.read())
         if self.wt.supports_setting_file_ids():
             self.assertEqual(self.wt.path2id('name'), b'my_pretties')
-        self.assertIs(self.wt.is_executable('name'), True)
-        self.assertIs(self.wt.is_executable('name2'), False)
+        self.assertTrue(self.wt.is_executable('name'))
+        self.assertFalse(self.wt.is_executable('name2'))
         self.assertEqual('directory', file_kind(self.wt.abspath('oz')))
         self.assertEqual(len(modified_paths), 3)
         if self.wt.supports_setting_file_ids():
@@ -202,9 +221,9 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         trans, root, contents, sha1 = self.transform_for_sha1_test()
         trans_id = trans.new_file('file1', root, contents, file_id=b'file1-id',
                                   sha1=sha1)
-        self.assertTrue(trans_id in trans._observed_sha1s)
+        self.assertIn(trans_id, trans._observed_sha1s)
         trans.cancel_creation(trans_id)
-        self.assertFalse(trans_id in trans._observed_sha1s)
+        self.assertNotIn(trans_id, trans._observed_sha1s)
 
     def test_create_files_same_timestamp(self):
         transform, root = self.transform()
@@ -224,9 +243,11 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         fo, st2 = self.wt.get_file_with_stat('two', filtered=False)
         fo.close()
         # We only guarantee 2s resolution
-        self.assertTrue(
-            abs(creation_mtime - st1.st_mtime) < 2.0,
-            "{} != {} within 2 seconds".format(creation_mtime, st1.st_mtime))
+        self.assertLess(
+            abs(creation_mtime - st1.st_mtime),
+            2.0,
+            f"{creation_mtime} != {st1.st_mtime} within 2 seconds"
+        )
         # But if we have more than that, all files should get the same result
         self.assertEqual(st1.st_mtime, st2.st_mtime)
 
@@ -374,7 +395,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertRaises(ReusingTransform, transform.find_raw_conflicts)
         with open(self.wt.abspath('name')) as f:
             self.assertEqual('contents', f.read())
-        self.assertIs(self.wt.is_executable('name'), True)
+        self.assertTrue(self.wt.is_executable('name'))
         self.assertTrue(self.wt.is_versioned('name'))
         self.assertTrue(self.wt.is_versioned('oz'))
         self.assertTrue(self.wt.is_versioned('oz/dorothy'))
@@ -387,7 +408,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
 
         with self.wt.get_file('oz/dorothy/toto') as f:
             self.assertEqual(b'toto-contents', f.read())
-        self.assertIs(self.wt.is_executable('oz/dorothy/toto'), False)
+        self.assertFalse(self.wt.is_executable('oz/dorothy/toto'))
 
     def test_tree_reference(self):
         transform, root = self.transform()
@@ -476,7 +497,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         newtip = transform2.new_file('tip', oz_id, [b'other'], b'tip-id')
         result = transform2.find_raw_conflicts()
         fp = FinalPaths(transform2)
-        self.assertTrue('oz/tip' in transform2._tree_path_ids)
+        self.assertIn('oz/tip', transform2._tree_path_ids)
         self.assertEqual(fp.get_path(newtip), pathjoin('oz', 'tip'))
         if self.wt.supports_setting_file_ids():
             self.assertEqual(len(result), 2)
@@ -575,7 +596,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertPathExists('tree/FiLe.moved')
 
     def test_apply_case_conflict(self):
-        """Ensure that a transform with case conflicts can always be applied"""
+        """Ensure that a transform with case conflicts can always be applied."""
         tree = self.make_branch_and_tree('tree')
         transform = tree.transform()
         self.addCleanup(transform.finalize)
@@ -699,7 +720,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             self.assertEqual(f.read(), 'hello3')
         if self.wt.supports_setting_file_ids():
             self.assertEqual(self.wt.path2id('dying_directory'), b'ddir')
-            self.assertIs(self.wt.path2id('dying_directory/dying_file'), None)
+            self.assertIsNone(self.wt.path2id('dying_directory/dying_file'))
         mfile2_path = self.wt.abspath(pathjoin('new_directory', 'mfile2'))
 
     def test_both_rename(self):
@@ -828,20 +849,14 @@ class TestTreeTransform(TestCaseWithWorkingTree):
                             'b\N{Euro Sign}hind_curtain')
 
     def test_unsupported_symlink_no_conflict(self):
-        def tt_helper():
-            wt = self.make_branch_and_tree('.')
-            tt = wt.transform()
-            self.addCleanup(tt.finalize)
-            tt.new_symlink('foo', tt.root, 'bar')
-            result = tt.find_raw_conflicts()
-            self.assertEqual([], result)
-        os_symlink = getattr(os, 'symlink', None)
-        os.symlink = None
-        try:
-            tt_helper()
-        finally:
-            if os_symlink:
-                os.symlink = os_symlink
+        self.overrideAttr(os, "symlink", None)
+        self.overrideAttr(osutils, "supports_symlinks", lambda x: False)
+        wt = self.make_branch_and_tree('.')
+        tt = wt.transform()
+        self.addCleanup(tt.finalize)
+        tt.new_symlink('foo', tt.root, 'bar')
+        result = tt.find_raw_conflicts()
+        self.assertEqual([], result)
 
     def get_conflicted(self):
         create, root = self.transform()
@@ -875,7 +890,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         resolve_conflicts(conflicts)
         self.assertEqual(conflicts.final_name(old_dorothy), 'dorothy.moved')
         if self.wt.supports_setting_file_ids():
-            self.assertIs(conflicts.final_file_id(old_dorothy), None)
+            self.assertIsNone(conflicts.final_file_id(old_dorothy))
             self.assertEqual(conflicts.final_file_id(new_dorothy), b'dorothy-id')
         self.assertEqual(conflicts.final_name(new_dorothy), 'dorothy')
         self.assertEqual(conflicts.final_parent(emerald), oz)
@@ -949,7 +964,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
                  'Text conflict in munchkincity',
                  'Text conflict in oz',
                  'Text conflict in oz/emeraldcity'},
-                {c for c in conflicts_s})
+                set(conflicts_s))
 
     def prepare_wrong_parent_kind(self):
         tt, root = self.transform()
@@ -1134,7 +1149,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertTrue(wt.is_executable('set_after_creation'))
 
     def test_preserve_mode(self):
-        """File mode is preserved when replacing content"""
+        """File mode is preserved when replacing content."""
         if sys.platform == 'win32':
             raise TestSkipped('chmod has no effect on win32')
         transform, root = self.transform()
@@ -1349,7 +1364,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertThat(actual, MatchesTreeChanges(tt._tree.basis_tree(), tt._tree, expected))
 
     def test_iter_changes_modified_bleed(self):
-        """Modified flag should not bleed from one change to another"""
+        """Modified flag should not bleed from one change to another."""
         # unfortunately, we have no guarantee that file1 (which is modified)
         # will be applied before file2.  And if it's applied after file2, it
         # obviously can't bleed into file2's change output.  But for now, it
@@ -1375,7 +1390,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             transform.finalize()
 
     def test_iter_changes_move_missing(self):
-        """Test moving ids with no files around"""
+        """Test moving ids with no files around."""
         # Need two steps because versioning a non-existant file is a conflict.
         transform, root = self.transform()
         transform.new_directory('floater', root, b'floater-id')
@@ -1401,7 +1416,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             transform.finalize()
 
     def test_iter_changes_pointless(self):
-        """Ensure that no-ops are not treated as modifications"""
+        """Ensure that no-ops are not treated as modifications."""
         transform, root = self.transform()
         transform.new_file('old', root, [b'blah'], b'id-1')
         transform.new_directory('subdir', root, b'subdir-id')
@@ -1455,7 +1470,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertEqual(2, transform.rename_count)
 
     def test_cancel_parent(self):
-        """Cancelling a parent doesn't cause deletion of a non-empty directory
+        """Cancelling a parent doesn't cause deletion of a non-empty directory.
 
         This is like the test_change_parent, except that we cancel the parent
         before adjusting the path.  The transform must detect that the
@@ -1487,7 +1502,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertEqual(2, transform.rename_count)
 
     def test_adjust_and_cancel(self):
-        """Make sure adjust_path keeps track of limbo children properly"""
+        """Make sure adjust_path keeps track of limbo children properly."""
         transform, root = self.transform()
         parent1 = transform.new_directory('parent1', root)
         child1 = transform.new_file('child1', parent1, [b'contents'])
@@ -1527,7 +1542,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertEqual(1, transform.rename_count)
 
     def test_reuse_name(self):
-        """Avoid reusing the same limbo name for different files"""
+        """Avoid reusing the same limbo name for different files."""
         transform, root = self.transform()
         parent = transform.new_directory('parent', root)
         transform.new_directory('child', parent)
@@ -1545,7 +1560,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertEqual(2, transform.rename_count)
 
     def test_reuse_when_first_moved(self):
-        """Don't avoid direct paths when it is safe to use them"""
+        """Don't avoid direct paths when it is safe to use them."""
         transform, root = self.transform()
         parent = transform.new_directory('parent', root)
         child1 = transform.new_directory('child', parent)
@@ -1556,7 +1571,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertEqual(1, transform.rename_count)
 
     def test_reuse_after_cancel(self):
-        """Don't avoid direct paths when it is safe to use them"""
+        """Don't avoid direct paths when it is safe to use them."""
         transform, root = self.transform()
         parent2 = transform.new_directory('parent2', root)
         child1 = transform.new_directory('child1', parent2)
@@ -1569,7 +1584,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertEqual(2, transform.rename_count)
 
     def test_finalize_order(self):
-        """Finalize must be done in child-to-parent order"""
+        """Finalize must be done in child-to-parent order."""
         transform, root = self.transform()
         parent = transform.new_directory('parent', root)
         transform.new_directory('child', parent)
@@ -1692,7 +1707,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         foo_trans_id = tt.trans_id_tree_path("foo")
         tt.delete_contents(foo_trans_id)
         log = BytesIO()
-        trace.push_log_file(log)
+        trace.push_log_file(log, short=True)
         tt.create_symlink("bar", foo_trans_id)
         tt.apply()
         self.assertContainsRe(
@@ -1756,7 +1771,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         bar_trans_id = tt.create_path('bar', tt.root)
         create_from_tree(tt, bar_trans_id, tree1, 'bar')
         tt.apply()
-        self.assertEqual('directory', osutils.file_kind('tree2/foo'))
+        self.assertEqual('directory', file_kind('tree2/foo'))
         self.assertFileEqual(b'baz', 'tree2/bar')
 
     def test_create_from_tree_bytes(self):

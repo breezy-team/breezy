@@ -16,44 +16,11 @@
 
 """Python implementation of _search_key functions, etc."""
 
-import struct
-import zlib
-
 from .static_tuple import StaticTuple
 
 _LeafNode = None
 _InternalNode = None
 _unknown = None
-
-
-def _crc32(bit):
-    # Depending on python version and platform, zlib.crc32 will return either a
-    # signed (<= 2.5 >= 3.0) or an unsigned (2.5, 2.6).
-    # http://docs.python.org/library/zlib.html recommends using a mask to force
-    # an unsigned value to ensure the same numeric value (unsigned) is obtained
-    # across all python versions and platforms.
-    # Note: However, on 32-bit platforms this causes an upcast to PyLong, which
-    #       are generally slower than PyInts. However, if performance becomes
-    #       critical, we should probably write the whole thing as an extension
-    #       anyway.
-    #       Though we really don't need that 32nd bit of accuracy. (even 2**24
-    #       is probably enough node fan out for realistic trees.)
-    return zlib.crc32(bit) & 0xFFFFFFFF
-
-
-def _search_key_16(key):
-    """Map the key tuple into a search key string which has 16-way fan out."""
-    return b'\x00'.join([b'%08X' % _crc32(bit) for bit in key])
-
-
-def _search_key_255(key):
-    """Map the key tuple into a search key string which has 255-way fan out.
-
-    We use 255-way because '\n' is used as a delimiter, and causes problems
-    while parsing.
-    """
-    data = b'\x00'.join([struct.pack('>L', _crc32(bit)) for bit in key])
-    return data.replace(b'\n', b'_')
 
 
 def _deserialise_leaf_node(data, key, search_key_func=None):
@@ -74,11 +41,10 @@ def _deserialise_leaf_node(data, key, search_key_func=None):
     lines = data.split(b'\n')
     trailing = lines.pop()
     if trailing != b'':
-        raise AssertionError('We did not have a final newline for %s'
-                             % (key,))
+        raise AssertionError(f'We did not have a final newline for {key}')
     items = {}
     if lines[0] != b'chkleaf:':
-        raise ValueError("not a serialised leaf node: %r" % bytes)
+        raise ValueError(f"not a serialised leaf node: {bytes!r}")
     maximum_size = int(lines[1])
     width = int(lines[2])
     length = int(lines[3])
@@ -136,7 +102,7 @@ def _deserialise_internal_node(data, key, search_key_func=None):
     lines.pop(-1)
     items = {}
     if lines[0] != b'chknode:':
-        raise ValueError("not a serialised internal node: %r" % bytes)
+        raise ValueError(f"not a serialised internal node: {bytes!r}")
     maximum_size = int(lines[1])
     width = int(lines[2])
     length = int(lines[3])
@@ -146,7 +112,7 @@ def _deserialise_internal_node(data, key, search_key_func=None):
         prefix, flat_key = line.rsplit(b'\x00', 1)
         items[prefix] = StaticTuple(flat_key,)
     if len(items) == 0:
-        raise AssertionError("We didn't find any item for %s" % key)
+        raise AssertionError(f"We didn't find any item for {key}")
     result._items = items
     result._len = length
     result._maximum_size = maximum_size
@@ -158,10 +124,3 @@ def _deserialise_internal_node(data, key, search_key_func=None):
     result._node_width = len(prefix)
     result._search_prefix = common_prefix
     return result
-
-
-def _bytes_to_text_key(data):
-    """Take a CHKInventory value string and return a (file_id, rev_id) tuple"""
-    sections = data.split(b'\n')
-    kind, file_id = sections[0].split(b': ')
-    return (file_id, sections[3])

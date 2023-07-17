@@ -20,7 +20,8 @@ import shutil
 
 from breezy import errors
 from breezy.tests import TestNotApplicable, TestSkipped, features, per_tree
-from breezy.tree import MissingNestedTree
+
+from ...tree import MissingNestedTree
 
 
 class TestTreeShapes(per_tree.TestCaseWithTree):
@@ -212,7 +213,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         # __iter__ has no strongly defined order
         try:
             all_file_ids = set(tree.all_file_ids())
-            tree_root = tree.path2id('')
+            tree.path2id('')
         except AttributeError:
             # doesn't support file ids
             all_file_ids = None
@@ -328,8 +329,8 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         if tree.branch.repository._format.supports_setting_revision_ids:
             try:
                 tree.commit('in\xedtial', rev_id='r\xe9v-1'.encode())
-            except errors.NonAsciiRevisionId:
-                raise TestSkipped('non-ascii revision ids not supported')
+            except errors.NonAsciiRevisionId as err:
+                raise TestSkipped('non-ascii revision ids not supported') from err
         else:
             tree.commit('in\xedtial')
 
@@ -427,7 +428,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         with tree.lock_read():
             path_entries = list(tree.iter_entries_by_dir())
 
-        for (epath, efid, eparent, erev), (path, ie) in zip(path_and_ids,
+        for (epath, efid, eparent, _erev), (path, ie) in zip(path_and_ids,
                                                             path_entries):
             self.assertEqual(epath, path)  # Paths should match
             self.assertIsInstance(path, str)
@@ -491,9 +492,6 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
     def test_iter_entries_with_missing_reference(self):
         tree, subtree = self.create_nested()
         shutil.rmtree('wt/subtree')
-        expected = [
-            ('', 'directory'),
-            ('subtree', 'tree-reference')]
         with tree.lock_read():
             self.assertRaises(
                 MissingNestedTree, list, tree.iter_entries_by_dir(recurse_nested=True))

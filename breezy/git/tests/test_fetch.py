@@ -196,7 +196,7 @@ class RepositoryFetchTests:
         os.chdir("d")
         bb = GitBranchBuilder()
         bb.set_file("foobar", b"foo\nbar\n", False)
-        mark1 = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg")
+        bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg")
         bb.set_file("foobar", b"foo\nbar\n", True)
         mark2 = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg")
         gitsha2 = bb.finish()[mark2]
@@ -210,7 +210,7 @@ class RepositoryFetchTests:
         self.assertEqual(revid, tree.get_file_revision("foobar"))
 
     def test_into_stacked_on(self):
-        r = self.make_git_repo("d")
+        self.make_git_repo("d")
         os.chdir("d")
         bb = GitBranchBuilder()
         bb.set_file("foobar", b"foo\n", False)
@@ -318,7 +318,7 @@ class ImportObjects(TestCaseWithTransport):
 
         blob = Blob.from_string(b"bar")
         objs = {"blobname": blob}
-        ret = import_git_blob(self._texts, self._mapping, b"bla", b"bla",
+        import_git_blob(self._texts, self._mapping, b"bla", b"bla",
                               (None, "blobname"),
                               branch.repository.revision_tree(
                                   rev1), b'rootid', b"somerevid",
@@ -334,7 +334,7 @@ class ImportObjects(TestCaseWithTransport):
         objs = {"blobname": blob}
         ret = import_git_blob(self._texts, self._mapping, b"bla", b"bla",
                               (None, "blobname"),
-                              None, None, b"somerevid", [], objs.__getitem__,
+                              None, b"parentid", b"somerevid", [], objs.__getitem__,
                               (None, DEFAULT_FILE_MODE), DummyStoreUpdater(),
                               self._mapping.generate_file_id)
         self.assertEqual({(b'git:bla', b'somerevid')}, self._texts.keys())
@@ -366,7 +366,6 @@ class ImportObjects(TestCaseWithTransport):
         ie = ret[0][3]
         self.assertEqual(False, ie.executable)
         self.assertEqual("directory", ie.kind)
-        self.assertEqual({}, ie.children)
         self.assertEqual(b"somerevid", ie.revision)
         self.assertEqual(None, ie.text_sha1)
 
@@ -385,9 +384,7 @@ class ImportObjects(TestCaseWithTransport):
         ie = ret[0][3]
         self.assertEqual("directory", ie.kind)
         self.assertEqual(False, ie.executable)
-        self.assertEqual({}, ie.children)
         self.assertEqual(b"somerevid", ie.revision)
-        self.assertEqual(None, ie.text_sha1)
 
     def test_import_tree_with_file(self):
         blob = Blob.from_string(b"bar1")

@@ -21,9 +21,9 @@ from urllib.error import HTTPError
 from urllib.parse import urlparse
 from urllib.request import urlopen
 
-from breezy.errors import BzrError
-from breezy.trace import note
-from breezy.urlutils import InvalidURL
+from ...errors import BzrError
+from ...trace import note
+from ...urlutils import InvalidURL
 
 
 class PypiProjectWithoutRepositoryURL(InvalidURL):
@@ -57,13 +57,13 @@ def find_repo_url(data):
 class PypiDirectory:
 
     def look_up(self, name, url, purpose=None):
-        """See DirectoryService.look_up"""
+        """See DirectoryService.look_up."""
         try:
-            with urlopen('https://pypi.org/pypi/%s/json' % name) as f:
+            with urlopen(f'https://pypi.org/pypi/{name}/json') as f:  # noqa: S310
                 data = json.load(f)
         except HTTPError as e:
             if e.status == 404:
-                raise NoSuchPypiProject(name, url=url)
+                raise NoSuchPypiProject(name, url=url) from e
             raise
         url = find_repo_url(data)
         if url is None:

@@ -20,8 +20,13 @@ import sys
 
 from dulwich.object_store import MissingObjectFinder, peel_sha
 from dulwich.protocol import Protocol
-from dulwich.server import (Backend, BackendRepo, ReceivePackHandler,
-                            TCPGitServer, UploadPackHandler)
+from dulwich.server import (
+    Backend,
+    BackendRepo,
+    ReceivePackHandler,
+    TCPGitServer,
+    UploadPackHandler,
+)
 
 from .. import errors, trace
 from ..controldir import ControlDir
@@ -65,7 +70,7 @@ class BzrBackendRepo(BackendRepo):
 
     def find_missing_objects(self, determine_wants, graph_walker, progress,
                       get_tagged=None):
-        """Yield git objects to send to client """
+        """Yield git objects to send to client."""
         with self.object_store.lock_read():
             wants = determine_wants(self.get_refs())
             have = self.object_store.find_common_revisions(graph_walker)
@@ -103,8 +108,7 @@ def serve_git(transport, host=None, port=None, inet=False, timeout=None):
 
 
 def git_http_hook(branch, method, path):
-    from dulwich.web import (DEFAULT_HANDLERS, HTTPGitApplication,
-                             HTTPGitRequest)
+    from dulwich.web import DEFAULT_HANDLERS, HTTPGitApplication, HTTPGitRequest
     handler = None
     for (smethod, spath) in HTTPGitApplication.services:
         if smethod != method:

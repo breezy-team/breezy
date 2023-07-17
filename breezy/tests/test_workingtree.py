@@ -18,12 +18,10 @@
 import os
 from io import BytesIO
 
-from .. import (conflicts, errors, symbol_versioning, trace, transport,
-                workingtree)
-from ..bzr import bzrdir
+from .. import conflicts, errors, osutils, trace, workingtree
+from ..bzr import bzrdir, workingtree_3, workingtree_4
 from ..bzr import conflicts as _mod_bzr_conflicts
 from ..bzr import workingtree as bzrworkingtree
-from ..bzr import workingtree_3, workingtree_4
 from ..lock import write_locked
 from ..lockdir import LockDir
 from ..tree import TreeDirectory, TreeEntry, TreeFile, TreeLink
@@ -60,8 +58,10 @@ class TestDefaultFormat(TestCaseWithTransport):
     def test_get_set_default_format(self):
         old_format = workingtree.format_registry.get_default()
         # default is 6
-        self.assertTrue(isinstance(
-            old_format, workingtree_4.WorkingTreeFormat6))
+        self.assertIsInstance(
+            old_format,
+            workingtree_4.WorkingTreeFormat6
+        )
         workingtree.format_registry.set_default(SampleTreeFormat())
         try:
             # the default branch format is used by the meta dir format
@@ -89,8 +89,10 @@ class TestDefaultFormat(TestCaseWithTransport):
         format = SampleTreeFormat()
         workingtree.format_registry.register(format)
         self.addCleanup(workingtree.format_registry.remove, format)
-        self.assertTrue(isinstance(
-            old_format, workingtree_4.WorkingTreeFormat6))
+        self.assertIsInstance(
+            old_format,
+            workingtree_4.WorkingTreeFormat6
+        )
         workingtree.format_registry.set_default_key(format.get_format_string())
         try:
             # the default branch format is used by the meta dir format
@@ -127,7 +129,7 @@ class TestDefaultFormat(TestCaseWithTransport):
 
 
 class SampleTreeFormat(bzrworkingtree.WorkingTreeFormatMetaDir):
-    """A sample format
+    """A sample format.
 
     this format is initializable, unsupported to aid in testing the
     open and open_downlevel routines.
@@ -153,9 +155,7 @@ class SampleTreeFormat(bzrworkingtree.WorkingTreeFormatMetaDir):
 
 
 class SampleExtraTreeFormat(workingtree.WorkingTreeFormat):
-    """A sample format that does not support use in a metadir.
-
-    """
+    """A sample format that does not support use in a metadir."""
 
     def get_format_string(self):
         # Not usable in a metadir, so no format string
@@ -344,10 +344,10 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         # correctly and last-revision file becomes present.
 
     def test_uses_lockdir(self):
-        """WorkingTreeFormat3 uses its own LockDir:
+        """WorkingTreeFormat3 uses its own LockDir.
 
-            - lock is a directory
-            - when the WorkingTree is locked, LockDir can see that
+        - lock is a directory
+        - when the WorkingTree is locked, LockDir can see that
         """
         t = self.get_transport()
         url = self.get_url()
@@ -356,8 +356,8 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         dir.create_branch()
         try:
             tree = workingtree_3.WorkingTreeFormat3().initialize(dir)
-        except errors.NotLocalUrl:
-            raise TestSkipped('Not a local URL')
+        except errors.NotLocalUrl as err:
+            raise TestSkipped('Not a local URL') from err
         self.assertIsDirectory('.bzr', t)
         self.assertIsDirectory('.bzr/checkout', t)
         self.assertIsDirectory('.bzr/checkout/lock', t)
@@ -452,9 +452,10 @@ class TestAutoResolve(TestCaseWithTransport):
         self.build_tree_contents([('this/hello', 'Hello')])
         this.commit('commit 2')
         log = BytesIO()
-        trace.push_log_file(log)
+        trace.push_log_file(log, short=True)
         os_symlink = getattr(os, 'symlink', None)
         os.symlink = None
+        self.overrideAttr(osutils, "supports_symlinks", lambda x: False)
         try:
             this.merge_from_branch(other.branch)
         finally:

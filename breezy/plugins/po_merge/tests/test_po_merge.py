@@ -14,9 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import os
 
-from breezy import merge, osutils, tests
+from breezy import merge
 from breezy.plugins import po_merge
 from breezy.tests import features, script
 
@@ -119,14 +118,14 @@ class TestAdduserBranch(script.TestCaseWithTransportAndScript):
         self.builder = make_adduser_branch(self, 'adduser')
 
     def assertAdduserBranchContent(self, revid):
-        env = dict(revid=revid, branch_name=revid)
+        env = {'revid': revid, 'branch_name': revid}
         self.run_script("""\
 $ brz branch adduser -rrevid:%(revid)s %(branch_name)s
 """ % env, null_output_matches_anything=True)
-        self.assertFileEqual(_Adduser['%(revid)s_pot' % env],
-                             '%(branch_name)s/po/adduser.pot' % env)
-        self.assertFileEqual(_Adduser['%(revid)s_po' % env],
-                             '%(branch_name)s/po/fr.po' % env)
+        self.assertFileEqual(_Adduser[f"{env['revid']}_pot"],
+                             f"{env['branch_name']}/po/adduser.pot")
+        self.assertFileEqual(_Adduser[f"{env['revid']}_po"],
+                             f"{env['branch_name']}/po/fr.po")
 
     def test_base(self):
         self.assertAdduserBranchContent('base')
@@ -142,8 +141,8 @@ $ brz branch adduser -rrevid:%(revid)s %(branch_name)s
 # details. This is declared at the end of the file to avoid cluttering the
 # beginning of the file.
 
-_Adduser = dict(
-    base_pot=osutils.safe_utf8(r"""# SOME DESCRIPTIVE TITLE.
+_Adduser = {
+    'base_pot': (r"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -170,8 +169,8 @@ msgstr ""
 msgid "Warning: The home dir you specified already exists.\n"
 msgstr ""
 
-"""),
-    this_pot=osutils.safe_utf8(r"""# SOME DESCRIPTIVE TITLE.
+""").encode("utf-8"),
+    'this_pot': (r"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -205,8 +204,8 @@ msgstr ""
 msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 
-"""),
-    other_pot=osutils.safe_utf8(r"""# SOME DESCRIPTIVE TITLE.
+""").encode("utf-8"),
+    'other_pot': (r"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -240,8 +239,8 @@ msgstr ""
 msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 
-"""),
-    resolved_pot=osutils.safe_utf8(r"""# SOME DESCRIPTIVE TITLE.
+""").encode("utf-8"),
+    'resolved_pot': (r"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -275,8 +274,8 @@ msgstr ""
 msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 
-"""),
-    base_po=osutils.safe_utf8(r"""# adduser's manpages translation to French
+""").encode("utf-8"),
+    'base_po': (r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -311,8 +310,8 @@ msgid "Warning: The home dir you specified already exists.\n"
 msgstr ""
 "Attention ! Le répertoire personnel que vous avez indiqué existe déjà.\n"
 
-"""),
-    this_po=osutils.safe_utf8(r"""# adduser's manpages translation to French
+""").encode("utf-8"),
+    'this_po': (r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -354,8 +353,8 @@ msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 "Attention ! Le répertoire personnel que vous avez indiqué existe déjà.\n"
 
-"""),
-    other_po=osutils.safe_utf8(r"""# adduser's manpages translation to French
+""").encode("utf-8"),
+    'other_po': (r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -397,8 +396,8 @@ msgstr ""
 "Attention ! Impossible d'accéder au répertoire personnel que vous avez "
 "indiqué (%s) : %s.\n"
 
-"""),
-    resolved_po=osutils.safe_utf8(r"""# adduser's manpages translation to French
+""").encode("utf-8"),
+    'resolved_po': (r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -440,5 +439,5 @@ msgstr ""
 "Attention ! Impossible d'accéder au répertoire personnel que vous avez "
 "indiqué (%s) : %s.\n"
 
-"""),
-)
+""").encode("utf-8"),
+}

@@ -17,25 +17,23 @@
 
 """Black-box tests for 'brz added', which shows newly-added files."""
 
-import os
 
-from breezy.branch import Branch
 from breezy.tests import TestCaseWithTransport
 
 
 class TestAdded(TestCaseWithTransport):
 
     def test_added(self):
-        """Test that 'added' command reports added files"""
+        """Test that 'added' command reports added files."""
         self._test_added('a', 'a\n')
 
     def test_added_with_spaces(self):
-        """Test that 'added' command reports added files with spaces in their names quoted"""
+        """Test that 'added' command reports added files with spaces in their names quoted."""
         self._test_added('a filename with spaces',
                          '"a filename with spaces"\n')
 
     def test_added_null_separator(self):
-        """Test that added uses its null operator properly"""
+        """Test that added uses its null operator properly."""
         self._test_added('a', 'a\0', null=True)
 
     def _test_added(self, name, output, null=False):
@@ -66,11 +64,11 @@ class TestAdded(TestCaseWithTransport):
         check_added(output, null)
 
         # after commit, now no longer listed
-        tree.commit(message='add "%s"' % (name))
+        tree.commit(message=f'add "{name}"')
         check_added('')
 
     def test_added_directory(self):
-        """Test --directory option"""
+        """Test --directory option."""
         tree = self.make_branch_and_tree('a')
         self.build_tree(['a/README'])
         tree.add('README')

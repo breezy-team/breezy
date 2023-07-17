@@ -24,8 +24,13 @@ from dulwich.objects import Blob, Commit, Tree
 from ...revision import Revision
 from ...tests import TestCase, TestCaseInTempDir, UnavailableFeature
 from ...transport import get_transport
-from ..cache import (DictBzrGitCache, IndexBzrGitCache, IndexGitCacheFormat,
-                     SqliteBzrGitCache, TdbBzrGitCache)
+from ..cache import (
+    DictBzrGitCache,
+    IndexBzrGitCache,
+    IndexGitCacheFormat,
+    SqliteBzrGitCache,
+    TdbBzrGitCache,
+)
 
 
 class TestGitShaMap:
@@ -44,7 +49,7 @@ class TestGitShaMap:
 
     def test_commit(self):
         self.map.start_write_group()
-        updater = self.cache.get_updater(Revision(b"myrevid"))
+        updater = self.cache.get_updater(Revision(b"myrevid", parent_ids=[], message='', committer='', timezone=0, timestamp=0, properties={}, inventory_sha1=None))
         c = self._get_test_commit()
         updater.add_object(c, {
             "testament3-sha1": b"cc9462f7f8263ef5adf8eff2fb936bb36b504cba"},
@@ -65,7 +70,7 @@ class TestGitShaMap:
 
     def test_blob(self):
         self.map.start_write_group()
-        updater = self.cache.get_updater(Revision(b"myrevid"))
+        updater = self.cache.get_updater(Revision(b"myrevid", parent_ids=[], message='', committer='', timezone=0, timestamp=0, properties={}, inventory_sha1=None))
         updater.add_object(self._get_test_commit(), {
                            "testament3-sha1": b"Test"}, None)
         b = Blob()
@@ -81,7 +86,7 @@ class TestGitShaMap:
 
     def test_tree(self):
         self.map.start_write_group()
-        updater = self.cache.get_updater(Revision(b"somerevid"))
+        updater = self.cache.get_updater(Revision(b"somerevid", parent_ids=[], message='', committer='', timezone=0, timestamp=0, properties={}, inventory_sha1=None))
         updater.add_object(self._get_test_commit(), {
             "testament3-sha1": b"mytestamentsha"}, None)
         t = Tree()
@@ -100,7 +105,7 @@ class TestGitShaMap:
 
     def test_revids(self):
         self.map.start_write_group()
-        updater = self.cache.get_updater(Revision(b"myrevid"))
+        updater = self.cache.get_updater(Revision(b"myrevid", parent_ids=[], message='', committer='', timezone=0, timestamp=0, properties={}, inventory_sha1=None))
         c = self._get_test_commit()
         updater.add_object(c, {"testament3-sha1": b"mtestament"}, None)
         updater.finish()
@@ -109,7 +114,7 @@ class TestGitShaMap:
 
     def test_missing_revisions(self):
         self.map.start_write_group()
-        updater = self.cache.get_updater(Revision(b"myrevid"))
+        updater = self.cache.get_updater(Revision(b"myrevid", parent_ids=[], message='', committer='', timezone=0, timestamp=0, properties={}, inventory_sha1=None))
         c = self._get_test_commit()
         updater.add_object(c, {"testament3-sha1": b"testament"}, None)
         updater.finish()
@@ -140,8 +145,8 @@ class TdbGitShaMapTests(TestCaseInTempDir, TestGitShaMap):
         TestCaseInTempDir.setUp(self)
         try:
             self.cache = TdbBzrGitCache(os.path.join(self.test_dir, 'foo.tdb'))
-        except ModuleNotFoundError:
-            raise UnavailableFeature("Missing tdb")
+        except ModuleNotFoundError as err:
+            raise UnavailableFeature("Missing tdb") from err
         self.map = self.cache.idmap
 
 

@@ -22,8 +22,7 @@ For interface contract tests, see tests/per_bzr_dir.
 import os
 import sys
 
-from ... import (branch, controldir, errors, repository, upgrade, urlutils,
-                 workingtree)
+from ... import branch, controldir, errors, repository, upgrade, urlutils, workingtree
 from ...bzr import bzrdir
 from ...bzr.tests import test_bundle
 from ...osutils import getcwd
@@ -45,8 +44,8 @@ class TestFormat5(TestCaseWithTransport):
             ctrl_1 = dir.open_repository().control_files
             ctrl_2 = dir.open_branch().control_files
             ctrl_3 = dir.open_workingtree()._control_files
-            self.assertTrue(ctrl_1 is ctrl_2)
-            self.assertTrue(ctrl_2 is ctrl_3)
+            self.assertIs(ctrl_1, ctrl_2)
+            self.assertIs(ctrl_2, ctrl_3)
         check_dir_components_use_same_lock(dir)
         # and if we open it normally.
         dir = controldir.ControlDir.open(self.get_url())
@@ -80,8 +79,8 @@ class TestFormat6(TestCaseWithTransport):
             ctrl_1 = dir.open_repository().control_files
             ctrl_2 = dir.open_branch().control_files
             ctrl_3 = dir.open_workingtree()._control_files
-            self.assertTrue(ctrl_1 is ctrl_2)
-            self.assertTrue(ctrl_2 is ctrl_3)
+            self.assertIs(ctrl_1, ctrl_2)
+            self.assertIs(ctrl_2, ctrl_3)
         check_dir_components_use_same_lock(dir)
         # and if we open it normally.
         dir = controldir.ControlDir.open(self.get_url())
@@ -300,7 +299,7 @@ class TestUpgrade(TestCaseWithTransport):
                           b'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
 
     def test_upgrade_simple(self):
-        """Upgrade simple v0.0.4 format to latest format"""
+        """Upgrade simple v0.0.4 format to latest format."""
         eq = self.assertEqual
         self.build_tree_contents(_upgrade1_template)
         upgrade.upgrade('.')
@@ -316,7 +315,6 @@ class TestUpgrade(TestCaseWithTransport):
            [b'mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
             b'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
         rt = b.repository.revision_tree(rh[0])
-        foo_id = b'foo-20051004035605-91e788d1875603ae'
         with rt.lock_read():
             eq(rt.get_file_text('foo'), b'initial contents\n')
         rt = b.repository.revision_tree(rh[1])
@@ -359,7 +357,8 @@ class TestUpgrade(TestCaseWithTransport):
         This shouldn't normally happen in branches created entirely in
         bzr, but can happen in branches imported from baz and arch, or from
         other systems, where the importer knows about a revision but not
-        its contents."""
+        its contents.
+        """
         eq = self.assertEqual
         self.build_tree_contents(_ghost_template)
         upgrade.upgrade('.')
@@ -400,7 +399,7 @@ class TestUpgrade(TestCaseWithTransport):
 
 
 class SFTPBranchTest(TestCaseWithSFTPServer):
-    """Test some stuff when accessing a bzr Branch over sftp"""
+    """Test some stuff when accessing a bzr Branch over sftp."""
 
     def test_lock_file(self):
         # old format branches use a special lock file on sftp.
@@ -440,15 +439,15 @@ class TestInfo(TestCaseWithTransport):
         # U U U
         out, err = self.run_bzr('info -v branch')
         self.assertEqualDiff(
-            """Standalone tree (format: weave)
+            f"""Standalone tree (format: weave)
 Location:
-  branch root: {}
+  branch root: branch
 
 Format:
        control: All-in-one format 6
   working tree: Working tree format 2
         branch: Branch format 4
-    repository: {}
+    repository: {tree.branch.repository._format.get_format_description()}
 
 In the working tree:
          0 unchanged
@@ -466,22 +465,21 @@ Branch history:
 
 Repository:
          0 revisions
-""".format('branch', tree.branch.repository._format.get_format_description(),
-       ), out)
+""", out)
         self.assertEqual('', err)
         # L L L
         tree.lock_write()
         out, err = self.run_bzr('info -v branch')
         self.assertEqualDiff(
-            """Standalone tree (format: weave)
+            f"""Standalone tree (format: weave)
 Location:
-  branch root: {}
+  branch root: branch
 
 Format:
        control: All-in-one format 6
   working tree: Working tree format 2
         branch: Branch format 4
-    repository: {}
+    repository: {tree.branch.repository._format.get_format_description()}
 
 In the working tree:
          0 unchanged
@@ -499,14 +497,13 @@ Branch history:
 
 Repository:
          0 revisions
-""".format('branch', tree.branch.repository._format.get_format_description(),
-       ), out)
+""", out)
         self.assertEqual('', err)
         tree.unlock()
 
 
 class TestBranchFormat4(TestCaseWithTransport):
-    """Tests specific to branch format 4"""
+    """Tests specific to branch format 4."""
 
     def test_no_metadir_support(self):
         url = self.get_url()
@@ -540,7 +537,7 @@ class TestBoundBranch(TestCaseWithTransport):
         #       print out the actual path, rather than the URL
         cwd = urlutils.local_path_to_url(getcwd())
         self.assertEqual(
-            'brz: ERROR: Branch at %s/ does not support binding.\n' % cwd, err)
+            f'brz: ERROR: Branch at {cwd}/ does not support binding.\n', err)
 
     def test_unbind_format_6_bzrdir(self):
         # bind on a format 6 bzrdir should error

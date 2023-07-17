@@ -31,12 +31,12 @@ _TXT_HEADER = "   CallCount    Recursive    Total(ms)   " + \
 
 
 def _junk_callable():
-    "A simple routine to profile."
-    result = sorted(['abc', 'def', 'ghi'])
+    """A simple routine to profile."""
+    sorted(['abc', 'def', 'ghi'])
 
 
 def _collect_stats():
-    "Collect and return some dummy profile data."
+    """Collect and return some dummy profile data."""
     ret, stats = lsprof.profile(_junk_callable)
     return stats
 
@@ -80,7 +80,7 @@ class TestStats(tests.TestCaseInTempDir):
         path = self._temppath("pkl")
         self.stats.save(path)
         with open(path, 'rb') as f:
-            data1 = pickle.load(f)
+            data1 = pickle.load(f)  # noqa: S301
             self.assertEqual(type(data1), lsprof.Stats)
 
     def test_sort(self):

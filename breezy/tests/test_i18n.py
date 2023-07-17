@@ -14,35 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for breezy.i18n"""
+"""Tests for breezy.i18n."""
 
 import io
 
 from .. import errors, i18n, tests, workingtree
-
-
-class ZzzTranslations:
-    """Special Zzz translation for debugging i18n stuff.
-
-    This class can be used to confirm that the message is properly translated
-    during black box tests.
-    """
-    _null_translation = i18n._gettext.NullTranslations()
-
-    def zzz(self, s):
-        return 'zz\xe5{{%s}}' % s
-
-    def gettext(self, s):
-        return self.zzz(self._null_translation.gettext(s))
-
-    def ngettext(self, s, p, n):
-        return self.zzz(self._null_translation.ngettext(s, p, n))
-
-    def ugettext(self, s):
-        return self.zzz(self._null_translation.ugettext(s))
-
-    def ungettext(self, s, p, n):
-        return self.zzz(self._null_translation.ungettext(s, p, n))
 
 
 class TestZzzTranslation(tests.TestCase):
@@ -52,20 +28,21 @@ class TestZzzTranslation(tests.TestCase):
         self.assertEqual(type(expected), type(source))
 
     def test_translation(self):
-        trans = ZzzTranslations()
+        self.addCleanup(i18n.install)
+        i18n.install_zzz()
 
-        t = trans.zzz('msg')
+        t = i18n.zzz('msg')
         self._check_exact('zz\xe5{{msg}}', t)
 
-        t = trans.gettext('msg')
+        t = i18n.gettext('msg')
         self._check_exact('zz\xe5{{msg}}', t)
 
-        t = trans.ngettext('msg1', 'msg2', 0)
+        t = i18n.ngettext('msg1', 'msg2', 0)
         self._check_exact('zz\xe5{{msg2}}', t)
-        t = trans.ngettext('msg1', 'msg2', 2)
+        t = i18n.ngettext('msg1', 'msg2', 2)
         self._check_exact('zz\xe5{{msg2}}', t)
 
-        t = trans.ngettext('msg1', 'msg2', 1)
+        t = i18n.ngettext('msg1', 'msg2', 1)
         self._check_exact('zz\xe5{{msg1}}', t)
 
 
@@ -73,7 +50,8 @@ class TestGetText(tests.TestCase):
 
     def setUp(self):
         super().setUp()
-        self.overrideAttr(i18n, '_translations', ZzzTranslations())
+        self.addCleanup(i18n.install)
+        i18n.install_zzz()
 
     def test_oneline(self):
         self.assertEqual("zz\xe5{{spam ham eggs}}",
@@ -88,7 +66,8 @@ class TestGetTextPerParagraph(tests.TestCase):
 
     def setUp(self):
         super().setUp()
-        self.overrideAttr(i18n, '_translations', ZzzTranslations())
+        self.addCleanup(i18n.install)
+        i18n.install_zzz()
 
     def test_oneline(self):
         self.assertEqual("zz\xe5{{spam ham eggs}}",
@@ -99,49 +78,17 @@ class TestGetTextPerParagraph(tests.TestCase):
                          i18n.gettext_per_paragraph("spam\nham\n\neggs\n"))
 
 
-class TestInstall(tests.TestCase):
-
-    def setUp(self):
-        super().setUp()
-        # Restore a proper env to test translation installation
-        self.overrideAttr(i18n, '_translations', None)
-
-    def test_custom_languages(self):
-        i18n.install('nl:fy')
-        # Whether we found a valid tranlsation or not doesn't matter, we got
-        # one and _translations is not None anymore.
-        self.assertIsInstance(i18n._translations,
-                              i18n._gettext.NullTranslations)
-
-    def test_no_env_variables(self):
-        self.overrideEnv('LANGUAGE', None)
-        self.overrideEnv('LC_ALL', None)
-        self.overrideEnv('LC_MESSAGES', None)
-        self.overrideEnv('LANG', None)
-        i18n.install()
-        # Whether we found a valid tranlsation or not doesn't matter, we got
-        # one and _translations is not None anymore.
-        self.assertIsInstance(i18n._translations,
-                              i18n._gettext.NullTranslations)
-
-    def test_disable_i18n(self):
-        i18n.disable_i18n()
-        i18n.install()
-        # It's disabled, you can't install anything and we fallback to null
-        self.assertIsInstance(i18n._translations,
-                              i18n._gettext.NullTranslations)
-
-
 class TestTranslate(tests.TestCaseWithTransport):
 
     def setUp(self):
         super().setUp()
-        self.overrideAttr(i18n, '_translations', ZzzTranslations())
+        self.addCleanup(i18n.install)
+        i18n.install_zzz()
 
     def test_error_message_translation(self):
-        """do errors get translated?"""
+        """Do errors get translated?"""
         err = None
-        tree = self.make_branch_and_tree('.')
+        self.make_branch_and_tree('.')
         try:
             workingtree.WorkingTree.open('./foo')
         except errors.NotBranchError as e:
@@ -149,7 +96,7 @@ class TestTranslate(tests.TestCaseWithTransport):
         self.assertContainsRe(err, "zz\xe5{{Not a branch: .*}}")
 
     def test_topic_help_translation(self):
-        """does topic help get translated?"""
+        """Does topic help get translated?"""
         from .. import help
         out = io.StringIO()
         help.help("authentication", out)

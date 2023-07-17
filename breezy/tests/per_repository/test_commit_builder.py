@@ -18,13 +18,13 @@
 
 import os
 
-from breezy import config, errors, osutils, repository
+from breezy import errors, osutils, repository, tests
 from breezy import revision as _mod_revision
-from breezy import tests
 from breezy.bzr import inventorytree
-from breezy.bzr.inventorytree import InventoryTreeChange
 from breezy.tests import features, per_repository
+from breezy.transport.local import file_kind
 
+from ...bzr.inventorytree import InventoryTreeChange
 from ..test_bedding import override_whoami
 
 
@@ -196,7 +196,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                                  builder.get_basis_delta()[0])
                 self.assertTrue(builder.any_changes())
                 builder.finish_inventory()
-                rev_id2 = builder.commit('delete foo')
+                builder.commit('delete foo')
             except:
                 builder.abort()
                 raise
@@ -530,7 +530,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 elif delta_entry.kind == 'symlink':
                     self.assertEqual(delta_entry.symlink_target, new_entry.symlink_target)
             else:
-                expected_delta = None
                 if tree.branch.repository._format.records_per_file_revision:
                     self.assertFalse(version_recorded)
             tree.set_parent_ids([rev2])
@@ -652,7 +651,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
         if tree2.supports_file_ids:
             def _check_graph(in_tree, changed_in_tree):
-                rev3 = self.mini_commit_record_iter_changes(
+                self.mini_commit_record_iter_changes(
                     in_tree, name, 'new_' + name, False,
                     delta_against_basis=changed_in_tree)
                 tree3, = self._get_revtrees(in_tree, [rev2])
@@ -666,7 +665,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # change to name, branch tree1 and give it an unrelated change, then
         # merge that to t2.
         other_tree = tree1.controldir.sprout('t3').open_workingtree()
-        other_rev = other_tree.commit('other_rev')
+        other_tree.commit('other_rev')
         tree2.merge_from_branch(other_tree.branch)
         if tree2.supports_file_ids:
             _check_graph(tree2, False)
@@ -675,7 +674,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # Make a merge which incorporates the addition of a new object to
         # another branch. The per-file graph shows no additional change
         # in the merge because its a straight line.
-        rev1 = tree1.commit('rev1')
+        tree1.commit('rev1')
         tree2 = tree1.controldir.sprout('t2').open_workingtree()
         # make and commit on the other side to merge back
         make('t2/name')
@@ -683,7 +682,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         self.assertTrue(tree2.is_versioned('name'))
         rev2 = tree2.commit('rev2')
         tree1.merge_from_branch(tree2.branch)
-        rev3 = self.mini_commit_record_iter_changes(tree1, None, 'name', False)
+        self.mini_commit_record_iter_changes(tree1, None, 'name', False)
         tree3, = self._get_revtrees(tree1, [rev2])
         # in rev2, name should be only changed in rev2
         self.assertEqual(rev2, tree3.get_file_revision('name'))
@@ -757,7 +756,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         make_before(path)
 
         def change_kind():
-            if osutils.file_kind(path) == "directory":
+            if file_kind(path) == "directory":
                 osutils.rmtree(path)
             else:
                 osutils.delete_any(path)
@@ -775,10 +774,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         try:
             self._check_kind_change(self.make_dir, self.make_file,
                                     expect_fs_hash=True)
-        except errors.UnsupportedKindChange:
+        except errors.UnsupportedKindChange as err:
             raise tests.TestSkipped(
                 "tree does not support changing entry kind from "
-                "directory to file")
+                "directory to file") from err
 
     def test_last_modified_dir_link(self):
         if not self.repository_format.supports_versioned_directories:
@@ -788,10 +787,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 'format does not support versioned directories')
         try:
             self._check_kind_change(self.make_dir, self.make_link)
-        except errors.UnsupportedKindChange:
+        except errors.UnsupportedKindChange as err:
             raise tests.TestSkipped(
                 "tree does not support changing entry kind from "
-                "directory to link")
+                "directory to link") from err
 
     def test_last_modified_link_file(self):
         self._check_kind_change(self.make_link, self.make_file,
@@ -836,9 +835,9 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             builder.finish_inventory()
             try:
                 rev_id = builder.commit('foo bar blah')
-            except NotImplementedError:
+            except NotImplementedError as err:
                 raise tests.TestNotApplicable(
-                    'Format does not support revision properties')
+                    'Format does not support revision properties') from err
         rev = tree.branch.repository.get_revision(rev_id)
         self.assertEqual('foo bar blah', rev.message)
 
@@ -853,7 +852,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                           'Invalid\r\ncommit message\r\n')
 
     def test_non_ascii_str_committer_rejected(self):
-        """Ensure an error is raised on a non-ascii byte string committer"""
+        """Ensure an error is raised on a non-ascii byte string committer."""
         branch = self.make_branch('.')
         branch.repository.lock_write()
         self.addCleanup(branch.repository.unlock)
@@ -871,8 +870,8 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         repo_local = branch.repository
         try:
             repo_local.add_fallback_repository(repo_basis)
-        except errors.UnstackableRepositoryFormat:
-            raise tests.TestNotApplicable("not a stackable format.")
+        except errors.UnstackableRepositoryFormat as err:
+            raise tests.TestNotApplicable("not a stackable format.") from err
         self.addCleanup(repo_local.lock_write().unlock)
         if not repo_local._format.supports_chks:
             self.assertRaises(errors.BzrError, repo_local.get_commit_builder,

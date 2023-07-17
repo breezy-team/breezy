@@ -20,8 +20,7 @@ import os
 import tempfile
 
 from .... import tests
-from ..exporter import (_get_output_stream, check_ref_format,
-                        sanitize_ref_name_for_git)
+from ..exporter import _get_output_stream, check_ref_format, sanitize_ref_name_for_git
 from . import FastimportFeature
 
 
@@ -86,7 +85,7 @@ class CheckRefFormatTests(tests.TestCase):
 
 
 class CheckRefnameRewriting(tests.TestCase):
-    """Tests for sanitize_ref_name_for_git function"""
+    """Tests for sanitize_ref_name_for_git function."""
 
     def test_passthrough_valid(self):
         self.assertEqual(sanitize_ref_name_for_git(b'heads/foo'), b'heads/foo')

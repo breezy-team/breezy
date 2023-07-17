@@ -19,14 +19,15 @@ import sys
 
 from breezy import errors, osutils, repository
 from breezy.bzr import inventory, versionedfile
-from breezy.bzr.vf_search import SearchResult
-from breezy.errors import NoSuchRevision
-from breezy.repository import WriteGroup
-from breezy.revision import NULL_REVISION, Revision
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_interrepository import TestCaseWithInterRepository
-from breezy.tests.per_interrepository.test_interrepository import \
-    check_repo_format_for_funky_id_on_win32
+
+from ...bzr.inventory_delta import InventoryDelta
+from ...bzr.vf_search import SearchResult
+from ...errors import NoSuchRevision
+from ...repository import WriteGroup
+from ...revision import NULL_REVISION, Revision
+from .test_interrepository import check_repo_format_for_funky_id_on_win32
 
 
 class TestInterRepository(TestCaseWithInterRepository):
@@ -55,10 +56,10 @@ class TestInterRepository(TestCaseWithInterRepository):
             # fetch with a default limit (grab everything)
             try:
                 repo.fetch(tree_a.branch.repository)
-            except errors.NoRoundtrippingSupport:
-                raise TestNotApplicable('roundtripping not supported')
+            except errors.NoRoundtrippingSupport as err:
+                raise TestNotApplicable('roundtripping not supported') from err
             # check that b now has all the data from a's first commit.
-            rev = repo.get_revision(rev1)
+            repo.get_revision(rev1)
             tree = repo.revision_tree(rev1)
             tree.lock_read()
             self.addCleanup(tree.unlock)
@@ -86,8 +87,8 @@ class TestInterRepository(TestCaseWithInterRepository):
         to_repo = self.make_to_repository('to_repo')
         try:
             to_repo.fetch(tree.branch.repository, revid)
-        except errors.NoRoundtrippingSupport:
-            raise TestNotApplicable('roundtripping not supported')
+        except errors.NoRoundtrippingSupport as err:
+            raise TestNotApplicable('roundtripping not supported') from err
         # Make a broken revision and fetch it.
         source = tree.branch.repository
         source.lock_write()
@@ -104,13 +105,14 @@ class TestInterRepository(TestCaseWithInterRepository):
             entry.revision = revid
             entry.text_size = len('contents')
             entry.text_sha1 = osutils.sha_string(b'contents')
-            inv_sha1, _ = source.add_inventory_by_delta(revid, [
-                (None, 'foo-path', b'foo', entry)], b'new', [revid])
+            inv_sha1, _ = source.add_inventory_by_delta(revid, InventoryDelta([
+                (None, 'foo-path', b'foo', entry)]), b'new', [revid])
             rev = Revision(timestamp=0,
                            timezone=None,
                            committer="Foo Bar <foo@example.com>",
                            message="Message",
                            inventory_sha1=inv_sha1,
+                           properties={},
                            revision_id=b'new',
                            parent_ids=[revid])
             source.add_revision(rev.revision_id, rev)
@@ -158,8 +160,8 @@ class TestInterRepository(TestCaseWithInterRepository):
         target = self.make_to_repository('target')
         try:
             target.fetch(stacked_branch.repository, b'third')
-        except errors.NoRoundtrippingSupport:
-            raise TestNotApplicable('roundtripping not supported')
+        except errors.NoRoundtrippingSupport as err:
+            raise TestNotApplicable('roundtripping not supported') from err
         target.lock_read()
         self.addCleanup(target.unlock)
         all_revs = {b'first', b'second', b'third'}
@@ -174,7 +176,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         self.disable_verb(b'Repository.insert_stream_1.19')
         try:
             self.test_fetch_parent_inventories_at_stacking_boundary()
-        except errors.ConnectionReset:
+        except ConnectionResetError:
             self.knownFailure("Random spurious failure, see bug 874153")
 
     def test_fetch_parent_inventories_at_stacking_boundary(self):
@@ -259,7 +261,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         exclude_keys = set(repo.all_revision_ids()) - {revision_id}
         search = SearchResult([revision_id], exclude_keys, 1, [revision_id])
         source = repo._get_source(repo._format)
-        for substream_kind, substream in source.get_stream(search):
+        for _substream_kind, substream in source.get_stream(search):
             # Consume the substream
             list(substream)
 
@@ -268,7 +270,7 @@ class TestInterRepository(TestCaseWithInterRepository):
             raise TestNotApplicable("Need stacking support in the target.")
         if not self.repository_format.supports_ghosts:
             raise TestNotApplicable("Need ghost support in the source.")
-        to_repo = self.make_to_repository('to')
+        self.make_to_repository('to')
         builder = self.make_branch_builder('branch')
         builder.start_series()
         base = builder.build_snapshot(None, [
@@ -438,7 +440,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         # generally do).
         try:
             to_repo.fetch(tree.branch.repository, rev2)
-        except (errors.BzrCheckError, errors.RevisionNotPresent) as e:
+        except (errors.BzrCheckError, errors.RevisionNotPresent):
             # If an exception is raised, the revision should not be in the
             # target.
             #
@@ -494,15 +496,16 @@ class TestInterRepository(TestCaseWithInterRepository):
                        committer="Foo Bar <foo@example.com>",
                        message="Message",
                        inventory_sha1=sha1,
-                       revision_id=b'b')
-        rev.parent_ids = [b'a']
+                       parent_ids=[b'a'],
+                       revision_id=b'b',
+                       properties={})
         source.add_revision(b'b', rev)
         self.disable_commit_write_group_paranoia(source)
         source.commit_write_group()
         try:
             self.assertRaises(errors.RevisionNotPresent, target.fetch, source)
-        except errors.NoRoundtrippingSupport:
-            raise TestNotApplicable('roundtripping not supported')
+        except errors.NoRoundtrippingSupport as err:
+            raise TestNotApplicable('roundtripping not supported') from err
         self.assertFalse(target.has_revision(b'b'))
 
     def test_fetch_funky_file_id(self):
@@ -520,11 +523,11 @@ class TestInterRepository(TestCaseWithInterRepository):
         try:
             to_repo.fetch(from_tree.branch.repository,
                           from_tree.get_parent_ids()[0])
-        except errors.NoRoundtrippingSupport:
-            raise TestNotApplicable('roundtripping not supported')
+        except errors.NoRoundtrippingSupport as err:
+            raise TestNotApplicable('roundtripping not supported') from err
 
     def test_fetch_revision_hash(self):
-        """Ensure that inventory hashes are updated by fetch"""
+        """Ensure that inventory hashes are updated by fetch."""
         if not self.repository_format_to.supports_full_versioned_files:
             raise TestNotApplicable('Need full versioned files')
         from_tree = self.make_branch_and_tree('tree')
@@ -532,8 +535,8 @@ class TestInterRepository(TestCaseWithInterRepository):
         to_repo = self.make_to_repository('to')
         try:
             to_repo.fetch(from_tree.branch.repository)
-        except errors.NoRoundtrippingSupport:
-            raise TestNotApplicable('roundtripping not supported')
+        except errors.NoRoundtrippingSupport as err:
+            raise TestNotApplicable('roundtripping not supported') from err
         recorded_inv_sha1 = to_repo.get_revision(revid).inventory_sha1
         to_repo.lock_read()
         self.addCleanup(to_repo.unlock)

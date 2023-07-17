@@ -16,7 +16,6 @@
 
 """Helper functions for proposing merges."""
 
-import re
 from typing import Optional, Type
 
 from . import errors, hooks, registry, urlutils
@@ -187,7 +186,7 @@ class MergeProposal:
         raise NotImplementedError(self.is_merged)
 
     def is_closed(self):
-        """Check whether this merge proposal is closed
+        """Check whether this merge proposal is closed.
 
         This can either mean that it is merged or rejected.
         """
@@ -205,13 +204,11 @@ class MergeProposal:
         raise NotImplementedError(self.can_be_merged)
 
     def get_merged_by(self):
-        """If this proposal was merged, who merged it.
-        """
+        """If this proposal was merged, who merged it."""
         raise NotImplementedError(self.get_merged_by)
 
     def get_merged_at(self):
-        """If this proposal was merged, when it was merged.
-        """
+        """If this proposal was merged, when it was merged."""
         raise NotImplementedError(self.get_merged_at)
 
     def post_comment(self, body):
@@ -248,8 +245,7 @@ class MergeProposalBuilder:
         raise NotImplementedError(self.get_initial_body)
 
     def get_infotext(self):
-        """Determine the initial comment for the merge proposal.
-        """
+        """Determine the initial comment for the merge proposal."""
         raise NotImplementedError(self.get_infotext)
 
     def create_proposal(self, description, title=None, reviewers=None,
@@ -278,8 +274,7 @@ class MergeProposalBuilder:
 
 
 class Forge:
-    """A hosting site manager.
-    """
+    """A hosting site manager."""
 
     # Does this forge support arbitrary labels being attached to merge
     # proposals?
@@ -290,7 +285,7 @@ class Forge:
     @property
     def name(self):
         """Name of this instance."""
-        return "{} at {}".format(type(self).__name__, self.base_url)
+        return f"{type(self).__name__} at {self.base_url}"
 
     # Does this forge support suggesting a commit message in the
     # merge proposal?
@@ -321,8 +316,7 @@ class Forge:
         raise NotImplementedError(self.publish_derived)
 
     def get_derived_branch(self, base_branch, name, project=None, owner=None, preferred_schemes=None):
-        """Get a derived branch ('a fork').
-        """
+        """Get a derived branch ('a fork')."""
         raise NotImplementedError(self.get_derived_branch)
 
     def get_push_url(self, branch):
@@ -369,8 +363,7 @@ class Forge:
 
     @classmethod
     def probe_from_hostname(cls, hostname, possible_transports=None):
-        """Create a Forge object if this forge knows about a hostname.
-        """
+        """Create a Forge object if this forge knows about a hostname."""
         raise NotImplementedError(cls.probe_from_hostname)
 
     @classmethod
@@ -407,13 +400,11 @@ class Forge:
         raise NotImplementedError(self.iter_my_forks)
 
     def delete_project(self, name):
-        """Delete a project.
-        """
+        """Delete a project."""
         raise NotImplementedError(self.delete_project)
 
     def create_project(self, name, summary=None):
-        """Create a project.
-        """
+        """Create a project."""
         raise NotImplementedError(self.create_project)
 
     @classmethod
@@ -463,7 +454,7 @@ def get_forge(branch, possible_forges=None):
         for forge in possible_forges:
             if forge.hosts(branch):
                 return forge
-    for name, forge_cls in forges.items():
+    for _name, forge_cls in forges.items():
         try:
             forge = forge_cls.probe_from_branch(branch)
         except UnsupportedForge:
@@ -476,8 +467,7 @@ def get_forge(branch, possible_forges=None):
 
 
 def get_forge_by_hostname(hostname: str):
-    """Get a forge from a hostname.
-    """
+    """Get a forge from a hostname."""
     for instance in iter_forge_instances():
         try:
             return instance.probe_from_hostname(hostname)
@@ -521,8 +511,7 @@ def create_project(url: str, *, summary=None) -> None:
       url: URL of project to create
     """
     parsed_url = urlutils.URL.from_string(url)
-    hostname = parsed_url.host
-    for name, forge_cls in forges.items():
+    for _name, forge_cls in forges.items():
         try:
             hoster = forge_cls.probe_from_url(url)
         except UnsupportedForge:

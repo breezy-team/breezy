@@ -28,19 +28,16 @@ lazy_import(globals(), """
 import time
 
 from breezy import (
-    debug,
     progress,
     )
 """)
 
-from .. import config, osutils, trace
+from .. import config, debug, osutils, trace
 from . import NullProgressView, UIFactory
 
 
 class _ChooseUI:
-
-    """ Helper class for choose implementation.
-    """
+    """Helper class for choose implementation."""
 
     def __init__(self, ui, msg, choices, default):
         self.ui = ui
@@ -79,7 +76,7 @@ class _ChooseUI:
             name = c.replace('&', '').lower()
             choice = (name, index)
             if name in self.alternatives:
-                raise ValueError("duplicated choice: %s" % name)
+                raise ValueError(f"duplicated choice: {name}")
             self.alternatives[name] = choice
             shortcut = c.find('&')
             if -1 != shortcut and (shortcut + 1) < len(c):
@@ -90,10 +87,10 @@ class _ChooseUI:
             else:
                 c = c.replace('&', '')
                 shortcut = c[0]
-                help = '[{}]{}'.format(shortcut, c[1:])
+                help = f'[{shortcut}]{c[1:]}'
             shortcut = shortcut.lower()
             if shortcut in self.alternatives:
-                raise ValueError("duplicated shortcut: %s" % shortcut)
+                raise ValueError(f"duplicated shortcut: {shortcut}")
             self.alternatives[shortcut] = choice
             # Add redirections for default.
             if index == default:
@@ -102,7 +99,7 @@ class _ChooseUI:
             help_list.append(help)
             index += 1
 
-        self.prompt = '{} ({}): '.format(msg, ', '.join(help_list))
+        self.prompt = f"{msg} ({', '.join(help_list)}): "
 
     def _getline(self):
         line = self.ui.stdin.readline()
@@ -121,8 +118,7 @@ class _ChooseUI:
         return char
 
     def interact(self):
-        """Keep asking the user until a valid choice is made.
-        """
+        """Keep asking the user until a valid choice is made."""
         if self.line_based:
             getchoice = self._getline
         else:
@@ -183,7 +179,7 @@ class TextUIFactory(UIFactory):
         self.stderr = _wrap_out_stream(self.raw_stderr)
 
     def choose(self, msg, choices, default=None):
-        """Prompt the user for a list of alternatives.
+        r"""Prompt the user for a list of alternatives.
 
         Support both line-based and char-based editing.
 
@@ -199,7 +195,6 @@ class TextUIFactory(UIFactory):
           and osutils.getchar is used
         - input is line-based, and no controlling terminal is available
         """
-
         choose_ui = _ChooseUI(self, msg, choices, default)
         return choose_ui.interact()
 
@@ -213,7 +208,8 @@ class TextUIFactory(UIFactory):
         """Prepare the terminal for output.
 
         This will, clear any progress bars, and leave the cursor at the
-        leftmost position."""
+        leftmost position.
+        """
         # XXX: If this is preparing to write to stdout, but that's for example
         # directed into a file rather than to the terminal, and the progress
         # bar _is_ going to the terminal, we shouldn't need
@@ -284,8 +280,7 @@ class TextUIFactory(UIFactory):
         return username
 
     def make_progress_view(self):
-        """Construct and return a new ProgressView subclass for this UI.
-        """
+        """Construct and return a new ProgressView subclass for this UI."""
         # with --quiet, never any progress view
         # <https://bugs.launchpad.net/bzr/+bug/320035>.  Otherwise if the
         # user specifically requests either text or no progress bars, always
@@ -316,7 +311,7 @@ class TextUIFactory(UIFactory):
             to allow UIs to reformat the prompt.
         """
         if not isinstance(prompt, str):
-            raise ValueError("prompt %r not a unicode string" % prompt)
+            raise ValueError(f"prompt {prompt!r} not a unicode string")
         if kwargs:
             # See <https://launchpad.net/bugs/365891>
             prompt = prompt % kwargs
@@ -335,28 +330,26 @@ class TextUIFactory(UIFactory):
                                                     direction, byte_count)
 
     def log_transport_activity(self, display=False):
-        """See UIFactory.log_transport_activity()"""
+        """See UIFactory.log_transport_activity()."""
         log = getattr(self._progress_view, 'log_transport_activity', None)
         if log is not None:
             log(display=display)
 
     def show_error(self, msg):
         self.clear_term()
-        self.stderr.write("bzr: error: %s\n" % msg)
+        self.stderr.write(f"bzr: error: {msg}\n")
 
     def show_message(self, msg):
         self.note(msg)
 
     def show_warning(self, msg):
         self.clear_term()
-        self.stderr.write("bzr: warning: %s\n" % msg)
+        self.stderr.write(f"bzr: warning: {msg}\n")
 
     def _progress_updated(self, task):
-        """A task has been updated and wants to be displayed.
-        """
+        """A task has been updated and wants to be displayed."""
         if not self._task_stack:
-            warnings.warn("%r updated but no tasks are active" %
-                          (task,))
+            warnings.warn(f"{task!r} updated but no tasks are active", stacklevel=1)
         elif task != self._task_stack[-1]:
             # We used to check it was the top task, but it's hard to always
             # get this right and it's not necessarily useful: any actual
@@ -468,8 +461,8 @@ class TextProgressView:
             else:
                 completion_fraction = \
                     self._last_task._overall_completion_fraction() or 0
-            if (completion_fraction < self._fraction and 'progress' in
-                    debug.debug_flags):
+            if (completion_fraction < self._fraction and
+                    debug.debug_flags_enabled('progress')):
                 debug.set_trace()
             self._fraction = completion_fraction
             markers = int(round(float(cols) * completion_fraction)) - 1
@@ -580,7 +573,7 @@ class TextProgressView:
             self._bytes_by_direction[direction] += byte_count
         else:
             self._bytes_by_direction['unknown'] += byte_count
-        if 'no_activity' in debug.debug_flags:
+        if debug.debug_flag_enabled('no_activity'):
             # Can be used as a workaround if
             # <https://launchpad.net/bugs/321935> reappears and transport
             # activity is cluttering other output.  However, thanks to
@@ -625,9 +618,7 @@ class TextProgressView:
                   self._bytes_by_direction['write'] / 1000.,
                   ))
         if self._bytes_by_direction['unknown'] > 0:
-            msg += ' u:%.0fkB)' % (
-                self._bytes_by_direction['unknown'] / 1000.
-                )
+            msg += f" u:{self._bytes_by_direction['unknown'] / 1000.0:.0f}kB)"
         else:
             msg += ')'
         return msg
@@ -645,7 +636,7 @@ def _get_stream_encoding(stream):
     if encoding is None:
         encoding = getattr(stream, "encoding", None)
     if encoding is None:
-        encoding = osutils.get_terminal_encoding(trace=True)
+        encoding = osutils.get_terminal_encoding()
     return encoding
 
 

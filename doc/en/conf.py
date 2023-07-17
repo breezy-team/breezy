@@ -13,7 +13,7 @@ import sys
 sys.path = [os.path.abspath('../..')] + sys.path
 
 # Most of the configuration for Breezy docs is defined here ...
-from breezy.doc_generate.conf import *
+from breezy.doc_generate.conf import *  # noqa: F403
 
 ## Configuration specific to this site ##
 
@@ -45,37 +45,37 @@ html_short_title = brz_title("Table of Contents (%s)") % (release,)
 html_additional_pages = {'index': 'index.html'}
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'brz-{}'.format(brz_locale)
+htmlhelp_basename = f'brz-{brz_locale}'
 
 # Grouping the document tree into files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 brz_documents = [
     # Manuals
-    ('user-guide/index', 'brz-{}-user-guide'.format(brz_locale),
+    ('user-guide/index', f'brz-{brz_locale}-user-guide',
      brz_title('Breezy User Guide'), brz_team, 'manual'),
-    ('user-reference/index', 'brz-{}-user-reference'.format(brz_locale),
+    ('user-reference/index', f'brz-{brz_locale}-user-reference',
      brz_title('Breezy User Reference'), brz_team, 'manual'),
-    ('release-notes/index', 'brz-{}-release-notes'.format(brz_locale),
+    ('release-notes/index', f'brz-{brz_locale}-release-notes',
      brz_title('Breezy Release Notes'), brz_team, 'manual'),
-    ('upgrade-guide/index', 'brz-{}-upgrade-guide'.format(brz_locale),
+    ('upgrade-guide/index', f'brz-{brz_locale}-upgrade-guide',
      brz_title('Breezy Upgrade Guide'), brz_team, 'manual'),
-    ('admin-guide/index', 'brz-{}-admin-guide'.format(brz_locale),
+    ('admin-guide/index', f'brz-{brz_locale}-admin-guide',
      brz_title("Breezy System Administrator's Guide"), brz_team, 'manual'),
     # Tutorials
-    ('mini-tutorial/index', 'brz-{}-tutorial-mini'.format(brz_locale),
+    ('mini-tutorial/index', f'brz-{brz_locale}-tutorial-mini',
      brz_title('Breezy in five minutes'), brz_team, 'howto'),
-    ('tutorials/tutorial', 'brz-{}-tutorial'.format(brz_locale),
+    ('tutorials/tutorial', f'brz-{brz_locale}-tutorial',
      brz_title('Breezy Tutorial'), brz_team, 'howto'),
     ('tutorials/using_breezy_with_github',
-     'brz-{}-tutorial-with-github'.format(brz_locale),
+     f'brz-{brz_locale}-tutorial-with-github',
      brz_title('Using Breezy With GitHub'), brz_team, 'howto'),
     ('tutorials/using_breezy_with_launchpad',
-     'brz-{}-tutorial-with-launchpad'.format(brz_locale),
+     f'brz-{brz_locale}-tutorial-with-launchpad',
      brz_title('Using Breezy With Launchpad'), brz_team, 'howto'),
     ('tutorials/centralized_workflow',
-     'brz-{}-tutorial-centralized'.format(brz_locale),
+     f'brz-{brz_locale}-tutorial-centralized',
      brz_title('Centralized Workflow Tutorial'), brz_team, 'howto'),
-    ('whats-new/whats-new-in-3.1', 'brz-{}-whats-new'.format(brz_locale),
+    ('whats-new/whats-new-in-3.1', f'brz-{brz_locale}-whats-new',
      brz_title("What's New in Breezy 3.1?"), brz_team, 'howto'),
 ]
 

@@ -19,17 +19,25 @@
 import re
 from io import BytesIO
 
-from ... import branch as _mod_branch
-from ... import commit, controldir
+from ... import (
+    commit,
+    controldir,
+    errors,
+    gpg,
+    info,
+    repository,
+    tests,
+    transport,
+    upgrade,
+    workingtree,
+)
 from ... import delta as _mod_delta
-from ... import errors, gpg, info, repository
 from ... import revision as _mod_revision
-from ... import tests, transport, upgrade, workingtree
 from ...bzr import branch as _mod_bzrbranch
-from ...bzr import inventory, knitpack_repo, remote
+from ...bzr import knitpack_repo, remote
 from ...bzr import repository as bzrrepository
 from .. import per_repository, test_server
-from ..matchers import *
+from ..matchers import *  # noqa: F403
 
 
 class TestRepositoryMakeBranchAndTree(per_repository.TestCaseWithRepository):
@@ -178,7 +186,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
                          tree.branch.repository.supports_rich_root())
 
     def test_clone_specific_format(self):
-        """todo"""
+        """Todo"""
 
     def test_format_initialize_find_open(self):
         # loopback test to check the current format initializes to itself.
@@ -349,15 +357,15 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo.start_write_group()
         try:
             repo.sign_revision(a, gpg.LoopbackGPGStrategy(None))
-        except errors.UnsupportedOperation:
+        except errors.UnsupportedOperation as err:
             self.assertFalse(repo._format.supports_revision_signatures)
             raise tests.TestNotApplicable(
-                "signatures not supported by repository format")
+                "signatures not supported by repository format") from err
         repo.commit_write_group()
         repo.unlock()
         old_signature = repo.get_signature_text(a)
         try:
-            old_format = controldir.ControlDirFormat.get_default_format()
+            controldir.ControlDirFormat.get_default_format()
             # This gives metadir branches something they can convert to.
             # it would be nice to have a 'latest' vs 'default' concept.
             format = controldir.format_registry.make_controldir(
@@ -367,7 +375,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             # this is in the most current format already.
             return
         except errors.BadConversionTarget as e:
-            raise tests.TestSkipped(str(e))
+            raise tests.TestSkipped(str(e)) from e
         wt = workingtree.WorkingTree.open(wt.basedir)
         new_signature = wt.branch.repository.get_signature_text(a)
         self.assertEqual(old_signature, new_signature)
@@ -386,7 +394,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         tree = self.make_branch_and_tree('.')
         a = tree.commit(message, allow_pointless=True)
         rev = tree.branch.repository.get_revision(a)
-        serializer = getattr(tree.branch.repository, "_serializer", None)
+        serializer = getattr(tree.branch.repository, "_revision_serializer", None)
         if serializer is not None and serializer.squashes_xml_invalid_characters:
             # we have to manually escape this as we dont try to
             # roundtrip xml invalid characters in the xml-based serializers.
@@ -416,9 +424,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
             "All 8-bit chars: " + ''.join(unichars))
 
     def test_check_repository(self):
-        """Check a fairly simple repository's history"""
+        """Check a fairly simple repository's history."""
         tree = self.make_branch_and_tree('.')
-        a_rev = tree.commit('initial empty commit', allow_pointless=True)
+        tree.commit('initial empty commit', allow_pointless=True)
         result = tree.branch.repository.check()
         # writes to log; should accept both verbose or non-verbose
         result.report_results(verbose=True)
@@ -475,8 +483,8 @@ class TestRepository(per_repository.TestCaseWithRepository):
         # create a repository to get a real format instance, not the
         # template from the test suite parameterization.
         repo = self.make_repository('.')
-        repo._format.rich_root_data
-        repo._format.supports_tree_reference
+        repo._format.rich_root_data  # noqa: B018
+        repo._format.supports_tree_reference  # noqa: B018
 
     def test_iter_files_bytes(self):
         tree = self.make_branch_and_tree('tree')
@@ -527,7 +535,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         rev2 = tree.commit('commit-with-ghost')
         graph = tree.branch.repository.get_graph()
         parents = graph.get_parent_map([b'ghost', rev2])
-        self.assertTrue(b'ghost' not in parents)
+        self.assertNotIn(b'ghost', parents)
         self.assertEqual(parents[rev2], (rev1, b'ghost'))
 
     def test_get_known_graph_ancestry(self):
@@ -605,7 +613,8 @@ class TestRepository(per_repository.TestCaseWithRepository):
     # XXX: this helper duplicated from tests.test_repository
     def make_remote_repository(self, path, shared=None):
         """Make a RemoteRepository object backed by a real repository that will
-        be created at the given path."""
+        be created at the given path.
+        """
         repo = self.make_repository(path, shared=shared)
         smart_server = test_server.SmartTCPServer_for_testing()
         self.start_server(smart_server, self.get_server())
@@ -625,9 +634,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
         local_bzrdir = self.make_controldir('local')
         try:
             local_repo = remote_repo.sprout(local_bzrdir)
-        except errors.TransportNotPossible:
+        except errors.TransportNotPossible as err:
             raise tests.TestNotApplicable(
-                "Cannot lock_read old formats like AllInOne over HPSS.")
+                "Cannot lock_read old formats like AllInOne over HPSS.") from err
         remote_backing_repo = controldir.ControlDir.open(
             self.get_vfs_only_url('remote')).open_repository()
         self.assertEqual(
@@ -635,8 +644,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             local_repo._format.network_name())
 
     def test_sprout_branch_from_hpss_preserves_repo_format(self):
-        """branch.sprout from a smart server preserves the repository format.
-        """
+        """branch.sprout from a smart server preserves the repository format."""
         if not self.repository_format.supports_leaving_lock:
             raise tests.TestNotApplicable(
                 "Format can not be used over HPSS")
@@ -644,9 +652,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
         remote_branch = remote_repo.controldir.create_branch()
         try:
             local_bzrdir = remote_branch.controldir.sprout('local')
-        except errors.TransportNotPossible:
+        except errors.TransportNotPossible as err:
             raise tests.TestNotApplicable(
-                "Cannot lock_read old formats like AllInOne over HPSS.")
+                "Cannot lock_read old formats like AllInOne over HPSS.") from err
         local_repo = local_bzrdir.open_repository()
         remote_backing_repo = controldir.ControlDir.open(
             self.get_vfs_only_url('remote')).open_repository()
@@ -665,7 +673,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             self.get_vfs_only_url('remote')).open_repository()
         # Make a branch in that repo in an old format that isn't the default
         # branch format for the repo.
-        from breezy.bzr.fullhistory import BzrBranchFormat5
+        from ...bzr.fullhistory import BzrBranchFormat5
         format = remote_backing_repo.controldir.cloning_metadir()
         format._branch_format = BzrBranchFormat5()
         remote_transport = remote_repo.controldir.root_transport.clone(
@@ -676,9 +684,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
             remote_transport).open_branch()
         try:
             local_bzrdir = remote_branch.controldir.sprout('local')
-        except errors.TransportNotPossible:
+        except errors.TransportNotPossible as err:
             raise tests.TestNotApplicable(
-                "Cannot lock_read old formats like AllInOne over HPSS.")
+                "Cannot lock_read old formats like AllInOne over HPSS.") from err
         local_repo = local_bzrdir.open_repository()
         self.assertEqual(remote_backing_repo._format, local_repo._format)
 
@@ -701,8 +709,8 @@ class TestRepository(per_repository.TestCaseWithRepository):
         """
         try:
             repo = self.make_repository('repo', shared=True)
-        except errors.IncompatibleFormat:
-            raise tests.TestNotApplicable('Cannot make a shared repository')
+        except errors.IncompatibleFormat as err:
+            raise tests.TestNotApplicable('Cannot make a shared repository') from err
         if repo.controldir._format.fixed_components:
             self.knownFailure(
                 "pre metadir branches do not upgrade on push "
@@ -759,7 +767,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         an object with a get_parent_map method.
         """
         repo = self.make_repository('repo')
-        repo._make_parents_provider().get_parent_map
+        repo._make_parents_provider().get_parent_map  # noqa: B018
 
     def make_repository_and_foo_bar(self, shared=None):
         made_control = self.make_controldir('repository')
@@ -771,9 +779,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
             self.get_url('repository/foo'), force_new_repo=False)
         controldir.ControlDir.create_branch_convenience(
             self.get_url('repository/bar'), force_new_repo=True)
-        baz = self.make_controldir('repository/baz')
-        qux = self.make_branch('repository/baz/qux')
-        quxx = self.make_branch('repository/baz/qux/quxx')
+        self.make_controldir('repository/baz')
+        self.make_branch('repository/baz/qux')
+        self.make_branch('repository/baz/qux/quxx')
         return repo
 
     def test_find_branches(self):
@@ -794,8 +802,8 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def test_find_branches_using(self):
         try:
             repo = self.make_repository_and_foo_bar(shared=True)
-        except errors.IncompatibleFormat:
-            raise tests.TestNotApplicable
+        except errors.IncompatibleFormat as err:
+            raise tests.TestNotApplicable from err
         branches = list(repo.find_branches(using=True))
         self.assertContainsRe(branches[-1].base, 'repository/foo/$')
         # in some formats, creating a repo creates a branch
@@ -819,9 +827,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def test_find_branches_using_empty_standalone_repo(self):
         try:
             repo = self.make_repository('repo', shared=False)
-        except errors.IncompatibleFormat:
+        except errors.IncompatibleFormat as err:
             raise tests.TestNotApplicable("format does not support standalone "
-                                          "repositories")
+                                          "repositories") from err
         try:
             repo.controldir.open_branch()
         except errors.NotBranchError:
@@ -834,16 +842,16 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = self.make_repository('repo')
         try:
             repo.set_make_working_trees(True)
-        except (errors.RepositoryUpgradeRequired, errors.UnsupportedOperation) as e:
-            raise tests.TestNotApplicable('Format does not support this flag.')
+        except (errors.RepositoryUpgradeRequired, errors.UnsupportedOperation) as err:
+            raise tests.TestNotApplicable('Format does not support this flag.') from err
         self.assertTrue(repo.make_working_trees())
 
     def test_set_get_make_working_trees_false(self):
         repo = self.make_repository('repo')
         try:
             repo.set_make_working_trees(False)
-        except (errors.RepositoryUpgradeRequired, errors.UnsupportedOperation) as e:
-            raise tests.TestNotApplicable('Format does not support this flag.')
+        except (errors.RepositoryUpgradeRequired, errors.UnsupportedOperation) as err:
+            raise tests.TestNotApplicable('Format does not support this flag.') from err
         self.assertFalse(repo.make_working_trees())
 
 

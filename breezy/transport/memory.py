@@ -20,7 +20,6 @@ The contents of the transport will be lost when the object is discarded,
 so this is primarily useful for testing.
 """
 
-import contextlib
 import errno
 import itertools
 import os
@@ -28,9 +27,14 @@ from io import BytesIO
 from stat import S_IFDIR, S_IFLNK, S_IFREG, S_ISDIR
 
 from .. import transport, urlutils
-from ..errors import InProcessTransport, LockError, TransportNotPossible
-from ..transport import (AppendBasedFileStream, FileExists, LateReadError,
-                         NoSuchFile, _file_streams)
+from ..errors import InProcessTransport, LockError
+from ..transport import (
+    AppendBasedFileStream,
+    FileExists,
+    LateReadError,
+    NoSuchFile,
+    _file_streams,
+)
 
 
 class MemoryStat:
@@ -68,7 +72,7 @@ class MemoryTransport(transport.Transport):
 
     def clone(self, offset=None):
         """See Transport.clone()."""
-        path = urlutils.URL._combine_paths(self._cwd, offset)
+        path = urlutils.combine_paths(self._cwd, offset)
         if len(path) == 0 or path[-1] != '/':
             path += '/'
         url = self._scheme + path
@@ -197,7 +201,7 @@ class MemoryTransport(transport.Transport):
         return result
 
     def rename(self, rel_from, rel_to):
-        """Rename a file or directory; fail if the destination exists"""
+        """Rename a file or directory; fail if the destination exists."""
         abs_from = self._resolve_symlinks(rel_from)
         abs_to = self._resolve_symlinks(rel_to)
 
@@ -292,8 +296,7 @@ class MemoryTransport(transport.Transport):
         for i in cwd_parts + rel_parts:
             if i == '..':
                 if not r:
-                    raise ValueError("illegal relpath %r under %r"
-                                     % (relpath, self._cwd))
+                    raise ValueError(f"illegal relpath {relpath!r} under {self._cwd!r}")
                 r = r[:-1]
             elif i == '.' or i == '':
                 pass
@@ -306,8 +309,8 @@ class MemoryTransport(transport.Transport):
         _abspath = self._abspath(link_name)
         try:
             return '/'.join(self._symlinks[_abspath])
-        except KeyError:
-            raise NoSuchFile(link_name)
+        except KeyError as err:
+            raise NoSuchFile(link_name) from err
 
 
 class _MemoryLock:
@@ -317,7 +320,7 @@ class _MemoryLock:
         self.path = path
         self.transport = transport
         if self.path in self.transport._locks:
-            raise LockError('File {!r} already locked'.format(self.path))
+            raise LockError(f'File {self.path!r} already locked')
         self.transport._locks[self.path] = self
 
     def unlock(self):
@@ -333,7 +336,7 @@ class MemoryServer(transport.Server):
         self._files = {}
         self._symlinks = {}
         self._locks = {}
-        self._scheme = "memory+%s:///" % id(self)
+        self._scheme = f"memory+{id(self)}:///"
 
         def memory_factory(url):
             from . import memory

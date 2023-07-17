@@ -19,8 +19,9 @@
 
 from collections import defaultdict
 from io import BytesIO
+from typing import Dict, Set
 
-from .. import errors, trace
+from .. import trace
 from .. import transport as _mod_transport
 
 
@@ -31,8 +32,8 @@ class UnpeelMap:
     """
 
     def __init__(self):
-        self._map = defaultdict(set)
-        self._re_map = {}
+        self._map: Dict[bytes, Set[bytes]] = defaultdict(set)
+        self._re_map: Dict[bytes, Set[bytes]] = {}
 
     def update(self, m):
         for k, v in m.items():
@@ -44,7 +45,7 @@ class UnpeelMap:
         firstline = f.readline()
         if firstline != b"unpeel map version 1\n":
             raise AssertionError(
-                "invalid format for unpeel map: %r" % firstline)
+                f"invalid format for unpeel map: {firstline!r}")
         for l in f.readlines():
             (k, v) = l.split(b":", 1)
             k = k.strip()
@@ -81,8 +82,7 @@ class UnpeelMap:
 
     @classmethod
     def from_repository(cls, repository):
-        """Load the unpeel map for a repository.
-        """
+        """Load the unpeel map for a repository."""
         m = UnpeelMap()
         try:
             m.load(repository.control_transport.get("git-unpeel-map"))

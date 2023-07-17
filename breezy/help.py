@@ -35,7 +35,7 @@ class NoHelpTopic(errors.BzrError):
 
 
 def help(topic=None, outfile=None):
-    """Write the help for the specific topic to outfile"""
+    """Write the help for the specific topic to outfile."""
     if outfile is None:
         outfile = ui.ui_factory.make_output_stream()
 
@@ -46,8 +46,7 @@ def help(topic=None, outfile=None):
         topics = indices.search(topic)
         shadowed_terms = []
         for index, topic_obj in topics[1:]:
-            shadowed_terms.append('{}{}'.format(index.prefix,
-                                            topic_obj.get_help_topic()))
+            shadowed_terms.append(f'{index.prefix}{topic_obj.get_help_topic()}')
         source = topics[0][1]
         outfile.write(source.get_help_text(shadowed_terms))
     except NoHelpTopic:
@@ -55,19 +54,18 @@ def help(topic=None, outfile=None):
             raise
 
     if alias is not None:
-        outfile.write("'brz {}' is an alias for 'brz {}'.\n".format(topic,
-                                                                " ".join(alias)))
+        outfile.write(f"'brz {topic}' is an alias for 'brz {' '.join(alias)}'.\n")
 
 
 def help_commands(outfile=None):
-    """List all commands"""
+    """List all commands."""
     if outfile is None:
         outfile = ui.ui_factory.make_output_stream()
     outfile.write(_help_commands_to_text('commands'))
 
 
 def _help_commands_to_text(topic):
-    """Generate the help text for the list of commands"""
+    """Generate the help text for the list of commands."""
     out = []
     if topic == 'hidden-commands':
         hidden = True
@@ -89,7 +87,7 @@ def _help_commands_to_text(topic):
         if plugin_name is None:
             plugin_name = ''
         else:
-            plugin_name = ' [%s]' % plugin_name
+            plugin_name = f' [{plugin_name}]'
 
         cmd_help = cmd_object.help()
         if cmd_help:

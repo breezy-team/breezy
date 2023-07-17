@@ -20,8 +20,9 @@ import sys
 
 from breezy import branch, errors
 from breezy.tests import TestSkipped
-from breezy.tests.matchers import *
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
+
+from ..matchers import *  # noqa: F403
 
 
 class TestWorkingTreeLocking(TestCaseWithWorkingTree):

@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import errno
 import os
 import re
 
@@ -24,12 +23,11 @@ lazy_import(globals(), """
 
 from breezy import (
     cache_utf8,
-    errors,
     transform,
-    osutils,
     )
 """)
 
+from .. import errors, osutils
 from .. import transport as _mod_transport
 from ..conflicts import Conflict as BaseConflict
 from ..conflicts import ConflictList as BaseConflictList
@@ -39,7 +37,7 @@ CONFLICT_SUFFIXES = ('.THIS', '.BASE', '.OTHER')
 
 
 class Conflict(BaseConflict):
-    """Base class for all types of conflict"""
+    """Base class for all types of conflict."""
 
     # FIXME: cleanup should take care of that ? -- vila 091229
     has_files = False
@@ -110,7 +108,7 @@ class Conflict(BaseConflict):
 
         :param tree: The tree passed as a parameter to the method.
         """
-        meth = getattr(self, 'action_%s' % action, None)
+        meth = getattr(self, f'action_{action}', None)
         if meth is None:
             raise NotImplementedError(self.__class__.__name__ + '.' + action)
         meth(tree)
@@ -138,14 +136,14 @@ class ConflictList(BaseConflictList):
 
     @staticmethod
     def from_stanzas(stanzas):
-        """Produce a new ConflictList from an iterable of stanzas"""
+        """Produce a new ConflictList from an iterable of stanzas."""
         conflicts = ConflictList()
         for stanza in stanzas:
             conflicts.append(Conflict.factory(**stanza.as_dict()))
         return conflicts
 
     def to_stanzas(self):
-        """Generator of stanzas"""
+        """Generator of stanzas."""
         for conflict in self:
             yield conflict.as_stanza()
 
@@ -197,16 +195,16 @@ class ConflictList(BaseConflictList):
         if ignore_misses is not True:
             for path in [p for p in paths if p not in selected_paths]:
                 if not os.path.exists(tree.abspath(path)):
-                    print("%s does not exist" % path)
+                    print(f"{path} does not exist")
                 else:
-                    print("%s is not conflicted" % path)
+                    print(f"{path} is not conflicted")
         return new_conflicts, selected_conflicts
 
 
 
 
 class PathConflict(Conflict):
-    """A conflict was encountered merging file paths"""
+    """A conflict was encountered merging file paths."""
 
     typestring = 'path conflict'
 
@@ -254,7 +252,7 @@ class PathConflict(Conflict):
                 revid = tt._tree.get_parent_ids()[-1]
         else:
             # Programmer error
-            raise AssertionError('bad winner: {!r}'.format(winner))
+            raise AssertionError(f'bad winner: {winner!r}')
         if path_to_create is not None:
             tid = tt.trans_id_tree_path(path_to_create)
             tree = self._revision_tree(tt._tree, revid)
@@ -317,7 +315,7 @@ class PathConflict(Conflict):
 
 
 class ContentsConflict(PathConflict):
-    """The files are of different types (or both binary), or not present"""
+    """The files are of different types (or both binary), or not present."""
 
     has_files = True
 
@@ -520,6 +518,7 @@ class DuplicateEntry(HandledPathConflict):
 
 class ParentLoop(HandledPathConflict):
     """An attempt to create an infinitely-looping directory structure.
+
     This is rare, but can be produced like so:
 
     tree A:
@@ -574,7 +573,7 @@ class MissingParent(HandledConflict):
     """An attempt to add files to a directory that is not present.
     Typically, the result of a merge where THIS deleted the directory and
     the OTHER added a file to it.
-    See also: DeletingParent (same situation, THIS and OTHER reversed)
+    See also: DeletingParent (same situation, THIS and OTHER reversed).
     """
 
     typestring = 'missing parent'
@@ -646,7 +645,7 @@ ctype = {}
 
 
 def register_types(*conflict_types):
-    """Register a Conflict subclass for serialization purposes"""
+    """Register a Conflict subclass for serialization purposes."""
     global ctype
     for conflict_type in conflict_types:
         ctype[conflict_type.typestring] = conflict_type

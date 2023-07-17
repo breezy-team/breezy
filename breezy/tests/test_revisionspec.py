@@ -19,14 +19,19 @@ import time
 
 from breezy import errors
 from breezy import revision as _mod_revision
-from breezy.revisionspec import (InvalidRevisionSpec, RevisionInfo,
-                                 RevisionSpec, RevisionSpec_dwim,
-                                 RevisionSpec_tag)
 from breezy.tests import TestCaseWithTransport
+
+from ..revisionspec import (
+    InvalidRevisionSpec,
+    RevisionInfo,
+    RevisionSpec,
+    RevisionSpec_dwim,
+    RevisionSpec_tag,
+)
 
 
 def spec_in_history(spec, branch):
-    """A simple helper to change a revision spec into a branch search"""
+    """A simple helper to change a revision spec into a branch search."""
     return RevisionSpec.from_string(spec).in_history(branch)
 
 
@@ -119,7 +124,7 @@ class TestRevisionSpecBase(TestRevisionSpec):
 
 
 class TestOddRevisionSpec(TestRevisionSpec):
-    """Test things that aren't normally thought of as revision specs"""
+    """Test things that aren't normally thought of as revision specs."""
 
     def test_none(self):
         self.assertInHistoryIs(None, None, None)
@@ -280,7 +285,7 @@ class TestRevisionSpec_revno(TestRevisionSpec):
 
     def test_with_url(self):
         url = self.get_url() + '/tree2'
-        revinfo = self.get_in_history('revno:2:{}'.format(url))
+        revinfo = self.get_in_history(f'revno:2:{url}')
         self.assertNotEqual(self.tree.branch.base, revinfo.branch.base)
         self.assertEqual(self.tree2.branch.base, revinfo.branch.base)
         self.assertEqual(2, revinfo.revno)
@@ -288,7 +293,7 @@ class TestRevisionSpec_revno(TestRevisionSpec):
 
     def test_negative_with_url(self):
         url = self.get_url() + '/tree2'
-        revinfo = self.get_in_history('revno:-1:{}'.format(url))
+        revinfo = self.get_in_history(f'revno:-1:{url}')
         self.assertNotEqual(self.tree.branch.base, revinfo.branch.base)
         self.assertEqual(self.tree2.branch.base, revinfo.branch.base)
         self.assertEqual(2, revinfo.revno)
@@ -310,7 +315,7 @@ class TestRevisionSpec_revno(TestRevisionSpec):
         self.assertInvalid('revno:3:tree2')
 
     def test_revno_n_path(self):
-        """Old revno:N:path tests"""
+        """Old revno:N:path tests."""
         wta = self.make_branch_and_tree('a')
         ba = wta.branch
 
@@ -371,7 +376,7 @@ class TestRevisionSpec_revid(TestRevisionSpec):
         self.assertInvalid('revid:r3', invalid_as_revision_id=False)
 
     def test_merged(self):
-        """We can reach revisions in the ancestry"""
+        """We can reach revisions in the ancestry."""
         self.assertInHistoryIs(None, b'alt_r2', 'revid:alt_r2')
 
     def test_not_here(self):
@@ -380,7 +385,7 @@ class TestRevisionSpec_revid(TestRevisionSpec):
         self.assertInvalid('revid:alt_r3', invalid_as_revision_id=False)
 
     def test_in_repository(self):
-        """We can get any revision id in the repository"""
+        """We can get any revision id in the repository."""
         # XXX: This may change in the future, but for now, it is true
         self.tree2.commit('alt third', rev_id=b'alt_r3')
         self.tree.branch.fetch(self.tree2.branch, b'alt_r3')

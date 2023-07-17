@@ -15,7 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""An adapter between a Git Branch and a Bazaar Branch"""
+"""An adapter between a Git Branch and a Bazaar Branch."""
 
 
 import contextlib
@@ -29,18 +29,32 @@ from dulwich.config import parse_submodules
 from dulwich.objects import ZERO_SHA, NotCommitError
 from dulwich.repo import check_ref_format
 
-from .. import branch, config, controldir, errors, lock
+from .. import (
+    branch,
+    config,
+    controldir,
+    errors,
+    lock,
+    revision,
+    trace,
+    transport,
+    urlutils,
+)
 from .. import repository as _mod_repository
-from .. import revision, trace, transport, urlutils
 from ..foreign import ForeignBranch
 from ..revision import NULL_REVISION
 from ..tag import InterTags, TagConflict, Tags, TagSelector, TagUpdates
 from ..trace import is_quiet, mutter, warning
 from .errors import NoPushSupport
-from .mapping import decode_git_path, encode_git_path
+from .mapping import decode_git_path
 from .push import remote_divergence
-from .refs import (branch_name_to_ref, is_tag, ref_to_branch_name,
-                   ref_to_tag_name, tag_name_to_ref)
+from .refs import (
+    branch_name_to_ref,
+    is_tag,
+    ref_to_branch_name,
+    ref_to_tag_name,
+    tag_name_to_ref,
+)
 from .unpeel_map import UnpeelMap
 from .urls import bzr_url_to_git_url, git_url_to_bzr_url
 
@@ -236,7 +250,7 @@ class InterTagsFromGitToNonGit(InterTags):
         conflicts = []
         updates = {}
         result = dict(to_tags.get_tag_dict())
-        for ref_name, tag_name, peeled, unpeeled in source_tag_refs:
+        for _ref_name, tag_name, peeled, unpeeled in source_tag_refs:
             if selector and not selector(tag_name):
                 continue
             if unpeeled is not None:
@@ -274,7 +288,7 @@ class GitTags(Tags):
 
     def get_tag_dict(self):
         ret = {}
-        for (ref_name, tag_name, peeled, unpeeled) in (
+        for (_ref_name, tag_name, peeled, _unpeeled) in (
                 self.branch.get_tag_refs()):
             try:
                 bzr_revid = self.branch.lookup_foreign_revision_id(peeled)
@@ -285,13 +299,13 @@ class GitTags(Tags):
         return ret
 
     def lookup_tag(self, tag_name):
-        """Return the referent string of a tag"""
+        """Return the referent string of a tag."""
         # TODO(jelmer): Replace with something more efficient for local tags.
         td = self.get_tag_dict()
         try:
             return td[tag_name]
-        except KeyError:
-            raise errors.NoSuchTag(tag_name)
+        except KeyError as err:
+            raise errors.NoSuchTag(tag_name) from err
 
 
 class LocalGitTagDict(GitTags):
@@ -318,8 +332,8 @@ class LocalGitTagDict(GitTags):
     def set_tag(self, name, revid):
         try:
             git_sha, mapping = self.branch.lookup_bzr_revision_id(revid)
-        except errors.NoSuchRevision:
-            raise errors.GhostTagsNotSupported(self)
+        except errors.NoSuchRevision as err:
+            raise errors.GhostTagsNotSupported(self) from err
         self.refs[tag_name_to_ref(name)] = git_sha
         self.branch._tag_refs = None
 
@@ -419,7 +433,7 @@ class GitBranch(ForeignBranch):
         self._lock_count = 0
         super().__init__(repository.get_mapping())
         if not isinstance(ref, bytes):
-            raise TypeError("ref is invalid: %r" % ref)
+            raise TypeError(f"ref is invalid: {ref!r}")
         self.ref = ref
         self._head = None
         self._user_transport = controldir.user_transport.clone('.')
@@ -493,8 +507,7 @@ class GitBranch(ForeignBranch):
     nick = property(_get_nick, _set_nick)
 
     def __repr__(self):
-        return "<{}({!r}, {!r})>".format(self.__class__.__name__, self.repository.base,
-                                 self.name)
+        return f"<{self.__class__.__name__}({self.repository.base!r}, {self.name!r})>"
 
     def set_last_revision(self, revid):
         raise NotImplementedError(self.set_last_revision)
@@ -761,7 +774,7 @@ class LocalGitBranch(GitBranch):
             ret = list(graph.iter_lefthand_ancestry(
                 last_revid, (revision.NULL_REVISION, )))
         except errors.RevisionNotPresent as e:
-            raise errors.GhostRevisionsHaveNoRevno(last_revid, e.revision_id)
+            raise errors.GhostRevisionsHaveNoRevno(last_revid, e.revision_id) from e
         ret.reverse()
         return ret
 
@@ -1017,7 +1030,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
         tree = self.target.repository.revision_tree(revid)
         try:
             with tree.get_file('.gitmodules') as f:
-                for path, url, section in parse_submodules(
+                for path, url, _section in parse_submodules(
                         GitConfigFile.from_file(f)):
                     self.target.set_reference_info(
                         tree.path2id(decode_git_path(path)), url.decode('utf-8'),
@@ -1183,7 +1196,7 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
                 if sha not in self.source.repository._git:
                     trace.mutter('Ignoring missing SHA: %s', sha)
                     continue
-                refs[tag_name_to_ref(name)] = sha
+                refs[tag_name_to_ref(name.decode('utf-8'))] = sha
             return refs
         dw_result = self.target.repository.send_pack(
             get_changed_refs,
@@ -1427,14 +1440,14 @@ class InterToGitBranch(branch.GenericInterBranch):
             stop_revision = self.source.last_revision()
         ret = []
         if fetch_tags:
-            for k, v in self.source.tags.get_tag_dict().items():
+            for _k, v in self.source.tags.get_tag_dict().items():
                 ret.append((None, v))
         ret.append((None, stop_revision))
         if getattr(self.interrepo, 'fetch_revs', None):
             try:
                 revidmap = self.interrepo.fetch_revs(ret, lossy=lossy, limit=limit)
-            except NoPushSupport:
-                raise errors.NoRoundtrippingSupport(self.source, self.target)
+            except NoPushSupport as err:
+                raise errors.NoRoundtrippingSupport(self.source, self.target) from err
             return _mod_repository.FetchResult(revidmap={
                 old_revid: new_revid
                 for (old_revid, (new_sha, new_revid)) in revidmap.items()})
@@ -1465,8 +1478,8 @@ class InterToGitBranch(branch.GenericInterBranch):
             try:
                 result.revidmap, old_refs, new_refs = (
                     self.interrepo.fetch_refs(update_refs, lossy=False))
-            except NoPushSupport:
-                raise errors.NoRoundtrippingSupport(self.source, self.target)
+            except NoPushSupport as err:
+                raise errors.NoRoundtrippingSupport(self.source, self.target) from err
             (old_sha1, result.old_revid) = old_refs.get(
                 main_ref, (ZERO_SHA, NULL_REVISION))
             if result.old_revid is None:
@@ -1497,8 +1510,8 @@ class InterToGitBranch(branch.GenericInterBranch):
                 result.revidmap, old_refs, new_refs = (
                     self.interrepo.fetch_refs(
                         update_refs, lossy=lossy, overwrite=overwrite))
-            except NoPushSupport:
-                raise errors.NoRoundtrippingSupport(self.source, self.target)
+            except NoPushSupport as err:
+                raise errors.NoRoundtrippingSupport(self.source, self.target) from err
             (old_sha1, result.old_revid) = old_refs.get(
                 main_ref, (ZERO_SHA, NULL_REVISION))
             if lossy or result.old_revid is None:

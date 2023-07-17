@@ -27,12 +27,13 @@ rather than in tests/per_interrepository/*.py.
 
 
 from breezy import pyutils, transport
-from breezy.bzr.vf_repository import InterDifferingSerializer
-from breezy.errors import UninitializableFormat
-from breezy.repository import InterRepository, format_registry
 from breezy.tests import TestSkipped, default_transport, multiply_tests
-from breezy.tests.per_controldir.test_controldir import TestCaseWithControlDir
 from breezy.transport import FileExists
+
+from ...bzr.vf_repository import InterDifferingSerializer
+from ...errors import UninitializableFormat
+from ...repository import InterRepository, format_registry
+from ..per_controldir.test_controldir import TestCaseWithControlDir
 
 
 def make_scenarios(transport_server, transport_readonly_server, formats):
@@ -84,7 +85,7 @@ def default_test_list():
     # actually used.
 
     def force_known_graph(testcase):
-        from breezy.bzr.fetch import Inter1and2Helper
+        from ...bzr.fetch import Inter1and2Helper
         testcase.overrideAttr(Inter1and2Helper, 'known_graph_threshold', -1)
     # Gather extra scenarios from the repository implementations,
     # as InterRepositories can be used by Repository implementations
@@ -92,9 +93,7 @@ def default_test_list():
     for module_name in format_registry._get_all_modules():
         module = pyutils.get_named_object(module_name)
         try:
-            get_extra_interrepo_test_combinations = getattr(
-                module,
-                "get_extra_interrepo_test_combinations")
+            get_extra_interrepo_test_combinations = module.get_extra_interrepo_test_combinations
         except AttributeError:
             continue
         for (interrepo_cls, from_format, to_format) in (
@@ -166,8 +165,8 @@ class TestCaseWithInterRepository(TestCaseWithControlDir):
             if format is None:
                 format = self.repository_format._matchingcontroldir
             return format.initialize(url)
-        except UninitializableFormat:
-            raise TestSkipped("Format %s is not initializable." % format)
+        except UninitializableFormat as err:
+            raise TestSkipped(f"Format {format} is not initializable.") from err
 
     def make_repository(self, relpath, format=None):
         made_control = self.make_controldir(relpath, format=format)

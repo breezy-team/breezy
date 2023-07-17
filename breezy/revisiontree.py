@@ -16,7 +16,7 @@
 
 """RevisionTree - a Tree implementation backed by repository data for a revision."""
 
-from . import iterablefile, lock, revision, tree
+from . import lock, osutils, revision, tree
 
 
 class RevisionTree(tree.Tree):
@@ -59,12 +59,12 @@ class RevisionTree(tree.Tree):
         raise NotImplementedError(self.get_file_revision)
 
     def get_file_text(self, path):
-        for (identifier, content) in self.iter_files_bytes([(path, None)]):
+        for (_identifier, content) in self.iter_files_bytes([(path, None)]):
             return b"".join(content)
 
     def get_file(self, path):
-        for (identifier, content) in self.iter_files_bytes([(path, None)]):
-            return iterablefile.IterableFile(content)
+        for (_identifier, content) in self.iter_files_bytes([(path, None)]):
+            return osutils.IterableFile(content)
 
     def is_locked(self):
         return self._repository.is_locked()

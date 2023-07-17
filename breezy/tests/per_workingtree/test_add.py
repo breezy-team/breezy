@@ -14,12 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for interface conformance of 'WorkingTree.add'"""
+"""Tests for interface conformance of 'WorkingTree.add'."""
 
 from breezy import errors, tests
 from breezy.bzr import inventory
-from breezy.tests.matchers import HasLayout, HasPathRelations
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
+
+from ..matchers import HasLayout, HasPathRelations
 
 
 class TestAdd(TestCaseWithWorkingTree):
@@ -39,7 +40,7 @@ class TestAdd(TestCaseWithWorkingTree):
         self.assertTreeLayout(['', 'one'], tree)
 
     def test_add_existing_id(self):
-        """Adding an entry with a pre-existing id raises DuplicateFileId"""
+        """Adding an entry with a pre-existing id raises DuplicateFileId."""
         tree = self.make_branch_and_tree('.')
         if not tree.supports_setting_file_ids():
             self.skipTest("tree does not support setting file ids")
@@ -84,8 +85,8 @@ class TestAdd(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         try:
             self.build_tree(['f\xf6'])
-        except UnicodeError:
-            raise tests.TestSkipped('Filesystem does not support filename.')
+        except UnicodeError as err:
+            raise tests.TestSkipped('Filesystem does not support filename.') from err
         tree.add(['f\xf6'])
 
         self.assertTreeLayout(['', 'f\xf6'], tree)

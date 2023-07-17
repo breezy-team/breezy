@@ -23,9 +23,7 @@ from .revision import Revision
 
 
 class VcsMapping:
-    """Describes the mapping between the semantics of Bazaar and a foreign VCS.
-
-    """
+    """Describes the mapping between the semantics of Bazaar and a foreign VCS."""
     # Whether this is an experimental mapping that is still open to changes.
     experimental = False
 
@@ -98,12 +96,13 @@ class ForeignRevision(Revision):
 
     """
 
-    def __init__(self, foreign_revid, mapping, *args, **kwargs):
+    def __new__(cls, foreign_revid, mapping, *args, **kwargs):
         if "inventory_sha1" not in kwargs:
-            kwargs["inventory_sha1"] = b""
-        super().__init__(*args, **kwargs)
+            kwargs["inventory_sha1"] = None
+        self = Revision.__new__(cls, *args, **kwargs)
         self.foreign_revid = foreign_revid
         self.mapping = mapping
+        return self
 
 
 class ForeignVcs:
@@ -170,8 +169,8 @@ class ForeignVcsRegistry(registry.Registry):
             raise errors.InvalidRevisionId(revid, None)
         try:
             foreign_vcs = self.get(revid.split(b"-")[0].decode('ascii'))
-        except KeyError:
-            raise errors.InvalidRevisionId(revid, None)
+        except KeyError as e:
+            raise errors.InvalidRevisionId(revid, None) from e
         return foreign_vcs.mapping_registry.revision_id_bzr_to_foreign(revid)
 
 

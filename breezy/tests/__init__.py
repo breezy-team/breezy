@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Testing framework extensions"""
+"""Testing framework extensions."""
 
 # NOTE: Some classes in here use camelCaseNaming() rather than
 # underscore_naming().  That's for consistency with unittest; it's not the
@@ -27,7 +27,6 @@ import contextlib
 import copy
 import difflib
 import doctest
-import errno
 import functools
 import itertools
 import logging
@@ -52,26 +51,33 @@ from io import BytesIO, StringIO, TextIOWrapper
 from typing import Callable, Set
 
 import testtools
-
-# nb: check this before importing anything else from within it
-_testtools_version = getattr(testtools, '__version__', ())
-if _testtools_version < (0, 9, 5):
-    raise ImportError("need at least testtools 0.9.5: %s is %r"
-                      % (testtools.__file__, _testtools_version))
 from testtools import content
 
 import breezy
 from breezy.bzr import chk_map
 
-from .. import branchbuilder
+from .. import (
+    branchbuilder,
+    config,
+    controldir,
+    debug,
+    errors,
+    i18n,
+    lockdir,
+    osutils,
+    pyutils,
+    registry,
+    symbol_versioning,
+    trace,
+    ui,
+    urlutils,
+    workingtree,
+)
 from .. import commands as _mod_commands
-from .. import config, controldir, debug, errors, hooks, i18n
+from .. import hooks as _mod_hooks
 from .. import lock as _mod_lock
-from .. import lockdir, osutils
 from .. import plugin as _mod_plugin
-from .. import pyutils, registry, symbol_versioning, trace
 from .. import transport as _mod_transport
-from .. import ui, urlutils, workingtree
 
 try:
     import breezy.lsprof
@@ -191,7 +197,7 @@ def restore_os_environ(test):
 
 
 def _clear__type_equality_funcs(test):
-    """Cleanup bound methods stored on TestCase instances
+    """Cleanup bound methods stored on TestCase instances.
 
     Clear the dict breaking a few (mostly) harmless cycles in the affected
     unittests released with Python 2.6 and initial Python 2.7 versions.
@@ -240,7 +246,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         """
         testtools.TextTestResult.__init__(self, stream)
         if bench_history is not None:
-            from breezy.version import _get_bzr_source_tree
+            from ..version import _get_bzr_source_tree
             src_tree = _get_bzr_source_tree()
             if src_tree:
                 try:
@@ -252,7 +258,7 @@ class ExtendedTestResult(testtools.TextTestResult):
             else:
                 # XXX: If there's no branch, what should we do?
                 revision_id = b''
-            bench_history.write("--date {} {}\n".format(time.time(), revision_id))
+            bench_history.write(f"--date {time.time()} {revision_id}\n")
         self._bench_history = bench_history
         self.ui = ui.ui_factory
         self.num_tests = 0
@@ -311,9 +317,9 @@ class ExtendedTestResult(testtools.TextTestResult):
                 self.stream.write("Missing feature '%s' skipped %d tests.\n" %
                                   (feature, count))
         if self._strict:
-            ok = self.wasStrictlySuccessful()
+            self.wasStrictlySuccessful()
         else:
-            ok = self.wasSuccessful()
+            self.wasSuccessful()
         if self._first_thread_leaker_id:
             self.stream.write(
                 '%s is leaking threads among %d leaking tests.\n' % (
@@ -327,11 +333,11 @@ class ExtendedTestResult(testtools.TextTestResult):
     def getDescription(self, test):
         return test.id()
 
-    def _extractBenchmarkTime(self, testCase, details=None):
+    def _extractBenchmarkTime(self, test_case, details=None):
         """Add a benchmark time for the current test case."""
         if details and 'benchtime' in details:
             return float(''.join(details['benchtime'].iter_bytes()))
-        return getattr(testCase, "_benchtime", None)
+        return getattr(test_case, "_benchtime", None)
 
     def _delta_to_float(self, a_timedelta, precision):
         # This calls ceiling to ensure that the most pessimistic view of time
@@ -348,8 +354,8 @@ class ExtendedTestResult(testtools.TextTestResult):
         return self._formatTime(self._delta_to_float(
             self._now() - self._start_datetime, 3))
 
-    def _testTimeString(self, testCase):
-        benchmark_time = self._extractBenchmarkTime(testCase)
+    def _testTimeString(self, test_case):
+        benchmark_time = self._extractBenchmarkTime(test_case)
         if benchmark_time is not None:
             return self._formatTime(benchmark_time) + "*"
         else:
@@ -371,7 +377,7 @@ class ExtendedTestResult(testtools.TextTestResult):
     #                each test but the container list is shared between cases.
     #                See lp:498869 lp:625574 and lp:637725 for background.
     def _record_traceback_from_test(self, exc_info):
-        """Store the traceback from passed exc_info tuple till"""
+        """Store the traceback from passed exc_info tuple till."""
         self._traceback_from_test = exc_info[2]
 
     def startTest(self, test):
@@ -404,7 +410,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         self._active_threads = threading.enumerate()
 
     def _check_leaked_threads(self, test):
-        """See if any threads have leaked since last call
+        """See if any threads have leaked since last call.
 
         A sample of live threads is stored in the _active_threads attribute,
         when this method runs it compares the current live threads and any not
@@ -469,7 +475,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         self.report_known_failure(test, err)
 
     def addUnexpectedSuccess(self, test, details=None):
-        """Tell result the test unexpectedly passed, counting as a failure
+        """Tell result the test unexpectedly passed, counting as a failure.
 
         When the minimum version of testtools required becomes 0.9.8 this
         can be updated to use the new handling there.
@@ -482,8 +488,7 @@ class ExtendedTestResult(testtools.TextTestResult):
             self.stop()
 
     def addNotSupported(self, test, feature):
-        """The test will not be run because of a missing feature.
-        """
+        """The test will not be run because of a missing feature."""
         # this can be called in two different ways: it may be that the
         # test started running, and then raised (through requireFeature)
         # UnavailableFeature.  Alternatively this method can be called
@@ -504,7 +509,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         self.report_not_applicable(test, reason)
 
     def _count_stored_tests(self):
-        """Count of tests instances kept alive due to not succeeding"""
+        """Count of tests instances kept alive due to not succeeding."""
         return self.error_count + self.failure_count + self.known_failure_count
 
     def _post_mortem(self, tb=None):
@@ -520,16 +525,15 @@ class ExtendedTestResult(testtools.TextTestResult):
         elif whence == SUBUNIT_SEEK_CUR:
             self.num_tests += offset
         else:
-            raise errors.BzrError("Unknown whence %r" % whence)
+            raise errors.BzrError(f"Unknown whence {whence!r}")
 
     def report_tests_starting(self):
-        """Display information before the test run begins"""
+        """Display information before the test run begins."""
         bzr_path = osutils.realpath(sys.argv[0])
         self.stream.write(
-            'brz selftest: {}\n'.format(bzr_path))
+            f'brz selftest: {bzr_path}\n')
         self.stream.write(
-            '   {}\n'.format(
-                breezy.__path__[0]))
+            f'   {breezy.__path__[0]}\n')
         self.stream.write(
             '   bzr-{} python-{} {}\n'.format(
                 breezy.version_string,
@@ -539,15 +543,15 @@ class ExtendedTestResult(testtools.TextTestResult):
         self.stream.write('\n')
 
     def report_test_start(self, test):
-        """Display information on the test just about to be run"""
+        """Display information on the test just about to be run."""
 
     def _report_thread_leak(self, test, leaked_threads, active_threads):
-        """Display information on a test that leaked one or more threads"""
+        """Display information on a test that leaked one or more threads."""
         # GZ 2010-09-09: A leak summary reported separately from the general
         #                thread debugging would be nice. Tests under subunit
         #                need something not using stream, perhaps adding a
         #                testtools details object would be fitting.
-        if 'threads' in selftest_debug_flags:
+        if 'threads' in selftest_debug_flags.debug_flag_enabled('threads'):
             self.stream.write('%s is leaking, active is now %d\n' %
                               (test.id(), len(active_threads)))
 
@@ -564,7 +568,7 @@ class ExtendedTestResult(testtools.TextTestResult):
 
 
 class TextTestResult(ExtendedTestResult):
-    """Displays progress and results of tests in text form"""
+    """Displays progress and results of tests in text form."""
 
     def __init__(self, stream, descriptions, verbosity,
                  bench_history=None,
@@ -627,16 +631,10 @@ class TextTestResult(ExtendedTestResult):
         return self._shortened_test_description(test)
 
     def report_error(self, test, err):
-        self.stream.write('ERROR: {}\n    {}\n'.format(
-            self._test_description(test),
-            err[1],
-            ))
+        self.stream.write(f'ERROR: {self._test_description(test)}\n    {err[1]}\n')
 
     def report_failure(self, test, err):
-        self.stream.write('FAIL: {}\n    {}\n'.format(
-            self._test_description(test),
-            err[1],
-            ))
+        self.stream.write(f'FAIL: {self._test_description(test)}\n    {err[1]}\n')
 
     def report_known_failure(self, test, err):
         pass
@@ -655,14 +653,14 @@ class TextTestResult(ExtendedTestResult):
         pass
 
     def report_unsupported(self, test, feature):
-        """test cannot be run because feature is missing."""
+        """Test cannot be run because feature is missing."""
 
 
 class VerboseTestResult(ExtendedTestResult):
-    """Produce long output, with one line per test run plus times"""
+    """Produce long output, with one line per test run plus times."""
 
     def _ellipsize_to_right(self, a_string, final_width):
-        """Truncate and pad a string, keeping the right hand side"""
+        """Truncate and pad a string, keeping the right hand side."""
         if len(a_string) > final_width:
             result = '...' + a_string[3 - final_width:]
         else:
@@ -688,7 +686,7 @@ class VerboseTestResult(ExtendedTestResult):
 
     def _error_summary(self, err):
         indent = ' ' * 4
-        return '{}{}'.format(indent, err[1])
+        return f'{indent}{err[1]}'
 
     def report_error(self, test, err):
         self.stream.write('ERROR %s\n%s\n'
@@ -712,7 +710,7 @@ class VerboseTestResult(ExtendedTestResult):
                              reason))
 
     def report_success(self, test):
-        self.stream.write('   OK %s\n' % self._testTimeString(test))
+        self.stream.write(f'   OK {self._testTimeString(test)}\n')
         for bench_called, stats in getattr(test, '_benchcalls', []):
             self.stream.write('LSProf output for %s(%s, %s)\n' % bench_called)
             stats.pprint(file=self.stream)
@@ -721,15 +719,13 @@ class VerboseTestResult(ExtendedTestResult):
         self.stream.flush()
 
     def report_skip(self, test, reason):
-        self.stream.write(' SKIP %s\n%s\n'
-                          % (self._testTimeString(test), reason))
+        self.stream.write(f' SKIP {self._testTimeString(test)}\n{reason}\n')
 
     def report_not_applicable(self, test, reason):
-        self.stream.write('  N/A %s\n    %s\n'
-                          % (self._testTimeString(test), reason))
+        self.stream.write(f'  N/A {self._testTimeString(test)}\n    {reason}\n')
 
     def report_unsupported(self, test, feature):
-        """test cannot be run because feature is missing."""
+        """Test cannot be run because feature is missing."""
         self.stream.write("NODEP %s\n    The feature '%s' is not available.\n"
                           % (self._testTimeString(test), feature))
 
@@ -772,7 +768,7 @@ class TextTestRunner:
         self._result_decorators = result_decorators or []
 
     def run(self, test):
-        "Run the given test case or test suite."
+        """Run the given test case or test suite."""
         if self.verbosity == 1:
             result_class = TextTestResult
         elif self.verbosity >= 2:
@@ -800,15 +796,14 @@ class TextTestRunner:
 
 
 def iter_suite_tests(suite):
-    """Return all tests in a suite, recursing through nested suites"""
+    """Return all tests in a suite, recursing through nested suites."""
     if isinstance(suite, unittest.TestCase):
         yield suite
     elif isinstance(suite, unittest.TestSuite):
         for item in suite:
             yield from iter_suite_tests(item)
     else:
-        raise Exception('unknown type %r for object %r'
-                        % (type(suite), suite))
+        raise Exception(f'unknown type {type(suite)!r} for object {suite!r}')
 
 
 from testtools.testcase import TestSkipped
@@ -833,7 +828,7 @@ def _clever_some_str(value):
         try:
             return repr(value).replace('\\n', '\n')
         except BaseException:
-            return '<unprintable %s object>' % type(value).__name__
+            return f'<unprintable {type(value).__name__} object>'
 
 
 traceback._some_str = _clever_some_str  # type: ignore
@@ -880,7 +875,6 @@ def IsolatedDocTestSuite(*args, **kwargs):
 
     The method is really a factory and users are expected to use it as such.
     """
-
     kwargs['setUp'] = isolated_doctest_setUp
     kwargs['tearDown'] = isolated_doctest_tearDown
     return doctest.DocTestSuite(*args, **kwargs)
@@ -911,7 +905,7 @@ class TestCase(testtools.TestCase):
     # record lsprof data when performing benchmark calls.
     _gather_lsprof_in_benchmarks = False
 
-    def __init__(self, methodName='testMethod'):
+    def __init__(self, methodName='testMethod'):  # noqa: N803
         super().__init__(methodName)
         self._directory_isolation = True
         self.exception_handlers.insert(
@@ -999,8 +993,7 @@ class TestCase(testtools.TestCase):
         if counter_name is None:
             counter_name = name
         if counter_name in _counters:
-            raise AssertionError('%s is already used as a counter name'
-                                 % (counter_name,))
+            raise AssertionError(f'{counter_name} is already used as a counter name')
         _counters[counter_name] = 0
         self.addDetail(counter_name, content.Content(
             content.UTF8_TEXT,
@@ -1008,17 +1001,15 @@ class TestCase(testtools.TestCase):
 
         def increment_counter(*args, **kwargs):
             _counters[counter_name] += 1
-        label = 'count {} calls'.format(counter_name)
+        label = f'count {counter_name} calls'
         hooks.install_named_hook(name, increment_counter, label)
         self.addCleanup(hooks.uninstall_named_hook, name, label)
 
     def _install_config_stats_hooks(self):
-        """Install config hooks to count hook calls.
-
-        """
+        """Install config hooks to count hook calls."""
         for hook_name in ('get', 'set', 'remove', 'load', 'save'):
             self.install_counter_hook(config.ConfigHooks, hook_name,
-                                      'config.{}'.format(hook_name))
+                                      f'config.{hook_name}')
 
         # The OldConfigHooks are private and need special handling to protect
         # against recursive tests (tests that run other tests), so we just do
@@ -1027,7 +1018,7 @@ class TestCase(testtools.TestCase):
         self.overrideAttr(config, 'OldConfigHooks', config._OldConfigHooks())
         for hook_name in ('get', 'set', 'remove', 'load', 'save'):
             self.install_counter_hook(config.OldConfigHooks, hook_name,
-                                      'old_config.{}'.format(hook_name))
+                                      f'old_config.{hook_name}')
 
     def _clear_debug_flags(self):
         """Prevent externally set debug flags affecting tests.
@@ -1036,21 +1027,26 @@ class TestCase(testtools.TestCase):
         debug_flags set during setup/teardown.
         """
         # Start with a copy of the current debug flags we can safely modify.
-        self.overrideAttr(debug, 'debug_flags', set(debug.debug_flags))
+        flags = debug.get_debug_flags()
+        def restore_debug_flags(flags):
+            debug.clear_debug_flags()
+            for flag in flags:
+                debug.set_debug_flag(flag)
+        self.addCleanup(restore_debug_flags, flags)
         if 'allow_debug' not in selftest_debug_flags:
-            debug.debug_flags.clear()
+            debug.clear_debug_flags()
         if 'disable_lock_checks' not in selftest_debug_flags:
-            debug.debug_flags.add('strict_locks')
+            debug.set_debug_flag('strict_locks')
 
     def _clear_hooks(self):
         # prevent hooks affecting tests
-        known_hooks = hooks.known_hooks
+        known_hooks = _mod_hooks.known_hooks
         self._preserved_hooks = {}
-        for key, (parent, name) in known_hooks.iter_parent_objects():
+        for _key, (parent, name) in known_hooks.iter_parent_objects():
             current_hooks = getattr(parent, name)
             self._preserved_hooks[parent] = (name, current_hooks)
-        self._preserved_lazy_hooks = hooks._lazy_hooks
-        hooks._lazy_hooks = {}
+        self._preserved_lazy_hooks = _mod_hooks._lazy_hooks
+        _mod_hooks._lazy_hooks = {}
         self.addCleanup(self._restoreHooks)
         for key, (parent, name) in known_hooks.iter_parent_objects():
             factory = known_hooks.get(key)
@@ -1067,7 +1063,7 @@ class TestCase(testtools.TestCase):
         self._directory_isolation = True
 
     def _silenceUI(self):
-        """Turn off UI for duration of test"""
+        """Turn off UI for duration of test."""
         # by default the UI is off; tests can turn it on if they want it.
         self.overrideAttr(ui, 'ui_factory', ui.SilentUIFactory())
 
@@ -1097,7 +1093,7 @@ class TestCase(testtools.TestCase):
                 (acquired_locks, released_locks, broken_locks))
             if not self._lock_check_thorough:
                 # Rather than fail, just warn
-                print("Broken test {}: {}".format(self, message))
+                print(f"Broken test {self}: {message}")
                 return
             self.fail(message)
 
@@ -1156,8 +1152,8 @@ class TestCase(testtools.TestCase):
         try:
             try:
                 workingtree.WorkingTree.open(path)
-            except (errors.NotBranchError, errors.NoWorkingTree):
-                raise TestSkipped('Needs a working tree of brz sources')
+            except (errors.NotBranchError, errors.NoWorkingTree) as e:
+                raise TestSkipped('Needs a working tree of brz sources') from e
         finally:
             self.enable_directory_isolation()
 
@@ -1258,7 +1254,8 @@ class TestCase(testtools.TestCase):
         """Return ndiff between two strings containing lines.
 
         A trailing newline is added if missing to make the strings
-        print properly."""
+        print properly.
+        """
         if b and not b.endswith('\n'):
             b += '\n'
         if a and not a.endswith('\n'):
@@ -1285,7 +1282,7 @@ class TestCase(testtools.TestCase):
 
     # FIXME: This is deprecated in unittest2 but plugins may still use it so we
     # need a deprecation period for them -- vila 2016-02-01
-    assertEquals = assertEqual
+    assertEquals = assertEqual  # noqa: N815
 
     def assertEqualDiff(self, a, b, message=None):
         """Assert two texts are equal, if not raise an exception.
@@ -1309,10 +1306,10 @@ class TestCase(testtools.TestCase):
 
     def assertEqualMode(self, mode, mode_test):
         self.assertEqual(mode, mode_test,
-                         'mode mismatch {:o} != {:o}'.format(mode, mode_test))
+                         f'mode mismatch {mode:o} != {mode_test:o}')
 
     def assertEqualStat(self, expected, actual):
-        """assert that expected and actual are the same stat result.
+        """Assert that expected and actual are the same stat result.
 
         :param expected: A stat result.
         :param actual: A stat result.
@@ -1348,8 +1345,7 @@ class TestCase(testtools.TestCase):
                 length, len(obj_with_len), obj_with_len))
 
     def assertLogsError(self, exception_class, func, *args, **kwargs):
-        """Assert that `func(*args, **kwargs)` quietly logs a specific error.
-        """
+        """Assert that `func(*args, **kwargs)` quietly logs a specific error."""
         captured = []
         orig_log_exception_quietly = trace.log_exception_quietly
         try:
@@ -1367,22 +1363,22 @@ class TestCase(testtools.TestCase):
 
     def assertPositive(self, val):
         """Assert that val is greater than 0."""
-        self.assertTrue(val > 0, 'expected a positive value, but got %s' % val)
+        self.assertTrue(val > 0, f'expected a positive value, but got {val}')
 
     def assertNegative(self, val):
         """Assert that val is less than 0."""
-        self.assertTrue(val < 0, 'expected a negative value, but got %s' % val)
+        self.assertTrue(val < 0, f'expected a negative value, but got {val}')
 
     def assertStartsWith(self, s, prefix):
         if not s.startswith(prefix):
             raise AssertionError(
-                'string {!r} does not start with {!r}'.format(s, prefix))
+                f'string {s!r} does not start with {prefix!r}')
 
     def assertEndsWith(self, s, suffix):
         """Asserts that s ends with suffix."""
         if not s.endswith(suffix):
             raise AssertionError(
-                'string {!r} does not end with {!r}'.format(s, suffix))
+                f'string {s!r} does not end with {suffix!r}')
 
     def assertContainsRe(self, haystack, needle_re, flags=0):
         """Assert that a contains something matching a regular expression."""
@@ -1391,25 +1387,22 @@ class TestCase(testtools.TestCase):
                     len(haystack) > 60):
                 # a long string, format it in a more readable way
                 raise AssertionError(
-                    'pattern "%s" not found in\n"""\\\n%s"""\n'
-                    % (needle_re, haystack))
+                    f'pattern "{needle_re}" not found in\n""\"\\\n{haystack}""\"\n')
             else:
-                raise AssertionError('pattern "%s" not found in "%s"'
-                                     % (needle_re, haystack))
+                raise AssertionError(f'pattern "{needle_re}" not found in "{haystack}"')
 
     def assertNotContainsRe(self, haystack, needle_re, flags=0):
-        """Assert that a does not match a regular expression"""
+        """Assert that a does not match a regular expression."""
         if re.search(needle_re, haystack, flags):
-            raise AssertionError('pattern "%s" found in "%s"'
-                                 % (needle_re, haystack))
+            raise AssertionError(f'pattern "{needle_re}" found in "{haystack}"')
 
     def assertContainsString(self, haystack, needle):
         if haystack.find(needle) == -1:
-            self.fail("string {!r} not found in '''{}'''".format(needle, haystack))
+            self.fail(f"string {needle!r} not found in '''{haystack}'''")
 
     def assertNotContainsString(self, haystack, needle):
         if haystack.find(needle) != -1:
-            self.fail("string {!r} found in '''{}'''".format(needle, haystack))
+            self.fail(f"string {needle!r} found in '''{haystack}'''")
 
     def assertSubset(self, sublist, superlist):
         """Assert that every entry in sublist is present in superlist."""
@@ -1418,7 +1411,7 @@ class TestCase(testtools.TestCase):
             raise AssertionError("value(s) %r not present in container %r" %
                                  (missing, superlist))
 
-    def assertListRaises(self, excClass, func, *args, **kwargs):
+    def assertListRaises(self, excClass, func, *args, **kwargs):  # noqa: N803
         """Fail unless excClass is raised when the iterator from func is used.
 
         Many functions can return generators this makes sure
@@ -1434,9 +1427,9 @@ class TestCase(testtools.TestCase):
                 excName = excClass.__name__
             else:
                 excName = str(excClass)
-            raise self.failureException("%s not raised" % excName)
+            raise self.failureException(f"{excName} not raised")
 
-    def assertRaises(self, excClass, callableObj, *args, **kwargs):
+    def assertRaises(self, excClass, callableObj, *args, **kwargs):  # noqa: N803
         """Assert that a callable raises a particular exception.
 
         :param excClass: As for the except statement, this may be either an
@@ -1456,21 +1449,21 @@ class TestCase(testtools.TestCase):
             else:
                 # probably a tuple
                 excName = str(excClass)
-            raise self.failureException("%s not raised" % excName)
+            raise self.failureException(f"{excName} not raised")
 
     def assertIs(self, left, right, message=None):
-        if not (left is right):
+        if left is not right:
             if message is not None:
                 raise AssertionError(message)
             else:
-                raise AssertionError("{!r} is not {!r}.".format(left, right))
+                raise AssertionError(f"{left!r} is not {right!r}.")
 
     def assertIsNot(self, left, right, message=None):
         if (left is right):
             if message is not None:
                 raise AssertionError(message)
             else:
-                raise AssertionError("{!r} is {!r}.".format(left, right))
+                raise AssertionError(f"{left!r} is {right!r}.")
 
     def assertTransportMode(self, transport, path, mode):
         """Fail if a path does not have mode "mode".
@@ -1486,19 +1479,18 @@ class TestCase(testtools.TestCase):
                          % (path, oct(mode), oct(actual_mode)))
 
     def assertIsSameRealPath(self, path1, path2):
-        """Fail if path1 and path2 points to different files"""
+        """Fail if path1 and path2 points to different files."""
         self.assertEqual(osutils.realpath(path1),
                          osutils.realpath(path2),
-                         "apparent paths:\na = {}\nb = {}\n,".format(path1, path2))
+                         f"apparent paths:\na = {path1}\nb = {path2}\n,")
 
     def assertIsInstance(self, obj, kls, msg=None):
-        """Fail if obj is not an instance of kls
+        """Fail if obj is not an instance of kls.
 
         :param msg: Supplementary message to show if the assertion fails.
         """
         if not isinstance(obj, kls):
-            m = "{!r} is an instance of {} rather than {}".format(
-                obj, obj.__class__, kls)
+            m = f"{obj!r} is an instance of {obj.__class__} rather than {kls}"
             if msg:
                 m += ": " + msg
             self.fail(m)
@@ -1513,7 +1505,7 @@ class TestCase(testtools.TestCase):
         self.assertEqualDiff(content, s)
 
     def assertDocstring(self, expected_docstring, obj):
-        """Fail if obj does not have expected_docstring"""
+        """Fail if obj does not have expected_docstring."""
         if __doc__ is None:
             # With -OO the docstring should be None instead
             self.assertIs(obj.__doc__, None)
@@ -1596,8 +1588,7 @@ class TestCase(testtools.TestCase):
         expected_first_warning = symbol_versioning.deprecation_string(
             a_callable, deprecation_format)
         if len(call_warnings) == 0:
-            self.fail("No deprecation warning generated by call to %s" %
-                      a_callable)
+            self.fail(f"No deprecation warning generated by call to {a_callable}")
         self.assertEqual(expected_first_warning, call_warnings[0])
         return result
 
@@ -1656,18 +1647,18 @@ class TestCase(testtools.TestCase):
         return result
 
     def _startLogFile(self):
-        """Setup a in-memory target for bzr and testcase log messages"""
+        """Setup a in-memory target for bzr and testcase log messages."""
         pseudo_log_file = BytesIO()
 
         def _get_log_contents_for_weird_testtools_api():
             return [pseudo_log_file.getvalue().decode(
                 "utf-8", "replace").encode("utf-8")]
         self.addDetail(
-            "log", content.Content(
+            'log', content.Content(
                 content.ContentType("text", "plain", {"charset": "utf8"}),
                 _get_log_contents_for_weird_testtools_api))
         self._log_file = pseudo_log_file
-        self._log_memento = trace.push_log_file(self._log_file)
+        self._log_memento = trace.push_log_file(self._log_file, short=True)
         self.addCleanup(self._finishLogFile)
 
     @contextlib.contextmanager
@@ -1677,10 +1668,10 @@ class TestCase(testtools.TestCase):
         stream.detach()
 
     def _finishLogFile(self):
-        """Flush and dereference the in-memory log for this testcase"""
-        if trace._trace_file:
+        """Flush and dereference the in-memory log for this testcase."""
+        if trace._trace_handler:
             # flush the log file, to get all content
-            trace._trace_file.flush()
+            trace._trace_handler.flush()
         trace.pop_log_file(self._log_memento)
         # The logging module now tracks references for cleanup so discard ours
         del self._log_memento
@@ -1696,7 +1687,7 @@ class TestCase(testtools.TestCase):
         This should be used sparingly, it is much better to fix the locking
         issues rather than papering over the problem by calling this function.
         """
-        debug.debug_flags.discard('strict_locks')
+        debug.unset_debug_flag('strict_locks')
 
     def overrideAttr(self, obj, attr_name, new=_unitialized_attr):
         """Overrides an object attribute restoring it after the test.
@@ -1771,7 +1762,7 @@ class TestCase(testtools.TestCase):
         self._preserved_lazy_hooks.clear()
 
     def knownFailure(self, reason):
-        """Declare that this test fails for a known reason
+        """Declare that this test fails for a known reason.
 
         Tests that are known to fail should generally be using expectedFailure
         with an appropriate reverse assertion if a change could cause the test
@@ -1942,7 +1933,7 @@ class TestCase(testtools.TestCase):
         return result
 
     def run_bzr_raw(self, args, retcode=0, stdin=None, encoding=None,
-                    working_dir=None, error_regexes=[]):
+                    working_dir=None, error_regexes=None):
         """Invoke brz, as if it were run from the command line.
 
         The argument list should not include the brz program name - the
@@ -1974,6 +1965,8 @@ class TestCase(testtools.TestCase):
         :keyword error_regexes: A list of expected error messages.  If
             specified they must be seen in the error output of the command.
         """
+        if error_regexes is None:
+            error_regexes = []
         if isinstance(args, str):
             args = shlex.split(args)
 
@@ -2015,7 +2008,7 @@ class TestCase(testtools.TestCase):
         return out, err
 
     def run_bzr(self, args, retcode=0, stdin=None, encoding=None,
-                working_dir=None, error_regexes=[]):
+                working_dir=None, error_regexes=None):
         """Invoke brz, as if it were run from the command line.
 
         The argument list should not include the brz program name - the
@@ -2047,6 +2040,8 @@ class TestCase(testtools.TestCase):
         :keyword error_regexes: A list of expected error messages.  If
             specified they must be seen in the error output of the command.
         """
+        if error_regexes is None:
+            error_regexes = []
         if isinstance(args, str):
             args = shlex.split(args)
 
@@ -2084,7 +2079,7 @@ class TestCase(testtools.TestCase):
         return out, err
 
     def run_bzr_error(self, error_regexes, *args, **kwargs):
-        """Run brz, and check that stderr contains the supplied regexes
+        """Run brz, and check that stderr contains the supplied regexes.
 
         :param error_regexes: Sequence of regular expressions which
             must each be found in the error output. The relative ordering
@@ -2219,7 +2214,7 @@ class TestCase(testtools.TestCase):
             cleanup_environment()
             # Include the subprocess's log file in the test details, in case
             # the test fails due to an error in the subprocess.
-            self._add_subprocess_log(trace._get_brz_log_filename())
+            self._add_subprocess_log(trace._initialize_brz_log_filename())
             command = self.get_brz_command()
             if not allow_plugins:
                 command.append('--no-plugins')
@@ -2258,7 +2253,7 @@ class TestCase(testtools.TestCase):
                 log_file_bytes = log_file.read()
             detail_content = content.Content(
                 content.ContentType("text", "plain", {"charset": "utf8"}),
-                lambda: [log_file_bytes])
+                lambda: [log_file_bytes])  # noqa: B023
             self.addDetail("start_brz_subprocess-log-%d" % (count,),
                            detail_content)
 
@@ -2335,15 +2330,16 @@ class TestCase(testtools.TestCase):
             else:
                 extras.append(name)
         if shape:
-            self.fail("expected paths not found in inventory: %r" % shape)
+            self.fail(f"expected paths not found in inventory: {shape!r}")
         if extras:
-            self.fail("unexpected paths found in inventory: %r" % extras)
+            self.fail(f"unexpected paths found in inventory: {extras!r}")
 
     def apply_redirected(self, stdin=None, stdout=None, stderr=None,
                          a_callable=None, *args, **kwargs):
         """Call callable with redirected std io pipes.
 
-        Returns the return code."""
+        Returns the return code.
+        """
         if not callable(a_callable):
             raise ValueError("a_callable must be callable.")
         if stdin is None:
@@ -2450,7 +2446,7 @@ class TestCaseWithMemoryTransport(TestCase):
     TEST_ROOT = None
     _TEST_NAME = 'test'
 
-    def __init__(self, methodName='runTest'):
+    def __init__(self, methodName='runTest'):  # noqa: N803
         # allow test parameterization after test construction and before test
         # execution. Variables that the parameterizer sets need to be
         # ones that are not set by setUp, or setUp will trash them.
@@ -2464,7 +2460,7 @@ class TestCaseWithMemoryTransport(TestCase):
         super().setUp()
 
         def _add_disconnect_cleanup(transport):
-            """Schedule disconnection of given transport at test cleanup
+            """Schedule disconnection of given transport at test cleanup.
 
             This needs to happen for all connected transports or leaks occur.
 
@@ -2501,7 +2497,7 @@ class TestCaseWithMemoryTransport(TestCase):
         return t
 
     def get_readonly_transport(self, relpath=None):
-        """Return a readonly transport for the test scratch space
+        """Return a readonly transport for the test scratch space.
 
         This can be used to test that operations which should only need
         readonly access in fact do not try to write.
@@ -2521,7 +2517,7 @@ class TestCaseWithMemoryTransport(TestCase):
         return self.transport_readonly_server()
 
     def get_readonly_server(self):
-        """Get the server instance for the readonly transport
+        """Get the server instance for the readonly transport.
 
         This is useful for some tests with specific servers to do diagnostics.
         """
@@ -2643,12 +2639,12 @@ class TestCaseWithMemoryTransport(TestCase):
             # http://pad.lv/825027).
             self.assertIs(None, os.environ.get('BRZ_HOME', None))
             os.environ['BRZ_HOME'] = root
-            from breezy.bzr.bzrdir import BzrDirMetaFormat1
+            from ..bzr.bzrdir import BzrDirMetaFormat1
             wt = controldir.ControlDir.create_standalone_workingtree(
                 root, format=BzrDirMetaFormat1())
             del os.environ['BRZ_HOME']
         except Exception as e:
-            self.fail("Fail to initialize the safety net: {!r}\n".format(e))
+            self.fail(f"Fail to initialize the safety net: {e!r}\n")
         # Hack for speed: remember the raw bytes of the dirstate file so that
         # we don't need to re-open the wt to check it hasn't changed.
         TestCaseWithMemoryTransport._SAFETY_NET_PRISTINE_DIRSTATE = (
@@ -2671,7 +2667,7 @@ class TestCaseWithMemoryTransport(TestCase):
             # import pdb; pdb.set_trace()
             _rmtree_temp_dir(root + '/.bzr', test_id=self.id())
             self._create_safety_net()
-            raise AssertionError('%s/.bzr should not be modified' % root)
+            raise AssertionError(f'{root}/.bzr should not be modified')
 
     def _make_test_root(self):
         if TestCaseWithMemoryTransport.TEST_ROOT is None:
@@ -2737,8 +2733,8 @@ class TestCaseWithMemoryTransport(TestCase):
                 t.ensure_base()
             format = self.resolve_format(format)
             return format.initialize_on_transport(t)
-        except errors.UninitializableFormat:
-            raise TestSkipped("Format %s is not initializable." % format)
+        except errors.UninitializableFormat as err:
+            raise TestSkipped(f"Format {format} is not initializable.") from err
 
     def make_repository(self, relpath, shared=None, format=None):
         """Create a repository on our default transport at relpath.
@@ -2832,13 +2828,13 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         self.overrideEnv('BRZ_LOG', None)
 
     def check_file_contents(self, filename, expect):
-        self.log("check contents of file %s" % filename)
+        self.log(f"check contents of file {filename}")
         with open(filename, 'rb') as f:
             contents = f.read()
         if contents != expect:
-            self.log("expected: %r" % expect)
-            self.log("actually: %r" % contents)
-            self.fail("contents of %s not as expected" % filename)
+            self.log(f"expected: {expect!r}")
+            self.log(f"actually: {contents!r}")
+            self.fail(f"contents of {filename} not as expected")
 
     def _getTestDirPrefix(self):
         # create a directory within the top level test directory
@@ -2923,14 +2919,14 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
                     end = os.linesep.encode('ascii')
                 else:
                     raise errors.BzrError(
-                        'Invalid line ending request %r' % line_endings)
+                        f'Invalid line ending request {line_endings!r}')
                 content = b"contents of %s%s" % (name.encode('utf-8'), end)
                 transport.put_bytes_non_atomic(urlutils.escape(name), content)
 
     build_tree_contents = staticmethod(treeshape.build_tree_contents)
 
     def assertInWorkingTree(self, path, root_path='.', tree=None):
-        """Assert whether path or paths are in the WorkingTree"""
+        """Assert whether path or paths are in the WorkingTree."""
         if tree is None:
             tree = workingtree.WorkingTree.open(root_path)
         if not isinstance(path, str):
@@ -2941,7 +2937,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
                             path + ' not in working tree.')
 
     def assertNotInWorkingTree(self, path, root_path='.', tree=None):
-        """Assert whether path or paths are not in the WorkingTree"""
+        """Assert whether path or paths are not in the WorkingTree."""
         if tree is None:
             tree = workingtree.WorkingTree.open(root_path)
         if not isinstance(path, str):
@@ -3043,8 +3039,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         try:
             mode = transport.stat(relpath).st_mode
         except _mod_transport.NoSuchFile:
-            self.fail("path %s is not a directory; no such file"
-                      % (relpath))
+            self.fail(f"path {relpath} is not a directory; no such file")
         if not stat.S_ISDIR(mode):
             self.fail("path %s is not a directory; has mode %#o"
                       % (relpath, mode))
@@ -3056,7 +3051,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         self.assertEqual(left.get_parent_ids(), right.get_parent_ids())
         differences = left.changes_from(right)
         self.assertFalse(differences.has_changed(),
-                         "Trees {!r} and {!r} are different: {!r}".format(left, right, differences))
+                         f"Trees {left!r} and {right!r} are different: {differences!r}")
 
     def disable_missing_extensions_warning(self):
         """Some tests expect a precise stderr content.
@@ -3344,7 +3339,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
             runner.list(suite)
         else:
             for t in iter_suite_tests(suite):
-                stream.write("%s\n" % (t.id()))
+                stream.write(f"{t.id()}\n")
         return True
     result = runner.run(suite)
     if strict and getattr(result, 'wasStrictlySuccessful', False):
@@ -3475,8 +3470,7 @@ class RandomDecorator(TestDecorator):
 
     def __init__(self, suite, random_seed, stream):
         random_seed = self.actual_seed(random_seed)
-        stream.write("Randomizing test order using seed %s\n\n" %
-                     (random_seed,))
+        stream.write(f"Randomizing test order using seed {random_seed}\n\n")
         # Initialise the random number generator.
         random.seed(random_seed)
         super().__init__(randomize_suite(suite))
@@ -3511,7 +3505,7 @@ def partition_tests(suite, count):
     # resources, but on the other it avoids assigning blocks of slow tests to
     # just one partition.  So the slowest partition shouldn't be much slower
     # than the fastest.
-    partitions = [list() for i in range(count)]
+    partitions = [[] for i in range(count)]
     tests = iter_suite_tests(suite)
     for partition, test in zip(itertools.cycle(partitions), tests):
         partition.append(test)
@@ -3532,7 +3526,7 @@ def workaround_zealous_crypto_random():
 
 
 def fork_for_tests(suite):
-    """Take suite and start up one runner per CPU by forking()
+    """Take suite and start up one runner per CPU by forking().
 
     :return: An iterable of TestCase-like objects which can each have
         run(result) called on them to feed tests to result.
@@ -3584,7 +3578,7 @@ def fork_for_tests(suite):
                 subunit_result = AutoTimingTestResultDecorator(
                     SubUnitBzrProtocolClientv1(stream))
                 process_suite.run(subunit_result)
-            except:
+            except BaseException:
                 # Try and report traceback on stream, but exit with error even
                 # if stream couldn't be created or something else goes wrong.
                 # The traceback is formatted to a string and written in one go
@@ -3731,7 +3725,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              stream=None,
              lsprof_tests=False,
              ):
-    """Run the whole test suite under the enhanced runner"""
+    """Run the whole test suite under the enhanced runner."""
     # XXX: Very ugly way to do this...
     # Disable warning about old formats because we don't want it to disturb
     # any blackbox tests.
@@ -3801,11 +3795,8 @@ def load_test_id_list(file_name):
     test_list = []
     try:
         ftest = open(file_name)
-    except OSError as e:
-        if e.errno != errno.ENOENT:
-            raise
-        else:
-            raise _mod_transport.NoSuchFile(file_name)
+    except FileNotFoundError as err:
+        raise _mod_transport.NoSuchFile(file_name) from err
 
     for test_name in ftest.readlines():
         test_list.append(test_name.strip())
@@ -3831,7 +3822,7 @@ def suite_matches_id_list(test_suite, id_list):
     help to localize defects).
     """
     # Build a dict counting id occurrences
-    tests = dict()
+    tests = {}
     for test in iter_suite_tests(test_suite):
         id = test.id()
         tests[id] = tests.get(id, 0) + 1
@@ -3861,7 +3852,7 @@ class TestIdList:
     def __init__(self, test_id_list):
         # When a test suite needs to be filtered against us we compare test ids
         # for equality, so a simple dict offers a quick and simple solution.
-        self.tests = dict().fromkeys(test_id_list, True)
+        self.tests = {}.fromkeys(test_id_list, True)
 
         # While unittest.TestCase have ids like:
         # <module>.<class>.<method>[(<param+)],
@@ -3913,8 +3904,7 @@ class TestPrefixAliasRegistry(registry.Registry):
         except KeyError:
             actual = self.get(key)
             trace.note(
-                'Test prefix alias %s is already used for %s, ignoring %s'
-                % (key, actual, obj))
+                f'Test prefix alias {key} is already used for {actual}, ignoring {obj}')
 
     def resolve_alias(self, id_start):
         """Replace the alias by the prefix in the given string.
@@ -3924,9 +3914,9 @@ class TestPrefixAliasRegistry(registry.Registry):
         parts = id_start.split('.')
         try:
             parts[0] = self.get(parts[0])
-        except KeyError:
+        except KeyError as err:
             raise errors.CommandError(
-                '%s is not a known test prefix alias' % parts[0])
+                f'{parts[0]} is not a known test prefix alias') from err
         return '.'.join(parts)
 
 
@@ -3972,7 +3962,6 @@ def _test_suite_testmod_names():
         'breezy.tests.per_workingtree',
         'breezy.tests.test__annotator',
         'breezy.tests.test__known_graph',
-        'breezy.tests.test__walkdirs_win32',
         'breezy.tests.test_ancestry',
         'breezy.tests.test_annotate',
         'breezy.tests.test_atomicfile',
@@ -3982,7 +3971,6 @@ def _test_suite_testmod_names():
         'breezy.tests.test_branch',
         'breezy.tests.test_branchbuilder',
         'breezy.tests.test_bugtracker',
-        'breezy.tests.test__chunks_to_lines',
         'breezy.tests.test_cache_utf8',
         'breezy.tests.test_chunk_writer',
         'breezy.tests.test_clean_tree',
@@ -4034,12 +4022,12 @@ def _test_suite_testmod_names():
         'breezy.tests.test_ignores',
         'breezy.tests.test_import_tariff',
         'breezy.tests.test_info',
+        'breezy.tests.test_iterablefile',
         'breezy.tests.test_lazy_import',
         'breezy.tests.test_lazy_regex',
         'breezy.tests.test_library_state',
         'breezy.tests.test_location',
         'breezy.tests.test_lock',
-        'breezy.tests.test_lockable_files',
         'breezy.tests.test_lockdir',
         'breezy.tests.test_log',
         'breezy.tests.test_lru_cache',
@@ -4138,14 +4126,12 @@ def _test_suite_modules_to_doctest():
         'breezy.branchbuilder',
         'breezy.bzr.inventory',
         'breezy.decorators',
-        'breezy.iterablefile',
         'breezy.lockdir',
         'breezy.option',
         'breezy.pyutils',
         'breezy.symbol_versioning',
         'breezy.tests',
         'breezy.tests.fixtures',
-        'breezy.timestamp',
         'breezy.version_info_formats.format_custom',
         ]
 
@@ -4161,7 +4147,6 @@ def test_suite(keep_only=None, starting_with=None):
     This function can be replaced if you need to change the default test
     suite on a global basis, but it is not encouraged.
     """
-
     loader = TestUtil.TestLoader()
 
     if keep_only is not None:
@@ -4208,10 +4193,10 @@ def test_suite(keep_only=None, starting_with=None):
             doc_suite = IsolatedDocTestSuite(
                 mod, optionflags=doctest.REPORT_ONLY_FIRST_FAILURE)
         except ValueError as e:
-            print('**failed to get doctest for: {}\n{}'.format(mod, e))
+            print(f'**failed to get doctest for: {mod}\n{e}')
             raise
         if len(doc_suite._tests) == 0:
-            raise errors.BzrError("no doctests found in {}".format(mod))
+            raise errors.BzrError(f"no doctests found in {mod}")
         suite.addTest(doc_suite)
 
     default_encoding = sys.getdefaultencoding()
@@ -4275,7 +4260,7 @@ def _multiply_two_scenarios(scenarios_left, scenarios_right):
         right scenario.
     """
     return [
-        ('{},{}'.format(left_name, right_name),
+        (f'{left_name},{right_name}',
          dict(left_dict, **right_dict))
         for left_name, left_dict in scenarios_left
         for right_name, right_dict in scenarios_right]
@@ -4343,7 +4328,7 @@ def apply_scenario(test, scenario):
         test.
     :return: The adapted test.
     """
-    new_id = "{}({})".format(test.id(), scenario[0])
+    new_id = f"{test.id()}({scenario[0]})"
     new_test = clone_test(test, new_id)
     for name, value in scenario[1].items():
         setattr(new_test, name, value)
@@ -4364,7 +4349,7 @@ def clone_test(test, new_id):
     # read the test output for parameterized tests, because tracebacks will be
     # associated with irrelevant tests.
     try:
-        details = new_test._TestCase__details
+        pass
     except AttributeError:
         # must be a different version of testtools than expected.  Do nothing.
         pass
@@ -4397,7 +4382,6 @@ def permute_tests_for_extension(standard_tests, loader, py_module_name,
         tests. feature is the Feature object that can be used to determine if
         the module is available.
     """
-
     from .features import ModuleAvailableFeature
     py_module = pyutils.get_named_object(py_module_name)
     scenarios = [
@@ -4439,12 +4423,10 @@ def _rmtree_temp_dir(dirname, test_id=None):
         # possible info to the test runner is even worse.
         if test_id is not None:
             ui.ui_factory.clear_term()
-            sys.stderr.write('\nWhile running: {}\n'.format(test_id))
+            sys.stderr.write(f'\nWhile running: {test_id}\n')
         # Ugly, but the last thing we want here is fail, so bear with it.
-        printable_e = str(e).decode(osutils.get_user_encoding(), 'replace'
-                                    ).encode('ascii', 'replace')
         sys.stderr.write('Unable to remove testing dir %s\n%s'
-                         % (os.path.basename(dirname), printable_e))
+                         % (os.path.basename(dirname), e))
 
 
 def probe_unicode_in_user_encoding():

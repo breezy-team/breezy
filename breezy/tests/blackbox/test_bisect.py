@@ -31,7 +31,6 @@ class BisectTestCase(TestCaseWithTransport):
 
     def assertRevno(self, rev):
         """Make sure we're at the right revision."""
-
         rev_contents = {1: "one", 1.1: "one dot one", 1.2: "one dot two",
                         1.3: "one dot three", 2: "two", 3: "three",
                         4: "four", 5: "five"}
@@ -41,12 +40,10 @@ class BisectTestCase(TestCaseWithTransport):
         if content != rev_contents[rev]:
             rev_ids = {rev_contents[k]: k for k in rev_contents.keys()}
             found_rev = rev_ids[content]
-            raise AssertionError("expected rev %0.1f, found rev %0.1f"
-                                 % (rev, found_rev))
+            raise AssertionError(f"expected rev {rev:0.1f}, found rev {found_rev:0.1f}")
 
     def setUp(self):
         """Set up tests."""
-
         # These tests assume a branch with five revisions, and
         # a branch from version 1 containing three revisions
         # merged at version 2.
@@ -96,7 +93,6 @@ class BisectTestCase(TestCaseWithTransport):
 
     def testWorkflow(self):
         """Run through a basic usage scenario."""
-
         # Start up the bisection.  When the two ends are set, we should
         # end up in the middle.
 
@@ -126,8 +122,8 @@ class BisectTestCase(TestCaseWithTransport):
 
     def testWorkflowSubtree(self):
         """Run through a usage scenario where the offending change
-        is in a subtree."""
-
+        is in a subtree.
+        """
         # Similar to testWorkflow, but make sure the plugin traverses
         # subtrees when the "final" revision is a merge point.
 
@@ -162,7 +158,6 @@ class BisectTestCase(TestCaseWithTransport):
 
     def testMove(self):
         """Test manually moving to a different revision during the bisection."""
-
         # Set up a bisection in progress.
 
         self.run_bzr(['bisect', 'start'])
@@ -176,7 +171,6 @@ class BisectTestCase(TestCaseWithTransport):
 
     def testReset(self):
         """Test resetting the tree."""
-
         # Set up a bisection in progress.
 
         self.run_bzr(['bisect', 'start'])
@@ -204,7 +198,6 @@ class BisectTestCase(TestCaseWithTransport):
 
     def testLog(self):
         """Test saving the current bisection state, and re-loading it."""
-
         # Set up a bisection in progress.
 
         self.run_bzr(['bisect', 'start'])
@@ -257,9 +250,9 @@ class BisectTestCase(TestCaseWithTransport):
         self.run_bzr(['bisect', 'run', './test_script'])
         try:
             self.assertRevno(2)
-        except AssertionError:
+        except AssertionError as err:
             raise KnownFailure("bisect does not drill down into merge commits: "
-                               "https://bugs.launchpad.net/bzr-bisect/+bug/539937")
+                               "https://bugs.launchpad.net/bzr-bisect/+bug/539937") from err
 
     def testRunScriptSubtree(self):
         """Make a test script and run it."""
@@ -275,6 +268,6 @@ class BisectTestCase(TestCaseWithTransport):
         self.run_bzr(['bisect', 'run', './test_script'])
         try:
             self.assertRevno(1.2)
-        except AssertionError:
+        except AssertionError as err:
             raise KnownFailure("bisect does not drill down into merge commits: "
-                               "https://bugs.launchpad.net/bzr-bisect/+bug/539937")
+                               "https://bugs.launchpad.net/bzr-bisect/+bug/539937") from err

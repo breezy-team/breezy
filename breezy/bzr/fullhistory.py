@@ -48,7 +48,7 @@ class FullHistoryBzrBranch(BzrBranch):
             return (0, _mod_revision.NULL_REVISION)
 
     def _set_revision_history(self, rev_history):
-        if 'evil' in debug.debug_flags:
+        if debug.debug_flag_enabled('evil'):
             mutter_callsite(3, "set_revision_history scales with history.")
         check_not_reserved_id = _mod_revision.check_not_reserved_id
         for rev_id in rev_history:
@@ -72,7 +72,8 @@ class FullHistoryBzrBranch(BzrBranch):
         """Factored out of set_revision_history.
 
         This performs the actual writing to disk.
-        It is intended to be called by set_revision_history."""
+        It is intended to be called by set_revision_history.
+        """
         self._transport.put_bytes(
             'revision-history', b'\n'.join(history),
             mode=self.controldir._get_file_mode())
@@ -98,7 +99,7 @@ class FullHistoryBzrBranch(BzrBranch):
                 new_history = new_history[:new_history.index(revision_id) + 1]
             except ValueError:
                 rev = self.repository.get_revision(revision_id)
-                new_history = rev.get_history(self.repository)[1:]
+                new_history = _mod_revision.get_history(self.repository, rev)[1:]
         destination._set_revision_history(new_history)
 
     def generate_revision_history(self, revision_id, last_rev=None,

@@ -20,5 +20,5 @@ from unittest import TestLoader, TestSuite
 def test_suite():
     result = TestSuite()
 
-    loader = TestLoader()
+    TestLoader()
     return result

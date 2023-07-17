@@ -69,15 +69,19 @@ from breezy import (
 from breezy.i18n import gettext, ngettext
 """)
 
-from . import errors, registry
+from . import errors, registry, revisionspec, trace
 from . import revision as _mod_revision
-from . import revisionspec, trace
 from . import transport as _mod_transport
-from .osutils import (format_date,
-                      format_date_with_offset_in_original_timezone,
-                      get_diff_header_encoding, get_terminal_encoding,
-                      is_inside, terminal_width)
-from .tree import InterTree, find_previous_path
+from .osutils import (
+    UnsupportedTimezoneFormat,
+    format_date,
+    format_date_with_offset_in_original_timezone,
+    get_diff_header_encoding,
+    get_terminal_encoding,
+    is_inside,
+    terminal_width,
+)
+from .tree import InterTree
 
 
 def find_touching_revisions(repository, last_revision, last_tree, last_path):
@@ -108,7 +112,7 @@ def find_touching_revisions(repository, last_revision, last_tree, last_path):
         elif this_path is None and last_path is not None:
             yield revno, revision_id, "added " + last_path
         elif this_path != last_path:
-            yield revno, revision_id, ("renamed {} => {}".format(this_path, last_path))
+            yield revno, revision_id, (f"renamed {this_path} => {last_path}")
             this_verifier = this_tree.get_file_verifier(this_path)
         else:
             this_verifier = this_tree.get_file_verifier(this_path)
@@ -170,14 +174,14 @@ def show_log(branch,
     if isinstance(start_revision, int):
         try:
             start_revision = revisionspec.RevisionInfo(branch, start_revision)
-        except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
-            raise errors.InvalidRevisionNumber(start_revision)
+        except (errors.NoSuchRevision, errors.RevnoOutOfBounds) as e:
+            raise errors.InvalidRevisionNumber(start_revision) from e
 
     if isinstance(end_revision, int):
         try:
             end_revision = revisionspec.RevisionInfo(branch, end_revision)
-        except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
-            raise errors.InvalidRevisionNumber(end_revision)
+        except (errors.NoSuchRevision, errors.RevnoOutOfBounds) as e:
+            raise errors.InvalidRevisionNumber(end_revision) from e
 
     if end_revision is not None and end_revision.revno == 0:
         raise errors.InvalidRevisionNumber(end_revision.revno)
@@ -238,7 +242,7 @@ def make_log_request_dict(direction='reverse', specific_files=None,
       a sensible default.
 
     :param generate_tags: If True, include tags for matched revisions.
-`
+    `
     :param delta_type: Either 'full', 'partial' or None.
       'full' means generate the complete delta - adds/deletes/modifies/etc;
       'partial' means filter the delta using specific_files;
@@ -304,7 +308,7 @@ def _apply_log_request_defaults(rqst):
 
 
 def format_signature_validity(rev_id, branch):
-    """get the signature validity
+    """Get the signature validity.
 
     :param rev_id: revision id to validate
     :param branch: branch of revision
@@ -354,7 +358,7 @@ class Logger:
         :param lf: The LogFormatter object to send the output to.
         """
         if not isinstance(lf, LogFormatter):
-            warn("not a LogFormatter instance: %r" % lf)
+            warn(f"not a LogFormatter instance: {lf!r}", stacklevel=1)
 
         with self.branch.lock_read():
             if getattr(lf, 'begin_log', None):
@@ -389,9 +393,9 @@ class Logger:
         try:
             for lr in generator.iter_log_revisions():
                 lf.log_revision(lr)
-        except errors.GhostRevisionUnusableHere:
+        except errors.GhostRevisionUnusableHere as e:
             raise errors.CommandError(
-                gettext('Further revision history missing.'))
+                gettext('Further revision history missing.')) from e
         lf.show_advice()
 
     def _generator_factory(self, branch, rqst):
@@ -675,11 +679,11 @@ def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
             else:
                 # No merged revisions found
                 return initial_revisions
-        except _StartNotLinearAncestor:
+        except _StartNotLinearAncestor as e:
             # A merge was never detected so the lower revision limit can't
             # be nested down somewhere
             raise errors.CommandError(gettext('Start revision not found in'
-                                              ' history of end revision.'))
+                                              ' history of end revision.')) from e
 
     # We exit the loop above because we encounter a revision with merges, from
     # this revision, we need to switch to _graph_view_revisions.
@@ -835,7 +839,7 @@ def _graph_view_revisions(branch, start_rev_id, end_rev_id,
         start_revision_id=end_rev_id, stop_revision_id=start_rev_id,
         stop_rule=stop_rule)
     if not rebase_initial_depths:
-        for (rev_id, merge_depth, revno, end_of_merge
+        for (rev_id, merge_depth, revno, _end_of_merge
              ) in view_revisions:
             yield rev_id, '.'.join(map(str, revno)), merge_depth
     else:
@@ -844,7 +848,7 @@ def _graph_view_revisions(branch, start_rev_id, end_rev_id,
         # a depth less than it. Then we use that depth as the adjustment.
         # If and when we reach the mainline, depth adjustment ends.
         depth_adjustment = None
-        for (rev_id, merge_depth, revno, end_of_merge
+        for (rev_id, merge_depth, revno, _end_of_merge
              ) in view_revisions:
             if depth_adjustment is None:
                 depth_adjustment = merge_depth
@@ -932,23 +936,23 @@ def _make_search_filter(branch, generate_delta, match, log_rev_iterator):
     return _filter_re(searchRE, log_rev_iterator)
 
 
-def _filter_re(searchRE, log_rev_iterator):
+def _filter_re(search_re, log_rev_iterator):
     for revs in log_rev_iterator:
-        new_revs = [rev for rev in revs if _match_filter(searchRE, rev[1])]
+        new_revs = [rev for rev in revs if _match_filter(search_re, rev[1])]
         if new_revs:
             yield new_revs
 
 
-def _match_filter(searchRE, rev):
+def _match_filter(search_re, rev):
     strings = {
         'message': (rev.message,),
         'committer': (rev.committer,),
         'author': (rev.get_apparent_authors()),
-        'bugs': list(rev.iter_bugs())
+        'bugs': list(_mod_revision.iter_bugs(rev))
         }
     strings[''] = [item for inner_list in strings.values()
                    for item in inner_list]
-    for k, v in searchRE:
+    for k, v in search_re:
         if k in strings and not _match_any_filter(strings[k], v):
             return False
     return True
@@ -1070,7 +1074,7 @@ def _update_files(delta, files, stop_on):
 
 
 def _make_revision_objects(branch, generate_delta, search, log_rev_iterator):
-    """Extract revision objects from the repository
+    """Extract revision objects from the repository.
 
     :param branch: The branch being logged.
     :param generate_delta: Whether to generate a delta for each revision.
@@ -1542,7 +1546,7 @@ class LogFormatter:
         If a registered handler raises an error it is propagated.
         """
         for line in self.custom_properties(revision):
-            self.to_file.write("{}{}\n".format(indent, line))
+            self.to_file.write(f"{indent}{line}\n")
 
     def custom_properties(self, revision):
         """Format the custom properties returned by each registered handler.
@@ -1552,7 +1556,7 @@ class LogFormatter:
         :return: a list of formatted lines (excluding trailing newlines)
         """
         lines = self._foreign_info_properties(revision)
-        for key, handler in properties_handler_registry.iteritems():
+        for _key, handler in properties_handler_registry.iteritems():
             try:
                 lines.extend(self._format_properties(handler(revision)))
             except Exception:
@@ -1617,8 +1621,11 @@ class LongLogFormatter(LogFormatter):
             self.date_string = self._date_string_with_timezone
 
     def _date_string_with_timezone(self, rev):
-        return format_date(rev.timestamp, rev.timezone or 0,
-                           self.show_timezone)
+        try:
+            return format_date(rev.timestamp, rev.timezone or 0,
+                               timezone=self.show_timezone)
+        except UnsupportedTimezoneFormat as e:
+            raise errors.CommandError(gettext('Unsupported timezone format "{}", options are "utc", "original", "local".').format(self.show_timezone)) from e
 
     def _date_string_original_timezone(self, rev):
         return format_date_with_offset_in_original_timezone(rev.timestamp,
@@ -1629,29 +1636,30 @@ class LongLogFormatter(LogFormatter):
         indent = '    ' * revision.merge_depth
         lines = [_LONG_SEP]
         if revision.revno is not None:
-            lines.append('revno: {}{}'.format(revision.revno,
-                                          self.merge_marker(revision)))
+            lines.append(f'revno: {revision.revno}{self.merge_marker(revision)}')
         if revision.tags:
-            lines.append('tags: %s' % (', '.join(sorted(revision.tags))))
+            lines.append(f"tags: {', '.join(sorted(revision.tags))}")
         if self.show_ids or revision.revno is None:
-            lines.append('revision-id: %s' %
-                         (revision.rev.revision_id.decode('utf-8'),))
+            lines.append(f"revision-id: {revision.rev.revision_id.decode('utf-8')}")
         if self.show_ids:
             for parent_id in revision.rev.parent_ids:
-                lines.append('parent: {}'.format(parent_id.decode('utf-8')))
+                lines.append(f"parent: {parent_id.decode('utf-8')}")
         lines.extend(self.custom_properties(revision.rev))
 
         committer = revision.rev.committer
         authors = self.authors(revision.rev, 'all')
         if authors != [committer]:
-            lines.append('author: {}'.format(", ".join(authors)))
-        lines.append('committer: {}'.format(committer))
+            lines.append(f"author: {', '.join(authors)}")
+        lines.append(f'committer: {committer}')
 
         branch_nick = revision.rev.properties.get('branch-nick', None)
         if branch_nick is not None:
-            lines.append('branch nick: {}'.format(branch_nick))
+            lines.append(f'branch nick: {branch_nick}')
 
-        lines.append('timestamp: {}'.format(self.date_string(revision.rev)))
+        try:
+            lines.append(f'timestamp: {self.date_string(revision.rev)}')
+        except UnsupportedTimezoneFormat as e:
+            raise errors.CommandError(gettext('Unsupported timezone format "{}", options are "utc", "original", "local".').format(self.show_timezone)) from e
 
         if revision.signature is not None:
             lines.append('signature: ' + revision.signature)
@@ -1662,14 +1670,14 @@ class LongLogFormatter(LogFormatter):
         else:
             message = revision.rev.message.rstrip('\r\n')
             for l in message.split('\n'):
-                lines.append('  {}'.format(l))
+                lines.append(f'  {l}')
 
         # Dump the output, appending the delta and diff if requested
         to_file = self.to_file
         to_file.write("{}{}\n".format(indent, ('\n' + indent).join(lines)))
         if revision.delta is not None:
             # Use the standard status output to display changes
-            from breezy.delta import report_delta
+            from .delta import report_delta
             report_delta(to_file, revision.delta, short_status=False,
                          show_ids=self.show_ids, indent=indent)
         if revision.diff is not None:
@@ -1738,11 +1746,11 @@ class ShortLogFormatter(LogFormatter):
         else:
             message = revision.rev.message.rstrip('\r\n')
             for l in message.split('\n'):
-                to_file.write(indent + offset + '{}\n'.format(l))
+                to_file.write(indent + offset + f'{l}\n')
 
         if revision.delta is not None:
             # Use the standard status output to display changes
-            from breezy.delta import report_delta
+            from .delta import report_delta
             report_delta(to_file, revision.delta,
                          short_status=self.delta_format == 1,
                          show_ids=self.show_ids, indent=indent + offset)
@@ -1788,7 +1796,7 @@ class LineLogFormatter(LogFormatter):
         self.to_file.write('\n')
 
     def log_string(self, revno, rev, max_chars, tags=None, prefix=''):
-        """Format log info into one string. Truncate tail of string
+        """Format log info into one string. Truncate tail of string.
 
         :param revno:      revision number or None.
                            Revision numbers counts from 1.
@@ -1801,7 +1809,7 @@ class LineLogFormatter(LogFormatter):
         out = []
         if revno:
             # show revno only when is not None
-            out.append("%s:" % revno)
+            out.append(f"{revno}:")
         if max_chars is not None:
             out.append(self.truncate(
                 self.short_author(rev), (max_chars + 3) // 4))
@@ -1833,7 +1841,7 @@ class GnuChangelogLogFormatter(LogFormatter):
                                show_offset=False)
         committer_str = self.authors(revision.rev, 'first', sep=', ')
         committer_str = committer_str.replace(' <', '  <')
-        to_file.write('{}  {}\n\n'.format(date_str, committer_str))
+        to_file.write(f'{date_str}  {committer_str}\n\n')
 
         if revision.delta is not None and revision.delta.has_changed():
             for c in revision.delta.added + revision.delta.removed + revision.delta.modified:
@@ -1841,10 +1849,10 @@ class GnuChangelogLogFormatter(LogFormatter):
                     path = c.path[1]
                 else:
                     path = c.path[0]
-                to_file.write('\t* {}:\n'.format(path))
+                to_file.write(f'\t* {path}:\n')
             for c in revision.delta.renamed + revision.delta.copied:
                 # For renamed files, show both the old and the new path
-                to_file.write('\t* {}:\n\t* {}:\n'.format(c.path[0], c.path[1]))
+                to_file.write(f'\t* {c.path[0]}:\n\t* {c.path[1]}:\n')
             to_file.write('\n')
 
         if not revision.rev.message:
@@ -1852,7 +1860,7 @@ class GnuChangelogLogFormatter(LogFormatter):
         else:
             message = revision.rev.message.rstrip('\r\n')
             for l in message.split('\n'):
-                to_file.write('\t{}\n'.format(l.lstrip()))
+                to_file.write(f'\t{l.lstrip()}\n')
             to_file.write('\n')
 
 
@@ -1862,7 +1870,7 @@ def line_log(rev, max_chars):
 
 
 class LogFormatterRegistry(registry.Registry):
-    """Registry for log formatters"""
+    """Registry for log formatters."""
 
     def make_formatter(self, name, *args, **kwargs):
         """Construct a formatter from arguments.
@@ -1902,9 +1910,9 @@ def log_formatter(name, *args, **kwargs):
     """
     try:
         return log_formatter_registry.make_formatter(name, *args, **kwargs)
-    except KeyError:
+    except KeyError as e:
         raise errors.CommandError(
-            gettext("unknown log formatter: %r") % name)
+            gettext("unknown log formatter: %r") % name) from e
 
 
 def author_list_all(rev):
@@ -2099,7 +2107,7 @@ def _get_info_for_log_files(revisionspec_list, file_list, exit_stack):
       kind is one of values 'directory', 'file', 'symlink', 'tree-reference'.
       branch will be read-locked.
     """
-    from breezy.builtins import _get_revision_range
+    from .builtins import _get_revision_range
     tree, b, path = controldir.ControlDir.open_containing_tree_or_branch(
         file_list[0])
     exit_stack.enter_context(b.lock_read())
@@ -2188,7 +2196,7 @@ properties_handler_registry = registry.Registry[str, Callable[[Dict[str, str]], 
 def _bugs_properties_handler(revision):
     fixed_bug_urls = []
     related_bug_urls = []
-    for bug_url, status in revision.iter_bugs():
+    for bug_url, status in _mod_revision.iter_bugs(revision):
         if status == 'fixed':
             fixed_bug_urls.append(bug_url)
         elif status == 'related':

@@ -34,17 +34,14 @@ rather starts again from the run_brz function.
 
 
 import os
-import re
 import sys
 
-import breezy
 from breezy import osutils
-from breezy.branch import Branch
-from breezy.errors import CommandError
 from breezy.tests import TestCaseWithTransport
-from breezy.tests.http_utils import TestCaseWithWebserver
-from breezy.tests.test_sftp_transport import TestCaseWithSFTPServer
-from breezy.workingtree import WorkingTree
+
+from ...branch import Branch
+from ..http_utils import TestCaseWithWebserver
+from ..test_sftp_transport import TestCaseWithSFTPServer
 
 
 class TestCommands(TestCaseWithTransport):
@@ -109,20 +106,19 @@ class TestCommands(TestCaseWithTransport):
         self.run_bzr('revert')
         os.chdir('..')
 
-    def example_branch(test):
-        test.run_bzr('init')
+    def example_branch(self):
+        self.run_bzr('init')
         with open('hello', 'w') as f:
             f.write('foo')
-        test.run_bzr('add hello')
-        test.run_bzr('commit -m setup hello')
+        self.run_bzr('add hello')
+        self.run_bzr('commit -m setup hello')
         with open('goodbye', 'w') as f:
             f.write('baz')
-        test.run_bzr('add goodbye')
-        test.run_bzr('commit -m setup goodbye')
+        self.run_bzr('add goodbye')
+        self.run_bzr('commit -m setup goodbye')
 
     def test_pull_verbose(self):
         """Pull changes from one branch to another and watch the output."""
-
         os.mkdir('a')
         os.chdir('a')
 
@@ -160,10 +156,10 @@ class TestCommands(TestCaseWithTransport):
 
         added_message = out.find('message:\n  foo')
         self.assertNotEqual(added_message, -1)
-        self.assertTrue(added_loc < added_message)
+        self.assertLess(added_loc, added_message)
 
     def test_locations(self):
-        """Using and remembering different locations"""
+        """Using and remembering different locations."""
         os.mkdir('a')
         os.chdir('a')
         self.run_bzr('init')
@@ -197,7 +193,7 @@ class TestCommands(TestCaseWithTransport):
         err.index('unknown command')
 
     def create_conflicts(self):
-        """Create a conflicted tree"""
+        """Create a conflicted tree."""
         os.mkdir('base')
         os.chdir('base')
         with open('hello', 'wb') as f:
@@ -237,32 +233,36 @@ class TestCommands(TestCaseWithTransport):
         self.run_bzr('commit --unchanged --message pumpkin')
         os.chdir('../branch3')
         self.run_bzr('merge ../branch2')
-        message = self.run_bzr('status')[0]
+        self.run_bzr('status')[0]
 
     def test_conflicts(self):
-        """Handling of merge conflicts"""
+        """Handling of merge conflicts."""
         self.create_conflicts()
         self.run_bzr('merge ../other --show-base', retcode=1)
         with open('hello') as f:
             conflict_text = f.read()
-        self.assertTrue('<<<<<<<' in conflict_text)
-        self.assertTrue('>>>>>>>' in conflict_text)
-        self.assertTrue('=======' in conflict_text)
-        self.assertTrue('|||||||' in conflict_text)
-        self.assertTrue('hi world' in conflict_text)
+        self.assertIn('<<<<<<<', conflict_text)
+        self.assertIn('>>>>>>>', conflict_text)
+        self.assertIn('=======', conflict_text)
+        self.assertIn('|||||||', conflict_text)
+        self.assertIn('hi world', conflict_text)
         self.run_bzr('revert')
         self.run_bzr('resolve --all')
         self.run_bzr('merge ../other', retcode=1)
         with open('hello') as f:
             conflict_text = f.read()
-        self.assertTrue('|||||||' not in conflict_text)
-        self.assertTrue('hi world' not in conflict_text)
+        self.assertNotIn('|||||||', conflict_text)
+        self.assertNotIn('hi world', conflict_text)
         result = self.run_bzr('conflicts')[0]
         self.assertEqual(result, "Text conflict in hello\nText conflict in"
                          " question\n")
         result = self.run_bzr('status')[0]
-        self.assertTrue("conflicts:\n  Text conflict in hello\n"
-                        "  Text conflict in question\n" in result, result)
+        self.assertIn(
+            "conflicts:\n  Text conflict in hello\n"
+            "  Text conflict in question\n",
+            result,
+            result
+        )
         self.run_bzr('resolve hello')
         result = self.run_bzr('conflicts')[0]
         self.assertEqual(result, "Text conflict in question\n")
@@ -318,8 +318,7 @@ class TestCommands(TestCaseWithTransport):
         self.run_bzr('missing ../missing/new-branch')
 
     def test_external_command(self):
-        """Test that external commands can be run by setting the path
-        """
+        """Test that external commands can be run by setting the path."""
         # We don't at present run brz in a subprocess for blackbox tests, and so
         # don't really capture stdout, only the internal python stream.
         # Therefore we don't use a subcommand that produces any output or does
@@ -336,7 +335,7 @@ class TestCommands(TestCaseWithTransport):
             f.write(b'#!/bin/sh\n')
         # f.write('echo Hello from test-command')
         f.close()
-        os.chmod(cmd_name, 0o755)
+        os.chmod(cmd_name, 0o755)  # noqa: S103
 
         # It should not find the command in the local
         # directory by default, since it is not in my path
@@ -361,7 +360,6 @@ class OldTests(TestCaseWithTransport):
 
     def test_bzr(self):
         from os import chdir, mkdir
-        from os.path import exists
 
         progress = self.log
 
@@ -429,20 +427,22 @@ class OldTests(TestCaseWithTransport):
         self.run_bzr('log -v --forward')
         self.run_bzr('log -m', retcode=3)
         log_out = self.run_bzr('log -m commit')[0]
-        self.assertTrue("this is my new commit\n  and" in log_out)
-        self.assertTrue("rename nested" not in log_out)
-        self.assertTrue('revision-id' not in log_out)
-        self.assertTrue(
-            'revision-id' in self.run_bzr('log --show-ids -m commit')[0])
+        self.assertIn("this is my new commit\n  and", log_out)
+        self.assertNotIn("rename nested", log_out)
+        self.assertNotIn('revision-id', log_out)
+        self.assertIn(
+            'revision-id',
+            self.run_bzr('log --show-ids -m commit')[0]
+        )
 
         log_out = self.run_bzr('log --line')[0]
         # determine the widest line we want
         max_width = osutils.terminal_width()
         if max_width is not None:
             for line in log_out.splitlines():
-                self.assertTrue(len(line) <= max_width - 1, len(line))
-        self.assertTrue("this is my new commit and" not in log_out)
-        self.assertTrue("this is my new commit" in log_out)
+                self.assertLessEqual(len(line), max_width - 1, len(line))
+        self.assertNotIn("this is my new commit and", log_out)
+        self.assertIn("this is my new commit", log_out)
 
         progress("file with spaces in name")
         mkdir('sub directory')
@@ -548,7 +548,7 @@ class OldTests(TestCaseWithTransport):
             chdir("exp5.tmp")
             self.assertEqual(listdir_sorted("."), ["d2", "link2"])
             self.assertTrue(os.path.islink("link2"))
-            self.assertTrue(listdir_sorted("d2") == ["link3"])
+            self.assertEqual(listdir_sorted("d2"), ["link3"])
             chdir("..")
 
             self.run_bzr('export -r 8 exp6.tmp')
@@ -583,7 +583,7 @@ class RemoteTests:
         self.run_bzr('add branch/file')[0]
         self.run_bzr('commit -m foo branch')[0]
         url = self.get_readonly_url('branch/file')
-        output = self.run_bzr('log %s' % url)[0]
+        output = self.run_bzr(f'log {url}')[0]
         self.assertEqual(8, len(output.split('\n')))
 
     def test_check(self):

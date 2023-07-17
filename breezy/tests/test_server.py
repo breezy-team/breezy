@@ -141,7 +141,7 @@ class FakeNFSServer(DecoratorServer):
 
 
 class FakeVFATServer(DecoratorServer):
-    """A server that suggests connections through FakeVFATTransportDecorator
+    """A server that suggests connections through FakeVFATTransportDecorator.
 
     For use in testing.
     """
@@ -195,7 +195,8 @@ class TestingPathFilteringServer(pathfilter.PathFilteringServer):
 
     def __init__(self):
         """TestingPathFilteringServer is not usable until start_server
-        is called."""
+        is called.
+        """
 
     def start_server(self, backing_server=None):
         """Setup the Chroot on backing_server."""
@@ -249,7 +250,7 @@ class TestThread(cethread.CatchingExceptionThread):
             # concerned, raising an assertion is too strong. On most of the
             # platforms, this doesn't occur, so just mentioning the problem is
             # enough for now -- vila 2010824
-            sys.stderr.write('thread {} hung\n'.format(self.name))
+            sys.stderr.write(f'thread {self.name} hung\n')
             # raise AssertionError('thread %s hung' % (self.name,))
 
 
@@ -440,7 +441,7 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
         stopped = threading.Event()
         t = TestThread(
             sync_event=stopped,
-            name='{} -> {}'.format(client_address, self.server_address),
+            name=f'{client_address} -> {self.server_address}',
             target=self.process_request_thread,
             args=(started, detached, stopped, request, client_address))
         # Update the client description
@@ -454,7 +455,7 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
         # If an exception occured during the thread start, it will get raised.
         t.pending_exception()
         if debug_threads():
-            sys.stderr.write('Client thread {} started\n'.format(t.name))
+            sys.stderr.write(f'Client thread {t.name} started\n')
         # Tell the thread, it's now on its own for exception handling.
         detached.set()
 
@@ -476,13 +477,13 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
     def set_ignored_exceptions(self, thread, ignored_exceptions):
         TestingTCPServerMixin.set_ignored_exceptions(self, thread,
                                                      ignored_exceptions)
-        for sock, addr, connection_thread in self.clients:
+        for _sock, _addr, connection_thread in self.clients:
             if connection_thread is not None:
                 connection_thread.set_ignored_exceptions(
                     self.ignored_exceptions)
 
     def _pending_exception(self, thread):
-        for sock, addr, connection_thread in self.clients:
+        for _sock, _addr, connection_thread in self.clients:
             if connection_thread is not None:
                 connection_thread.pending_exception()
         TestingTCPServerMixin._pending_exception(self, thread)
@@ -499,7 +500,7 @@ class TestingTCPServerInAThread(transport.Server):
         self._server_thread = None
 
     def __repr__(self):
-        return "{}({}:{})".format(self.__class__.__name__, self.host, self.port)
+        return f"{self.__class__.__name__}({self.host}:{self.port})"
 
     def create_server(self):
         return self.server_class((self.host, self.port),
@@ -517,8 +518,7 @@ class TestingTCPServerInAThread(transport.Server):
         self.host, self.port = self.server.server_address
         self._server_thread.name = self.server.server_address
         if debug_threads():
-            sys.stderr.write('Server thread %s started\n'
-                             % (self._server_thread.name,))
+            sys.stderr.write(f'Server thread {self._server_thread.name} started\n')
         # If an exception occured during the server start, it will get raised,
         # otherwise, the server is blocked on its accept() call.
         self._server_thread.pending_exception()
@@ -629,7 +629,7 @@ class TestingSmartServer(TestingThreadingTCPServer, server.SmartTCPServer):
             self.run_server_stopped_hooks()
 
     def get_url(self):
-        """Return the url of the server"""
+        """Return the url of the server."""
         return "bzr://%s:%d/" % self.server_address
 
 
@@ -672,7 +672,7 @@ class SmartTCPServer_for_testing(TestingTCPServerInAThread):
         if not client_path_extra.startswith('/'):
             raise ValueError(client_path_extra)
         self.root_client_path = self.client_path_extra = client_path_extra
-        from breezy.transport.chroot import ChrootServer
+        from ..transport.chroot import ChrootServer
         if backing_transport_server is None:
             backing_transport_server = LocalURLServer()
         self.chroot_server = ChrootServer(
@@ -698,7 +698,7 @@ class SmartTCPServer_for_testing(TestingTCPServerInAThread):
         return url[:-1] + self.client_path_extra
 
     def get_bogus_url(self):
-        """Return a URL which will fail to connect"""
+        """Return a URL which will fail to connect."""
         return 'bzr://127.0.0.1:1/'
 
 

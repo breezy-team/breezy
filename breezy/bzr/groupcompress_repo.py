@@ -16,21 +16,27 @@
 
 """Repository formats using CHK inventories and groupcompress compression."""
 
+import hashlib
 import time
 
-from .. import controldir, debug, errors, osutils
+from .. import _bzr_rs, controldir, debug, errors, osutils, trace, ui
 from .. import revision as _mod_revision
-from .. import trace, ui
-from ..bzr import chk_map, chk_serializer
+from ..bzr import chk_map, chk_serializer, inventory, pack, versionedfile
 from ..bzr import index as _mod_index
-from ..bzr import inventory, pack, versionedfile
 from ..bzr.btree_index import BTreeBuilder, BTreeGraphIndex
 from ..bzr.groupcompress import GroupCompressVersionedFiles, _GCGraphIndex
 from ..bzr.vf_repository import StreamSource
-from .pack_repo import (NewPack, Pack, PackCommitBuilder, Packer,
-                        PackRepository, RepositoryFormatPack,
-                        RepositoryPackCollection, ResumedPack,
-                        _DirectPackAccess)
+from .pack_repo import (
+    NewPack,
+    Pack,
+    PackCommitBuilder,
+    Packer,
+    PackRepository,
+    RepositoryFormatPack,
+    RepositoryPackCollection,
+    ResumedPack,
+    _DirectPackAccess,
+)
 from .static_tuple import StaticTuple
 
 
@@ -87,7 +93,7 @@ class GCPack(NewPack):
         # What file mode to upload the pack and indices with.
         self._file_mode = file_mode
         # tracks the content written to the .pack file.
-        self._hash = osutils.md5()
+        self._hash = hashlib.md5()  # noqa: S324
         # a four-tuple with the length in bytes of the indices, once the pack
         # is finalised. (rev, inv, text, sigs)
         self.index_sizes = None
@@ -103,7 +109,7 @@ class GCPack(NewPack):
         # open an output stream for the data added to the pack.
         self.write_stream = self.upload_transport.open_write_stream(
             self.random_name, mode=self._file_mode)
-        if 'pack' in debug.debug_flags:
+        if debug.debug_flag_enabled('pack'):
             trace.mutter('%s: create_pack: pack stream open: %s%s t+%6.3fs',
                          time.ctime(), self.upload_transport.base, self.random_name,
                          time.time() - self.start_time)
@@ -265,19 +271,19 @@ class GCCHKPacker(Packer):
                         # TODO: consider how to treat externally referenced chk
                         #       pages as 'external_references' so that we
                         #       always fill them in for stacked branches
-                        if value not in next_keys and value in remaining_keys:
-                            keys_by_search_prefix.setdefault(prefix,
+                        if value not in next_keys and value in remaining_keys:  # noqa: B023
+                            keys_by_search_prefix.setdefault(prefix,  # noqa: B023
                                                              []).append(value)
-                            next_keys.add(value)
+                            next_keys.add(value)  # noqa: B023
 
                 def handle_leaf_node(node):
                     # Store is None, because we know we have a LeafNode, and we
                     # just want its entries
-                    for file_id, bytes in node.iteritems(None):
+                    for _file_id, bytes in node.iteritems(None):
                         self._text_refs.add(chk_map._bytes_to_text_key(bytes))
 
                 def next_stream():
-                    stream = source_vf.get_record_stream(cur_keys,
+                    stream = source_vf.get_record_stream(cur_keys,  # noqa: B023
                                                          'as-requested', True)
                     for record in stream:
                         if record.storage_kind == 'absent':
@@ -290,7 +296,6 @@ class GCCHKPacker(Packer):
                         # because we only care about external references.
                         node = chk_map._deserialise(bytes, record.key,
                                                     search_key_func=None)
-                        common_base = node._search_prefix
                         if isinstance(node, chk_map.InternalNode):
                             handle_internal_node(node)
                         elif parse_leaf_nodes:
@@ -351,7 +356,7 @@ class GCCHKPacker(Packer):
             add_callback = index.add_nodes
         else:
             indices = []
-            for pack in self.packs:
+            for pack in self.packs:  # noqa: F402
                 sub_index = getattr(pack, index_name)
                 index_to_pack[sub_index] = pack.access_tuple()
                 indices.append(sub_index)
@@ -377,7 +382,7 @@ class GCCHKPacker(Packer):
     def _copy_stream(self, source_vf, target_vf, keys, message, vf_to_stream,
                      pb_offset):
         trace.mutter('repacking %d %s', len(keys), message)
-        self.pb.update('repacking {}'.format(message), pb_offset)
+        self.pb.update(f'repacking {message}', pb_offset)
         with ui.ui_factory.nested_progress_bar() as child_pb:
             stream = vf_to_stream(source_vf, keys, message, child_pb)
             for _, _ in target_vf._insert_record_stream(
@@ -505,7 +510,7 @@ class GCCHKReconcilePacker(GCCHKPacker):
             self._data_changed = True
 
     def _copy_text_texts(self):
-        """generate what texts we should have and then copy."""
+        """Generate what texts we should have and then copy."""
         source_vf, target_vf = self._build_vfs('text', True, True)
         trace.mutter('repacking %d texts', len(self._text_refs))
         self.pb.update("repacking texts", 4)
@@ -588,7 +593,7 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
 
         This is useful to get the side-effects of generating a stream.
         """
-        self.pb.update('scanning {}'.format(message), pb_offset)
+        self.pb.update(f'scanning {message}', pb_offset)
         with ui.ui_factory.nested_progress_bar() as child_pb:
             list(vf_to_stream(source_vf, keys, message, child_pb))
 
@@ -639,7 +644,7 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
                 if search_key_name is None:
                     # Find the name corresponding to the search_key_func
                     search_key_reg = chk_map.search_key_registry
-                    for search_key_name, func in search_key_reg.items():
+                    for search_key_name, func in search_key_reg.items():  # noqa: B007
                         if func == chk_inv.id_to_entry._search_key_func:
                             break
                 canonical_inv = inventory.CHKInventory.from_inventory(
@@ -723,7 +728,6 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             no_fallback_inv_index.get_parent_map(all_inv_keys))
         parent_invs_only_keys = all_inv_keys.symmetric_difference(
             corresponding_invs)
-        all_missing = set()
         inv_ids = [key[-1] for key in all_inv_keys]
         parent_invs_only_ids = [key[-1] for key in parent_invs_only_keys]
         root_key_info = _build_interesting_key_sets(
@@ -750,26 +754,25 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             root_key_info.uninteresting_root_keys)
         text_keys = set()
         try:
-            for record in _filter_text_keys(chk_diff, text_keys,
+            for _record in _filter_text_keys(chk_diff, text_keys,
                                             chk_map._bytes_to_text_key):
                 pass
-        except errors.NoSuchRevision as e:
+        except errors.NoSuchRevision:
             # XXX: It would be nice if we could give a more precise error here.
             problems.append("missing chk node(s) for id_to_entry maps")
         chk_diff = chk_map.iter_interesting_nodes(
             chk_bytes_no_fallbacks, root_key_info.interesting_pid_root_keys,
             root_key_info.uninteresting_pid_root_keys)
         try:
-            for interesting_rec, interesting_map in chk_diff:
+            for _interesting_rec, _interesting_map in chk_diff:
                 pass
-        except errors.NoSuchRevision as e:
+        except errors.NoSuchRevision:
             problems.append(
                 "missing chk node(s) for parent_id_basename_to_file_id maps")
         present_text_keys = no_fallback_texts_index.get_parent_map(text_keys)
         missing_text_keys = text_keys.difference(present_text_keys)
         if missing_text_keys:
-            problems.append("missing text keys: %r"
-                            % (sorted(missing_text_keys),))
+            problems.append(f"missing text keys: {sorted(missing_text_keys)!r}")
         return problems
 
 
@@ -777,10 +780,9 @@ class CHKInventoryRepository(PackRepository):
     """subclass of PackRepository that uses CHK based inventories."""
 
     def __init__(self, _format, a_controldir, control_files, _commit_builder_class,
-                 _serializer):
+                 _revision_serializer, _inventory_serializer):
         """Overridden to change pack collection class."""
-        super().__init__(_format, a_controldir,
-                                                     control_files, _commit_builder_class, _serializer)
+        super().__init__(_format, a_controldir, control_files, _commit_builder_class, _revision_serializer, _inventory_serializer)
         index_transport = self._transport.clone('indices')
         self._pack_collection = GCRepositoryPackCollection(self,
                                                            self._transport, index_transport,
@@ -825,7 +827,7 @@ class CHKInventoryRepository(PackRepository):
                           parents=False, is_locked=self.is_locked,
                           inconsistency_fatal=False),
             access=self._pack_collection.chk_index.data_access)
-        search_key_name = self._format._serializer.search_key_name
+        search_key_name = self._format._inventory_serializer.search_key_name
         search_key_func = chk_map.search_key_registry.get(search_key_name)
         self.chk_bytes._search_key_func = search_key_func
         # True when the repository object is 'write locked' (as opposed to the
@@ -848,7 +850,7 @@ class CHKInventoryRepository(PackRepository):
         :seealso: add_inventory, for the contract.
         """
         # make inventory
-        serializer = self._format._serializer
+        serializer = self._format._inventory_serializer
         result = inventory.CHKInventory.from_inventory(self.chk_bytes, inv,
                                                        maximum_size=serializer.maximum_size,
                                                        search_key_name=serializer.search_key_name)
@@ -862,10 +864,10 @@ class CHKInventoryRepository(PackRepository):
         This is a simplified form of create_by_apply_delta which knows that all
         the old values must be None, so everything is a create.
         """
-        serializer = self._format._serializer
+        serializer = self._format._inventory_serializer
         new_inv = inventory.CHKInventory(serializer.search_key_name)
         new_inv.revision_id = revision_id
-        entry_to_bytes = new_inv._entry_to_bytes
+        entry_to_bytes = inventory._chk_inventory_entry_to_bytes
         id_to_entry_dict = {}
         parent_id_basename_dict = {}
         for old_path, new_path, file_id, entry in delta:
@@ -920,7 +922,7 @@ class CHKInventoryRepository(PackRepository):
             resulting inventory.
         """
         if not self.is_in_write_group():
-            raise AssertionError("{!r} not in write group".format(self))
+            raise AssertionError(f"{self!r} not in write group")
         _mod_revision.check_not_reserved_id(new_revision_id)
         basis_tree = None
         if basis_inv is None or not isinstance(basis_inv, inventory.CHKInventory):
@@ -976,12 +978,12 @@ class CHKInventoryRepository(PackRepository):
         # it allowing _get_inventory_xml to work. Bundles currently use the
         # serializer directly; this also isn't ideal, but there isn't an xml
         # iteration interface offered at all for repositories.
-        return self._serializer.write_inventory_to_lines(
+        return self._inventory_serializer.write_inventory_to_lines(
             self.get_inventory(revision_id))
 
     def _find_present_inventory_keys(self, revision_keys):
         parent_map = self.inventories.get_parent_map(revision_keys)
-        present_inventory_keys = {k for k in parent_map}
+        present_inventory_keys = set(parent_map)
         return present_inventory_keys
 
     def fileids_altered_by_revision_ids(self, revision_ids, _inv_weave=None):
@@ -995,7 +997,7 @@ class CHKInventoryRepository(PackRepository):
             altered it listed explicitly.
         """
         rich_root = self.supports_rich_root()
-        bytes_to_info = inventory.CHKInventory._bytes_to_utf8name_key
+        bytes_to_info = inventory.chk_inventory_bytes_to_utf8name_key
         file_id_revisions = {}
         with ui.ui_factory.nested_progress_bar() as pb:
             revision_keys = [(r,) for r in revision_ids]
@@ -1014,10 +1016,10 @@ class CHKInventoryRepository(PackRepository):
             interesting_root_keys = root_key_info.interesting_root_keys
             uninteresting_root_keys = root_key_info.uninteresting_root_keys
             chk_bytes = self.chk_bytes
-            for record, items in chk_map.iter_interesting_nodes(chk_bytes,
+            for _record, items in chk_map.iter_interesting_nodes(chk_bytes,
                                                                 interesting_root_keys, uninteresting_root_keys,
                                                                 pb=pb):
-                for name, bytes in items:
+                for _name, bytes in items:
                     (name_utf8, file_id, revision_id) = bytes_to_info(bytes)
                     # TODO: consider interning file_id, revision_id here, or
                     #       pushing that intern() into bytes_to_info()
@@ -1043,7 +1045,7 @@ class CHKInventoryRepository(PackRepository):
         # examinations/direct tree traversal. Note that that will require care
         # as a common node is reachable both from the inventory that added it,
         # and others afterwards.
-        revision_keys = self.revisions.keys()
+        self.revisions.keys()
         result = {}
         rich_roots = self.supports_rich_root()
         with ui.ui_factory.nested_progress_bar() as pb:
@@ -1080,7 +1082,8 @@ class CHKInventoryRepository(PackRepository):
 
     def _get_source(self, to_format):
         """Return a source for streaming from this repository."""
-        if self._format._serializer == to_format._serializer:
+        if (self._format._inventory_serializer == to_format._inventory_serializer and
+                self._format._revision_serializer == to_format._revision_serializer):
             # We must be exactly the same format, otherwise stuff like the chk
             # page layout might be different.
             # Actually, this test is just slightly looser than exact so that
@@ -1208,7 +1211,7 @@ class GroupCHKStreamSource(StreamSource):
         yield 'chk_bytes', _filter_id_to_entry()
 
         def _get_parent_id_basename_to_file_id_pages():
-            for record, items in chk_map.iter_interesting_nodes(chk_bytes,
+            for record, _items in chk_map.iter_interesting_nodes(chk_bytes,
                                                                 self._chk_p_id_roots, uninteresting_pid_root_keys):
                 if record is not None:
                     yield record
@@ -1340,7 +1343,8 @@ class RepositoryFormat2a(RepositoryFormatPack):
     supports_chks = True
     _commit_builder_class = PackCommitBuilder
     rich_root_data = True
-    _serializer = chk_serializer.chk_bencode_serializer
+    _revision_serializer = _bzr_rs.revision_bencode_serializer
+    _inventory_serializer = chk_serializer.inventory_chk_serializer_255_bigpage_10
     _commit_inv_deltas = True
     # What index classes to use
     index_builder_class = BTreeBuilder
@@ -1378,9 +1382,7 @@ class RepositoryFormat2a(RepositoryFormatPack):
 
 
 class RepositoryFormat2aSubtree(RepositoryFormat2a):
-    """A 2a repository format that supports nested trees.
-
-    """
+    """A 2a repository format that supports nested trees."""
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir('development-subtree')

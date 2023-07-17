@@ -14,15 +14,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for commands related to tags"""
+"""Tests for commands related to tags."""
 
 from breezy import branch as _mod_branch
-from breezy import errors, lockable_files, lockdir, tag
-from breezy.branch import Branch
+from breezy import errors, tag
 from breezy.bzr import branch as bzrbranch
 from breezy.bzr import bzrdir
 from breezy.tests import TestCaseWithTransport, script
-from breezy.workingtree import WorkingTree
+
+from ...branch import Branch
+from ...workingtree import WorkingTree
 
 
 class TestTagging(TestCaseWithTransport):
@@ -57,7 +58,7 @@ class TestTagging(TestCaseWithTransport):
         self.assertContainsRe(err, 'Created tag NEWTAG.')
         # tag should be observable through the api
         self.assertEqual(t.branch.tags.get_tag_dict(),
-                         dict(NEWTAG=b'first-revid'))
+                         {'NEWTAG': b'first-revid'})
         # can also create tags using -r
         self.run_bzr('tag -d branch tag2 -r1')
         self.assertEqual(t.branch.tags.lookup_tag('tag2'), b'first-revid')
@@ -145,7 +146,7 @@ class TestTagging(TestCaseWithTransport):
 
         (If the user runs 'brz commit', then that is when the tags from the
         merge are propagated.)
-        """
+        """  # noqa: D403
         master, child = self.make_master_and_checkout()
         fork = self.make_fork(master)
         fork.tags.set_tag('new-tag', fork.last_revision())
@@ -389,13 +390,13 @@ class TestTagging(TestCaseWithTransport):
         # 'Conflicting tags:\n.*' + tagname.encode('utf-8'))
 
     def test_tag_quiet(self):
-        t1 = self.make_branch_and_tree('')
+        self.make_branch_and_tree('')
         out, err = self.run_bzr('tag --quiet test1')
         self.assertEqual('', out)
         self.assertEqual('', err)
 
     def test_tag_delete_quiet(self):
-        t1 = self.make_branch_and_tree('')
+        self.make_branch_and_tree('')
         self.run_bzr('tag test1')
         out, err = self.run_bzr('tag --delete --quiet test1')
         self.assertEqual('', out)
@@ -421,7 +422,7 @@ class TestTagging(TestCaseWithTransport):
         self.assertEqual('', err)
 
     def test_tag_unsupported(self):
-        tree = self.make_branch_and_tree('tree', format='dirstate')
+        self.make_branch_and_tree('tree', format='dirstate')
         out, err = self.run_bzr('tag -d tree blah', retcode=3)
         self.assertEqual(out, '')
         self.assertContainsRe(

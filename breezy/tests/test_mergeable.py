@@ -26,12 +26,11 @@ from . import test_server
 class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
 
     def test_read_mergeable_skips_local(self):
-        """A local bundle named like the URL should not be read.
-        """
+        """A local bundle named like the URL should not be read."""
         out, wt = test_read_bundle.create_bundle_file(self)
 
         class FooService:
-            """A directory service that always returns source"""
+            """A directory service that always returns source."""
 
             def look_up(self, name, url):
                 return 'source'
@@ -42,8 +41,7 @@ class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
                           'foo:bar')
 
     def test_infinite_redirects_are_not_a_bundle(self):
-        """If a URL causes TooManyRedirections then NotABundle is raised.
-        """
+        """If a URL causes TooManyRedirections then NotABundle is raised."""
         from .blackbox.test_push import RedirectingMemoryServer
         server = RedirectingMemoryServer()
         self.start_server(server)
@@ -60,7 +58,7 @@ class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
         # We don't really care what the url is since the server will close the
         # connection without interpreting it
         url = sock_server.get_url()
-        self.assertRaises(errors.ConnectionReset, read_mergeable_from_url, url)
+        self.assertRaises(ConnectionResetError, read_mergeable_from_url, url)
 
 
 class DisconnectingHandler(socketserver.BaseRequestHandler):
@@ -79,5 +77,5 @@ class DisconnectingServer(test_server.TestingTCPServerInAThread):
             DisconnectingHandler)
 
     def get_url(self):
-        """Return the url of the server"""
+        """Return the url of the server."""
         return "bzr://%s:%d/" % self.server.server_address

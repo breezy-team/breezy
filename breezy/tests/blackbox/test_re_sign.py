@@ -15,12 +15,12 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Black-box tests for brz re-sign.
-"""
+"""Black-box tests for brz re-sign."""
 
 from breezy import gpg, tests
-from breezy.bzr.testament import Testament
-from breezy.controldir import ControlDir
+
+from ...bzr.testament import Testament
+from ...controldir import ControlDir
 
 
 class ReSign(tests.TestCaseInTempDir):
@@ -56,11 +56,11 @@ class ReSign(tests.TestCaseInTempDir):
         repo = wt.branch.repository
 
         self.monkey_patch_gpg()
-        self.run_bzr('re-sign -r revid:%s' % a.decode('utf-8'))
+        self.run_bzr(f"re-sign -r revid:{a.decode('utf-8')}")
 
         self.assertEqualSignature(repo, a)
 
-        self.run_bzr('re-sign %s' % b.decode('utf-8'))
+        self.run_bzr(f"re-sign {b.decode('utf-8')}")
         self.assertEqualSignature(repo, b)
 
     def test_resign_range(self):
@@ -84,14 +84,14 @@ class ReSign(tests.TestCaseInTempDir):
             self.assertEqualSignature(repo, r)
 
     def test_resign_directory(self):
-        """Test --directory option"""
+        """Test --directory option."""
         wt = ControlDir.create_standalone_workingtree('a')
         a = wt.commit("base A", allow_pointless=True)
         b = wt.commit("base B", allow_pointless=True)
-        c = wt.commit("base C", allow_pointless=True)
+        wt.commit("base C", allow_pointless=True)
         repo = wt.branch.repository
         self.monkey_patch_gpg()
         self.run_bzr('re-sign --directory=a -r revid:' + a.decode('utf-8'))
         self.assertEqualSignature(repo, a)
-        self.run_bzr('re-sign -d a %s' % b.decode('utf-8'))
+        self.run_bzr(f"re-sign -d a {b.decode('utf-8')}")
         self.assertEqualSignature(repo, b)

@@ -22,9 +22,8 @@ import sys
 import threading
 from _thread import interrupt_main  # type: ignore
 
-from ... import builtins, config, errors, osutils
+from ... import builtins, config, errors, osutils, trace, transport, urlutils
 from ... import revision as _mod_revision
-from ... import trace, transport, urlutils
 from ...branch import Branch
 from ...bzr.smart import client, medium
 from ...bzr.smart.server import BzrServerFactory, SmartTCPServer
@@ -83,7 +82,7 @@ class TestBzrServeBase(TestCaseWithTransport):
         try:
             out, err = self.run_bzr(['serve'] + list(serve_args),
                                     retcode=retcode)
-        except KeyboardInterrupt as e:
+        except KeyboardInterrupt:
             return (self._last_cmd_stdout.getvalue(),
                     self._last_cmd_stderr.getvalue())
         return out, err
@@ -115,7 +114,7 @@ class TestBzrServe(TestBzrServeBase):
         self.assertEqual('catching KeyboardInterrupt\n', err)
 
     def test_server_exception_no_hook(self):
-        """test exception without hook returns error"""
+        """Test exception without hook returns error."""
         args = []
         out, err = self.run_bzr_serve_then_func(args, retcode=3)
 
@@ -194,7 +193,7 @@ class TestBzrServe(TestBzrServeBase):
         self.assertEqual('', err)
 
     def test_bzr_serve_inet_readonly(self):
-        """brz server should provide a read only filesystem by default."""
+        """Brz server should provide a read only filesystem by default."""
         process, transport = self.start_server_inet()
         self.assertRaises(errors.TransportNotPossible, transport.mkdir, 'adir')
         self.assertInetServerShutsdownCleanly(process)
@@ -212,7 +211,7 @@ class TestBzrServe(TestBzrServeBase):
         self.assertInetServerShutsdownCleanly(process)
 
     def test_bzr_serve_port_readonly(self):
-        """brz server should provide a read only filesystem by default."""
+        """Brz server should provide a read only filesystem by default."""
         process, url = self.start_server_port()
         t = transport.get_transport_from_url(url)
         self.assertRaises(errors.TransportNotPossible, t.mkdir, 'adir')
@@ -273,7 +272,7 @@ class TestBzrServe(TestBzrServeBase):
         # Now, we wait for timeout to trigger
         err = process.stderr.readline()
         self.assertEqual(
-            b'Connection Timeout: disconnecting client after 0.2 seconds\n',
+            b'disconnecting client after 0.2 seconds\n',
             err)
         self.assertServerFinishesCleanly(process)
 
@@ -293,7 +292,7 @@ class TestBzrServe(TestBzrServeBase):
         # Now, we wait for timeout to trigger
         err = process.stderr.readline()
         self.assertEqual(
-            b'Connection Timeout: disconnecting client after 0.1 seconds\n',
+            b'disconnecting client after 0.1 seconds\n',
             err)
         self.assertServerFinishesCleanly(process)
 
@@ -318,7 +317,7 @@ class TestBzrServe(TestBzrServeBase):
                       (b'', b'Waiting for 1 client(s) to finish\n'))
         body = response_handler.read_body_bytes()
         if body != big_contents:
-            self.fail('Failed to properly read the contents of "bigfile"')
+            self.fail('Failed to properly read the contents of "bigfile": read %d of %d' % (len(body), len(big_contents)))
         # Now that our request is finished, the medium should notice it has
         # been disconnected.
         self.assertEqual(b'', m.read_bytes(1))
@@ -334,7 +333,7 @@ class TestCmdServeChrooting(TestBzrServeBase):
         So requests that search up through the parent directories (like
         find_repositoryV3) will give "not found" responses, rather than
         InvalidURLJoin or jail break errors.
-        """
+        """  # noqa: D403
         t = self.get_transport()
         t.mkdir('server-root')
         self.run_bzr_serve_then_func(
@@ -418,7 +417,7 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
         cmd.run(directory=base_dir, protocol=capture_transport)
         server_maker = BzrServerFactory()
         self.assertEqual(
-            'readonly+%s' % base_url, self.bzr_serve_transport.base)
+            f'readonly+{base_url}', self.bzr_serve_transport.base)
         self.assertEqual(
             base_dir, server_maker.get_base_path(self.bzr_serve_transport))
         # Read-write
@@ -432,6 +431,6 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
         cmd.run(directory=base_url, protocol=capture_transport)
         server_maker = BzrServerFactory()
         self.assertEqual(
-            'readonly+%s' % base_url, self.bzr_serve_transport.base)
+            f'readonly+{base_url}', self.bzr_serve_transport.base)
         self.assertEqual(
             base_dir, server_maker.get_base_path(self.bzr_serve_transport))

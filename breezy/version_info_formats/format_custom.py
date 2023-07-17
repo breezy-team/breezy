@@ -15,14 +15,16 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """A generator which creates a template-based output from the current
-   tree info."""
+tree info.
+"""
 
 import codecs
 
 from breezy import errors
-from breezy.lazy_regex import lazy_compile
-from breezy.revision import NULL_REVISION
 from breezy.version_info_formats import VersionInfoBuilder, create_date_str
+
+from ..lazy_regex import lazy_compile
+from ..revision import NULL_REVISION
 
 
 class MissingTemplateVariable(errors.BzrError):
@@ -39,7 +41,7 @@ class NoTemplate(errors.BzrError):
 
 
 class Template:
-    """A simple template engine.
+    r"""A simple template engine.
 
     >>> t = Template()
     >>> t.add('test', 'xxx')
@@ -51,10 +53,10 @@ class Template:
     ['test ', 'xxx']
     >>> print(list(t.process('test {test} test')))
     ['test ', 'xxx', ' test']
-    >>> print(list(t.process('{test}\\\\n')))
-    ['xxx', '\\n']
     >>> print(list(t.process('{test}\\n')))
-    ['xxx', '\\n']
+    ['xxx', '\n']
+    >>> print(list(t.process('{test}\n')))
+    ['xxx', '\n']
     """
 
     _tag_re = lazy_compile('{(\\w+)}')
@@ -82,8 +84,8 @@ class Template:
             name = match.group(1)
             try:
                 data = self._data[name]
-            except KeyError:
-                raise MissingTemplateVariable(name)
+            except KeyError as err:
+                raise MissingTemplateVariable(name) from err
             if not isinstance(data, str):
                 data = str(data)
             yield data

@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """brz postinstall helper for win32 installation
-Written by Alexander Belchenko
+Written by Alexander Belchenko.
 
 Dependency: ctypes
 """
@@ -29,8 +29,8 @@ import sys
 
 VERSION = "1.5.20070131"
 
-USAGE = """Brz postinstall helper for win32 installation
-Usage: %s [options]
+USAGE = f"""Brz postinstall helper for win32 installation
+Usage: {os.path.basename(sys.argv[0])} [options]
 
 OPTIONS:
     -h, --help                  - help message
@@ -45,7 +45,7 @@ OPTIONS:
     --add-shell-menu            - add shell context menu to start brz session
     --delete-shell-menu         - delete context menu from shell
     --check-mfc71               - check if MFC71.DLL present in system
-""" % os.path.basename(sys.argv[0])
+"""
 
 # Windows version
 _major, _minor, _build, _platform, _text = sys.getwindowsversion()
@@ -87,8 +87,6 @@ def main():
     import _winreg
     user_encoding = locale.getpreferredencoding() or 'ascii'
 
-    import ctypes
-
     hkey_str = {_winreg.HKEY_LOCAL_MACHINE: 'HKEY_LOCAL_MACHINE',
                 _winreg.HKEY_CURRENT_USER: 'HKEY_CURRENT_USER',
                 _winreg.HKEY_CLASSES_ROOT: 'HKEY_CLASSES_ROOT',
@@ -116,7 +114,7 @@ def main():
                                     "check-mfc71",
                                     ])
 
-        for o, a in opts:
+        for o, _a in opts:
             if o in ("-h", "--help"):
                 print(USAGE)
                 return OK
@@ -169,8 +167,7 @@ def main():
                         s.rstrip('\r\n'),
                         re.IGNORECASE):
                 content[ix] = s.replace('brz.exe',
-                                        '"%s"' % os.path.join(brz_dir,
-                                                              'brz.exe'))
+                                        f"\"{os.path.join(brz_dir, 'brz.exe')}\"")
             elif s.find(r'C:\Program Files\Breezy') != -1:
                 content[ix] = s.replace(r'C:\Program Files\Breezy',
                                         brz_dir)
@@ -231,7 +228,7 @@ def main():
             if f_change:
                 path_u = os.pathsep.join(path_list)
                 if dry_run:
-                    print("*** Registry key {}\\{}".format(hkey_str[key], subkey))
+                    print(f"*** Registry key {hkey_str[key]}\\{subkey}")
                     print("*** Modify PATH variable. New value:")
                     print(path_u)
                 else:
@@ -281,7 +278,7 @@ def main():
                         if i.rstrip('\r\n') != pattern:
                             f.write(i)
             else:
-                print('*** Remove line <%s> from autoexec.bat' % pattern)
+                print(f'*** Remove line <{pattern}> from autoexec.bat')
 
         elif add_path and not found:
             backup_autoexec_bat(abat, abak, dry_run)
@@ -290,7 +287,7 @@ def main():
                     f.write(pattern)
                     f.write('\n')
             else:
-                print('*** Add line <%s> to autoexec.bat' % pattern)
+                print(f'*** Add line <{pattern}> to autoexec.bat')
 
     if add_shell_menu and not delete_shell_menu:
         hkey = None

@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Test 'brz init'"""
+"""Test 'brz init'."""
 
 import os
 import re
@@ -23,10 +23,11 @@ import re
 from breezy import branch as _mod_branch
 from breezy import config as _mod_config
 from breezy import osutils, urlutils
-from breezy.bzr.bzrdir import BzrDirMetaFormat1
 from breezy.tests import TestCaseWithTransport, TestSkipped
-from breezy.tests.test_sftp_transport import TestCaseWithSFTPServer
-from breezy.workingtree import WorkingTree
+
+from ...bzr.bzrdir import BzrDirMetaFormat1
+from ...workingtree import WorkingTree
+from ..test_sftp_transport import TestCaseWithSFTPServer
 
 
 class TestInit(TestCaseWithTransport):
@@ -54,7 +55,7 @@ class TestInit(TestCaseWithTransport):
         """Smoke test for constructing a format with the 'bzr' alias."""
         out, err = self.run_bzr('init --format=bzr')
         self.assertEqual(
-            "Created a standalone tree (format: %s)\n" % self._default_label,
+            f"Created a standalone tree (format: {self._default_label})\n",
             out)
         self.assertEqual('', err)
 
@@ -150,8 +151,8 @@ Using shared repository: {}
         # Make sure getcwd can handle unicode filenames
         try:
             os.mkdir('mu-\xb5')
-        except UnicodeError:
-            raise TestSkipped("Unable to create Unicode filename")
+        except UnicodeError as err:
+            raise TestSkipped("Unable to create Unicode filename") from err
         # try to init unicode dir
         self.run_bzr(['init', '-q', 'mu-\xb5'])
 
@@ -163,8 +164,8 @@ Using shared repository: {}
         return tree
 
     def test_init_create_prefix(self):
-        """'brz init --create-prefix; will create leading directories."""
-        tree = self.create_simple_tree()
+        """'brz init --create-prefix; will create leading directories."""  # noqa: D403
+        self.create_simple_tree()
 
         self.run_bzr_error(['Parent directory of ../new/tree does not exist'],
                            'init ../new/tree', working_dir='tree')
@@ -172,7 +173,7 @@ Using shared repository: {}
         self.assertPathExists('new/tree/.bzr')
 
     def test_init_default_format_option(self):
-        """brz init should read default format from option default_format"""
+        """Brz init should read default format from option default_format."""
         g_store = _mod_config.GlobalStore()
         g_store._load_from_string(b'''
 [DEFAULT]
@@ -183,7 +184,7 @@ default_format = 1.9
         self.assertContainsRe(out, b'1.9')
 
     def test_init_no_tree(self):
-        """'brz init --no-tree' creates a branch with no working tree."""
+        """'brz init --no-tree' creates a branch with no working tree."""  # noqa: D403
         out, err = self.run_bzr('init --no-tree')
         self.assertStartsWith(out, 'Created a standalone branch')
 
@@ -228,8 +229,7 @@ class TestSFTPInit(TestCaseWithSFTPServer):
                            'init --append-revisions-only --format=knit knit')
 
     def test_init_without_username(self):
-        """Ensure init works if username is not set.
-        """
+        """Ensure init works if username is not set."""
         # brz makes user specified whoami mandatory for operations
         # like commit as whoami is recorded. init however is not so final
         # and uses whoami only in a lock file. Without whoami the login name

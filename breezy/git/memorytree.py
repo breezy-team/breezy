@@ -24,12 +24,11 @@ import stat
 from dulwich.index import index_entry_from_stat
 from dulwich.objects import Blob, Tree
 
-from breezy import errors, lock, osutils
+from breezy import errors, lock, osutils, urlutils
 from breezy import revision as _mod_revision
 from breezy import tree as _mod_tree
-from breezy import urlutils
-from breezy.transport.memory import MemoryTransport
 
+from ..transport.memory import MemoryTransport
 from .mapping import decode_git_path, encode_git_path
 from .tree import MutableGitIndexTree
 
@@ -58,8 +57,7 @@ class GitMemoryTree(MutableGitIndexTree, _mod_tree.Tree):
         return False
 
     def _gather_kinds(self, files, kinds):
-        """See MutableTree._gather_kinds.
-        """
+        """See MutableTree._gather_kinds."""
         with self.lock_tree_write():
             for pos, f in enumerate(files):
                 if kinds[pos] is None:

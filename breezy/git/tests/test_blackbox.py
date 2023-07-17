@@ -40,7 +40,7 @@ class TestGitBlackBox(ExternalBase):
         return repo, builder.finish()[r1]
 
     def test_add(self):
-        r = GitRepo.init(self.test_dir)
+        GitRepo.init(self.test_dir)
         dir = ControlDir.open(self.test_dir)
         dir.create_branch()
         self.build_tree(['a', 'b'])
@@ -55,7 +55,7 @@ class TestGitBlackBox(ExternalBase):
             'setting file ids.\n', error)
 
     def test_nick(self):
-        r = GitRepo.init(self.test_dir)
+        GitRepo.init(self.test_dir)
         dir = ControlDir.open(self.test_dir)
         dir.create_branch()
         output, error = self.run_bzr(['nick'])
@@ -139,10 +139,10 @@ class TestGitBlackBox(ExternalBase):
 
         output, error = self.run_bzr(['info', '-v'])
         self.assertEqual(error, '')
-        self.assertTrue("Standalone tree (format: git)" in output)
-        self.assertTrue("control: Local Git Repository" in output)
-        self.assertTrue("branch: Local Git Branch" in output)
-        self.assertTrue("repository: Git Repository" in output)
+        self.assertIn("Standalone tree (format: git)", output)
+        self.assertIn("control: Local Git Repository", output)
+        self.assertIn("branch: Local Git Branch", output)
+        self.assertIn("repository: Git Repository", output)
 
     def test_push_roundtripping(self):
         self.knownFailure("roundtripping is not yet supported")
@@ -226,9 +226,11 @@ class TestGitBlackBox(ExternalBase):
         # Check that bzr log does not fail and includes the revision.
         output, error = self.run_bzr(['log'])
         self.assertEqual(error, '')
-        self.assertTrue(
-            '<The commit message>' in output,
-            "Commit message was not found in output:\n{}".format(output))
+        self.assertIn(
+            '<The commit message>',
+            output,
+            f"Commit message was not found in output:\n{output}"
+        )
 
     def test_log_verbose(self):
         # Smoke test for "bzr log -v" in a git repository.
@@ -247,7 +249,7 @@ class TestGitBlackBox(ExternalBase):
         self.assertNotContainsRe(output, 'revno: 1')
 
     def test_commit_without_revno(self):
-        repo = GitRepo.init(self.test_dir)
+        GitRepo.init(self.test_dir)
         output, error = self.run_bzr(
             ['commit', '-Ocalculate_revnos=yes', '--unchanged', '-m', 'one'])
         self.assertContainsRe(error, 'Committed revision 1.')
@@ -258,7 +260,7 @@ class TestGitBlackBox(ExternalBase):
 
     def test_log_file(self):
         # Smoke test for "bzr log" in a git repository.
-        repo = GitRepo.init(self.test_dir)
+        GitRepo.init(self.test_dir)
         builder = tests.GitBranchBuilder()
         builder.set_file('a', b'text for a\n', False)
         r1 = builder.commit(b'Joe Foo <joe@foo.com>', 'First')
@@ -304,7 +306,7 @@ class TestGitBlackBox(ExternalBase):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a'])
         tree.add(['a'])
-        output, error = self.run_bzr(['diff', '--format=git'], retcode=1)
+        output, error = self.run_bzr(['diff', '--color=never', '--format=git'], retcode=1)
         self.assertEqual(error, '')
         # Some older versions of Dulwich (< 0.19.12) formatted diffs slightly
         # differently.
@@ -417,8 +419,8 @@ class TestGitBlackBox(ExternalBase):
         tree.branch.tags.set_tag("atag", revid)
         (stdout, stderr) = self.run_bzr(["git-refs", "a"])
         self.assertEqual(stderr, "")
-        self.assertTrue("refs/tags/atag -> " in stdout)
-        self.assertTrue("HEAD -> " in stdout)
+        self.assertIn("refs/tags/atag -> ", stdout)
+        self.assertIn("HEAD -> ", stdout)
 
     def test_check(self):
         r = GitRepo.init("gitr", mkdir=True)
@@ -431,7 +433,7 @@ class TestGitBlackBox(ExternalBase):
         self.assertTrue(err.endswith, '3 objects\n')
 
     def test_local_whoami(self):
-        r = GitRepo.init("gitr", mkdir=True)
+        GitRepo.init("gitr", mkdir=True)
         self.build_tree_contents([('gitr/.git/config', """\
 [user]
   email = some@example.com
@@ -450,7 +452,7 @@ class TestGitBlackBox(ExternalBase):
         self.assertEqual(err, "")
 
     def test_local_signing_key(self):
-        r = GitRepo.init("gitr", mkdir=True)
+        GitRepo.init("gitr", mkdir=True)
         self.build_tree_contents([('gitr/.git/config', """\
 [user]
   email = some@example.com
@@ -551,11 +553,10 @@ class SwitchTests(ExternalBase):
         orig = self.make_branch_and_tree('source', format='git')
         subtree = self.make_branch_and_tree('source/subtree', format='git')
         self.build_tree(['source/subtree/a'])
-        self.build_tree_contents([('source/.gitmodules', """\
-[submodule "subtree"]
+        self.build_tree_contents([('source/.gitmodules', f"""[submodule "subtree"]
     path = subtree
-    url = %s
-""" % subtree.user_url)])
+    url = {subtree.user_url}
+""")])
         subtree.add(['a'])
         subtree.commit('add subtree contents')
         orig.add_reference(subtree)
@@ -600,7 +601,7 @@ class GrepTests(ExternalBase):
         tree = self.make_branch_and_tree('.', format='git')
         self.build_tree_contents([('a', 'text for a\n')])
         tree.add(['a'])
-        output, error = self.run_bzr('grep text')
+        output, error = self.run_bzr('grep --color=never text')
         self.assertEqual(output, 'a:text for a\n')
         self.assertEqual(error, '')
 
@@ -657,7 +658,7 @@ class GitObjectsTests(ExternalBase):
         self.assertEqual([40, 40], [len(s) for s in shas])
         self.assertEqual(error, '')
 
-        output, error = self.run_bzr('git-object %s' % shas[0])
+        output, error = self.run_bzr(f'git-object {shas[0]}')
         self.assertEqual('', error)
 
     def test_in_native(self):
@@ -670,7 +671,7 @@ class GitObjectsTests(ExternalBase):
 class GitApplyTests(ExternalBase):
 
     def test_apply(self):
-        b = self.make_branch_and_tree('.')
+        self.make_branch_and_tree('.')
 
         with open('foo.patch', 'w') as f:
             f.write("""\

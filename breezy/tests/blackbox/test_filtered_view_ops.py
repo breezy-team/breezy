@@ -28,13 +28,13 @@ class TestViewFileOperations(tests.TestCaseWithTransport):
         return wt
 
     def test_view_on_status(self):
-        wt = self.make_abc_tree_with_ab_view()
+        self.make_abc_tree_with_ab_view()
         out, err = self.run_bzr('status')
         self.assertEqual('Ignoring files outside view. View is a, b\n', err)
         self.assertEqual('unknown:\n  a\n  b\n', out)
 
     def test_view_on_status_selected(self):
-        wt = self.make_abc_tree_with_ab_view()
+        self.make_abc_tree_with_ab_view()
         out, err = self.run_bzr('status a')
         self.assertEqual('', err)
         self.assertEqual('unknown:\n  a\n', out)
@@ -44,13 +44,13 @@ class TestViewFileOperations(tests.TestCaseWithTransport):
         self.assertEqual('', out)
 
     def test_view_on_add(self):
-        wt = self.make_abc_tree_with_ab_view()
+        self.make_abc_tree_with_ab_view()
         out, err = self.run_bzr('add')
         self.assertEqual('Ignoring files outside view. View is a, b\n', err)
         self.assertEqual('adding a\nadding b\n', out)
 
     def test_view_on_add_selected(self):
-        wt = self.make_abc_tree_with_ab_view()
+        self.make_abc_tree_with_ab_view()
         out, err = self.run_bzr('add a')
         self.assertEqual('', err)
         self.assertEqual('adding a\n', out)
@@ -60,25 +60,25 @@ class TestViewFileOperations(tests.TestCaseWithTransport):
         self.assertEqual('', out)
 
     def test_view_on_diff(self):
-        wt = self.make_abc_tree_with_ab_view()
+        self.make_abc_tree_with_ab_view()
         self.run_bzr('add')
-        out, err = self.run_bzr('diff', retcode=1)
+        out, err = self.run_bzr('diff --color=never', retcode=1)
         self.assertEqual(
             '*** Ignoring files outside view. View is a, b\n', err)
 
     def test_view_on_diff_selected(self):
-        wt = self.make_abc_tree_with_ab_view()
+        self.make_abc_tree_with_ab_view()
         self.run_bzr('add')
-        out, err = self.run_bzr('diff a', retcode=1)
+        out, err = self.run_bzr('diff --color=never a', retcode=1)
         self.assertEqual('', err)
         self.assertStartsWith(out, "=== added file 'a'\n")
-        out, err = self.run_bzr('diff c', retcode=3)
+        out, err = self.run_bzr('diff --color=never c', retcode=3)
         self.assertEqual('brz: ERROR: Specified file "c" is outside the '
                          'current view: a, b\n', err)
         self.assertEqual('', out)
 
     def test_view_on_commit(self):
-        wt = self.make_abc_tree_with_ab_view()
+        self.make_abc_tree_with_ab_view()
         self.run_bzr('add')
         out, err = self.run_bzr('commit -m "testing commit"')
         err_lines = err.splitlines()
@@ -92,7 +92,7 @@ class TestViewFileOperations(tests.TestCaseWithTransport):
         self.assertEqual('', out)
 
     def test_view_on_commit_selected(self):
-        wt = self.make_abc_tree_with_ab_view()
+        self.make_abc_tree_with_ab_view()
         self.run_bzr('add')
         out, err = self.run_bzr('commit -m "file in view" a')
         err_lines = err.splitlines()
@@ -106,7 +106,7 @@ class TestViewFileOperations(tests.TestCaseWithTransport):
         self.assertEqual('', out)
 
     def test_view_on_remove_selected(self):
-        wt = self.make_abc_tree_with_ab_view()
+        self.make_abc_tree_with_ab_view()
         self.run_bzr('add')
         out, err = self.run_bzr('remove --keep a')
         self.assertEqual('removed a\n', err)
@@ -117,7 +117,7 @@ class TestViewFileOperations(tests.TestCaseWithTransport):
         self.assertEqual('', out)
 
     def test_view_on_revert(self):
-        wt = self.make_abc_tree_with_ab_view()
+        self.make_abc_tree_with_ab_view()
         self.run_bzr('add')
         out, err = self.run_bzr('revert')
         err_lines = err.splitlines()
@@ -128,7 +128,7 @@ class TestViewFileOperations(tests.TestCaseWithTransport):
         self.assertEqual('', out)
 
     def test_view_on_revert_selected(self):
-        wt = self.make_abc_tree_with_ab_view()
+        self.make_abc_tree_with_ab_view()
         self.run_bzr('add')
         out, err = self.run_bzr('revert a')
         self.assertEqual('-   a\n', err)
@@ -139,7 +139,7 @@ class TestViewFileOperations(tests.TestCaseWithTransport):
         self.assertEqual('', out)
 
     def test_view_on_ls(self):
-        wt = self.make_abc_tree_with_ab_view()
+        self.make_abc_tree_with_ab_view()
         self.run_bzr('add')
         out, err = self.run_bzr('ls')
         out_lines = out.splitlines()
@@ -181,11 +181,11 @@ class TestViewTreeOperations(tests.TestCaseWithTransport):
         self.run_bzr("bind ../tree_1", working_dir='tree_2')
         out, err = self.run_bzr('update', working_dir='tree_2')
         self.assertEqualDiff(
-            """Operating on whole tree but only reporting on 'my' view.
+            f"""Operating on whole tree but only reporting on 'my' view.
  M  a
 All changes applied successfully.
-Updated to revision 2 of branch %s
-""" % osutils.pathjoin(self.test_dir, 'tree_1'),
+Updated to revision 2 of branch {osutils.pathjoin(self.test_dir, 'tree_1')}
+""",
             err)
         self.assertEqual("", out)
 

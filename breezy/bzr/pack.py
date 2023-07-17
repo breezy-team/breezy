@@ -90,7 +90,7 @@ def _check_name(name):
     :seealso: _check_name_encoding
     """
     if _whitespace_re.search(name) is not None:
-        raise InvalidRecordError("{!r} is not a valid name.".format(name))
+        raise InvalidRecordError(f"{name!r} is not a valid name.")
 
 
 def _check_name_encoding(name):
@@ -104,7 +104,7 @@ def _check_name_encoding(name):
     try:
         name.decode('utf-8')
     except UnicodeDecodeError as e:
-        raise InvalidRecordError(str(e))
+        raise InvalidRecordError(str(e)) from e
 
 
 class ContainerSerialiser:
@@ -257,8 +257,7 @@ class ReadVFile:
         self._next()
         result = self._string.readline()
         if self._string.tell() == self._string_length and result[-1:] != b'\n':
-            raise errors.BzrError('short readline in the readvfile hunk: %r'
-                                  % (result, ))
+            raise errors.BzrError(f'short readline in the readvfile hunk: {result!r}')
         return result
 
 
@@ -415,9 +414,9 @@ class BytesRecordReader(BaseReader):
         length_line = self._read_line()
         try:
             length = int(length_line)
-        except ValueError:
+        except ValueError as e:
             raise InvalidRecordError(
-                "{!r} is not a valid length.".format(length_line))
+                f"{length_line!r} is not a valid length.") from e
 
         # Read the list of names.
         names = []
@@ -538,9 +537,9 @@ class ContainerPushParser:
         if line is not None:
             try:
                 self._current_record_length = int(line)
-            except ValueError:
+            except ValueError as e:
                 raise InvalidRecordError(
-                    "{!r} is not a valid length.".format(line))
+                    f"{line!r} is not a valid length.") from e
             self._state_handler = self._state_expecting_name
 
     def _state_expecting_name(self):

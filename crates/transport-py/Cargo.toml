@@ -1,0 +1,18 @@
+[package]
+name = "transport-py"
+version = "3.4.0"
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = ">=0.19", features = ["extension-module"]}
+breezy-transport = { path = "../transport" }
+pyo3-file = { git = "https://github.com/breezy-team/pyo3-file" }
+sftp = "0.2.0"
+url = "2.2"
+log = "0.4"
+
+[target.'cfg(unix)'.dependencies]
+nix = ">=0.26"

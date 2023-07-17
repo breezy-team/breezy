@@ -15,14 +15,12 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-import stat
 import time
 
 from ... import osutils
-from ...errors import BzrError
 from ...tests import TestCaseInTempDir
 from ...tests.features import OsFifoFeature
-from ..hashcache import HashCache
+from .. import hashcache
 
 sha1 = osutils.sha_string
 
@@ -32,21 +30,21 @@ def pause():
 
 
 class TestHashCache(TestCaseInTempDir):
-    """Test the hashcache against a real directory"""
+    """Test the hashcache against a real directory."""
 
     def make_hashcache(self):
         # make a dummy bzr directory just to hold the cache
         os.mkdir('.bzr')
-        hc = HashCache('.', '.bzr/stat-cache')
+        hc = hashcache.HashCache('.', '.bzr/stat-cache')
         return hc
 
     def reopen_hashcache(self):
-        hc = HashCache('.', '.bzr/stat-cache')
+        hc = hashcache.HashCache('.', '.bzr/stat-cache')
         hc.read()
         return hc
 
     def test_hashcache_initial_miss(self):
-        """Get correct hash from an empty hashcache"""
+        """Get correct hash from an empty hashcache."""
         hc = self.make_hashcache()
         self.build_tree_contents([('foo', b'hello')])
         self.assertEqual(hc.get_sha1('foo'),
@@ -104,7 +102,7 @@ class TestHashCache(TestCaseInTempDir):
             hc = self.reopen_hashcache()
 
     def test_hashcache_raise(self):
-        """check that hashcache can raise BzrError"""
+        """Check that hashcache can raise BzrError."""
         self.requireFeature(OsFifoFeature)
         hc = self.make_hashcache()
         os.mkfifo('a')
@@ -112,92 +110,4 @@ class TestHashCache(TestCaseInTempDir):
         # can't.  In that case we should skip at this point.  But in fact
         # such combinations don't usually occur for the filesystem where
         # people test bzr.
-        self.assertRaises(BzrError, hc.get_sha1, 'a')
-
-
-class FakeHashCache(HashCache):
-    """Hashcache that consults a fake clock rather than the real one.
-
-    This lets us examine how old or new files would be handled, without
-    actually having to wait for time to pass.
-    """
-
-    def __init__(self):
-        # set root and cache file name to none to make sure we won't touch the
-        # real filesystem
-        HashCache.__init__(self, '.', 'hashcache')
-        self._files = {}
-        # simulated clock running forward as operations happen
-        self._clock = 0
-
-    def put_file(self, filename, file_contents):
-        abspath = './' + filename
-        self._files[abspath] = (file_contents, self._clock)
-
-    def _fingerprint(self, abspath, fs=None):
-        entry = self._files[abspath]
-        return (len(entry[0]),
-                entry[1], entry[1],
-                10, 20,
-                stat.S_IFREG | 0o600)
-
-    def _really_sha1_file(self, abspath, filters):
-        if abspath in self._files:
-            return sha1(self._files[abspath][0])
-        else:
-            return None
-
-    def _cutoff_time(self):
-        return self._clock - 2
-
-    def pretend_to_sleep(self, secs):
-        self._clock += secs
-
-
-class TestHashCacheFakeFilesystem(TestCaseInTempDir):
-    """Tests the hashcache using a simulated OS.
-    """
-
-    def make_hashcache(self):
-        return FakeHashCache()
-
-    def test_hashcache_miss_new_file(self):
-        """A new file gives the right sha1 but misses"""
-        hc = self.make_hashcache()
-        hc.put_file('foo', b'hello')
-        self.assertEqual(hc.get_sha1('foo'), sha1(b'hello'))
-        self.assertEqual(hc.miss_count, 1)
-        self.assertEqual(hc.hit_count, 0)
-        # if we try again it's still too new;
-        self.assertEqual(hc.get_sha1('foo'), sha1(b'hello'))
-        self.assertEqual(hc.miss_count, 2)
-        self.assertEqual(hc.hit_count, 0)
-
-    def test_hashcache_old_file(self):
-        """An old file gives the right sha1 and hits"""
-        hc = self.make_hashcache()
-        hc.put_file('foo', b'hello')
-        hc.pretend_to_sleep(20)
-        # file is new; should get the correct hash but miss
-        self.assertEqual(hc.get_sha1('foo'), sha1(b'hello'))
-        self.assertEqual(hc.miss_count, 1)
-        self.assertEqual(hc.hit_count, 0)
-        # and can now be hit
-        self.assertEqual(hc.get_sha1('foo'), sha1(b'hello'))
-        self.assertEqual(hc.miss_count, 1)
-        self.assertEqual(hc.hit_count, 1)
-        hc.pretend_to_sleep(3)
-        # and again
-        self.assertEqual(hc.get_sha1('foo'), sha1(b'hello'))
-        self.assertEqual(hc.miss_count, 1)
-        self.assertEqual(hc.hit_count, 2)
-
-    def test_hashcache_invalidates(self):
-        hc = self.make_hashcache()
-        hc.put_file('foo', b'hello')
-        hc.pretend_to_sleep(20)
-        hc.get_sha1('foo')
-        hc.put_file('foo', b'h1llo')
-        self.assertEqual(hc.get_sha1('foo'), sha1(b'h1llo'))
-        self.assertEqual(hc.miss_count, 2)
-        self.assertEqual(hc.hit_count, 0)
+        self.assertRaises(OSError, hc.get_sha1, 'a')

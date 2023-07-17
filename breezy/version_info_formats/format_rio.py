@@ -14,22 +14,23 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""A generator which creates a rio stanza of the current tree info"""
+"""A generator which creates a rio stanza of the current tree info."""
 
 from breezy import errors, hooks
-from breezy.bzr.rio import RioWriter, Stanza
-from breezy.revision import NULL_REVISION
+from breezy.bzr import rio
 from breezy.version_info_formats import VersionInfoBuilder, create_date_str
+
+from ..revision import NULL_REVISION
 
 
 class RioVersionInfoBuilder(VersionInfoBuilder):
     """This writes a rio stream out."""
 
     def generate(self, to_file):
-        info = Stanza()
+        info = rio.Stanza()
         revision_id = self._get_revision_id()
         if revision_id != NULL_REVISION:
-            info.add('revision-id', revision_id)
+            info.add('revision-id', revision_id.decode('utf-8'))
             rev = self._branch.repository.get_revision(revision_id)
             info.add('date', create_date_str(rev.timestamp, rev.timezone))
             try:
@@ -58,16 +59,16 @@ class RioVersionInfoBuilder(VersionInfoBuilder):
                 info.add('clean', 'False')
 
         if self._include_history:
-            log = Stanza()
+            log = rio.Stanza()
             for (revision_id, message,
                  timestamp, timezone) in self._iter_revision_history():
-                log.add('id', revision_id)
+                log.add('id', revision_id.decode('utf-8'))
                 log.add('message', message)
                 log.add('date', create_date_str(timestamp, timezone))
             info.add('revisions', log)
 
         if self._include_file_revs:
-            files = Stanza()
+            files = rio.Stanza()
             for path in sorted(self._file_revisions.keys()):
                 files.add('path', path)
                 files.add('revision', self._file_revisions[path])

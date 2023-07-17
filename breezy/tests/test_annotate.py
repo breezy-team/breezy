@@ -122,35 +122,35 @@ rev-base third
 rev-base fourth-base
 """)
 
-duplicate_A = annotation(b"""\
+duplicate_a = annotation(b"""\
 rev-base first
 rev-A alt-second
 rev-base third
 rev-A fourth-A
 """)
 
-duplicate_B = annotation(b"""\
+duplicate_b = annotation(b"""\
 rev-base first
 rev-B alt-second
 rev-base third
 rev-B fourth-B
 """)
 
-duplicate_C = annotation(b"""\
+duplicate_c = annotation(b"""\
 rev-base first
 rev-A alt-second
 rev-base third
 rev-C fourth-C
 """)
 
-duplicate_D = annotation(b"""\
+duplicate_d = annotation(b"""\
 rev-base first
 rev-A alt-second
 rev-base third
 rev-D fourth-D
 """)
 
-duplicate_E = annotation(b"""\
+duplicate_e = annotation(b"""\
 rev-base first
 rev-A alt-second
 rev-base third
@@ -161,7 +161,7 @@ rev-E fourth-E
 class TestAnnotate(tests.TestCaseWithTransport):
 
     def create_merged_trees(self):
-        """create 2 trees with merges between them.
+        """Create 2 trees with merges between them.
 
         rev-1 --+
          |      |
@@ -246,11 +246,11 @@ class TestAnnotate(tests.TestCaseWithTransport):
         builder.start_series()
         self.addCleanup(builder.finish_series)
         base_text = b''.join(l for r, l in duplicate_base)
-        a_text = b''.join(l for r, l in duplicate_A)
-        b_text = b''.join(l for r, l in duplicate_B)
-        c_text = b''.join(l for r, l in duplicate_C)
-        d_text = b''.join(l for r, l in duplicate_D)
-        e_text = b''.join(l for r, l in duplicate_E)
+        a_text = b''.join(l for r, l in duplicate_a)
+        b_text = b''.join(l for r, l in duplicate_b)
+        c_text = b''.join(l for r, l in duplicate_c)
+        d_text = b''.join(l for r, l in duplicate_d)
+        e_text = b''.join(l for r, l in duplicate_e)
         builder.build_snapshot(None, [
             ('add', ('', b'root-id', 'directory', None)),
             ('add', ('file', b'file-id', 'file', base_text)),
@@ -299,11 +299,11 @@ class TestAnnotate(tests.TestCaseWithTransport):
         repo.lock_read()
         self.addCleanup(repo.unlock)
         self.assertRepoAnnotate(duplicate_base, repo, 'file', b'rev-base')
-        self.assertRepoAnnotate(duplicate_A, repo, 'file', b'rev-A')
-        self.assertRepoAnnotate(duplicate_B, repo, 'file', b'rev-B')
-        self.assertRepoAnnotate(duplicate_C, repo, 'file', b'rev-C')
-        self.assertRepoAnnotate(duplicate_D, repo, 'file', b'rev-D')
-        self.assertRepoAnnotate(duplicate_E, repo, 'file', b'rev-E')
+        self.assertRepoAnnotate(duplicate_a, repo, 'file', b'rev-A')
+        self.assertRepoAnnotate(duplicate_b, repo, 'file', b'rev-B')
+        self.assertRepoAnnotate(duplicate_c, repo, 'file', b'rev-C')
+        self.assertRepoAnnotate(duplicate_d, repo, 'file', b'rev-D')
+        self.assertRepoAnnotate(duplicate_e, repo, 'file', b'rev-E')
 
     def test_annotate_shows_dotted_revnos(self):
         builder = self.create_merged_trees()
@@ -314,7 +314,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
                                   builder.get_branch(), 'a', b'rev-3')
 
     def test_annotate_limits_dotted_revnos(self):
-        """Annotate should limit dotted revnos to a depth of 12"""
+        """Annotate should limit dotted revnos to a depth of 12."""
         builder = self.create_deeply_merged_trees()
 
         self.assertBranchAnnotate('1     joe@foo | first\n'

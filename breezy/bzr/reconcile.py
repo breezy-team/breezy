@@ -23,9 +23,8 @@ __all__ = [
     'VersionedFileRepoReconciler',
     ]
 
-from .. import errors
+from .. import errors, ui
 from .. import revision as _mod_revision
-from .. import ui
 from ..i18n import gettext
 from ..reconcile import ReconcileResult
 from ..trace import mutter
@@ -88,7 +87,7 @@ class VersionedFileRepoReconciler:
         only data-loss causing issues (!self.thorough) or all issues
         (self.thorough) are treated as requiring the reweave.
         """
-        transaction = self.repo.get_transaction()
+        self.repo.get_transaction()
         self.pb.update(gettext('Reading inventory data'))
         self.inventory = self.repo.inventories
         self.revisions = self.repo.revisions
@@ -175,7 +174,7 @@ class VersionedFileRepoReconciler:
         self._rev_graph[rev_id] = parents
 
     def _check_garbage_inventories(self):
-        """Check for garbage inventories which we cannot trust
+        """Check for garbage inventories which we cannot trust.
 
         We cant trust them because their pre-requisite file data may not
         be present - all we know is that their revision was not installed.
@@ -190,7 +189,7 @@ class VersionedFileRepoReconciler:
             mutter('Garbage inventory {%s} found.', revision_key[-1])
 
     def _parent_is_available(self, parent):
-        """True if parent is a fully available revision
+        """True if parent is a fully available revision.
 
         A fully available revision has a inventory and a revision object in the
         repository.
@@ -250,7 +249,7 @@ class KnitReconciler(VersionedFileRepoReconciler):
         # we have topological order of revisions and non ghost parents ready.
         graph = self.revisions.get_parent_map(self.revisions.keys())
         revision_keys = topo_sort(graph)
-        revision_ids = [key[-1] for key in revision_keys]
+        [key[-1] for key in revision_keys]
         self._setup_steps(len(revision_keys))
         stream = self._change_inv_parents(
             self.inventory.get_record_stream(revision_keys, 'unordered', True),
@@ -275,7 +274,7 @@ class KnitReconciler(VersionedFileRepoReconciler):
         This method finds entries with such inconsistencies, corrects their
         parent lists, and replaces the versionedfile with a corrected version.
         """
-        transaction = self.repo.get_transaction()
+        self.repo.get_transaction()
         versions = [key[-1] for key in self.revisions.keys()]
         mutter('Prepopulating revision text cache with %d revisions',
                len(versions))

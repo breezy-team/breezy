@@ -20,8 +20,9 @@ import sys
 
 import breezy
 from breezy import commands, osutils, tests
-from breezy.plugins.bash_completion.bashcomp import *
 from breezy.tests import features
+
+from ..bashcomp import *  # noqa: F403
 
 
 class BashCompletionMixin:
@@ -63,7 +64,7 @@ class BashCompletionMixin:
             line for line in err.splitlines()
             if not line.startswith(b'brz: warning: ')]
         if [] != errlines:
-            raise AssertionError('Unexpected error message:\n%s' % err)
+            raise AssertionError(f'Unexpected error message:\n{err}')
         self.assertEqual(b'', b''.join(errlines), 'No messages to standard error')
         #import sys
         #print >>sys.stdout, '---\n%s\n---\n%s\n---\n' % (input, out)
@@ -106,7 +107,7 @@ class TestBashCompletion(tests.TestCase, BashCompletionMixin):
     """Test bash completions that don't execute brz."""
 
     def test_simple_scipt(self):
-        """Ensure that the test harness works as expected"""
+        """Ensure that the test harness works as expected."""
         self.script = """
 _brz() {
     COMPREPLY=()
@@ -170,7 +171,7 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport,
 
     def get_script(self):
         s = super().get_script()
-        s = s.replace("$(brz ", "$(%s " % ' '.join(self.get_brz_command()))
+        s = s.replace("$(brz ", f"$({' '.join(self.get_brz_command())} ")
         s = s.replace("2>/dev/null", "")
         return s
 
@@ -235,14 +236,13 @@ class TestBashCodeGen(tests.TestCase):
     def test_brz_version(self):
         data = CompletionData()
         cg = BashCodeGen(data)
-        self.assertEqual('%s.' % breezy.version_string, cg.brz_version())
+        self.assertEqual(f'{breezy.version_string}.', cg.brz_version())
         data.plugins['foo'] = PluginData('foo', '1.0')
         data.plugins['bar'] = PluginData('bar', '2.0')
         cg = BashCodeGen(data)
-        self.assertEqual('''\
-%s and the following plugins:
+        self.assertEqual(f'''{breezy.version_string} and the following plugins:
 # bar 2.0
-# foo 1.0''' % breezy.version_string, cg.brz_version())
+# foo 1.0''', cg.brz_version())
 
     def test_global_options(self):
         data = CompletionData()

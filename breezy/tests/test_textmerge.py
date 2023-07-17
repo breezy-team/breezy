@@ -16,7 +16,8 @@
 #
 # Author: Aaron Bentley <aaron.bentley@utoronto.ca>
 from breezy.tests import TestCase
-from breezy.textmerge import Merge2
+
+from ..textmerge import Merge2
 
 
 class TestMerge2(TestCase):

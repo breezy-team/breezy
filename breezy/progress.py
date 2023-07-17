@@ -23,7 +23,8 @@ will manage a conceptual stack of nested activities.
 """
 
 import os
-import time
+
+from . import _cmd_rs
 
 
 def _supports_progress(f):
@@ -108,7 +109,7 @@ class ProgressTask:
             self.msg)
 
     def update(self, msg, current_cnt=None, total_cnt=None):
-        """Report updated task message and if relevent progress counters
+        """Report updated task message and if relevent progress counters.
 
         The message given must be unicode, not a byte string.
         """
@@ -135,9 +136,10 @@ class ProgressTask:
                             progress_view=self.progress_view)
 
     def _overall_completion_fraction(self, child_fraction=0.0):
-        """Return fractional completion of this task and its parents
+        """Return fractional completion of this task and its parents.
 
-        Returns None if no completion can be computed."""
+        Returns None if no completion can be computed.
+        """
         if self.current_cnt is not None and self.total_cnt:
             own_fraction = (float(self.current_cnt) +
                             child_fraction) / self.total_cnt
@@ -198,50 +200,11 @@ class DummyProgress:
         return DummyProgress(**kwargs)
 
 
-def str_tdelta(delt):
-    if delt is None:
-        return "-:--:--"
-    delt = int(round(delt))
-    return '%d:%02d:%02d' % (delt / 3600,
-                             (delt / 60) % 60,
-                             delt % 60)
-
-
-def get_eta(start_time, current, total, enough_samples=3, last_updates=None,
-            n_recent=10):
-    if start_time is None:
-        return None
-
-    if not total:
-        return None
-
-    if current < enough_samples:
-        return None
-
-    if current > total:
-        return None                     # wtf?
-
-    elapsed = time.time() - start_time
-
-    if elapsed < 2.0:                   # not enough time to estimate
-        return None
-
-    total_duration = float(elapsed) * float(total) / float(current)
-
-    if last_updates and len(last_updates) >= n_recent:
-        avg = sum(last_updates) / float(len(last_updates))
-        time_left = avg * (total - current)
-
-        old_time_left = total_duration - elapsed
-
-        # We could return the average, or some other value here
-        return (time_left + old_time_left) / 2
-
-    return total_duration - elapsed
+str_tdelta = _cmd_rs.str_tdelta
 
 
 class ProgressPhase:
-    """Update progress object with the current phase"""
+    """Update progress object with the current phase."""
 
     def __init__(self, message, total, pb):
         object.__init__(self)

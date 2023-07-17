@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""A collection of commonly used 'Features' to optionally run tests.
-"""
+"""A collection of commonly used 'Features' to optionally run tests."""
 
 import importlib
 import os
@@ -120,7 +119,7 @@ class _UnicodeFilenameFeature(Feature):
 UnicodeFilenameFeature = _UnicodeFilenameFeature()
 
 
-class _CompatabilityThunkFeature(Feature):
+class _CompatibilityThunkFeature(Feature):
     """This feature is just a thunk to another feature.
 
     It issues a deprecation warning if it is accessed, to let you know that you
@@ -142,8 +141,7 @@ class _CompatabilityThunkFeature(Feature):
     def _ensure(self):
         if self._feature is None:
             from breezy import pyutils
-            depr_msg = self._dep_version % ('%s.%s'
-                                            % (self._module, self._name))
+            depr_msg = self._dep_version % (f'{self._module}.{self._name}')
             use_msg = ' Use {}.{} instead.'.format(self._replacement_module,
                                                self._replacement_name)
             symbol_versioning.warn(depr_msg + use_msg, DeprecationWarning,
@@ -215,21 +213,20 @@ class PluginLoadedFeature(Feature):
         self.plugin_name = plugin_name
 
     def _probe(self):
-        from breezy.plugin import get_loaded_plugin
+        from ..plugin import get_loaded_plugin
         return (get_loaded_plugin(self.plugin_name) is not None)
 
     @property
     def plugin(self):
-        from breezy.plugin import get_loaded_plugin
+        from ..plugin import get_loaded_plugin
         return get_loaded_plugin(self.plugin_name)
 
     def feature_name(self):
-        return '%s plugin' % self.plugin_name
+        return f'{self.plugin_name} plugin'
 
 
 class _HTTPSServerFeature(Feature):
-    """Some tests want an https Server, check if one is available.
-    """
+    """Some tests want an https Server, check if one is available."""
 
     def _probe(self):
         try:
@@ -422,7 +419,7 @@ backslashdir_feature = _BackslashDirSeparatorFeature()
 
 
 class _ChownFeature(Feature):
-    """os.chown is supported"""
+    """os.chown is supported."""
 
     def _probe(self):
         return os.name == 'posix' and hasattr(os, 'chown')
@@ -450,11 +447,12 @@ class ExecutableFeature(Feature):
         return self._path is not None
 
     def feature_name(self):
-        return '%s executable' % self.name
+        return f'{self.name} executable'
 
 
 bash_feature = ExecutableFeature('bash')
 diff_feature = ExecutableFeature('diff')
+patch_feature = ExecutableFeature('patch')
 sed_feature = ExecutableFeature('sed')
 msgmerge_feature = ExecutableFeature('msgmerge')
 
@@ -488,18 +486,14 @@ class _StraceFeature(Feature):
 
     def _probe(self):
         try:
-            proc = subprocess.Popen(['strace'],
+            proc = subprocess.Popen(['strace'],  # noqa: S607
                                     stderr=subprocess.PIPE,
                                     stdout=subprocess.PIPE)
             proc.communicate()
             return True
-        except OSError as e:
-            import errno
-            if e.errno == errno.ENOENT:
-                # strace is not installed
-                return False
-            else:
-                raise
+        except FileNotFoundError:
+            # strace is not installed
+            return False
 
     def feature_name(self):
         return 'strace'
@@ -514,7 +508,7 @@ class _AttribFeature(Feature):
         if (sys.platform not in ('cygwin', 'win32')):
             return False
         try:
-            proc = subprocess.Popen(['attrib', '.'], stdout=subprocess.PIPE)
+            proc = subprocess.Popen(['attrib', '.'], stdout=subprocess.PIPE)  # noqa: S607
         except OSError:
             return False
         return (0 == proc.wait())
@@ -575,4 +569,4 @@ class PathFeature(Feature):
         return os.path.exists(self.path)
 
     def feature_name(self):
-        return "%s exists" % self.path
+        return f"{self.path} exists"

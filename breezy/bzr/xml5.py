@@ -14,14 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from breezy._bzr_rs import revision_serializer_v5  # noqa: F401
+
 from .. import errors, osutils
 from . import inventory, xml6
-from .xml_serializer import (encode_and_escape, get_utf8_or_ascii,
-                             unpack_inventory_entry)
+from .xml_serializer import encode_and_escape, get_utf8_or_ascii, unpack_inventory_entry
 
 
-class Serializer_v5(xml6.Serializer_v6):
-    """Version 5 serializer
+class InventorySerializer_v5(xml6.InventorySerializer_v6):
+    """Version 5 serializer.
 
     Packs objects into XML and vice versa.
     """
@@ -30,16 +31,14 @@ class Serializer_v5(xml6.Serializer_v6):
 
     def _unpack_inventory(self, elt, revision_id, entry_cache=None,
                           return_from_cache=False):
-        """Construct from XML Element
-        """
+        """Construct from XML Element."""
         root_id = elt.get('file_id') or inventory.ROOT_ID
         root_id = get_utf8_or_ascii(root_id)
 
         format = elt.get('format')
         if format is not None:
             if format != '5':
-                raise errors.BzrError("invalid format version %r on inventory"
-                                      % format)
+                raise errors.BzrError(f"invalid format version {format!r} on inventory")
         data_revision_id = elt.get('revision_id')
         if data_revision_id is not None:
             revision_id = data_revision_id.encode('utf-8')
@@ -51,26 +50,27 @@ class Serializer_v5(xml6.Serializer_v6):
         #   adding assertions       2.50s
         #   last_parent cache       2.52s (worse, removed)
         byid = inv._byid
+        children = inv._children
         for e in elt:
             ie = unpack_inventory_entry(e, entry_cache=entry_cache,
-                                        return_from_cache=return_from_cache)
-            parent_id = ie.parent_id
-            if parent_id is None:
-                ie.parent_id = parent_id = root_id
+                                        return_from_cache=return_from_cache, root_id=root_id)
             try:
-                parent = byid[parent_id]
-            except KeyError:
+                parent = byid[ie.parent_id]
+            except KeyError as err:
                 raise errors.BzrError("parent_id {%s} not in inventory"
-                                      % (parent_id,))
+                                      % (ie.parent_id,)) from err
             if ie.file_id in byid:
                 raise inventory.DuplicateFileId(ie.file_id, byid[ie.file_id])
-            if ie.name in parent.children:
+            siblings = children[parent.file_id]
+            if ie.name in siblings:
                 raise errors.BzrError(
                     "{} is already versioned".format(
                         osutils.pathjoin(
-                            inv.id2path(parent_id), ie.name).encode('utf-8')))
-            parent.children[ie.name] = ie
+                            inv.id2path(ie.parent_id), ie.name).encode('utf-8')))
+            siblings[ie.name] = ie
             byid[ie.file_id] = ie
+            if ie.kind == 'directory':
+                children[ie.file_id] = {}
         if revision_id is not None:
             inv.root.revision = revision_id
         self._check_cache_size(len(inv), entry_cache)
@@ -98,4 +98,4 @@ class Serializer_v5(xml6.Serializer_v6):
         append(b'<inventory%s format="5"%s>\n' % (fileid, revid))
 
 
-serializer_v5 = Serializer_v5()
+inventory_serializer_v5 = InventorySerializer_v5()

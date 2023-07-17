@@ -14,14 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Black-box tests for repositories with shared branches"""
+"""Black-box tests for repositories with shared branches."""
 
 import os
 
 import breezy.errors as errors
-from breezy.bzr.bzrdir import BzrDirMetaFormat1
-from breezy.controldir import ControlDir
 from breezy.tests import TestCaseInTempDir
+
+from ...bzr.bzrdir import BzrDirMetaFormat1
+from ...controldir import ControlDir
 
 
 class TestSharedRepo(TestCaseInTempDir):
@@ -35,7 +36,7 @@ Location:
 """)
         self.assertEqual(err, "")
         dir = ControlDir.open('a')
-        self.assertIs(dir.open_repository().is_shared(), True)
+        self.assertTrue(dir.open_repository().is_shared())
         self.assertRaises(errors.NotBranchError, dir.open_branch)
         self.assertRaises(errors.NoWorkingTree, dir.open_workingtree)
 
@@ -44,7 +45,7 @@ Location:
         self.assertEqual(out, "")
         self.assertEqual(err, "")
         dir = ControlDir.open('a')
-        self.assertIs(dir.open_repository().is_shared(), True)
+        self.assertTrue(dir.open_repository().is_shared())
         self.assertRaises(errors.NotBranchError, dir.open_branch)
         self.assertRaises(errors.NoWorkingTree, dir.open_workingtree)
 
@@ -61,13 +62,13 @@ Location:
         self.run_bzr("init-shared-repo a")
         self.run_bzr("init --format=default a/b")
         dir = ControlDir.open('a')
-        self.assertIs(dir.open_repository().is_shared(), True)
+        self.assertTrue(dir.open_repository().is_shared())
         self.assertRaises(errors.NotBranchError, dir.open_branch)
         self.assertRaises(errors.NoWorkingTree, dir.open_workingtree)
         bdir = ControlDir.open('a/b')
         bdir.open_branch()
         self.assertRaises(errors.NoRepositoryPresent, bdir.open_repository)
-        wt = bdir.open_workingtree()
+        bdir.open_workingtree()
 
     def test_branch(self):
         self.run_bzr("init-shared-repo a")
@@ -139,8 +140,7 @@ Location:
         self.assertLength(1, calls)
 
     def test_init_repo_without_username(self):
-        """Ensure init-shared-repo works if username is not set.
-        """
+        """Ensure init-shared-repo works if username is not set."""
         # brz makes user specified whoami mandatory for operations
         # like commit as whoami is recorded. init-shared-repo however is not so
         # final and uses whoami only in a lock file. Without whoami the login name

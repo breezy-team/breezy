@@ -17,8 +17,9 @@
 import os
 
 from breezy import errors, tests, workingtree
-from breezy.mutabletree import BadReferenceTarget
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
+
+from ...mutabletree import BadReferenceTarget
 
 
 class TestBasisInventory(TestCaseWithWorkingTree):
@@ -36,8 +37,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
             raise tests.TestNotApplicable(
                 'Tree format does not support references')
         else:
-            self.fail('%r does not support references but should'
-                      % (tree, ))
+            self.fail(f'{tree!r} does not support references but should')
 
     def make_nested_trees(self):
         tree, sub_tree = self.make_trees()
@@ -79,7 +79,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
             self._references_unsupported(tree)
 
     def test_root_present(self):
-        """Subtree root is present, though not the working tree root"""
+        """Subtree root is present, though not the working tree root."""
         tree, sub_tree = self.make_trees()
         if not tree.supports_setting_file_ids():
             self.skipTest('format does not support setting file ids')

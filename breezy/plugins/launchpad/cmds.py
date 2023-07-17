@@ -17,11 +17,11 @@
 """Launchpad plugin commands."""
 
 from ... import branch as _mod_branch
-from ... import controldir, trace
+from ... import trace
 from ...commands import Command
-from ...errors import CommandError, NotBranchError
+from ...errors import CommandError
 from ...i18n import gettext
-from ...option import ListOption, Option
+from ...option import Option
 
 
 class cmd_launchpad_open(Command):
@@ -37,7 +37,7 @@ class cmd_launchpad_open(Command):
 
     def run(self, location=None, dry_run=False):
         trace.warning('lp-open is deprecated. Please use web-open instead')
-        from breezy.plugins.propose.cmds import cmd_web_open
+        from ..propose.cmds import cmd_web_open
         return cmd_web_open().run(location=location, dry_run=dry_run)
 
 

@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"Test suite for the bzr bisect plugin."
+"""Test suite for the bzr bisect plugin."""
 
 import os
 import shutil
@@ -22,7 +22,7 @@ from io import StringIO
 
 from .. import bisect
 from ..controldir import ControlDir
-from . import TestCaseWithTransport, TestSkipped
+from . import TestCaseWithTransport
 
 
 class BisectTestCase(TestCaseWithTransport):
@@ -30,7 +30,6 @@ class BisectTestCase(TestCaseWithTransport):
 
     def assertRevno(self, rev):
         """Make sure we're at the right revision."""
-
         rev_contents = {1: "one", 1.1: "one dot one", 1.2: "one dot two",
                         1.3: "one dot three", 2: "two", 3: "three",
                         4: "four", 5: "five"}
@@ -40,12 +39,10 @@ class BisectTestCase(TestCaseWithTransport):
         if content != rev_contents[rev]:
             rev_ids = {rev_contents[k]: k for k in rev_contents}
             found_rev = rev_ids[content]
-            raise AssertionError("expected rev %0.1f, found rev %0.1f"
-                                 % (rev, found_rev))
+            raise AssertionError(f"expected rev {rev:0.1f}, found rev {found_rev:0.1f}")
 
     def setUp(self):
         """Set up tests."""
-
         # These tests assume a branch with five revisions, and
         # a branch from version 1 containing three revisions
         # merged at version 2.

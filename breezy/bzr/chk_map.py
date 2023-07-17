@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Persistent maps from tuple_of_strings->string using CHK stores.
+r"""Persistent maps from tuple_of_strings->string using CHK stores.
 
 Overview and current status:
 
@@ -30,9 +30,8 @@ possible and supported. Individual changes via map/unmap are buffered in memory
 until the _save method is called to force serialisation of the tree.
 apply_delta records its changes immediately by performing an implicit _save.
 
-TODO:
+Todo:
 -----
-
 Densely packed upper nodes.
 
 """
@@ -130,13 +129,13 @@ class CHKMap:
         existing_new = list(self.iteritems(key_filter=new_items))
         if existing_new:
             raise errors.InconsistentDeltaDelta(delta,
-                                                "New items are already in the map %r." % existing_new)
+                                                f"New items are already in the map {existing_new!r}.")
         # Now apply changes.
-        for old, new, value in delta:
+        for old, new, _value in delta:
             if old is not None and old != new:
                 self.unmap(old, check_remap=False)
                 has_deletes = True
-        for old, new, value in delta:
+        for _old, new, value in delta:
             if new is not None:
                 self.map(new, value)
         if has_deletes:
@@ -192,11 +191,10 @@ class CHKMap:
         else:
             node_key = node.key()
             if node_key is not None:
-                key_str = ' {}'.format(decode(node_key[0]))
+                key_str = f' {decode(node_key[0])}'
             else:
                 key_str = ' None'
-        result.append('{}{!r} {}{}'.format(indent, decode(prefix), node.__class__.__name__,
-                                     key_str))
+        result.append(f'{indent}{decode(prefix)!r} {node.__class__.__name__}{key_str}')
         if isinstance(node, InternalNode):
             # Trigger all child nodes to get loaded
             list(node._iter_nodes(self._store))
@@ -233,8 +231,7 @@ class CHKMap:
                                           maximum_size=maximum_size, key_width=key_width,
                                           search_key_func=search_key_func)
         if not isinstance(root_key, StaticTuple):
-            raise AssertionError('we got a %s instead of a StaticTuple'
-                                 % (type(root_key),))
+            raise AssertionError(f'we got a {type(root_key)} instead of a StaticTuple')
         return root_key
 
     @classmethod
@@ -373,8 +370,6 @@ class CHKMap:
                 process_node(self_node, self_path, self, self_pending)
                 process_node(basis_node, basis_path, basis, basis_pending)
         process_common_prefix_nodes(self_node, None, basis_node, None)
-        self_seen = set()
-        basis_seen = set()
         excluded_keys = set()
 
         def check_excluded(key_path):
@@ -396,7 +391,7 @@ class CHKMap:
             loop_counter += 1
             if not self_pending:
                 # self is exhausted: output remainder of basis
-                for prefix, key, node, path in basis_pending:
+                for _prefix, key, node, path in basis_pending:
                     if check_excluded(path):
                         continue
                     node = basis._get_node(node)
@@ -410,7 +405,7 @@ class CHKMap:
                 return
             elif not basis_pending:
                 # basis is exhausted: output remainder of self.
-                for prefix, key, node, path in self_pending:
+                for _prefix, key, node, path in self_pending:
                     if check_excluded(path):
                         continue
                     node = self._get_node(node)
@@ -486,7 +481,7 @@ class CHKMap:
                             basis_pending)
                         if self_prefix != basis_prefix:
                             raise AssertionError(
-                                '{!r} != {!r}'.format(self_prefix, basis_prefix))
+                                f'{self_prefix!r} != {basis_prefix!r}')
                         process_common_prefix_nodes(
                             self_node, self_path,
                             basis_node, basis_path)
@@ -552,7 +547,7 @@ class CHKMap:
             return node._key
 
     def unmap(self, key, check_remap=True):
-        """remove key from the map."""
+        """Remove key from the map."""
         key = StaticTuple.from_sequence(key)
         self._ensure_root()
         if isinstance(self._root_node, InternalNode):
@@ -876,7 +871,7 @@ class LeafNode(Node):
             return self._split(store)
         else:
             if self._search_prefix is _unknown:
-                raise AssertionError('%r must be known' % self._search_prefix)
+                raise AssertionError(f'{self._search_prefix!r} must be known')
             return self._search_prefix, [(b"", self)]
 
     _serialise_key = b'\x00'.join
@@ -1086,7 +1081,7 @@ class InternalNode(Node):
             # 0.105us   for key in key_filter: break
             #       no func() overhead, might malloc an iterator, probably
             #       avoids checking an 'else' clause as part of the for
-            for key in key_filter:
+            for key in key_filter:  # noqa: B007
                 break
             search_prefix = self._search_prefix_filter(key)
             if len(search_prefix) == self._node_width:
@@ -1502,7 +1497,6 @@ class CHKMapDifference:
         # only 1 time during this code. (We may want to evaluate saving the
         # raw bytes into the page cache, which would allow a working tree
         # update after the fetch to not have to read the bytes again.)
-        as_st = StaticTuple.from_sequence
         stream = self._store.get_record_stream(keys, 'unordered', True)
         for record in stream:
             if self._pb is not None:
@@ -1532,7 +1526,7 @@ class CHKMapDifference:
     def _read_old_roots(self):
         old_chks_to_enqueue = []
         all_old_chks = self._all_old_chks
-        for record, node, prefix_refs, items in \
+        for _record, _node, prefix_refs, items in \
                 self._read_nodes_from_store(self._old_root_keys):
             # Uninteresting node
             prefix_refs = [p_r for p_r in prefix_refs
@@ -1587,7 +1581,7 @@ class CHKMapDifference:
         # added a second time
         processed_new_refs = self._processed_new_refs
         processed_new_refs.update(new_keys)
-        for record, node, prefix_refs, items in \
+        for record, _node, prefix_refs, items in \
                 self._read_nodes_from_store(new_keys):
             # At this level, we now know all the uninteresting references
             # So we filter and queue up whatever is remaining
@@ -1670,7 +1664,7 @@ class CHKMapDifference:
         refs = self._old_queue
         self._old_queue = []
         all_old_chks = self._all_old_chks
-        for record, _, prefix_refs, items in self._read_nodes_from_store(refs):
+        for _record, _, prefix_refs, items in self._read_nodes_from_store(refs):
             # TODO: Use StaticTuple here?
             self._all_old_items.update(items)
             refs = [r for _, r in prefix_refs if r not in all_old_chks]
@@ -1710,16 +1704,17 @@ def iter_interesting_nodes(store, interesting_root_keys,
     return iterator.process()
 
 
+from .._bzr_rs import chk_map as _chk_map_rs
+
+_bytes_to_text_key = _chk_map_rs._bytes_to_text_key
+_search_key_16 = _chk_map_rs._search_key_16
+_search_key_255 = _chk_map_rs._search_key_255
+
 try:
-    from ._chk_map_pyx import (_bytes_to_text_key, _deserialise_internal_node,
-                               _deserialise_leaf_node, _search_key_16,
-                               _search_key_255)
+    from ._chk_map_pyx import _deserialise_internal_node, _deserialise_leaf_node
 except ImportError as e:
     osutils.failed_to_load_extension(e)
-    from ._chk_map_py import _bytes_to_text_key  # noqa: F401
-    from ._chk_map_py import (_deserialise_internal_node,
-                              _deserialise_leaf_node, _search_key_16,
-                              _search_key_255)
+    from ._chk_map_py import _deserialise_internal_node, _deserialise_leaf_node
 search_key_registry.register(b'hash-16-way', _search_key_16)
 search_key_registry.register(b'hash-255-way', _search_key_255)
 
@@ -1731,12 +1726,10 @@ def _check_key(key):
     to debug problems.
     """
     if not isinstance(key, StaticTuple):
-        raise TypeError('key {!r} is not StaticTuple but {}'.format(key, type(key)))
+        raise TypeError(f'key {key!r} is not StaticTuple but {type(key)}')
     if len(key) != 1:
-        raise ValueError('key %r should have length 1, not %d' %
-                         (key, len(key),))
+        raise ValueError(f'key {key!r} should have length 1, not {len(key)}')
     if not isinstance(key[0], str):
-        raise TypeError('key %r should hold a str, not %r'
-                        % (key, type(key[0])))
+        raise TypeError(f'key {key!r} should hold a str, not {type(key[0])!r}')
     if not key[0].startswith('sha1:'):
-        raise ValueError('key {!r} should point to a sha1:'.format(key))
+        raise ValueError(f'key {key!r} should point to a sha1:')

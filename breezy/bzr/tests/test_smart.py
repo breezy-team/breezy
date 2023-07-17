@@ -41,9 +41,10 @@ from breezy.bzr.smart import packrepository as smart_packrepo
 from breezy.bzr.smart import repository as smart_repo
 from breezy.bzr.smart import request as smart_req
 from breezy.bzr.smart import server, vfs
-from breezy.bzr.testament import Testament
 from breezy.tests import test_server
 from breezy.transport import chroot, memory
+
+from ..testament import Testament
 
 
 def load_tests(loader, standard_tests, pattern):
@@ -394,7 +395,7 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithMemoryTransport):
                 (b'ok', b'', rich_root, subtrees))
 
     def test_shared_repository(self):
-        """for a shared repository, we get 'ok', 'relpath-to-repo'."""
+        """For a shared repository, we get 'ok', 'relpath-to-repo'."""
         backing = self.get_transport()
         request = self._request_class(backing)
         result = self._make_repository_and_result(shared=True)
@@ -1131,8 +1132,7 @@ class TestSetLastRevisionVerbMixin:
         self.assertRequestSucceeds(b'null:', 0)
 
     def test_NoSuchRevision(self):
-        """If the revision_id is not present, the verb returns NoSuchRevision.
-        """
+        """If the revision_id is not present, the verb returns NoSuchRevision."""
         revision_id = b'non-existent revision'
         self.assertEqual(
             smart_req.FailedSmartServerResponse(
@@ -1844,9 +1844,12 @@ class TestSmartServerRepositoryIterRevisions(
             [(b"rev1", ), (b"rev2", )], "unordered", True)]
 
         contents = b"".join(response.body_stream)
-        self.assertTrue(contents in (
+        self.assertIn(
+            contents,
+            (
             b"".join([entries[0], entries[1]]),
-            b"".join([entries[1], entries[0]])))
+            b"".join([entries[1], entries[0]]))
+        )
 
     def test_missing(self):
         backing = self.get_transport()
@@ -2022,7 +2025,7 @@ class TestSmartServerRequestHasSignatureForRevisionId(
 class TestSmartServerRepositoryGatherStats(tests.TestCaseWithMemoryTransport):
 
     def test_empty_revid(self):
-        """With an empty revid, we get only size an number and revisions"""
+        """With an empty revid, we get only size an number and revisions."""
         backing = self.get_transport()
         request = smart_repo.SmartServerRepositoryGatherStats(backing)
         repository = self.make_repository('.')
@@ -2363,7 +2366,7 @@ class TestSmartServerRepositoryGetSerializerFormat(
 
     def test_get_serializer_format(self):
         backing = self.get_transport()
-        repo = self.make_repository('.', format='2a')
+        self.make_repository('.', format='2a')
         request_class = smart_repo.SmartServerRepositoryGetSerializerFormat
         request = request_class(backing)
         self.assertEqual(
@@ -2453,7 +2456,7 @@ class TestSmartServerPackRepositoryAutopack(tests.TestCaseWithTransport):
         # monkey-patch the pack collection to disable autopacking
         repo._pack_collection._max_pack_count = lambda count: count
         for x in range(10):
-            tree.commit('commit %s' % x)
+            tree.commit(f'commit {x}')
         self.assertEqual(10, len(repo._pack_collection.names()))
         del repo._pack_collection._max_pack_count
         return repo
@@ -2476,7 +2479,7 @@ class TestSmartServerPackRepositoryAutopack(tests.TestCaseWithTransport):
         repo.lock_write()
         self.addCleanup(repo.unlock)
         for x in range(9):
-            tree.commit('commit %s' % x)
+            tree.commit(f'commit {x}')
         backing = self.get_transport()
         request = smart_packrepo.SmartServerPackRepositoryAutopack(
             backing)
@@ -2487,7 +2490,7 @@ class TestSmartServerPackRepositoryAutopack(tests.TestCaseWithTransport):
 
     def test_autopack_on_nonpack_format(self):
         """A request to autopack a non-pack repo is a no-op."""
-        repo = self.make_repository('.', format='knit')
+        self.make_repository('.', format='knit')
         backing = self.get_transport()
         request = smart_packrepo.SmartServerPackRepositoryAutopack(
             backing)
@@ -2517,9 +2520,9 @@ class TestHandlers(tests.TestCase):
         # an AttributeError.
         for key in smart_req.request_handlers.keys():
             try:
-                item = smart_req.request_handlers.get(key)
+                smart_req.request_handlers.get(key)
             except AttributeError as e:
-                raise AttributeError('failed to get {}: {}'.format(key, e))
+                raise AttributeError(f'failed to get {key}: {e}') from e
 
     def assertHandlerEqual(self, verb, handler):
         self.assertEqual(smart_req.request_handlers.get(verb), handler)
@@ -2780,7 +2783,7 @@ class TestSmartServerRepositoryGetStreamForMissingKeys(GetStreamTestBase):
             backing)
         repo, r1, r2 = self.make_two_commit_repo()
         request.execute(b'', b'yada yada yada')
-        expected = smart_req.FailedSmartServerResponse(
+        smart_req.FailedSmartServerResponse(
             (b'UnknownFormat', b'repository', b'yada yada yada'))
 
 
@@ -2825,11 +2828,11 @@ class TestSmartServerBranchRequestGetAllReferenceInfo(TestLockedBranch):
         backing = self.get_transport()
         request = smart_branch.SmartServerBranchRequestGetAllReferenceInfo(backing)
         branch = self.make_branch('.')
-        branch.set_reference_info('some/path', 'http://www.example.com/')
+        branch.set_reference_info(b'file-id', 'http://www.example.com/', 'some/path')
         response = request.execute(b'')
         self.assertTrue(response.is_successful())
         self.assertEqual(response.args, (b"ok", ))
         self.assertEqual(
-            [[b'some/path', b'http://www.example.com/', b'']],
+            [[b'file-id', b'http://www.example.com/', b'some/path']],
             bencode.bdecode(response.body))
 

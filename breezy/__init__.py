@@ -40,7 +40,7 @@ import sys
 
 __copyright__ = (
     "Copyright 2005-2012 Canonical Ltd.\n"
-    "Copyright 2017-2022 Breezy developers"
+    "Copyright 2017-2023 Breezy developers"
 )
 
 # same format as sys.version_info: "A tuple containing the five components of
@@ -50,7 +50,7 @@ __copyright__ = (
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (3, 3, 4, 'dev', 0)
+version_info = (3, 4, 0, 'dev', 0)
 
 
 def _format_version_tuple(version_info):
@@ -117,7 +117,7 @@ _core_version_string = '.'.join(map(str, version_info[:3]))
 
 
 def _patch_filesystem_default_encoding(new_enc):
-    """Change the Python process global encoding for filesystem names
+    """Change the Python process global encoding for filesystem names.
 
     The effect is to change how open() and other builtin functions handle
     unicode filenames on posix systems. This should only be done near startup.

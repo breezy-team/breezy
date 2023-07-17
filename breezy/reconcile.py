@@ -24,7 +24,6 @@ __all__ = [
 
 from . import errors, ui
 from .i18n import gettext
-from .trace import mutter
 
 
 def reconcile(dir, canonicalize_chks=False):
@@ -56,8 +55,7 @@ class Reconciler:
         self.canonicalize_chks = canonicalize_chks
 
     def reconcile(self):
-        """Perform reconciliation.
-        """
+        """Perform reconciliation."""
         with ui.ui_factory.nested_progress_bar() as self.pb:
             result = ReconcileResult()
             branch_result = self._reconcile_branch()
@@ -88,10 +86,10 @@ class Reconciler:
         self.pb.update(gettext("Reconciling repository"), 0, 1)
         if self.canonicalize_chks:
             try:
-                self.repo.reconcile_canonicalize_chks
-            except AttributeError:
+                self.repo.reconcile_canonicalize_chks  # noqa: B018
+            except AttributeError as err:
                 raise errors.BzrError(
-                    gettext("%s cannot canonicalize CHKs.") % (self.repo,))
+                    gettext("%s cannot canonicalize CHKs.") % (self.repo,)) from err
             reconcile_result = self.repo.reconcile_canonicalize_chks()
         else:
             reconcile_result = self.repo.reconcile(thorough=True)

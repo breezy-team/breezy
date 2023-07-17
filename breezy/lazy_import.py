@@ -41,6 +41,8 @@ true for classes or functions (when used as a factory, or you want
 to inherit from them).
 """
 
+from typing import Any, Dict
+
 from .errors import BzrError, InternalBzrError
 
 
@@ -110,7 +112,7 @@ class ScopeReplacer:
         scope[name] = self
 
     def _resolve(self):
-        """Return the real object for which this is a placeholder"""
+        """Return the real object for which this is a placeholder."""
         name = object.__getattribute__(self, '_name')
         real_obj = object.__getattribute__(self, '_real_obj')
         if real_obj is None:
@@ -186,7 +188,7 @@ class ImportReplacer(ScopeReplacer):
     # the replacement.
     __slots__ = ('_import_replacer_children', '_member', '_module_path')
 
-    def __init__(self, scope, name, module_path, member=None, children={}):
+    def __init__(self, scope, name, module_path, member=None, children=None):
         """Upon request import 'module_path' as the name 'module_name'.
         When imported, prepare children to also be imported.
 
@@ -217,6 +219,8 @@ class ImportReplacer(ScopeReplacer):
             from foo import bar, baz would get translated into 2 import
             requests. On for 'name=bar' and one for 'name=baz'
         """
+        if children is None:
+            children = {}
         if (member is not None) and children:
             raise ValueError('Cannot supply both a member and children')
 
@@ -256,7 +260,7 @@ class ImportReplacer(ScopeReplacer):
 
 
 class ImportProcessor:
-    """Convert text that users input into lazy import requests"""
+    """Convert text that users input into lazy import requests."""
 
     # TODO: jam 20060912 This class is probably not strict enough about
     #       what type of text it allows. For example, you can do:
@@ -267,7 +271,7 @@ class ImportProcessor:
     __slots__ = ['imports', '_lazy_import_class']
 
     def __init__(self, lazy_import_class=None):
-        self.imports = {}
+        self.imports: Dict[str, Any] = {}
         if lazy_import_class is None:
             self._lazy_import_class = ImportReplacer
         else:
@@ -289,7 +293,7 @@ class ImportProcessor:
                                     member=info[1], children=info[2])
 
     def _build_map(self, text):
-        """Take a string describing imports, and build up the internal map"""
+        """Take a string describing imports, and build up the internal map."""
         for line in self._canonicalize_import_text(text):
             if line.startswith('import '):
                 self._convert_import_str(line)
@@ -307,7 +311,7 @@ class ImportProcessor:
         :param import_str: The import string to process
         """
         if not import_str.startswith('import '):
-            raise ValueError('bad import string {!r}'.format(import_str))
+            raise ValueError(f'bad import string {import_str!r}')
         import_str = import_str[len('import '):]
 
         for path in import_str.split(','):
@@ -357,7 +361,7 @@ class ImportProcessor:
         :param from_str: The import string to process
         """
         if not from_str.startswith('from '):
-            raise ValueError('bad from/import %r' % from_str)
+            raise ValueError(f'bad from/import {from_str!r}')
         from_str = from_str[len('from '):]
 
         from_module, import_list = from_str.split(' import ')

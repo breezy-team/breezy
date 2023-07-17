@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Symbol versioning
+"""Symbol versioning.
 
 The methods here allow for api symbol versioning.
 """
@@ -31,6 +31,7 @@ __all__ = ['deprecated_function',
 
 
 import warnings
+
 # Import the 'warn' symbol so breezy can call it even if we redefine it
 from warnings import warn
 
@@ -77,11 +78,9 @@ def deprecation_string(a_callable, deprecation_version):
                                a_callable.__self__.__class__.__name__,
                                a_callable.__name__)
     elif getattr(a_callable, '__qualname__', None) is not None and '<' not in a_callable.__qualname__:
-        symbol = "{}.{}".format(a_callable.__module__,
-                            a_callable.__qualname__)
+        symbol = f"{a_callable.__module__}.{a_callable.__qualname__}"
     else:
-        symbol = "{}.{}".format(a_callable.__module__,
-                            a_callable.__name__)
+        symbol = f"{a_callable.__module__}.{a_callable.__name__}"
     return deprecation_version % symbol
 
 
@@ -123,9 +122,7 @@ def deprecated_method(deprecation_version):
             """This is the decorated method."""
             from . import trace
             if callable.__name__ == '__init__':
-                symbol = "{}.{}".format(self.__class__.__module__,
-                                    self.__class__.__name__,
-                                    )
+                symbol = f"{self.__class__.__module__}.{self.__class__.__name__}"
             else:
                 symbol = "{}.{}.{}".format(self.__class__.__module__,
                                        self.__class__.__name__,
@@ -183,8 +180,7 @@ def _decorate_docstring(callable, deprecation_version, label,
 
 def _populate_decorated(callable, deprecation_version, label,
                         decorated_callable):
-    """Populate attributes like __name__ and __doc__ on the decorated callable.
-    """
+    """Populate attributes like __name__ and __doc__ on the decorated callable."""
     _decorate_docstring(callable, deprecation_version, label,
                         decorated_callable)
     decorated_callable.__module__ = callable.__module__
@@ -193,9 +189,9 @@ def _populate_decorated(callable, deprecation_version, label,
 
 
 def _dict_deprecation_wrapper(wrapped_method):
-    """Returns a closure that emits a warning and calls the superclass"""
+    """Returns a closure that emits a warning and calls the superclass."""
     def cb(dep_dict, *args, **kwargs):
-        msg = 'access to {}'.format(dep_dict._variable_name)
+        msg = f'access to {dep_dict._variable_name}'
         msg = dep_dict._deprecation_version % (msg,)
         if dep_dict._advice:
             msg += ' ' + dep_dict._advice
@@ -241,7 +237,7 @@ class DeprecatedDict(dict):
 
 def deprecated_list(deprecation_version, variable_name,
                     initial_value, extra=None):
-    """Create a list that warns when modified
+    """Create a list that warns when modified.
 
     :param deprecation_version: string for the warning format to raise,
         typically from deprecated_in()
@@ -249,8 +245,7 @@ def deprecated_list(deprecation_version, variable_name,
     :param variable_name: This allows better warnings to be printed
     :param extra: Extra info to print when printing a warning
     """
-
-    subst_text = 'Modifying {}'.format(variable_name)
+    subst_text = f'Modifying {variable_name}'
     msg = deprecation_version % (subst_text,)
     if extra:
         msg += ' ' + extra
@@ -265,23 +260,23 @@ def deprecated_list(deprecation_version, variable_name,
             return func(self, *args, **kwargs)
 
         def append(self, obj):
-            """appending to {} is deprecated""".format(variable_name)
+            """Appending to {variable_name} is deprecated."""
             return self._warn_deprecated(list.append, obj)
 
         def insert(self, index, obj):
-            """inserting to {} is deprecated""".format(variable_name)
+            """Inserting to {variable_name} is deprecated."""
             return self._warn_deprecated(list.insert, index, obj)
 
         def extend(self, iterable):
-            """extending {} is deprecated""".format(variable_name)
+            """Extending {variable_name} is deprecated."""
             return self._warn_deprecated(list.extend, iterable)
 
         def remove(self, value):
-            """removing from {} is deprecated""".format(variable_name)
+            """Removing from {variable_name} is deprecated."""
             return self._warn_deprecated(list.remove, value)
 
         def pop(self, index=None):
-            """pop'ing from {} is deprecated""".format(variable_name)
+            """Pop'ing from {variable_name} is deprecated."""
             if index:
                 return self._warn_deprecated(list.pop, index)
             else:

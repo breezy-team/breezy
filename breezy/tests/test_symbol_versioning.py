@@ -19,9 +19,9 @@
 import warnings
 
 from breezy import symbol_versioning
-from breezy.symbol_versioning import (deprecated_function, deprecated_in,
-                                      deprecated_method)
 from breezy.tests import TestCase
+
+from ..symbol_versioning import deprecated_function, deprecated_in, deprecated_method
 
 
 @deprecated_function(deprecated_in((0, 7, 0)))
@@ -37,7 +37,7 @@ a_deprecated_list = symbol_versioning.deprecated_list(deprecated_in((0, 9, 0)),
 a_deprecated_dict = symbol_versioning.DeprecatedDict(
     deprecated_in((0, 14, 0)),
     'a_deprecated_dict',
-    dict(a=42),
+    {'a': 42},
     advice='Pull the other one!',
     )
 
@@ -162,9 +162,9 @@ class TestDeprecationWarnings(TestCase):
 
             a_deprecated_dict['b'] = 42
             self.assertEqual(a_deprecated_dict['b'], 42)
-            self.assertTrue('b' in a_deprecated_dict)
+            self.assertIn('b', a_deprecated_dict)
             del a_deprecated_dict['b']
-            self.assertFalse('b' in a_deprecated_dict)
+            self.assertNotIn('b', a_deprecated_dict)
             self.assertEqual([expected_warning] * 6, self._warnings)
         finally:
             symbol_versioning.set_warning_method(old_warning_method)
@@ -230,7 +230,7 @@ class TestSuppressAndActivate(TestCase):
         warnings.resetwarnings()
 
     def assertFirstWarning(self, action, category):
-        """Test the first warning in the filters is correct"""
+        """Test the first warning in the filters is correct."""
         first = warnings.filters[0]
         self.assertEqual((action, category), (first[0], first[2]))
 
@@ -245,7 +245,7 @@ class TestSuppressAndActivate(TestCase):
         self.assertEqual(original_filters, warnings.filters)
 
     def test_suppress_deprecation_with_warning_filter(self):
-        """don't suppress if we already have a filter"""
+        """Don't suppress if we already have a filter."""
         warnings.filterwarnings('error', category=Warning)
         self.assertFirstWarning('error', Warning)
         self.assertEqual(1, len(warnings.filters))
@@ -254,7 +254,7 @@ class TestSuppressAndActivate(TestCase):
         self.assertEqual(1, len(warnings.filters))
 
     def test_suppress_deprecation_with_filter(self):
-        """don't suppress if we already have a filter"""
+        """Don't suppress if we already have a filter."""
         warnings.filterwarnings('error', category=DeprecationWarning)
         self.assertFirstWarning('error', DeprecationWarning)
         self.assertEqual(1, len(warnings.filters))

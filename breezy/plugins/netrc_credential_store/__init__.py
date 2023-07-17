@@ -17,8 +17,10 @@
 __doc__ = """Use ~/.netrc as a credential store for authentication.conf."""
 
 # Since we are a built-in plugin we share the breezy version
-from ... import version_info  # noqa: F401
-from ... import config, errors, lazy_import
+from ... import (
+    config,
+    version_info,  # noqa: F401
+)
 from ... import transport as _mod_transport
 
 
@@ -26,15 +28,11 @@ class NetrcCredentialStore(config.CredentialStore):
 
     def __init__(self):
         super().__init__()
-        import errno
         import netrc
         try:
             self._netrc = netrc.netrc()
-        except OSError as e:
-            if e.args[0] == errno.ENOENT:
-                raise _mod_transport.NoSuchFile(e.filename)
-            else:
-                raise
+        except FileNotFoundError as e:
+            raise _mod_transport.NoSuchFile(e.filename) from e
 
     def decode_password(self, credentials):
         auth = self._netrc.authenticators(credentials['host'])
@@ -59,5 +57,5 @@ def load_tests(loader, basic_tests, pattern):
         'tests',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["{}.{}".format(__name__, tmn) for tmn in testmod_names]))
+        [f"{__name__}.{tmn}" for tmn in testmod_names]))
     return basic_tests

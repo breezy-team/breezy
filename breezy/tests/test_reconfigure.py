@@ -15,8 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from breezy import branch as _mod_branch
-from breezy import (controldir, errors, reconfigure, repository, tests,
-                    workingtree)
+from breezy import controldir, errors, reconfigure, repository, tests, workingtree
 from breezy.bzr import branch as _mod_bzrbranch
 from breezy.bzr import vf_repository
 
@@ -110,7 +109,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
             self.prepare_lightweight_checkout_to_checkout()
         reconfiguration.apply()
         checkout_branch = checkout.controldir.open_branch()
-        self.assertIsNot(checkout_branch.get_bound_location(), None)
+        self.assertIsNotNone(checkout_branch.get_bound_location())
 
     def test_lightweight_checkout_to_checkout_tags(self):
         reconfiguration, checkout = \

@@ -34,12 +34,7 @@ The plugin also provides the following commands:
 
 # see http://wiki.bazaar.canonical.com/Specs/BranchRegistrationTool
 
-from ... import \
-    branch as \
-    _mod_branch  # Since we are a built-in plugin we share the breezy version
-from ... import config as _mod_config
 from ... import version_info  # noqa: F401
-from ... import lazy_regex, trace
 from ...commands import plugin_cmds
 from ...directory_service import directories
 from ...help_topics import topic_registry
@@ -72,7 +67,7 @@ def load_tests(loader, basic_tests, pattern):
         'test_lp_login',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["{}.{}".format(__name__, tmn) for tmn in testmod_names]))
+        [f"{__name__}.{tmn}" for tmn in testmod_names]))
     return basic_tests
 
 

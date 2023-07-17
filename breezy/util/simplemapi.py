@@ -1,5 +1,4 @@
-"""
-Copyright (c) 2007 Ian Cook and John Popplewell
+"""Copyright (c) 2007 Ian Cook and John Popplewell.
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
@@ -37,7 +36,7 @@ software, please contact me at the above email address.
 """
 
 import os
-from ctypes import *
+from ctypes import *  # noqa: F403
 
 FLAGS = c_ulong
 LHANDLE = c_ulong
@@ -92,8 +91,8 @@ class MapiRecipDesc(Structure):
     ]
 
 
-lpMapiRecipDesc = POINTER(MapiRecipDesc)
-lppMapiRecipDesc = POINTER(lpMapiRecipDesc)
+lpMapiRecipDesc = POINTER(MapiRecipDesc)  # noqa: N816
+lppMapiRecipDesc = POINTER(lpMapiRecipDesc)  # noqa: N816
 
 
 class MapiFileDesc(Structure):
@@ -107,7 +106,7 @@ class MapiFileDesc(Structure):
     ]
 
 
-lpMapiFileDesc = POINTER(MapiFileDesc)
+lpMapiFileDesc = POINTER(MapiFileDesc)  # noqa: N816
 
 
 class MapiMessage(Structure):
@@ -127,7 +126,7 @@ class MapiMessage(Structure):
     ]
 
 
-lpMapiMessage = POINTER(MapiMessage)
+lpMapiMessage = POINTER(MapiMessage)  # noqa: N816
 
 MAPI = windll.mapi32  # type: ignore
 MAPISendMail = MAPI.MAPISendMail
@@ -162,7 +161,7 @@ class MAPIError(WindowsError):  # type: ignore
         return 'MAPI error %d' % (self.code,)
 
 
-def _logon(profileName=None, password=None):
+def _logon(profileName=None, password=None):  # noqa: N803
     pSession = LHANDLE()
     rc = MAPILogon(0, profileName, password, MAPI_LOGON_UI, 0, byref(pSession))
     if rc != SUCCESS_SUCCESS:
@@ -231,14 +230,13 @@ def _sendMail(session, recipient, subject, body, attach):
 
 
 def SendMail(recipient, subject="", body="", attachfiles=""):
-    """Post an e-mail message using Simple MAPI
+    """Post an e-mail message using Simple MAPI.
 
     recipient - string: address to send to (multiple addresses separated with a semicolon)
     subject   - string: subject header
     body      - string: message text
     attach    - string: files to attach (multiple attachments separated with a semicolon)
     """
-
     attach = []
     AttachWork = attachfiles.split(';')
     for f in AttachWork:

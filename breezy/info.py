@@ -21,12 +21,10 @@ import time
 from io import StringIO
 
 from . import branch as _mod_branch
-from . import controldir, errors
+from . import controldir, errors, osutils, urlutils
 from . import hooks as _mod_hooks
-from . import osutils, urlutils
 from .bzr import bzrdir
-from .errors import (NoRepositoryPresent, NotBranchError, NotLocalUrl,
-                     NoWorkingTree)
+from .errors import NoRepositoryPresent, NotBranchError, NotLocalUrl, NoWorkingTree
 from .missing import find_unmerged
 
 
@@ -46,7 +44,7 @@ class LocationList:
         self.base_path = base_path
 
     def add_url(self, label, url):
-        """Add a URL to the list, converting it to a path if possible"""
+        """Add a URL to the list, converting it to a path if possible."""
         if url is None:
             return
         try:
@@ -57,7 +55,7 @@ class LocationList:
             self.add_path(label, path)
 
     def add_path(self, label, path):
-        """Add a path, converting it to a relative path if possible"""
+        """Add a path, converting it to a relative path if possible."""
         try:
             path = osutils.relpath(self.base_path, path)
         except errors.PathNotChild:
@@ -181,7 +179,7 @@ def _show_control_dir_info(control, outfile):
     if control._format.colocated_branches:
         outfile.write('\n')
         outfile.write('Control directory:\n')
-        outfile.write('         %d branches\n' % len(control.list_branches()))
+        outfile.write(f'         {len(control.list_branches())} branches\n')
 
 
 def _show_format_info(control=None, repository=None, branch=None,
@@ -190,14 +188,11 @@ def _show_format_info(control=None, repository=None, branch=None,
     outfile.write('\n')
     outfile.write('Format:\n')
     if control:
-        outfile.write('       control: %s\n' %
-                      control._format.get_format_description())
+        outfile.write(f'       control: {control._format.get_format_description()}\n')
     if working:
-        outfile.write('  working tree: %s\n' %
-                      working._format.get_format_description())
+        outfile.write(f'  working tree: {working._format.get_format_description()}\n')
     if branch:
-        outfile.write('        branch: %s\n' %
-                      branch._format.get_format_description())
+        outfile.write(f'        branch: {branch._format.get_format_description()}\n')
     if repository:
         outfile.write('    repository: %s\n' %
                       repository._format.get_format_description())
@@ -216,19 +211,19 @@ def _show_locking_info(repository=None, branch=None, working=None,
                 status = 'locked'
             else:
                 status = 'unlocked'
-            outfile.write('  working tree: %s\n' % status)
+            outfile.write(f'  working tree: {status}\n')
         if branch:
             if branch.get_physical_lock_status():
                 status = 'locked'
             else:
                 status = 'unlocked'
-            outfile.write('        branch: %s\n' % status)
+            outfile.write(f'        branch: {status}\n')
         if repository:
             if repository.get_physical_lock_status():
                 status = 'locked'
             else:
                 status = 'unlocked'
-            outfile.write('    repository: %s\n' % status)
+            outfile.write(f'    repository: {status}\n')
 
 
 def _show_missing_revisions_branch(branch, outfile):
@@ -272,11 +267,11 @@ def _show_working_stats(working, outfile):
     outfile.write('\n')
     outfile.write('In the working tree:\n')
     outfile.write('  %8s unchanged\n' % len(delta.unchanged))
-    outfile.write('  %8d modified\n' % len(delta.modified))
-    outfile.write('  %8d added\n' % len(delta.added))
-    outfile.write('  %8d removed\n' % len(delta.removed))
-    outfile.write('  %8d renamed\n' % len(delta.renamed))
-    outfile.write('  %8d copied\n' % len(delta.copied))
+    outfile.write(f'  {len(delta.modified):8} modified\n')
+    outfile.write(f'  {len(delta.added):8} added\n')
+    outfile.write(f'  {len(delta.removed):8} removed\n')
+    outfile.write(f'  {len(delta.renamed):8} renamed\n')
+    outfile.write(f'  {len(delta.copied):8} copied\n')
 
     ignore_cnt = unknown_cnt = 0
     for path in working.extras():
@@ -385,7 +380,7 @@ def show_bzrdir_info(a_controldir, verbose=False, outfile=None):
 
 def show_component_info(control, repository, branch=None, working=None,
                         verbose=1, outfile=None):
-    """Write info about all bzrdir components to stdout"""
+    """Write info about all bzrdir components to stdout."""
     if outfile is None:
         outfile = sys.stdout
     if verbose is False:
@@ -394,7 +389,7 @@ def show_component_info(control, repository, branch=None, working=None,
         verbose = 2
     layout = describe_layout(repository, branch, working, control)
     format = describe_format(control, repository, branch, working)
-    outfile.write("{} (format: {})\n".format(layout, format))
+    outfile.write(f"{layout} (format: {format})\n")
     _show_location_info(
         gather_location_info(control=control, repository=repository,
                              branch=branch, working=working),
@@ -425,7 +420,7 @@ def show_component_info(control, repository, branch=None, working=None,
 
 
 def describe_layout(repository=None, branch=None, tree=None, control=None):
-    """Convert a control directory layout into a user-understandable term
+    """Convert a control directory layout into a user-understandable term.
 
     Common outputs include "Standalone tree", "Repository branch" and
     "Checkout".  Uncommon outputs include "Unshared repository with trees"
@@ -479,11 +474,11 @@ def describe_layout(repository=None, branch=None, tree=None, control=None):
                     phrase = "Checkout"
         if independence != "":
             phrase = phrase.lower()
-        return "{}{}".format(independence, phrase)
+        return f"{independence}{phrase}"
 
 
 def describe_format(control, repository, branch, tree):
-    """Determine the format of an existing control directory
+    """Determine the format of an existing control directory.
 
     Several candidates may be found.  If so, the names are returned as a
     single string, separated by ' or '.

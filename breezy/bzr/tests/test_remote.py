@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for remote bzrdir/branch/repo/etc
+"""Tests for remote bzrdir/branch/repo/etc.
 
 These are proxy objects which act on remote objects by sending messages
 through a smart client.  The proxies are to be created when attempting to open
@@ -31,29 +31,43 @@ from io import BytesIO
 
 import fastbencode as bencode
 
-from ... import branch, config, controldir, errors, repository, tests
+from ... import branch, config, controldir, errors, repository, tests, treebuilder
 from ... import transport as _mod_transport
-from ... import treebuilder
+from ..._bzr_rs import revision_bencode_serializer
 from ...branch import Branch
 from ...revision import NULL_REVISION, Revision
 from ...tests import test_server
 from ...tests.scenarios import load_tests_apply_scenarios
 from ...transport.memory import MemoryTransport
-from ...transport.remote import (RemoteSSHTransport, RemoteTCPTransport,
-                                 RemoteTransport)
-from .. import (RemoteBzrProber, bzrdir, groupcompress_repo, inventory,
-                inventory_delta, knitpack_repo, remote, versionedfile,
-                vf_search)
+from ...transport.remote import RemoteSSHTransport, RemoteTCPTransport, RemoteTransport
+from .. import (
+    RemoteBzrProber,
+    bzrdir,
+    groupcompress_repo,
+    inventory,
+    inventory_delta,
+    knitpack_repo,
+    remote,
+    versionedfile,
+    vf_search,
+)
 from ..bzrdir import BzrDir, BzrDirFormat
-from ..chk_serializer import chk_bencode_serializer
-from ..remote import (RemoteBranch, RemoteBranchFormat, RemoteBzrDir,
-                      RemoteBzrDirFormat, RemoteRepository,
-                      RemoteRepositoryFormat, UnknownErrorFromSmartServer)
+from ..remote import (
+    RemoteBranch,
+    RemoteBranchFormat,
+    RemoteBzrDir,
+    RemoteBzrDirFormat,
+    RemoteRepository,
+    RemoteRepositoryFormat,
+    UnknownErrorFromSmartServer,
+)
 from ..smart import medium, request
 from ..smart.client import _SmartClient
-from ..smart.repository import (SmartServerRepositoryGetParentMap,
-                                SmartServerRepositoryGetStream_1_19,
-                                _stream_to_byte_stream)
+from ..smart.repository import (
+    SmartServerRepositoryGetParentMap,
+    SmartServerRepositoryGetStream_1_19,
+    _stream_to_byte_stream,
+)
 
 load_tests = load_tests_apply_scenarios
 
@@ -93,7 +107,7 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         self.assertTrue(repo.has_revision(revid))
 
     def test_find_correct_format(self):
-        """Should open a RemoteBzrDir over a RemoteTransport"""
+        """Should open a RemoteBzrDir over a RemoteTransport."""
         fmt = BzrDirFormat.find_format(self.transport)
         self.assertIn(RemoteBzrProber, controldir.ControlDirFormat._probers)
         self.assertIsInstance(fmt, RemoteBzrDirFormat)
@@ -219,8 +233,8 @@ class FakeClient(_SmartClient):
     def _get_next_response(self):
         try:
             response_tuple = self.responses.pop(0)
-        except IndexError:
-            raise AssertionError("{!r} didn't expect any more calls".format(self))
+        except IndexError as e:
+            raise AssertionError(f"{self!r} didn't expect any more calls") from e
         if response_tuple[0] == b'unknown':
             raise errors.UnknownSmartMethod(response_tuple[1])
         elif response_tuple[0] == b'error':
@@ -233,10 +247,10 @@ class FakeClient(_SmartClient):
             return
         try:
             next_call = self._expected_calls.pop(0)
-        except IndexError:
+        except IndexError as e:
             raise AssertionError("%r didn't expect any more calls "
                                  "but got %r%r"
-                                 % (self, method, args,))
+                                 % (self, method, args,)) from e
         if next_call is None:
             return
         if method != next_call[0] or args != next_call[1]:
@@ -348,7 +362,7 @@ class Test_ClientMedium_remote_path_from_transport(tests.TestCase):
         """Assert that the result of
         HttpTransportBase.remote_path_from_transport is the expected value for
         a given transport_base and relpath of that transport.  (Note that
-        HttpTransportBase is a subclass of SmartClientMedium)
+        HttpTransportBase is a subclass of SmartClientMedium).
         """
         base_transport = _mod_transport.get_transport(transport_base)
         client_medium = base_transport.get_smart_medium()
@@ -1502,7 +1516,7 @@ class TestBranchLastRevisionInfo(RemoteBranchTestCase):
 
 
 class TestBranch_get_stacked_on_url(TestRemote):
-    """Test Branch._get_stacked_on_url rpc"""
+    """Test Branch._get_stacked_on_url rpc."""
 
     def test_get_stacked_on_invalid_url(self):
         # test that asking for a stacked on url the server can't access works.
@@ -2263,7 +2277,7 @@ class TestTransportIsReadonly(tests.TestCase):
             client._calls)
 
     def test_error_from_old_server(self):
-        """bzr 0.15 and earlier servers don't recognise the is_readonly verb.
+        """Bzr 0.15 and earlier servers don't recognise the is_readonly verb.
 
         Clients should treat it as a "no" response, because is_readonly is only
         advisory anyway (a transport could be read-write, but then the
@@ -2750,7 +2764,7 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
 
     def test_exposes_get_cached_parent_map(self):
         """RemoteRepository exposes get_cached_parent_map from
-        _unstacked_provider
+        _unstacked_provider.
         """
         r1 = '\u0e33'.encode()
         r2 = '\u0dab'.encode()
@@ -2814,13 +2828,15 @@ class TestRepositoryGetRevisions(TestRemoteRepository):
     def test_hpss_get_single_revision(self):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
-        somerev1 = Revision(b"somerev1")
-        somerev1.committer = "Joe Committer <joe@example.com>"
-        somerev1.timestamp = 1321828927
-        somerev1.timezone = -60
-        somerev1.inventory_sha1 = b"691b39be74c67b1212a75fcb19c433aaed903c2b"
-        somerev1.message = "Message"
-        body = zlib.compress(b''.join(chk_bencode_serializer.write_revision_to_lines(
+        somerev1 = Revision(b"somerev1",
+            committer="Joe Committer <joe@example.com>",
+            timestamp=1321828927,
+            timezone=-60,
+            inventory_sha1=b"691b39be74c67b1212a75fcb19c433aaed903c2b",
+            parent_ids=[],
+            message="Message",
+            properties={})
+        body = zlib.compress(b''.join(revision_bencode_serializer.write_revision_to_lines(
             somerev1)))
         # Split up body into two bits to make sure the zlib compression object
         # gets data fed twice.
@@ -2901,7 +2917,7 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
             client._calls)
 
     def test_unexpected_error(self):
-        revid = '123'
+        revid = b'123'
         transport_path = 'sinhala'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_error_response(b'AnUnexpectedError')
@@ -3495,7 +3511,7 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
 
         def inventories_substream():
             # An empty inventory fulltext.  This will be streamed normally.
-            chunks = fmt._serializer.write_inventory_to_lines(inv)
+            chunks = fmt._inventory_serializer.write_inventory_to_lines(inv)
             yield versionedfile.ChunkedContentFactory(
                 (b'rev1',), (), None, chunks, chunks_are_lines=True)
 
@@ -3505,7 +3521,7 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
             entry = inv.make_entry(
                 'directory', 'newdir', inv.root.file_id, b'newdir-id')
             entry.revision = b'ghost'
-            delta = [(None, 'newdir', b'newdir-id', entry)]
+            delta = inventory_delta.InventoryDelta([(None, 'newdir', b'newdir-id', entry)])
             serializer = inventory_delta.InventoryDeltaSerializer(
                 versioned_root=True, tree_references=False)
             lines = serializer.delta_to_lines(b'rev1', b'rev2', delta)
@@ -3598,7 +3614,7 @@ class TestRepositoryTarball(TestRemoteRepository):
 
 
 class TestRemoteRepositoryCopyContent(tests.TestCaseWithTransport):
-    """RemoteRepository.copy_content_into optimizations"""
+    """RemoteRepository.copy_content_into optimizations."""
 
     def test_copy_content_remote_to_local(self):
         self.transport_server = test_server.SmartTCPServer_for_testing
@@ -3611,8 +3627,8 @@ class TestRemoteRepositoryCopyContent(tests.TestCaseWithTransport):
         dest_url = self.get_vfs_only_url('repo2')
         dest_bzrdir = BzrDir.create(dest_url)
         dest_repo = dest_bzrdir.create_repository()
-        self.assertFalse(isinstance(dest_repo, RemoteRepository))
-        self.assertTrue(isinstance(src_repo, RemoteRepository))
+        self.assertNotIsInstance(dest_repo, RemoteRepository)
+        self.assertIsInstance(src_repo, RemoteRepository)
         src_repo.copy_content_into(dest_repo)
 
 
@@ -3691,7 +3707,7 @@ class TestRemotePackRepositoryAutoPack(TestRemoteRepository):
             client._calls)
 
     def test_oom_error_reporting(self):
-        """An out-of-memory condition on the server is reported clearly"""
+        """An out-of-memory condition on the server is reported clearly."""
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_expected_call(
@@ -4186,7 +4202,7 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
         local.repository.fetch(remote_branch.repository)
         self.hpss_calls = []
         remote_branch.copy_content_into(local)
-        self.assertFalse(b'Branch.revision_history' in self.hpss_calls)
+        self.assertNotIn(b'Branch.revision_history', self.hpss_calls)
 
     def test_fetch_everything_needs_just_one_call(self):
         local = self.make_branch('local')
@@ -4243,7 +4259,7 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
         self.assertLength(1, verb_log)
         # more than one HPSS call is needed, but because it's a VFS callback
         # its hard to predict exactly how many.
-        self.assertTrue(len(self.hpss_calls) > 1)
+        self.assertGreater(len(self.hpss_calls), 1)
 
 
 class TestUpdateBoundBranchWithModifiedBoundLocation(
@@ -4387,7 +4403,7 @@ class TestRepositoryIterInventories(TestRemoteRepository):
         repo._format = fmt
         stream = [('inventory-deltas', [
             versionedfile.FulltextContentFactory(b'somerevid', None, None,
-                                                 self._serialize_inv_delta(b'null:', b'somerevid', []))])]
+                                                 self._serialize_inv_delta(b'null:', b'somerevid', inventory_delta.InventoryDelta([])))])]
         client.add_expected_call(
             b'VersionedFileRepository.get_inventories', (
                 b'quack/', b'unordered'),
@@ -4429,7 +4445,7 @@ class TestRepositoryRevisionTreeArchive(TestRemoteRepository):
         repo._format = fmt
         stream = [('inventory-deltas', [
             versionedfile.FulltextContentFactory(b'somerevid', None, None,
-                                                 self._serialize_inv_delta(b'null:', b'somerevid', []))])]
+                                                 self._serialize_inv_delta(b'null:', b'somerevid', inventory_delta.InventoryDelta([])))])]
         client.add_expected_call(
             b'VersionedFileRepository.get_inventories', (
                 b'quack/', b'unordered'),
@@ -4470,7 +4486,7 @@ class TestRepositoryAnnotate(TestRemoteRepository):
             ('inventory-deltas', [
                 versionedfile.FulltextContentFactory(
                     b'somerevid', None, None,
-                    self._serialize_inv_delta(b'null:', b'somerevid', []))])]
+                    self._serialize_inv_delta(b'null:', b'somerevid', inventory_delta.InventoryDelta([])))])]
         client.add_expected_call(
             b'VersionedFileRepository.get_inventories', (
                 b'quack/', b'unordered'),

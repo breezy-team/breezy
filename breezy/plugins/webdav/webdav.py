@@ -158,7 +158,7 @@ class DavStatHandler(DavResponseHandler):
         sname = self._strip_ns(name)
         if sname != 'multistatus':
             raise errors.InvalidHttpResponse(
-                self.url, msg='Unexpected %s element' % name)
+                self.url, msg=f'Unexpected {name} element')
 
     def _href_end(self):
         stack = self.elt_stack
@@ -231,7 +231,7 @@ def _extract_stat_info(url, infile):
         parser.parse(infile)
     except xml.sax.SAXParseException as e:
         raise errors.InvalidHttpResponse(
-            url, msg='Malformed xml response: %s' % e)
+            url, msg=f'Malformed xml response: {e}') from e
     if handler.is_dir:
         size = -1 # directory sizes are meaningless for bzr
         is_exec = True
@@ -287,7 +287,7 @@ def _extract_dir_content(url, infile):
         parser.parse(infile)
     except xml.sax.SAXParseException as e:
         raise errors.InvalidHttpResponse(
-            url, msg='Malformed xml response: %s' % e)
+            url, msg=f'Malformed xml response: {e}') from e
     # Reformat for bzr needs
     dir_content = handler.dir_content
     (dir_name, is_dir) = dir_content[0][:2]
@@ -355,7 +355,7 @@ class DavConnectionHandler(urllib.ConnectionHandler):
 
 
 class DavOpener(urllib.Opener):
-    """Dav specific needs regarding HTTP(S)"""
+    """Dav specific needs regarding HTTP(S)."""
 
     def __init__(self, report_activity=None, ca_certs=None):
         super().__init__(connection=DavConnectionHandler,
@@ -401,7 +401,7 @@ class HttpDavTransport(urllib.HttpTransport):
         return result
 
     def put_file(self, relpath, f, mode=None):
-        """See Transport.put_file"""
+        """See Transport.put_file."""
         # FIXME: We read the whole file in memory, using chunked encoding and
         # counting bytes while sending them will be far better. Look at reusing
         # osutils.pumpfile ?
@@ -424,14 +424,14 @@ class HttpDavTransport(urllib.HttpTransport):
         :param f:       File-like object.
         :param mode:    Not supported by DAV.
         """
-        abspath = self._remote_path(relpath)
+        self._remote_path(relpath)
 
         # We generate a sufficiently random name to *assume* that
         # no collisions will occur and don't worry about it (nor
         # handle it).
         stamp = '.tmp.%.9f.%d.%d' % (time.time(),
                                      os.getpid(),
-                                     random.randint(0, 0x7FFFFFFF))
+                                     random.randint(0, 0x7FFFFFFF))  # noqa: S311
         # A temporary file to hold  all the data to guard against
         # client death
         tmp_relpath = relpath + stamp
@@ -442,15 +442,15 @@ class HttpDavTransport(urllib.HttpTransport):
         # Now move the temp file
         try:
             self.move(tmp_relpath, relpath)
-        except Exception as e:
+        except Exception:
             # If  we fail,  try to  clean up  the  temporary file
             # before we throw the exception but don't let another
             # exception mess  things up.
             exc_type, exc_val, exc_tb = sys.exc_info()
             try:
                 self.delete(tmp_relpath)
-            except:
-                raise exc_type(exc_val).with_traceback(exc_tb)
+            except BaseException as err:
+                raise exc_type(exc_val).with_traceback(exc_tb) from err
             raise # raise the original with its traceback if we can.
 
     def put_file_non_atomic(self, relpath, f,
@@ -469,8 +469,7 @@ class HttpDavTransport(urllib.HttpTransport):
                             mode=None,
                             create_parent_dir=False,
                             dir_mode=False):
-        """See Transport.put_file_non_atomic"""
-
+        """See Transport.put_file_non_atomic."""
         abspath = self._remote_path(relpath)
 
         # FIXME: Accept */* ? Why ? *we* send, we do not receive :-/
@@ -558,7 +557,7 @@ class HttpDavTransport(urllib.HttpTransport):
             raise self._raise_http_error(abspath, response, 'put file failed')
 
     def mkdir(self, relpath, mode=None):
-        """See Transport.mkdir"""
+        """See Transport.mkdir."""
         abspath = self._remote_path(relpath)
 
         response = self.request('MKCOL', abspath)
@@ -583,7 +582,7 @@ class HttpDavTransport(urllib.HttpTransport):
             raise self._raise_http_error(abspath, response, 'mkdir failed')
 
     def rename(self, rel_from, rel_to):
-        """Rename without special overwriting"""
+        """Rename without special overwriting."""
         abs_from = self._remote_path(rel_from)
         abs_to = self._remote_path(rel_to)
 
@@ -605,11 +604,10 @@ class HttpDavTransport(urllib.HttpTransport):
             # bug  even,  since  we  require explicitely  to  not
             # overwrite.
             self._raise_http_error(abs_from, response,
-                                   'unable to rename to %r' % (abs_to))
+                                   f'unable to rename to {abs_to!r}')
 
     def move(self, rel_from, rel_to):
-        """See Transport.move"""
-
+        """See Transport.move."""
         abs_from = self._remote_path(rel_from)
         abs_to = self._remote_path(rel_to)
 
@@ -625,11 +623,10 @@ class HttpDavTransport(urllib.HttpTransport):
         # 204 means it did exist.
         if code not in (201, 204):
             self._raise_http_error(abs_from, response,
-                                   'unable to move to %r' % (abs_to))
+                                   f'unable to move to {abs_to!r}')
 
     def delete(self, rel_path):
-        """
-        Delete the item at relpath.
+        """Delete the item at relpath.
 
         Note that when a non-empty dir requires to be deleted, a conforming DAV
         server will delete the dir and all its content. That does not normally
@@ -646,7 +643,7 @@ class HttpDavTransport(urllib.HttpTransport):
             self._raise_http_error(abs_path, response, 'unable to delete')
 
     def copy(self, rel_from, rel_to):
-        """See Transport.copy"""
+        """See Transport.copy."""
         abs_from = self._remote_path(rel_from)
         abs_to = self._remote_path(rel_to)
 
@@ -660,8 +657,7 @@ class HttpDavTransport(urllib.HttpTransport):
         # investivation.
         if code not in (201, 204):
             self._raise_http_error(abs_from, response,
-                                   'unable to copy from %r to %r'
-                                   % (abs_from, abs_to))
+                                   f'unable to copy from {abs_from!r} to {abs_to!r}')
 
     def copy_to(self, relpaths, other, mode=None, pb=None):
         """Copy a set of entries from self into another Transport.
@@ -681,9 +677,7 @@ class HttpDavTransport(urllib.HttpTransport):
         return True
 
     def list_dir(self, relpath):
-        """
-        Return a list of all files at the given location.
-        """
+        """Return a list of all files at the given location."""
         return [elt[0] for elt in self._list_tree(relpath, 1)]
 
     def _list_tree(self, relpath, depth):
@@ -695,7 +689,7 @@ class HttpDavTransport(urllib.HttpTransport):
 """
         response = self.request(
             'PROPFIND', abspath, body=propfind, headers={
-                'Depth': '{}'.format(depth),
+                'Depth': f'{depth}',
                 'Content-Type': 'application/xml; charset="utf-8"'})
 
         code = response.status
@@ -706,12 +700,12 @@ class HttpDavTransport(urllib.HttpTransport):
             raise transport.NoSuchFile(abspath)
         if code != 207:
             self._raise_http_error(abspath, response,
-                                   'unable to list  %r directory' % (abspath))
+                                   f'unable to list  {abspath!r} directory')
         return _extract_dir_content(abspath, response)
 
     def lock_write(self, relpath):
         """Lock the given file for exclusive access.
-        :return: A lock object, which should be passed to Transport.unlock()
+        :return: A lock object, which should be passed to Transport.unlock().
         """
         # We follow the same path as FTP, which just returns a BogusLock
         # object. We don't explicitly support locking a specific file.
@@ -753,7 +747,7 @@ class HttpDavTransport(urllib.HttpTransport):
             raise transport.NoSuchFile(abspath)
         if code != 207:
             self._raise_http_error(abspath, response,
-                                   'unable to list  %r directory' % (abspath))
+                                   f'unable to list  {abspath!r} directory')
         return _extract_stat_info(abspath, response)
 
     def iter_files_recursive(self):
@@ -761,16 +755,16 @@ class HttpDavTransport(urllib.HttpTransport):
         # We get the whole tree with a single request
         tree = self._list_tree('.', 'Infinity')
         # Now filter out the directories
-        for (name, is_dir, size, is_exex) in tree:
+        for (name, is_dir, _size, _is_exex) in tree:
             if not is_dir:
                 yield name
 
     def append_file(self, relpath, f, mode=None):
-        """See Transport.append_file"""
+        """See Transport.append_file."""
         return self.append_bytes(relpath, f.read(), mode=mode)
 
     def append_bytes(self, relpath, bytes, mode=None):
-        """See Transport.append_bytes"""
+        """See Transport.append_bytes."""
         if self._range_hint is not None:
             # TODO: We reuse the _range_hint handled by bzr core,
             # unless someone can show me a server implementing
@@ -804,8 +798,7 @@ class HttpDavTransport(urllib.HttpTransport):
             # then the server is buggy :-/ )
             relpath_size = int(response.getheader('Content-Length', 0))
             if relpath_size == 0:
-                trace.mutter('if %s is not empty, the server is buggy'
-                             % relpath)
+                trace.mutter(f'if {relpath} is not empty, the server is buggy')
         if relpath_size:
             self._put_bytes_ranged(relpath, bytes, relpath_size)
         else:

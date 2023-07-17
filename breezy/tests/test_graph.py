@@ -14,9 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from .. import errors
+from .. import errors, tests
 from .. import graph as _mod_graph
-from .. import tests
 from ..revision import NULL_REVISION
 from . import TestCaseWithMemoryTransport
 
@@ -31,8 +30,8 @@ from . import TestCaseWithMemoryTransport
 #   rev3  /
 #     |  /
 #   rev4
-ancestry_1 = {b'rev1': [NULL_REVISION], b'rev2a': [b'rev1'], b'rev2b': [b'rev1'],
-              b'rev3': [b'rev2a'], b'rev4': [b'rev3', b'rev2b']}
+ancestry_1 = {b'rev1': (NULL_REVISION, ), b'rev2a': (b'rev1', ), b'rev2b': (b'rev1', ),
+              b'rev3': (b'rev2a', ), b'rev4': (b'rev3', b'rev2b')}
 
 
 # Ancestry 2:
@@ -46,8 +45,8 @@ ancestry_1 = {b'rev1': [NULL_REVISION], b'rev2a': [b'rev1'], b'rev2b': [b'rev1']
 # rev3a
 #   |
 # rev4a
-ancestry_2 = {b'rev1a': [NULL_REVISION], b'rev2a': [b'rev1a'],
-              b'rev1b': [NULL_REVISION], b'rev3a': [b'rev2a'], b'rev4a': [b'rev3a']}
+ancestry_2 = {b'rev1a': (NULL_REVISION, ), b'rev2a': (b'rev1a', ),
+              b'rev1b': (NULL_REVISION, ), b'rev3a': (b'rev2a', ), b'rev4a': (b'rev3a', )}
 
 
 # Criss cross ancestry
@@ -61,8 +60,8 @@ ancestry_2 = {b'rev1a': [NULL_REVISION], b'rev2a': [b'rev1a'],
 #       |  X |
 #       |/  \|
 #    rev3a  rev3b
-criss_cross = {b'rev1': [NULL_REVISION], b'rev2a': [b'rev1'], b'rev2b': [b'rev1'],
-               b'rev3a': [b'rev2a', b'rev2b'], b'rev3b': [b'rev2b', b'rev2a']}
+criss_cross = {b'rev1': (NULL_REVISION, ), b'rev2a': (b'rev1', ), b'rev2b': (b'rev1', ),
+               b'rev3a': (b'rev2a', b'rev2b'), b'rev3b': (b'rev2b', b'rev2a')}
 
 
 # Criss-cross 2
@@ -333,7 +332,7 @@ racing_shortcuts = {b'a': [NULL_REVISION], b'b': [b'a'], b'c': [b'b'], b'd': [b'
 #     y   z
 #
 
-multiple_interesting_unique = {b'a': [NULL_REVISION], b'b': [b'a'], b'c': [b'b'],
+multiple_interesting_unique = {b'a': (NULL_REVISION, ), b'b': [b'a'], b'c': [b'b'],
                                b'd': [b'c'], b'e': [b'd'], b'f': [b'd'], b'g': [b'e'], b'h': [b'e'], b'i': [b'f'],
                                b'j': [b'g'], b'k': [b'g'], b'l': [b'h'], b'm': [b'i'], b'n': [b'k', b'l'],
                                b'o': [b'm'], b'p': [b'm', b'l'], b'q': [b'n', b'o'], b'r': [b'q'], b's': [b'r'],
@@ -355,13 +354,13 @@ multiple_interesting_unique = {b'a': [NULL_REVISION], b'b': [b'a'], b'c': [b'b']
 #       d | g
 #       |\|/
 #       e f
-shortcut_extra_root = {b'a': [NULL_REVISION],
-                       b'b': [b'a'],
-                       b'c': [b'b'],
-                       b'd': [b'c'],
-                       b'e': [b'd'],
-                       b'f': [b'a', b'd', b'g'],
-                       b'g': [NULL_REVISION],
+shortcut_extra_root = {b'a': (NULL_REVISION, ),
+                       b'b': (b'a', ),
+                       b'c': (b'b', ),
+                       b'd': (b'c', ),
+                       b'e': (b'd', ),
+                       b'f': (b'a', b'd', b'g'),
+                       b'g': (NULL_REVISION, ),
                        }
 
 #  NULL_REVISION
@@ -374,8 +373,8 @@ shortcut_extra_root = {b'a': [NULL_REVISION],
 #     | \ |
 #     a   c
 
-boundary = {b'a': [b'b'], b'c': [b'b', b'd'], b'b': [b'e'], b'd': [b'e'], b'e': [b'f'],
-            b'f': [NULL_REVISION]}
+boundary = {b'a': (b'b', ), b'c': (b'b', b'd'), b'b': (b'e', ), b'd': (b'e', ), b'e': (b'f', ),
+            b'f': (NULL_REVISION, )}
 
 
 # A graph that contains a ghost
@@ -389,8 +388,8 @@ boundary = {b'a': [b'b'], b'c': [b'b', b'd'], b'b': [b'e'], b'd': [b'e'], b'e': 
 #     | \ |
 #     a   c
 
-with_ghost = {b'a': [b'b'], b'c': [b'b', b'd'], b'b': [b'e'], b'd': [b'e', b'g'],
-              b'e': [b'f'], b'f': [NULL_REVISION], NULL_REVISION: ()}
+with_ghost = {b'a': (b'b', ), b'c': (b'b', b'd'), b'b': (b'e', ), b'd': (b'e', b'g'),
+              b'e': (b'f', ), b'f': (NULL_REVISION, ), NULL_REVISION: ()}
 
 # A graph that shows we can shortcut finding revnos when reaching them from the
 # side.
@@ -470,7 +469,7 @@ class TestGraphBase(tests.TestCase):
         def get_parent_map(keys):
             bad_keys = set(keys).intersection(break_on)
             if bad_keys:
-                self.fail('key(s) {} was accessed'.format(sorted(bad_keys)))
+                self.fail(f'key(s) {sorted(bad_keys)} was accessed')
             return orig_parent_map(keys)
         g.get_parent_map = get_parent_map
         return g
@@ -488,7 +487,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         return tree
 
     def build_ancestry(self, tree, ancestors):
-        """Create an ancestry as specified by a graph dict
+        """Create an ancestry as specified by a graph dict.
 
         :param tree: A tree to use
         :param ancestors: a dict of {node: [node_parent, ...]}
@@ -534,7 +533,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual({b'rev1'}, graph.find_lca(b'rev2a', b'rev2b'))
 
     def test_no_unique_lca(self):
-        """Test error when one revision is not in the graph"""
+        """Test error when one revision is not in the graph."""
         graph = self.make_graph(ancestry_1)
         self.assertRaises(errors.NoCommonAncestor, graph.find_unique_lca,
                           b'rev1', b'1rev')
@@ -548,7 +547,7 @@ class TestGraph(TestCaseWithMemoryTransport):
                          graph.find_lca(b'rev3a', b'rev3b', b'rev2b'))
 
     def test_lca_shortcut(self):
-        """Test least-common ancestor on this history shortcut"""
+        """Test least-common ancestor on this history shortcut."""
         graph = self.make_graph(history_shortcut)
         self.assertEqual({b'rev2b'}, graph.find_lca(b'rev3a', b'rev3b'))
 
@@ -608,7 +607,7 @@ class TestGraph(TestCaseWithMemoryTransport):
                                      {b'rev2a', b'rev2b', b'rev3'})
 
     def test_unique_lca_criss_cross(self):
-        """Ensure we don't pick non-unique lcas in a criss-cross"""
+        """Ensure we don't pick non-unique lcas in a criss-cross."""
         graph = self.make_graph(criss_cross)
         self.assertEqual(b'rev1', graph.find_unique_lca(b'rev3a', b'rev3b'))
         lca, steps = graph.find_unique_lca(
@@ -617,14 +616,14 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual(2, steps)
 
     def test_unique_lca_null_revision(self):
-        """Ensure we pick NULL_REVISION when necessary"""
+        """Ensure we pick NULL_REVISION when necessary."""
         graph = self.make_graph(criss_cross2)
         self.assertEqual(b'rev1b', graph.find_unique_lca(b'rev2a', b'rev1b'))
         self.assertEqual(NULL_REVISION,
                          graph.find_unique_lca(b'rev2a', b'rev2b'))
 
     def test_unique_lca_null_revision2(self):
-        """Ensure we pick NULL_REVISION when necessary"""
+        """Ensure we pick NULL_REVISION when necessary."""
         graph = self.make_graph(ancestry_2)
         self.assertEqual(NULL_REVISION,
                          graph.find_unique_lca(b'rev4a', b'rev1b'))
@@ -634,7 +633,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual(b'c', graph.find_unique_lca(b'f', b'g'))
 
     def test_common_ancestor_two_repos(self):
-        """Ensure we do unique_lca using data from two repos"""
+        """Ensure we do unique_lca using data from two repos."""
         mainline_tree = self.prepare_memory_tree('mainline')
         self.build_ancestry(mainline_tree, mainline)
         self.addCleanup(mainline_tree.unlock)
@@ -709,8 +708,8 @@ class TestGraph(TestCaseWithMemoryTransport):
         args = [b'rev2a', b'rev3', b'rev1']
         topo_args = list(graph.iter_topo_order(args))
         self.assertEqual(set(args), set(topo_args))
-        self.assertTrue(topo_args.index(b'rev2a') > topo_args.index(b'rev1'))
-        self.assertTrue(topo_args.index(b'rev2a') < topo_args.index(b'rev3'))
+        self.assertGreater(topo_args.index(b'rev2a'), topo_args.index(b'rev1'))
+        self.assertLess(topo_args.index(b'rev2a'), topo_args.index(b'rev3'))
 
     def test_is_ancestor(self):
         graph = self.make_graph(ancestry_1)
@@ -726,7 +725,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         instrumented_provider = InstrumentedParentsProvider(graph)
         instrumented_graph = _mod_graph.Graph(instrumented_provider)
         instrumented_graph.is_ancestor(b'rev2a', b'rev2b')
-        self.assertTrue(b'null:' not in instrumented_provider.calls)
+        self.assertNotIn(b'null:', instrumented_provider.calls)
 
     def test_is_between(self):
         graph = self.make_graph(ancestry_1)
@@ -749,7 +748,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         instrumented_provider = InstrumentedParentsProvider(graph)
         graph = _mod_graph.Graph(instrumented_provider)
         self.assertFalse(graph.is_ancestor(b'a', b'c'))
-        self.assertTrue(b'null:' not in instrumented_provider.calls)
+        self.assertNotIn(b'null:', instrumented_provider.calls)
 
     def test_iter_ancestry(self):
         nodes = boundary.copy()
@@ -771,7 +770,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual(expected, dict(graph.iter_ancestry([b'c'])))
 
     def test_filter_candidate_lca(self):
-        """Test filter_candidate_lca for a corner case
+        """Test filter_candidate_lca for a corner case.
 
         This tests the case where we encounter the end of iteration for b'e'
         in the same pass as we discover that b'd' is an ancestor of b'e', and
@@ -1326,10 +1325,10 @@ class TestFindUniqueAncestors(TestGraphBase):
 
 
 class TestGraphFindDistanceToNull(TestGraphBase):
-    """Test an api that should be able to compute a revno"""
+    """Test an api that should be able to compute a revno."""
 
     def assertFindDistance(self, revno, graph, target_id, known_ids):
-        """Assert the output of Graph.find_distance_to_null()"""
+        """Assert the output of Graph.find_distance_to_null()."""
         actual = graph.find_distance_to_null(target_id, known_ids)
         self.assertEqual(revno, actual)
 
@@ -1370,7 +1369,7 @@ class TestGraphFindDistanceToNull(TestGraphBase):
         self.assertFindDistance(2, graph, b'rev2a', [(b'rev3', 3)])
 
     def test_target_is_ancestor_limits(self):
-        """We shouldn't search all history if we run into ourselves"""
+        """We shouldn't search all history if we run into ourselves."""
         graph = self.make_breaking_graph(ancestry_1, [b'rev1'])
         self.assertFindDistance(3, graph, b'rev3', [(b'rev4', 4)])
 
@@ -1473,7 +1472,9 @@ class TestGetChildMap(TestGraphBase):
 
 
 class TestCachingParentsProvider(tests.TestCase):
-    """These tests run with:
+    """Test CachingParentsProvider.
+
+    These tests run with:
 
     self.inst_pp, a recording parents provider with a graph of a->b, and b is a
     ghost.
@@ -1487,7 +1488,7 @@ class TestCachingParentsProvider(tests.TestCase):
         self.caching_pp = _mod_graph.CachingParentsProvider(self.inst_pp)
 
     def test_get_parent_map(self):
-        """Requesting the same revision should be returned from cache"""
+        """Requesting the same revision should be returned from cache."""
         self.assertEqual({}, self.caching_pp._cache)
         self.assertEqual(
             {b'a': (b'b',)}, self.caching_pp.get_parent_map([b'a']))
@@ -1499,7 +1500,7 @@ class TestCachingParentsProvider(tests.TestCase):
         self.assertEqual({b'a': (b'b',)}, self.caching_pp._cache)
 
     def test_get_parent_map_not_present(self):
-        """The cache should also track when a revision doesn't exist"""
+        """The cache should also track when a revision doesn't exist."""
         self.assertEqual({}, self.caching_pp.get_parent_map([b'b']))
         self.assertEqual([b'b'], self.inst_pp.calls)
         self.assertEqual({}, self.caching_pp.get_parent_map([b'b']))
@@ -1507,7 +1508,7 @@ class TestCachingParentsProvider(tests.TestCase):
         self.assertEqual([b'b'], self.inst_pp.calls)
 
     def test_get_parent_map_mixed(self):
-        """Anything that can be returned from cache, should be"""
+        """Anything that can be returned from cache, should be."""
         self.assertEqual({}, self.caching_pp.get_parent_map([b'b']))
         self.assertEqual([b'b'], self.inst_pp.calls)
         self.assertEqual({b'a': (b'b',)},
@@ -1697,27 +1698,27 @@ class TestStackedParentsProvider(tests.TestCase):
         return SharedInstrumentedParentsProvider(pp, self.calls, info)
 
     def test_stacked_parents_provider(self):
-        parents1 = _mod_graph.DictParentsProvider({b'rev2': [b'rev3']})
-        parents2 = _mod_graph.DictParentsProvider({b'rev1': [b'rev4']})
+        parents1 = _mod_graph.DictParentsProvider({b'rev2': (b'rev3', )})
+        parents2 = _mod_graph.DictParentsProvider({b'rev1': (b'rev4', )})
         stacked = _mod_graph.StackedParentsProvider([parents1, parents2])
-        self.assertEqual({b'rev1': [b'rev4'], b'rev2': [b'rev3']},
-                         stacked.get_parent_map([b'rev1', b'rev2']))
-        self.assertEqual({b'rev2': [b'rev3'], b'rev1': [b'rev4']},
-                         stacked.get_parent_map([b'rev2', b'rev1']))
-        self.assertEqual({b'rev2': [b'rev3']},
-                         stacked.get_parent_map([b'rev2', b'rev2']))
-        self.assertEqual({b'rev1': [b'rev4']},
-                         stacked.get_parent_map([b'rev1', b'rev1']))
+        self.assertEqual({b'rev1': (b'rev4', ), b'rev2': (b'rev3', )},
+                         stacked.get_parent_map((b'rev1', b'rev2', )))
+        self.assertEqual({b'rev2': (b'rev3', ), b'rev1': (b'rev4', )},
+                         stacked.get_parent_map((b'rev2', b'rev1')))
+        self.assertEqual({b'rev2': (b'rev3', )},
+                         stacked.get_parent_map((b'rev2', b'rev2')))
+        self.assertEqual({b'rev1': (b'rev4', )},
+                         stacked.get_parent_map((b'rev1', b'rev1')))
 
     def test_stacked_parents_provider_overlapping(self):
         # rev2 is availible in both providers.
         # 1
         # |
         # 2
-        parents1 = _mod_graph.DictParentsProvider({b'rev2': [b'rev1']})
-        parents2 = _mod_graph.DictParentsProvider({b'rev2': [b'rev1']})
+        parents1 = _mod_graph.DictParentsProvider({b'rev2': (b'rev1', )})
+        parents2 = _mod_graph.DictParentsProvider({b'rev2': (b'rev1', )})
         stacked = _mod_graph.StackedParentsProvider([parents1, parents2])
-        self.assertEqual({b'rev2': [b'rev1']},
+        self.assertEqual({b'rev2': (b'rev1', )},
                          stacked.get_parent_map([b'rev2']))
 
     def test_handles_no_get_cached_parent_map(self):

@@ -19,11 +19,11 @@
 """Tests of the 'brz clean-tree' command."""
 
 
-import os
 
 from breezy import ignores
 from breezy.tests import TestCaseWithTransport
-from breezy.tests.script import run_script
+
+from ..script import run_script
 
 
 class TestBzrTools(TestCaseWithTransport):
@@ -67,8 +67,8 @@ class TestBzrTools(TestCaseWithTransport):
         # bug https://bugs.launchpad.net/bzr/+bug/572098
         # so it will play well with scmproj/bzr-externals plugins.
         wt1 = self.make_branch_and_tree('.')
-        wt2 = self.make_branch_and_tree('foo')
-        wt3 = self.make_branch_and_tree('bar')
+        self.make_branch_and_tree('foo')
+        self.make_branch_and_tree('bar')
         ignores.tree_ignores_add_patterns(wt1, ['./foo'])
         self.run_bzr(['clean-tree', '--unknown', '--force'])
         self.assertPathExists('foo')
@@ -78,7 +78,7 @@ class TestBzrTools(TestCaseWithTransport):
         self.assertPathExists('bar')
 
     def test_clean_tree_directory(self):
-        """Test --directory option"""
+        """Test --directory option."""
         tree = self.make_branch_and_tree('a')
         self.build_tree(['a/added', 'a/unknown', 'a/ignored'])
         tree.add('added')
@@ -88,7 +88,7 @@ class TestBzrTools(TestCaseWithTransport):
         self.assertPathExists('a/added')
 
     def test_clean_tree_interactive(self):
-        wt = self.make_branch_and_tree('.')
+        self.make_branch_and_tree('.')
         self.touch('bar')
         self.touch('foo')
         run_script(self, """

@@ -17,7 +17,6 @@
 
 import errno
 import os
-import posixpath
 import tempfile
 import time
 from stat import S_IEXEC, S_ISREG
@@ -25,20 +24,34 @@ from stat import S_IEXEC, S_ISREG
 from dulwich.index import blob_from_path_and_stat, commit_tree
 from dulwich.objects import Blob
 
-from .. import annotate, conflicts, errors, multiparent, osutils
+from .. import annotate, errors, osutils, trace, ui, urlutils
 from .. import revision as _mod_revision
-from .. import trace
 from .. import transport as _mod_transport
-from .. import ui, urlutils
 from ..i18n import gettext
 from ..mutabletree import MutableTree
-from ..transform import (ROOT_PARENT, FinalPaths, ImmortalLimbo,
-                         MalformedTransform, PreviewTree, ReusingTransform,
-                         TransformRenameFailed, TreeTransform, _FileMover,
-                         _TransformResults, joinpath, unique_add)
+from ..transform import (
+    ROOT_PARENT,
+    FinalPaths,
+    ImmortalLimbo,
+    MalformedTransform,
+    PreviewTree,
+    ReusingTransform,
+    TransformRenameFailed,
+    TreeTransform,
+    _FileMover,
+    _TransformResults,
+    joinpath,
+    unique_add,
+)
+from ..transport.local import file_kind
 from ..tree import InterTree, TreeChange
-from .mapping import (decode_git_path, encode_git_path, mode_is_executable,
-                      mode_kind, object_mode)
+from .mapping import (
+    decode_git_path,
+    encode_git_path,
+    mode_is_executable,
+    mode_kind,
+    object_mode,
+)
 from .tree import GitTree, GitTreeDirectory, GitTreeFile, GitTreeSymlink
 
 
@@ -83,18 +96,17 @@ class TreeTransformBase(TreeTransform):
         self._tree = None
 
     def create_path(self, name, parent):
-        """Assign a transaction id to a new path"""
+        """Assign a transaction id to a new path."""
         trans_id = self.assign_id()
         unique_add(self._new_name, trans_id, name)
         unique_add(self._new_parent, trans_id, parent)
         return trans_id
 
     def adjust_root_path(self, name, parent):
-        """Emulate moving the root by moving all children, instead.
-        """
+        """Emulate moving the root by moving all children, instead."""
 
     def fixup_new_roots(self):
-        """Reinterpret requests to change the root directory
+        """Reinterpret requests to change the root directory.
 
         Instead of creating a root directory, or moving an existing directory,
         all the attributes and children of the new root are applied to the
@@ -144,7 +156,7 @@ class TreeTransformBase(TreeTransform):
         """Determine or set the transaction id associated with a file ID.
         A new id is only created for file_ids that were never present.  If
         a transaction has been unversioned, it is deliberately still returned.
-        (this will likely lead to an unversioned parent conflict.)
+        (this will likely lead to an unversioned parent conflict.).
         """
         if file_id is None:
             raise ValueError('None is not a valid file id')
@@ -158,7 +170,7 @@ class TreeTransformBase(TreeTransform):
         self._versioned.add(trans_id)
 
     def cancel_versioning(self, trans_id):
-        """Undo a previous versioning of a file"""
+        """Undo a previous versioning of a file."""
         raise NotImplementedError(self.cancel_versioning)
 
     def new_paths(self, filesystem_only=False):
@@ -193,7 +205,7 @@ class TreeTransformBase(TreeTransform):
         return self._tree.is_versioned(orig_path)
 
     def find_raw_conflicts(self):
-        """Find any violations of inventory or filesystem invariants"""
+        """Find any violations of inventory or filesystem invariants."""
         if self._done is True:
             raise ReusingTransform()
         conflicts = []
@@ -282,7 +294,7 @@ class TreeTransformBase(TreeTransform):
                 base, target_id, known_children))
 
     def _parent_loops(self):
-        """No entry should be its own ancestor"""
+        """No entry should be its own ancestor."""
         for trans_id in self._new_parent:
             seen = set()
             parent_id = trans_id
@@ -329,7 +341,7 @@ class TreeTransformBase(TreeTransform):
                     yield ('non-file executability', trans_id)
 
     def _overwrite_conflicts(self):
-        """Check for overwrites (not permitted on Win32)"""
+        """Check for overwrites (not permitted on Win32)."""
         for trans_id in self._new_contents:
             if self.tree_kind(trans_id) is None:
                 continue
@@ -362,7 +374,7 @@ class TreeTransformBase(TreeTransform):
                 last_trans_id = trans_id
 
     def _parent_type_conflicts(self, by_parent):
-        """Children must have a directory parent"""
+        """Children must have a directory parent."""
         for parent_id, children in by_parent.items():
             if parent_id == ROOT_PARENT:
                 continue
@@ -384,7 +396,7 @@ class TreeTransformBase(TreeTransform):
                 yield ('non-directory parent', parent_id)
 
     def _set_executability(self, path, trans_id):
-        """Set the executability of versioned files """
+        """Set the executability of versioned files."""
         if self._tree._supports_executable():
             new_executability = self._new_executability[trans_id]
             abspath = self._tree.abspath(path)
@@ -495,7 +507,7 @@ class TreeTransformBase(TreeTransform):
         return orphans
 
     def _affected_ids(self):
-        """Return the set of transform ids affected by the transform"""
+        """Return the set of transform ids affected by the transform."""
         trans_ids = set(self._removed_id)
         trans_ids.update(self._versioned)
         trans_ids.update(self._removed_contents)
@@ -710,7 +722,7 @@ class TreeTransformBase(TreeTransform):
         raise NotImplementedError(self.create_tree_reference)
 
     def create_hardlink(self, path, trans_id):
-        """Schedule creation of a hard link"""
+        """Schedule creation of a hard link."""
         raise NotImplementedError(self.create_hardlink)
 
     def cancel_creation(self, trans_id):
@@ -732,7 +744,7 @@ class TreeTransformBase(TreeTransform):
         raise NotImplementedError(self.apply)
 
     def cook_conflicts(self, raw_conflicts):
-        """Generate a list of cooked conflicts, sorted by file path"""
+        """Generate a list of cooked conflicts, sorted by file path."""
         if not raw_conflicts:
             return
         fp = FinalPaths(self)
@@ -758,7 +770,7 @@ class TreeTransformBase(TreeTransform):
             elif c[0] == 'path conflict':
                 yield TextConflict(fp.get_path(c[1]))
             else:
-                raise AssertionError('unknown conflict %s' % c[0])
+                raise AssertionError(f'unknown conflict {c[0]}')
 
 
 class DiskTreeTransform(TreeTransformBase):
@@ -805,22 +817,21 @@ class DiskTreeTransform(TreeTransformBase):
             for path in limbo_paths:
                 try:
                     osutils.delete_any(path)
-                except OSError as e:
-                    if e.errno != errno.ENOENT:
-                        raise
+                except FileNotFoundError:
                     # XXX: warn? perhaps we just got interrupted at an
                     # inconvenient moment, but perhaps files are disappearing
                     # from under us?
+                    pass
             try:
                 osutils.delete_any(self._limbodir)
-            except OSError:
+            except OSError as err:
                 # We don't especially care *why* the dir is immortal.
-                raise ImmortalLimbo(self._limbodir)
+                raise ImmortalLimbo(self._limbodir) from err
             try:
                 if self._deletiondir is not None:
                     osutils.delete_any(self._deletiondir)
-            except OSError:
-                raise errors.ImmortalPendingDeletion(self._deletiondir)
+            except OSError as err:
+                raise errors.ImmortalPendingDeletion(self._deletiondir) from err
         finally:
             TreeTransformBase.finalize(self)
 
@@ -829,7 +840,7 @@ class DiskTreeTransform(TreeTransformBase):
         return osutils.supports_executable(self._limbodir)
 
     def _limbo_name(self, trans_id):
-        """Generate the limbo name of a file"""
+        """Generate the limbo name of a file."""
         limbo_name = self._limbo_files.get(trans_id)
         if limbo_name is None:
             limbo_name = self._generate_limbo_path(trans_id)
@@ -931,14 +942,12 @@ class DiskTreeTransform(TreeTransformBase):
         os.utime(path, (self._creation_mtime, self._creation_mtime))
 
     def create_hardlink(self, path, trans_id):
-        """Schedule creation of a hard link"""
+        """Schedule creation of a hard link."""
         name = self._limbo_name(trans_id)
         try:
             os.link(path, name)
-        except OSError as e:
-            if e.errno != errno.EPERM:
-                raise
-            raise errors.HardLinkNotSupported(path)
+        except PermissionError as err:
+            raise errors.HardLinkNotSupported(path) from err
         try:
             unique_add(self._new_contents, trans_id, 'file')
         except BaseException:
@@ -969,7 +978,7 @@ class DiskTreeTransform(TreeTransformBase):
             except KeyError:
                 path = None
             trace.warning(
-                'Unable to create symlink "{}" on this filesystem.'.format(path))
+                f'Unable to create symlink "{path}" on this filesystem.')
             self._symlink_target[trans_id] = target
         # We add symlink to _new_contents even if they are unsupported
         # and not created. These entries are subsequently used to avoid
@@ -1020,7 +1029,7 @@ class DiskTreeTransform(TreeTransformBase):
                 return GitTreeDirectory(
                     file_id, self.final_name(trans_id), parent_id=parent_id), is_versioned
             executable = mode_is_executable(st.st_mode)
-            mode = object_mode(kind, executable)
+            object_mode(kind, executable)
             blob = blob_from_path_and_stat(encode_git_path(path), st)
             if kind == 'symlink':
                 return GitTreeSymlink(
@@ -1054,9 +1063,8 @@ class DiskTreeTransform(TreeTransformBase):
                     if self.tree_kind(trans_id) == 'directory':
                         return GitTreeDirectory(
                             file_id, self.final_name(trans_id), parent_id=parent_id), is_versioned
-                except OSError as e:
-                    if e.errno != errno.ENOTDIR:
-                        raise
+                except NotADirectoryError:
+                    pass
                 return None, None
 
     def final_git_entry(self, trans_id):
@@ -1162,14 +1170,18 @@ class GitTreeTransform(DiskTreeTransform):
         try:
             limbodir = urlutils.local_path_from_url(
                 tree._transport.abspath('limbo'))
-            osutils.ensure_empty_directory_exists(
-                limbodir,
-                errors.ExistingLimbo)
+            try:
+                osutils.ensure_empty_directory_exists(
+                    limbodir)
+            except errors.DirectoryNotEmpty as err:
+                raise errors.ExistingLimbo(limbodir) from err
             deletiondir = urlutils.local_path_from_url(
                 tree._transport.abspath('pending-deletion'))
-            osutils.ensure_empty_directory_exists(
-                deletiondir,
-                errors.ExistingPendingDeletion)
+            try:
+                osutils.ensure_empty_directory_exists(
+                    deletiondir)
+            except errors.DirectoryNotEmpty as err:
+                raise errors.ExistingPendingDeletion(deletiondir) from err
         except BaseException:
             tree.unlock()
             raise
@@ -1183,7 +1195,7 @@ class GitTreeTransform(DiskTreeTransform):
         self._deletiondir = deletiondir
 
     def canonical_path(self, path):
-        """Get the canonical tree-relative path"""
+        """Get the canonical tree-relative path."""
         # don't follow final symlinks
         abs = self._tree.abspath(path)
         if abs in self._relpaths:
@@ -1210,7 +1222,7 @@ class GitTreeTransform(DiskTreeTransform):
         if path is None:
             return None
         try:
-            return osutils.file_kind(self._tree.abspath(path))
+            return file_kind(self._tree.abspath(path))
         except _mod_transport.NoSuchFile:
             return None
 
@@ -1228,20 +1240,17 @@ class GitTreeTransform(DiskTreeTransform):
             return
         try:
             mode = os.stat(self._tree.abspath(old_path)).st_mode
-        except OSError as e:
-            if e.errno in (errno.ENOENT, errno.ENOTDIR):
-                # Either old_path doesn't exist, or the parent of the
-                # target is not a directory (but will be one eventually)
-                # Either way, we know it doesn't exist *right now*
-                # See also bug #248448
-                return
-            else:
-                raise
+        except (FileNotFoundError, NotADirectoryError):
+            # Either old_path doesn't exist, or the parent of the
+            # target is not a directory (but will be one eventually)
+            # Either way, we know it doesn't exist *right now*
+            # See also bug #248448
+            return
         if typefunc(mode):
             osutils.chmod_if_possible(self._limbo_name(trans_id), mode)
 
     def iter_tree_children(self, parent_id):
-        """Iterate through the entry's tree children, if any"""
+        """Iterate through the entry's tree children, if any."""
         try:
             path = self._tree_id_paths[parent_id]
         except KeyError:
@@ -1305,7 +1314,7 @@ class GitTreeTransform(DiskTreeTransform):
         return limbo_name
 
     def cancel_versioning(self, trans_id):
-        """Undo a previous versioning of a file"""
+        """Undo a previous versioning of a file."""
         self._versioned.remove(trans_id)
 
     def apply(self, no_conflicts=False, _mover=None):
@@ -1419,7 +1428,7 @@ class GitTreeTransform(DiskTreeTransform):
                     st = osutils.lstat(full_path)
                     self._observed_sha1s[trans_id] = (o_sha1, st)
                 if trans_id in self._new_reference_revision:
-                    for (submodule_path, submodule_url, submodule_name) in self._tree._submodule_config():
+                    for (submodule_path, _submodule_url, _submodule_name) in self._tree._submodule_config():
                         if decode_git_path(submodule_path) == path:
                             break
                     else:
@@ -1433,8 +1442,8 @@ class GitTreeTransform(DiskTreeTransform):
                     BareLocalGitControlDirFormat().initialize_on_transport(submodule_transport)
                     with open(os.path.join(full_path, '.git'), 'w') as f:
                         submodule_abspath = submodule_transport.local_abspath('.')
-                        f.write('gitdir: %s\n' % os.path.relpath(submodule_abspath, full_path))
-        for path, trans_id in new_paths:
+                        f.write(f'gitdir: {os.path.relpath(submodule_abspath, full_path)}\n')
+        for _path, trans_id in new_paths:
             # new_paths includes stuff like workingtree conflicts. Only the
             # stuff in new_contents actually comes from limbo.
             if trans_id in self._limbo_files:
@@ -1531,7 +1540,7 @@ class GitTransformPreview(GitTreeTransform):
         pass
 
     def iter_tree_children(self, parent_id):
-        """Iterate through the entry's tree children, if any"""
+        """Iterate through the entry's tree children, if any."""
         try:
             path = self._tree_id_paths[parent_id]
         except KeyError:
@@ -1548,7 +1557,7 @@ class GitTransformPreview(GitTreeTransform):
 
 
 class GitPreviewTree(PreviewTree, GitTree):
-    """Partial implementation of Tree to support show_diff_trees"""
+    """Partial implementation of Tree to support show_diff_trees."""
 
     supports_file_ids = False
 
@@ -1612,7 +1621,7 @@ class GitPreviewTree(PreviewTree, GitTree):
             want_unversioned=want_unversioned)
 
     def get_file(self, path):
-        """See Tree.get_file"""
+        """See Tree.get_file."""
         trans_id = self._path2trans_id(path)
         if trans_id is None:
             raise _mod_transport.NoSuchFile(path)
@@ -1625,7 +1634,7 @@ class GitPreviewTree(PreviewTree, GitTree):
         return self._transform._tree.get_file(orig_path)
 
     def get_symlink_target(self, path):
-        """See Tree.get_symlink_target"""
+        """See Tree.get_symlink_target."""
         trans_id = self._path2trans_id(path)
         if trans_id is None:
             raise _mod_transport.NoSuchFile(path)
@@ -1719,7 +1728,7 @@ class GitPreviewTree(PreviewTree, GitTree):
         return kind, size, executable, link_or_sha1
 
     def get_file_mtime(self, path):
-        """See Tree.get_file_mtime"""
+        """See Tree.get_file_mtime."""
         trans_id = self._path2trans_id(path)
         if trans_id is None:
             raise _mod_transport.NoSuchFile(path)
@@ -1801,7 +1810,7 @@ class GitPreviewTree(PreviewTree, GitTree):
         trans_id = self._path2trans_id(path)
         if trans_id is None:
             raise _mod_transport.NoSuchFile(path)
-        for child_trans_id in self._all_children(trans_id):
+        for _child_trans_id in self._all_children(trans_id):
             entry, is_versioned = self._transform.final_entry(trans_id)
             if not is_versioned:
                 continue

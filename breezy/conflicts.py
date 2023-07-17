@@ -17,9 +17,7 @@
 # TODO: 'brz resolve' should accept a directory name and work from that
 # point down
 
-import errno
 import os
-import re
 
 from .lazy_import import lazy_import
 
@@ -200,21 +198,18 @@ def restore(filename):
     try:
         osutils.rename(filename + ".THIS", filename)
         conflicted = True
-    except OSError as e:
-        if e.errno != errno.ENOENT:
-            raise
+    except FileNotFoundError:
+        pass
     try:
         os.unlink(filename + ".BASE")
         conflicted = True
-    except OSError as e:
-        if e.errno != errno.ENOENT:
-            raise
+    except FileNotFoundError:
+        pass
     try:
         os.unlink(filename + ".OTHER")
         conflicted = True
-    except OSError as e:
-        if e.errno != errno.ENOENT:
-            raise
+    except FileNotFoundError:
+        pass
     if not conflicted:
         raise errors.NotConflicted(filename)
 
@@ -254,15 +249,15 @@ class ConflictList:
         return not (self == other_list)
 
     def __repr__(self):
-        return "ConflictList(%r)" % self.__list
+        return f"ConflictList({self.__list!r})"
 
     def to_strings(self):
-        """Generate strings for the provided conflicts"""
+        """Generate strings for the provided conflicts."""
         for conflict in self:
             yield str(conflict)
 
     def remove_files(self, tree):
-        """Remove the THIS, BASE and OTHER files for listed conflicts"""
+        """Remove the THIS, BASE and OTHER files for listed conflicts."""
         for conflict in self:
             if not conflict.has_files:
                 continue
@@ -296,9 +291,9 @@ class ConflictList:
         if ignore_misses is not True:
             for path in [p for p in paths if p not in selected_paths]:
                 if not os.path.exists(tree.abspath(path)):
-                    print("%s does not exist" % path)
+                    print(f"{path} does not exist")
                 else:
-                    print("%s is not conflicted" % path)
+                    print(f"{path} is not conflicted")
         return new_conflicts, selected_conflicts
 
 
@@ -318,9 +313,8 @@ class Conflict:
         for fname in self.associated_filenames():
             try:
                 osutils.delete_any(tree.abspath(fname))
-            except OSError as e:
-                if e.errno != errno.ENOENT:
-                    raise
+            except FileNotFoundError:
+                pass
 
     def do(self, action, tree):
         """Apply the specified action to the conflict.

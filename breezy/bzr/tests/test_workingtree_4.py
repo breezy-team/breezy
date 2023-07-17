@@ -15,12 +15,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for WorkingTreeFormat4"""
+"""Tests for WorkingTreeFormat4."""
 
 import os
 import time
 
 from ... import errors, osutils
+from ...bzr.inventory_delta import InventoryDelta
 from ...lockdir import LockDir
 from ...tests import TestCaseWithTransport, TestSkipped, features
 from ...tree import InterTree
@@ -63,10 +64,10 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.assertIs(None, tree._ignoreglobster)
 
     def test_uses_lockdir(self):
-        """WorkingTreeFormat4 uses its own LockDir:
+        """WorkingTreeFormat4 uses its own LockDir.
 
-            - lock is a directory
-            - when the WorkingTree is locked, LockDir can see that
+        - lock is a directory
+        - when the WorkingTree is locked, LockDir can see that
         """
         # this test could be factored into a subclass of tests common to both
         # format 3 and 4, but for now its not much of an issue as there is only
@@ -92,8 +93,8 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         dir.create_branch()
         try:
             return workingtree_4.WorkingTreeFormat4().initialize(dir)
-        except errors.NotLocalUrl:
-            raise TestSkipped('Not a local URL')
+        except errors.NotLocalUrl as e:
+            raise TestSkipped('Not a local URL') from e
 
     def test_dirstate_stores_all_parent_inventories(self):
         tree = self.make_workingtree()
@@ -202,13 +203,13 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         rev1_tree = subtree.basis_tree()
         rev1_tree.lock_read()
         # Trigger reading of inventory
-        rev1_tree.root_inventory
+        rev1_tree.root_inventory  # noqa: B018
         self.addCleanup(rev1_tree.unlock)
         rev2 = subtree.commit('second commit in subdir', allow_pointless=True)
         rev2_tree = subtree.basis_tree()
         rev2_tree.lock_read()
         # Trigger reading of inventory
-        rev2_tree.root_inventory
+        rev2_tree.root_inventory  # noqa: B018
         self.addCleanup(rev2_tree.unlock)
 
         tree.branch.pull(subtree.branch)
@@ -343,7 +344,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         def lock_and_compare_all_current_dirstate(tree, lock_method):
             getattr(tree, lock_method)()
             state = tree.current_dirstate()
-            self.assertFalse(state in known_dirstates)
+            self.assertNotIn(state, known_dirstates)
             known_dirstates.add(state)
             tree.unlock()
         tree = self.make_workingtree()
@@ -381,12 +382,16 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         rev_tree2 = tree.branch.repository.revision_tree(rev_id2)
         optimiser = InterTree.get(rev_tree, rev_tree2)
         self.assertIsInstance(optimiser, InterTree)
-        self.assertFalse(isinstance(
-            optimiser, workingtree_4.InterDirStateTree))
+        self.assertNotIsInstance(
+            optimiser,
+            workingtree_4.InterDirStateTree
+        )
         optimiser = InterTree.get(rev_tree2, rev_tree)
         self.assertIsInstance(optimiser, InterTree)
-        self.assertFalse(isinstance(
-            optimiser, workingtree_4.InterDirStateTree))
+        self.assertNotIsInstance(
+            optimiser,
+            workingtree_4.InterDirStateTree
+        )
 
     def test_revtree_not_in_dirstate_to_dirstate_not_interdirstate(self):
         # we should not get a dirstate optimiser when the revision id for of
@@ -398,12 +403,16 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree.lock_read()
         optimiser = InterTree.get(rev_tree, tree)
         self.assertIsInstance(optimiser, InterTree)
-        self.assertFalse(isinstance(
-            optimiser, workingtree_4.InterDirStateTree))
+        self.assertNotIsInstance(
+            optimiser,
+            workingtree_4.InterDirStateTree
+        )
         optimiser = InterTree.get(tree, rev_tree)
         self.assertIsInstance(optimiser, InterTree)
-        self.assertFalse(isinstance(
-            optimiser, workingtree_4.InterDirStateTree))
+        self.assertNotIsInstance(
+            optimiser,
+            workingtree_4.InterDirStateTree
+        )
         tree.unlock()
 
     def test_empty_basis_to_dirstate_tree(self):
@@ -500,7 +509,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.build_tree(['tree/a', 'tree/b'])
         tree.add(['a'], ids=[b'a-id'])
         self.assertEqual('a', tree.id2path(b'a-id'))
-        self.assertRaises(errors.NoSuchId, tree.id2path, 'a')
+        self.assertRaises(errors.NoSuchId, tree.id2path, b'a')
         tree.commit('a')
         tree.add(['b'], ids=[b'b-id'])
 
@@ -660,8 +669,8 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.assertEqual([b'', b'versioned', b'versioned2'], returned)
 
     def test_iter_changes_unversioned_error(self):
-        """ Check if a PathsNotVersionedError is correctly raised and the
-            paths list contains all unversioned entries only.
+        """Check if a PathsNotVersionedError is correctly raised and the
+        paths list contains all unversioned entries only.
         """
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/bar', b'')])
@@ -670,16 +679,15 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
 
         def tree_iter_changes(files):
-            return [
-                c for c in tree.iter_changes(
+            return list(tree.iter_changes(
                     tree.basis_tree(), specific_files=files,
-                    require_versioned=True)]
+                    require_versioned=True))
         e = self.assertRaises(errors.PathsNotVersionedError,
                               tree_iter_changes, ['bar', 'foo'])
         self.assertEqual(e.paths, ['foo'])
 
     def test_iter_changes_unversioned_non_ascii(self):
-        """Unversioned non-ascii paths should be reported as unicode"""
+        """Unversioned non-ascii paths should be reported as unicode."""
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('f', b'')])
@@ -835,9 +843,9 @@ class TestCorruptDirstate(TestCaseWithTransport):
         self.assertRaises(
             errors.InconsistentDelta,
             tree.update_basis_by_delta, b'new-revision-id',
-            [('dir', 'new-dir', b'dir-id', new_dir),
+            InventoryDelta([('dir', 'new-dir', b'dir-id', new_dir),
              ('dir/file', 'new-dir/new-file', b'file-id', new_file),
-             ])
+             ]))
         del state
 
         # Now when we re-read the file it should not have been modified

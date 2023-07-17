@@ -16,7 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Tests for interfacing with a Git Branch"""
+"""Tests for interfacing with a Git Branch."""
 
 import os
 
@@ -46,23 +46,21 @@ class TestGitBranch(tests.TestCaseInTempDir):
         self.assertEqual(b.ref, b"refs/remotes/origin/unstable")
 
     def test_open_existing(self):
-        r = GitRepo.init('.')
+        GitRepo.init('.')
         d = ControlDir.open('.')
         thebranch = d.create_branch()
         self.assertIsInstance(thebranch, branch.GitBranch)
 
     def test_repr(self):
-        r = GitRepo.init('.')
+        GitRepo.init('.')
         d = ControlDir.open('.')
         thebranch = d.create_branch()
         self.assertEqual(
-            "<LocalGitBranch('{}/', {!r})>".format(
-                urlutils.local_path_to_url(self.test_dir),
-                'master'),
+            f"<LocalGitBranch('{urlutils.local_path_to_url(self.test_dir)}/', 'master')>",
             repr(thebranch))
 
     def test_last_revision_is_null(self):
-        r = GitRepo.init('.')
+        GitRepo.init('.')
         thedir = ControlDir.open('.')
         thebranch = thedir.create_branch()
         self.assertEqual(revision.NULL_REVISION, thebranch.last_revision())
@@ -82,7 +80,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
                          thebranch.last_revision())
 
     def test_last_revision_info(self):
-        reva = self.simple_commit_a()
+        self.simple_commit_a()
         self.build_tree(['b'])
         r = GitRepo(".")
         self.addCleanup(r.close)
@@ -124,7 +122,7 @@ class TestWithGitBranch(tests.TestCaseWithTransport):
 
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
-        r = dulwich.repo.Repo.create(self.test_dir)
+        dulwich.repo.Repo.create(self.test_dir)
         d = ControlDir.open(self.test_dir)
         self.git_branch = d.create_branch()
 
@@ -211,7 +209,7 @@ class BranchTests(tests.TestCaseInTempDir):
         self.addCleanup(r.close)
         r.refs[b"refs/tags/lala"] = b"aa" * 20
         oldrepo = Repository.open(path)
-        revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
+        oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
         warnings, newbranch = self.callCatchWarnings(
             self.clone_git_branch, path, "f")
         self.assertEqual({}, newbranch.tags.get_tag_dict())
@@ -235,7 +233,7 @@ class BranchTests(tests.TestCaseInTempDir):
         mark2 = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg")
         marks = bb.finish()
         os.chdir("..")
-        gitsha1 = marks[mark1]
+        marks[mark1]
         gitsha2 = marks[mark2]
         oldrepo = Repository.open(path)
         revid2 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)

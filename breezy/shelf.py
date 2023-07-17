@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import errno
 import re
 
 import fastbencode as bencode
@@ -143,7 +142,7 @@ class ShelfCreator:
         elif change[0] == 'modify target':
             self.shelve_modify_target(change[1])
         else:
-            raise ValueError('Unknown change kind: "%s"' % change[0])
+            raise ValueError(f'Unknown change kind: "{change[0]}"')
 
     def shelve_all(self):
         """Shelve all changes.
@@ -435,10 +434,8 @@ class ShelfManager:
         filename = self.get_shelf_filename(shelf_id)
         try:
             return open(self.transport.local_abspath(filename), 'rb')
-        except OSError as e:
-            if e.errno != errno.ENOENT:
-                raise
-            raise NoSuchShelfId(shelf_id)
+        except FileNotFoundError as err:
+            raise NoSuchShelfId(shelf_id) from err
 
     def get_unshelver(self, shelf_id):
         """Return an unshelver for a given shelf_id.

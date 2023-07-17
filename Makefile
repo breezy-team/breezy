@@ -32,7 +32,7 @@ BRZ_PLUGIN_PATH=-site:-user
 sw = $(sort $(wildcard $(1)))
 
 
-.PHONY: all clean realclean extensions flake8 api-docs check-nodocs check
+.PHONY: all clean realclean extensions flake8 api-docs check-nodocs check clippy clippy-fix ruff ruff-fix
 
 all: extensions
 
@@ -72,6 +72,10 @@ brz:
 # Note that at present this gives many false warnings, because it doesn't
 # know about identifiers loaded through lazy_import.
 flake8:
+	flake8 breezy
+
+fmt-check:
+	find crates breezy -name '*.rs' | xargs rustfmt --check
 	flake8 breezy
 
 mypy:
@@ -316,4 +320,19 @@ check-dist-tarball:
 	rm -rf $$tmpdir
 
 reformat:
-	isort .
+	find breezy crates  -name '*.rs' | xargs rustfmt
+
+clippy-fix:
+	cargo clippy --fix --all --allow-no-vcs
+
+clippy:
+	cargo clippy --all
+
+ruff:
+	ruff check .
+
+ruff-fix:
+	ruff check --fix .
+
+fix: clippy ruff-fix
+	$(MAKE) reformat

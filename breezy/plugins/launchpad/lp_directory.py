@@ -20,7 +20,7 @@ from urllib.parse import urlsplit
 
 from ... import debug, errors, trace, transport
 from ...i18n import gettext
-from ...urlutils import InvalidURL, split, join
+from ...urlutils import InvalidURL, join, split
 from .account import get_lp_login
 from .uris import DEFAULT_INSTANCE, LAUNCHPAD_DOMAINS, LPNET_SERVICE_ROOT
 
@@ -71,7 +71,7 @@ def _resolve_via_api(path, url, api_base_url=LPNET_SERVICE_ROOT):
         path, subpath = split(path)
         subpaths.insert(0, subpath)
     if not lp_branch:
-        raise errors.InvalidURL("Unknown Launchpad path: %s" % url)
+        raise errors.InvalidURL(f"Unknown Launchpad path: {url}")
     return {'urls': [join(lp_branch.composePublicURL(scheme='bzr+ssh'), *subpaths),
                      join(lp_branch.composePublicURL(scheme='http'), *subpaths)]}
 
@@ -79,7 +79,7 @@ def _resolve_via_api(path, url, api_base_url=LPNET_SERVICE_ROOT):
 class LaunchpadDirectory:
 
     def look_up(self, name, url, purpose=None):
-        """See DirectoryService.look_up"""
+        """See DirectoryService.look_up."""
         return self._resolve(url)
 
     def _resolve_locally(self, path, url, _api_resolver):
@@ -90,7 +90,7 @@ class LaunchpadDirectory:
         if netloc == '':
             netloc = DEFAULT_INSTANCE
         base_url = LAUNCHPAD_DOMAINS[netloc]
-        base = 'bzr+ssh://bazaar.{}/'.format(base_url)
+        base = f'bzr+ssh://bazaar.{base_url}/'
         maybe_invalid = False
         if path.startswith('~'):
             # A ~user style path, validate it a bit.
@@ -116,7 +116,7 @@ class LaunchpadDirectory:
         path = _expand_user(path, url, _lp_login)
         if _lp_login is not None:
             result = self._resolve_locally(path, url, _api_resolver)
-            if 'launchpad' in debug.debug_flags:
+            if debug.debug_flag_enabled('launchpad'):
                 local_res = result
                 result = _api_resolver(path, url)
                 trace.note(gettext(
@@ -125,7 +125,7 @@ class LaunchpadDirectory:
         else:
             result = _api_resolver(path, url)
 
-        if 'launchpad' in debug.debug_flags:
+        if debug.debug_flag_enabled('launchpad'):
             trace.mutter("resolve_lp_path(%r) == %r", url, result)
 
         _warned_login = False

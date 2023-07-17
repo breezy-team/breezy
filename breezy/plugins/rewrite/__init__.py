@@ -21,7 +21,6 @@ patches, the user can resolve the conflict and continue the rebase using the
 'rebase-continue' command or abort using the 'rebase-abort' command.
 """
 
-from ... import errors
 from ... import transport as _mod_transport
 from ...bzr.bzrdir import BzrFormat
 from ...commands import plugin_cmds
@@ -35,7 +34,7 @@ gettext = translation.gettext
 
 for cmd in ['rebase', 'rebase_abort', 'rebase_continue', 'rebase_todo',
             'replay', 'pseudonyms', 'rebase_foreign']:
-    plugin_cmds.register_lazy("cmd_%s" % cmd, [], __name__ + ".commands")
+    plugin_cmds.register_lazy(f"cmd_{cmd}", [], __name__ + ".commands")
 
 
 def show_rebase_summary(params):
@@ -53,7 +52,7 @@ def show_rebase_summary(params):
     except _mod_transport.NoSuchFile:
         return
     todo = list(rebase_todo(params.new_tree.branch.repository, replace_map))
-    params.to_file.write('Rebase in progress. (%d revisions left)\n' % len(todo))
+    params.to_file.write(f'Rebase in progress. ({len(todo)} revisions left)\n')
 
 
 from ...hooks import install_lazy_named_hook
@@ -68,5 +67,5 @@ def load_tests(loader, basic_tests, pattern):
         'tests',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["{}.{}".format(__name__, tmn) for tmn in testmod_names]))
+        [f"{__name__}.{tmn}" for tmn in testmod_names]))
     return basic_tests

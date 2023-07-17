@@ -1,0 +1,17 @@
+[package]
+name = "osutils-py"
+version = "3.4.0"
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = ">=0.19", features = ["extension-module", "chrono" ]}
+breezy-osutils = { path = "../osutils" }
+pyo3-file = { git = "https://github.com/breezy-team/pyo3-file" }
+memchr = "2.3.4"
+termion = ">=1"
+
+[target.'cfg(unix)'.dependencies]
+nix = ">=0.26"

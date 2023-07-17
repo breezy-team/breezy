@@ -46,8 +46,7 @@ This extra metadata is stored in so-called "supplements":
 """
 
 from io import BytesIO
-
-from .. import osutils
+from typing import Any, Dict
 
 
 class CommitSupplement:
@@ -64,8 +63,8 @@ class CommitSupplement:
     explicit_parent_ids = None
 
     def __init__(self):
-        self.properties = {}
-        self.verifiers = {}
+        self.properties: Dict[str, bytes] = {}
+        self.verifiers: Dict[str, Any] = {}
 
     def __nonzero__(self):
         return bool(self.revision_id or self.properties or
@@ -117,7 +116,7 @@ def generate_roundtripping_metadata(metadata, encoding):
                      b" ".join(metadata.explicit_parent_ids))
     for key in sorted(metadata.properties.keys()):
         for l in metadata.properties[key].split(b"\n"):
-            lines.append(b"property-%s: %s\n" % (key, osutils.safe_utf8(l)))
+            lines.append(b"property-%s: %s\n" % (key, l))
     if b"testament3-sha1" in metadata.verifiers:
         lines.append(b"testament3-sha1: %s\n" %
                      metadata.verifiers[b"testament3-sha1"])

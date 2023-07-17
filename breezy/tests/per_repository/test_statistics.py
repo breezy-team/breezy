@@ -28,11 +28,11 @@ class TestGatherStats(TestCaseWithRepository):
         tree.add('')
         # three commits: one to be included by reference, one to be
         # requested, and one to be in the repository but [mostly] ignored.
-        rev1 = tree.commit('first post', committer='person 1',
+        tree.commit('first post', committer='person 1',
                            timestamp=1170491381, timezone=0)
         rev2 = tree.commit('second post', committer='person 2',
                            timestamp=1171491381, timezone=0)
-        rev3 = tree.commit('third post', committer='person 3',
+        tree.commit('third post', committer='person 3',
                            timestamp=1172491381, timezone=0)
         tree.unlock()
         # now, in the same repository, asking for stats with/without the
@@ -56,6 +56,6 @@ class TestGatherStats(TestCaseWithRepository):
         # now ask for global repository stats.
         stats = tree.branch.repository.gather_stats()
         self.assertEqual(0, stats['revisions'])
-        self.assertFalse("committers" in stats)
-        self.assertFalse("firstrev" in stats)
-        self.assertFalse("latestrev" in stats)
+        self.assertNotIn("committers", stats)
+        self.assertNotIn("firstrev", stats)
+        self.assertNotIn("latestrev", stats)

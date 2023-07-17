@@ -21,11 +21,9 @@
 # needed by a command that uses it.
 
 
-import base64
 import re
-from urllib.parse import urlparse, urlunparse
 
-from ... import bedding, branch, errors, osutils, trace, transport
+from ... import bedding, branch, errors, osutils, trace
 from ...i18n import gettext
 
 
@@ -41,11 +39,9 @@ class LaunchpadlibMissing(errors.DependencyNotPresent):
 try:
     import launchpadlib
 except ModuleNotFoundError as e:
-    raise LaunchpadlibMissing(e)
+    raise LaunchpadlibMissing(e) from e
 
-from launchpadlib.credentials import (AccessToken, Credentials,
-                                      CredentialStore,
-                                      RequestTokenAuthorizationEngine)
+from launchpadlib.credentials import AccessToken, Credentials, CredentialStore
 from launchpadlib.launchpad import Launchpad
 
 # Declare the minimum version of launchpadlib that we need in order to work.
@@ -90,12 +86,11 @@ def get_credential_store():
 
 
 class BreezyCredentialStore(CredentialStore):
-    """Implementation of the launchpadlib CredentialStore API for Breezy.
-    """
+    """Implementation of the launchpadlib CredentialStore API for Breezy."""
 
     def __init__(self, credential_save_failed=None):
         super().__init__(credential_save_failed)
-        from breezy.config import AuthenticationConfig
+        from ...config import AuthenticationConfig
         self.auth_config = AuthenticationConfig()
 
     def do_save(self, credentials, unique_key):
@@ -259,7 +254,7 @@ class LaunchpadBranch:
                                self.lp.bzr_identity)
                     return
                 graph = self.bzr.repository.get_graph()
-                if not graph.is_ancestor(osutils.safe_utf8(self.lp.last_scanned_id),
+                if not graph.is_ancestor(self.lp.last_scanned_id.encode("utf-8"),
                                          self.bzr.last_revision()):
                     raise errors.DivergedBranches(self.bzr, self.push_bzr)
                 trace.note(gettext('Pushing to %s') % self.lp.bzr_identity)

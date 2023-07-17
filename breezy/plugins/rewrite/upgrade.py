@@ -19,8 +19,12 @@
 
 from ... import osutils, trace, ui
 from ...errors import BzrError
-from .rebase import (CommitBuilderRevisionRewriter, generate_transpose_plan,
-                     rebase, rebase_todo)
+from .rebase import (
+    CommitBuilderRevisionRewriter,
+    generate_transpose_plan,
+    rebase,
+    rebase_todo,
+)
 
 
 class UpgradeChangesContent(BzrError):
@@ -102,7 +106,8 @@ def upgrade_branch(branch, generate_rebase_map, determine_new_revid,
 
 def check_revision_changed(oldrev, newrev):
     """Check if two revisions are different. This is exactly the same
-    as Revision.equals() except that it does not check the revision_id."""
+    as Revision.equals() except that it does not check the revision_id.
+    """
     if (newrev.inventory_sha1 != oldrev.inventory_sha1 or
             newrev.timestamp != oldrev.timestamp or
             newrev.message != oldrev.message or
@@ -126,7 +131,6 @@ def create_upgrade_plan(repository, generate_rebase_map, determine_new_revid,
         of revisions.
     :return: Tuple with a rebase plan and map of renamed revisions.
     """
-
     graph = repository.get_graph()
     upgrade_map = generate_rebase_map(revision_id)
 
@@ -173,6 +177,6 @@ def upgrade_repository(repository, generate_rebase_map,
             revision_id=revision_id, allow_changes=allow_changes)
         if verbose:
             for revid in rebase_todo(repository, plan):
-                trace.note("{} -> {}".format(revid, plan[revid][0]))
+                trace.note(f"{revid} -> {plan[revid][0]}")
         rebase(repository, plan, CommitBuilderRevisionRewriter(repository))
         return revid_renames

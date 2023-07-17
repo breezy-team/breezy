@@ -14,10 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for lock-breaking user interface"""
+"""Tests for lock-breaking user interface."""
 
 from breezy import branch, config, controldir, errors, osutils, tests
-from breezy.tests.script import run_script
+
+from ..script import run_script
 
 
 class TestBreakLock(tests.TestCaseWithTransport):
@@ -52,9 +53,9 @@ class TestBreakLock(tests.TestCaseWithTransport):
             'repo/branch')
         try:
             local_branch.bind(self.master_branch)
-        except branch.BindingUnsupported:
+        except branch.BindingUnsupported as err:
             raise tests.TestNotApplicable(
-                'default format does not support bound branches')
+                'default format does not support bound branches') from err
         checkoutdir = controldir.ControlDir.create('checkout')
         checkoutdir.set_branch_reference(local_branch)
         self.wt = checkoutdir.create_workingtree()
@@ -65,7 +66,7 @@ class TestBreakLock(tests.TestCaseWithTransport):
         self.assertEqual('', err)
 
     def test_break_lock_no_interaction(self):
-        """With --force, the user isn't asked for confirmation"""
+        """With --force, the user isn't asked for confirmation."""
         self.master_branch.lock_write()
         run_script(self, """
         $ brz break-lock --force master-repo/master-branch
@@ -114,7 +115,6 @@ class TestConfigBreakLock(tests.TestCaseWithTransport):
         self.assertTrue(self.config._lock.is_held)
 
     def test_break_lock(self):
-        self.run_bzr('break-lock --config %s'
-                     % osutils.dirname(self.config_file_name),
+        self.run_bzr(f'break-lock --config {osutils.dirname(self.config_file_name)}',
                      stdin="y\n")
         self.assertRaises(errors.LockBroken, self.config.unlock)

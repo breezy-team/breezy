@@ -27,17 +27,21 @@ Specific tests for individual variations are in other places such as:
 
 import contextlib
 
-from breezy import errors, tests, transform, transport
-from breezy.bzr.workingtree_4 import (DirStateRevisionTree, WorkingTreeFormat4,
-                                      WorkingTreeFormat5)
-from breezy.git.tree import GitRevisionTree
-from breezy.git.workingtree import GitWorkingTreeFormat
-from breezy.revisiontree import RevisionTree
+from breezy import tests, transform, transport
 from breezy.tests import features
-from breezy.tests.per_controldir.test_controldir import TestCaseWithControlDir
 from breezy.tests.per_workingtree import make_scenario as wt_make_scenario
 from breezy.tests.per_workingtree import make_scenarios as wt_make_scenarios
-from breezy.workingtree import format_registry
+
+from ...bzr.workingtree_4 import (
+    DirStateRevisionTree,
+    WorkingTreeFormat4,
+    WorkingTreeFormat5,
+)
+from ...git.tree import GitRevisionTree
+from ...git.workingtree import GitWorkingTreeFormat
+from ...revisiontree import RevisionTree
+from ...workingtree import format_registry
+from ..per_controldir.test_controldir import TestCaseWithControlDir
 
 
 def return_parameter(testcase, something):
@@ -52,7 +56,7 @@ def revision_tree_from_workingtree(testcase, tree):
 
 
 def _dirstate_tree_from_workingtree(testcase, tree):
-    revid = tree.commit('save tree', allow_pointless=True, recursive=None)
+    tree.commit('save tree', allow_pointless=True, recursive=None)
     return tree.basis_tree()
 
 
@@ -70,7 +74,6 @@ def preview_tree_post(testcase, tree):
     testcase.addCleanup(tt.finalize)
     tree.lock_read()
     testcase.addCleanup(tree.unlock)
-    pp = None
     es = contextlib.ExitStack()
     testcase.addCleanup(es.close)
     transform._prepare_revert_transform(es, basis, tree, tt, None, False, None,
@@ -119,7 +122,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
         return self._workingtree_to_test_tree(self, tree)
 
     def _convert_tree(self, tree, converter=None):
-        """helper to convert using the converter or a supplied one."""
+        """Helper to convert using the converter or a supplied one."""
         # convert that to the final shape
         if converter is None:
             converter = self.workingtree_to_test_tree
@@ -136,19 +139,19 @@ class TestCaseWithTree(TestCaseWithControlDir):
         return self._convert_tree(empty_tree, converter)
 
     def _make_abc_tree(self, tree):
-        """setup an abc content tree."""
+        """Setup an abc content tree."""
         files = ['a', 'b/', 'b/c']
         self.build_tree(files, line_endings='binary',
                         transport=tree.controldir.root_transport)
         tree.add(files)
 
     def get_tree_no_parents_abc_content(self, tree, converter=None):
-        """return a test tree with a, b/, b/c contents."""
+        """Return a test tree with a, b/, b/c contents."""
         self._make_abc_tree(tree)
         return self._convert_tree(tree, converter)
 
     def get_tree_no_parents_abc_content_2(self, tree, converter=None):
-        """return a test tree with a, b/, b/c contents.
+        r"""Return a test tree with a, b/, b/c contents.
 
         This variation changes the content of 'a' to foobar\n.
         """
@@ -158,7 +161,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
         return self._convert_tree(tree, converter)
 
     def get_tree_no_parents_abc_content_3(self, tree, converter=None):
-        """return a test tree with a, b/, b/c contents.
+        """Return a test tree with a, b/, b/c contents.
 
         This variation changes the executable flag of b/c to True.
         """
@@ -170,7 +173,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
         return self._convert_tree(tree, converter)
 
     def get_tree_no_parents_abc_content_4(self, tree, converter=None):
-        """return a test tree with d, b/, b/c contents.
+        """Return a test tree with d, b/, b/c contents.
 
         This variation renames a to d.
         """
@@ -179,7 +182,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
         return self._convert_tree(tree, converter)
 
     def get_tree_no_parents_abc_content_5(self, tree, converter=None):
-        """return a test tree with d, b/, b/c contents.
+        r"""Return a test tree with d, b/, b/c contents.
 
         This variation renames a to d and alters its content to 'bar\n'.
         """
@@ -190,7 +193,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
         return self._convert_tree(tree, converter)
 
     def get_tree_no_parents_abc_content_6(self, tree, converter=None):
-        """return a test tree with a, b/, e contents.
+        """Return a test tree with a, b/, e contents.
 
         This variation renames b/c to e, and makes it executable.
         """
@@ -204,7 +207,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
         return self._convert_tree(tree, converter)
 
     def get_tree_no_parents_abc_content_7(self, tree, converter=None):
-        """return a test tree with a, b/, d/e contents.
+        """Return a test tree with a, b/, d/e contents.
 
         This variation adds a dir 'd' (b'd-id'), renames b to d/e.
         """
@@ -227,7 +230,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
     def get_tree_with_subdirs_and_all_supported_content_types(self, symlinks):
         """Return a test tree with subdirs and all supported content types.
         Some content types may not be created on some platforms
-        (like symlinks on native win32)
+        (like symlinks on native win32).
 
         :param  symlinks:   control is symlink should be created in the tree.
                             Note: if you wish to automatically set this
@@ -310,7 +313,7 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
 
 def create_tree_scenario(transport_server, transport_readonly_server,
                          workingtree_format, converter):
-    """Create a scenario for the specified converter
+    """Create a scenario for the specified converter.
 
     :param converter: A function that converts a workingtree into the
         desired format.

@@ -29,7 +29,7 @@ _whitespace_match = re.compile('\\s', re.UNICODE).match
 class _PushbackSequence:
     def __init__(self, orig):
         self._iter = iter(orig)
-        self._pushback_buffer = []
+        self._pushback_buffer: List[str] = []
 
     def __next__(self):
         if len(self._pushback_buffer) > 0:

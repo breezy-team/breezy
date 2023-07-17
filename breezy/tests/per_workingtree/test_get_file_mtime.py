@@ -21,7 +21,6 @@ import os
 from breezy import errors, transport
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
-from breezy.tree import FileTimestampUnavailable
 
 
 class TestGetFileMTime(TestCaseWithWorkingTree):
@@ -45,8 +44,8 @@ class TestGetFileMTime(TestCaseWithWorkingTree):
         subtree.commit('one')
         try:
             tree.add_reference(subtree)
-        except errors.UnsupportedOperation:
-            raise TestNotApplicable('subtrees not supported')
+        except errors.UnsupportedOperation as err:
+            raise TestNotApplicable('subtrees not supported') from err
         tree.commit('sub')
 
         with tree.lock_read(), subtree.lock_read():
@@ -92,7 +91,7 @@ class TestGetFileMTime(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/d/', 'tree/d/a'])
         tree.add(['d', 'd/a'])
-        rev_1 = tree.commit('1')
+        tree.commit('1')
 
         tree.rename_one('d', 'e')
 

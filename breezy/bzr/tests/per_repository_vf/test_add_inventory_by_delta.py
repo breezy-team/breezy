@@ -17,9 +17,13 @@
 """Tests for Repository.add_inventory_by_delta."""
 
 from breezy import errors, revision
+from breezy.bzr.inventory_delta import InventoryDelta
 from breezy.bzr.tests.per_repository_vf import (
-    TestCaseWithRepository, all_repository_vf_format_scenarios)
-from breezy.tests.scenarios import load_tests_apply_scenarios
+    TestCaseWithRepository,
+    all_repository_vf_format_scenarios,
+)
+
+from ....tests.scenarios import load_tests_apply_scenarios
 
 load_tests = load_tests_apply_scenarios
 
@@ -55,12 +59,12 @@ class TestAddInventoryByDelta(TestCaseWithRepository):
         """Make an inventory delta from two inventories."""
         by_id = getattr(old, '_byid', None)
         if by_id is None:
-            old_ids = {entry.file_id for entry in old.iter_just_entries()}
+            old_ids = {entry.file_id for (_n, entry) in old.iter_entries()}
         else:
             old_ids = set(by_id)
         by_id = getattr(new, '_byid', None)
         if by_id is None:
-            new_ids = {entry.file_id for entry in new.iter_just_entries()}
+            new_ids = {entry.file_id for (_n, entry) in new.iter_entries()}
         else:
             new_ids = set(by_id)
 
@@ -77,7 +81,7 @@ class TestAddInventoryByDelta(TestCaseWithRepository):
             if old.get_entry(file_id) != new.get_entry(file_id):
                 delta.append((old.id2path(file_id), new.id2path(file_id),
                               file_id, new[file_id]))
-        return delta
+        return InventoryDelta(delta)
 
     def test_same_validator(self):
         # Adding an inventory via delta or direct results in the same

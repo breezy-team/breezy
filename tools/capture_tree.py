@@ -6,9 +6,9 @@
 formatted as a Python data structure.
 
 This can be useful in tests that need to recreate directory
-contents."""
+contents.
+"""
 
-import os
 import sys
 
 from breezy.trace import enable_default_logging
@@ -22,12 +22,14 @@ def main(argv):
     # strings into concatenated string literals.
     print('[')
     for tt in capture_tree_contents('.'):
-        assert isinstance(tt, tuple)
+        if not isinstance(tt, tuple):
+            raise AssertionError("Unexpected type: %r" % (tt,))
         print('    (', repr(tt[0]) + ',', end=' ')
         if len(tt) == 1:
             print('),')
         else:
-            assert len(tt) == 2
+            if len(tt) != 2:
+                raise AssertionError("Unexpected tuple length: %r" % (tt,))
             val = tt[1]
             print()
             if val == '':

@@ -33,10 +33,9 @@
 # Plugins that add new UIFactorys can create their own subclasses.
 
 
-import unittest
 
 from ... import tests, transport, ui
-from ..ui_testing import StringIOAsTTY, StringIOWithEncoding, TextUIFactory
+from ..ui_testing import StringIOAsTTY, TextUIFactory
 
 
 class UIFactoryTestMixin:
@@ -107,7 +106,7 @@ class UIFactoryTestMixin:
 
     def test_no_transport_activity(self):
         # No activity to report
-        t = transport.get_transport_from_url('memory:///')
+        transport.get_transport_from_url('memory:///')
         self.factory.log_transport_activity(display=True)
         self._check_log_transport_activity_display_no_bytes()
 
@@ -127,21 +126,21 @@ class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
         return TextUIFactory('')
 
     def _check_note(self, note_text):
-        self.assertEqual("%s\n" % note_text,
+        self.assertEqual(f"{note_text}\n",
                          self.stdout.getvalue())
 
     def _check_show_error(self, msg):
-        self.assertEqual("bzr: error: %s\n" % msg,
+        self.assertEqual(f"bzr: error: {msg}\n",
                          self.stderr.getvalue())
         self.assertEqual("", self.stdout.getvalue())
 
     def _check_show_message(self, msg):
-        self.assertEqual("%s\n" % msg,
+        self.assertEqual(f"{msg}\n",
                          self.stdout.getvalue())
         self.assertEqual("", self.stderr.getvalue())
 
     def _check_show_warning(self, msg):
-        self.assertEqual("bzr: warning: %s\n" % msg,
+        self.assertEqual(f"bzr: warning: {msg}\n",
                          self.stderr.getvalue())
         self.assertEqual("", self.stdout.getvalue())
 

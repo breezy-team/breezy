@@ -21,7 +21,7 @@ import os
 import struct
 from copy import copy
 from io import BytesIO
-from typing import Any, Tuple
+from typing import Any, Optional, Tuple
 from zlib import adler32
 
 from ..lazy_import import lazy_import
@@ -31,17 +31,10 @@ import fastbencode as bencode
 
 from breezy import (
     multiparent,
-    revision,
-    urlutils,
-    )
-from breezy.bzr import (
-    groupcompress,
-    knit,
     )
 """)
-from .. import errors
+from .. import errors, osutils, revision, urlutils
 from .. import graph as _mod_graph
-from .. import osutils
 from .. import transport as _mod_transport
 from ..registry import Registry
 from ..textmerge import TextMerge
@@ -98,10 +91,10 @@ class ContentFactory:
 
     def __init__(self):
         """Create a ContentFactory."""
-        self.sha1 = None
-        self.size = None
-        self.storage_kind = None
-        self.key = None
+        self.sha1: Optional[bytes] = None
+        self.size: Optional[int] = None
+        self.storage_kind: Optional[str] = None
+        self.key: Optional[Tuple[bytes]] = None
         self.parents = None
 
 
@@ -122,13 +115,13 @@ class ChunkedContentFactory(ContentFactory):
         no parent information, None (as opposed to () for an empty list of
         parents).
     :ivar chunks_are_lines: Whether chunks are lines.
-     """
+    """
 
     def __init__(self, key, parents, sha1, chunks, chunks_are_lines=None):
         """Create a ContentFactory."""
         self.sha1 = sha1
-        self.size = sum(map(len, chunks))
-        self.storage_kind = 'chunked'
+        self.size: int = sum(map(len, chunks))
+        self.storage_kind: str = 'chunked'
         self.key = key
         self.parents = parents
         self._chunks = chunks
@@ -152,7 +145,7 @@ class ChunkedContentFactory(ContentFactory):
         elif storage_kind == 'lines':
             if self._chunks_are_lines:
                 return iter(self._chunks)
-            return iter(osutils.chunks_to_lines(self._chunks))
+            return osutils.chunks_to_lines_iter(iter(self._chunks))
         raise UnavailableRepresentation(self.key, storage_kind,
                                         self.storage_kind)
 
@@ -170,7 +163,7 @@ class FulltextContentFactory(ContentFactory):
     :ivar parents: A tuple of parent keys for self.key. If the object has
         no parent information, None (as opposed to () for an empty list of
         parents).
-     """
+    """
 
     def __init__(self, key, parents, sha1, text):
         """Create a ContentFactory."""
@@ -203,8 +196,7 @@ class FulltextContentFactory(ContentFactory):
 
 
 class FileContentFactory(ContentFactory):
-    """File-based content factory.
-    """
+    """File-based content factory."""
 
     def __init__(self, key, parents, fileobj, sha1=None, size=None):
         self.key = key
@@ -341,7 +333,7 @@ class _MPDiffGenerator:
         refcounts = {}
         setdefault = refcounts.setdefault
         just_parents = set()
-        for child_key, parent_keys in parent_map.items():
+        for _child_key, parent_keys in parent_map.items():
             if not parent_keys:
                 # parent_keys may be None if a given VersionedFile claims to
                 # not support graph operations.
@@ -360,7 +352,7 @@ class _MPDiffGenerator:
         return needed_keys, refcounts
 
     def _compute_diff(self, key, parent_lines, lines):
-        """Compute a single mp_diff, and store it in self._diffs"""
+        """Compute a single mp_diff, and store it in self._diffs."""
         if len(parent_lines) > 0:
             # XXX: _extract_blocks is not usefully defined anywhere...
             #      It was meant to extract the left-parent diff without
@@ -482,7 +474,7 @@ class VersionedFile:
     def add_lines(self, version_id, parents, lines, parent_texts=None,
                   left_matching_blocks=None, nostore_sha=None, random_id=False,
                   check_content=True):
-        """Add a single text on top of the versioned file.
+        r"""Add a single text on top of the versioned file.
 
         Must raise RevisionAlreadyPresent if the new version is
         already present in file history.
@@ -579,8 +571,8 @@ class VersionedFile:
         for version_id in version_ids:
             try:
                 knit_versions.update(parent_map[version_id])
-            except KeyError:
-                raise errors.RevisionNotPresent(version_id, self)
+            except KeyError as e:
+                raise errors.RevisionNotPresent(version_id, self) from e
         # We need to filter out ghosts, because we can't diff against them.
         knit_versions = set(self.get_parent_map(knit_versions))
         lines = dict(zip(knit_versions,
@@ -591,12 +583,12 @@ class VersionedFile:
             try:
                 parents = [lines[p] for p in parent_map[version_id] if p in
                            knit_versions]
-            except KeyError:
+            except KeyError as e:
                 # I don't know how this could ever trigger.
                 # parent_map[version_id] was already triggered in the previous
                 # for loop, and lines[p] has the 'if p in knit_versions' check,
                 # so we again won't have a KeyError.
-                raise errors.RevisionNotPresent(version_id, self)
+                raise errors.RevisionNotPresent(version_id, self) from e
             if len(parents) > 0:
                 left_parent_blocks = self._extract_blocks(version_id,
                                                           parents[0], target)
@@ -619,18 +611,18 @@ class VersionedFile:
         vf_parents = {}
         mpvf = multiparent.MultiMemoryVersionedFile()
         versions = []
-        for version, parent_ids, expected_sha1, mpdiff in records:
+        for version, parent_ids, _expected_sha1, mpdiff in records:
             versions.append(version)
             mpvf.add_diff(mpdiff, version, parent_ids)
         needed_parents = set()
-        for version, parent_ids, expected_sha1, mpdiff in records:
+        for _version, parent_ids, _expected_sha1, _mpdiff in records:
             needed_parents.update(p for p in parent_ids
                                   if not mpvf.has_version(p))
         present_parents = set(self.get_parent_map(needed_parents))
         for parent_id, lines in zip(present_parents,
                                     self._get_lf_split_line_list(present_parents)):
             mpvf.add_version(lines, parent_id, [])
-        for (version, parent_ids, expected_sha1, mpdiff), lines in zip(
+        for (version, parent_ids, _expected_sha1, mpdiff), lines in zip(
                 records, mpvf.get_line_list(versions)):
             if len(parent_ids) == 1:
                 left_matching_blocks = list(mpdiff.get_matching_blocks(0,
@@ -649,7 +641,7 @@ class VersionedFile:
                                                     left_matching_blocks=left_matching_blocks)
             vf_parents[version] = version_text
         sha1s = self.get_sha1s(versions)
-        for version, parent_ids, expected_sha1, mpdiff in records:
+        for version, _parent_ids, expected_sha1, _mpdiff in records:
             if expected_sha1 != sha1s[version]:
                 raise errors.VersionedFileInvalidChecksum(version)
 
@@ -686,7 +678,8 @@ class VersionedFile:
         will not include the null revision.
 
         Must raise RevisionNotPresent if any of the given versions are
-        not present in file history."""
+        not present in file history.
+        """
         raise NotImplementedError(self.get_ancestry)
 
     def get_ancestry_with_ghosts(self, version_ids):
@@ -720,8 +713,8 @@ class VersionedFile:
         """
         try:
             return list(self.get_parent_map([version_id])[version_id])
-        except KeyError:
-            raise errors.RevisionNotPresent(version_id, self)
+        except KeyError as e:
+            raise errors.RevisionNotPresent(version_id, self) from e
 
     def annotate(self, version_id):
         """Return a list of (version-id, line) tuples for version_id.
@@ -733,7 +726,7 @@ class VersionedFile:
 
     def iter_lines_added_or_present_in_versions(self, version_ids=None,
                                                 pb=None):
-        """Iterate over the lines in the versioned file from version_ids.
+        r"""Iterate over the lines in the versioned file from version_ids.
 
         This may return lines from other versions. Each item the returned
         iterator yields is a tuple of a line and a text version that that line
@@ -950,7 +943,7 @@ class HashPrefixMapper(URLEscapeMapper):
     def _map(self, key):
         """See KeyMapper.map()."""
         prefix = self._escape(key[0])
-        return "{:02x}/{}".format(adler32(prefix) & 0xff, prefix.decode('utf-8'))
+        return f"{adler32(prefix) & 255:02x}/{prefix.decode('utf-8')}"
 
     def _escape(self, prefix):
         """No escaping needed here."""
@@ -983,7 +976,7 @@ class HashEscapedPrefixMapper(HashPrefixMapper):
         # @ does not get escaped. This is because it is a valid
         # filesystem character we use all the time, and it looks
         # a lot better than seeing %40 all the time.
-        r = [(c in self._safe) and chr(c) or ('%%%02x' % c)
+        r = [(c in self._safe) and chr(c) or (f'%{c:02x}')
              for c in bytearray(prefix)]
         return ''.join(r).encode('ascii')
 
@@ -1031,7 +1024,7 @@ class VersionedFiles:
     def add_lines(self, key, parents, lines, parent_texts=None,
                   left_matching_blocks=None, nostore_sha=None, random_id=False,
                   check_content=True):
-        """Add a text to the store.
+        r"""Add a text to the store.
 
         :param key: The key tuple of the text to add. If the last element is
             None, a CHK string will be generated during the addition.
@@ -1108,11 +1101,11 @@ class VersionedFiles:
         vf_parents = {}
         mpvf = multiparent.MultiMemoryVersionedFile()
         versions = []
-        for version, parent_ids, expected_sha1, mpdiff in records:
+        for version, parent_ids, _expected_sha1, mpdiff in records:
             versions.append(version)
             mpvf.add_diff(mpdiff, version, parent_ids)
         needed_parents = set()
-        for version, parent_ids, expected_sha1, mpdiff in records:
+        for _version, parent_ids, _expected_sha1, _mpdiff in records:
             needed_parents.update(p for p in parent_ids
                                   if not mpvf.has_version(p))
         # It seems likely that adding all the present parents as fulltexts can
@@ -1250,7 +1243,7 @@ class VersionedFiles:
         raise NotImplementedError
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
-        """Iterate over the lines in the versioned files from keys.
+        r"""Iterate over the lines in the versioned files from keys.
 
         This may return lines from other keys. Each item the returned
         iterator yields is a tuple of a line and a text version that that line
@@ -1263,7 +1256,7 @@ class VersionedFiles:
         The caller is responsible for cleaning up progress bars (because this
         is an iterator).
 
-        NOTES:
+        Notes:
          * Lines are normalised by the underlying store: they will all have \n
            terminators.
          * Lines are returned in arbitrary order.
@@ -1389,7 +1382,7 @@ class ThunkedVersionedFiles(VersionedFiles):
         # XXX: This is over-enthusiastic but as we only thunk for Weaves today
         # this is tolerable. Ideally we'd pass keys down to check() and
         # have the older VersiondFile interface updated too.
-        for prefix, vf in self._iter_all_components():
+        for _prefix, vf in self._iter_all_components():
             vf.check()
         if keys is not None:
             return self.get_record_stream(keys, 'unordered', True)
@@ -1458,7 +1451,6 @@ class ThunkedVersionedFiles(VersionedFiles):
 
     def _iter_keys_vf(self, keys):
         prefixes = self._partition_keys(keys)
-        sha1s = {}
         for prefix, suffixes in prefixes.items():
             path = self._mapper.map(prefix)
             vf = self._get_vf(path)
@@ -1496,7 +1488,7 @@ class ThunkedVersionedFiles(VersionedFiles):
             vf.insert_record_stream([thunk_record])
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
-        """Iterate over the lines in the versioned files from keys.
+        r"""Iterate over the lines in the versioned files from keys.
 
         This may return lines from other keys. Each item the returned
         iterator yields is a tuple of a line and a text version that that line
@@ -1509,7 +1501,7 @@ class ThunkedVersionedFiles(VersionedFiles):
         The caller is responsible for cleaning up progress bars (because this
         is an iterator).
 
-        NOTES:
+        Notes:
          * Lines are normalised by the underlying store: they will all have \n
            terminators.
          * Lines are returned in arbitrary order.
@@ -1589,7 +1581,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
         self._providers = [_mod_graph.DictParentsProvider(self._parents)]
 
     def plan_merge(self, ver_a, ver_b, base=None):
-        """See VersionedFile.plan_merge"""
+        """See VersionedFile.plan_merge."""
         from ..merge import _PlanMerge
         if base is None:
             return _PlanMerge(ver_a, ver_b, self, (self._file_id,)).plan_merge()
@@ -1615,7 +1607,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
             factory.key, factory.parents, factory.get_bytes_as('lines'))
 
     def add_lines(self, key, parents, lines):
-        """See VersionedFiles.add_lines
+        """See VersionedFiles.add_lines.
 
         Lines are added locally, not to fallback versionedfiles.  Also, ghosts
         are permitted.  Only reserved ids are permitted.
@@ -1656,7 +1648,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
             yield AbsentContentFactory(key)
 
     def get_parent_map(self, keys):
-        """See VersionedFiles.get_parent_map"""
+        """See VersionedFiles.get_parent_map."""
         # We create a new provider because a fallback may have been added.
         # If we make fallbacks private we can update a stack list and avoid
         # object creation thrashing.
@@ -1798,7 +1790,7 @@ class PlanWeaveMerge(TextMerge):
                     # It seems that having the line 2 times is better than
                     # having it omitted. (Easier to manually delete than notice
                     # it needs to be added.)
-                    raise AssertionError('Unknown state: {}'.format(state))
+                    raise AssertionError(f'Unknown state: {state}')
         return base_lines
 
 
@@ -1943,6 +1935,7 @@ class NetworkRecordStream:
             iterator should have been obtained from a record_streams'
             record.get_bytes_as(record.storage_kind) call.
         """
+        from . import groupcompress, knit
         self._bytes_iterator = bytes_iterator
         self._kind_factory = {
             'fulltext': fulltext_network_to_record,

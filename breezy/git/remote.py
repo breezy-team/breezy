@@ -16,24 +16,32 @@
 
 """Remote dirs, repositories and branches."""
 
-import gzip
 import re
 
 from dulwich.refs import SymrefLoop
 
 from .. import config, debug, errors, osutils, trace, ui, urlutils
 from ..controldir import BranchReferenceLoop
-from ..errors import (AlreadyBranchError, BzrError, ConnectionReset,
-                      DivergedBranches, InProcessTransport, InvalidRevisionId,
-                      LockContention, NoSuchRevision, NoSuchTag,
-                      NotBranchError, NotLocalUrl, PermissionDenied,
-                      TransportError, UnexpectedHttpStatus,
-                      UninitializableFormat)
+from ..errors import (
+    AlreadyBranchError,
+    BzrError,
+    DivergedBranches,
+    InProcessTransport,
+    InvalidRevisionId,
+    LockContention,
+    NoSuchRevision,
+    NoSuchTag,
+    NotBranchError,
+    NotLocalUrl,
+    PermissionDenied,
+    TransportError,
+    UnexpectedHttpStatus,
+    UninitializableFormat,
+)
 from ..push import PushResult
 from ..revision import NULL_REVISION
 from ..revisiontree import RevisionTree
-from ..transport import (NoSuchFile, Transport,
-                         register_urlparse_netloc_protocol)
+from ..transport import NoSuchFile, Transport, register_urlparse_netloc_protocol
 from . import is_github_url, lazy_check_versions, user_agent_for_github
 
 lazy_check_versions()
@@ -45,21 +53,28 @@ import urllib.parse as urlparse
 import dulwich
 import dulwich.client
 from dulwich.errors import GitProtocolError, HangupException
-from dulwich.pack import (PACK_SPOOL_FILE_MAX_SIZE, Pack, load_pack_index,
-                          pack_objects_to_data)
-from dulwich.protocol import ZERO_SHA
+from dulwich.pack import (
+    PACK_SPOOL_FILE_MAX_SIZE,
+    Pack,
+    load_pack_index,
+    pack_objects_to_data,
+)
 from dulwich.refs import SYMREF, DictRefsContainer
 from dulwich.repo import NotGitRepository
 
-from .branch import (GitBranch, GitBranchFormat, GitBranchPushResult, GitTags,
-                     _quick_lookup_revno)
+from .branch import (
+    GitBranch,
+    GitBranchFormat,
+    GitBranchPushResult,
+    GitTags,
+    _quick_lookup_revno,
+)
 from .dir import GitControlDirFormat, GitDir
 from .errors import GitSmartRemoteNotSupported
 from .mapping import encode_git_path, mapping_registry
 from .object_store import get_object_store
 from .push import remote_divergence
-from .refs import (branch_name_to_ref, is_peeled, ref_to_tag_name,
-                   tag_name_to_ref)
+from .refs import is_peeled, ref_to_tag_name, tag_name_to_ref
 from .repository import GitRepository, GitRepositoryFormat
 
 # urlparse only supports a limited number of schemes by default
@@ -159,11 +174,11 @@ def parse_git_error(url, message):
         return PermissionDenied(url, message)
     m = re.match(r'Permission to ([^ ]+) denied to ([^ ]+)\.', message)
     if m:
-        return PermissionDenied(m.group(1), 'denied to %s' % m.group(2))
+        return PermissionDenied(m.group(1), f'denied to {m.group(2)}')
     if message == 'Host key verification failed.':
         return TransportError('Host key verification failed')
     if message == '[Errno 104] Connection reset by peer':
-        return ConnectionReset(message)
+        return ConnectionResetError(message)
     if message == 'The remote server unexpectedly closed the connection.':
         return TransportError(message)
     m = re.match(r'unexpected http resp ([0-9]+) for (.*)', message)
@@ -184,7 +199,7 @@ def parse_git_hangup(url, e):
     """
     stderr_lines = getattr(e, 'stderr_lines', None)
     if not stderr_lines:
-        return ConnectionReset('Connection closed early', e)
+        return ConnectionResetError('Connection closed early')
     if all(line.startswith(b'remote: ') for line in stderr_lines):
         stderr_lines = [
             line[len(b'remote: '):] for line in stderr_lines]
@@ -205,7 +220,7 @@ class GitSmartTransport(Transport):
         Transport.__init__(self, url)
         (self._host, self._port, self._username, self._path) = \
             split_git_url(url)
-        if 'transport' in debug.debug_flags:
+        if debug.debug_flag_enabled('transport'):
             trace.mutter('host: %r, user: %r, port: %r, path: %r',
                          self._host, self._username, self._port, self._path)
         self._client = _client
@@ -284,7 +299,7 @@ class DulwichSSHVendor(dulwich.client.SSHVendor):
         if kind == 'socket':
             return SSHSocketWrapper(io_object)
         else:
-            raise AssertionError("Unknown io object kind %r'" % kind)
+            raise AssertionError(f"Unknown io object kind {kind!r}'")
 
 
 # dulwich.client.get_ssh_vendor = DulwichSSHVendor
@@ -405,9 +420,9 @@ class RemoteGitDir(GitDir):
                 subdirs=subdirs,
                 prefix=(encode_git_path(prefix) if prefix else None))
         except HangupException as e:
-            raise parse_git_hangup(self.transport.external_url(), e)
+            raise parse_git_hangup(self.transport.external_url(), e) from e
         except GitProtocolError as e:
-            raise parse_git_error(self.transport.external_url(), e)
+            raise parse_git_error(self.transport.external_url(), e) from e
         finally:
             if pb is not None:
                 pb.finished()
@@ -429,9 +444,9 @@ class RemoteGitDir(GitDir):
                 result.refs, result.symrefs)
             return result
         except HangupException as e:
-            raise parse_git_hangup(self.transport.external_url(), e)
+            raise parse_git_hangup(self.transport.external_url(), e) from e
         except GitProtocolError as e:
-            raise parse_git_error(self.transport.external_url(), e)
+            raise parse_git_error(self.transport.external_url(), e) from e
         finally:
             if pb is not None:
                 pb.finished()
@@ -463,9 +478,9 @@ class RemoteGitDir(GitDir):
                         result.ref_status[m.group(1)] = LockContention(m.group(1), m.group(2))
             return result
         except HangupException as e:
-            raise parse_git_hangup(self.transport.external_url(), e)
+            raise parse_git_hangup(self.transport.external_url(), e) from e
         except GitProtocolError as e:
-            raise parse_git_error(self.transport.external_url(), e)
+            raise parse_git_error(self.transport.external_url(), e) from e
         finally:
             if pb is not None:
                 pb.finished()
@@ -522,8 +537,8 @@ class RemoteGitDir(GitDir):
         ref = self._get_selected_ref(name)
         try:
             ref_chain, unused_sha = self.get_refs_container().follow(ref)
-        except SymrefLoop:
-            raise BranchReferenceLoop(self)
+        except SymrefLoop as err:
+            raise BranchReferenceLoop(self) from err
         if len(ref_chain) == 1:
             return None
         target_ref = ref_chain[1]
@@ -546,11 +561,10 @@ class RemoteGitDir(GitDir):
         ref = self._get_selected_ref(name, ref)
         try:
             ref_chain, sha = self.get_refs_container().follow(ref)
-        except SymrefLoop:
-            raise BranchReferenceLoop(self)
-        except NotGitRepository:
-            raise NotBranchError(self.root_transport.base,
-                                 controldir=self)
+        except SymrefLoop as err:
+            raise BranchReferenceLoop(self) from err
+        except NotGitRepository as err:
+            raise NotBranchError(self.root_transport.base, controldir=self) from err
         if not nascent_ok and sha is None:
             raise NotBranchError(
                 self.root_transport.base, controldir=self)
@@ -570,7 +584,7 @@ class RemoteGitDir(GitDir):
             return self._refs
         result = self.fetch_pack(lambda x: None, None,
                                  lambda x: None,
-                                 lambda x: trace.mutter("git: %s" % x))
+                                 lambda x: trace.mutter(f"git: {x}"))
         self._refs = remote_refs_dict_to_container(
             result.refs, result.symrefs)
         return self._refs
@@ -620,9 +634,9 @@ class RemoteGitDir(GitDir):
             else:
                 try:
                     new_sha = repo.lookup_bzr_revision_id(revision_id)[0]
-                except errors.NoSuchRevision:
+                except errors.NoSuchRevision as err:
                     raise errors.NoRoundtrippingSupport(
-                        source, self.open_branch(name=name, nascent_ok=True))
+                        source, self.open_branch(name=name, nascent_ok=True)) from err
             old_sha = remote_refs.get(actual_refname)
             if not overwrite:
                 if remote_divergence(old_sha, new_sha, source_store):
@@ -835,9 +849,7 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
         return True
 
     def open(self, transport, _found=None):
-        """Open this directory.
-
-        """
+        """Open this directory."""
         split_url = _git_url_and_path_from_transport(transport.external_url())
         if isinstance(transport, GitSmartTransport):
             client = transport._get_client()
@@ -860,8 +872,8 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
     def supports_transport(self, transport):
         try:
             external_url = transport.external_url()
-        except InProcessTransport:
-            raise NotBranchError(path=transport.base)
+        except InProcessTransport as err:
+            raise NotBranchError(path=transport.base) from err
         return (external_url.startswith("http:")
                 or external_url.startswith("https:")
                 or external_url.startswith("git+")
@@ -957,13 +969,11 @@ class RemoteGitRepository(GitRepository):
         # start..
         try:
             return mapping_registry.revision_id_bzr_to_foreign(bzr_revid)
-        except InvalidRevisionId:
-            raise NoSuchRevision(self, bzr_revid)
+        except InvalidRevisionId as err:
+            raise NoSuchRevision(self, bzr_revid) from err
 
     def lookup_foreign_revision_id(self, foreign_revid, mapping=None):
-        """Lookup a revision id.
-
-        """
+        """Lookup a revision id."""
         if mapping is None:
             mapping = self.get_mapping()
         # Not really an easy way to parse foreign revids here..
@@ -1088,7 +1098,9 @@ class RemoteGitBranch(GitBranch):
         self._sha = sha
 
 
-def remote_refs_dict_to_container(refs_dict, symrefs_dict={}):
+def remote_refs_dict_to_container(refs_dict, symrefs_dict=None):
+    if symrefs_dict is None:
+        symrefs_dict = {}
     base = {}
     peeled = {}
     for k, v in refs_dict.items():

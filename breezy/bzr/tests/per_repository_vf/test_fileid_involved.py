@@ -17,13 +17,15 @@
 import sys
 import time
 
-from breezy import errors
+from breezy import errors, tests
 from breezy import revision as _mod_revision
-from breezy import tests, transform
 from breezy.bzr import inventory, remote
 from breezy.bzr.tests.per_repository_vf import (
-    TestCaseWithRepository, all_repository_vf_format_scenarios)
-from breezy.tests.scenarios import load_tests_apply_scenarios
+    TestCaseWithRepository,
+    all_repository_vf_format_scenarios,
+)
+
+from ....tests.scenarios import load_tests_apply_scenarios
 
 load_tests = load_tests_apply_scenarios
 
@@ -50,6 +52,7 @@ class FileIdInvolvedWGhosts(TestCaseWithRepository):
                                          committer='Joe Foo <joe@foo.com>',
                                          properties={},
                                          parent_ids=(b'A-id', b'ghost-id'),
+                                         inventory_sha1=None,
                                          )
         b.lock_write()
         self.addCleanup(b.unlock)
@@ -169,13 +172,13 @@ class TestFileIdInvolved(FileIdInvolvedBase):
                  b'c-funky<file-id>quiji%bo'])
         try:
             main_wt.commit("Commit one", rev_id=b"rev-A")
-        except errors.IllegalPath:
+        except errors.IllegalPath as e:
             # TODO: jam 20060701 Consider raising a different exception
             #       newer formats do support this, and nothin can done to
             #       correct this test - its not a bug.
             if sys.platform == 'win32':
                 raise tests.TestSkipped('Old repository formats do not'
-                                        ' support file ids with <> on win32')
+                                        ' support file ids with <> on win32') from e
             # This is not a known error condition
             raise
 
@@ -267,7 +270,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
                 [b'rev-G', b'rev-F', b'rev-C', b'rev-B', b'rev-<D>', b'rev-K', b'rev-J']))
 
     def fileids_altered_by_revision_ids(self, revision_ids):
-        """This is a wrapper to strip TREE_ROOT if it occurs"""
+        """This is a wrapper to strip TREE_ROOT if it occurs."""
         repo = self.branch.repository
         root_id = self.branch.basis_tree().path2id('')
         result = repo.fileids_altered_by_revision_ids(revision_ids)
@@ -301,7 +304,6 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         # the revision history.
         self.branch.lock_read()
         self.addCleanup(self.branch.unlock)
-        pp = []
         graph = self.branch.repository.get_graph()
         history = list(graph.iter_lefthand_ancestry(self.branch.last_revision(),
                                                     [_mod_revision.NULL_REVISION]))
@@ -328,7 +330,6 @@ class TestFileIdInvolvedNonAscii(FileIdInvolvedBase):
 
     def test_utf8_file_ids_and_revision_ids(self):
         main_wt = self.make_branch_and_tree('main')
-        main_branch = main_wt.branch
         self.build_tree(["main/a"])
 
         file_id = 'a-f\xedle-id'.encode()
@@ -336,9 +337,9 @@ class TestFileIdInvolvedNonAscii(FileIdInvolvedBase):
         revision_id = 'r\xe9v-a'.encode()
         try:
             main_wt.commit('a', rev_id=revision_id)
-        except errors.NonAsciiRevisionId:
+        except errors.NonAsciiRevisionId as e:
             raise tests.TestSkipped('non-ascii revision ids not supported by %s'
-                                    % self.repository_format)
+                                    % self.repository_format) from e
 
         repo = main_wt.branch.repository
         repo.lock_read()
@@ -372,13 +373,13 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
                  b'c-funky<file-id>quiji\'"%bo'])
         try:
             main_wt.commit("Commit one", rev_id=b"rev-A")
-        except errors.IllegalPath:
+        except errors.IllegalPath as e:
             # TODO: jam 20060701 Consider raising a different exception
             #       newer formats do support this, and nothin can done to
             #       correct this test - its not a bug.
             if sys.platform == 'win32':
                 raise tests.TestSkipped('Old repository formats do not'
-                                        ' support file ids with <> on win32')
+                                        ' support file ids with <> on win32') from e
             # This is not a known error condition
             raise
 
@@ -420,7 +421,7 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
 
 
 def set_executability(wt, path, executable=True):
-    """Set the executable bit for the file at path in the working tree
+    """Set the executable bit for the file at path in the working tree.
 
     os.chmod() doesn't work on windows. But TreeTransform can mark or
     unmark a file as executable.

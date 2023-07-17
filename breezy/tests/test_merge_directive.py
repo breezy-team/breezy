@@ -175,7 +175,6 @@ class TestMergeDirective:
         self.assertEqualDiff(self.OUTPUT2, b''.join(md.to_lines()))
 
     def test_deserialize_junk(self):
-        time = 501
         self.assertRaises(errors.NotAMergeDirective,
                           merge_directive.MergeDirective.from_lines, [b'lala'])
 
@@ -228,7 +227,7 @@ class TestMergeDirective:
 
 
 class TestMergeDirective1(tests.TestCase, TestMergeDirective):
-    """Test merge directive format 1"""
+    """Test merge directive format 1."""
 
     INPUT1 = INPUT1
 
@@ -239,9 +238,12 @@ class TestMergeDirective1(tests.TestCase, TestMergeDirective):
     def make_merge_directive(self, revision_id, testament_sha1, time, timezone,
                              target_branch, patch=None, patch_type=None,
                              source_branch=None, message=None):
-        return merge_directive.MergeDirective(revision_id, testament_sha1,
-                                              time, timezone, target_branch, patch, patch_type,
-                                              source_branch, message)
+        return merge_directive.MergeDirective(
+                revision_id=revision_id, testament_sha1=testament_sha1,
+                time=time, timezone=timezone,
+                target_branch=target_branch,
+                patch=patch, patch_type=patch_type,
+                source_branch=source_branch, message=message)
 
     @staticmethod
     def set_bundle(md, value):
@@ -253,14 +255,17 @@ class TestMergeDirective1(tests.TestCase, TestMergeDirective):
         self.assertRaises(errors.PatchMissing, merge_directive.MergeDirective,
                           b'example:', b'sha', time, timezone, 'http://example.com',
                           patch_type='bundle')
-        md = merge_directive.MergeDirective(b'example:', b'sha1', time, timezone,
-                                            'http://example.com', source_branch="http://example.org",
-                                            patch=b'', patch_type='diff')
+        md = merge_directive.MergeDirective(
+                revision_id=b'example:', testament_sha1=b'sha1',
+                time=time, timezone=timezone,
+                target_branch='http://example.com',
+                source_branch="http://example.org",
+                patch=b'', patch_type='diff')
         self.assertEqual(md.patch, b'')
 
 
 class TestMergeDirective2(tests.TestCase, TestMergeDirective):
-    """Test merge directive format 2"""
+    """Test merge directive format 2."""
 
     INPUT1 = INPUT1_2
 
@@ -276,9 +281,11 @@ class TestMergeDirective2(tests.TestCase, TestMergeDirective):
             patch = None
         else:
             bundle = None
-        return merge_directive.MergeDirective2(revision_id, testament_sha1,
-                                               time, timezone, target_branch, patch, source_branch, message,
-                                               bundle, base_revision_id)
+        return merge_directive.MergeDirective2(
+            revision_id=revision_id, testament_sha1=testament_sha1,
+            time=time, timezone=timezone, target_branch=target_branch,
+            patch=patch, source_branch=source_branch, message=message,
+            bundle=bundle, base_revision_id=base_revision_id)
 
     @staticmethod
     def set_bundle(md, value):
@@ -363,7 +370,7 @@ class TestMergeDirectiveBranch:
     def test_empty_target(self):
         tree_a, tree_b, branch_c = self.make_trees()
         tree_d = self.make_branch_and_tree('tree_d')
-        md2 = self.from_objects(tree_a.branch.repository, b'rev2a', 500, 120,
+        self.from_objects(tree_a.branch.repository, b'rev2a', 500, 120,
                                 tree_d.branch.base, patch_type='diff',
                                 public_branch=tree_a.branch.base)
 
@@ -407,7 +414,7 @@ class TestMergeDirectiveBranch:
         self.assertEqual(md1.source_branch, branch_c.base)
         # Once we update the public branch, we can generate a diff.
         branch_c.pull(tree_a.branch)
-        md3 = self.from_objects(tree_a.branch.repository, b'rev2a', 500, 144,
+        self.from_objects(tree_a.branch.repository, b'rev2a', 500, 144,
                                 tree_b.branch.base, patch_type=None, public_branch=branch_c.base)
 
     def test_use_public_submit_branch(self):
@@ -568,7 +575,7 @@ class TestMergeDirectiveBranch:
         tree_a.commit('rev3a', rev_id=b'rev3a')
         md = self.from_objects(tree_a.branch.repository, b'rev3a', 500, 36,
                                branch_c.base, base_revision_id=b'rev2a')
-        revision = md.install_revisions(tree_b.branch.repository)
+        md.install_revisions(tree_b.branch.repository)
 
     def test_handle_target_not_a_branch(self):
         tree_a, tree_b, branch_c = self.make_trees()
@@ -584,7 +591,7 @@ class TestMergeDirectiveBranch:
 
 class TestMergeDirective1Branch(tests.TestCaseWithTransport,
                                 TestMergeDirectiveBranch):
-    """Test merge directive format 1 with a branch"""
+    """Test merge directive format 1 with a branch."""
 
     EMAIL1 = EMAIL1
 
@@ -597,21 +604,27 @@ class TestMergeDirective1Branch(tests.TestCaseWithTransport,
             raise tests.TestNotApplicable('This format does not support'
                                           ' explicit bases.')
         with repository.lock_write():
-            return merge_directive.MergeDirective.from_objects(repository,
-                                                               revision_id, time, timezone, target_branch, patch_type,
-                                                               local_target_branch, public_branch, message)
+            return merge_directive.MergeDirective.from_objects(
+                repository=repository,
+                revision_id=revision_id,
+                time=time, timezone=timezone,
+                target_branch=target_branch, patch_type=patch_type,
+                local_target_branch=local_target_branch,
+                public_branch=public_branch, message=message)
 
     def make_merge_directive(self, revision_id, testament_sha1, time, timezone,
                              target_branch, patch=None, patch_type=None,
                              source_branch=None, message=None):
-        return merge_directive.MergeDirective(revision_id, testament_sha1,
-                                              time, timezone, target_branch, patch, patch_type,
-                                              source_branch, message)
+        return merge_directive.MergeDirective(
+            revision_id=revision_id, testament_sha1=testament_sha1,
+            time=time, timezone=timezone, target_branch=target_branch,
+            patch=patch, patch_type=patch_type,
+            source_branch=source_branch, message=message)
 
 
 class TestMergeDirective2Branch(tests.TestCaseWithTransport,
                                 TestMergeDirectiveBranch):
-    """Test merge directive format 2 with a branch"""
+    """Test merge directive format 2 with a branch."""
 
     EMAIL1 = EMAIL1_2
 
@@ -622,11 +635,13 @@ class TestMergeDirective2Branch(tests.TestCaseWithTransport,
                      public_branch=None, message=None, base_revision_id=None):
         include_patch = (patch_type in ('bundle', 'diff'))
         include_bundle = (patch_type == 'bundle')
-        self.assertTrue(patch_type in ('bundle', 'diff', None))
+        self.assertIn(patch_type, ('bundle', 'diff', None))
         return merge_directive.MergeDirective2.from_objects(
-            repository, revision_id, time, timezone, target_branch,
-            include_patch, include_bundle, local_target_branch, public_branch,
-            message, base_revision_id)
+            repository=repository, revision_id=revision_id, time=time, timezone=timezone,
+            target_branch=target_branch,
+            include_patch=include_patch, include_bundle=include_bundle,
+            local_target_branch=local_target_branch, public_branch=public_branch,
+            message=message, base_revision_id=base_revision_id)
 
     def make_merge_directive(self, revision_id, testament_sha1, time, timezone,
                              target_branch, patch=None, patch_type=None,
@@ -636,9 +651,11 @@ class TestMergeDirective2Branch(tests.TestCaseWithTransport,
             patch = None
         else:
             bundle = None
-        return merge_directive.MergeDirective2(revision_id, testament_sha1,
-                                               time, timezone, target_branch, patch, source_branch, message,
-                                               bundle, base_revision_id)
+        return merge_directive.MergeDirective2(
+            revision_id=revision_id, testament_sha1=testament_sha1,
+            time=time, timezone=timezone, target_branch=target_branch, patch=patch,
+            source_branch=source_branch, message=message,
+            bundle=bundle, base_revision_id=base_revision_id)
 
     def test_base_revision(self):
         tree_a, tree_b, branch_c = self.make_trees()
@@ -725,7 +742,8 @@ class TestBodyHook(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('foo')
         tree.commit('foo')
         directive = merge_directive.MergeDirective2(
-            tree.branch.last_revision(), b'sha', 0, 0, b'sha',
+            revision_id=tree.branch.last_revision(), testament_sha1=b'sha',
+            time=0, timezone=0, target_branch='target-branch',
             source_branch=tree.branch.base,
             base_revision_id=tree.branch.last_revision(),
             message='This code rox')

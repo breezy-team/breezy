@@ -24,8 +24,8 @@ rather starts again from the run_brz function.
 
 
 from breezy import config, tests
-from breezy.urlutils import joinpath
 
+from ...urlutils import joinpath
 from ..test_bedding import override_whoami
 
 
@@ -34,7 +34,6 @@ class TestAnnotate(tests.TestCaseWithTransport):
     def setUp(self):
         super().setUp()
         wt = self.make_branch_and_tree('.')
-        b = wt.branch
         self.build_tree_contents([('hello.txt', b'my helicopter\n'),
                                   ('nomail.txt', b'nomail\n')])
         wt.add(['hello.txt'])
@@ -60,7 +59,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
                                        timestamp=1166050000.00, timezone=0)
 
     def test_help_annotate(self):
-        """Annotate command exists"""
+        """Annotate command exists."""
         out, err = self.run_bzr('--no-plugins annotate --help')
 
     def test_annotate_cmd(self):
@@ -172,7 +171,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
             out)
 
     def test_annotate_edited_file(self):
-        tree = self._setup_edited_file()
+        self._setup_edited_file()
         self.overrideEnv('BRZ_EMAIL', 'current@host2')
         out, err = self.run_bzr('annotate file')
         self.assertEqual(
@@ -184,7 +183,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
     def test_annotate_edited_file_no_default(self):
         # Ensure that when no username is available annotate still works.
         override_whoami(self)
-        tree = self._setup_edited_file()
+        self._setup_edited_file()
         out, err = self.run_bzr('annotate file')
         self.assertEqual(
             '1   test@ho | foo\n'
@@ -193,7 +192,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
             out)
 
     def test_annotate_edited_file_show_ids(self):
-        tree = self._setup_edited_file()
+        self._setup_edited_file()
         self.overrideEnv('BRZ_EMAIL', 'current@host2')
         out, err = self.run_bzr('annotate file --show-ids')
         self.assertEqual(
@@ -293,7 +292,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         self.assertEqual('', out)
 
     def test_annotate_directory(self):
-        """Test --directory option"""
+        """Test --directory option."""
         wt = self.make_branch_and_tree('a')
         self.build_tree_contents([('a/hello.txt', b'my helicopter\n')])
         wt.add(['hello.txt'])

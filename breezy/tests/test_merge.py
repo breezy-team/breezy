@@ -18,25 +18,32 @@ import contextlib
 import os
 
 from .. import branch as _mod_branch
-from .. import conflicts, errors, memorytree
+from .. import errors, memorytree, option, tests
 from .. import merge as _mod_merge
-from .. import option
 from .. import revision as _mod_revision
-from .. import tests, transform
 from ..bzr import inventory, knit, versionedfile
-from ..bzr.conflicts import (ContentsConflict, DeletingParent, MissingParent,
-                             TextConflict, UnversionedParent)
-from ..conflicts import ConflictList
+from ..bzr.conflicts import (
+    ContentsConflict,
+    DeletingParent,
+    MissingParent,
+    TextConflict,
+    UnversionedParent,
+)
 from ..errors import NoCommits, UnrelatedBranches
 from ..merge import _PlanMerge, merge_inner, transform_tree
-from ..osutils import basename, file_kind, pathjoin
+from ..osutils import basename, pathjoin
+from ..transport.local import file_kind
 from ..workingtree import PointlessMerge, WorkingTree
-from . import (TestCaseWithMemoryTransport, TestCaseWithTransport, features,
-               test_merge_core)
+from . import (
+    TestCaseWithMemoryTransport,
+    TestCaseWithTransport,
+    features,
+    test_merge_core,
+)
 
 
 class TestMerge(TestCaseWithTransport):
-    """Test appending more than one revision"""
+    """Test appending more than one revision."""
 
     def test_pending(self):
         wt = self.make_branch_and_tree('.')
@@ -88,7 +95,7 @@ class TestMerge(TestCaseWithTransport):
         self.assertEqual([tip], wt2.get_parent_ids())
 
     def test_pending_with_null(self):
-        """When base is forced to revno 0, parent_ids are set"""
+        """When base is forced to revno 0, parent_ids are set."""
         wt2 = self.test_unrelated()
         wt1 = WorkingTree.open('.')
         br1 = wt1.branch
@@ -101,7 +108,7 @@ class TestMerge(TestCaseWithTransport):
         return (wt1, wt2.branch)
 
     def test_two_roots(self):
-        """Merge base is sane when two unrelated branches are merged"""
+        """Merge base is sane when two unrelated branches are merged."""
         wt1, br2 = self.test_pending_with_null()
         wt1.commit("blah")
         wt1.lock_read()
@@ -140,7 +147,7 @@ class TestMerge(TestCaseWithTransport):
             self.assertEqual(wt.path2id(''), new_root_id)
 
     def test_create_rename(self):
-        """Rename an inventory entry while creating the file"""
+        """Rename an inventory entry while creating the file."""
         tree = self.make_branch_and_tree('.')
         with open('name1', 'wb') as f:
             f.write(b'Hello')
@@ -151,7 +158,7 @@ class TestMerge(TestCaseWithTransport):
         transform_tree(tree, tree.branch.basis_tree())
 
     def test_layered_rename(self):
-        """Rename both child and parent at same time"""
+        """Rename both child and parent at same time."""
         tree = self.make_branch_and_tree('.')
         os.mkdir('dirname1')
         tree.add('dirname1')
@@ -176,13 +183,17 @@ class TestMerge(TestCaseWithTransport):
         tree_a.commit(message="hello again")
         merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(),
                     this_tree=tree_b, ignore_zero=True)
-        self.assertTrue('All changes applied successfully.\n' not in
-                        self.get_log())
+        self.assertNotIn(
+            'All changes applied successfully.\n',
+            self.get_log()
+        )
         tree_b.revert()
         merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(),
                     this_tree=tree_b, ignore_zero=False)
-        self.assertTrue(
-            'All changes applied successfully.\n' in self.get_log())
+        self.assertIn(
+            'All changes applied successfully.\n',
+            self.get_log()
+        )
 
     def test_merge_inner_conflicts(self):
         tree_a = self.make_branch_and_tree('a')
@@ -280,16 +291,25 @@ class TestMerge(TestCaseWithTransport):
 
     def test_merge_type_registry(self):
         merge_type_option = option.Option.OPTIONS['merge-type']
-        self.assertFalse('merge4' in [x[0] for x in
-                                      merge_type_option.iter_switches()])
+        self.assertNotIn(
+            'merge4',
+            [x[0] for x in
+                                      merge_type_option.iter_switches()]
+        )
         registry = _mod_merge.get_merge_type_registry()
         registry.register_lazy('merge4', 'breezy.merge', 'Merge4Merger',
                                'time-travelling merge')
-        self.assertTrue('merge4' in [x[0] for x in
-                                     merge_type_option.iter_switches()])
+        self.assertIn(
+            'merge4',
+            [x[0] for x in
+                                     merge_type_option.iter_switches()]
+        )
         registry.remove('merge4')
-        self.assertFalse('merge4' in [x[0] for x in
-                                      merge_type_option.iter_switches()])
+        self.assertNotIn(
+            'merge4',
+            [x[0] for x in
+                                      merge_type_option.iter_switches()]
+        )
 
     def test_merge_other_moves_we_deleted(self):
         tree_a = self.make_branch_and_tree('A')
@@ -487,7 +507,7 @@ class TestMerge(TestCaseWithTransport):
             this_tree, b'rev2b', other_branch=other_tree.branch)
         merger.merge_type = _mod_merge.Merge3Merger
         tree_merger = merger.make_merger()
-        tt = tree_merger.do_merge()
+        tree_merger.do_merge()
         with this_tree.get_file('file') as tree_file:
             self.assertEqual(b'2b\n1\n2a\n', tree_file.read())
 
@@ -498,7 +518,7 @@ class TestMerge(TestCaseWithTransport):
         self.build_tree(['a'])
         tree.add('a')
         first_rev = tree.commit("added a")
-        old_root_id = tree.path2id('')
+        tree.path2id('')
         merger = _mod_merge.Merger.from_revision_ids(tree,
                                                      _mod_revision.NULL_REVISION,
                                                      first_rev)
@@ -1252,7 +1272,7 @@ class TestMergerBase(TestCaseWithMemoryTransport):
         return builder
 
     def make_Merger(self, builder, other_revision_id, interesting_files=None):
-        """Make a Merger object from a branch builder"""
+        """Make a Merger object from a branch builder."""
         mem_tree = memorytree.MemoryTree.create_on_branch(builder.get_branch())
         mem_tree.lock_write()
         self.addCleanup(mem_tree.unlock)
@@ -1352,12 +1372,12 @@ class TestMergerInMemory(TestMergerBase):
         merger.merge_type = LCATreesMerger
         merge_obj = merger.make_merger()
         self.assertIsInstance(merge_obj, LCATreesMerger)
-        self.assertFalse('lca_trees' in merge_obj.kwargs)
+        self.assertNotIn('lca_trees', merge_obj.kwargs)
 
     def test_criss_cross_passed_to_merge_type(self):
         merger = self.make_Merger(self.setup_criss_cross_graph(), b'E-id')
         merger.merge_type = _mod_merge.Merge3Merger
-        merge_obj = merger.make_merger()
+        merger.make_merger()
         self.assertEqual([b'B-id', b'C-id'], [t.get_revision_id()
                                               for t in merger._lca_trees])
 
@@ -1367,7 +1387,7 @@ class TestMergerInMemory(TestMergerBase):
         merger.merge_type = LoggingMerger
         merge_obj = merger.make_merger()
         self.assertIsInstance(merge_obj, LoggingMerger)
-        self.assertFalse('lca_trees' in merge_obj.kwargs)
+        self.assertNotIn('lca_trees', merge_obj.kwargs)
 
     def test_criss_cross_unsupported_merge_type(self):
         class UnsupportedLCATreesMerger(LoggingMerger):
@@ -1377,7 +1397,7 @@ class TestMergerInMemory(TestMergerBase):
         merger.merge_type = UnsupportedLCATreesMerger
         merge_obj = merger.make_merger()
         self.assertIsInstance(merge_obj, UnsupportedLCATreesMerger)
-        self.assertFalse('lca_trees' in merge_obj.kwargs)
+        self.assertNotIn('lca_trees', merge_obj.kwargs)
 
 
 class TestMergerEntriesLCA(TestMergerBase):
@@ -2939,7 +2959,7 @@ class TestLCAMultiWay(tests.TestCase):
                                'bval', [], 'oval', 'oval')
 
     def test_lca_supersedes_other_lca(self):
-        """If one lca == base, the other lca takes precedence"""
+        """If one lca == base, the other lca takes precedence."""
         self.assertLCAMultiWay('this',
                                'bval', ['bval', 'lcaval'], 'lcaval', 'tval')
         self.assertLCAMultiWay('this',
@@ -3085,11 +3105,11 @@ class TestConfigurableFileMerger(tests.TestCaseWithTransport):
 
     def test_uses_this_branch(self):
         builder = self.make_text_conflict()
-        with builder.make_preview_transform() as tt:
+        with builder.make_preview_transform():
             pass
 
     def test_affected_files_cached(self):
-        """Ensures that the config variable is cached"""
+        """Ensures that the config variable is cached."""
         builder = self.make_text_conflict()
         conflicts = builder.merge()
         # The hook should set the variable
@@ -3135,7 +3155,7 @@ class TestMergeIntoBase(tests.TestCaseWithTransport):
                 for elem in shape]
             wt.add(shape, ids=ids)
         rev_id = b'r1-%s' % (relpath.encode('utf-8'),)
-        wt.commit("Initial commit of {}".format(relpath), rev_id=rev_id)
+        wt.commit(f"Initial commit of {relpath}", rev_id=rev_id)
         self.assertEqual(root_id, wt.path2id(''))
         return wt
 

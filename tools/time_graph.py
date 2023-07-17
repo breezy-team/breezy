@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 import optparse
-import os
 import random
 import sys
-import time
 
-from breezy import (_known_graph_py, _known_graph_pyx, branch, commands, graph,
-                    osutils, trace, ui)
+from breezy import (
+    _known_graph_py,
+    _known_graph_pyx,
+    branch,
+    commands,
+    graph,
+    osutils,
+    trace,
+    ui,
+)
 from breezy.ui import text
 
 p = optparse.OptionParser()
@@ -29,7 +35,7 @@ with b.lock_read():
                       if p[1] is not None)
 end = osutils.perf_counter()
 
-print('Found %d nodes, loaded in %.3fs' % (len(parent_map), end - begin))
+print(f'Found {len(parent_map)} nodes, loaded in {end - begin:.3f}s')
 
 def all_heads_comp(g, combinations):
     h = []
@@ -51,7 +57,7 @@ combinations = []
 # Times for 500 'merge parents' from bzr.dev
 #   25.6s   vs   45.0s  :(
 
-for revision_id, parent_ids in parent_map.iteritems():
+for _revision_id, parent_ids in parent_map.iteritems():
     if parent_ids is not None and len(parent_ids) > 1:
         combinations.append(parent_ids)
 # The largest portion of the graph that has to be walked for a heads() check
@@ -60,7 +66,7 @@ for revision_id, parent_ids in parent_map.iteritems():
 if opts.max_combinations > 0 and len(combinations) > opts.max_combinations:
     combinations = random.sample(combinations, opts.max_combinations)
 
-print('      %d combinations' % (len(combinations),))
+print(f'      {len(combinations)} combinations')
 
 def combi_graph(graph_klass, comb):
     # DEBUG
@@ -74,16 +80,16 @@ def combi_graph(graph_klass, comb):
     else:
         heads = all_heads_comp(g, comb)
     end = osutils.perf_counter()
-    return dict(elapsed=(end - begin), graph=g, heads=heads)
+    return {'elapsed': (end - begin), 'graph': g, 'heads': heads}
 
 def report(name, g):
-    print('{}: {:.3f}s'.format(name, g['elapsed']))
+    print(f"{name}: {g['elapsed']:.3f}s")
     counters_used = False
     for c in graph._counters:
         if c:
             counters_used = True
     if counters_used:
-        print('  {}'.format(graph._counters))
+        print(f'  {graph._counters}')
 
 known_python = combi_graph(_known_graph_py.KnownGraph, combinations)
 report('Known', known_python)
@@ -95,16 +101,9 @@ def _simple_graph(parent_map):
     return graph.Graph(graph.DictParentsProvider(parent_map))
 
 if opts.quick:
-    if known_python['heads'] != known_pyrex['heads']:
-        import pdb; pdb.set_trace()
-    print('ratio: {:.1f}:1 faster'.format(
-        known_python['elapsed'] / known_pyrex['elapsed']))
+    print(f"ratio: {known_python['elapsed'] / known_pyrex['elapsed']:.1f}:1 faster")
 else:
     orig = combi_graph(_simple_graph, combinations)
     report('Orig', orig)
 
-    if orig['heads'] != known_pyrex['heads']:
-        import pdb; pdb.set_trace()
-
-    print('ratio: {:.1f}:1 faster'.format(
-        orig['elapsed'] / known_pyrex['elapsed']))
+    print(f"ratio: {orig['elapsed'] / known_pyrex['elapsed']:.1f}:1 faster")

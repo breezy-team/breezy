@@ -43,7 +43,7 @@ from ..tree import InterTree, TreeChange
 
 
 class ReturnsUnlockable(Matcher):
-    """A matcher that checks for the pattern we want lock* methods to have:
+    """A matcher that checks for the pattern we want lock* methods to have.
 
     They should return an object with an unlock() method.
     Calling that method should unlock the original object.
@@ -57,8 +57,7 @@ class ReturnsUnlockable(Matcher):
         self.lockable_thing = lockable_thing
 
     def __str__(self):
-        return ('ReturnsUnlockable(lockable_thing=%s)' %
-                self.lockable_thing)
+        return (f'ReturnsUnlockable(lockable_thing={self.lockable_thing})')
 
     def match(self, lock_method):
         lock_method().unlock()
@@ -74,7 +73,7 @@ class _IsLocked(Mismatch):
         self.lockable_thing = lockable_thing
 
     def describe(self):
-        return "%s is locked" % self.lockable_thing
+        return f"{self.lockable_thing} is locked"
 
 
 class _AncestryMismatch(Mismatch):
@@ -162,7 +161,7 @@ class HasLayout(Matcher):
                 yield entry
 
     def __str__(self):
-        return 'HasLayout(%r)' % self.entries
+        return f'HasLayout({self.entries!r})'
 
     def match(self, tree):
         include_file_ids = self.entries and not isinstance(
@@ -231,7 +230,7 @@ class HasPathRelations(Matcher):
                 yield (path, previous_path)
 
     def __str__(self):
-        return 'HasPathRelations({!r}, {!r})'.format(self.previous_tree, self.previous_entries)
+        return f'HasPathRelations({self.previous_tree!r}, {self.previous_entries!r})'
 
     def match(self, tree):
         actual = list(self.get_path_map(tree))
@@ -258,7 +257,7 @@ class RevisionHistoryMatches(Matcher):
         self.expected = history
 
     def __str__(self):
-        return 'RevisionHistoryMatches(%r)' % self.expected
+        return f'RevisionHistoryMatches({self.expected!r})'
 
     def match(self, branch):
         with branch.lock_read():
@@ -309,7 +308,7 @@ class MatchesTreeChanges(Matcher):
         return rich_expected
 
     def __str__(self):
-        return '<MatchesTreeChanges(%r)>' % self.expected
+        return f'<MatchesTreeChanges({self.expected!r})>'
 
     def match(self, actual):
         from ..bzr.inventorytree import InventoryTreeChange

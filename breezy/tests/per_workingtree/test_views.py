@@ -24,7 +24,8 @@ The views are actually in the WorkingTree.views namespace, but these are
 from breezy import views as _mod_views
 from breezy.tests import TestNotApplicable, TestSkipped
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
-from breezy.workingtree import WorkingTree
+
+from ...workingtree import WorkingTree
 
 
 class TestTreeViews(TestCaseWithWorkingTree):
@@ -33,12 +34,12 @@ class TestTreeViews(TestCaseWithWorkingTree):
         # formats that don't support views can skip the rest of these
         # tests...
         fmt = self.workingtree_format
-        f = getattr(fmt, 'supports_views')
+        f = fmt.supports_views
         if f is None:
             raise TestSkipped("format %s doesn't declare whether it "
                               "supports views, assuming not" % fmt)
         if not f():
-            raise TestNotApplicable("format %s doesn't support views" % fmt)
+            raise TestNotApplicable(f"format {fmt} doesn't support views")
         super().setUp()
 
     def test_views_initially_empty(self):
@@ -162,14 +163,12 @@ class TestUnsupportedViews(TestCaseWithWorkingTree):
 
     def setUp(self):
         fmt = self.workingtree_format
-        supported = getattr(fmt, 'supports_views')
+        supported = fmt.supports_views
         if supported is None:
-            warn("Format %s doesn't declare whether it supports views or not"
-                 % fmt)
+            warn(f"Format {fmt} doesn't declare whether it supports views or not")
             raise TestSkipped('No view support at all')
         if supported():
-            raise TestSkipped("Format %s declares that views are supported"
-                              % fmt)
+            raise TestSkipped(f"Format {fmt} declares that views are supported")
             # it's covered by TestTreeViews
         super().setUp()
 

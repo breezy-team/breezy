@@ -19,9 +19,10 @@
 import os
 
 from breezy import tests
-from breezy.mutabletree import MutableTree
-from breezy.osutils import supports_symlinks
 from breezy.tests.per_tree import TestCaseWithTree
+
+from ...mutabletree import MutableTree
+from ...osutils import supports_symlinks
 
 
 class TestWalkdirs(TestCaseWithTree):
@@ -50,7 +51,7 @@ class TestWalkdirs(TestCaseWithTree):
         if symlinks:
             dirblocks[''].append(
                 ('symlink', 'symlink', 'symlink', None, 'symlink'))
-        return [(path, list(sorted(entries)))
+        return [(path, sorted(entries))
                 for (path, entries) in sorted(dirblocks.items())]
 
     def test_walkdir_root(self):

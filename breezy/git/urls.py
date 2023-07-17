@@ -20,6 +20,7 @@
 from dulwich.client import parse_rsync_url
 
 from .. import urlutils
+from .._git_rs import bzr_url_to_git_url  # noqa: F401
 from .refs import ref_to_branch_name
 
 KNOWN_GIT_SCHEMES = ['git+ssh', 'git', 'http', 'https', 'ftp', 'ssh']
@@ -67,10 +68,3 @@ def git_url_to_bzr_url(location, branch=None, ref=None):
             params['branch'] = urlutils.escape(branch, safe='')
         location = urlutils.join_segment_parameters(location, params)
     return location
-
-
-def bzr_url_to_git_url(location):
-    target_url, target_params = urlutils.split_segment_parameters(location)
-    branch = target_params.get('branch')
-    ref = target_params.get('ref')
-    return target_url, branch, ref

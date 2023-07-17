@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for breezy.debug"""
+"""Tests for breezy.debug."""
 
 
 from .. import config, debug, tests
@@ -36,6 +36,8 @@ class TestDebugFlags(tests.TestCaseInTempDir):
         conf = config.GlobalStack()
         conf.store._load_from_string(b'[DEFAULT]\n' + conf_bytes)
         conf.store.save()
-        self.overrideAttr(debug, 'debug_flags', set())
+        old_debug_flags = debug.get_debug_flags()
+        self.addCleanup(debug.set_debug_flags, old_debug_flags)
+        debug.clear_debug_flags()
         debug.set_debug_flags_from_config()
-        self.assertEqual(set(expected_flags), debug.debug_flags)
+        self.assertEqual(set(expected_flags), debug.get_debug_flags())

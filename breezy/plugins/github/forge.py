@@ -21,22 +21,26 @@ import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from ... import bedding
+from ... import bedding, controldir, errors, urlutils
 from ... import branch as _mod_branch
-from ... import controldir, errors, hooks, urlutils
-from ... import version_string as breezy_version
-from ...config import AuthenticationConfig, GlobalStack
-from ...errors import (InvalidHttpResponse, PermissionDenied,
-                       UnexpectedHttpStatus)
-from ...forge import (Forge, ForgeLoginRequired, MergeProposal,
-                      MergeProposalBuilder, MergeProposalExists, NoSuchProject,
-                      PrerequisiteBranchUnsupported, ReopenFailed,
-                      UnsupportedForge, determine_title)
+from ...config import AuthenticationConfig
+from ...errors import PermissionDenied, UnexpectedHttpStatus
+from ...forge import (
+    Forge,
+    ForgeLoginRequired,
+    MergeProposal,
+    MergeProposalBuilder,
+    MergeProposalExists,
+    NoSuchProject,
+    PrerequisiteBranchUnsupported,
+    ReopenFailed,
+    UnsupportedForge,
+    determine_title,
+)
 from ...git.urls import git_url_to_bzr_url
 from ...i18n import gettext
 from ...trace import note
 from ...transport import get_transport
-from ...transport.http import default_user_agent
 
 GITHUB_HOST = 'github.com'
 WEB_GITHUB_URL = 'https://github.com'
@@ -110,7 +114,7 @@ class GitHubMergeProposal(MergeProposal):
         self._pr = pr
 
     def __repr__(self):
-        return "<{} at {!r}>".format(type(self).__name__, self.url)
+        return f"<{type(self).__name__} at {self.url!r}>"
 
     name = 'GitHub'
 
@@ -136,7 +140,7 @@ class GitHubMergeProposal(MergeProposal):
 
     def get_source_revision(self):
         """Return the latest revision for the source branch."""
-        from breezy.git.mapping import default_mapping
+        from ...git.mapping import default_mapping
         return default_mapping.revision_id_foreign_to_bzr(
             self._pr['head']['sha'].encode('ascii'))
 
@@ -196,7 +200,7 @@ class GitHubMergeProposal(MergeProposal):
         try:
             self._patch(state='open')
         except ValidationFailed as e:
-            raise ReopenFailed(e.error['errors'][0]['message'])
+            raise ReopenFailed(e.error['errors'][0]['message']) from e
 
     def close(self):
         self._patch(state='closed')
@@ -232,8 +236,8 @@ mutation ($pullRequestId: ID!) {
                 if (first_error['type'] == 'UNPROCESSABLE' and
                         first_error['path'] == 'enablePullRequestAutoMerge'):
                     # TODO(jelmer): better exception type
-                    raise Exception(first_error['message'])
-                raise Exception(first_error['message'])
+                    raise Exception(first_error['message']) from e
+                raise Exception(first_error['message']) from e
         else:
             # https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button
             data = {}
@@ -396,7 +400,7 @@ class GitHub(Forge):
     def _graphql_request(self, body, **kwargs):
         headers = {}
         if self._token:
-            headers['Authorization'] = 'token %s' % self._token
+            headers['Authorization'] = f'token {self._token}'
         url = urlutils.join(self.transport.base, 'graphql')
         response = self.transport.request(
             'POST', url,
@@ -417,14 +421,14 @@ class GitHub(Forge):
             'Content-Type': 'application/json',
             'Accept': 'application/vnd.github.v3+json'}
         if self._token:
-            headers['Authorization'] = 'token %s' % self._token
+            headers['Authorization'] = f'token {self._token}'
         try:
             response = self.transport.request(
                 method, urlutils.join(self.transport.base, path),
                 headers=headers, body=body, retries=3)
         except UnexpectedHttpStatus as e:
             if e.code == 401:
-                raise GitHubLoginRequired(self.base_url)
+                raise GitHubLoginRequired(self.base_url) from e
             else:
                 raise
         if response.status == 401:
@@ -432,7 +436,7 @@ class GitHub(Forge):
         return response
 
     def _get_repo(self, owner, repo):
-        path = 'repos/{}/{}'.format(owner, repo)
+        path = f'repos/{owner}/{repo}'
         response = self._api_request('GET', path)
         if response.status == 404:
             raise NoSuchProject(path)
@@ -448,7 +452,7 @@ class GitHub(Forge):
             params['head'] = head
         if state is not None:
             params['state'] = state
-        path += ';'.join(['{}={}'.format(k, urlutils.quote(v))
+        path += ';'.join([f'{k}={urlutils.quote(v)}'
                          for k, v in params.items()])
         response = self._api_request('GET', path)
         if response.status == 404:
@@ -484,20 +488,20 @@ class GitHub(Forge):
         return json.loads(response.text)
 
     def _get_user_by_email(self, email):
-        path = 'search/users?q=%s+in:email' % email
+        path = f'search/users?q={email}+in:email'
         response = self._api_request('GET', path)
         if response.status != 200:
             raise UnexpectedHttpStatus(path, response.status, headers=response.getheaders())
         ret = json.loads(response.text)
         if ret['total_count'] == 0:
-            raise KeyError('no user with email %s' % email)
+            raise KeyError(f'no user with email {email}')
         elif ret['total_count'] > 1:
-            raise ValueError('more than one result for email %s' % email)
+            raise ValueError(f'more than one result for email {email}')
         return ret['items'][0]
 
     def _get_user(self, username=None):
         if username:
-            path = 'users/%s' % username
+            path = f'users/{username}'
         else:
             path = 'user'
         response = self._api_request('GET', path)
@@ -506,7 +510,7 @@ class GitHub(Forge):
         return json.loads(response.text)
 
     def _get_organization(self, name):
-        path = 'orgs/%s' % name
+        path = f'orgs/{name}'
         response = self._api_request('GET', path)
         if response.status != 200:
             raise UnexpectedHttpStatus(path, response.status, headers=response.getheaders())
@@ -524,7 +528,7 @@ class GitHub(Forge):
             parameters['page'] = str(page)
             response = self._api_request(
                 'GET', path + '?' +
-                ';'.join(['{}={}'.format(k, urlutils.quote(v))
+                ';'.join([f'{k}={urlutils.quote(v)}'
                           for (k, v) in parameters.items()]))
             if response.status != 200:
                 raise UnexpectedHttpStatus(path, response.status, headers=response.getheaders())
@@ -543,7 +547,7 @@ class GitHub(Forge):
 
     def _create_fork(self, path, owner=None):
         if owner and owner != self.current_user['login']:
-            path += '?organization=%s' % owner
+            path += f'?organization={owner}'
         response = self._api_request('POST', path)
         if response.status != 202:
             raise UnexpectedHttpStatus(path, response.status, headers=response.getheaders())
@@ -571,7 +575,8 @@ class GitHub(Forge):
                         owner=None, revision_id=None, overwrite=False,
                         allow_lossy=True, tag_selector=None,):
         if tag_selector is None:
-            tag_selector = lambda t: False
+            def tag_selector(t):
+                return False
         base_owner, base_project, base_branch_name = parse_github_branch_url(base_branch)
         base_repo = self._get_repo(base_owner, base_project)
         if owner is None:
@@ -625,8 +630,8 @@ class GitHub(Forge):
             project = base_repo['name']
         try:
             remote_repo = self._get_repo(owner, project)
-        except NoSuchProject:
-            raise errors.NotBranchError('{}/{}/{}'.format(WEB_GITHUB_URL, owner, project))
+        except NoSuchProject as e:
+            raise errors.NotBranchError(f'{WEB_GITHUB_URL}/{owner}/{project}') from e
         if preferred_schemes is None:
             preferred_schemes = DEFAULT_PREFERRED_SCHEMES
         for scheme in preferred_schemes:
@@ -690,8 +695,8 @@ class GitHub(Forge):
     def probe_from_url(cls, url, possible_transports=None):
         try:
             parse_github_url(url)
-        except NotGitHubUrl:
-            raise UnsupportedForge(url)
+        except NotGitHubUrl as e:
+            raise UnsupportedForge(url) from e
         transport = get_transport(
             API_GITHUB_URL, possible_transports=possible_transports)
         return cls(transport)
@@ -713,12 +718,12 @@ class GitHub(Forge):
             query.append('is:merged')
         if author is None:
             author = self.current_user['login']
-        query.append('author:%s' % author)
+        query.append(f'author:{author}')
         for issue in self._search_issues(query=' '.join(query)):
             def retrieve_full():
-                response = self._api_request('GET', issue['pull_request']['url'])
+                response = self._api_request('GET', issue['pull_request']['url'])  # noqa: B023
                 if response.status != 200:
-                    raise UnexpectedHttpStatus(issue['pull_request']['url'], response.status, headers=response.getheaders())
+                    raise UnexpectedHttpStatus(issue['pull_request']['url'], response.status, headers=response.getheaders())  # noqa: B023
                 return json.loads(response.text)
             yield GitHubMergeProposal(self, _LazyDict(issue['pull_request'], retrieve_full))
 
@@ -727,8 +732,7 @@ class GitHub(Forge):
             (owner, repo, pr_id) = parse_github_pr_url(url)
         except NotGitHubUrl as e:
             raise UnsupportedForge(url) from e
-        api_url = 'https://api.github.com/repos/{}/{}/pulls/{}'.format(
-            owner, repo, pr_id)
+        api_url = f'https://api.github.com/repos/{owner}/{repo}/pulls/{pr_id}'
         response = self._api_request('GET', api_url)
         if response.status != 200:
             raise UnexpectedHttpStatus(api_url, response.status, headers=response.getheaders())
@@ -737,7 +741,7 @@ class GitHub(Forge):
 
     def iter_my_forks(self, owner=None):
         if owner:
-            path = '/users/%s/repos' % owner
+            path = f'/users/{owner}/repos'
         else:
             path = '/user/repos'
         for page in self._list_paged(path, per_page=DEFAULT_PER_PAGE):
@@ -803,8 +807,8 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         info.append("Merge {} into {}:{}\n".format(
             self.source_branch_name, self.target_owner,
             self.target_branch_name))
-        info.append("Source: %s\n" % self.source_branch.user_url)
-        info.append("Target: %s\n" % self.target_branch.user_url)
+        info.append(f"Source: {self.source_branch.user_url}\n")
+        info.append(f"Target: {self.target_branch.user_url}\n")
         return ''.join(info)
 
     def get_initial_body(self):
@@ -847,15 +851,15 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
             pull_request = self.gh._create_pull(
                 strip_optional(target_repo['pulls_url']),
                 title=title, body=description,
-                head="{}:{}".format(self.source_owner, self.source_branch_name),
+                head=f"{self.source_owner}:{self.source_branch_name}",
                 base=self.target_branch_name,
                 labels=labels, assignee=assignees,
                 draft=work_in_progress,
                 maintainer_can_modify=allow_collaboration,
                 **kwargs
                 )
-        except ValidationFailed:
+        except ValidationFailed as e:
             # TODO(jelmer): Check the actual error message rather than assuming
             # a merge proposal exists?
-            raise MergeProposalExists(self.source_branch.user_url)
+            raise MergeProposalExists(self.source_branch.user_url) from e
         return GitHubMergeProposal(self.gh, pull_request)

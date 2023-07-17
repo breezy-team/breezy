@@ -24,12 +24,23 @@ from ..bzr import BzrProber
 from ..bzr.branch import BranchReferenceFormat
 from ..controldir import ControlDir, ControlDirFormat
 from ..errors import NotBranchError, RedirectRequested
-from ..transport import (Transport, chroot, get_transport, register_transport,
-                         register_transport_proto, transport_list_registry,
-                         unregister_transport)
-from ..url_policy_open import (BadUrl, BranchLoopError, BranchOpener,
-                               BranchReferenceForbidden, WhitelistPolicy,
-                               _BlacklistPolicy, open_only_scheme)
+from ..transport import (
+    Transport,
+    chroot,
+    get_transport,
+    register_transport,
+    register_transport_proto,
+    unregister_transport,
+)
+from ..url_policy_open import (
+    BadUrl,
+    BranchLoopError,
+    BranchOpener,
+    BranchReferenceForbidden,
+    WhitelistPolicy,
+    _BlacklistPolicy,
+    open_only_scheme,
+)
 from . import TestCase, TestCaseWithTransport
 
 

@@ -23,7 +23,7 @@ from breezy.tests import TestCaseWithTransport
 class TestIgnored(TestCaseWithTransport):
 
     def test_ignored_added_file(self):
-        """'brz ignored' should not list versioned files."""
+        """'brz ignored' should not list versioned files."""  # noqa: D403
         # this test can go in favour of a more general ui test at some point
         # as it is actually testing the internals layer and should not be.
         # There are no other 'ignored' tests though, so it should be retained
@@ -40,8 +40,8 @@ class TestIgnored(TestCaseWithTransport):
         self.assertEqual('', err)
 
     def test_ignored_directory(self):
-        """Test --directory option"""
-        tree = self.make_branch_and_tree('a')
+        """Test --directory option."""
+        self.make_branch_and_tree('a')
         self.build_tree_contents([('a/README', b'contents'),
                                   ('a/.bzrignore', b'README')])
         out, err = self.run_bzr(['ignored', '--directory=a'])

@@ -26,12 +26,19 @@ class TestHooks(tests.TestCase):
 
     def test_constructor(self):
         """Check that creating a MutableTreeHooks instance has the right
-        defaults."""
+        defaults.
+        """
         hooks = mutabletree.MutableTreeHooks()
-        self.assertTrue("start_commit" in hooks,
-                        "start_commit not in %s" % hooks)
-        self.assertTrue("post_commit" in hooks,
-                        "post_commit not in %s" % hooks)
+        self.assertIn(
+            "start_commit",
+            hooks,
+            f"start_commit not in {hooks}"
+        )
+        self.assertIn(
+            "post_commit",
+            hooks,
+            f"post_commit not in {hooks}"
+        )
 
     def test_installed_hooks_are_MutableTreeHooks(self):
         """The installed hooks object should be a MutableTreeHooks."""

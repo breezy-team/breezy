@@ -33,7 +33,7 @@ def only_raises(*errors):
                 return unbound(*args, **kwargs)
             except errors:
                 raise
-            except:
+            except BaseException:
                 trace.mutter('Error suppressed by only_raises:')
                 trace.log_exception_quietly()
         wrapped.__doc__ = unbound.__doc__
@@ -87,7 +87,7 @@ def cachedproperty(attrname_or_fn):
         return _CachedPropertyForAttr(attrname)
     else:
         fn = attrname_or_fn
-        attrname = '_%s_cached_value' % fn.__name__
+        attrname = f'_{fn.__name__}_cached_value'
         return _CachedProperty(attrname, fn)
 
 

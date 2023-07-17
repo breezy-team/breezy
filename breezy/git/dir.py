@@ -25,10 +25,19 @@ from dulwich.refs import SymrefLoop
 from .. import branch as _mod_branch
 from .. import errors as brz_errors
 from .. import osutils, trace, urlutils
-from ..controldir import (BranchReferenceLoop, ControlDir, ControlDirFormat,
-                          RepositoryAcquisitionPolicy, format_registry)
-from ..transport import (FileExists, NoSuchFile, do_catching_redirections,
-                         get_transport_from_path)
+from ..controldir import (
+    BranchReferenceLoop,
+    ControlDir,
+    ControlDirFormat,
+    RepositoryAcquisitionPolicy,
+    format_registry,
+)
+from ..transport import (
+    FileExists,
+    NoSuchFile,
+    do_catching_redirections,
+    get_transport_from_path,
+)
 from .mapping import decode_git_path, encode_git_path
 from .push import GitPushResult
 from .transportgit import OBJECTDIR, TransportObjectStore
@@ -59,7 +68,7 @@ class GitControlDirFormat(ControlDirFormat):
 
 
 class UseExistingRepository(RepositoryAcquisitionPolicy):
-    """A policy of reusing an existing repository"""
+    """A policy of reusing an existing repository."""
 
     def __init__(self, repository, stack_on=None, stack_on_pwd=None,
                  require_stacking=False):
@@ -76,7 +85,7 @@ class UseExistingRepository(RepositoryAcquisitionPolicy):
 
     def acquire_repository(self, make_working_trees=None, shared=False,
                            possible_transports=None):
-        """Implementation of RepositoryAcquisitionPolicy.acquire_repository
+        """Implementation of RepositoryAcquisitionPolicy.acquire_repository.
 
         Returns an existing repository to use.
         """
@@ -287,8 +296,7 @@ class GitDir(ControlDir):
         return self._gitrepository_class(self._find_commondir())
 
     def get_refs_container(self):
-        """Retrieve the refs container.
-        """
+        """Retrieve the refs container."""
         raise NotImplementedError(self.get_refs_container)
 
     def determine_repository_policy(self, force_new_repo=False, stack_on=None,
@@ -399,9 +407,7 @@ class LocalGitControlDirFormat(GitControlDirFormat):
         return LocalGitBranchFormat()
 
     def open(self, transport, _found=None):
-        """Open this directory.
-
-        """
+        """Open this directory."""
         from .transportgit import TransportRepo
 
         def _open(transport):
@@ -410,7 +416,7 @@ class LocalGitControlDirFormat(GitControlDirFormat):
                                      refs_text=getattr(self, "_refs_text", None))
             except ValueError as e:
                 if e.args == ('Expected file to start with \'gitdir: \'', ):
-                    raise brz_errors.NotBranchError(path=transport.base)
+                    raise brz_errors.NotBranchError(path=transport.base) from e
                 raise
 
         def redirected(transport, e, redirection_notice):
@@ -472,8 +478,8 @@ class LocalGitControlDirFormat(GitControlDirFormat):
     def supports_transport(self, transport):
         try:
             external_url = transport.external_url()
-        except brz_errors.InProcessTransport:
-            raise brz_errors.NotBranchError(path=transport.base)
+        except brz_errors.InProcessTransport as err:
+            raise brz_errors.NotBranchError(path=transport.base) from err
         return external_url.startswith("file:")
 
     def is_control_filename(self, filename):
@@ -502,8 +508,7 @@ class LocalGitDir(GitDir):
         return LocalGitRepository
 
     def __repr__(self):
-        return "<{} at {!r}>".format(
-            self.__class__.__name__, self.root_transport.base)
+        return f"<{self.__class__.__name__} at {self.root_transport.base!r}>"
 
     _gitrepository_class = property(_get_gitrepository_class)
 
@@ -544,9 +549,9 @@ class LocalGitDir(GitDir):
                 target_path = (
                     target_branch.controldir.control_transport.local_abspath(
                         '.'))
-            except brz_errors.NotLocalUrl:
+            except brz_errors.NotLocalUrl as err:
                 raise brz_errors.IncompatibleFormat(
-                    target_branch._format, self._format)
+                    target_branch._format, self._format) from err
             # TODO(jelmer): Do some consistency checking across branches..
             self.control_transport.put_bytes(
                 'commondir', encode_git_path(target_path))
@@ -572,8 +577,8 @@ class LocalGitDir(GitDir):
         ref = self._get_selected_ref(name)
         try:
             target_ref = self._get_symref(ref)
-        except SymrefLoop:
-            raise BranchReferenceLoop(self)
+        except SymrefLoop as err:
+            raise BranchReferenceLoop(self) from err
         if target_ref is not None:
             from .refs import ref_to_branch_name
             try:
@@ -591,7 +596,7 @@ class LocalGitDir(GitDir):
             except NoSuchFile:
                 base_url = self.user_url.rstrip('/')
             else:
-                base_url = urlutils.local_path_to_url(
+                base_url = urlutils.local_path_to_url(  # noqa: B005
                     decode_git_path(commondir)).rstrip('/.git/') + '/'
             return urlutils.join_segment_parameters(base_url, params)
         return None
@@ -623,7 +628,7 @@ class LocalGitDir(GitDir):
 
     def open_branch(self, name=None, unsupported=False, ignore_fallbacks=None,
                     ref=None, possible_transports=None, nascent_ok=False):
-        """'create' a branch for this dir."""
+        """'create' a branch for this dir."""  # noqa: D403
         repo = self.find_repository()
         from .branch import LocalGitBranch
         ref = self._get_selected_ref(name, ref)
@@ -632,8 +637,8 @@ class LocalGitDir(GitDir):
                 self.root_transport.base, controldir=self)
         try:
             ref_chain, unused_sha = self._git.refs.follow(ref)
-        except SymrefLoop as e:
-            raise BranchReferenceLoop(self)
+        except SymrefLoop as err:
+            raise BranchReferenceLoop(self) from err
         if ref_chain[-1] == b'HEAD':
             controldir = self
         else:
@@ -648,9 +653,9 @@ class LocalGitDir(GitDir):
                 self.destroy_branch, self)
         try:
             del self._git.refs[refname]
-        except KeyError:
+        except KeyError as err:
             raise brz_errors.NotBranchError(
-                self.root_transport.base, controldir=self)
+                self.root_transport.base, controldir=self) from err
 
     def destroy_repository(self):
         raise brz_errors.UnsupportedOperation(self.destroy_repository, self)
@@ -666,7 +671,7 @@ class LocalGitDir(GitDir):
         return not isinstance(self._format, format.__class__)
 
     def open_repository(self):
-        """'open' a repository for this dir."""
+        """'open' a repository for this dir."""  # noqa: D403
         if self.control_transport.has('commondir'):
             raise brz_errors.NoRepositoryPresent(self)
         return self._gitrepository_class(self)
@@ -767,15 +772,13 @@ class LocalGitDir(GitDir):
                 self._file_mode = self._dir_mode & ~0o7111
 
     def _get_file_mode(self):
-        """Return Unix mode for newly created files, or None.
-        """
+        """Return Unix mode for newly created files, or None."""
         if not self._mode_check_done:
             self._find_creation_modes()
         return self._file_mode
 
     def _get_dir_mode(self):
-        """Return Unix mode for newly created directories, or None.
-        """
+        """Return Unix mode for newly created directories, or None."""
         if not self._mode_check_done:
             self._find_creation_modes()
         return self._dir_mode

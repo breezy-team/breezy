@@ -14,10 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for commands related to hooks"""
+"""Tests for commands related to hooks."""
 
-from breezy.branch import Branch
 from breezy.tests import TestCaseWithTransport
+
+from ...branch import Branch
 
 
 def _foo_hook():
@@ -29,13 +30,13 @@ class TestHooks(TestCaseWithTransport):
     def _check_hooks_output(self, command_output, hooks):
         for hook_type in Branch.hooks:
             s = "\n  ".join(hooks.get(hook_type, ["<no hooks installed>"]))
-            self.assertTrue("{}:\n    {}".format(hook_type, s) in command_output)
+            self.assertIn(f"{hook_type}:\n    {s}", command_output)
 
     def test_hooks_with_no_hooks(self):
         self.make_branch('.')
         out, err = self.run_bzr('hooks')
         self.assertEqual(err, "")
-        for hook_type in Branch.hooks:
+        for _hook_type in Branch.hooks:
             self._check_hooks_output(out, {})
 
     def test_hooks_with_unnamed_hook(self):

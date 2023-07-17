@@ -18,7 +18,7 @@
 
 import time
 
-from testtools.matchers import *
+from testtools.matchers import *  # noqa: F403
 
 from .. import config, tests
 from .. import ui as _mod_ui
@@ -301,8 +301,7 @@ class TestTextUIOutputStream(tests.TestCase):
 class UITests(tests.TestCase):
 
     def test_progress_construction(self):
-        """TextUIFactory constructs the right progress view.
-        """
+        """TextUIFactory constructs the right progress view."""
         FileStringIO = ui_testing.StringIOWithEncoding
         TTYStringIO = ui_testing.StringIOAsTTY
         for (file_class, term, pb, expected_pb_class) in (
@@ -330,11 +329,11 @@ class UITests(tests.TestCase):
             uif = _mod_ui.make_ui_for_terminal(stdin, stdout, stderr)
             self.assertIsInstance(
                 uif, _mod_ui_text.TextUIFactory,
-                "TERM={} BRZ_PROGRESS_BAR={} uif={!r}".format(term, pb, uif))
+                f"TERM={term} BRZ_PROGRESS_BAR={pb} uif={uif!r}")
             self.assertIsInstance(
                 uif.make_progress_view(),
                 expected_pb_class,
-                "TERM={} BRZ_PROGRESS_BAR={} uif={!r}".format(term, pb, uif))
+                f"TERM={term} BRZ_PROGRESS_BAR={pb} uif={uif!r}")
 
     def test_text_ui_non_terminal(self):
         """Even on non-ttys, make_ui_for_terminal gives a text ui."""
@@ -343,7 +342,7 @@ class UITests(tests.TestCase):
             self.overrideEnv('TERM', term_type)
             uif = _mod_ui.make_ui_for_terminal(stdin, stdout, stderr)
             self.assertIsInstance(uif, _mod_ui_text.TextUIFactory,
-                                  'TERM={!r}'.format(term_type))
+                                  f'TERM={term_type!r}')
 
 
 class SilentUITests(tests.TestCase):
@@ -436,7 +435,7 @@ class TestBoolFromString(tests.TestCase):
         self.assertIsNone('42')
 
     def test_provided_values(self):
-        av = dict(y=True, n=False, yes=True, no=False)
+        av = {'y': True, 'n': False, 'yes': True, 'no': False}
         self.assertIsTrue('y', av)
         self.assertIsTrue('Y', av)
         self.assertIsTrue('Yes', av)
@@ -467,7 +466,7 @@ class TestConfirmationUserInterfacePolicy(tests.TestCase):
                 for conf_id in ['given_id', 'other_id']:
                     wrapper = _mod_ui.ConfirmationUserInterfacePolicy(
                         base_ui, default_answer,
-                        dict(given_id=specific_answer))
+                        {'given_id': specific_answer})
                     result = wrapper.confirm_action(
                         "Do something?", conf_id, {})
                     if conf_id == 'given_id':
@@ -478,14 +477,14 @@ class TestConfirmationUserInterfacePolicy(tests.TestCase):
     def test_repr(self):
         base_ui = _mod_ui.NoninteractiveUIFactory()
         wrapper = _mod_ui.ConfirmationUserInterfacePolicy(
-            base_ui, True, dict(a=2))
+            base_ui, True, {'a': 2})
         self.assertThat(repr(wrapper),
                         Equals("ConfirmationUserInterfacePolicy("
                                "NoninteractiveUIFactory(), True, {'a': 2})"))
 
 
 class TestProgressRecordingUI(tests.TestCase):
-    """Test test-oriented UIFactory that records progress updates"""
+    """Test test-oriented UIFactory that records progress updates."""
 
     def test_nested_ignore_depth_beyond_one(self):
         # we only want to capture the first level out progress, not

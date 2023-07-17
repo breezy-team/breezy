@@ -26,9 +26,9 @@ class TestPull(per_branch.TestCaseWithBranch):
         # when revisions are pulled, the left-most accessible parents must
         # become the revision-history.
         parent = self.make_branch_and_tree('parent')
-        p1 = parent.commit('1st post', allow_pointless=True)
+        parent.commit('1st post', allow_pointless=True)
         mine = parent.controldir.sprout('mine').open_workingtree()
-        m1 = mine.commit('my change', allow_pointless=True)
+        mine.commit('my change', allow_pointless=True)
         parent.merge_from_branch(mine.branch)
         p2 = parent.commit('merge my change')
         mine.pull(parent.branch)
@@ -40,21 +40,21 @@ class TestPull(per_branch.TestCaseWithBranch):
         # via a third branch - so its buried in the ancestry and is not
         # directly accessible.
         parent = self.make_branch_and_tree('parent')
-        p1 = parent.commit('1st post', allow_pointless=True)
+        parent.commit('1st post', allow_pointless=True)
         mine = parent.controldir.sprout('mine').open_workingtree()
-        m1 = mine.commit('my change', allow_pointless=True)
+        mine.commit('my change', allow_pointless=True)
         other = parent.controldir.sprout('other').open_workingtree()
         other.merge_from_branch(mine.branch)
-        o2 = other.commit('merge my change')
+        other.commit('merge my change')
         parent.merge_from_branch(other.branch)
         p2 = parent.commit('merge other')
         mine.pull(parent.branch)
         self.assertEqual(p2, mine.branch.last_revision())
 
     def test_pull_updates_checkout_and_master(self):
-        """Pulling into a checkout updates the checkout and the master branch"""
+        """Pulling into a checkout updates the checkout and the master branch."""
         master_tree = self.make_branch_and_tree('master')
-        rev1 = master_tree.commit('master')
+        master_tree.commit('master')
         checkout = master_tree.branch.create_checkout('checkout')
 
         other = master_tree.branch.controldir.sprout(
@@ -67,7 +67,8 @@ class TestPull(per_branch.TestCaseWithBranch):
 
     def test_pull_local_updates_checkout_only(self):
         """Pulling --local into a checkout updates the checkout and not the
-        master branch"""
+        master branch.
+        """
         master_tree = self.make_branch_and_tree('master')
         rev1 = master_tree.commit('master')
         checkout = master_tree.branch.create_checkout('checkout')
@@ -87,7 +88,7 @@ class TestPull(per_branch.TestCaseWithBranch):
 
         other = master_tree.branch.controldir.sprout(
             'other').open_workingtree()
-        rev2 = other.commit('other commit')
+        other.commit('other commit')
         # now pull --local, which should raise LocalRequiresBoundBranch error.
         self.assertRaises(errors.LocalRequiresBoundBranch,
                           master_tree.branch.pull, other.branch, local=True)
@@ -133,7 +134,7 @@ class TestPull(per_branch.TestCaseWithBranch):
 
     def test_pull_overwrite_set(self):
         tree_a = self.make_branch_and_tree('tree_a')
-        rev1 = tree_a.commit('message 1')
+        tree_a.commit('message 1')
 
         tree_b = tree_a.controldir.sprout('tree_b').open_workingtree()
         rev2a = tree_a.commit('message 2a')
@@ -195,16 +196,16 @@ class TestPull(per_branch.TestCaseWithBranch):
         # Make a source, sprout a target off it
         try:
             builder = self.make_branch_builder('source')
-        except errors.UninitializableFormat:
-            raise TestNotApplicable('uninitializeable format')
+        except errors.UninitializableFormat as e:
+            raise TestNotApplicable('uninitializeable format') from e
         source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(
             builder)
         target = source.controldir.sprout('target').open_branch()
         # Add a tag to the source, then pull from source
         try:
             source.tags.set_tag('tag-a', rev2)
-        except errors.TagsNotSupported:
-            raise TestNotApplicable('format does not support tags.')
+        except errors.TagsNotSupported as e:
+            raise TestNotApplicable('format does not support tags.') from e
         source.tags.set_tag('tag-a', rev2)
         source.get_config_stack().set('branch.fetch_tags', True)
         target.pull(source)
@@ -217,8 +218,8 @@ class TestPull(per_branch.TestCaseWithBranch):
         # Make a source, sprout a target off it
         try:
             builder = self.make_branch_builder('source')
-        except errors.UninitializableFormat:
-            raise TestNotApplicable('uninitializeable format')
+        except errors.UninitializableFormat as e:
+            raise TestNotApplicable('uninitializeable format') from e
         source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(
             builder)
         target = source.controldir.sprout('target').open_branch()
@@ -227,8 +228,8 @@ class TestPull(per_branch.TestCaseWithBranch):
         # Add a tag to the source, then pull rev_2_again from source
         try:
             source.tags.set_tag('tag-a', rev2)
-        except errors.TagsNotSupported:
-            raise TestNotApplicable('format does not support tags.')
+        except errors.TagsNotSupported as e:
+            raise TestNotApplicable('format does not support tags.') from e
         source.get_config_stack().set('branch.fetch_tags', True)
         target.pull(source, stop_revision=rev_2_again)
         # The tag is present, and so is its revision.
@@ -293,9 +294,9 @@ class TestPullHook(per_branch.TestCaseWithBranch):
             local = controldir.ControlDir.create_branch_convenience('local2')
             try:
                 local.bind(target)
-            except branch.BindingUnsupported:
+            except branch.BindingUnsupported as e:
                 raise TestNotApplicable(
-                    'default format does not support binding')
+                    'default format does not support binding') from e
         source = self.make_branch('source')
         branch.Branch.hooks.install_named_hook(
             'post_pull', self.capture_post_pull_hook, None)

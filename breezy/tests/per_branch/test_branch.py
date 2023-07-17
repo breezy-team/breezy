@@ -19,16 +19,25 @@
 import contextlib
 
 from breezy import branch as _mod_branch
-from breezy import config, controldir
-from breezy import delta as _mod_delta
-from breezy import (errors, lock, merge, osutils, repository, revision, shelf,
-                    tests, transport)
+from breezy import (
+    config,
+    controldir,
+    errors,
+    lock,
+    osutils,
+    repository,
+    revision,
+    shelf,
+    tests,
+    transport,
+    urlutils,
+)
 from breezy import tree as _mod_tree
-from breezy import urlutils
 from breezy.bzr import remote
 from breezy.tests import per_branch
-from breezy.tests.http_server import HttpServer
 from breezy.transport import memory
+
+from ..http_server import HttpServer
 
 
 class TestTestCaseWithBranch(per_branch.TestCaseWithBranch):
@@ -92,7 +101,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         result = b2.fetch(b1)
         self.assertIsInstance(result, repository.FetchResult)
 
-        rev = b2.repository.get_revision(rev1)
+        b2.repository.get_revision(rev1)
         tree = b2.repository.revision_tree(rev1)
         tree.lock_read()
         self.addCleanup(tree.unlock)
@@ -173,7 +182,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.assertEqual(random_parent, branch_d.get_parent())
 
     def test_submit_branch(self):
-        """Submit location can be queried and set"""
+        """Submit location can be queried and set."""
         branch = self.make_branch('branch')
         self.assertEqual(branch.get_submit_branch(), None)
         branch.set_submit_branch('sftp://example.com')
@@ -182,7 +191,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.assertEqual(branch.get_submit_branch(), 'sftp://example.net')
 
     def test_public_branch(self):
-        """public location can be queried and set"""
+        """Public location can be queried and set."""
         branch = self.make_branch('branch')
         self.assertEqual(branch.get_public_branch(), None)
         branch.set_public_branch('sftp://example.com')
@@ -205,8 +214,6 @@ class TestBranch(per_branch.TestCaseWithBranch):
         rev_id = wt.commit('commit against a ghost first parent.')
         rev = wt.branch.repository.get_revision(rev_id)
         self.assertEqual(rev.parent_ids, [b'non:existent@rev--ision--0--2'])
-        # parent_sha1s is not populated now, WTF. rbc 20051003
-        self.assertEqual(len(rev.parent_sha1s), 0)
 
     def test_record_two_ghosts(self):
         """Recording with all ghosts works."""
@@ -269,7 +276,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
 
         A nickname is always available, whether set explicitly or not.
         """
-        t = self.get_transport()
+        self.get_transport()
         branch = self.make_branch('bzr.dev')
         # An implicit nick name is set; what it is exactly depends on the
         # format.
@@ -283,7 +290,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.assertEqual(branch.nick, "\u1234")
 
     def test_commit_nicks(self):
-        """Nicknames are committed to the revision"""
+        """Nicknames are committed to the revision."""
         wt = self.make_branch_and_tree('bzr.dev')
         branch = wt.branch
         branch.nick = "My happy branch"
@@ -308,7 +315,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
             raise tests.TestNotApplicable("control dir format does not support "
                                           "colocated branches")
         try:
-            child_branch1 = self.branch_format.initialize(repo.controldir,
+            self.branch_format.initialize(repo.controldir,
                                                           name='branch1')
         except errors.UninitializableFormat:
             # branch references are not default init'able and
@@ -323,7 +330,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
             repo = self.make_repository('.', shared=True)
         except errors.IncompatibleFormat:
             return
-        for val in (True, False):
+        for _val in (True, False):
             try:
                 branch = self.branch_format.initialize(repo.controldir,
                                                        append_revisions_only=True)
@@ -349,16 +356,16 @@ class TestBranch(per_branch.TestCaseWithBranch):
     def test_create_open_branch_uses_repository(self):
         try:
             repo = self.make_repository('.', shared=True)
-        except errors.IncompatibleFormat:
-            raise tests.TestNotApplicable("requires shared repository support")
+        except errors.IncompatibleFormat as err:
+            raise tests.TestNotApplicable("requires shared repository support") from err
         child_transport = repo.controldir.root_transport.clone('child')
         child_transport.mkdir('.')
         try:
             child_dir = self.bzrdir_format.initialize_on_transport(
                 child_transport)
-        except errors.UninitializableFormat:
+        except errors.UninitializableFormat as err:
             raise tests.TestNotApplicable(
-                "control dir format not initializable")
+                "control dir format not initializable") from err
         try:
             child_branch = self.branch_format.initialize(child_dir)
         except errors.UninitializableFormat:
@@ -393,7 +400,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         orig_history = list(
             graph.iter_lefthand_ancestry(
                 tree.branch.last_revision(), [revision.NULL_REVISION]))
-        rev2 = tree.commit('bar', allow_pointless=True)
+        tree.commit('bar', allow_pointless=True)
         tree.branch.generate_revision_history(rev1)
         self.assertEqual(orig_history, list(
             graph.iter_lefthand_ancestry(
@@ -401,7 +408,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
 
     def test_generate_revision_history_NULL_REVISION(self):
         tree = self.make_branch_and_tree('.')
-        rev1 = tree.commit('foo')
+        tree.commit('foo')
         tree.lock_write()
         self.addCleanup(tree.unlock)
         tree.branch.generate_revision_history(revision.NULL_REVISION)
@@ -414,10 +421,10 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.assertEqual(b'null:', checkout_b.last_revision())
         try:
             rev1 = checkout_b.commit('rev1')
-        except errors.NoRoundtrippingSupport:
+        except errors.NoRoundtrippingSupport as err:
             raise tests.TestNotApplicable(
                 'roundtripping between %r and %r not supported' %
-                (checkout_b.branch, checkout_b.branch.get_master_branch()))
+                (checkout_b.branch, checkout_b.branch.get_master_branch())) from err
         self.assertEqual(rev1, branch_a.last_revision())
         self.assertNotEqual(checkout_b.branch.base, branch_a.base)
 
@@ -475,15 +482,15 @@ class TestBranch(per_branch.TestCaseWithBranch):
         tree.commit('first commit')
         rev2 = tree.commit('second commit')
         must_fetch, should_fetch = tree.branch.heads_to_fetch()
-        self.assertTrue(rev2 in must_fetch)
+        self.assertIn(rev2, must_fetch)
 
     def test_heads_to_fetch_not_null_revision(self):
         # NULL_REVISION does not appear in the result of heads_to_fetch, even
         # for an empty branch.
         tree = self.make_branch_and_tree('a')
         must_fetch, should_fetch = tree.branch.heads_to_fetch()
-        self.assertFalse(revision.NULL_REVISION in must_fetch)
-        self.assertFalse(revision.NULL_REVISION in should_fetch)
+        self.assertNotIn(revision.NULL_REVISION, must_fetch)
+        self.assertNotIn(revision.NULL_REVISION, should_fetch)
 
     def test_create_memorytree(self):
         tree = self.make_branch_and_tree('a')
@@ -592,7 +599,7 @@ class TestBranchPushLocations(per_branch.TestCaseWithBranch):
     def test_get_push_location_exact(self):
         b = self.get_branch()
         config.LocationConfig.from_string(
-            '[{}]\npush_location=foo\n'.format(b.base), b.base, save=True)
+            f'[{b.base}]\npush_location=foo\n', b.base, save=True)
         self.assertEqual("foo", self.get_branch().get_push_location())
 
     def test_set_push_location(self):
@@ -636,8 +643,8 @@ class TestFormat(per_branch.TestCaseWithBranch):
             name = None
         try:
             made_branch = made_controldir.create_branch(name)
-        except errors.UninitializableFormat:
-            raise tests.TestNotApplicable('Uninitializable branch format')
+        except errors.UninitializableFormat as err:
+            raise tests.TestNotApplicable('Uninitializable branch format') from err
 
         self.assertEqual(None,
                          made_branch._format.get_reference(made_branch.controldir, name))
@@ -669,7 +676,7 @@ class TestFormat(per_branch.TestCaseWithBranch):
             # they may not be initializable.
             return
         # supported formats must be able to init and open
-        t = self.get_transport()
+        self.get_transport()
         readonly_t = transport.get_transport_from_url(self.get_readonly_url())
         made_branch = self.make_branch('.')
         self.assertIsInstance(made_branch, _mod_branch.Branch)
@@ -703,8 +710,8 @@ class TestBound(per_branch.TestCaseWithBranch):
         branch2 = self.make_branch('2')
         try:
             branch.bind(branch2)
-        except _mod_branch.BindingUnsupported:
-            raise tests.TestNotApplicable('Format does not support binding')
+        except _mod_branch.BindingUnsupported as err:
+            raise tests.TestNotApplicable('Format does not support binding') from err
         self.assertTrue(branch.unbind())
         self.assertFalse(branch.unbind())
         self.assertIs(None, branch.get_bound_location())
@@ -713,9 +720,9 @@ class TestBound(per_branch.TestCaseWithBranch):
         branch = self.make_branch('branch1')
         try:
             self.assertIs(None, branch.get_old_bound_location())
-        except errors.UpgradeRequired:
+        except errors.UpgradeRequired as e:
             raise tests.TestNotApplicable(
-                'Format does not store old bound locations')
+                'Format does not store old bound locations') from e
         branch2 = self.make_branch('branch2')
         branch.bind(branch2)
         self.assertIs(None, branch.get_old_bound_location())
@@ -731,8 +738,8 @@ class TestBound(per_branch.TestCaseWithBranch):
         tree_b.commit('rev2b')
         try:
             tree_b.branch.bind(tree_a.branch)
-        except _mod_branch.BindingUnsupported:
-            raise tests.TestNotApplicable('Format does not support binding')
+        except _mod_branch.BindingUnsupported as e:
+            raise tests.TestNotApplicable('Format does not support binding') from e
 
     def test_unbind_clears_cached_master_branch(self):
         """b.unbind clears any cached value of b.get_master_branch."""
@@ -740,8 +747,8 @@ class TestBound(per_branch.TestCaseWithBranch):
         branch = self.make_branch('branch')
         try:
             branch.bind(master)
-        except _mod_branch.BindingUnsupported:
-            raise tests.TestNotApplicable('Format does not support binding')
+        except _mod_branch.BindingUnsupported as e:
+            raise tests.TestNotApplicable('Format does not support binding') from e
         self.addCleanup(branch.lock_write().unlock)
         self.assertNotEqual(None, branch.get_master_branch())
         branch.unbind()
@@ -754,8 +761,8 @@ class TestBound(per_branch.TestCaseWithBranch):
         branch = self.make_branch('branch')
         try:
             branch.bind(master1)
-        except _mod_branch.BindingUnsupported:
-            raise tests.TestNotApplicable('Format does not support binding')
+        except _mod_branch.BindingUnsupported as e:
+            raise tests.TestNotApplicable('Format does not support binding') from e
         self.addCleanup(branch.lock_write().unlock)
         self.assertNotEqual(None, branch.get_master_branch())
         branch.bind(master2)
@@ -763,15 +770,14 @@ class TestBound(per_branch.TestCaseWithBranch):
                                                     branch.get_master_branch().base))
 
     def test_set_bound_location_clears_cached_master_branch(self):
-        """b.set_bound_location clears any cached value of b.get_master_branch.
-        """
+        """b.set_bound_location clears any cached value of b.get_master_branch."""
         master1 = self.make_branch('master1')
-        master2 = self.make_branch('master2')
+        self.make_branch('master2')
         branch = self.make_branch('branch')
         try:
             branch.bind(master1)
-        except _mod_branch.BindingUnsupported:
-            raise tests.TestNotApplicable('Format does not support binding')
+        except _mod_branch.BindingUnsupported as e:
+            raise tests.TestNotApplicable('Format does not support binding') from e
         self.addCleanup(branch.lock_write().unlock)
         self.assertNotEqual(None, branch.get_master_branch())
         branch.set_bound_location(self.get_url('master2'))
@@ -785,8 +791,8 @@ class TestStrict(per_branch.TestCaseWithBranch):
         tree1 = self.make_branch_and_tree('tree1')
         try:
             tree1.branch.set_append_revisions_only(True)
-        except errors.UpgradeRequired:
-            raise tests.TestSkipped('Format does not support strict history')
+        except errors.UpgradeRequired as e:
+            raise tests.TestSkipped('Format does not support strict history') from e
         tree1.commit('empty commit')
         tree2 = tree1.controldir.sprout('tree2').open_workingtree()
         tree2.commit('empty commit 2')
@@ -854,8 +860,8 @@ class FakeShelfCreator:
 def skip_if_storing_uncommitted_unsupported():
     try:
         yield
-    except errors.StoringUncommittedNotSupported:
-        raise tests.TestNotApplicable('Cannot store uncommitted changes.')
+    except errors.StoringUncommittedNotSupported as e:
+        raise tests.TestNotApplicable('Cannot store uncommitted changes.') from e
 
 
 class TestUncommittedChanges(per_branch.TestCaseWithBranch):
@@ -869,8 +875,8 @@ class TestUncommittedChanges(per_branch.TestCaseWithBranch):
     def bind(self, branch, master):
         try:
             branch.bind(master)
-        except _mod_branch.BindingUnsupported:
-            raise tests.TestNotApplicable('Branch cannot be bound.')
+        except _mod_branch.BindingUnsupported as e:
+            raise tests.TestNotApplicable('Branch cannot be bound.') from e
 
     def test_store_uncommitted(self):
         tree = self.make_branch_and_tree('b')

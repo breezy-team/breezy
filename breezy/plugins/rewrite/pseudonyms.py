@@ -54,7 +54,8 @@ class SubversionBranchUrlFinder:
         root = self.find_root(uuid, url)
         if root is None:
             return None
-        assert url.startswith(root)
+        if not url.startswith(root):
+            raise AssertionError(f"URL {url} does not start with root {root}")
         return url[len(root):].strip("/")
 
 
@@ -157,7 +158,6 @@ def find_pseudonyms(repository, revids):
                 conversions[foreign_revid].add(rev.revision_id)
     finally:
         pb.finished()
-    done = set()
     for foreign_revid in conversions.keys():
         ret = set()
         check = set(conversions[foreign_revid])

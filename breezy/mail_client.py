@@ -14,14 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import errno
 import os
 import subprocess
 import sys
 import tempfile
 from typing import Type
-
-import breezy
 
 from . import config as _mod_config
 from . import email_message, errors, msgeditor, osutils, registry, urlutils
@@ -57,7 +54,7 @@ class MailClient:
 
     def compose(self, prompt, to, subject, attachment, mime_subtype,
                 extension, basename=None, body=None):
-        """Compose (and possibly send) an email message
+        """Compose (and possibly send) an email message.
 
         Must be implemented by subclasses.
 
@@ -78,7 +75,7 @@ class MailClient:
 
     def compose_merge_request(self, to, subject, directive, basename=None,
                               body=None):
-        """Compose (and possibly send) a merge request
+        """Compose (and possibly send) a merge request.
 
         :param to: The address to send the request to
         :param subject: The subject line to use for the request
@@ -112,7 +109,7 @@ class Editor(MailClient):
     supports_body = True
 
     def _get_merge_prompt(self, prompt, to, subject, attachment):
-        """See MailClient._get_merge_prompt"""
+        """See MailClient._get_merge_prompt."""
         return ("%s\n\n"
                 "To: %s\n"
                 "Subject: %s\n\n"
@@ -121,7 +118,7 @@ class Editor(MailClient):
 
     def compose(self, prompt, to, subject, attachment, mime_subtype,
                 extension, basename=None, body=None):
-        """See MailClient.compose"""
+        """See MailClient.compose."""
         if not to:
             raise NoMailAddressSpecified()
         body = msgeditor.edit_commit_message(prompt, start_message=body)
@@ -145,7 +142,7 @@ class BodyExternalMailClient(MailClient):
     supports_body = True
 
     def _get_client_commands(self):
-        """Provide a list of commands that may invoke the mail client"""
+        """Provide a list of commands that may invoke the mail client."""
         if sys.platform == 'win32':
             import win32utils
             return [win32utils.get_app_path(i) for i in self._client_commands]
@@ -199,16 +196,15 @@ class BodyExternalMailClient(MailClient):
                                                          **kwargs))
             try:
                 subprocess.call(cmdline)
-            except OSError as e:
-                if e.errno != errno.ENOENT:
-                    raise
+            except FileNotFoundError:
+                pass
             else:
                 break
         else:
             raise MailClientNotFound(self._client_commands)
 
     def _get_compose_commandline(self, to, subject, attach_path, body):
-        """Determine the commandline to use for composing a message
+        """Determine the commandline to use for composing a message.
 
         Implemented by various subclasses
         :param to: The address to send the mail to
@@ -251,7 +247,7 @@ class Evolution(BodyExternalMailClient):
     _client_commands = ['evolution']
 
     def _get_compose_commandline(self, to, subject, attach_path, body=None):
-        """See ExternalMailClient._get_compose_commandline"""
+        """See ExternalMailClient._get_compose_commandline."""
         message_options = {}
         if subject is not None:
             message_options['subject'] = subject
@@ -259,10 +255,9 @@ class Evolution(BodyExternalMailClient):
             message_options['attach'] = attach_path
         if body is not None:
             message_options['body'] = body
-        options_list = ['{}={}'.format(k, urlutils.escape(v)) for (k, v) in
+        options_list = [f'{k}={urlutils.escape(v)}' for (k, v) in
                         sorted(message_options.items())]
-        return ['mailto:{}?{}'.format(self._encode_safe(to or ''),
-                                  '&'.join(options_list))]
+        return [f"mailto:{self._encode_safe(to or '')}?{'&'.join(options_list)}"]
 
 
 mail_client_registry.register('evolution', Evolution,
@@ -275,7 +270,7 @@ class Mutt(BodyExternalMailClient):
     _client_commands = ['mutt']
 
     def _get_compose_commandline(self, to, subject, attach_path, body=None):
-        """See ExternalMailClient._get_compose_commandline"""
+        """See ExternalMailClient._get_compose_commandline."""
         message_options = []
         if subject is not None:
             message_options.extend(
@@ -316,7 +311,7 @@ class Thunderbird(BodyExternalMailClient):
         '/Applications/Thunderbird.app/Contents/MacOS/thunderbird-bin']
 
     def _get_compose_commandline(self, to, subject, attach_path, body=None):
-        """See ExternalMailClient._get_compose_commandline"""
+        """See ExternalMailClient._get_compose_commandline."""
         message_options = {}
         if to is not None:
             message_options['to'] = self._encode_safe(to)
@@ -326,11 +321,10 @@ class Thunderbird(BodyExternalMailClient):
             message_options['attachment'] = urlutils.local_path_to_url(
                 attach_path)
         if body is not None:
-            options_list = ['body=%s' %
-                            urlutils.quote(self._encode_safe(body))]
+            options_list = [f'body={urlutils.quote(self._encode_safe(body))}']
         else:
             options_list = []
-        options_list.extend(["{}='{}'".format(k, v) for k, v in
+        options_list.extend([f"{k}='{v}'" for k, v in
                              sorted(message_options.items())])
         return ['-compose', ','.join(options_list)]
 
@@ -345,7 +339,7 @@ class KMail(ExternalMailClient):
     _client_commands = ['kmail']
 
     def _get_compose_commandline(self, to, subject, attach_path):
-        """See ExternalMailClient._get_compose_commandline"""
+        """See ExternalMailClient._get_compose_commandline."""
         message_options = []
         if subject is not None:
             message_options.extend(['-s', self._encode_safe(subject)])
@@ -370,7 +364,7 @@ class Claws(ExternalMailClient):
 
     def _get_compose_commandline(self, to, subject, attach_path, body=None,
                                  from_=None):
-        """See ExternalMailClient._get_compose_commandline"""
+        """See ExternalMailClient._get_compose_commandline."""
         compose_url = []
         if from_ is not None:
             compose_url.append('from=' + urlutils.quote(from_))
@@ -385,8 +379,7 @@ class Claws(ExternalMailClient):
         # to must be supplied for the claws-mail --compose syntax to work.
         if to is None:
             raise NoMailAddressSpecified()
-        compose_url = 'mailto:{}?{}'.format(
-            self._encode_safe(to), '&'.join(compose_url))
+        compose_url = f"mailto:{self._encode_safe(to)}?{'&'.join(compose_url)}"
         # Collect command-line options.
         message_options = ['--compose', compose_url]
         if attach_path is not None:
@@ -396,7 +389,7 @@ class Claws(ExternalMailClient):
 
     def _compose(self, prompt, to, subject, attach_path, mime_subtype,
                  extension, body=None, from_=None):
-        """See ExternalMailClient._compose"""
+        """See ExternalMailClient._compose."""
         if from_ is None:
             from_ = self.config.get('email')
         super()._compose(prompt, to, subject, attach_path,
@@ -413,7 +406,7 @@ class XDGEmail(BodyExternalMailClient):
     _client_commands = ['xdg-email']
 
     def _get_compose_commandline(self, to, subject, attach_path, body=None):
-        """See ExternalMailClient._get_compose_commandline"""
+        """See ExternalMailClient._get_compose_commandline."""
         if not to:
             raise NoMailAddressSpecified()
         commandline = [self._encode_safe(to)]
@@ -464,7 +457,6 @@ class EmacsMail(ExternalMailClient):
         function to work.  (The file is deleted by some elisp code
         after being read by Emacs.)
         """
-
         _defun = br"""(defun bzr-add-mime-att (file)
   "Attach FILE to a mail buffer as a MIME attachment."
   (let ((agent mail-user-agent))
@@ -520,7 +512,7 @@ class EmacsMail(ExternalMailClient):
         # This will work with any mail mode including default mail-mode
         # User must tweak mail-user-agent variable to tell what function
         # will be called inside compose-mail.
-        mail_cmd = "(compose-mail {} {})".format(_to, _subject)
+        mail_cmd = f"(compose-mail {_to} {_subject})"
         commandline.append(mail_cmd)
 
         # Try to attach a MIME attachment using our wrapper function
@@ -528,10 +520,10 @@ class EmacsMail(ExternalMailClient):
             # Do not create a file if there is no attachment
             elisp = self._prepare_send_function()
             self.elisp_tmp_file = elisp
-            lmmform = '(load "%s")' % elisp
+            lmmform = f'(load "{elisp}")'
             mmform = '(bzr-add-mime-att "%s")' % \
                 self._encode_path(attach_path, 'attachment')
-            rmform = '(delete-file "%s")' % elisp
+            rmform = f'(delete-file "{elisp}")'
             commandline.append(lmmform)
             commandline.append(mmform)
             commandline.append(rmform)
@@ -559,7 +551,7 @@ class MAPIClient(BodyExternalMailClient):
         except simplemapi.MAPIError as e:
             if e.code != simplemapi.MAPI_USER_ABORT:
                 raise MailClientNotFound(['MAPI supported mail client'
-                                          ' (error %d)' % (e.code,)])
+                                          ' (error %d)' % (e.code,)]) from e
 
 
 mail_client_registry.register('mapi', MAPIClient,
@@ -580,8 +572,7 @@ class MailApp(BodyExternalMailClient):
 
     def _get_compose_commandline(self, to, subject, attach_path, body=None,
                                  from_=None):
-        """See ExternalMailClient._get_compose_commandline"""
-
+        """See ExternalMailClient._get_compose_commandline."""
         fd, self.temp_file = tempfile.mkstemp(prefix="bzr-send-",
                                               suffix=".scpt")
         try:
@@ -634,15 +625,15 @@ class DefaultMail(MailClient):
     supports_body = True
 
     def _mail_client(self):
-        """Determine the preferred mail client for this platform"""
-        if osutils.supports_mapi():
+        """Determine the preferred mail client for this platform."""
+        if sys.platform == "win32":
             return MAPIClient(self.config)
         else:
             return XDGEmail(self.config)
 
     def compose(self, prompt, to, subject, attachment, mime_subtype,
                 extension, basename=None, body=None):
-        """See MailClient.compose"""
+        """See MailClient.compose."""
         try:
             return self._mail_client().compose(prompt, to, subject,
                                                attachment, mime_subtype,
@@ -653,7 +644,7 @@ class DefaultMail(MailClient):
 
     def compose_merge_request(self, to, subject, directive, basename=None,
                               body=None):
-        """See MailClient.compose_merge_request"""
+        """See MailClient.compose_merge_request."""
         try:
             return self._mail_client().compose_merge_request(
                 to, subject, directive, basename=basename, body=body)

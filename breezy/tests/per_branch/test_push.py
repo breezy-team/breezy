@@ -19,8 +19,17 @@
 import os
 from io import BytesIO
 
-from ... import (branch, builtins, check, controldir, errors, push, revision,
-                 tests, transport)
+from ... import (
+    branch,
+    builtins,
+    check,
+    controldir,
+    errors,
+    push,
+    revision,
+    tests,
+    transport,
+)
 from ...bzr import branch as bzrbranch
 from ...bzr.smart import client
 from .. import per_branch, test_server
@@ -61,7 +70,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         self.assertEqual(p2, target.branch.last_revision())
 
     def test_push_to_checkout_updates_master(self):
-        """Pushing into a checkout updates the checkout and the master branch"""
+        """Pushing into a checkout updates the checkout and the master branch."""
         master_tree = self.make_branch_and_tree('master')
         checkout = self.make_branch_and_tree('checkout')
         try:
@@ -69,7 +78,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         except branch.BindingUnsupported:
             # cant bind this format, the test is irrelevant.
             return
-        rev1 = checkout.commit('master')
+        checkout.commit('master')
 
         other = master_tree.branch.controldir.sprout(
             'other').open_workingtree()
@@ -101,14 +110,14 @@ class TestPush(per_branch.TestCaseWithBranch):
         bound = self.make_branch('bound')
         try:
             bound.bind(master)
-        except branch.BindingUnsupported:
+        except branch.BindingUnsupported as e:
             raise tests.TestNotApplicable(
-                'Format does not support bound branches')
+                'Format does not support bound branches') from e
         other = bound.controldir.sprout('other').open_branch()
         try:
             other.tags.set_tag('new-tag', b'some-rev')
-        except errors.TagsNotSupported:
-            raise tests.TestNotApplicable('Format does not support tags')
+        except errors.TagsNotSupported as err:
+            raise tests.TestNotApplicable('Format does not support tags') from err
         other.push(bound)
         self.assertEqual({'new-tag': b'some-rev'}, bound.tags.get_tag_dict())
         self.assertEqual({'new-tag': b'some-rev'}, master.tags.get_tag_dict())
@@ -202,8 +211,8 @@ class TestPush(per_branch.TestCaseWithBranch):
         t.ensure_base()
         try:
             bzrdir = self.bzrdir_format.initialize_on_transport(t)
-        except errors.UninitializableFormat:
-            raise tests.TestNotApplicable('cannot initialize this format')
+        except errors.UninitializableFormat as e:
+            raise tests.TestNotApplicable('cannot initialize this format') from e
         try:
             bzrdir.open_branch()
         except errors.NotBranchError:
@@ -214,12 +223,12 @@ class TestPush(per_branch.TestCaseWithBranch):
         try:
             source = self.make_branch_builder('source',
                                               format=self.bzrdir_format)
-        except errors.UninitializableFormat:
-            raise tests.TestNotApplicable('cannot initialize this format')
+        except errors.UninitializableFormat as e:
+            raise tests.TestNotApplicable('cannot initialize this format') from e
         source.start_series()
         revid_a = source.build_snapshot(None, [
             ('add', ('', b'root-id', 'directory', None))])
-        revid_b = source.build_snapshot([revid_a], [])
+        source.build_snapshot([revid_a], [])
         revid_c = source.build_snapshot([revid_a], [])
         source.finish_series()
         b = source.get_branch()
@@ -254,14 +263,14 @@ class TestPush(per_branch.TestCaseWithBranch):
         #   - rev-1, adds a file
         #   - rev-2, no changes
         #   - rev-3, modifies the file.
-        repo = self.make_repository('repo', shared=True, format='1.6')
+        self.make_repository('repo', shared=True, format='1.6')
         builder = self.make_branch_builder('repo/local')
         builder.start_series()
         revid1 = builder.build_snapshot(None, [
             ('add', ('', b'root-id', 'directory', b'')),
             ('add', ('filename', b'f-id', 'file', b'content\n'))])
         revid2 = builder.build_snapshot([revid1], [])
-        revid3 = builder.build_snapshot([revid2],
+        builder.build_snapshot([revid2],
                                         [('modify', ('filename', b'new-content\n'))])
         builder.finish_series()
         trunk = builder.get_branch()
@@ -337,9 +346,9 @@ class TestPushHook(per_branch.TestCaseWithBranch):
             local = controldir.ControlDir.create_branch_convenience('local2')
             try:
                 local.bind(target)
-            except branch.BindingUnsupported:
+            except branch.BindingUnsupported as e:
                 raise tests.TestNotApplicable(
-                    'default format does not support binding')
+                    'default format does not support binding') from e
         source = self.make_branch('source')
         branch.Branch.hooks.install_named_hook(
             'post_push', self.capture_post_push_hook, None)
@@ -407,8 +416,7 @@ class EmptyPushSmartEffortTests(per_branch.TestCaseWithBranch):
         self.hpss_calls.append(params.method)
 
     def test_empty_branch_api(self):
-        """The branch_obj.push API should make a limited number of HPSS calls.
-        """
+        """The branch_obj.push API should make a limited number of HPSS calls."""
         t = transport.get_transport_from_url(
             self.smart_server.get_url()).clone('target')
         target = branch.Branch.open_from_transport(t)
@@ -424,8 +432,7 @@ class EmptyPushSmartEffortTests(per_branch.TestCaseWithBranch):
             self.hpss_calls)
 
     def test_empty_branch_command(self):
-        """The 'bzr push' command should make a limited number of HPSS calls.
-        """
+        """The 'bzr push' command should make a limited number of HPSS calls."""
         cmd = builtins.cmd_push()
         cmd.outf = BytesIO()
         cmd.run(
@@ -435,7 +442,7 @@ class EmptyPushSmartEffortTests(per_branch.TestCaseWithBranch):
         # [BzrDir.open, BzrDir.open_branch, BzrDir.find_repositoryV2,
         # Branch.get_stacked_on_url, get, get, Branch.lock_write,
         # Branch.last_revision_info, Branch.unlock]
-        self.assertTrue(len(self.hpss_calls) <= 9, self.hpss_calls)
+        self.assertLessEqual(len(self.hpss_calls), 9, self.hpss_calls)
 
 
 class TestLossyPush(per_branch.TestCaseWithBranch):

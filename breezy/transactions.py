@@ -68,7 +68,7 @@ class ReadOnlyTransaction(Transaction):
         """Return True if an_object is clean."""
         return (an_object in self._clean_objects)
 
-    def register_clean(self, an_object, precious=False):
+    def register_clean(self, an_object, precious: bool = False) -> None:
         """Register an_object as being clean.
 
         If the precious hint is True, the object will not
@@ -111,7 +111,7 @@ class ReadOnlyTransaction(Transaction):
                 # 1 missing on Python < 3.11
                 ref_threshold = 7
             if (sys.getrefcount(self._clean_queue[offset]) <= ref_threshold
-                    and not self._clean_queue[offset] in self._precious_objects):
+                    and self._clean_queue[offset] not in self._precious_objects):
                 removed = self._clean_queue[offset]
                 self._clean_objects.remove(removed)
                 del self._clean_queue[offset]
@@ -127,7 +127,7 @@ class ReadOnlyTransaction(Transaction):
 
 
 class WriteTransaction(ReadOnlyTransaction):
-    """A write transaction
+    """A write transaction.
 
     - caches domain objects
     - clean objects can be removed from the cache
@@ -168,7 +168,7 @@ class WriteTransaction(ReadOnlyTransaction):
 
 
 class PassThroughTransaction(Transaction):
-    """A pass through transaction
+    """A pass through transaction.
 
     - nothing is cached.
     - nothing ever gets into the identity map.

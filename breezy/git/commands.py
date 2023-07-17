@@ -29,9 +29,7 @@ from ..option import Option, RegistryOption
 
 
 class cmd_git_import(Command):
-    """Import all branches from a git repository.
-
-    """
+    """Import all branches from a git repository."""
 
     takes_args = ["src_location", "dest_location?"]
 
@@ -74,8 +72,7 @@ class cmd_git_import(Command):
 
         from .. import controldir, trace, ui, urlutils
         from ..controldir import ControlDir
-        from ..errors import (BzrError, CommandError, NoRepositoryPresent,
-                              NotBranchError)
+        from ..errors import CommandError, NoRepositoryPresent, NotBranchError
         from ..i18n import gettext
         from ..repository import InterRepository, Repository
         from ..transport import get_transport
@@ -175,9 +172,9 @@ class cmd_git_object(Command):
             if sha1 is not None:
                 try:
                     obj = object_store[sha1.encode('ascii')]
-                except KeyError:
+                except KeyError as err:
                     raise CommandError(
-                        gettext("Object not found: %s") % sha1)
+                        gettext("Object not found: %s") % sha1) from err
                 if pretty:
                     text = obj.as_pretty_string()
                 else:
@@ -185,13 +182,11 @@ class cmd_git_object(Command):
                 self.outf.write(text)
             else:
                 for sha1 in object_store:
-                    self.outf.write("%s\n" % sha1.decode('ascii'))
+                    self.outf.write(f"{sha1.decode('ascii')}\n")
 
 
 class cmd_git_refs(Command):
-    """Output all of the virtual refs for a repository.
-
-    """
+    """Output all of the virtual refs for a repository."""
 
     hidden = True
 
@@ -208,8 +203,7 @@ class cmd_git_refs(Command):
         with object_store.lock_read():
             refs = get_refs_container(controldir, object_store)
             for k, v in sorted(refs.as_dict().items()):
-                self.outf.write("%s -> %s\n" %
-                                (k.decode('utf-8'), v.decode('utf-8')))
+                self.outf.write(f"{k.decode('utf-8')} -> {v.decode('utf-8')}\n")
 
 
 class cmd_git_apply(Command):
@@ -234,15 +228,18 @@ class cmd_git_apply(Command):
         """
         from dulwich.patch import git_am_patch_split
 
-        from breezy.patch import patch_tree
+        from ..workingtree import patch_tree
         (c, diff, version) = git_am_patch_split(f)
         # FIXME: Cope with git-specific bits in patch
         # FIXME: Add new files to working tree
-        patch_tree(wt, [diff], strip=1, out=self.outf)
+        from io import BytesIO
+        b = BytesIO()
+        patch_tree(wt, [diff], strip=1, out=b)
+        self.outf.write(b.getvalue().decode('utf-8', 'replace'))
         message = c.message.decode('utf-8')
         if signoff:
             signed_off_by = wt.branch.get_config().username()
-            message += "Signed-off-by: {}\n".format(signed_off_by)
+            message += f"Signed-off-by: {signed_off_by}\n"
         wt.commit(authors=[c.author.decode('utf-8')], message=message)
 
     def run(self, patches_list=None, signoff=False, force=False):
@@ -275,8 +272,10 @@ class cmd_git_push_pristine_tar_deltas(Command):
         from ..trace import warning
         from .mapping import encode_git_path
         from .object_store import get_object_store
-        from .pristine_tar import (revision_pristine_tar_data,
-                                   store_git_pristine_tar_data)
+        from .pristine_tar import (
+            revision_pristine_tar_data,
+            store_git_pristine_tar_data,
+        )
         source = Branch.open_containing(directory)[0]
         target_bzr = Repository.open(target)
         target = getattr(target_bzr, '_git', None)
@@ -302,8 +301,7 @@ class cmd_git_push_pristine_tar_deltas(Command):
                         "Ignoring.", name)
                     continue
                 upstream_version = name[len("upstream/"):]
-                filename = '{}_{}.orig.tar.{}'.format(
-                    package, upstream_version, kind)
+                filename = f'{package}_{upstream_version}.orig.tar.{kind}'
                 if gitid not in target:
                     warning(
                         "base git id %s for %s missing in target repository",

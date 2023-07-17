@@ -14,17 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import errno
 import os
 from io import BytesIO
 
 from .lazy_import import lazy_import
 
 lazy_import(globals(), """
-import gzip
-import itertools
-import patiencediff
-
 from breezy import (
     ui,
     )
@@ -77,7 +72,7 @@ def _topo_iter(parents, versions):
 
 
 class MultiParent:
-    """A multi-parent diff"""
+    """A multi-parent diff."""
 
     __slots__ = ['hunks']
 
@@ -88,7 +83,7 @@ class MultiParent:
             self.hunks = []
 
     def __repr__(self):
-        return "MultiParent(%r)" % self.hunks
+        return f"MultiParent({self.hunks!r})"
 
     def __eq__(self, other):
         if self.__class__ is not other.__class__:
@@ -97,7 +92,8 @@ class MultiParent:
 
     @staticmethod
     def from_lines(text, parents=(), left_blocks=None):
-        """Produce a MultiParent from a list of lines and parents"""
+        """Produce a MultiParent from a list of lines and parents."""
+        import patiencediff
         def compare(parent):
             matcher = patiencediff.PatienceSequenceMatcher(None, parent,
                                                            text)
@@ -111,7 +107,6 @@ class MultiParent:
             parent_comparisons = []
         cur_line = 0
         new_text = NewText([])
-        parent_text = []
         block_iter = [iter(i) for i in parent_comparisons]
         diff = MultiParent([])
 
@@ -165,7 +160,7 @@ class MultiParent:
         yield parent_len, self.num_lines(), 0
 
     def to_lines(self, parents=()):
-        """Contruct a fulltext from this diff and its parents"""
+        """Contruct a fulltext from this diff and its parents."""
         mpvf = MultiMemoryVersionedFile()
         for num, parent in enumerate(parents):
             mpvf.add_version(BytesIO(parent).readlines(), num, [])
@@ -174,12 +169,12 @@ class MultiParent:
 
     @classmethod
     def from_texts(cls, text, parents=()):
-        """Produce a MultiParent from a text and list of parent text"""
+        """Produce a MultiParent from a text and list of parent text."""
         return cls.from_lines(BytesIO(text).readlines(),
                               [BytesIO(p).readlines() for p in parents])
 
     def to_patch(self):
-        """Yield text lines for a patch"""
+        """Yield text lines for a patch."""
         for hunk in self.hunks:
             yield from hunk.to_patch()
 
@@ -191,12 +186,12 @@ class MultiParent:
 
     @classmethod
     def from_patch(cls, text):
-        """Create a MultiParent from its string form"""
+        """Create a MultiParent from its string form."""
         return cls._from_patch(BytesIO(text))
 
     @staticmethod
     def _from_patch(lines):
-        """This is private because it is essential to split lines on \n only"""
+        r"""This is private because it is essential to split lines on \n only."""
         line_iter = iter(lines)
         hunks = []
         cur_line = None
@@ -223,7 +218,7 @@ class MultiParent:
         return MultiParent(hunks)
 
     def range_iterator(self):
-        """Iterate through the hunks, with range indicated
+        """Iterate through the hunks, with range indicated.
 
         kind is "new" or "parent".
         for "new", data is a list of lines.
@@ -246,7 +241,7 @@ class MultiParent:
             start = end
 
     def num_lines(self):
-        """The number of lines in the output text"""
+        """The number of lines in the output text."""
         extra_n = 0
         for hunk in reversed(self.hunks):
             if isinstance(hunk, ParentText):
@@ -255,14 +250,14 @@ class MultiParent:
         return extra_n
 
     def is_snapshot(self):
-        """Return true of this hunk is effectively a fulltext"""
+        """Return true of this hunk is effectively a fulltext."""
         if len(self.hunks) != 1:
             return False
         return (isinstance(self.hunks[0], NewText))
 
 
 class NewText:
-    """The contents of text that is introduced by this text"""
+    """The contents of text that is introduced by this text."""
 
     __slots__ = ['lines']
 
@@ -275,7 +270,7 @@ class NewText:
         return (other.lines == self.lines)
 
     def __repr__(self):
-        return 'NewText(%r)' % self.lines
+        return f'NewText({self.lines!r})'
 
     def to_patch(self):
         yield b'i %d\n' % len(self.lines)
@@ -284,7 +279,7 @@ class NewText:
 
 
 class ParentText:
-    """A reference to text present in a parent text"""
+    """A reference to text present in a parent text."""
 
     __slots__ = ['parent', 'parent_pos', 'child_pos', 'num_lines']
 
@@ -315,7 +310,7 @@ class ParentText:
 
 
 class BaseVersionedFile:
-    """Pseudo-VersionedFile skeleton for MultiParent"""
+    """Pseudo-VersionedFile skeleton for MultiParent."""
 
     def __init__(self, snapshot_interval=25, max_snapshots=None):
         self._lines = {}
@@ -331,7 +326,7 @@ class BaseVersionedFile:
         return version in self._parents
 
     def do_snapshot(self, version_id, parent_ids):
-        """Determine whether to perform a snapshot for this version"""
+        """Determine whether to perform a snapshot for this version."""
         if self.snapshot_interval is None:
             return False
         if self.max_snapshots is not None and\
@@ -339,7 +334,7 @@ class BaseVersionedFile:
             return False
         if len(parent_ids) == 0:
             return True
-        for ignored in range(self.snapshot_interval):
+        for _ignored in range(self.snapshot_interval):
             if len(parent_ids) == 0:
                 return False
             version_ids = parent_ids
@@ -352,7 +347,7 @@ class BaseVersionedFile:
 
     def add_version(self, lines, version_id, parent_ids,
                     force_snapshot=None, single_parent=False):
-        """Add a version to the versionedfile
+        r"""Add a version to the versionedfile.
 
         :param lines: The list of lines to add.  Must be split on '\n'.
         :param version_id: The version_id of the version to add
@@ -390,7 +385,7 @@ class BaseVersionedFile:
 
     def import_versionedfile(self, vf, snapshots, no_cache=True,
                              single_parent=False, verify=False):
-        """Import all revisions of a versionedfile
+        """Import all revisions of a versionedfile.
 
         :param vf: The versionedfile to import
         :param snapshots: If provided, the revisions to make snapshots of.
@@ -431,7 +426,7 @@ class BaseVersionedFile:
                 revisions = [r for r in revisions if r not in added]
 
     def select_snapshots(self, vf):
-        """Determine which versions to add as snapshots"""
+        """Determine which versions to add as snapshots."""
         build_ancestors = {}
         snapshots = set()
         for version_id in topo_iter(vf):
@@ -451,13 +446,13 @@ class BaseVersionedFile:
         return snapshots
 
     def select_by_size(self, num):
-        """Select snapshots for minimum output size"""
+        """Select snapshots for minimum output size."""
         num -= len(self._snapshots)
         new_snapshots = self.get_size_ranking()[-num:]
         return [v for n, v in new_snapshots]
 
     def get_size_ranking(self):
-        """Get versions ranked by size"""
+        """Get versions ranked by size."""
         versions = []
         for version_id in self.versions():
             if version_id in self._snapshots:
@@ -470,13 +465,13 @@ class BaseVersionedFile:
         return versions
 
     def import_diffs(self, vf):
-        """Import the diffs from another pseudo-versionedfile"""
+        """Import the diffs from another pseudo-versionedfile."""
         for version_id in vf.versions():
             self.add_diff(vf.get_diff(version_id), version_id,
                           vf._parents[version_id])
 
     def get_build_ranking(self):
-        """Return revisions sorted by how much they reduce build complexity"""
+        """Return revisions sorted by how much they reduce build complexity."""
         could_avoid = {}
         referenced_by = {}
         for version_id in topo_iter(self):
@@ -516,7 +511,7 @@ class BaseVersionedFile:
             return self._lines[version_id]
         except KeyError:
             pass
-        diff = self.get_diff(version_id)
+        self.get_diff(version_id)
         lines = []
         reconstructor = _Reconstructor(self, self._lines, self._parents)
         reconstructor.reconstruct_version(lines, version_id)
@@ -525,7 +520,7 @@ class BaseVersionedFile:
 
 
 class MultiMemoryVersionedFile(BaseVersionedFile):
-    """Memory-backed pseudo-versionedfile"""
+    """Memory-backed pseudo-versionedfile."""
 
     def __init__(self, snapshot_interval=25, max_snapshots=None):
         BaseVersionedFile.__init__(self, snapshot_interval, max_snapshots)
@@ -538,15 +533,15 @@ class MultiMemoryVersionedFile(BaseVersionedFile):
     def get_diff(self, version_id):
         try:
             return self._diffs[version_id]
-        except KeyError:
-            raise errors.RevisionNotPresent(version_id, self)
+        except KeyError as e:
+            raise errors.RevisionNotPresent(version_id, self) from e
 
     def destroy(self):
         self._diffs = {}
 
 
 class MultiVersionedFile(BaseVersionedFile):
-    """Disk-backed pseudo-versionedfile"""
+    """Disk-backed pseudo-versionedfile."""
 
     def __init__(self, filename, snapshot_interval=25, max_snapshots=None):
         BaseVersionedFile.__init__(self, snapshot_interval, max_snapshots)
@@ -554,16 +549,19 @@ class MultiVersionedFile(BaseVersionedFile):
         self._diff_offset = {}
 
     def get_diff(self, version_id):
+        import gzip
         start, count = self._diff_offset[version_id]
         with open(self._filename + '.mpknit', 'rb') as infile:
             infile.seek(start)
             sio = BytesIO(infile.read(count))
         with gzip.GzipFile(None, mode='rb', fileobj=sio) as zip_file:
-            file_version_id = zip_file.readline()
+            zip_file.readline()
             content = zip_file.read()
             return MultiParent.from_patch(content)
 
     def add_diff(self, diff, version_id, parent_ids):
+        import gzip
+        import itertools
         with open(self._filename + '.mpknit', 'ab') as outfile:
             outfile.seek(0, 2)      # workaround for windows bug:
             # .tell() for files opened in 'ab' mode
@@ -579,14 +577,12 @@ class MultiVersionedFile(BaseVersionedFile):
     def destroy(self):
         try:
             os.unlink(self._filename + '.mpknit')
-        except OSError as e:
-            if e.errno != errno.ENOENT:
-                raise
+        except FileNotFoundError:
+            pass
         try:
             os.unlink(self._filename + '.mpidx')
-        except OSError as e:
-            if e.errno != errno.ENOENT:
-                raise
+        except FileNotFoundError:
+            pass
 
     def save(self):
         import fastbencode as bencode
@@ -603,7 +599,7 @@ class MultiVersionedFile(BaseVersionedFile):
 
 
 class _Reconstructor:
-    """Build a text from the diffs, ancestry graph and cached lines"""
+    """Build a text from the diffs, ancestry graph and cached lines."""
 
     def __init__(self, diffs, lines, parents):
         self.diffs = diffs
@@ -612,14 +608,14 @@ class _Reconstructor:
         self.cursor = {}
 
     def reconstruct(self, lines, parent_text, version_id):
-        """Append the lines referred to by a ParentText to lines"""
+        """Append the lines referred to by a ParentText to lines."""
         parent_id = self.parents[version_id][parent_text.parent]
         end = parent_text.parent_pos + parent_text.num_lines
         return self._reconstruct(lines, parent_id, parent_text.parent_pos,
                                  end)
 
     def _reconstruct(self, lines, req_version_id, req_start, req_end):
-        """Append lines for the requested version_id range"""
+        """Append lines for the requested version_id range."""
         # stack of pending range requests
         if req_start == req_end:
             return
@@ -665,6 +661,7 @@ class _Reconstructor:
 
 
 def gzip_string(lines):
+    import gzip
     sio = BytesIO()
     with gzip.GzipFile(None, mode='wb', fileobj=sio) as data_file:
         data_file.writelines(lines)

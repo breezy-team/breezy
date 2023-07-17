@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Win32-specific helper functions"""
+"""Win32-specific helper functions."""
 
 import glob
 import os
@@ -56,7 +56,7 @@ def debug_memory_win32api(message='', short=True):
     """Use trace.note() to dump the running memory info."""
     from breezy import trace
     class PROCESS_MEMORY_COUNTERS_EX(ctypes.Structure):
-        """Used by GetProcessMemoryInfo"""
+        """Used by GetProcessMemoryInfo."""
         _fields_ = [('cb', ctypes.c_ulong),
                     ('PageFaultCount', ctypes.c_ulong),
                     ('PeakWorkingSetSize', ctypes.c_size_t),
@@ -188,10 +188,10 @@ def get_local_appdata_location():
 
 
 def get_home_location():
-    """Return user's home location.
+    r"""Return user's home location.
     Assume on win32 it's the <My Documents> folder.
     If location cannot be obtained return system drive root,
-    i.e. C:\
+    i.e. C:\.
     """
     home = _get_sh_special_folder_path(CSIDL_PERSONAL)
     if home:
@@ -216,7 +216,7 @@ def get_user_name():
     """
     try:
         advapi32 = ctypes.windll.advapi32
-        GetUserName = getattr(advapi32, 'GetUserNameW')
+        GetUserName = advapi32.GetUserNameW
     except AttributeError:
         pass
     else:
@@ -309,7 +309,7 @@ def glob_expand(file_list):
 def get_app_path(appname):
     r"""Look up in Windows registry for full path to application executable.
     Typically, applications create subkey with their basename
-    in HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\
+    in HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\.
 
     :param  appname:    name of application (if no filename extension
                         is specified, .exe used)
@@ -344,7 +344,7 @@ def get_app_path(appname):
 
 
 def set_file_attr_hidden(path):
-    """Set file attributes to hidden if possible"""
+    """Set file attributes to hidden if possible."""
     from ctypes.wintypes import BOOL, DWORD, LPWSTR
 
     # <https://docs.microsoft.com/windows/desktop/api/fileapi/nf-fileapi-setfileattributesw>
@@ -401,7 +401,7 @@ def _command_line_to_argv(command_line, argv, single_quotes_allowed=False):
 
 
 def _ctypes_is_local_pid_dead(pid):
-    """True if pid doesn't correspond to live process on this machine"""
+    """True if pid doesn't correspond to live process on this machine."""
     kernel32 = ctypes.windll.kernel32
     handle = kernel32.OpenProcess(1, False, pid)
     if not handle:
@@ -419,11 +419,12 @@ is_local_pid_dead = _ctypes_is_local_pid_dead
 
 
 def get_fs_type(drive):
-    """Return file system type for a drive on the system.
+    r"""Return file system type for a drive on the system.
 
     Args:
       drive: Unicode string with drive including trailing backslash (e.g.
          "C:\\")
+
     Returns:
       Windows filesystem type name (e.g. "FAT32", "NTFS") or None
       if the drive can not be found

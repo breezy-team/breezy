@@ -14,9 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Import upstream source into a branch"""
+"""Import upstream source into a branch."""
 
-import errno
 import os
 import re
 import stat
@@ -28,11 +27,11 @@ from . import urlutils
 from .bzr import generate_ids
 from .controldir import ControlDir, is_control_filename
 from .errors import BzrError, CommandError, NotBranchError
-from .osutils import (basename, file_iterator, file_kind, isdir, pathjoin,
-                      splitpath)
+from .osutils import basename, file_iterator, isdir, pathjoin, splitpath
 from .trace import warning
 from .transform import resolve_conflicts
 from .transport import NoSuchFile, get_transport
+from .transport.local import file_kind
 from .workingtree import WorkingTree
 
 
@@ -103,7 +102,7 @@ class DirWrapper:
         self.root = os.path.realpath(fileobj.read().decode('utf-8'))
 
     def __repr__(self):
-        return 'DirWrapper(%r)' % self.root
+        return f'DirWrapper({self.root!r})'
 
     def getmembers(self, subdir=None):
         if subdir is not None:
@@ -130,7 +129,7 @@ class FileInfo:
         if filepath != '':
             self.name = pathjoin(basename(root), filepath)
         else:
-            print('root %r' % root)
+            print(f'root {root!r}')
             self.name = basename(root)
         self.type = None
         stat = os.lstat(self.fullpath)
@@ -139,7 +138,7 @@ class FileInfo:
             self.name += '/'
 
     def __repr__(self):
-        return 'FileInfo(%r)' % self.name
+        return f'FileInfo({self.name!r})'
 
     def isreg(self):
         return stat.S_ISREG(self.mode)
@@ -165,7 +164,7 @@ def top_path(path):
 
 
 def common_directory(names):
-    """Determine a single directory prefix from a list of names"""
+    """Determine a single directory prefix from a list of names."""
     possible_prefix = None
     for name in names:
         name_top = top_path(name)
@@ -187,7 +186,7 @@ def do_directory(tt, trans_id, tree, relative_path, path):
 
 
 def add_implied_parents(implied_parents, path):
-    """Update the set of implied parents from a path"""
+    """Update the set of implied parents from a path."""
     parent = os.path.dirname(path)
     if parent in implied_parents:
         return
@@ -302,7 +301,7 @@ def import_archive_to_transform(tree, archive_file, tt):
 
 
 def do_import(source, tree_directory=None):
-    """Implementation of import command.  Intended for UI only"""
+    """Implementation of import command.  Intended for UI only."""
     if tree_directory is not None:
         try:
             tree = WorkingTree.open(tree_directory)
@@ -319,13 +318,13 @@ def do_import(source, tree_directory=None):
 
         try:
             archive, external_compressor = get_archive_type(source)
-        except NotArchiveType:
+        except NotArchiveType as err:
             if file_kind(source) == 'directory':
                 s = BytesIO(source.encode('utf-8'))
                 s.seek(0)
                 import_dir(tree, s)
             else:
-                raise CommandError('Unhandled import source')
+                raise CommandError('Unhandled import source') from err
         else:
             if archive == 'zip':
                 import_zip(tree, open_from_url(source))
@@ -338,9 +337,8 @@ def do_import(source, tree_directory=None):
                     elif external_compressor == 'lzma':
                         import lzma
                         tar_input = BytesIO(lzma.decompress(tar_input.read()))
-                except OSError as e:
-                    if e.errno == errno.ENOENT:
-                        raise NoSuchFile(source)
+                except FileNotFoundError as err:
+                    raise NoSuchFile(source) from err
                 try:
                     import_tar(tree, tar_input)
                 finally:

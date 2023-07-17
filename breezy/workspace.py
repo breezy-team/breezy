@@ -26,7 +26,6 @@ import shutil
 from contextlib import ExitStack
 from typing import List, Optional
 
-from .clean_tree import iter_deletables
 from .errors import BzrError, DependencyNotPresent
 from .osutils import is_inside
 from .trace import warning
@@ -77,7 +76,7 @@ def reset_tree(
 
 
 def delete_items(deletables, dry_run: bool = False):
-    """Delete files in the deletables iterable"""
+    """Delete files in the deletables iterable."""
 
     def onerror(function, path, excinfo):
         """Show warning for errors seen by rmtree."""
@@ -93,10 +92,7 @@ def delete_items(deletables, dry_run: bool = False):
         else:
             try:
                 os.unlink(path)
-            except OSError as e:
-                # We handle only permission error here
-                if e.errno != errno.EACCES:
-                    raise e
+            except PermissionError as e:
                 warning('unable to remove "%s": %s.', path, e.strerror)
 
 
@@ -203,8 +199,7 @@ class Workspace:
         return self._es.__exit__(exc_type, exc_val, exc_tb)
 
     def tree_path(self, path=''):
-        """Return a path relative to the tree subpath used by this workspace.
-        """
+        """Return a path relative to the tree subpath used by this workspace."""
         return os.path.join(self.subpath, path)
 
     def abspath(self, path=''):
@@ -212,8 +207,7 @@ class Workspace:
         return self.tree.abspath(self.tree_path(path))
 
     def reset(self):
-        """Reset - revert local changes, revive deleted files, remove added.
-        """
+        """Reset - revert local changes, revive deleted files, remove added."""
         if self._dirty_tracker and not self._dirty_tracker.is_dirty():
             return
         reset_tree(self.tree, subpath=self.subpath)

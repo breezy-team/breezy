@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tags stored within a branch
+"""Tags stored within a branch.
 
 The tags are actually in the Branch.tags namespace, but these are
 1:1 with Branch implementations so can be tested from here.
@@ -34,7 +34,7 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         branch = self.make_branch('probe')
         if not branch._format.supports_tags():
             raise tests.TestSkipped(
-                "format %s doesn't support tags" % branch._format)
+                f"format {branch._format} doesn't support tags")
 
     def make_branch_with_revisions(self, relpath, revisions):
         builder = self.make_branch_builder(relpath)
@@ -282,13 +282,13 @@ class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
         branch1 = self.make_branch('tags-probe')
         if not branch1._format.supports_tags():
             raise tests.TestSkipped(
-                "format %s doesn't support tags" % branch1._format)
+                f"format {branch1._format} doesn't support tags")
         branch2 = self.make_branch('bind-probe')
         try:
             branch2.bind(branch1)
-        except branch.BindingUnsupported:
+        except branch.BindingUnsupported as e:
             raise tests.TestNotApplicable(
-                "format %s doesn't support bound branches" % branch2._format)
+                f"format {branch2._format} doesn't support bound branches") from e
 
     def test_merge_to_propagates_tags(self):
         """merge_to(child) also merges tags to the master."""
@@ -483,7 +483,7 @@ class AutomaticTagNameTests(per_branch.TestCaseWithBranch):
         self.branch = self.builder.get_branch()
         if not self.branch._format.supports_tags():
             raise tests.TestSkipped(
-                "format %s doesn't support tags" % self.branch._format)
+                f"format {self.branch._format} doesn't support tags")
 
     def test_no_functions(self):
         rev = self.branch.last_revision()

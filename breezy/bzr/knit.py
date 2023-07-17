@@ -58,13 +58,10 @@ from io import BytesIO
 from ..lazy_import import lazy_import
 
 lazy_import(globals(), """
-import patiencediff
 import gzip
 
 from breezy import (
-    debug,
     diff,
-    trace,
     tsort,
     ui,
     )
@@ -77,15 +74,21 @@ from breezy.bzr import (
 from breezy.bzr import pack_repo
 from breezy.i18n import gettext
 """)
-from .. import annotate, errors, osutils
+from .. import annotate, debug, errors, osutils, trace
 from .. import transport as _mod_transport
-from ..bzr.versionedfile import (AbsentContentFactory, ConstantMapper,
-                                 ContentFactory, ExistingContent,
-                                 UnavailableRepresentation,
-                                 VersionedFilesWithFallbacks, _KeyRefs,
-                                 adapter_registry, sort_groupcompress)
+from ..bzr.versionedfile import (
+    AbsentContentFactory,
+    ConstantMapper,
+    ContentFactory,
+    ExistingContent,
+    UnavailableRepresentation,
+    VersionedFilesWithFallbacks,
+    _KeyRefs,
+    adapter_registry,
+    sort_groupcompress,
+)
 from ..errors import InternalBzrError, InvalidRevisionId, RevisionNotPresent
-from ..osutils import contains_whitespace, sha_string, sha_strings, split_lines
+from ..osutils import contains_whitespace, sha_string, sha_strings
 from ..transport import NoSuchFile
 from . import index as _mod_index
 
@@ -300,7 +303,7 @@ class DeltaPlainToFullText(KnitAdapter):
         compressed_bytes = factory._raw_record
         rec, contents = \
             self._data._parse_record_unchecked(compressed_bytes)
-        delta = self._plain_factory.parse_line_delta(contents, rec[1])
+        self._plain_factory.parse_line_delta(contents, rec[1])
         compression_parent = factory.parents[0]
         # XXX: string splitting overhead.
         basis_entry = next(self._basis_vf.get_record_stream(
@@ -353,7 +356,7 @@ class KnitContentFactory(ContentFactory):
             annotated_kind = 'annotated-'
         else:
             annotated_kind = ''
-        self.storage_kind = 'knit-{}{}-gz'.format(annotated_kind, kind)
+        self.storage_kind = f'knit-{annotated_kind}{kind}-gz'
         self._raw_record = raw_record
         self._network_bytes = network_bytes
         self._build_details = build_details
@@ -498,9 +501,9 @@ def knit_network_to_record(storage_kind, bytes, line_end):
 
 
 class KnitContent:
-    """Content of a knit version to which deltas can be applied.
+    r"""Content of a knit version to which deltas can be applied.
 
-    This is always stored in memory as a list of lines with \\n at the end,
+    This is always stored in memory as a list of lines with \n at the end,
     plus a flag saying if the final ending is really there or not, because that
     corresponds to the on-disk knit representation.
     """
@@ -514,6 +517,7 @@ class KnitContent:
 
     def line_delta_iter(self, new_lines):
         """Generate line-based delta from this content to new_lines."""
+        import patiencediff
         new_texts = new_lines.text()
         old_texts = self.text()
         s = patiencediff.PatienceSequenceMatcher(None, old_texts, new_texts)
@@ -528,11 +532,11 @@ class KnitContent:
 
     @staticmethod
     def get_line_delta_blocks(knit_delta, source, target):
-        """Extract SequenceMatcher.get_matching_blocks() from a knit delta"""
+        """Extract SequenceMatcher.get_matching_blocks() from a knit delta."""
         target_len = len(target)
         s_pos = 0
         t_pos = 0
-        for s_begin, s_end, t_len, new_text in knit_delta:
+        for s_begin, s_end, t_len, _new_text in knit_delta:
             true_n = s_begin - s_pos
             n = true_n
             if n > 0:
@@ -585,7 +589,7 @@ class AnnotatedKnitContent(KnitContent):
             # around 20071015
             raise KnitCorrupt(self,
                               "line in annotated knit missing annotation information: %s"
-                              % (e,))
+                              % (e,)) from e
         if self._should_strip_eol:
             lines[-1] = lines[-1].rstrip(b'\n')
         return lines
@@ -675,7 +679,7 @@ class KnitAnnotateFactory(_KnitFactory):
         return AnnotatedKnitContent(zip([version_id] * num_lines, lines))
 
     def parse_fulltext(self, content, version_id):
-        """Convert fulltext to internal representation
+        r"""Convert fulltext to internal representation.
 
         fulltext content is of the format
         revid(utf8) plaintext\n
@@ -690,7 +694,7 @@ class KnitAnnotateFactory(_KnitFactory):
         return AnnotatedKnitContent(lines)
 
     def parse_line_delta(self, lines, version_id, plain=False):
-        """Convert a line based delta into internal representation.
+        r"""Convert a line based delta into internal representation.
 
         line delta is in the form of:
         intstart intend intcount
@@ -748,14 +752,14 @@ class KnitAnnotateFactory(_KnitFactory):
                 yield text
 
     def lower_fulltext(self, content):
-        """convert a fulltext content record into a serializable form.
+        """Convert a fulltext content record into a serializable form.
 
         see parse_fulltext which this inverts.
         """
         return [b'%s %s' % (o, t) for o, t in content._lines]
 
     def lower_line_delta(self, delta):
-        """convert a delta into a serializable form.
+        """Convert a delta into a serializable form.
 
         See parse_line_delta which this inverts.
         """
@@ -971,10 +975,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         self._reload_func = reload_func
 
     def __repr__(self):
-        return "{}({!r}, {!r})".format(
-            self.__class__.__name__,
-            self._index,
-            self._access)
+        return f"{self.__class__.__name__}({self._index!r}, {self._access!r})"
 
     def without_fallbacks(self):
         """Return a clone of this object without any fallbacks configured."""
@@ -1088,11 +1089,11 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
 
         for element in key[:-1]:
             if not isinstance(element, bytes):
-                raise TypeError("key contains non-bytestrings: {!r}".format(key))
+                raise TypeError(f"key contains non-bytestrings: {key!r}")
         if key[-1] is None:
             key = key[:-1] + (b'sha1:' + digest,)
         elif not isinstance(key[-1], bytes):
-            raise TypeError("key contains non-bytestrings: {!r}".format(key))
+            raise TypeError(f"key contains non-bytestrings: {key!r}")
         # Knit hunks are still last-element only
         version_id = key[-1]
         content = self._factory.make(lines, version_id)
@@ -1166,7 +1167,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             fallback_vfs.check()
 
     def _check_add(self, key, lines, random_id, check_content):
-        """check that version_id and lines are safe to add."""
+        """Check that version_id and lines are safe to add."""
         if not all(isinstance(x, bytes) or x is None for x in key):
             raise TypeError(key)
         version_id = key[-1]
@@ -1194,7 +1195,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         """
         if rec[1] != version_id:
             raise KnitCorrupt(self,
-                              'unexpected version, wanted {!r}, got {!r}'.format(version_id, rec[1]))
+                              f'unexpected version, wanted {version_id!r}, got {rec[1]!r}')
 
     def _check_should_delta(self, parent):
         """Iterate back through the parent listing, looking for a fulltext.
@@ -1209,7 +1210,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         """
         delta_size = 0
         fulltext_size = None
-        for count in range(self._max_delta_chain):
+        for _count in range(self._max_delta_chain):
             try:
                 # Note that this only looks in the index of this particular
                 # KnitVersionedFiles, not in the fallbacks.  This ensures that
@@ -1217,7 +1218,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 # boundaries.
                 build_details = self._index.get_build_details([parent])
                 parent_details = build_details[parent]
-            except (RevisionNotPresent, KeyError) as e:
+            except (RevisionNotPresent, KeyError):
                 # Some basis is not locally present: always fulltext
                 return False
             index_memo, compression_parent, _, _ = parent_details
@@ -1276,9 +1277,12 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 raise errors.RevisionNotPresent(missing.pop(), self)
         return component_data
 
-    def _get_content(self, key, parent_texts={}):
+    def _get_content(self, key, parent_texts=None):
         """Returns a content object that makes up the specified
-        version."""
+        version.
+        """
+        if parent_texts is None:
+            parent_texts = {}
         cached_version = parent_texts.get(key, None)
         if cached_version is not None:
             # Ensure the cache dict is valid.
@@ -1433,7 +1437,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         #       from the same pack file together, and we want to extract all
         #       the texts for a given build-chain together. Ultimately it
         #       probably needs a better global view.
-        total_keys = len(keys)
+        len(keys)
         prefix_split_keys, prefix_order = self._split_by_prefix(keys)
         prefix_split_non_local_keys, _ = self._split_by_prefix(non_local_keys)
         cur_keys = []
@@ -1589,7 +1593,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             # XXX: get_content_maps performs its own index queries; allow state
             # to be passed in.
             non_local_keys = needed_from_fallback - absent_keys
-            for keys, non_local_keys in self._group_keys_for_io(present_keys,
+            for keys, non_local_keys in self._group_keys_for_io(present_keys,  # noqa: B020
                                                                 non_local_keys,
                                                                 positions):
                 generator = _VFContentMapGenerator(self, keys, non_local_keys,
@@ -1660,9 +1664,9 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         # The set of types we can cheaply adapt without needing basis texts.
         native_types = set()
         if self._max_delta_chain:
-            native_types.add("knit-%sdelta-gz" % annotated)
-            delta_types.add("knit-%sdelta-gz" % annotated)
-        native_types.add("knit-%sft-gz" % annotated)
+            native_types.add(f"knit-{annotated}delta-gz")
+            delta_types.add(f"knit-{annotated}delta-gz")
+        native_types.add(f"knit-{annotated}ft-gz")
         knit_types = native_types.union(convertibles)
         adapters = {}
         # Buffer all index entries that we can't add immediately because their
@@ -1811,7 +1815,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         return self._index.get_missing_compression_parents()
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
-        """Iterate over the lines in the versioned files from keys.
+        r"""Iterate over the lines in the versioned files from keys.
 
         This may return lines from other keys. Each item the returned
         iterator yields is a tuple of a line and a text version that that line
@@ -1824,8 +1828,8 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         The caller is responsible for cleaning up progress bars (because this
         is an iterator).
 
-        NOTES:
-         * Lines are normalised by the underlying store: they will all have \\n
+        Notes:
+         * Lines are normalised by the underlying store: they will all have \n
            terminators.
          * Lines are returned in arbitrary order.
          * If a requested key did not change any lines (or didn't have any
@@ -1850,7 +1854,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                     if key in keys:
                         key_records.append((key, details[0]))
                 records_iter = enumerate(self._read_records_iter(key_records))
-                for (key_idx, (key, data, sha_value)) in records_iter:
+                for (key_idx, (key, data, _sha_value)) in records_iter:
                     pb.update(gettext('Walking content'), key_idx, total)
                     compression_parent = build_details[key][1]
                     if compression_parent is None:
@@ -1901,7 +1905,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 (op[1], op[2], op[4] - op[3], new_content._lines[op[3]:op[4]]))
         return diff_hunks
 
-    def _merge_annotations(self, content, parents, parent_texts={},
+    def _merge_annotations(self, content, parents, parent_texts=None,
                            delta=None, annotated=None,
                            left_matching_blocks=None):
         """Merge annotations for content and generate deltas.
@@ -1910,6 +1914,9 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         and generating a delta on the resulting full texts. If annotations are
         not being created then a simple delta is created.
         """
+        if parent_texts is None:
+            parent_texts = {}
+        import patiencediff
         if left_matching_blocks is not None:
             delta_seq = diff._PrematchedMatcher(left_matching_blocks)
         else:
@@ -1968,7 +1975,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         except Exception as e:
             raise KnitCorrupt(self,
                               "While reading {%s} got %s(%s)"
-                              % (key, e.__class__.__name__, str(e)))
+                              % (key, e.__class__.__name__, str(e))) from e
         return df, rec
 
     def _parse_record_unchecked(self, data):
@@ -1981,7 +1988,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 record_contents = df.readlines()
             except Exception as e:
                 raise KnitCorrupt(self, "Corrupt compressed record %r, got %s(%s)" %
-                                  (data, e.__class__.__name__, str(e)))
+                                  (data, e.__class__.__name__, str(e))) from e
             header = record_contents.pop(0)
             rec = self._split_header(header)
             last_line = record_contents.pop()
@@ -2021,7 +2028,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         raw_data = self._access.get_raw_records(
             [index_memo for key, index_memo in needed_records])
 
-        for (key, index_memo), data in zip(needed_records, raw_data):
+        for (key, _index_memo), data in zip(needed_records, raw_data):
             content, digest = self._parse_record(key[-1], data)
             yield key, content, digest
 
@@ -2056,19 +2063,19 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                               in records]
             raw_records = self._access.get_raw_records(needed_offsets)
 
-        for key, index_memo in records:
+        for key, _index_memo in records:
             data = next(raw_records)
             yield key, data
 
     def _record_to_data(self, key, digest, lines, dense_lines=None):
-        """Convert key, digest, lines into a raw data block.
+        r"""Convert key, digest, lines into a raw data block.
 
         :param key: The key of the record. Currently keys are always serialised
             using just the trailing component.
         :param dense_lines: The bytes of lines but in a denser form. For
             instance, if lines is a list of 1000 bytestrings each ending in
-            \\n, dense_lines may be a list with one line in it, containing all
-            the 1000's lines and their \\n's. Using dense_lines if it is
+            \n, dense_lines may be a list with one line in it, containing all
+            the 1000's lines and their \n's. Using dense_lines if it is
             already known is a win because the string join to create bytes in
             this function spends less time resizing the final string.
         :return: (len, chunked bytestring with compressed data)
@@ -2079,9 +2086,9 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         for chunk in chunks:
             if not isinstance(chunk, bytes):
                 raise AssertionError(
-                    'data must be plain bytes was %s' % type(chunk))
+                    f'data must be plain bytes was {type(chunk)}')
         if lines and not lines[-1].endswith(b'\n'):
-            raise ValueError('corrupt lines value %r' % lines)
+            raise ValueError(f'corrupt lines value {lines!r}')
         compressed_chunks = tuned_gzip.chunks_to_gzip(chunks)
         return sum(map(len, compressed_chunks)), compressed_chunks
 
@@ -2094,7 +2101,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
 
     def keys(self):
         """See VersionedFiles.keys."""
-        if 'evil' in debug.debug_flags:
+        if debug.debug_flag_enabled('evil'):
             trace.mutter_callsite(2, "keys scales with size of history")
         sources = [self._index] + self._immediate_fallback_vfs
         result = set()
@@ -2191,8 +2198,8 @@ class _ContentMapGenerator:
             while cursor is not None:
                 try:
                     record, record_details, digest, next = record_map[cursor]
-                except KeyError:
-                    raise RevisionNotPresent(cursor, self)
+                except KeyError as e:
+                    raise RevisionNotPresent(cursor, self) from e
                 components.append((cursor, record, record_details, digest))
                 cursor = next
                 if cursor in self._contents_map:
@@ -2202,7 +2209,7 @@ class _ContentMapGenerator:
 
             content = None
             for (component_id, record, record_details,
-                 digest) in reversed(components):
+                 digest) in reversed(components):  # noqa: B007
                 if component_id in self._contents_map:
                     content = self._contents_map[component_id]
                 else:
@@ -2417,7 +2424,7 @@ class _NetworkContentMapGenerator(_ContentMapGenerator):
 
 
 class _KndxIndex:
-    """Manages knit index files
+    r"""Manages knit index files.
 
     The index is kept in memory and read on startup, to enable
     fast lookups of revision information.  The cursor of the index
@@ -2531,7 +2538,7 @@ class _KndxIndex:
                         self._dictionary_compress(parents), b':'])
                     if not isinstance(line, bytes):
                         raise AssertionError(
-                            'data must be utf8 was %s' % type(line))
+                            f'data must be utf8 was {type(line)}')
                     lines.append(line)
                     self._cache_key(key, options, pos, size, parents)
                 if len(orig_history):
@@ -2568,8 +2575,7 @@ class _KndxIndex:
         parents = tuple(parent[-1] for parent in parent_keys)
         for parent in parent_keys:
             if parent[:-1] != prefix:
-                raise ValueError("mismatched prefixes for {!r}, {!r}".format(
-                    key, parent_keys))
+                raise ValueError(f"mismatched prefixes for {key!r}, {parent_keys!r}")
         cache, history = self._kndx_cache[prefix]
         # only want the _history index to reference the 1st index entry
         # for version_id
@@ -2666,14 +2672,13 @@ class _KndxIndex:
         self._load_prefixes([prefix])
         try:
             return self._kndx_cache[prefix][0][suffix][1]
-        except KeyError:
-            raise RevisionNotPresent(key, self)
+        except KeyError as e:
+            raise RevisionNotPresent(key, self) from e
 
     def find_ancestry(self, keys):
-        """See CombinedGraphIndex.find_ancestry()"""
+        """See CombinedGraphIndex.find_ancestry()."""
         prefixes = {key[:-1] for key in keys}
         self._load_prefixes(prefixes)
-        result = {}
         parent_map = {}
         missing_keys = set()
         pending_keys = list(keys)
@@ -2733,8 +2738,10 @@ class _KndxIndex:
 
     __contains__ = _mod_index._has_key_from_parent_map
 
-    def _init_index(self, path, extra_lines=[]):
+    def _init_index(self, path, extra_lines=None):
         """Initialize an index."""
+        if extra_lines is None:
+            extra_lines = []
         sio = BytesIO()
         sio.write(self.HEADER)
         sio.writelines(extra_lines)
@@ -2821,7 +2828,7 @@ class _KndxIndex:
         for key in keys:
             if key[:-1] != prefix:
                 # kndx indices cannot refer across partitioned storage.
-                raise ValueError("mismatched prefixes for %r" % keys)
+                raise ValueError(f"mismatched prefixes for {keys!r}")
             if key[-1] in cache:
                 # -- inlined lookup() --
                 result_list.append(b'%d' % cache[key[-1]][5])
@@ -2911,7 +2918,7 @@ class _KnitGraphIndex:
             self._key_dependencies = None
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self._graph_index)
+        return f"{self.__class__.__name__}({self._graph_index!r})"
 
     def add_records(self, records, random_id=False,
                     missing_compression_parents=False):
@@ -2973,7 +2980,7 @@ class _KnitGraphIndex:
         # check for dups
         if not random_id:
             present_nodes = self._get_entries(keys)
-            for (index, key, value, node_refs) in present_nodes:
+            for (_index, key, value, node_refs) in present_nodes:
                 parents = node_refs[:1]
                 # Sometimes these are passed as a list rather than a tuple
                 passed = static_tuple.as_tuples(keys[key])
@@ -2989,7 +2996,7 @@ class _KnitGraphIndex:
             for key, (value, node_refs) in keys.items():
                 result.append((key, value, node_refs))
         else:
-            for key, (value, node_refs) in keys.items():
+            for key, (value, node_refs) in keys.items():  # noqa: B007
                 result.append((key, value))
         self._add_callback(result)
         if missing_compression_parents:
@@ -3041,7 +3048,7 @@ class _KnitGraphIndex:
         return frozenset(self._key_dependencies.get_unsatisfied_refs())
 
     def _check_read(self):
-        """raise if reads are not permitted."""
+        """Raise if reads are not permitted."""
         if not self._is_locked():
             raise errors.ObjectNotLocked(self)
 
@@ -3058,7 +3065,7 @@ class _KnitGraphIndex:
             return None
         if len(compression_parents) != 1:
             raise AssertionError(
-                "Too many compression parents: %r" % compression_parents)
+                f"Too many compression parents: {compression_parents!r}")
         return compression_parents[0]
 
     def get_build_details(self, keys):
@@ -3139,8 +3146,8 @@ class _KnitGraphIndex:
     def _get_node(self, key):
         try:
             return list(self._get_entries([key]))[0]
-        except IndexError:
-            raise RevisionNotPresent(key, self)
+        except IndexError as e:
+            raise RevisionNotPresent(key, self) from e
 
     def get_options(self, key):
         """Return a list representing options.
@@ -3154,7 +3161,7 @@ class _KnitGraphIndex:
         return options
 
     def find_ancestry(self, keys):
-        """See CombinedGraphIndex.find_ancestry()"""
+        """See CombinedGraphIndex.find_ancestry()."""
         return self._graph_index.find_ancestry(keys, 0)
 
     def get_parent_map(self, keys):
@@ -3275,7 +3282,7 @@ class _KnitKeyAccess:
         raw_data = b''.join(raw_data)
         if not isinstance(raw_data, bytes):
             raise AssertionError(
-                'data must be plain bytes was %s' % type(raw_data))
+                f'data must be plain bytes was {type(raw_data)}')
         result = []
         offset = 0
         # TODO: This can be tuned for writing to sftp and other servers where
@@ -3317,7 +3324,7 @@ class _KnitKeyAccess:
             request_lists.append((current_prefix, current_list))
         for prefix, read_vector in request_lists:
             path = self._mapper.map(prefix) + '.knit'
-            for pos, data in self._transport.readv(path, read_vector):
+            for _pos, data in self._transport.readv(path, read_vector):
                 yield data
 
 
@@ -3521,7 +3528,7 @@ class _KnitAnnotator(annotate.Annotator):
             compression_parent = key
             children = self._pending_deltas.pop(key)
             for child_key, parent_keys, record, record_details in children:
-                lines = self._expand_record(child_key, parent_keys,
+                self._expand_record(child_key, parent_keys,
                                             compression_parent,
                                             record, record_details)
                 if self._check_ready_for_annotations(child_key, parent_keys):
@@ -3535,7 +3542,7 @@ class _KnitAnnotator(annotate.Annotator):
         return to_return
 
     def _check_ready_for_annotations(self, key, parent_keys):
-        """return true if this text is ready to be yielded.
+        """Return true if this text is ready to be yielded.
 
         Otherwise, this will return False, and queue the text into
         self._pending_annotation
@@ -3551,7 +3558,7 @@ class _KnitAnnotator(annotate.Annotator):
         return True
 
     def _extract_texts(self, records):
-        """Extract the various texts needed based on records"""
+        """Extract the various texts needed based on records."""
         # We iterate in the order read, rather than a strict order requested
         # However, process what we can, and put off to the side things that
         # still need parents, cleaning them up when those parents are
@@ -3581,8 +3588,7 @@ class _KnitAnnotator(annotate.Annotator):
         # code can know when it can stop caching fulltexts, as well.
 
         # Children that are missing their compression parent
-        pending_deltas = {}
-        for (key, record, digest) in self._vf._read_records_iter(records):
+        for (key, record, _digest) in self._vf._read_records_iter(records):
             # ghosts?
             details = self._all_build_details[key]
             (_, compression_parent, parent_keys, record_details) = details

@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Test that brz handles locales in a reasonable way"""
+"""Test that brz handles locales in a reasonable way."""
 
 import sys
 import unittest
@@ -40,7 +40,9 @@ class TestLocale(tests.TestCaseWithTransport):
                     timestamp=1156451297.96, timezone=0)
         self.tree = tree
 
-    def run_log_quiet_long(self, args, env_changes={}):
+    def run_log_quiet_long(self, args, env_changes=None):
+        if env_changes is None:
+            env_changes = {}
         cmd = ['--no-aliases', '--no-plugins', '-Oprogress_bar=none',
                'log', '-q', '--log-format=long']
         cmd.extend(args)
@@ -113,10 +115,10 @@ message:
 
 
 class TestMultibyteCodecs(tests.TestCaseWithTransport):
-    """Tests for quirks of multibyte encodings and their python codecs"""
+    """Tests for quirks of multibyte encodings and their python codecs."""
 
     def test_plugins_mbcs(self):
-        """Ensure the plugins command works with cjkcodecs, see lp:754082"""
+        """Ensure the plugins command works with cjkcodecs, see lp:754082."""
         self.disable_missing_extensions_warning()
         out, err = self.run_bzr(["plugins"], encoding="EUC-JP")
         # The output is tested in bt.test_plugins rather than here

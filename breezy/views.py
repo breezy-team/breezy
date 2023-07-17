@@ -33,8 +33,7 @@ _VIEWS_FORMAT1_MARKER = b"Bazaar views format 1\n"
 
 
 class NoSuchView(errors.BzrError):
-    """A view does not exist.
-    """
+    """A view does not exist."""
 
     _fmt = "No such view: %(view_name)s."
 
@@ -43,8 +42,7 @@ class NoSuchView(errors.BzrError):
 
 
 class ViewsNotSupported(errors.BzrError):
-    """Views are not supported by a tree format.
-    """
+    """Views are not supported by a tree format."""
 
     _fmt = ("Views are not supported by %(tree)s;"
             " use 'brz upgrade' to change your tree to a later format.")
@@ -71,7 +69,7 @@ class _Views:
 
 
 class PathBasedViews(_Views):
-    """View storage in an unversioned tree control file.
+    r"""View storage in an unversioned tree control file.
 
     Views are stored in terms of paths relative to the tree root.
 
@@ -146,8 +144,8 @@ class PathBasedViews(_Views):
                 else:
                     return []
             return self._views[view_name]
-        except KeyError:
-            raise NoSuchView(view_name)
+        except KeyError as err:
+            raise NoSuchView(view_name) from err
 
     def set_view(self, view_name, view_files, make_current=True):
         """Add or update a view definition.
@@ -173,8 +171,8 @@ class PathBasedViews(_Views):
             self._load_view_info()
             try:
                 del self._views[view_name]
-            except KeyError:
-                raise NoSuchView(view_name)
+            except KeyError as err:
+                raise NoSuchView(view_name) from err
             if view_name == self._current:
                 self._current = None
             self._save_view_info()
@@ -211,7 +209,7 @@ class PathBasedViews(_Views):
         """Convert view keywords and a view dictionary into a stream."""
         lines = [_VIEWS_FORMAT1_MARKER]
         for key in keywords:
-            line = "{}={}\n".format(key, keywords[key])
+            line = f"{key}={keywords[key]}\n"
             lines.append(line.encode('utf-8'))
         if view_dict:
             lines.append(b"views:\n")
@@ -233,7 +231,7 @@ class PathBasedViews(_Views):
                 "format marker missing from top of views file")
         elif match.group(1) != b'1':
             raise ValueError(
-                "cannot decode views format %s" % match.group(1))
+                f"cannot decode views format {match.group(1)}")
         try:
             keywords = {}
             views = {}
@@ -257,7 +255,7 @@ class PathBasedViews(_Views):
             return keywords, views
         except ValueError as e:
             raise ValueError("failed to deserialize views content %r: %s"
-                             % (view_content, e))
+                             % (view_content, e)) from e
 
 
 class DisabledViews(_Views):

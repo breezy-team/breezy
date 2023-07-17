@@ -18,18 +18,20 @@
 
 import breezy
 from breezy import errors
-from breezy.bzr.bzrdir import BzrDir
-from breezy.bzr.inventory import Inventory
 from breezy.bzr.tests.per_repository_vf import (
-    TestCaseWithRepository, all_repository_vf_format_scenarios)
-from breezy.bzr.tests.per_repository_vf.helpers import \
-    TestCaseWithBrokenRevisionIndex
-from breezy.reconcile import Reconciler, reconcile
-from breezy.revision import Revision
+    TestCaseWithRepository,
+    all_repository_vf_format_scenarios,
+)
 from breezy.tests import TestSkipped
-from breezy.tests.matchers import MatchesAncestry
-from breezy.tests.scenarios import load_tests_apply_scenarios
-from breezy.uncommit import uncommit
+
+from ....reconcile import Reconciler, reconcile
+from ....revision import Revision
+from ....tests.matchers import MatchesAncestry
+from ....tests.scenarios import load_tests_apply_scenarios
+from ....uncommit import uncommit
+from ...bzrdir import BzrDir
+from ...inventory import Inventory
+from .helpers import TestCaseWithBrokenRevisionIndex
 
 load_tests = load_tests_apply_scenarios
 
@@ -46,11 +48,11 @@ class TestReconcile(TestCaseWithRepository):
         self.assertEqual(0, reconciler.garbage_inventories)
         self.checkNoBackupInventory(d)
 
-    def checkNoBackupInventory(self, aBzrDir):
+    def checkNoBackupInventory(self, a_bzr_dir):
         """Check that there is no backup inventory in aBzrDir."""
-        repo = aBzrDir.open_repository()
+        repo = a_bzr_dir.open_repository()
         for path in repo.control_transport.list_dir('.'):
-            self.assertFalse('inventory.backup' in path)
+            self.assertNotIn('inventory.backup', path)
 
 
 class TestBadRevisionParents(TestCaseWithBrokenRevisionIndex):
@@ -104,10 +106,11 @@ class TestsNeedingReweave(TestReconcile):
             rev = breezy.revision.Revision(timestamp=0,
                                            timezone=None,
                                            committer="Foo Bar <foo@example.com>",
+                                           properties={},
                                            message="Message",
                                            inventory_sha1=sha1,
+                                           parent_ids=parent_ids,
                                            revision_id=revision_id)
-            rev.parent_ids = parent_ids
             repo.add_revision(revision_id, rev)
             repo.commit_write_group()
             repo.unlock()
@@ -187,10 +190,10 @@ class TestsNeedingReweave(TestReconcile):
         self.assertEqual(1, result.garbage_inventories)
         self.check_missing_was_removed(repo)
 
-    def check_thorough_reweave_missing_revision(self, aBzrDir, reconcile,
+    def check_thorough_reweave_missing_revision(self, a_bzr_dir, reconcile,
                                                 **kwargs):
         # actual low level test.
-        repo = aBzrDir.open_repository()
+        repo = a_bzr_dir.open_repository()
         if not repo.has_revision(b'missing'):
             # the repo handles ghosts without corruption, so reconcile has
             # nothing to do here. Specifically, this test has the inventory
@@ -207,7 +210,7 @@ class TestsNeedingReweave(TestReconcile):
         # and one garbage inventories
         self.assertEqual(1, reconciler.garbage_inventories)
         # now the backup should have it but not the current inventory
-        repo = aBzrDir.open_repository()
+        repo = a_bzr_dir.open_repository()
         self.check_missing_was_removed(repo)
         # and the parent list for 'references_missing' should have that
         # revision a ghost now.
@@ -299,7 +302,10 @@ class TestsNeedingReweave(TestReconcile):
         rev = breezy.revision.Revision(timestamp=0,
                                        timezone=None,
                                        committer="Foo Bar <foo@example.com>",
+                                       properties={},
                                        message="Message",
+                                       parent_ids=[],
+                                       inventory_sha1=None,
                                        revision_id=b'final-revid')
         with repo.lock_write():
             repo.start_write_group()
@@ -309,10 +315,9 @@ class TestsNeedingReweave(TestReconcile):
                     repo.texts.add_lines((b'myfileid', b'ghostrevid'),
                                          ((b'myfileid', b'ghost-text-parent'),),
                                          [b"line1\n", b"line2\n"])
-                except errors.RevisionNotPresent:
-                    raise TestSkipped("text ghost parents not supported")
+                except errors.RevisionNotPresent as e:
+                    raise TestSkipped("text ghost parents not supported") from e
                 if repo.supports_rich_root():
-                    root_id = inv.root.file_id
                     repo.texts.add_lines((inv.root.file_id, inv.root.revision),
                                          [], [])
             finally:
@@ -368,12 +373,13 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
             repo.texts.add_lines((root_id, b'wrong-first-parent'), [], [])
         sha1 = repo.add_inventory(b'wrong-first-parent', inv, [b'2', b'1'])
         rev = Revision(timestamp=0,
-                       timezone=None,
+                       timezone=0,
                        committer="Foo Bar <foo@example.com>",
                        message="Message",
                        inventory_sha1=sha1,
+                       properties={},
+                       parent_ids=[b'1', b'2'],
                        revision_id=b'wrong-first-parent')
-        rev.parent_ids = [b'1', b'2']
         repo.add_revision(b'wrong-first-parent', rev)
         repo.commit_write_group()
         repo.unlock()
@@ -394,8 +400,9 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
                        committer="Foo Bar <foo@example.com>",
                        message="Message",
                        inventory_sha1=sha1,
+                       parent_ids=[b'1', b'2', b'3'],
+                       properties={},
                        revision_id=b'wrong-secondary-parent')
-        rev.parent_ids = [b'1', b'2', b'3']
         repo.add_revision(b'wrong-secondary-parent', rev)
         repo.commit_write_group()
         repo.unlock()

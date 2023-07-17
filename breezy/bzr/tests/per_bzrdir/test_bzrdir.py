@@ -16,58 +16,57 @@
 
 """Tests for bzrdir implementations - tests a bzrdir format."""
 
-import errno
 from stat import S_ISDIR
 
 import breezy.branch
-from breezy import controldir, errors, repository
+from breezy import controldir, errors, repository, transport, workingtree
 from breezy import revision as _mod_revision
-from breezy import transport, workingtree
 from breezy.bzr import bzrdir
-from breezy.bzr.remote import RemoteBzrDirFormat
 from breezy.bzr.tests.per_bzrdir import TestCaseWithBzrDir
 from breezy.tests import TestNotApplicable, TestSkipped
 from breezy.transport import FileExists
-from breezy.transport.local import LocalTransport
+
+from ....transport.local import LocalTransport
+from ...remote import RemoteBzrDirFormat
 
 
 class AnonymousTestBranchFormat(breezy.branch.BranchFormat):
-    """An anonymous branch format (does not have a format string)"""
+    """An anonymous branch format (does not have a format string)."""
 
     def get_format_string(self):
         raise NotImplementedError(self.get_format_string)
 
 
 class IdentifiableTestBranchFormat(breezy.branch.BranchFormat):
-    """An identifable branch format (has a format string)"""
+    """An identifable branch format (has a format string)."""
 
     def get_format_string(self):
         return b"I have an identity"
 
 
 class AnonymousTestRepositoryFormat(repository.RepositoryFormat):
-    """An anonymous branch format (does not have a format string)"""
+    """An anonymous branch format (does not have a format string)."""
 
     def get_format_string(self):
         raise NotImplementedError(self.get_format_string)
 
 
 class IdentifiableTestRepositoryFormat(repository.RepositoryFormat):
-    """An identifable branch format (has a format string)"""
+    """An identifable branch format (has a format string)."""
 
     def get_format_string(self):
         return b"I have an identity"
 
 
 class AnonymousTestWorkingTreeFormat(workingtree.WorkingTreeFormat):
-    """An anonymous branch format (does not have a format string)"""
+    """An anonymous branch format (does not have a format string)."""
 
     def get_format_string(self):
         raise NotImplementedError(self.get_format_string)
 
 
 class IdentifiableTestWorkingTreeFormat(workingtree.WorkingTreeFormat):
-    """An identifable branch format (has a format string)"""
+    """An identifable branch format (has a format string)."""
 
     def get_format_string(self):
         return b"I have an identity"
@@ -83,7 +82,7 @@ class TestBzrDir(TestCaseWithBzrDir):
     # and then set the nickname to match the source branch, at which point
     # a semantic equivalence should pass
 
-    def assertDirectoriesEqual(self, source, target, ignore_list=[]):
+    def assertDirectoriesEqual(self, source, target, ignore_list=None):
         """Assert that the content of source and target are identical.
 
         paths in ignore list will be completely ignored.
@@ -100,7 +99,8 @@ class TestBzrDir(TestCaseWithBzrDir):
             rather than representation checking of repositories for
             equivalence.
         """
-        files = []
+        if ignore_list is None:
+            ignore_list = []
         directories = ['.']
         while directories:
             dir = directories.pop()
@@ -111,17 +111,17 @@ class TestBzrDir(TestCaseWithBzrDir):
                 try:
                     stat = source.stat(path)
                 except transport.NoSuchFile:
-                    self.fail('%s not in source' % path)
+                    self.fail(f'{path} not in source')
                 if S_ISDIR(stat.st_mode):
                     self.assertTrue(S_ISDIR(target.stat(path).st_mode))
                     directories.append(path)
                 else:
                     self.assertEqualDiff(source.get_bytes(path),
                                          target.get_bytes(path),
-                                         "text for file %r differs:\n" % path)
+                                         f"text for file {path!r} differs:\n")
 
     def assertRepositoryHasSameItems(self, left_repo, right_repo):
-        """require left_repo and right_repo to contain the same data."""
+        """Require left_repo and right_repo to contain the same data."""
         # XXX: TODO: Doesn't work yet, because we need to be able to compare
         # local repositories to remote ones...  but this is an as-yet unsolved
         # aspect of format management and the Remote protocols...
@@ -195,9 +195,9 @@ class TestBzrDir(TestCaseWithBzrDir):
         """
         try:
             a_controldir.open_workingtree()
-        except (errors.NotLocalUrl, errors.NoWorkingTree):
+        except (errors.NotLocalUrl, errors.NoWorkingTree) as e:
             raise TestSkipped("bzrdir on transport %r has no working tree"
-                              % a_controldir.transport)
+                              % a_controldir.transport) from e
 
     def createWorkingTreeOrSkip(self, a_controldir):
         """Create a working tree on a_controldir, or raise TestSkipped.
@@ -214,9 +214,9 @@ class TestBzrDir(TestCaseWithBzrDir):
                 from_branch=None,
                 accelerator_tree=None,
                 hardlink=False)
-        except errors.NotLocalUrl:
+        except errors.NotLocalUrl as e:
             raise TestSkipped("cannot make working tree with transport %r"
-                              % a_controldir.transport)
+                              % a_controldir.transport) from e
 
     def test_clone_bzrdir_repository_under_shared_force_new_repo(self):
         tree = self.make_branch_and_tree('commit_tree')
@@ -449,9 +449,8 @@ class TestBzrDir(TestCaseWithBzrDir):
             with open(local_inventory, 'rb') as inventory_f:
                 self.assertContainsRe(inventory_f.read(),
                                       b'<inventory format="5">\n</inventory>\n')
-        except OSError as e:
-            if e.errno != errno.ENOENT:
-                raise
+        except FileNotFoundError:
+            pass
 
     def test_sprout_bzrdir_branch_and_repo(self):
         tree = self.make_branch_and_tree('commit_tree')
@@ -546,8 +545,10 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_controldir('.')
         # without a format, get_branch_transport gives use a transport
         # which -may- point to an existing dir.
-        self.assertTrue(isinstance(dir.get_branch_transport(None),
-                                   transport.Transport))
+        self.assertIsInstance(
+            dir.get_branch_transport(None),
+            (transport.Transport, transport._transport_rs.Transport)
+        )
         # with a given format, either the bzr dir supports identifiable
         # branches, or it supports anonymous branch formats, but not both.
         anonymous_format = AnonymousTestBranchFormat()
@@ -559,7 +560,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                               identifiable_format)
         except errors.IncompatibleFormat:
             found_transport = dir.get_branch_transport(identifiable_format)
-        self.assertTrue(isinstance(found_transport, transport.Transport))
+        self.assertIsInstance(found_transport, (transport.Transport, transport._transport_rs.Transport))
         # and the dir which has been initialized for us must exist.
         found_transport.list_dir('.')
 
@@ -567,8 +568,10 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_controldir('.')
         # without a format, get_repository_transport gives use a transport
         # which -may- point to an existing dir.
-        self.assertTrue(isinstance(dir.get_repository_transport(None),
-                                   transport.Transport))
+        self.assertIsInstance(
+            dir.get_repository_transport(None),
+            (transport.Transport, transport._transport_rs.Transport)
+        )
         # with a given format, either the bzr dir supports identifiable
         # repositories, or it supports anonymous repository formats, but not both.
         anonymous_format = AnonymousTestRepositoryFormat()
@@ -580,7 +583,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                               identifiable_format)
         except errors.IncompatibleFormat:
             found_transport = dir.get_repository_transport(identifiable_format)
-        self.assertTrue(isinstance(found_transport, transport.Transport))
+        self.assertIsInstance(found_transport, (transport.Transport, transport._transport_rs.Transport))
         # and the dir which has been initialized for us must exist.
         found_transport.list_dir('.')
 
@@ -588,8 +591,10 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_controldir('.')
         # without a format, get_workingtree_transport gives use a transport
         # which -may- point to an existing dir.
-        self.assertTrue(isinstance(dir.get_workingtree_transport(None),
-                                   transport.Transport))
+        self.assertIsInstance(
+            dir.get_workingtree_transport(None),
+            (transport.Transport, transport._transport_rs.Transport),
+        )
         # with a given format, either the bzr dir supports identifiable
         # trees, or it supports anonymous tree formats, but not both.
         anonymous_format = AnonymousTestWorkingTreeFormat()
@@ -602,7 +607,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         except errors.IncompatibleFormat:
             found_transport = dir.get_workingtree_transport(
                 identifiable_format)
-        self.assertTrue(isinstance(found_transport, transport.Transport))
+        self.assertIsInstance(found_transport, (transport.Transport, transport._transport_rs.Transport))
         # and the dir which has been initialized for us must exist.
         found_transport.list_dir('.')
 
@@ -656,8 +661,8 @@ class TestBzrDir(TestCaseWithBzrDir):
         config = self.make_controldir('.').get_config()
         try:
             config.set_default_stack_on('stack-on')
-        except errors.BzrError:
-            raise TestNotApplicable('Only relevant for stackable formats.')
+        except errors.BzrError as e:
+            raise TestNotApplicable('Only relevant for stackable formats.') from e
         # Initialize a bzrdir subject to the policy.
         t = self.get_transport('stacked')
         repo_fmt = controldir.format_registry.make_controldir('1.9')

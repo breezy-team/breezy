@@ -16,7 +16,9 @@
 
 """Tests for the urlutils wrapper."""
 
+import ntpath
 import os
+import posixpath
 import sys
 
 from .. import osutils, urlutils
@@ -126,17 +128,18 @@ class TestUrlToPath(TestCase):
     def test_url_scheme_re(self):
         # Test paths that may be URLs
         def test_one(url, scheme_and_path):
-            """Assert that _url_scheme_re correctly matches
+            """Assert that _url_scheme_re correctly matches.
 
             :param scheme_and_path: The (scheme, path) that should be matched
                 can be None, to indicate it should not match
             """
-            m = urlutils._url_scheme_re.match(url)
+            (scheme_pos, separator_pos) = urlutils._find_scheme_and_separator(url)
             if scheme_and_path is None:
-                self.assertEqual(None, m)
+                self.assertIs(None, scheme_pos)
+                self.assertIs(None, separator_pos)
             else:
-                self.assertEqual(scheme_and_path[0], m.group('scheme'))
-                self.assertEqual(scheme_and_path[1], m.group('path'))
+                self.assertEqual(scheme_and_path[0], url[:scheme_pos])
+                self.assertEqual(scheme_and_path[1], url[separator_pos:])
 
         # Local paths
         test_one('/path', None)
@@ -145,21 +148,21 @@ class TestUrlToPath(TestCase):
         test_one('../path/to/fo\xe5', None)
 
         # Real URLS
-        test_one('http://host/path/', ('http', 'host/path/'))
-        test_one('sftp://host/path/to/foo', ('sftp', 'host/path/to/foo'))
+        test_one('http://host/path/', ('http', '/path/'))
+        test_one('sftp://host/path/to/foo', ('sftp', '/path/to/foo'))
         test_one('file:///usr/bin', ('file', '/usr/bin'))
         test_one('file:///C:/Windows', ('file', '/C:/Windows'))
         test_one('file:///C|/Windows', ('file', '/C|/Windows'))
         test_one('readonly+sftp://host/path/\xe5',
-                 ('readonly+sftp', 'host/path/\xe5'))
+                 ('readonly+sftp', '/path/\xe5'))
 
         # Weird stuff
         # Can't have slashes or colons in the scheme
         test_one('/path/to/://foo', None)
-        test_one('scheme:stuff://foo', ('scheme', 'stuff://foo'))
+        test_one('scheme:stuff://foo', ('scheme', '//foo'))
         # Must have more than one character for scheme
         test_one('C://foo', None)
-        test_one('ab://foo', ('ab', 'foo'))
+        test_one('ab://foo', ('ab', 'ab://foo'))
 
     def test_dirname(self):
         # Test breezy.urlutils.dirname()
@@ -347,18 +350,6 @@ class TestUrlToPath(TestCase):
         self.assertRaises(TypeError,
                           join_segment_parameters, "/,key1=val1", {"foo": 42})
 
-    def test_function_type(self):
-        if sys.platform == 'win32':
-            self.assertEqual(urlutils._win32_local_path_to_url,
-                             urlutils.local_path_to_url)
-            self.assertEqual(urlutils._win32_local_path_from_url,
-                             urlutils.local_path_from_url)
-        else:
-            self.assertEqual(urlutils._posix_local_path_to_url,
-                             urlutils.local_path_to_url)
-            self.assertEqual(urlutils._posix_local_path_from_url,
-                             urlutils.local_path_from_url)
-
     def test_posix_local_path_to_url(self):
         to_url = urlutils._posix_local_path_to_url
         self.assertEqual('file:///path/to/foo',
@@ -369,11 +360,11 @@ class TestUrlToPath(TestCase):
 
         try:
             result = to_url('/path/to/r\xe4ksm\xf6rg\xe5s')
-        except UnicodeError:
-            raise TestSkipped("local encoding cannot handle unicode")
+        except UnicodeError as err:
+            raise TestSkipped("local encoding cannot handle unicode") from err
 
         self.assertEqual('file:///path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
-        self.assertTrue(isinstance(result, str))
+        self.assertIsInstance(result, str)
 
     def test_posix_local_path_from_url(self):
         from_url = urlutils._posix_local_path_from_url
@@ -413,8 +404,8 @@ class TestUrlToPath(TestCase):
                          to_url('C:/path/to/foo,bar'))
         try:
             result = to_url('d:/path/to/r\xe4ksm\xf6rg\xe5s')
-        except UnicodeError:
-            raise TestSkipped("local encoding cannot handle unicode")
+        except UnicodeError as err:
+            raise TestSkipped("local encoding cannot handle unicode") from err
 
         self.assertEqual(
             'file:///D:/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
@@ -430,12 +421,12 @@ class TestUrlToPath(TestCase):
 
         try:
             result = to_url('//HOST/path/to/r\xe4ksm\xf6rg\xe5s')
-        except UnicodeError:
-            raise TestSkipped("local encoding cannot handle unicode")
+        except UnicodeError as err:
+            raise TestSkipped("local encoding cannot handle unicode") from err
 
         self.assertEqual(
             'file://HOST/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
-        self.assertFalse(isinstance(result, str))
+        self.assertNotIsInstance(result, str)
 
     def test_win32_local_path_from_url(self):
         from_url = urlutils._win32_local_path_from_url
@@ -703,7 +694,11 @@ class TestUrlToPath(TestCase):
 
     def test_escape(self):
         self.assertEqual('%25', urlutils.escape('%'))
+        self.assertEqual('/~', urlutils.escape('/~'))
+        self.assertEqual('/~', urlutils.escape('/~', safe='/'))
+        self.assertEqual('%20', urlutils.escape(' '))
         self.assertEqual('%C3%A5', urlutils.escape('\xe5'))
+        self.assertEqual('%E5', urlutils.escape(b'\xe5'))
         self.assertIsInstance(urlutils.escape('\xe5'), str)
 
     def test_escape_tildes(self):
@@ -782,7 +777,7 @@ class TestUrlToPath(TestCase):
 
 
 class TestCwdToURL(TestCaseInTempDir):
-    """Test that local_path_to_url works based on the cwd"""
+    """Test that local_path_to_url works based on the cwd."""
 
     def test_dot(self):
         # This test will fail if getcwd is not ascii
@@ -795,8 +790,8 @@ class TestCwdToURL(TestCaseInTempDir):
     def test_non_ascii(self):
         try:
             os.mkdir('dod\xe9')
-        except UnicodeError:
-            raise TestSkipped('cannot create unicode directory')
+        except UnicodeError as err:
+            raise TestSkipped('cannot create unicode directory') from err
 
         os.chdir('dod\xe9')
 
@@ -958,8 +953,8 @@ class TestURL(TestCase):
         parsed = urlutils.URL.from_string('http://[1:2:3::40]:80/one')
         self.assertEqual('http://[1:2:3::40]:80/one', str(parsed))
 
-    def test__combine_paths(self):
-        combine = urlutils.URL._combine_paths
+    def test_combine_paths(self):
+        combine = urlutils.combine_paths
         self.assertEqual('/home/sarah/project/foo',
                          combine('/home/sarah', 'project/foo'))
         self.assertEqual('/etc',
@@ -999,10 +994,10 @@ class TestFileRelpath(TestCase):
                           urlutils._posix_local_path_from_url)
         self.overrideAttr(urlutils, "MIN_ABS_FILEURL_LENGTH", len("file:///"))
         self.overrideAttr(osutils, "normpath", osutils._posix_normpath)
-        self.overrideAttr(osutils, "abspath", osutils.posixpath.abspath)
+        self.overrideAttr(osutils, "abspath", posixpath.abspath)
         self.overrideAttr(osutils, "normpath", osutils._posix_normpath)
-        self.overrideAttr(osutils, "pathjoin", osutils.posixpath.join)
-        self.overrideAttr(osutils, "split", osutils.posixpath.split)
+        self.overrideAttr(osutils, "pathjoin", posixpath.join)
+        self.overrideAttr(osutils, "split", posixpath.split)
         self.overrideAttr(osutils, "MIN_ABS_PATHLENGTH", 1)
 
     def _with_win32_paths(self):
@@ -1012,8 +1007,7 @@ class TestFileRelpath(TestCase):
                           urlutils.WIN32_MIN_ABS_FILEURL_LENGTH)
         self.overrideAttr(osutils, "abspath", osutils._win32_abspath)
         self.overrideAttr(osutils, "normpath", osutils._win32_normpath)
-        self.overrideAttr(osutils, "pathjoin", osutils._win32_pathjoin)
-        self.overrideAttr(osutils, "split", osutils.ntpath.split)
+        self.overrideAttr(osutils, "split", ntpath.split)
         self.overrideAttr(osutils, "MIN_ABS_PATHLENGTH", 3)
 
     def test_same_url_posix(self):
@@ -1026,6 +1020,9 @@ class TestFileRelpath(TestCase):
                          urlutils.file_relpath("file:///a/", "file:///a"))
 
     def test_same_url_win32(self):
+        if sys.platform != 'win32':
+            raise TestSkipped('broken on non-windows; _with_win32_paths no longer works for rust')
+
         self._with_win32_paths()
         self.assertEqual("",
                          urlutils.file_relpath("file:///A:/", "file:///A:/"))
@@ -1048,6 +1045,8 @@ class TestFileRelpath(TestCase):
             "b/c", urlutils.file_relpath("file:///a", "file:///a/b/c"))
 
     def test_child_win32(self):
+        if sys.platform != 'win32':
+            raise TestSkipped('broken on non-windows; _with_win32_paths no longer works for rust')
         self._with_win32_paths()
         self.assertEqual(
             "b", urlutils.file_relpath("file:///A:/", "file:///A:/b"))

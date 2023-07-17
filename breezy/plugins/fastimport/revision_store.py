@@ -19,7 +19,6 @@ from io import BytesIO
 
 from ... import errors
 from ... import graph as _mod_graph
-from ... import osutils
 from ... import revision as _mod_revision
 from ...bzr import inventory
 from ...bzr.inventorytree import InventoryTreeChange
@@ -71,7 +70,8 @@ class _TreeShim:
             return self._content_provider(file_id)
         except KeyError:
             # The content wasn't shown as 'new'. Just validate this fact
-            assert file_id not in self._new_info_by_id
+            if file_id in self._new_info_by_id:
+                raise AssertionError(f"file_id {file_id} was in {self._new_info_by_id}") from None
             old_ie = self._basis_inv.get_entry(file_id)
             old_text_key = (file_id, old_ie.revision)
             stream = self._repo.texts.get_record_stream([old_text_key],
@@ -109,10 +109,10 @@ class _TreeShim:
             # probably is better to optimize for that
             try:
                 old_ie = basis_inv.get_entry(file_id)
-            except errors.NoSuchId:
+            except errors.NoSuchId as e:
                 old_ie = None
                 if ie is None:
-                    raise AssertionError('How is both old and new None?')
+                    raise AssertionError('How is both old and new None?') from e
                     change = InventoryTreeChange(
                         file_id,
                         (old_path, new_path),
@@ -200,9 +200,9 @@ class RevisionStore:
 
         # Get the creation parameters
         chk_store = self.repo.chk_bytes
-        serializer = self.repo._format._serializer
-        search_key_name = serializer.search_key_name
-        maximum_size = serializer.maximum_size
+        inventory_serializer = self.repo._format._inventory_serializer
+        search_key_name = inventory_serializer.search_key_name
+        maximum_size = inventory_serializer.maximum_size
 
         # Maybe the rest of this ought to be part of the CHKInventory API?
         inv = inventory.CHKInventory(search_key_name)
@@ -340,7 +340,6 @@ class RevisionStore:
             else:
                 self._use_known_graph = False
         if self._graph is not None:
-            orig_heads = builder._heads
 
             def thunked_heads(file_id, revision_ids):
                 # self._graph thinks in terms of keys, not ids, so translate
@@ -361,7 +360,7 @@ class RevisionStore:
             basis_rev_id = _mod_revision.NULL_REVISION
         tree = _TreeShim(self.repo, basis_inv, inv_delta, text_provider)
         changes = tree._delta_to_iter_changes()
-        for (path, fs_hash) in builder.record_iter_changes(
+        for (_path, _fs_hash) in builder.record_iter_changes(
                 tree, basis_rev_id, changes):
             # So far, we don't *do* anything with the result
             pass
@@ -375,8 +374,7 @@ class RevisionStore:
             builder.inv_sha1, builder.new_inventory = builder.inv_sha1
         # This is a duplicate of Builder.commit() since we already have the
         # Revision object, and we *don't* want to call commit_write_group()
-        rev.inv_sha1 = builder.inv_sha1
-        config = builder._config_stack
+        rev.inventory_sha1 = builder.inv_sha1
         builder.repository.add_revision(builder._new_revision_id, rev,
                                         builder.revision_tree().root_inventory)
         if self._graph is not None:

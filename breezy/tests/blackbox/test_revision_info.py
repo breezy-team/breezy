@@ -14,11 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import os
 
-from breezy.errors import CommandError, NoSuchRevision
 from breezy.tests import TestCaseWithTransport
-from breezy.workingtree import WorkingTree
 
 
 class TestRevisionInfo(TestCaseWithTransport):
@@ -107,7 +104,7 @@ class TestRevisionInfo(TestCaseWithTransport):
 
     def test_revision_info_tree_no_working_tree(self):
         # Make branch with no tree
-        b = self.make_branch('branch')
+        self.make_branch('branch')
 
         # Try getting the --tree revision-info
         out, err = self.run_bzr('revision-info --tree -d branch', retcode=3)

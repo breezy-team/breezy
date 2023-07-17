@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for LockDir"""
+"""Tests for LockDir."""
 
 import os
 import time
@@ -22,10 +22,15 @@ import time
 import breezy
 
 from .. import config, errors, lock, lockdir, osutils, tests, transport
-from ..errors import (LockBreakMismatch, LockBroken, LockContention,
-                      LockFailed, LockNotHeld)
+from ..errors import (
+    LockBreakMismatch,
+    LockBroken,
+    LockContention,
+    LockFailed,
+    LockNotHeld,
+)
 from ..lockdir import LockDir, LockHeldInfo
-from . import TestCase, TestCaseInTempDir, TestCaseWithTransport, features
+from . import TestCaseInTempDir, TestCaseWithTransport, features
 
 # These tests are run on the default transport provided by the test framework
 # (typically a local disk transport).  That can be changed by the --transport
@@ -35,7 +40,7 @@ from . import TestCase, TestCaseInTempDir, TestCaseWithTransport, features
 
 
 class TestLockDir(TestCaseWithTransport):
-    """Test LockDir operations"""
+    """Test LockDir operations."""
 
     def logging_report_function(self, fmt, *args):
         self._logged_reports.append((fmt, args))
@@ -45,13 +50,13 @@ class TestLockDir(TestCaseWithTransport):
         lock_dir._report_function = self.logging_report_function
 
     def test_00_lock_creation(self):
-        """Creation of lock file on a transport"""
+        """Creation of lock file on a transport."""
         t = self.get_transport()
         lf = LockDir(t, 'test_lock')
         self.assertFalse(lf.is_held)
 
     def test_01_lock_repr(self):
-        """Lock string representation"""
+        """Lock string representation."""
         lf = LockDir(self.get_transport(), 'test_lock')
         r = repr(lf)
         self.assertContainsRe(r, r'^LockDir\(.*/test_lock\)$')
@@ -76,7 +81,7 @@ class TestLockDir(TestCaseWithTransport):
         self.assertEqual(lf.peek(), None)
 
     def test_10_lock_uncontested(self):
-        """Acquire and release a lock"""
+        """Acquire and release a lock."""
         t = self.get_transport()
         lf = LockDir(t, 'test_lock')
         lf.create()
@@ -88,20 +93,20 @@ class TestLockDir(TestCaseWithTransport):
             self.assertFalse(lf.is_held)
 
     def test_11_create_readonly_transport(self):
-        """Fail to create lock on readonly transport"""
+        """Fail to create lock on readonly transport."""
         t = self.get_readonly_transport()
         lf = LockDir(t, 'test_lock')
         self.assertRaises(LockFailed, lf.create)
 
     def test_12_lock_readonly_transport(self):
-        """Fail to lock on readonly transport"""
+        """Fail to lock on readonly transport."""
         lf = LockDir(self.get_transport(), 'test_lock')
         lf.create()
         lf = LockDir(self.get_readonly_transport(), 'test_lock')
         self.assertRaises(LockFailed, lf.attempt_lock)
 
     def test_20_lock_contested(self):
-        """Contention to get a lock"""
+        """Contention to get a lock."""
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
         lf1.create()
@@ -119,7 +124,7 @@ class TestLockDir(TestCaseWithTransport):
         lf1.unlock()
 
     def test_20_lock_peek(self):
-        """Peek at the state of a lock"""
+        """Peek at the state of a lock."""
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
         lf1.create()
@@ -127,8 +132,8 @@ class TestLockDir(TestCaseWithTransport):
         self.addCleanup(lf1.unlock)
         # lock is held, should get some info on it
         info1 = lf1.peek()
-        self.assertEqual(set(info1.info_dict.keys()),
-                         {'user', 'nonce', 'hostname', 'pid', 'start_time'})
+        self.assertEqual(set(info1.to_readable_dict().keys()),
+                         {'user', 'hostname', 'pid', 'time_ago'})
         # should get the same info if we look at it through a different
         # instance
         info2 = LockDir(t, 'test_lock').peek()
@@ -137,7 +142,7 @@ class TestLockDir(TestCaseWithTransport):
         self.assertEqual(LockDir(t, 'other_lock').peek(), None)
 
     def test_21_peek_readonly(self):
-        """Peek over a readonly transport"""
+        """Peek over a readonly transport."""
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
         lf1.create()
@@ -150,7 +155,7 @@ class TestLockDir(TestCaseWithTransport):
         self.assertEqual(info2.nonce, lf1.nonce)
 
     def test_30_lock_wait_fail(self):
-        """Wait on a lock, then fail
+        """Wait on a lock, then fail.
 
         We ask to wait up to 400ms; this should fail within at most one
         second.  (Longer times are more realistic but we don't want the test
@@ -169,21 +174,23 @@ class TestLockDir(TestCaseWithTransport):
             after = time.time()
             # it should only take about 0.4 seconds, but we allow more time in
             # case the machine is heavily loaded
-            self.assertTrue(after - before <= 8.0,
-                            "took %f seconds to detect lock contention" % (after - before))
+            self.assertLessEqual(
+                after - before,
+                8.0,
+                f"took {after - before:f} seconds to detect lock contention"
+            )
         finally:
             lf1.unlock()
         self.assertEqual(1, len(self._logged_reports))
         self.assertContainsRe(self._logged_reports[0][0],
-                              r'Unable to obtain lock .* held by jrandom@example\.com on .*'
+                              f'Unable to obtain lock .* held by {osutils.getuser_unicode()} on .*'
                               r' \(process #\d+\), acquired .* ago\.\n'
                               r'Will continue to try until \d{2}:\d{2}:\d{2}, unless '
                               r'you press Ctrl-C.\n'
                               r'See "brz help break-lock" for more.')
 
     def test_31_lock_wait_easy(self):
-        """Succeed when waiting on a lock with no contention.
-        """
+        """Succeed when waiting on a lock with no contention."""
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
         lf1.create()
@@ -192,13 +199,13 @@ class TestLockDir(TestCaseWithTransport):
             before = time.time()
             lf1.wait_lock(timeout=0.4, poll=0.1)
             after = time.time()
-            self.assertTrue(after - before <= 1.0)
+            self.assertLessEqual(after - before, 1.0)
         finally:
             lf1.unlock()
         self.assertEqual([], self._logged_reports)
 
     def test_40_confirm_easy(self):
-        """Confirm a lock that's already held"""
+        """Confirm a lock that's already held."""
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
         lf1.create()
@@ -207,14 +214,14 @@ class TestLockDir(TestCaseWithTransport):
         lf1.confirm()
 
     def test_41_confirm_not_held(self):
-        """Confirm a lock that's already held"""
+        """Confirm a lock that's already held."""
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
         lf1.create()
         self.assertRaises(LockNotHeld, lf1.confirm)
 
     def test_42_confirm_broken_manually(self):
-        """Confirm a lock broken by hand"""
+        """Confirm a lock broken by hand."""
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
         lf1.create()
@@ -226,7 +233,7 @@ class TestLockDir(TestCaseWithTransport):
         lf1.unlock()
 
     def test_43_break(self):
-        """Break a lock whose caller has forgotten it"""
+        """Break a lock whose caller has forgotten it."""
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
         lf1.create()
@@ -244,7 +251,7 @@ class TestLockDir(TestCaseWithTransport):
         lf2.confirm()
 
     def test_44_break_already_released(self):
-        """Lock break races with regular release"""
+        """Lock break races with regular release."""
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
         lf1.create()
@@ -262,7 +269,7 @@ class TestLockDir(TestCaseWithTransport):
         lf2.confirm()
 
     def test_45_break_mismatch(self):
-        """Lock break races with someone else acquiring it"""
+        """Lock break races with someone else acquiring it."""
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
         lf1.create()
@@ -377,7 +384,7 @@ class TestLockDir(TestCaseWithTransport):
         del self._lock_actions[:]
 
     def test_create_missing_base_directory(self):
-        """If LockDir.path doesn't exist, it can be created
+        """If LockDir.path doesn't exist, it can be created.
 
         Some people manually remove the entire lock/ directory trying
         to unlock a stuck repository/branch/etc. Rather than failing
@@ -408,8 +415,8 @@ class TestLockDir(TestCaseWithTransport):
             info_list = ld1.peek().to_readable_dict()
         finally:
             ld1.unlock()
-        self.assertEqual(info_list['user'], 'jrandom@example.com')
-        self.assertIsInstance(info_list['pid'], int)
+        self.assertEqual(info_list['user'], osutils.getuser_unicode())
+        self.assertIsInstance(info_list['pid'], str)
         self.assertContainsRe(info_list['time_ago'], '^\\d+ seconds? ago$')
 
     def test_lock_without_email(self):
@@ -451,7 +458,7 @@ class TestLockDir(TestCaseWithTransport):
         ld1.attempt_lock()
         ld2 = LockDir(t, 'test_lock')
         # we should fail to lock
-        e = self.assertRaises(errors.LockContention, ld2.attempt_lock)
+        self.assertRaises(errors.LockContention, ld2.attempt_lock)
         # now the original caller should succeed in unlocking
         ld1.unlock()
         # and there should be nothing left over
@@ -493,8 +500,8 @@ class TestLockDir(TestCaseWithTransport):
         info = lf.peek()
         formatted_info = info.to_readable_dict()
         self.assertEqual(
-            dict(user='<unknown>', hostname='<unknown>', pid='<unknown>',
-                 time_ago='(unknown)'),
+            {'user': '<unknown>', 'hostname': '<unknown>', 'pid': '<unknown>',
+                 'time_ago': '(unknown)'},
             formatted_info)
 
     def test_corrupt_lockdir_info(self):
@@ -625,19 +632,20 @@ class TestLockDirHooks(TestCaseWithTransport):
         ld = self.get_lock()
         ld.create()
         ld2 = self.get_lock()
-        result = ld.attempt_lock()
+        ld.attempt_lock()
         holder_info = ld2.peek()
         ld.unlock()
         LockDir.hooks.install_named_hook('lock_broken',
                                          self.record_hook, 'record_hook')
         ld2.force_break(holder_info)
-        lock_path = ld.transport.abspath(ld.path)
+        ld.transport.abspath(ld.path)
         self.assertEqual([], self._calls)
 
 
 class TestLockHeldInfo(TestCaseInTempDir):
     """Can get information about the lock holder, and detect whether they're
-    still alive."""
+    still alive.
+    """
 
     def test_repr(self):
         info = LockHeldInfo.for_this_process(None)
@@ -654,7 +662,7 @@ class TestLockHeldInfo(TestCaseInTempDir):
 
     def test_is_not_locked_by_this_process(self):
         info = LockHeldInfo.for_this_process(None)
-        info.info_dict['pid'] = '123123123123123'
+        info.pid = 1231231
         self.assertFalse(info.is_locked_by_this_process())
 
     def test_lock_holder_live_process(self):
@@ -667,35 +675,21 @@ class TestLockHeldInfo(TestCaseInTempDir):
         self.overrideAttr(lockdir, 'get_host_name',
                           lambda: 'aproperhostname')
         info = LockHeldInfo.for_this_process(None)
-        info.info_dict['pid'] = '123123123'
+        info.pid = 123123123
         self.assertTrue(info.is_lock_holder_known_dead())
 
     def test_lock_holder_other_machine(self):
         """The lock holder isn't here so we don't know if they're alive."""
         info = LockHeldInfo.for_this_process(None)
-        info.info_dict['hostname'] = 'egg.example.com'
-        info.info_dict['pid'] = '123123123'
+        info.hostname = 'egg.example.com'
+        info.pid = 123123123
         self.assertFalse(info.is_lock_holder_known_dead())
 
     def test_lock_holder_other_user(self):
         """Only auto-break locks held by this user."""
         info = LockHeldInfo.for_this_process(None)
-        info.info_dict['user'] = 'notme@example.com'
-        info.info_dict['pid'] = '123123123'
-        self.assertFalse(info.is_lock_holder_known_dead())
-
-    def test_no_good_hostname(self):
-        """Correctly handle ambiguous hostnames.
-
-        If the lock's recorded with just 'localhost' we can't really trust
-        it's the same 'localhost'.  (There are quite a few of them. :-)
-        So even if the process is known not to be alive, we can't say that's
-        known for sure.
-        """
-        self.overrideAttr(lockdir, 'get_host_name',
-                          lambda: 'localhost')
-        info = LockHeldInfo.for_this_process(None)
-        info.info_dict['pid'] = '123123123'
+        info.user = 'notme@example.com'
+        info.pid = 123123123
         self.assertFalse(info.is_lock_holder_known_dead())
 
 
@@ -717,21 +711,21 @@ class TestStaleLockDir(TestCaseWithTransport):
         # process on the same machine.
         l1 = LockDir(self.get_transport(), 'a',
                      extra_holder_info={'pid': '12312313'})
-        token_1 = l1.attempt_lock()
+        l1.attempt_lock()
         l2 = LockDir(self.get_transport(), 'a')
-        token_2 = l2.attempt_lock()
+        l2.attempt_lock()
         # l1 will notice its lock was stolen.
         self.assertRaises(errors.LockBroken,
                           l1.unlock)
         l2.unlock()
 
     def test_auto_break_stale_lock_configured_off(self):
-        """Automatic breaking can be turned off"""
+        """Automatic breaking can be turned off."""
         l1 = LockDir(self.get_transport(), 'a',
                      extra_holder_info={'pid': '12312313'})
         # Stealing dead locks is enabled by default, so disable it.
         config.GlobalStack().set('locks.steal_dead', False)
-        token_1 = l1.attempt_lock()
+        l1.attempt_lock()
         self.addCleanup(l1.unlock)
         l2 = LockDir(self.get_transport(), 'a')
         # This fails now, because dead lock breaking is disabled.

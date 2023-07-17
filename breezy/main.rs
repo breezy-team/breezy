@@ -1,7 +1,9 @@
+use pyo3::exceptions::{PyKeyboardInterrupt, PySystemExit};
 use pyo3::prelude::*;
 use pyo3::types::*;
 use std::path::*;
 
+const EXIT_ERROR: i32 = 3;
 
 fn check_version(py: Python<'_>) -> PyResult<()> {
     let major: u32 = env!("CARGO_PKG_VERSION_MAJOR").parse::<u32>().unwrap();
@@ -44,7 +46,7 @@ fn setup_locale(py: Python<'_>) -> PyResult<()> {
 }
 
 // TODO: Does not actually work? Upstream has been messing around again.
-fn ensure_sane_fs_enc() -> () {
+fn ensure_sane_fs_enc() {
     let new_enc = std::ffi::CString::new("utf8").unwrap().into_raw();
     unsafe {
         pyo3::ffi::Py_FileSystemDefaultEncoding = new_enc;
@@ -55,7 +57,7 @@ fn ensure_sane_fs_enc() -> () {
 fn prepend_path(py: Python<'_>, el: &Path) -> PyResult<()> {
     let sys = PyModule::import(py, "sys")?;
 
-    let current_path: &pyo3::types::PyList = sys.getattr("path")?.try_into()?;
+    let current_path = sys.getattr("path")?.downcast::<PyList>()?;
 
     current_path.insert(0, el.to_str().expect("invalid local path"))?;
 
@@ -66,7 +68,7 @@ fn prepend_path(py: Python<'_>, el: &Path) -> PyResult<()> {
 fn update_path(py: Python<'_>) -> PyResult<()> {
     let mut path = std::env::current_exe()?;
 
-    path.pop();  // Drop executable name
+    path.pop(); // Drop executable name
 
     let mut package_path = path.clone();
     package_path.push("breezy");
@@ -95,10 +97,10 @@ fn posix_setup(py: Python<'_>) -> PyResult<()> {
     Ok(())
 }
 
-fn main() -> PyResult<()> {
+fn main() {
     pyo3::prepare_freethreaded_python();
 
-    Python::with_gil(|py| {
+    fn main(py: Python) -> PyResult<&PyAny> {
         posix_setup(py)?;
 
         update_path(py)?;
@@ -118,7 +120,29 @@ fn main() -> PyResult<()> {
         sys.setattr("argv", PyList::new(py, args))?;
 
         let main = PyModule::import(py, "breezy.__main__")?;
-        main.getattr("main")?.call1(())?;
-        Ok(())
-    })
+        main.getattr("main")?.call1(())
+    }
+
+    Python::with_gil(|py| {
+        let result = main(py);
+        std::process::exit(match result {
+            Ok(_) => 0,
+            Err(e) if e.is_instance_of::<PySystemExit>(py) => {
+                eprintln!("brz: {}", e);
+                e.value(py)
+                    .getattr("code")
+                    .unwrap()
+                    .extract::<i32>()
+                    .unwrap()
+            }
+            Err(e) if e.is_instance_of::<PyKeyboardInterrupt>(py) => {
+                eprintln!("brz: interrupted");
+                EXIT_ERROR
+            }
+            Err(e) => {
+                eprintln!("brz: ERROR: {}", e);
+                EXIT_ERROR
+            }
+        });
+    });
 }

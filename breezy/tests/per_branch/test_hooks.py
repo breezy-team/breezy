@@ -119,7 +119,7 @@ class TestOpen(tests.TestCaseWithMemoryTransport):
         # Branches opened on the server don't have comparable URLs, so we just
         # assert that it is not a RemoteBranch.
         self.assertIsInstance(b, _mod_branch.Branch)
-        self.assertFalse(isinstance(b, remote.RemoteBranch))
+        self.assertNotIsInstance(b, remote.RemoteBranch)
 
 
 class TestPreChangeBranchTip(ChangeBranchTipTestCase):
@@ -130,8 +130,7 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
     """
 
     def test_hook_runs_before_change(self):
-        """The hook runs *before* the branch's last_revision_info has changed.
-        """
+        """The hook runs *before* the branch's last_revision_info has changed."""
         branch = self.make_branch_with_revision_ids(b'revid-one')
 
         def assertBranchAtRevision1(params):
@@ -153,7 +152,7 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
             raise PearShapedError()
         _mod_branch.Branch.hooks.install_named_hook(
             'pre_change_branch_tip', hook_that_raises, None)
-        hook_failed_exc = self.assertRaises(
+        self.assertRaises(
             PearShapedError,
             branch.set_last_revision_info, 0, revision.NULL_REVISION)
         # The revision info is unchanged.
@@ -232,8 +231,7 @@ class TestPostChangeBranchTip(ChangeBranchTipTestCase):
     """
 
     def test_hook_runs_after_change(self):
-        """The hook runs *after* the branch's last_revision_info has changed.
-        """
+        """The hook runs *after* the branch's last_revision_info has changed."""
         branch = self.make_branch_with_revision_ids(b'revid-one')
 
         def assertBranchAtRevision1(params):
@@ -308,7 +306,7 @@ class TestAllMethodsThatChangeTipWillRunHooks(ChangeBranchTipTestCase):
         del self.pre_hook_calls[:], self.post_hook_calls[:]
 
     def assertPreAndPostHooksWereInvoked(self, branch, smart_enabled):
-        """assert that both pre and post hooks were called
+        """Assert that both pre and post hooks were called.
 
         :param smart_enabled: The method invoked is one that should be
             smart server ready.

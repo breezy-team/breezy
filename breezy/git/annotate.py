@@ -40,7 +40,7 @@ class GitBlobContentFactory:
     :ivar parents: A tuple of parent keys for self.key. If the object has
         no parent information, None (as opposed to () for an empty list of
         parents).
-     """
+    """
 
     def __init__(self, store, path, revision, blob_id):
         """Create a ContentFactory."""
@@ -63,7 +63,7 @@ class GitBlobContentFactory:
 
     def iter_bytes_as(self, storage_kind):
         if storage_kind == 'lines':
-            return iter(osutils.chunks_to_lines(self.store[self.blob_id].as_raw_chunks()))
+            return osutils.chunks_to_lines_iter(iter(self.store[self.blob_id].as_raw_chunks()))
         elif storage_kind == 'chunked':
             return iter(self.store[self.blob_id].as_raw_chunks())
         raise UnavailableRepresentation(self.key, storage_kind,
@@ -81,7 +81,7 @@ class GitAbsentContentFactory:
     :ivar parents: A tuple of parent keys for self.key. If the object has
         no parent information, None (as opposed to () for an empty list of
         parents).
-     """
+    """
 
     def __init__(self, store, path, revision):
         """Create a ContentFactory."""

@@ -18,8 +18,9 @@
 
 import os
 
-from breezy.tests.features import SymlinkFeature
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
+
+from ..features import SymlinkFeature
 
 # tests to write:
 # type mismatches - file to link, dir, dir to file, link, link to file, dir
@@ -50,16 +51,14 @@ class DirBlock:
         return self.relpath
 
     def __str__(self):
-        return """
-file_path      = {!r}
-abspath        = {!r}
-relpath        = {!r}
-file_name      = {!r}
-inventory_kind = {!r}
-stat           = {!r}
-disk_kind      = {!r}""".format(self.file_path, self.abspath, self.relpath,
-                          self.file_name, self.inventory_kind, self.stat,
-                          self.disk_kind)
+        return f"""
+file_path      = {self.file_path!r}
+abspath        = {self.abspath!r}
+relpath        = {self.relpath!r}
+file_name      = {self.file_name!r}
+inventory_kind = {self.inventory_kind!r}
+stat           = {self.stat!r}
+disk_kind      = {self.disk_kind!r}"""
 
 
 class TestWalkdirs(TestCaseWithWorkingTree):
@@ -137,7 +136,7 @@ class TestWalkdirs(TestCaseWithWorkingTree):
         self.assertEqual(expected_dirblocks, result)
 
     def test_walkdir_unknowns(self):
-        """unknown files and directories should be reported by walkdirs."""
+        """Unknown files and directories should be reported by walkdirs."""
         self._test_walkdir(self.unknown)
 
     def test_walkdir_from_unknown_dir(self):
@@ -145,7 +144,7 @@ class TestWalkdirs(TestCaseWithWorkingTree):
         self._test_walkdir(self.unknown, 'unknown dir')
 
     def test_walkdir_missings(self):
-        """missing files and directories should be reported by walkdirs."""
+        """Missing files and directories should be reported by walkdirs."""
         self._test_walkdir(self.missing)
 
     def test_walkdir_from_dir(self):

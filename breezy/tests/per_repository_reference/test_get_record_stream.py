@@ -16,10 +16,10 @@
 
 """Tests that get_record_stream() behaves itself properly when stacked."""
 
-from breezy import errors
 from breezy.bzr import knit
-from breezy.tests.per_repository_reference import \
-    TestCaseWithExternalReferenceRepository
+from breezy.tests.per_repository_reference import (
+    TestCaseWithExternalReferenceRepository,
+)
 
 
 class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
@@ -82,12 +82,12 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
         self.stacked_repo = self.make_referring('referring', self.base_repo)
 
     def make_simple_split(self):
-        """Set up the repositories so that everything is in base except F"""
+        """Set up the repositories so that everything is in base except F."""
         self.base_repo.fetch(self.all_repo, revision_id=b'G')
         self.stacked_repo.fetch(self.all_repo, revision_id=b'F')
 
     def make_complex_split(self):
-        """intermix the revisions so that base holds left stacked holds right.
+        """Intermix the revisions so that base holds left stacked holds right.
 
         base will hold
             A B D F (and C because it is a parent of D)
@@ -109,7 +109,7 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
         record_keys = set()
         for record in stream:
             if record.storage_kind == 'absent':
-                raise ValueError('absent record: {}'.format(record.key))
+                raise ValueError(f'absent record: {record.key}')
             record_keys.add(record.key)
         # everything should be present, we don't care about the order
         self.assertEqual(keys, sorted(record_keys))
@@ -124,7 +124,7 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
         record_keys = set()
         for record in stream:
             if record.storage_kind == 'absent':
-                raise ValueError('absent record: {}'.format(record.key))
+                raise ValueError(f'absent record: {record.key}')
             record_keys.add(record.key)
         # everything should be present, we don't care about the order
         self.assertEqual(keys, sorted(record_keys))
@@ -150,7 +150,7 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
         record_keys = []
         for record in stream:
             if record.storage_kind == 'absent':
-                raise ValueError('absent record: {}'.format(record.key))
+                raise ValueError(f'absent record: {record.key}')
             record_keys.append(record.key)
         self.assertIn(record_keys, (keys, alt_1, alt_2, alt_3, alt_4))
 
@@ -171,7 +171,7 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
         record_keys = []
         for record in stream:
             if record.storage_kind == 'absent':
-                raise ValueError('absent record: {}'.format(record.key))
+                raise ValueError(f'absent record: {record.key}')
             record_keys.append(record.key)
         self.assertIn(record_keys, (keys, alt_1))
 
@@ -196,7 +196,7 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
         record_keys = []
         for record in stream:
             if record.storage_kind == 'absent':
-                raise ValueError('absent record: {}'.format(record.key))
+                raise ValueError(f'absent record: {record.key}')
             record_keys.append(record.key)
         # Note that currently --2a format repositories do this correctly, but
         # KnitPack format repositories do not.

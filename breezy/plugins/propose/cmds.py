@@ -19,11 +19,10 @@
 from io import StringIO
 
 from ... import branch as _mod_branch
-from ... import controldir, errors
+from ... import controldir, errors, msgeditor, urlutils
 from ... import forge as _mod_forge
 from ... import log as _mod_log
 from ... import missing as _mod_missing
-from ... import msgeditor, urlutils
 from ...commands import Command
 from ...i18n import gettext
 from ...option import ListOption, Option, RegistryOption
@@ -295,7 +294,7 @@ class cmd_my_merge_proposals(Command):
                 continue
             try:
                 for mp in instance.iter_my_proposals(status=status):
-                    self.outf.write('%s\n' % mp.url)
+                    self.outf.write(f'{mp.url}\n')
                     if verbose:
                         source_branch_url = mp.get_source_branch_url()
                         if source_branch_url:
@@ -305,15 +304,14 @@ class cmd_my_merge_proposals(Command):
                                  mp.get_target_branch_url()))
                         else:
                             self.outf.write(
-                                '(Merging into %s)\n' %
-                                mp.get_target_branch_url())
+                                f'(Merging into {mp.get_target_branch_url()})\n')
                         description = mp.get_description()
                         if description:
                             self.outf.writelines(
-                                ['\t%s\n' % l
+                                [f'\t{l}\n'
                                  for l in description.splitlines()])
                         self.outf.write('\n')
-            except _mod_forge.ForgeLoginRequired as e:
+            except _mod_forge.ForgeLoginRequired:
                 warning('Skipping %s, login required.', instance)
 
 
@@ -369,7 +367,7 @@ class cmd_web_open(Command):
 
             return forge.get_web_url(branch)
         raise errors.CommandError(
-            'Unable to get web URL for %s' % location)
+            f'Unable to get web URL for {location}')
 
     def run(self, location=None, dry_run=False):
         if location is None:

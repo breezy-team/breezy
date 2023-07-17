@@ -14,22 +14,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""WorkingTree3 format and implementation.
+"""WorkingTree3 format and implementation."""
 
-"""
-
-import errno
-
-from .. import errors, osutils
+from .. import errors, trace
 from .. import revision as _mod_revision
-from .. import trace
 from .. import transport as _mod_transport
-from ..lockable_files import LockableFiles
 from ..lockdir import LockDir
 from ..mutabletree import MutableTree
 from ..transport.local import LocalTransport
 from . import bzrdir, hashcache, inventory
 from . import transform as bzr_transform
+from .lockable_files import LockableFiles
 from .workingtree import InventoryWorkingTree, WorkingTreeFormatMetaDir
 
 
@@ -62,15 +57,12 @@ class PreDirStateWorkingTree(InventoryWorkingTree):
         if self._hashcache.needs_write:
             try:
                 self._hashcache.write()
-            except OSError as e:
-                if e.errno not in (errno.EPERM, errno.EACCES):
-                    raise
+            except PermissionError as e:
                 # TODO: jam 20061219 Should this be a warning? A single line
                 #       warning might be sufficient to let the user know what
                 #       is going on.
                 trace.mutter('Could not write hashcache for %s\nError: %s',
-                             self._hashcache.cache_file_name(),
-                             osutils.safe_unicode(e.args[1]))
+                             self._hashcache.cache_file_name(), e.filename)
 
     def get_file_sha1(self, path, stat_value=None):
         with self.lock_read():
@@ -232,7 +224,7 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
         return inventory.Inventory()
 
     def open(self, a_controldir, _found=False):
-        """Return the WorkingTree object for a_controldir
+        """Return the WorkingTree object for a_controldir.
 
         _found is a private parameter, do not use it. It is used to indicate
                if format probing has already been done.

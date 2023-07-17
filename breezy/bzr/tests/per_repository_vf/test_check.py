@@ -14,16 +14,18 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Test operations that check the repository for corruption"""
+"""Test operations that check the repository for corruption."""
 
 
 from breezy import errors
 from breezy.bzr.tests.per_repository_vf import (
-    TestCaseWithRepository, all_repository_vf_format_scenarios)
-from breezy.bzr.tests.per_repository_vf.helpers import \
-    TestCaseWithBrokenRevisionIndex
+    TestCaseWithRepository,
+    all_repository_vf_format_scenarios,
+)
 from breezy.tests import TestNotApplicable
-from breezy.tests.scenarios import load_tests_apply_scenarios
+
+from ....tests.scenarios import load_tests_apply_scenarios
+from .helpers import TestCaseWithBrokenRevisionIndex
 
 load_tests = load_tests_apply_scenarios
 
@@ -57,7 +59,7 @@ class TestFindInconsistentRevisionParents(TestCaseWithBrokenRevisionIndex):
         repo = self.make_repository('empty-repo')
         if not repo._format.revision_graph_can_have_wrong_parents:
             raise TestNotApplicable(
-                '%r cannot have corrupt revision index.' % repo)
+                f'{repo!r} cannot have corrupt revision index.')
         with repo.lock_read():
             repo._check_for_inconsistent_revision_parents()  # nothing happens
 

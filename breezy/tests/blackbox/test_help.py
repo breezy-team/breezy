@@ -15,12 +15,10 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Black-box tests for brz help.
-"""
+"""Black-box tests for brz help."""
 
 
 from breezy import config, i18n, tests
-from breezy.tests.test_i18n import ZzzTranslations
 
 
 class TestHelp(tests.TestCaseWithTransport):
@@ -30,11 +28,11 @@ class TestHelp(tests.TestCaseWithTransport):
             output = self.run_bzr(cmd)[0]
             line1 = output.split('\n')[0]
             if not line1.startswith('Breezy'):
-                self.fail("bad output from brz {}:\n{!r}".format(cmd, output))
+                self.fail(f"bad output from brz {cmd}:\n{output!r}")
         # see https://launchpad.net/products/bzr/+bug/35940, -h doesn't work
 
     def test_help_topics(self):
-        """Smoketest for 'brz help topics'"""
+        """Smoketest for 'brz help topics'."""
         out, err = self.run_bzr('help topics')
         self.assertContainsRe(out, 'basic')
         self.assertContainsRe(out, 'topics')
@@ -42,7 +40,7 @@ class TestHelp(tests.TestCaseWithTransport):
         self.assertContainsRe(out, 'revisionspec')
 
     def test_help_revisionspec(self):
-        """Smoke test for 'brz help revisionspec'"""
+        """Smoke test for 'brz help revisionspec'."""
         out, err = self.run_bzr('help revisionspec')
         self.assertContainsRe(out, 'revno:')
         self.assertContainsRe(out, 'date:')
@@ -53,13 +51,13 @@ class TestHelp(tests.TestCaseWithTransport):
         self.assertContainsRe(out, 'branch:')
 
     def test_help_checkouts(self):
-        """Smoke test for 'brz help checkouts'"""
+        """Smoke test for 'brz help checkouts'."""
         out, err = self.run_bzr('help checkouts')
         self.assertContainsRe(out, 'checkout')
         self.assertContainsRe(out, 'lightweight')
 
     def test_help_urlspec(self):
-        """Smoke test for 'brz help urlspec'"""
+        """Smoke test for 'brz help urlspec'."""
         out, err = self.run_bzr('help urlspec')
         self.assertContainsRe(out, 'bzr://')
         self.assertContainsRe(out, 'bzr\\+ssh://')
@@ -69,30 +67,33 @@ class TestHelp(tests.TestCaseWithTransport):
         self.assertContainsRe(out, 'sftp://')
 
     def test_help_repositories(self):
-        """Smoke test for 'brz help repositories'"""
+        """Smoke test for 'brz help repositories'."""
         out, err = self.run_bzr('help repositories')
-        from breezy.help_topics import _repositories, help_as_plain_text
-        expected = help_as_plain_text(_repositories)
+        from breezy.help_topics import help_as_plain_text, topic_registry
+        repositories = topic_registry.get('repositories').get_contents()
+        expected = help_as_plain_text(repositories)
         self.assertEqual(expected, out)
 
     def test_help_working_trees(self):
-        """Smoke test for 'brz help working-trees'"""
+        """Smoke test for 'brz help working-trees'."""
         out, err = self.run_bzr('help working-trees')
-        from breezy.help_topics import _working_trees, help_as_plain_text
-        expected = help_as_plain_text(_working_trees)
+        from breezy.help_topics import help_as_plain_text, topic_registry
+        working_trees = topic_registry.get('working-trees').get_contents()
+        expected = help_as_plain_text(working_trees)
         self.assertEqual(expected, out)
 
     def test_help_status_flags(self):
-        """Smoke test for 'brz help status-flags'"""
+        """Smoke test for 'brz help status-flags'."""
         out, err = self.run_bzr('help status-flags')
-        from breezy.help_topics import _status_flags, help_as_plain_text
-        expected = help_as_plain_text(_status_flags)
+        from breezy.help_topics import help_as_plain_text, topic_registry
+        status_flags = topic_registry.get('status-flags').get_contents()
+        expected = help_as_plain_text(status_flags)
         self.assertEqual(expected, out)
 
     def test_help_commands(self):
         dash_help = self.run_bzr('--help commands')[0]
         commands = self.run_bzr('help commands')[0]
-        hidden = self.run_bzr('help hidden-commands')[0]
+        self.run_bzr('help hidden-commands')[0]
         long_help = self.run_bzr('help --long')[0]
         qmark_long = self.run_bzr('? --long')[0]
         qmark_cmds = self.run_bzr('? commands')[0]
@@ -123,10 +124,10 @@ class TestHelp(tests.TestCaseWithTransport):
             return cmds
         commands = extract_cmd_names(help_commands)
         hidden = extract_cmd_names(help_hidden)
-        self.assertTrue('commit' in commands)
-        self.assertTrue('commit' not in hidden)
-        self.assertTrue('rocks' in hidden)
-        self.assertTrue('rocks' not in commands)
+        self.assertIn('commit', commands)
+        self.assertNotIn('commit', hidden)
+        self.assertIn('rocks', hidden)
+        self.assertNotIn('rocks', commands)
 
     def test_help_detail(self):
         dash_h = self.run_bzr('diff -h')[0]
@@ -162,7 +163,7 @@ class TestHelp(tests.TestCaseWithTransport):
     def test_help_with_aliases(self):
         original = self.run_bzr('help cat')[0]
 
-        conf = config.GlobalConfig.from_string('''[ALIASES]
+        config.GlobalConfig.from_string('''[ALIASES]
 c=cat
 cat=cat
 ''', save=True)
@@ -175,11 +176,12 @@ cat=cat
 
 
 class TestTranslatedHelp(tests.TestCaseWithTransport):
-    """Tests for display of translated help topics"""
+    """Tests for display of translated help topics."""
 
     def setUp(self):
         super().setUp()
-        self.overrideAttr(i18n, '_translations', ZzzTranslations())
+        i18n.install_zzz()
+        self.addCleanup(i18n.install)
 
     def test_help_command_utf8(self):
         out, err = self.run_bzr_raw(["help", "push"], encoding="utf-8")

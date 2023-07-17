@@ -15,14 +15,13 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Black-box tests for brz revno.
-"""
+"""Black-box tests for brz revno."""
 
 import os
 
 from breezy import tests
-from breezy.bzr.tests.matchers import ContainsNoVfsCalls
-from breezy.errors import NoSuchRevision
+
+from ...errors import NoSuchRevision
 
 
 class TestRevno(tests.TestCaseWithTransport):
@@ -55,7 +54,7 @@ class TestRevno(tests.TestCaseWithTransport):
     def test_revno_tree(self):
         # Make branch and checkout
         wt = self.make_branch_and_tree('branch')
-        checkout = wt.branch.create_checkout('checkout', lightweight=True)
+        wt.branch.create_checkout('checkout', lightweight=True)
 
         # Get the checkout out of date
         self.build_tree(['branch/file'])
@@ -74,7 +73,7 @@ class TestRevno(tests.TestCaseWithTransport):
 
     def test_revno_tree_no_tree(self):
         # Make treeless branch
-        b = self.make_branch('branch')
+        self.make_branch('branch')
 
         # Try getting it's --tree revno
         out, err = self.run_bzr('revno --tree branch', retcode=3)
@@ -93,7 +92,7 @@ class TestRevno(tests.TestCaseWithTransport):
         builder.build_snapshot([b'A-id', b'B-id'], [], revision_id=b'C-id')
         builder.finish_series()
         b = builder.get_branch()
-        co_b = b.create_checkout('checkout_b', lightweight=True,
+        b.create_checkout('checkout_b', lightweight=True,
                                  revision_id=b'B-id')
         out, err = self.run_bzr('revno checkout_b')
         self.assertEqual('', err)
@@ -115,7 +114,7 @@ class TestRevno(tests.TestCaseWithTransport):
         b = builder.get_branch()
         # The branch is now at "C-id", but the checkout is still at "B-id"
         # which is no longer in the history
-        co_b = b.create_checkout('checkout_b', lightweight=True,
+        b.create_checkout('checkout_b', lightweight=True,
                                  revision_id=b'B-id')
         out, err = self.run_bzr('revno checkout_b')
         self.assertEqual('', err)
@@ -127,7 +126,7 @@ class TestRevno(tests.TestCaseWithTransport):
     def test_revno_ghost(self):
         builder = self.make_branch_builder('branch')
         builder.start_series()
-        revid = builder.build_snapshot([b'aghost'], [
+        builder.build_snapshot([b'aghost'], [
             ('add', ('', b'root-id', 'directory', None)),
             ('add', ('file', b'file-id', 'file', b'content\n'))],
             revision_id=b'A-id', allow_leftmost_as_ghost=True)
@@ -145,16 +144,16 @@ class TestRevno(tests.TestCaseWithTransport):
     def test_revno_with_revision(self):
         wt = self.make_branch_and_tree('.')
         revid1 = wt.commit('rev1')
-        revid2 = wt.commit('rev2')
+        wt.commit('rev2')
 
         out, err = self.run_bzr('revno -r-2 .')
         self.assertEqual('1\n', out)
 
-        out, err = self.run_bzr('revno -rrevid:%s .' % revid1.decode('utf-8'))
+        out, err = self.run_bzr(f"revno -rrevid:{revid1.decode('utf-8')} .")
         self.assertEqual('1\n', out)
 
     def test_revno_and_tree_mutually_exclusive(self):
-        wt = self.make_branch_and_tree('.')
+        self.make_branch_and_tree('.')
         out, err = self.run_bzr('revno -r-2 --tree .', retcode=3)
         self.assertEqual('', out)
         self.assertEqual(

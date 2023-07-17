@@ -16,17 +16,16 @@
 
 """Test the lazy_import functionality."""
 
-import linecache
 import os
 import re
 import sys
 
-from .. import errors, lazy_import, osutils
+from .. import lazy_import, osutils
 from . import TestCase, TestCaseInTempDir
 
 
 class InstrumentedReplacer(lazy_import.ScopeReplacer):
-    """Track what actions are done"""
+    """Track what actions are done."""
 
     @staticmethod
     def use_actions(actions):
@@ -61,7 +60,7 @@ class InstrumentedImportReplacer(lazy_import.ImportReplacer):
 
 
 class TestClass:
-    """Just a simple test class instrumented for the test cases"""
+    """Just a simple test class instrumented for the test cases."""
 
     class_member = 'class_member'
 
@@ -111,7 +110,7 @@ class TestScopeReplacer(TestCase):
             return TestClass()
 
         try:
-            test_obj1
+            test_obj1  # noqa: B018
         except NameError:
             # test_obj1 shouldn't exist yet
             pass
@@ -148,7 +147,7 @@ class TestScopeReplacer(TestCase):
         def factory(replacer, scope, name):
             return TestClass()
         try:
-            test_obj6
+            test_obj6  # noqa: B018
         except NameError:
             # test_obj6 shouldn't exist yet
             pass
@@ -174,7 +173,7 @@ class TestScopeReplacer(TestCase):
         And only that entry even after replacement.
         """
         try:
-            test_scope1
+            test_scope1  # noqa: B018
         except NameError:
             # test_scope1 shouldn't exist yet
             pass
@@ -216,7 +215,7 @@ class TestScopeReplacer(TestCase):
             return TestClass
 
         try:
-            test_class1
+            test_class1  # noqa: B018
         except NameError:
             # test_class2 shouldn't exist yet
             pass
@@ -242,7 +241,7 @@ class TestScopeReplacer(TestCase):
             return TestClass
 
         try:
-            test_class2
+            test_class2  # noqa: B018
         except NameError:
             # test_class2 shouldn't exist yet
             pass
@@ -252,7 +251,7 @@ class TestScopeReplacer(TestCase):
         InstrumentedReplacer(scope=globals(), name='test_class2',
                              factory=factory)
 
-        self.assertFalse(test_class2 is TestClass)
+        self.assertIsNot(test_class2, TestClass)
         obj = test_class2()
         self.assertIs(test_class2, TestClass)
         self.assertIsInstance(obj, TestClass)
@@ -275,7 +274,7 @@ class TestScopeReplacer(TestCase):
             return func
 
         try:
-            test_func1
+            test_func1  # noqa: B018
         except NameError:
             # test_func1 shouldn't exist yet
             pass
@@ -284,7 +283,7 @@ class TestScopeReplacer(TestCase):
         InstrumentedReplacer(scope=globals(), name='test_func1',
                              factory=factory)
 
-        self.assertFalse(test_func1 is func)
+        self.assertIsNot(test_func1, func)
         val = test_func1(1, 2, c='3')
         self.assertIs(test_func1, func)
 
@@ -312,7 +311,7 @@ class TestScopeReplacer(TestCase):
             return TestClass()
 
         try:
-            test_obj2
+            test_obj2  # noqa: B018
         except NameError:
             # test_obj2 shouldn't exist yet
             pass
@@ -370,7 +369,7 @@ class TestScopeReplacer(TestCase):
             return TestClass()
 
         try:
-            test_obj4
+            test_obj4  # noqa: B018
         except NameError:
             # test_obj4 shouldn't exist yet
             pass
@@ -418,7 +417,7 @@ class TestScopeReplacer(TestCase):
                           ], actions)
 
     def test_replacing_from_own_scope_fails(self):
-        """If a ScopeReplacer tries to replace itself a nice error is given"""
+        """If a ScopeReplacer tries to replace itself a nice error is given."""
         actions = []
         InstrumentedReplacer.use_actions(actions)
         TestClass.use_actions(actions)
@@ -429,7 +428,7 @@ class TestScopeReplacer(TestCase):
             return scope[name]
 
         try:
-            test_obj7
+            test_obj7  # noqa: B018
         except NameError:
             # test_obj7 shouldn't exist yet
             pass
@@ -448,7 +447,7 @@ class TestScopeReplacer(TestCase):
 
 
 class ImportReplacerHelper(TestCaseInTempDir):
-    """Test the ability to have a lazily imported module or object"""
+    """Test the ability to have a lazily imported module or object."""
 
     def setUp(self):
         super().setUp()
@@ -492,7 +491,7 @@ class ImportReplacerHelper(TestCaseInTempDir):
         os.mkdir('base')
         root_path = osutils.pathjoin('base', root_name)
         os.mkdir(root_path)
-        root_init = osutils.pathjoin(root_path, '__init__.py')
+        osutils.pathjoin(root_path, '__init__.py')
         with open(osutils.pathjoin(root_path, '__init__.py'), 'w') as f:
             f.write('var1 = 1\ndef func1(a):\n  return a\n')
         mod_path = osutils.pathjoin(root_path, mod_name + '.py')
@@ -519,7 +518,7 @@ class ImportReplacerHelper(TestCaseInTempDir):
 class TestImportReplacerHelper(ImportReplacerHelper):
 
     def test_basic_import(self):
-        """Test that a real import of these modules works"""
+        """Test that a real import of these modules works."""
         sub_mod_path = '.'.join([self.root_name, self.sub_name,
                                  self.submoda_name])
         root = lazy_import._builtin_import(sub_mod_path, {}, {}, [], 0)
@@ -540,9 +539,9 @@ class TestImportReplacerHelper(ImportReplacerHelper):
 class TestImportReplacer(ImportReplacerHelper):
 
     def test_import_root(self):
-        """Test 'import root-XXX as root1'"""
+        """Test 'import root-XXX as root1'."""
         try:
-            root1
+            root1  # noqa: B018
         except NameError:
             # root1 shouldn't exist yet
             pass
@@ -565,9 +564,9 @@ class TestImportReplacer(ImportReplacerHelper):
                           ], self.actions)
 
     def test_import_mod(self):
-        """Test 'import root-XXX.mod-XXX as mod2'"""
+        """Test 'import root-XXX.mod-XXX as mod2'."""
         try:
-            mod1
+            mod1  # noqa: B018
         except NameError:
             # mod1 shouldn't exist yet
             pass
@@ -590,9 +589,9 @@ class TestImportReplacer(ImportReplacerHelper):
                           ], self.actions)
 
     def test_import_mod_from_root(self):
-        """Test 'from root-XXX import mod-XXX as mod2'"""
+        """Test 'from root-XXX import mod-XXX as mod2'."""
         try:
-            mod2
+            mod2  # noqa: B018
         except NameError:
             # mod2 shouldn't exist yet
             pass
@@ -614,9 +613,9 @@ class TestImportReplacer(ImportReplacerHelper):
                           ], self.actions)
 
     def test_import_root_and_mod(self):
-        """Test 'import root-XXX.mod-XXX' remapping both to root3.mod3"""
+        """Test 'import root-XXX.mod-XXX' remapping both to root3.mod3."""
         try:
-            root3
+            root3  # noqa: B018
         except NameError:
             # root3 shouldn't exist yet
             pass
@@ -655,7 +654,7 @@ class TestImportReplacer(ImportReplacerHelper):
         children to be imported.
         """
         try:
-            root4
+            root4  # noqa: B018
         except NameError:
             # root4 shouldn't exist yet
             pass
@@ -698,7 +697,7 @@ class TestImportReplacer(ImportReplacerHelper):
         reuse the intermediate lazy object.
         """
         try:
-            root5
+            root5  # noqa: B018
         except NameError:
             # root5 shouldn't exist yet
             pass
@@ -764,7 +763,7 @@ class TestImportReplacer(ImportReplacerHelper):
 
 
 class TestConvertImportToMap(TestCase):
-    """Directly test the conversion from import strings to maps"""
+    """Directly test the conversion from import strings to maps."""
 
     def check(self, expected, import_strings):
         proc = lazy_import.ImportProcessor()
@@ -827,7 +826,7 @@ class TestConvertImportToMap(TestCase):
 
 
 class TestFromToMap(TestCase):
-    """Directly test the conversion of 'from foo import bar' syntax"""
+    """Directly test the conversion of 'from foo import bar' syntax."""
 
     def check_result(self, expected, from_strings):
         proc = lazy_import.ImportProcessor()
@@ -861,7 +860,7 @@ class TestFromToMap(TestCase):
 
 
 class TestCanonicalize(TestCase):
-    """Test that we can canonicalize import texts"""
+    """Test that we can canonicalize import texts."""
 
     def check(self, expected, text):
         proc = lazy_import.ImportProcessor()
@@ -916,7 +915,7 @@ class TestCanonicalize(TestCase):
 
 
 class TestImportProcessor(TestCase):
-    """Test that ImportProcessor can turn import texts into lazy imports"""
+    """Test that ImportProcessor can turn import texts into lazy imports."""
 
     def check(self, expected, text):
         proc = lazy_import.ImportProcessor()
@@ -1045,13 +1044,13 @@ class TestLazyImportProcessor(ImportReplacerHelper):
 
     def test_root(self):
         try:
-            root6
+            root6  # noqa: B018
         except NameError:
             pass  # root6 should not be defined yet
         else:
             self.fail('root6 was not supposed to exist yet')
 
-        text = 'import {} as root6'.format(self.root_name)
+        text = f'import {self.root_name} as root6'
         proc = lazy_import.ImportProcessor(InstrumentedImportReplacer)
         proc.lazy_import(scope=globals(), text=text)
 
@@ -1075,7 +1074,7 @@ class TestLazyImportProcessor(ImportReplacerHelper):
         reuse the intermediate lazy object.
         """
         try:
-            submoda7
+            submoda7  # noqa: B018
         except NameError:
             pass  # submoda7 should not be defined yet
         else:
@@ -1103,15 +1102,15 @@ import %(root_name)s.%(sub_name)s.%(submoda_name)s as submoda7
                           ], self.actions)
 
     def test_lazy_import(self):
-        """Smoke test that lazy_import() does the right thing"""
+        """Smoke test that lazy_import() does the right thing."""
         try:
-            root8
+            root8  # noqa: B018
         except NameError:
             pass  # root8 should not be defined yet
         else:
             self.fail('root8 was not supposed to exist yet')
         lazy_import.lazy_import(globals(),
-                                'import {} as root8'.format(self.root_name),
+                                f'import {self.root_name} as root8',
                                 lazy_import_class=InstrumentedImportReplacer)
 
         self.assertEqual(InstrumentedImportReplacer,
@@ -1199,6 +1198,6 @@ class TestScopeReplacerReentrance(TestCase):
         replacer = lazy_import.ScopeReplacer({}, factory, 'name')
 
         def racer():
-            replacer.foo
+            replacer.foo  # noqa: B018
 
         self.run_race(racer)

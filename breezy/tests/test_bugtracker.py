@@ -26,7 +26,7 @@ class ErrorsTest(TestCaseWithMemoryTransport):
         branch = self.make_branch('some_branch')
         error = bugtracker.UnknownBugTrackerAbbreviation('xxx', branch)
         self.assertEqual(
-            "Cannot find registered bug tracker called xxx on %s" % branch,
+            f"Cannot find registered bug tracker called xxx on {branch}",
             str(error))
 
     def test_malformed_bug_identifier(self):
@@ -47,7 +47,7 @@ class ErrorsTest(TestCaseWithMemoryTransport):
 
 
 class TestGetBugURL(TestCaseWithMemoryTransport):
-    """Tests for bugtracker.get_bug_url"""
+    """Tests for bugtracker.get_bug_url."""
 
     class TransientTracker:
         """An transient tracker used for testing."""
@@ -61,7 +61,7 @@ class TestGetBugURL(TestCaseWithMemoryTransport):
 
         def get_bug_url(self, bug_id):
             self.log.append(('get_bug_url', bug_id))
-            return "http://bugs.example.com/%s" % bug_id
+            return f"http://bugs.example.com/{bug_id}"
 
     def setUp(self):
         super().setUp()
@@ -248,8 +248,7 @@ class TestProjectIntegerBugTracker(TestCaseWithMemoryTransport):
         self.assertIs(None, tracker.get('yyy', branch))
 
     def test_doesnt_consult_branch(self):
-        """Shouldn't consult the branch for tracker information.
-        """
+        """Shouldn't consult the branch for tracker information."""
         tracker = bugtracker.ProjectIntegerBugTracker('xxx',
                                                       'http://bugs.example.com/{project}/{id}')
         self.assertIs(tracker, tracker.get('xxx', None))
@@ -287,7 +286,8 @@ class TestURLParametrizedBugTracker(TestCaseWithMemoryTransport):
 
     def test_get_with_supported_tag(self):
         """If asked for a valid tag, return a tracker instance that can map bug
-        IDs to <base_url>/<bug_area> + <bug_id>."""
+        IDs to <base_url>/<bug_area> + <bug_id>.
+        """
         bugtracker.tracker_registry.register('some', self.tracker)
         self.addCleanup(bugtracker.tracker_registry.remove, 'some')
 
@@ -357,21 +357,21 @@ class TestPropertyDecoding(TestCase):
         self.assertEqual(
             [('http://example.com/bugs/1', 'fixed')],
             list(bugtracker.decode_bug_urls(
-                'http://example.com/bugs/1 fixed')))
+                ['http://example.com/bugs/1 fixed'])))
 
     def test_decoding_zero(self):
-        self.assertEqual([], list(bugtracker.decode_bug_urls('')))
+        self.assertEqual([], list(bugtracker.decode_bug_urls([])))
 
     def test_decoding_two(self):
         self.assertEqual(
             [('http://example.com/bugs/1', 'fixed'),
              ('http://example.com/bugs/2', 'related')],
-            list(bugtracker.decode_bug_urls(
-                'http://example.com/bugs/1 fixed\n'
-                'http://example.com/bugs/2 related')))
+            list(bugtracker.decode_bug_urls([
+                'http://example.com/bugs/1 fixed',
+                'http://example.com/bugs/2 related'])))
 
     def test_decoding_invalid(self):
         self.assertRaises(
             bugtracker.InvalidLineInBugsProperty,
             list,
-            bugtracker.decode_bug_urls('http://example.com/bugs/ 1 fixed\n'))
+            bugtracker.decode_bug_urls(['http://example.com/bugs/ 1 fixed']))

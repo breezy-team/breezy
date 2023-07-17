@@ -14,16 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Serializer factory for reading and writing bundles.
-"""
+"""Serializer factory for reading and writing bundles."""
 
-from .... import errors
+from .... import errors, ui
 from .... import transport as _mod_transport
-from .... import ui
 from ....diff import internal_diff
+from ....osutils import format_highres_date
 from ....revision import NULL_REVISION
 from ....textfile import text_file
-from ....timestamp import format_highres_date
 from ....trace import mutter
 from ...testament import StrictTestament
 from ..bundle_data import BundleInfo, RevisionInfo
@@ -33,7 +31,7 @@ bool_text = {True: 'yes', False: 'no'}
 
 
 class Action:
-    """Represent an action"""
+    """Represent an action."""
 
     def __init__(self, name, parameters=None, properties=None):
         self.name = name
@@ -51,15 +49,15 @@ class Action:
         self.properties.append((name, value.decode('utf8')))
 
     def add_property(self, name, value):
-        """Add a property to the action"""
+        """Add a property to the action."""
         self.properties.append((name, value))
 
     def add_bool_property(self, name, value):
-        """Add a boolean property to the action"""
+        """Add a boolean property to the action."""
         self.add_property(name, bool_text[value])
 
     def write(self, to_file):
-        """Write action as to a file"""
+        """Write action as to a file."""
         p_texts = [' '.join([self.name] + self.parameters)]
         for prop in self.properties:
             if len(prop) == 1:
@@ -111,7 +109,7 @@ class BundleSerializerV08(BundleSerializer):
                 self._write_revisions(pb)
 
     def write_bundle(self, repository, revision_id, base_revision_id, out):
-        """Helper function for translating write_bundle to write"""
+        """Helper function for translating write_bundle to write."""
         forced_bases = {revision_id: base_revision_id}
         if base_revision_id is NULL_REVISION:
             base_revision_id = None
@@ -125,13 +123,13 @@ class BundleSerializerV08(BundleSerializer):
         return revision_ids
 
     def _write_main_header(self):
-        """Write the header for the changes"""
+        """Write the header for the changes."""
         f = self.to_file
         f.write(_get_bundle_header('0.8'))
         f.write(b'#\n')
 
     def _write(self, key, value, indent=1, trailing_space_when_empty=False):
-        """Write out meta information, with proper indenting, etc.
+        r"""Write out meta information, with proper indenting, etc.
 
         :param trailing_space_when_empty: To work around a bug in earlier
             bundle readers, when writing an empty property, we use "prop: \n"
@@ -169,7 +167,6 @@ class BundleSerializerV08(BundleSerializer):
 
     def _write_revisions(self, pb):
         """Write the information for all of the revisions."""
-
         # Optimize for the case of revisions in order
         last_rev_id = None
         last_rev_tree = None
@@ -251,8 +248,6 @@ class BundleSerializerV08(BundleSerializer):
                      force_binary):
         """Write out the changes between the trees."""
         DEVNULL = '/dev/null'
-        old_label = ''
-        new_label = ''
 
         def do_diff(file_id, old_path, new_path, action, force_binary):
             def tree_lines(tree, path, require_text=False):
@@ -375,7 +370,7 @@ class BundleReader:
         self.info.complete_info()
 
     def _next(self):
-        """yield the next line, but secretly
+        """Yield the next line, but secretly
         keep 1 extra line for peeking.
         """
         for line in self.from_file:
@@ -407,8 +402,7 @@ class BundleReader:
         return found_something
 
     def _read_next_entry(self, line, indent=1):
-        """Read in a key-value pair
-        """
+        """Read in a key-value pair."""
         if not line.startswith(b'#'):
             raise errors.MalformedHeader('Bzr header did not start with #')
         line = line[1:-1].decode('utf-8')  # Remove the '#' and '\n'
@@ -438,7 +432,7 @@ class BundleReader:
         if line is None:
             return
         key, value = self._read_next_entry(line, indent=1)
-        mutter('_handle_next {!r} => {!r}'.format(key, value))
+        mutter(f'_handle_next {key!r} => {value!r}')
         if key is None:
             return
 
@@ -453,10 +447,10 @@ class BundleReader:
                     value = value.encode('ascii')
                 setattr(revision_info, key, value)
             else:
-                raise errors.MalformedHeader('Duplicated Key: %s' % key)
+                raise errors.MalformedHeader(f'Duplicated Key: {key}')
         else:
             # What do we do with a key we don't recognize
-            raise errors.MalformedHeader('Unknown Key: "%s"' % key)
+            raise errors.MalformedHeader(f'Unknown Key: "{key}"')
 
     def _read_many(self, indent):
         """If a line ends with no entry, that means that it should be

@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Command that signs unsigned commits by the current user. """
+"""Command that signs unsigned commits by the current user."""
 
 from . import controldir, errors, gpg
 from . import repository as _mod_repository
@@ -75,7 +75,7 @@ class cmd_sign_my_commits(Command):
                         continue
                     # We have a revision without a signature who has a
                     # matching committer, start signing
-                    self.outf.write("%s\n" % rev_id)
+                    self.outf.write(f"{rev_id}\n")
                     count += 1
                     if not dry_run:
                         repo.sign_revision(rev_id, gpg_strategy)

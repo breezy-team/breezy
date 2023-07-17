@@ -200,13 +200,13 @@ class Hooks(dict):
         """
         try:
             hook = self[hook_name]
-        except KeyError:
-            raise UnknownHook(self.__class__.__name__, hook_name)
+        except KeyError as err:
+            raise UnknownHook(self.__class__.__name__, hook_name) from err
         try:
-            hook_lazy = getattr(hook, "hook_lazy")
-        except AttributeError:
+            hook_lazy = hook.hook_lazy
+        except AttributeError as err:
             raise errors.UnsupportedOperation(self.install_named_hook_lazy,
-                                              self)
+                                              self) from err
         else:
             hook_lazy(callable_module, callable_member, name)
         if name is not None:
@@ -225,8 +225,8 @@ class Hooks(dict):
         """
         try:
             hook = self[hook_name]
-        except KeyError:
-            raise UnknownHook(self.__class__.__name__, hook_name)
+        except KeyError as err:
+            raise UnknownHook(self.__class__.__name__, hook_name) from err
         try:
             # list hooks, old-style, not yet deprecated but less useful.
             hook.append(a_callable)
@@ -243,12 +243,12 @@ class Hooks(dict):
         """
         try:
             hook = self[hook_name]
-        except KeyError:
-            raise UnknownHook(self.__class__.__name__, hook_name)
+        except KeyError as err:
+            raise UnknownHook(self.__class__.__name__, hook_name) from err
         try:
-            uninstall = getattr(hook, "uninstall")
-        except AttributeError:
-            raise errors.UnsupportedOperation(self.uninstall_named_hook, self)
+            uninstall = hook.uninstall
+        except AttributeError as err:
+            raise errors.UnsupportedOperation(self.uninstall_named_hook, self) from err
         else:
             uninstall(label)
 
@@ -295,7 +295,7 @@ class HookPoint:
             self._callbacks = callbacks
 
     def docs(self):
-        """Generate the documentation for this HookPoint.
+        r"""Generate the documentation for this HookPoint.
 
         :return: A string terminated in \n.
         """
@@ -355,7 +355,7 @@ class HookPoint:
             if entry_label == label:
                 entries_to_remove.append(entry)
         if entries_to_remove == []:
-            raise KeyError("No entry with label %r" % label)
+            raise KeyError(f"No entry with label {label!r}")
         for entry in entries_to_remove:
             self._callbacks.remove(entry)
 
@@ -367,7 +367,7 @@ class HookPoint:
 
     def __repr__(self):
         strings = []
-        strings.append("<%s(" % type(self).__name__)
+        strings.append(f"<{type(self).__name__}(")
         strings.append(self.name)
         strings.append("), callbacks=[")
         callbacks = self._callbacks

@@ -19,11 +19,11 @@
 These tests are repeated for all pack-based repository formats.
 """
 
+import hashlib
 from stat import S_ISDIR
 
-from ... import controldir, errors, gpg, osutils, repository
+from ... import controldir, errors, gpg, osutils, repository, tests, transport, ui
 from ... import revision as _mod_revision
-from ... import tests, transport, ui
 from ...tests import TestCaseWithTransport, TestNotApplicable, test_server
 from ...transport import memory
 from .. import inventory
@@ -93,7 +93,7 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertFalse(t.has(knit_name + '.knit'))
 
     def check_databases(self, t):
-        """check knit content for a repository."""
+        """Check knit content for a repository."""
         # check conversion worked
         self.assertHasNoKndx(t, 'inventory')
         self.assertHasNoKnit(t, 'inventory')
@@ -160,7 +160,7 @@ class TestPackRepository(TestCaseWithTransport):
         pack_value = node[2]
         sizes = [int(digits) for digits in pack_value.split(b' ')]
         for size, suffix in zip(sizes, ['.rix', '.iix', '.tix', '.six']):
-            stat = trans.stat('indices/{}{}'.format(name.decode('ascii'), suffix))
+            stat = trans.stat(f"indices/{name.decode('ascii')}{suffix}")
             self.assertEqual(size, stat.st_size)
 
     def test_pulling_nothing_leads_to_no_new_names(self):
@@ -184,7 +184,7 @@ class TestPackRepository(TestCaseWithTransport):
         # in the test. But for now 11 commits is not a big deal in a single
         # test.
         for x in range(9):
-            tree.commit('commit %s' % x)
+            tree.commit(f'commit {x}')
         # there should be 9 packs:
         index = self.index_class(trans, 'pack-names', None)
         self.assertEqual(9, len(list(index.iter_all_entries())))
@@ -197,7 +197,7 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertEqual(1, len(list(index.iter_all_entries())))
         # packing should not damage data
         tree = tree.controldir.open_workingtree()
-        check_result = tree.branch.repository.check(
+        tree.branch.repository.check(
             [tree.branch.last_revision()])
         nb_files = 5  # .pack, .rix, .iix, .tix, .six
         if tree.branch.repository._format.supports_chks:
@@ -237,8 +237,10 @@ class TestPackRepository(TestCaseWithTransport):
                     repo.texts.add_lines((inv.root.file_id, revid), [], [])
                     rev = _mod_revision.Revision(timestamp=0, timezone=None,
                                                  committer="Foo Bar <foo@example.com>", message="Message",
+                                                 parent_ids=[],
+                                                 properties={},
+                                                 inventory_sha1=None,
                                                  revision_id=revid)
-                    rev.parent_ids = ()
                     repo.add_revision(revid, rev, inv=inv)
                 except:
                     repo.abort_write_group()
@@ -253,7 +255,7 @@ class TestPackRepository(TestCaseWithTransport):
 
     def test_fail_obsolete_deletion(self):
         # failing to delete obsolete packs is not fatal
-        format = self.get_format()
+        self.get_format()
         server = test_server.FakeNFSServer()
         self.start_server(server)
         t = transport.get_transport_from_url(server.get_url())
@@ -361,7 +363,7 @@ class TestPackRepository(TestCaseWithTransport):
         # tip->ancestor
         format = self.get_format()
         tree = self.make_branch_and_tree('.', format=format)
-        trans = tree.branch.repository.controldir.get_repository_transport(
+        tree.branch.repository.controldir.get_repository_transport(
             None)
         tree.commit('start', rev_id=b'1')
         tree.commit('more work', rev_id=b'2')
@@ -373,7 +375,7 @@ class TestPackRepository(TestCaseWithTransport):
         # revision access tends to be tip->ancestor, so ordering that way on
         # disk is a good idea.
         pos_1 = pos_2 = None
-        for _1, key, val, refs in pack.revision_index.iter_all_entries():
+        for _1, key, val, _refs in pack.revision_index.iter_all_entries():
             if isinstance(format.repository_format, RepositoryFormat2a):
                 # group_start, group_len, internal_start, internal_len
                 pos = list(map(int, val.split()))
@@ -384,8 +386,7 @@ class TestPackRepository(TestCaseWithTransport):
                 pos_1 = pos
             else:
                 pos_2 = pos
-        self.assertTrue(pos_2 < pos_1, 'rev 1 came before rev 2 %s > %s'
-                                       % (pos_1, pos_2))
+        self.assertTrue(pos_2 < pos_1, f'rev 1 came before rev 2 {pos_1} > {pos_2}')
 
     def test_pack_repositories_support_multiple_write_locks(self):
         format = self.get_format()
@@ -627,10 +628,11 @@ class TestPackRepository(TestCaseWithTransport):
             rev = _mod_revision.Revision(timestamp=0,
                                          timezone=None,
                                          committer="Foo Bar <foo@example.com>",
+                                         properties={},
                                          message="Message",
                                          inventory_sha1=sha1,
+                                         parent_ids=parent_ids,
                                          revision_id=revision_id)
-            rev.parent_ids = parent_ids
             repo.add_revision(revision_id, rev)
             repo.commit_write_group()
             repo.unlock()
@@ -640,8 +642,8 @@ class TestPackRepository(TestCaseWithTransport):
         add_commit(has_ghost, b'tip', [b'references'])
         missing_ghost.fetch(has_ghost, b'tip')
         # missing ghost now has tip and not ghost.
-        rev = missing_ghost.get_revision(b'tip')
-        inv = missing_ghost.get_inventory(b'tip')
+        missing_ghost.get_revision(b'tip')
+        missing_ghost.get_inventory(b'tip')
         self.assertRaises(errors.NoSuchRevision,
                           missing_ghost.get_revision, b'ghost')
         self.assertRaises(errors.NoSuchRevision,
@@ -684,7 +686,7 @@ class TestPackRepository(TestCaseWithTransport):
         key = ('some', 'junk')
         repo.texts._index._missing_compression_parents.add(key)
         self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
-        e = self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
 
     def test_supports_external_lookups(self):
         repo = self.make_repository('.', format=self.get_format())
@@ -736,7 +738,7 @@ class TestPackRepository(TestCaseWithTransport):
     def test_suspend_write_group(self):
         self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo', format=self.get_format())
-        token = self._lock_write(repo).repository_token
+        self._lock_write(repo).repository_token  # noqa: B-18
         repo.start_write_group()
         repo.texts.add_lines((b'file-id', b'revid'), (), [b'lines'])
         wg_tokens = repo.suspend_write_group()
@@ -749,7 +751,7 @@ class TestPackRepository(TestCaseWithTransport):
         upload_transport = repo._pack_collection._upload_transport
         limbo_files = upload_transport.list_dir('')
         self.assertEqual(sorted(expected_names), sorted(limbo_files))
-        md5 = osutils.md5(upload_transport.get_bytes(expected_pack_name))
+        md5 = hashlib.md5(upload_transport.get_bytes(expected_pack_name))  # noqa: S324
         self.assertEqual(wg_tokens[0], md5.hexdigest())
 
     def test_resume_chk_bytes(self):
@@ -757,7 +759,7 @@ class TestPackRepository(TestCaseWithTransport):
         repo = self.make_repository('repo', format=self.get_format())
         if repo.chk_bytes is None:
             raise TestNotApplicable('no chk_bytes for this repository')
-        token = self._lock_write(repo).repository_token
+        self._lock_write(repo).repository_token  # noqa: B-18
         repo.start_write_group()
         text = b'a bit of text\n'
         key = (b'sha1:' + osutils.sha_string(text),)
@@ -778,7 +780,7 @@ class TestPackRepository(TestCaseWithTransport):
         # Create a repo, start a write group, insert some data, suspend.
         self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo', format=self.get_format())
-        token = self._lock_write(repo).repository_token
+        self._lock_write(repo).repository_token  # noqa: B-18
         repo.start_write_group()
         text_key = (b'file-id', b'revid')
         repo.texts.add_lines(text_key, (), [b'lines'])
@@ -798,7 +800,7 @@ class TestPackRepository(TestCaseWithTransport):
     def test_commit_resumed_write_group(self):
         self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo', format=self.get_format())
-        token = self._lock_write(repo).repository_token
+        self._lock_write(repo).repository_token  # noqa: B-18
         repo.start_write_group()
         text_key = (b'file-id', b'revid')
         repo.texts.add_lines(text_key, (), [b'lines'])
@@ -826,14 +828,14 @@ class TestPackRepository(TestCaseWithTransport):
         self.vfs_transport_factory = memory.MemoryServer
         # Make a repository with a suspended write group
         repo = self.make_repository('repo', format=self.get_format())
-        token = self._lock_write(repo).repository_token
+        self._lock_write(repo).repository_token  # noqa: B-18
         repo.start_write_group()
         text_key = (b'file-id', b'revid')
         repo.texts.add_lines(text_key, (), [b'lines'])
         wg_tokens = repo.suspend_write_group()
         # Make a new repository
         new_repo = self.make_repository('new_repo', format=self.get_format())
-        token = self._lock_write(new_repo).repository_token
+        self._lock_write(new_repo).repository_token  # noqa: B-18
         hacked_wg_token = (
             '../../../../repo/.bzr/repository/upload/' + wg_tokens[0])
         self.assertRaises(
@@ -842,13 +844,11 @@ class TestPackRepository(TestCaseWithTransport):
 
 
 class TestPackRepositoryStacking(TestCaseWithTransport):
-
-    """Tests for stacking pack repositories"""
+    """Tests for stacking pack repositories."""
 
     def setUp(self):
         if not self.format_supports_external_lookups:
-            raise TestNotApplicable("%r doesn't support stacking"
-                                    % (self.format_name,))
+            raise TestNotApplicable(f"{self.format_name!r} doesn't support stacking")
         super().setUp()
 
     def get_format(self):
@@ -920,7 +920,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         self.assertContainsRe(str(e),
                               r'(?m)KnitPackRepository.*/mismatch/.*\nis not compatible with\n'
                               r'.*Repository.*/repo/.*\n'
-                              r'different serializers')
+                              r'different inventory serializers')
 
     def test_adding_pack_does_not_record_pack_names_from_other_repositories(self):
         base = self.make_branch_and_tree('base', format=self.get_format())
@@ -952,7 +952,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         # test.
         local_tree = tree.branch.create_checkout('local')
         for x in range(9):
-            local_tree.commit('commit %s' % x)
+            local_tree.commit(f'commit {x}')
         # there should be 9 packs:
         index = self.index_class(trans, 'pack-names', None)
         self.assertEqual(9, len(list(index.iter_all_entries())))
@@ -962,7 +962,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         self.assertEqual(1, len(list(index.iter_all_entries())))
         # packing should not damage data
         tree = tree.controldir.open_workingtree()
-        check_result = tree.branch.repository.check(
+        tree.branch.repository.check(
             [tree.branch.last_revision()])
         nb_files = 5  # .pack, .rix, .iix, .tix, .six
         if tree.branch.repository._format.supports_chks:
@@ -1087,7 +1087,7 @@ class TestSmartServerAutopack(TestCaseWithTransport):
         # Make 9 local revisions, and push them one at a time to the remote
         # repo to produce 9 pack files.
         for x in range(9):
-            tree.commit('commit %s' % x)
+            tree.commit(f'commit {x}')
             tree.branch.push(remote_branch)
         # Make one more push to trigger an autopack
         self.hpss_calls = []
@@ -1114,38 +1114,38 @@ def load_tests(loader, basic_tests, pattern):
     # these give the bzrdir canned format name, and the repository on-disk
     # format string
     scenarios_params = [
-        dict(format_name='pack-0.92',
-             format_string="Bazaar pack repository format 1 (needs bzr 0.92)\n",
-             format_supports_external_lookups=False,
-             index_class=GraphIndex),
-        dict(format_name='pack-0.92-subtree',
-             format_string="Bazaar pack repository format 1 "
+        {'format_name': 'pack-0.92',
+             'format_string': "Bazaar pack repository format 1 (needs bzr 0.92)\n",
+             'format_supports_external_lookups': False,
+             'index_class': GraphIndex},
+        {'format_name': 'pack-0.92-subtree',
+             'format_string': "Bazaar pack repository format 1 "
              "with subtree support (needs bzr 0.92)\n",
-             format_supports_external_lookups=False,
-             index_class=GraphIndex),
-        dict(format_name='1.6',
-             format_string="Bazaar RepositoryFormatKnitPack5 (bzr 1.6)\n",
-             format_supports_external_lookups=True,
-             index_class=GraphIndex),
-        dict(format_name='1.6.1-rich-root',
-             format_string="Bazaar RepositoryFormatKnitPack5RichRoot "
+             'format_supports_external_lookups': False,
+             'index_class': GraphIndex},
+        {'format_name': '1.6',
+             'format_string': "Bazaar RepositoryFormatKnitPack5 (bzr 1.6)\n",
+             'format_supports_external_lookups': True,
+             'index_class': GraphIndex},
+        {'format_name': '1.6.1-rich-root',
+             'format_string': "Bazaar RepositoryFormatKnitPack5RichRoot "
              "(bzr 1.6.1)\n",
-             format_supports_external_lookups=True,
-             index_class=GraphIndex),
-        dict(format_name='1.9',
-             format_string="Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n",
-             format_supports_external_lookups=True,
-             index_class=BTreeGraphIndex),
-        dict(format_name='1.9-rich-root',
-             format_string="Bazaar RepositoryFormatKnitPack6RichRoot "
+             'format_supports_external_lookups': True,
+             'index_class': GraphIndex},
+        {'format_name': '1.9',
+             'format_string': "Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n",
+             'format_supports_external_lookups': True,
+             'index_class': BTreeGraphIndex},
+        {'format_name': '1.9-rich-root',
+             'format_string': "Bazaar RepositoryFormatKnitPack6RichRoot "
              "(bzr 1.9)\n",
-             format_supports_external_lookups=True,
-             index_class=BTreeGraphIndex),
-        dict(format_name='2a',
-             format_string="Bazaar repository format 2a "
+             'format_supports_external_lookups': True,
+             'index_class': BTreeGraphIndex},
+        {'format_name': '2a',
+             'format_string': "Bazaar repository format 2a "
              "(needs bzr 1.16 or later)\n",
-             format_supports_external_lookups=True,
-             index_class=BTreeGraphIndex),
+             'format_supports_external_lookups': True,
+             'index_class': BTreeGraphIndex},
         ]
     # name of the scenario is the format name
     scenarios = [(s['format_name'], s) for s in scenarios_params]

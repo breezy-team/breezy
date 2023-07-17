@@ -17,12 +17,8 @@
 
 """The basic test suite for bzr."""
 
-import time
-from io import BytesIO
 
-from ... import errors as bzr_errors
 from ... import tests
-from ...tests.features import Feature, ModuleAvailableFeature
 
 TestCase = tests.TestCase
 TestCaseInTempDir = tests.TestCaseInTempDir
@@ -50,7 +46,6 @@ def load_tests(loader, basic_tests, pattern):
         'test__chk_map',
         'test__dirstate_helpers',
         'test__groupcompress',
-        'test__rio',
         'test__simple_set',
         'test__static_tuple',
         'test_btree_index',
@@ -66,6 +61,7 @@ def load_tests(loader, basic_tests, pattern):
         'test_inv',
         'test_inventory_delta',
         'test_knit',
+        'test_lockable_files',
         'test_matchers',
         'test_pack',
         'test_read_bundle',

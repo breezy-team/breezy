@@ -17,17 +17,14 @@
 
 """Support for committing in native Git working trees."""
 
-import stat
 
 from dulwich.index import commit_tree, read_submodule_head
 from dulwich.objects import Blob, Commit
 
-from .. import bugtracker
+from .. import bugtracker, gpg, osutils, trace
 from .. import config as _mod_config
-from .. import gpg, osutils
 from .. import revision as _mod_revision
-from .. import trace
-from ..errors import BzrError, RootMissing, UnsupportedOperation
+from ..errors import RootMissing
 from ..repository import CommitBuilder
 from .mapping import encode_git_path, fix_person_identifier, object_mode
 from .tree import entry_factory
@@ -86,8 +83,8 @@ class GitCommitBuilder(CommitBuilder):
                 continue
             try:
                 entry_kls = entry_factory[change.kind[1]]
-            except KeyError:
-                raise KeyError("unknown kind %s" % change.kind[1])
+            except KeyError as err:
+                raise KeyError(f"unknown kind {change.kind[1]}") from err
             entry = entry_kls(file_id, change.name[1], parent_id_new)
             if change.kind[1] == "file":
                 entry.executable = change.executable[1]
@@ -118,7 +115,7 @@ class GitCommitBuilder(CommitBuilder):
                 entry.reference_revision = reference_revision
                 st = None
             else:
-                raise AssertionError("Unknown kind %r" % change.kind[1])
+                raise AssertionError(f"Unknown kind {change.kind[1]!r}")
             mode = object_mode(change.kind[1], change.executable[1])
             self._inv_delta.append((change.path[0], change.path[1], file_id, entry))
             if change.path[0] is not None:
@@ -151,7 +148,7 @@ class GitCommitBuilder(CommitBuilder):
 
     def finish_inventory(self):
         # eliminate blobs that were removed
-        self._blobs = {k: v for (k, v) in self._blobs.items()}
+        self._blobs = dict(self._blobs.items())
 
     def _iterblobs(self):
         return ((path, sha, mode) for (path, (mode, sha))
@@ -186,11 +183,11 @@ class GitCommitBuilder(CommitBuilder):
         c.author = fix_person_identifier(author.encode(encoding))
         bugstext = self._revprops.pop('bugs', None)
         if bugstext is not None:
-            for url, status in bugtracker.decode_bug_urls(bugstext):
+            for url, status in bugtracker.decode_bug_urls(bugstext.splitlines()):
                 if status == bugtracker.FIXED:
-                    pseudoheaders.append(("Fixes: %s" % url).encode(encoding))
+                    pseudoheaders.append(f"Fixes: {url}".encode(encoding))
                 elif status == bugtracker.RELATED:
-                    pseudoheaders.append(("Bug: %s" % url).encode(encoding))
+                    pseudoheaders.append(f"Bug: {url}".encode(encoding))
                 else:
                     raise bugtracker.InvalidBugStatus(status)
         if self._revprops:

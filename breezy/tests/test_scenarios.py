@@ -18,9 +18,12 @@
 """Tests for generating multiple tests for scenarios."""
 
 from breezy.tests import TestCase, TestLoader, iter_suite_tests, multiply_tests
-from breezy.tests.scenarios import (load_tests_apply_scenarios,
-                                    multiply_scenarios,
-                                    multiply_tests_by_their_scenarios)
+
+from .scenarios import (
+    load_tests_apply_scenarios,  # noqa: F401
+    multiply_scenarios,
+    multiply_tests_by_their_scenarios,
+)
 
 # There aren't any actually parameterized tests here, but this exists as a
 # demonstration; so that you can interactively observe them being multiplied;
@@ -29,19 +32,19 @@ load_tests = load_tests_apply_scenarios
 
 
 def vary_by_color():
-    """Very simple static variation example"""
+    """Very simple static variation example."""
     for color in ['red', 'green', 'blue']:
         yield (color, {'color': color})
 
 
 def vary_named_attribute(attr_name):
-    """More sophisticated: vary a named parameter"""
+    """More sophisticated: vary a named parameter."""
     yield ('a', {attr_name: 'a'})
     yield ('b', {attr_name: 'b'})
 
 
 def get_generated_test_attributes(suite, attr_name):
-    """Return the `attr_name` attribute from all tests in the suite"""
+    """Return the `attr_name` attribute from all tests in the suite."""
     return sorted([
         getattr(t, attr_name) for t in iter_suite_tests(suite)])
 
@@ -60,7 +63,7 @@ class TestTestScenarios(TestCase):
             get_generated_test_attributes(suite, 'color'))
 
     def test_multiply_scenarios_from_generators(self):
-        """It's safe to multiply scenarios that come from generators"""
+        """It's safe to multiply scenarios that come from generators."""
         s = multiply_scenarios(
             vary_named_attribute('one'),
             vary_named_attribute('two'),
@@ -82,7 +85,7 @@ class TestTestScenarios(TestCase):
             get_generated_test_attributes(suite, 'value'))
 
     def test_multiply_tests_no_scenarios(self):
-        """Tests with no scenarios attribute aren't multiplied"""
+        """Tests with no scenarios attribute aren't multiplied."""
         suite = TestLoader().suiteClass()
         multiply_tests_by_their_scenarios(self,
                                           suite)
@@ -97,5 +100,5 @@ class PretendVaryingTest(TestCase):
         )
 
     def test_nothing(self):
-        """This test exists just so it can be multiplied"""
+        """This test exists just so it can be multiplied."""
         pass

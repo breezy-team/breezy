@@ -21,11 +21,9 @@ import os
 from io import StringIO
 
 from ... import branch as _mod_branch
-from ... import config, controldir, errors, merge, osutils
+from ... import config, controldir, errors, merge, osutils, tests, trace, urlutils
 from ... import revision as _mod_revision
-from ... import tests, trace
 from ... import transport as _mod_transport
-from ... import urlutils
 from ...bzr import bzrdir
 from ...bzr.conflicts import ConflictList, ContentsConflict, TextConflict
 from ...bzr.inventory import Inventory
@@ -34,7 +32,7 @@ from ...errors import PathsNotVersionedError, UnsupportedOperation
 from ...mutabletree import MutableTree
 from ...osutils import getcwd, pathjoin, supports_symlinks
 from ...tree import TreeDirectory, TreeFile, TreeLink
-from ...workingtree import SettingFileIdUnsupported, WorkingTree
+from ...workingtree import WorkingTree
 from .. import TestNotApplicable, TestSkipped, features
 from . import TestCaseWithWorkingTree
 
@@ -53,8 +51,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_branch_builder(self):
         # Just a smoke test that we get a branch at the specified relpath
-        builder = self.make_branch_builder('foobar')
-        br = _mod_branch.Branch.open(self.get_url('foobar'))
+        self.make_branch_builder('foobar')
+        _mod_branch.Branch.open(self.get_url('foobar'))
 
     def test_list_files(self):
         tree = self.make_branch_and_tree('.')
@@ -198,7 +196,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(None, tree.branch.peek_lock_mode())
 
     def test_revert(self):
-        """Test selected-file revert"""
+        """Test selected-file revert."""
         tree = self.make_branch_and_tree('.')
 
         self.build_tree(['hello.txt'])
@@ -293,7 +291,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.log('first revision_id is {%s}' % revid)
 
         tree = b.repository.revision_tree(revid)
-        self.log('contents of tree: %r' % list(tree.iter_entries_by_dir()))
+        self.log(f'contents of tree: {list(tree.iter_entries_by_dir())!r}')
 
         self.check_tree_shape(tree, ['dir/', 'dir/sub/', 'dir/sub/file'])
         wt.rename_one('dir', 'newdir')
@@ -314,7 +312,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         "bzr add" adds the parent as necessary, but simple working tree add
         doesn't do that.
         """
-        from breezy.errors import NotVersionedError
+        from ...errors import NotVersionedError
         wt = self.make_branch_and_tree('.')
         self.build_tree(['foo/',
                          'foo/hello'])
@@ -498,7 +496,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         source.branch.clone(made_control)
         MutableTree.hooks.install_named_hook("post_build_tree",
                                              track_post_build_tree, "Test")
-        made_tree = self.workingtree_format.initialize(made_control,
+        self.workingtree_format.initialize(made_control,
                                                        revision_id=a)
         self.assertEqual([a], calls)
 
@@ -542,7 +540,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         checkout = main_branch.create_checkout('checkout')
         # now commit to 'tree'
         wt.add('file')
-        a = wt.commit('A')
+        wt.commit('A')
         # and update checkout
         self.assertEqual(0, checkout.update())
         self.assertPathExists('checkout/file')
@@ -553,9 +551,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_update_sets_updated_root_id(self):
         wt = self.make_branch_and_tree('tree')
         if not wt.supports_setting_file_ids():
-            self.assertRaises(SettingFileIdUnsupported, wt.set_root_id,
-                              'first_root_id')
-            return
+            self.skipTest('workingtree does not support setting file ids')
         wt.set_root_id(b'first_root_id')
         self.assertEqual(b'first_root_id', wt.path2id(''))
         self.build_tree(['tree/file'])
@@ -596,7 +592,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual([a], old_tree.get_parent_ids())
 
     def test_merge_revert(self):
-        from breezy.merge import merge_inner
+        from ...merge import merge_inner
         this = self.make_branch_and_tree('b1')
         self.build_tree_contents(
             [('b1/a', b'a test\n'), ('b1/b', b'b test\n')])
@@ -684,11 +680,11 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt.add(['a'])
         rev1 = wt.commit('first master commit')
         self.build_tree_contents([('wt/a', b'new content')])
-        rev2 = wt.commit('second master commit')
+        wt.commit('second master commit')
         # https://bugs.launchpad.net/bzr/+bug/45719/comments/20
         # when adding 'update -r' we should make sure all wt formats support
         # it
-        conflicts = wt.update(revision=rev1)
+        wt.update(revision=rev1)
         self.assertFileEqual(b'old content', 'wt/a')
         self.assertEqual([rev1], wt.get_parent_ids())
 
@@ -727,12 +723,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             self.assertEqual(mm, {})
 
     def test_conflicts(self):
-        from breezy.tests.test_conflicts import example_conflicts
+        from ..test_conflicts import example_conflicts
         tree = self.make_branch_and_tree('master')
         try:
             tree.set_conflicts(example_conflicts)
-        except UnsupportedOperation:
-            raise TestSkipped('set_conflicts not supported')
+        except UnsupportedOperation as err:
+            raise TestSkipped('set_conflicts not supported') from err
 
         tree2 = WorkingTree.open('master')
         self.assertEqual(tree2.conflicts(), example_conflicts)
@@ -744,7 +740,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                           tree2.conflicts)
 
     def make_merge_conflicts(self):
-        from breezy.merge import merge_inner
+        from ...merge import merge_inner
         tree = self.make_branch_and_tree('mine')
         with open('mine/bloo', 'wb') as f:
             f.write(b'one')
@@ -773,16 +769,16 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(len(tree.conflicts()), 1)
         try:
             tree.set_conflicts([])
-        except UnsupportedOperation:
-            raise TestSkipped('unsupported operation')
+        except UnsupportedOperation as err:
+            raise TestSkipped('unsupported operation') from err
         self.assertEqual(tree.conflicts(), ConflictList())
 
     def test_add_conflicts(self):
         tree = self.make_branch_and_tree('tree')
         try:
             tree.add_conflicts([TextConflict('path_a')])
-        except UnsupportedOperation:
-            raise TestSkipped('unsupported operation')
+        except UnsupportedOperation as err:
+            raise TestSkipped('unsupported operation') from err
         self.assertEqual(ConflictList([TextConflict('path_a')]),
                          tree.conflicts())
         tree.add_conflicts([TextConflict('path_a')])
@@ -839,7 +835,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.build_tree_contents([('.bzrignore', b'foo.pyc')])
         tree.add('foo.pyc')
         tree.lock_read()
-        files = sorted(list(tree.list_files()))
+        files = sorted(tree.list_files())
         tree.unlock()
         self.assertEqual(
             ('.bzrignore', '?', 'file', None),
@@ -853,11 +849,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_non_normalized_add_accessible(self):
         try:
             self.build_tree(['a\u030a'])
-        except UnicodeError:
-            raise TestSkipped('Filesystem does not support unicode filenames')
+        except UnicodeError as err:
+            raise TestSkipped('Filesystem does not support unicode filenames') from err
         tree = self.make_branch_and_tree('.')
         orig = osutils.normalized_filename
-        osutils.normalized_filename = osutils._accessible_normalized_filename
+        if not osutils.normalizes_filenames():
+            raise TestSkipped('Filesystem does not normalize filenames')
         try:
             tree.add(['a\u030a'])
             with tree.lock_read():
@@ -870,8 +867,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_non_normalized_add_inaccessible(self):
         try:
             self.build_tree(['a\u030a'])
-        except UnicodeError:
-            raise TestSkipped('Filesystem does not support unicode filenames')
+        except UnicodeError as err:
+            raise TestSkipped('Filesystem does not support unicode filenames') from err
         tree = self.make_branch_and_tree('.')
         orig = osutils.normalized_filename
         osutils.normalized_filename = osutils._inaccessible_normalized_filename
@@ -926,7 +923,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         else:
             tree.add(['foo'])
             if tree.branch.repository._format.supports_versioned_directories:
-                self.assertIsInstance(str, tree.path2id('foo'))
+                self.assertIsInstance(tree.path2id('foo'), bytes)
             else:
                 self.skipTest('format does not support versioning directories')
 
@@ -993,7 +990,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.build_tree(['tree/a'])
         self.assertRaises(_mod_transport.NoSuchFile, tree.stored_kind, 'a')
         tree.add(['a'])
-        self.assertIs('file', tree.stored_kind('a'))
+        self.assertEqual('file', tree.stored_kind('a'))
 
     def test_missing_file_sha1(self):
         """If a file is missing, its sha1 should be reported as None."""
@@ -1007,7 +1004,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertIs(None, tree.get_file_sha1('file'))
 
     def test_no_file_sha1(self):
-        """If a file is not present, get_file_sha1 should raise NoSuchFile"""
+        """If a file is not present, get_file_sha1 should raise NoSuchFile."""
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         self.addCleanup(tree.unlock)
@@ -1055,7 +1052,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                 self.assertFalse(tree.is_executable('filename'))
             finally:
                 tree.unlock()
-            os.chmod('filename', 0o755)
+            os.chmod('filename', 0o755)  # noqa: S103
             self.addCleanup(tree.lock_read().unlock)
             self.assertTrue(tree.is_executable('filename'))
         else:
@@ -1103,10 +1100,9 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
 
     def make_diverged_master_branch(self):
-        """
-        B: wt.branch.last_revision()
+        """B: wt.branch.last_revision()
         M: wt.branch.get_master_branch().last_revision()
-        W: wt.last_revision()
+        W: wt.last_revision().
 
 
             1
@@ -1157,9 +1153,9 @@ class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
             final_branch, stop_revision=branch_revid, overwrite=True)
         try:
             wt.branch.bind(master)
-        except _mod_branch.BindingUnsupported:
+        except _mod_branch.BindingUnsupported as err:
             raise TestNotApplicable(
-                "Can't bind %s" % wt.branch._format.__class__)
+                f"Can't bind {wt.branch._format.__class__}") from err
         return wt, master
 
     def test_update_remove_commit(self):
@@ -1314,8 +1310,8 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
         subtree.commit('a change')
         try:
             tree.add_reference(subtree)
-        except errors.UnsupportedOperation:
-            raise tests.TestNotApplicable('Tree cannot hold references.')
+        except errors.UnsupportedOperation as err:
+            raise tests.TestNotApplicable('Tree cannot hold references.') from err
         if not getattr(tree.branch._format, 'supports_reference_locations', False):
             raise tests.TestNotApplicable('Branch cannot hold reference locations.')
         tree.commit('Add reference.')
@@ -1331,12 +1327,12 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
         subtree.commit('a change')
         try:
             tree.add_reference(subtree)
-        except errors.UnsupportedOperation:
-            raise tests.TestNotApplicable('Tree cannot hold references.')
+        except errors.UnsupportedOperation as err:
+            raise tests.TestNotApplicable('Tree cannot hold references.') from err
         if not getattr(tree.branch._format, 'supports_reference_locations', False):
             raise tests.TestNotApplicable('Branch cannot hold reference locations.')
         tree.commit('Add reference')
-        reference_parent = tree.reference_parent(
+        tree.reference_parent(
             urlutils.relative_url(
                 urlutils.strip_segment_parameters(tree.branch.user_url),
                 urlutils.strip_segment_parameters(subtree.branch.user_url)),
@@ -1346,8 +1342,8 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('branch')
         try:
             loc = tree.get_reference_info('file')
-        except errors.UnsupportedOperation:
-            raise tests.TestNotApplicable('Branch cannot hold references.')
+        except errors.UnsupportedOperation as err:
+            raise tests.TestNotApplicable('Branch cannot hold references.') from err
         self.assertIs(None, loc)
 
     def test_set_reference_info(self):
@@ -1368,8 +1364,8 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
         tree.add(['file'])
         try:
             tree.set_reference_info('file', 'path/to/location')
-        except errors.UnsupportedOperation:
-            raise tests.TestNotApplicable('Branch cannot hold references.')
+        except errors.UnsupportedOperation as err:
+            raise tests.TestNotApplicable('Branch cannot hold references.') from err
         tree.set_reference_info('file', None)
         branch_location = tree.get_reference_info('file')
         self.assertIs(None, branch_location)
@@ -1378,15 +1374,15 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('branch')
         try:
             branch_location = tree.get_reference_info('file')
-        except errors.UnsupportedOperation:
-            raise tests.TestNotApplicable('Branch cannot hold references.')
+        except errors.UnsupportedOperation as err:
+            raise tests.TestNotApplicable('Branch cannot hold references.') from err
         self.assertIs(None, branch_location)
         self.build_tree(['branch/file'])
         tree.add(['file'])
         try:
             tree.set_reference_info('file', None)
-        except errors.UnsupportedOperation:
-            raise tests.TestNotApplicable('Branch cannot hold references.')
+        except errors.UnsupportedOperation as err:
+            raise tests.TestNotApplicable('Branch cannot hold references.') from err
 
     def make_tree_with_reference(self, location, reference_location):
         tree = self.make_branch_and_tree(location)
@@ -1396,8 +1392,8 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
         tree.add(['path', 'path/to', 'path/to/file'])
         try:
             tree.set_reference_info('path/to/file', reference_location)
-        except errors.UnsupportedOperation:
-            raise tests.TestNotApplicable('Branch cannot hold references.')
+        except errors.UnsupportedOperation as err:
+            raise tests.TestNotApplicable('Branch cannot hold references.') from err
         tree.commit('commit reference')
         return tree
 

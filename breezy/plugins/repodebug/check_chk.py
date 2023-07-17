@@ -14,17 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Check each CHK page to make sure it is in 'canonical' form.
-
-"""
+"""Check each CHK page to make sure it is in 'canonical' form."""
 
 from ... import commands, controldir, trace, transport, ui
 from ...bzr import chk_map, groupcompress
 
 
 class cmd_check_chk(commands.Command):
-    """Check the CHK pages for canonical form.
-    """
+    """Check the CHK pages for canonical form."""
 
     hidden = True
     takes_options = ['directory', 'revision']
@@ -56,8 +53,7 @@ class cmd_check_chk(commands.Command):
                     key_width=inv.id_to_entry._root_node._key_width,
                     search_key_func=inv.id_to_entry._search_key_func)
                 if inv.id_to_entry.key() != test_key:
-                    trace.warning('Failed for id_to_entry inv: %s'
-                                  % (inv.revision_id,))
+                    trace.warning(f'Failed for id_to_entry inv: {inv.revision_id}')
                 pid = inv.parent_id_basename_to_file_id
                 d = dict(pid.iteritems())
                 test_key = chk_map.CHKMap.from_dict(

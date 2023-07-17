@@ -27,15 +27,13 @@ objects returned.
 
 import contextlib
 import sys
-from typing import TYPE_CHECKING, Set, cast
+from typing import Set, cast
 
 from ..lazy_import import lazy_import
 
 lazy_import(globals(), """
 from breezy import (
     branch as _mod_branch,
-    lockable_files,
-    osutils,
     repository,
     revision as _mod_revision,
     ui,
@@ -47,6 +45,7 @@ from breezy.bzr import (
     fetch,
     fullhistory as fullhistorybranch,
     knitpack_repo,
+    lockable_files,
     remote,
     vf_search,
     workingtree_3,
@@ -55,13 +54,10 @@ from breezy.bzr import (
 from breezy.i18n import gettext
 """)
 
-from .. import config, controldir, errors, lockdir
+from .. import config, controldir, errors, lockdir, osutils
 from .. import transport as _mod_transport
 from ..trace import mutter, note, warning
 from ..transport import do_catching_redirections, local
-
-if TYPE_CHECKING:
-    from .branch import BzrBranch
 
 
 class MissingFeature(errors.BzrError):
@@ -219,7 +215,7 @@ class BzrDir(controldir.ControlDir):
                 result_repo.unlock()
         else:
             if result_repo is not None:
-                raise AssertionError('result_repo not None(%r)' % result_repo)
+                raise AssertionError(f'result_repo not None({result_repo!r})')
         # 1 if there is a branch present
         #   make sure its content is available in the target repository
         #   clone it.
@@ -427,7 +423,7 @@ class BzrDir(controldir.ControlDir):
                 result_branch = source_branch.sprout(
                     result, revision_id=revision_id,
                     repository_policy=repository_policy, repository=result_repo)
-            mutter("created new branch {!r}".format(result_branch))
+            mutter(f"created new branch {result_branch!r}")
 
             # Create/update the result working tree
             if (create_tree_if_local and not result.has_workingtree()
@@ -490,7 +486,6 @@ class BzrDir(controldir.ControlDir):
 
         :return: Tuple with old path name and new path name
         """
-
         with ui.ui_factory.nested_progress_bar():
             old_path = self.root_transport.abspath('.bzr')
             backup_dir = self._available_backup_name('backup.bzr')
@@ -612,15 +607,13 @@ class BzrDir(controldir.ControlDir):
                 self._file_mode = self._dir_mode & ~0o7111
 
     def _get_file_mode(self):
-        """Return Unix mode for newly created files, or None.
-        """
+        """Return Unix mode for newly created files, or None."""
         if not self._mode_check_done:
             self._find_creation_modes()
         return self._file_mode
 
     def _get_dir_mode(self):
-        """Return Unix mode for newly created directories, or None.
-        """
+        """Return Unix mode for newly created directories, or None."""
         if not self._mode_check_done:
             self._find_creation_modes()
         return self._dir_mode
@@ -777,7 +770,7 @@ class BzrDir(controldir.ControlDir):
             base, format=format, possible_transports=possible_transports))
 
     def __repr__(self):
-        return "<{} at {!r}>".format(self.__class__.__name__, self.user_url)
+        return f"<{self.__class__.__name__} at {self.user_url!r}>"
 
     def update_feature_flags(self, updated_flags):
         """Update the features required by this bzrdir.
@@ -873,16 +866,16 @@ class BzrDirMeta1(BzrDir):
                 branches = self._read_branch_list()
                 try:
                     branches.remove(name)
-                except ValueError:
-                    raise errors.NotBranchError(name)
+                except ValueError as e:
+                    raise errors.NotBranchError(name) from e
                 self._write_branch_list(branches)
             finally:
                 self.control_files.unlock()
         try:
             self.transport.delete_tree(path)
-        except _mod_transport.NoSuchFile:
+        except _mod_transport.NoSuchFile as e:
             raise errors.NotBranchError(
-                path=urlutils.join(self.transport.base, path), controldir=self)
+                path=urlutils.join(self.transport.base, path), controldir=self) from e
 
     def create_repository(self, shared=False):
         """See BzrDir.create_repository."""
@@ -892,8 +885,8 @@ class BzrDirMeta1(BzrDir):
         """See BzrDir.destroy_repository."""
         try:
             self.transport.delete_tree('repository')
-        except _mod_transport.NoSuchFile:
-            raise errors.NoRepositoryPresent(self)
+        except _mod_transport.NoSuchFile as e:
+            raise errors.NoRepositoryPresent(self) from e
 
     def create_workingtree(self, revision_id=None, from_branch=None,
                            accelerator_tree=None, hardlink=False):
@@ -954,8 +947,8 @@ class BzrDirMeta1(BzrDir):
             return self.transport.clone(path)
         try:
             branch_format.get_format_string()
-        except NotImplementedError:
-            raise errors.IncompatibleFormat(branch_format, self._format)
+        except NotImplementedError as e:
+            raise errors.IncompatibleFormat(branch_format, self._format) from e
         if name != "":
             branches = self._read_branch_list()
             if name not in branches:
@@ -988,8 +981,8 @@ class BzrDirMeta1(BzrDir):
             return self.transport.clone('repository')
         try:
             repository_format.get_format_string()
-        except NotImplementedError:
-            raise errors.IncompatibleFormat(repository_format, self._format)
+        except NotImplementedError as e:
+            raise errors.IncompatibleFormat(repository_format, self._format) from e
         try:
             self.transport.mkdir('repository', mode=self._get_mkdir_mode())
         except _mod_transport.FileExists:
@@ -1002,8 +995,8 @@ class BzrDirMeta1(BzrDir):
             return self.transport.clone('checkout')
         try:
             workingtree_format.get_format_string()
-        except NotImplementedError:
-            raise errors.IncompatibleFormat(workingtree_format, self._format)
+        except NotImplementedError as e:
+            raise errors.IncompatibleFormat(workingtree_format, self._format) from e
         try:
             self.transport.mkdir('checkout', mode=self._get_mkdir_mode())
         except _mod_transport.FileExists:
@@ -1182,21 +1175,20 @@ class BzrFormat:
         format_string = cls.get_format_string()
         if not text.startswith(format_string):
             raise AssertionError(
-                "Invalid format header {!r} for {!r}".format(text, cls))
+                f"Invalid format header {text!r} for {cls!r}")
         lines = text[len(format_string):].splitlines()
         ret = cls()
         for lineno, line in enumerate(lines):
             try:
                 (necessity, feature) = line.split(b" ", 1)
-            except ValueError:
+            except ValueError as e:
                 raise errors.ParseFormatError(format=cls, lineno=lineno + 2,
-                                              line=line, text=text)
+                                              line=line, text=text) from e
             ret.features[feature] = necessity
         return ret
 
     def as_string(self):
-        """Return the string representation of this format.
-        """
+        """Return the string representation of this format."""
         lines = [self.get_format_string()]
         lines.extend([(item[1] + b" " + item[0] + b"\n")
                       for item in sorted(self.features.items())])
@@ -1210,8 +1202,8 @@ class BzrFormat:
             first_line = format_string
         try:
             cls = registry.get(first_line)
-        except KeyError:
-            raise errors.UnknownFormatError(format=first_line, kind=kind)
+        except KeyError as e:
+            raise errors.UnknownFormatError(format=first_line, kind=kind) from e
         return cls.from_string(format_string)
 
     def network_name(self):
@@ -1262,7 +1254,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
         try:
             # can we hand off the request to the smart server rather than using
             # vfs calls?
-            client_medium = transport.get_smart_medium()
+            transport.get_smart_medium()
         except errors.NoSmartMedium:
             return self._initialize_on_transport_vfs(transport)
         else:
@@ -1311,7 +1303,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
         if not vfs_only:
             # Try to hand off to a smart server
             try:
-                client_medium = transport.get_smart_medium()
+                transport.get_smart_medium()
             except errors.NoSmartMedium:
                 pass
             else:
@@ -1394,8 +1386,8 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
                                           # FIXME: RBC 20060121 don't peek under
                                           # the covers
                                           mode=temp_control._dir_mode)
-        except _mod_transport.FileExists:
-            raise errors.AlreadyControlDirError(transport.base)
+        except _mod_transport.FileExists as e:
+            raise errors.AlreadyControlDirError(transport.base) from e
         if sys.platform == 'win32' and isinstance(transport, local.LocalTransport):
             win32utils.set_file_attr_hidden(transport._abspath('.bzr'))
         file_mode = temp_control._file_mode
@@ -1494,7 +1486,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
 
 
 class BzrDirMetaFormat1(BzrDirFormat):
-    """Bzr meta control format 1
+    """Bzr meta control format 1.
 
     This is the first format with split out working tree, branch and repository
     disk storage.
@@ -1711,7 +1703,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
         self._workingtree_format = wt_format
 
     def __repr__(self):
-        return "<{!r}>".format(self.__class__.__name__)
+        return f"<{self.__class__.__name__!r}>"
 
     workingtree_format = property(__get_workingtree_format,
                                   __set_workingtree_format)
@@ -1841,7 +1833,7 @@ class ConvertMetaToColo(controldir.Converter):
 
 
 class CreateRepository(controldir.RepositoryAcquisitionPolicy):
-    """A policy of creating a new repository"""
+    """A policy of creating a new repository."""
 
     def __init__(self, controldir, stack_on=None, stack_on_pwd=None,
                  require_stacking=False):
@@ -1858,7 +1850,7 @@ class CreateRepository(controldir.RepositoryAcquisitionPolicy):
 
     def acquire_repository(self, make_working_trees=None, shared=False,
                            possible_transports=None):
-        """Implementation of RepositoryAcquisitionPolicy.acquire_repository
+        """Implementation of RepositoryAcquisitionPolicy.acquire_repository.
 
         Creates the desired repository in the controldir we already have.
         """
@@ -1885,7 +1877,7 @@ class CreateRepository(controldir.RepositoryAcquisitionPolicy):
 
 
 class UseExistingRepository(controldir.RepositoryAcquisitionPolicy):
-    """A policy of reusing an existing repository"""
+    """A policy of reusing an existing repository."""
 
     def __init__(self, repository, stack_on=None, stack_on_pwd=None,
                  require_stacking=False):
@@ -1902,7 +1894,7 @@ class UseExistingRepository(controldir.RepositoryAcquisitionPolicy):
 
     def acquire_repository(self, make_working_trees=None, shared=False,
                            possible_transports=None):
-        """Implementation of RepositoryAcquisitionPolicy.acquire_repository
+        """Implementation of RepositoryAcquisitionPolicy.acquire_repository.
 
         Returns an existing repository to use.
         """

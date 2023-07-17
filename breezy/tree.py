@@ -14,17 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tree classes, representing directory at point in time.
-"""
+"""Tree classes, representing directory at point in time."""
 
 __docformat__ = "google"
 
-from typing import (TYPE_CHECKING, Dict, Iterator, List, Optional, Type, Union,
-                    cast)
+from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Union, cast
 
-from . import errors, lock, osutils
+from . import errors, lock, osutils, trace
 from . import revision as _mod_revision
-from . import trace
 from .inter import InterObject
 
 
@@ -47,8 +44,7 @@ class MissingNestedTree(errors.BzrError):
 
 
 class TreeEntry:
-    """An entry that implements the minimum interface used by commands.
-    """
+    """An entry that implements the minimum interface used by commands."""
 
     __slots__: List[str] = []
 
@@ -132,7 +128,7 @@ class TreeChange:
         self.copied = copied
 
     def __repr__(self):
-        return "{}{!r}".format(self.__class__.__name__, self._as_tuple())
+        return f"{self.__class__.__name__}{self._as_tuple()!r}"
 
     def _as_tuple(self):
         return (self.path, self.changed_content, self.versioned,
@@ -205,19 +201,16 @@ class Tree:
         raise NotImplementedError(self.supports_tree_reference)
 
     def supports_symlinks(self):
-        """Does this tree support symbolic links?
-        """
+        """Does this tree support symbolic links?"""
         return True
 
     def is_special_path(self, path):
-        """Is the specified path special to the VCS.
-        """
+        """Is the specified path special to the VCS."""
         return False
 
     @property
     def supports_file_ids(self):
-        """Does this tree support file ids?
-        """
+        """Does this tree support file ids?"""
         raise NotImplementedError(self.supports_file_ids)
 
     def changes_from(self, other, want_unchanged=False, specific_files=None,
@@ -258,7 +251,7 @@ class Tree:
     def iter_changes(self, from_tree, include_unchanged=False,
                      specific_files=None, pb=None, extra_trees=None,
                      require_versioned=True, want_unversioned=False):
-        """See InterTree.iter_changes"""
+        """See InterTree.iter_changes."""
         intertree = InterTree.get(from_tree, self)
         return intertree.iter_changes(include_unchanged, specific_files, pb,
                                       extra_trees, require_versioned,
@@ -281,6 +274,7 @@ class Tree:
 
         Returns: a list of parent ids. [] is returned to indicate
         a tree with no parents.
+
         Raises:
           BzrError: if the parents are not known.
         """
@@ -438,8 +432,7 @@ class Tree:
         raise NotImplementedError(self._comparison_data)
 
     def get_file(self, path):
-        """Return a file object for the file path in the tree.
-        """
+        """Return a file object for the file path in the tree."""
         raise NotImplementedError(self.get_file)
 
     def get_file_with_stat(self, path):
@@ -589,7 +582,7 @@ class Tree:
         """
         raise NotImplementedError(self.is_versioned)
 
-    def find_related_paths_across_trees(self, paths, trees=[],
+    def find_related_paths_across_trees(self, paths, trees=None,
                                         require_versioned=True):
         """Find related paths in tree corresponding to specified filenames in any
         of `lookup_trees`.
@@ -627,6 +620,7 @@ class Tree:
         Args:
           revision_id: The revision_id of the requested tree.
         Returns: A Tree.
+
         Raises:
           NoSuchRevision: if the tree cannot be obtained.
         """
@@ -704,7 +698,7 @@ class Tree:
             return []
         prefs = next(self.iter_search_rules([path], filter_pref_names))
         stk = filters._get_filter_stack_for(prefs)
-        if 'filters' in debug.debug_flags:
+        if debug.debug_flag_enabled('filters'):
             trace.note("*** {0} content-filter: {1} => {2!r}").format(path, prefs, stk)
         return stk
 
@@ -819,6 +813,7 @@ class InterTree(InterObject[Tree]):
         """Return the changes from source to target.
 
         Returns: A TreeDelta.
+
         Args:
           specific_files: An optional list of file paths to restrict the
             comparison to. When mapping filenames to ids, all matches in all
@@ -845,7 +840,7 @@ class InterTree(InterObject[Tree]):
 
     def iter_changes(self, include_unchanged: bool = False,
                      specific_files: Optional[List[str]] = None,
-                     pb=None, extra_trees: List[Tree] = [],
+                     pb=None, extra_trees: Optional[List[Tree]] = None,
                      require_versioned: bool = True,
                      want_unversioned: bool = False):
         """Generate an iterator of changes between trees.
@@ -925,6 +920,7 @@ class InterTree(InterObject[Tree]):
         Args:
           path: Path to search for (exists in source)
         Returns: path in target, or None if there is no equivalent path.
+
         Raises:
           NoSuchFile: If the path doesn't exist in source
         """
@@ -937,6 +933,7 @@ class InterTree(InterObject[Tree]):
         Args:
           path: Path to search for (exists in target)
         Returns: path in source, or None if there is no equivalent path.
+
         Raises:
           NoSuchFile: if the path doesn't exist in target
         """
@@ -994,6 +991,7 @@ def find_previous_path(from_tree, to_tree, path, recurse='none'):
       to_tree: To tree
       path: Path to search for (exists in from_tree)
     Returns: path in to_tree, or None if there is no equivalent path.
+
     Raises:
       NoSuchFile: If the path doesn't exist in from_tree
     """

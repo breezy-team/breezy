@@ -17,7 +17,8 @@
 """Tests for breezy.pyutils."""
 
 from breezy import branch, tests
-from breezy.pyutils import calc_parent_name, get_named_object
+
+from ..pyutils import calc_parent_name, get_named_object
 
 
 class TestGetNamedObject(tests.TestCase):

@@ -16,7 +16,7 @@
 
 __docformat__ = "google"
 
-from typing import List, Type, TYPE_CHECKING, Optional, Iterable
+from typing import TYPE_CHECKING, Iterable, Optional
 
 from .lazy_import import lazy_import
 
@@ -25,18 +25,19 @@ import time
 
 from breezy import (
     config,
-    osutils,
     )
 from breezy.i18n import gettext
 """)
 
-from . import controldir, debug, errors, graph, registry, revision as _mod_revision, ui
+from . import controldir, debug, errors, graph, osutils, registry, ui
+from . import revision as _mod_revision
 from .decorators import only_raises
 from .inter import InterObject
 from .lock import LogicalLockResult, _RelockDebugMixin
-from .revisiontree import RevisionTree
-from .trace import (log_exception_quietly, mutter, mutter_callsite, note,
-                    warning)
+from .trace import log_exception_quietly, mutter, mutter_callsite, note, warning
+
+if TYPE_CHECKING:
+    from .revisiontree import RevisionTree
 
 # Old formats display a warning, but only once
 _deprecation_warning_done = False
@@ -141,7 +142,7 @@ class CommitBuilder:
         """Verify things like commit messages don't have bogus characters."""
         # TODO(jelmer): Make this repository-format specific
         if '\r' in text:
-            raise ValueError('Invalid value for {}: {!r}'.format(context, text))
+            raise ValueError(f'Invalid value for {context}: {text!r}')
 
     def _validate_revprops(self, revprops):
         for key, value in revprops.items():
@@ -152,7 +153,7 @@ class CommitBuilder:
                                  ' (unicode) string: %r' % (key, value))
             # TODO(jelmer): Make this repository-format specific
             self._validate_unicode_text(value,
-                                        'revision property ({})'.format(key))
+                                        f'revision property ({key})')
 
     def commit(self, message):
         """Make the actual commit.
@@ -162,8 +163,7 @@ class CommitBuilder:
         raise NotImplementedError(self.commit)
 
     def abort(self):
-        """Abort the commit that is being built.
-        """
+        """Abort the commit that is being built."""
         raise NotImplementedError(self.abort)
 
     def revision_tree(self) -> "RevisionTree":
@@ -238,8 +238,7 @@ class RepositoryWriteLockResult(LogicalLockResult):
         self.repository_token = repository_token
 
     def __repr__(self):
-        return "RepositoryWriteLockResult({}, {})".format(self.repository_token,
-                                                      self.unlock)
+        return f"RepositoryWriteLockResult({self.repository_token}, {self.unlock})"
 
 
 class WriteGroup:
@@ -351,7 +350,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         revisions that might be present.  There is no direct replacement
         method.
         """
-        if 'evil' in debug.debug_flags:
+        if debug.debug_flag_enabled('evil'):
             mutter_callsite(2, "all_revision_ids is linear with history.")
         return self._all_revision_ids()
 
@@ -377,7 +376,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         return RepositoryFormat.get_default_format().initialize(controldir)
 
     def __init__(self, _format, controldir, control_files):
-        """instantiate a Repository.
+        """Instantiate a Repository.
 
         Args:
           _format: The format of the repository on disk.
@@ -412,8 +411,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 self.base,
                 self._fallback_repositories)
         else:
-            return '{}({!r})'.format(self.__class__.__name__,
-                               self.base)
+            return f'{self.__class__.__name__}({self.base!r})'
 
     def _has_same_fallbacks(self, other_repo):
         """Returns true if the repositories have the same fallbacks."""
@@ -462,11 +460,10 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         some other way, and need to synchronise this object's state with that
         fact.
 
-        XXX: this docstring is duplicated in many places, e.g. lockable_files.py
-
         Args:
           token: if this is already locked, then lock_write will fail
             unless the token matches the existing lock.
+
         Returns:
           a token if this instance supports tokens, otherwise None.
 
@@ -868,7 +865,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         against the revision one as get_revision does: but it should only
         be used by reconcile, or reconcile-alike commands that are correcting
         or testing the revision graph.
-        """
+        """  # noqa: D403
         raise NotImplementedError(self.get_revision_reconcile)
 
     def get_revisions(self, revision_ids):
@@ -996,7 +993,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         except errors.RevisionNotPresent as err:
             if err.revision_id == known_revid:
                 # The start revision (known_revid) wasn't found.
-                raise errors.NoSuchRevision(self, known_revid)
+                raise errors.NoSuchRevision(self, known_revid) from err
             # This is a stacked repository with no fallbacks, or a there's a
             # left-hand ghost.  Either way, even though the revision named in
             # the error isn't in this repo, we know it's the next step in this
@@ -1074,7 +1071,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         return self.control_files.get_transaction()
 
     def get_parent_map(self, revision_ids):
-        """See graph.StackedParentsProvider.get_parent_map"""
+        """See graph.StackedParentsProvider.get_parent_map."""
         raise NotImplementedError(self.get_parent_map)
 
     def _get_parent_map_no_fallbacks(self, revision_ids):
@@ -1112,8 +1109,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             self._get_parent_map_no_fallbacks)
 
     def get_known_graph_ancestry(self, revision_ids):
-        """Return the known graph for a set of revision ids and their ancestors.
-        """
+        """Return the known graph for a set of revision ids and their ancestors."""
         raise NotImplementedError(self.get_known_graph_ancestry)
 
     def get_file_graph(self):
@@ -1121,7 +1117,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         raise NotImplementedError(self.get_file_graph)
 
     def get_graph(self, other_repository=None):
-        """Return the graph walker for this repository format"""
+        """Return the graph walker for this repository format."""
         parents_provider = self._make_parents_provider()
         if (other_repository is not None and
                 not self.has_same_location(other_repository)):
@@ -1233,13 +1229,13 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             if isinstance(revision_id, str):
                 try:
                     revision_id.encode('ascii')
-                except UnicodeEncodeError:
-                    raise errors.NonAsciiRevisionId(method, self)
+                except UnicodeEncodeError as err:
+                    raise errors.NonAsciiRevisionId(method, self) from err
             else:
                 try:
                     revision_id.decode('ascii')
-                except UnicodeDecodeError:
-                    raise errors.NonAsciiRevisionId(method, self)
+                except UnicodeDecodeError as err:
+                    raise errors.NonAsciiRevisionId(method, self) from err
 
 
 class RepositoryFormatRegistry(controldir.ControlComponentFormatRegistry):
@@ -1361,7 +1357,7 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     supports_multiple_authors: bool = True
 
     def __repr__(self):
-        return "%s()" % self.__class__.__name__
+        return f"{self.__class__.__name__}()"
 
     def __eq__(self, other):
         # format objects are generally stateless
@@ -1566,24 +1562,27 @@ class InterRepository(InterObject[Repository]):
         try:
             InterRepository._assert_same_model(source, target)
             return True
-        except errors.IncompatibleRepositories as e:
+        except errors.IncompatibleRepositories:
             return False
 
     @staticmethod
     def _assert_same_model(source, target):
-        """Raise an exception if two repositories do not use the same model.
-        """
+        """Raise an exception if two repositories do not use the same model."""
         if source.supports_rich_root() != target.supports_rich_root():
             raise errors.IncompatibleRepositories(source, target,
                                                   "different rich-root support")
-        if not hasattr(source, '_serializer') or not hasattr(target, '_serializer'):
+        if not hasattr(source, '_revision_serializer') or not hasattr(target, '_revision_serializer'):
             if source != target:
                 raise errors.IncompatibleRepositories(source, target, "different formats")
             return
 
-        if source._serializer != target._serializer:
+        if source._inventory_serializer != target._inventory_serializer:
             raise errors.IncompatibleRepositories(source, target,
-                                                  "different serializers")
+                                                  "different inventory serializers")
+
+        if source._revision_serializer != target._revision_serializer:
+            raise errors.IncompatibleRepositories(source, target,
+                                                  "different revision serializers")
 
 
 class CopyConverter:
@@ -1646,7 +1645,7 @@ def _strip_NULL_ghosts(revision_graph):
 
 def _iter_for_revno(repo, partial_history_cache, stop_index=None,
                     stop_revision=None):
-    """Extend the partial history to include a given index
+    """Extend the partial history to include a given index.
 
     If a stop_index is supplied, stop when that index has been reached.
     If a stop_revision is supplied, stop when that revision is
@@ -1704,5 +1703,4 @@ class _LazyListJoin:
         return iter(full_list)
 
     def __repr__(self):
-        return "{}.{}({})".format(self.__module__, self.__class__.__name__,
-                              self.list_parts)
+        return f"{self.__module__}.{self.__class__.__name__}({self.list_parts})"

@@ -16,15 +16,19 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import re
-import sys
 from os.path import expanduser
 
 import patiencediff
 
-from . import terminal, trace
-from .commands import get_cmd_object
-from .patches import (ContextLine, Hunk, HunkLine, InsertLine, RemoveLine,
-                      hunk_from_header)
+from . import terminal
+from .patches import (
+    ContextLine,
+    Hunk,
+    HunkLine,
+    InsertLine,
+    RemoveLine,
+    hunk_from_header,
+)
 
 GLOBAL_COLORDIFFRC = '/etc/colordiffrc'
 
@@ -56,10 +60,8 @@ def read_colordiffrc(path):
             val = val.strip()
 
             tmp = val
-            if val.startswith('dark'):
-                tmp = val[4:]
 
-            if tmp not in terminal.colors:
+            if not terminal.color_exists(tmp):
                 continue
 
             colors[key] = val

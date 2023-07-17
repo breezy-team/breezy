@@ -16,15 +16,18 @@
 
 """Tests of the dirstate functionality being built for WorkingTreeFormat4."""
 
+import binascii
+import bisect
 import os
+import struct
 import tempfile
 
-from ... import controldir, errors, memorytree, osutils
+from ... import controldir, errors, memorytree, osutils, tests
 from ... import revision as _mod_revision
-from ... import revisiontree, tests
 from ...tests import features, test_osutils
 from ...tests.scenarios import load_tests_apply_scenarios
 from .. import dirstate, inventory, inventorytree, workingtree_4
+from ..inventory_delta import InventoryDelta
 
 # TODO:
 # TESTS to write:
@@ -67,7 +70,7 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
                           '_selected_dir_reader', self._dir_reader_class())
 
     def create_empty_dirstate(self):
-        """Return a locked but empty dirstate"""
+        """Return a locked but empty dirstate."""
         state = dirstate.DirState.initialize('dirstate')
         return state
 
@@ -90,7 +93,7 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
         return state
 
     def create_dirstate_with_root_and_subdir(self):
-        """Return a locked DirState with a root and a subdir"""
+        """Return a locked DirState with a root and a subdir."""
         packed_stat = b'AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk'
         subdir_entry = (b'', b'subdir', b'subdir-id'), [
             (b'd', b'', 0, False, packed_stat),
@@ -106,7 +109,7 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
         return state
 
     def create_complex_dirstate(self):
-        """This dirstate contains multiple files and directories.
+        r"""This dirstate contains multiple files and directories.
 
          /        a-root-value
          a/       a-dir
@@ -179,7 +182,7 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
         """
         # The state should already be write locked, since we just had to do
         # some operation to get here.
-        self.assertTrue(state._lock_token is not None)
+        self.assertIsNotNone(state._lock_token)
         try:
             self.assertEqual(expected_result[0], state.get_parent_ids())
             # there should be no ghosts in this tree.
@@ -200,13 +203,13 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
     def create_basic_dirstate(self):
         """Create a dirstate with a few files and directories.
 
-            a
-            b/
-              c
-              d/
-                e
-            b-c
-            f
+        a
+        b/
+        c
+        d/
+        e
+        b-c
+        f
         """
         tree = self.make_branch_and_tree('tree')
         paths = ['a', 'b/', 'b/c', 'b/d/', 'b/d/e', 'b-c', 'f']
@@ -390,7 +393,7 @@ class TestTreeToDirState(TestCaseWithDirState):
         # create a parent by doing a commit
         tree = self.make_branch_and_tree('tree')
         rev_id = tree.commit('first post')
-        root_stat_pack = dirstate.pack_stat(os.stat(tree.basedir))
+        dirstate.pack_stat(os.stat(tree.basedir))
         expected_result = ([rev_id], [
             ((b'', b'', tree.path2id('')),  # common details
              [(b'd', b'', 0, False, dirstate.DirState.NULLSTAT),  # current tree
@@ -740,16 +743,16 @@ class TestDirStateManipulations(TestCaseWithDirState):
         state = self.create_dirstate_with_root_and_subdir()
         self.addCleanup(state.unlock)
         id_index = state._get_id_index()
-        self.assertEqual([b'a-root-value', b'subdir-id'], sorted(id_index))
+        self.assertEqual([b'a-root-value', b'subdir-id'], sorted(id_index.file_ids()))
         state.add('file-name', b'file-id', 'file', None, '')
         self.assertEqual([b'a-root-value', b'file-id', b'subdir-id'],
-                         sorted(id_index))
+                         sorted(id_index.file_ids()))
         state.update_minimal((b'', b'new-name', b'file-id'), b'f',
                              path_utf8=b'new-name')
         self.assertEqual([b'a-root-value', b'file-id', b'subdir-id'],
-                         sorted(id_index))
+                         sorted(id_index.file_ids()))
         self.assertEqual([(b'', b'new-name', b'file-id')],
-                         sorted(id_index[b'file-id']))
+                         sorted(id_index.get(b'file-id')))
         state._validate()
 
     def test_set_state_from_inventory_no_content_no_parents(self):
@@ -953,7 +956,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
             state.unlock()
 
     def test_set_path_id_with_parents(self):
-        """Set the root file id in a dirstate with parents"""
+        """Set the root file id in a dirstate with parents."""
         mt = self.make_branch_and_tree('mt')
         # in case the default tree format uses a different root id
         mt.set_root_id(b'TREE_ROOT')
@@ -1186,13 +1189,13 @@ class TestDirStateManipulations(TestCaseWithDirState):
             ((b'', b'', b'TREE_ROOT'), [
              (b'd', b'', 0, False, dirstate.DirState.NULLSTAT),  # current tree
              ]),
-            ((b'', b'a dir', b'a dir id'), [
+            ((b'', b'a dir', b'a-dir-id'), [
              (b'd', b'', 0, False, dirstate.pack_stat(stat)),  # current tree
              ]),
             ]
         state = dirstate.DirState.initialize('dirstate')
         try:
-            state.add('a dir', b'a dir id', 'directory', stat, None)
+            state.add('a dir', b'a-dir-id', 'directory', stat, None)
             # having added it, it should be in the output of iter_entries.
             self.assertEqual(expected_entries, list(state._iter_entries()))
             # saving and reloading should not affect this.
@@ -1216,14 +1219,14 @@ class TestDirStateManipulations(TestCaseWithDirState):
             ((b'', b'', b'TREE_ROOT'), [
              (b'd', b'', 0, False, dirstate.DirState.NULLSTAT),  # current tree
              ]),
-            ((b'', link_name.encode('UTF-8'), b'a link id'), [
+            ((b'', link_name.encode('UTF-8'), b'a-link-id'), [
              (b'l', target.encode('UTF-8'), stat[6],
               False, dirstate.pack_stat(stat)),  # current tree
              ]),
             ]
         state = dirstate.DirState.initialize('dirstate')
         try:
-            state.add(link_name, b'a link id', 'symlink', stat,
+            state.add(link_name, b'a-link-id', 'symlink', stat,
                       target.encode('UTF-8'))
             # having added it, it should be in the output of iter_entries.
             self.assertEqual(expected_entries, list(state._iter_entries()))
@@ -1254,7 +1257,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
             ((b'', b'', b'TREE_ROOT'), [
              (b'd', b'', 0, False, dirstate.DirState.NULLSTAT),  # current tree
              ]),
-            ((b'', b'a dir', b'a dir id'), [
+            ((b'', b'a dir', b'a-dir-id'), [
              (b'd', b'', 0, False, dirstate.pack_stat(dirstat)),  # current tree
              ]),
             ((b'a dir', b'a file', b'a-file-id'), [
@@ -1264,7 +1267,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
             ]
         state = dirstate.DirState.initialize('dirstate')
         try:
-            state.add('a dir', b'a dir id', 'directory', dirstat, None)
+            state.add('a dir', b'a-dir-id', 'directory', dirstat, None)
             state.add('a dir/a file', b'a-file-id',
                       'file', filestat, b'1' * 20)
             # added it, it should be in the output of iter_entries.
@@ -1606,7 +1609,7 @@ class TestGetEntry(TestCaseWithDirState):
         self.assertEntryEqual(None, None, None, state, b'c/d', 0)
 
     def test_get_entry_uninitialized(self):
-        """Calling get_entry will load data if it needs to"""
+        """Calling get_entry will load data if it needs to."""
         state = self.create_dirstate_with_root()
         try:
             state.save()
@@ -1628,7 +1631,7 @@ class TestGetEntry(TestCaseWithDirState):
 class TestIterChildEntries(TestCaseWithDirState):
 
     def create_dirstate_with_two_trees(self):
-        """This dirstate contains multiple files and directories.
+        r"""This dirstate contains multiple files and directories.
 
          /        a-root-value
          a/       a-dir
@@ -2022,7 +2025,7 @@ class TestBisect(TestCaseWithDirState):
                           state, [b'b', b'b-c', b'b/c'])
 
     def test_bisect_one_page(self):
-        """Test bisect when there is only 1 page to read"""
+        """Test bisect when there is only 1 page to read."""
         tree, state, expected = self.create_basic_dirstate()
         state._bisect_page_size = 5000
         self.assertBisect(expected, [[b'']], state, [b''])
@@ -2295,7 +2298,7 @@ class TestDiscardMergeParents(TestCaseWithDirState):
         self.assertEqual(expected_dirblocks, state._dirblocks)
 
     def test_discard_absent(self):
-        """If entries are only in a merge, discard should remove the entries"""
+        """If entries are only in a merge, discard should remove the entries."""
         null_stat = dirstate.DirState.NULLSTAT
         present_dir = (b'd', b'', 0, False, null_stat)
         present_file = (b'f', b'', 0, False, null_stat)
@@ -2406,7 +2409,7 @@ class TestDiscardMergeParents(TestCaseWithDirState):
 class Test_InvEntryToDetails(tests.TestCase):
 
     def assertDetails(self, expected, inv_entry):
-        details = dirstate.DirState._inv_entry_to_details(inv_entry)
+        details = dirstate._inv_entry_to_details(inv_entry)
         self.assertEqual(expected, details)
         # details should always allow join() and always be a plain str when
         # finished
@@ -2446,7 +2449,6 @@ class TestSHA1Provider(tests.TestCaseInTempDir):
         expected_sha = osutils.sha_string(text)
         p = dirstate.DefaultSHA1Provider()
         statvalue, sha1 = p.stat_and_sha1('foo')
-        self.assertTrue(len(statvalue) >= 10)
         self.assertEqual(len(text), statvalue.st_size)
         self.assertEqual(expected_sha, sha1)
 
@@ -2499,12 +2501,10 @@ class TestUpdateBasisByDelta(tests.TestCase):
                 path, file_id, ie_rev_id = info
             if path == '':
                 # Replace the root entry
-                del inv._byid[inv.root.file_id]
-                inv.root.file_id = file_id
-                inv._byid[file_id] = inv.root
+                inv.rename_id(inv.root.file_id, file_id)
                 dir_ids[''] = file_id
-                continue
-            inv.add(self.path_to_ie(path, file_id, ie_rev_id, dir_ids))
+            else:
+                inv.add(self.path_to_ie(path, file_id, ie_rev_id, dir_ids))
         return inventorytree.InventoryRevisionTree(_Repo(), inv, rev_id)
 
     def create_empty_dirstate(self):
@@ -2516,7 +2516,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
         return state
 
     def create_inv_delta(self, delta, rev_id):
-        """Translate a 'delta shape' into an actual InventoryDelta"""
+        """Translate a 'delta shape' into an actual InventoryDelta."""
         dir_ids = {'': b'root-id'}
         inv_delta = []
         for old_path, new_path, file_id in delta:
@@ -2529,7 +2529,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
                 continue
             ie = self.path_to_ie(new_path, file_id, rev_id, dir_ids)
             inv_delta.append((old_path, new_path, file_id, ie))
-        return inv_delta
+        return InventoryDelta(inv_delta)
 
     def assertUpdate(self, active, basis, target):
         """Assert that update_basis_by_delta works how we want.
@@ -2591,35 +2591,35 @@ class TestUpdateBasisByDelta(tests.TestCase):
         self.assertTrue(state._changes_aborted)
 
     def test_remove_file_matching_active_state(self):
-        state = self.assertUpdate(
+        self.assertUpdate(
             active=[],
             basis=[('file', b'file-id')],
             target=[],
             )
 
     def test_remove_file_present_in_active_state(self):
-        state = self.assertUpdate(
+        self.assertUpdate(
             active=[('file', b'file-id')],
             basis=[('file', b'file-id')],
             target=[],
             )
 
     def test_remove_file_present_elsewhere_in_active_state(self):
-        state = self.assertUpdate(
+        self.assertUpdate(
             active=[('other-file', b'file-id')],
             basis=[('file', b'file-id')],
             target=[],
             )
 
     def test_remove_file_active_state_has_diff_file(self):
-        state = self.assertUpdate(
+        self.assertUpdate(
             active=[('file', b'file-id-2')],
             basis=[('file', b'file-id')],
             target=[],
             )
 
     def test_remove_file_active_state_has_diff_file_and_file_elsewhere(self):
-        state = self.assertUpdate(
+        self.assertUpdate(
             active=[('file', b'file-id-2'),
                     ('other-file', b'file-id')],
             basis=[('file', b'file-id')],
@@ -2627,35 +2627,35 @@ class TestUpdateBasisByDelta(tests.TestCase):
             )
 
     def test_add_file_matching_active_state(self):
-        state = self.assertUpdate(
+        self.assertUpdate(
             active=[('file', b'file-id')],
             basis=[],
             target=[('file', b'file-id')],
             )
 
     def test_add_file_in_empty_dir_not_matching_active_state(self):
-        state = self.assertUpdate(
+        self.assertUpdate(
             active=[],
             basis=[('dir/', b'dir-id')],
             target=[('dir/', b'dir-id', b'basis'), ('dir/file', b'file-id')],
             )
 
     def test_add_file_missing_in_active_state(self):
-        state = self.assertUpdate(
+        self.assertUpdate(
             active=[],
             basis=[],
             target=[('file', b'file-id')],
             )
 
     def test_add_file_elsewhere_in_active_state(self):
-        state = self.assertUpdate(
+        self.assertUpdate(
             active=[('other-file', b'file-id')],
             basis=[],
             target=[('file', b'file-id')],
             )
 
     def test_add_file_active_state_has_diff_file_and_file_elsewhere(self):
-        state = self.assertUpdate(
+        self.assertUpdate(
             active=[('other-file', b'file-id'),
                     ('file', b'file-id-2')],
             basis=[],
@@ -2663,42 +2663,42 @@ class TestUpdateBasisByDelta(tests.TestCase):
             )
 
     def test_rename_file_matching_active_state(self):
-        state = self.assertUpdate(
+        self.assertUpdate(
             active=[('other-file', b'file-id')],
             basis=[('file', b'file-id')],
             target=[('other-file', b'file-id')],
             )
 
     def test_rename_file_missing_in_active_state(self):
-        state = self.assertUpdate(
+        self.assertUpdate(
             active=[],
             basis=[('file', b'file-id')],
             target=[('other-file', b'file-id')],
             )
 
     def test_rename_file_present_elsewhere_in_active_state(self):
-        state = self.assertUpdate(
+        self.assertUpdate(
             active=[('third', b'file-id')],
             basis=[('file', b'file-id')],
             target=[('other-file', b'file-id')],
             )
 
     def test_rename_file_active_state_has_diff_source_file(self):
-        state = self.assertUpdate(
+        self.assertUpdate(
             active=[('file', b'file-id-2')],
             basis=[('file', b'file-id')],
             target=[('other-file', b'file-id')],
             )
 
     def test_rename_file_active_state_has_diff_target_file(self):
-        state = self.assertUpdate(
+        self.assertUpdate(
             active=[('other-file', b'file-id-2')],
             basis=[('file', b'file-id')],
             target=[('other-file', b'file-id')],
             )
 
     def test_rename_file_active_has_swapped_files(self):
-        state = self.assertUpdate(
+        self.assertUpdate(
             active=[('file', b'file-id'),
                     ('other-file', b'file-id-2')],
             basis=[('file', b'file-id'),
@@ -2707,7 +2707,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
                     ('other-file', b'file-id')])
 
     def test_rename_file_basis_has_swapped_files(self):
-        state = self.assertUpdate(
+        self.assertUpdate(
             active=[('file', b'file-id'),
                     ('other-file', b'file-id-2')],
             basis=[('file', b'file-id-2'),
@@ -2716,34 +2716,34 @@ class TestUpdateBasisByDelta(tests.TestCase):
                     ('other-file', b'file-id-2')])
 
     def test_rename_directory_with_contents(self):
-        state = self.assertUpdate(  # active matches basis
+        self.assertUpdate(  # active matches basis
             active=[('dir1/', b'dir-id'),
                     ('dir1/file', b'file-id')],
             basis=[('dir1/', b'dir-id'),
                    ('dir1/file', b'file-id')],
             target=[('dir2/', b'dir-id'),
                     ('dir2/file', b'file-id')])
-        state = self.assertUpdate(  # active matches target
+        self.assertUpdate(  # active matches target
             active=[('dir2/', b'dir-id'),
                     ('dir2/file', b'file-id')],
             basis=[('dir1/', b'dir-id'),
                    ('dir1/file', b'file-id')],
             target=[('dir2/', b'dir-id'),
                     ('dir2/file', b'file-id')])
-        state = self.assertUpdate(  # active empty
+        self.assertUpdate(  # active empty
             active=[],
             basis=[('dir1/', b'dir-id'),
                    ('dir1/file', b'file-id')],
             target=[('dir2/', b'dir-id'),
                     ('dir2/file', b'file-id')])
-        state = self.assertUpdate(  # active present at other location
+        self.assertUpdate(  # active present at other location
             active=[('dir3/', b'dir-id'),
                     ('dir3/file', b'file-id')],
             basis=[('dir1/', b'dir-id'),
                    ('dir1/file', b'file-id')],
             target=[('dir2/', b'dir-id'),
                     ('dir2/file', b'file-id')])
-        state = self.assertUpdate(  # active has different ids
+        self.assertUpdate(  # active has different ids
             active=[('dir1/', b'dir1-id'),
                     ('dir1/file', b'file1-id'),
                     ('dir2/', b'dir2-id'),
@@ -2754,41 +2754,41 @@ class TestUpdateBasisByDelta(tests.TestCase):
                     ('dir2/file', b'file-id')])
 
     def test_invalid_file_not_present(self):
-        state = self.assertBadDelta(
+        self.assertBadDelta(
             active=[('file', b'file-id')],
             basis=[('file', b'file-id')],
             delta=[('other-file', 'file', b'file-id')])
 
     def test_invalid_new_id_same_path(self):
         # The bad entry comes after
-        state = self.assertBadDelta(
+        self.assertBadDelta(
             active=[('file', b'file-id')],
             basis=[('file', b'file-id')],
             delta=[(None, 'file', b'file-id-2')])
         # The bad entry comes first
-        state = self.assertBadDelta(
+        self.assertBadDelta(
             active=[('file', b'file-id-2')],
             basis=[('file', b'file-id-2')],
             delta=[(None, 'file', b'file-id')])
 
     def test_invalid_existing_id(self):
-        state = self.assertBadDelta(
+        self.assertBadDelta(
             active=[('file', b'file-id')],
             basis=[('file', b'file-id')],
             delta=[(None, 'file', b'file-id')])
 
     def test_invalid_parent_missing(self):
-        state = self.assertBadDelta(
+        self.assertBadDelta(
             active=[],
             basis=[],
             delta=[(None, 'path/path2', b'file-id')])
         # Note: we force the active tree to have the directory, by knowing how
         #       path_to_ie handles entries with missing parents
-        state = self.assertBadDelta(
+        self.assertBadDelta(
             active=[('path/', b'path-id')],
             basis=[],
             delta=[(None, 'path/path2', b'file-id')])
-        state = self.assertBadDelta(
+        self.assertBadDelta(
             active=[('path/', b'path-id'),
                     ('path/path2', b'file-id')],
             basis=[],
@@ -2797,27 +2797,27 @@ class TestUpdateBasisByDelta(tests.TestCase):
     def test_renamed_dir_same_path(self):
         # We replace the parent directory, with another parent dir. But the C
         # file doesn't look like it has been moved.
-        state = self.assertUpdate(  # Same as basis
+        self.assertUpdate(  # Same as basis
             active=[('dir/', b'A-id'),
                     ('dir/B', b'B-id')],
             basis=[('dir/', b'A-id'),
                    ('dir/B', b'B-id')],
             target=[('dir/', b'C-id'),
                     ('dir/B', b'B-id')])
-        state = self.assertUpdate(  # Same as target
+        self.assertUpdate(  # Same as target
             active=[('dir/', b'C-id'),
                     ('dir/B', b'B-id')],
             basis=[('dir/', b'A-id'),
                    ('dir/B', b'B-id')],
             target=[('dir/', b'C-id'),
                     ('dir/B', b'B-id')])
-        state = self.assertUpdate(  # empty active
+        self.assertUpdate(  # empty active
             active=[],
             basis=[('dir/', b'A-id'),
                    ('dir/B', b'B-id')],
             target=[('dir/', b'C-id'),
                     ('dir/B', b'B-id')])
-        state = self.assertUpdate(  # different active
+        self.assertUpdate(  # different active
             active=[('dir/', b'D-id'),
                     ('dir/B', b'B-id')],
             basis=[('dir/', b'A-id'),
@@ -2826,7 +2826,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
                     ('dir/B', b'B-id')])
 
     def test_parent_child_swap(self):
-        state = self.assertUpdate(  # Same as basis
+        self.assertUpdate(  # Same as basis
             active=[('A/', b'A-id'),
                     ('A/B/', b'B-id'),
                     ('A/B/C', b'C-id')],
@@ -2836,7 +2836,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
             target=[('A/', b'B-id'),
                     ('A/B/', b'A-id'),
                     ('A/B/C', b'C-id')])
-        state = self.assertUpdate(  # Same as target
+        self.assertUpdate(  # Same as target
             active=[('A/', b'B-id'),
                     ('A/B/', b'A-id'),
                     ('A/B/C', b'C-id')],
@@ -2846,7 +2846,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
             target=[('A/', b'B-id'),
                     ('A/B/', b'A-id'),
                     ('A/B/C', b'C-id')])
-        state = self.assertUpdate(  # empty active
+        self.assertUpdate(  # empty active
             active=[],
             basis=[('A/', b'A-id'),
                    ('A/B/', b'B-id'),
@@ -2854,7 +2854,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
             target=[('A/', b'B-id'),
                     ('A/B/', b'A-id'),
                     ('A/B/C', b'C-id')])
-        state = self.assertUpdate(  # different active
+        self.assertUpdate(  # different active
             active=[('D/', b'A-id'),
                     ('D/E/', b'B-id'),
                     ('F', b'C-id')],
@@ -2866,21 +2866,21 @@ class TestUpdateBasisByDelta(tests.TestCase):
                     ('A/B/C', b'C-id')])
 
     def test_change_root_id(self):
-        state = self.assertUpdate(  # same as basis
+        self.assertUpdate(  # same as basis
             active=[('', b'root-id'),
                     ('file', b'file-id')],
             basis=[('', b'root-id'),
                    ('file', b'file-id')],
             target=[('', b'target-root-id'),
                     ('file', b'file-id')])
-        state = self.assertUpdate(  # same as target
+        self.assertUpdate(  # same as target
             active=[('', b'target-root-id'),
                     ('file', b'file-id')],
             basis=[('', b'root-id'),
                    ('file', b'file-id')],
             target=[('', b'target-root-id'),
                     ('file', b'root-id')])
-        state = self.assertUpdate(  # all different
+        self.assertUpdate(  # all different
             active=[('', b'active-root-id'),
                     ('file', b'file-id')],
             basis=[('', b'root-id'),
@@ -2889,17 +2889,125 @@ class TestUpdateBasisByDelta(tests.TestCase):
                     ('file', b'root-id')])
 
     def test_change_file_absent_in_active(self):
-        state = self.assertUpdate(
+        self.assertUpdate(
             active=[],
             basis=[('file', b'file-id')],
             target=[('file', b'file-id')])
 
     def test_invalid_changed_file(self):
-        state = self.assertBadDelta(  # Not present in basis
+        self.assertBadDelta(  # Not present in basis
             active=[('file', b'file-id')],
             basis=[],
             delta=[('file', 'file', b'file-id')])
-        state = self.assertBadDelta(  # present at another location in basis
+        self.assertBadDelta(  # present at another location in basis
             active=[('file', b'file-id')],
             basis=[('other-file', b'file-id')],
             delta=[('file', 'file', b'file-id')])
+
+
+class TestBisectDirblock(tests.TestCase):
+    """Test that bisect_dirblock() returns the expected values.
+
+    bisect_dirblock is intended to work like bisect.bisect_left() except it
+    knows it is working on dirblocks and that dirblocks are sorted by ('path',
+    'to', 'foo') chunks rather than by raw 'path/to/foo'.
+    """
+
+    def assertBisect(self, dirblocks, split_dirblocks, path, *args, **kwargs):
+        """Assert that bisect_split works like bisect_left on the split paths.
+
+        :param dirblocks: A list of (path, [info]) pairs.
+        :param split_dirblocks: A list of ((split, path), [info]) pairs.
+        :param path: The path we are indexing.
+
+        All other arguments will be passed along.
+        """
+        self.assertIsInstance(dirblocks, list)
+        bisect_split_idx = dirstate.bisect_dirblock(dirblocks, path, *args, **kwargs)
+        split_dirblock = (path.split(b'/'), [])
+        bisect_left_idx = bisect.bisect_left(split_dirblocks, split_dirblock,
+                                             *args)
+        self.assertEqual(bisect_left_idx, bisect_split_idx,
+                         'bisect_split disagreed. %s != %s'
+                         ' for key %r'
+                         % (bisect_left_idx, bisect_split_idx, path)
+                         )
+
+    def paths_to_dirblocks(self, paths):
+        """Convert a list of paths into dirblock form.
+
+        Also, ensure that the paths are in proper sorted order.
+        """
+        dirblocks = [(path, []) for path in paths]
+        split_dirblocks = [(path.split(b'/'), []) for path in paths]
+        self.assertEqual(sorted(split_dirblocks), split_dirblocks)
+        return dirblocks, split_dirblocks
+
+    def test_simple(self):
+        """In the simple case it works just like bisect_left."""
+        paths = [b'', b'a', b'b', b'c', b'd']
+        dirblocks, split_dirblocks = self.paths_to_dirblocks(paths)
+        for path in paths:
+            self.assertBisect(dirblocks, split_dirblocks, path)
+        self.assertBisect(dirblocks, split_dirblocks, b'_')
+        self.assertBisect(dirblocks, split_dirblocks, b'aa')
+        self.assertBisect(dirblocks, split_dirblocks, b'bb')
+        self.assertBisect(dirblocks, split_dirblocks, b'cc')
+        self.assertBisect(dirblocks, split_dirblocks, b'dd')
+        self.assertBisect(dirblocks, split_dirblocks, b'a/a')
+        self.assertBisect(dirblocks, split_dirblocks, b'b/b')
+        self.assertBisect(dirblocks, split_dirblocks, b'c/c')
+        self.assertBisect(dirblocks, split_dirblocks, b'd/d')
+
+    def test_involved(self):
+        """This is where bisect_left diverges slightly."""
+        paths = [b'', b'a',
+                 b'a/a', b'a/a/a', b'a/a/z', b'a/a-a', b'a/a-z',
+                 b'a/z', b'a/z/a', b'a/z/z', b'a/z-a', b'a/z-z',
+                 b'a-a', b'a-z',
+                 b'z', b'z/a/a', b'z/a/z', b'z/a-a', b'z/a-z',
+                 b'z/z', b'z/z/a', b'z/z/z', b'z/z-a', b'z/z-z',
+                 b'z-a', b'z-z',
+                 ]
+        dirblocks, split_dirblocks = self.paths_to_dirblocks(paths)
+        for path in paths:
+            self.assertBisect(dirblocks, split_dirblocks, path)
+
+    def test_involved_cached(self):
+        """This is where bisect_left diverges slightly."""
+        paths = [b'', b'a',
+                 b'a/a', b'a/a/a', b'a/a/z', b'a/a-a', b'a/a-z',
+                 b'a/z', b'a/z/a', b'a/z/z', b'a/z-a', b'a/z-z',
+                 b'a-a', b'a-z',
+                 b'z', b'z/a/a', b'z/a/z', b'z/a-a', b'z/a-z',
+                 b'z/z', b'z/z/a', b'z/z/z', b'z/z-a', b'z/z-z',
+                 b'z-a', b'z-z',
+                 ]
+        cache = {}
+        dirblocks, split_dirblocks = self.paths_to_dirblocks(paths)
+        for path in paths:
+            self.assertBisect(dirblocks, split_dirblocks, path, cache=cache)
+
+
+def _unpack_stat(packed_stat):
+    """Turn a packed_stat back into the stat fields.
+
+    This is meant as a debugging tool, should not be used in real code.
+    """
+    (st_size, st_mtime, st_ctime, st_dev, st_ino,
+     st_mode) = struct.unpack('>6L', binascii.a2b_base64(packed_stat))
+    return {'st_size': st_size, 'st_mtime': st_mtime, 'st_ctime': st_ctime,
+                'st_dev': st_dev, 'st_ino': st_ino, 'st_mode': st_mode}
+
+
+class TestPackStatRobust(tests.TestCase):
+    """Check packed representaton of stat values is robust on all inputs."""
+
+    def pack(self, statlike_tuple):
+        return dirstate.pack_stat(os.stat_result(statlike_tuple))
+
+    @staticmethod
+    def unpack_field(packed_string, stat_field):
+        return _unpack_stat(packed_string)[stat_field]
+
+

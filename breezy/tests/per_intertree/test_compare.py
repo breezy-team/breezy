@@ -20,12 +20,13 @@ import os
 import shutil
 
 from breezy import errors, mutabletree, tests
-from breezy.bzr.inventorytree import InventoryTreeChange
-from breezy.osutils import supports_symlinks
 from breezy.tests import features
-from breezy.tests.matchers import MatchesTreeChanges
 from breezy.tests.per_intertree import TestCaseWithTwoTrees
-from breezy.tree import TreeChange
+
+from ...bzr.inventorytree import InventoryTreeChange
+from ...osutils import supports_symlinks
+from ...tree import TreeChange
+from ..matchers import MatchesTreeChanges
 
 # TODO: test the include_root option.
 # TODO: test that renaming a directory x->y does not emit a rename for the
@@ -54,7 +55,7 @@ def _change_key(change):
 class TestCompare(TestCaseWithTwoTrees):
 
     def _make_abc_tree(self, tree):
-        """setup an abc content tree."""
+        """Setup an abc content tree."""
         files = ['a', 'b/', 'b/c']
         self.build_tree(files, line_endings='binary',
                         transport=tree.controldir.root_transport)
@@ -62,7 +63,7 @@ class TestCompare(TestCaseWithTwoTrees):
         tree.add(files, ids=[b'a-id', b'b-id', b'c-id'])
 
     def get_tree_no_parents_abc_content(self, tree, converter=None):
-        """return a test tree with a, b/, b/c contents."""
+        """Return a test tree with a, b/, b/c contents."""
         self._make_abc_tree(tree)
         return self._convert_tree(tree, converter)
 
@@ -407,10 +408,10 @@ class TestCompare(TestCaseWithTwoTrees):
 
 
 class TestIterChanges(TestCaseWithTwoTrees):
-    """Test the comparison iterator"""
+    """Test the comparison iterator."""
 
     def _make_abc_tree(self, tree):
-        """setup an abc content tree."""
+        """Setup an abc content tree."""
         files = ['a', 'b/', 'b/c']
         self.build_tree(files, line_endings='binary',
                         transport=tree.controldir.root_transport)
@@ -418,12 +419,12 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree.add(files, ids=[b'a-id', b'b-id', b'c-id'])
 
     def get_tree_no_parents_abc_content(self, tree, converter=None):
-        """return a test tree with a, b/, b/c contents."""
+        """Return a test tree with a, b/, b/c contents."""
         self._make_abc_tree(tree)
         return self._convert_tree(tree, converter)
 
     def get_tree_no_parents_abc_content_7(self, tree, converter=None):
-        """return a test tree with a, b/, d/e contents.
+        """Return a test tree with a, b/, d/e contents.
 
         This variation adds a dir 'd' (b'd-id'), renames b to d/e.
         """
@@ -465,7 +466,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
             if left_item == right_item:
                 same.append(str(left_item))
             else:
-                different.append(" {}\n {}".format(left_item, right_item))
+                different.append(f" {left_item}\n {right_item}")
         self.fail("iter_changes output different. Unchanged items:\n"
                   + "\n".join(same) + "\nChanged items:\n" + "\n".join(different))
 
@@ -578,8 +579,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
         iterator = tree.iter_entries_by_dir(specific_files=[path])
         try:
             return next(iterator)[1]
-        except StopIteration:
-            raise KeyError(path)
+        except StopIteration as err:
+            raise KeyError(path) from err
 
     def changed_content(self, tree, path):
         entry = self.get_path_entry(tree, path)
@@ -774,7 +775,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
                          self.do_iter_changes(tree1, tree2))
 
     def test_empty_dir(self):
-        """an empty dir should not cause glitches to surrounding files."""
+        """An empty dir should not cause glitches to surrounding files."""
         tree1 = self.make_branch_and_tree('1')
         tree2 = self.make_to_branch_and_tree('2')
         tree1 = self.get_tree_no_parents_abc_content(tree1)
@@ -829,7 +830,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
             'changed/unchanging/file', b'changed content')
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         # parent-id has changed, as has file-id
-        root_id = tree1.path2id('')
+        tree1.path2id('')
         self.assertEqualIterChanges(
             [self.renamed(tree1, tree2, 'changing', 'changed', False),
              self.renamed(tree1, tree2, 'changing/unchanging/file', 'changed/unchanging/file', True)],
@@ -856,7 +857,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         # old is gone, new is added, parent-id has changed(reparented), as has
         # file-id(content)
-        root_id = tree1.path2id('')
+        tree1.path2id('')
         self.assertEqualIterChanges(
             [self.renamed(tree1, tree2, 'changed', 'changed', False),
              self.added(tree2, ''),
@@ -872,7 +873,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2 = self.get_tree_no_parents_abc_content_7(tree2)
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         # d(d-id) is new, e is b-id renamed.
-        root_id = tree1.path2id('')
+        tree1.path2id('')
         self.assertEqualIterChanges(
             [self.renamed(tree1, tree2, 'b', 'd/e', False),
              self.added(tree2, 'd')],
@@ -886,7 +887,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2.rename_one('a', 'd/e/a')
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         # d is new, d/e is b-id renamed, d/e/a is a-id renamed
-        root_id = tree1.path2id('')
+        tree1.path2id('')
         self.assertEqualIterChanges(
             [self.renamed(tree1, tree2, 'b', 'd/e', False),
              self.added(tree2, 'd'),
@@ -1051,9 +1052,9 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2.add(['a'], ['file'], [b'a-id'])
         try:
             tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
-        except (KeyError,):
+        except KeyError as err:
             raise tests.TestNotApplicable(
-                "Cannot represent a FIFO in this case %s" % self.id())
+                f"Cannot represent a FIFO in this case {self.id()}") from err
         try:
             self.do_iter_changes(tree1, tree2)
         except errors.BadFileKindError:
@@ -1210,7 +1211,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
                     ))
 
     def test_disk_in_subtrees_skipped(self):
-        """subtrees are considered not-in-the-current-tree.
+        """Subtrees are considered not-in-the-current-tree.
 
         This test tests the trivial case, where the basis has no paths in the
         current trees subtree.
@@ -1330,7 +1331,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
             tree2.add(['movedlink'], ids=[b'link-id'])
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         self.not_applicable_if_cannot_represent_unversioned(tree2)
-        root_id = tree1.path2id('')
+        tree1.path2id('')
         expected = [
             self.renamed(tree1, tree2, 'dir', 'moveddir', False),
             self.renamed(tree1, tree2, 'file', 'movedfile', True),
@@ -1456,7 +1457,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.requireFeature(features.SymlinkFeature(self.test_dir))
         tree1, tree2 = self.make_trees_with_symlinks()
         self.not_applicable_if_cannot_represent_unversioned(tree2)
-        root_id = tree1.path2id('')
+        tree1.path2id('')
         expected = [
             self.unchanged(tree1, ''),
             self.added(tree2, 'added'),
@@ -1478,7 +1479,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
     def test_versioned_symlinks_specific_files(self):
         self.requireFeature(features.SymlinkFeature(self.test_dir))
         tree1, tree2 = self.make_trees_with_symlinks()
-        root_id = tree1.path2id('')
+        tree1.path2id('')
         expected = [
             self.added(tree2, 'added'),
             self.changed_content(tree2, 'changed'),
@@ -1551,8 +1552,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
                              'tree2/\u03b1/',
                              'tree2/\u03b1/\u03c9-added',
                              ])
-        except UnicodeError:
-            raise tests.TestSkipped("Could not create Unicode files.")
+        except UnicodeError as err:
+            raise tests.TestSkipped("Could not create Unicode files.") from err
         tree1.add(['\u03b1'], ids=[a_id])
         tree2.add(['\u03b1', '\u03b1/\u03c9-added'], ids=[a_id, added_id])
 
@@ -1581,8 +1582,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
                              'tree1/\u03b1/\u03c9-deleted',
                              'tree2/\u03b1/',
                              ])
-        except UnicodeError:
-            raise tests.TestSkipped("Could not create Unicode files.")
+        except UnicodeError as err:
+            raise tests.TestSkipped("Could not create Unicode files.") from err
         tree1.add(['\u03b1', '\u03b1/\u03c9-deleted'], ids=[a_id, deleted_id])
         tree2.add(['\u03b1'], ids=[a_id])
 
@@ -1612,8 +1613,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
                              'tree2/\u03b1/',
                              'tree2/' + mod_path,
                              ])
-        except UnicodeError:
-            raise tests.TestSkipped("Could not create Unicode files.")
+        except UnicodeError as err:
+            raise tests.TestSkipped("Could not create Unicode files.") from err
         tree1.add(['\u03b1', mod_path], ids=[a_id, mod_id])
         tree2.add(['\u03b1', mod_path], ids=[a_id, mod_id])
 
@@ -1640,8 +1641,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
             self.build_tree(['tree1/\u03b1/',
                              'tree2/\u03b1/',
                              ])
-        except UnicodeError:
-            raise tests.TestSkipped("Could not create Unicode files.")
+        except UnicodeError as err:
+            raise tests.TestSkipped("Could not create Unicode files.") from err
         self.build_tree_contents([('tree1/\u03c9-source', b'contents\n'),
                                   ('tree2/\u03b1/\u03c9-target', b'contents\n'),
                                   ])
@@ -1670,8 +1671,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
             self.build_tree(['tree1/\u03b1/',
                              'tree2/\u03b1/',
                              ])
-        except UnicodeError:
-            raise tests.TestSkipped("Could not create Unicode files.")
+        except UnicodeError as err:
+            raise tests.TestSkipped("Could not create Unicode files.") from err
         self.build_tree_contents([
             ('tree1/\u03b1/\u03c9-subfile', b'sub contents\n'),
             ('tree2/\u03b1/\u03c9-subfile', b'sub contents\n'),
@@ -1719,8 +1720,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
                              'tree2/\u03b1/unknown_dir/file',
                              'tree2/\u03c9-unknown_root_file',
                              ])
-        except UnicodeError:
-            raise tests.TestSkipped("Could not create Unicode files.")
+        except UnicodeError as err:
+            raise tests.TestSkipped("Could not create Unicode files.") from err
         tree1.add(['\u03b1'], ids=[a_id])
         tree2.add(['\u03b1'], ids=[a_id])
 

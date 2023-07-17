@@ -14,35 +14,28 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import codecs
-import errno
 import os
-import sys
-import time
-from io import BytesIO, StringIO
 
 import fastbencode as bencode
 
-from .. import filters, osutils
+from .. import osutils, tests, trace, transform
 from .. import revision as _mod_revision
-from .. import rules, tests, trace, transform, urlutils
 from ..bzr import generate_ids
-from ..bzr.conflicts import (DeletingParent, DuplicateEntry, DuplicateID,
-                             MissingParent, NonDirectoryParent, ParentLoop,
-                             UnversionedParent)
 from ..controldir import ControlDir
-from ..diff import show_diff_trees
-from ..errors import (DuplicateKey, ExistingLimbo, ExistingPendingDeletion,
-                      ImmortalPendingDeletion, LockError, StrictCommitFailed)
-from ..merge import Merge3Merger, Merger
+from ..errors import StrictCommitFailed
+from ..merge import Merge3Merger
 from ..mutabletree import MutableTree
-from ..osutils import file_kind, pathjoin
-from ..transform import (ROOT_PARENT, FinalPaths, ImmortalLimbo,
-                         MalformedTransform, NoFinalPath, ReusingTransform,
-                         TransformRenameFailed, _FileMover, create_from_tree,
-                         resolve_conflicts)
+from ..osutils import pathjoin
+from ..transform import (
+    ROOT_PARENT,
+    MalformedTransform,
+    TransformRenameFailed,
+    _FileMover,
+    resolve_conflicts,
+)
 from ..transport import FileExists
-from . import TestCaseInTempDir, TestSkipped, features
+from ..transport.local import file_kind
+from . import TestCaseInTempDir, features
 from .features import HardlinkFeature, SymlinkFeature
 
 
@@ -170,25 +163,25 @@ class TestTransformMerge(TestCaseInTempDir):
         for tg in this, base, other:
             tg.tt.apply()
         Merge3Merger(this.wt, this.wt, base.wt, other.wt)
-        self.assertIs(os.path.isdir(this.wt.abspath('a')), True)
-        self.assertIs(os.path.islink(this.wt.abspath('b')), True)
-        self.assertIs(os.path.isfile(this.wt.abspath('c')), True)
+        self.assertTrue(os.path.isdir(this.wt.abspath('a')))
+        self.assertTrue(os.path.islink(this.wt.abspath('b')))
+        self.assertTrue(os.path.isfile(this.wt.abspath('c')))
         for suffix in ('THIS', 'BASE', 'OTHER'):
             self.assertEqual(os.readlink(
                 this.wt.abspath('d.' + suffix)), suffix)
-        self.assertIs(os.path.lexists(this.wt.abspath('d')), False)
+        self.assertFalse(os.path.lexists(this.wt.abspath('d')))
         self.assertEqual(this.wt.id2path(b'd'), 'd.OTHER')
         self.assertEqual(this.wt.id2path(b'f'), 'f.THIS')
         self.assertEqual(os.readlink(this.wt.abspath('e')), 'other-e')
-        self.assertIs(os.path.lexists(this.wt.abspath('e.THIS')), False)
-        self.assertIs(os.path.lexists(this.wt.abspath('e.OTHER')), False)
-        self.assertIs(os.path.lexists(this.wt.abspath('e.BASE')), False)
-        self.assertIs(os.path.lexists(this.wt.abspath('g')), True)
-        self.assertIs(os.path.lexists(this.wt.abspath('g.BASE')), False)
-        self.assertIs(os.path.lexists(this.wt.abspath('h')), False)
-        self.assertIs(os.path.lexists(this.wt.abspath('h.BASE')), False)
-        self.assertIs(os.path.lexists(this.wt.abspath('h.THIS')), True)
-        self.assertIs(os.path.lexists(this.wt.abspath('h.OTHER')), True)
+        self.assertFalse(os.path.lexists(this.wt.abspath('e.THIS')))
+        self.assertFalse(os.path.lexists(this.wt.abspath('e.OTHER')))
+        self.assertFalse(os.path.lexists(this.wt.abspath('e.BASE')))
+        self.assertTrue(os.path.lexists(this.wt.abspath('g')))
+        self.assertFalse(os.path.lexists(this.wt.abspath('g.BASE')))
+        self.assertFalse(os.path.lexists(this.wt.abspath('h')))
+        self.assertFalse(os.path.lexists(this.wt.abspath('h.BASE')))
+        self.assertTrue(os.path.lexists(this.wt.abspath('h.THIS')))
+        self.assertTrue(os.path.lexists(this.wt.abspath('h.OTHER')))
 
     def test_filename_merge(self):
         root_id = generate_ids.gen_root_id()
@@ -247,11 +240,11 @@ class TestTransformMerge(TestCaseInTempDir):
         Merge3Merger(this.wt, this.wt, base.wt, other.wt)
 
         self.assertEqual(this.wt.id2path(b'g'), pathjoin('b/g1.OTHER'))
-        self.assertIs(os.path.lexists(this.wt.abspath('b/g1.BASE')), True)
-        self.assertIs(os.path.lexists(this.wt.abspath('b/g1.THIS')), False)
+        self.assertTrue(os.path.lexists(this.wt.abspath('b/g1.BASE')))
+        self.assertFalse(os.path.lexists(this.wt.abspath('b/g1.THIS')))
         self.assertEqual(this.wt.id2path(b'h'), pathjoin('b/h1.THIS'))
-        self.assertIs(os.path.lexists(this.wt.abspath('b/h1.BASE')), True)
-        self.assertIs(os.path.lexists(this.wt.abspath('b/h1.OTHER')), False)
+        self.assertTrue(os.path.lexists(this.wt.abspath('b/h1.BASE')))
+        self.assertFalse(os.path.lexists(this.wt.abspath('b/h1.OTHER')))
         self.assertEqual(this.wt.id2path(b'i'), pathjoin('b/i1.OTHER'))
 
 
@@ -376,10 +369,11 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         self.assertEqual(['Author1 <author1@example.com>',
                           'Author2 <author2@example.com>'],
                          revision.get_apparent_authors())
-        del revision.properties['authors']
+        properties = dict(revision.properties)
+        del properties['authors']
         self.assertEqual({'foo': 'bar',
                           'branch-nick': 'tree'},
-                         revision.properties)
+                         properties)
 
     def test_no_explicit_revprops(self):
         branch, tt = self.get_branch_and_transform()
@@ -513,10 +507,10 @@ class TestTransformRollback(tests.TestCaseWithTransport):
 
 
 class TestFinalizeRobustness(tests.TestCaseWithTransport):
-    """Ensure treetransform creation errors can be safely cleaned up after"""
+    """Ensure treetransform creation errors can be safely cleaned up after."""
 
     def _override_globals_in_method(self, instance, method_name, globals):
-        """Replace method on instance with one with updated globals"""
+        """Replace method on instance with one with updated globals."""
         import types
         func = getattr(instance, method_name).__func__
         new_globals = dict(func.__globals__)
@@ -529,23 +523,23 @@ class TestFinalizeRobustness(tests.TestCaseWithTransport):
 
     @staticmethod
     def _fake_open_raises_before(name, mode):
-        """Like open() but raises before doing anything"""
+        """Like open() but raises before doing anything."""
         raise RuntimeError
 
     @staticmethod
     def _fake_open_raises_after(name, mode):
-        """Like open() but raises after creating file without returning"""
+        """Like open() but raises after creating file without returning."""
         open(name, mode).close()
         raise RuntimeError
 
     def create_transform_and_root_trans_id(self):
-        """Setup a transform creating a file in limbo"""
+        """Setup a transform creating a file in limbo."""
         tree = self.make_branch_and_tree('.')
         tt = tree.transform()
         return tt, tt.create_path("a", tt.root)
 
     def create_transform_and_subdir_trans_id(self):
-        """Setup a transform creating a directory containing a file in limbo"""
+        """Setup a transform creating a directory containing a file in limbo."""
         tree = self.make_branch_and_tree('.')
         tt = tree.transform()
         d_trans_id = tt.create_path("d", tt.root)
@@ -1114,7 +1108,7 @@ class TestLinkTree(tests.TestCaseWithTransport):
         self.assertFalse(self.hardlinked())
 
     def test_link_succeeds_if_unmodified(self):
-        """If the file to be linked is unmodified, link"""
+        """If the file to be linked is unmodified, link."""
         transform.link_tree(self.child_tree, self.parent_tree)
         self.assertTrue(self.hardlinked())
 

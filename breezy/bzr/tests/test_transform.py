@@ -21,6 +21,7 @@ import time
 from ... import errors, filters, osutils, rules
 from ...controldir import ControlDir
 from ...tests import UnavailableFeature, features
+from ...transport.local import file_kind
 from ..conflicts import DuplicateEntry
 from ..transform import build_tree
 from . import TestCaseWithTransport
@@ -75,7 +76,7 @@ class TestBuildTree(TestCaseWithTransport):
         basis.lock_read()
         self.addCleanup(basis.unlock)
         build_tree(basis, b)
-        self.assertIs(os.path.isdir('b/foo'), True)
+        self.assertTrue(os.path.isdir('b/foo'))
         with open('b/foo/bar', 'rb') as f:
             self.assertEqual(f.read(), b"contents")
         self.assertEqual(os.readlink('b/foo/baz'), 'a/foo/bar')
@@ -92,7 +93,7 @@ class TestBuildTree(TestCaseWithTransport):
         self.assertPathExists('target/subtree')
 
     def test_file_conflict_handling(self):
-        """Ensure that when building trees, conflict handling is done"""
+        """Ensure that when building trees, conflict handling is done."""
         source = self.make_branch_and_tree('source')
         target = self.make_branch_and_tree('target')
         self.build_tree(['source/file', 'target/file'])
@@ -111,7 +112,7 @@ class TestBuildTree(TestCaseWithTransport):
         self.assertEqual([], target2.conflicts())
 
     def test_symlink_conflict_handling(self):
-        """Ensure that when building trees, conflict handling is done"""
+        """Ensure that when building trees, conflict handling is done."""
         self.requireFeature(features.SymlinkFeature(self.test_dir))
         source = self.make_branch_and_tree('source')
         os.symlink('foo', 'source/symlink')
@@ -130,7 +131,7 @@ class TestBuildTree(TestCaseWithTransport):
         self.assertEqual([], target.conflicts())
 
     def test_directory_conflict_handling(self):
-        """Ensure that when building trees, conflict handling is done"""
+        """Ensure that when building trees, conflict handling is done."""
         source = self.make_branch_and_tree('source')
         target = self.make_branch_and_tree('target')
         self.build_tree(['source/dir1/', 'source/dir1/file', 'target/dir1/'])
@@ -166,7 +167,7 @@ class TestBuildTree(TestCaseWithTransport):
         self.make_branch('target4/dir1/file')
         build_tree(source.basis_tree(), target)
         self.assertPathExists('target4/dir1/file')
-        self.assertEqual('directory', osutils.file_kind('target4/dir1/file'))
+        self.assertEqual('directory', file_kind('target4/dir1/file'))
         self.assertPathExists('target4/dir1/file.diverted')
         self.assertEqual(
             [DuplicateEntry('Diverted to', 'dir1/file.diverted',
@@ -174,7 +175,7 @@ class TestBuildTree(TestCaseWithTransport):
             target.conflicts())
 
     def test_mixed_conflict_handling(self):
-        """Ensure that when building trees, conflict handling is done"""
+        """Ensure that when building trees, conflict handling is done."""
         source = self.make_branch_and_tree('source')
         target = self.make_branch_and_tree('target')
         self.build_tree(['source/name', 'target/name/'])
@@ -215,7 +216,7 @@ class TestBuildTree(TestCaseWithTransport):
         self.assertEqual(2, transform_result.rename_count)
 
     def create_ab_tree(self):
-        """Create a committed test tree with two files"""
+        """Create a committed test tree with two files."""
         source = self.make_branch_and_tree('source')
         self.build_tree_contents([('source/file1', b'A')])
         self.build_tree_contents([('source/file2', b'B')])

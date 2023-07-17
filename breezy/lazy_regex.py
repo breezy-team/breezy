@@ -53,7 +53,7 @@ class LazyRegex:
                  ] + _regex_attributes_to_copy
 
     def __init__(self, args, kwargs):
-        """Create a new proxy object, passing in the args to pass to re.compile
+        """Create a new proxy object, passing in the args to pass to re.compile.
 
         :param args: The `*args` to pass to re.compile
         :param kwargs: The `**kwargs` to pass to re.compile
@@ -63,20 +63,20 @@ class LazyRegex:
         self._regex_kwargs = kwargs
 
     def _compile_and_collapse(self):
-        """Actually compile the requested regex"""
+        """Actually compile the requested regex."""
         self._real_regex = self._real_re_compile(*self._regex_args,
                                                  **self._regex_kwargs)
         for attr in self._regex_attributes_to_copy:
             setattr(self, attr, getattr(self._real_regex, attr))
 
     def _real_re_compile(self, *args, **kwargs):
-        """Thunk over to the original re.compile"""
+        """Thunk over to the original re.compile."""
         try:
             return re.compile(*args, **kwargs)
         except re.error as e:
             # raise InvalidPattern instead of re.error as this gives a
             # cleaner message to the user.
-            raise InvalidPattern('"' + args[0] + '" ' + str(e))
+            raise InvalidPattern('"' + args[0] + '" ' + str(e)) from e
 
     def __getstate__(self):
         """Return the state to use when pickling."""
@@ -88,8 +88,8 @@ class LazyRegex:
     def __setstate__(self, dict):
         """Restore from a pickled state."""
         self._real_regex = None
-        setattr(self, "_regex_args", dict["args"])
-        setattr(self, "_regex_kwargs", dict["kwargs"])
+        self._regex_args = dict['args']
+        self._regex_kwargs = dict['kwargs']
 
     def __getattr__(self, attr):
         """Return a member from the proxied regex object.

@@ -20,13 +20,16 @@ That is, tests for reconcile and check.
 """
 
 from breezy import osutils
-from breezy.bzr.inventory import Inventory, InventoryFile
 from breezy.bzr.tests.per_repository_vf import (
-    TestCaseWithRepository, all_repository_vf_format_scenarios)
-from breezy.repository import WriteGroup
-from breezy.revision import NULL_REVISION, Revision
+    TestCaseWithRepository,
+    all_repository_vf_format_scenarios,
+)
 from breezy.tests import TestNotApplicable, multiply_scenarios
-from breezy.tests.scenarios import load_tests_apply_scenarios
+
+from ....repository import WriteGroup
+from ....revision import NULL_REVISION, Revision
+from ....tests.scenarios import load_tests_apply_scenarios
+from ...inventory import Inventory, InventoryFile
 
 load_tests = load_tests_apply_scenarios
 
@@ -408,8 +411,7 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
 
 
 class UnreferencedFileParentsFromNoOpMergeScenario(BrokenRepoScenario):
-    """
-    rev1a and rev1b with identical contents
+    """rev1a and rev1b with identical contents
     rev2 revision has parents of [rev1a, rev1b]
     There is a a-file:rev2 file version, not referenced by the inventory.
     """
@@ -801,7 +803,8 @@ class TestFileParentReconciliation(TestCaseWithRepository):
             repo.texts.add_lines((root_id, revision_id), [], [])
         repo.add_inventory(revision_id, inv, parent_ids)
         revision = Revision(revision_id, committer='jrandom@example.com',
-                            timestamp=0, inventory_sha1='', timezone=0, message='foo',
+                            timestamp=0, inventory_sha1=b'', timezone=0, message='foo',
+                            properties={},
                             parent_ids=parent_ids)
         repo.add_revision(revision_id, revision, inv)
 
@@ -900,7 +903,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
                                     b'before')
             vf_shas = self.shas_for_versions_of_file(
                 repo, scenario.all_versions_after_reconcile())
-        result = repo.reconcile(thorough=True)
+        repo.reconcile(thorough=True)
         with repo.lock_read():
             self.assertParentsMatch(scenario.corrected_parents(), repo,
                                     b'after')

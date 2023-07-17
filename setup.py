@@ -3,7 +3,7 @@
 """Installation script for brz.
 Run it with
  './setup.py install', or
- './setup.py --help' for more options
+ './setup.py --help' for more options.
 """
 
 import glob
@@ -12,29 +12,34 @@ import os.path
 import sys
 
 try:
-    import setuptools
+    import setuptools  # noqa: F401
 except ModuleNotFoundError as e:
-    sys.stderr.write("[ERROR] Please install setuptools (%s)\n" % e)
+    sys.stderr.write(f"[ERROR] Please install setuptools ({e})\n")
     sys.exit(1)
 
 try:
     from setuptools_rust import Binding, RustExtension, Strip
 except ModuleNotFoundError as e:
-    sys.stderr.write("[ERROR] Please install setuptools_rust (%s)\n" % e)
+    sys.stderr.write(f"[ERROR] Please install setuptools_rust ({e})\n")
     sys.exit(1)
 
+from setuptools.command.build import build
 
 try:
     import setuptools_gettext
 except ModuleNotFoundError as e:
-    sys.stderr.write("[ERROR] Please install setuptools_gettext (%s)\n" % e)
+    sys.stderr.write(f"[ERROR] Please install setuptools_gettext ({e})\n")
     sys.exit(1)
 
-I18N_FILES = []
-for filepath in glob.glob("breezy/locale/*/LC_MESSAGES/*.mo"):
-    langfile = filepath[len("breezy/locale/"):]
-    targetpath = os.path.dirname(os.path.join("share/locale", langfile))
-    I18N_FILES.append((targetpath, [filepath]))
+if setuptools_gettext.__version__ <= (0, 1, 3):
+    build.sub_commands.append(('build_mo', lambda _: True))
+    I18N_FILES = []
+    for filepath in glob.glob("breezy/locale/*/LC_MESSAGES/*.mo"):
+        langfile = filepath[len("breezy/locale/"):]
+        targetpath = os.path.dirname(os.path.join("share/locale", langfile))
+        I18N_FILES.append((targetpath, [filepath]))
+else:
+    I18N_FILES = []
 
 
 from setuptools import setup
@@ -45,9 +50,6 @@ except ImportError:
     from distutils.version import LooseVersion as Version
 
 from distutils.command.build_scripts import build_scripts
-from distutils.command.install import install
-from distutils.command.install_data import install_data
-from distutils.command.install_scripts import install_scripts
 
 from setuptools import Command
 
@@ -73,8 +75,7 @@ class brz_build_scripts(build_scripts):
 
 
 class build_man(Command):
-    """Generate brz.1.
-    """
+    """Generate brz.1."""
 
     def initialize_options(self):
         pass
@@ -83,24 +84,24 @@ class build_man(Command):
         pass
 
     def run(self):
+        build_ext_cmd = self.get_finalized_command('build_ext')
+        build_lib_dir = build_ext_cmd.build_lib
+        sys.path.insert(0, os.path.abspath(build_lib_dir))
+        import importlib
+        importlib.invalidate_caches()
+        del sys.modules['breezy']
         from tools import generate_docs
-        generate_docs.main(argv=["brz", "man"])
+        generate_docs.main(['generate-docs', 'man'])
 
 
 ########################
 ## Setup
 ########################
 
-from setuptools.command.build import build
-
-build.sub_commands.append(('build_mo', lambda _: True))
-
 command_classes = {
     'build_man': build_man,
 }
 
-from distutils import log
-from distutils.errors import CCompilerError, DistutilsPlatformError
 from distutils.extension import Extension
 
 ext_modules = []
@@ -136,7 +137,7 @@ command_classes['build_ext'] = build_ext
 unavailable_files = []
 
 
-def add_cython_extension(module_name, libraries=None, extra_source=[]):
+def add_cython_extension(module_name, libraries=None, extra_source=None):
     """Add a cython module to build.
 
     This will use Cython to auto-generate the .c file if it is available.
@@ -149,6 +150,8 @@ def add_cython_extension(module_name, libraries=None, extra_source=[]):
     :param module_name: The python path to the module. This will be used to
         determine the .pyx and .c files to use.
     """
+    if extra_source is None:
+        extra_source = []
     path = module_name.replace('.', '/')
     cython_name = path + '.pyx'
     c_name = path + '.c'
@@ -179,16 +182,13 @@ add_cython_extension('breezy.bzr._simple_set_pyx')
 ext_modules.append(Extension('breezy.bzr._static_tuple_c',
                              ['breezy/bzr/_static_tuple_c.c']))
 add_cython_extension('breezy._annotator_pyx')
-add_cython_extension('breezy._chunks_to_lines_pyx')
 add_cython_extension('breezy.bzr._groupcompress_pyx',
                      extra_source=['breezy/bzr/diff-delta.c'])
 add_cython_extension('breezy.bzr._knit_load_data_pyx')
 add_cython_extension('breezy._known_graph_pyx')
-add_cython_extension('breezy.bzr._rio_pyx')
 if sys.platform == 'win32':
     add_cython_extension('breezy.bzr._dirstate_helpers_pyx',
                          libraries=['Ws2_32'])
-    add_cython_extension('breezy._walkdirs_win32')
 else:
     add_cython_extension('breezy.bzr._dirstate_helpers_pyx')
     add_cython_extension('breezy._readdir_pyx')
@@ -223,7 +223,16 @@ import site
 site.ENABLE_USER_SITE = "--user" in sys.argv
 
 rust_extensions = [
-    RustExtension("breezy.bzr._rio_rs", "lib-rio/Cargo.toml", binding=Binding.PyO3),
+    RustExtension("breezy._cmd_rs", "crates/cmd-py/Cargo.toml", binding=Binding.PyO3),
+    RustExtension("breezy._osutils_rs", "crates/osutils-py/Cargo.toml", binding=Binding.PyO3),
+    RustExtension("breezy._transport_rs", "crates/transport-py/Cargo.toml", binding=Binding.PyO3),
+    RustExtension("breezy._graph_rs", "crates/graph-py/Cargo.toml", binding=Binding.PyO3),
+    RustExtension("breezy._patch_rs", "crates/patch-py/Cargo.toml", binding=Binding.PyO3),
+    RustExtension("breezy.zlib_util", "crates/zlib-util-py/Cargo.toml", binding=Binding.PyO3),
+    RustExtension("breezy._transport_rs", "crates/transport-py/Cargo.toml", binding=Binding.PyO3),
+    RustExtension("breezy._urlutils_rs", "crates/urlutils-py/Cargo.toml", binding=Binding.PyO3),
+    RustExtension("breezy._bzr_rs", "crates/bazaar-py/Cargo.toml", binding=Binding.PyO3),
+    RustExtension("breezy._git_rs", "crates/git-py/Cargo.toml", binding=Binding.PyO3),
 ]
 entry_points = {}
 

@@ -131,9 +131,10 @@ class Stats:
     def sort(self, crit="inlinetime", reverse=True):
         """Sort the data by the supplied critera.
 
-        :param crit: the data attribute used as the sort key."""
+        :param crit: the data attribute used as the sort key.
+        """
         if crit not in profiler_entry.__dict__ or crit == 'code':
-            raise ValueError("Can't sort by %s" % crit)
+            raise ValueError(f"Can't sort by {crit}")
 
         key_func = operator.attrgetter(crit)
         self.data.sort(key=key_func, reverse=reverse)
@@ -148,7 +149,8 @@ class Stats:
         :param top: only output the top n entries.
             The default value of None means output all data.
         :param file: the output file; if None, output will
-            default to stdout."""
+        default to stdout.
+        """
         if file is None:
             file = sys.stdout
         d = self.data
@@ -163,14 +165,14 @@ class Stats:
                                e.inlinetime, label(e.code)))
             if e.calls:
                 for se in e.calls:
-                    file.write(cols % ("+%s" % se.callcount, se.reccallcount,
+                    file.write(cols % (f"+{se.callcount}", se.reccallcount,
                                        se.totaltime, se.inlinetime,
-                                       "+%s" % label(se.code)))
+                                       f"+{label(se.code)}"))
 
     def freeze(self):
         """Replace all references to code objects with string
-        descriptions; this makes it possible to pickle the instance."""
-
+        descriptions; this makes it possible to pickle the instance.
+        """
         # this code is probably rather ickier than it needs to be!
         for i in range(len(self.data)):
             e = self.data[i]
@@ -256,10 +258,10 @@ class _CallTreeFilter:
         if isinstance(code, str):
             out_file.write('fi=~\n')
         else:
-            out_file.write('fi={}\n'.format(code.co_filename))
-        out_file.write('fn={}\n'.format(label(code, True)))
+            out_file.write(f'fi={code.co_filename}\n')
+        out_file.write(f'fn={label(code, True)}\n')
         if isinstance(code, str):
-            out_file.write('0  {}\n'.format(inlinetime))
+            out_file.write(f'0  {inlinetime}\n')
         else:
             out_file.write('%d %d\n' % (code.co_firstlineno, inlinetime))
         # recursive calls are counted in entry.calls
@@ -281,11 +283,11 @@ class _CallTreeFilter:
         totaltime = int(subentry.totaltime * 1000)
         if isinstance(code, str):
             out_file.write('cfi=~\n')
-            out_file.write('cfn={}\n'.format(label(code, True)))
+            out_file.write(f'cfn={label(code, True)}\n')
             out_file.write('calls=%d 0\n' % (subentry.callcount,))
         else:
-            out_file.write('cfi={}\n'.format(code.co_filename))
-            out_file.write('cfn={}\n'.format(label(code, True)))
+            out_file.write(f'cfi={code.co_filename}\n')
+            out_file.write(f'cfn={label(code, True)}\n')
             out_file.write('calls=%d %d\n' % (
                 subentry.callcount, code.co_firstlineno))
         out_file.write('%d %d\n' % (lineno, totaltime))
@@ -311,7 +313,7 @@ def label(code, calltree=False):
                 mname = _fn2mod[code.co_filename] = k
                 break
         else:
-            mname = _fn2mod[code.co_filename] = '<%s>' % code.co_filename
+            mname = _fn2mod[code.co_filename] = f'<{code.co_filename}>'
     if calltree:
         return '%s %s:%d' % (code.co_name, mname, code.co_firstlineno)
     else:

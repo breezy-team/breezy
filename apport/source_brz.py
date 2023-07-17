@@ -1,4 +1,4 @@
-'''apport package hook for Breezy'''
+"""apport package hook for Breezy."""
 
 # Copyright (c) 2009, 2010 Canonical Ltd.
 # Author: Matt Zimmerman <mdz@canonical.com>
@@ -6,7 +6,7 @@
 
 import os
 
-from apport.hookutils import *
+from apport.hookutils import *  # noqa: F403
 
 brz_log = os.path.expanduser('~/.brz.log')
 dot_brz = os.path.expanduser('~/.config/breezy')

@@ -19,9 +19,8 @@ import sys
 from . import delta as _mod_delta
 from . import errors as errors
 from . import hooks as _mod_hooks
-from . import log, osutils
+from . import log, osutils, tsort
 from . import revision as _mod_revision
-from . import tsort
 from .trace import mutter, warning
 from .workingtree import ShelvingUnsupported
 
@@ -59,7 +58,6 @@ def report_changes(to_file, old, new, specific_files,
     :param want_unversioned: If False, only shows versioned files.
     :param classify: Add special symbols to indicate file kind.
     """
-
     if short:
         changes = new.iter_changes(old, want_unchanged, specific_files,
                                    require_versioned=False, want_unversioned=want_unversioned)
@@ -133,13 +131,13 @@ def show_tree_status(wt,
             try:
                 old = revision[0].as_tree(wt.branch)
             except errors.NoSuchRevision as e:
-                raise errors.CommandError(str(e))
+                raise errors.CommandError(str(e)) from e
             if (len(revision) > 1) and (revision[1].spec is not None):
                 try:
                     new = revision[1].as_tree(wt.branch)
                     new_is_working_tree = False
                 except errors.NoSuchRevision as e:
-                    raise errors.CommandError(str(e))
+                    raise errors.CommandError(str(e)) from e
             else:
                 new = wt
         with old.lock_read(), new.lock_read():
@@ -173,7 +171,7 @@ def show_tree_status(wt,
                 else:
                     prefix = 'I  '
                 for ignored_file in ignored_files:
-                    to_file.write("{} {}\n".format(prefix, ignored_file))
+                    to_file.write(f"{prefix} {ignored_file}\n")
 
             # show the new conflicts only for now. XXX: get them from the
             # delta.
@@ -188,7 +186,7 @@ def show_tree_status(wt,
                     prefix = 'C  '
                 else:
                     prefix = ' '
-                to_file.write("{} {}\n".format(prefix, conflict.describe()))
+                to_file.write(f"{prefix} {conflict.describe()}\n")
             # Show files that were requested but don't exist (and are
             # not versioned).  We don't involve delta in this; these
             # paths are really the province of just the status
@@ -204,7 +202,7 @@ def show_tree_status(wt,
                     prefix = 'X  '
                 else:
                     prefix = ' '
-                to_file.write("{} {}\n".format(prefix, nonexistent))
+                to_file.write(f"{prefix} {nonexistent}\n")
             if (new_is_working_tree and show_pending):
                 show_pending_merges(new, to_file, short, verbose=verbose)
             if nonexistents:
@@ -310,7 +308,7 @@ def show_pending_merges(new, to_file, short=False, verbose=False):
         if first != merge:
             raise AssertionError('Somehow we misunderstood how'
                                  ' iter_topo_order works %s != %s' % (first, merge))
-        for num, sub_merge, depth, eom in rev_id_iterator:
+        for _num, sub_merge, _depth, _eom in rev_id_iterator:
             rev = revisions[sub_merge]
             if rev is None:
                 to_file.write(sub_prefix + '(ghost) ' +

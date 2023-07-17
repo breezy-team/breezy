@@ -50,14 +50,14 @@ class TestBzrlibVersioning(tests.TestCase):
                              to_file=sio)
         out = sio.getvalue()
         m = re.search(r"Python interpreter: (.*) [0-9]", out)
-        self.assertIsNot(m, None)
+        self.assertIsNotNone(m)
         self.assertPathExists(m.group(1))
 
 
 class TestPlatformUse(tests.TestCase):
 
-    scenarios = [('ascii', dict(_platform='test-platform')),
-                 ('unicode', dict(_platform='Schr\xc3\xb6dinger'))]
+    scenarios = [('ascii', {"_platform": 'test-platform'}),
+                 ('unicode', {"_platform": 'Schr\xc3\xb6dinger'})]
 
     def setUp(self):
         super().setUp()

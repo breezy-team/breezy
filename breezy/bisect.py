@@ -70,8 +70,7 @@ class BisectCurrent:
         """Write the current revision's log entry to a file."""
         rev = self._branch.repository.get_revision(self._revid)
         revno = ".".join([str(x) for x in self.get_current_revno()])
-        outf.write("On revision {} ({}):\n{}\n".format(revno, rev.revision_id,
-                                                   rev.message))
+        outf.write(f"On revision {revno} ({rev.revision_id}):\n{rev.message}\n")
 
     def switch(self, revid):
         """Switch the current revision to the given revid."""
@@ -146,7 +145,7 @@ class BisectLog:
                 if not matches:
                     continue
                 if len(matches) > 1:
-                    raise RuntimeError("revision %s duplicated" % revision)
+                    raise RuntimeError(f"revision {revision} duplicated")
                 if matches[0] == "yes":
                     high_revid = revision
                     between_revs = []
@@ -188,7 +187,7 @@ class BisectLog:
         if not self.is_done():
             if status != "done" and revid in [x[0] for x in self._items
                                               if x[1] in ['yes', 'no']]:
-                raise RuntimeError("attempting to add revid %s twice" % revid)
+                raise RuntimeError(f"attempting to add revid {revid} twice")
             self._items.append((revid, status))
 
     def change_file_name(self, filename):
@@ -321,7 +320,8 @@ class cmd_bisect(Command):
     def _set_state(self, controldir, revspec, state):
         """Set the state of the given revspec and bisecting.
 
-        Returns boolean indicating if bisection is done."""
+        Returns boolean indicating if bisection is done.
+        """
         bisect_log = BisectLog(controldir)
         if bisect_log.is_done():
             note("No further bisection is possible.\n")
@@ -339,7 +339,6 @@ class cmd_bisect(Command):
     def run(self, subcommand, args_list, directory='.', revision=None,
             output=None):
         """Handle the bisect command."""
-
         log_fn = None
         if subcommand in ('yes', 'no', 'move') and revision:
             pass
@@ -416,7 +415,8 @@ class cmd_bisect(Command):
 
     def replay(self, controldir, filename):
         """Apply the given log file to a clean state, so the state is
-        exactly as it was when the log was saved."""
+        exactly as it was when the log was saved.
+        """
         if controldir.control_transport.has(BISECT_INFO_PATH):
             BisectCurrent(controldir).reset()
             controldir.control_transport.delete(BISECT_INFO_PATH)

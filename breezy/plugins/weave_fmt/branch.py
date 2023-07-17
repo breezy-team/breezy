@@ -17,8 +17,9 @@
 """Weave-era branch implementations."""
 
 from ... import controldir as _mod_controldir
-from ... import errors, lockable_files
+from ... import errors
 from ...branch import BindingUnsupported, BranchFormat, BranchWriteLockResult
+from ...bzr import lockable_files
 from ...bzr.fullhistory import FullHistoryBzrBranch
 from ...decorators import only_raises
 from ...lock import LogicalLockResult
@@ -78,8 +79,7 @@ class BzrBranch4(FullHistoryBzrBranch):
                 self._clear_cached_state()
 
     def _get_checkout_format(self, lightweight=False):
-        """Return the most suitable metadir for a checkout of this branch.
-        """
+        """Return the most suitable metadir for a checkout of this branch."""
         from ...bzr.bzrdir import BzrDirMetaFormat1
         from .repository import RepositoryFormat7
         format = BzrDirMetaFormat1()
@@ -131,7 +131,7 @@ class BzrBranchFormat4(BranchFormat):
             raise errors.UpgradeRequired(a_controldir.user_url)
         if repository is not None:
             raise NotImplementedError(
-                "initialize(repository=<not None>) on {!r}".format(self))
+                f"initialize(repository=<not None>) on {self!r}")
         if not [isinstance(a_controldir._format, format) for format in
                 self._compatible_bzrdirs]:
             raise errors.IncompatibleFormat(self, a_controldir._format)

@@ -32,7 +32,15 @@ from io import BytesIO
 from stat import S_ISDIR
 from typing import Any, Callable, Dict, TypeVar
 
-from .. import errors, hooks, osutils, registry, ui, urlutils
+from .. import (
+    _transport_rs,  # type: ignore
+    errors,
+    hooks,
+    osutils,
+    registry,
+    ui,
+    urlutils,
+)
 from ..trace import mutter
 
 # a dictionary of open file streams. Keys are absolute paths, values are
@@ -41,7 +49,7 @@ _file_streams: Dict[str, Any] = {}
 
 
 def _get_protocol_handlers():
-    """Return a dictionary of {urlprefix: [factory]}"""
+    """Return a dictionary of {urlprefix: [factory]}."""
     return transport_list_registry
 
 
@@ -62,7 +70,7 @@ def _clear_protocol_handlers():
 def _get_transport_modules():
     """Return a list of the modules providing transports."""
     modules = set()
-    for prefix, factory_list in transport_list_registry.items():
+    for _prefix, factory_list in transport_list_registry.items():
         for factory in factory_list:
             modules.add(factory.get_module())
     # Add chroot and pathfilter directly, because there is no handler
@@ -213,7 +221,7 @@ class LateReadError:
         self._path = path
 
     def close(self):
-        """a no-op - do nothing."""
+        """A no-op - do nothing."""
 
     def __enter__(self):
         return self
@@ -222,7 +230,7 @@ class LateReadError:
         # If there was an error raised, prefer the original one
         try:
             self.close()
-        except:
+        except BaseException:
             if exc_type is None:
                 raise
         return False
@@ -275,7 +283,7 @@ class FileStream:
             flush to disk.
         """
         raise errors.TransportNotPossible(
-            "{} cannot fdatasync".format(self.transport))
+            f"{self.transport} cannot fdatasync")
 
 
 class FileFileStream(FileStream):
@@ -296,12 +304,22 @@ class FileFileStream(FileStream):
         self.file_handle.flush()
         try:
             fileno = self.file_handle.fileno()
-        except AttributeError:
-            raise errors.TransportNotPossible()
+        except AttributeError as err:
+            raise errors.TransportNotPossible() from err
         osutils.fdatasync(fileno)
 
     def write(self, bytes):
-        osutils.pump_string_file(bytes, self.file_handle)
+        class F(object):
+            def __init__(self, f):
+                self.f = f
+            def write(self, b):
+                self.f.write(b)
+                return len(b)
+        osutils.pump_string_file(bytes, F(self.file_handle))
+        return len(bytes)
+
+    def flush(self):
+        self.file_handle.flush()
 
 
 class AppendBasedFileStream(FileStream):
@@ -312,10 +330,14 @@ class AppendBasedFileStream(FileStream):
 
     def write(self, bytes):
         self.transport.append_bytes(self.relpath, bytes)
+        return len(bytes)
+
+    def flush(self):
+        pass
 
 
 class TransportHooks(hooks.Hooks):
-    """Mapping of hook names to registered callbacks for transport hooks"""
+    """Mapping of hook names to registered callbacks for transport hooks."""
 
     def __init__(self):
         super().__init__()
@@ -362,7 +384,7 @@ class Transport:
             if e.errno in (errno.ENOENT, errno.ENOTDIR):
                 raise NoSuchFile(path, extra=e)
             elif e.errno == errno.EINVAL:
-                mutter("EINVAL returned on path {}: {!r}".format(path, e))
+                mutter(f"EINVAL returned on path {path}: {e!r}")
                 raise NoSuchFile(path, extra=e)
             # I would rather use errno.EFOO, but there doesn't seem to be
             # any matching for 267
@@ -378,6 +400,8 @@ class Transport:
                 raise errors.DirectoryNotEmpty(path, extra=e)
             if e.errno == errno.EBUSY:
                 raise errors.ResourceBusy(path, extra=e)
+        if isinstance(e, (NotADirectoryError, FileNotFoundError)):
+            raise NoSuchFile(path, extra=e)
         if raise_generic:
             raise errors.TransportError(orig_error=e)
 
@@ -397,8 +421,7 @@ class Transport:
             new_transport = cur_transport.clone('..')
             if new_transport.base == cur_transport.base:
                 raise errors.CommandError(
-                    "Failed to create path prefix for %s."
-                    % cur_transport.base)
+                    f"Failed to create path prefix for {cur_transport.base}.")
             try:
                 new_transport.mkdir('.', mode=mode)
             except NoSuchFile:
@@ -456,8 +479,7 @@ class Transport:
         raise NotImplementedError(self.external_url)
 
     def get_segment_parameters(self):
-        """Return the segment parameters for the top segment of the URL.
-        """
+        """Return the segment parameters for the top segment of the URL."""
         return self._segment_parameters
 
     def set_segment_parameter(self, name, value):
@@ -543,7 +565,6 @@ class Transport:
 
         :param relpath: a string of a relative path
         """
-
         # XXX: Robert Collins 20051016 - is this really needed in the public
         # interface ?
         raise NotImplementedError(self.abspath)
@@ -717,43 +738,11 @@ class Transport:
         :param offsets: A list of offsets to be read from the given file.
         :return: yield (pos, data) tuples for each request
         """
-        # We are going to iterate multiple times, we need a list
-        offsets = list(offsets)
-        sorted_offsets = sorted(offsets)
-
-        # turn the list of offsets into a stack
-        offset_stack = iter(offsets)
-        cur_offset_and_size = next(offset_stack)
-        coalesced = self._coalesce_offsets(sorted_offsets,
-                                           limit=self._max_readv_combine,
-                                           fudge_factor=self._bytes_to_read_before_seek)
-
-        # Cache the results, but only until they have been fulfilled
-        data_map = {}
         try:
-            for c_offset in coalesced:
-                # TODO: jam 20060724 it might be faster to not issue seek if
-                #       we are already at the right location. This should be
-                #       benchmarked.
-                fp.seek(c_offset.start)
-                data = fp.read(c_offset.length)
-                if len(data) < c_offset.length:
-                    raise errors.ShortReadvError(relpath, c_offset.start,
-                                                 c_offset.length, actual=len(data))
-                for suboffset, subsize in c_offset.ranges:
-                    key = (c_offset.start + suboffset, subsize)
-                    data_map[key] = data[suboffset:suboffset + subsize]
-
-                # Now that we've read some data, see if we can yield anything back
-                while cur_offset_and_size in data_map:
-                    this_data = data_map.pop(cur_offset_and_size)
-                    this_offset = cur_offset_and_size[0]
-                    try:
-                        cur_offset_and_size = next(offset_stack)
-                    except StopIteration:
-                        fp.close()
-                        cur_offset_and_size = None
-                    yield this_offset, this_data
+            yield from _transport_rs.seek_and_read(
+                fp, offsets, max_readv_combine=self._max_readv_combine,
+                bytes_to_read_before_seek=self._bytes_to_read_before_seek,
+                path=relpath)
         finally:
             fp.close()
 
@@ -766,58 +755,10 @@ class Transport:
             offsets, in start-to-end order, with no duplicated regions,
             expanded by the transports recommended page size.
         """
-        offsets = sorted(offsets)
-        # short circuit empty requests
-        if len(offsets) == 0:
-            def empty_yielder():
-                # Quick thunk to stop this function becoming a generator
-                # itself, rather we return a generator that has nothing to
-                # yield.
-                if False:
-                    yield None
-            return empty_yielder()
-        # expand by page size at either end
-        maximum_expansion = self.recommended_page_size()
-        new_offsets = []
-        for offset, length in offsets:
-            expansion = maximum_expansion - length
-            if expansion < 0:
-                # we're asking for more than the minimum read anyway.
-                expansion = 0
-            reduction = expansion // 2
-            new_offset = offset - reduction
-            new_length = length + expansion
-            if new_offset < 0:
-                # don't ask for anything < 0
-                new_offset = 0
-            if (upper_limit is not None and
-                    new_offset + new_length > upper_limit):
-                new_length = upper_limit - new_offset
-            new_offsets.append((new_offset, new_length))
-        # combine the expanded offsets
-        offsets = []
-        current_offset, current_length = new_offsets[0]
-        current_finish = current_length + current_offset
-        for offset, length in new_offsets[1:]:
-            finish = offset + length
-            if offset > current_finish:
-                # there is a gap, output the current accumulator and start
-                # a new one for the region we're examining.
-                offsets.append((current_offset, current_length))
-                current_offset = offset
-                current_length = length
-                current_finish = finish
-                continue
-            if finish > current_finish:
-                # extend the current accumulator to the end of the region
-                # we're examining.
-                current_finish = finish
-                current_length = finish - current_offset
-        offsets.append((current_offset, current_length))
-        return offsets
+        return _transport_rs.sort_expand_and_combine(offsets, upper_limit, self.recommended_page_size())
 
     @staticmethod
-    def _coalesce_offsets(offsets, limit=0, fudge_factor=0, max_size=0):
+    def _coalesce_offsets(offsets, limit=None, fudge_factor=None, max_size=None):
         """Yield coalesced offsets.
 
         With a long list of neighboring requests, combine them
@@ -846,36 +787,7 @@ class Transport:
             for where to start, how much to read, and how to split those chunks
             back up
         """
-        last_end = None
-        cur = _CoalescedOffset(None, None, [])
-        coalesced_offsets = []
-
-        if max_size <= 0:
-            # 'unlimited', but we actually take this to mean 100MB buffer limit
-            max_size = 100 * 1024 * 1024
-
-        for start, size in offsets:
-            end = start + size
-            if (last_end is not None
-                and start <= last_end + fudge_factor
-                and start >= cur.start
-                and (limit <= 0 or len(cur.ranges) < limit)
-                    and (max_size <= 0 or end - cur.start <= max_size)):
-                if start < last_end:
-                    raise ValueError('Overlapping range not allowed:'
-                                     ' last range ended at %s, new one starts at %s'
-                                     % (last_end, start))
-                cur.length = end - cur.start
-                cur.ranges.append((start - cur.start, size))
-            else:
-                if cur.start is not None:
-                    coalesced_offsets.append(cur)
-                cur = _CoalescedOffset(start, size, [(0, size)])
-            last_end = end
-
-        if cur.start is not None:
-            coalesced_offsets.append(cur)
-        return coalesced_offsets
+        return [_CoalescedOffset(start, length, ranges) for start, length, ranges in _transport_rs.coalesce_offsets(offsets, limit, fudge_factor, max_size)]
 
     def put_bytes(self, relpath: str, raw_bytes: bytes, mode=None):
         """Atomically put the supplied bytes into the given location.
@@ -888,7 +800,7 @@ class Transport:
         """
         if not isinstance(raw_bytes, bytes):
             raise TypeError(
-                'raw_bytes must be a plain string, not %s' % type(raw_bytes))
+                f'raw_bytes must be a plain string, not {type(raw_bytes)}')
         return self.put_file(relpath, BytesIO(raw_bytes), mode=mode)
 
     def put_bytes_non_atomic(self, relpath, raw_bytes: bytes, mode=None,
@@ -911,7 +823,7 @@ class Transport:
         """
         if not isinstance(raw_bytes, bytes):
             raise TypeError(
-                'raw_bytes must be a plain string, not %s' % type(raw_bytes))
+                f'raw_bytes must be a plain string, not {type(raw_bytes)}')
         self.put_file_non_atomic(relpath, BytesIO(raw_bytes), mode=mode,
                                  create_parent_dir=create_parent_dir,
                                  dir_mode=dir_mode)
@@ -1006,7 +918,7 @@ class Transport:
         """
         if not isinstance(data, bytes):
             raise TypeError(
-                'bytes must be a plain string, not %s' % type(data))
+                f'bytes must be a plain string, not {type(data)}')
         return self.append_file(relpath, BytesIO(data), mode=mode)
 
     def copy(self, rel_from, rel_to):
@@ -1105,7 +1017,7 @@ class Transport:
             self.delete(rel_from)
 
     def delete(self, relpath):
-        """Delete the item at relpath"""
+        """Delete the item at relpath."""
         raise NotImplementedError(self.delete)
 
     def delete_tree(self, relpath):
@@ -1133,7 +1045,7 @@ class Transport:
         self.rmdir(relpath)
 
     def __repr__(self):
-        return "<{}.{} url={}>".format(self.__module__, self.__class__.__name__, self.base)
+        return f"<{self.__module__}.{self.__class__.__name__} url={self.base}>"
 
     def stat(self, relpath):
         """Return the stat information for a file.
@@ -1154,17 +1066,17 @@ class Transport:
     def readlink(self, relpath):
         """Return a string representing the path to which the symbolic link points."""
         raise errors.TransportNotPossible(
-            "Dereferencing symlinks is not supported on %s" % self)
+            f"Dereferencing symlinks is not supported on {self}")
 
     def hardlink(self, source, link_name):
         """Create a hardlink pointing to source named link_name."""
         raise errors.TransportNotPossible(
-            "Hard links are not supported on %s" % self)
+            f"Hard links are not supported on {self}")
 
     def symlink(self, source, link_name):
         """Create a symlink pointing to source named link_name."""
         raise errors.TransportNotPossible(
-            "Symlinks are not supported on %s" % self)
+            f"Symlinks are not supported on {self}")
 
     def listable(self):
         """Return True if this store supports listing."""
@@ -1193,7 +1105,7 @@ class Transport:
         :return: A lock object, which should contain an unlock() function.
         """
         raise errors.TransportNotPossible(
-            "transport locks not supported on %s" % self)
+            f"transport locks not supported on {self}")
 
     def lock_write(self, relpath):
         """Lock the given file for exclusive (write) access.
@@ -1207,7 +1119,7 @@ class Transport:
         :return: A lock object, which should contain an unlock() function.
         """
         raise errors.TransportNotPossible(
-            "transport locks not supported on %s" % self)
+            f"transport locks not supported on {self}")
 
     def is_readonly(self):
         """Return true if this connection cannot be written to."""
@@ -1224,7 +1136,8 @@ class Transport:
 
         Warning: this is not guaranteed to be accurate as sometimes we can't
         be sure: for example with vfat mounted on unix, or a windows sftp
-        server."""
+        server.
+        """
         # TODO: Perhaps return a e.g. TransportCharacteristics that can answer
         # several questions about the transport.
         return False
@@ -1341,7 +1254,7 @@ class ConnectedTransport(Transport):
         return self._parsed_url.scheme
 
     def clone(self, offset=None):
-        """Return a new transport with root at self.base + offset
+        """Return a new transport with root at self.base + offset.
 
         We leave the daughter classes take advantage of the hint
         that it's a cloning not a raw creation.
@@ -1377,14 +1290,14 @@ class ConnectedTransport(Transport):
             # Note that we don't put the password back even if we
             # have one so that it doesn't get accidentally
             # exposed.
-            netloc = '{}@{}'.format(urlutils.quote(user), netloc)
+            netloc = f'{urlutils.quote(user)}@{netloc}'
         if port is not None:
             netloc = '%s:%d' % (netloc, port)
         path = urlutils.escape(path)
         return urlutils.urlparse.urlunparse((scheme, netloc, path, None, None, None))
 
     def relpath(self, abspath):
-        """Return the local path portion from a given absolute path"""
+        """Return the local path portion from a given absolute path."""
         parsed_url = self._split_url(abspath)
         error = []
         if parsed_url.scheme != self._parsed_url.scheme:
@@ -1552,7 +1465,10 @@ def get_transport_from_url(url, possible_transports=None):
     transport = None
     if possible_transports is not None:
         for t in possible_transports:
-            t_same_connection = t._reuse_for(url)
+            try:
+                t_same_connection = t._reuse_for(url)
+            except AttributeError:
+                continue
             if t_same_connection is not None:
                 # Add only new transports
                 if t_same_connection not in possible_transports:
@@ -1601,8 +1517,7 @@ def _try_transport_factories(base, factory_list):
         try:
             return factory.get_obj()(base), None
         except errors.DependencyNotPresent as e:
-            mutter("failed to instantiate transport %r for %r: %r" %
-                   (factory, base, e))
+            mutter(f"failed to instantiate transport {factory!r} for {base!r}: {e!r}")
             last_err = e
             continue
     return None, last_err
@@ -1637,7 +1552,7 @@ def do_catching_redirections(
     # If a loop occurs, there is little we can do. So we don't try to detect
     # them, just getting out if too much redirections occurs. The solution
     # is outside: where the loop is defined.
-    for redirections in range(MAX_REDIRECTIONS):
+    for _redirections in range(MAX_REDIRECTIONS):
         try:
             return action(transport)
         except errors.RedirectRequested as e:

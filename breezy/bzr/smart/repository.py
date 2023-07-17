@@ -27,17 +27,22 @@ import zlib
 
 import fastbencode as bencode
 
-from ... import errors, estimate_compressed_size, osutils
+from ... import errors, osutils, trace, ui, zlib_util
 from ... import revision as _mod_revision
-from ... import trace, ui
 from ...repository import _strip_NULL_ghosts, network_format_registry
 from .. import inventory as _mod_inventory
 from .. import inventory_delta, pack, vf_search
 from ..bzrdir import BzrDir
-from ..versionedfile import (ChunkedContentFactory, NetworkRecordStream,
-                             record_to_fulltext_bytes)
-from .request import (FailedSmartServerResponse, SmartServerRequest,
-                      SuccessfulSmartServerResponse)
+from ..versionedfile import (
+    ChunkedContentFactory,
+    NetworkRecordStream,
+    record_to_fulltext_bytes,
+)
+from .request import (
+    FailedSmartServerResponse,
+    SmartServerRequest,
+    SuccessfulSmartServerResponse,
+)
 
 
 class SmartServerRepositoryRequest(SmartServerRequest):
@@ -182,7 +187,7 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
                                include_missing, max_size=65536):
         result = {}
         queried_revs = set()
-        estimator = estimate_compressed_size.ZLibEstimator(max_size)
+        estimator = zlib_util.ZLibEstimator(max_size)
         next_revs = revision_ids
         first_loop_done = False
         while next_revs:
@@ -310,7 +315,7 @@ class SmartServerRepositoryGetRevIdForRevno(SmartServerRepositoryReadLocked):
             if err.revision != known_pair[1]:
                 raise AssertionError(
                     'get_rev_id_for_revno raised RevisionNotPresent for '
-                    'non-initial revision: ' + err.revision)
+                    'non-initial revision: ' + err.revision) from err
             return FailedSmartServerResponse(
                 (b'nosuchrevision', err.revision))
         except errors.RevnoOutOfBounds as e:
@@ -486,7 +491,7 @@ class SmartServerRepositoryLockWrite(SmartServerRepositoryRequest):
             token = None
         try:
             token = repository.lock_write(token=token).repository_token
-        except errors.LockContention as e:
+        except errors.LockContention:
             return FailedSmartServerResponse((b'LockContention',))
         except errors.UnlockableTransport:
             return FailedSmartServerResponse((b'UnlockableTransport',))
@@ -546,7 +551,8 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
             return False
         if (to_format.supports_chks
             and from_format.repository_class is to_format.repository_class
-                and from_format._serializer == to_format._serializer):
+                and from_format._revision_serializer == to_format._revision_serializer
+                and from_format._inventory_serializer == to_format._inventory_serializer):
             # Source is CHK, but target matches: that's ok
             # (e.g. 2a->2a, or CHK2->2a)
             return False
@@ -611,7 +617,7 @@ def _stream_to_byte_stream(stream, src_format):
             if record.storage_kind in ('chunked', 'fulltext'):
                 serialised = record_to_fulltext_bytes(record)
             elif record.storage_kind == 'absent':
-                raise ValueError("Absent factory for {}".format(record.key))
+                raise ValueError(f"Absent factory for {record.key}")
             else:
                 serialised = record.get_bytes_as(record.storage_kind)
             if serialised:
@@ -756,7 +762,7 @@ class SmartServerRepositoryUnlock(SmartServerRepositoryRequest):
     def do_repository_request(self, repository, token):
         try:
             repository.lock_write(token=token)
-        except errors.TokenMismatch as e:
+        except errors.TokenMismatch:
             return FailedSmartServerResponse((b'TokenMismatch',))
         repository.dont_leave_lock_in_place()
         repository.unlock()
@@ -874,7 +880,7 @@ class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
             self.insert_result = self.repository._get_sink().insert_stream(
                 stream, src_format, self.tokens)
             self.insert_ok = True
-        except:
+        except BaseException:
             self.insert_exception = sys.exc_info()
             self.insert_ok = False
 
@@ -1090,7 +1096,7 @@ class SmartServerRepositoryReconcile(SmartServerRepositoryRequest):
     def do_repository_request(self, repository, lock_token):
         try:
             repository.lock_write(token=lock_token)
-        except errors.TokenLockingNotSupported as e:
+        except errors.TokenLockingNotSupported:
             return FailedSmartServerResponse(
                 (b'TokenLockingNotSupported', ))
         try:
@@ -1130,7 +1136,7 @@ class SmartServerRepositoryPack(SmartServerRepositoryRequest):
 
 
 class SmartServerRepositoryIterFilesBytes(SmartServerRepositoryRequest):
-    """Iterate over the contents of files.
+    r"""Iterate over the contents of files.
 
     The client sends a list of desired files to stream, one
     per line, and as tuples of file id and revision, separated by
@@ -1237,7 +1243,7 @@ class SmartServerRepositoryGetInventories(SmartServerRepositoryRequest):
             repository.supports_rich_root(),
             repository._format.supports_tree_reference)
         with repository.lock_read():
-            for inv, revid in repository._iter_inventories(revids, ordering):
+            for inv, _revid in repository._iter_inventories(revids, ordering):
                 if inv is None:
                     continue
                 inv_delta = inv._make_delta(prev_inv)
@@ -1328,7 +1334,7 @@ class SmartServerRepositoryRevisionArchive(SmartServerRepositoryRequest):
         :param format: Format (tar, tgz, tbz2, etc)
         :param name: Target file name
         :param root: Name of root directory (or '')
-        :param subdir: Subdirectory to export, if not the root
+        :param subdir: Subdirectory to export, if not the root.
         """
         tree = repository.revision_tree(revision_id)
         if subdir is not None:

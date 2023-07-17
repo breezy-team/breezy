@@ -14,20 +14,28 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Test commit message editor.
-"""
+"""Test commit message editor."""
 
 import os
 import sys
 
-from .. import commit, config, errors, msgeditor, osutils, trace
+from .. import commit, config, msgeditor, osutils, trace
 from .. import transport as _mod_transport
-from ..msgeditor import (edit_commit_message_encoded,
-                         make_commit_message_template_encoded)
+from ..msgeditor import (
+    edit_commit_message_encoded,
+    make_commit_message_template_encoded,
+)
 from ..trace import mutter
-from . import (TestCaseInTempDir, TestCaseWithTransport, TestNotApplicable,
-               features, multiply_tests, probe_bad_non_ascii,
-               probe_unicode_in_user_encoding, split_suite_by_re)
+from . import (
+    TestCaseInTempDir,
+    TestCaseWithTransport,
+    TestNotApplicable,
+    features,
+    multiply_tests,
+    probe_bad_non_ascii,
+    probe_unicode_in_user_encoding,
+    split_suite_by_re,
+)
 from .EncodingAdapter import encoding_scenarios
 
 
@@ -54,7 +62,7 @@ class MsgEditorTest(TestCaseWithTransport):
         return working_tree
 
     def test_commit_template(self):
-        """Test building a commit message template"""
+        """Test building a commit message template."""
         working_tree = self.make_uncommitted_tree()
         template = msgeditor.make_commit_message_template(working_tree,
                                                           None)
@@ -95,7 +103,7 @@ pending merges:
 """)
 
     def test_commit_template_encoded(self):
-        """Test building a commit message template"""
+        """Test building a commit message template."""
         working_tree = self.make_uncommitted_tree()
         template = make_commit_message_template_encoded(working_tree,
                                                         None,
@@ -107,21 +115,27 @@ added:
 """.encode())
 
     def test_commit_template_and_diff(self):
-        """Test building a commit message template"""
+        """Test building a commit message template."""
         working_tree = self.make_uncommitted_tree()
         template = make_commit_message_template_encoded(working_tree,
                                                         None,
                                                         diff=True,
                                                         output_encoding='utf8')
 
-        self.assertTrue(b"""\
+        self.assertIn(
+            b"""\
 @@ -0,0 +1,1 @@
 +contents of hello
-""" in template)
-        self.assertTrue("""\
+""",
+            template
+        )
+        self.assertIn(
+            """\
 added:
   hell\u00d8
-""".encode() in template)
+""".encode(),
+            template
+        )
 
     def make_do_nothing_editor(self, basename='fed'):
         if sys.platform == "win32":
@@ -133,7 +147,7 @@ added:
             name = basename + '.sh'
             with open(name, 'wb') as f:
                 f.write(b'#!/bin/sh\n')
-            os.chmod(name, 0o755)
+            os.chmod(name, 0o755)  # noqa: S103
             return './' + name
 
     def test_run_editor(self):
@@ -147,7 +161,7 @@ added:
         See <https://bugs.launchpad.net/bzr/+bug/220331>
         """
         self.overrideEnv('BRZ_EDITOR',
-                         '"%s"' % self.make_do_nothing_editor('name with spaces'))
+                         f"\"{self.make_do_nothing_editor('name with spaces')}\"")
         self.assertEqual(True, msgeditor._run_editor('a_filename'))
 
     def make_fake_editor(self, message='test message from fed\n'):
@@ -159,31 +173,29 @@ added:
         if not isinstance(message, bytes):
             message = message.encode('utf-8')
         with open('fed.py', 'w') as f:
-            f.write('#!%s\n' % sys.executable)
-            f.write("""\
-# coding=utf-8
+            f.write(f'#!{sys.executable}\n')
+            f.write(f"""# coding=utf-8
 import sys
 if len(sys.argv) == 2:
     fn = sys.argv[1]
     with open(fn, 'rb') as f:
         s = f.read()
     with open(fn, 'wb') as f:
-        f.write({!r})
+        f.write({message!r})
         f.write(s)
-""".format(message))
+""")
         if sys.platform == "win32":
             # [win32] make batch file and set BRZ_EDITOR
             with open('fed.bat', 'w') as f:
-                f.write("""\
-@echo off
-"%s" fed.py %%1
-""" % sys.executable)
+                f.write(f"""@echo off
+"{sys.executable}" fed.py %1
+""")
             self.overrideEnv('BRZ_EDITOR', 'fed.bat')
         else:
             # [non-win32] make python script executable and set BRZ_EDITOR
-            os.chmod('fed.py', 0o755)
-            mutter('Setting BRZ_EDITOR to %r', '%s ./fed.py' % sys.executable)
-            self.overrideEnv('BRZ_EDITOR', '%s ./fed.py' % sys.executable)
+            os.chmod('fed.py', 0o755)  # noqa: S103
+            mutter('Setting BRZ_EDITOR to %r', f'{sys.executable} ./fed.py')
+            self.overrideEnv('BRZ_EDITOR', f'{sys.executable} ./fed.py')
 
     def test_edit_commit_message_without_infotext(self):
         self.make_uncommitted_tree()
@@ -367,7 +379,7 @@ if len(sys.argv) == 2:
 
 # GZ 2009-11-17: This wants moving to osutils when the errno checking code is
 class TestPlatformErrnoWorkarounds(TestCaseInTempDir):
-    """Ensuring workarounds enshrined in code actually serve a purpose"""
+    """Ensuring workarounds enshrined in code actually serve a purpose."""
 
     def test_subprocess_call_bad_file(self):
         if sys.platform != "win32":

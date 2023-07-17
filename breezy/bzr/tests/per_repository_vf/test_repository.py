@@ -16,15 +16,17 @@
 
 """Tests for repository implementations - tests a repository format."""
 
-from breezy import errors, gpg
+from breezy import errors, gpg, tests
 from breezy import repository as _mod_repository
 from breezy import revision as _mod_revision
-from breezy import tests
 from breezy.bzr import inventory, versionedfile, vf_repository
 from breezy.bzr.tests.per_repository_vf import (
-    TestCaseWithRepository, all_repository_vf_format_scenarios)
-from breezy.tests.matchers import MatchesAncestry
-from breezy.tests.scenarios import load_tests_apply_scenarios
+    TestCaseWithRepository,
+    all_repository_vf_format_scenarios,
+)
+
+from ....tests.matchers import MatchesAncestry
+from ....tests.scenarios import load_tests_apply_scenarios
 
 load_tests = load_tests_apply_scenarios
 
@@ -131,12 +133,13 @@ class TestRepository(TestCaseWithRepository):
     def test_get_serializer_format(self):
         repo = self.make_repository('.')
         format = repo.get_serializer_format()
-        self.assertEqual(repo._serializer.format_num, format)
+        self.assertEqual(repo._inventory_serializer.format_num, format)
 
     def test_add_revision_inventory_sha1(self):
         inv = inventory.Inventory(revision_id=b'A')
-        inv.root.revision = b'A'
-        inv.root.file_id = b'fixed-root'
+        root = inventory.InventoryDirectory(b'fixed-root', '', None)
+        root.revision = b'A'
+        inv.add(root)
         # Insert the inventory on its own to an identical repository, to get
         # its sha1.
         reference_repo = self.make_repository('reference_repo')
@@ -150,11 +153,10 @@ class TestRepository(TestCaseWithRepository):
         repo = self.make_repository('repo')
         repo.lock_write()
         repo.start_write_group()
-        root_id = inv.root.file_id
         repo.texts.add_lines((b'fixed-root', b'A'), [], [])
         repo.add_revision(b'A', _mod_revision.Revision(
             b'A', committer='B', timestamp=0,
-            timezone=0, message='C'), inv=inv)
+            timezone=0, message='C', parent_ids=[], properties={}, inventory_sha1=None), inv=inv)
         repo.commit_write_group()
         repo.unlock()
         repo.lock_read()
@@ -200,7 +202,6 @@ class TestRepository(TestCaseWithRepository):
         invs = tree.branch.repository.iter_inventories(revs)
         for rev_id, inv in zip(revs, invs):
             self.assertEqual(rev_id, inv.revision_id)
-            self.assertIsInstance(inv, inventory.CommonInventory)
 
     def test_item_keys_introduced_by(self):
         # Make a repo with one revision and one versioned file.
@@ -264,10 +265,10 @@ class TestRepository(TestCaseWithRepository):
                 'foo', b'content\n')
             try:
                 rev_key = (tree.commit("foo"),)
-            except errors.IllegalPath:
+            except errors.IllegalPath as e:
                 raise tests.TestNotApplicable(
                     'file_id %r cannot be stored on this'
-                    ' platform for this repo format' % (file_id,))
+                    ' platform for this repo format' % (file_id,)) from e
             if repo._format.rich_root_data:
                 root_commit = (tree.path2id(''),) + rev_key
                 keys = {root_commit}
@@ -327,9 +328,9 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         tree_a.add_parent_tree_id(b'ghost1')
         try:
             tree_a.commit('rev3', rev_id=b'rev3', allow_pointless=True)
-        except errors.RevisionNotPresent:
+        except errors.RevisionNotPresent as e:
             raise tests.TestNotApplicable(
-                "Cannot test with ghosts for this format.")
+                "Cannot test with ghosts for this format.") from e
         # add another reference to a ghost, and a second ghost.
         tree_a.add_parent_tree_id(b'ghost1')
         tree_a.add_parent_tree_id(b'ghost2')
@@ -392,13 +393,13 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         sha1 = repo.add_inventory(b'ghost', inv, [])
         rev = _mod_revision.Revision(
             timestamp=0, timezone=None, committer="Foo Bar <foo@example.com>",
-            message="Message", inventory_sha1=sha1, revision_id=b'ghost')
-        rev.parent_ids = [b'the_ghost']
+            message="Message", inventory_sha1=sha1, revision_id=b'ghost',
+            parent_ids=[b'the_ghost'], properties={})
         try:
             repo.add_revision(b'ghost', rev)
-        except (errors.NoSuchRevision, errors.RevisionNotPresent):
+        except (errors.NoSuchRevision, errors.RevisionNotPresent) as e:
             raise tests.TestNotApplicable(
-                "Cannot test with ghosts for this format.")
+                "Cannot test with ghosts for this format.") from e
 
         inv = inventory.Inventory(revision_id=b'the_ghost')
         inv.root.revision = b'the_ghost'
@@ -408,8 +409,9 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         sha1 = repo.add_inventory(b'the_ghost', inv, [])
         rev = _mod_revision.Revision(
             timestamp=0, timezone=None, committer="Foo Bar <foo@example.com>",
-            message="Message", inventory_sha1=sha1, revision_id=b'the_ghost')
-        rev.parent_ids = []
+            message="Message", inventory_sha1=sha1, revision_id=b'the_ghost',
+            properties={},
+            parent_ids=[])
         repo.add_revision(b'the_ghost', rev)
         # check its setup usefully
         inv_weave = repo.inventories

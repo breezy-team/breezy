@@ -22,9 +22,8 @@ import sys
 import tempfile
 from io import BytesIO
 
-from .. import diff, errors, osutils
+from .. import diff, errors, osutils, revisionspec, revisiontree, tests
 from .. import revision as _mod_revision
-from .. import revisionspec, revisiontree, tests
 from ..tests import EncodingAdapter, features
 from ..tests.scenarios import load_tests_apply_scenarios
 
@@ -52,8 +51,8 @@ def external_udiff_lines(old, new, use_stringio=False):
         output = tempfile.TemporaryFile()
     try:
         diff.external_diff('old', old, 'new', new, output, diff_opts=['-u'])
-    except errors.NoDiff:
-        raise tests.TestSkipped('external "diff" not present to test')
+    except errors.NoDiff as err:
+        raise tests.TestSkipped('external "diff" not present to test') from err
     output.seek(0, 0)
     lines = output.readlines()
     output.close()
@@ -72,8 +71,7 @@ class StubO:
     def check_types(self, testcase, expected_type):
         testcase.assertFalse(
             any(not isinstance(o, expected_type) for o in self.write_record),
-            "Not all writes of type {}: {!r}".format(
-                expected_type.__name__, self.write_record))
+            f"Not all writes of type {expected_type.__name__}: {self.write_record!r}")
 
 
 class TestDiffOptions(tests.TestCase):
@@ -89,27 +87,27 @@ class TestDiffOptions(tests.TestCase):
 
 class TestDiffOptionsScenarios(tests.TestCase):
 
-    scenarios = [(s, dict(style=s)) for s in diff.style_option_list]
+    scenarios = [(s, {'style': s}) for s in diff.style_option_list]
     style = None  # Set by load_tests_apply_scenarios from scenarios
 
     def test_unified_not_added(self):
         # Verify that for all valid style options, '-u' is not
         # appended to option list.
-        ret_opts = diff.default_style_unified(diff_opts=["{}".format(self.style)])
-        self.assertEqual(["{}".format(self.style)], ret_opts)
+        ret_opts = diff.default_style_unified(diff_opts=[f"{self.style}"])
+        self.assertEqual([f"{self.style}"], ret_opts)
 
 
 class TestDiff(tests.TestCase):
 
     def test_add_nl(self):
-        """diff generates a valid diff for patches that add a newline"""
+        """Diff generates a valid diff for patches that add a newline."""
         lines = udiff_lines([b'boo'], [b'boo\n'])
         self.check_patch(lines)
         self.assertEqual(lines[4], b'\\ No newline at end of file\n')
         ## "expected no-nl, got %r" % lines[4]
 
     def test_add_nl_2(self):
-        """diff generates a valid diff for patches that change last line and
+        """Diff generates a valid diff for patches that change last line and
         add a newline.
         """
         lines = udiff_lines([b'boo'], [b'goo\n'])
@@ -118,7 +116,7 @@ class TestDiff(tests.TestCase):
         ## "expected no-nl, got %r" % lines[4]
 
     def test_remove_nl(self):
-        """diff generates a valid diff for patches that change last line and
+        """Diff generates a valid diff for patches that change last line and
         add a newline.
         """
         lines = udiff_lines([b'boo\n'], [b'boo'])
@@ -127,17 +125,17 @@ class TestDiff(tests.TestCase):
         ## "expected no-nl, got %r" % lines[5]
 
     def check_patch(self, lines):
-        self.assertTrue(len(lines) > 1)
+        self.assertGreater(len(lines), 1)
         ## "Not enough lines for a file header for patch:\n%s" % "".join(lines)
         self.assertTrue(lines[0].startswith(b'---'))
         ## 'No orig line for patch:\n%s' % "".join(lines)
         self.assertTrue(lines[1].startswith(b'+++'))
         ## 'No mod line for patch:\n%s' % "".join(lines)
-        self.assertTrue(len(lines) > 2)
+        self.assertGreater(len(lines), 2)
         ## "No hunks for patch:\n%s" % "".join(lines)
         self.assertTrue(lines[2].startswith(b'@@'))
         ## "No hunk header for patch:\n%s" % "".join(lines)
-        self.assertTrue(b'@@' in lines[2][2:])
+        self.assertIn(b'@@', lines[2][2:])
         ## "Unterminated hunk header for patch:\n%s" % "".join(lines)
 
     def test_binary_lines(self):
@@ -172,7 +170,7 @@ class TestDiff(tests.TestCase):
         self.assertEqual(lines[1:], [b'\n'])
 
     def test_no_external_diff(self):
-        """Check that NoDiff is raised when diff is not available"""
+        """Check that NoDiff is raised when diff is not available."""
         # Make sure no 'diff' command is available
         # XXX: Weird, using None instead of '' breaks the test -- vila 20101216
         self.overrideEnv('PATH', '')
@@ -304,7 +302,7 @@ class TestDiff(tests.TestCase):
 class TestDiffFiles(tests.TestCaseInTempDir):
 
     def test_external_diff_binary(self):
-        """The output when using external diff should use diff's i18n error"""
+        """The output when using external diff should use diff's i18n error."""
         for lang in ('LANG', 'LC_ALL', 'LANGUAGE'):
             self.overrideEnv(lang, 'C')
         # Make sure external_diff doesn't fail in the current LANG
@@ -440,7 +438,7 @@ class TestDiffDates(tests.TestCaseWithTransport):
 ''')
 
     def test_show_diff_specified(self):
-        """A working tree filename can be used to identify a file"""
+        """A working tree filename can be used to identify a file."""
         self.wt.rename_one('file1', 'file1b')
         old_tree = self.b.repository.revision_tree(b'rev-1')
         new_tree = self.b.repository.revision_tree(b'rev-4')
@@ -449,7 +447,7 @@ class TestDiffDates(tests.TestCaseWithTransport):
         self.assertContainsRe(out, b'file1\t')
 
     def test_recursive_diff(self):
-        """Children of directories are matched"""
+        """Children of directories are matched."""
         os.mkdir('dir1')
         os.mkdir('dir2')
         self.wt.add(['dir1', 'dir2'])
@@ -465,7 +463,7 @@ class TestDiffDates(tests.TestCaseWithTransport):
 
 
 class TestShowDiffTrees(tests.TestCaseWithTransport):
-    """Direct tests for show_diff_trees"""
+    """Direct tests for show_diff_trees."""
 
     def test_modified_file(self):
         """Test when a file is modified."""
@@ -935,7 +933,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         self.assertReadableByAttrib(tree.basedir, 'file', r'work\\tree\\file$')
 
     def assertReadableByAttrib(self, cwd, relpath, regex):
-        proc = subprocess.Popen(['attrib', relpath],
+        proc = subprocess.Popen(['attrib', relpath],  # noqa: S607
                                 stdout=subprocess.PIPE,
                                 cwd=cwd)
         (result, err) = proc.communicate()
@@ -989,7 +987,7 @@ class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):
             dirname = scenario['info']['directory']
             filename = scenario['info']['filename']
 
-            self.overrideAttr(diffobj, '_fenc', lambda: encoding)
+            self.overrideAttr(diffobj, '_fenc', lambda: encoding)  # noqa: B023
             relpath = dirname + '/' + filename
             fullpath = diffobj._safe_filename('safe', relpath)
             self.assertEqual(fullpath,
@@ -1009,7 +1007,7 @@ class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):
             else:
                 encoding = 'iso-8859-1'
 
-            self.overrideAttr(diffobj, '_fenc', lambda: encoding)
+            self.overrideAttr(diffobj, '_fenc', lambda: encoding)  # noqa: B023
             relpath = dirname + '/' + filename
             fullpath = diffobj._safe_filename('safe', relpath)
             self.assertEqual(fullpath,

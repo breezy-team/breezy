@@ -81,8 +81,8 @@ class ChangeLogMerger(merge.ConfigurableFileMerger):
     def merge_text(self, params):
         """Merge changelog changes.
 
-         * new entries from other will float to the top
-         * edits to older entries are preserved
+        * new entries from other will float to the top
+        * edits to older entries are preserved
         """
         # Transform files into lists of changelog entries
         this_entries = changelog_entries(params.this_lines)
@@ -153,7 +153,7 @@ def merge_entries(base_entries, this_entries, other_entries,
     result_entries = []
     at_top = True
     for group in m3.merge_groups():
-        if 'changelog_merge' in debug.debug_flags:
+        if debug.debug_flag_enabled('changelog_merge'):
             mutter('merge group:\n%r', group)
         group_kind = group[0]
         if group_kind == 'conflict':
@@ -172,7 +172,7 @@ def merge_entries(base_entries, this_entries, other_entries,
                 # Changes not made at the top are always preserved as is, no
                 # need to try distinguish edits from adds and deletes.
                 edits_in_other = []
-            if 'changelog_merge' in debug.debug_flags:
+            if debug.debug_flag_enabled('changelog_merge'):
                 mutter('at_top: %r', at_top)
                 mutter('new_in_other: %r', new_in_other)
                 mutter('deleted_in_other: %r', deleted_in_other)
@@ -183,12 +183,12 @@ def merge_entries(base_entries, this_entries, other_entries,
             for old_entry, new_entry in edits_in_other:
                 try:
                     index = updated_this.index(old_entry)
-                except ValueError:
+                except ValueError as e:
                     # edited entry no longer present in this!  Just give up and
                     # declare a conflict.
-                    raise EntryConflict()
+                    raise EntryConflict() from e
                 updated_this[index] = new_entry
-            if 'changelog_merge' in debug.debug_flags:
+            if debug.debug_flag_enabled('changelog_merge'):
                 mutter('updated_this: %r', updated_this)
             if at_top:
                 # Float new entries from other to the top

@@ -19,16 +19,15 @@
 from io import BytesIO
 
 from ... import conflicts as _mod_conflicts
-from ... import errors, lock, osutils
+from ... import errors, lock
 from ... import revision as _mod_revision
 from ... import transport as _mod_transport
 from ...bzr import conflicts as _mod_bzr_conflicts
-from ...bzr import inventory
+from ...bzr import inventory, xml5
 from ...bzr import transform as bzr_transform
-from ...bzr import xml5
 from ...bzr.workingtree_3 import PreDirStateWorkingTree
 from ...mutabletree import MutableTree
-from ...transport.local import LocalTransport
+from ...transport.local import LocalTransport, file_kind
 from ...workingtree import WorkingTreeFormat
 
 
@@ -56,6 +55,9 @@ class WorkingTreeFormat2(WorkingTreeFormat):
 
     ignore_filename = '.bzrignore'
 
+    supports_setting_file_ids = True
+    """If this format allows setting the file id."""
+
     def get_format_description(self):
         """See WorkingTreeFormat.get_format_description()."""
         return "Working tree format 2"
@@ -69,7 +71,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         """
         sio = BytesIO()
         inv = inventory.Inventory()
-        xml5.serializer_v5.write_inventory(inv, sio, working=True)
+        xml5.inventory_serializer_v5.write_inventory(inv, sio, working=True)
         sio.seek(0)
         transport.put_file('inventory', sio, file_mode)
         transport.put_bytes('pending-merges', b'', file_mode)
@@ -111,11 +113,11 @@ class WorkingTreeFormat2(WorkingTreeFormat):
 
     def __init__(self):
         super().__init__()
-        from breezy.plugins.weave_fmt.bzrdir import BzrDirFormat6
+        from .bzrdir import BzrDirFormat6
         self._matchingcontroldir = BzrDirFormat6()
 
     def open(self, a_controldir, _found=False):
-        """Return the WorkingTree object for a_controldir
+        """Return the WorkingTree object for a_controldir.
 
         _found is a private parameter, do not use it. It is used to indicate
                if format probing has already been done.
@@ -191,7 +193,7 @@ class WorkingTree2(PreDirStateWorkingTree):
 
     def _iter_conflicts(self):
         conflicted = set()
-        for path, file_class, file_kind, entry in self.list_files():
+        for path, _file_class, _file_kind, _entry in self.list_files():
             stem = get_conflicted_stem(path)
             if stem is None:
                 continue
@@ -205,14 +207,14 @@ class WorkingTree2(PreDirStateWorkingTree):
             for conflicted in self._iter_conflicts():
                 text = True
                 try:
-                    if osutils.file_kind(self.abspath(conflicted)) != "file":
+                    if file_kind(self.abspath(conflicted)) != "file":
                         text = False
                 except _mod_transport.NoSuchFile:
                     text = False
                 if text is True:
                     for suffix in ('.THIS', '.OTHER'):
                         try:
-                            kind = osutils.file_kind(
+                            kind = file_kind(
                                 self.abspath(conflicted + suffix))
                             if kind != "file":
                                 text = False

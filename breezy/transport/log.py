@@ -72,8 +72,7 @@ class TransportLogDecorator(decorator.TransportDecorator):
 
     def iter_files_recursive(self):
         # needs special handling because it does not have a relpath parameter
-        mutter("%s %s"
-               % ('iter_files_recursive', self._decorated.base))
+        mutter(f"{'iter_files_recursive'} {self._decorated.base}")
         return self._call_and_log_result('iter_files_recursive', (), {})
 
     def _log_and_call(self, methodname, relpath, *args, **kwargs):
@@ -92,14 +91,14 @@ class TransportLogDecorator(decorator.TransportDecorator):
         try:
             result = getattr(self._decorated, methodname)(*args, **kwargs)
         except Exception as e:
-            mutter("  --> %s" % e)
-            mutter("      %.03fs" % (time.time() - before))
+            mutter(f"  --> {e}")
+            mutter(f"      {time.time() - before:.03f}s")
             raise
         return self._show_result(before, methodname, result)
 
     def _show_result(self, before, methodname, result):
         result_len = None
-        if isinstance(result, types.GeneratorType):
+        if isinstance(result, types.GeneratorType) or type(result).__name__ == 'list_iterator':
             # We now consume everything from the generator so that we can show
             # the results and the time it took to get them.  However, to keep
             # compatibility with callers that may specifically expect a result
@@ -124,7 +123,7 @@ class TransportLogDecorator(decorator.TransportDecorator):
             result_len = total_bytes
         else:
             shown_result = self._shorten(self._strip_tuple_parens(result))
-        mutter("  --> %s" % shown_result)
+        mutter(f"  --> {shown_result}")
         # The log decorator no longer shows the elapsed time or transfer rate
         # because they're available in the log prefixes and the transport
         # activity display respectively.
@@ -136,7 +135,7 @@ class TransportLogDecorator(decorator.TransportDecorator):
                 mutter("      %9.03fs %8dkB/s"
                        % (elapsed, result_len / elapsed / 1000))
             else:
-                mutter("      %9.03fs" % (elapsed))
+                mutter(f"      {elapsed:9.03f}s")
         return return_result
 
     def _shorten(self, x):

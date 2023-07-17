@@ -16,9 +16,8 @@
 
 """Merge logic for po_merge plugin."""
 
-from breezy.lazy_import import lazy_import
-
-from ... import config, merge
+from ... import config, merge, osutils, trace
+from ...lazy_import import lazy_import
 
 lazy_import(globals(), """
 import fnmatch
@@ -27,8 +26,6 @@ import tempfile
 
 from breezy import (
     cmdline,
-    osutils,
-    trace,
     )
 """)
 
@@ -97,16 +94,16 @@ class PoMerger(merge.PerFileMerger):
         for po_dir in self.po_dirs:
             glob = osutils.pathjoin(po_dir, self.po_glob)
             if fnmatch.fnmatch(po_path, glob):
-                trace.mutter('po {} matches: {}'.format(po_path, glob))
+                trace.mutter(f'po {po_path} matches: {glob}')
                 break
         else:
             trace.mutter('PoMerger did not match for %s and %s'
                          % (self.po_dirs, self.po_glob))
             return False
         # Do we have the corresponding .pot file
-        for path, file_class, kind, entry in self.merger.this_tree.list_files(
+        for path, _file_class, _kind, entry in self.merger.this_tree.list_files(
                 from_dir=po_dir, recursive=False):
-            pot_name, pot_file_id = path, entry
+            pot_name, _pot_file_id = path, entry
             if fnmatch.fnmatch(pot_name, self.pot_glob):
                 relpath = osutils.pathjoin(po_dir, pot_name)
                 self.pot_file_abspath = self.merger.this_tree.abspath(relpath)
@@ -117,14 +114,13 @@ class PoMerger(merge.PerFileMerger):
                 # user and he's happy OR the user needs to resolve the
                 # conflicts in the .pot file and use remerge.
                 # -- vila 2011-11-24
-                trace.mutter('will msgmerge %s using %s'
-                             % (po_path, self.pot_file_abspath))
+                trace.mutter(f'will msgmerge {po_path} using {self.pot_file_abspath}')
                 return True
         else:
             return False
 
     def _invoke(self, command):
-        trace.mutter('Will msgmerge: {}'.format(command))
+        trace.mutter(f'Will msgmerge: {command}')
         # We use only absolute paths so we don't care about the cwd
         proc = subprocess.Popen(cmdline.split(command),
                                 stdout=subprocess.PIPE,

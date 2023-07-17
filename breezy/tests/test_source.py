@@ -26,7 +26,7 @@ import sys
 
 import breezy.branch
 from breezy import osutils
-from breezy.tests import TestCase, TestSkipped, features
+from breezy.tests import TestCase, TestSkipped
 
 # Files which are listed here will be skipped when testing for Copyright (or
 # GPL) statements.
@@ -95,19 +95,18 @@ class TestApiUsage(TestSourceHelper):
 class TestSource(TestSourceHelper):
 
     def get_breezy_dir(self):
-        """Get the path to the root of breezy"""
+        """Get the path to the root of breezy."""
         source = self.source_file_name(breezy)
         source_dir = os.path.dirname(source)
 
         # Avoid the case when breezy is packaged in a zip file
         if not os.path.isdir(source_dir):
             raise TestSkipped(
-                'Cannot find breezy source directory. Expected %s'
-                % source_dir)
+                f'Cannot find breezy source directory. Expected {source_dir}')
         return source_dir
 
     def get_source_files(self, extensions=None):
-        """Yield all source files for bzr and breezy
+        """Yield all source files for bzr and breezy.
 
         :param our_files_only: If true, exclude files from included libraries
             or plugins.
@@ -135,14 +134,14 @@ class TestSource(TestSourceHelper):
                 yield fname, f.read()
 
     def is_our_code(self, fname):
-        """True if it's a "real" part of breezy rather than external code"""
+        """True if it's a "real" part of breezy rather than external code."""
         if '/util/' in fname or '/plugins/' in fname:
             return False
         else:
             return True
 
     def is_copyright_exception(self, fname):
-        """Certain files are allowed to be different"""
+        """Certain files are allowed to be different."""
         if not self.is_our_code(fname):
             return True
         for exc in COPYRIGHT_EXCEPTIONS:
@@ -151,7 +150,7 @@ class TestSource(TestSourceHelper):
         return False
 
     def is_license_exception(self, fname):
-        """Certain files are allowed to be different"""
+        """Certain files are allowed to be different."""
         if not self.is_our_code(fname):
             return True
         for exc in LICENSE_EXCEPTIONS:
@@ -160,7 +159,7 @@ class TestSource(TestSourceHelper):
         return False
 
     def test_tmpdir_not_in_source_files(self):
-        """When scanning for source files, we don't descend test tempdirs"""
+        """When scanning for source files, we don't descend test tempdirs."""
         for filename in self.get_source_files():
             if re.search(r'test....\.tmp', filename):
                 self.fail("get_source_file() returned filename %r "
@@ -168,7 +167,7 @@ class TestSource(TestSourceHelper):
                           % filename)
 
     def test_copyright(self):
-        """Test that all .py and .pyx files have a valid copyright statement"""
+        """Test that all .py and .pyx files have a valid copyright statement."""
         incorrect = []
 
         copyright_re = re.compile('#\\s*copyright.*(?=\n)', re.I)
@@ -185,7 +184,7 @@ class TestSource(TestSourceHelper):
             if not match:
                 match = copyright_re.search(text)
                 if match:
-                    incorrect.append((fname, 'found: {}'.format(match.group())))
+                    incorrect.append((fname, f'found: {match.group()}'))
                 else:
                     incorrect.append((fname, 'no copyright line found\n'))
             else:
@@ -203,7 +202,7 @@ class TestSource(TestSourceHelper):
                          " breezy/tests/test_source.py",
                          # this is broken to prevent a false match
                          "or add '# Copyright (C)"
-                         " 2007 Bazaar hackers' to these files:",
+                         " 2023 Breezy developers ' to these files:",
                          "",
                          ]
             for fname, comment in incorrect:
@@ -260,7 +259,7 @@ class TestSource(TestSourceHelper):
             dict_[fname].append(line_no)
 
     def _format_message(self, dict_, message):
-        files = sorted(["{}: {}".format(f, ', '.join([str(i + 1) for i in lines]))
+        files = sorted([f"{f}: {', '.join([str(i + 1) for i in lines])}"
                         for f, lines in dict_.items()])
         return message + '\n\n    %s' % ('\n    '.join(files))
 
@@ -310,7 +309,7 @@ class TestSource(TestSourceHelper):
             self.fail('\n\n'.join(problems))
 
     def test_no_asserts(self):
-        """bzr shouldn't use the 'assert' statement."""
+        """Bzr shouldn't use the 'assert' statement."""
         # assert causes too much variation between -O and not, and tends to
         # give bad errors to the user
         badfiles = []
@@ -371,7 +370,7 @@ class TestSource(TestSourceHelper):
                 'The following functions had "cannot raise" comments'
                 ' but did have an except clause set:')
             for fname, func in both_exc_and_no_exc:
-                error_msg.append('{}:{}'.format(fname, func))
+                error_msg.append(f'{fname}:{func}')
             error_msg.extend(('', ''))
         if missing_except:
             error_msg.append(
@@ -380,7 +379,7 @@ class TestSource(TestSourceHelper):
             error_msg.append(
                 'Either add an except or append "# cannot_raise".')
             for fname, func in missing_except:
-                error_msg.append('{}:{}'.format(fname, func))
+                error_msg.append(f'{fname}:{func}')
             error_msg.extend(('', ''))
         if error_msg:
             self.fail('\n'.join(error_msg))

@@ -22,21 +22,40 @@ For concrete class tests see this file, and for storage formats tests
 also see this file.
 """
 
+import hashlib
 from stat import S_ISDIR
 
 import breezy
-from breezy import controldir, errors, osutils, repository
+from breezy import (
+    controldir,
+    errors,
+    osutils,
+    repository,
+    tests,
+    transport,
+    upgrade,
+    workingtree,
+)
 from breezy import revision as _mod_revision
-from breezy import tests, transport, upgrade, workingtree
-from breezy.bzr import (btree_index, bzrdir, groupcompress_repo, inventory,
-                        knitpack_repo, knitrepo, pack_repo)
+from breezy.bzr import (
+    btree_index,
+    bzrdir,
+    groupcompress_repo,
+    inventory,
+    knitpack_repo,
+    knitrepo,
+    pack_repo,
+    versionedfile,
+    vf_repository,
+    vf_search,
+)
 from breezy.bzr import repository as bzrrepository
-from breezy.bzr import versionedfile, vf_repository, vf_search
-from breezy.bzr.btree_index import BTreeBuilder, BTreeGraphIndex
-from breezy.bzr.index import GraphIndex
-from breezy.errors import UnknownFormatError
-from breezy.repository import RepositoryFormat
 from breezy.tests import TestCase, TestCaseWithTransport
+
+from ...errors import UnknownFormatError
+from ...repository import RepositoryFormat
+from ..btree_index import BTreeBuilder, BTreeGraphIndex
+from ..index import GraphIndex
 
 
 class TestDefaultFormat(TestCase):
@@ -46,7 +65,7 @@ class TestDefaultFormat(TestCase):
         old_default_help = controldir.format_registry.get_help('default')
         private_default = old_default().repository_format.__class__
         old_format = repository.format_registry.get_default()
-        self.assertTrue(isinstance(old_format, private_default))
+        self.assertIsInstance(old_format, private_default)
 
         def make_sample_bzrdir():
             my_bzrdir = bzrdir.BzrDirMetaFormat1()
@@ -72,7 +91,7 @@ class TestDefaultFormat(TestCase):
 
 
 class SampleRepositoryFormat(bzrrepository.RepositoryFormatMetaDir):
-    """A sample format
+    """A sample format.
 
     this format is initializable, unsupported to aid in testing the
     open and open(unsupported=True) routines.
@@ -84,7 +103,7 @@ class SampleRepositoryFormat(bzrrepository.RepositoryFormatMetaDir):
         return b"Sample .bzr repository format."
 
     def initialize(self, a_controldir, shared=False):
-        """Initialize a repository in a BzrDir"""
+        """Initialize a repository in a BzrDir."""
         t = a_controldir.get_repository_transport(self)
         t.put_bytes('format', self.get_format_string())
         return 'A bzr repository dir'
@@ -97,9 +116,7 @@ class SampleRepositoryFormat(bzrrepository.RepositoryFormatMetaDir):
 
 
 class SampleExtraRepositoryFormat(repository.RepositoryFormat):
-    """A sample format that can not be used in a metadir
-
-    """
+    """A sample format that can not be used in a metadir."""
 
     def get_format_string(self):
         raise NotImplementedError
@@ -246,7 +263,7 @@ class TestFormatKnit1(TestCaseWithTransport):
                                  f.read())
 
     def check_knits(self, t):
-        """check knit content for a repository."""
+        """Check knit content for a repository."""
         self.assertHasKnit(t, 'inventory')
         self.assertHasKnit(t, 'revisions')
         self.assertHasKnit(t, 'signatures')
@@ -300,7 +317,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         self.check_knits(t)
 
     def test_deserialise_sets_root_revision(self):
-        """We must have a inventory.root.revision
+        """We must have a inventory.root.revision.
 
         Old versions of the XML5 serializer did not set the revision_id for
         the whole inventory. So we grab the one from the expected text. Which
@@ -313,7 +330,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         self.assertEqual(b'test-rev-id', inv.root.revision)
 
     def test_deserialise_uses_global_revision_id(self):
-        """If it is set, then we re-use the global revision id"""
+        """If it is set, then we re-use the global revision id."""
         repo = self.make_repository(
             '.', format=controldir.format_registry.get('knit')())
         inv_xml = (b'<inventory format="5" revision_id="other-rev-id">\n'
@@ -336,7 +353,8 @@ class DummyRepository:
     """A dummy repository for testing."""
 
     _format = None
-    _serializer = None
+    _revision_serializer = None
+    _inventory_serializer = None
 
     def supports_rich_root(self):
         if self._format is not None:
@@ -408,13 +426,15 @@ class TestInterRepository(TestCaseWithTransport):
         dummy_b._format = RepositoryFormat()
         repo = self.make_repository('.')
         # hack dummies to look like repo somewhat.
-        dummy_a._serializer = repo._serializer
+        dummy_a._revision_serializer = repo._revision_serializer
+        dummy_a._inventory_serializer = repo._inventory_serializer
         dummy_a._format.supports_tree_reference = (
             repo._format.supports_tree_reference)
         dummy_a._format.rich_root_data = repo._format.rich_root_data
         dummy_a._format.supports_full_versioned_files = (
             repo._format.supports_full_versioned_files)
-        dummy_b._serializer = repo._serializer
+        dummy_b._revision_serializer = repo._revision_serializer
+        dummy_b._inventory_serializer = repo._inventory_serializer
         dummy_b._format.supports_tree_reference = (
             repo._format.supports_tree_reference)
         dummy_b._format.rich_root_data = repo._format.rich_root_data
@@ -471,7 +491,7 @@ class TestRepositoryConverter(TestCaseWithTransport):
         with breezy.ui.ui_factory.nested_progress_bar() as pb:
             converter.convert(repo, pb)
         repo = repo_dir.open_repository()
-        self.assertTrue(isinstance(target_format, repo._format.__class__))
+        self.assertIsInstance(target_format, repo._format.__class__)
 
 
 class TestRepositoryFormatKnit3(TestCaseWithTransport):
@@ -491,7 +511,7 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         self.assertEqual(True, repo._format._fetch_uses_deltas)
 
     def test_convert(self):
-        """Ensure the upgrade adds weaves for roots"""
+        """Ensure the upgrade adds weaves for roots."""
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = knitrepo.RepositoryFormatKnit1()
         tree = self.make_branch_and_tree('.', format)
@@ -611,8 +631,8 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         tree.branch.repository.pack(hint=combine)
         final = tree.branch.repository._pack_collection.names()
         self.assertLength(2, final)
-        self.assertFalse(combine[0] in final)
-        self.assertFalse(combine[1] in final)
+        self.assertNotIn(combine[0], final)
+        self.assertNotIn(combine[1], final)
         self.assertSubset(to_keep, final)
 
     def test_stream_source_to_gc(self):
@@ -687,7 +707,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
                 for record in substream:
                     full_chk_records.add(record.key)
             else:
-                self.fail('Should not be getting a stream of {}'.format(vf_name))
+                self.fail(f'Should not be getting a stream of {vf_name}')
         # We have 257 records now. This is because we have 1 root page, and 256
         # leaf pages in a complete listing.
         self.assertEqual(257, len(full_chk_records))
@@ -854,9 +874,9 @@ class TestWithBrokenRepo(TestCaseWithTransport):
             repo.texts.add_lines((inv.root.file_id, b'rev1a'), [], [])
             repo.add_inventory(b'rev1a', inv, [])
             revision = _mod_revision.Revision(
-                b'rev1a',
+                b'rev1a', properties={},
                 committer='jrandom@example.com', timestamp=0,
-                inventory_sha1='', timezone=0, message='foo', parent_ids=[])
+                inventory_sha1=None, timezone=0, message='foo', parent_ids=[])
             repo.add_revision(b'rev1a', revision, inv)
 
             # make rev1b, which has no Revision, but has an Inventory, and
@@ -897,8 +917,8 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         repo.add_inventory(revision_id, inv, parent_ids)
         revision = _mod_revision.Revision(
             revision_id,
-            committer='jrandom@example.com', timestamp=0, inventory_sha1='',
-            timezone=0, message='foo', parent_ids=parent_ids)
+            committer='jrandom@example.com', timestamp=0, inventory_sha1=None,
+            timezone=0, message='foo', parent_ids=parent_ids, properties={})
         repo.add_revision(revision_id, revision, inv)
 
     def add_file(self, repo, inv, filename, revision, parents):
@@ -1023,10 +1043,10 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         packs._remove_pack_from_memory(pack)
         # Simulate a concurrent update by renaming the .pack file and one of
         # the indices
-        packs.transport.rename('packs/{}.pack'.format(names[0]),
-                               'obsolete_packs/{}.pack'.format(names[0]))
-        packs.transport.rename('indices/{}.iix'.format(names[0]),
-                               'obsolete_packs/{}.iix'.format(names[0]))
+        packs.transport.rename(f'packs/{names[0]}.pack',
+                               f'obsolete_packs/{names[0]}.pack')
+        packs.transport.rename(f'indices/{names[0]}.iix',
+                               f'obsolete_packs/{names[0]}.iix')
         # Now trigger the obsoletion, and ensure that all the remaining files
         # are still renamed
         packs._obsolete_packs([pack])
@@ -1197,7 +1217,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
                 packs._pack_transport, name, rev_index, inv_index, txt_index,
                 sig_index), pack_1)
         # and the same instance should be returned on successive calls.
-        self.assertTrue(pack_1 is packs.get_pack_by_name(name))
+        self.assertIs(pack_1, packs.get_pack_by_name(name))
 
     def test_reload_pack_names_new_entry(self):
         tree, r, packs, revs = self.make_packs_and_alt_repo()
@@ -1334,7 +1354,8 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
 
     def test_pack_no_obsolete_packs_directory(self):
         """Bug #314314, don't fail if obsolete_packs directory does
-        not exist."""
+        not exist.
+        """
         tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
         r.control_transport.rmdir('obsolete_packs')
         packs._clear_obsolete_packs()
@@ -1344,16 +1365,16 @@ class TestPack(TestCaseWithTransport):
     """Tests for the Pack object."""
 
     def assertCurrentlyEqual(self, left, right):
-        self.assertTrue(left == right)
-        self.assertTrue(right == left)
-        self.assertFalse(left != right)
-        self.assertFalse(right != left)
+        self.assertEqual(left, right)
+        self.assertEqual(right, left)
+        self.assertEqual(left, right)
+        self.assertEqual(right, left)
 
     def assertCurrentlyNotEqual(self, left, right):
-        self.assertFalse(left == right)
-        self.assertFalse(right == left)
-        self.assertTrue(left != right)
-        self.assertTrue(right != left)
+        self.assertNotEqual(left, right)
+        self.assertNotEqual(right, left)
+        self.assertNotEqual(left, right)
+        self.assertNotEqual(right, left)
 
     def test___eq____ne__(self):
         left = pack_repo.ExistingPack('', '', '', '', '', '')
@@ -1411,10 +1432,10 @@ class TestNewPack(TestCaseWithTransport):
         self.addCleanup(pack.abort)  # Make sure the write stream gets closed
         self.assertIsInstance(pack.revision_index, BTreeBuilder)
         self.assertIsInstance(pack.inventory_index, BTreeBuilder)
-        self.assertIsInstance(pack._hash, type(osutils.md5()))
-        self.assertTrue(pack.upload_transport is upload_transport)
-        self.assertTrue(pack.index_transport is index_transport)
-        self.assertTrue(pack.pack_transport is pack_transport)
+        self.assertIsInstance(pack._hash, type(hashlib.md5()))  # noqa: S324
+        self.assertIs(pack.upload_transport, upload_transport)
+        self.assertIs(pack.index_transport, index_transport)
+        self.assertIs(pack.pack_transport, pack_transport)
         self.assertEqual(None, pack.index_sizes)
         self.assertEqual(20, len(pack.random_name))
         self.assertIsInstance(pack.random_name, str)
@@ -1498,7 +1519,7 @@ class TestGCCHKPacker(TestCaseWithTransport):
         return builder.get_branch()
 
     def make_branch_with_disjoint_inventory_and_revision(self):
-        """a repo with separate packs for a revisions Revision and Inventory.
+        """A repo with separate packs for a revisions Revision and Inventory.
 
         There will be one pack file that holds the Revision content, and one
         for the Inventory content.

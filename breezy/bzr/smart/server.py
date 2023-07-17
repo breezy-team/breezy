@@ -110,7 +110,7 @@ class SmartTCPServer:
         try:
             self._server_socket.bind(sockaddr)
         except self._socket_error as message:
-            raise errors.CannotBindAddress(host, port, message)
+            raise errors.CannotBindAddress(host, port, message) from message
         self._sockname = self._server_socket.getsockname()
         self.port = self._sockname[1]
         self._server_socket.listen(1)
@@ -224,7 +224,7 @@ class SmartTCPServer:
             except KeyboardInterrupt:
                 # dont log when CTRL-C'd.
                 raise
-            except Exception as e:
+            except Exception:
                 trace.report_exception(sys.exc_info(), sys.stderr)
                 raise
         finally:
@@ -242,8 +242,8 @@ class SmartTCPServer:
         self._fully_stopped.set()
 
     def get_url(self):
-        """Return the url of the server"""
-        return "bzr://{}:{}/".format(self._sockname[0], self._sockname[1])
+        """Return the url of the server."""
+        return f"bzr://{self._sockname[0]}:{self._sockname[1]}/"
 
     def _make_handler(self, conn):
         return medium.SmartServerSocketStreamMedium(
@@ -494,7 +494,7 @@ def serve_bzr(transport, host=None, port=None, inet=False, timeout=None):
     try:
         bzr_server.set_up(transport, host, port, inet, timeout)
         bzr_server.smart_server.serve()
-    except:
+    except BaseException:
         hook_caught_exception = False
         for hook in SmartTCPServer.hooks['server_exception']:
             hook_caught_exception = hook(sys.exc_info())

@@ -17,10 +17,11 @@
 
 """Tests specific to Branch implementations that use foreign VCS'es."""
 
-from breezy.branch import UnstackableBranchFormat
-from breezy.errors import IncompatibleFormat
-from breezy.revision import NULL_REVISION
 from breezy.tests import TestCaseWithTransport
+
+from ...branch import UnstackableBranchFormat
+from ...errors import IncompatibleFormat
+from ...revision import NULL_REVISION
 
 
 class ForeignBranchFactory:

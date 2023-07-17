@@ -20,13 +20,14 @@ import stat
 
 from breezy import bzr, controldir, lockdir, ui, urlutils
 from breezy.bzr import bzrdir
-from breezy.bzr.knitpack_repo import RepositoryFormatKnitPack1
 from breezy.tests import TestCaseWithTransport, features
-from breezy.tests.test_sftp_transport import TestCaseWithSFTPServer
+
+from ...bzr.knitpack_repo import RepositoryFormatKnitPack1
+from ..test_sftp_transport import TestCaseWithSFTPServer
 
 
 class OldBzrDir(bzrdir.BzrDirMeta1):
-    """An test brz dir implementation"""
+    """An test brz dir implementation."""
 
     def needs_format_conversion(self, format):
         return not isinstance(format, self.__class__)
@@ -75,8 +76,7 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         (out, err) = self.run_bzr(
             ['upgrade', self.get_readonly_url("old_format_branch")], retcode=3)
         err_msg = 'Upgrade URL cannot work with readonly URLs.'
-        self.assertEqualDiff('conversion error: %s\nbrz: ERROR: %s\n'
-                             % (err_msg, err_msg),
+        self.assertEqualDiff(f'conversion error: {err_msg}\nbrz: ERROR: {err_msg}\n',
                              err)
 
     def test_upgrade_up_to_date(self):
@@ -138,17 +138,18 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         backup_dir = 'backup.bzr.~1~'
         (out, err) = self.run_bzr(
             ['upgrade', '--format=2a', url])
-        self.assertEqualDiff("""Upgrading branch {}/ ...
-starting upgrade of {}/
-making backup of {}/.bzr
-  to {}/{}
+        self.assertEqualDiff(f"""Upgrading branch {display_url}/ ...
+starting upgrade of {display_url}/
+making backup of {display_url}/.bzr
+  to {display_url}/{backup_dir}
 starting upgrade from old test format to 2a
 finished
-""".format(display_url, display_url, display_url, display_url, backup_dir), out)
+""", out)
         self.assertEqualDiff("", err)
-        self.assertTrue(isinstance(
+        self.assertIsInstance(
             controldir.ControlDir.open(self.get_url(path))._format,
-            bzrdir.BzrDirMetaFormat1))
+            bzrdir.BzrDirMetaFormat1
+        )
 
     def test_upgrade_explicit_knit(self):
         # users can force an upgrade to knit format from a metadir pack 0.92
@@ -161,21 +162,25 @@ finished
         backup_dir = 'backup.bzr.~1~'
         (out, err) = self.run_bzr(
             ['upgrade', '--format=pack-0.92', url])
-        self.assertEqualDiff("""Upgrading branch {}/ ...
-starting upgrade of {}/
-making backup of {}/.bzr
-  to {}/{}
+        self.assertEqualDiff(f"""Upgrading branch {display_url}/ ...
+starting upgrade of {display_url}/
+making backup of {display_url}/.bzr
+  to {display_url}/{backup_dir}
 starting repository conversion
 repository converted
 finished
-""".format(display_url, display_url, display_url, display_url, backup_dir),
+""",
             out)
         self.assertEqualDiff("", err)
         converted_dir = controldir.ControlDir.open(self.get_url('branch'))
-        self.assertTrue(isinstance(converted_dir._format,
-                                   bzrdir.BzrDirMetaFormat1))
-        self.assertTrue(isinstance(converted_dir.open_repository()._format,
-                                   RepositoryFormatKnitPack1))
+        self.assertIsInstance(
+            converted_dir._format,
+            bzrdir.BzrDirMetaFormat1
+        )
+        self.assertIsInstance(
+            converted_dir.open_repository()._format,
+            RepositoryFormatKnitPack1
+        )
 
     def test_upgrade_repo(self):
         self.run_bzr('init-shared-repository --format=pack-0.92 repo')
@@ -185,7 +190,7 @@ finished
         # Confirm that an option is legal. (Lower level tests are
         # expected to validate the actual functionality.)
         self.run_bzr('init --format=pack-0.92 branch-foo')
-        self.run_bzr('upgrade --format=2a branch-foo {}'.format(option_str))
+        self.run_bzr(f'upgrade --format=2a branch-foo {option_str}')
 
     def assertBranchFormat(self, dir, format):
         branch = controldir.ControlDir.open_tree_or_branch(self.get_url(dir))[
@@ -206,7 +211,7 @@ finished
         self.assertBranchFormat('branch-foo', 'pack-0.92')
 
     def test_upgrade_permission_check(self):
-        """'backup.bzr' should retain permissions of .bzr. Bug #262450"""
+        """'backup.bzr' should retain permissions of .bzr. Bug #262450."""
         self.requireFeature(features.posix_permissions_feature)
         old_perms = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
         backup_dir = 'backup.bzr.~1~'
@@ -214,7 +219,7 @@ finished
         os.chmod('.bzr', old_perms)
         self.run_bzr('upgrade')
         new_perms = os.stat(backup_dir).st_mode & 0o777
-        self.assertTrue(new_perms == old_perms)
+        self.assertEqual(new_perms, old_perms)
 
     def test_upgrade_with_existing_backup_dir(self):
         self.make_branch_and_tree("old_format_branch", format="knit")
@@ -228,19 +233,20 @@ finished
         t.mkdir(backup_dir1)
         (out, err) = self.run_bzr(
             ['upgrade', '--format=2a', url])
-        self.assertEqualDiff("""Upgrading branch {}/ ...
-starting upgrade of {}/
-making backup of {}/.bzr
-  to {}/{}
+        self.assertEqualDiff(f"""Upgrading branch {display_url}/ ...
+starting upgrade of {display_url}/
+making backup of {display_url}/.bzr
+  to {display_url}/{backup_dir2}
 starting repository conversion
 repository converted
 finished
-""".format(display_url, display_url, display_url, display_url, backup_dir2), out)
+""", out)
         self.assertEqualDiff("", err)
-        self.assertTrue(isinstance(
+        self.assertIsInstance(
             controldir.ControlDir.open(
                 self.get_url("old_format_branch"))._format,
-            bzrdir.BzrDirMetaFormat1))
+            bzrdir.BzrDirMetaFormat1
+        )
         self.assertTrue(t.has(backup_dir2))
 
 
@@ -255,14 +261,14 @@ class SFTPTests(TestCaseWithSFTPServer):
                                                     'utf-8')
         out, err = self.run_bzr(['upgrade', '--format=2a', url])
         backup_dir = 'backup.bzr.~1~'
-        self.assertEqualDiff("""Upgrading branch {} ...
-starting upgrade of {}
-making backup of {}.bzr
-  to {}{}
+        self.assertEqualDiff(f"""Upgrading branch {display_url} ...
+starting upgrade of {display_url}
+making backup of {display_url}.bzr
+  to {display_url}{backup_dir}
 starting repository conversion
 repository converted
 finished
-""".format(display_url, display_url, display_url, display_url, backup_dir), out)
+""", out)
         self.assertEqual('', err)
 
 
@@ -281,10 +287,10 @@ class UpgradeRecommendedTests(TestCaseWithTransport):
         self.run_bzr('init --format=knit a')
         out, err = self.run_bzr('revno a')
         if err.find('upgrade') > -1:
-            self.fail("message shouldn't suggest upgrade:\n%s" % err)
+            self.fail(f"message shouldn't suggest upgrade:\n{err}")
 
     def test_upgrade_shared_repo(self):
-        repo = self.make_repository('repo', format='2a', shared=True)
-        branch = self.make_branch_and_tree('repo/branch', format="pack-0.92")
+        self.make_repository('repo', format='2a', shared=True)
+        self.make_branch_and_tree('repo/branch', format="pack-0.92")
         self.get_transport('repo/branch/.bzr/repository').delete_tree('.')
         out, err = self.run_bzr(['upgrade'], working_dir='repo/branch')

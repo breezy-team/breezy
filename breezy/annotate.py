@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""File annotate based on weave storage"""
+"""File annotate based on weave storage."""
 
 # TODO: Choice of more or less verbose formats:
 #
@@ -28,15 +28,6 @@
 import sys
 import time
 
-from .lazy_import import lazy_import
-
-lazy_import(globals(), """
-import patiencediff
-
-from breezy import (
-    tsort,
-    )
-""")
 from . import config, errors, osutils
 from .repository import _strip_NULL_ghosts
 from .revision import CURRENT_REVISION, Revision
@@ -72,15 +63,18 @@ def annotate_file_tree(tree, path, to_file, verbose=False, full=False,
         # Create a virtual revision to represent the current tree state.
         # Should get some more pending commit attributes, like pending tags,
         # bugfixes etc.
-        current_rev = Revision(CURRENT_REVISION)
-        current_rev.parent_ids = tree.get_parent_ids()
         try:
-            current_rev.committer = branch.get_config_stack().get('email')
+            committer = branch.get_config_stack().get('email')
         except errors.NoWhoami:
-            current_rev.committer = 'local user'
-        current_rev.message = "?"
-        current_rev.timestamp = round(time.time(), 3)
-        current_rev.timezone = osutils.local_time_offset()
+            committer = 'local user'
+        current_rev = Revision(
+                CURRENT_REVISION,
+                parent_ids=tree.get_parent_ids(),
+                committer=committer, message="?",
+                properties={},
+                inventory_sha1=None,
+                timestamp=round(time.time(), 3),
+                timezone=osutils.local_time_offset())
     else:
         current_rev = None
     annotation = list(_expand_annotations(
@@ -107,7 +101,7 @@ def _print_annotations(annotation, verbose, to_file, full, encoding):
 
     # Output the annotations
     prevanno = ''
-    for (revno_str, author, date_str, line_rev_id, text) in annotation:
+    for (revno_str, author, date_str, _line_rev_id, text) in annotation:
         if verbose:
             anno = '%-*s %-*s %8s ' % (max_revno_len, revno_str,
                                        max_origin_len, author, date_str)
@@ -120,7 +114,7 @@ def _print_annotations(annotation, verbose, to_file, full, encoding):
         # GZ 2017-05-21: Writing both unicode annotation and bytes from file
         # which the given to_file must cope with.
         to_file.write(anno)
-        to_file.write('| {}\n'.format(text.decode(encoding)))
+        to_file.write(f'| {text.decode(encoding)}\n')
         prevanno = anno
 
 
@@ -150,6 +144,7 @@ def _expand_annotations(annotations, branch, current_rev=None):
     :param revision_id_to_revno: A map from id to revision numbers.
     :param branch: A locked branch to query for revision details.
     """
+    from . import tsort
     repository = branch.repository
     revision_ids = {o for o, t in annotations}
     if current_rev is not None:
@@ -268,6 +263,7 @@ def reannotate(parents_lines, new_lines, new_revision_id,
 
 def _reannotate(parent_lines, new_lines, new_revision_id,
                 matching_blocks=None):
+    import patiencediff
     new_cur = 0
     if matching_blocks is None:
         plain_parent_lines = [l for r, l in parent_lines]
@@ -284,6 +280,7 @@ def _reannotate(parent_lines, new_lines, new_revision_id,
 
 
 def _get_matching_blocks(old, new):
+    import patiencediff
     matcher = patiencediff.PatienceSequenceMatcher(None, old, new)
     return matcher.get_matching_blocks()
 
@@ -433,4 +430,4 @@ try:
     from breezy._annotator_pyx import Annotator
 except ImportError as e:
     osutils.failed_to_load_extension(e)
-    from breezy._annotator_py import Annotator  # noqa: F401
+    from ._annotator_py import Annotator  # noqa: F401

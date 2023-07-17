@@ -137,14 +137,14 @@ class FIFOCache(dict):
         raise NotImplementedError(self.popitem)
 
     def setdefault(self, key, defaultval=None):
-        """similar to dict.setdefault"""
+        """Similar to dict.setdefault."""
         if key in self:
             return self[key]
         self[key] = defaultval
         return defaultval
 
     def update(self, *args, **kwargs):
-        """Similar to dict.update()"""
+        """Similar to dict.update()."""
         if len(args) == 1:
             arg = args[0]
             if isinstance(arg, dict):
@@ -154,8 +154,7 @@ class FIFOCache(dict):
                 for key, val in args[0]:
                     self.add(key, val)
         elif len(args) > 1:
-            raise TypeError('update expected at most 1 argument, got %d'
-                            % len(args))
+            raise TypeError(f'update expected at most 1 argument, got {len(args)}')
         if kwargs:
             for key in kwargs:
                 self.add(key, kwargs[key])

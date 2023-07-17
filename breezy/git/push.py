@@ -40,14 +40,10 @@ class GitPushResult(PushResult):
 
 
 class MissingObjectsIterator:
-    """Iterate over git objects that are missing from a target repository.
-
-    """
+    """Iterate over git objects that are missing from a target repository."""
 
     def __init__(self, store, source, pb=None):
-        """Create a new missing objects iterator.
-
-        """
+        """Create a new missing objects iterator."""
         self.source = source
         self._object_store = store
         self._pending = []
@@ -80,8 +76,7 @@ class MissingObjectsIterator:
                 commit = obj
             self._pending.append((obj, path))
         if commit is None:
-            raise AssertionError("no commit object generated for revision %s" %
-                                 revid)
+            raise AssertionError(f"no commit object generated for revision {revid}")
         return commit.id
 
     def __len__(self):
@@ -117,6 +112,6 @@ def remote_divergence(old_sha, new_sha, store):
         raise TypeError(old_sha)
     if not isinstance(new_sha, bytes):
         raise TypeError(new_sha)
-    from breezy.graph import Graph
+    from ..graph import Graph
     graph = Graph(ObjectStoreParentsProvider(store))
     return not graph.is_ancestor(old_sha, new_sha)

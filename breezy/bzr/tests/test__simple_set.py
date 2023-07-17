@@ -220,7 +220,7 @@ class TestSimpleSet(tests.TestCase):
         # We use this clumsy notation, because otherwise the refcounts are off.
         # I'm guessing the python compiler sees it is a static tuple, and adds
         # it to the function variables, or somesuch
-        k1 = tuple(['foo'])
+        k1 = tuple(['foo'])  # noqa: C409
         self.assertRefcount(1, k1)
         self.assertIs(k1, obj.add(k1))
         self.assertFillState(1, 1, 0x3ff, obj)
@@ -230,7 +230,7 @@ class TestSimpleSet(tests.TestCase):
         self.assertIs(k1, ktest)
         del ktest
         self.assertRefcount(2, k1)
-        k2 = tuple(['foo'])
+        k2 = tuple(['foo'])  # noqa: C409
         self.assertRefcount(1, k2)
         self.assertIsNot(k1, k2)
         # doesn't add anything, so the counters shouldn't be adjusted
@@ -246,7 +246,7 @@ class TestSimpleSet(tests.TestCase):
         obj.discard(k1)
         self.assertFillState(0, 1, 0x3ff, obj)
         self.assertRefcount(1, k1)
-        k3 = tuple(['bar'])
+        k3 = tuple(['bar'])  # noqa: C409
         self.assertRefcount(1, k3)
         self.assertIs(k3, obj.add(k3))
         self.assertFillState(1, 2, 0x3ff, obj)
@@ -259,9 +259,9 @@ class TestSimpleSet(tests.TestCase):
 
     def test_discard(self):
         obj = self.module.SimpleSet()
-        k1 = tuple(['foo'])
-        k2 = tuple(['foo'])
-        k3 = tuple(['bar'])
+        k1 = tuple(['foo'])  # noqa: C409
+        k2 = tuple(['foo'])  # noqa: C409
+        k3 = tuple(['bar'])  # noqa: C409
         self.assertRefcount(1, k1)
         self.assertRefcount(1, k2)
         self.assertRefcount(1, k3)
@@ -355,7 +355,7 @@ class TestSimpleSet(tests.TestCase):
         # dummy values in there
         self.assertFillState(0, obj.fill, 0x3ff, obj)
         # but there should be fewer than 1/5th dummy entries
-        self.assertTrue(obj.fill < 1024 / 5)
+        self.assertLess(obj.fill, 1024 / 5)
 
     def test__iter__(self):
         obj = self.module.SimpleSet()
@@ -386,4 +386,4 @@ class TestSimpleSet(tests.TestCase):
         # us only the size of the object, and not its table. We know the table
         # is at least 4bytes*1024entries in size.
         obj = self.module.SimpleSet()
-        self.assertTrue(obj.__sizeof__() > 4096)
+        self.assertGreater(obj.__sizeof__(), 4096)

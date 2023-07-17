@@ -23,7 +23,10 @@ class TestExtract(TestCaseWithTransport):
     def test_extract(self):
         self.build_tree(['a/', 'a/b/', 'a/b/c', 'a/d'])
         wt = self.make_branch_and_tree('a', format='rich-root-pack')
-        wt.add(['b', 'b/c', 'd'], ids=[b'b-id', b'c-id', b'd-id'])
+        if wt.supports_setting_file_ids():
+            wt.add(['b', 'b/c', 'd'], ids=[b'b-id', b'c-id', b'd-id'])
+        else:
+            wt.add(['b', 'b/c', 'd'])
         wt.commit('added files')
         b_wt = wt.extract('b')
         self.assertTrue(b_wt.is_versioned(''))
@@ -57,7 +60,7 @@ class TestExtract(TestCaseWithTransport):
         wt = a_branch.create_checkout('a', lightweight=True)
         wt.add(['b', 'b/c', 'b/c/d', 'b/c/d/e/'], ids=[b'b-id', b'c-id', b'd-id', b'e-id'])
         wt.commit('added files')
-        b_wt = wt.extract('b/c/d')
+        wt.extract('b/c/d')
         b_branch = branch.Branch.open('branch/b/c/d')
         b_branch_ref = branch.Branch.open('a/b/c/d')
         self.assertEqual(b_branch.base, b_branch_ref.base)

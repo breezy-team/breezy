@@ -16,11 +16,11 @@
 
 import itertools
 
-from .. import errors, lockable_files, lockdir
+from .. import errors, lockdir
 from .. import revision as _mod_revision
 from .. import transport as _mod_transport
 from ..repository import Repository, RepositoryFormat, format_registry
-from . import bzrdir
+from . import bzrdir, lockable_files
 
 
 class MetaDirRepository(Repository):
@@ -148,8 +148,8 @@ class RepositoryFormatMetaDir(bzrdir.BzrFormat, RepositoryFormat):
         try:
             transport = a_bzrdir.get_repository_transport(None)
             format_string = transport.get_bytes("format")
-        except _mod_transport.NoSuchFile:
-            raise errors.NoRepositoryPresent(a_bzrdir)
+        except _mod_transport.NoSuchFile as e:
+            raise errors.NoRepositoryPresent(a_bzrdir) from e
         return klass._find_format(format_registry, 'repository', format_string)
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,

@@ -27,7 +27,6 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
     def test_create_clone_on_transport_missing_parent_dir(self):
         tree = self.make_branch_and_tree('source')
         tree.commit('a commit')
-        source = tree.branch
         target_transport = self.get_transport('subdir').clone('target')
         self.assertRaises(NoSuchFile,
                           tree.branch.create_clone_on_transport, target_transport)
@@ -47,7 +46,6 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
     def test_create_clone_on_transport_use_existing_dir_false(self):
         tree = self.make_branch_and_tree('source')
         tree.commit('a commit')
-        source = tree.branch
         target_transport = self.get_transport('target')
         target_transport.create_prefix()
         self.assertRaises(FileExists,
@@ -76,7 +74,6 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
         tree = self.make_branch_and_tree('source')
         old_revid = tree.commit('a commit')
         source_tip = tree.commit('a second commit')
-        source = tree.branch
         target_transport = self.get_transport('target')
         result = tree.branch.create_clone_on_transport(target_transport,
                                                        revision_id=old_revid)
@@ -91,14 +88,13 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
         trunk = tree.branch.create_clone_on_transport(
             self.get_transport('trunk'))
         revid = tree.commit('a second commit')
-        source = tree.branch
         target_transport = self.get_transport('target')
         try:
             result = tree.branch.create_clone_on_transport(target_transport,
                                                            stacked_on=trunk.base)
-        except branch.UnstackableBranchFormat:
+        except branch.UnstackableBranchFormat as e:
             if not trunk.repository._format.supports_full_versioned_files:
-                raise tests.TestNotApplicable("can not stack on format")
+                raise tests.TestNotApplicable("can not stack on format") from e
             raise
         self.assertEqual(revid, result.last_revision())
         self.assertEqual(trunk.base, result.get_stacked_on_url())
@@ -106,8 +102,8 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
     def test_create_clone_of_multiple_roots(self):
         try:
             builder = self.make_branch_builder('local')
-        except (errors.TransportNotPossible, errors.UninitializableFormat):
-            raise tests.TestNotApplicable('format not directly constructable')
+        except (errors.TransportNotPossible, errors.UninitializableFormat) as e:
+            raise tests.TestNotApplicable('format not directly constructable') from e
         builder.start_series()
         rev1 = builder.build_snapshot(None, [
             ('add', ('', None, 'directory', ''))])
@@ -137,9 +133,9 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
         try:
             result = tree.branch.create_clone_on_transport(
                 target_transport, stacked_on=trunk.base)
-        except branch.UnstackableBranchFormat:
+        except branch.UnstackableBranchFormat as e:
             if not trunk.repository._format.supports_full_versioned_files:
-                raise tests.TestNotApplicable("can not stack on format")
+                raise tests.TestNotApplicable("can not stack on format") from e
             raise
         self.assertEqual(revid, result.last_revision())
         self.assertEqual(trunk.base, result.get_stacked_on_url())

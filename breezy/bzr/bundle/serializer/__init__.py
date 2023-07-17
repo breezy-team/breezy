@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Serializer factory for reading and writing bundles.
-"""
+"""Serializer factory for reading and writing bundles."""
 
 import base64
 import re
@@ -23,9 +22,8 @@ from io import BytesIO
 
 from .... import errors, registry
 from ....diff import internal_diff
-from ....revision import NULL_REVISION
+
 # For backwards-compatibility
-from ....timestamp import format_highres_date, unpack_highres_date
 
 # New bundles should try to use this header format
 BUNDLE_HEADER = b'# Bazaar revision bundle v'
@@ -75,14 +73,14 @@ def read_bundle(f):
 def get_serializer(version):
     try:
         serializer = serializer_registry.get(version)
-    except KeyError:
+    except KeyError as e:
         raise errors.BundleNotSupported(version,
-                                        'unknown bundle format')
+                                        'unknown bundle format') from e
 
     return serializer(version)
 
 
-def write(source, revision_ids, f, version=None, forced_bases={}):
+def write(source, revision_ids, f, version=None, forced_bases=None):
     """Serialize a list of bundles to a filelike object.
 
     :param source: A source for revision information
@@ -90,7 +88,8 @@ def write(source, revision_ids, f, version=None, forced_bases={}):
     :param f: The file to output to
     :param version: [optional] target serialization version
     """
-
+    if forced_bases is None:
+        forced_bases = {}
     with source.lock_read():
         return get_serializer(version).write(source, revision_ids,
                                              forced_bases, f)

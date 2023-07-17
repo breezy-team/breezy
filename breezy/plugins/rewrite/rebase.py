@@ -22,8 +22,7 @@ from ... import config as _mod_config
 from ... import osutils, ui
 from ...bzr.generate_ids import gen_revision_id
 from ...bzr.inventorytree import InventoryTreeChange
-from ...errors import (BzrError, NoCommonAncestor, UnknownFormatError,
-                       UnrelatedBranches)
+from ...errors import BzrError, NoCommonAncestor, UnknownFormatError, UnrelatedBranches
 from ...graph import FrozenHeadsCache
 from ...merge import Merger
 from ...revision import NULL_REVISION
@@ -61,8 +60,7 @@ class RebaseState:
         raise NotImplementedError(self.write_plan)
 
     def remove_plan(self):
-        """Remove a rebase plan file.
-        """
+        """Remove a rebase plan file."""
         raise NotImplementedError(self.remove_plan)
 
     def write_active_revid(self, revid):
@@ -105,7 +103,8 @@ class RebaseState1(RebaseState):
         self.wt.update_feature_flags({b"rebase-v1": b"write-required"})
         content = marshall_rebase_plan(
             self.wt.branch.last_revision_info(), replace_map)
-        assert isinstance(content, bytes)
+        if not isinstance(content, bytes):
+            raise AssertionError(content)
         self.transport.put_bytes(REBASE_PLAN_FILENAME, content)
 
     def remove_plan(self):
@@ -117,7 +116,8 @@ class RebaseState1(RebaseState):
         """See `RebaseState`."""
         if revid is None:
             revid = NULL_REVISION
-        assert isinstance(revid, bytes)
+        if not isinstance(revid, bytes):
+            raise AssertionError(revid)
         self.transport.put_bytes(REBASE_CURRENT_REVID_FILENAME, revid)
 
     def read_active_revid(self):
@@ -175,7 +175,8 @@ def regenerate_default_revid(repository, revid):
 
     :param repository: Repository in which the revision is present.
     :param revid: Revision id of the revision that is being rebased.
-    :return: new revision id."""
+    :return: new revision id.
+    """
     if revid == NULL_REVISION:
         return NULL_REVISION
     rev = repository.get_revision(revid)
@@ -201,9 +202,10 @@ def generate_simple_plan(todo_set, start_revid, stop_revid, onto_revid, graph,
 
     :return: replace map
     """
-    assert start_revid is None or start_revid in todo_set, \
-        "invalid start revid({!r}), todo_set({!r})".format(start_revid, todo_set)
-    assert stop_revid is None or stop_revid in todo_set, "invalid stop_revid"
+    if start_revid is not None and start_revid not in todo_set:
+        raise AssertionError(f"invalid start revid({start_revid!r}), todo_set({todo_set!r})")
+    if stop_revid is not None and stop_revid not in todo_set:
+        raise AssertionError(f"invalid stop_revid {stop_revid}")
     replace_map = {}
     parent_map = graph.get_parent_map(todo_set)
     order = topo_sort(parent_map)
@@ -221,7 +223,8 @@ def generate_simple_plan(todo_set, start_revid, stop_revid, onto_revid, graph,
     # by the heads cache? RBC 20080719
     for oldrevid in todo:
         oldparents = parent_map[oldrevid]
-        assert isinstance(oldparents, tuple), "not tuple: %r" % oldparents
+        if not isinstance(oldparents, tuple):
+            raise AssertionError(f"not tuple: {oldparents!r}")
         parents = []
         # Left parent:
         if heads_cache.heads((oldparents[0], onto_revid)) == {onto_revid}:
@@ -250,8 +253,10 @@ def generate_simple_plan(todo_set, start_revid, stop_revid, onto_revid, graph,
                 continue
         parents = tuple(parents)
         newrevid = generate_revid(oldrevid, parents)
-        assert newrevid != oldrevid, "old and newrevid equal (%r)" % newrevid
-        assert isinstance(parents, tuple), "parents not tuple: %r" % parents
+        if newrevid == oldrevid:
+            raise AssertionError(f"old and newrevid equal ({newrevid!r})")
+        if not isinstance(parents, tuple):
+            raise AssertionError(f"parents not tuple: {parents!r}")
         replace_map[oldrevid] = (newrevid, parents)
     return replace_map
 
@@ -308,10 +313,10 @@ def generate_transpose_plan(ancestry, renames, graph, generate_revid):
                     parents = replace_map[c][1]
                 else:
                     parents = parent_map[c]
-                assert isinstance(parents, tuple), \
-                    "Expected tuple of parents, got: %r" % parents
+                if not isinstance(parents, tuple):
+                    raise AssertionError(f"Expected tuple of parents, got: {parents!r}")
                 # replace r in parents with replace_map[r][0]
-                if not replace_map[r][0] in parents:
+                if replace_map[r][0] not in parents:
                     parents = list(parents)
                     parents[parents.index(r)] = replace_map[r][0]
                     parents = tuple(parents)
@@ -339,7 +344,8 @@ def rebase_todo(repository, replace_map):
     :param replace_map: Replace map
     """
     for revid, parent_ids in replace_map.items():
-        assert isinstance(parent_ids, tuple), "replace map parents not tuple"
+        if not isinstance(parent_ids, tuple):
+            raise AssertionError("replace map parents not tuple")
         if not repository.has_revision(parent_ids[0]):
             yield revid
 
@@ -359,7 +365,8 @@ def rebase(repository, replace_map, revision_rewriter):
         for i, revid in enumerate(todo):
             pb.update('rebase revisions', i, len(todo))
             (newrevid, newparents) = replace_map[revid]
-            assert isinstance(newparents, tuple), "Expected tuple for %r" % newparents
+            if not isinstance(newparents, tuple):
+                raise AssertionError(f"Expected tuple for {newparents!r}")
             if repository.has_revision(newrevid):
                 # Was already converted, no need to worry about it again
                 continue
@@ -406,7 +413,8 @@ class CommitBuilderRevisionRewriter:
         :param newrevid: Revision id of the revision to create.
         :param new_parents: Revision ids of the new parent revisions.
         """
-        assert isinstance(new_parents, tuple), "CommitBuilderRevisionRewriter: Expected tuple for %r" % new_parents
+        if not isinstance(new_parents, tuple):
+            raise AssertionError(f"CommitBuilderRevisionRewriter: Expected tuple for {new_parents!r}")
         mutter('creating copy %r of %r with new parents %r',
                newrevid, oldrevid, new_parents)
         oldrev = self.repository.get_revision(oldrevid)
@@ -444,7 +452,7 @@ class CommitBuilderRevisionRewriter:
             revprops=revprops, revision_id=newrevid,
             config_stack=_mod_config.GlobalStack())
         try:
-            for (relpath, fs_hash) in builder.record_iter_changes(
+            for (_relpath, _fs_hash) in builder.record_iter_changes(
                     mappedtree, new_base, iter_changes):
                 pass
             builder.finish_inventory()
@@ -457,9 +465,7 @@ class CommitBuilderRevisionRewriter:
 class WorkingTreeRevisionRewriter:
 
     def __init__(self, wt, state, merge_type=None):
-        """
-        :param wt: Working tree in which to do the replays.
-        """
+        """:param wt: Working tree in which to do the replays."""
         self.wt = wt
         self.graph = self.wt.branch.repository.get_graph()
         self.state = state
@@ -482,9 +488,10 @@ class WorkingTreeRevisionRewriter:
         # Make sure there are no conflicts or pending merges/changes
         # in the working tree
         complete_revert(self.wt, [newparents[0]])
-        assert not self.wt.changes_from(self.wt.basis_tree()).has_changed(), "Changes in rev"
+        if self.wt.changes_from(self.wt.basis_tree()).has_changed():
+            raise AssertionError("Changes in rev")
 
-        oldtree = repository.revision_tree(oldrevid)
+        repository.revision_tree(oldrevid)
         self.state.write_active_revid(oldrevid)
         merger = Merger(self.wt.branch, this_tree=self.wt)
         merger.set_other_revision(oldrevid, self.wt.branch)
@@ -535,8 +542,10 @@ class WorkingTreeRevisionRewriter:
         """Commit a rebase.
 
         :param oldrev: Revision info of new revision to commit.
-        :param newrevid: New revision id."""
-        assert oldrev.revision_id != newrevid, "Invalid revid %r" % newrevid
+        :param newrevid: New revision id.
+        """
+        if oldrev.revision_id == newrevid:
+            raise AssertionError(f"Invalid revid {newrevid!r}")
         revprops = dict(oldrev.properties)
         revprops[REVPROP_REBASE_OF] = oldrev.revision_id.decode('utf-8')
         committer = self.wt.branch.get_config().username()
@@ -578,7 +587,8 @@ def complete_revert(wt, newparents):
             else:
                 os.unlink(abs_path)
     wt.revert(None, old_tree=newtree, backups=False)
-    assert not wt.changes_from(wt.basis_tree()).has_changed(), "Rev changed"
+    if wt.changes_from(wt.basis_tree()).has_changed():
+        raise AssertionError("Rev changed")
     wt.set_parent_ids([r for r in newparents if r != NULL_REVISION])
 
 

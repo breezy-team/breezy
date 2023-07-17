@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for WSGI application"""
+"""Tests for WSGI application."""
 
 from io import BytesIO
 
@@ -84,7 +84,7 @@ class TestWSGI(tests.TestCaseInTempDir, WSGITestMixin):
         iterable = app(environ, self.start_response)
         self.read_response(iterable)
         self.assertEqual('405 Method not allowed', self.status)
-        self.assertTrue(('Allow', 'POST') in self.headers)
+        self.assertIn(('Allow', 'POST'), self.headers)
 
     def _fake_make_request(self, transport, write_func, bytes, rcp):
         request = FakeRequest(transport, write_func)
@@ -108,7 +108,7 @@ class TestWSGI(tests.TestCaseInTempDir, WSGITestMixin):
             'breezy.relpath': 'foo/bar',
         })
         iterable = wsgi_app(environ, self.start_response)
-        response = self.read_response(iterable)
+        self.read_response(iterable)
         self.assertEqual([('clone', 'foo/bar/')], transport.calls)
 
     def test_smart_wsgi_app_request_and_response(self):
@@ -282,14 +282,15 @@ class TestWSGIJail(tests.TestCaseWithMemoryTransport, WSGITestMixin):
         response_bytes = self.read_response(iterable)
         self.assertEqual('200 OK', self.status)
         # expect a successful response, rather than a jail break error
-        from breezy.bzr.tests.test_smart_transport import LoggingMessageHandler
+        from ..bzr.tests.test_smart_transport import LoggingMessageHandler
         message_handler = LoggingMessageHandler()
         decoder = protocol.ProtocolThreeDecoder(
             message_handler, expect_version_marker=True)
         decoder.accept_bytes(response_bytes)
-        self.assertTrue(
-            ('structure', (b'branch', branch._format.network_name()))
-            in message_handler.event_log)
+        self.assertIn(
+            ('structure', (b'branch', branch._format.network_name())),
+            message_handler.event_log
+        )
 
 
 class FakeRequest:

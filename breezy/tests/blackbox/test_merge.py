@@ -16,18 +16,25 @@
 #
 # Author: Aaron Bentley <aaron.bentley@utoronto.ca>
 
-"""Black-box tests for brz merge.
-"""
+"""Black-box tests for brz merge."""
 
 import doctest
 import os
 
 from testtools import matchers
 
-from breezy import (branch, controldir, merge_directive, osutils, tests,
-                    urlutils, workingtree)
+from breezy import (
+    branch,
+    controldir,
+    merge_directive,
+    osutils,
+    tests,
+    urlutils,
+    workingtree,
+)
 from breezy.bzr import conflicts
 from breezy.tests import scenarios, script
+from breezy.transport.local import file_kind
 
 load_tests = scenarios.load_tests_apply_scenarios
 
@@ -110,7 +117,7 @@ class TestMerge(tests.TestCaseWithTransport):
         a_tree.revert(backups=False)
         out, err = self.run_bzr('merge -r revno:1:./hello', retcode=3,
                                 working_dir='a')
-        self.assertTrue("Not a branch" in err)
+        self.assertIn("Not a branch", err)
         self.run_bzr('merge -r revno:%d:./..revno:%d:../b'
                      % (ancestor, b.revno()), working_dir='a')
         self.assertEqual(a.get_parent_ids(),
@@ -180,7 +187,7 @@ class TestMerge(tests.TestCaseWithTransport):
                              tree.get_file_text('fname'))
 
     def test_merge_with_missing_file(self):
-        """Merge handles missing file conflicts"""
+        """Merge handles missing file conflicts."""
         self.build_tree_contents([
             ('a/',),
             ('a/sub/',),
@@ -279,7 +286,7 @@ class TestMerge(tests.TestCaseWithTransport):
         tree_b.commit('commit e')
         out, err = self.run_bzr('merge', working_dir='branch_b')
         self.assertStartsWith(
-            err, 'Merging from remembered submit location {}\n'.format(base))
+            err, f'Merging from remembered submit location {base}\n')
         # re-open tree as external run_brz modified it
         tree_b = branch_b.controldir.open_workingtree()
         tree_b.commit('merge branch_a')
@@ -297,7 +304,7 @@ class TestMerge(tests.TestCaseWithTransport):
         tree_b.commit('merge branch_c')
 
     def test_merge_bundle(self):
-        from breezy.bzr.testament import Testament
+        from ...bzr.testament import Testament
         tree_a = self.make_branch_and_tree('branch_a')
         self.build_tree_contents([('branch_a/a', b'hello')])
         tree_a.add('a')
@@ -327,7 +334,7 @@ class TestMerge(tests.TestCaseWithTransport):
         self.assertEqual('Nothing to do.\n', err)
 
     def test_merge_uncommitted(self):
-        """Check that merge --uncommitted behaves properly"""
+        """Check that merge --uncommitted behaves properly."""
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/file_1', 'a/file_2'])
         tree_a.add(['file_1', 'file_2'])
@@ -358,7 +365,8 @@ class TestMerge(tests.TestCaseWithTransport):
 
     def test_merge_nonexistent_file(self):
         """It should not be possible to merge changes from a file which
-        does not exist."""
+        does not exist.
+        """
         tree_a = self.make_branch_and_tree('tree_a')
         self.build_tree_contents([('tree_a/file', b'bar\n')])
         tree_a.add(['file'])
@@ -409,9 +417,9 @@ class TestMerge(tests.TestCaseWithTransport):
         self.build_tree(['tree_a/file/'])
         tree_a.commit('changed file to directory')
         self.run_bzr('merge ../tree_a', working_dir='tree_b')
-        self.assertEqual('directory', osutils.file_kind('tree_b/file'))
+        self.assertEqual('directory', file_kind('tree_b/file'))
         tree_b.revert()
-        self.assertEqual('file', osutils.file_kind('tree_b/file'))
+        self.assertEqual('file', file_kind('tree_b/file'))
         self.build_tree_contents([('tree_b/file', b'content_2')])
         tree_b.commit('content change')
         self.run_bzr('merge ../tree_a', retcode=1, working_dir='tree_b')
@@ -443,7 +451,8 @@ class TestMerge(tests.TestCaseWithTransport):
     def write_directive(self, filename, source, target, revision_id,
                         base_revision_id=None, mangle_patch=False):
         md = merge_directive.MergeDirective2.from_objects(
-            source.repository, revision_id, 0, 0, target,
+            repository=source.repository, revision_id=revision_id, time=0, timezone=0,
+            target_branch=target,
             base_revision_id=base_revision_id)
         if mangle_patch:
             md.patch = b'asdf\n'
@@ -539,7 +548,7 @@ class TestMerge(tests.TestCaseWithTransport):
         tree_b.merge_from_branch(tree_a.branch)
         tree_a.commit('', rev_id=b'rev3a')
         tree_b.commit('', rev_id=b'rev3b')
-        graph = tree_a.branch.repository.get_graph(tree_b.branch.repository)
+        tree_a.branch.repository.get_graph(tree_b.branch.repository)
         out, err = self.run_bzr(['merge', '-d', 'a', 'b'])
         self.assertContainsRe(err, 'Warning: criss-cross merge encountered.')
 
@@ -562,12 +571,12 @@ class TestMerge(tests.TestCaseWithTransport):
         tree_a = self.make_branch_and_tree('a')
         tree_a.commit('rev1')
         tree_b = tree_a.controldir.sprout('b').open_workingtree()
-        self.assertIs(tree_b.branch.get_submit_branch(), None)
+        self.assertIsNone(tree_b.branch.get_submit_branch())
 
         # Remember should not happen if using default from parent
         out, err = self.run_bzr(['merge', '-d', 'b'])
         refreshed = workingtree.WorkingTree.open('b')
-        self.assertIs(refreshed.branch.get_submit_branch(), None)
+        self.assertIsNone(refreshed.branch.get_submit_branch())
 
         # Remember should happen if user supplies location
         out, err = self.run_bzr(['merge', '-d', 'b', 'a'])
@@ -581,7 +590,7 @@ class TestMerge(tests.TestCaseWithTransport):
         tree_a.add('file')
         tree_a.commit('rev1')
         tree_b = tree_a.controldir.sprout('b').open_workingtree()
-        self.assertIs(tree_b.branch.get_submit_branch(), None)
+        self.assertIsNone(tree_b.branch.get_submit_branch())
 
         # Remember should not happen if using default from parent
         out, err = self.run_bzr(['merge', '-d', 'b', '--no-remember'])
@@ -693,8 +702,8 @@ class TestMerge(tests.TestCaseWithTransport):
 
 class TestMergeRevisionRange(tests.TestCaseWithTransport):
 
-    scenarios = (('whole-tree', dict(context='.')),
-                 ('file-only', dict(context='a')))
+    scenarios = (('whole-tree', {'context': '.'}),
+                 ('file-only', {'context': 'a'}))
 
     def setUp(self):
         super().setUp()
@@ -717,7 +726,7 @@ class TestMergeScript(script.TestCaseWithTransportAndScript):
         self.build_tree(['source/a'])
         source.add('a')
         source.commit('Added a', rev_id=b'rev1')
-        target = self.make_branch_and_tree('target')
+        self.make_branch_and_tree('target')
         self.run_script("""\
 $ brz merge -d target source
 2>brz: ERROR: Merging into empty branches not currently supported, https://bugs.launchpad.net/bzr/+bug/308562

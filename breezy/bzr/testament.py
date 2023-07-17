@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Testament - a summary of a revision for signing.
+r"""Testament - a summary of a revision for signing.
 
 A testament can be defined as "something that serves as tangible
 proof or evidence."  In bzr we use them to allow people to certify
@@ -130,8 +130,8 @@ class Testament:
         r = []
         a = r.append
         a(self.long_header)
-        a('revision-id: %s\n' % self.revision_id.decode('utf-8'))
-        a('committer: %s\n' % self.committer)
+        a(f"revision-id: {self.revision_id.decode('utf-8')}\n")
+        a(f'committer: {self.committer}\n')
         a('timestamp: %d\n' % self.timestamp)
         a('timezone: %d\n' % self.timezone)
         # inventory length contains the root, which is not shown here
@@ -139,10 +139,10 @@ class Testament:
         for parent_id in sorted(self.parent_ids):
             if contains_whitespace(parent_id):
                 raise ValueError(parent_id)
-            a('  %s\n' % parent_id.decode('utf-8'))
+            a(f"  {parent_id.decode('utf-8')}\n")
         a('message:\n')
         for l in self.message.splitlines():
-            a('  %s\n' % l)
+            a(f'  {l}\n')
         a('inventory:\n')
         for path, ie in self._get_entries():
             a(self._entry_to_line(path, ie))
@@ -162,7 +162,7 @@ class Testament:
         return path.replace('\\', '/').replace(' ', '\\ ')
 
     def _entry_to_line(self, path, ie):
-        """Turn an inventory entry into a testament line"""
+        """Turn an inventory entry into a testament line."""
         if contains_whitespace(ie.file_id):
             raise ValueError(ie.file_id)
         content = ''
@@ -202,9 +202,9 @@ class Testament:
         for name, value in sorted(self.revprops.items()):
             if contains_whitespace(name):
                 raise ValueError(name)
-            r.append('  %s:\n' % name)
+            r.append(f'  {name}:\n')
             for line in value.splitlines():
-                r.append('    %s\n' % line)
+                r.append(f'    {line}\n')
         return r
 
     def as_sha1(self):
@@ -212,7 +212,7 @@ class Testament:
 
 
 class StrictTestament(Testament):
-    """This testament format is for use as a checksum in bundle format 0.8"""
+    """This testament format is for use as a checksum in bundle format 0.8."""
 
     long_header = 'bazaar-ng testament version 2.1\n'
     short_header = 'bazaar-ng testament short form 2.1\n'
@@ -226,7 +226,7 @@ class StrictTestament(Testament):
 
 
 class StrictTestament3(StrictTestament):
-    """This testament format is for use as a checksum in bundle format 0.9+
+    """This testament format is for use as a checksum in bundle format 0.9+.
 
     It differs from StrictTestament by including data about the tree root.
     """

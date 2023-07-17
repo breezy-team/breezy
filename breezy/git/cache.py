@@ -16,25 +16,19 @@
 
 """Map from Git sha's to Bazaar objects."""
 
+import hashlib
 import os
 import threading
 
 from dulwich.objects import ShaFile, hex_to_sha, sha_to_hex
 
-from .. import bedding
 from .. import errors as bzr_errors
-from .. import osutils, registry, trace
+from .. import registry, trace
+from .._git_rs import get_cache_dir  # noqa: F401
 from ..bzr import btree_index as _mod_btree_index
 from ..bzr import index as _mod_index
 from ..bzr import versionedfile
 from ..transport import FileExists, NoSuchFile, get_transport_from_path
-
-
-def get_cache_dir():
-    path = os.path.join(bedding.cache_dir(), "git")
-    if not os.path.isdir(path):
-        os.mkdir(path)
-    return path
 
 
 def get_remote_cache_transport(repository):
@@ -72,7 +66,7 @@ class GitShaMap:
         :return: list with (type, type_data) tuples with type_data:
             commit: revid, tree_sha, verifiers
             blob: fileid, revid
-            tree: fileid, revid
+            tree: fileid, revid.
         """
         raise NotImplementedError(self.lookup_git_sha)
 
@@ -85,13 +79,11 @@ class GitShaMap:
         raise NotImplementedError(self.lookup_blob_id)
 
     def lookup_tree_id(self, file_id, revision):
-        """Retrieve a Git tree SHA by file id.
-        """
+        """Retrieve a Git tree SHA by file id."""
         raise NotImplementedError(self.lookup_tree_id)
 
     def lookup_commit(self, revid):
-        """Retrieve a Git commit SHA by Bazaar revision id.
-        """
+        """Retrieve a Git commit SHA by Bazaar revision id."""
         raise NotImplementedError(self.lookup_commit)
 
     def revids(self):
@@ -300,7 +292,7 @@ class DictGitShaMap(GitShaMap):
         return self._by_revid[revid]
 
     def revids(self):
-        for key, entries in self._by_sha.items():
+        for _key, entries in self._by_sha.items():
             for (type, type_data) in entries.values():
                 if type == "commit":
                     yield type_data[0]
@@ -420,7 +412,7 @@ class SqliteGitShaMap(GitShaMap):
             pass  # Column already exists.
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self.path)
+        return f"{self.__class__.__name__}({self.path!r})"
 
     def lookup_commit(self, revid):
         cursor = self.db.execute("select sha1 from commits where revid = ?",
@@ -489,7 +481,7 @@ class SqliteGitShaMap(GitShaMap):
     def sha1s(self):
         """List the SHA1s."""
         for table in ("blobs", "commits", "trees"):
-            for (sha,) in self.db.execute("select sha1 from %s" % table):
+            for (sha,) in self.db.execute(f"select sha1 from {table}"):  # noqa: S608
                 yield sha.encode('ascii')
 
 
@@ -568,10 +560,10 @@ class TdbGitCacheFormat(BzrGitCacheFormat):
             basepath = get_cache_dir()
         try:
             return TdbBzrGitCache(os.path.join(basepath, "idmap.tdb"))
-        except ImportError:
+        except ImportError as err:
             raise ImportError(
                 "Unable to open existing bzr-git cache because 'tdb' is not "
-                "installed.")
+                "installed.") from err
 
 
 class TdbGitShaMap(GitShaMap):
@@ -621,13 +613,13 @@ class TdbGitShaMap(GitShaMap):
         self.db.transaction_cancel()
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self.path)
+        return f"{self.__class__.__name__}({self.path!r})"
 
     def lookup_commit(self, revid):
         try:
             return sha_to_hex(self.db[b"commit\0" + revid][:20])
-        except KeyError:
-            raise KeyError("No cache entry for %r" % revid)
+        except KeyError as err:
+            raise KeyError(f"No cache entry for {revid!r}") from err
 
     def lookup_blob_id(self, fileid, revision):
         return sha_to_hex(self.db[b"\0".join((b"blob", fileid, revision))])
@@ -656,7 +648,7 @@ class TdbGitShaMap(GitShaMap):
             elif type_name in ("tree", "blob"):
                 yield (type_name, tuple(data[1:]))
             else:
-                raise AssertionError("unknown type %r" % type_name)
+                raise AssertionError(f"unknown type {type_name!r}")
 
     def missing_revisions(self, revids):
         ret = set()
@@ -799,9 +791,9 @@ class IndexGitShaMap(GitShaMap):
 
     def __repr__(self):
         if self._transport is not None:
-            return "{}({!r})".format(self.__class__.__name__, self._transport.base)
+            return f"{self.__class__.__name__}({self._transport.base!r})"
         else:
-            return "%s()" % (self.__class__.__name__)
+            return f"{self.__class__.__name__}()"
 
     def repack(self):
         if self._builder is not None:
@@ -823,7 +815,7 @@ class IndexGitShaMap(GitShaMap):
         if self._builder is not None:
             raise bzr_errors.BzrError('builder already open')
         self._builder = _mod_btree_index.BTreeBuilder(0, key_elements=3)
-        self._name = osutils.sha()
+        self._name = hashlib.sha1()  # noqa: S324
 
     def commit_write_group(self):
         if self._builder is None:
@@ -855,14 +847,14 @@ class IndexGitShaMap(GitShaMap):
         entries = self._index.iter_entries([key])
         try:
             return next(entries)[2]
-        except StopIteration:
+        except StopIteration as err:
             if self._builder is None:
-                raise KeyError
+                raise KeyError from err
             entries = self._builder.iter_entries([key])
             try:
                 return next(entries)[2]
-            except StopIteration:
-                raise KeyError
+            except StopIteration as err:
+                raise KeyError from err
 
     def _iter_entries_prefix(self, prefix):
         for entry in self._index.iter_entries_prefix([prefix]):
@@ -913,20 +905,20 @@ class IndexGitShaMap(GitShaMap):
 
     def revids(self):
         """List the revision ids known."""
-        for key, value in self._iter_entries_prefix((b"commit", None, None)):
+        for key, _value in self._iter_entries_prefix((b"commit", None, None)):
             yield key[1]
 
     def missing_revisions(self, revids):
         """Return set of all the revisions that are not present."""
         missing_revids = set(revids)
-        for _, key, value in self._index.iter_entries(
+        for _, key, _value in self._index.iter_entries(
                 (b"commit", revid, b"X") for revid in revids):
             missing_revids.remove(key[1])
         return missing_revids
 
     def sha1s(self):
         """List the SHA1s."""
-        for key, value in self._iter_entries_prefix((b"git", None, None)):
+        for key, _value in self._iter_entries_prefix((b"git", None, None)):
             yield key[1]
 
 
@@ -966,8 +958,8 @@ def remove_readonly_transport_decorator(transport):
     if transport.is_readonly():
         try:
             return transport._decorated
-        except AttributeError:
-            raise bzr_errors.ReadOnlyError(transport)
+        except AttributeError as err:
+            raise bzr_errors.ReadOnlyError(transport) from err
     return transport
 
 

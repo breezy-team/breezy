@@ -16,9 +16,9 @@
 
 """Tests for check on a repository with external references."""
 
-import breezy.ui
-from breezy.tests.per_repository_reference import \
-    TestCaseWithExternalReferenceRepository
+from breezy.tests.per_repository_reference import (
+    TestCaseWithExternalReferenceRepository,
+)
 
 
 class TestCheck(TestCaseWithExternalReferenceRepository):
@@ -27,14 +27,14 @@ class TestCheck(TestCaseWithExternalReferenceRepository):
         tree = self.make_branch_and_tree('base')
         self.build_tree(['base/file'])
         tree.add(['file'], ids=[b'file-id'])
-        rev1_id = tree.commit('one')
+        tree.commit('one')
         referring = self.make_branch_and_tree('referring')
         readonly_base = self.readonly_repository(tree.branch.repository)
         referring.branch.repository.add_fallback_repository(readonly_base)
         local_tree = referring.branch.create_checkout('local')
         self.build_tree_contents([('local/file', b'change')])
-        rev2_id = local_tree.commit('two')
+        local_tree.commit('two')
         check_result = referring.branch.repository.check(
             referring.branch.repository.all_revision_ids())
         check_result.report_results(verbose=False)
-        self.assertFalse("inconsistent parents" in self.get_log())
+        self.assertNotIn("inconsistent parents", self.get_log())

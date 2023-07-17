@@ -139,7 +139,7 @@ class TestFindUnmerged(tests.TestCaseWithTransport):
     def assertUnmerged(self, local, remote, local_branch, remote_branch,
                        restrict='all', include_merged=False, backward=False,
                        local_revid_range=None, remote_revid_range=None):
-        """Check the output of find_unmerged_mainline_revisions"""
+        """Check the output of find_unmerged_mainline_revisions."""
         local_extra, remote_extra = missing.find_unmerged(
             local_branch, remote_branch, restrict,
             include_merged=include_merged, backward=backward,

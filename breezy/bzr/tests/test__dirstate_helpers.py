@@ -67,7 +67,7 @@ class TestBisectPathMixin:
     """
 
     def get_bisect_path(self):
-        """Return an implementation of _bisect_path_*"""
+        """Return an implementation of _bisect_path_*."""
         raise NotImplementedError
 
     def get_bisect(self):
@@ -117,7 +117,7 @@ class TestBisectPathMixin:
         return dir_split_paths
 
     def test_simple(self):
-        """In the simple case it works just like bisect_left"""
+        """In the simple case it works just like bisect_left."""
         paths = [b'', b'a', b'b', b'c', b'd']
         split_paths = self.split_for_dirblocks(paths)
         for path in paths:
@@ -210,173 +210,33 @@ class TestBisectPathMixin:
 
 
 class TestBisectPathLeft(tests.TestCase, TestBisectPathMixin):
-    """Run all Bisect Path tests against _bisect_path_left."""
+    """Run all Bisect Path tests against bisect_path_left."""
 
     def get_bisect_path(self):
-        from .._dirstate_helpers_py import _bisect_path_left
-        return _bisect_path_left
+        from ..dirstate import bisect_path_left
+        return bisect_path_left
 
     def get_bisect(self):
         return bisect.bisect_left, 0
 
 
-class TestCompiledBisectPathLeft(TestBisectPathLeft):
-    """Run all Bisect Path tests against _bisect_path_lect"""
-
-    _test_needs_features = [compiled_dirstate_helpers_feature]
-
-    def get_bisect_path(self):
-        from .._dirstate_helpers_pyx import _bisect_path_left
-        return _bisect_path_left
-
-
 class TestBisectPathRight(tests.TestCase, TestBisectPathMixin):
-    """Run all Bisect Path tests against _bisect_path_right"""
+    """Run all Bisect Path tests against bisect_path_right."""
 
     def get_bisect_path(self):
-        from .._dirstate_helpers_py import _bisect_path_right
-        return _bisect_path_right
+        from ..dirstate import bisect_path_right
+        return bisect_path_right
 
     def get_bisect(self):
         return bisect.bisect_right, -1
 
 
-class TestCompiledBisectPathRight(TestBisectPathRight):
-    """Run all Bisect Path tests against _bisect_path_right"""
-
-    _test_needs_features = [compiled_dirstate_helpers_feature]
-
-    def get_bisect_path(self):
-        from .._dirstate_helpers_pyx import _bisect_path_right
-        return _bisect_path_right
-
-
-class TestBisectDirblock(tests.TestCase):
-    """Test that bisect_dirblock() returns the expected values.
-
-    bisect_dirblock is intended to work like bisect.bisect_left() except it
-    knows it is working on dirblocks and that dirblocks are sorted by ('path',
-    'to', 'foo') chunks rather than by raw 'path/to/foo'.
-
-    This test is parameterized by calling get_bisect_dirblock(). Child test
-    cases can override this function to test against a different
-    implementation.
-    """
-
-    def get_bisect_dirblock(self):
-        """Return an implementation of bisect_dirblock"""
-        from .._dirstate_helpers_py import bisect_dirblock
-        return bisect_dirblock
-
-    def assertBisect(self, dirblocks, split_dirblocks, path, *args, **kwargs):
-        """Assert that bisect_split works like bisect_left on the split paths.
-
-        :param dirblocks: A list of (path, [info]) pairs.
-        :param split_dirblocks: A list of ((split, path), [info]) pairs.
-        :param path: The path we are indexing.
-
-        All other arguments will be passed along.
-        """
-        bisect_dirblock = self.get_bisect_dirblock()
-        self.assertIsInstance(dirblocks, list)
-        bisect_split_idx = bisect_dirblock(dirblocks, path, *args, **kwargs)
-        split_dirblock = (path.split(b'/'), [])
-        bisect_left_idx = bisect.bisect_left(split_dirblocks, split_dirblock,
-                                             *args)
-        self.assertEqual(bisect_left_idx, bisect_split_idx,
-                         'bisect_split disagreed. %s != %s'
-                         ' for key %r'
-                         % (bisect_left_idx, bisect_split_idx, path)
-                         )
-
-    def paths_to_dirblocks(self, paths):
-        """Convert a list of paths into dirblock form.
-
-        Also, ensure that the paths are in proper sorted order.
-        """
-        dirblocks = [(path, []) for path in paths]
-        split_dirblocks = [(path.split(b'/'), []) for path in paths]
-        self.assertEqual(sorted(split_dirblocks), split_dirblocks)
-        return dirblocks, split_dirblocks
-
-    def test_simple(self):
-        """In the simple case it works just like bisect_left"""
-        paths = [b'', b'a', b'b', b'c', b'd']
-        dirblocks, split_dirblocks = self.paths_to_dirblocks(paths)
-        for path in paths:
-            self.assertBisect(dirblocks, split_dirblocks, path)
-        self.assertBisect(dirblocks, split_dirblocks, b'_')
-        self.assertBisect(dirblocks, split_dirblocks, b'aa')
-        self.assertBisect(dirblocks, split_dirblocks, b'bb')
-        self.assertBisect(dirblocks, split_dirblocks, b'cc')
-        self.assertBisect(dirblocks, split_dirblocks, b'dd')
-        self.assertBisect(dirblocks, split_dirblocks, b'a/a')
-        self.assertBisect(dirblocks, split_dirblocks, b'b/b')
-        self.assertBisect(dirblocks, split_dirblocks, b'c/c')
-        self.assertBisect(dirblocks, split_dirblocks, b'd/d')
-
-    def test_involved(self):
-        """This is where bisect_left diverges slightly."""
-        paths = [b'', b'a',
-                 b'a/a', b'a/a/a', b'a/a/z', b'a/a-a', b'a/a-z',
-                 b'a/z', b'a/z/a', b'a/z/z', b'a/z-a', b'a/z-z',
-                 b'a-a', b'a-z',
-                 b'z', b'z/a/a', b'z/a/z', b'z/a-a', b'z/a-z',
-                 b'z/z', b'z/z/a', b'z/z/z', b'z/z-a', b'z/z-z',
-                 b'z-a', b'z-z',
-                 ]
-        dirblocks, split_dirblocks = self.paths_to_dirblocks(paths)
-        for path in paths:
-            self.assertBisect(dirblocks, split_dirblocks, path)
-
-    def test_involved_cached(self):
-        """This is where bisect_left diverges slightly."""
-        paths = [b'', b'a',
-                 b'a/a', b'a/a/a', b'a/a/z', b'a/a-a', b'a/a-z',
-                 b'a/z', b'a/z/a', b'a/z/z', b'a/z-a', b'a/z-z',
-                 b'a-a', b'a-z',
-                 b'z', b'z/a/a', b'z/a/z', b'z/a-a', b'z/a-z',
-                 b'z/z', b'z/z/a', b'z/z/z', b'z/z-a', b'z/z-z',
-                 b'z-a', b'z-z',
-                 ]
-        cache = {}
-        dirblocks, split_dirblocks = self.paths_to_dirblocks(paths)
-        for path in paths:
-            self.assertBisect(dirblocks, split_dirblocks, path, cache=cache)
-
-
-class TestCompiledBisectDirblock(TestBisectDirblock):
-    """Test that bisect_dirblock() returns the expected values.
-
-    bisect_dirblock is intended to work like bisect.bisect_left() except it
-    knows it is working on dirblocks and that dirblocks are sorted by ('path',
-    'to', 'foo') chunks rather than by raw 'path/to/foo'.
-
-    This runs all the normal tests that TestBisectDirblock did, but uses the
-    compiled version.
-    """
-
-    _test_needs_features = [compiled_dirstate_helpers_feature]
-
-    def get_bisect_dirblock(self):
-        from .._dirstate_helpers_pyx import bisect_dirblock
-        return bisect_dirblock
-
-
 class TestLtByDirs(tests.TestCase):
-    """Test an implementation of lt_by_dirs()
+    """Test an implementation of lt_by_dirs().
 
     lt_by_dirs() compares 2 paths by their directory sections, rather than as
     plain strings.
-
-    Child test cases can override ``get_lt_by_dirs`` to test a specific
-    implementation.
     """
-
-    def get_lt_by_dirs(self):
-        """Get a specific implementation of lt_by_dirs."""
-        from .._dirstate_helpers_py import lt_by_dirs
-        return lt_by_dirs
 
     def assertCmpByDirs(self, expected, str1, str2):
         """Compare the two strings, in both directions.
@@ -386,17 +246,16 @@ class TestLtByDirs(tests.TestCase):
         :param str1: string to compare
         :param str2: string to compare
         """
-        lt_by_dirs = self.get_lt_by_dirs()
         if expected == 0:
             self.assertEqual(str1, str2)
-            self.assertFalse(lt_by_dirs(str1, str2))
-            self.assertFalse(lt_by_dirs(str2, str1))
+            self.assertFalse(dirstate.lt_by_dirs(str1, str2))
+            self.assertFalse(dirstate.lt_by_dirs(str2, str1))
         elif expected > 0:
-            self.assertFalse(lt_by_dirs(str1, str2))
-            self.assertTrue(lt_by_dirs(str2, str1))
+            self.assertFalse(dirstate.lt_by_dirs(str1, str2))
+            self.assertTrue(dirstate.lt_by_dirs(str2, str1))
         else:
-            self.assertTrue(lt_by_dirs(str1, str2))
-            self.assertFalse(lt_by_dirs(str2, str1))
+            self.assertTrue(dirstate.lt_by_dirs(str1, str2))
+            self.assertFalse(dirstate.lt_by_dirs(str2, str1))
 
     def test_cmp_empty(self):
         """Compare against the empty string."""
@@ -413,7 +272,7 @@ class TestLtByDirs(tests.TestCase):
         self.assertCmpByDirs(1, b'test/ing/a/path/', b'')
 
     def test_cmp_same_str(self):
-        """Compare the same string"""
+        """Compare the same string."""
         self.assertCmpByDirs(0, b'a', b'a')
         self.assertCmpByDirs(0, b'ab', b'ab')
         self.assertCmpByDirs(0, b'abc', b'abc')
@@ -432,7 +291,7 @@ class TestLtByDirs(tests.TestCase):
         self.assertCmpByDirs(0, b'a/b/c/d/e', b'a/b/c/d/e')
 
     def test_simple_paths(self):
-        """Compare strings that act like normal string comparison"""
+        """Compare strings that act like normal string comparison."""
         self.assertCmpByDirs(-1, b'a', b'b')
         self.assertCmpByDirs(-1, b'aa', b'ab')
         self.assertCmpByDirs(-1, b'ab', b'bb')
@@ -462,12 +321,6 @@ class TestLtByDirs(tests.TestCase):
         self.assertCmpByDirs(-1, b'ab/cd', b'ab/cd-')
         self.assertCmpByDirs(-1, b'ab/cd', b'ab-cd')
 
-    def test_cmp_unicode_not_allowed(self):
-        lt_by_dirs = self.get_lt_by_dirs()
-        self.assertRaises(TypeError, lt_by_dirs, 'Unicode', b'str')
-        self.assertRaises(TypeError, lt_by_dirs, b'str', 'Unicode')
-        self.assertRaises(TypeError, lt_by_dirs, 'Unicode', 'Unicode')
-
     def test_cmp_non_ascii(self):
         self.assertCmpByDirs(-1, b'\xc2\xb5', b'\xc3\xa5')  # u'\xb5', u'\xe5'
         self.assertCmpByDirs(-1, b'a', b'\xc3\xa5')  # u'a', u'\xe5'
@@ -476,20 +329,10 @@ class TestLtByDirs(tests.TestCase):
         self.assertCmpByDirs(-1, b'b/a', b'b/\xc2\xb5')  # u'b/a', u'b/\xb5'
 
 
-class TestCompiledLtByDirs(TestLtByDirs):
-    """Test the pyrex implementation of lt_by_dirs"""
-
-    _test_needs_features = [compiled_dirstate_helpers_feature]
-
-    def get_lt_by_dirs(self):
-        from .._dirstate_helpers_pyx import lt_by_dirs
-        return lt_by_dirs
-
-
 class TestLtPathByDirblock(tests.TestCase):
-    """Test an implementation of _lt_path_by_dirblock()
+    """Test an implementation of lt_path_by_dirblock().
 
-    _lt_path_by_dirblock() compares two paths using the sort order used by
+    lt_path_by_dirblock() compares two paths using the sort order used by
     DirState. All paths in the same directory are sorted together.
 
     Child test cases can override ``get_lt_path_by_dirblock`` to test a specific
@@ -497,9 +340,9 @@ class TestLtPathByDirblock(tests.TestCase):
     """
 
     def get_lt_path_by_dirblock(self):
-        """Get a specific implementation of _lt_path_by_dirblock."""
-        from .._dirstate_helpers_py import _lt_path_by_dirblock
-        return _lt_path_by_dirblock
+        """Get a specific implementation of lt_path_by_dirblock."""
+        from ..dirstate import lt_path_by_dirblock
+        return lt_path_by_dirblock
 
     def assertLtPathByDirblock(self, paths):
         """Compare all paths and make sure they evaluate to the correct order.
@@ -589,15 +432,6 @@ class TestLtPathByDirblock(tests.TestCase):
                  b'a=z/z',
             ])
 
-    def test_unicode_not_allowed(self):
-        lt_path_by_dirblock = self.get_lt_path_by_dirblock()
-        self.assertRaises(TypeError, lt_path_by_dirblock, 'Uni', 'str')
-        self.assertRaises(TypeError, lt_path_by_dirblock, 'str', 'Uni')
-        self.assertRaises(TypeError, lt_path_by_dirblock, 'Uni', 'Uni')
-        self.assertRaises(TypeError, lt_path_by_dirblock, 'x/Uni', 'x/str')
-        self.assertRaises(TypeError, lt_path_by_dirblock, 'x/str', 'x/Uni')
-        self.assertRaises(TypeError, lt_path_by_dirblock, 'x/Uni', 'x/Uni')
-
     def test_nonascii(self):
         self.assertLtPathByDirblock([
             # content of '/'
@@ -617,61 +451,8 @@ class TestLtPathByDirblock(tests.TestCase):
             ])
 
 
-class TestCompiledLtPathByDirblock(TestLtPathByDirblock):
-    """Test the pyrex implementation of _lt_path_by_dirblock"""
-
-    _test_needs_features = [compiled_dirstate_helpers_feature]
-
-    def get_lt_path_by_dirblock(self):
-        from .._dirstate_helpers_pyx import _lt_path_by_dirblock
-        return _lt_path_by_dirblock
-
-
-class TestMemRChr(tests.TestCase):
-    """Test memrchr functionality"""
-
-    _test_needs_features = [compiled_dirstate_helpers_feature]
-
-    def assertMemRChr(self, expected, s, c):
-        from .._dirstate_helpers_pyx import _py_memrchr
-        self.assertEqual(expected, _py_memrchr(s, c))
-
-    def test_missing(self):
-        self.assertMemRChr(None, b'', b'a')
-        self.assertMemRChr(None, b'', b'c')
-        self.assertMemRChr(None, b'abcdefghijklm', b'q')
-        self.assertMemRChr(None, b'aaaaaaaaaaaaaaaaaaaaaaa', b'b')
-
-    def test_single_entry(self):
-        self.assertMemRChr(0, b'abcdefghijklm', b'a')
-        self.assertMemRChr(1, b'abcdefghijklm', b'b')
-        self.assertMemRChr(2, b'abcdefghijklm', b'c')
-        self.assertMemRChr(10, b'abcdefghijklm', b'k')
-        self.assertMemRChr(11, b'abcdefghijklm', b'l')
-        self.assertMemRChr(12, b'abcdefghijklm', b'm')
-
-    def test_multiple(self):
-        self.assertMemRChr(10, b'abcdefjklmabcdefghijklm', b'a')
-        self.assertMemRChr(11, b'abcdefjklmabcdefghijklm', b'b')
-        self.assertMemRChr(12, b'abcdefjklmabcdefghijklm', b'c')
-        self.assertMemRChr(20, b'abcdefjklmabcdefghijklm', b'k')
-        self.assertMemRChr(21, b'abcdefjklmabcdefghijklm', b'l')
-        self.assertMemRChr(22, b'abcdefjklmabcdefghijklm', b'm')
-        self.assertMemRChr(22, b'aaaaaaaaaaaaaaaaaaaaaaa', b'a')
-
-    def test_with_nulls(self):
-        self.assertMemRChr(10, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'a')
-        self.assertMemRChr(11, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'b')
-        self.assertMemRChr(12, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'c')
-        self.assertMemRChr(20, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'k')
-        self.assertMemRChr(21, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'l')
-        self.assertMemRChr(22, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'm')
-        self.assertMemRChr(22, b'aaa\0\0\0aaaaaaa\0\0\0aaaaaaa', b'a')
-        self.assertMemRChr(9, b'\0\0\0\0\0\0\0\0\0\0', b'\0')
-
-
 class TestReadDirblocks(test_dirstate.TestCaseWithDirState):
-    """Test an implementation of _read_dirblocks()
+    """Test an implementation of _read_dirblocks().
 
     _read_dirblocks() reads in all of the dirblock information from the disk
     file.
@@ -718,7 +499,7 @@ class TestReadDirblocks(test_dirstate.TestCaseWithDirState):
 
 
 class TestCompiledReadDirblocks(TestReadDirblocks):
-    """Test the pyrex implementation of _read_dirblocks"""
+    """Test the pyrex implementation of _read_dirblocks."""
 
     _test_needs_features = [compiled_dirstate_helpers_feature]
 
@@ -734,34 +515,6 @@ class TestUsingCompiledIfAvailable(tests.TestCase):
     _dirstate_helpers_pyx is actually available, but the compiled functions are
     not being used.
     """
-
-    def test_bisect_dirblock(self):
-        if compiled_dirstate_helpers_feature.available():
-            from .._dirstate_helpers_pyx import bisect_dirblock
-        else:
-            from .._dirstate_helpers_py import bisect_dirblock
-        self.assertIs(bisect_dirblock, dirstate.bisect_dirblock)
-
-    def test__bisect_path_left(self):
-        if compiled_dirstate_helpers_feature.available():
-            from .._dirstate_helpers_pyx import _bisect_path_left
-        else:
-            from .._dirstate_helpers_py import _bisect_path_left
-        self.assertIs(_bisect_path_left, dirstate._bisect_path_left)
-
-    def test__bisect_path_right(self):
-        if compiled_dirstate_helpers_feature.available():
-            from .._dirstate_helpers_pyx import _bisect_path_right
-        else:
-            from .._dirstate_helpers_py import _bisect_path_right
-        self.assertIs(_bisect_path_right, dirstate._bisect_path_right)
-
-    def test_lt_by_dirs(self):
-        if compiled_dirstate_helpers_feature.available():
-            from .._dirstate_helpers_pyx import lt_by_dirs
-        else:
-            from .._dirstate_helpers_py import lt_by_dirs
-        self.assertIs(lt_by_dirs, dirstate.lt_by_dirs)
 
     def test__read_dirblocks(self):
         if compiled_dirstate_helpers_feature.available():
@@ -787,7 +540,7 @@ class TestUsingCompiledIfAvailable(tests.TestCase):
 
 
 class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
-    """Test the DirState.update_entry functions"""
+    """Test the DirState.update_entry functions."""
 
     scenarios = multiply_scenarios(
         dir_reader_scenarios(), ue_scenarios)
@@ -800,7 +553,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         self.overrideAttr(dirstate, 'update_entry', self.update_entry)
 
     def get_state_with_a(self):
-        """Create a DirState tracking a single object named 'a'"""
+        """Create a DirState tracking a single object named 'a'."""
         state = test_dirstate.InstrumentedDirState.initialize('dirstate')
         self.addCleanup(state.unlock)
         state.add('a', b'a-id', 'file', None, b'')
@@ -1021,9 +774,9 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         t = time.time() - 100.0
         try:
             os.utime('a', (t, t))
-        except OSError:
+        except OSError as e:
             # It looks like Win32 + FAT doesn't allow to change times on a dir.
-            raise tests.TestSkipped("can't update mtime of a dir on FAT")
+            raise tests.TestSkipped("can't update mtime of a dir on FAT") from e
         saved_packed_stat = entry[1][0][-1]
         self.assertIs(None, self.do_update_entry(state, entry, b'a'))
         # We *do* go ahead and update the information in the dirblocks, but we
@@ -1134,7 +887,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         self.create_and_test_dir(state, entry)
 
     def test_update_file_to_symlink(self):
-        """File becomes a symlink"""
+        """File becomes a symlink."""
         self.requireFeature(features.SymlinkFeature(self.test_dir))
         state, entry = self.get_state_with_a()
         # The file sha1 won't be cached unless the file is old
@@ -1153,7 +906,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         self.create_and_test_file(state, entry)
 
     def test_update_dir_to_symlink(self):
-        """Directory becomes a symlink"""
+        """Directory becomes a symlink."""
         self.requireFeature(features.SymlinkFeature(self.test_dir))
         state, entry = self.get_state_with_a()
         # The symlink target won't be cached if it isn't old
@@ -1163,7 +916,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         self.create_and_test_symlink(state, entry)
 
     def test_update_symlink_to_file(self):
-        """Symlink becomes a file"""
+        """Symlink becomes a file."""
         self.requireFeature(features.SymlinkFeature(self.test_dir))
         state, entry = self.get_state_with_a()
         # The symlink and file info won't be cached unless old
@@ -1173,7 +926,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         self.create_and_test_file(state, entry)
 
     def test_update_symlink_to_dir(self):
-        """Symlink becomes a directory"""
+        """Symlink becomes a directory."""
         self.requireFeature(features.SymlinkFeature(self.test_dir))
         state, entry = self.get_state_with_a()
         # The symlink target won't be cached if it isn't old
@@ -1196,7 +949,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         entry[1][0] = (b'f', b'', 0, True, dirstate.DirState.NULLSTAT)
 
         stat_value = os.lstat('a')
-        packed_stat = dirstate.pack_stat(stat_value)
+        dirstate.pack_stat(stat_value)
 
         state.adjust_time(-10)  # Make sure everything is new
         self.update_entry(state, entry, abspath=b'a', stat_value=stat_value)
@@ -1208,7 +961,6 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         # Make the disk object look old enough to cache (but it won't cache the
         # sha as it is a new file).
         state.adjust_time(+20)
-        digest = b'b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6'
         self.update_entry(state, entry, abspath=b'a', stat_value=stat_value)
         self.assertEqual([(b'f', b'', 14, True, dirstate.DirState.NULLSTAT)],
                          entry[1])
@@ -1326,56 +1078,3 @@ class TestProcessEntry(test_dirstate.TestCaseWithDirState):
         state = tree._current_dirstate()
         state._sha1_provider = UppercaseSHA1Provider()
         self.assertChangedFileIds([b'file-id'], tree)
-
-
-class TestPackStat(tests.TestCase):
-    """Check packed representaton of stat values is robust on all inputs"""
-
-    scenarios = helper_scenarios
-
-    def pack(self, statlike_tuple):
-        return self.helpers.pack_stat(os.stat_result(statlike_tuple))
-
-    @staticmethod
-    def unpack_field(packed_string, stat_field):
-        return _dirstate_helpers_py._unpack_stat(packed_string)[stat_field]
-
-    def test_result(self):
-        self.assertEqual(b"AAAQAAAAABAAAAARAAAAAgAAAAEAAIHk",
-                         self.pack((33252, 1, 2, 0, 0, 0, 4096, 15.5, 16.5, 17.5)))
-
-    def test_giant_inode(self):
-        packed = self.pack((33252, 0xF80000ABC, 0, 0, 0, 0, 0, 0, 0, 0))
-        self.assertEqual(0x80000ABC, self.unpack_field(packed, "st_ino"))
-
-    def test_giant_size(self):
-        packed = self.pack((33252, 0, 0, 0, 0, 0, (1 << 33) + 4096, 0, 0, 0))
-        self.assertEqual(4096, self.unpack_field(packed, "st_size"))
-
-    def test_fractional_mtime(self):
-        packed = self.pack((33252, 0, 0, 0, 0, 0, 0, 0, 16.9375, 0))
-        self.assertEqual(16, self.unpack_field(packed, "st_mtime"))
-
-    def test_ancient_mtime(self):
-        packed = self.pack((33252, 0, 0, 0, 0, 0, 0, 0, -11644473600.0, 0))
-        self.assertEqual(1240428288, self.unpack_field(packed, "st_mtime"))
-
-    def test_distant_mtime(self):
-        packed = self.pack((33252, 0, 0, 0, 0, 0, 0, 0, 64060588800.0, 0))
-        self.assertEqual(3931046656, self.unpack_field(packed, "st_mtime"))
-
-    def test_fractional_ctime(self):
-        packed = self.pack((33252, 0, 0, 0, 0, 0, 0, 0, 0, 17.5625))
-        self.assertEqual(17, self.unpack_field(packed, "st_ctime"))
-
-    def test_ancient_ctime(self):
-        packed = self.pack((33252, 0, 0, 0, 0, 0, 0, 0, 0, -11644473600.0))
-        self.assertEqual(1240428288, self.unpack_field(packed, "st_ctime"))
-
-    def test_distant_ctime(self):
-        packed = self.pack((33252, 0, 0, 0, 0, 0, 0, 0, 0, 64060588800.0))
-        self.assertEqual(3931046656, self.unpack_field(packed, "st_ctime"))
-
-    def test_negative_dev(self):
-        packed = self.pack((33252, 0, -0xFFFFFCDE, 0, 0, 0, 0, 0, 0, 0))
-        self.assertEqual(0x322, self.unpack_field(packed, "st_dev"))

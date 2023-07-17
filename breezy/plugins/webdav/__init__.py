@@ -20,7 +20,6 @@ This defines the HttpWebDAV transport, which implement the necessary
 handling of WebDAV to allow pushing on an http server.
 """
 
-import breezy
 from breezy import transport
 
 from ... import version_info  # noqa: F401
@@ -39,6 +38,6 @@ def load_tests(loader, basic_tests, pattern):
         'tests',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
-            ["{}.{}".format(__name__, tmn) for tmn in testmod_names]))
+            [f"{__name__}.{tmn}" for tmn in testmod_names]))
     return basic_tests
 
