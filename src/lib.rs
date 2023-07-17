@@ -11,6 +11,9 @@ pub mod tree;
 pub mod urlutils;
 pub mod workspace;
 
+#[cfg(feature = "debian")]
+pub mod debian;
+
 pub use branch::Branch;
 pub use controldir::{ControlDir, Prober};
 pub use dirty_tracker::DirtyTracker;
