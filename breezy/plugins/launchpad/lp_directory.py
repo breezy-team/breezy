@@ -71,90 +71,91 @@ def _resolve_via_api(path, url, api_base_url=LPNET_SERVICE_ROOT):
         path, subpath = split(path)
         subpaths.insert(0, subpath)
     if not lp_branch:
-        raise errors.InvalidURL("Unknown Launchpad path: %s" % url)
+        raise InvalidURL(f"Unknown Launchpad path: {url}")
     return {'urls': [join(lp_branch.composePublicURL(scheme='bzr+ssh'), *subpaths),
                      join(lp_branch.composePublicURL(scheme='http'), *subpaths)]}
+
+
+def _resolve_locally(path, url, _api_resolver):
+    # This is the best I could work out. If an lp: url
+    # includes ~user, then it is specially validated. Otherwise, it is just
+    # sent to +branch/$path.
+    _, netloc, _, _, _ = urlsplit(url)
+    if netloc == '':
+        netloc = DEFAULT_INSTANCE
+    base_url = LAUNCHPAD_DOMAINS[netloc]
+    base = 'bzr+ssh://bazaar.{}/'.format(base_url)
+    maybe_invalid = False
+    if path.startswith('~'):
+        # A ~user style path, validate it a bit.
+        # If a path looks fishy, fall back to asking the API to
+        # resolve it for us.
+        parts = path.split('/')
+        if (len(parts) < 3
+                or (parts[1] in ('ubuntu', 'debian') and len(parts) < 5)):
+            # This special case requires 5-parts to be valid.
+            maybe_invalid = True
+    else:
+        base += '+branch/'
+    if maybe_invalid:
+        return _api_resolver(path, url)
+    return {'urls': [base + path]}
+
+
+def _resolve(url, _api_resolver=_resolve_via_api, _lp_login=None):
+    """Resolve the base URL for this transport."""
+    url, path = _update_url_scheme(url)
+    if _lp_login is None:
+        _lp_login = get_lp_login()
+    path = path.strip('/')
+    path = _expand_user(path, url, _lp_login)
+    if _lp_login is not None:
+        result = _resolve_locally(path, url, _api_resolver)
+        if 'launchpad' in debug.debug_flags:
+            local_res = result
+            result = _api_resolver(path, url)
+            trace.note(gettext(
+                'resolution for {0}\n  local: {1}\n remote: {2}').format(
+                url, local_res['urls'], result['urls']))
+    else:
+        result = _api_resolver(path, url)
+
+    if 'launchpad' in debug.debug_flags:
+        trace.mutter("resolve_lp_path(%r) == %r", url, result)
+
+    _warned_login = False
+    for url in result['urls']:
+        scheme, netloc, path, query, fragment = urlsplit(url)
+        if _requires_launchpad_login(scheme, netloc, path, query,
+                                     fragment):
+            # Only accept launchpad.net bzr+ssh URLs if we know
+            # the user's Launchpad login:
+            if _lp_login is not None:
+                break
+            if _lp_login is None:
+                if not _warned_login:
+                    trace.warning(
+                        'You have not informed bzr of your Launchpad ID, and you must do this to\n'
+                        'write to Launchpad or access private data.  See "bzr help launchpad-login".')
+                    _warned_login = True
+        else:
+            # Use the URL if we can create a transport for it.
+            try:
+                transport.get_transport(url)
+            except (errors.PathError, errors.TransportError):
+                pass
+            else:
+                break
+    else:
+        raise InvalidURL(path=url, extra='no supported schemes')
+    return url
 
 
 class LaunchpadDirectory:
 
     def look_up(self, name, url, purpose=None):
         """See DirectoryService.look_up"""
-        return self._resolve(url)
-
-    def _resolve_locally(self, path, url, _api_resolver):
-        # This is the best I could work out. If an lp: url
-        # includes ~user, then it is specially validated. Otherwise, it is just
-        # sent to +branch/$path.
-        _, netloc, _, _, _ = urlsplit(url)
-        if netloc == '':
-            netloc = DEFAULT_INSTANCE
-        base_url = LAUNCHPAD_DOMAINS[netloc]
-        base = 'bzr+ssh://bazaar.{}/'.format(base_url)
-        maybe_invalid = False
-        if path.startswith('~'):
-            # A ~user style path, validate it a bit.
-            # If a path looks fishy, fall back to asking the API to
-            # resolve it for us.
-            parts = path.split('/')
-            if (len(parts) < 3
-                    or (parts[1] in ('ubuntu', 'debian') and len(parts) < 5)):
-                # This special case requires 5-parts to be valid.
-                maybe_invalid = True
-        else:
-            base += '+branch/'
-        if maybe_invalid:
-            return _api_resolver(path, url)
-        return {'urls': [base + path]}
-
-    def _resolve(self, url, _api_resolver=_resolve_via_api, _lp_login=None):
-        """Resolve the base URL for this transport."""
-        url, path = _update_url_scheme(url)
-        if _lp_login is None:
-            _lp_login = get_lp_login()
-        path = path.strip('/')
-        path = _expand_user(path, url, _lp_login)
-        if _lp_login is not None:
-            result = self._resolve_locally(path, url, _api_resolver)
-            if 'launchpad' in debug.debug_flags:
-                local_res = result
-                result = _api_resolver(path, url)
-                trace.note(gettext(
-                    'resolution for {0}\n  local: {1}\n remote: {2}').format(
-                    url, local_res['urls'], result['urls']))
-        else:
-            result = _api_resolver(path, url)
-
-        if 'launchpad' in debug.debug_flags:
-            trace.mutter("resolve_lp_path(%r) == %r", url, result)
-
-        _warned_login = False
-        for url in result['urls']:
-            scheme, netloc, path, query, fragment = urlsplit(url)
-            if _requires_launchpad_login(scheme, netloc, path, query,
-                                         fragment):
-                # Only accept launchpad.net bzr+ssh URLs if we know
-                # the user's Launchpad login:
-                if _lp_login is not None:
-                    break
-                if _lp_login is None:
-                    if not _warned_login:
-                        trace.warning(
-                            'You have not informed bzr of your Launchpad ID, and you must do this to\n'
-                            'write to Launchpad or access private data.  See "bzr help launchpad-login".')
-                        _warned_login = True
-            else:
-                # Use the URL if we can create a transport for it.
-                try:
-                    transport.get_transport(url)
-                except (errors.PathError, errors.TransportError):
-                    pass
-                else:
-                    break
-        else:
-            raise InvalidURL(path=url, extra='no supported schemes')
-        return url
-
+        return _resolve(url)
 
 def get_test_permutations():
     # Since this transport doesn't do anything once opened, it's not subjected
