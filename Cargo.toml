@@ -1,6 +1,6 @@
 [package]
 name = "breezy"
-version = "3.3.3"
+version = "3.3.4"
 authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@jelmer.uk>"]
 edition = "2018"
 publish = false
