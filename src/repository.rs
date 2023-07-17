@@ -40,6 +40,14 @@ impl FromPyObject<'_> for Revision {
 }
 
 impl Repository {
+    pub fn revision_tree(&self, revid: &RevisionId) -> PyResult<PyObject> {
+        Python::with_gil(|py| {
+            self.0
+                .call_method1(py, "revision_tree", (revid.clone(),))?
+                .extract(py)
+        })
+    }
+
     pub fn get_graph(&self) -> Graph {
         Python::with_gil(|py| Graph(self.0.call_method0(py, "get_graph").unwrap()))
     }

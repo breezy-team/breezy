@@ -1,3 +1,4 @@
+use crate::branch::Branch;
 use crate::lock::Lock;
 use crate::revisionid::RevisionId;
 use pyo3::import_exception;
@@ -138,6 +139,15 @@ pub trait Tree {
     }
 }
 
+pub trait MutableTree: Tree {
+    fn lock_write(&self) -> PyResult<Lock> {
+        Python::with_gil(|py| {
+            let lock = self.obj().call_method0(py, "lock_write").unwrap();
+            Ok(Lock(lock))
+        })
+    }
+}
+
 pub struct RevisionTree(pub PyObject);
 
 impl Tree for RevisionTree {
@@ -168,6 +178,13 @@ pub struct WorkingTree(pub PyObject);
 impl WorkingTree {
     pub fn new(obj: PyObject) -> Result<WorkingTree, PyErr> {
         Ok(WorkingTree(obj))
+    }
+
+    pub fn branch(&self) -> PyResult<Branch> {
+        Python::with_gil(|py| {
+            let branch = self.0.getattr(py, "branch")?;
+            Ok(Branch(branch))
+        })
     }
 
     pub fn basis_tree(&self) -> Box<dyn Tree> {
@@ -272,6 +289,8 @@ impl Tree for WorkingTree {
         &self.0
     }
 }
+
+impl MutableTree for WorkingTree {}
 
 #[derive(Debug)]
 pub struct TreeChange {

@@ -6,6 +6,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
 import_exception!(breezy.errors, NotBranchError);
+import_exception!(breezy.errors, DependencyNotPresent);
 import_exception!(breezy.controldir, NoColocatedBranchSupport);
 
 pub struct Prober(PyObject);
@@ -18,8 +19,9 @@ impl Prober {
 
 #[derive(Debug)]
 pub enum BranchOpenError {
-    NotBranchError,
+    NotBranchError(String),
     NoColocatedBranchSupport,
+    DependencyNotPresent(String, String),
     Other(PyErr),
 }
 
@@ -27,9 +29,29 @@ impl From<PyErr> for BranchOpenError {
     fn from(err: PyErr) -> Self {
         Python::with_gil(|py| {
             if err.is_instance_of::<NotBranchError>(py) {
-                BranchOpenError::NotBranchError
+                let l = err
+                    .value(py)
+                    .getattr("path")
+                    .unwrap()
+                    .extract::<String>()
+                    .unwrap();
+                BranchOpenError::NotBranchError(l)
             } else if err.is_instance_of::<NoColocatedBranchSupport>(py) {
                 BranchOpenError::NoColocatedBranchSupport
+            } else if err.is_instance_of::<DependencyNotPresent>(py) {
+                let l = err
+                    .value(py)
+                    .getattr("library")
+                    .unwrap()
+                    .extract::<String>()
+                    .unwrap();
+                let e = err
+                    .value(py)
+                    .getattr("error")
+                    .unwrap()
+                    .extract::<String>()
+                    .unwrap();
+                BranchOpenError::DependencyNotPresent(l, e)
             } else {
                 BranchOpenError::Other(err)
             }
@@ -40,7 +62,8 @@ impl From<PyErr> for BranchOpenError {
 impl From<BranchOpenError> for PyErr {
     fn from(err: BranchOpenError) -> Self {
         match err {
-            BranchOpenError::NotBranchError => NotBranchError::new_err("NotBranchError"),
+            BranchOpenError::NotBranchError(l) => NotBranchError::new_err((l,)),
+            BranchOpenError::DependencyNotPresent(d, e) => DependencyNotPresent::new_err((d, e)),
             BranchOpenError::NoColocatedBranchSupport => {
                 NoColocatedBranchSupport::new_err("NoColocatedBranchSupport")
             }
@@ -52,7 +75,10 @@ impl From<BranchOpenError> for PyErr {
 impl std::fmt::Display for BranchOpenError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            BranchOpenError::NotBranchError => write!(f, "NotBranchError"),
+            BranchOpenError::NotBranchError(p) => write!(f, "NotBranchError: {}", p),
+            BranchOpenError::DependencyNotPresent(d, e) => {
+                write!(f, "DependencyNotPresent({}, {})", d, e)
+            }
             BranchOpenError::NoColocatedBranchSupport => write!(f, "NoColocatedBranchSupport"),
             BranchOpenError::Other(err) => write!(f, "Other({})", err),
         }

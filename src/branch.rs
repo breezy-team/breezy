@@ -1,4 +1,4 @@
-use crate::controldir::ControlDir;
+use crate::controldir::{BranchOpenError, ControlDir};
 use crate::lock::Lock;
 use crate::repository::Repository;
 use crate::revisionid::RevisionId;
@@ -40,7 +40,7 @@ impl Branch {
         Python::with_gil(|py| Repository(self.0.getattr(py, "repository").unwrap()))
     }
 
-    pub fn open(&self, url: &url::Url) -> PyResult<Branch> {
+    pub fn open(&self, url: &url::Url) -> Result<Branch, BranchOpenError> {
         Python::with_gil(|py| {
             Ok(Branch(self.0.call_method(
                 py,
@@ -48,6 +48,17 @@ impl Branch {
                 (url.to_string(),),
                 None,
             )?))
+        })
+    }
+
+    pub fn open_containing(&self, url: &url::Url) -> Result<(Branch, String), BranchOpenError> {
+        Python::with_gil(|py| {
+            let (b, p): (PyObject, String) = self
+                .0
+                .call_method(py, "open_containing", (url.to_string(),), None)?
+                .extract(py)?;
+
+            Ok((Branch(b), p))
         })
     }
 

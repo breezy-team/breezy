@@ -15,6 +15,7 @@
 
 pub mod branch;
 pub mod controldir;
+pub mod diff;
 pub mod dirty_tracker;
 pub mod forge;
 pub mod graph;
