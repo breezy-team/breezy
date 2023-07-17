@@ -40,25 +40,25 @@ impl Branch {
         Python::with_gil(|py| Repository(self.0.getattr(py, "repository").unwrap()))
     }
 
-    pub fn open(&self, url: &url::Url) -> Result<Branch, BranchOpenError> {
+    pub fn open(url: &url::Url) -> Result<Branch, BranchOpenError> {
         Python::with_gil(|py| {
-            Ok(Branch(self.0.call_method(
-                py,
-                "open",
-                (url.to_string(),),
-                None,
-            )?))
+            let m = py.import("breezy.branch").unwrap();
+            let c = m.getattr("Branch").unwrap();
+            let r = c.call_method1("open", (url.to_string(),))?;
+            Ok(Branch(r.to_object(py)))
         })
     }
 
-    pub fn open_containing(&self, url: &url::Url) -> Result<(Branch, String), BranchOpenError> {
+    pub fn open_containing(url: &url::Url) -> Result<(Branch, String), BranchOpenError> {
         Python::with_gil(|py| {
-            let (b, p): (PyObject, String) = self
-                .0
-                .call_method(py, "open_containing", (url.to_string(),), None)?
-                .extract(py)?;
+            let m = py.import("breezy.branch").unwrap();
+            let c = m.getattr("Branch").unwrap();
 
-            Ok((Branch(b), p))
+            let (b, p): (&PyAny, String) = c
+                .call_method1("open_containing", (url.to_string(),))?
+                .extract()?;
+
+            Ok((Branch(b.to_object(py)), p))
         })
     }
 

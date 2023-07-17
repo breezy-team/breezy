@@ -22,6 +22,7 @@ pub mod graph;
 pub mod lock;
 pub mod repository;
 pub mod revisionid;
+pub mod status;
 pub mod transport;
 pub mod tree;
 pub mod urlutils;

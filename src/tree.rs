@@ -180,10 +180,10 @@ impl WorkingTree {
         Ok(WorkingTree(obj))
     }
 
-    pub fn branch(&self) -> PyResult<Branch> {
+    pub fn branch(&self) -> Branch {
         Python::with_gil(|py| {
-            let branch = self.0.getattr(py, "branch")?;
-            Ok(Branch(branch))
+            let branch = self.0.getattr(py, "branch").unwrap();
+            Branch(branch)
         })
     }
 
