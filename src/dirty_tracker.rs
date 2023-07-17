@@ -1,10 +1,42 @@
 use crate::tree::{Tree, WorkingTree};
+use pyo3::import_exception;
 use pyo3::prelude::*;
 
 pub struct DirtyTracker(pub PyObject);
 
+import_exception!(breezy.dirty_tracker, TooManyOpenFiles);
+
+#[derive(Debug)]
+pub enum Error {
+    TooManyOpenFiles,
+    Python(PyErr),
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match &self {
+            Error::TooManyOpenFiles => write!(f, "Too many open files"),
+            Error::Python(e) => write!(f, "{}", e),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
+
+impl From<PyErr> for Error {
+    fn from(e: PyErr) -> Self {
+        Python::with_gil(|py| {
+            if e.is_instance_of::<TooManyOpenFiles>(py) {
+                Error::TooManyOpenFiles
+            } else {
+                Error::Python(e)
+            }
+        })
+    }
+}
+
 impl DirtyTracker {
-    fn new(obj: PyObject) -> PyResult<Self> {
+    fn new(obj: PyObject) -> Result<Self, Error> {
         Python::with_gil(|py| {
             let dt = DirtyTracker(obj);
             dt.0.call_method0(py, "__enter__")?;
@@ -56,7 +88,7 @@ pub fn get_dirty_tracker(
     local_tree: &WorkingTree,
     subpath: Option<&std::path::Path>,
     use_inotify: Option<bool>,
-) -> PyResult<Option<DirtyTracker>> {
+) -> Result<Option<DirtyTracker>, Error> {
     Python::with_gil(|py| {
         let dt_cls = match use_inotify {
             Some(true) => {
@@ -70,7 +102,7 @@ pub fn get_dirty_tracker(
                     if e.is_instance_of::<pyo3::exceptions::PyImportError>(py) {
                         return Ok(None);
                     } else {
-                        return Err(e);
+                        return Err(e.into());
                     }
                 }
             },
