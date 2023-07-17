@@ -104,7 +104,7 @@ def _resolve(url, _lp_login=None):
     path = _expand_user(path, url, _lp_login)
     result = _resolve_via_api(path, url)
 
-    if 'launchpad' in debug.debug_flags:
+    if debug.debug_flag_enabled('launchpad'):
         trace.mutter("resolve_lp_path(%r) == %r", url, result)
 
     _warned_login = False
