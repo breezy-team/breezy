@@ -1,4 +1,5 @@
 use crate::branch::Branch;
+use crate::controldir::ControlDir;
 use crate::lock::Lock;
 use crate::revisionid::RevisionId;
 use pyo3::import_exception;
@@ -184,6 +185,34 @@ impl WorkingTree {
         Python::with_gil(|py| {
             let branch = self.0.getattr(py, "branch").unwrap();
             Branch(branch)
+        })
+    }
+
+    pub fn controldir(&self) -> ControlDir {
+        Python::with_gil(|py| {
+            let controldir = self.0.getattr(py, "controldir").unwrap();
+            ControlDir(controldir)
+        })
+    }
+
+    pub fn open(path: &std::path::Path) -> Result<WorkingTree, PyErr> {
+        Python::with_gil(|py| {
+            let m = py.import("breezy.workingtree")?;
+            let c = m.getattr("WorkingTree")?;
+            let wt = c.call_method1("open", (path,))?;
+            Ok(WorkingTree(wt.to_object(py)))
+        })
+    }
+
+    pub fn open_containing(
+        path: &std::path::Path,
+    ) -> Result<(WorkingTree, std::path::PathBuf), PyErr> {
+        Python::with_gil(|py| {
+            let m = py.import("breezy.workingtree")?;
+            let c = m.getattr("WorkingTree")?;
+            let (wt, p): (&PyAny, String) =
+                c.call_method1("open_containing", (path,))?.extract()?;
+            Ok((WorkingTree(wt.to_object(py)), std::path::PathBuf::from(p)))
         })
     }
 
