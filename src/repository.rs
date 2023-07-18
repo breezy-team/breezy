@@ -1,6 +1,7 @@
 use crate::controldir::ControlDir;
 use crate::graph::Graph;
 use crate::revisionid::RevisionId;
+use crate::tree::RevisionTree;
 use pyo3::prelude::*;
 
 #[derive(Clone)]
@@ -40,11 +41,10 @@ impl FromPyObject<'_> for Revision {
 }
 
 impl Repository {
-    pub fn revision_tree(&self, revid: &RevisionId) -> PyResult<PyObject> {
+    pub fn revision_tree(&self, revid: &RevisionId) -> PyResult<RevisionTree> {
         Python::with_gil(|py| {
-            self.0
-                .call_method1(py, "revision_tree", (revid.clone(),))?
-                .extract(py)
+            let o = self.0.call_method1(py, "revision_tree", (revid.clone(),))?;
+            Ok(RevisionTree(o))
         })
     }
 
