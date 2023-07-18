@@ -442,7 +442,7 @@ class _ConnectRequest(Request):
     def set_selector(self, selector):
         self.proxied_host = selector
 
-    selector = property(get_selector, set_selector)
+    selector = property(get_selector, set_selector)  # type: ignore
 
     def set_proxy(self, proxy, type):
         """Set the proxy without remembering the proxied host.
