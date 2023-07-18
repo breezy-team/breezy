@@ -6,6 +6,8 @@ use pyo3::import_exception;
 use pyo3::prelude::*;
 
 import_exception!(breezy.commit, PointlessCommit);
+import_exception!(breezy.errors, NotBranchError);
+import_exception!(breezy.errors, DependencyNotPresent);
 
 pub trait Tree {
     fn obj(&self) -> &PyObject;
@@ -176,6 +178,71 @@ impl std::error::Error for CommitError {}
 
 pub struct WorkingTree(pub PyObject);
 
+#[derive(Debug)]
+pub enum WorkingTreeOpenError {
+    NotBranchError(String),
+    DependencyNotPresent(String, String),
+    Other(PyErr),
+}
+
+impl From<PyErr> for WorkingTreeOpenError {
+    fn from(err: PyErr) -> Self {
+        Python::with_gil(|py| {
+            if err.is_instance_of::<NotBranchError>(py) {
+                let l = err
+                    .value(py)
+                    .getattr("path")
+                    .unwrap()
+                    .extract::<String>()
+                    .unwrap();
+                WorkingTreeOpenError::NotBranchError(l)
+            } else if err.is_instance_of::<DependencyNotPresent>(py) {
+                let l = err
+                    .value(py)
+                    .getattr("library")
+                    .unwrap()
+                    .extract::<String>()
+                    .unwrap();
+                let e = err
+                    .value(py)
+                    .getattr("error")
+                    .unwrap()
+                    .extract::<String>()
+                    .unwrap();
+                WorkingTreeOpenError::DependencyNotPresent(l, e)
+            } else {
+                WorkingTreeOpenError::Other(err)
+            }
+        })
+    }
+}
+
+impl From<WorkingTreeOpenError> for PyErr {
+    fn from(err: WorkingTreeOpenError) -> Self {
+        match err {
+            WorkingTreeOpenError::NotBranchError(l) => NotBranchError::new_err((l,)),
+            WorkingTreeOpenError::DependencyNotPresent(d, e) => {
+                DependencyNotPresent::new_err((d, e))
+            }
+            WorkingTreeOpenError::Other(err) => err,
+        }
+    }
+}
+
+impl std::fmt::Display for WorkingTreeOpenError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            WorkingTreeOpenError::NotBranchError(l) => write!(f, "Not branch error: {}", l),
+            WorkingTreeOpenError::DependencyNotPresent(d, e) => {
+                write!(f, "Dependency not present: {} {}", d, e)
+            }
+            WorkingTreeOpenError::Other(e) => write!(f, "Other error: {}", e),
+        }
+    }
+}
+
+impl std::error::Error for WorkingTreeOpenError {}
+
 impl WorkingTree {
     pub fn new(obj: PyObject) -> Result<WorkingTree, PyErr> {
         Ok(WorkingTree(obj))
@@ -195,7 +262,7 @@ impl WorkingTree {
         })
     }
 
-    pub fn open(path: &std::path::Path) -> Result<WorkingTree, PyErr> {
+    pub fn open(path: &std::path::Path) -> Result<WorkingTree, WorkingTreeOpenError> {
         Python::with_gil(|py| {
             let m = py.import("breezy.workingtree")?;
             let c = m.getattr("WorkingTree")?;
@@ -206,7 +273,7 @@ impl WorkingTree {
 
     pub fn open_containing(
         path: &std::path::Path,
-    ) -> Result<(WorkingTree, std::path::PathBuf), PyErr> {
+    ) -> Result<(WorkingTree, std::path::PathBuf), WorkingTreeOpenError> {
         Python::with_gil(|py| {
             let m = py.import("breezy.workingtree")?;
             let c = m.getattr("WorkingTree")?;

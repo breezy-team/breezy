@@ -1,13 +1,9 @@
-use crate::branch::{py_tag_selector, Branch};
+use crate::branch::{py_tag_selector, Branch, BranchOpenError};
 use crate::transport::Transport;
 use crate::tree::WorkingTree;
 use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
-
-import_exception!(breezy.errors, NotBranchError);
-import_exception!(breezy.errors, DependencyNotPresent);
-import_exception!(breezy.controldir, NoColocatedBranchSupport);
 
 pub struct Prober(PyObject);
 
@@ -16,76 +12,6 @@ impl Prober {
         Prober(obj)
     }
 }
-
-#[derive(Debug)]
-pub enum BranchOpenError {
-    NotBranchError(String),
-    NoColocatedBranchSupport,
-    DependencyNotPresent(String, String),
-    Other(PyErr),
-}
-
-impl From<PyErr> for BranchOpenError {
-    fn from(err: PyErr) -> Self {
-        Python::with_gil(|py| {
-            if err.is_instance_of::<NotBranchError>(py) {
-                let l = err
-                    .value(py)
-                    .getattr("path")
-                    .unwrap()
-                    .extract::<String>()
-                    .unwrap();
-                BranchOpenError::NotBranchError(l)
-            } else if err.is_instance_of::<NoColocatedBranchSupport>(py) {
-                BranchOpenError::NoColocatedBranchSupport
-            } else if err.is_instance_of::<DependencyNotPresent>(py) {
-                let l = err
-                    .value(py)
-                    .getattr("library")
-                    .unwrap()
-                    .extract::<String>()
-                    .unwrap();
-                let e = err
-                    .value(py)
-                    .getattr("error")
-                    .unwrap()
-                    .extract::<String>()
-                    .unwrap();
-                BranchOpenError::DependencyNotPresent(l, e)
-            } else {
-                BranchOpenError::Other(err)
-            }
-        })
-    }
-}
-
-impl From<BranchOpenError> for PyErr {
-    fn from(err: BranchOpenError) -> Self {
-        match err {
-            BranchOpenError::NotBranchError(l) => NotBranchError::new_err((l,)),
-            BranchOpenError::DependencyNotPresent(d, e) => DependencyNotPresent::new_err((d, e)),
-            BranchOpenError::NoColocatedBranchSupport => {
-                NoColocatedBranchSupport::new_err("NoColocatedBranchSupport")
-            }
-            BranchOpenError::Other(err) => err,
-        }
-    }
-}
-
-impl std::fmt::Display for BranchOpenError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            BranchOpenError::NotBranchError(p) => write!(f, "NotBranchError: {}", p),
-            BranchOpenError::DependencyNotPresent(d, e) => {
-                write!(f, "DependencyNotPresent({}, {})", d, e)
-            }
-            BranchOpenError::NoColocatedBranchSupport => write!(f, "NoColocatedBranchSupport"),
-            BranchOpenError::Other(err) => write!(f, "Other({})", err),
-        }
-    }
-}
-
-impl std::error::Error for BranchOpenError {}
 
 pub struct ControlDir(pub(crate) PyObject);
 
