@@ -591,7 +591,7 @@ class Commit:
             hooks = post_commit.split(' ')
             # this would be nicer with twisted.python.reflect.namedAny
             for hook in hooks:
-                eval(hook + '(branch, rev_id)',
+                eval(hook + '(branch, rev_id)',  # noqa: S307
                               {'branch': self.branch,
                                'breezy': breezy,
                                'rev_id': self.rev_id})
