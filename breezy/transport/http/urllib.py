@@ -433,12 +433,13 @@ class _ConnectRequest(Request):
             raise AssertionError()
         self.proxied_host = request.proxied_host
 
-    @property
-    def selector(self):
+    def get_selector(self):
         return self.proxied_host
 
-    def get_selector(self):
-        return self.selector
+    def set_selector(self, selector):
+        self.proxied_host = selector
+
+    selector = property(get_selector, set_selector)  # type: ignore
 
     def set_proxy(self, proxy, type):
         """Set the proxy without remembering the proxied host.
