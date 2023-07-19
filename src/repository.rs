@@ -25,11 +25,13 @@ impl RepositoryFormat {
 #[derive(Clone)]
 pub struct Repository(pub(crate) PyObject);
 
+#[derive(Debug)]
 pub struct Revision {
     pub revision_id: RevisionId,
+    pub parent_ids: Vec<RevisionId>,
     pub message: String,
     pub committer: String,
-    pub timestamp: u64,
+    pub timestamp: f64,
     pub timezone: i32,
 }
 
@@ -43,6 +45,9 @@ impl ToPyObject for Revision {
         kwargs.set_item("timestamp", self.timestamp).unwrap();
         kwargs.set_item("timezone", self.timezone).unwrap();
         kwargs.set_item("revision_id", &self.revision_id).unwrap();
+        kwargs
+            .set_item("parent_ids", self.parent_ids.iter().collect::<Vec<_>>())
+            .unwrap();
         py.import("breezy.revision")
             .unwrap()
             .getattr("Revision")
@@ -57,6 +62,7 @@ impl FromPyObject<'_> for Revision {
     fn extract(ob: &'_ PyAny) -> PyResult<Self> {
         Ok(Revision {
             revision_id: ob.getattr("revision_id")?.extract()?,
+            parent_ids: ob.getattr("parent_ids")?.extract()?,
             message: ob.getattr("message")?.extract()?,
             committer: ob.getattr("committer")?.extract()?,
             timestamp: ob.getattr("timestamp")?.extract()?,
@@ -126,12 +132,18 @@ impl Repository {
         })
     }
 
-    pub fn get_revision_deltas(&self, revs: &[Revision]) -> impl Iterator<Item = TreeDelta> {
+    pub fn get_revision_deltas(
+        &self,
+        revs: &[Revision],
+        specific_files: Option<&[&std::path::Path]>,
+    ) -> impl Iterator<Item = TreeDelta> {
         Python::with_gil(|py| {
             let revs = revs.iter().map(|r| r.to_object(py)).collect::<Vec<_>>();
+            let specific_files = specific_files
+                .map(|files| files.iter().map(|f| f.to_path_buf()).collect::<Vec<_>>());
             let o = self
                 .0
-                .call_method1(py, "get_revision_deltas", (revs,))
+                .call_method1(py, "get_revision_deltas", (revs, specific_files))
                 .unwrap();
             DeltaIterator(o)
         })

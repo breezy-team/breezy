@@ -1,8 +1,15 @@
 use pyo3::prelude::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-#[derive(Clone, PartialEq, Eq, Debug, Ord, PartialOrd)]
+#[derive(Clone, PartialEq, Eq, Ord, PartialOrd)]
 pub struct RevisionId(Vec<u8>);
+
+impl std::fmt::Debug for RevisionId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = String::from_utf8(self.0.clone()).unwrap();
+        write!(f, "{}", s)
+    }
+}
 
 impl RevisionId {
     pub fn as_bytes(&self) -> &[u8] {
