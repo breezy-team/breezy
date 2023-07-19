@@ -4,7 +4,7 @@ use crate::graph::Graph;
 use crate::revisionid::RevisionId;
 use crate::tree::RevisionTree;
 use pyo3::prelude::*;
-use pyo3::types::{PyDict};
+use pyo3::types::PyDict;
 
 #[derive(Clone)]
 pub struct RepositoryFormat(pub(crate) PyObject);
@@ -25,6 +25,7 @@ impl RepositoryFormat {
 pub struct Repository(pub(crate) PyObject);
 
 pub struct Revision {
+    pub revision_id: RevisionId,
     pub message: String,
     pub committer: String,
     pub timestamp: u64,
@@ -40,6 +41,7 @@ impl ToPyObject for Revision {
             .unwrap();
         kwargs.set_item("timestamp", self.timestamp).unwrap();
         kwargs.set_item("timezone", self.timezone).unwrap();
+        kwargs.set_item("revision_id", &self.revision_id).unwrap();
         py.import("breezy.revision")
             .unwrap()
             .getattr("Revision")
@@ -53,6 +55,7 @@ impl ToPyObject for Revision {
 impl FromPyObject<'_> for Revision {
     fn extract(ob: &'_ PyAny) -> PyResult<Self> {
         Ok(Revision {
+            revision_id: ob.getattr("revision_id")?.extract()?,
             message: ob.getattr("message")?.extract()?,
             committer: ob.getattr("committer")?.extract()?,
             timestamp: ob.getattr("timestamp")?.extract()?,
