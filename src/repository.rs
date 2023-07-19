@@ -81,7 +81,7 @@ impl Iterator for RevisionIterator {
 pub struct DeltaIterator(PyObject);
 
 impl Iterator for DeltaIterator {
-    type Item = Vec<TreeDelta>;
+    type Item = TreeDelta;
 
     fn next(&mut self) -> Option<Self::Item> {
         Python::with_gil(|py| {
@@ -128,7 +128,7 @@ impl Repository {
         })
     }
 
-    pub fn get_revision_deltas(&self, revs: &[Revision]) -> impl Iterator<Item = Vec<TreeDelta>> {
+    pub fn get_revision_deltas(&self, revs: &[Revision]) -> impl Iterator<Item = TreeDelta> {
         Python::with_gil(|py| {
             let revs = revs.iter().map(|r| r.to_object(py)).collect::<Vec<_>>();
             let o = self
