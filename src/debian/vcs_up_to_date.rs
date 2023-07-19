@@ -64,7 +64,7 @@ pub fn check_up_to_date(
                     tree_version: e.value(py).getattr("tree_version")?.extract()?,
                 })
             }
-            Ok(o) => Ok(UpToDateStatus::UpToDate),
+            Ok(_o) => Ok(UpToDateStatus::UpToDate),
             Err(e) => Err(e.into()),
         }
     })

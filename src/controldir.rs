@@ -1,7 +1,7 @@
 use crate::branch::{py_tag_selector, Branch, BranchOpenError};
 use crate::transport::Transport;
 use crate::tree::WorkingTree;
-use pyo3::import_exception;
+
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 

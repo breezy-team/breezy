@@ -4,7 +4,7 @@ use crate::graph::Graph;
 use crate::revisionid::RevisionId;
 use crate::tree::RevisionTree;
 use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyList};
+use pyo3::types::{PyDict};
 
 #[derive(Clone)]
 pub struct RepositoryFormat(pub(crate) PyObject);

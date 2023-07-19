@@ -28,15 +28,15 @@ use pyo3::prelude::*;
 /// The lists are normally sorted when the delta is created.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TreeDelta {
-    added: Vec<TreeChange>,
-    removed: Vec<TreeChange>,
-    renamed: Vec<TreeChange>,
-    copied: Vec<TreeChange>,
-    kind_changed: Vec<TreeChange>,
-    modified: Vec<TreeChange>,
-    unchanged: Vec<TreeChange>,
-    unversioned: Vec<TreeChange>,
-    missing: Vec<TreeChange>,
+    pub added: Vec<TreeChange>,
+    pub removed: Vec<TreeChange>,
+    pub renamed: Vec<TreeChange>,
+    pub copied: Vec<TreeChange>,
+    pub kind_changed: Vec<TreeChange>,
+    pub modified: Vec<TreeChange>,
+    pub unchanged: Vec<TreeChange>,
+    pub unversioned: Vec<TreeChange>,
+    pub missing: Vec<TreeChange>,
 }
 
 impl TreeDelta {
