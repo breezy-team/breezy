@@ -44,7 +44,7 @@ impl ToPyObject for Revision {
             .unwrap()
             .getattr("Revision")
             .unwrap()
-            .call((), Some(kwargs.into()))
+            .call((), Some(kwargs))
             .unwrap()
             .to_object(py)
     }
@@ -64,7 +64,7 @@ impl FromPyObject<'_> for Revision {
 pub struct RevisionIterator(PyObject);
 
 impl Iterator for RevisionIterator {
-    type Item = Revision;
+    type Item = (RevisionId, Option<Revision>);
 
     fn next(&mut self) -> Option<Self::Item> {
         Python::with_gil(|py| {
@@ -115,7 +115,10 @@ impl Repository {
         Python::with_gil(|py| RepositoryFormat(self.0.getattr(py, "_format").unwrap()))
     }
 
-    pub fn iter_revisions(&self, revision_ids: Vec<RevisionId>) -> impl Iterator<Item = Revision> {
+    pub fn iter_revisions(
+        &self,
+        revision_ids: Vec<RevisionId>,
+    ) -> impl Iterator<Item = (RevisionId, Option<Revision>)> {
         Python::with_gil(|py| {
             let o = self
                 .0
