@@ -8,6 +8,44 @@ use pyo3::prelude::*;
 import_exception!(breezy.commit, PointlessCommit);
 import_exception!(breezy.errors, NotBranchError);
 import_exception!(breezy.errors, DependencyNotPresent);
+import_exception!(breezy.transport, NoSuchFile);
+
+#[derive(Debug)]
+pub enum Error {
+    NoSuchFile(std::path::PathBuf),
+    Other(PyErr),
+}
+
+impl std::error::Error for Error {}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Error::NoSuchFile(path) => write!(f, "No such file: {}", path.to_string_lossy()),
+            Error::Other(e) => write!(f, "{}", e),
+        }
+    }
+}
+
+impl From<PyErr> for Error {
+    fn from(e: PyErr) -> Self {
+        Python::with_gil(|py| {
+            if e.is_instance_of::<NoSuchFile>(py) {
+                return Error::NoSuchFile(e.value(py).getattr("path").unwrap().extract().unwrap());
+            }
+            Error::Other(e)
+        })
+    }
+}
+
+impl From<Error> for PyErr {
+    fn from(e: Error) -> Self {
+        match e {
+            Error::NoSuchFile(path) => NoSuchFile::new_err(path.to_string_lossy().to_string()),
+            Error::Other(e) => e,
+        }
+    }
+}
 
 pub trait Tree {
     fn obj(&self) -> &PyObject;
@@ -21,13 +59,27 @@ pub trait Tree {
         })
     }
 
-    fn get_file(&self, path: &std::path::Path) -> PyResult<Box<dyn std::io::Read>> {
+    fn get_file(&self, path: &std::path::Path) -> Result<Box<dyn std::io::Read>, Error> {
         Python::with_gil(|py| {
             let f = self.obj().call_method1(py, "get_file", (path,))?;
 
             let f = pyo3_file::PyFileLikeObject::with_requirements(f, true, false, false)?;
 
             Ok(Box::new(f) as Box<dyn std::io::Read>)
+        })
+    }
+
+    fn get_file_text(&self, path: &std::path::Path) -> Result<Vec<u8>, Error> {
+        Python::with_gil(|py| {
+            let text = self.obj().call_method1(py, "get_file_text", (path,))?;
+            text.extract(py).map_err(|e| e.into())
+        })
+    }
+
+    fn get_file_lines(&self, path: &std::path::Path) -> Result<Vec<Vec<u8>>, Error> {
+        Python::with_gil(|py| {
+            let lines = self.obj().call_method1(py, "get_file_lines", (path,))?;
+            lines.extract(py).map_err(|e| e.into())
         })
     }
 
@@ -388,7 +440,7 @@ impl Tree for WorkingTree {
 
 impl MutableTree for WorkingTree {}
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct TreeChange {
     pub path: (Option<std::path::PathBuf>, Option<std::path::PathBuf>),
     pub changed_content: bool,
