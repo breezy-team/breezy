@@ -3,6 +3,7 @@ use crate::delta::TreeDelta;
 use crate::graph::Graph;
 use crate::revisionid::RevisionId;
 use crate::tree::RevisionTree;
+use pyo3::exceptions::PyStopIteration;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
@@ -70,13 +71,10 @@ impl Iterator for RevisionIterator {
     type Item = (RevisionId, Option<Revision>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        Python::with_gil(|py| {
-            let o = self.0.call_method0(py, "__next__").unwrap();
-            if o.is_none(py) {
-                None
-            } else {
-                Some(o.extract(py).unwrap())
-            }
+        Python::with_gil(|py| match self.0.call_method0(py, "__next__") {
+            Err(e) if e.is_instance_of::<PyStopIteration>(py) => None,
+            Ok(o) => Some(o.extract(py).unwrap()),
+            Err(e) => panic!("Error in revision iterator: {}", e),
         })
     }
 }
@@ -87,13 +85,10 @@ impl Iterator for DeltaIterator {
     type Item = TreeDelta;
 
     fn next(&mut self) -> Option<Self::Item> {
-        Python::with_gil(|py| {
-            let o = self.0.call_method0(py, "__next__").unwrap();
-            if o.is_none(py) {
-                None
-            } else {
-                Some(o.extract(py).unwrap())
-            }
+        Python::with_gil(|py| match self.0.call_method0(py, "__next__") {
+            Err(e) if e.is_instance_of::<PyStopIteration>(py) => None,
+            Ok(o) => Some(o.extract(py).unwrap()),
+            Err(e) => panic!("Error in delta iterator: {}", e),
         })
     }
 }
