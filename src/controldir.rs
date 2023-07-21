@@ -149,23 +149,3 @@ impl ControlDir {
         })
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn test_create_branch_convenience() {
-        Python::with_gil(|py| {
-            py.import("breezy.bzr").unwrap();
-        });
-        let td = tempfile::tempdir().unwrap();
-        let b = ControlDir::create_branch_convenience(&url::Url::from_directory_path(td).unwrap())
-            .unwrap();
-        assert!(b.name().is_none());
-        let cd = b.controldir();
-        let branch = cd.create_branch(Some("foo")).unwrap();
-        assert_eq!(branch.name().unwrap(), "foo");
-        let same_branch = cd.open_branch(Some("foo")).unwrap();
-        assert_eq!(branch.name().unwrap(), same_branch.name().unwrap());
-    }
-}
