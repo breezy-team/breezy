@@ -9,7 +9,9 @@
 //! # Example
 //!
 //! ```
-//! let b = Branch.open("lp:breezy")?;
+//! use breezyshim::Branch;
+//! breezyshim::plugin::load_plugins();
+//! let b = Branch::open(&"lp:brz".parse().unwrap()).unwrap();
 //! println!("Last revision: {:?}", b.last_revision());
 //! ```
 
@@ -21,6 +23,7 @@ pub mod dirty_tracker;
 pub mod forge;
 pub mod graph;
 pub mod lock;
+pub mod plugin;
 pub mod repository;
 pub mod revisionid;
 pub mod status;
