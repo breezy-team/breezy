@@ -128,11 +128,11 @@ class EmailSender:
 
         # We can use a StringIO because show_diff_trees should only write
         # 8-bit strings. It is an error to write a Unicode string here.
-        from io import StringIO
-        diff_content = StringIO()
+        from io import BytesIO
+        diff_content = BytesIO()
         diff_options = self.config.get('post_commit_diffoptions')
         show_diff_trees(tree_old, tree_new, diff_content, None, diff_options)
-        numlines = diff_content.getvalue().count('\n') + 1
+        numlines = diff_content.getvalue().count(b'\n') + 1
         if numlines <= difflimit:
             return diff_content.getvalue()
         else:
@@ -235,7 +235,7 @@ class EmailSender:
             msg.add_inline_attachment(diff, self.diff_filename())
 
         # Add revision_mail_headers to the headers
-        if header is None:
+        if header is not None:
             for k, v in header.items():
                 msg[k] = v
 
