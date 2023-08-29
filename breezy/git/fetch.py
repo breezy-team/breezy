@@ -518,7 +518,7 @@ class DetermineWantsRecorder:
         self.remote_refs = {}
 
     def __call__(self, refs):
-        if type(refs) is not dict:
+        if not isinstance(refs, dict):
             raise TypeError(refs)
         self.remote_refs = refs
         self.wants = self.actual(refs)

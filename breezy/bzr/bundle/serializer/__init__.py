@@ -149,7 +149,7 @@ def binary_diff(old_filename, old_lines, new_filename, new_lines, to_file):
     to_file.write(b'\n')
 
 
-serializer_registry = registry.Registry[str, BundleSerializer]()
+serializer_registry = registry.Registry[str, BundleSerializer, None]()
 
 serializer_registry.register_lazy(
     '0.8', __name__ + '.v08', 'BundleSerializerV08')

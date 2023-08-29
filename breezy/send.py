@@ -23,7 +23,7 @@ from .branch import Branch
 from .i18n import gettext
 from .revision import NULL_REVISION
 
-format_registry = registry.Registry[str, Callable]()
+format_registry = registry.Registry[str, Callable, None]()
 
 
 def send(target_branch, revision, public_branch, remember,

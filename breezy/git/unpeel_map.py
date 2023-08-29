@@ -31,7 +31,7 @@ class UnpeelMap:
     Keeps track of the unpeeled object id of tags.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._map: Dict[bytes, Set[bytes]] = defaultdict(set)
         self._re_map: Dict[bytes, Set[bytes]] = {}
 

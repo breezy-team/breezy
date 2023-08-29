@@ -270,7 +270,7 @@ class ImportProcessor:
 
     __slots__ = ['imports', '_lazy_import_class']
 
-    def __init__(self, lazy_import_class=None):
+    def __init__(self, lazy_import_class=None) -> None:
         self.imports: Dict[str, Any] = {}
         if lazy_import_class is None:
             self._lazy_import_class = ImportReplacer

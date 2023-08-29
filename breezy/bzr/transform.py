@@ -83,7 +83,7 @@ def _content_match(tree, entry, tree_path, kind, target_path):
 class TreeTransformBase(TreeTransform):
     """The base class for TreeTransform and its kin."""
 
-    def __init__(self, tree, pb=None, case_sensitive=True):
+    def __init__(self, tree, pb=None, case_sensitive: bool = True) -> None:
         """Constructor.
 
         :param tree: The tree that will be transformed, but not necessarily
@@ -1113,7 +1113,9 @@ def iter_cook_conflicts(raw_conflicts, tt):
 class DiskTreeTransform(TreeTransformBase):
     """Tree transform storing its contents on disk."""
 
-    def __init__(self, tree, limbodir, pb=None, case_sensitive=True):
+    _deletiondir: Optional[str]
+
+    def __init__(self, tree, limbodir, pb=None, case_sensitive: bool = True) -> None:
         """Constructor.
         :param tree: The tree that will be transformed, but not necessarily
             the output tree.
@@ -1407,7 +1409,7 @@ class InventoryTreeTransform(DiskTreeTransform):
     happen.
     """
 
-    def __init__(self, tree, pb=None):
+    def __init__(self, tree, pb=None) -> None:
         """Note: a tree_write lock is taken on the tree.
 
         Use TreeTransform.finalize() to release the lock (can be omitted if

@@ -581,6 +581,6 @@ _global_option('timezone',
                type=str,
                help='Display timezone as local, original, or utc.')
 
-diff_writer_registry = _mod_registry.Registry[str, Callable]()
+diff_writer_registry = _mod_registry.Registry[str, Callable, None]()
 diff_writer_registry.register('plain', lambda x: x, 'Plaintext diff output.')
 diff_writer_registry.default_key = 'plain'

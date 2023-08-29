@@ -85,7 +85,7 @@ def _search_key_plain(key):
     return b'\x00'.join(key)
 
 
-search_key_registry = registry.Registry[bytes, Callable[[bytes], bytes]]()
+search_key_registry = registry.Registry[bytes, Callable[[bytes], bytes], None]()
 search_key_registry.register(b'plain', _search_key_plain)
 
 

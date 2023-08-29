@@ -4052,9 +4052,9 @@ class cmd_config(commands.Command):
 # The registered object should be a callable receiving a test instance
 # parameter (inheriting from tests.TestCaseWithTransport) and returning a Store
 # object.
-test_store_builder_registry = registry.Registry[str, Callable]()
+test_store_builder_registry = registry.Registry[str, Callable, None]()
 
 # The registered object should be a callable receiving a test instance
 # parameter (inheriting from tests.TestCaseWithTransport) and returning a Stack
 # object.
-test_stack_builder_registry = registry.Registry[str, Callable]()
+test_stack_builder_registry = registry.Registry[str, Callable, None]()

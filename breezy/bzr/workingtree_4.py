@@ -34,7 +34,6 @@ import stat
 
 from breezy import (
     branch as _mod_branch,
-    cache_utf8,
     controldir,
     filters as _mod_filters,
     revisiontree,
@@ -46,7 +45,7 @@ from breezy.bzr import (
     )
 """)
 
-from .. import debug, errors, osutils, trace
+from .. import cache_utf8, debug, errors, osutils, trace
 from .. import revision as _mod_revision
 from ..lock import LogicalLockResult
 from ..lockdir import LockDir
@@ -304,7 +303,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 if kinds[pos] is None:
                     kinds[pos] = self.kind(f)
 
-    def _generate_inventory(self):
+    def _generate_inventory(self) -> None:
         """Create and set self.inventory from the dirstate object.
 
         This is relatively expensive: we have to walk the entire dirstate.

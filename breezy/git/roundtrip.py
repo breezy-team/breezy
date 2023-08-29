@@ -62,11 +62,11 @@ class CommitSupplement:
 
     explicit_parent_ids = None
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.properties: Dict[str, bytes] = {}
         self.verifiers: Dict[str, Any] = {}
 
-    def __nonzero__(self):
+    def __nonzero__(self) -> bool:
         return bool(self.revision_id or self.properties or
                     self.explicit_parent_ids)
 

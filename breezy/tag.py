@@ -367,7 +367,7 @@ def sort_time(branch, tags):
     tags.sort(key=lambda x: timestamps[x[1]])
 
 
-tag_sort_methods = Registry[str, Callable[[_mod_branch.Branch, List[str]], List[str]]]()
+tag_sort_methods = Registry[str, Callable[[_mod_branch.Branch, List[str]], List[str]], None]()
 tag_sort_methods.register("natural", sort_natural,
                           'Sort numeric substrings as numbers. (default)')
 tag_sort_methods.register("alpha", sort_alpha, 'Sort tags lexicographically.')
