@@ -172,7 +172,7 @@ class UIFactory:
             "Not checking SSL certificate for %(host)s."),
         }
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._task_stack: List["ProgressTask"] = []
         self.suppressed_warnings: Set[str] = set()
         self._quiet = False

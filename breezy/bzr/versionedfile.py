@@ -40,7 +40,7 @@ from ..registry import Registry
 from ..textmerge import TextMerge
 from . import index
 
-adapter_registry = Registry[Tuple[str, str], Any]()
+adapter_registry = Registry[Tuple[str, str], Any, None]()
 adapter_registry.register_lazy(('knit-annotated-delta-gz', 'knit-delta-gz'),
                                'breezy.bzr.knit', 'DeltaAnnotatedToUnannotated')
 adapter_registry.register_lazy(('knit-annotated-ft-gz', 'knit-ft-gz'),
@@ -89,7 +89,7 @@ class ContentFactory:
         parents).
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Create a ContentFactory."""
         self.sha1: Optional[bytes] = None
         self.size: Optional[int] = None
@@ -117,7 +117,7 @@ class ChunkedContentFactory(ContentFactory):
     :ivar chunks_are_lines: Whether chunks are lines.
     """
 
-    def __init__(self, key, parents, sha1, chunks, chunks_are_lines=None):
+    def __init__(self, key, parents, sha1, chunks, chunks_are_lines=None) -> None:
         """Create a ContentFactory."""
         self.sha1 = sha1
         self.size: int = sum(map(len, chunks))

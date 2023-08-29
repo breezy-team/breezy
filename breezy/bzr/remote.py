@@ -4524,8 +4524,8 @@ class RemoteBzrDirConfig(RemoteConfig):
         return self._bzrdir._real_bzrdir
 
 
-error_translators = registry.Registry[bytes, Callable]()
-no_context_error_translators = registry.Registry[bytes, Callable]()
+error_translators = registry.Registry[bytes, Callable, None]()
+no_context_error_translators = registry.Registry[bytes, Callable, None]()
 
 
 def _translate_error(err, **context):
@@ -4547,7 +4547,7 @@ def _translate_error(err, **context):
             return context[name]
         except KeyError:
             mutter('Missing key \'%s\' in context %r', name, context)
-            raise err
+            raise err from None
 
     def get_path():
         """Get the path from the context if present, otherwise use first error
@@ -4560,7 +4560,7 @@ def _translate_error(err, **context):
                 return err.error_args[0].decode('utf-8')
             except IndexError:
                 mutter('Missing key \'path\' in context %r', context)
-                raise err
+                raise err from None
     if not isinstance(err.error_verb, bytes):
         raise TypeError(err.error_verb)
     try:

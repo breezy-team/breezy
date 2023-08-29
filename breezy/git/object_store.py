@@ -19,7 +19,7 @@
 
 import posixpath
 import stat
-from typing import Dict, Iterable, Iterator, List
+from typing import Dict, Iterable, Iterator, List, Tuple
 
 from dulwich.object_store import BaseObjectStore
 from dulwich.objects import ZERO_SHA, Blob, Commit, ObjectID, ShaFile, Tree, sha_to_hex
@@ -722,16 +722,16 @@ class BazaarObjectStore(BaseObjectStore):
         return pack_objects_to_data([
             (self[oid], path) for (oid, (type_num, path)) in object_ids])
 
-    def find_missing_objects(self, have, want, shallow=None, progress=None,
-                             ofs_delta=False, get_tagged=None, lossy=False):
+    def find_missing_objects(self, haves, wants, shallow=None, progress=None,
+                             get_tagged=None, lossy: bool = False, ofs_delta=False) -> Iterator[Tuple[ObjectID, Tuple[int, str]]]:
         """Iterate over the contents of a pack file.
 
-        :param have: List of SHA1s of objects that should not be sent
-        :param want: List of SHA1s of objects that should be sent
+        :param haves: List of SHA1s of objects that should not be sent
+        :param wants: List of SHA1s of objects that should be sent
         """
         processed = set()
-        ret: Dict[ObjectID, List] = self.lookup_git_shas(have + want)
-        for commit_sha in have:
+        ret: Dict[ObjectID, List] = self.lookup_git_shas(haves + wants)
+        for commit_sha in haves:
             commit_sha = self.unpeel_map.peel_tag(commit_sha, commit_sha)
             try:
                 for (type, type_data) in ret[commit_sha]:
@@ -741,8 +741,8 @@ class BazaarObjectStore(BaseObjectStore):
             except KeyError:
                 trace.mutter("unable to find remote ref %s", commit_sha)
         pending = set()
-        for commit_sha in want:
-            if commit_sha in have:
+        for commit_sha in wants:
+            if commit_sha in haves:
                 continue
             try:
                 for (type, type_data) in ret[commit_sha]:

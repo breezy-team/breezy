@@ -1007,7 +1007,7 @@ class ControlComponentFormat:
         raise NotImplementedError(cls.get_format_string)
 
 
-class ControlComponentFormatRegistry(registry.FormatRegistry[ControlComponentFormat]):
+class ControlComponentFormatRegistry(registry.FormatRegistry[ControlComponentFormat, None]):
     """A registry for control components (branch, workingtree, repository)."""
 
     def __init__(self, other_registry=None):
@@ -1234,7 +1234,7 @@ class ControlDirFormat:
                 pass
         raise errors.NotBranchError(path=transport.base)
 
-    def initialize(self, url, possible_transports=None):
+    def initialize(self, url: str, possible_transports=None):
         """Create a control dir at this url and return an opened copy.
 
         While not deprecated, this method is very specific and its use will
@@ -1247,12 +1247,12 @@ class ControlDirFormat:
         return self.initialize_on_transport(
             _mod_transport.get_transport(url, possible_transports))
 
-    def initialize_on_transport(self, transport):
+    def initialize_on_transport(self, transport: _mod_transport.Transport):
         """Initialize a new controldir in the base directory of a Transport."""
         raise NotImplementedError(self.initialize_on_transport)
 
-    def initialize_on_transport_ex(self, transport, use_existing_dir=False,
-                                   create_prefix=False, force_new_repo=False, stacked_on=None,
+    def initialize_on_transport_ex(self, transport: _mod_transport.Transport, use_existing_dir: bool = False,
+                                   create_prefix: bool = False, force_new_repo: bool = False, stacked_on=None,
                                    stack_on_pwd=None, repo_format_name=None, make_working_trees=None,
                                    shared_repo=False, vfs_only=False):
         """Create this format on transport.
@@ -1395,7 +1395,7 @@ class ControlDirFormatInfo:
         self.experimental = experimental
 
 
-class ControlDirFormatRegistry(registry.Registry[str, ControlDirFormat]):
+class ControlDirFormatRegistry(registry.Registry[str, ControlDirFormat, None]):
     """Registry of user-selectable ControlDir subformats.
 
     Differs from ControlDirFormat._formats in that it provides sub-formats,
@@ -1676,7 +1676,7 @@ class RepositoryAcquisitionPolicy:
 # on previous ones.
 format_registry = ControlDirFormatRegistry()
 
-network_format_registry = registry.FormatRegistry[ControlDirFormat]()
+network_format_registry = registry.FormatRegistry[ControlDirFormat, None]()
 """Registry of formats indexed by their network name.
 
 The network name for a ControlDirFormat is an identifier that can be used when

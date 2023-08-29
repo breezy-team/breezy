@@ -3349,7 +3349,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
 
 
 # A registry where get() returns a suite decorator.
-parallel_registry = registry.Registry[str, Callable]()
+parallel_registry = registry.Registry[str, Callable, None]()
 
 
 def fork_decorator(suite):

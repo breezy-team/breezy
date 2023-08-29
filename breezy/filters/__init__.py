@@ -171,7 +171,7 @@ class FilteredStat:
 
 
 # The registry of filter stacks indexed by name.
-filter_stacks_registry = registry.Registry[str, Callable[[str], List[ContentFilter]]]()
+filter_stacks_registry = registry.Registry[str, Callable[[str], List[ContentFilter]], None]()
 
 
 # Cache of preferences -> stack

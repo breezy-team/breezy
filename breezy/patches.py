@@ -154,7 +154,7 @@ __pychecker__ = ""
 
 class Hunk:
 
-    def __init__(self, orig_pos, orig_range, mod_pos, mod_range, tail=None):
+    def __init__(self, orig_pos, orig_range, mod_pos, mod_range, tail=None) -> None:
         self.orig_pos = orig_pos
         self.orig_range = orig_range
         self.mod_pos = mod_pos
@@ -271,7 +271,7 @@ class BinaryPatch:
 
 class Patch(BinaryPatch):
 
-    def __init__(self, oldname, newname, oldts=None, newts=None):
+    def __init__(self, oldname, newname, oldts=None, newts=None) -> None:
         BinaryPatch.__init__(self, oldname, newname)
         self.oldts = oldts
         self.newts = newts

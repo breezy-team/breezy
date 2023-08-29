@@ -41,7 +41,7 @@ class StrangeHostname(errors.BzrError):
     _fmt = "Refusing to connect to strange SSH hostname %(hostname)s"
 
 
-class SSHVendorManager(registry.Registry[str, "SSHVendor"]):
+class SSHVendorManager(registry.Registry[str, "SSHVendor", None]):
     """Manager for manage SSH vendors."""
 
     def __init__(self):

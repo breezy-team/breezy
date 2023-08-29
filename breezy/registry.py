@@ -98,9 +98,10 @@ class _LazyObjectGetter(_ObjectGetter[T]):
 
 K = TypeVar('K')
 V = TypeVar('V')
+I = TypeVar('I')
 
 
-class Registry(Generic[K, V]):
+class Registry(Generic[K, V, I]):
     """A class that registers objects to a name.
 
     There are many places that want to collect related objects and access them
@@ -121,7 +122,7 @@ class Registry(Generic[K, V]):
         self._default_key = None
         self._dict: Dict[K, _ObjectGetter[V]] = {}
         self._aliases: Dict[K, K] = {}
-        self._help_dict: Dict[K, Union[Callable[[Registry[K, V], Optional[K]], str], str]] = {}
+        self._help_dict: Dict[K, Union[Callable[[Registry[K, V, I], Optional[K]], str], str]] = {}
         self._info_dict: Dict[K, Any] = {}
 
     def aliases(self) -> Dict[K, K]:
@@ -135,7 +136,7 @@ class Registry(Generic[K, V]):
         return ret
 
     def register(self, key: K, obj: V, help: Optional[str] = None,
-                 info: Optional[Any] = None,
+                 info: Optional[I] = None,
                  override_existing: bool = False):
         """Register a new object to a name.
 
@@ -159,7 +160,7 @@ class Registry(Generic[K, V]):
         self._add_help_and_info(key, help=help, info=info)
 
     def register_lazy(self, key: K, module_name: str, member_name: str,
-                      help: Optional[str] = None, info: Optional[Any] = None,
+                      help: Optional[str] = None, info: Optional[I] = None,
                       override_existing: bool = False) -> None:
         """Register a new object to be loaded on request.
 
@@ -182,7 +183,7 @@ class Registry(Generic[K, V]):
         self._dict[key] = _LazyObjectGetter[V](module_name, member_name)
         self._add_help_and_info(key, help=help, info=info)
 
-    def register_alias(self, key: K, target: K, info: Optional[Any] = None):
+    def register_alias(self, key: K, target: K, info: Optional[I] = None):
         """Register an alias.
 
         :param key: Alias name
@@ -196,7 +197,7 @@ class Registry(Generic[K, V]):
             info = self._info_dict[target]
         self._add_help_and_info(key, help=self._help_dict[target], info=info)
 
-    def _add_help_and_info(self, key: K, help=None, info=None):
+    def _add_help_and_info(self, key: K, help=None, info: Optional[I] = None):
         """Add the help and information about this key."""
         self._help_dict[key] = help
         self._info_dict[key] = info
@@ -297,7 +298,9 @@ class Registry(Generic[K, V]):
 
 
 Format = TypeVar('Format')
-class FormatRegistry(Registry[str, Union[Format, Callable[[], Format]]]):
+Info = TypeVar('Info')
+
+class FormatRegistry(Registry[str, Union[Format, Callable[[], Format]], Info]):
     """Registry specialised for handling formats."""
 
     def __init__(self, other_registry=None):

@@ -248,7 +248,7 @@ class DictCacheUpdater(CacheUpdater):
             raise TypeError(hexsha)
         if type_name == "commit":
             self._commit = obj
-            if type(bzr_key_data) is not dict:
+            if not isinstance(bzr_key_data, dict):
                 raise TypeError(bzr_key_data)
             key = self.revid
             type_data = (self.revid, self._commit.tree, bzr_key_data)
@@ -321,7 +321,7 @@ class SqliteCacheUpdater(CacheUpdater):
             raise TypeError(hexsha)
         if type_name == "commit":
             self._commit = obj
-            if type(bzr_key_data) is not dict:
+            if not isinstance(bzr_key_data, dict):
                 raise TypeError(bzr_key_data)
             self._testament3_sha1 = bzr_key_data.get("testament3-sha1")
         elif type_name == "tree":
@@ -505,7 +505,7 @@ class TdbCacheUpdater(CacheUpdater):
             sha = obj.sha().digest()
         if type_name == "commit":
             self.db[b"commit\0" + self.revid] = b"\0".join((sha, obj.tree))
-            if type(bzr_key_data) is not dict:
+            if not isinstance(bzr_key_data, dict):
                 raise TypeError(bzr_key_data)
             type_data = (self.revid, obj.tree)
             try:
@@ -708,7 +708,7 @@ class IndexCacheUpdater(CacheUpdater):
             hexsha = obj.id
         if type_name == "commit":
             self._commit = obj
-            if type(bzr_key_data) is not dict:
+            if not isinstance(bzr_key_data, dict):
                 raise TypeError(bzr_key_data)
             self.cache.idmap._add_git_sha(hexsha, b"commit",
                                           (self.revid, obj.tree, bzr_key_data))
@@ -922,7 +922,7 @@ class IndexGitShaMap(GitShaMap):
             yield key[1]
 
 
-formats = registry.Registry[str, BzrGitCacheFormat]()
+formats = registry.Registry[str, BzrGitCacheFormat, None]()
 formats.register(TdbGitCacheFormat().get_format_string(),
                  TdbGitCacheFormat())
 formats.register(SqliteGitCacheFormat().get_format_string(),

@@ -1931,7 +1931,7 @@ def author_list_committer(rev):
     return [rev.committer]
 
 
-author_list_registry = registry.Registry[str, Callable[[_mod_revision.Revision], List[str]]]()
+author_list_registry = registry.Registry[str, Callable[[_mod_revision.Revision], List[str]], None]()
 
 author_list_registry.register('all', author_list_all,
                               'All authors')
@@ -2188,7 +2188,7 @@ def _get_kind_for_file(tree, path):
             return None
 
 
-properties_handler_registry = registry.Registry[str, Callable[[Dict[str, str]], Dict[str, str]]]()
+properties_handler_registry = registry.Registry[str, Callable[[Dict[str, str]], Dict[str, str]], None]()
 
 # Use the properties handlers to print out bug information if available
 

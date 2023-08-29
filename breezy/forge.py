@@ -523,4 +523,4 @@ def create_project(url: str, *, summary=None) -> None:
         raise UnsupportedForge(url)
 
 
-forges = registry.Registry[str, Type[Forge]]()
+forges = registry.Registry[str, Type[Forge], None]()
