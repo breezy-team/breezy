@@ -1,6 +1,6 @@
 [package]
 name = "breezy"
-version = "3.4.0"
+version = { workspace = true }
 authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@jelmer.uk>"]
 edition = "2021"
 default-run = "brz"
@@ -17,6 +17,9 @@ include = [
 
 [workspace]
 members = ["crates/*"]
+
+[workspace.package]
+version = "3.4.0"
 
 [[bin]]
 name = "brz"

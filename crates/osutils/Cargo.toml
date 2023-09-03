@@ -1,6 +1,6 @@
 [package]
 name = "breezy-osutils"
-version = "3.4.0"
+version = { workspace = true }
 edition = "2021"
 description = "Low level OS wrappers for Breezy"
 license = "GPL-2.0+"

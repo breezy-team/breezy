@@ -1,6 +1,6 @@
 [package]
 name = "urlutils-py"
-version = "3.4.0"
+version = { workspace = true }
 edition = "2018"
 
 [lib]
