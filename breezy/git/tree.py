@@ -1452,6 +1452,8 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             sha = value.sha
             size = value.size
         elif isinstance(value, ConflictedIndexEntry):
+            if value.this is None:
+                raise _mod_transport.NoSuchFile(path)
             mode = value.this.mode
             sha = value.this.sha
             size = value.this.size
@@ -1745,7 +1747,7 @@ def snapshot_workingtree(target: MutableGitIndexTree, want_unversioned: bool = F
     # Report dirified directories to commit_tree first, so that they can be
     # replaced with non-empty directories if they have contents.
     dirified = []
-    trust_executable = target._supports_executable()
+    trust_executable = target._supports_executable()  # type: ignore
     for path, index_entry in target._recurse_index_entries():
         index_entry = getattr(index_entry, 'this', index_entry)
         try:
@@ -1784,21 +1786,22 @@ def snapshot_workingtree(target: MutableGitIndexTree, want_unversioned: bool = F
                         target.store.add_object(blob)
                 blobs[path] = (live_entry.sha, cleanup_mode(live_entry.mode))
     if want_unversioned:
-        for extra in target._iter_files_recursive(include_dirs=False):
+        for extra in target._iter_files_recursive(include_dirs=False):  # type: ignore
             extra, accessible = osutils.normalized_filename(extra)
             np = encode_git_path(extra)
             if np in blobs:
                 continue
-            st = target._lstat(extra)
+            st = target._lstat(extra)  #  type: ignore
+            obj: Union[Tree, Blob]
             if stat.S_ISDIR(st.st_mode):
-                blob = Tree()
+                obj = Tree()
             elif stat.S_ISREG(st.st_mode) or stat.S_ISLNK(st.st_mode):
-                blob = blob_from_path_and_stat(
-                    os.fsencode(target.abspath(extra)), st)
+                obj = blob_from_path_and_stat(
+                    os.fsencode(target.abspath(extra)), st)  # type: ignore
             else:
                 continue
-            target.store.add_object(blob)
-            blobs[np] = (blob.id, cleanup_mode(st.st_mode))
+            target.store.add_object(obj)
+            blobs[np] = (obj.id, cleanup_mode(st.st_mode))
             extras.add(np)
     return commit_tree(
         target.store, dirified + [(p, s, m) for (p, (s, m)) in blobs.items()]), extras
