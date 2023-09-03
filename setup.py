@@ -25,12 +25,6 @@ except ModuleNotFoundError as e:
 
 from setuptools.command.build import build
 
-try:
-    import setuptools_gettext
-except ModuleNotFoundError as e:
-    sys.stderr.write(f"[ERROR] Please install setuptools_gettext ({e})\n")
-    sys.exit(1)
-
 from setuptools import setup
 
 try:
@@ -204,8 +198,6 @@ if ('bdist_egg' not in sys.argv and 'bdist_wheel' not in sys.argv
     # easy_install one
     build.sub_commands.append(('build_man', lambda _: True))
     DATA_FILES = [('man/man1', ['brz.1', 'breezy/git/git-remote-bzr.1'])]
-
-DATA_FILES = DATA_FILES + I18N_FILES
 
 import site
 
