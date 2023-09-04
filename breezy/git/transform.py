@@ -748,17 +748,16 @@ class TreeTransformBase(TreeTransform):
         if not raw_conflicts:
             return
         fp = FinalPaths(self)
-        from .workingtree import TextConflict
+        from .workingtree import TextConflict, ContentsConflict
         for c in raw_conflicts:
             if c[0] == 'text conflict':
                 yield TextConflict(fp.get_path(c[1]))
+            elif c[0] == 'contents conflict':
+                yield ContentsConflict(fp.get_path(c[1][0]))
             elif c[0] == 'duplicate':
                 yield TextConflict(fp.get_path(c[2]))
-            elif c[0] == 'contents conflict':
-                yield TextConflict(fp.get_path(c[1][0]))
             elif c[0] == 'missing parent':
-                # TODO(jelmer): This should not make it to here
-                yield TextConflict(fp.get_path(c[2]))
+                pass
             elif c[0] == 'non-directory parent':
                 yield TextConflict(fp.get_path(c[2]))
             elif c[0] == 'deleting parent':
@@ -767,8 +766,6 @@ class TreeTransformBase(TreeTransform):
             elif c[0] == 'parent loop':
                 # TODO(jelmer): This should not make it to here
                 yield TextConflict(fp.get_path(c[2]))
-            elif c[0] == 'path conflict':
-                yield TextConflict(fp.get_path(c[1]))
             else:
                 raise AssertionError(f'unknown conflict {c[0]}')
 

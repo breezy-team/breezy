@@ -176,7 +176,7 @@ class GitMemoryTree(MutableGitIndexTree, _mod_tree.Tree):
             blob = Blob.from_string(self._file_transport.get_bytes(path))
         else:
             raise AssertionError('unknown type %d' % stat_val.st_mode)
-        return index_entry_from_stat(stat_val, blob.id, 0)
+        return index_entry_from_stat(stat_val, blob.id, mode=stat_val.st_mode)
 
     def get_file_with_stat(self, path):
         return (self.get_file(path), self._lstat(path))
