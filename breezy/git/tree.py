@@ -1791,7 +1791,7 @@ def snapshot_workingtree(target: MutableGitIndexTree, want_unversioned: bool = F
             np = encode_git_path(extra)
             if np in blobs:
                 continue
-            st = target._lstat(extra)  #  type: ignore
+            st = target._lstat(extra)  # type: ignore
             obj: Union[Tree, Blob]
             if stat.S_ISDIR(st.st_mode):
                 obj = Tree()
