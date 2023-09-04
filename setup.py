@@ -6,7 +6,6 @@ Run it with
  './setup.py --help' for more options.
 """
 
-import glob
 import os
 import os.path
 import sys
@@ -23,9 +22,8 @@ except ModuleNotFoundError as e:
     sys.stderr.write(f"[ERROR] Please install setuptools_rust ({e})\n")
     sys.exit(1)
 
-from setuptools.command.build import build
-
 from setuptools import setup
+from setuptools.command.build import build
 
 try:
     from packaging.version import Version
