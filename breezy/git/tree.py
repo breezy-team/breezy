@@ -1146,6 +1146,8 @@ _mod_tree.InterTree.register_optimiser(InterGitTrees)
 
 class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
 
+    store: BaseObjectStore
+
     def __init__(self):
         self._lock_mode = None
         self._lock_count = 0
