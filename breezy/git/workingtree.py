@@ -29,7 +29,7 @@ from dulwich.config import ConfigFile as GitConfigFile
 from dulwich.file import FileLocked, GitFile
 from dulwich.ignore import IgnoreFilterManager
 from dulwich.index import (
-    FLAG_STAGEMASK,
+    ConflictedIndexEntry,
     Index,
     IndexEntry,
     SHA1Writer,
@@ -893,7 +893,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             (index, subpath) = self._lookup_index(encoded_path)
             try:
                 entry = index[subpath]
-            except KeyError:
+            except KeyError as err:
                 # Maybe it's a directory?
                 if self._has_dir(encoded_path):
                     return "directory"
@@ -1088,9 +1088,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                         if entry.this is None and entry.ancestor is None and entry.other is None:
                             raise AssertionError
                         self.index[encode_git_path(conflict.path)] = entry
-                    except KeyError:
-                        raise errors.UnsupportedOperation(
-                            self.add_conflicts, self) from err
+                    except KeyError as err:
+                        raise errors.UnsupportedOperation(self.add_conflicts, self) from err
                 else:
                     raise errors.UnsupportedOperation(self.add_conflicts, self)
 

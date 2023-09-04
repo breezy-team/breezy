@@ -23,7 +23,7 @@ import stat
 from collections import deque
 from functools import partial
 from io import BytesIO
-from typing import Union, List, Tuple, Set
+from typing import List, Set, Tuple, Union
 
 from dulwich.config import ConfigFile as GitConfigFile
 from dulwich.config import parse_submodules
@@ -38,7 +38,7 @@ from dulwich.index import (
     index_entry_from_stat,
 )
 from dulwich.object_store import BaseObjectStore, OverlayObjectStore, iter_tree_contents
-from dulwich.objects import S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Blob, Tree, ObjectID
+from dulwich.objects import S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Blob, ObjectID, Tree
 
 from .. import controldir as _mod_controldir
 from .. import delta, errors, mutabletree, osutils, revisiontree, trace, urlutils

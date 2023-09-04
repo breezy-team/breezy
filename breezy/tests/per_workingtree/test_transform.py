@@ -968,13 +968,13 @@ class TestTreeTransform(TestCaseWithWorkingTree):
                  'Text conflict in munchkincity',
                  'Text conflict in oz',
                  'Text conflict in oz/emeraldcity'},
-                {c for c in conflicts_s})
+                set(conflicts_s))
         else:
             self.assertEqual(
                 {'Text conflict in dorothy.moved',
                  'Text conflict in oz',
                  'Text conflict in oz/emeraldcity'},
-                {c for c in conflicts_s})
+                set(conflicts_s))
 
     def prepare_wrong_parent_kind(self):
         tt, root = self.transform()

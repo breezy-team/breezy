@@ -748,7 +748,7 @@ class TreeTransformBase(TreeTransform):
         if not raw_conflicts:
             return
         fp = FinalPaths(self)
-        from .workingtree import TextConflict, ContentsConflict
+        from .workingtree import ContentsConflict, TextConflict
         for c in raw_conflicts:
             if c[0] == 'text conflict':
                 yield TextConflict(fp.get_path(c[1]))
