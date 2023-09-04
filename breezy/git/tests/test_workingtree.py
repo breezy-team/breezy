@@ -22,7 +22,7 @@ import stat
 
 from dulwich import __version__ as dulwich_version
 from dulwich.diff_tree import RenameDetector, tree_changes
-from dulwich.index import IndexEntry, ConflictedIndexEntry
+from dulwich.index import ConflictedIndexEntry, IndexEntry
 from dulwich.object_store import OverlayObjectStore
 from dulwich.objects import S_IFGITLINK, ZERO_SHA, Blob, Tree
 
