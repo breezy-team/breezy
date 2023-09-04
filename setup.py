@@ -6,7 +6,6 @@ Run it with
  './setup.py --help' for more options
 """
 
-import glob
 import os
 import os.path
 import sys
@@ -24,19 +23,6 @@ except ModuleNotFoundError as e:
     sys.exit(1)
 
 
-try:
-    import setuptools_gettext
-except ModuleNotFoundError as e:
-    sys.stderr.write("[ERROR] Please install setuptools_gettext (%s)\n" % e)
-    sys.exit(1)
-
-I18N_FILES = []
-for filepath in glob.glob("breezy/locale/*/LC_MESSAGES/*.mo"):
-    langfile = filepath[len("breezy/locale/"):]
-    targetpath = os.path.dirname(os.path.join("share/locale", langfile))
-    I18N_FILES.append((targetpath, [filepath]))
-
-
 from setuptools import setup
 
 try:
@@ -46,8 +32,6 @@ except ImportError:
 
 from distutils.command.build_scripts import build_scripts
 from distutils.command.install import install
-from distutils.command.install_data import install_data
-from distutils.command.install_scripts import install_scripts
 
 from setuptools import Command
 
@@ -215,8 +199,6 @@ if ('bdist_egg' not in sys.argv and 'bdist_wheel' not in sys.argv
     # easy_install one
     build.sub_commands.append(('build_man', lambda _: True))
     DATA_FILES = [('man/man1', ['brz.1', 'breezy/git/git-remote-bzr.1'])]
-
-DATA_FILES = DATA_FILES + I18N_FILES
 
 import site
 
