@@ -72,10 +72,10 @@ brz:
 # Note that at present this gives many false warnings, because it doesn't
 # know about identifiers loaded through lazy_import.
 flake8:
-	flake8 breezy
+	$(PYTHON) -m flake8 breezy
 
 mypy:
-	mypy breezy
+	$(PYTHON) -m mypy breezy
 
 clean:
 	$(PYTHON) setup.py clean

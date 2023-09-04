@@ -29,7 +29,7 @@ from collections import defaultdict
 from dulwich.config import ConfigFile as GitConfigFile
 from dulwich.file import FileLocked, GitFile
 from dulwich.ignore import IgnoreFilterManager
-from dulwich.index import (FLAG_STAGEMASK, Index, IndexEntry, SHA1Writer,
+from dulwich.index import (ConflictedIndexEntry, Index, IndexEntry, SHA1Writer,
                            build_index_from_tree, index_entry_from_path,
                            index_entry_from_stat, read_submodule_head,
                            validate_path, write_index_dict)
@@ -64,8 +64,11 @@ class TextConflict(_mod_conflicts.Conflict):
 
     _conflict_re = re.compile(b'^(<{7}|={7}|>{7})')
 
+    def __init__(self, path):
+        super(TextConflict, self).__init__(path)
+
     def associated_filenames(self):
-        return [self.path + suffix for suffix in CONFLICT_SUFFIXES]
+        return [self.path + suffix for suffix in ('.BASE', '.OTHER', '.THIS')]
 
     def _resolve(self, tt, winner_suffix):
         """Resolve the conflict by copying one of .THIS or .OTHER into file.
@@ -143,6 +146,125 @@ class TextConflict(_mod_conflicts.Conflict):
 
     def __repr__(self):
         return "{}({!r})".format(type(self).__name__, self.path)
+
+    @classmethod
+    def from_index_entry(cls, path, entry):
+        """Create a conflict from a Git index entry."""
+        return cls(path)
+
+    def to_index_entry(self, tree):
+        """Convert the conflict to a Git index entry."""
+        encoded_path = encode_git_path(tree.abspath(self.path))
+        try:
+            base = index_entry_from_path(encoded_path + b'.BASE')
+        except FileNotFoundError:
+            base = None
+        try:
+            other = index_entry_from_path(encoded_path + b'.OTHER')
+        except FileNotFoundError:
+            other = None
+        try:
+            this = index_entry_from_path(encoded_path + b'.THIS')
+        except FileNotFoundError:
+            this = None
+        return ConflictedIndexEntry(this=this, other=other, ancestor=base)
+
+
+class ContentsConflict(_mod_conflicts.Conflict):
+    """The files are of different types (or both binary), or not present."""
+
+    has_files = True
+
+    typestring = 'contents conflict'
+
+    format = 'Contents conflict in %(path)s'
+
+    def __init__(self, path, conflict_path=None):
+        for suffix in ('.BASE', '.THIS', '.OTHER'):
+            if path.endswith(suffix):
+                # Here is the raw path
+                path = path[:-len(suffix)]
+                break
+        _mod_conflicts.Conflict.__init__(self, path)
+        self.conflict_path = conflict_path
+
+    def _revision_tree(self, tree, revid):
+        return tree.branch.repository.revision_tree(revid)
+
+    def associated_filenames(self):
+        return [self.path + suffix for suffix in ('.BASE', '.OTHER', '.THIS')]
+
+    def _resolve(self, tt, suffix_to_remove):
+        """Resolve the conflict.
+
+        :param tt: The TreeTransform where the conflict is resolved.
+        :param suffix_to_remove: Either 'THIS' or 'OTHER'
+
+        The resolution is symmetric: when taking THIS, OTHER is deleted and
+        item.THIS is renamed into item and vice-versa.
+        """
+        try:
+            # Delete 'item.THIS' or 'item.OTHER' depending on
+            # suffix_to_remove
+            tt.delete_contents(
+                tt.trans_id_tree_path(self.path + '.' + suffix_to_remove))
+        except _mod_transport.NoSuchFile:
+            # There are valid cases where 'item.suffix_to_remove' either
+            # never existed or was already deleted (including the case
+            # where the user deleted it)
+            pass
+        try:
+            this_path = tt._tree.id2path(self.file_id)
+        except errors.NoSuchId:
+            # The file is not present anymore. This may happen if the user
+            # deleted the file either manually or when resolving a conflict on
+            # the parent.  We may raise some exception to indicate that the
+            # conflict doesn't exist anymore and as such doesn't need to be
+            # resolved ? -- vila 20110615
+            this_tid = None
+        else:
+            this_tid = tt.trans_id_tree_path(this_path)
+        if this_tid is not None:
+            # Rename 'item.suffix_to_remove' (note that if
+            # 'item.suffix_to_remove' has been deleted, this is a no-op)
+            parent_tid = tt.get_tree_parent(this_tid)
+            tt.adjust_path(osutils.basename(self.path), parent_tid, this_tid)
+            tt.apply()
+
+    def _resolve_with_cleanups(self, tree, *args, **kwargs):
+        with tree.transform() as tt:
+            self._resolve(tt, *args, **kwargs)
+
+    def action_take_this(self, tree):
+        self._resolve_with_cleanups(tree, 'OTHER')
+
+    def action_take_other(self, tree):
+        self._resolve_with_cleanups(tree, 'THIS')
+
+    @classmethod
+    def from_index_entry(cls, entry):
+        """Create a conflict from a Git index entry."""
+        return cls(entry.path)
+
+    def describe(self):
+        return f"Contents conflict in {self.__dict__['path']}"
+
+    def to_index_entry(self, tree):
+        """Convert the conflict to a Git index entry."""
+        encoded_path = encode_git_path(tree.abspath(self.path))
+        try:
+            base = index_entry_from_path(encoded_path + b'.BASE')
+        except FileNotFoundError:
+            base = None
+        try:
+            other = index_entry_from_path(encoded_path + b'.OTHER')
+        except FileNotFoundError:
+            other = None
+        try:
+            this = index_entry_from_path(encoded_path + b'.THIS')
+        except FileNotFoundError:
+            this = None
+        return ConflictedIndexEntry(this=this, other=other, ancestor=base)
 
 
 class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
@@ -770,12 +892,14 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             encoded_path = encode_git_path(path)
             (index, subpath) = self._lookup_index(encoded_path)
             try:
-                return mode_kind(index[subpath].mode)
+                entry = index[subpath]
             except KeyError:
                 # Maybe it's a directory?
                 if self._has_dir(encoded_path):
                     return "directory"
                 raise _mod_transport.NoSuchFile(path)
+            entry = getattr(entry, 'this', entry)
+            return mode_kind(entry.mode)
 
     def _lstat(self, path):
         return os.lstat(self.abspath(path))
@@ -918,37 +1042,52 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         with self.lock_read():
             conflicts = _mod_conflicts.ConflictList()
             for item_path, value in self.index.iteritems():
-                if value.flags & FLAG_STAGEMASK:
+                if isinstance(value, ConflictedIndexEntry):
                     conflicts.append(TextConflict(decode_git_path(item_path)))
             return conflicts
 
     def set_conflicts(self, conflicts):
-        by_path = set()
+        by_path = {}
         for conflict in conflicts:
+            if not isinstance(conflict, (TextConflict, ContentsConflict)):
+                raise errors.UnsupportedOperation(self.set_conflicts, self)
             if conflict.typestring in ('text conflict', 'contents conflict'):
-                by_path.add(encode_git_path(conflict.path))
+                by_path[encode_git_path(conflict.path)] = conflict
             else:
                 raise errors.UnsupportedOperation(self.set_conflicts, self)
         with self.lock_tree_write():
+            to_delete = set()
             for path in self.index:
-                self._set_conflicted(path, path in by_path)
-
-    def _set_conflicted(self, path, conflicted):
-        value = self.index[path]
-        self._index_dirty = True
-        if conflicted:
-            self.index[path] = self.index[path]._replace(flags=self.index[path].flags | FLAG_STAGEMASK)
-        else:
-            self.index[path] = self.index[path]._replace(flags=self.index[path].flags & ~FLAG_STAGEMASK)
+                self._index_dirty = True
+                conflict = by_path.get(path)
+                if conflict is not None:
+                    self.index[path] = conflict.to_index_entry(self)
+                else:
+                    try:
+                        if isinstance(self.index[path], ConflictedIndexEntry):
+                            new = self.index[path].this
+                            if new is None:
+                                to_delete.add(path)
+                            else:
+                                self.index[path] = new
+                    except KeyError:
+                        pass
+            for path in to_delete:
+                del self.index[path]
 
     def add_conflicts(self, new_conflicts):
         with self.lock_tree_write():
             for conflict in new_conflicts:
-                if conflict.typestring in ('text conflict',
-                                           'contents conflict'):
+                if not isinstance(conflict, (TextConflict, ContentsConflict)):
+                    raise errors.UnsupportedOperation(self.set_conflicts, self)
+
+                if conflict.typestring in ('text conflict', 'contents conflict'):
+                    self._index_dirty = True
                     try:
-                        self._set_conflicted(
-                            encode_git_path(conflict.path), True)
+                        entry = conflict.to_index_entry(self)
+                        if entry.this is None and entry.ancestor is None and entry.other is None:
+                            raise AssertionError
+                        self.index[encode_git_path(conflict.path)] = entry
                     except KeyError:
                         raise errors.UnsupportedOperation(
                             self.add_conflicts, self)
@@ -1223,7 +1362,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                                                      obj.as_raw_string()), 0,
                                                  0, 0))
                     (index, subpath) = self._lookup_index(entry.path)
-                    index[subpath] = index_entry_from_stat(st, entry.sha, 0)
+                    index[subpath] = index_entry_from_stat(st, entry.sha, mode=entry.mode)
 
     def _update_git_tree(
             self, old_revision, new_revision, change_reporter=None,

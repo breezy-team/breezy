@@ -284,7 +284,7 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
             if outer.has_versioned_directories():
                 self.assertEqual(2, len(nb_conflicts))
             else:
-                self.assertEqual(1, len(nb_conflicts))
+                self.assertEqual(0, len(nb_conflicts))
             self.assertTreeLayout(['dir',
                                    'dir-outer',
                                    'dir-outer/dir',
