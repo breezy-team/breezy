@@ -1,6 +1,6 @@
 [package]
 name = "breezy-git"
-version = "3.4.0"
+version = { workspace = true }
 authors = ["Jelmer Vernooij <jelmer@jelmer.uk>"]
 edition = "2018"
 description = "Git support for Breezy"
