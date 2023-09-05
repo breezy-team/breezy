@@ -42,7 +42,7 @@ class UnknownHook(errors.BzrError):
         self.hook = hook_name
 
 
-class KnownHooksRegistry(registry.Registry[str, "Hooks"]):
+class KnownHooksRegistry(registry.Registry[str, "Hooks", None]):
     # known_hooks registry contains
     # tuple of (module, member name) which is the hook point
     # module where the specific hooks are defined

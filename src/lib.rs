@@ -55,3 +55,10 @@ pub mod pytags;
 
 #[cfg(feature = "pyo3")]
 pub mod pycontroldir;
+
+pub mod uncommit;
+
+// Until breezy-graph is complete
+pub mod graphshim;
+
+pub use bazaar::RevisionId;

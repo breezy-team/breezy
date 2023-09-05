@@ -1,6 +1,6 @@
 [package]
 name = "breezy"
-version = "3.4.0"
+version = { workspace = true }
 authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@jelmer.uk>"]
 edition = "2021"
 default-run = "brz"
@@ -17,6 +17,9 @@ include = [
 
 [workspace]
 members = ["crates/*"]
+
+[workspace.package]
+version = "3.4.0"
 
 [[bin]]
 name = "brz"
@@ -36,6 +39,7 @@ log = "0.4"
 breezy-osutils = { path = "crates/osutils", version = ">=3.3.4" }
 chrono = "0.4"
 bazaar = { path = "crates/bazaar" }
+breezy-graph = { path = "crates/graph" }
 percent-encoding = "2"
 url = "2"
 regex = "1"

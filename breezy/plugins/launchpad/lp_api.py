@@ -201,24 +201,6 @@ class LaunchpadBranch:
                            '://bazaar.*.launchpad.net')
         return bool(regex.match(url))
 
-    @staticmethod
-    def candidate_urls(bzr_branch):
-        """Iterate through related URLs that might be Launchpad URLs.
-
-        :param bzr_branch: A Bazaar branch to find URLs from.
-        :return: a generator of URL strings.
-        """
-        url = bzr_branch.get_public_branch()
-        if url is not None:
-            yield url
-        url = bzr_branch.get_push_location()
-        if url is not None:
-            yield url
-        url = bzr_branch.get_parent()
-        if url is not None:
-            yield url
-        yield bzr_branch.base
-
     def get_target(self):
         """Return the 'LaunchpadBranch' for the target of this one."""
         lp_branch = self.lp

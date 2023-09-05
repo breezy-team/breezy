@@ -182,7 +182,7 @@ class VersionInfoBuilder:
         raise NotImplementedError(VersionInfoBuilder.generate)
 
 
-format_registry = registry.Registry[str, Type[VersionInfoBuilder]]()
+format_registry = registry.Registry[str, Type[VersionInfoBuilder], None]()
 
 
 format_registry.register_lazy(

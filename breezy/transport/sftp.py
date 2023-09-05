@@ -478,7 +478,7 @@ class SFTPTransport(ConnectedTransport):
                 self._get_sftp().remove(tmp_abspath)
             except BaseException:
                 # raise the saved except
-                raise e
+                raise e from None
             # raise the original with its traceback if we can.
             raise
 

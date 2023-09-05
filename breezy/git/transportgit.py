@@ -445,7 +445,7 @@ def read_gitfile(f):
 
 class TransportRepo(BaseRepo):
 
-    def __init__(self, transport, bare, refs_text=None):
+    def __init__(self, transport, bare, refs_text=None) -> None:
         self.transport = transport
         self.bare = bare
         try:

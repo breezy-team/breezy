@@ -1826,7 +1826,7 @@ class BranchFormatRegistry(ControlComponentFormatRegistry):
         self._default_format = None
 
 
-network_format_registry = registry.FormatRegistry[BranchFormat]()
+network_format_registry = registry.FormatRegistry[BranchFormat, None]()
 """Registry of formats indexed by their network name.
 
 The network name for a branch format is an identifier that can be used when

@@ -156,7 +156,7 @@ class GraphIndexBuilder:
         if self._key_length != len(key):
             raise BadIndexKey(key)
         for element in key:
-            if not element or type(element) != bytes or _whitespace_re.search(element) is not None:
+            if not element or not isinstance(element, bytes) or _whitespace_re.search(element) is not None:
                 raise BadIndexKey(key)
 
     def _external_references(self):

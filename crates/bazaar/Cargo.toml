@@ -1,6 +1,6 @@
 [package]
 name = "bazaar"
-version = "3.4.0"
+version = { workspace = true }
 authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@jelmer.uk>"]
 edition = "2018"
 description = "Rust implementation of the Bazaar formats and protocols"
@@ -25,6 +25,7 @@ pyo3 = { version = ">=0.17", optional = true }
 crc32fast = "1.2.0"
 base64 = "0.21.0"
 maplit = "1.0.2"
+lazy-regex = "3.0.0"
 
 [target.'cfg(unix)'.dependencies]
 nix = ">= 0.26"

@@ -740,7 +740,7 @@ class TestPackRepository(TestCaseWithTransport):
     def test_suspend_write_group(self):
         self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo', format=self.get_format())
-        self._lock_write(repo).repository_token  # noqa: B-18
+        self._lock_write(repo).repository_token  # noqa: B018
         repo.start_write_group()
         repo.texts.add_lines((b'file-id', b'revid'), (), [b'lines'])
         wg_tokens = repo.suspend_write_group()
@@ -761,7 +761,7 @@ class TestPackRepository(TestCaseWithTransport):
         repo = self.make_repository('repo', format=self.get_format())
         if repo.chk_bytes is None:
             raise TestNotApplicable('no chk_bytes for this repository')
-        self._lock_write(repo).repository_token  # noqa: B-18
+        self._lock_write(repo).repository_token  # noqa: B018
         repo.start_write_group()
         text = b'a bit of text\n'
         key = (b'sha1:' + osutils.sha_string(text),)
@@ -782,7 +782,7 @@ class TestPackRepository(TestCaseWithTransport):
         # Create a repo, start a write group, insert some data, suspend.
         self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo', format=self.get_format())
-        self._lock_write(repo).repository_token  # noqa: B-18
+        self._lock_write(repo).repository_token  # noqa: B018
         repo.start_write_group()
         text_key = (b'file-id', b'revid')
         repo.texts.add_lines(text_key, (), [b'lines'])
@@ -802,7 +802,7 @@ class TestPackRepository(TestCaseWithTransport):
     def test_commit_resumed_write_group(self):
         self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo', format=self.get_format())
-        self._lock_write(repo).repository_token  # noqa: B-18
+        self._lock_write(repo).repository_token  # noqa: B018
         repo.start_write_group()
         text_key = (b'file-id', b'revid')
         repo.texts.add_lines(text_key, (), [b'lines'])
@@ -830,14 +830,14 @@ class TestPackRepository(TestCaseWithTransport):
         self.vfs_transport_factory = memory.MemoryServer
         # Make a repository with a suspended write group
         repo = self.make_repository('repo', format=self.get_format())
-        self._lock_write(repo).repository_token  # noqa: B-18
+        self._lock_write(repo).repository_token  # noqa: B018
         repo.start_write_group()
         text_key = (b'file-id', b'revid')
         repo.texts.add_lines(text_key, (), [b'lines'])
         wg_tokens = repo.suspend_write_group()
         # Make a new repository
         new_repo = self.make_repository('new_repo', format=self.get_format())
-        self._lock_write(new_repo).repository_token  # noqa: B-18
+        self._lock_write(new_repo).repository_token  # noqa: B018
         hacked_wg_token = (
             '../../../../repo/.bzr/repository/upload/' + wg_tokens[0])
         self.assertRaises(

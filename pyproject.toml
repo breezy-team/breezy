@@ -31,7 +31,7 @@ dependencies = [
     "fastbencode",
     "patiencediff",
     "merge3",
-    "dulwich>=0.21.3",
+    "dulwich>=0.21.6",
     "urllib3>=1.24.1",
     "pyyaml",
 ]
@@ -43,7 +43,7 @@ Download = "https://launchpad.net/brz/+download"
 
 [project.optional-dependencies]
 fastimport = ["fastimport"]
-git = ["dulwich>=0.21.3"]
+git = ["dulwich>=0.21.6"]
 launchpad = ["launchpadlib>=1.6.3"]
 workspace = ["pyinotify"]
 doc = [
@@ -68,7 +68,7 @@ testing = [
     "testtools",
     "testscenarios",
     "python-subunit",
-    "dulwich>=0.21.3",
+    "dulwich>=0.21.6",
 ]
 
 [tool.setuptools]

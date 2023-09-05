@@ -22,7 +22,7 @@ import stat
 
 from dulwich import __version__ as dulwich_version
 from dulwich.diff_tree import RenameDetector, tree_changes
-from dulwich.index import IndexEntry
+from dulwich.index import ConflictedIndexEntry, IndexEntry
 from dulwich.object_store import OverlayObjectStore
 from dulwich.objects import S_IFGITLINK, ZERO_SHA, Blob, Tree
 
@@ -33,7 +33,6 @@ from ...delta import TreeDelta
 from ...tests import TestCase, TestCaseWithTransport
 from ..mapping import default_mapping
 from ..tree import tree_delta_from_git_changes
-from ..workingtree import FLAG_STAGEMASK
 
 
 def changes_between_git_tree_and_working_copy(source_store, from_tree_sha, target,
@@ -65,8 +64,7 @@ class GitWorkingTreeTests(TestCaseWithTransport):
         self.build_tree(['conflicted'])
         self.tree.add(['conflicted'])
         with self.tree.lock_tree_write():
-            self.tree.index[b'conflicted'] = self.tree.index[b'conflicted']._replace(
-                flags=FLAG_STAGEMASK)
+            self.tree.index[b'conflicted'] = ConflictedIndexEntry(this=self.tree.index[b'conflicted'])
             self.tree._index_dirty = True
         conflicts = self.tree.conflicts()
         self.assertEqual(1, len(conflicts))
@@ -338,7 +336,7 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
         self.build_tree_contents([('a/.git/HEAD', a.id)])
         with self.wt.lock_tree_write():
             (index, index_path) = self.wt._lookup_index(b'a')
-            index[b'a'] = IndexEntry(0, 0, 0, 0, S_IFGITLINK, 0, 0, 0, a.id, 0, 0)
+            index[b'a'] = IndexEntry(0, 0, 0, 0, S_IFGITLINK, 0, 0, 0, a.id)
             self.wt._index_dirty = True
         t = Tree()
         t.add(b"a", S_IFGITLINK, a.id)
@@ -349,7 +347,7 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
         a = Blob.from_string(b'irrelevant\n')
         with self.wt.lock_tree_write():
             (index, index_path) = self.wt._lookup_index(b'a')
-            index[b'a'] = IndexEntry(0, 0, 0, 0, S_IFGITLINK, 0, 0, 0, a.id, 0, 0)
+            index[b'a'] = IndexEntry(0, 0, 0, 0, S_IFGITLINK, 0, 0, 0, a.id)
             self.wt._index_dirty = True
         os.mkdir(self.wt.abspath('a'))
         t = Tree()

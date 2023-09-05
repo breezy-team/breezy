@@ -32,11 +32,11 @@ __unittest = 1
 
 class LogCollector(logging.Handler):
 
-    def __init__(self):
+    def __init__(self) -> None:
         logging.Handler.__init__(self)
         self.records: List[str] = []
 
-    def emit(self, record):
+    def emit(self, record) -> None:
         self.records.append(record.getMessage())
 
 

@@ -1,6 +1,6 @@
 [package]
 name = "breezy-urlutils"
-version = "3.4.0"
+version = { workspace = true }
 edition = "2021"
 description = "URL utilities for Breezy"
 license = "GPL-2.0+"

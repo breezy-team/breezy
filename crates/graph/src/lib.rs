@@ -1,3 +1,4 @@
+#![allow(clippy::if_same_then_else)]
 use std::borrow::Borrow;
 /// DIAGRAM of terminology
 ///       A

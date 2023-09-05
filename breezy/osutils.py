@@ -181,7 +181,7 @@ def _rename_wrap_exception(rename_func):
                                      f" [occurred when renaming '{old}' to '{new}']")
             detailed_error.old_filename = old
             detailed_error.new_filename = new
-            raise detailed_error
+            raise detailed_error from e
 
     return _rename_wrapper
 

@@ -1,4 +1,7 @@
+use breezy::graphshim::Graph;
+use breezy::pybranch::PyBranch;
 use breezy::pytree::PyTree;
+use breezy::RevisionId;
 
 use log::Log;
 use pyo3::exceptions::{PyNotImplementedError, PyRuntimeError, PyValueError};
@@ -12,6 +15,8 @@ use std::path::PathBuf;
 
 import_exception!(breezy.errors, NoWhoami);
 import_exception!(breezy.errors, LockCorrupt);
+import_exception!(breezy.errors, NoSuchTag);
+import_exception!(breezy.errors, TagAlreadyExists);
 
 #[pyfunction(name = "disable_i18n")]
 fn i18n_disable_i18n() {
@@ -547,6 +552,25 @@ impl LockHeldInfo {
     }
 }
 
+#[pyfunction]
+fn remove_tags(
+    branch: PyObject,
+    graph: PyObject,
+    old_tip: RevisionId,
+    parents: Vec<RevisionId>,
+) -> PyResult<Vec<String>> {
+    breezy::uncommit::remove_tags(
+        PyBranch::new(branch),
+        &Graph::new(graph),
+        old_tip,
+        parents.as_slice(),
+    )
+    .map_err(|e| match e {
+        breezy::tags::Error::NoSuchTag(n) => NoSuchTag::new_err(n),
+        breezy::tags::Error::TagAlreadyExists(n) => TagAlreadyExists::new_err(n),
+    })
+}
+
 #[pymodule]
 fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     let i18n = PyModule::new(_py, "i18n")?;
@@ -599,6 +623,10 @@ fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     let helpm = PyModule::new(_py, "help")?;
     help::help_topics(helpm)?;
     m.add_submodule(helpm)?;
+
+    let uncommitm = PyModule::new(_py, "uncommit")?;
+    uncommitm.add_function(wrap_pyfunction!(remove_tags, uncommitm)?)?;
+    m.add_submodule(uncommitm)?;
 
     m.add_class::<TreeBuilder>()?;
 

@@ -1,6 +1,6 @@
 [package]
 name = "breezy-transport"
-version = "3.4.0"
+version = { workspace = true }
 edition = "2018"
 description = "Transport layer for Breezy"
 license = "GPL-2.0+"
