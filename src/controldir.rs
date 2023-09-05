@@ -7,6 +7,12 @@ use pyo3::types::PyDict;
 
 pub struct Prober(PyObject);
 
+impl ToPyObject for Prober {
+    fn to_object(&self, py: Python) -> PyObject {
+        self.0.to_object(py)
+    }
+}
+
 impl Prober {
     pub fn new(obj: PyObject) -> Self {
         Prober(obj)

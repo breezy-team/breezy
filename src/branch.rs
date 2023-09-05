@@ -98,6 +98,12 @@ impl BranchFormat {
 #[derive(Clone)]
 pub struct Branch(pub PyObject);
 
+impl ToPyObject for Branch {
+    fn to_object(&self, py: Python) -> PyObject {
+        self.0.to_object(py)
+    }
+}
+
 impl Branch {
     pub fn new(obj: PyObject) -> Self {
         Branch(obj)
@@ -199,12 +205,6 @@ impl Branch {
 impl FromPyObject<'_> for Branch {
     fn extract(ob: &PyAny) -> PyResult<Self> {
         Ok(Branch(ob.to_object(ob.py())))
-    }
-}
-
-impl ToPyObject for Branch {
-    fn to_object(&self, py: Python) -> PyObject {
-        self.0.to_object(py)
     }
 }
 

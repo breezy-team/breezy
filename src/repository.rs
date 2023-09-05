@@ -99,6 +99,12 @@ impl Iterator for DeltaIterator {
     }
 }
 
+impl ToPyObject for Repository {
+    fn to_object(&self, py: Python) -> PyObject {
+        self.0.to_object(py)
+    }
+}
+
 impl Repository {
     pub fn revision_tree(&self, revid: &RevisionId) -> PyResult<RevisionTree> {
         Python::with_gil(|py| {

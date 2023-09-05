@@ -107,7 +107,7 @@ pub fn get_dirty_tracker(
                 }
             },
         };
-        let o = dt_cls.call1((local_tree.obj().clone_ref(py), subpath))?;
+        let o = dt_cls.call1((local_tree.to_object(py), subpath))?;
         Ok(Some(DirtyTracker::new(o.into())?))
     })
 }

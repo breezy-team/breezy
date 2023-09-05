@@ -16,7 +16,7 @@ pub fn show_diff_trees(
 
         let o = PyOut(o);
 
-        f.call1((tree1.obj(), tree2.obj(), o))?;
+        f.call1((tree1.to_object(py), tree2.to_object(py), o))?;
 
         Ok(())
     })?;

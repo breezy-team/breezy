@@ -47,12 +47,10 @@ impl From<Error> for PyErr {
     }
 }
 
-pub trait Tree {
-    fn obj(&self) -> &PyObject;
-
+pub trait Tree: ToPyObject {
     fn get_tag_dict(&self) -> Result<std::collections::HashMap<String, RevisionId>, PyErr> {
         Python::with_gil(|py| {
-            let branch = self.obj().getattr(py, "branch")?;
+            let branch = self.to_object(py).getattr(py, "branch")?;
             let tags = branch.getattr(py, "tags")?;
             let tag_dict = tags.call_method0(py, "get_tag_dict")?;
             tag_dict.extract(py)
@@ -61,7 +59,7 @@ pub trait Tree {
 
     fn get_file(&self, path: &std::path::Path) -> Result<Box<dyn std::io::Read>, Error> {
         Python::with_gil(|py| {
-            let f = self.obj().call_method1(py, "get_file", (path,))?;
+            let f = self.to_object(py).call_method1(py, "get_file", (path,))?;
 
             let f = pyo3_file::PyFileLikeObject::with_requirements(f, true, false, false)?;
 
@@ -71,28 +69,32 @@ pub trait Tree {
 
     fn get_file_text(&self, path: &std::path::Path) -> Result<Vec<u8>, Error> {
         Python::with_gil(|py| {
-            let text = self.obj().call_method1(py, "get_file_text", (path,))?;
+            let text = self
+                .to_object(py)
+                .call_method1(py, "get_file_text", (path,))?;
             text.extract(py).map_err(|e| e.into())
         })
     }
 
     fn get_file_lines(&self, path: &std::path::Path) -> Result<Vec<Vec<u8>>, Error> {
         Python::with_gil(|py| {
-            let lines = self.obj().call_method1(py, "get_file_lines", (path,))?;
+            let lines = self
+                .to_object(py)
+                .call_method1(py, "get_file_lines", (path,))?;
             lines.extract(py).map_err(|e| e.into())
         })
     }
 
     fn lock_read(&self) -> PyResult<Lock> {
         Python::with_gil(|py| {
-            let lock = self.obj().call_method0(py, "lock_read").unwrap();
+            let lock = self.to_object(py).call_method0(py, "lock_read").unwrap();
             Ok(Lock(lock))
         })
     }
 
     fn has_filename(&self, path: &std::path::Path) -> bool {
         Python::with_gil(|py| {
-            self.obj()
+            self.to_object(py)
                 .call_method1(py, "has_filename", (path,))
                 .unwrap()
                 .extract(py)
@@ -102,7 +104,7 @@ pub trait Tree {
 
     fn get_parent_ids(&self) -> PyResult<Vec<RevisionId>> {
         Python::with_gil(|py| {
-            self.obj()
+            self.to_object(py)
                 .call_method0(py, "get_parent_ids")
                 .unwrap()
                 .extract(py)
@@ -111,7 +113,7 @@ pub trait Tree {
 
     fn is_ignored(&self, path: &std::path::Path) -> Option<String> {
         Python::with_gil(|py| {
-            self.obj()
+            self.to_object(py)
                 .call_method1(py, "is_ignored", (path,))
                 .unwrap()
                 .extract(py)
@@ -121,7 +123,7 @@ pub trait Tree {
 
     fn is_versioned(&self, path: &std::path::Path) -> bool {
         Python::with_gil(|py| {
-            self.obj()
+            self.to_object(py)
                 .call_method1(py, "is_versioned", (path,))
                 .unwrap()
                 .extract(py)
@@ -173,10 +175,10 @@ pub trait Tree {
                 }
             }
 
-            Ok(Box::new(TreeChangeIter(self.obj().call_method(
+            Ok(Box::new(TreeChangeIter(self.to_object(py).call_method(
                 py,
                 "iter_changes",
-                (other.obj(),),
+                (other.to_object(py),),
                 Some(kwargs),
             )?))
                 as Box<dyn Iterator<Item = PyResult<TreeChange>>>)
@@ -185,7 +187,7 @@ pub trait Tree {
 
     fn has_versioned_directories(&self) -> bool {
         Python::with_gil(|py| {
-            self.obj()
+            self.to_object(py)
                 .call_method0(py, "has_versioned_directories")
                 .unwrap()
                 .extract(py)
@@ -197,7 +199,7 @@ pub trait Tree {
 pub trait MutableTree: Tree {
     fn lock_write(&self) -> PyResult<Lock> {
         Python::with_gil(|py| {
-            let lock = self.obj().call_method0(py, "lock_write").unwrap();
+            let lock = self.to_object(py).call_method0(py, "lock_write").unwrap();
             Ok(Lock(lock))
         })
     }
@@ -205,11 +207,13 @@ pub trait MutableTree: Tree {
 
 pub struct RevisionTree(pub PyObject);
 
-impl Tree for RevisionTree {
-    fn obj(&self) -> &PyObject {
-        &self.0
+impl ToPyObject for RevisionTree {
+    fn to_object(&self, py: Python) -> PyObject {
+        self.0.to_object(py)
     }
 }
+
+impl Tree for RevisionTree {}
 
 #[derive(Debug)]
 pub enum CommitError {
@@ -229,6 +233,12 @@ impl std::fmt::Display for CommitError {
 impl std::error::Error for CommitError {}
 
 pub struct WorkingTree(pub PyObject);
+
+impl ToPyObject for WorkingTree {
+    fn to_object(&self, py: Python) -> PyObject {
+        self.0.to_object(py)
+    }
+}
 
 #[derive(Debug)]
 pub enum WorkingTreeOpenError {
@@ -432,11 +442,7 @@ impl WorkingTree {
     }
 }
 
-impl Tree for WorkingTree {
-    fn obj(&self) -> &PyObject {
-        &self.0
-    }
-}
+impl Tree for WorkingTree {}
 
 impl MutableTree for WorkingTree {}
 
