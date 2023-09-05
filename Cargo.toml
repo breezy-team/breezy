@@ -10,7 +10,7 @@ documentation = "https://www.breezy-vcs.org/doc/"
 authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@jelmer.uk>"]
 
 [dependencies]
-pyo3 = { version = ">=0.18", features = ["serde", "auto-initialize"] }
+pyo3 = { version = ">=0.18", features = ["serde"] }
 pyo3-file = ">=0.5.0"
 serde = { version = "1", features = ["derive"] }
 url = { version = "2", features = ["serde"] }
