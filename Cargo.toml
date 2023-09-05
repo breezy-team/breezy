@@ -9,13 +9,18 @@ repository = "https://code.launchpad.net/breezyshim"
 documentation = "https://www.breezy-vcs.org/doc/"
 authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@jelmer.uk>"]
 
+[workspace.dependencies]
+pyo3 = ">=0.18"
 [dependencies]
-pyo3 = { version = ">=0.18", features = ["serde"] }
+pyo3 = { workspace = true, features = ["serde"] }
 pyo3-file = ">=0.5.0"
 serde = { version = "1", features = ["derive"] }
 url = { version = "2", features = ["serde"] }
 debversion = { version = "0.2", optional = true, features = ["python-debian"] }
 tempfile = "3.6.0"
+
+[dev-dependencies]
+pyo3 = { workspace = true, features = ["auto-initialize"] }
 
 [features]
 default = ["debian"]

@@ -21,7 +21,6 @@ impl ControlDir {
     }
 
     pub fn create_branch_convenience(base: &url::Url) -> PyResult<Branch> {
-        pyo3::prepare_freethreaded_python();
         Python::with_gil(|py| {
             let m = py.import("breezy.controldir")?;
             let cd = m.getattr("ControlDir")?;
@@ -34,7 +33,6 @@ impl ControlDir {
         transport: &Transport,
         probers: Option<&[Prober]>,
     ) -> PyResult<(ControlDir, String)> {
-        pyo3::prepare_freethreaded_python();
         Python::with_gil(|py| {
             let m = py.import("breezy.controldir")?;
             let cd = m.getattr("ControlDir")?;
@@ -57,7 +55,6 @@ impl ControlDir {
         transport: &Transport,
         probers: Option<&[Prober]>,
     ) -> PyResult<ControlDir> {
-        pyo3::prepare_freethreaded_python();
         Python::with_gil(|py| {
             let m = py.import("breezy.controldir")?;
             let cd = m.getattr("ControlDir")?;
