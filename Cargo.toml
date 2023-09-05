@@ -12,6 +12,9 @@ authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@j
 [dependencies]
 pyo3-file = ">=0.5.0"
 tempfile = "3.6.0"
+debversion = { version = "0.2", optional = true, features = [ "python-debian"] }
+url = { version = "2", features = [ "serde",] }
+serde = { version = "1", features = [ "derive" ] }
 
 [features]
 default = [ "debian",]
@@ -23,19 +26,6 @@ pyo3 = ">=0.18"
 [dependencies.pyo3]
 workspace = true
 features = [ "serde",]
-
-[dependencies.serde]
-version = "1"
-features = [ "derive",]
-
-[dependencies.url]
-version = "2"
-features = [ "serde",]
-
-[dependencies.debversion]
-version = "0.2"
-optional = true
-features = [ "python-debian",]
 
 [dev-dependencies.pyo3]
 workspace = true
