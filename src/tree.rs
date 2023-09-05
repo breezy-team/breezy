@@ -203,6 +203,14 @@ pub trait MutableTree: Tree {
             Ok(Lock(lock))
         })
     }
+
+    fn put_file_bytes_non_atomic(&self, path: &std::path::Path, data: &[u8]) -> PyResult<()> {
+        Python::with_gil(|py| {
+            self.to_object(py)
+                .call_method1(py, "put_file_bytes_non_atomic", (path, data))?;
+            Ok(())
+        })
+    }
 }
 
 pub struct RevisionTree(pub PyObject);
