@@ -9,9 +9,9 @@
 //! # Example
 //!
 //! ```
-//! use breezyshim::Branch;
+//! use breezyshim::branch::open as open_branch;
 //! breezyshim::plugin::load_plugins();
-//! let b = Branch::open(&"lp:brz".parse().unwrap()).unwrap();
+//! let b = open_branch(&"lp:brz".parse().unwrap()).unwrap();
 //! println!("Last revision: {:?}", b.last_revision());
 //! ```
 
@@ -28,6 +28,7 @@ pub mod plugin;
 pub mod repository;
 pub mod revisionid;
 pub mod status;
+pub mod transform;
 pub mod transport;
 pub mod tree;
 pub mod urlutils;

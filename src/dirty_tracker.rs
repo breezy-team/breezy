@@ -1,4 +1,4 @@
-use crate::tree::{Tree, WorkingTree};
+use crate::tree::WorkingTree;
 use pyo3::import_exception;
 use pyo3::prelude::*;
 
