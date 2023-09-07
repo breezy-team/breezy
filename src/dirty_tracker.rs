@@ -2,7 +2,31 @@ use crate::tree::WorkingTree;
 use pyo3::import_exception;
 use pyo3::prelude::*;
 
-pub struct DirtyTracker(pub PyObject);
+pub struct DirtyTracker {
+    obj: PyObject,
+    owned: bool,
+}
+
+impl ToPyObject for DirtyTracker {
+    fn to_object(&self, py: Python) -> PyObject {
+        self.obj.clone_ref(py)
+    }
+}
+
+impl FromPyObject<'_> for DirtyTracker {
+    fn extract(ob: &PyAny) -> PyResult<Self> {
+        Ok(DirtyTracker {
+            obj: ob.to_object(ob.py()),
+            owned: false,
+        })
+    }
+}
+
+impl From<PyObject> for DirtyTracker {
+    fn from(obj: PyObject) -> Self {
+        DirtyTracker { obj, owned: true }
+    }
+}
 
 import_exception!(breezy.dirty_tracker, TooManyOpenFiles);
 
@@ -38,15 +62,15 @@ impl From<PyErr> for Error {
 impl DirtyTracker {
     fn new(obj: PyObject) -> Result<Self, Error> {
         Python::with_gil(|py| {
-            let dt = DirtyTracker(obj);
-            dt.0.call_method0(py, "__enter__")?;
+            let dt = DirtyTracker { obj, owned: true };
+            dt.to_object(py).call_method0(py, "__enter__")?;
             Ok(dt)
         })
     }
 
     pub fn is_dirty(&self) -> bool {
         Python::with_gil(|py| {
-            self.0
+            self.to_object(py)
                 .call_method0(py, "is_dirty")
                 .unwrap()
                 .extract(py)
@@ -57,7 +81,7 @@ impl DirtyTracker {
     pub fn relpaths(&self) -> impl IntoIterator<Item = std::path::PathBuf> {
         Python::with_gil(|py| {
             let set = self
-                .0
+                .to_object(py)
                 .call_method0(py, "relpaths")
                 .unwrap()
                 .extract::<std::collections::HashSet<_>>(py)
@@ -68,15 +92,18 @@ impl DirtyTracker {
 
     pub fn mark_clean(&self) {
         Python::with_gil(|py| {
-            self.0.call_method0(py, "mark_clean").unwrap();
+            self.to_object(py).call_method0(py, "mark_clean").unwrap();
         })
     }
 }
 
 impl Drop for DirtyTracker {
     fn drop(&mut self) {
+        if !self.owned {
+            return;
+        }
         Python::with_gil(|py| {
-            self.0
+            self.to_object(py)
                 .call_method1(py, "__exit__", (py.None(), py.None(), py.None()))
                 .unwrap();
         })

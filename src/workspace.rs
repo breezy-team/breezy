@@ -14,7 +14,7 @@ pub fn reset_tree(
         let reset_tree = workspace_m.getattr("reset_tree")?;
         let local_tree: PyObject = local_tree.to_object(py);
         let basis_tree: Option<PyObject> = basis_tree.map(|o| o.to_object(py));
-        let dirty_tracker: Option<PyObject> = dirty_tracker.map(|dt| dt.0.clone());
+        let dirty_tracker: Option<PyObject> = dirty_tracker.map(|dt| dt.to_object(py).clone());
         reset_tree.call1((local_tree, basis_tree, subpath, dirty_tracker))?;
         Ok(())
     })
