@@ -5,7 +5,25 @@ use pyo3::prelude::*;
 
 import_exception!(breezy.errors, RevisionNotPresent);
 
-pub struct Graph(pub(crate) PyObject);
+pub struct Graph(PyObject);
+
+impl ToPyObject for Graph {
+    fn to_object(&self, py: Python) -> PyObject {
+        self.0.to_object(py)
+    }
+}
+
+impl FromPyObject<'_> for Graph {
+    fn extract(ob: &PyAny) -> PyResult<Self> {
+        Ok(Graph(ob.to_object(ob.py())))
+    }
+}
+
+impl From<PyObject> for Graph {
+    fn from(ob: PyObject) -> Self {
+        Graph(ob)
+    }
+}
 
 struct RevIter(PyObject);
 

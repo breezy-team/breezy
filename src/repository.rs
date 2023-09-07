@@ -130,7 +130,7 @@ impl Repository {
     }
 
     pub fn get_graph(&self) -> Graph {
-        Python::with_gil(|py| Graph(self.0.call_method0(py, "get_graph").unwrap()))
+        Python::with_gil(|py| Graph::from(self.0.call_method0(py, "get_graph").unwrap()))
     }
 
     pub fn controldir(&self) -> ControlDir {
