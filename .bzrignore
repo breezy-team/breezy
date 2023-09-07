@@ -81,3 +81,4 @@ __pycache__
 *.so
 .pytest_cache
 .ruff_cache
+locale
