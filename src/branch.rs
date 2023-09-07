@@ -118,7 +118,7 @@ impl Branch {
     }
 
     pub fn repository(&self) -> Repository {
-        Python::with_gil(|py| Repository(self.0.getattr(py, "repository").unwrap()))
+        Python::with_gil(|py| Repository::new(self.0.getattr(py, "repository").unwrap()))
     }
 
     pub fn open(url: &url::Url) -> Result<Branch, BranchOpenError> {

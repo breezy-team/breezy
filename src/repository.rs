@@ -8,7 +8,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
 #[derive(Clone)]
-pub struct RepositoryFormat(pub(crate) PyObject);
+pub struct RepositoryFormat(PyObject);
 
 impl RepositoryFormat {
     pub fn supports_chks(&self) -> bool {
@@ -23,7 +23,7 @@ impl RepositoryFormat {
 }
 
 #[derive(Clone)]
-pub struct Repository(pub(crate) PyObject);
+pub struct Repository(PyObject);
 
 #[derive(Debug)]
 pub struct Revision {
@@ -106,6 +106,10 @@ impl ToPyObject for Repository {
 }
 
 impl Repository {
+    pub fn new(obj: PyObject) -> Self {
+        Repository(obj)
+    }
+
     pub fn revision_tree(&self, revid: &RevisionId) -> PyResult<RevisionTree> {
         Python::with_gil(|py| {
             let o = self.0.call_method1(py, "revision_tree", (revid.clone(),))?;
