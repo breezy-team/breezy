@@ -15,6 +15,18 @@ impl RevisionId {
     pub fn as_bytes(&self) -> &[u8] {
         &self.0
     }
+
+    pub fn is_null(&self) -> bool {
+        self.0 == NULL_REVISION
+    }
+
+    pub fn is_reserved(&self) -> bool {
+        self.0.starts_with(b":")
+    }
+
+    pub fn null() -> Self {
+        Self(NULL_REVISION.to_vec())
+    }
 }
 
 impl From<Vec<u8>> for RevisionId {
@@ -66,3 +78,6 @@ impl std::fmt::Display for RevisionId {
         write!(f, "{}", s)
     }
 }
+
+pub const CURRENT_REVISION: &[u8] = b"current:";
+pub const NULL_REVISION: &[u8] = b"null:";
