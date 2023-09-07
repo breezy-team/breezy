@@ -110,6 +110,18 @@ impl Repository {
         Repository(obj)
     }
 
+    pub fn fetch(
+        &self,
+        other_repository: &Repository,
+        stop_revision: Option<RevisionId>,
+    ) -> PyResult<()> {
+        Python::with_gil(|py| {
+            self.0
+                .call_method1(py, "fetch", (other_repository.to_object(py), stop_revision))?;
+            Ok(())
+        })
+    }
+
     pub fn revision_tree(&self, revid: &RevisionId) -> PyResult<RevisionTree> {
         Python::with_gil(|py| {
             let o = self.0.call_method1(py, "revision_tree", (revid.clone(),))?;
