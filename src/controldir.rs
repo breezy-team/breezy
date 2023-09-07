@@ -13,17 +13,35 @@ impl ToPyObject for Prober {
     }
 }
 
+impl FromPyObject<'_> for Prober {
+    fn extract(obj: &PyAny) -> PyResult<Self> {
+        Ok(Prober(obj.to_object(obj.py())))
+    }
+}
+
 impl Prober {
     pub fn new(obj: PyObject) -> Self {
         Prober(obj)
     }
 }
 
-pub struct ControlDir(pub(crate) PyObject);
+pub struct ControlDir(PyObject);
+
+impl ToPyObject for ControlDir {
+    fn to_object(&self, py: Python) -> PyObject {
+        self.0.to_object(py)
+    }
+}
+
+impl FromPyObject<'_> for ControlDir {
+    fn extract(obj: &PyAny) -> PyResult<Self> {
+        Ok(ControlDir(obj.to_object(obj.py())))
+    }
+}
 
 impl ControlDir {
-    pub fn new(obj: PyObject) -> PyResult<Self> {
-        Ok(Self(obj))
+    pub fn new(obj: PyObject) -> Self {
+        Self(obj)
     }
 
     pub fn create_branch_convenience(base: &url::Url) -> PyResult<Branch> {
@@ -31,7 +49,7 @@ impl ControlDir {
             let m = py.import("breezy.controldir")?;
             let cd = m.getattr("ControlDir")?;
             let branch = cd.call_method("create_branch_convenience", (base.to_string(),), None)?;
-            Ok(Branch(branch.to_object(py)))
+            Ok(Branch::new(branch.to_object(py)))
         })
     }
 
@@ -49,7 +67,7 @@ impl ControlDir {
             let (controldir, subpath): (PyObject, String) = cd
                 .call_method(
                     "open_containing_from_transport",
-                    (&transport.0,),
+                    (&transport.to_object(py),),
                     Some(kwargs),
                 )?
                 .extract()?;
@@ -68,8 +86,11 @@ impl ControlDir {
             if let Some(probers) = probers {
                 kwargs.set_item("probers", probers.iter().map(|p| &p.0).collect::<Vec<_>>())?;
             }
-            let controldir =
-                cd.call_method("open_from_transport", (&transport.0,), Some(kwargs))?;
+            let controldir = cd.call_method(
+                "open_from_transport",
+                (&transport.to_object(py),),
+                Some(kwargs),
+            )?;
             Ok(ControlDir(controldir.to_object(py)))
         })
     }
@@ -77,20 +98,20 @@ impl ControlDir {
     pub fn create_branch(&self, name: Option<&str>) -> PyResult<Branch> {
         Python::with_gil(|py| {
             let branch = self
-                .0
+                .to_object(py)
                 .call_method(py, "create_branch", (name,), None)?
                 .extract(py)?;
-            Ok(Branch(branch))
+            Ok(Branch::new(branch))
         })
     }
 
     pub fn open_branch(&self, branch_name: Option<&str>) -> Result<Branch, BranchOpenError> {
         Python::with_gil(|py| {
             let branch = self
-                .0
+                .to_object(py)
                 .call_method(py, "open_branch", (branch_name,), None)?
                 .extract(py)?;
-            Ok(Branch(branch))
+            Ok(Branch::new(branch))
         })
     }
 
@@ -112,10 +133,13 @@ impl ControlDir {
             if let Some(overwrite) = overwrite {
                 kwargs.set_item("overwrite", overwrite)?;
             }
-            let result =
-                self.0
-                    .call_method(py, "push_branch", (&source_branch.0,), Some(kwargs))?;
-            Ok(Branch(result.getattr(py, "target_branch")?))
+            let result = self.to_object(py).call_method(
+                py,
+                "push_branch",
+                (&source_branch.to_object(py),),
+                Some(kwargs),
+            )?;
+            Ok(Branch::new(result.getattr(py, "target_branch")?))
         })
     }
 
@@ -137,7 +161,9 @@ impl ControlDir {
                 kwargs.set_item("stacked", stacked).unwrap();
             }
             if let Some(source_branch) = source_branch {
-                kwargs.set_item("source_branch", &source_branch.0).unwrap();
+                kwargs
+                    .set_item("source_branch", &source_branch.to_object(py))
+                    .unwrap();
             }
 
             let cd = self

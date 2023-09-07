@@ -1,5 +1,6 @@
 use crate::branch::{py_tag_selector, Branch};
 use crate::revisionid::RevisionId;
+use pyo3::conversion::ToPyObject;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
@@ -181,14 +182,10 @@ impl ProposalBuilder {
 }
 
 impl Forge {
-    pub fn new(obj: PyObject) -> Self {
-        Forge(obj)
-    }
-
     pub fn merge_proposal_description_format(&self) -> String {
         Python::with_gil(|py| {
             let merge_proposal_description_format = self
-                .0
+                .to_object(py)
                 .getattr(py, "merge_proposal_description_format")
                 .unwrap();
             merge_proposal_description_format.extract(py).unwrap()
@@ -198,7 +195,7 @@ impl Forge {
     pub fn supports_merge_proposal_commit_message(&self) -> bool {
         Python::with_gil(|py| {
             let supports_merge_proposal_commit_message = self
-                .0
+                .to_object(py)
                 .getattr(py, "supports_merge_proposal_commit_message")
                 .unwrap();
             supports_merge_proposal_commit_message.extract(py).unwrap()
@@ -207,8 +204,10 @@ impl Forge {
 
     pub fn supports_merge_proposal_title(&self) -> bool {
         Python::with_gil(|py| {
-            let supports_merge_proposal_title =
-                self.0.getattr(py, "supports_merge_proposal_title").unwrap();
+            let supports_merge_proposal_title = self
+                .to_object(py)
+                .getattr(py, "supports_merge_proposal_title")
+                .unwrap();
             supports_merge_proposal_title.extract(py).unwrap()
         })
     }
@@ -220,8 +219,11 @@ impl Forge {
     ) -> PyResult<ProposalBuilder> {
         Python::with_gil(|py| {
             Ok(ProposalBuilder(
-                self.0
-                    .call_method1(py, "get_proposer", (&from_branch.0, &to_branch.0))?,
+                self.0.call_method1(
+                    py,
+                    "get_proposer",
+                    (from_branch.to_object(py), to_branch.to_object(py)),
+                )?,
                 PyDict::new(py).into(),
             ))
         })
@@ -236,7 +238,7 @@ impl Forge {
     ) -> PyResult<Branch> {
         Python::with_gil(|py| {
             let kwargs = PyDict::new(py);
-            kwargs.set_item("main_branch", &main_branch.0)?;
+            kwargs.set_item("main_branch", main_branch.to_object(py))?;
             kwargs.set_item("name", name)?;
             if let Some(owner) = owner {
                 kwargs.set_item("owner", owner)?;
@@ -244,10 +246,10 @@ impl Forge {
             if let Some(preferred_schemes) = preferred_schemes {
                 kwargs.set_item("preferred_schemes", preferred_schemes)?;
             }
-            let branch = self
-                .0
-                .call_method(py, "get_derived_branch", (), Some(kwargs))?;
-            Ok(Branch(branch))
+            let branch =
+                self.to_object(py)
+                    .call_method(py, "get_derived_branch", (), Some(kwargs))?;
+            Ok(Branch::new(branch))
         })
     }
 
@@ -265,7 +267,7 @@ impl Forge {
                 .call_method(
                     py,
                     "iter_proposals",
-                    (&source_branch.0, &target_branch.0),
+                    (&source_branch.to_object(py), &target_branch.to_object(py)),
                     Some(kwargs),
                 )?
                 .extract(py)?;
@@ -285,8 +287,8 @@ impl Forge {
     ) -> PyResult<(Branch, url::Url)> {
         Python::with_gil(|py| {
             let kwargs = PyDict::new(py);
-            kwargs.set_item("local_branch", &local_branch.0)?;
-            kwargs.set_item("main_branch", &main_branch.0)?;
+            kwargs.set_item("local_branch", &local_branch.to_object(py))?;
+            kwargs.set_item("main_branch", &main_branch.to_object(py))?;
             kwargs.set_item("name", name)?;
             if let Some(overwrite_existing) = overwrite_existing {
                 kwargs.set_item("overwrite_existing", overwrite_existing)?;
@@ -301,18 +303,18 @@ impl Forge {
                 kwargs.set_item("tag_selector", py_tag_selector(py, tag_selector)?)?;
             }
             let (b, u): (PyObject, String) = self
-                .0
+                .to_object(py)
                 .call_method(py, "publish_derived", (), Some(kwargs))?
                 .extract(py)?;
-            Ok((Branch(b), u.parse::<url::Url>().unwrap()))
+            Ok((Branch::new(b), u.parse::<url::Url>().unwrap()))
         })
     }
 
     pub fn get_push_url(&self, branch: &Branch) -> url::Url {
         Python::with_gil(|py| {
             let url = self
-                .0
-                .call_method1(py, "get_push_url", (&branch.0,))
+                .to_object(py)
+                .call_method1(py, "get_push_url", (&branch.to_object(py),))
                 .unwrap()
                 .extract::<String>(py)
                 .unwrap();
@@ -336,7 +338,9 @@ impl ToPyObject for Forge {
 pub fn get_forge(branch: &Branch) -> Forge {
     Python::with_gil(|py| {
         let m = py.import("breezy.forge").unwrap();
-        let forge = m.call_method1("get_forge", (&branch.0,)).unwrap();
+        let forge = m
+            .call_method1("get_forge", (branch.to_object(py),))
+            .unwrap();
         Forge(forge.to_object(py))
     })
 }

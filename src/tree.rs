@@ -320,15 +320,15 @@ impl WorkingTree {
 
     pub fn branch(&self) -> Branch {
         Python::with_gil(|py| {
-            let branch = self.0.getattr(py, "branch").unwrap();
-            Branch(branch)
+            let branch = self.to_object(py).getattr(py, "branch").unwrap();
+            Branch::new(branch)
         })
     }
 
     pub fn controldir(&self) -> ControlDir {
         Python::with_gil(|py| {
-            let controldir = self.0.getattr(py, "controldir").unwrap();
-            ControlDir(controldir)
+            let controldir = self.to_object(py).getattr(py, "controldir").unwrap();
+            ControlDir::new(controldir)
         })
     }
 
@@ -355,14 +355,14 @@ impl WorkingTree {
 
     pub fn basis_tree(&self) -> Box<dyn Tree> {
         Python::with_gil(|py| {
-            let tree = self.0.call_method0(py, "basis_tree").unwrap();
+            let tree = self.to_object(py).call_method0(py, "basis_tree").unwrap();
             Box::new(RevisionTree(tree))
         })
     }
 
     pub fn get_tag_dict(&self) -> Result<std::collections::HashMap<String, RevisionId>, PyErr> {
         Python::with_gil(|py| {
-            let branch = self.0.getattr(py, "branch")?;
+            let branch = self.to_object(py).getattr(py, "branch")?;
             let tags = branch.getattr(py, "tags")?;
             let tag_dict = tags.call_method0(py, "get_tag_dict")?;
             tag_dict.extract(py)
@@ -370,12 +370,16 @@ impl WorkingTree {
     }
 
     pub fn abspath(&self, path: &std::path::Path) -> PyResult<std::path::PathBuf> {
-        Python::with_gil(|py| self.0.call_method1(py, "abspath", (path,))?.extract(py))
+        Python::with_gil(|py| {
+            self.to_object(py)
+                .call_method1(py, "abspath", (path,))?
+                .extract(py)
+        })
     }
 
     pub fn supports_setting_file_ids(&self) -> bool {
         Python::with_gil(|py| {
-            self.0
+            self.to_object(py)
                 .call_method0(py, "supports_setting_file_ids")
                 .unwrap()
                 .extract(py)
@@ -385,14 +389,16 @@ impl WorkingTree {
 
     pub fn add(&self, paths: &[&std::path::Path]) -> PyResult<()> {
         Python::with_gil(|py| {
-            self.0.call_method1(py, "add", (paths.to_vec(),)).unwrap();
+            self.to_object(py)
+                .call_method1(py, "add", (paths.to_vec(),))
+                .unwrap();
         });
         Ok(())
     }
 
     pub fn smart_add(&self, paths: &[&std::path::Path]) -> PyResult<()> {
         Python::with_gil(|py| {
-            self.0
+            self.to_object(py)
                 .call_method1(py, "smart_add", (paths.to_vec(),))
                 .unwrap();
         });
@@ -428,7 +434,7 @@ impl WorkingTree {
             kwargs.set_item("reporter", null_commit_reporter).unwrap();
 
             Ok(self
-                .0
+                .to_object(py)
                 .call_method(py, "commit", (message,), Some(kwargs))
                 .map_err(|e| {
                     if e.is_instance_of::<PointlessCommit>(py) {
@@ -444,7 +450,7 @@ impl WorkingTree {
 
     pub fn last_revision(&self) -> Result<RevisionId, PyErr> {
         Python::with_gil(|py| {
-            let last_revision = self.0.call_method0(py, "last_revision")?;
+            let last_revision = self.to_object(py).call_method0(py, "last_revision")?;
             Ok(RevisionId::from(last_revision.extract::<Vec<u8>>(py)?))
         })
     }

@@ -81,7 +81,7 @@ impl std::fmt::Display for BranchOpenError {
 impl std::error::Error for BranchOpenError {}
 
 #[derive(Clone)]
-pub struct BranchFormat(pub PyObject);
+pub struct BranchFormat(PyObject);
 
 impl BranchFormat {
     pub fn supports_stacking(&self) -> bool {
@@ -96,7 +96,7 @@ impl BranchFormat {
 }
 
 #[derive(Clone)]
-pub struct Branch(pub PyObject);
+pub struct Branch(PyObject);
 
 impl ToPyObject for Branch {
     fn to_object(&self, py: Python) -> PyObject {
@@ -176,7 +176,7 @@ impl Branch {
     }
 
     pub fn controldir(&self) -> ControlDir {
-        Python::with_gil(|py| ControlDir::new(self.0.getattr(py, "controldir").unwrap()).unwrap())
+        Python::with_gil(|py| ControlDir::new(self.0.getattr(py, "controldir").unwrap()))
     }
 
     pub fn push(

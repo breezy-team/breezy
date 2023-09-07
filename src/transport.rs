@@ -1,7 +1,7 @@
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
-pub struct Transport(pub(crate) PyObject);
+pub struct Transport(PyObject);
 
 impl Transport {
     pub fn new(obj: PyObject) -> Self {
@@ -9,9 +9,15 @@ impl Transport {
     }
 }
 
-impl From<Transport> for PyObject {
-    fn from(t: Transport) -> Self {
-        t.0
+impl FromPyObject<'_> for Transport {
+    fn extract(obj: &PyAny) -> PyResult<Self> {
+        Ok(Transport(obj.to_object(obj.py())))
+    }
+}
+
+impl ToPyObject for Transport {
+    fn to_object(&self, py: Python) -> PyObject {
+        self.0.to_object(py)
     }
 }
 

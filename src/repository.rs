@@ -118,7 +118,7 @@ impl Repository {
     }
 
     pub fn controldir(&self) -> ControlDir {
-        Python::with_gil(|py| ControlDir(self.0.getattr(py, "controldir").unwrap()))
+        Python::with_gil(|py| ControlDir::new(self.0.getattr(py, "controldir").unwrap()))
     }
 
     pub fn format(&self) -> RepositoryFormat {
