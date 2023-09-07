@@ -1,4 +1,4 @@
-use crate::branch::{py_tag_selector, Branch, BranchOpenError};
+use crate::branch::{py_tag_selector, Branch, BranchOpenError, RegularBranch};
 use crate::transport::Transport;
 use crate::tree::WorkingTree;
 
@@ -44,12 +44,12 @@ impl ControlDir {
         Self(obj)
     }
 
-    pub fn create_branch_convenience(base: &url::Url) -> PyResult<Branch> {
+    pub fn create_branch_convenience(base: &url::Url) -> PyResult<Box<dyn Branch>> {
         Python::with_gil(|py| {
             let m = py.import("breezy.controldir")?;
             let cd = m.getattr("ControlDir")?;
             let branch = cd.call_method("create_branch_convenience", (base.to_string(),), None)?;
-            Ok(Branch::new(branch.to_object(py)))
+            Ok(Box::new(RegularBranch::new(branch.to_object(py))) as Box<dyn Branch>)
         })
     }
 
@@ -95,33 +95,36 @@ impl ControlDir {
         })
     }
 
-    pub fn create_branch(&self, name: Option<&str>) -> PyResult<Branch> {
+    pub fn create_branch(&self, name: Option<&str>) -> PyResult<Box<dyn Branch>> {
         Python::with_gil(|py| {
             let branch = self
                 .to_object(py)
                 .call_method(py, "create_branch", (name,), None)?
                 .extract(py)?;
-            Ok(Branch::new(branch))
+            Ok(Box::new(RegularBranch::new(branch)) as Box<dyn Branch>)
         })
     }
 
-    pub fn open_branch(&self, branch_name: Option<&str>) -> Result<Branch, BranchOpenError> {
+    pub fn open_branch(
+        &self,
+        branch_name: Option<&str>,
+    ) -> Result<Box<dyn Branch>, BranchOpenError> {
         Python::with_gil(|py| {
             let branch = self
                 .to_object(py)
                 .call_method(py, "open_branch", (branch_name,), None)?
                 .extract(py)?;
-            Ok(Branch::new(branch))
+            Ok(Box::new(RegularBranch::new(branch)) as Box<dyn Branch>)
         })
     }
 
     pub fn push_branch(
         &self,
-        source_branch: &Branch,
+        source_branch: &dyn Branch,
         to_branch_name: Option<&str>,
         overwrite: Option<bool>,
         tag_selector: Option<Box<dyn Fn(String) -> bool>>,
-    ) -> PyResult<Branch> {
+    ) -> PyResult<Box<dyn Branch>> {
         Python::with_gil(|py| {
             let kwargs = PyDict::new(py);
             if let Some(to_branch_name) = to_branch_name {
@@ -139,14 +142,17 @@ impl ControlDir {
                 (&source_branch.to_object(py),),
                 Some(kwargs),
             )?;
-            Ok(Branch::new(result.getattr(py, "target_branch")?))
+            Ok(
+                Box::new(RegularBranch::new(result.getattr(py, "target_branch")?))
+                    as Box<dyn Branch>,
+            )
         })
     }
 
     pub fn sprout(
         &self,
         target: url::Url,
-        source_branch: Option<&Branch>,
+        source_branch: Option<&dyn Branch>,
         create_tree_if_local: Option<bool>,
         stacked: Option<bool>,
     ) -> ControlDir {

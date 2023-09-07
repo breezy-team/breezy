@@ -1,4 +1,4 @@
-use crate::branch::Branch;
+use crate::branch::{Branch, RegularBranch};
 use crate::controldir::ControlDir;
 use crate::lock::Lock;
 use crate::revisionid::RevisionId;
@@ -318,10 +318,10 @@ impl WorkingTree {
         Ok(WorkingTree(obj))
     }
 
-    pub fn branch(&self) -> Branch {
+    pub fn branch(&self) -> Box<dyn Branch> {
         Python::with_gil(|py| {
             let branch = self.to_object(py).getattr(py, "branch").unwrap();
-            Branch::new(branch)
+            Box::new(RegularBranch::new(branch)) as Box<dyn Branch>
         })
     }
 

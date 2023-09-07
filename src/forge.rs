@@ -1,4 +1,4 @@
-use crate::branch::{py_tag_selector, Branch};
+use crate::branch::{py_tag_selector, Branch, RegularBranch};
 use crate::revisionid::RevisionId;
 use pyo3::conversion::ToPyObject;
 use pyo3::prelude::*;
@@ -214,8 +214,8 @@ impl Forge {
 
     pub fn get_proposer(
         &self,
-        from_branch: &Branch,
-        to_branch: &Branch,
+        from_branch: &dyn Branch,
+        to_branch: &dyn Branch,
     ) -> PyResult<ProposalBuilder> {
         Python::with_gil(|py| {
             Ok(ProposalBuilder(
@@ -231,11 +231,11 @@ impl Forge {
 
     pub fn get_derived_branch(
         &self,
-        main_branch: &Branch,
+        main_branch: &dyn Branch,
         name: &str,
         owner: Option<&str>,
         preferred_schemes: Option<&[&str]>,
-    ) -> PyResult<Branch> {
+    ) -> PyResult<Box<dyn Branch>> {
         Python::with_gil(|py| {
             let kwargs = PyDict::new(py);
             kwargs.set_item("main_branch", main_branch.to_object(py))?;
@@ -249,14 +249,14 @@ impl Forge {
             let branch =
                 self.to_object(py)
                     .call_method(py, "get_derived_branch", (), Some(kwargs))?;
-            Ok(Branch::new(branch))
+            Ok(Box::new(RegularBranch::new(branch)) as Box<dyn Branch>)
         })
     }
 
     pub fn iter_proposals(
         &self,
-        source_branch: &Branch,
-        target_branch: &Branch,
+        source_branch: &dyn Branch,
+        target_branch: &dyn Branch,
         status: MergeProposalStatus,
     ) -> PyResult<impl Iterator<Item = MergeProposal>> {
         Python::with_gil(move |py| {
@@ -277,14 +277,14 @@ impl Forge {
 
     pub fn publish_derived(
         &self,
-        local_branch: &Branch,
-        main_branch: &Branch,
+        local_branch: &dyn Branch,
+        main_branch: &dyn Branch,
         name: &str,
         overwrite_existing: Option<bool>,
         owner: Option<&str>,
         stop_revision: Option<&RevisionId>,
         tag_selector: Option<Box<dyn Fn(String) -> bool>>,
-    ) -> PyResult<(Branch, url::Url)> {
+    ) -> PyResult<(Box<dyn Branch>, url::Url)> {
         Python::with_gil(|py| {
             let kwargs = PyDict::new(py);
             kwargs.set_item("local_branch", &local_branch.to_object(py))?;
@@ -306,11 +306,14 @@ impl Forge {
                 .to_object(py)
                 .call_method(py, "publish_derived", (), Some(kwargs))?
                 .extract(py)?;
-            Ok((Branch::new(b), u.parse::<url::Url>().unwrap()))
+            Ok((
+                Box::new(RegularBranch::new(b)) as Box<dyn Branch>,
+                u.parse::<url::Url>().unwrap(),
+            ))
         })
     }
 
-    pub fn get_push_url(&self, branch: &Branch) -> url::Url {
+    pub fn get_push_url(&self, branch: &dyn Branch) -> url::Url {
         Python::with_gil(|py| {
             let url = self
                 .to_object(py)
@@ -335,7 +338,7 @@ impl ToPyObject for Forge {
     }
 }
 
-pub fn get_forge(branch: &Branch) -> Forge {
+pub fn get_forge(branch: &dyn Branch) -> Forge {
     Python::with_gil(|py| {
         let m = py.import("breezy.forge").unwrap();
         let forge = m
