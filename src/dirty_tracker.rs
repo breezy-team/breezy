@@ -24,7 +24,7 @@ impl FromPyObject<'_> for DirtyTracker {
 
 impl From<PyObject> for DirtyTracker {
     fn from(obj: PyObject) -> Self {
-        DirtyTracker { obj, owned: true }
+        DirtyTracker { obj, owned: false }
     }
 }
 
