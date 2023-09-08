@@ -22,6 +22,7 @@ pub mod diff;
 pub mod dirty_tracker;
 pub mod forge;
 pub mod graph;
+pub mod location;
 pub mod lock;
 pub mod merge;
 pub mod plugin;
