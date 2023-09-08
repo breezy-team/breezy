@@ -113,11 +113,17 @@ impl Repository {
     pub fn fetch(
         &self,
         other_repository: &Repository,
-        stop_revision: Option<RevisionId>,
+        stop_revision: Option<&RevisionId>,
     ) -> PyResult<()> {
         Python::with_gil(|py| {
-            self.0
-                .call_method1(py, "fetch", (other_repository.to_object(py), stop_revision))?;
+            self.0.call_method1(
+                py,
+                "fetch",
+                (
+                    other_repository.to_object(py),
+                    stop_revision.map(|r| r.to_object(py)),
+                ),
+            )?;
             Ok(())
         })
     }
