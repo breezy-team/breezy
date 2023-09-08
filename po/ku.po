@@ -1,4 +1,4 @@
-# Burmese translation for brz
+# Kurdish translation for brz
 # Copyright (c) 2023 Rosetta Contributors and Canonical Ltd 2023
 # This file is distributed under the same license as the brz package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2023.
@@ -10,12 +10,12 @@ msgstr ""
 "POT-Creation-Date: 2023-05-23 21:53+0100\n"
 "PO-Revision-Date: 2023-09-04 18:00+0000\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: Burmese <my@li.org>\n"
+"Language-Team: Kurdish <ku@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=1; plural=0;\n"
-"X-Launchpad-Export-Date: 2023-09-05 04:57+0000\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+"X-Launchpad-Export-Date: 2023-09-05 05:02+0000\n"
 "X-Generator: Launchpad (build 203f35b713beed25421591e82c62fdfedf492fe3)\n"
 
 #: breezy/add.py:89
@@ -1065,7 +1065,7 @@ msgstr ""
 #: breezy/builtins.py:6592 breezy/plugins/fastimport/cmds.py:205
 #: breezy/plugins/fastimport/cmds.py:411 breezy/plugins/gitlab/cmds.py:32
 msgid ":Examples:"
-msgstr ""
+msgstr ":Nimûne:"
 
 #: breezy/builtins.py:1883
 msgid "  Display information on the format and related locations:"
