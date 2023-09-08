@@ -102,11 +102,11 @@ class NotGitHubUrl(errors.BzrError):
 
 class AutoMergeUnavailable(errors.BzrError):
 
-    _fmt = "Unable to enable auto-merge: %(message)s"
+    _fmt = "Unable to enable auto-merge: %(msg)s"
 
-    def __init__(self, message):
+    def __init__(self, msg):
         errors.BzrError.__init__(self)
-        self.message = message
+        self.msg = msg
 
 
 class GitHubLoginRequired(ForgeLoginRequired):
