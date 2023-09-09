@@ -378,6 +378,9 @@ pub mod posix {
 
     pub fn abspath(path: &Path) -> Result<PathBuf, std::io::Error> {
         use path_clean::PathClean;
+        if path.is_absolute() {
+            return Ok(path.to_path_buf());
+        }
         let cwd = std::env::current_dir()?;
         let ap = cwd.join(path).clean();
         Ok(ap.as_path().to_path_buf())
