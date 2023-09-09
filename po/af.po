@@ -1,4 +1,4 @@
-# Russian translation for brz
+# Afrikaans translation for brz
 # Copyright (c) 2023 Rosetta Contributors and Canonical Ltd 2023
 # This file is distributed under the same license as the brz package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2023.
@@ -10,23 +10,22 @@ msgstr ""
 "POT-Creation-Date: 2023-05-23 19:09+0100\n"
 "PO-Revision-Date: 2023-09-08 16:30+0000\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: Russian <ru@li.org>\n"
+"Language-Team: Afrikaans <af@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=3; plural=n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
-"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2023-09-09 07:41+0000\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+"X-Launchpad-Export-Date: 2023-09-09 07:34+0000\n"
 "X-Generator: Launchpad (build 32eed776db4e1fe74faaa77122cde19862d565ac)\n"
 
 #: breezy/add.py:89
 #, python-brace-format
 msgid "skipping {0} (larger than {1} of {2} bytes)"
-msgstr "пропуск {0} (более, чем {1} из {2} байт)"
+msgstr "slaan {0} oor (groter as {1} van {2} grepe)"
 
 #: breezy/bisect.py:262
 msgid "Find an interesting commit using a binary search."
-msgstr ""
+msgstr "Vind 'n interessante pleeg deur 'n binêre soektog te gebruik."
 
 #: breezy/bisect.py:264
 msgid ""
@@ -38,6 +37,15 @@ msgid ""
 "the history, eventually ending up at the precise commit when\n"
 "the change was first introduced."
 msgstr ""
+"Bisecting, in 'n neutedop, is 'n manier om die commit te vind by watter\n"
+"een of ander toetsbare verandering was aangebring, soos die bekendstelling "
+"van 'n gogga\n"
+"of kenmerk. Deur 'n weergawe te identifiseer dat nie het die\n"
+"interessante verandering en 'n latere weergawe watter het gedoen, 'n "
+"ontwikkelaar\n"
+"kan toets vir die teenwoordigheid van die verandering op verskeie punte in\n"
+"die geskiedenis, beland eindig by die presiese pleeg wanneer\n"
+"die verandering was eerste- ingestel."
 
 #: breezy/bisect.py:272
 msgid ""
@@ -45,12 +53,17 @@ msgid ""
 "of which changes the state of the bisection.  The\n"
 "subcommands are:"
 msgstr ""
+"Hierdie bevel gebruiks subbevele om te implementeer die soektog, elk\n"
+"waarvan verander die staat van die bisection. Die\n"
+"subbevele word:"
 
 #: breezy/bisect.py:276
 msgid ""
 "brz bisect start\n"
 "    Start a bisect, possibly clearing out a previous bisect."
 msgstr ""
+"brz bisect begin\n"
+"    Begin  bisect, moontlik duidelike uite 'n vorige bisect."
 
 #: breezy/bisect.py:279
 msgid ""
@@ -58,6 +71,9 @@ msgid ""
 "    The specified revision (or the current revision, if not given)\n"
 "    has the characteristic we're looking for,"
 msgstr ""
+"brz bisect ja [-r rev]\n"
+"    Die gespesifiseerde revisie (of die huidige revisie, indien nie gegee)\n"
+"    het die kenmerkende ons soek vir,"
 
 #: breezy/bisect.py:283
 msgid ""
@@ -65,6 +81,9 @@ msgid ""
 "    The specified revision (or the current revision, if not given)\n"
 "    does not have the characteristic we're looking for,"
 msgstr ""
+"brz bisect nee [-r rev]\n"
+"    Die gespesifiseerde revisie (of die huidige revisie, indien nie gegee)\n"
+"    het die kenmerkende ons soek vir,"
 
 #: breezy/bisect.py:287
 msgid ""
@@ -73,12 +92,19 @@ msgid ""
 "    algorithm chooses a revision that is not suitable.  Try to\n"
 "    move as little as possible."
 msgstr ""
+"brz bisect beweeg -r rev\n"
+"    Oorskakel om te 'n verskillende revisie handmatig.  Gebruik indien die "
+"bisect\n"
+"    algoritme kies 'n revisie dat is nie geskik.  Probeer om\n"
+"    beweeg so min as moontlik."
 
 #: breezy/bisect.py:292
 msgid ""
 "brz bisect reset\n"
 "    Clear out a bisection in progress."
 msgstr ""
+"brz bisect terugstel\n"
+"    Duidelike uite 'n bisection in vooruitgang."
 
 #: breezy/bisect.py:295
 msgid ""
@@ -86,6 +112,9 @@ msgid ""
 "    Output a log of the current bisection to standard output, or\n"
 "    to the specified file."
 msgstr ""
+"brz bisect log [-o file]\n"
+"    Uitset 'n log van die huidige bisection na standaard uitset, of\n"
+"    na die gespesifiseerde lêer."
 
 #: breezy/bisect.py:299
 msgid ""
@@ -93,6 +122,9 @@ msgid ""
 "    Replay a previously-saved bisect log, forgetting any bisection\n"
 "    that might be in progress."
 msgstr ""
+"brz bisect herspeel <logfile>\n"
+"    Herspeel 'n voorheen-gestoor bisect log, vergeet enige bisection\n"
+"    dat mag wees in vooruitgang."
 
 #: breezy/bisect.py:303
 msgid ""
@@ -103,15 +135,21 @@ msgid ""
 "       125 for unknown (like build failed so we could not test)\n"
 "       anything else for no"
 msgstr ""
+"brz bisect hardloop <script>\n"
+"    Bisect outomaties met behulp <script>te bepaal 'yes' or 'no'.\n"
+"    <script> behoort uitgang met:\n"
+"       0 vir ja\n"
+"       125 vir onbekend (hou van bou mislukte so ons kon nie toets)\n"
+"       enigiets anders vir nee"
 
 #: breezy/bisect.py:313
 msgid "Write log to this file."
-msgstr ""
+msgstr "Skryf log na hierdie lêer."
 
 #: breezy/branch.py:1958
 #, python-format
 msgid "Pushed up to revision %d."
-msgstr ""
+msgstr "Opgestoot tot revisie %d."
 
 #: breezy/branch.py:1961
 #, python-format
@@ -122,52 +160,56 @@ msgstr ""
 #, python-format
 msgid "%d tag updated."
 msgid_plural "%d tags updated."
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%d tag opgedateer."
+msgstr[1] "%d tags opgedateer."
 
 #: breezy/branch.py:1968
 msgid "No new revisions or tags to push."
-msgstr ""
+msgstr "Geen nuwe revisies of tags tot push."
 
 #: breezy/branch.py:1970
 msgid "No new revisions to push."
-msgstr ""
+msgstr "Geen nuwe revisies tot push."
 
 #: breezy/branch.py:1992
 #, python-brace-format
 msgid "checked branch {0} format {1}"
-msgstr ""
+msgstr "getjek vertakking {0} formaat {1}"
 
 #: breezy/branch.py:1995
 #, python-format
 msgid "found error:%s"
-msgstr ""
+msgstr "gevind-fout:%s"
 
 #: breezy/builtins.py:235 breezy/builtins.py:3065 breezy/workingtree.py:251
 #, python-format
 msgid "Ignoring files outside view. View is %s"
-msgstr ""
+msgstr "Ignoreer lêers buitekant uitsig. Uitsig is %s"
 
 #: breezy/builtins.py:245
 #, python-format
 msgid "brz %s --revision takes exactly one revision identifier"
-msgstr ""
+msgstr "brz %s --revisie neem presies een revisie identifiseerder"
 
 #: breezy/builtins.py:300
 msgid "Display status summary."
-msgstr ""
+msgstr "Vertooning status opsomming."
 
 #: breezy/builtins.py:302
 msgid ""
 "This reports on versioned and unknown files, reporting them\n"
 "grouped by state.  Possible states are:"
 msgstr ""
+"Hierdie rapporteer oor weergawesde en onbekende lêers, rapporteering hulle\n"
+"gegroepeer volgens staat. Moontlike state is:"
 
 #: breezy/builtins.py:305
 msgid ""
 "added\n"
 "    Versioned in the working copy but not in the previous revision."
 msgstr ""
+"bygevoeg\n"
+"    Weergawe in die werkkopie, maar nie in die vorige revisie."
 
 #: breezy/builtins.py:308
 msgid ""
@@ -175,6 +217,9 @@ msgid ""
 "    Versioned in the previous revision but removed or deleted\n"
 "    in the working copy."
 msgstr ""
+"verwyderde\n"
+"    Weergawe in die vorige revisie, maar removed of skrapde\n"
+"    in die werkkopie."
 
 #: breezy/builtins.py:312
 msgid ""
@@ -183,24 +228,34 @@ msgid ""
 "    the text may also have changed.  This includes files whose\n"
 "    parent directory was renamed."
 msgstr ""
+"hernoemde\n"
+"    Pad van hierdie lêer verander vanaf die vorige revisie;\n"
+"    die teks kan ook verander het.  Dit sluit lêers in wie se\n"
+"   ouergids is hernoem."
 
 #: breezy/builtins.py:317
 msgid ""
 "modified\n"
 "    Text has changed since the previous revision."
 msgstr ""
+"gewysig\n"
+"    Teks het verander sedert die vorige revisie."
 
 #: breezy/builtins.py:320
 msgid ""
 "kind changed\n"
 "    File kind has been changed (e.g. from file to directory)."
 msgstr ""
+"soort veranderde\n"
+"    Lêer soort is verander (bv. van lêer na gids)."
 
 #: breezy/builtins.py:323
 msgid ""
 "unknown\n"
 "    Not versioned and not matching an ignore pattern."
 msgstr ""
+"onbekend\n"
+"    Nie weergawesde nie en pas nie by 'n ignoreer patroon."
 
 #: breezy/builtins.py:326
 msgid ""
@@ -215,6 +270,9 @@ msgid ""
 "To see ignored files use 'brz ignored'.  For details on the\n"
 "changes to file texts, use 'brz diff'."
 msgstr ""
+"Om te sien geïgnoreer lêers gebruik 'brz ignored'.  Vir besonderhede oor "
+"die\n"
+"veranderinge aan lêertekste, gebruik 'brz diff'."
 
 #: breezy/builtins.py:334
 msgid ""
@@ -222,6 +280,9 @@ msgid ""
 "to Subversion's status command. To get output similar to svn -q,\n"
 "use brz status -SV."
 msgstr ""
+"Let daarop dat --short of -S gee statusvlae vir elke item, soortgelyk\n"
+"na Sub-weergawe se statusbevel. Om uitset soortgelyk aan te kry svn -q,\n"
+"gebruik brz status -SV."
 
 #: breezy/builtins.py:338
 msgid ""
@@ -230,6 +291,11 @@ msgid ""
 "files or directories is reported.  If a directory is given, status\n"
 "is reported for everything inside that directory."
 msgstr ""
+"Indien geen argumente gespesifiseer word nie, die status van die hele werk\n"
+"directory is gewys. Andersins, slegs die status van die gespesifiseerde\n"
+"lêers of directories is gerapporteer. Indien 'n directory gegee word, "
+"status\n"
+"word gerapporteer vir alles binne daardie gids."
 
 #: breezy/builtins.py:343
 msgid ""
@@ -238,12 +304,20 @@ msgid ""
 "To skip the display of pending merge information altogether, use\n"
 "the no-pending option or specify a file/directory."
 msgstr ""
+"Voordat samesmeltings word gepleeg, die hangende saamsmelt tip revisies "
+"word\n"
+"gewys. Om alle hangende samesmelt revisies te sien, gebruik die -v opsie.\n"
+"Om die vertoon van hangende samesmelt inligting oor te slaan alle tesame, "
+"gebruik\n"
+"die geen-hangende opsie, of spesifiseer 'n lêer/gids."
 
 #: breezy/builtins.py:348
 msgid ""
 "To compare the working directory to a specific revision, pass a\n"
 "single revision to the revision argument."
 msgstr ""
+"Om die werkgids met 'n spesifieke revisie te vergelyk, slaag a\n"
+"nkele revisie om die revisie argument."
 
 #: breezy/builtins.py:351
 msgid ""
@@ -251,120 +325,133 @@ msgid ""
 "two revisions, pass a revision range to the revision argument.\n"
 "This will produce the same results as calling 'brz diff --summarize'."
 msgstr ""
+"Om te sien watter lêers in 'n spesifieke revisie verander het, of tussen\n"
+"twee revisies, gee 'n revisie range na die revisie argument deur.\n"
+"Dit sal dieselfde resultate produseer as om te bel 'brz diff --summarize'."
 
 #: breezy/builtins.py:360
 msgid "Use short status indicators."
-msgstr ""
+msgstr "Gebruik kort status aanwysers."
 
 #: breezy/builtins.py:362
 msgid "Only show versioned files."
-msgstr ""
+msgstr "Wys slegs weergawe lêers."
 
 #: breezy/builtins.py:364
 msgid "Don't show pending merges."
-msgstr ""
+msgstr "Moenie hangende samesmeltings wys nie."
 
 #: breezy/builtins.py:366
 msgid "Do not mark object type using indicator."
-msgstr ""
+msgstr "Moenie objektipe merk deur aanwyser te gebruik nie."
 
 #: breezy/builtins.py:381
 msgid "brz status --revision takes exactly one or two revision specifiers"
 msgstr ""
+"brz status --revision neem presies een of twee revisie spesifiseerders"
 
 #: breezy/builtins.py:425 breezy/builtins.py:5295
 msgid "You can only supply one of revision_id or --revision"
-msgstr ""
+msgstr "Jy kan net een van verskaf revision_id of --revision"
 
 #: breezy/builtins.py:429 breezy/builtins.py:5298
 msgid "You must supply either --revision or a revision_id"
-msgstr ""
+msgstr "Jy moet ook verskaf óf --revision of 'n revision_id"
 
 #: breezy/builtins.py:436
 #, python-format
 msgid "Repository %r does not support access to raw revision texts"
-msgstr ""
+msgstr "Bewaarplek %r ondersteun nie toegang tot rou revisie tekste nie"
 
 #: breezy/builtins.py:447
 #, python-brace-format
 msgid "The repository {0} contains no revision {1}."
-msgstr ""
+msgstr "Die bewaarplek {0} bevat geen revisie {1}."
 
 #: breezy/builtins.py:454
 msgid "You cannot specify a NULL revision."
-msgstr ""
+msgstr "Jy kan nie 'n NULL revisie spesifiseer nie."
 
 #: breezy/builtins.py:460
 msgid "Remove the working tree from a given branch/checkout."
-msgstr ""
+msgstr "Verwyder die werkende boom van 'n gegewe tak/tjekuit."
 
 #: breezy/builtins.py:462
 msgid ""
 "Since a lightweight checkout is little more than a working tree\n"
 "this will refuse to run against one."
 msgstr ""
+"Aangesien 'n liggewig tjekuit min meer is as 'n werkende boom\n"
+"hierdie sal weier om teen een te hardloop."
 
 #: breezy/builtins.py:465
 msgid "To re-create the working tree, use \"brz checkout\"."
-msgstr ""
+msgstr "Om die werkende boom te herskep, gebruik \"brz checkout\"."
 
 #: breezy/builtins.py:471
 msgid ""
 "Remove the working tree even if it has uncommitted or shelved changes."
 msgstr ""
+"Verwyder die werkende boom selfs al het dit un-begaan of shelved "
+"veranderinge."
 
 #: breezy/builtins.py:486
 msgid "No working tree to remove"
-msgstr ""
+msgstr "Geen werkende boom om te verwyder nie"
 
 #: breezy/builtins.py:489
 msgid "You cannot remove the working tree of a remote path"
-msgstr ""
+msgstr "Jy kan nie die werkende boom van 'n afgeleë paadjie verwyder nie"
 
 #: breezy/builtins.py:499
 msgid "You cannot remove the working tree from a lightweight checkout"
-msgstr ""
+msgstr "Jy kan nie die werkende boom uit 'n liggewig tjekuit verwyder nie"
 
 #: breezy/builtins.py:540
 msgid ""
 "The tree does not appear to be corrupt. You probably want \"brz revert\" "
 "instead. Use \"--force\" if you are sure you want to reset the working tree."
 msgstr ""
+"Die boom blyk nie korrup te wees nie. Jy wil waarskynlik \"brz revert\" n "
+"plaas daarvan. Gebruik \"--force\" indien jy seker is jy wil die werkende "
+"boom terugstel."
 
 #: breezy/builtins.py:551
 msgid ""
 ", the header appears corrupt, try passing -r -1 to set the state to the last "
 "commit"
 msgstr ""
+", die koptekst lyk korrup, probeer slaag -r -1 om die staat op die laaste te "
+"stel pleeg"
 
 #: breezy/builtins.py:556
 #, python-brace-format
 msgid "failed to reset the tree state{0}"
-msgstr ""
+msgstr "mislukte die boomstatus terugstel{0}"
 
 #: breezy/builtins.py:560
 msgid "Show current revision number."
-msgstr ""
+msgstr "Wys huidige revisie nommer."
 
 #: breezy/builtins.py:562
 msgid "This is equal to the number of revisions on this branch."
-msgstr ""
+msgstr "Dit is gelyk aan die aantal revisies op hierdie tak."
 
 #: breezy/builtins.py:576
 msgid "--tree and --revision can not be used together"
-msgstr ""
+msgstr "--tree en --revision saam gebruik kan word nie"
 
 #: breezy/builtins.py:592
 msgid "Revision numbers only make sense for single revisions, not ranges"
-msgstr ""
+msgstr "Revisie nommers maak net sin vir enkele revisie, nie ranges"
 
 #: breezy/builtins.py:615
 msgid "Show revno of working tree."
-msgstr ""
+msgstr "Wys revno van werk boom."
 
 #: breezy/builtins.py:664
 msgid "Add specified files or directories."
-msgstr ""
+msgstr "Voeg gespesifiseerde lêers of by gidse."
 
 #: breezy/builtins.py:666
 msgid ""
@@ -372,6 +459,9 @@ msgid ""
 "of whether they were previously ignored.  A warning is given if\n"
 "any of the named files are already versioned."
 msgstr ""
+"In nie-rekursiewe modus word al die genoemde items bygevoeg, ongeag\n"
+"van of hulle voorheen geïgnoreer is. 'N Waarskuwing word gegee indien\n"
+"enige van die benoemde lêers is reeds versioned."
 
 #: breezy/builtins.py:670
 msgid ""
@@ -383,18 +473,29 @@ msgid ""
 "are added.  This search proceeds recursively into versioned\n"
 "directories.  If no names are given '.' is assumed."
 msgstr ""
+"In rekursiewe modus (die verstek), lêers op dieselfde manier behandel word\n"
+"maar die gedrag van dopgehou is anders. Directories dat\n"
+"is reeds weergawes gee nie 'n waarskuwing nie. Alle directories,\n"
+"hetsy reeds weergawe of nie, word gesoek vir lêers of\n"
+"subgidse wat geen weergawe of geïgnoreer, en dat\n"
+"bygevoeg word. Hierdie soektog gaan rekursief voort in weergawe\n"
+"directories. Indien geen name word gegee '.' is assumed."
 
 #: breezy/builtins.py:678
 msgid ""
 "A warning will be printed when nested trees are encountered,\n"
 "unless they are explicitly ignored."
 msgstr ""
+"'N Waarskuwing sal afdruk word wanneer geneste bome teëgekom word,\n"
+"tensy hulle eksplisiet geïgnoreer word."
 
 #: breezy/builtins.py:681
 msgid ""
 "Therefore simply saying 'brz add' will version all files that\n"
 "are currently unknown."
 msgstr ""
+"Daarom eenvoudig sê 'brz add' sal alle lêers weergawe wat\n"
+"is tans onbekend."
 
 #: breezy/builtins.py:684
 msgid ""
@@ -403,12 +504,19 @@ msgid ""
 "you should never need to explicitly add a directory, they'll just\n"
 "get added when you add a file in the directory."
 msgstr ""
+"Die byvoeging van 'n lêer waarvan die ouergids nie 'n weergawe is nie sal\n"
+"voeg implisiet die ouer by, ensovoorts op tot by die wortel. Hierdie "
+"beteken\n"
+"jy hoef nooit eksplisiet 'n gids by te voeg nie, hulle sal net\n"
+"kry bygevoeg wanneer jy 'n lêer in die gids byvoeg."
 
 #: breezy/builtins.py:689
 msgid ""
 "--dry-run will show which files would be added, but not actually\n"
 "add them."
 msgstr ""
+"--dry-run sal wys watter lêers bygevoeg sal word, maar nie eintlik nie\n"
+"voeg hulle by."
 
 #: breezy/builtins.py:692
 msgid ""
@@ -420,12 +528,24 @@ msgid ""
 "adds as a conflict). It is also useful when merging another project\n"
 "into a subdirectory of this one."
 msgstr ""
+"--file-ids-from sal probeer om die lêer ids vanaf die verskafde pad te "
+"gebruik.\n"
+"Dit soek ids op en probeer om 'n bypassende ouergids met die\n"
+"dieselfde lêernaam, en dan deur suiwer pad. Hierdie opsie is selde nodig\n"
+"maar kan nuttig wees wanneer dieselfde logiese lêer in twee byvoeg\n"
+"takke wat later saamgevoeg sal word (sonder om die twee verskillende te wys\n"
+"byvoeg as 'n konflik). Dit is ook nuttig wanneer 'n ander projek saamgevoeg "
+"word\n"
+"in te 'n subgids van hierdie een."
 
 #: breezy/builtins.py:700
 msgid ""
 "Any files matching patterns in the ignore list will not be added\n"
 "unless they are explicitly mentioned."
 msgstr ""
+"Enige lêers wat ooreenstem met patrone in die ignoreerlys sal nie bygevoeg "
+"word nie\n"
+"tensy hulle uitdruklik genoem word."
 
 #: breezy/builtins.py:703
 msgid ""
@@ -433,14 +553,18 @@ msgid ""
 "add.maximum_file_size will be skipped. Named items are never skipped due\n"
 "to file size."
 msgstr ""
+"In rekursiewe modus, lêers groter as die konfigurasie opsie\n"
+"add.maximum_file_size sal oorgeslaan word. Genaamde items word nooit "
+"oorgeslaan nie as gevolg van\n"
+"na lêergrootte."
 
 #: breezy/builtins.py:710
 msgid "Don't recursively add the contents of directories."
-msgstr ""
+msgstr "Moenie rekursief die inhoud van gidse byvoeg nie."
 
 #: breezy/builtins.py:718
 msgid "Lookup file ids from this tree."
-msgstr ""
+msgstr "Opkyk lêer ids vanaf hierdie boom."
 
 #: breezy/builtins.py:730
 msgid ""
@@ -450,37 +574,38 @@ msgstr ""
 #: breezy/builtins.py:761
 #, python-brace-format
 msgid "ignored {0} matching \"{1}\"\n"
-msgstr ""
+msgstr "geïgnoreer {0} wat pas by \"{1}\"\n"
 
 #: breezy/builtins.py:766
 msgid "Create a new versioned directory."
-msgstr ""
+msgstr "Skep 'n nuwe weergawe-gids."
 
 #: breezy/builtins.py:768
 msgid "This is equivalent to creating the directory and then adding it."
 msgstr ""
+"Heirdie is gelykstaande aan die skep van die gids en dit dan by te voeg."
 
 #: breezy/builtins.py:775
 msgid "No error if existing, make parent directories as needed."
-msgstr ""
+msgstr "Geen fout indien bestaan nie, maak ouer- directories soos nodig."
 
 #: breezy/builtins.py:809
 #, python-format
 msgid "added %s\n"
-msgstr ""
+msgstr "bygevoeg %s\n"
 
 #: breezy/builtins.py:856
 #, python-format
 msgid "invalid kind %r specified"
-msgstr ""
+msgstr "ongeldige soort %r gespesifiseer"
 
 #: breezy/builtins.py:894
 msgid "Copy a file."
-msgstr ""
+msgstr "Kopieer 'n lêer."
 
 #: breezy/builtins.py:896
 msgid "    brz cp SOURCE... DESTINATION"
-msgstr ""
+msgstr "    brz cp BRON... BESTEMMING"
 
 #: breezy/builtins.py:898
 msgid ""
@@ -488,52 +613,59 @@ msgid ""
 "are copied into it.  Otherwise, there must be exactly two arguments\n"
 "and the file is copied to a new name."
 msgstr ""
+"Indien die laaste argument is 'n weergawe van die gids, alle die ander name\n"
+"word daarin gekopieer. Andersins, daar moet presies twee argumente wees\n"
+"en die lêer word na 'n nuwe naam gekopieer."
 
 #: breezy/builtins.py:902
 msgid ""
 "Files cannot be copied between branches. Only files can be copied\n"
 "at the moment."
 msgstr ""
+"Lêers kan nie tussen takke gekopieer word nie. Slegs lêers kan gekopieer "
+"word\n"
+"op die oomblik."
 
 #: breezy/builtins.py:917 breezy/builtins.py:1010
 msgid "missing file argument"
-msgstr ""
+msgstr "ontbreek lêer argument"
 
 #: breezy/builtins.py:923
 msgid "can not copy root of branch"
-msgstr ""
+msgstr "kan nie wortel van tak kopieer nie"
 
 #: breezy/builtins.py:931
 msgid "to copy multiple files the destination must be a versioned directory"
 msgstr ""
+"om veelvuldige lêers te kopieer, moet die bestemming 'n weergawe-gids wees"
 
 #: breezy/builtins.py:945 breezy/builtins.py:961
 #, python-format
 msgid "Could not copy %s => %s: %s is not versioned."
-msgstr ""
+msgstr "Kon nie kopieer %s => %s: %s is nie weergawede."
 
 #: breezy/builtins.py:949
 #, python-format
 msgid "Could not copy %s => %s . %s is not versioned\\."
-msgstr ""
+msgstr "Kon nie kopieer %s => %s . %s is nie weergawede\\."
 
 #: breezy/builtins.py:953
 #, python-format
 msgid "Could not copy %s => %s . %s is a directory."
-msgstr ""
+msgstr "Kon nie kopieer %s => %s . %s is 'n directory."
 
 #: breezy/builtins.py:965
 #, python-format
 msgid "Could not copy to %s: %s is not a directory."
-msgstr ""
+msgstr "Kon nie kopieer na %s: %s is nie 'n gids nie."
 
 #: breezy/builtins.py:972
 msgid "Move or rename a file."
-msgstr ""
+msgstr "Beweeg of hernoem 'n lêer."
 
 #: breezy/builtins.py:974
 msgid "    brz mv SOURCE... DESTINATION"
-msgstr ""
+msgstr "    brz mv BRON... BESTEMMING"
 
 #: breezy/builtins.py:976
 msgid ""
@@ -541,6 +673,9 @@ msgid ""
 "are moved into it.  Otherwise, there must be exactly two arguments\n"
 "and the file is changed to a new name."
 msgstr ""
+"Indien die laaste argument 'n weergawe van die gids is, alle die ander name\n"
+"word daarin verskuif. Andersins, moet daar presies twee argumente wees\n"
+"en die lêer is verander om te 'n nuwe naam."
 
 #: breezy/builtins.py:980
 msgid ""
@@ -550,48 +685,56 @@ msgid ""
 "its internal inventory to reflect that change.\n"
 "The same is valid when moving many SOURCE files to a DESTINATION."
 msgstr ""
+"Indien OUDENAAM bestaan nie op die lêerstelsel nie, maar is weergawede en\n"
+"NUWENAAM bestaan wel op die lêerstelsel, maar is nie weergawede, mv\n"
+"neem aan dat die lêer met die hand geskuif is en slegs-opgedateer\n"
+"sy interne voorraad om daardie verandering te weerspieël.\n"
+"Dieselfde is geldig wanneer beweegbaie-BRON lêers na 'n BESTEMMING."
 
 #: breezy/builtins.py:986
 msgid "Files cannot be moved between branches."
-msgstr ""
+msgstr "Lêers kan nie tussen takke geskuif word nie."
 
 #: breezy/builtins.py:993
 msgid ""
 "Move only the brz identifier of the file, because the file has already been "
 "moved."
 msgstr ""
+"Skuif slegs die brz identifiseerder van die lêer, want die lêer is reeds "
+"geskuif."
 
 #: breezy/builtins.py:995
 msgid "Automatically guess renames."
-msgstr ""
+msgstr "Outomaties raai hername."
 
 #: breezy/builtins.py:997
 msgid "Avoid making changes when guessing renames."
-msgstr ""
+msgstr "Vermy veranderinge wanneer jy hernoem om te raai."
 
 #: breezy/builtins.py:1006
 msgid "--dry-run requires --auto."
-msgstr ""
+msgstr "--dry-run vereises --auto."
 
 #: breezy/builtins.py:1016
 msgid "can not move root of branch"
-msgstr ""
+msgstr "kan nie wortel van tak beweeg"
 
 #: breezy/builtins.py:1023
 msgid "Only one path may be specified to --auto."
-msgstr ""
+msgstr "Slegs een pad kan gespesifiseer word na --auto."
 
 #: breezy/builtins.py:1026
 msgid "--after cannot be specified with --auto."
-msgstr ""
+msgstr "--after kan nie gespesifiseer word met --auto."
 
 #: breezy/builtins.py:1062
 msgid "to mv multiple files the destination must be a versioned directory"
 msgstr ""
+"om  mv veelvuldige lêers te mv moet die bestemming 'n weergawe-gids wees"
 
 #: breezy/builtins.py:1115
 msgid "Turn this branch into a mirror of another branch."
-msgstr ""
+msgstr "Verander hierdie tak in 'n spieël van 'n ander tak."
 
 #: breezy/builtins.py:1117
 msgid ""
@@ -600,6 +743,11 @@ msgid ""
 "commit is one that has not been merged (directly or indirectly) into the\n"
 "parent."
 msgstr ""
+"Deur verstek, heirdie bevel slegs werks op takke wat nie gedivergeer het "
+"nie.\n"
+"Takke word oorweeg diverged indien die bestemming tak se mees onlangse\n"
+"commit is een wat nie saamgevoeg is nie (direk of indirek) in te die\n"
+"ouer."
 
 #: breezy/builtins.py:1122
 msgid ""
@@ -607,6 +755,10 @@ msgid ""
 "from one into the other.  Once one branch has merged, the other should\n"
 "be able to pull it again."
 msgstr ""
+"Indien takke gedivergeer het, jy kan gebruik 'brz merge' om die veranderinge "
+"te integreer\n"
+"vanaf een in die ander. Sodra een tak saamgesmelt het, behoort die ander\n"
+"weer in staat wees om dit te trek."
 
 #: breezy/builtins.py:1126
 msgid ""
@@ -614,6 +766,10 @@ msgid ""
 "match the remote one, use pull --overwrite. This will work even if the two\n"
 "branches have diverged."
 msgstr ""
+"Indien jy jou plaaslike veranderinge wil vervang en net wil hê jou tak moet\n"
+"pas by die afgeleë een, gebruik pull --overwrite. Hierdie sal werk selfs as "
+"die twee\n"
+"takke het diverged."
 
 #: breezy/builtins.py:1130
 msgid ""
@@ -622,6 +778,13 @@ msgid ""
 "location to use the default.  To change the default, use --remember. The\n"
 "value will only be saved if the remote location can be accessed."
 msgstr ""
+"Indien daar is geen verstek ligging gestel, die eerste pull sal dit stel "
+"(gebruik\n"
+"--no-remember te vermy om dit te stel). Daarna kan jy die weglaat die\n"
+"ligging om die verstek te gebruik. Om die verstek te verander, gebruik --"
+"remember. Die\n"
+"waarde sal slegs gered word as toegang tot die afgeleë ligging toegang "
+"verkryde kan word."
 
 #: breezy/builtins.py:1135
 msgid ""
@@ -629,6 +792,10 @@ msgid ""
 "configuration option. You can use a different format by overriding it with\n"
 "-Olog_format=<other_format>."
 msgstr ""
+"Die --verbose opsie sal die revisies vertoon pulled met behulp van die "
+"log_format\n"
+"konfigurasie opsie. Jy kan 'n ander formaat gebruik deur oorrit dit met\n"
+"-Olog_format=<other_format>."
 
 #: breezy/builtins.py:1139
 msgid ""
@@ -636,54 +803,65 @@ msgid ""
 "or in the form of a path to a file containing a merge directive generated\n"
 "with brz send."
 msgstr ""
+"Let wel: Die ligging kan gespesifiseer óf in die vorm van 'n tak,\n"
+"of in die vorm van 'n pad na 'n lêer wat 'n samevoeging bevat richtlijn "
+"gegenereer\n"
+"met brz gestuur."
 
 #: breezy/builtins.py:1147
 msgid "Show logs of pulled revisions."
-msgstr ""
+msgstr "Wys logs van pulled revisies."
 
 #: breezy/builtins.py:1149
 msgid ""
 "Branch to pull into, rather than the one containing the working directory."
 msgstr ""
+"Tak aan pull in tot, liewers as dié wat die bevat die werkende directory."
 
 #: breezy/builtins.py:1152
 msgid ""
 "Perform a local pull in a bound branch.  Local pulls are not applied to the "
 "master branch."
 msgstr ""
+"Presteer 'n plaaslike pull in 'n gebonde tak.  Plaaslike pulls word nie "
+"toegepas op die meestertak nie."
 
 #: breezy/builtins.py:1189
 msgid "No working tree, ignoring --show-base"
-msgstr ""
+msgstr "Geen werkende boom, ignoreer --show-base"
 
 #: breezy/builtins.py:1205 breezy/plugins/rewrite/commands.py:437
 msgid "No pull location known or specified."
-msgstr ""
+msgstr "Geen pull ligging bekend of gespesifiseer."
 
 #: breezy/builtins.py:1212
 #, python-format
 msgid "Using saved parent location: %s\n"
-msgstr ""
+msgstr "Gebruik gestoorde ouerligging: %s\n"
 
 #: breezy/builtins.py:1219 breezy/builtins.py:4495
 msgid "Cannot use -r with merge directives or bundles"
-msgstr ""
+msgstr "Kan nie -r met samesmelting directives of bondels gebruik nie"
 
 #: breezy/builtins.py:1264
 msgid "Update a mirror of this branch."
-msgstr ""
+msgstr "Opdateer 'n spieël van hierdie tak."
 
 #: breezy/builtins.py:1266
 msgid ""
 "The target branch will not have its working tree populated because this\n"
 "is both expensive, and is not supported on remote file systems."
 msgstr ""
+"Die teikentak sal nie sy werkende boom hê bevolkde omdat hierdie\n"
+"is beide duur, en word nie op afgeleë lêerstelsels ondersteun nie."
 
 #: breezy/builtins.py:1269
 msgid ""
 "Some smart servers or protocols *may* put the working tree in place in\n"
 "the future."
 msgstr ""
+"Sommige slim bedieners of protokolle *may* sit die werkende boom in plek in\n"
+"die toekoms."
 
 #: breezy/builtins.py:1272
 msgid ""
@@ -691,12 +869,18 @@ msgid ""
 "considered diverged if the destination branch's most recent commit is one\n"
 "that has not been merged (directly or indirectly) by the source branch."
 msgstr ""
+"Hierdie opdrag werk slegs op takke wat nie gedivergeer het nie. Takke word\n"
+"geoorweeg diverged indien die bestemmingstak se mees onlangse pleeg is een\n"
+"dat is nie saamgevoeg nie (direk of indirek) deur die bronvertakking."
 
 #: breezy/builtins.py:1276
 msgid ""
 "If branches have diverged, you can use 'brz push --overwrite' to replace\n"
 "the other branch completely, discarding its unmerged changes."
 msgstr ""
+"As takke het diverged, jy kan gebruik 'brz push --overwrite' om te vervang\n"
+"die ander tak heeltemal, die verwydering daarvan sy nie-saamgesmelt "
+"veranderinge."
 
 #: breezy/builtins.py:1279
 msgid ""
@@ -704,6 +888,11 @@ msgid ""
 "do a merge (see brz help merge) from the other branch, and commit that.\n"
 "After that you will be able to do a push without '--overwrite'."
 msgstr ""
+"As jy wil verseker dat jy die verskillende veranderinge in die ander tak "
+"het,\n"
+"doen 'n samesmelt (sien brz hulp saamsmelt) vanaf die ander tak, en pleeg "
+"dat.\n"
+"Daarna sal jy in staat wees om doen 'n push sonder '--overwrite'."
 
 #: breezy/builtins.py:1283
 msgid ""
@@ -712,6 +901,12 @@ msgid ""
 "location to use the default.  To change the default, use --remember. The\n"
 "value will only be saved if the remote location can be accessed."
 msgstr ""
+"As daar geen verstek is push ligging stel, die eerst push sal stel dit "
+"(gebruik\n"
+"--no-remember om te vermy stel dit). Na dit, jy kan weglaat die\n"
+"ligging om die verstek te gebruik. Om die verstek te verander, gebruik --"
+"remember. Die\n"
+"waarde sal net gestoor word indien die afgeleë ligging kan wees toegangde."
 
 #: breezy/builtins.py:1288
 msgid ""
@@ -719,23 +914,31 @@ msgid ""
 "configuration option. You can use a different format by overriding it with\n"
 "-Olog_format=<other_format>."
 msgstr ""
+"Die --verbose opsie sal die revisies vertoon pushed met behulp van die "
+"log_formaat\n"
+"konfigurasie opsie. Jy kan 'n ander formaat gebruik deur dit te oorrit dit "
+"met\n"
+"-Olog_format=<other_format>."
 
 #: breezy/builtins.py:1299
 msgid ""
 "Branch to push from, rather than the one containing the working directory."
-msgstr ""
+msgstr "Tak aan push vanaf, eerder as die een wat die werk directory bevat."
 
 #: breezy/builtins.py:1302
 msgid ""
 "By default push will fail if the target directory exists, but does not "
 "already have a control directory.  This flag will allow push to proceed."
 msgstr ""
+"By verstek sal stoot misluk as die teikengids bestaan, maar het nie reeds 'n "
+"beheergids nie. Hierdie vlag sal push toelaat om voort te gaan."
 
 #: breezy/builtins.py:1307
 msgid ""
 "Create a stacked branch that references the public location of the parent "
 "branch."
 msgstr ""
+"Skep 'n gestapelde tak wat na die publieke ligging van die ouertak verwys."
 
 #: breezy/builtins.py:1310
 msgid ""
@@ -743,30 +946,38 @@ msgid ""
 "history. Only the work not present in the referenced branch is included in "
 "the branch created."
 msgstr ""
+"Skep 'n gestapelde tak wat verwys na 'n ander tak vir die commit "
+"geskiedenis. Slegs die werk wat nie in die verwysde tak teenwoordig is nie, "
+"word ingesluit in die tak wat geskep is."
 
 #: breezy/builtins.py:1315
 msgid ""
 "Refuse to push if there are uncommitted changes in the working tree, --no-"
 "strict disables the check."
 msgstr ""
+"Weier om te stoot as daar uncommitted veranderinge in die werkende boom is, -"
+"-no-strict deaktiveer die tjek."
 
 #: breezy/builtins.py:1318
 msgid "Don't populate the working tree, even for protocols that support it."
 msgstr ""
+"Moenie bevolk die werkende boom, selfs vir protokolle wat dit ondersteun."
 
 #: breezy/builtins.py:1321
 msgid "Overwrite tags only."
-msgstr ""
+msgstr "Oorheskryf tags slegs."
 
 #: breezy/builtins.py:1322
 msgid ""
 "Allow lossy push, i.e. dropping metadata that can't be represented in the "
 "target."
 msgstr ""
+"Toelaat verliesagtig stoot, bv. metadata laat val wat nie in die teiken "
+"verteenwoordig kan word nie."
 
 #: breezy/builtins.py:1376
 msgid "Could not determine branch to refer to."
-msgstr ""
+msgstr "Kon nie tak bepaal waarna verwys moet word nie."
 
 #: breezy/builtins.py:1385
 #, python-format
@@ -774,19 +985,21 @@ msgid ""
 "No push location known or specified. To push to the parent branch (at %s), "
 "use 'brz push :parent'."
 msgstr ""
+"Geen stoot ligging bekend of gespesifiseer. Om te stoot na die ouertak (at "
+"%s), gebruik 'brz push :parent'."
 
 #: breezy/builtins.py:1391
 msgid "No push location known or specified."
-msgstr ""
+msgstr "Geen stoot ligging bekend of gespesifiseer nie."
 
 #: breezy/builtins.py:1395
 #, python-format
 msgid "Using saved push location: %s"
-msgstr ""
+msgstr "Met behulp van gestoorde push ligging: %s"
 
 #: breezy/builtins.py:1406
 msgid "Create a new branch that is a copy of an existing branch."
-msgstr ""
+msgstr "Skep 'n nuwe tak wat 'n kopie van 'n bestaande tak is."
 
 #: breezy/builtins.py:1408
 msgid ""
@@ -798,40 +1011,56 @@ msgid ""
 "identifier, if any. For example, \"branch lp:foo-bar\" will attempt to\n"
 "create ./foo-bar."
 msgstr ""
+"Indien die TO_LOCATION is weggelaat, die laaste komponent van die "
+"FROM_LOCATION sal\n"
+"wees gebruik word.  Met ander woorde, \"branch ../foo/bar\" sal poog om te "
+"skep ./bar.\n"
+"Indien die FROM_LOCATION het geen / of path skeier ingebed, die TO_LOCATION\n"
+"is afgelei van die FROM_LOCATION deur 'n leidende skema of drive te stroop\n"
+"identifiseerder, indien enige. Byvoorbeeld, \"branch lp:foo-bar\" sal poging "
+"om te\n"
+"skep ./foo-bar."
 
 #: breezy/builtins.py:1415
 msgid ""
 "To retrieve the branch as of a particular revision, supply the --revision\n"
 "parameter, as in \"branch foo/bar -r 5\"."
 msgstr ""
+"Om die tak te herwin vanaf 'n besondere revisie, verskaf die --revision\n"
+"parameter, soos in \"branch foo/bar -r 5\"."
 
 #: breezy/builtins.py:1428
 msgid "Create a branch without a working-tree."
-msgstr ""
+msgstr "Skep 'n tak sonder 'n werkende-boom."
 
 #: breezy/builtins.py:1430
 msgid "Switch the checkout in the current directory to the new branch."
-msgstr ""
+msgstr "Oorskakel die tjekuit in die huidige gids na die nuwe tak."
 
 #: breezy/builtins.py:1433
 msgid ""
 "Create a stacked branch referring to the source branch. The new branch will "
 "depend on the availability of the source branch for all operations."
 msgstr ""
+"Skep 'n gestapelde tak wat na die bronvertakking verwys. Die nuwe tak sal "
+"afhang van die beskikbaarheid van die brontak vir alle bedrywighede."
 
 #: breezy/builtins.py:1437
 msgid "Do not use a shared repository, even if available."
 msgstr ""
+"Moenie 'n gedeelde repository gebruik nie, selfs al is dit beskikbaar."
 
 #: breezy/builtins.py:1439
 msgid ""
 "By default branch will fail if the target directory exists, but does not "
 "already have a control directory.  This flag will allow branch to proceed."
 msgstr ""
+"By verstek sal tak misluk as die teikengids bestaan, maar het nie reeds 'n "
+"beheergids nie. Hierdie vlag sal tak toelaat om voortgaan."
 
 #: breezy/builtins.py:1444
 msgid "Bind new branch to from location."
-msgstr ""
+msgstr "Bind nuwe tak aan vanaf ligging."
 
 #: breezy/builtins.py:1448
 msgid "Name of colocated branch to sprout."
@@ -840,67 +1069,71 @@ msgstr ""
 #: breezy/builtins.py:1490
 #, python-format
 msgid "Target directory \"%s\" already exists."
-msgstr ""
+msgstr "Teiken directory \"%s\" bestaan alreeds."
 
 #: breezy/builtins.py:1502
 #, python-format
 msgid "Parent of \"%s\" does not exist."
-msgstr ""
+msgstr "Ouer van \"%s\" bestaan nie."
 
 #: breezy/builtins.py:1521
 #, python-brace-format
 msgid "The branch {0} has no revision {1}."
-msgstr ""
+msgstr "Die tak {0} het geen revisie {1}."
 
 #: breezy/builtins.py:1538 breezy/push.py:46
 #, python-format
 msgid "Created new stacked branch referring to %s."
-msgstr ""
+msgstr "Geskep nuwe gestapelde tak wat verwys na %s."
 
 #: breezy/builtins.py:1544
 #, python-format
 msgid "Branched %d revision."
 msgid_plural "Branched %d revisions."
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Vertakte %d revisie."
+msgstr[1] "Vertakte %d revisies."
 
 #: breezy/builtins.py:1548 breezy/push.py:49
 msgid "Created new branch."
-msgstr ""
+msgstr "Geskep nuwe tak."
 
 #: breezy/builtins.py:1553
 #, python-format
 msgid "New branch bound to %s"
-msgstr ""
+msgstr "Nuwe tak gebind aan %s"
 
 #: breezy/builtins.py:1558
 #, python-format
 msgid "Switched to branch: %s"
-msgstr ""
+msgstr "Oorgeskakel na tak: %s"
 
 #: breezy/builtins.py:1563
 msgid "List the branches available at the current location."
-msgstr ""
+msgstr "Lys die takke wat beskikbaar is op die huidige ligging."
 
 #: breezy/builtins.py:1565
 msgid ""
 "This command will print the names of all the branches at the current\n"
 "location."
 msgstr ""
+"Hierdie bevel sal die name van alle die takke by die huidige afdruk\n"
+"ligging."
 
 #: breezy/builtins.py:1572
 msgid ""
 "Recursively scan for branches rather than just looking in the specified "
 "location."
 msgstr ""
+"Rekursief skandeer vir takke eerder as om net op die gespesifiseerde plek te "
+"kyk."
 
 #: breezy/builtins.py:1601
 msgid "(default)"
-msgstr ""
+msgstr "(verstek)"
 
 #: breezy/builtins.py:1612
 msgid "Create a new checkout of an existing branch."
-msgstr ""
+msgstr "Skep 'n nuwe tjekuit van 'n bestaande tak."
 
 #: breezy/builtins.py:1614
 msgid ""
@@ -909,6 +1142,12 @@ msgid ""
 "tree or if it was never created - i.e. if you pushed the branch to its\n"
 "current location using SFTP."
 msgstr ""
+"Indien BRANCH_LOCATION is weggelaat, tjekuit sal rekonstitueer 'n werkende "
+"boom\n"
+"vir die tak gevind in '.'. Dit is nuttig as jy die werkende verwyder het\n"
+"boom of indien dit is nooit geskep nie – d.w.s. as jy die tak na sy gestoot "
+"dit\n"
+"huidige ligging deur gebruik te maak SFTP."
 
 #: breezy/builtins.py:1619
 msgid ""
@@ -921,6 +1160,16 @@ msgid ""
 "will\n"
 "attempt to create ./foo-bar."
 msgstr ""
+"Indien die TO_LOCATION is weggelaat, die laaste komponent van die "
+"BRANCH_LOCATION\n"
+"sal gebruik word.  Met ander woorde, \"checkout ../foo/bar\" sal poog om te "
+"skep\n"
+"./bar.  Indien die BRANCH_LOCATION het geen / orf pad skeier ingebed, die\n"
+"TO_LOCATION is afkomstig uit die BRANCH_LOCATION deur 'n voorsprong te "
+"stroop\n"
+"skema of aandrywing identifiseerder, indien enige. Byvoorbeeld, \"checkout "
+"lp:foo-bar\" sal\n"
+"poging om te skep ./foo-bar."
 
 #: breezy/builtins.py:1626
 msgid ""
@@ -929,6 +1178,12 @@ msgid ""
 "immediately out of date [so you cannot commit] but it may be useful (i.e.\n"
 "to examine old code.)"
 msgstr ""
+"Om die tak te haal as van 'n bepaalde revisie, verskaf die --revision\n"
+"parameter, soos in \"checkout foo/bar -r 5\". Neem kennis dat hierdie sal "
+"wees\n"
+"onmiddellik buite van datum [dus kan jy nie commit] maar dit mag nuttig wees "
+"(d.w.s.\n"
+"om ou kode te ondersoek.)"
 
 #: breezy/builtins.py:1636
 msgid ""
@@ -937,14 +1192,18 @@ msgid ""
 "operations like diff and status without such access, and also support local "
 "commits."
 msgstr ""
+"Voer 'n liggewig afrekenuit. Liggewig afrekenuit is afhanklik van toegang "
+"tot die tak vir elke operasie. Normale afrekenuit kan gemeenskaplike "
+"bewerkings soos verskil en status uitvoer sonder sulke toegang, en "
+"ondersteun ook plaaslike commits."
 
 #: breezy/builtins.py:1643
 msgid "Get file contents from this tree."
-msgstr ""
+msgstr "Kry lêerinhoud van hierdie boom."
 
 #: breezy/builtins.py:1645
 msgid "Hard-link working tree files where possible."
-msgstr ""
+msgstr "Hard-skakel werkende boom lêers waar moontlik."
 
 #: breezy/builtins.py:1687
 msgid ""
@@ -965,10 +1224,12 @@ msgid ""
 "Show list of renamed files.\n"
 "    "
 msgstr ""
+"Wys lys hernoemde lêers.\n"
+"    "
 
 #: breezy/builtins.py:1747
 msgid "Update a working tree to a new revision."
-msgstr ""
+msgstr "Opdateer 'n werkende boom na 'n nuwe revisie."
 
 #: breezy/builtins.py:1749
 msgid ""
@@ -976,12 +1237,18 @@ msgid ""
 "branch, or the specified revision) into the working tree, and then make\n"
 "that revision the basis revision for the working tree."
 msgstr ""
+"Dit sal 'n samevoeging van die bestemming revisie uitvoer (die wenk van die\n"
+"tak, of die gespesifiseerde revisie) in die werkende boom, en maak dan\n"
+"daardie hersiening die basis revisie vir die werkende boom."
 
 #: breezy/builtins.py:1753
 msgid ""
 "You can use this to visit an older revision, or to update a working tree\n"
 "that is out of date from its branch."
 msgstr ""
+"Jy kan dit gebruik om 'n ouer revisie te besoek, of om 'n werkende boom op "
+"te dateer\n"
+"dat uit van datum is vanaf sy tak."
 
 #: breezy/builtins.py:1756
 msgid ""
@@ -990,12 +1257,21 @@ msgid ""
 "these changes, use 'brz revert'.  The uncommitted changes may conflict\n"
 "with the changes brought in by the change in basis revision."
 msgstr ""
+"Indien daar is enige nie-gepleeg veranderinge in die boom, sal hulle wees "
+"oorgedra\n"
+"dwarsoor en oorbly as nie-gepleeg veranderinge na die opdatering. Om weg te "
+"gooi\n"
+"hierdie veranderinge, gebruik 'brz revert'. Die nie-gepleeg veranderinge mag "
+"konflik\n"
+"met die veranderinge gebring deur die verandering in basis revisie."
 
 #: breezy/builtins.py:1761
 msgid ""
 "If the tree's branch is bound to a master branch, brz will also update\n"
 "the branch from the master."
 msgstr ""
+"Indien die boom se tak aan 'n meestertak gebind is, sal brz ook opdateer\n"
+"die tak van die meester."
 
 #: breezy/builtins.py:1764
 msgid ""
@@ -1013,19 +1289,24 @@ msgid ""
 "working tree to update.  By default, the working tree that contains the\n"
 "current working directory is used."
 msgstr ""
+"Die 'dir' argument, indien gegee, moet die ligging van die wortel van a "
+"wees\n"
+"werkende boom om opdateer. By verstek, die werkende boom wat die bevat\n"
+"huidige werkde directory word gebruik."
 
 #: breezy/builtins.py:1787
 msgid "brz update --revision takes exactly one revision"
-msgstr ""
+msgstr "brz opdateer --revision neem presies een revisie"
 
 #: breezy/builtins.py:1795
 msgid "brz update can only update a whole tree, not a file or subdirectory"
 msgstr ""
+"brz update kan slegs 'n hele boom opdateer, nie 'n lêer of subgids nie"
 
 #: breezy/builtins.py:1825
 #, python-brace-format
 msgid "Tree is up to date at revision {0} of branch {1}"
-msgstr ""
+msgstr "Boom is op datum by revisie {0} van tak {1}"
 
 #: breezy/builtins.py:1841
 #, python-format
@@ -1033,27 +1314,33 @@ msgid ""
 "branch has no revision %s\n"
 "brz update --revision only works for a revision in the branch history"
 msgstr ""
+"tak het geen revisie %s\n"
+"brz opdateer --revision werk slegs vir 'n revisie in die takgeskiedenis"
 
 #: breezy/builtins.py:1846
 #, python-brace-format
 msgid "Updated to revision {0} of branch {1}"
-msgstr ""
+msgstr "Opgedateer tot revisie {0} van tak {1}"
 
 #: breezy/builtins.py:1850
 msgid ""
 "Your local commits will now show as pending merges with 'brz status', and "
 "can be committed with 'brz commit'."
 msgstr ""
+"Jou plaaslike commits sal nou wys as hangende samesmeltings met 'brz "
+"status', en kan wees gepleeg met 'brz commit'."
 
 #: breezy/builtins.py:1859
 msgid "Show information about a working tree, branch or repository."
-msgstr ""
+msgstr "Wys inligting omtrent 'n werkende boom, tak of bewaarplek."
 
 #: breezy/builtins.py:1861
 msgid ""
 "This command will show all known locations and formats associated to the\n"
 "tree, branch or repository."
 msgstr ""
+"Hierdie bevel sal alle bekende liggings en formate wat met die\n"
+"boom, tak of bewaarplek."
 
 #: breezy/builtins.py:1864
 msgid ""
@@ -1061,24 +1348,29 @@ msgid ""
 "To see extended statistic information, use a verbosity level of 2 or\n"
 "higher by specifying the verbose option multiple times, e.g. -vv."
 msgstr ""
+"In verbose modus, statistiese inligting word by elke verslag ingesluit.\n"
+"Om uitgebreide statistiese inligting te sien, gebruik 'n verbosity vlak van "
+"2 of\n"
+"hoër deur die verbose opsie verskeie kere te spesifiseer, bv. -vv."
 
 #: breezy/builtins.py:1868
 msgid "Branches and working trees will also report any missing revisions."
 msgstr ""
+"Takke en werkende bome sal ook enige ontbrekende rapporteer revisies."
 
 #: breezy/builtins.py:1870 breezy/builtins.py:3798 breezy/builtins.py:4962
 #: breezy/builtins.py:6551 breezy/plugins/fastimport/cmds.py:205
 #: breezy/plugins/fastimport/cmds.py:411 breezy/plugins/gitlab/cmds.py:32
 msgid ":Examples:"
-msgstr ""
+msgstr ":Voorbeelde:"
 
 #: breezy/builtins.py:1872
 msgid "  Display information on the format and related locations:"
-msgstr ""
+msgstr "  Vertoon inligting op- die formaat en verwante liggings:"
 
 #: breezy/builtins.py:1874
 msgid "    brz info"
-msgstr ""
+msgstr "    brz info"
 
 #: breezy/builtins.py:1876
 msgid ""
@@ -1086,22 +1378,26 @@ msgid ""
 "  basic statistics (like the number of files in the working tree and\n"
 "  number of revisions in the branch and repository):"
 msgstr ""
+"  Vertoon bogenoemde saam met extended formaat inligting en\n"
+"  basiese statistieke (hou van die aantal lêers in die werkende boom en\n"
+"  aantal revisies in die tak en bewaarplek):"
 
 #: breezy/builtins.py:1880
 msgid "    brz info -v"
-msgstr ""
+msgstr "    brz info -v"
 
 #: breezy/builtins.py:1882
 msgid "  Display the above together with number of committers to the branch:"
 msgstr ""
+"  Vertoon die bogenoemde bymekaar met nommer van committers aan die tak:"
 
 #: breezy/builtins.py:1884
 msgid "    brz info -vv"
-msgstr ""
+msgstr "    brz info -vv"
 
 #: breezy/builtins.py:1903
 msgid "Remove files or directories."
-msgstr ""
+msgstr "Verwyder lêers of directories."
 
 #: breezy/builtins.py:1905
 msgid ""
@@ -1114,35 +1410,35 @@ msgstr ""
 
 #: breezy/builtins.py:1914
 msgid "Only remove files that have never been committed."
-msgstr ""
+msgstr "Verwyder slegs lêers wat nog nooit was gepleeg."
 
 #: breezy/builtins.py:1916
 msgid "The file deletion mode to be used."
-msgstr ""
+msgstr "Die lêeruitveemodus wat gebruik moet word."
 
 #: breezy/builtins.py:1917
 msgid "Deletion Strategy"
-msgstr ""
+msgstr "Skrapping Strategie"
 
 #: breezy/builtins.py:1918
 msgid "Backup changed files (default)."
-msgstr ""
+msgstr "Rugsteun geverander- lêers (verstek)."
 
 #: breezy/builtins.py:1919
 msgid "Delete from brz but leave the working copy."
-msgstr ""
+msgstr "Skrap vanaf brz maar laat die werkskopie."
 
 #: breezy/builtins.py:1920
 msgid "Don't backup changed files."
-msgstr ""
+msgstr "Moenie veranderde lêers rugsteun nie."
 
 #: breezy/builtins.py:1941
 msgid "No matching files."
-msgstr ""
+msgstr "Geen ooreenstemmende lêers nie."
 
 #: breezy/builtins.py:1958
 msgid "Reconcile brz metadata in a branch."
-msgstr ""
+msgstr "Versoen brz metadata in 'n tak."
 
 #: breezy/builtins.py:1960
 msgid ""
@@ -1151,6 +1447,11 @@ msgid ""
 "need to run this command if 'brz check' or a brz developer\n"
 "advises you to run it."
 msgstr ""
+"Hierdie kan data korrigeer wanverhoudings dat mag het wees veroorsaak deur\n"
+"vorige spookoperasies of brz opgraderings. Jy behoort slegs\n"
+"behoefte om hardloop hierdie bevel indien 'brz check' of 'n bzr "
+"ontwikkelaar\n"
+"raai jou om hardloop dit"
 
 #: breezy/builtins.py:1965
 msgid ""
@@ -1159,38 +1460,48 @@ msgid ""
 "id which was not present in very early brz versions is represented\n"
 "correctly in both branches."
 msgstr ""
+"Indien 'n tweede tak voorsien word, dwarstakversoening is\n"
+"ook gepoog, watter sal tjek dat data hou van die boom wortel\n"
+"id watter was nie hede in baie vroeg brz weergawes verteenwoordig word\n"
+"korrek in beide takke."
 
 #: breezy/builtins.py:1970
 msgid ""
 "At the same time it is run it may recompress data resulting in\n"
 "a potential saving in disk space or performance gain."
 msgstr ""
+"Terselfdertyd word dit gehardloop dit mag data herkomprimeer gevolg gehad "
+"in\n"
+"'n potensiële besparing in skyfspasie of prestasiewins."
 
 #: breezy/builtins.py:1973
 msgid "The branch *MUST* be on a listable system such as local disk or sftp."
 msgstr ""
+"Die tak *MUST* op 'n lysbare stelsel soos plaaslike skyf of sftp wees."
 
 #: breezy/builtins.py:2040 breezy/builtins.py:2161 breezy/builtins.py:3833
 msgid "Bare GIT repository (no working tree)."
-msgstr ""
+msgstr "Kaal GIT repository (geen werkende boom)."
 
 #: breezy/builtins.py:2040 breezy/builtins.py:2161 breezy/builtins.py:3833
 msgid "Format for the bzr 2.0 series.\n"
-msgstr ""
+msgstr "Formateer vir die bzr 2.0 reeks.\n"
 
 #: breezy/builtins.py:2040 breezy/builtins.py:2161 breezy/builtins.py:3833
 msgid "GIT repository."
-msgstr ""
+msgstr "GIT bewaarplek."
 
 #: breezy/builtins.py:2041
 msgid "Make a directory into a versioned branch."
-msgstr ""
+msgstr "Maak 'n gids inte 'n weergawe-tak."
 
 #: breezy/builtins.py:2043
 msgid ""
 "Use this to create an empty branch, or before importing an\n"
 "existing project."
 msgstr ""
+"Gebruik hierdie om 'n leë tak te skep, of voor die invoer van 'n\n"
+"bestaande projek."
 
 #: breezy/builtins.py:2046
 msgid ""
@@ -1199,16 +1510,21 @@ msgid ""
 "init creates a standalone branch which carries its own history\n"
 "in the .bzr directory."
 msgstr ""
+"Indien daar is 'n bewaarplek in 'n ouergids van die ligging, dan\n"
+"die geskiedenis van die tak sal in die bewaarplek gestoor word. Andersins\n"
+"init skep 'n alleenstaande tak wat sy eie geskiedenis dri die .bzr directory."
 
 #: breezy/builtins.py:2051
 msgid ""
 "If there is already a branch at the location but it has no working tree,\n"
 "the tree can be populated with 'brz checkout'."
 msgstr ""
+"As daar reeds 'n tak by die plek is, maar dit het geen werkende boom nie,\n"
+"die boom kan bevolk word met 'brz checkout'."
 
 #: breezy/builtins.py:2054
 msgid "Recipe for importing a tree of files::"
-msgstr ""
+msgstr "Resep om 'n boom van lêers in te voer::"
 
 #: breezy/builtins.py:2056
 msgid ""
@@ -1218,25 +1534,34 @@ msgid ""
 "    brz status\n"
 "    brz commit -m \"imported project\""
 msgstr ""
+"    cd ~/project\n"
+"    brz init\n"
+"    brz add .\n"
+"    brz status\n"
+"    brz commit -m \"imported project\""
 
 #: breezy/builtins.py:2067
 msgid ""
 "Create the path leading up to the branch if it does not already exist."
-msgstr ""
+msgstr "Skep die pad wat na die tak lei as dit nie reeds bestaan nie."
 
 #: breezy/builtins.py:2070
 msgid ""
 "Specify a format for this branch. See \"help formats\" for a full list."
 msgstr ""
+"Spesifiseer 'n formaat vir hierdie tak. Sien \"help formats\" vir 'n volle "
+"lys."
 
 #: breezy/builtins.py:2079
 msgid ""
 "Never change revnos or the existing log.  Append revisions to it only."
 msgstr ""
+"Moet nooit verander revnos of die bestaande log.  Append revisies om dit "
+"slegs."
 
 #: breezy/builtins.py:2082
 msgid "Create a branch without a working tree."
-msgstr ""
+msgstr "Skep 'n tak sonder 'n werkende boom."
 
 #: breezy/builtins.py:2103 breezy/push.py:104
 #, python-format
@@ -1244,25 +1569,30 @@ msgid ""
 "Parent directory of %s does not exist.\n"
 "You may supply --create-prefix to create all leading parent directories."
 msgstr ""
+"Ouer directory van %s bestaan nie.\n"
+"Jy mag verskaf --create-prefix om alle toonaangewende ouer directories te "
+"skep."
 
 #: breezy/builtins.py:2138
 msgid ""
 "This branch format cannot be set to append-revisions-only.  Try --default."
 msgstr ""
+"Hierdie takformaat kan nie op gestel om append-revisions-only.  Probeer --"
+"default."
 
 #: breezy/builtins.py:2149
 #, python-brace-format
 msgid "Created a {0} (format: {1})\n"
-msgstr ""
+msgstr "Geskep 'n {0} (format: {1})\n"
 
 #: breezy/builtins.py:2158
 #, python-format
 msgid "Using shared repository: %s\n"
-msgstr ""
+msgstr "Gebruik gedeelde bewaarplek: %s\n"
 
 #: breezy/builtins.py:2162
 msgid "Create a shared repository for branches to share storage space."
-msgstr ""
+msgstr "Skep 'n gedeelde bewaarplek vir takke om stoorplek te deel."
 
 #: breezy/builtins.py:2164
 msgid ""
@@ -1271,6 +1601,11 @@ msgid ""
 "with shared history, this reduces the amount of storage needed and\n"
 "speeds up the creation of new branches."
 msgstr ""
+"Nuwe takke wat onder die bewaarplekgids geskep is, sal stoorhul\n"
+"revisies in die bewaarplek, nie in die tak directory. Vir takke\n"
+"met gedeelde geskiedenis, hierdie verminder die hoeveelheid stoor wat "
+"benodigde en\n"
+"spoed up die skepping van nuwe takke."
 
 #: breezy/builtins.py:2169
 msgid ""
@@ -1281,12 +1616,20 @@ msgid ""
 "store branches which are interacted with through checkouts or remote\n"
 "branches, such as on a server."
 msgstr ""
+"Indien die --no-trees opsie word gegee dan die takke in die bewaarplek\n"
+"sal nie by verstek werkende bome hê nie.  Hulle sal steeds bestaan as\n"
+"directories op skyf, maar hulle sal nie aparte kopieë van die\n"
+"lêers by 'n sekere revise.  Hierdie kan nuttig wees vir bewaarplekke dat\n"
+"stoor takke waarmee interaksie is deur tjekuits of afgeleë\n"
+"takke, soos op 'n bediener."
 
 #: breezy/builtins.py:2176
 msgid ""
 ":Examples:\n"
 "    Create a shared repository holding just branches::"
 msgstr ""
+":Voorbeelde:\n"
+"    Skep 'n gedeelde bewaarplek wat net takke hou::"
 
 #: breezy/builtins.py:2179
 msgid ""
@@ -1296,7 +1639,7 @@ msgstr ""
 
 #: breezy/builtins.py:2182
 msgid "    Make a lightweight checkout elsewhere::"
-msgstr ""
+msgstr "    Maak 'n liggewig tjekuit elders::"
 
 #: breezy/builtins.py:2184
 msgid ""
@@ -1304,19 +1647,25 @@ msgid ""
 "        cd trunk-checkout\n"
 "        (add files here)"
 msgstr ""
+"        brz checkout --lightweight repo/trunk trunk-checkout\n"
+"        cd trunk-checkout\n"
+"        (lêers hier byvoeg)"
 
 #: breezy/builtins.py:2192
 msgid ""
 "Specify a format for this repository. See \"brz help formats\" for details."
 msgstr ""
+"Spesifiseer 'n formaat vir hierdie bewaarplek. Sien \"brz help formats\" vir "
+"besonderhede."
 
 #: breezy/builtins.py:2198 breezy/plugins/fastimport/cmds.py:281
 msgid "Repository format"
-msgstr ""
+msgstr "Bewaarplek formaat"
 
 #: breezy/builtins.py:2200
 msgid "Branches in the repository will default to not having a working tree."
 msgstr ""
+"Vertakkings in die bewaarplek sal verstek om nie 'n werkende boom te hê nie."
 
 #: breezy/builtins.py:2230
 msgid ""
@@ -1327,7 +1676,7 @@ msgstr ""
 
 #: breezy/builtins.py:2231
 msgid "Show differences in the working tree, between revisions or branches."
-msgstr ""
+msgstr "Wys verskille in die werkboom, tussen revisies of takke."
 
 #: breezy/builtins.py:2233
 msgid ""
@@ -1338,12 +1687,25 @@ msgid ""
 "the first argument, if any, or the current tree if no arguments are\n"
 "given."
 msgstr ""
+"Indien geen argumente gegee word nie, word alle veranderings vir die huidige "
+"boom gelys.\n"
+"Indien lêers gegee word, word slegs die veranderinge in daardie lêers "
+"gelys.\n"
+"Afgeleë en veelvuldige takke kan vergelyk word deur die gebruik van die --"
+"old en\n"
+"--new opsies. Indien nie verskaf nie, is die verstek vir albei is afgelei "
+"vanaf\n"
+"die eerste argument, indien enige, of die huidige boom indien geen argumente "
+"word\n"
+"gegee."
 
 #: breezy/builtins.py:2240
 msgid ""
 "\"brz diff -p1\" is equivalent to \"brz diff --prefix old/:new/\", and\n"
 "produces patches suitable for \"patch -p1\"."
 msgstr ""
+"\"brz diff -p1\" gelykstaande is aan \"brz diff --prefix old/:new/\", en\n"
+"produseer patches geskik vir \"patch -p1\"."
 
 #: breezy/builtins.py:2243
 msgid ""
@@ -1354,6 +1716,12 @@ msgid ""
 "revision ranges used by \"brz log\" which includes the first revision\n"
 "in the range."
 msgstr ""
+"Let daarop dat wanneer die -r argument met 'n range revisies gebruik word, "
+"die\n"
+"verskille word bereken tussen die twee gespesifiseerde revisies. Daardie\n"
+"is, die opdrag wys nie die veranderinge wat deur die eerste ingestel is nie\n"
+"revisie ranges gebruik deur \"brz log\" wat insluit die eerste revisie\n"
+"in die range."
 
 #: breezy/builtins.py:2250
 msgid ""
@@ -1363,56 +1731,64 @@ msgid ""
 "    3 - error\n"
 "    0 - no change"
 msgstr ""
+":Verlaat waardes:\n"
+"    1 - veranderde\n"
+"    2 - onverteenwoordigbare veranderings\n"
+"    3 - fout\n"
+"    0 - geen verandering"
 
 #: breezy/builtins.py:2256
 msgid ""
 ":Examples:\n"
 "    Shows the difference in the working tree versus the last commit::"
 msgstr ""
+":Voorbeelde:\n"
+"    Wys die verskil in die werkende boom teenoor die laaste commit::"
 
 #: breezy/builtins.py:2259
 msgid "        brz diff"
-msgstr ""
+msgstr "        brz diff"
 
 #: breezy/builtins.py:2261
 msgid "    Difference between the working tree and revision 1::"
-msgstr ""
+msgstr "    Verskil tussen die werkboom en revisie 1::"
 
 #: breezy/builtins.py:2263
 msgid "        brz diff -r1"
-msgstr ""
+msgstr "        brz diff -r1"
 
 #: breezy/builtins.py:2265
 msgid "    Difference between revision 3 and revision 1::"
-msgstr ""
+msgstr "    Verskil tussen revisie 3 en revisie 1::"
 
 #: breezy/builtins.py:2267
 msgid "        brz diff -r1..3"
-msgstr ""
+msgstr "        brz diff -r1..3"
 
 #: breezy/builtins.py:2269
 msgid "    Difference between revision 3 and revision 1 for branch xxx::"
-msgstr ""
+msgstr "    Verskil tussen revisie 3 en revisie 1 vir tak xxx::"
 
 #: breezy/builtins.py:2271
 msgid "        brz diff -r1..3 xxx"
-msgstr ""
+msgstr "        brz diff -r1..3 xxx"
 
 #: breezy/builtins.py:2273
 msgid "    The changes introduced by revision 2 (equivalent to -r1..2)::"
 msgstr ""
+"    Die veranderinge ingestel deur revisie 2 (gelykstaande aan -r1..2)::"
 
 #: breezy/builtins.py:2275
 msgid "        brz diff -c2"
-msgstr ""
+msgstr "        brz diff -c2"
 
 #: breezy/builtins.py:2277
 msgid "    To see the changes introduced by revision X::"
-msgstr ""
+msgstr "    Om die veranderinge te sien wat deur revisie X::"
 
 #: breezy/builtins.py:2279
 msgid "        brz diff -cX"
-msgstr ""
+msgstr "        brz diff -cX"
 
 #: breezy/builtins.py:2281
 msgid ""
@@ -1420,102 +1796,113 @@ msgid ""
 "    compared to the left hand parent. To see the changes against\n"
 "    another parent, use::"
 msgstr ""
+"    Let daarop dat in die geval van 'n samesmelting, die -c opsie die "
+"veranderinge wys\n"
+"    in vergelyking met die linkerhand ouer. Om die veranderinge teen sien\n"
+"    'n ander ouer, gebruik::"
 
 #: breezy/builtins.py:2285
 msgid "        brz diff -r<chosen_parent>..X"
-msgstr ""
+msgstr "        brz diff -r<chosen_parent>..X"
 
 #: breezy/builtins.py:2287
 msgid ""
 "    The changes between the current revision and the previous revision\n"
 "    (equivalent to -c-1 and -r-2..-1)"
 msgstr ""
+"    TDie veranderinge tussen die huidige rvisie en die vorige revisie\n"
+"    (ekwivalent aan -c-1 en -r-2..-1)"
 
 #: breezy/builtins.py:2290
 msgid "        brz diff -r-2.."
-msgstr ""
+msgstr "        brz diff -r-2.."
 
 #: breezy/builtins.py:2292
 msgid "    Show just the differences for file NEWS::"
-msgstr ""
+msgstr "    Wys net die verskille vir lêer NUUS::"
 
 #: breezy/builtins.py:2294
 msgid "        brz diff NEWS"
-msgstr ""
+msgstr "        brz diff NUUS"
 
 #: breezy/builtins.py:2296
 msgid "    Show the differences in working tree xxx for file NEWS::"
-msgstr ""
+msgstr "    Wys die verskille in werkboom xxx vir lêer NUUS::"
 
 #: breezy/builtins.py:2298
 msgid "        brz diff xxx/NEWS"
-msgstr ""
+msgstr "        brz diff xxx/NUUS"
 
 #: breezy/builtins.py:2300
 msgid "    Show the differences from branch xxx to this working tree:"
-msgstr ""
+msgstr "    Wys die verskille van tak xxx na hierdie werkende boom:"
 
 #: breezy/builtins.py:2302
 msgid "        brz diff --old xxx"
-msgstr ""
+msgstr "        brz diff --old xxx"
 
 #: breezy/builtins.py:2304
 msgid "    Show the differences between two branches for file NEWS::"
-msgstr ""
+msgstr "    Wys die verskille tussen twee takke vir lêer NUUS::"
 
 #: breezy/builtins.py:2306
 msgid "        brz diff --old xxx --new yyy NEWS"
-msgstr ""
+msgstr "        brz diff --old xxx --new yyy NUUS"
 
 #: breezy/builtins.py:2308
 msgid "    Same as 'brz diff' but prefix paths with old/ and new/::"
 msgstr ""
+"    Dieselfde as 'brz diff' maar voorvoegselpaadjies met old/ and new/::"
 
 #: breezy/builtins.py:2310
 msgid "        brz diff --prefix old/:new/"
-msgstr ""
+msgstr "        brz diff --prefix old/:new/"
 
 #: breezy/builtins.py:2312
 msgid "    Show the differences using a custom diff program with options::"
 msgstr ""
+"    Wys die verskille deur gebruik te maak van 'n pasgemaakte diff prograam "
+"met opsies::"
 
 #: breezy/builtins.py:2314
 msgid "        brz diff --using /usr/bin/diff --diff-options -wu"
-msgstr ""
+msgstr "        brz diff --using /usr/bin/diff --diff-options -wu"
 
 #: breezy/builtins.py:2320
 msgid "Pass these options to the external diff program."
-msgstr ""
+msgstr "Slaag hierdie opsies aan die eksterne diff prograam."
 
 #: breezy/builtins.py:2323
 msgid ""
 "Set prefixes added to old and new filenames, as two values separated by a "
 "colon. (eg \"old/:new/\")."
 msgstr ""
+"SStel voorvoegsels wat by ou en nuwe lêername gevoeg word, as twee waardes "
+"geskei deur 'n dubbelpunt. (bv \"old/:new/\")."
 
 #: breezy/builtins.py:2326
 msgid "Branch/tree to compare from."
-msgstr ""
+msgstr "Tak/boom om vanaf te vergelyk."
 
 #: breezy/builtins.py:2330
 msgid "Branch/tree to compare to."
-msgstr ""
+msgstr "Tak/boom om te vergelyk tot."
 
 #: breezy/builtins.py:2336
 msgid "Use this command to compare files."
-msgstr ""
+msgstr "Gebruik hierdie opdrag om lêers te vergelyk."
 
 #: breezy/builtins.py:2341
 msgid "Diff format to use."
-msgstr ""
+msgstr "Diff formaat om te gebruik."
 
 #: breezy/builtins.py:2343
 msgid "Diff format"
-msgstr ""
+msgstr "Diff formaat"
 
 #: breezy/builtins.py:2345
 msgid "How many lines of context to show."
-msgstr ""
+msgstr "Hoeveel lyns van konteks om te wys."
 
 #: breezy/builtins.py:2351
 msgid "Color Mode"
@@ -1528,43 +1915,48 @@ msgstr ""
 #: breezy/builtins.py:2383
 msgid "--prefix expects two values separated by a colon (eg \"old/:new/\")"
 msgstr ""
+"--prefix verwag twee waardes geskei deur 'n dubbelpunt (bv \"old/:new/\")"
 
 #: breezy/builtins.py:2387
 msgid "brz diff --revision takes exactly one or two revision specifiers"
-msgstr ""
+msgstr "brz diff --revision neem presies een of twee revisie spesifiseerders"
 
 #: breezy/builtins.py:2392 breezy/builtins.py:2794 breezy/builtins.py:2802
 #, python-brace-format
 msgid "{0} and {1} are mutually exclusive"
-msgstr ""
+msgstr "{0} en {1} is wedersyds uitsluitend"
 
 #: breezy/builtins.py:2422
 msgid ""
 "List files deleted in the working tree.\n"
 "    "
 msgstr ""
+"Lys lêers wat in die werkboom geskrap is.\n"
+"    "
 
 #: breezy/builtins.py:2497
 msgid "Show the tree root directory."
-msgstr ""
+msgstr "Wys die boom wortelgids."
 
 #: breezy/builtins.py:2499
 msgid ""
 "The root is the nearest enclosing directory with a control\n"
 "directory."
 msgstr ""
+"Die root is die naaste omsluitende gids met 'n beheer\n"
+"directory."
 
 #: breezy/builtins.py:2515
 msgid "The limit argument must be an integer."
-msgstr ""
+msgstr "Die limiet argument moet 'n heelgetal wees."
 
 #: breezy/builtins.py:2523
 msgid "The levels argument must be an integer."
-msgstr ""
+msgstr "Die vlakke argument moet 'n heelgetal wees."
 
 #: breezy/builtins.py:2528
 msgid "Show historical log for a branch or subset of a branch."
-msgstr ""
+msgstr "Wys historiese log vir 'n tak of subset van 'n tak."
 
 #: breezy/builtins.py:2530
 msgid ""
@@ -1573,6 +1965,11 @@ msgid ""
 "are given, the branch containing the working directory is logged.\n"
 "Here are some simple examples::"
 msgstr ""
+"log is brz se verstek hulpmiddel om die geskiedenis van 'n tak te verken.\n"
+"Die tak om te gebruik word van die eerste parameter geneem. Indien geen "
+"parameters\n"
+"gegee word, word die tak wat die werk dierctory bevat is gelog.\n"
+"Hier is 'n paar eenvoudige voorbeelde:"
 
 #: breezy/builtins.py:2535
 msgid ""
@@ -1580,6 +1977,9 @@ msgid ""
 "  brz log foo.py                log a file in its branch\n"
 "  brz log http://server/branch  log a branch on a server"
 msgstr ""
+"  brz log log die huidige tak\n"
+"  brz log foo.py log 'n lêer in sy tak\n"
+"  brz log http://server/branch log 'n tak op 'n bediener"
 
 #: breezy/builtins.py:2539
 msgid ""
@@ -1590,10 +1990,16 @@ msgid ""
 "merged revisions are shown indented under the revision in which they\n"
 "were merged."
 msgstr ""
+"Die filter, ordening en inligting wat vir elke revisie gewys word kan\n"
+"wees beheer word soos hieronder verduidelik. By verstek is alle revisies\n"
+"gewys gesorteer (topologies) sodat nuwer revisies voor verskyn\n"
+"oueres en afstammelinge verskyn altyd voor voorouers. Indien vertoon,\n"
+"saamgevoegde revisies word gewys indented onder die revisie waarin hulle\n"
+"was saamgevoegde."
 
 #: breezy/builtins.py:2546
 msgid ":Output control:"
-msgstr ""
+msgstr ": Uitset beheer:"
 
 #: breezy/builtins.py:2548
 msgid ""
@@ -1602,12 +2008,18 @@ msgid ""
 "  and ``line``. The default is long. See ``brz help log-formats``\n"
 "  for more details on log formats."
 msgstr ""
+"  Die log formaat beheer hoe inligting oor elke revisie is\n"
+"  gevertoon. Die standaard log formate word genoem ``long``, ``short``\n"
+"  en ``line``. Die verstek is lank. Sien ``brz help log-formats``\n"
+"  vir meer besonderhede oor log formate."
 
 #: breezy/builtins.py:2553
 msgid ""
 "  The following options can be used to control what information is\n"
 "  displayed::"
 msgstr ""
+"  Die volgende opsies kan gebruik word om te beheer wat inligting is\n"
+"  gevertoon::"
 
 #: breezy/builtins.py:2556
 msgid ""
@@ -1617,6 +2029,11 @@ msgid ""
 "    -p          display a diff (patch) for each revision\n"
 "    --show-ids  display revision-ids (and file-ids), not just revnos"
 msgstr ""
+"    -l N vertoon 'n maksimum van N revisies\n"
+"    -n N vertoon N vlakke van revisies (0 vir alle, 1 vir ineengestort)\n"
+"    -v vertoon 'n statusopsomming (delta) vir elke revisie\n"
+"    -p vertoon 'n diff (pleister) vir elke revisie\n"
+"    --show-ids vertoon revisies-ids (en lêer-ids), nie net revisies"
 
 #: breezy/builtins.py:2562
 msgid ""
@@ -1624,6 +2041,10 @@ msgid ""
 "  log format. If the -n option is not used, the standard log formats show\n"
 "  just the top level (mainline)."
 msgstr ""
+"  Let daarop dat die verstek aantal vlakke om te vertoon 'n funksie is van "
+"die\n"
+"  og formaat. As die -n opsie nie gebruikde, die standaard log formate wys\n"
+"  net die boonste vlak (hooflyn)."
 
 #: breezy/builtins.py:2566
 msgid ""
@@ -1631,10 +2052,15 @@ msgid ""
 "  the changes explained using words like ``added`` and ``modified``\n"
 "  instead, use the -vv option."
 msgstr ""
+"  Statusopsommings word gewys met behulp van statusvlae soos A, M, ens. Om "
+"te sien\n"
+"  die veranderinge verduidelik met behulp van woorde soos ``added`` en "
+"``modified``\n"
+"   in plaas daarvan, gebruik die -vv opsie."
 
 #: breezy/builtins.py:2570
 msgid ":Ordering control:"
-msgstr ""
+msgstr ":Bestel beheer:"
 
 #: breezy/builtins.py:2572
 msgid ""
@@ -1643,16 +2069,26 @@ msgid ""
 "  time taken to produce a log, though --forward does not incrementally\n"
 "  display revisions like --reverse does when it can."
 msgstr ""
+"  Om revisies van oudste na nuutste te vertoon, gebruik die --forward "
+"opsie.\n"
+"  In die meeste gevalle sal die gebruik van hierdie opsie min impak hê op "
+"die totaal\n"
+"  tyd wat dit neem om 'n log te produseer, wel --forward doen nie "
+"inkrementeely\n"
+"  vertoon revisies soos --reverse doen wanneer dit kan."
 
 #: breezy/builtins.py:2577
 msgid ":Revision filtering:"
-msgstr ""
+msgstr ":Revisie filtreering:"
 
 #: breezy/builtins.py:2579
 msgid ""
 "  The -r option can be used to specify what revision or range of revisions\n"
 "  to filter against. The various forms are shown below::"
 msgstr ""
+"  Die -r opsie kan gebruik word om te spesifiseer watter revisie of range "
+"revisies\n"
+"  om teen te filtreer. Die verskeie vorms word hieronder getoon::"
 
 #: breezy/builtins.py:2582
 msgid ""
@@ -1661,12 +2097,19 @@ msgid ""
 "    -r..Y    display up to and including revision Y\n"
 "    -rX..Y   display from X to Y inclusive"
 msgstr ""
+"    -rX      vertoon revisie X\n"
+"    -rX..    vertoon revisie X en later\n"
+"    -r..Y    vertoon tot en met revisie Y\n"
+"    -rX..Y   vertoon vanaf X tot Y inklusief"
 
 #: breezy/builtins.py:2587
 msgid ""
 "  See ``brz help revisionspec`` for details on how to specify X and Y.\n"
 "  Some common examples are given below::"
 msgstr ""
+"  Sien ``brz help revisionspec`` vir besonderhede oor hoe om X en Y te "
+"spesifiseer.\n"
+"  Enkele gemeenskaplike voorbeelde word hieronder gegee::"
 
 #: breezy/builtins.py:2590
 msgid ""
@@ -1677,6 +2120,13 @@ msgid ""
 "                        branch and the one at location path\n"
 "    -rdate:yesterday..  show changes since yesterday"
 msgstr ""
+"    -r-1 wys net die wenk\n"
+"    -r-10.. wys die laaste 10 hooflyn revisies\n"
+"    -rsubmit:.. wys wat nuut is op hierdie tak\n"
+"    -rancestor:path.. wys veranderinge sedert die gemeenskaplike voorouer "
+"hiervan\n"
+"                        tak en die een by ligging path\n"
+"    -rdate:yesterday.. wys veranderinge sedert gister"
 
 #: breezy/builtins.py:2597
 msgid ""
@@ -1687,10 +2137,18 @@ msgid ""
 "  along the way. If multi-level logging is used (-n0), X may be\n"
 "  a nested merge revision and the log will be truncated accordingly."
 msgstr ""
+"  Wanneer 'n reeks rvisies aangeteken word deur -rX..Y, log begin by\n"
+"  revisie Y en soek terug in die geskiedenis deur die primêre\n"
+"  (\"left-hand\") ouers totdat dit vind X. Wanneer aanteken net die\n"
+"  boonste vlak (met behulp van -n1), 'n fout word gerapporteer as X nie "
+"gevind word nie\n"
+"  onderweg. As multi-vlak logging gebruik word (-n0), X mag wees\n"
+"  'n geneste samesmelting revisie en die log sal dienooreenkomstig truncated "
+"word."
 
 #: breezy/builtins.py:2604
 msgid ":Path filtering:"
-msgstr ""
+msgstr ":Path filtering:"
 
 #: breezy/builtins.py:2606
 msgid ""
@@ -1698,6 +2156,9 @@ msgid ""
 "  will be filtered to show only those revisions that changed the\n"
 "  nominated files or directories."
 msgstr ""
+"  As parameters gegee word en die eerste een is nie 'n tak nie, die log\n"
+"  sal gefiltreer word om slegs daardie revisies te wys wat veranderde die\n"
+"  genomineerde lêers of gidse."
 
 #: breezy/builtins.py:2610
 msgid ""
@@ -1705,12 +2166,19 @@ msgid ""
 "  deleted file, specify a revision range so that the file existed at\n"
 "  the end or start of the range."
 msgstr ""
+"  Lêername word binne hul historiese konteks geïnterpreteer. Om aan te meld "
+"'n\n"
+"  geskrap lêer, spesifiseer 'n revisie range sodat die lêer bestaan het by\n"
+"  die einde of begin van die-range."
 
 #: breezy/builtins.py:2614
 msgid ""
 "  Historical context is also important when interpreting pathnames of\n"
 "  renamed files/directories. Consider the following example:"
 msgstr ""
+"  Historiese konteks is ook belangrik by die interpretasie van path-name "
+"van\n"
+"  hernoemde lêers/gidse. Oorweeg die volgende voorbeeld:"
 
 #: breezy/builtins.py:2617
 msgid ""
@@ -1718,31 +2186,43 @@ msgid ""
 "  * revision 2: modify tutorial.txt\n"
 "  * revision 3: rename tutorial.txt to guide.txt; add tutorial.txt"
 msgstr ""
+"  * revision 1: add tutorial.txt\n"
+"  * revision 2: modify tutorial.txt\n"
+"  * revision 3: rename tutorial.txt to guide.txt; add tutorial.txt"
 
 #: breezy/builtins.py:2621
 msgid "  In this case:"
-msgstr ""
+msgstr "  In hierdie geval:"
 
 #: breezy/builtins.py:2623
 msgid "  * ``brz log guide.txt`` will log the file added in revision 1"
 msgstr ""
+"  * ``brz log guide.txt`` sal die lêer wat in re-weergawe 1 bygevoeg is "
+"aanteken"
 
 #: breezy/builtins.py:2625
 msgid ""
 "  * ``brz log tutorial.txt`` will log the new file added in revision 3"
 msgstr ""
+"  * ``brz log tutorial.txt`` sal die nuwe lêer wat in revisie 3 bygevoeg is "
+"aanteken"
 
 #: breezy/builtins.py:2627
 msgid ""
 "  * ``brz log -r2 -p tutorial.txt`` will show the changes made to\n"
 "    the original file in revision 2."
 msgstr ""
+"  * ``brz log -r2 -p tutorial.txt`` sal die veranderinge wys wat aangebring "
+"om\n"
+"    die oorspronklike lêer in revisie 2."
 
 #: breezy/builtins.py:2630
 msgid ""
 "  * ``brz log -r2 -p guide.txt`` will display an error message as there\n"
 "    was no file called guide.txt in revision 2."
 msgstr ""
+"  * ``brz log -r2 -p guide.txt`` sal 'n foutboodskap vertoon soos daar\n"
+"    was- geen lêer geroep guide.txt in revisie 2."
 
 #: breezy/builtins.py:2633
 msgid ""
@@ -1750,10 +2230,13 @@ msgid ""
 "  explicitly ask for this (and no way to stop logging a file back\n"
 "  until it was last renamed)."
 msgstr ""
+"  Hername word altyd deur log gevolg. Deur ontwerp is dit nie nodig nie\n"
+"  vra uitdruklik hiervoor (en geen manier om te stop logging 'n lêer terug\n"
+"  totdat dit laas hernoem is)."
 
 #: breezy/builtins.py:2637
 msgid ":Other filtering:"
-msgstr ""
+msgstr ":Ander filtering:"
 
 #: breezy/builtins.py:2639
 msgid ""
@@ -1763,10 +2246,16 @@ msgid ""
 "  expressions. --match-author, --match-bugs, --match-committer and\n"
 "  --match-message can be used to only match a specific field."
 msgstr ""
+"  Die --match opsie kan gebruik word om revisies te vind dat wedstryd met a\n"
+"  gereelde uitdrukking in 'n commit boodskap, committer, outeur of bug.\n"
+"  Spesifikasieing van die opsie verskeie kere sal wedstryd enige van die "
+"verskaf\n"
+"  uitdrukkings. --match-author, --match-bugs, --match-committer en\n"
+"  --match-message kan gebruik word om slegs by 'n spesifieke veld te pas."
 
 #: breezy/builtins.py:2645
 msgid ":Tips & tricks:"
-msgstr ""
+msgstr ":Wenke en truuks:"
 
 #: breezy/builtins.py:2647
 msgid ""
@@ -1781,6 +2270,8 @@ msgstr ""
 msgid ""
 "  You may find it useful to add the aliases below to ``breezy.conf``::"
 msgstr ""
+"  Jy sal dit dalk nuttig vind om die aliasse hieronder by te voeg om "
+"``breezy.conf``::"
 
 #: breezy/builtins.py:2655
 msgid ""
@@ -1789,6 +2280,10 @@ msgid ""
 "    top = log -l10 --line\n"
 "    show = log -v -p"
 msgstr ""
+"    [ALIASES]\n"
+"    tip = log -r-1\n"
+"    top = log -l10 --line\n"
+"    show = log -v -p"
 
 #: breezy/builtins.py:2660
 msgid ""
@@ -1796,12 +2291,18 @@ msgid ""
 "  will show the last 10 mainline revisions. To see the details of a\n"
 "  particular revision X,  ``brz show -rX``."
 msgstr ""
+"  ``brz tip`` sal dan die jongste revisie wys terwyl ``brz top``\n"
+"  sal die laaste 10 hooflyn hersienings wys. Om die besonderhede van a te "
+"sien\n"
+"  spesifieke revisie X,  ``brz show -rX``."
 
 #: breezy/builtins.py:2664
 msgid ""
 "  If you are interested in looking deeper into a particular merge X,\n"
 "  use ``brz log -n0 -rX``."
 msgstr ""
+"  As jy belangstel om dieper na 'n spesifieke samesmelting te kyk X,\n"
+"  gebruik ``brz log -n0 -rX``."
 
 #: breezy/builtins.py:2667
 msgid ""
@@ -1810,6 +2311,10 @@ msgid ""
 "  With or without that fix, it is recommended that a revision range\n"
 "  be given when using the -v option."
 msgstr ""
+"  ``brz log -v`` op 'n tak met baie geskiedenis is tans\n"
+"  baie stadig. 'N Regstelling vir hierdie probleem word tans ontwikkel.\n"
+"  Met of sonder daardie oplossing, word dit aanbeveel dat 'n revisie range\n"
+"  wees gegee wanneer gebruik word die -v opsie."
 
 #: breezy/builtins.py:2672
 msgid ""
@@ -1818,6 +2323,11 @@ msgid ""
 "  Among other features, this plugin can find all revisions containing\n"
 "  a list of words but not others."
 msgstr ""
+"  brz het 'n generiese volteks-passing inprop, brz-search, dat kan wees\n"
+"  gebruik om revisies te vind wat ooreenstem met gebruikersname, boodskappe "
+"commit, ens.\n"
+"  Onder ander kenmerke, kan hierdie inprop alle hersienings vind wat bevat\n"
+"  'n lys woorde, maar nie ander nie."
 
 #: breezy/builtins.py:2677
 msgid ""
@@ -1826,146 +2336,158 @@ msgid ""
 "  the historycache plugin. This plugin buffers historical information\n"
 "  trading disk space for faster speed."
 msgstr ""
+"  Wanneer die verkenning van nie-hooflyn geskiedenis op groot projekte met "
+"diep\n"
+"  geskiedenis, kan die prestasie van log aansienlik verbeter word deur te "
+"installeer\n"
+"  die historycache-inprop. Hierdie inprop buffer historiese inligting\n"
+"  handel skyfspasie vir vinniger spoed."
 
 #: breezy/builtins.py:2686
 msgid "Show from oldest to newest."
-msgstr ""
+msgstr "Wys van oudste na nuutste."
 
 #: breezy/builtins.py:2689
 msgid "Show files changed in each revision."
-msgstr ""
+msgstr "Wys lêers wat in elke revisie verander is."
 
 #: breezy/builtins.py:2695
 msgid "Show just the specified revision. See also \"help revisionspec\"."
-msgstr ""
+msgstr "Wys net die gespesifiseerde revisie. Sien ook \"help revisionspec\"."
 
 #: breezy/builtins.py:2699
 msgid "What names to list as authors - first, all or committer."
-msgstr ""
+msgstr "Watter name om as outeurs te lys - eerstens, alle of committer."
 
 #: breezy/builtins.py:2700
 msgid "Authors"
-msgstr ""
+msgstr "Outeurs"
 
 #: breezy/builtins.py:2706
 msgid "Number of levels to display - 0 for all, 1 for flat."
-msgstr ""
+msgstr "Aantal vlakke om te vertoon - 0 vir alle, 1 vir plat."
 
 #: breezy/builtins.py:2716
 msgid "Limit the output to the first N revisions."
-msgstr ""
+msgstr "Beperk die uitset tot die eerste N revisies."
 
 #: breezy/builtins.py:2721
 msgid "Show changes made in each revision as a patch."
-msgstr ""
+msgstr "Wys veranderinge wat in elke revisie gemaak is as 'n pleister."
 
 #: breezy/builtins.py:2723
 msgid "Show merged revisions like --levels 0 does."
-msgstr ""
+msgstr "Wys saamgevoegde revisies soos --levels 0 doen."
 
 #: breezy/builtins.py:2727
 msgid "Do not report commits with more than one parent."
-msgstr ""
+msgstr "Moenie commits met meer as een ouer rapporteer nie."
 
 #: breezy/builtins.py:2729
 msgid ""
 "Display only the revisions that are not part of both ancestries (require -"
 "rX..Y)."
 msgstr ""
+"Vertoon slegs die hersienings wat nie deel is van beide voorgeslagte nie "
+"(vereis -rX..Y)."
 
 #: breezy/builtins.py:2733
 msgid "Show digital signature validity."
-msgstr ""
+msgstr "Toon digitale handtekening geldigheid."
 
 #: breezy/builtins.py:2736
 msgid "Show revisions whose properties match this expression."
-msgstr ""
+msgstr "Wys revisies wie se eienskappe ooreenstem met hierdie uitdrukking."
 
 #: breezy/builtins.py:2740
 msgid "Show revisions whose message matches this expression."
-msgstr ""
+msgstr "Wys revisies wie se boodskap by hierdie uitdrukking pas."
 
 #: breezy/builtins.py:2744
 msgid "Show revisions whose committer matches this expression."
-msgstr ""
+msgstr "Wys revisies wie se committer by hierdie uitdrukking pas."
 
 #: breezy/builtins.py:2748
 msgid "Show revisions whose authors match this expression."
-msgstr ""
+msgstr "Wys revisies wie se outeurs by hierdie uitdrukking pas."
 
 #: breezy/builtins.py:2752
 msgid "Show revisions whose bugs match this expression."
-msgstr ""
+msgstr "Wys hersienings wie se bugs by hierdie uitdrukking pas."
 
 #: breezy/builtins.py:2788
 msgid "--exclude-common-ancestry requires -r with two revisions"
-msgstr ""
+msgstr "--exclude-common-ancestry vereis -r met twee revisies"
 
 #: breezy/builtins.py:2816
 #, python-format
 msgid "Path unknown at end or start of revision range: %s"
-msgstr ""
+msgstr "Pad onbekend aan einde of begin van revisie range: %s"
 
 #: breezy/builtins.py:2934
 #, python-format
 msgid "brz %s doesn't accept two revisions in different branches."
-msgstr ""
+msgstr "brz %s aanvaar nie twee revisies in verskillende takke nie."
 
 #: breezy/builtins.py:2950
 #, python-format
 msgid "brz %s --revision takes one or two values."
-msgstr ""
+msgstr "brz %s --revision neems een of twee waardes."
 
 #: breezy/builtins.py:2995
 msgid ""
 "List files in a tree.\n"
 "    "
 msgstr ""
+"Lys lêers in 'n boom.\n"
+"    "
 
 #: breezy/builtins.py:3004
 msgid "Recurse into subdirectories."
-msgstr ""
+msgstr "Recurse into subdirectories."
 
 #: breezy/builtins.py:3006
 msgid "Print paths relative to the root of the branch."
-msgstr ""
+msgstr "Afdruk paaie relatief tot die wortel van die tak."
 
 #: breezy/builtins.py:3008
 msgid "Print unknown files."
-msgstr ""
+msgstr "Afdruk onbekende lêers."
 
 #: breezy/builtins.py:3009
 msgid "Print versioned files."
-msgstr ""
+msgstr "Afdruk weergawe lêers."
 
 #: breezy/builtins.py:3012
 msgid "Print ignored files."
-msgstr ""
+msgstr "Afdruk geïgnoreer lêers."
 
 #: breezy/builtins.py:3014
 msgid ""
 "List entries of a particular kind: file, directory, symlink, tree-reference."
 msgstr ""
+"Lys inskrywings van 'n besondere soort: lêer, gids, simlink, boomverwysing."
 
 #: breezy/builtins.py:3029
 msgid "invalid kind specified"
-msgstr ""
+msgstr "ongeldige soort gespesifiseer"
 
 #: breezy/builtins.py:3033
 msgid "Cannot set both --verbose and --null"
-msgstr ""
+msgstr "Kan nie albei stel --verbose en --null"
 
 #: breezy/builtins.py:3042
 msgid "cannot specify both --from-root and PATH"
-msgstr ""
+msgstr "kan nie albei spesifiseer --from-root en PATH"
 
 #: breezy/builtins.py:3129
 msgid "Ignore specified files or patterns."
-msgstr ""
+msgstr "Ignoreer gespesifiseerde lêers of patrone."
 
 #: breezy/builtins.py:3131
 msgid "See ``brz help patterns`` for details on the syntax of patterns."
 msgstr ""
+"Sien ``brz help patterns`` vir besonderhede oor die sintaksis van patrone."
 
 #: breezy/builtins.py:3133
 msgid ""
@@ -1975,6 +2497,12 @@ msgid ""
 ".bzrignore file to be versioned. Creating a .bzrignore file without\n"
 "the use of the ignore command will require an explicit add command."
 msgstr ""
+"As 'n .bzrignore lêer nie bestaan nie, die ignoreer opdrag\n"
+"sal een skep en die gespesifiseerde lêers of patrone by die nuwe\n"
+"lêer geskep. Die ignoreer opdrag sal ook outomaties die\n"
+".bzrignore lêer wat weergegee moet word. Die skep van 'n .bzrignore-lêer "
+"sonder\n"
+"die gebruik van die ignoreer opdrag sal 'n eksplisiete voeg opdrag vereis."
 
 #: breezy/builtins.py:3139
 msgid ""
@@ -1983,6 +2511,12 @@ msgid ""
 "using this command or directly by using an editor, be sure to commit\n"
 "it."
 msgstr ""
+"Om patrone van die ignoreerlys te verwyder, wysig die .bzrignore lêer.\n"
+"Nadat jy daardie lêer bygevoeg, geredigeer of uitgevee het, hetsy indirek "
+"deur\n"
+"deur hierdie opdrag te gebruik of direk deur 'n redigeerder te gebruik, maak "
+"seker dat jy commit\n"
+"Dit."
 
 #: breezy/builtins.py:3144
 msgid ""
@@ -2000,88 +2534,105 @@ msgid ""
 "precedence over regular ignores.  Such exceptions are used to specify\n"
 "files that should be versioned which would otherwise be ignored."
 msgstr ""
+"Patrone met '!' voorvoegsel is uitsonderings om patrone te ignoreer en te "
+"neem\n"
+"voorrang bo gereelde ignoreer. Sulke uitsonderings word gebruik om te "
+"spesifiseer\n"
+"lêers wat weergegee moet word wat andersins geïgnoreer sou word."
 
 #: breezy/builtins.py:3155
 msgid ""
 "Patterns prefixed with '!!' act as regular ignore patterns, but have\n"
 "precedence over the '!' exception patterns."
 msgstr ""
+"Patrone voorvoegsel met '!!' tree op as gereelde ignoreer patrone, maar het\n"
+"voorrang bo die '!' uitsondering patroon."
 
 #: breezy/builtins.py:3158
 msgid ":Notes:"
-msgstr ""
+msgstr ":Notas:"
 
 #: breezy/builtins.py:3160
 msgid ""
 "* Ignore patterns containing shell wildcards must be quoted from\n"
 "  the shell on Unix."
 msgstr ""
+"* Ignoreer patrone wat dopjokertekens bevat, moet uit aangehaal word\n"
+"   die dop op Unix."
 
 #: breezy/builtins.py:3163
 msgid ""
 "* Ignore patterns starting with \"#\" act as comments in the ignore file.\n"
 "  To ignore patterns that begin with that character, use the \"RE:\" prefix."
 msgstr ""
+"* Ignoreer patrone wat met \"#\" begin dien as kommentaar in die "
+"ignoreerlêer.\n"
+"   Om patrone wat met daardie karakter begin te ignoreer, gebruik die "
+"\"RE:\" voorvoegsel."
 
 #: breezy/builtins.py:3166
 msgid ""
 ":Examples:\n"
 "    Ignore the top level Makefile::"
 msgstr ""
+":Voorbeelde:\n"
+"     Ignoreer die boonste vlak Makefile::"
 
 #: breezy/builtins.py:3169
 msgid "        brz ignore ./Makefile"
-msgstr ""
+msgstr "        brz ignore ./Makefile"
 
 #: breezy/builtins.py:3171
 msgid "    Ignore .class files in all directories...::"
-msgstr ""
+msgstr "    Ignoreer .class lêers in alle gidse...::"
 
 #: breezy/builtins.py:3173
 msgid "        brz ignore \"*.class\""
-msgstr ""
+msgstr "        brz ignore \"*.class\""
 
 #: breezy/builtins.py:3175
 msgid "    ...but do not ignore \"special.class\"::"
-msgstr ""
+msgstr "    ....maar ignoreer nie \"special.class\"::"
 
 #: breezy/builtins.py:3177
 msgid "        brz ignore \"!special.class\""
-msgstr ""
+msgstr "        brz ignore \"!special.class\""
 
 #: breezy/builtins.py:3179
 msgid "    Ignore files whose name begins with the \"#\" character::"
-msgstr ""
+msgstr "    Ignoreer lêers waarvan die naam begin met die \"#\" karakter::"
 
 #: breezy/builtins.py:3181
 msgid "        brz ignore \"RE:^#\""
-msgstr ""
+msgstr "        brz ignore \"RE:^#\""
 
 #: breezy/builtins.py:3183 breezy/builtins.py:3187
 msgid "    Ignore .o files under the lib directory::"
-msgstr ""
+msgstr "    Ignoreer .o lêers onder die lib gids::"
 
 #: breezy/builtins.py:3185
 msgid "        brz ignore \"lib/**/*.o\""
-msgstr ""
+msgstr "        brz ignore \"lib/**/*.o\""
 
 #: breezy/builtins.py:3189
 msgid "        brz ignore \"RE:lib/.*\\.o\""
-msgstr ""
+msgstr "        brz ignore \"RE:lib/.*\\.o\""
 
 #: breezy/builtins.py:3191
 msgid "    Ignore everything but the \"debian\" toplevel directory::"
-msgstr ""
+msgstr "    Ignoreer alles behalwe die \"debian\" topvlak directory::"
 
 #: breezy/builtins.py:3193
 msgid "        brz ignore \"RE:(?!debian/).*\""
-msgstr ""
+msgstr "        brz ignoreer \"RE:(?!debian/).*\""
 
 #: breezy/builtins.py:3195
 msgid ""
 "    Ignore everything except the \"local\" toplevel directory,\n"
 "    but always ignore autosave files ending in ~, even under local/::"
 msgstr ""
+"    Ignoreer alles behalwe die \"local\" topvlak directory,\n"
+"    maar ignoreer altyd outostoor lêers eindig in ~, selfs onder plaaslike/::"
 
 #: breezy/builtins.py:3198
 msgid ""
@@ -2089,25 +2640,28 @@ msgid ""
 "        brz ignore \"!./local\"\n"
 "        brz ignore \"!!*~\""
 msgstr ""
+"        brz ignoreer \"*\"\n"
+"        brz ignoreer \"!./local\"\n"
+"        brz ignoreer \"!!*~\""
 
 #: breezy/builtins.py:3207
 msgid "Display the default ignore rules that brz uses."
-msgstr ""
+msgstr "Vertoon die verstek ignoreer reëls wat brz gebruik."
 
 #: breezy/builtins.py:3219
 msgid "ignore requires at least one NAME_PATTERN or --default-rules."
-msgstr ""
+msgstr "ignoreer vereis ten minste een NAME_PATTERN of --default-rules."
 
 #: breezy/builtins.py:3230
 #, python-format
 msgid "Invalid ignore pattern found. %s"
 msgid_plural "Invalid ignore patterns found. %s"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Ongeldige ignoreerpatroon gevind. %s"
+msgstr[1] "Ongeldige ignoreerpatrone gevind. %s"
 
 #: breezy/builtins.py:3239
 msgid "NAME_PATTERN should not be an absolute path"
-msgstr ""
+msgstr "NAME_PATTERN behoort nie 'n absolute pad wees nie"
 
 #: breezy/builtins.py:3251
 #, python-format
@@ -2118,38 +2672,48 @@ msgid ""
 "These files will continue to be version controlled unless you 'brz remove' "
 "them.\n"
 msgstr ""
+"Waarskuwing: die volgende lêers word weergawe beheer en pas by jou "
+"ignoreerpatroon:\n"
+"%s\n"
+"Hierdie lêers sal voortgaan om weergawebeheer te word, tensy jy 'brz remove' "
+"hulle.\n"
 
 #: breezy/builtins.py:3258
 msgid "List ignored files and the patterns that matched them."
-msgstr ""
+msgstr "Lys geïgnoreer lêers en die patrone wat daarby pas."
 
 #: breezy/builtins.py:3260
 msgid ""
 "List all the ignored files and the ignore pattern that caused the file to\n"
 "be ignored."
 msgstr ""
+"Lys al die geïgnoreer lêers en die ignoreer patroon wat veroorsaak het dat "
+"die lêer om\n"
+"geïgnoreer word."
 
 #: breezy/builtins.py:3263
 msgid "Alternatively, to list just the files::"
-msgstr ""
+msgstr "Alternatiewelik, om net die lêers te lys::"
 
 #: breezy/builtins.py:3265
 msgid "    brz ls --ignored"
-msgstr ""
+msgstr "    brz ls --ignored"
 
 #: breezy/builtins.py:3299
 #, python-format
 msgid "not a valid revision-number: %r"
-msgstr ""
+msgstr "nie 'n geldige revisie nommer: %r"
 
 #: breezy/builtins.py:3307
 msgid ""
 "Export current or past revision to a destination directory or archive."
-msgstr ""
+msgstr "Uitvoer huidige of verlede revisie na 'n bestemmingsgids of argief."
 
 #: breezy/builtins.py:3309
 msgid "If no revision is specified this exports the last committed revision."
 msgstr ""
+"Indien geen revisie gespesifiseer word nie, voer dit die laaste gepleeg "
+"revisie uit."
 
 #: breezy/builtins.py:3311
 msgid ""
@@ -2157,6 +2721,10 @@ msgid ""
 "given, try to find the format with the extension. If no extension\n"
 "is found exports to a directory (equivalent to --format=dir)."
 msgstr ""
+"Formaat mag 'n wees \"exporter\" naam, soos tar, tgz, tbz2.  Indien geen is\n"
+"gegewe, probeer om die formaat met die uitbreiding te vind. Indien geen "
+"uitbreiding\n"
+"is gevind uitvoere na 'n gids (gelykstaande aan --format=dir)."
 
 #: breezy/builtins.py:3315
 msgid ""
@@ -2164,17 +2732,25 @@ msgid ""
 "container formats (tar, zip, etc). If it is not supplied it will default\n"
 "to the exported filename. The root option has no effect for 'dir' format."
 msgstr ""
+"As wortel verskaf word, dit sal as die wortelgids binne gebruik word\n"
+"houer formate (tar, zip, etc). ndien dit is nie verskaf word nie, sal dit "
+"verstek\n"
+"na die uitgevoerde lêernaam. Die wortel opsie het geen effek vir 'dir' "
+"formaat."
 
 #: breezy/builtins.py:3319
 msgid ""
 "If branch is omitted then the branch containing the current working\n"
 "directory will be used."
 msgstr ""
+"Indien tak weggelaat word, dan is die tak wat die huidige bewerking bevat\n"
+"directory sal gebruik word."
 
 #: breezy/builtins.py:3322
 msgid ""
 "Note: Export of tree with non-ASCII filenames to zip is not supported."
 msgstr ""
+"Nota: Uitvoer van boom met nie-ASCII lêername na zip word nie ondersteun nie."
 
 #: breezy/builtins.py:3324
 msgid ""
@@ -2188,29 +2764,41 @@ msgid ""
 "     zip                          .zip\n"
 "  =================       ========================="
 msgstr ""
+"  =================       =========================\n"
+"  Ondersteunde formate       Outoopgespoor deur uitbreiding\n"
+"  =================       =========================\n"
+"     dir                         (geen)\n"
+"     tar                          .tar\n"
+"     tbz2                    .tar.bz2, .tbz2\n"
+"     tgz                      .tar.gz, .tgz\n"
+"     zip                          .zip\n"
+"  =================       ========================="
 
 #: breezy/builtins.py:3339
 msgid "Type of file to export to."
-msgstr ""
+msgstr "Tipe lêer om na uit te voer."
 
 #: breezy/builtins.py:3342
 msgid "Apply content filters to export the convenient form."
-msgstr ""
+msgstr "Pas inhoud filters toe om uitvoer die gerieflike vorm."
 
 #: breezy/builtins.py:3346
 msgid "Name of the root directory inside the exported file."
-msgstr ""
+msgstr "Naam van die wortelgids binne die uitgevoer lêer."
 
 #: breezy/builtins.py:3348
 msgid ""
 "Set modification time of files to that of the last revision in which it was "
 "changed."
 msgstr ""
+"Stel modifikasie tyd van lêers na dié van die laaste hersiening waarin dit "
+"verander."
 
 #: breezy/builtins.py:3351
 msgid ""
 "Export the working tree contents rather than that of the last revision."
 msgstr ""
+"Uitvoer die werkende boominhoud eerder as dié van die laaste hersiening."
 
 #: breezy/builtins.py:3354
 msgid "Include contents of nested trees."
@@ -2218,47 +2806,52 @@ msgstr ""
 
 #: breezy/builtins.py:3373
 msgid "--uncommitted requires a working tree"
-msgstr ""
+msgstr "--uncommitted vereis 'n werkende boom"
 
 #: breezy/builtins.py:3402
 #, python-format
 msgid "Unsupported export format: %s"
-msgstr ""
+msgstr "Ongesteunde Uitvoer formaat: %s"
 
 #: breezy/builtins.py:3406
 msgid ""
 "Write the contents of a file as of a given revision to standard output."
 msgstr ""
+"Skryf die inhoud van 'n lêer soos van 'n gegewe hersiening na "
+"standaardafvoer."
 
 #: breezy/builtins.py:3408
 msgid "If no revision is nominated, the last revision is used."
 msgstr ""
+"Indien geen revisie genomineer word nie, word die laaste revisie gebruik."
 
 #: breezy/builtins.py:3410
 msgid ""
 "Note: Take care to redirect standard output when using this command on a\n"
 "binary file."
 msgstr ""
+"Nota: Sorg om te herlei standaard uitset wanneer hierdie opdrag op 'n\n"
+"binêre lêer."
 
 #: breezy/builtins.py:3417
 msgid "The path name in the old tree."
-msgstr ""
+msgstr "Die path naam in die ou boom."
 
 #: breezy/builtins.py:3418
 msgid "Apply content filters to display the convenience form."
-msgstr ""
+msgstr "Pas inhoudfilters toe om die geriefsvorm te vertoon."
 
 #: breezy/builtins.py:3429
 msgid "brz cat --revision takes exactly one revision specifier"
-msgstr ""
+msgstr "brz cat --revision neem presies een revisie spesifiseerder"
 
 #: breezy/builtins.py:3449 breezy/builtins.py:3463
 msgid "{0!r} is not present in revision {1}"
-msgstr ""
+msgstr "{0!r} is nie teenwoordig in revisie {1}"
 
 #: breezy/builtins.py:3490
 msgid "Commit changes into a new revision."
-msgstr ""
+msgstr "Pleeg veranderinge in 'n nuwe revisie."
 
 #: breezy/builtins.py:3492
 msgid ""
@@ -2269,6 +2862,15 @@ msgid ""
 "the user to enter the message. To see the changed files in the\n"
 "boilerplate text loaded into the editor, use the --show-diff option."
 msgstr ""
+"'n Verduidelikende boodskap moet vir elke commit gegee word. Hierdie is\n"
+"dikwels gedoen deur die --message opsie te gebruik (om die boodskap van die\n"
+"opdragreël) of deur die te gebruik --file opsie (kry die boodskap vanaf\n"
+"'n leêr). Indien nie een van hierdie opsies gegee word nie, word 'n "
+"redigeerder oopgemaak vir\n"
+"die gebruiker om die boodskap in te voer. Om sien die veranderde lêers in "
+"die\n"
+"boilerplate teks wat in die redigeerder gelaai is, gebruik die --show-diff "
+"opsie."
 
 #: breezy/builtins.py:3499
 msgid ""
@@ -2276,10 +2878,14 @@ msgid ""
 "commit is assumed to be the author. These defaults can be overridden\n"
 "as explained below."
 msgstr ""
+"By verstek, is die hele boom gepleeg en die persoon wat die\n"
+"pleeg is veronderstel om die outeur te wees. Hierdie verstekke kan oorskryf "
+"word\n"
+"soos hieronder verduidelik."
 
 #: breezy/builtins.py:3503
 msgid ":Selective commits:"
-msgstr ""
+msgstr ":Selektiewe pleeg:"
 
 #: breezy/builtins.py:3505
 msgid ""
@@ -2287,6 +2893,10 @@ msgid ""
 "  committed.  If a directory is specified then the directory and\n"
 "  everything within it is committed."
 msgstr ""
+"  Indien geselekteerde lêers gespesifiseer is, is slegs veranderinge aan "
+"daardie lêers is\n"
+"  gepleeg. Indien 'n gids gespesifiseer is, dan is die gids en\n"
+"  alles daarin is gepleeg."
 
 #: breezy/builtins.py:3509
 msgid ""
@@ -2294,18 +2904,24 @@ msgid ""
 "  For example, to commit only changes within foo, but not changes\n"
 "  within foo/bar::"
 msgstr ""
+"  Wanneer uitsluitings gegee word, geniet dit voorkeur bo geselekteerde "
+"lêers.\n"
+"  Byvoorbeeld, om slegs veranderinge binne foo te pleeg, maar nie "
+"veranderinge nie\n"
+"  binne foo/bar::"
 
 #: breezy/builtins.py:3513
 msgid "    brz commit foo -x foo/bar"
-msgstr ""
+msgstr "    brz pleeg foo -x foo/bar"
 
 #: breezy/builtins.py:3515
 msgid "  A selective commit after a merge is not yet supported."
 msgstr ""
+"  'n Selektiewe commit na 'n samesmelting word nog nie ondersteun nie."
 
 #: breezy/builtins.py:3517
 msgid ":Custom authors:"
-msgstr ""
+msgstr ":Gepasmaakte outeurs:"
 
 #: breezy/builtins.py:3519
 msgid ""
@@ -2316,10 +2932,18 @@ msgid ""
 "  the change you can specify the option multiple times, once for each\n"
 "  author."
 msgstr ""
+"  Indien die outeur van die verandering nie dieselfde persoon as die "
+"committer is nie,\n"
+"  jy kan die skrywer se naam spesifiseer deur die --author opsie. Die\n"
+"  naam behoort in dieselfde formaat wees as 'ncommitter-id, bv.\n"
+"  \"John Doe <jdoe@example.com>\". Indien daar meer as een outeur is van\n"
+"  die verandering kan jy die opsie veelvuldige kere spesifiseer, een keer "
+"vir elkeen\n"
+"  outeur."
 
 #: breezy/builtins.py:3526
 msgid ":Checks:"
-msgstr ""
+msgstr "Tjeks:"
 
 #: breezy/builtins.py:3528
 msgid ""
@@ -2329,10 +2953,17 @@ msgid ""
 "  checks can be implemented by defining hooks. See ``brz help hooks``\n"
 "  for details."
 msgstr ""
+"  'n Algemene fout is om te vergeet om 'n nuwe lêer of gids by voor\n"
+"  hardlooping die commit opdrag. Die --strict opsie tjeks vir onbekende\n"
+"  lêers en aborteer die commit indien enige gevind word. Meer gevorderd pre-"
+"commit\n"
+"  tjeks kan geïmplementeer word deur hake te definieer. Sien ``brz help "
+"hooks``\n"
+"  vir besonderhede."
 
 #: breezy/builtins.py:3534
 msgid ":Things to note:"
-msgstr ""
+msgstr ":Dinge om te nota:"
 
 #: breezy/builtins.py:3536
 msgid ""
@@ -2348,62 +2979,77 @@ msgid ""
 "  option can be used to record the association between a revision and\n"
 "  one or more bugs. See ``brz help bugs`` for details."
 msgstr ""
+"  Hooks kan ook gekonfigureer word om na 'n commit te loop. Hierdie toelaat "
+"jy\n"
+"  tot trigger opdaterings aan eksterne stelsels soos bug trackers. Die --"
+"fixes\n"
+"  opsie kan wees gebruikde om rekord die assosiasie tussen 'n revisie en\n"
+"  een of meer bugs. Sien ``brz help bugs`` vir besonderhede."
 
 #: breezy/builtins.py:3551
 msgid "Do not consider changes made to a given path."
-msgstr ""
+msgstr "Moenie veranderinge oorweeg wat aan 'n gegewe pad gemaak is nie."
 
 #: breezy/builtins.py:3554
 msgid "Description of the new revision."
-msgstr ""
+msgstr "Beskrywing van die nuwe revisie."
 
 #: breezy/builtins.py:3557
 msgid "Commit even if nothing has changed."
-msgstr ""
+msgstr "Commit selfs indien niks het verander nie."
 
 #: breezy/builtins.py:3561
 msgid "Take commit message from this file."
-msgstr ""
+msgstr "Neem commit boodskap uit hierdie lêer."
 
 #: breezy/builtins.py:3563
 msgid "Refuse to commit if there are unknown files in the working tree."
-msgstr ""
+msgstr "Weier om te commit as daar onbekende lêers in die werkboom is."
 
 #: breezy/builtins.py:3566
 msgid ""
 "Manually set a commit time using commit date format, e.g. '2009-10-10 "
 "08:00:00 +0100'."
 msgstr ""
+"Stel 'n commit-tyd met die hand deur gebruik te maak van commit-"
+"datumformaat, bv. '2009-10-10 08:00:00 +0100'."
 
 #: breezy/builtins.py:3570
 msgid "Link to a related bug. (see \"brz help bugs\")."
-msgstr ""
+msgstr "Skakel na 'n verwante bug. (sien \"brz help bugs\")."
 
 #: breezy/builtins.py:3573
 msgid "Mark a bug as being fixed by this revision (see \"brz help bugs\")."
 msgstr ""
+"Merk 'n bug by word deur hierdie revisie fixed (sien \"brz help bugs\")."
 
 #: breezy/builtins.py:3577
 msgid "Set the author's name, if it's different from the committer."
-msgstr ""
+msgstr "Stel die outeur se naam, indien dit verskil van die committer."
 
 #: breezy/builtins.py:3580
 msgid ""
 "Perform a local commit in a bound branch.  Local commits are not pushed to "
 "the master branch until a normal commit is performed."
 msgstr ""
+"Voer 'n plaaslike verbintenis uit in 'n bound tak.  Plaaslike commits word "
+"nie na die meestertak gestoot totdat 'n normale commit uitgevoer is nie."
 
 #: breezy/builtins.py:3586
 msgid ""
 "When no message is supplied, show the diff along with the status summary in "
 "the message editor."
 msgstr ""
+"Wanneer geen boodskap verskaf word nie, wys die verskil saam met die "
+"statusopsomming in die boodskapredigeerder."
 
 #: breezy/builtins.py:3589
 msgid ""
 "When committing to a foreign version control system do not push data that "
 "can not be natively represented."
 msgstr ""
+"Wanneer jy jou verbind tot 'n buitelandse weergawebeheerstelsel, moenie data "
+"stoot wat nie inheems verteenwoordig kan word nie."
 
 #: breezy/builtins.py:3606
 #, python-format
@@ -2412,6 +3058,11 @@ msgid ""
 "default bug tracker using the `bugtracker` option.\n"
 "See \"brz help bugs\" for more information on this feature. Commit refused."
 msgstr ""
+"Geen spoorsnyer gespesifiseer vir bug %s. Gebruik die vorm 'tracker:id' of "
+"spesifiseer 'n verstek bug spoorsnyer met behulp van die `bugtracker` "
+"opsie.\n"
+"Sien \"brz help bugs\" vir meer inligting oor hierdie kenmerk. Commit "
+"geweier."
 
 #: breezy/builtins.py:3615
 #, python-format
@@ -2420,11 +3071,14 @@ msgid ""
 "for more information on this feature.\n"
 "Commit refused."
 msgstr ""
+"Ongeldig bug %s. Moet in die vorm wees van 'tracker:id'. Sien \"brz help "
+"bugs\" vir meer inligting oor hierdie kenmerk.\n"
+"Commit geweier."
 
 #: breezy/builtins.py:3624
 #, python-format
 msgid "Unrecognized bug %s. Commit refused."
-msgstr ""
+msgstr "Onherkenbaar bug %s. Commit geweier."
 
 #: breezy/builtins.py:3627
 #, python-format
@@ -2432,40 +3086,51 @@ msgid ""
 "%s\n"
 "Commit refused."
 msgstr ""
+"%s\n"
+"Commit geweier."
 
 #: breezy/builtins.py:3648
 msgid "Could not parse --commit-time: "
-msgstr ""
+msgstr "Kon nie parse --commit-time: "
 
 #: breezy/builtins.py:3692
 msgid "please specify either --message or --file"
-msgstr ""
+msgstr "spesifiseer asseblief óf --message of --file"
 
 #: breezy/builtins.py:3722
 msgid "please specify a commit message with either --message or --file"
 msgstr ""
+"spesifiseer asseblief 'n commit boodskap met een van beide --message of --"
+"file"
 
 #: breezy/builtins.py:3725
 msgid ""
 "Empty commit message specified. Please specify a commit message with either -"
 "-message or --file or leave a blank message with --message \"\"."
 msgstr ""
+"Leë commit-boodskap gespesifiseer. Spesifiseer asseblief 'n commit boodskap "
+"met enige van die twee --message of --file of los 'n leë boodskap met --"
+"message \"\"."
 
 #: breezy/builtins.py:3745
 msgid ""
 "No changes to commit. Please 'brz add' the files you want to commit, or use -"
 "-unchanged to force an empty commit."
 msgstr ""
+"Geen veranderinge om te pleeg nie. Asseblief 'brz add' die lêers wat jy wil "
+"commit, of gebruik --unchanged om 'n leë commit te dwing."
 
 #: breezy/builtins.py:3749
 msgid ""
 "Conflicts detected in working tree.  Use \"brz conflicts\" to list, \"brz "
 "resolve FILE\" to resolve."
 msgstr ""
+"Konflikte bespeur in werkende boom. Gebruik \"brz conflicts\" om te lys, "
+"\"brz resolve FILE\" om resolve."
 
 #: breezy/builtins.py:3753
 msgid "Commit refused because there are unknown files in the working tree."
-msgstr ""
+msgstr "Commit het geweier omdat daar onbekende lêers in die werkboom is."
 
 #: breezy/builtins.py:3756
 msgid ""
@@ -2473,23 +3138,33 @@ msgid ""
 "To commit to master branch, run update and then commit.\n"
 "You can also pass --local to commit to continue working disconnected."
 msgstr ""
+"\n"
+"Om te verbind tot meestertak, voer opdatering uit en verbind dan.\n"
+"Jy kan ook slaag --local om te commit om voort te gaan werk ontkoppel."
 
 #: breezy/builtins.py:3764
 msgid ""
 "Validate working tree structure, branch consistency and repository history."
 msgstr ""
+"Bekragtig werkende boomstruktuur, takkonsekwentheid en bewaarplekgeskiedenis."
 
 #: breezy/builtins.py:3766
 msgid ""
 "This command checks various invariants about branch and repository storage\n"
 "to detect data corruption or brz bugs."
 msgstr ""
+"Hierdie opdrag kontroleer verskeie in-variante oor tak- en "
+"bewaarplekberging\n"
+"om datakorrupsie of brz-foute op te spoor."
 
 #: breezy/builtins.py:3769
 msgid ""
 "The working tree and branch checks will only give output if a problem is\n"
 "detected. The output fields of the repository check are:"
 msgstr ""
+"Die werkende boom en takkontroles sal slegs kry uitset gee as 'n probleem "
+"is\n"
+"bespeurde. Die uitvoervelde van die bewaarplekkontrole is:"
 
 #: breezy/builtins.py:3772
 msgid ""
@@ -2497,6 +3172,9 @@ msgid ""
 "    This is just the number of revisions checked.  It doesn't\n"
 "    indicate a problem."
 msgstr ""
+"revisies\n"
+"    Dit is net die aantal revisies wat nagegaan is. Dit doen nie\n"
+"    'n probleem aandui."
 
 #: breezy/builtins.py:3776
 msgid ""
@@ -2504,6 +3182,9 @@ msgid ""
 "    This is just the number of versionedfiles checked.  It\n"
 "    doesn't indicate a problem."
 msgstr ""
+"weergaweslêers\n"
+"    Dit is net die aantal weergaweslêers wat nagegaan is. Dit\n"
+"    nie 'n probleem aandui nie."
 
 #: breezy/builtins.py:3780
 msgid ""
@@ -2519,6 +3200,9 @@ msgid ""
 "    This is the total number of unique file contents\n"
 "    seen in the checked revisions.  It does not indicate a problem."
 msgstr ""
+"unieke lêer tekste\n"
+"    Dit is die totale aantal unieke lêerinhoud\n"
+"    gesien in die tjekde revisies. Dit dui nie op 'n probleem nie."
 
 #: breezy/builtins.py:3789
 msgid ""
@@ -2528,6 +3212,11 @@ msgid ""
 "    entries are modified, but the file contents are not.  It does not\n"
 "    indicate a problem."
 msgstr ""
+"herhaalde lêertekste\n"
+"    Dit is die totale aantal herhaalde tekste wat gesien is\n"
+"    in die tjekde revisies. Tekste kan herhaal word wanneer hul lêer\n"
+"    inskrywings word gewysig, maar die lêerinhoud is nie. Dit doen nie\n"
+"    'n probleem aandui."
 
 #: breezy/builtins.py:3795
 msgid ""
@@ -2537,43 +3226,43 @@ msgstr ""
 
 #: breezy/builtins.py:3800
 msgid "    Check the tree and branch at 'foo'::"
-msgstr ""
+msgstr "    Tjek die boom en tak by 'foo'::"
 
 #: breezy/builtins.py:3802
 msgid "        brz check --tree --branch foo"
-msgstr ""
+msgstr "        brz tjek --tree --branch foo"
 
 #: breezy/builtins.py:3804
 msgid "    Check only the repository at 'bar'::"
-msgstr ""
+msgstr "    Tjek slegs die bewaarplek by 'bar'::"
 
 #: breezy/builtins.py:3806
 msgid "        brz check --repo bar"
-msgstr ""
+msgstr "        brz tjek --repo bar"
 
 #: breezy/builtins.py:3808
 msgid "    Check everything at 'baz'::"
-msgstr ""
+msgstr "    Tjek alles by 'baz'::"
 
 #: breezy/builtins.py:3810
 msgid "        brz check baz"
-msgstr ""
+msgstr "        brz tjek baz"
 
 #: breezy/builtins.py:3816
 msgid "Check the branch related to the current directory."
-msgstr ""
+msgstr "Tjek die tak wat verband hou met die huidige gids na."
 
 #: breezy/builtins.py:3818
 msgid "Check the repository related to the current directory."
-msgstr ""
+msgstr "Gaan die bewaarplek na wat verband hou met die huidige gids."
 
 #: breezy/builtins.py:3820
 msgid "Check the working tree related to the current directory."
-msgstr ""
+msgstr "Gaan die werk boom wat verband hou met die huidige gids na."
 
 #: breezy/builtins.py:3834
 msgid "Upgrade a repository, branch or working tree to a newer format."
-msgstr ""
+msgstr "Gradeer 'n bewaarplek, tak of werkboom op na 'n nuwer formaat."
 
 #: breezy/builtins.py:3836
 msgid ""
@@ -2593,6 +3282,12 @@ msgid ""
 "a one way process (e.g. changing from the 1.x default to the\n"
 "2.x default) so downgrading is not always possible."
 msgstr ""
+"As jy wil opgradeer na 'n spesifieke formaat eerder as die\n"
+"huidige verstek, wat gespesifiseer kan word met die --format opsie.\n"
+"As gevolg hiervan kan u die opgraderingsopdrag op hierdie manier gebruik\n"
+"\"downgrade\" na 'n vroeër formaat, hoewel sommige omskakelings wel is\n"
+"'n eenrigting proses (bv. verandering van die 1.x verstek na die\n"
+"2.x verstek) dus is afgradering nie altyd moontlik nie."
 
 #: breezy/builtins.py:3849
 msgid ""
@@ -2604,6 +3299,14 @@ msgid ""
 "Alternatively, you can delete it by hand if everything looks good\n"
 "afterwards."
 msgstr ""
+"'n Backup.bzr.~#~ gids word geskep aan die begin van die omskakeling\n"
+"proses (waar # 'n getal is). By verstek word dit daar gelaat\n"
+"voltooiing. As die omskakeling misluk, vee die nuwe .bzr-gids uit\n"
+"en hernoem hierdie een terug in sy plek. Gebruik die --clean opsie om te "
+"vra\n"
+"vir die backup.bzr-gids om by suksesvolle omskakeling verwyder te word.\n"
+"Alternatiewelik kan jy dit met die hand uitvee as alles goed lyk\n"
+"daarna."
 
 #: breezy/builtins.py:3857
 msgid ""
@@ -2612,6 +3315,10 @@ msgid ""
 "If the conversion of a branch fails, remaining branches are still\n"
 "tried."
 msgstr ""
+"As die ligging wat gegee word 'n gedeelde bewaarplek is, afhanklike takke\n"
+"word ook omgeskakel mits die bewaarplek suksesvol omskakel.\n"
+"As die omskakeling van 'n tak misluk, is die oorblywende takke stil\n"
+"probeer het."
 
 #: breezy/builtins.py:3862
 msgid ""
@@ -2622,56 +3329,60 @@ msgstr ""
 #: breezy/builtins.py:3870
 msgid "Upgrade to a specific format.  See \"brz help formats\" for details."
 msgstr ""
+"Gradeer op na 'n spesifieke formaat. Sien \"brz help formats\" vir "
+"besonderhede."
 
 #: breezy/builtins.py:3875
 msgid "Branch format"
-msgstr ""
+msgstr "Tak formaat"
 
 #: breezy/builtins.py:3877
 msgid "Remove the backup.bzr directory if successful."
-msgstr ""
+msgstr "Verwyder die backup.bzr gids indien suksesvol."
 
 #: breezy/builtins.py:3879 breezy/plugins/rewrite/commands.py:81
 msgid "Show what would be done, but don't actually do anything."
-msgstr ""
+msgstr "Wys wat gedoen sou word, maar doen nie eintlik niks."
 
 #: breezy/builtins.py:3894
 msgid "Show or set brz user id."
-msgstr ""
+msgstr "Wys of stel brz gebruiker id."
 
 #: breezy/builtins.py:3896
 msgid ""
 ":Examples:\n"
 "    Show the email of the current user::"
 msgstr ""
+":Voorbeelde:\n"
+"    Wys die e-pos van die huidige gebruiker::"
 
 #: breezy/builtins.py:3899
 msgid "        brz whoami --email"
-msgstr ""
+msgstr "        brz whoami --email"
 
 #: breezy/builtins.py:3901
 msgid "    Set the current user::"
-msgstr ""
+msgstr "    Stel die huidige gebruiker::"
 
 #: breezy/builtins.py:3903
 msgid "        brz whoami \"Frank Chu <fchu@example.com>\""
-msgstr ""
+msgstr "        brz whoami \"Frank Chu <fchu@example.com>\""
 
 #: breezy/builtins.py:3907
 msgid "Display email address only."
-msgstr ""
+msgstr "Vertoon slegs e-posadres."
 
 #: breezy/builtins.py:3909
 msgid "Set identity for the current branch instead of globally."
-msgstr ""
+msgstr "Stel identiteit vir die huidige tak in plaas van globaal."
 
 #: breezy/builtins.py:3935
 msgid "--email can only be used to display existing identity"
-msgstr ""
+msgstr "--email kan slegs gebruik word om bestaande identiteit te vertoon"
 
 #: breezy/builtins.py:3959
 msgid "Print or set the branch nickname."
-msgstr ""
+msgstr "Afdruk of stel die takbynaam"
 
 #: breezy/builtins.py:3961
 msgid ""
@@ -2679,94 +3390,108 @@ msgid ""
 "the branch directory name is used for other branches.  To print the\n"
 "current nickname, execute with no argument."
 msgstr ""
+"Indien unset, die saamgelokaliseerde taknaam word gebruik vir saamgeleë "
+"takke, en\n"
+"die takgidsnaam word vir ander takke gebruik. Om afdruk die\n"
+"huidige bynaam, voer uit met geen argument nie."
 
 #: breezy/builtins.py:3965
 msgid ""
 "Bound branches use the nickname of its master branch unless it is set\n"
 "locally."
 msgstr ""
+"Gebonde takke gebruik die bynaam van sy meestertak, tensy dit stel is\n"
+"plaaslik."
 
 #: breezy/builtins.py:3986
 msgid "Set/unset and display aliases."
-msgstr ""
+msgstr "Stel/unset en vertoon aliasse."
 
 #: breezy/builtins.py:3988
 msgid ""
 ":Examples:\n"
 "    Show the current aliases::"
 msgstr ""
+":Voorbeelde:\n"
+"    Wys die huidige aliasse::"
 
 #: breezy/builtins.py:3991
 msgid "        brz alias"
-msgstr ""
+msgstr "        brz alias"
 
 #: breezy/builtins.py:3993
 msgid "    Show the alias specified for 'll'::"
-msgstr ""
+msgstr "    Wys die alias gespesifiseer vir 'll'::"
 
 #: breezy/builtins.py:3995
 msgid "        brz alias ll"
-msgstr ""
+msgstr "        brz alias ll"
 
 #: breezy/builtins.py:3997
 msgid "    Set an alias for 'll'::"
-msgstr ""
+msgstr "    Stel 'n alias vir 'll'::"
 
 #: breezy/builtins.py:3999
 msgid "        brz alias ll=\"log --line -r-10..-1\""
-msgstr ""
+msgstr "        brz alias ll=\"log --line -r-10..-1\""
 
 #: breezy/builtins.py:4001
 msgid "    To remove an alias for 'll'::"
-msgstr ""
+msgstr "    Om 'n alias vir te verwyder 'll'::"
 
 #: breezy/builtins.py:4003
 msgid "        brz alias --remove ll"
-msgstr ""
+msgstr "        brz alias --remove ll"
 
 #: breezy/builtins.py:4008
 msgid "Remove the alias."
-msgstr ""
+msgstr "Verwyder die alias."
 
 #: breezy/builtins.py:4026
 msgid "brz alias --remove expects an alias to remove."
-msgstr ""
+msgstr "brz alias --remove n"
 
 #: breezy/builtins.py:4217
 msgid ""
 "subunit not available. subunit needs to be installed to use --subunit."
 msgstr ""
+"subeenheid nie beskikbaar nie. subeenheid moet geïnstalleer word om te "
+"gebruik --subunit."
 
 #: breezy/builtins.py:4234
 msgid ""
 "subunit not available. subunit needs to be installed to use --subunit2."
 msgstr ""
+"subeenheid nie beskikbaar nie. subeenheid moet geïnstalleer word om te "
+"gebruik --subunit2."
 
 #: breezy/builtins.py:4243
 msgid ""
 "--benchmark is no longer supported from brz 2.2; use bzr-usertest instead"
 msgstr ""
+"--benchmark word nie meer ondersteun vanaf brz 2.2; gebruik bzr-usertest in "
+"plaas daarvan"
 
 #: breezy/builtins.py:4290
 msgid "Show version of brz."
-msgstr ""
+msgstr "Wys weergawe van brz."
 
 #: breezy/builtins.py:4294
 msgid "Print just the version number."
-msgstr ""
+msgstr "Afdruk net die weergawe nommer."
 
 #: breezy/builtins.py:4313
 msgid "It sure does!\n"
-msgstr ""
+msgstr "Dit doen seker!\n"
 
 #: breezy/builtins.py:4335
 #, python-format
 msgid "merge base is revision %s\n"
-msgstr ""
+msgstr "samesmelting base is revisie %s\n"
 
 #: breezy/builtins.py:4340
 msgid "Perform a three-way merge."
-msgstr ""
+msgstr "Voer 'n drie-rigting samevoeging uit."
 
 #: breezy/builtins.py:4342
 msgid ""
@@ -2778,6 +3503,19 @@ msgid ""
 "branch:  in this case, only the modifications to that file are merged into\n"
 "the current working tree."
 msgstr ""
+"Die bron van die samesmelting kan gespesifiseer word in die vorm van 'n "
+"tak,\n"
+"of in die vorm van 'n pad na 'n lêer wat 'n samesmeltingsvoorskrif bevat wat "
+"gegenereer is\n"
+"met brz stuur. As nie een gespesifiseer word nie, is die verstek die "
+"stroomop-tak\n"
+"of die tak wat mees onlangs saamgesmelt het met --remember. Die bron van "
+"die\n"
+"samesmelting kan ook gespesifiseer word in die vorm van 'n pad na 'n lêer in "
+"'n ander\n"
+"tak: in hierdie geval word slegs die wysigings aan daardie lêer saamgevoeg "
+"in\n"
+"die huidige werkende boom."
 
 #: breezy/builtins.py:4350
 msgid ""
@@ -2785,12 +3523,18 @@ msgid ""
 "work from the other branch, automatically determining an appropriate base\n"
 "revision.  If this fails, you may need to give an explicit base."
 msgstr ""
+"Wanneer saamgevoeg word vanaf 'n tak, sal brz by verstek probeer om alles "
+"nuwe saam te voeg\n"
+"werk vanaf die ander tak, wat outomaties 'n gepaste basis bepaal\n"
+"hersiening. As dit misluk, moet jy dalk 'n eksplisiete basis gee."
 
 #: breezy/builtins.py:4354
 msgid ""
 "To pick a different ending revision, pass \"--revision OTHER\".  brz will\n"
 "try to merge in all new work up to and including revision OTHER."
 msgstr ""
+"Om 'n ander eindhersiening te kies, slaag \"--revision OTHER\". brz sal\n"
+"probeer om saam te smelt in alle nuwe werk tot en met revisie ANDER."
 
 #: breezy/builtins.py:4357
 msgid ""
@@ -2805,7 +3549,7 @@ msgstr ""
 
 #: breezy/builtins.py:4365
 msgid "Revision numbers are always relative to the source branch."
-msgstr ""
+msgstr "Revisie nommers is altyd relatief tot die brontak."
 
 #: breezy/builtins.py:4367 breezy/conflicts.py:39 breezy/conflicts.py:96
 msgid ""
@@ -2814,11 +3558,19 @@ msgid ""
 "it will mark a conflict.  A conflict means that you need to fix something,\n"
 "before you can commit."
 msgstr ""
+"Merge sal sy bes doen om die veranderinge in twee takke te kombineer, maar "
+"daar\n"
+"is 'n paar soorte probleme wat net 'n mens kan regmaak. Wanneer dit hulle "
+"teëkom,\n"
+"dit sal 'n konflik merk. 'n Konflik beteken dat jy iets moet regmaak,\n"
+"voordat jy kan verbind."
 
 #: breezy/builtins.py:4372
 msgid ""
 "Use brz resolve when you have fixed a problem.  See also brz conflicts."
 msgstr ""
+"Gebruik brz resolve wanneer jy 'n probleem opgelos het. Sien ook brz "
+"konflikte."
 
 #: breezy/builtins.py:4374
 msgid ""
@@ -2827,6 +3579,13 @@ msgid ""
 "to use the default.  To change the default, use --remember. The value will\n"
 "only be saved if the remote location can be accessed."
 msgstr ""
+"As daar geen verstektakstel is nie, sal die eerste samevoeging dit stel "
+"(gebruik\n"
+"--no-remember om dit te vermy om dit te stel). Daarna kan jy die tak "
+"weglaat\n"
+"om die verstek te gebruik. Om die verstek te verander, gebruik --remember. "
+"Die waarde sal\n"
+"word slegs gestoor as toegang tot die afgeleë ligging verkry kan word."
 
 #: breezy/builtins.py:4379
 msgid ""
@@ -2834,6 +3593,9 @@ msgid ""
 "directory, where they can be reviewed (with brz diff), tested, and then\n"
 "committed to record the result of the merge."
 msgstr ""
+"Die resultate van die samesmelting word in die werkende bestemming geplaas\n"
+"gids, waar hulle hersien kan word (met brz diff), getoets, en dan\n"
+"daartoe verbind om die resultaat van die samesmelting aan te teken."
 
 #: breezy/builtins.py:4383
 msgid ""
@@ -2843,6 +3605,13 @@ msgid ""
 "changes in the tree.  The --force option can also be used to create a\n"
 "merge revision which has more than two parents."
 msgstr ""
+"samesmelting weier om te loop as daar enige onverbonde veranderinge is, "
+"tensy\n"
+"--force word gegee. As --force gegee word, dan is die veranderinge vanaf die "
+"bron\n"
+"sal saamgevoeg word met die huidige werkboom, insluitend enige onverbonde\n"
+"veranderinge in die boom. Die --force opsie kan ook gebruik word om 'n\n"
+"hersiening saam te voeg wat meer as twee ouers het."
 
 #: breezy/builtins.py:4389
 msgid ""
@@ -2850,52 +3619,67 @@ msgid ""
 "branch without merging any committed revisions, the --uncommitted option\n"
 "can be given."
 msgstr ""
+"Indien die een veranderinge uit die werkboom van die ander wil saamvoeg\n"
+"tak sonder om enige toegewyde hersienings saam te voeg, die --uncommitted "
+"opsie\n"
+"gegee kan word."
 
 #: breezy/builtins.py:4393
 msgid ""
 "To select only some changes to merge, use \"merge -i\", which will prompt\n"
 "you to apply each diff hunk and file change, similar to \"shelve\"."
 msgstr ""
+"Om slegs sommige veranderinge te selekteer om saam te voeg, gebruik \"merge -"
+"i\", watter wil prompt\n"
+"jy om elkeen toe te pas diff hunk en lêer verander, soortgelyk aan "
+"\"shelve\"."
 
 #: breezy/builtins.py:4396
 msgid ""
 ":Examples:\n"
 "    To merge all new revisions from brz.dev::"
 msgstr ""
+":Voorbeelde:\n"
+"    Om alle nuwe revisie van saam te voeg brz.dev::"
 
 #: breezy/builtins.py:4399
 msgid "        brz merge ../brz.dev"
-msgstr ""
+msgstr "        brz saamsmelt ../brz.dev"
 
 #: breezy/builtins.py:4401
 msgid "    To merge changes up to and including revision 82 from brz.dev::"
 msgstr ""
+"    Om veranderinge tot en met revisie 82 saam te voeg vanaf brz.dev::"
 
 #: breezy/builtins.py:4403
 msgid "        brz merge -r 82 ../brz.dev"
-msgstr ""
+msgstr "        brz saamsmelt -r 82 ../brz.dev"
 
 #: breezy/builtins.py:4405
 msgid "    To merge the changes introduced by 82, without previous changes::"
 msgstr ""
+"    Om die veranderinge saam te smelt bekendgestel deur 82, sonder vorige "
+"wysigings::"
 
 #: breezy/builtins.py:4407
 msgid "        brz merge -r 81..82 ../brz.dev"
-msgstr ""
+msgstr "        brz saamsmelt -r 81..82 ../brz.dev"
 
 #: breezy/builtins.py:4409
 msgid "    To apply a merge directive contained in /tmp/merge::"
-msgstr ""
+msgstr "    Om 'n samevoeging toe te pas richtlijn vervat in /tmp/merge::"
 
 #: breezy/builtins.py:4411
 msgid "        brz merge /tmp/merge"
-msgstr ""
+msgstr "        brz saamsmelt /tmp/merge"
 
 #: breezy/builtins.py:4413
 msgid ""
 "    To create a merge revision with three parents from two branches\n"
 "    feature1a and feature1b:"
 msgstr ""
+"    Om 'n samesmelting revisie met drie ouers van twee takke te skep\n"
+"    kenmerk1a en kenmerk1b:"
 
 #: breezy/builtins.py:4416
 msgid ""
@@ -2903,15 +3687,20 @@ msgid ""
 "        brz merge ../feature1b --force\n"
 "        brz commit -m 'revision with three parents'"
 msgstr ""
+"        brz saamsmelt ../kenmerk1a\n"
+"        brz saamsmelt ../kenmerk1b --force\n"
+"        brz pleeg -m 'revision with three parents'"
 
 #: breezy/builtins.py:4428
 msgid "Merge even if the destination tree has uncommitted changes."
-msgstr ""
+msgstr "Voeg saam selfs al het die bestemming boom uncommitted veranderinge."
 
 #: breezy/builtins.py:4434
 msgid ""
 "Apply uncommitted changes from a working copy, instead of branch changes."
 msgstr ""
+"Toepas uncommitted veranderinge vanaf 'n werkkopie, in plaas van "
+"takveranderings."
 
 #: breezy/builtins.py:4436
 msgid ""
@@ -2919,82 +3708,92 @@ msgid ""
 "the source rather than merging.  When this happens, you do not need to "
 "commit the result."
 msgstr ""
+"As die bestemming reeds heeltemal in die bron saamgevoeg is, trek uit die "
+"bron eerder as om saam te smelt. Wanneer dit gebeur, hoef jy nie die "
+"resultaat te pleeg nie."
 
 #: breezy/builtins.py:4441
 msgid ""
 "Branch to merge into, rather than the one containing the working directory."
 msgstr ""
+"Tak om in saam te smelt, eerder as die een wat die working directory bevat."
 
 #: breezy/builtins.py:4443
 msgid "Instead of merging, show a diff of the merge."
 msgstr ""
+"In plaas daarvan om saam te voeg, wys 'n verskil van die samesmelting."
 
 #: breezy/builtins.py:4445
 msgid "Select changes interactively."
-msgstr ""
+msgstr "Selekteer veranderinge interaktief."
 
 #: breezy/builtins.py:4468
 msgid ""
 "Merging into empty branches not currently supported, "
 "https://bugs.launchpad.net/bzr/+bug/308562"
 msgstr ""
+"Om saam te smelt in leë takke word nie tans ondersteun nie, "
+"https://bugs.launchpad.net/bzr/+bug/308562"
 
 #: breezy/builtins.py:4490
 msgid "Cannot use --uncommitted with bundles or merge directives."
-msgstr ""
+msgstr "Kan nie gebruik --uncommitted met bundels ofsaamsmelt richtlijn."
 
 #: breezy/builtins.py:4501
 msgid "Cannot use --uncommitted and --revision at the same time."
-msgstr ""
+msgstr "Kan nie gebruik --uncommitted en --revision op dieselfde tyd."
 
 #: breezy/builtins.py:4521
 msgid "merger: "
-msgstr ""
+msgstr "samesmelting: "
 
 #: breezy/builtins.py:4523 breezy/bzr/bundle/apply_bundle.py:63
 #: breezy/plugins/rewrite/commands.py:476
 msgid "Nothing to do."
-msgstr ""
+msgstr "Niks om te doen."
 
 #: breezy/builtins.py:4528
 msgid "Cannot pull individual files"
-msgstr ""
+msgstr "Kan nie individuele lêers trek nie"
 
 #: breezy/builtins.py:4536
 msgid "This branch has no commits. (perhaps you would prefer 'brz pull')"
 msgstr ""
+"Hierdie tak het geen commits nie. (miskien jy sou verkies 'brz pull')"
 
 #: breezy/builtins.py:4594
 #, python-format
 msgid "Show-base is not supported for this merge type. %s"
-msgstr ""
+msgstr "Wys-basis word nie vir hierdie samesmeltingstipe gesteun nie. %s"
 
 #: breezy/builtins.py:4603
 #, python-format
 msgid "Conflict reduction is not supported for merge type %s."
-msgstr ""
+msgstr "Konflik vermindering word nie vir samevoeging tipe gesteun nie %s."
 
 #: breezy/builtins.py:4607
 msgid "Cannot do conflict reduction and show base."
-msgstr ""
+msgstr "Kan nie konflik vermindering doen en basis wys nie."
 
 #: breezy/builtins.py:4616
 msgid ""
 "Plan file merge unsupported: Merge type incompatible with tree formats."
 msgstr ""
+"Beplan lêers amevoeging word nie ondersteun nie: Saamvoeg tipe onversoenbaar "
+"met boom formate."
 
 #: breezy/builtins.py:4726
 msgid "No location specified or remembered"
-msgstr ""
+msgstr "Geen ligging gespesifiseer of onthou nie"
 
 #: breezy/builtins.py:4728
 #, python-brace-format
 msgid "{0} remembered {1} location {2}"
-msgstr ""
+msgstr "{0} geonthou {1} ligging {2}"
 
 #: breezy/builtins.py:4734
 msgid "Redo a merge."
-msgstr ""
+msgstr "Oordoen 'n samevoeging."
 
 #: breezy/builtins.py:4736
 msgid ""
@@ -3002,6 +3801,9 @@ msgid ""
 "conflicts.  Some merge techniques are better than others, and remerge\n"
 "lets you try different ones on different files."
 msgstr ""
+"Gebruik dit as jy 'n ander samesmelting tegniek wil probeer terwyl jy oplos\n"
+"konflikte. Sommige samesmeltingstegnieke is beter as ander, en hervorm\n"
+"kan jy verskillendes op verskillende lêers probeer"
 
 #: breezy/builtins.py:4740
 msgid ""
@@ -3009,6 +3811,10 @@ msgid ""
 "merge.  The difference is that remerge can (only) be run when there is a\n"
 "pending merge, and it lets you specify particular files."
 msgstr ""
+"Die opsies vir hermenging het dieselfde betekenis en verstek as dié vir\n"
+"saamsmelt. Die verskil is dat remerge (slegs) uitgevoer kan word wanneer "
+"daar 'n\n"
+"hangende samesmelting, en dit laat jou spesifieke lêers spesifiseer."
 
 #: breezy/builtins.py:4744
 msgid ""
@@ -3016,35 +3822,45 @@ msgid ""
 "    Re-do the merge of all conflicted files, and show the base text in\n"
 "    conflict regions, in addition to the usual THIS and OTHER texts::"
 msgstr ""
+"Voorbeelde:\n"
+"     Herhaal die samevoeging van alle botsende lêers en wys die basisteks "
+"in\n"
+"     konflikstreke, benewens die gewone HIERDIE en ANDER tekste::"
 
 #: breezy/builtins.py:4748
 msgid "        brz remerge --show-base"
-msgstr ""
+msgstr "        brz remerge --show-base"
 
 #: breezy/builtins.py:4750
 msgid ""
 "    Re-do the merge of \"foobar\", using the weave merge algorithm, with\n"
 "    additional processing to reduce the size of conflict regions::"
 msgstr ""
+"    Doen weer die samesmelting van \"foobar\", met behulp van die "
+"weefsamesmeltingsalgoritme, met\n"
+"    bykomende verwerking om die grootte van konflikstreke te verminder::"
 
 #: breezy/builtins.py:4753
 msgid "        brz remerge --merge-type weave --reprocess foobar"
-msgstr ""
+msgstr "        brz remerge --merge-type weave --reprocess foobar"
 
 #: breezy/builtins.py:4760
 msgid "Show base revision text in conflicts."
-msgstr ""
+msgstr "Wys base revisie teks in konflikte."
 
 #: breezy/builtins.py:4773
 msgid ""
 "Sorry, remerge only works after normal merges.  Not cherrypicking or multi-"
 "merges."
 msgstr ""
+"Jammer, remerge werk net na normale samesmeltings. Nie kersiepluk of multi-"
+"samesmeltings nie."
 
 #: breezy/builtins.py:4827
 msgid ""
 "Set files in the working tree back to the contents of a previous revision."
 msgstr ""
+"Stel lêers in die werkboom terug na die inhoud van 'n vorige revisie."
 
 #: breezy/builtins.py:4829
 msgid ""
@@ -3054,6 +3870,13 @@ msgid ""
 "working tree, not any revision history like the branch and repository or\n"
 "the working tree basis revision."
 msgstr ""
+"Deur 'n lys lêers te gee, sal slegs daardie lêers teruggestel word. "
+"Andersins, alle lêers\n"
+"teruggedraai sal word. As die revisie nie met '--revision' gespesifiseer "
+"word nie, sal die\n"
+"werkboombasishersiening word gebruik. 'n Terugstel-operasie raak slegs die\n"
+"werkende boom, nie enige revisie geskiedenis soos die tak en bewaarplek of\n"
+"die werkende boom basis revisie."
 
 #: breezy/builtins.py:4835
 msgid ""
@@ -3066,6 +3889,20 @@ msgid ""
 "update the working tree accordingly while preserving local changes, see the\n"
 "update command."
 msgstr ""
+"Om slegs sommige veranderinge te verwyder, sonder om terug te keer na 'n "
+"vorige weergawe, gebruik\n"
+"smelt eerder saam. Byvoorbeeld, \"merge . -r -2..-3\" (don't forget the "
+"\".\")\n"
+"sal die veranderinge wat deur die tweede laaste commit (-2) ingestel is, "
+"verwyder, sonder\n"
+"wat die veranderinge wat deur die laaste commit ingestel is, beïnvloed (-1). "
+"Om te verwyder\n"
+"sekere veranderinge op 'n hunk-by-hunk basis, sien die shelve bevel.\n"
+"Om die tak op te dateer na 'n spesifieke hersiening of die jongste revisie "
+"en\n"
+"werk die werkboom dienooreenkomstig op terwyl plaaslike veranderinge bewaar "
+"word, sien die\n"
+"opdateer bevel."
 
 #: breezy/builtins.py:4844
 msgid ""
@@ -3082,6 +3919,11 @@ msgid ""
 "name.  If you name a directory, all the contents of that directory will be\n"
 "reverted."
 msgstr ""
+"Wanneer jy lêers verskaf, kan jy hul huidige padnaam of die padnaam gebruik\n"
+"vanaf die teikenhersiening. So jy kan terugstel gebruik om 'n lêer te "
+"\"herstel\" deur\n"
+"naam. As jy 'n gids noem, sal al die inhoud van daardie gids wees\n"
+"reverted."
 
 #: breezy/builtins.py:4854
 msgid ""
@@ -3090,6 +3932,11 @@ msgid ""
 "created as above.  Directories containing unknown files will not be\n"
 "deleted."
 msgstr ""
+"As jy nuut bygevoegde lêers het sedert die teikenhersiening, sal dit wees\n"
+"verwyder. As die lêers wat verwyder moet word verander is, sal rugsteun "
+"wees\n"
+"soos hierbo geskep. Gidse wat onbekende lêers bevat sal nie wees nie\n"
+"geskrap."
 
 #: breezy/builtins.py:4859
 msgid ""
@@ -3102,6 +3949,19 @@ msgid ""
 "and ``brz revert --forget-merges`` to clear the pending merge list without\n"
 "reverting any files."
 msgstr ""
+"Die werkende boom bevat 'n lys van hersienings wat saamgevoeg is maar\n"
+"nog nie committed. Hierdie revisies sal as bykomende ouers ingesluit word\n"
+"van die volgende commit. Normaalweg, gebruik revert duidelike dat lys sowel "
+"as\n"
+"reverting die lêers. As enige lêers gespesifiseer word, revert verlaat die "
+"lys\n"
+"van ontoegewyde samesmeltings alleen en reverts slegs die lêers. Gebruik "
+"``brz revert\n"
+".`` in die boomwortel te revert alle lêers maar hou die aangetekende "
+"samesmeltings,\n"
+"en ``brz revert --forget-merges`` om die hangende samesmeltingslys skoon te "
+"maak sonder\n"
+"reverting enige lêers."
 
 #: breezy/builtins.py:4868
 msgid ""
@@ -3116,32 +3976,49 @@ msgid ""
 "cause additional conflicts on later merges involving the same source and\n"
 "target branches."
 msgstr ""
+"Gebruik \"brz revert --forget-merges\", dit is moontlik om al die toe te "
+"pas\n"
+"veranderinge van 'n tak in 'n enkele revisie.  Om dit te doen, voer die "
+"samesmelting uit\n"
+"Soos verlang.  Dan doen revert met die \"--forget-merges\" opsie sal hou\n"
+"die inhoud van die boom soos dit was, maar dit sal duidelike die lys van "
+"hangende\n"
+"saamsmelts. Die volgende commit sal bevat dan alle die veranderinge wat is\n"
+"teenwoordig in die ander tak, maar sonder enige ander ouer revisies.\n"
+"Omdat hierdie tegniek vergeet waar hierdie veranderinge ontstaan het, dit "
+"mag\n"
+"bykomende konflikte by latere samesmeltings veroorsaak wat dieselfde bron "
+"en\n"
+"teiken takke."
 
 #: breezy/builtins.py:4883
 msgid "Do not save backups of reverted files."
-msgstr ""
+msgstr "Moenie rugsteun van reverted lêers stoor nie."
 
 #: breezy/builtins.py:4885
 msgid "Remove pending merge marker, without changing any files."
 msgstr ""
+"Verwyder hangende samesmelting merker, sonder om enige lêers te verander."
 
 #: breezy/builtins.py:4916
 msgid ""
 "Show help on a command or other topic.\n"
 "    "
 msgstr ""
+"Wys hulp oor 'n bevele of ander onderwerp.\n"
+"    "
 
 #: breezy/builtins.py:4921
 msgid "Show help on all commands."
-msgstr ""
+msgstr "Wys hulp vir alle bevele."
 
 #: breezy/builtins.py:4950
 msgid "Show unmerged/unpulled revisions between two branches."
-msgstr ""
+msgstr "Wys on-saamgesmelt/unpulled revisies tussen twee takke."
 
 #: breezy/builtins.py:4952
 msgid "OTHER_BRANCH may be local or remote."
-msgstr ""
+msgstr "ANDER_VERTAKKING mag plaaslik of afgeleë wees."
 
 #: breezy/builtins.py:4954
 msgid ""
@@ -3149,6 +4026,9 @@ msgid ""
 "-r revision requests a specific revision, -r ..end or -r begin.. are\n"
 "also valid."
 msgstr ""
+"Om op 'n reeks revisies te filter, kan jy die bevel gebruik -r begin..end\n"
+"-r revision versoek 'n spesifieke revisie, -r ..end of -r begin.. is\n"
+"ook geldig."
 
 #: breezy/builtins.py:4958
 msgid ""
@@ -3156,119 +4036,135 @@ msgid ""
 "    1 - some missing revisions\n"
 "    0 - no missing revisions"
 msgstr ""
+":Verlaat waardes:\n"
+"    1 - sommige ontbrekende revisies\n"
+"    0 - geen ontbrekende revisies"
 
 #: breezy/builtins.py:4964
 msgid ""
 "    Determine the missing revisions between this and the branch at the\n"
 "    remembered pull location::"
 msgstr ""
+"    Bepaal die ontbrekende revisies tussen hierdie en die tak by die\n"
+"    onthou trek ligging::"
 
 #: breezy/builtins.py:4967
 msgid "        brz missing"
-msgstr ""
+msgstr "        brz ontbreek"
 
 #: breezy/builtins.py:4969
 msgid "    Determine the missing revisions between this and another branch::"
 msgstr ""
+"    Bepaal die ontbrekende hersienings tussen hierdie en 'n ander tak::"
 
 #: breezy/builtins.py:4971
 msgid "        brz missing http://server/branch"
-msgstr ""
+msgstr "        brz ontbreek http://server/branch"
 
 #: breezy/builtins.py:4973
 msgid ""
 "    Determine the missing revisions up to a specific revision on the other\n"
 "    branch::"
 msgstr ""
+"    Bepaal die ontbrekende hersienings up tot 'n spesifieke hersiening op "
+"die ander\n"
+"    tak::"
 
 #: breezy/builtins.py:4976
 msgid "        brz missing -r ..-10"
-msgstr ""
+msgstr "        brz ontbreek -r ..-10"
 
 #: breezy/builtins.py:4978
 msgid ""
 "    Determine the missing revisions up to a specific revision on this\n"
 "    branch::"
 msgstr ""
+"    Bepaal die ontbrekende hersienings up tot 'n spesifieke hersiening op "
+"die ander\n"
+"    tak::"
 
 #: breezy/builtins.py:4981
 msgid "        brz missing --my-revision ..-10"
-msgstr ""
+msgstr "        brz ontbreek --my-revision ..-10"
 
 #: breezy/builtins.py:4988
 msgid "Reverse the order of revisions."
-msgstr ""
+msgstr "Draai die volgorde van hersiening om."
 
 #: breezy/builtins.py:4990
 msgid "Display changes in the local branch only."
-msgstr ""
+msgstr "Vertoon veranderinge slegs in die plaaslike tak."
 
 #: breezy/builtins.py:4991
 msgid "Same as --mine-only."
-msgstr ""
+msgstr "Dieselfde as --mine-only."
 
 #: breezy/builtins.py:4993
 msgid "Display changes in the remote branch only."
-msgstr ""
+msgstr "Vertoon veranderinge slegs in die afgeleë tak."
 
 #: breezy/builtins.py:4994
 msgid "Same as --theirs-only."
-msgstr ""
+msgstr "Dieselfde as --theirs-only."
 
 #: breezy/builtins.py:4999
 msgid ""
 "Filter on other branch revisions (inclusive). See \"help revisionspec\" for "
 "details."
 msgstr ""
+"Filter op ander takhersienings (insluitend). Sien \"help revisionspec\" vir "
+"besonderhede."
 
 #: breezy/builtins.py:5003
 msgid ""
 "Filter on local branch revisions (inclusive). See \"help revisionspec\" for "
 "details."
 msgstr ""
+"Filter op plaaslike takhersienings (insluitend). Sien \"help revisionspec\" "
+"vir besonderhede."
 
 #: breezy/builtins.py:5006
 msgid "Show all revisions in addition to the mainline ones."
-msgstr ""
+msgstr "Wys alle hersienings bykomend tot die hoof eenses."
 
 #: breezy/builtins.py:5047
 msgid "No peer location known or specified."
-msgstr ""
+msgstr "Geen eweknie ligging bekend of gespesifiseer nie."
 
 #: breezy/builtins.py:5051
 #, python-brace-format
 msgid "Using saved parent location: {0}\n"
-msgstr ""
+msgstr "Met behulp van gestoorde ouerligging: {0}\n"
 
 #: breezy/builtins.py:5084
 #, python-format
 msgid "You have %d extra revision:\n"
 msgid_plural "You have %d extra revisions:\n"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Jy het %d ekstra hersiening:\n"
+msgstr[1] "Jy het %d ekstra hersienings:\n"
 
 #: breezy/builtins.py:5104
 #, python-format
 msgid "You are missing %d revision:\n"
 msgid_plural "You are missing %d revisions:\n"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Jy ontbreek %d hersiening:\n"
+msgstr[1] "Jy ontbreek %d hersienings:\n"
 
 #: breezy/builtins.py:5119
 msgid "This branch has no new revisions.\n"
-msgstr ""
+msgstr "Hierdie tak het geen nuwe hersienings nie.\n"
 
 #: breezy/builtins.py:5122
 msgid "Other branch has no new revisions.\n"
-msgstr ""
+msgstr "Ander tak het geen nuwe hersienings nie.\n"
 
 #: breezy/builtins.py:5127
 msgid "Branches are up to date.\n"
-msgstr ""
+msgstr "Takke is op datum.\n"
 
 #: breezy/builtins.py:5138
 msgid "Compress the data within a repository."
-msgstr ""
+msgstr "Druk die data binne 'n bewaarplek saam."
 
 #: breezy/builtins.py:5140
 msgid ""
@@ -3276,6 +4172,10 @@ msgid ""
 "bazaar supports automatic packing of repository, this operation is\n"
 "normally not required to be done manually."
 msgstr ""
+"Hierdie bewerking komprimeer die data binne 'n basaarbewaarplek. Soos\n"
+"basaar ondersteun outomatiese verpakking van bewaarplek, hierdie operasie "
+"is\n"
+"normaalweg nie nodig om met die hand gedoen te word nie."
 
 #: breezy/builtins.py:5144
 msgid ""
@@ -3285,6 +4185,11 @@ msgid ""
 "the backed up pack files, the --clean-obsolete-packs option may be\n"
 "used."
 msgstr ""
+"Tydens die pakbewerking neem basaar 'n rugsteun van bestaande bewaarplek\n"
+"data, d.w.s. pak lêers. Hierdie rugsteun word uiteindelik deur die basaar "
+"verwyder\n"
+"die gerugsteunde paklêers, die --clean-obsolete-packs opsie mag wees\n"
+"gebruik word."
 
 #: breezy/builtins.py:5150
 msgid ""
@@ -3293,24 +4198,30 @@ msgid ""
 "where the deletion has been written to disk but the new packs have not\n"
 "been. In this case the repository may be unusable."
 msgstr ""
+"Waarskuwing: As jy gebruik --clean-obsolete-packs en jou masjien stort neer\n"
+"tydens of onmiddellik na herverpakking, jy kan met 'n staat gelaat word\n"
+"waar die uitvee na skyf geskryf is, maar die nuwe pakke nie\n"
+"het gewees. In hierdie geval kan die bewaarplek onbruikbaar wees."
 
 #: breezy/builtins.py:5160
 msgid "Delete obsolete packs to save disk space."
-msgstr ""
+msgstr "Vee verouderde pakke uit om skyfspasie te bespaar."
 
 #: breezy/builtins.py:5174
 msgid "List the installed plugins."
-msgstr ""
+msgstr "Maak 'n lys van die geïnstalleerde inproppe."
 
 #: breezy/builtins.py:5176
 msgid ""
 "This command displays the list of installed plugins including\n"
 "version of plugin and a short description of each."
 msgstr ""
+"Hierdie bevel vertoon die lys van geïnstalleerde inproppe insluitend\n"
+"weergawe van inprop en 'n kort beskrywing van elk."
 
 #: breezy/builtins.py:5179
 msgid "--verbose shows the path where each plugin is located."
-msgstr ""
+msgstr "--verbose wys die pad waar elke inprop geleë is."
 
 #: breezy/builtins.py:5181
 msgid ""
@@ -3331,59 +4242,68 @@ msgstr ""
 
 #: breezy/builtins.py:5204
 msgid "Show testament (signing-form) of a revision."
-msgstr ""
+msgstr "Toon testament (ondertekenvorm) van 'n hersiening."
 
 #: breezy/builtins.py:5207
 msgid "Produce long-format testament."
-msgstr ""
+msgstr "Produseer lang-formaat testament."
 
 #: breezy/builtins.py:5209
 msgid "Produce a strict-format testament."
-msgstr ""
+msgstr "Produseer 'n streng-formaat testament."
 
 #: breezy/builtins.py:5237
 msgid "Show the origin of each line in a file."
-msgstr ""
+msgstr "Wys die oorsprong van elke lyn in 'n lêer."
 
 #: breezy/builtins.py:5239
 msgid ""
 "This prints out the given file with an annotation on the left side\n"
 "indicating which revision, author and date introduced the change."
 msgstr ""
+"Dit druk die gegewe lêer uit met 'n aantekening aan die linkerkant\n"
+"wat aandui watter hersiening, outeur en datum die verandering ingebring het."
 
 #: breezy/builtins.py:5242
 msgid ""
 "If the origin is the same for a run of consecutive lines, it is\n"
 "shown only at the top, unless the --all option is given."
 msgstr ""
+"As die oorsprong dieselfde is vir 'n reeks opeenvolgende reëls, is dit\n"
+"slegs aan die bokant getoon, tensy die --all opsie gegee word."
 
 #: breezy/builtins.py:5250
 msgid "Show annotations on all lines."
-msgstr ""
+msgstr "Wys annotasies op alle reëls."
 
 #: breezy/builtins.py:5251
 msgid "Show commit date in annotations."
-msgstr ""
+msgstr "Wys commit datum in annotasies."
 
 #: breezy/builtins.py:5326
 msgid "Cannot sign a range of non-revision-history revisions"
-msgstr ""
+msgstr "Kan nie 'n range nie-hersiening-geskiedenis hersienings onderteken"
 
 #: breezy/builtins.py:5333
 msgid "Please supply either one revision, or a range."
-msgstr ""
+msgstr "Verskaf asseblief óf een hersiening óf 'n range."
 
 #: breezy/builtins.py:5337
 msgid ""
 "Convert the current branch into a checkout of the supplied branch.\n"
 "If no branch is supplied, rebind to the last bound location."
 msgstr ""
+"Skakel die huidige tak om in 'n betaalpunt van die verskafde tak.\n"
+"Indien geen tak verskaf word nie, bind weer na die laaste gebonde ligging."
 
 #: breezy/builtins.py:5340
 msgid ""
 "Once converted into a checkout, commits must succeed on the master branch\n"
 "before they will be applied to the local branch."
 msgstr ""
+"Sodra dit in 'n betaalpunt omgeskakel is, moet commits slaag op die "
+"meestertak\n"
+"voordat dit by die plaaslike tak toegepas sal word."
 
 #: breezy/builtins.py:5343
 msgid ""
@@ -3391,40 +4311,48 @@ msgid ""
 "locally, in which case binding will update the local nickname to be\n"
 "that of the master."
 msgstr ""
+"Gebonde takke gebruik die bynaam van sy meestertak tensy dit gestel is\n"
+"plaaslik, in welke geval binding die plaaslike bynaam sal opdateer om te "
+"wees\n"
+"dié van die meester."
 
 #: breezy/builtins.py:5359
 msgid "No location supplied.  This format does not remember old locations."
-msgstr ""
+msgstr "Geen ligging verskaf nie. Hierdie formaat onthou nie ou liggings."
 
 #: breezy/builtins.py:5365
 msgid "Branch is already bound"
-msgstr ""
+msgstr "Tak is reeds gebind"
 
 #: breezy/builtins.py:5368
 msgid "No location supplied and no previous location known"
-msgstr ""
+msgstr "Geen ligging verskaf nie en geen vorige ligging bekend nie"
 
 #: breezy/builtins.py:5375
 msgid "These branches have diverged. Try merging, and then bind again."
 msgstr ""
+"Hierdie vertakkings het uiteengeloop. Probeer om saam te voeg, en bind dan "
+"weer."
 
 #: breezy/builtins.py:5382
 msgid "Convert the current checkout into a regular branch."
-msgstr ""
+msgstr "Omskep die huidige betaalpunt na 'n gewone tak."
 
 #: breezy/builtins.py:5384
 msgid ""
 "After unbinding, the local branch is considered independent and subsequent\n"
 "commits will be local only."
 msgstr ""
+"Na onbinding word die plaaslike tak as onafhanklik en daaropvolgend beskou\n"
+"commits sal slegs plaaslik wees."
 
 #: breezy/builtins.py:5394
 msgid "Local branch is not bound"
-msgstr ""
+msgstr "Plaaslike tak is nie gebonde"
 
 #: breezy/builtins.py:5398
 msgid "Remove the last committed revision."
-msgstr ""
+msgstr "Verwyder die laaste toegewyde hersiening."
 
 #: breezy/builtins.py:5400
 msgid ""
@@ -3432,6 +4360,9 @@ msgid ""
 "--dry-run will go through all the motions, but not actually\n"
 "remove anything."
 msgstr ""
+"--verbose sal uit afdruk wat verwyderde word.\n"
+"--dry-run sal deur al die bewegings gaan, maar nie eintlik nie\n"
+"verwyder enigiets."
 
 #: breezy/builtins.py:5404
 msgid ""
@@ -3439,6 +4370,11 @@ msgid ""
 "specified revision.  For example, \"brz uncommit -r 15\" will leave the\n"
 "branch at revision 15."
 msgstr ""
+"Indien --revision word gespesifiseer, uncommit hersienings om die tak te "
+"verlaat by die\n"
+"gespesifiseerde revisie.  Byvoorbeeld, \"brz uncommit -r 15\" sal verlaat "
+"die\n"
+"tak by hersiening 15."
 
 #: breezy/builtins.py:5408
 msgid ""
@@ -3446,42 +4382,49 @@ msgid ""
 "it may make is to restore any pending merges that were present before\n"
 "the commit."
 msgstr ""
+"Uncommit laat die werkende boom gereed vir 'n nuwe commit.  Die enigste "
+"verandering\n"
+"dit mag maak is om enige hangende samesmeltings wat voorheen teenwoordig "
+"was, te herstel\n"
+"die pleeg."
 
 #: breezy/builtins.py:5419
 msgid "Don't actually make changes."
-msgstr ""
+msgstr "Moenie eintlik veranderinge aanbring nie."
 
 #: breezy/builtins.py:5420
 msgid "Say yes to all questions."
-msgstr ""
+msgstr "Sê ja vir alle vrae."
 
 #: breezy/builtins.py:5422
 msgid "Keep tags that point to removed revisions."
-msgstr ""
+msgstr "Hou tags dat wys na geverwyderde hersienings."
 
 #: breezy/builtins.py:5424
 msgid "Only remove the commits from the local branch when in a checkout."
 msgstr ""
+"Verwyder slegs die commits van die plaaslike tak wanneer jy in 'n betaalpunt "
+"is."
 
 #: breezy/builtins.py:5472
 msgid "No revisions to uncommit.\n"
-msgstr ""
+msgstr "Geen hersienings om te uncommit.\n"
 
 #: breezy/builtins.py:5487
 msgid "Dry-run, pretending to remove the above revisions.\n"
-msgstr ""
+msgstr "Droogloop, voorgee om bogenoemde hersienings te verwyder.\n"
 
 #: breezy/builtins.py:5491
 msgid "The above revision(s) will be removed.\n"
-msgstr ""
+msgstr "Bogenoemde hersiening(s) sal verwyder word.\n"
 
 #: breezy/builtins.py:5495
 msgid "Uncommit these revisions"
-msgstr ""
+msgstr "Uncommit hierdie hersienings"
 
 #: breezy/builtins.py:5498
 msgid "Canceled\n"
-msgstr ""
+msgstr "Gekanselleer\n"
 
 #: breezy/builtins.py:5507
 #, python-format
@@ -3496,28 +4439,37 @@ msgid ""
 "You can restore the old tip by running:\n"
 "  brz pull . -r revid:%s\n"
 msgstr ""
+"Jy kan die ou wenk herstel deur te hardloop:\n"
+"  brz pull . -r revid:%s\n"
 
 #: breezy/builtins.py:5518
 msgid "Break a dead lock."
-msgstr ""
+msgstr "d"
 
 #: breezy/builtins.py:5520
 msgid ""
 "This command breaks a lock on a repository, branch, working directory or\n"
 "config file."
 msgstr ""
+"Hierdie bevel breek 'n slot op 'n bewaarplek, tak, werkgids of\n"
+"konfig lêer."
 
 #: breezy/builtins.py:5523
 msgid ""
 "CAUTION: Locks should only be broken when you are sure that the process\n"
 "holding the lock has been stopped."
 msgstr ""
+"WAARSKUWING: Slotte moet slegs gebreek word wanneer jy seker is dat die "
+"proses\n"
+"vashou van die slot is gestop."
 
 #: breezy/builtins.py:5526
 msgid ""
 "You can get information on what locks are open via the 'brz info\n"
 "[location]' command."
 msgstr ""
+"Jy kan inligting kry oor watter slotte oop is via die 'brz info\n"
+"[location]' bevel."
 
 #: breezy/builtins.py:5529
 msgid ""
@@ -3529,47 +4481,47 @@ msgstr ""
 
 #: breezy/builtins.py:5538
 msgid "LOCATION is the directory where the config lock is."
-msgstr ""
+msgstr "LIGGING is die gids waar die konfigurasie-slot is."
 
 #: breezy/builtins.py:5540
 msgid "Do not ask for confirmation before breaking the lock."
-msgstr ""
+msgstr "Moenie vir bevestiging vra voordat die slot gebreek word nie."
 
 #: breezy/builtins.py:5575
 msgid "Git Smart server protocol over TCP. (default port: 9418)"
-msgstr ""
+msgstr "Git Smart bediener protokol oor TCP. (verstek poort: 9418)"
 
 #: breezy/builtins.py:5575
 msgid "Git Smart server receive pack command. (inetd mode only)"
-msgstr ""
+msgstr "Git Smart bediener ontvang pak bevel. (slegs inetd modus)"
 
 #: breezy/builtins.py:5575
 msgid "Git Smart server upload pack command. (inetd mode only)"
-msgstr ""
+msgstr "Git Smart bediener oplaai pak bevel. (slegs inetd modus)"
 
 #: breezy/builtins.py:5575
 msgid "The Bazaar smart server protocol over TCP. (default port: 4155)"
-msgstr ""
+msgstr "Die Bazaar slim bediener protokol oor TCP. (verstek poort: 4155)"
 
 #: breezy/builtins.py:5576
 msgid "Run the brz server."
-msgstr ""
+msgstr "Hardloop die brz bediener."
 
 #: breezy/builtins.py:5582
 msgid "Serve on stdin/out for use from inetd or sshd."
-msgstr ""
+msgstr "Dien op stdin/uit vir gebruik vanaf inetd of sshd."
 
 #: breezy/builtins.py:5583
 msgid "protocol"
-msgstr ""
+msgstr "protokol"
 
 #: breezy/builtins.py:5584
 msgid "Protocol to serve."
-msgstr ""
+msgstr "Protokol te bedien"
 
 #: breezy/builtins.py:5589
 msgid "Listen for connections on nominated address."
-msgstr ""
+msgstr "Luister vir verbindings op genomineerde adres."
 
 #: breezy/builtins.py:5592
 msgid ""
@@ -3577,10 +4529,13 @@ msgid ""
 "result in a dynamically allocated port.  The default port depends on the "
 "protocol."
 msgstr ""
+"Luister vir verbindings op genomineerde poort. Deur 0 as die poortnommer "
+"deur te gee, sal 'n dinamies-toegekende poort tot gevolg hê. Die "
+"verstekpoort hang af van die protokol."
 
 #: breezy/builtins.py:5597
 msgid "Serve contents of this directory."
-msgstr ""
+msgstr "Bedien inhoude van hierdiegids."
 
 #: breezy/builtins.py:5599
 msgid ""
@@ -3590,18 +4545,24 @@ msgid ""
 "of external authentication is arranged supplying this option leads to global "
 "uncontrolled write access to your file system."
 msgstr ""
+"By verstek is die bediener 'n leesalleen-bediener.  Voorsiening --allow-"
+"writes stel skryftoegang tot die inhoud van die bediende gids en hieronder "
+"moontlik.  Nota dat ``brz serve`` voer nie stawing uit nie, so tensy een of "
+"ander vorm van eksterne verifikasie gereël word, lei die verskaffing van "
+"hierdie opsie tot globale onbeheerde skryftoegang tot jou lêerstelsel."
 
 #: breezy/builtins.py:5608
 msgid "Override the default idle client timeout (5min)."
-msgstr ""
+msgstr "Ignoreer die verstek ledige klient-uitteltyd (5min)."
 
 #: breezy/builtins.py:5626
 msgid "Combine a tree into its containing tree."
-msgstr ""
+msgstr "Kombineer 'n boom in sy inhouds boom."
 
 #: breezy/builtins.py:5628
 msgid "This command requires the target tree to be in a rich-root format."
 msgstr ""
+"Hierdie opdrag vereis dat die teikenboom in 'n ryk-wortelformaat moet wees."
 
 #: breezy/builtins.py:5630
 msgid ""
@@ -3609,6 +4570,10 @@ msgid ""
 "not part of it.  (Such trees can be produced by \"brz split\", but also by\n"
 "running \"brz branch\" with the target inside a tree.)"
 msgstr ""
+"Die BOOM argument moet 'n onafhanklike boom wees, binne 'n ander boom, maar\n"
+"nie deel daarvan nie. (Sulke bome kan geproduseer word deur \"brz split\", "
+"maar ook deur\n"
+"hardloop \"brz branch\" met die teiken binne 'n boom.)"
 
 #: breezy/builtins.py:5634
 msgid ""
@@ -3616,6 +4581,11 @@ msgid ""
 "part.  This is marked as a merge of the subtree into the containing tree,\n"
 "and all history is preserved."
 msgstr ""
+"Die resultaat is 'n gekombineerde boom, met die sub-boom nie meer 'n "
+"onafhanklike\n"
+"deel. Dit word gemerk as 'n samevoeging van die sub-boom in die bevattende "
+"boom,\n"
+"en alle geskiedenis word bewaar."
 
 #: breezy/builtins.py:5653
 #, python-format
@@ -3623,15 +4593,17 @@ msgid ""
 "Can't join trees because %s doesn't support rich root data.\n"
 "You can use brz upgrade on the repository."
 msgstr ""
+"Kan nie by bome aansluit nie omdat %s ondersteun nie ryk worteldata nie.\n"
+"Jy kan gebruik brz opgradeer op die bewaarplek."
 
 #: breezy/builtins.py:5663 breezy/builtins.py:5669
 #, python-brace-format
 msgid "Cannot join {0}.  {1}"
-msgstr ""
+msgstr "Kon nie by aansluit {0}. {1}"
 
 #: breezy/builtins.py:5673
 msgid "Split a subdirectory of a tree into a separate tree."
-msgstr ""
+msgstr "Verdeel 'n sub-gids van 'n boom in 'n aparte boom."
 
 #: breezy/builtins.py:5675
 msgid ""
@@ -3639,6 +4611,10 @@ msgid ""
 "rich roots, like 'rich-root' or 'rich-root-pack'.  These formats cannot be\n"
 "converted into earlier formats like 'dirstate-tags'."
 msgstr ""
+"Hierdie opdrag sal 'n teikenboom in 'n formaat wat ondersteun\n"
+"ryk wortels, soos 'rich-root' of 'rich-root-pack'.  Hierdie formate kan nie "
+"wees\n"
+"omskep in vroeër formate soos 'dirstate-tags'."
 
 #: breezy/builtins.py:5679
 msgid ""
@@ -3646,38 +4622,47 @@ msgid ""
 "subdirectory will be converted into an independent tree, with its own\n"
 "branch.  Commits in the top-level tree will not apply to the new subtree."
 msgstr ""
+"Die TREE argument moet 'n subgids van 'n werkende boom wees. Daardie\n"
+"sub-gids sal omskep word in 'n onafhanklike boom, met sy eie\n"
+"tak. Commits in die topvlakboom sal nie op die nuwe subboom van toepassing "
+"wees."
 
 #: breezy/builtins.py:5761
 msgid "No submit branch specified or known"
-msgstr ""
+msgstr "Geen submit tak gespesifiseer of bekend nie"
 
 #: breezy/builtins.py:5771 breezy/send.py:96
 msgid "No public branch specified or known"
-msgstr ""
+msgstr "Geen publieke tak gespesifiseer of bekend nie"
 
 #: breezy/builtins.py:5776
 msgid "brz merge-directive takes at most two one revision identifiers"
-msgstr ""
+msgstr "brz merge-direktief neem hoogstens twee een revisie identifiseerders"
 
 #: breezy/builtins.py:5784
 msgid "No revisions to bundle."
-msgstr ""
+msgstr "Geen hersienings aan bondel nie."
 
 #: breezy/builtins.py:5803
 msgid "Mail or create a merge-directive for submitting changes."
 msgstr ""
+"Pos of skep 'n samevoegingsaanwysing vir die indiening van veranderinge."
 
 #: breezy/builtins.py:5805
 msgid "A merge directive provides many things needed for requesting merges:"
 msgstr ""
+"'n Samesmeltingsvoorskrif verskaf baie dinge wat nodig is om samesmeltings "
+"te versoek:"
 
 #: breezy/builtins.py:5807
 msgid "* A machine-readable description of the merge to perform"
-msgstr ""
+msgstr "* 'n Masjienleesbare beskrywing van die samesmelting om uit te voer"
 
 #: breezy/builtins.py:5809
 msgid "* An optional patch that is a preview of the changes requested"
 msgstr ""
+"* 'n Opsionele pleister wat 'n voorskou is van die veranderinge wat versoek "
+"word"
 
 #: breezy/builtins.py:5811
 msgid ""
@@ -3685,12 +4670,19 @@ msgid ""
 "  directly from the merge directive, without retrieving data from a\n"
 "  branch."
 msgstr ""
+"* 'n Opsionele bundel hersieningsdata, sodat die veranderinge toegepas kan "
+"word\n"
+"  direk vanaf die samesmeltingsdirektief, sonder om data van 'n\n"
+"  tak."
 
 #: breezy/builtins.py:5815
 msgid ""
 "`brz send` creates a compact data set that, when applied using brz\n"
 "merge, has the same effect as merging from the source branch."
 msgstr ""
+"`brz send` skep 'n kompakte datastel wat, wanneer dit toegepas word met "
+"behulp van brz\n"
+"samesmelting, het dieselfde effek as samesmelting vanaf die brontak."
 
 #: breezy/builtins.py:5818
 msgid ""
@@ -3698,6 +4690,11 @@ msgid ""
 "branch containing submit_branch in its ancestory without needing access to\n"
 "the source branch."
 msgstr ""
+"By verstek is die samesmeltingsvoorskrif selfstandig en kan dit toegepas "
+"word op enige\n"
+"tak wat bevat tak in sy voorgeslagte voorlê sonder om toegang te benodig "
+"tot\n"
+"die brontak."
 
 #: breezy/builtins.py:5822
 msgid ""
@@ -3716,6 +4713,11 @@ msgid ""
 "source branch defaults to that containing the working directory, but can\n"
 "be changed using --from."
 msgstr ""
+"Die indieningtak is verstek na die ouer van die brontak, maar kan wees\n"
+"geoorskryf. Beide indien-tak en publieke tak sal onthou word in\n"
+"branch.conf die eerste keer dat hulle vir 'n bepaalde tak gebruik word. Die\n"
+"brontak is verstek na dit wat die werkgids bevat, maar kan\n"
+"verander word deur gebruik te maak van --from."
 
 #: breezy/builtins.py:5834
 msgid ""
@@ -3725,6 +4727,14 @@ msgid ""
 "omit the location to use the default.  To change the default, use\n"
 "--remember. The value will only be saved if the location can be accessed."
 msgstr ""
+"Beide die submit tak en die publieke tak volg die gewone gedrag met\n"
+"respek om --remember: Indien daar is geen verstek ligging gestel, die eerste "
+"stuur\n"
+"sal dit stel (gebruik --no-remember om vermy stel dit). Na dit, jy kan\n"
+"laat die ligging weg om die verstek te gebruik. Om die verstek te verander, "
+"gebruik\n"
+"--remember. Die waarde sal slegs gestoor word as toegang tot die ligging "
+"verkry kan word."
 
 #: breezy/builtins.py:5840
 msgid ""
@@ -3733,12 +4743,21 @@ msgid ""
 "If a public location is known for the submit_branch, that location is used\n"
 "in the merge directive."
 msgstr ""
+"Om daardie veranderinge te bereken, moet brz die indieningstak ontleed.\n"
+"Daarom is dit die doeltreffendste vir die indieningstak om 'n plaaslike "
+"spieël te wees.\n"
+"As 'n publieke ligging bekend is vir die submit_branch, word daardie ligging "
+"gebruik\n"
+"in die samesmeltingsvoorskrif."
 
 #: breezy/builtins.py:5845
 msgid ""
 "The default behaviour is to send the merge directive by mail, unless -o is\n"
 "given, in which case it is sent to a file."
 msgstr ""
+"Die verstekgedrag is om die samevoegingsaanwysing per pos te stuur, tensy -o "
+"is\n"
+"gegee, in welke geval dit na 'n lêer gestuur word."
 
 #: breezy/builtins.py:5848
 msgid ""
@@ -3784,6 +4803,7 @@ msgstr ""
 #: breezy/builtins.py:5890
 msgid "Write merge directive to this file or directory; use - for stdout."
 msgstr ""
+"Skryf saamvoeg-instruksie na hierdie lêer of gids; gebruik - vir stdout."
 
 #: breezy/builtins.py:5894
 msgid ""
@@ -3819,7 +4839,7 @@ msgstr ""
 
 #: breezy/builtins.py:5963 breezy/cmd_version_info.py:74
 msgid "format"
-msgstr ""
+msgstr "formaat"
 
 #: breezy/builtins.py:5964
 msgid "Use the specified output format."
