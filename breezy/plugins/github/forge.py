@@ -39,7 +39,7 @@ from ...forge import (
 )
 from ...git.urls import git_url_to_bzr_url
 from ...i18n import gettext
-from ...trace import note
+from ...trace import mutter, note
 from ...transport import get_transport
 
 GITHUB_HOST = 'github.com'
@@ -98,6 +98,15 @@ class NotGitHubUrl(errors.BzrError):
     def __init__(self, url):
         errors.BzrError.__init__(self)
         self.url = url
+
+
+class AutoMergeUnavailable(errors.BzrError):
+
+    _fmt = "Unable to enable auto-merge: %(msg)s"
+
+    def __init__(self, msg):
+        errors.BzrError.__init__(self)
+        self.msg = msg
 
 
 class GitHubLoginRequired(ForgeLoginRequired):
@@ -235,8 +244,7 @@ mutation ($pullRequestId: ID!) {
                 first_error = e.errors[0]
                 if (first_error['type'] == 'UNPROCESSABLE' and
                         first_error['path'] == 'enablePullRequestAutoMerge'):
-                    # TODO(jelmer): better exception type
-                    raise Exception(first_error['message']) from e
+                    raise AutoMergeUnavailable(first_error['message']) from e
                 raise Exception(first_error['message']) from e
         else:
             # https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button
