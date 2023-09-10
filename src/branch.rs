@@ -95,7 +95,7 @@ impl BranchFormat {
     }
 }
 
-pub trait Branch: ToPyObject {
+pub trait Branch: ToPyObject + Send {
     fn format(&self) -> BranchFormat {
         Python::with_gil(|py| BranchFormat(self.to_object(py).getattr(py, "_format").unwrap()))
     }

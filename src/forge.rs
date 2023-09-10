@@ -7,6 +7,12 @@ use pyo3::types::PyDict;
 #[derive(Clone)]
 pub struct Forge(PyObject);
 
+impl From<PyObject> for Forge {
+    fn from(obj: PyObject) -> Self {
+        Forge(obj)
+    }
+}
+
 pub enum MergeProposalStatus {
     All,
     Open,
