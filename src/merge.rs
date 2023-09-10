@@ -5,6 +5,7 @@ use crate::tree::Tree;
 use crate::RevisionId;
 use pyo3::import_exception;
 use pyo3::prelude::*;
+use pyo3::types::PyDict;
 
 import_exception!(breezy.errors, UnrelatedBranches);
 
@@ -21,24 +22,30 @@ impl From<PyObject> for Merger {
 }
 
 impl Merger {
-    pub fn new(branch: &dyn Branch, tree: &dyn Tree, revision_graph: &Graph) -> Self {
+    pub fn new(branch: &dyn Branch, this_tree: &dyn Tree, revision_graph: &Graph) -> Self {
         Python::with_gil(|py| {
             let m = py.import("breezy.merge").unwrap();
             let cls = m.getattr("Merger").unwrap();
-            let merger = cls
-                .call1((
-                    branch.to_object(py),
-                    tree.to_object(py),
-                    revision_graph.to_object(py),
-                ))
+            let kwargs = PyDict::new(py);
+            kwargs
+                .set_item("this_tree", this_tree.to_object(py))
                 .unwrap();
+            kwargs
+                .set_item("revision_graph", revision_graph.to_object(py))
+                .unwrap();
+            let merger = cls.call((branch.to_object(py),), Some(kwargs)).unwrap();
             Merger(merger.into())
         })
     }
 
     pub fn find_base(&self) -> PyResult<Option<RevisionId>> {
         Python::with_gil(|py| match self.0.call_method0(py, "find_base") {
-            Ok(py_obj) => Ok(Some(py_obj.extract(py)?)),
+            Ok(py_obj) => Ok(self
+                .0
+                .getattr(py, "base_rev_id")
+                .unwrap()
+                .extract(py)
+                .unwrap()),
             Err(err) => {
                 if err.is_instance_of::<UnrelatedBranches>(py) {
                     Ok(None)

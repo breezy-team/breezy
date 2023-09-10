@@ -88,7 +88,7 @@ pub trait Tree: ToPyObject {
     fn lock_read(&self) -> PyResult<Lock> {
         Python::with_gil(|py| {
             let lock = self.to_object(py).call_method0(py, "lock_read").unwrap();
-            Ok(Lock(lock))
+            Ok(Lock::from(lock))
         })
     }
 
@@ -200,7 +200,7 @@ pub trait MutableTree: Tree {
     fn lock_write(&self) -> PyResult<Lock> {
         Python::with_gil(|py| {
             let lock = self.to_object(py).call_method0(py, "lock_write").unwrap();
-            Ok(Lock(lock))
+            Ok(Lock::from(lock))
         })
     }
 

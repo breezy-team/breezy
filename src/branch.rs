@@ -101,7 +101,11 @@ pub trait Branch: ToPyObject + Send {
     }
 
     fn lock_read(&self) -> PyResult<Lock> {
-        Python::with_gil(|py| Ok(Lock(self.to_object(py).call_method0(py, "lock_read")?)))
+        Python::with_gil(|py| {
+            Ok(Lock::from(
+                self.to_object(py).call_method0(py, "lock_read")?,
+            ))
+        })
     }
 
     fn repository(&self) -> Repository {
