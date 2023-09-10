@@ -243,7 +243,7 @@ mutation ($pullRequestId: ID!) {
                 mutter('graphql errors: %r', e.errors)
                 first_error = e.errors[0]
                 if (first_error['type'] == 'UNPROCESSABLE' and
-                        first_error['path'] == 'enablePullRequestAutoMerge'):
+                        first_error['path'] == ['enablePullRequestAutoMerge']):
                     raise AutoMergeUnavailable(first_error['message']) from e
                 raise Exception(first_error['message']) from e
         else:
