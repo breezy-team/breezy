@@ -211,6 +211,15 @@ pub trait MutableTree: Tree {
             Ok(())
         })
     }
+
+    fn has_changes(&self) -> std::result::Result<bool, Error> {
+        Python::with_gil(|py| {
+            self.to_object(py)
+                .call_method0(py, "has_changes")?
+                .extract::<bool>(py)
+                .map_err(|e| e.into())
+        })
+    }
 }
 
 pub struct RevisionTree(pub PyObject);

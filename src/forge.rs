@@ -1,8 +1,40 @@
 use crate::branch::{py_tag_selector, Branch, RegularBranch};
 use crate::revisionid::RevisionId;
 use pyo3::conversion::ToPyObject;
+use pyo3::exceptions::PyValueError;
+use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
+use pyo3::types::PyIterator;
+
+import_exception!(breezy.forge, ForgeLoginRequired);
+
+#[derive(Clone, Debug)]
+pub enum Error {
+    LoginRequired,
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Error::LoginRequired => write!(f, "Login required"),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
+
+impl From<PyErr> for Error {
+    fn from(err: PyErr) -> Self {
+        Python::with_gil(|py| {
+            if err.is_instance_of::<ForgeLoginRequired>(py) {
+                Error::LoginRequired
+            } else {
+                panic!("Unexpected error: {}", err);
+            }
+        })
+    }
+}
 
 #[derive(Clone)]
 pub struct Forge(PyObject);
@@ -13,10 +45,18 @@ impl From<PyObject> for Forge {
     }
 }
 
+#[derive(Clone, Copy)]
 pub enum MergeProposalStatus {
     All,
     Open,
+    Closed,
     Merged,
+}
+
+impl MergeProposalStatus {
+    pub fn all() -> Vec<Self> {
+        vec![MergeProposalStatus::All]
+    }
 }
 
 impl ToString for MergeProposalStatus {
@@ -25,6 +65,29 @@ impl ToString for MergeProposalStatus {
             MergeProposalStatus::All => "all".to_string(),
             MergeProposalStatus::Open => "open".to_string(),
             MergeProposalStatus::Merged => "merged".to_string(),
+            MergeProposalStatus::Closed => "closed".to_string(),
+        }
+    }
+}
+
+impl ToPyObject for MergeProposalStatus {
+    fn to_object(&self, py: Python) -> PyObject {
+        self.to_string().to_object(py)
+    }
+}
+
+impl FromPyObject<'_> for MergeProposalStatus {
+    fn extract(ob: &PyAny) -> PyResult<Self> {
+        let status = ob.extract::<String>()?;
+        match status.as_str() {
+            "all" => Ok(MergeProposalStatus::All),
+            "open" => Ok(MergeProposalStatus::Open),
+            "merged" => Ok(MergeProposalStatus::Merged),
+            "closed" => Ok(MergeProposalStatus::Closed),
+            _ => Err(PyValueError::new_err((format!(
+                "Invalid merge proposal status: {}",
+                status
+            ),))),
         }
     }
 }
@@ -235,6 +298,30 @@ impl Forge {
         })
     }
 
+    pub fn iter_my_proposals(
+        &self,
+        status: Option<MergeProposalStatus>,
+        author: Option<String>,
+    ) -> Result<impl Iterator<Item = MergeProposal>, Error> {
+        let ret: Vec<MergeProposal> =
+            Python::with_gil(|py| -> Result<Vec<MergeProposal>, Error> {
+                Ok(self
+                    .to_object(py)
+                    .call_method(
+                        py,
+                        "iter_my_proposals",
+                        (status.to_object(py), author),
+                        None,
+                    )?
+                    .as_ref(py)
+                    .iter()
+                    .unwrap()
+                    .map(|proposal| MergeProposal::new(proposal.unwrap().to_object(py)))
+                    .collect())
+            })?;
+        Ok(ret.into_iter())
+    }
+
     pub fn get_derived_branch(
         &self,
         main_branch: &dyn Branch,
@@ -332,6 +419,12 @@ impl Forge {
     }
 }
 
+impl std::fmt::Debug for Forge {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Forge").finish()
+    }
+}
+
 impl FromPyObject<'_> for Forge {
     fn extract(ob: &PyAny) -> PyResult<Self> {
         Ok(Forge(ob.to_object(ob.py())))
@@ -361,4 +454,18 @@ pub fn determine_title(description: &str) -> String {
         title.extract::<String>()
     })
     .unwrap()
+}
+
+pub fn iter_forge_instances() -> impl Iterator<Item = Forge> {
+    let ret = Python::with_gil(|py| {
+        let m = py.import("breezy.forge").unwrap();
+        let f = m.getattr("iter_forge_instances").unwrap();
+        let instances = f.call0().unwrap();
+        instances
+            .iter()
+            .unwrap()
+            .map(|i| Forge(i.unwrap().to_object(py)))
+            .collect::<Vec<_>>()
+    });
+    ret.into_iter()
 }
