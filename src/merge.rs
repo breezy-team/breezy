@@ -1,5 +1,6 @@
 use crate::branch::Branch;
 use crate::graph::Graph;
+use crate::hooks::HookDict;
 use crate::transform::TreeTransform;
 use crate::tree::Tree;
 use crate::RevisionId;
@@ -8,6 +9,22 @@ use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
 import_exception!(breezy.errors, UnrelatedBranches);
+
+pub enum Error {
+    UnrelatedBranches,
+}
+
+impl From<PyErr> for Error {
+    fn from(e: PyErr) -> Self {
+        Python::with_gil(|py| {
+            if e.is_instance_of::<UnrelatedBranches>(py) {
+                Error::UnrelatedBranches
+            } else {
+                panic!("unexpected error: {:?}", e)
+            }
+        })
+    }
+}
 
 pub struct Merger(PyObject);
 
@@ -102,6 +119,32 @@ impl Merger {
             Ok(Submerger(merger))
         })
     }
+
+    pub fn from_revision_ids(
+        other_tree: &dyn Tree,
+        other_branch: &dyn Branch,
+        other: &RevisionId,
+        tree_branch: &dyn Branch,
+    ) -> Result<Self, Error> {
+        Python::with_gil(|py| {
+            let m = py.import("breezy.merge").unwrap();
+            let cls = m.getattr("Merger").unwrap();
+            let kwargs = PyDict::new(py);
+            kwargs
+                .set_item("other_branch", other_branch.to_object(py))
+                .unwrap();
+            kwargs.set_item("other", other.to_object(py)).unwrap();
+            kwargs
+                .set_item("tree_branch", tree_branch.to_object(py))
+                .unwrap();
+            let merger = cls.call_method(
+                "from_revision_ids",
+                (other_tree.to_object(py),),
+                Some(kwargs),
+            )?;
+            Ok(Merger(merger.into()))
+        })
+    }
 }
 
 pub struct Submerger(PyObject);
@@ -116,4 +159,8 @@ impl Submerger {
             Ok(TreeTransform::from(transform))
         })
     }
+}
+
+lazy_static::lazy_static! {
+    static ref MERGE_HOOKS: HookDict = HookDict::new("breezy.merge", "Merger", "hooks");
 }

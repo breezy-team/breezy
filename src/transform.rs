@@ -17,6 +17,9 @@ impl FromPyObject<'_> for TreeChange {
     }
 }
 
+#[derive(Clone)]
+pub struct Conflict(PyObject);
+
 impl TreeTransform {
     pub fn iter_changes(&self) -> PyResult<Box<dyn Iterator<Item = TreeChange>>> {
         let mut v: Vec<TreeChange> = vec![];
@@ -29,6 +32,20 @@ impl TreeTransform {
             }
 
             Ok(Box::new(v.into_iter()) as Box<dyn Iterator<Item = TreeChange>>)
+        })
+    }
+
+    pub fn cooked_conflicts(&self) -> PyResult<Vec<Conflict>> {
+        let mut v: Vec<Conflict> = vec![];
+
+        Python::with_gil(|py| {
+            let ret = self.to_object(py).getattr(py, "cooked_conflicts")?;
+
+            for item in ret.as_ref(py).iter()? {
+                v.push(Conflict(item?.into()));
+            }
+
+            Ok(v)
         })
     }
 }
