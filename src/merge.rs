@@ -57,7 +57,7 @@ impl Merger {
 
     pub fn find_base(&self) -> PyResult<Option<RevisionId>> {
         Python::with_gil(|py| match self.0.call_method0(py, "find_base") {
-            Ok(py_obj) => Ok(self
+            Ok(_py_obj) => Ok(self
                 .0
                 .getattr(py, "base_rev_id")
                 .unwrap()

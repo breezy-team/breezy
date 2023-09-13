@@ -9,7 +9,7 @@ impl HookDict {
         Python::with_gil(|py| -> PyResult<HookDict> {
             let module = PyModule::import(py, module)?;
             let cls = module.getattr(cls)?;
-            let entrypoint = module.getattr(name)?;
+            let entrypoint = cls.getattr(name)?;
             Ok(Self(entrypoint.to_object(py)))
         })
         .unwrap()

@@ -5,7 +5,6 @@ use pyo3::exceptions::PyValueError;
 use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
-use pyo3::types::PyIterator;
 
 import_exception!(breezy.forge, ForgeLoginRequired);
 
