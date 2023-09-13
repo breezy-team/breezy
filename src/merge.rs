@@ -162,5 +162,5 @@ impl Submerger {
 }
 
 lazy_static::lazy_static! {
-    static ref MERGE_HOOKS: HookDict = HookDict::new("breezy.merge", "Merger", "hooks");
+    pub static ref MERGE_HOOKS: HookDict = HookDict::new("breezy.merge", "Merger", "hooks");
 }
