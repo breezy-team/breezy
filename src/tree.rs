@@ -138,7 +138,7 @@ pub trait Tree: ToPyObject {
         specific_files: Option<&[&std::path::Path]>,
         want_unversioned: Option<bool>,
         require_versioned: Option<bool>,
-    ) -> Result<Box<dyn Iterator<Item = PyResult<TreeChange>>>, Error> {
+    ) -> Result<Box<dyn Iterator<Item = Result<TreeChange, Error>>>, Error> {
         Python::with_gil(|py| {
             let kwargs = pyo3::types::PyDict::new(py);
             if let Some(specific_files) = specific_files {
@@ -153,7 +153,7 @@ pub trait Tree: ToPyObject {
             struct TreeChangeIter(pyo3::PyObject);
 
             impl Iterator for TreeChangeIter {
-                type Item = PyResult<TreeChange>;
+                type Item = Result<TreeChange, Error>;
 
                 fn next(&mut self) -> Option<Self::Item> {
                     Python::with_gil(|py| {
@@ -163,14 +163,14 @@ pub trait Tree: ToPyObject {
                                 if e.is_instance_of::<pyo3::exceptions::PyStopIteration>(py) {
                                     return None;
                                 }
-                                return Some(Err(e));
+                                return Some(Err(e.into()));
                             }
                         };
 
                         if next.is_none(py) {
                             None
                         } else {
-                            Some(next.extract(py))
+                            Some(next.extract(py).map_err(|e| e.into()))
                         }
                     })
                 }
@@ -182,7 +182,7 @@ pub trait Tree: ToPyObject {
                 (other.to_object(py),),
                 Some(kwargs),
             )?))
-                as Box<dyn Iterator<Item = PyResult<TreeChange>>>)
+                as Box<dyn Iterator<Item = Result<TreeChange, Error>>>)
         })
     }
 
