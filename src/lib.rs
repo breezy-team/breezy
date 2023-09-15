@@ -49,3 +49,20 @@ pub use transport::{get_transport, Transport};
 pub use tree::{RevisionTree, Tree, WorkingTree};
 pub use urlutils::{join_segment_parameters, split_segment_parameters};
 pub use workspace::reset_tree;
+
+pub fn init_git() {
+    pyo3::Python::with_gil(|py| {
+        py.import("breezy.git").unwrap();
+    })
+}
+
+pub fn init_bzr() {
+    pyo3::Python::with_gil(|py| {
+        py.import("breezy.bzr").unwrap();
+    })
+}
+
+pub fn init() {
+    init_git();
+    init_bzr();
+}
