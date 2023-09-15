@@ -85,9 +85,9 @@ pub trait Tree: ToPyObject {
         })
     }
 
-    fn lock_read(&self) -> PyResult<Lock> {
+    fn lock_read(&self) -> Result<Lock, Error> {
         Python::with_gil(|py| {
-            let lock = self.to_object(py).call_method0(py, "lock_read").unwrap();
+            let lock = self.to_object(py).call_method0(py, "lock_read")?;
             Ok(Lock::from(lock))
         })
     }
@@ -102,12 +102,13 @@ pub trait Tree: ToPyObject {
         })
     }
 
-    fn get_parent_ids(&self) -> PyResult<Vec<RevisionId>> {
+    fn get_parent_ids(&self) -> Result<Vec<RevisionId>, Error> {
         Python::with_gil(|py| {
-            self.to_object(py)
+            Ok(self
+                .to_object(py)
                 .call_method0(py, "get_parent_ids")
                 .unwrap()
-                .extract(py)
+                .extract(py)?)
         })
     }
 
@@ -137,7 +138,7 @@ pub trait Tree: ToPyObject {
         specific_files: Option<&[&std::path::Path]>,
         want_unversioned: Option<bool>,
         require_versioned: Option<bool>,
-    ) -> PyResult<Box<dyn Iterator<Item = PyResult<TreeChange>>>> {
+    ) -> Result<Box<dyn Iterator<Item = PyResult<TreeChange>>>, Error> {
         Python::with_gil(|py| {
             let kwargs = pyo3::types::PyDict::new(py);
             if let Some(specific_files) = specific_files {
@@ -197,14 +198,14 @@ pub trait Tree: ToPyObject {
 }
 
 pub trait MutableTree: Tree {
-    fn lock_write(&self) -> PyResult<Lock> {
+    fn lock_write(&self) -> Result<Lock, Error> {
         Python::with_gil(|py| {
             let lock = self.to_object(py).call_method0(py, "lock_write").unwrap();
             Ok(Lock::from(lock))
         })
     }
 
-    fn put_file_bytes_non_atomic(&self, path: &std::path::Path, data: &[u8]) -> PyResult<()> {
+    fn put_file_bytes_non_atomic(&self, path: &std::path::Path, data: &[u8]) -> Result<(), Error> {
         Python::with_gil(|py| {
             self.to_object(py)
                 .call_method1(py, "put_file_bytes_non_atomic", (path, data))?;
@@ -378,11 +379,12 @@ impl WorkingTree {
         })
     }
 
-    pub fn abspath(&self, path: &std::path::Path) -> PyResult<std::path::PathBuf> {
+    pub fn abspath(&self, path: &std::path::Path) -> Result<std::path::PathBuf, Error> {
         Python::with_gil(|py| {
-            self.to_object(py)
+            Ok(self
+                .to_object(py)
                 .call_method1(py, "abspath", (path,))?
-                .extract(py)
+                .extract(py)?)
         })
     }
 
@@ -396,7 +398,7 @@ impl WorkingTree {
         })
     }
 
-    pub fn add(&self, paths: &[&std::path::Path]) -> PyResult<()> {
+    pub fn add(&self, paths: &[&std::path::Path]) -> Result<(), Error> {
         Python::with_gil(|py| {
             self.to_object(py)
                 .call_method1(py, "add", (paths.to_vec(),))
@@ -405,7 +407,7 @@ impl WorkingTree {
         Ok(())
     }
 
-    pub fn smart_add(&self, paths: &[&std::path::Path]) -> PyResult<()> {
+    pub fn smart_add(&self, paths: &[&std::path::Path]) -> Result<(), Error> {
         Python::with_gil(|py| {
             self.to_object(py)
                 .call_method1(py, "smart_add", (paths.to_vec(),))
