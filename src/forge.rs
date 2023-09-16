@@ -8,11 +8,13 @@ use pyo3::types::PyDict;
 
 import_exception!(breezy.forge, ForgeLoginRequired);
 import_exception!(breezy.forge, UnsupportedForge);
+import_exception!(breezy.errors, AlreadyControlDirError);
 
 #[derive(Clone, Debug)]
 pub enum Error {
     LoginRequired,
     UnsupportedForge(url::Url),
+    ProjectExists(String),
 }
 
 impl std::fmt::Display for Error {
@@ -20,6 +22,7 @@ impl std::fmt::Display for Error {
         match self {
             Error::LoginRequired => write!(f, "Login required"),
             Error::UnsupportedForge(url) => write!(f, "Unsupported forge: {}", url),
+            Error::ProjectExists(name) => write!(f, "Project already exists: {}", name),
         }
     }
 }
@@ -39,6 +42,14 @@ impl From<PyErr> for Error {
                         .extract::<String>()
                         .unwrap()
                         .parse()
+                        .unwrap(),
+                )
+            } else if err.is_instance_of::<AlreadyControlDirError>(py) {
+                Error::ProjectExists(
+                    err.value(py)
+                        .getattr("path")
+                        .unwrap()
+                        .extract::<String>()
                         .unwrap(),
                 )
             } else {
