@@ -31,7 +31,7 @@ checksum = "b4682ae6287fcf752ecaabbfcc7b6f9b72aa33933dc23a554d853aea8eea8635"
 
 [[package]]
 name = "breezyshim"
-version = "0.1.31"
+version = "0.1.32"
 dependencies = [
  "debversion",
  "lazy_static",
@@ -197,7 +197,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "regex",
- "syn 2.0.33",
+ "syn 2.0.35",
 ]
 
 [[package]]
@@ -476,7 +476,7 @@ checksum = "4eca7ac642d82aa35b60049a6eccb4be6be75e599bd2e9adb5f875a737654af2"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.33",
+ "syn 2.0.35",
 ]
 
 [[package]]
@@ -524,9 +524,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.33"
+version = "2.0.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9caece70c63bfba29ec2fed841a09851b14a235c60010fa4de58089b6c025668"
+checksum = "59bf04c28bee9043ed9ea1e41afc0552288d3aba9c6efdd78903b802926f4879"
 dependencies = [
  "proc-macro2",
  "quote",
