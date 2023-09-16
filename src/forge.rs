@@ -7,16 +7,19 @@ use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
 import_exception!(breezy.forge, ForgeLoginRequired);
+import_exception!(breezy.forge, UnsupportedForge);
 
 #[derive(Clone, Debug)]
 pub enum Error {
     LoginRequired,
+    UnsupportedForge(url::Url),
 }
 
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Error::LoginRequired => write!(f, "Login required"),
+            Error::UnsupportedForge(url) => write!(f, "Unsupported forge: {}", url),
         }
     }
 }
@@ -28,6 +31,16 @@ impl From<PyErr> for Error {
         Python::with_gil(|py| {
             if err.is_instance_of::<ForgeLoginRequired>(py) {
                 Error::LoginRequired
+            } else if err.is_instance_of::<UnsupportedForge>(py) {
+                Error::UnsupportedForge(
+                    err.value(py)
+                        .getattr("branch")
+                        .unwrap()
+                        .extract::<String>()
+                        .unwrap()
+                        .parse()
+                        .unwrap(),
+                )
             } else {
                 panic!("Unexpected error: {}", err);
             }
@@ -467,4 +480,12 @@ pub fn iter_forge_instances() -> impl Iterator<Item = Forge> {
             .collect::<Vec<_>>()
     });
     ret.into_iter()
+}
+
+pub fn create_project(name: &str, summary: Option<&str>) -> Result<(), Error> {
+    Python::with_gil(|py| {
+        let m = py.import("breezy.forge").unwrap();
+        m.call_method1("create_project", (name, summary))?;
+        Ok(())
+    })
 }
