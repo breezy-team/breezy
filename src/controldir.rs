@@ -53,6 +53,15 @@ impl ControlDir {
         })
     }
 
+    pub fn open(url: &url::Url) -> PyResult<ControlDir> {
+        Python::with_gil(|py| {
+            let m = py.import("breezy.controldir")?;
+            let cd = m.getattr("ControlDir")?;
+            let controldir = cd.call_method("open", (url.to_string(),), None)?;
+            Ok(ControlDir(controldir.to_object(py)))
+        })
+    }
+
     pub fn open_containing_from_transport(
         transport: &Transport,
         probers: Option<&[Prober]>,
