@@ -1,4 +1,4 @@
-# Russian translation for brz
+# Kurdish translation for brz
 # Copyright (c) 2023 Rosetta Contributors and Canonical Ltd 2023
 # This file is distributed under the same license as the brz package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2023.
@@ -10,19 +10,18 @@ msgstr ""
 "POT-Creation-Date: 2023-05-23 19:09+0100\n"
 "PO-Revision-Date: 2023-09-08 16:30+0000\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: Russian <ru@li.org>\n"
+"Language-Team: Kurdish <ku@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=3; plural=n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
-"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2023-09-09 07:41+0000\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+"X-Launchpad-Export-Date: 2023-09-09 07:38+0000\n"
 "X-Generator: Launchpad (build 32eed776db4e1fe74faaa77122cde19862d565ac)\n"
 
 #: breezy/add.py:89
 #, python-brace-format
 msgid "skipping {0} (larger than {1} of {2} bytes)"
-msgstr "пропуск {0} (более, чем {1} из {2} байт)"
+msgstr ""
 
 #: breezy/bisect.py:262
 msgid "Find an interesting commit using a binary search."
@@ -1070,7 +1069,7 @@ msgstr ""
 #: breezy/builtins.py:6551 breezy/plugins/fastimport/cmds.py:205
 #: breezy/plugins/fastimport/cmds.py:411 breezy/plugins/gitlab/cmds.py:32
 msgid ":Examples:"
-msgstr ""
+msgstr ":Nimûne:"
 
 #: breezy/builtins.py:1872
 msgid "  Display information on the format and related locations:"
