@@ -165,3 +165,6 @@ extend-exclude = ["lib", "bin"]
 
 [tool.ruff.pydocstyle]
 convention = "google"
+
+[tool.setuptools-gettext]
+build_dir = "breezy/locale"
