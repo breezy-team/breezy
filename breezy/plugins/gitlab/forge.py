@@ -159,6 +159,7 @@ def store_gitlab_token(name, url, private_token):
     from breezy.config import AuthenticationConfig
     auth_config = AuthenticationConfig()
     auth_config._set_option(name, 'url', url)
+    auth_config._set_option(name, 'forge', 'gitlab')
     auth_config._set_option(name, 'private_token', private_token)
 
 
@@ -169,17 +170,25 @@ def iter_tokens():
         [os.path.expanduser(p) for p in _DEFAULT_FILES] +
         # backwards compatibility
         [os.path.join(bedding.config_dir(), 'gitlab.conf')])
-    yield from config.items()
+    for name, creds in config.items():
+        if 'url' not in creds:
+            continue
+        yield name, creds
 
     from breezy.config import AuthenticationConfig
     auth_config = AuthenticationConfig()
-    yield from auth_config._get_config().iteritems()
+    for name, creds in auth_config._get_config().iteritems():
+        if creds.get("forge") == "gitlab":
+            yield name, creds
+        else:
+            url = creds.get("url")
+            # Hack for those without forge set
+            if url and url.startswith('https://gitlab.com/'):
+                yield name, creds
 
 
 def get_credentials_by_url(url):
     for name, credentials in iter_tokens():
-        if 'url' not in credentials:
-            continue
         if credentials['url'].rstrip('/') == url.rstrip('/'):
             return credentials
     else:
@@ -823,8 +832,6 @@ class GitLab(Forge):
     @classmethod
     def iter_instances(cls):
         for name, credentials in iter_tokens():
-            if 'url' not in credentials:
-                continue
             yield cls(
                 get_transport(credentials['url']),
                 private_token=credentials.get('private_token'))
