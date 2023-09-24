@@ -187,6 +187,28 @@ impl MergeProposal {
         })
     }
 
+    pub fn get_target_branch_url(&self) -> PyResult<Option<url::Url>> {
+        Python::with_gil(|py| {
+            let target_branch_url = self.0.call_method0(py, "get_target_branch_url")?;
+            target_branch_url
+                .extract::<String>(py)?
+                .parse()
+                .map(Some)
+                .map_err(|e| PyValueError::new_err(format!("{}", e)))
+        })
+    }
+
+    pub fn get_source_branch_url(&self) -> PyResult<Option<url::Url>> {
+        Python::with_gil(|py| {
+            let source_branch_url = self.0.call_method0(py, "get_source_branch_url")?;
+            source_branch_url
+                .extract::<String>(py)?
+                .parse()
+                .map(Some)
+                .map_err(|e| PyValueError::new_err(format!("{}", e)))
+        })
+    }
+
     pub fn get_description(&self) -> PyResult<Option<String>> {
         Python::with_gil(|py| {
             let description = self.0.call_method0(py, "get_description")?;
@@ -198,6 +220,13 @@ impl MergeProposal {
         Python::with_gil(|py| {
             self.0.call_method1(py, "set_description", (description,))?;
             Ok(())
+        })
+    }
+
+    pub fn can_be_merged(&self) -> PyResult<bool> {
+        Python::with_gil(|py| {
+            let can_be_merged = self.0.call_method0(py, "can_be_merged")?;
+            can_be_merged.extract(py)
         })
     }
 
