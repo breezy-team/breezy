@@ -21,14 +21,18 @@ impl ToPyObject for Transport {
     }
 }
 
-pub fn get_transport(url: &url::Url, possible_transports: Option<Vec<Transport>>) -> Transport {
+pub fn get_transport(
+    url: &url::Url,
+    possible_transports: Option<&mut Vec<Transport>>,
+) -> Transport {
     pyo3::Python::with_gil(|py| {
         let urlutils = py.import("breezy.transport").unwrap();
         let kwargs = PyDict::new(py);
         kwargs
             .set_item(
                 "possible_transports",
-                possible_transports.map(|t| t.into_iter().map(|t| t.0).collect::<Vec<PyObject>>()),
+                possible_transports
+                    .map(|t| t.iter().map(|t| t.0.clone()).collect::<Vec<PyObject>>()),
             )
             .unwrap();
         let o = urlutils
