@@ -53,6 +53,19 @@ impl ControlDir {
         })
     }
 
+    pub fn create_standalone_workingtree(
+        base: &std::path::Path,
+        format: Option<&str>,
+    ) -> PyResult<WorkingTree> {
+        let base = base.to_str().unwrap();
+        Python::with_gil(|py| {
+            let m = py.import("breezy.controldir")?;
+            let cd = m.getattr("ControlDir")?;
+            let wt = cd.call_method("create_standalone_workingtree", (base, format), None)?;
+            Ok(WorkingTree(wt.to_object(py)))
+        })
+    }
+
     pub fn open(url: &url::Url) -> PyResult<ControlDir> {
         Python::with_gil(|py| {
             let m = py.import("breezy.controldir")?;
