@@ -6,17 +6,18 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: brz\n"
-"Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
+"Report-Msgid-Bugs-To: <breezy-vcs@groups.google.com>\n"
 "POT-Creation-Date: 2023-05-23 21:53+0100\n"
-"PO-Revision-Date: 2023-09-04 18:00+0000\n"
+"PO-Revision-Date: 2023-09-08 16:30+0000\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Occitan (post 1500) <oc@li.org>\n"
+"Language: \n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Launchpad-Export-Date: 2023-09-05 05:03+0000\n"
-"X-Generator: Launchpad (build 203f35b713beed25421591e82c62fdfedf492fe3)\n"
+"X-Launchpad-Export-Date: 2023-09-09 07:39+0000\n"
+"X-Generator: Launchpad (build 32eed776db4e1fe74faaa77122cde19862d565ac)\n"
 
 #: breezy/add.py:89
 #, python-brace-format
@@ -308,8 +309,7 @@ msgid "To re-create the working tree, use \"brz checkout\"."
 msgstr ""
 
 #: breezy/builtins.py:464
-msgid ""
-"Remove the working tree even if it has uncommitted or shelved changes."
+msgid "Remove the working tree even if it has uncommitted or shelved changes."
 msgstr ""
 
 #: breezy/builtins.py:479
@@ -790,8 +790,8 @@ msgstr ""
 #: breezy/builtins.py:1414
 msgid ""
 "If the TO_LOCATION is omitted, the last component of the FROM_LOCATION will\n"
-"be used.  In other words, \"branch ../foo/bar\" will attempt to create "
-"./bar.\n"
+"be used.  In other words, \"branch ../foo/bar\" will attempt to create ./"
+"bar.\n"
 "If the FROM_LOCATION has no / or path separator embedded, the TO_LOCATION\n"
 "is derived from the FROM_LOCATION by stripping a leading scheme or drive\n"
 "identifier, if any. For example, \"branch lp:foo-bar\" will attempt to\n"
@@ -1215,18 +1215,15 @@ msgid ""
 msgstr ""
 
 #: breezy/builtins.py:2080
-msgid ""
-"Create the path leading up to the branch if it does not already exist."
+msgid "Create the path leading up to the branch if it does not already exist."
 msgstr ""
 
 #: breezy/builtins.py:2083
-msgid ""
-"Specify a format for this branch. See \"help formats\" for a full list."
+msgid "Specify a format for this branch. See \"help formats\" for a full list."
 msgstr ""
 
 #: breezy/builtins.py:2092
-msgid ""
-"Never change revnos or the existing log.  Append revisions to it only."
+msgid "Never change revnos or the existing log.  Append revisions to it only."
 msgstr ""
 
 #: breezy/builtins.py:2095
@@ -1723,8 +1720,7 @@ msgid "  * ``brz log guide.txt`` will log the file added in revision 1"
 msgstr ""
 
 #: breezy/builtins.py:2642
-msgid ""
-"  * ``brz log tutorial.txt`` will log the new file added in revision 3"
+msgid "  * ``brz log tutorial.txt`` will log the new file added in revision 3"
 msgstr ""
 
 #: breezy/builtins.py:2644
@@ -1773,8 +1769,7 @@ msgid ""
 msgstr ""
 
 #: breezy/builtins.py:2670
-msgid ""
-"  You may find it useful to add the aliases below to ``breezy.conf``::"
+msgid "  You may find it useful to add the aliases below to ``breezy.conf``::"
 msgstr ""
 
 #: breezy/builtins.py:2672
@@ -2138,8 +2133,7 @@ msgid "not a valid revision-number: %r"
 msgstr ""
 
 #: breezy/builtins.py:3333
-msgid ""
-"Export current or past revision to a destination directory or archive."
+msgid "Export current or past revision to a destination directory or archive."
 msgstr ""
 
 #: breezy/builtins.py:3335
@@ -2167,8 +2161,7 @@ msgid ""
 msgstr ""
 
 #: breezy/builtins.py:3348
-msgid ""
-"Note: Export of tree with non-ASCII filenames to zip is not supported."
+msgid "Note: Export of tree with non-ASCII filenames to zip is not supported."
 msgstr ""
 
 #: breezy/builtins.py:3350
@@ -2203,8 +2196,7 @@ msgid ""
 msgstr ""
 
 #: breezy/builtins.py:3377
-msgid ""
-"Export the working tree contents rather than that of the last revision."
+msgid "Export the working tree contents rather than that of the last revision."
 msgstr ""
 
 #: breezy/builtins.py:3380
@@ -2221,8 +2213,7 @@ msgid "Unsupported export format: %s"
 msgstr ""
 
 #: breezy/builtins.py:3432
-msgid ""
-"Write the contents of a file as of a given revision to standard output."
+msgid "Write the contents of a file as of a given revision to standard output."
 msgstr ""
 
 #: breezy/builtins.py:3434
@@ -2442,14 +2433,14 @@ msgstr ""
 
 #: breezy/builtins.py:3752
 msgid ""
-"Empty commit message specified. Please specify a commit message with either -"
-"-message or --file or leave a blank message with --message \"\"."
+"Empty commit message specified. Please specify a commit message with either "
+"--message or --file or leave a blank message with --message \"\"."
 msgstr ""
 
 #: breezy/builtins.py:3772
 msgid ""
-"No changes to commit. Please 'brz add' the files you want to commit, or use -"
-"-unchanged to force an empty commit."
+"No changes to commit. Please 'brz add' the files you want to commit, or use "
+"--unchanged to force an empty commit."
 msgstr ""
 
 #: breezy/builtins.py:3776
@@ -2728,13 +2719,11 @@ msgid "brz alias --remove expects an alias to remove."
 msgstr ""
 
 #: breezy/builtins.py:4245
-msgid ""
-"subunit not available. subunit needs to be installed to use --subunit."
+msgid "subunit not available. subunit needs to be installed to use --subunit."
 msgstr ""
 
 #: breezy/builtins.py:4262
-msgid ""
-"subunit not available. subunit needs to be installed to use --subunit2."
+msgid "subunit not available. subunit needs to be installed to use --subunit2."
 msgstr ""
 
 #: breezy/builtins.py:4271
@@ -2811,8 +2800,7 @@ msgid ""
 msgstr ""
 
 #: breezy/builtins.py:4400
-msgid ""
-"Use brz resolve when you have fixed a problem.  See also brz conflicts."
+msgid "Use brz resolve when you have fixed a problem.  See also brz conflicts."
 msgstr ""
 
 #: breezy/builtins.py:4402
@@ -2930,8 +2918,8 @@ msgstr ""
 
 #: breezy/builtins.py:4498
 msgid ""
-"Merging into empty branches not currently supported, "
-"https://bugs.launchpad.net/bzr/+bug/308562"
+"Merging into empty branches not currently supported, https://bugs.launchpad."
+"net/bzr/+bug/308562"
 msgstr ""
 
 #: breezy/builtins.py:4520
@@ -2974,8 +2962,7 @@ msgid "Cannot do conflict reduction and show base."
 msgstr ""
 
 #: breezy/builtins.py:4646
-msgid ""
-"Plan file merge unsupported: Merge type incompatible with tree formats."
+msgid "Plan file merge unsupported: Merge type incompatible with tree formats."
 msgstr ""
 
 #: breezy/builtins.py:4757
@@ -3996,8 +3983,7 @@ msgid "Whether new branches in the repository have trees."
 msgstr ""
 
 #: breezy/builtins.py:6226
-msgid ""
-"Reconfigure repository to create working trees on branches by default."
+msgid "Reconfigure repository to create working trees on branches by default."
 msgstr ""
 
 #: breezy/builtins.py:6228
@@ -5336,8 +5322,7 @@ msgid "Verify all commit signatures."
 msgstr ""
 
 #: breezy/commit_signature_commands.py:90
-msgid ""
-"Verifies that all commits in the branch are signed by known GnuPG keys."
+msgid "Verifies that all commits in the branch are signed by known GnuPG keys."
 msgstr ""
 
 #: breezy/commit_signature_commands.py:95
@@ -5739,8 +5724,7 @@ msgid "Could not acquire lock \"%(lock)s\": %(msg)s"
 msgstr ""
 
 #: breezy/errors.py:806
-msgid ""
-"Lock was broken while still open: %(lock)s - check storage consistency!"
+msgid "Lock was broken while still open: %(lock)s - check storage consistency!"
 msgstr ""
 
 #: breezy/errors.py:817
@@ -5816,8 +5800,8 @@ msgstr ""
 
 #: breezy/errors.py:1007
 msgid ""
-"Bound branch %(branch)s is out of date with master branch "
-"%(master)s.%(extra_help)s"
+"Bound branch %(branch)s is out of date with master branch %(master)s."
+"%(extra_help)s"
 msgstr ""
 
 #: breezy/errors.py:1019
@@ -6017,8 +6001,7 @@ msgid "Working tree is out of date, please run 'brz update'.%(more)s"
 msgstr ""
 
 #: breezy/errors.py:1565
-msgid ""
-"Public branch \"%(public_location)s\" lacks revision \"%(revstring)s\"."
+msgid "Public branch \"%(public_location)s\" lacks revision \"%(revstring)s\"."
 msgstr ""
 
 #: breezy/errors.py:1578
@@ -6196,8 +6179,8 @@ msgstr ""
 
 #: breezy/errors.py:1937
 msgid ""
-"Working tree \"%(display_url)s\" has uncommitted changes (See brz "
-"status).%(more)s"
+"Working tree \"%(display_url)s\" has uncommitted changes (See brz status)."
+"%(more)s"
 msgstr ""
 
 #: breezy/errors.py:1956
@@ -6207,8 +6190,8 @@ msgstr ""
 
 #: breezy/errors.py:1971
 msgid ""
-"Working tree \"%(display_url)s\" has shelved changes (See brz shelve --"
-"list).%(more)s"
+"Working tree \"%(display_url)s\" has shelved changes (See brz shelve --list)."
+"%(more)s"
 msgstr ""
 
 #: breezy/errors.py:1977
@@ -6225,8 +6208,7 @@ msgid "Tip change rejected: %(msg)s"
 msgstr ""
 
 #: breezy/errors.py:2010
-msgid ""
-"An attempt to access a url outside the server jail was made: '%(url)s'."
+msgid "An attempt to access a url outside the server jail was made: '%(url)s'."
 msgstr ""
 
 #: breezy/errors.py:2018
@@ -6972,8 +6954,8 @@ msgid ""
 " Recent versions of the fast-import specification support features\n"
 " that allow effective round-tripping most of the metadata in Bazaar\n"
 " branches. As such, fast-exporting a branch and fast-importing the data\n"
-" produced will create a new repository with roughly equivalent history, "
-"i.e.\n"
+" produced will create a new repository with roughly equivalent history, i."
+"e.\n"
 " \"bzr log -v -p --include-merges --forward\" on the old branch and\n"
 " new branch should produce similar, if not identical, results."
 msgstr ""
@@ -7128,8 +7110,7 @@ msgid "Replace characters invalid in git with '_' (plain mode only)."
 msgstr ""
 
 #: breezy/plugins/fastimport/cmds.py:469
-msgid ""
-"Export an 'absolute' baseline commit prior tothe first relative commit"
+msgid "Export an 'absolute' baseline commit prior tothe first relative commit"
 msgstr ""
 
 #: breezy/plugins/fastimport/cmds.py:473
@@ -8783,8 +8764,8 @@ msgid ""
 "--profile      Profile execution using the hotshot profiler.\n"
 "--lsprof       Profile execution using the lsprof profiler.\n"
 "--lsprof-file  Profile execution using the lsprof profiler, and write the\n"
-"               results to a specified file.  If the filename ends with "
-"\".txt\",\n"
+"               results to a specified file.  If the filename ends with \"."
+"txt\",\n"
 "               text format will be used.  If the filename either starts "
 "with\n"
 "               \"callgrind.out\" or end with \".callgrind\", the output will "
@@ -9278,8 +9259,7 @@ msgid "  brz branch sftp://host.com/path/to/my/branch"
 msgstr ""
 
 #: en/help_topics/authentication.txt:33
-msgid ""
-"provided you have created the following ``authentication.conf`` file::"
+msgid "provided you have created the following ``authentication.conf`` file::"
 msgstr ""
 
 #: en/help_topics/authentication.txt:35
@@ -9413,8 +9393,8 @@ msgstr ""
 #: en/help_topics/authentication.txt:99
 msgid ""
 " 4. ``host`` matches exactly or act as a domain if it starts with '.'\n"
-"    (``project.bzr.sf.net`` will match ``.bzr.sf.net`` but "
-"``projectbzr.sf.net``\n"
+"    (``project.bzr.sf.net`` will match ``.bzr.sf.net`` but ``projectbzr.sf."
+"net``\n"
 "    will not match ``bzr.sf.net``)."
 msgstr ""
 
@@ -9723,8 +9703,7 @@ msgid ""
 msgstr ""
 
 #: en/help_topics/bugs.txt:54
-msgid ""
-"Use ``bzr commit --fixes lp:2`` to record that this commit fixes bug 2."
+msgid "Use ``bzr commit --fixes lp:2`` to record that this commit fixes bug 2."
 msgstr ""
 
 #: en/help_topics/bugs.txt:56
@@ -9818,8 +9797,8 @@ msgstr ""
 
 #: en/help_topics/bugs.txt:103
 msgid ""
-"would allow ``bzr commit --fixes hudson:HUDSON-1234`` to mark bug HUDSON-"
-"1234\n"
+"would allow ``bzr commit --fixes hudson:HUDSON-1234`` to mark bug "
+"HUDSON-1234\n"
 "in Hudson's JIRA bug tracker as fixed.\n"
 msgstr ""
 
@@ -9881,8 +9860,7 @@ msgid ""
 msgstr ""
 
 #: en/help_topics/configuration.txt:29
-msgid ""
-"Control whether SIGQUIT behaves normally or invokes a breakin debugger."
+msgid "Control whether SIGQUIT behaves normally or invokes a breakin debugger."
 msgstr ""
 
 #: en/help_topics/configuration.txt:31
@@ -9991,8 +9969,7 @@ msgid ""
 msgstr ""
 
 #: en/help_topics/configuration.txt:83
-msgid ""
-"* the user specific plugin directory (containing the ``user`` plugins),"
+msgid "* the user specific plugin directory (containing the ``user`` plugins),"
 msgstr ""
 
 #: en/help_topics/configuration.txt:85
@@ -10368,8 +10345,8 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:287
 msgid ""
-"Policies are specified by keys with names of the form "
-"\"<option_name>:policy\".\n"
+"Policies are specified by keys with names of the form \"<option_name>:"
+"policy\".\n"
 "For example, to define the push location for a tree of branches, the\n"
 "following could be used::"
 msgstr ""
@@ -11095,10 +11072,10 @@ msgstr ""
 #: en/help_topics/configuration.txt:673
 msgid ""
 "Defines the maximum file size the command line \"add\" operation will allow\n"
-"in recursive mode, with files larger than this value being skipped. You may "
-"\n"
-"specify this value as an integer (in which case it is interpreted as bytes), "
-"\n"
+"in recursive mode, with files larger than this value being skipped. You "
+"may \n"
+"specify this value as an integer (in which case it is interpreted as "
+"bytes), \n"
 "or you may specify the value using SI units, i.e. 10KB, 20MB, 1G. A value of "
 "0 \n"
 "will disable skipping."
@@ -11565,8 +11542,7 @@ msgid ""
 msgstr ""
 
 #: en/help_topics/conflict-types.txt:200
-msgid ""
-"    Conflict because FILE is not versioned, but has versioned children."
+msgid "    Conflict because FILE is not versioned, but has versioned children."
 msgstr ""
 
 #: en/help_topics/conflict-types.txt:202
@@ -11759,8 +11735,8 @@ msgstr ""
 
 #: en/help_topics/conflict-types.txt:328
 msgid ""
-"* ``--action=take-this`` will acknowledge Bazaar choice of leaving ``white`` "
-"\n"
+"* ``--action=take-this`` will acknowledge Bazaar choice of leaving "
+"``white`` \n"
 "  in ``black``,\n"
 "* ``--action=take-other`` will revert Bazaar choice and move ``black`` in\n"
 "   ``white`` by issuing ``brz mv black/white white ; brz mv black white``,\n"
@@ -12354,11 +12330,11 @@ msgid ""
 "======================\n"
 " ``native-with-crlf-in-repo`` ``crlf`` on Windows,     ``crlf``\n"
 "                              ``lf`` otherwise\n"
-" ---------------------------- ------------------------ ----------------------"
-"\n"
+" ---------------------------- ------------------------ "
+"----------------------\n"
 " ``lf-with-crlf-in-repo``     ``lf``                   ``crlf``\n"
-" ---------------------------- ------------------------ ----------------------"
-"\n"
+" ---------------------------- ------------------------ "
+"----------------------\n"
 " ``crlf-with-crlf-in-repo``   ``crlf``                 ``crlf``\n"
 " ============================ ======================== ======================"
 msgstr ""
@@ -13372,8 +13348,7 @@ msgid ""
 msgstr ""
 
 #: en/help_topics/hooks.txt:348
-msgid ""
-"Called with a breezy.lock.LockResult when a physical lock is acquired."
+msgid "Called with a breezy.lock.LockResult when a physical lock is acquired."
 msgstr ""
 
 #: en/help_topics/hooks.txt:350
@@ -13393,8 +13368,7 @@ msgid ""
 msgstr ""
 
 #: en/help_topics/hooks.txt:362
-msgid ""
-"Called with a breezy.lock.LockResult when a physical lock is released."
+msgid "Called with a breezy.lock.LockResult when a physical lock is released."
 msgstr ""
 
 #: en/help_topics/hooks.txt:364
@@ -13875,8 +13849,7 @@ msgid ""
 msgstr ""
 
 #: en/help_topics/patterns.txt:30
-msgid ""
-"For example, a case insensitive match for ``foo`` may be specified as::"
+msgid "For example, a case insensitive match for ``foo`` may be specified as::"
 msgstr ""
 
 #: en/help_topics/patterns.txt:32
@@ -13890,8 +13863,7 @@ msgid ""
 msgstr ""
 
 #: en/help_topics/patterns.txt:37
-msgid ""
-".. _Python regular expressions: http://docs.python.org/library/re.html"
+msgid ".. _Python regular expressions: http://docs.python.org/library/re.html"
 msgstr ""
 
 #: en/help_topics/revisionspec.txt:1
