@@ -23,6 +23,7 @@ walkdir = "2.3"
 lazy_static = "1"
 sftp = { version = ">=0.2", optional = true }
 log = { workspace = true }
+nix = { workspace = true, features = ["uio"] }
 
 [features]
 default = ["pyo3", "sftp"]
