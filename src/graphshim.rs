@@ -21,8 +21,8 @@ impl Graph {
                 .0
                 .call_method1(py, "find_unique_ancestors", (old_tip, parents))
                 .unwrap();
-            let result = result.extract::<HashSet<RevisionId>>(py).unwrap();
-            result
+            
+            result.extract::<HashSet<RevisionId>>(py).unwrap()
         })
     }
 }

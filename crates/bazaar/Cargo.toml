@@ -28,7 +28,7 @@ maplit = "1.0.2"
 lazy-regex = "3.0.0"
 
 [target.'cfg(unix)'.dependencies]
-nix = ">= 0.26"
+nix = { workspace = true }
 
 [features]
 default = ["pyo3"]

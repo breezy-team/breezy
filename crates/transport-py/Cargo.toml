@@ -7,12 +7,12 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = ">=0.19", features = ["extension-module"]}
+pyo3 = { workspace = true, features = ["extension-module"]}
 breezy-transport = { path = "../transport" }
-pyo3-file = { git = "https://github.com/breezy-team/pyo3-file" }
+pyo3-file = { workspace = true }
 sftp = "0.2.0"
-url = "2.2"
-log = "0.4"
+url = { workspace = true }
+log = { workspace = true }
 
 [target.'cfg(unix)'.dependencies]
-nix = ">=0.26"
+nix = { workspace = true }
