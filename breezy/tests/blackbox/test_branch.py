@@ -485,8 +485,7 @@ class TestBranchStacked(tests.TestCaseWithTransport):
 
     def test_branch_stacked(self):
         # We have a mainline
-        trunk_tree = self.make_branch_and_tree('mainline',
-                                               format='1.9')
+        trunk_tree = self.make_branch_and_tree('mainline')
         original_revid = trunk_tree.commit('mainline')
         self.assertRevisionInRepository('mainline', original_revid)
         # and a branch from it which is stacked
