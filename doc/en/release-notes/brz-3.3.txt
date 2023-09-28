@@ -224,6 +224,17 @@ brz 3.3.5
 
 * Fix compatibility with Python 3.12. Jelmer Vernooĳ, #2047991)
 
+* Fix shipping of translations. (Jelmer Vernooĳ)
+
+* Fix GitLab instance iteration when GitHub credentials
+  are also stored in authentication.conf. (Jelmer Vernooĳ)
+
+* List scripts as dynamic; fixing a setuptools warning.
+  (Jelmer Vernooĳ)
+
+* Mark pre-2a repository formats as ``recommend_upgrade``
+  (Jelmer Vernooĳ)
+
 brz 3.3.4
 #########
 
