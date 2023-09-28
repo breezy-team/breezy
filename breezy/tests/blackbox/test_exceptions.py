@@ -58,6 +58,8 @@ class TestOptParseBugHandling(tests.TestCase):
 
 class TestObsoleteRepoFormat(RepositoryFormat2a):
 
+    upgrade_recommended = True
+
     @classmethod
     def get_format_string(cls):
         return b"Test Obsolete Repository Format"

@@ -1403,3 +1403,4 @@ class RepositoryFormat2aSubtree(RepositoryFormat2a):
 
     experimental = True
     supports_tree_reference = True
+    upgrade_recommended = True

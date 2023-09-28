@@ -216,6 +216,7 @@ class RepositoryFormatKnitPack4(RepositoryFormatPack):
     _commit_builder_class = PackCommitBuilder
     rich_root_data = True
     supports_tree_reference = False
+    upgrade_recommended = True
 
     @property
     def _serializer(self):
