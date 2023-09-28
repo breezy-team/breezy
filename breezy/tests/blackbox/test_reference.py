@@ -22,7 +22,7 @@ from breezy.tests import TestCaseWithTransport
 class TestReference(TestCaseWithTransport):
 
     def get_default_format(self):
-        return controldir.format_registry.make_controldir('development-subtree')
+        return controldir.format_registry.make_controldir('2a')
 
     def test_no_args_lists(self):
         tree = self.make_branch_and_tree('branch')
