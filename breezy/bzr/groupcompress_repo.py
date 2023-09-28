@@ -1357,6 +1357,7 @@ class RepositoryFormat2a(RepositoryFormatPack):
     fast_deltas = True
     pack_compresses = True
     supports_tree_reference = True
+    upgrade_recommended = False
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir('2a')
