@@ -7,8 +7,8 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = ">=0.19", features = ["extension-module"]}
-pyo3-file = { git = "https://github.com/breezy-team/pyo3-file" }
+pyo3 = { workspace = true, features = ["extension-module"]}
+pyo3-file = { workspace = true }
 breezy = { path = "../..", features = ["pyo3"] }
 gettext-rs = "0.7"
-log = { version="0.4", features=["std"]}
+log = { workspace = true, features=["std"]}

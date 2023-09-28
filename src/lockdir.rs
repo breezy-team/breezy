@@ -6,7 +6,7 @@
 /// the lock holder is still alive.
 
 use std::collections::HashMap;
-use std::hash::Hash;
+
 use std::time::SystemTime;
 use log::debug;
 use serde::{Serialize, Deserialize};
@@ -111,7 +111,7 @@ impl LockHeldInfo {
     /// This doesn't check whether the lock holder is in fact the same process
     /// calling this method.  (In that case it will return true.)
     pub fn is_lock_holder_known_dead(&self) -> bool {
-        if self.hostname != Some(breezy_osutils::get_host_name().unwrap().to_string()) {
+        if self.hostname != Some(breezy_osutils::get_host_name().unwrap()) {
             return false;
         }
         if self.hostname == Some("localhost".to_string()) {
@@ -128,7 +128,7 @@ impl LockHeldInfo {
             return false;
         }
         let pid = nix::unistd::Pid::from_raw(self.pid.unwrap() as i32);
-        return breezy_osutils::is_local_pid_dead(pid)
+        breezy_osutils::is_local_pid_dead(pid)
     }
 }
 
