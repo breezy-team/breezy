@@ -245,6 +245,7 @@ class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
     _commit_builder_class: type[VersionedFileCommitBuilder]
     # Set this attribute in derived clases to control the _serializer that the
     # repository objects will have passed to their constructor.
+    upgrade_recommended = True
 
     @property
     def _inventory_serializer(self):

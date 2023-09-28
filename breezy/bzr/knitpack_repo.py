@@ -187,6 +187,7 @@ class RepositoryFormatKnitPack1(RepositoryFormatPack):
 
     repository_class = KnitPackRepository
     _commit_builder_class = PackCommitBuilder
+    upgrade_recommended = True
 
     @property
     def _inventory_serializer(self):
@@ -233,6 +234,7 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
     rich_root_data = True
     experimental = True
     supports_tree_reference = True
+    upgrade_recommended = True
 
     @property
     def _inventory_serializer(self):
@@ -323,6 +325,7 @@ class RepositoryFormatKnitPack5(RepositoryFormatPack):
     # What index classes to use
     index_builder_class = InMemoryGraphIndex
     index_class = GraphIndex
+    upgrade_recommended = True
 
     @property
     def _inventory_serializer(self):
@@ -365,6 +368,7 @@ class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
     # What index classes to use
     index_builder_class = InMemoryGraphIndex
     index_class = GraphIndex
+    upgrade_recommended = True
 
     @property
     def _inventory_serializer(self):
@@ -407,6 +411,7 @@ class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
     _commit_builder_class = PackCommitBuilder
     rich_root_data = True
     supports_tree_reference = False  # no subtrees
+    upgrade_recommended = True
 
     supports_external_lookups = True
     # What index classes to use
@@ -464,6 +469,7 @@ class RepositoryFormatKnitPack6(RepositoryFormatPack):
     # What index classes to use
     index_builder_class = btree_index.BTreeBuilder
     index_class = btree_index.BTreeGraphIndex
+    upgrade_recommended = True
 
     @property
     def _inventory_serializer(self):
@@ -505,6 +511,7 @@ class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
     # What index classes to use
     index_builder_class = btree_index.BTreeBuilder
     index_class = btree_index.BTreeGraphIndex
+    upgrade_recommended = True
 
     @property
     def _inventory_serializer(self):
@@ -550,6 +557,7 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
     # What index classes to use
     index_builder_class = btree_index.BTreeBuilder
     index_class = btree_index.BTreeGraphIndex
+    upgrade_recommended = True
 
     @property
     def _inventory_serializer(self):
