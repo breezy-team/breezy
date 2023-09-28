@@ -48,10 +48,7 @@ latex_documents = [
     for start, target, title, author, doc_class in brz_documents
     ]
 
-texinfo_documents = [
-    (start, target, title, author, doc_class)
-    for start, target, title, author, doc_class in brz_documents
-    ]
+texinfo_documents = list(brz_documents)
 
 # List of documents that shouldn't be included in the build.
 # Note: Maybe some of them *ought* to be linked in somewhere?
