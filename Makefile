@@ -317,3 +317,9 @@ check-dist-tarball:
 
 reformat:
 	isort .
+
+.testrepository:
+	testr init
+
+testr: .testrepository all
+	testr run --parallel
