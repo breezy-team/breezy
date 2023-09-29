@@ -16,7 +16,7 @@
 
 __docformat__ = "google"
 
-from typing import List, Type, TYPE_CHECKING, Optional, Iterable
+from typing import TYPE_CHECKING, Iterable, List, Optional, Type
 
 from .lazy_import import lazy_import
 
@@ -30,7 +30,9 @@ from breezy import (
 from breezy.i18n import gettext
 """)
 
-from . import controldir, debug, errors, graph, registry, revision as _mod_revision, ui
+from . import controldir, debug, errors, graph, registry
+from . import revision as _mod_revision
+from . import ui
 from .decorators import only_raises
 from .inter import InterObject
 from .lock import LogicalLockResult, _RelockDebugMixin

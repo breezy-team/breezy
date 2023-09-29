@@ -16,8 +16,8 @@
 
 """Routines for extracting all version information from a bzr branch."""
 
-from contextlib import ExitStack
 import time
+from contextlib import ExitStack
 from typing import Type
 
 from breezy import registry
