@@ -17,25 +17,27 @@
 """InterRepository operations."""
 
 import itertools
-from typing import Callable, Dict, Tuple, Optional
+from typing import Callable, Dict, Optional, Tuple
 
 from dulwich.errors import NotCommitError
-from dulwich.objects import ObjectID
 from dulwich.object_store import ObjectStoreGraphWalker
+from dulwich.objects import ObjectID
 from dulwich.pack import PACK_SPOOL_FILE_MAX_SIZE
 from dulwich.protocol import CAPABILITY_THIN_PACK, ZERO_SHA
 from dulwich.refs import SYMREF
+
 try:
     from dulwich.refs import PEELED_TAG_SUFFIX
 except ImportError:  # dulwich < 0.21.3
     from dulwich.refs import ANNOTATED_TAG_SUFFIX as PEELED_TAG_SUFFIX
+
 from dulwich.walk import Walker
 
 from .. import config, trace, ui
 from ..errors import (DivergedBranches, FetchLimitUnsupported,
                       InvalidRevisionId, LossyPushToSameVCS,
                       NoRoundtrippingSupport, NoSuchRevision)
-from ..repository import FetchResult, InterRepository, AbstractSearchResult
+from ..repository import AbstractSearchResult, FetchResult, InterRepository
 from ..revision import NULL_REVISION, RevisionID
 from .errors import NoPushSupport
 from .fetch import DetermineWantsRecorder, import_git_objects
@@ -46,7 +48,6 @@ from .refs import is_tag, ref_to_tag_name
 from .remote import RemoteGitError, RemoteGitRepository
 from .repository import GitRepository, GitRepositoryFormat, LocalGitRepository
 from .unpeel_map import UnpeelMap
-
 
 EitherId = Tuple[Optional[RevisionID], Optional[ObjectID]]
 EitherRefDict = Dict[bytes, EitherId]

@@ -40,7 +40,7 @@ extensions:
 	@echo "building extension modules."
 	$(PYTHON) setup.py build_ext -i $(PYTHON_BUILDFLAGS)
 
-check: docs check-nodocs
+check:: docs check-nodocs
 
 check-nodocs: brz
 	-$(RM) -f selftest.log
@@ -317,6 +317,11 @@ check-dist-tarball:
 
 reformat:
 	isort .
+
+check:: check-formatting
+
+check-formatting:
+	isort --check-only .
 
 .testrepository:
 	testr init
