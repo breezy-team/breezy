@@ -320,6 +320,7 @@ check-dist-tarball:
 	rm -rf $$tmpdir
 
 reformat:
+	isort .
 	find breezy crates  -name '*.rs' | xargs rustfmt
 
 clippy-fix:
@@ -336,3 +337,9 @@ ruff-fix:
 
 fix: clippy ruff-fix
 	$(MAKE) reformat
+
+.testrepository:
+	testr init
+
+testr: .testrepository all
+	testr run --parallel

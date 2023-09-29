@@ -31,7 +31,7 @@ class TestamentSetup(TestCaseWithTransport):
 
     def setUp(self):
         super().setUp()
-        self.wt = self.make_branch_and_tree('.', format='development-subtree')
+        self.wt = self.make_branch_and_tree('.')
         self.wt.set_root_id(b'TREE_ROT')
         b = self.b = self.wt.branch
         b.nick = "test branch"
