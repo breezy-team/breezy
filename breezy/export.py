@@ -198,11 +198,9 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
                 os.symlink(symlink_target, fullpath)
             except OSError as e:
                 raise errors.BzrError(
-                    "Failed to create symlink %r -> %r, error: %s"
-                    % (fullpath, symlink_target, e)) from e
+                    "Failed to create symlink {!r} -> {!r}, error: {}".format(fullpath, symlink_target, e)) from e
         else:
-            raise errors.BzrError("don't know how to export {%s} of kind %r" %
-                                  (tp, ie.kind))
+            raise errors.BzrError("don't know how to export {{{}}} of kind {!r}".format(tp, ie.kind))
 
         yield
     # The data returned here can be in any order, but we've already created all

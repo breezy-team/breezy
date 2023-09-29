@@ -107,8 +107,7 @@ class TestInfo(tests.TestCaseWithTransport):
             format_description = info.describe_format(tree.controldir,
                                                       tree.branch.repository, tree.branch, tree)
             self.assertEqual(expected, format_description,
-                             "checkout of format called %r was described as %r" %
-                             (expected, format_description))
+                             "checkout of format called {!r} was described as {!r}".format(expected, format_description))
         finally:
             control._format.workingtree_format = old_format
 

@@ -517,8 +517,7 @@ class TestBranchStacked(tests.TestCaseWithTransport):
             '  Branch format 7\n'
             'Doing on-the-fly conversion from RepositoryFormatKnitPack1() to RepositoryFormatKnitPack5().\n'
             'This may take some time. Upgrade the repositories to the same format for better performance.\n'
-            'Created new stacked branch referring to %s.\n' %
-            (trunk.base,),
+            'Created new stacked branch referring to {}.\n'.format(trunk.base),
             err)
 
     def test_branch_stacked_from_rich_root_non_stackable(self):
@@ -533,7 +532,7 @@ class TestBranchStacked(tests.TestCaseWithTransport):
             '  Branch format 7\n'
             'Doing on-the-fly conversion from RepositoryFormatKnitPack4() to RepositoryFormatKnitPack5RichRoot().\n'
             'This may take some time. Upgrade the repositories to the same format for better performance.\n'
-            'Created new stacked branch referring to %s.\n' % (trunk.base,),
+            'Created new stacked branch referring to {}.\n'.format(trunk.base),
             err)
 
 
@@ -566,14 +565,14 @@ class TestBranchParentLocation(test_switch.TestSwitchParentLocationBase):
 
     def _checkout_and_branch(self, option=''):
         self.script_runner.run_script(self, '''
-                $ brz checkout %(option)s repo/trunk checkout
+                $ brz checkout {option} repo/trunk checkout
                 $ cd checkout
                 $ brz branch --switch ../repo/trunk ../repo/branched
                 2>Branched 0 revisions.
                 2>Tree is up to date at revision 0.
                 2>Switched to branch:...branched...
                 $ cd ..
-                ''' % locals())
+                '''.format(**locals()))
         bound_branch = branch.Branch.open_containing('checkout')[0]
         master_branch = branch.Branch.open_containing('repo/branched')[0]
         return (bound_branch, master_branch)

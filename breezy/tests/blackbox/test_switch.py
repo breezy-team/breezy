@@ -402,13 +402,13 @@ class TestSwitchParentLocation(TestSwitchParentLocationBase):
 
     def _checkout_and_switch(self, option=''):
         self.script_runner.run_script(self, '''
-                $ brz checkout %(option)s repo/trunk checkout
+                $ brz checkout {option} repo/trunk checkout
                 $ cd checkout
                 $ brz switch --create-branch switched
                 2>Tree is up to date at revision 0.
                 2>Switched to branch at .../switched/
                 $ cd ..
-                ''' % locals())
+                '''.format(**locals()))
         bound_branch = branch.Branch.open_containing('checkout')[0]
         master_branch = branch.Branch.open_containing('repo/switched')[0]
         return (bound_branch, master_branch)

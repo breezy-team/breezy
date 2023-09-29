@@ -193,9 +193,8 @@ class Pack:
         if missing_items:
             from pprint import pformat
             raise errors.BzrCheckError(
-                "Newly created pack file %r has delta references to "
-                "items not in its repository:\n%s"
-                % (self, pformat(missing_items)))
+                f"Newly created pack file {self!r} has delta references to "
+                f"items not in its repository:\n{pformat(missing_items)}")
 
     def file_name(self):
         """Get the file name for the pack on disk."""
@@ -718,9 +717,8 @@ class Packer:
         # XXX: - duplicate code warning with start_write_group; fix before
         #      considering 'done'.
         if self._pack_collection._new_pack is not None:
-            raise errors.BzrError('call to %s.pack() while another pack is'
-                                  ' being written.'
-                                  % (self.__class__.__name__,))
+            raise errors.BzrError('call to {}.pack() while another pack is'
+                                  ' being written.'.format(self.__class__.__name__))
         if self.revision_ids is not None:
             if len(self.revision_ids) == 0:
                 # silly fetch request.
@@ -1617,8 +1615,7 @@ class RepositoryPackCollection:
             all_missing.update([(prefix,) + key for key in missing])
         if all_missing:
             raise errors.BzrCheckError(
-                "Repository %s has missing compression parent(s) %r "
-                % (self.repo, sorted(all_missing)))
+                "Repository {} has missing compression parent(s) {!r} ".format(self.repo, sorted(all_missing)))
         problems = self._check_new_inventories()
         if problems:
             problems_summary = '\n'.join(problems)

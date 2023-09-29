@@ -3707,9 +3707,8 @@ class cmd_commit(Command):
                 file_exists = False
             if file_exists:
                 warning_msg = (
-                    'The commit message is a file name: "%(f)s".\n'
-                    '(use --file "%(f)s" to take commit message from that file)'
-                    % {'f': message})
+                    f'The commit message is a file name: "{message}".\n'
+                    f'(use --file "{message}" to take commit message from that file)')
                 ui.ui_factory.show_warning(warning_msg)
             if '\r' in message:
                 message = message.replace('\r\n', '\n')

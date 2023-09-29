@@ -674,8 +674,7 @@ class AbstractHTTPHandler(urllib.request.AbstractHTTPHandler):
                     hdrs.append(f'{k}: {v}')
                 trace.mutter('> ' + '\n> '.join(hdrs) + '\n')
             if self._debuglevel >= 1:
-                print('Request sent: [%r] from (%s)'
-                      % (request, request.connection.sock.getsockname()))
+                print('Request sent: [{!r}] from ({})'.format(request, request.connection.sock.getsockname()))
             response = connection.getresponse()
             convert_to_addinfourl = True
         except (ssl.SSLError, ssl.CertificateError):
@@ -717,8 +716,7 @@ class AbstractHTTPHandler(urllib.request.AbstractHTTPHandler):
             resp.version = r.version
             if self._debuglevel >= 2:
                 print('Create addinfourl: %r' % resp)
-                print('  For: {!r}({!r})'.format(request.get_method(),
-                                         request.get_full_url()))
+                print(f'  For: {request.get_method()!r}({request.get_full_url()!r})')
             if debug.debug_flag_enabled('http'):
                 version = 'HTTP/%d.%d'
                 try:
@@ -1438,7 +1436,7 @@ def get_digest_algorithm_impls(algorithm):
         H = osutils.sha_string
     if H is not None:
         def KD(secret, data): return H(
-            f"{secret}:{data}".encode('utf-8'))
+            f"{secret}:{data}".encode())
     return H, KD
 
 
@@ -1507,8 +1505,8 @@ class DigestAuthHandler(AbstractAuthHandler):
     def build_auth_header(self, auth, request):
         uri = urlparse(request.selector).path
 
-        A1 = f"{auth['user']}:{auth['realm']}:{auth['password']}".encode('utf-8')
-        A2 = f'{request.get_method()}:{uri}'.encode('utf-8')
+        A1 = f"{auth['user']}:{auth['realm']}:{auth['password']}".encode()
+        A2 = f'{request.get_method()}:{uri}'.encode()
 
         nonce = auth['nonce']
         qop = auth['qop']
@@ -2485,7 +2483,7 @@ class SmartClientHTTPMediumRequest(medium.SmartClientMediumRequest):
         if excess != b'':
             raise AssertionError(
                 '_get_line returned excess bytes, but this mediumrequest '
-                'cannot handle excess. (%r)' % (excess,))
+                f'cannot handle excess. ({excess!r})')
         return line
 
     def _finished_reading(self):

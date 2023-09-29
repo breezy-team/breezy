@@ -254,8 +254,7 @@ class PathBasedViews(_Views):
                                      text)
             return keywords, views
         except ValueError as e:
-            raise ValueError("failed to deserialize views content %r: %s"
-                             % (view_content, e)) from e
+            raise ValueError("failed to deserialize views content {!r}: {}".format(view_content, e)) from e
 
 
 class DisabledViews(_Views):

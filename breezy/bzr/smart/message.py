@@ -154,8 +154,7 @@ class ConventionalRequestHandler(MessageHandler):
     def end_received(self):
         if self.expecting not in ['body', 'end']:
             raise errors.SmartProtocolError(
-                'End of message received prematurely (while expecting %s)'
-                % (self.expecting,))
+                'End of message received prematurely (while expecting {})'.format(self.expecting))
         self.expecting = 'nothing'
         self.request_handler.end_received()
         if not self.request_handler.finished_reading:
@@ -249,8 +248,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         if not self._body_started:
             if self.args is not None:
                 raise errors.SmartProtocolError(
-                    'Unexpected structure received: %r (already got %r)'
-                    % (structure, self.args))
+                    'Unexpected structure received: {!r} (already got {!r})'.format(structure, self.args))
             self.args = structure
         else:
             if self._body_stream_status != b'E':

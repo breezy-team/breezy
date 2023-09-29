@@ -60,8 +60,8 @@ def _read_dirblocks(state):
     # this checks our adjustment, and also catches file too short.
     if field_count - cur != expected_field_count:
         raise DirstateCorrupt(state,
-                              'field count incorrect %s != %s, entry_size=%s, '
-                              'num_entries=%s fields=%r' % (
+                              'field count incorrect {} != {}, entry_size={}, '
+                              'num_entries={} fields={!r}'.format(
                                   field_count - cur, expected_field_count, entry_size,
                                   state._num_entries, fields))
 

@@ -97,8 +97,7 @@ class TestMatchesAncestry(TestCaseWithTransport):
         mismatch = m.match([])
         self.assertIsNot(None, mismatch)
         self.assertEqual(
-            "mismatched ancestry for revision {!r} was [{!r}], expected []".format(
-                revid1, revid1),
+            f"mismatched ancestry for revision {revid1!r} was [{revid1!r}], expected []",
             mismatch.describe())
 
 

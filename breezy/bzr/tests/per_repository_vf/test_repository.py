@@ -267,8 +267,8 @@ class TestRepository(TestCaseWithRepository):
                 rev_key = (tree.commit("foo"),)
             except errors.IllegalPath as e:
                 raise tests.TestNotApplicable(
-                    'file_id %r cannot be stored on this'
-                    ' platform for this repo format' % (file_id,)) from e
+                    f'file_id {file_id!r} cannot be stored on this'
+                    ' platform for this repo format') from e
             if repo._format.rich_root_data:
                 root_commit = (tree.path2id(''),) + rev_key
                 keys = {root_commit}

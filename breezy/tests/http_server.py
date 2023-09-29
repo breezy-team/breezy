@@ -29,7 +29,7 @@ from . import test_server
 
 class BadWebserverPath(ValueError):
     def __str__(self):
-        return 'path %s is not in %s' % self.args
+        return 'path {} is not in {}'.format(*self.args)
 
 
 class TestingHTTPRequestHandler(http_server.SimpleHTTPRequestHandler):

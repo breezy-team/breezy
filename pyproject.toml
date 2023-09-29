@@ -111,6 +111,7 @@ select = [
     "INT", # gettext
 #   "SIM", # simplify
     "C4",  # comprehensions
+    "UP",  # pyupgrade
 ]
 ignore = [
     "ANN001",

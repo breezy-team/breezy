@@ -69,8 +69,7 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
         item.linkname = tree.get_symlink_target(tree_path)
         fileobj = None
     else:
-        raise errors.BzrError("don't know how to export {%s} of kind %r"
-                              % (final_path, entry.kind))
+        raise errors.BzrError("don't know how to export {{{}}} of kind {!r}".format(final_path, entry.kind))
     return (item, fileobj)
 
 

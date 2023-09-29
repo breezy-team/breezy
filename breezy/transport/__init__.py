@@ -309,7 +309,7 @@ class FileFileStream(FileStream):
         osutils.fdatasync(fileno)
 
     def write(self, bytes):
-        class F(object):
+        class F:
             def __init__(self, f):
                 self.f = f
             def write(self, b):

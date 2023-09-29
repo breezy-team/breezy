@@ -689,30 +689,26 @@ class VerboseTestResult(ExtendedTestResult):
         return f'{indent}{err[1]}'
 
     def report_error(self, test, err):
-        self.stream.write('ERROR %s\n%s\n'
-                          % (self._testTimeString(test),
+        self.stream.write('ERROR {}\n{}\n'.format(self._testTimeString(test),
                              self._error_summary(err)))
 
     def report_failure(self, test, err):
-        self.stream.write(' FAIL %s\n%s\n'
-                          % (self._testTimeString(test),
+        self.stream.write(' FAIL {}\n{}\n'.format(self._testTimeString(test),
                              self._error_summary(err)))
 
     def report_known_failure(self, test, err):
-        self.stream.write('XFAIL %s\n%s\n'
-                          % (self._testTimeString(test),
+        self.stream.write('XFAIL {}\n{}\n'.format(self._testTimeString(test),
                              self._error_summary(err)))
 
     def report_unexpected_success(self, test, reason):
-        self.stream.write(' FAIL %s\n%s: %s\n'
-                          % (self._testTimeString(test),
+        self.stream.write(' FAIL {}\n{}: {}\n'.format(self._testTimeString(test),
                              "Unexpected success. Should have failed",
                              reason))
 
     def report_success(self, test):
         self.stream.write(f'   OK {self._testTimeString(test)}\n')
         for bench_called, stats in getattr(test, '_benchcalls', []):
-            self.stream.write('LSProf output for %s(%s, %s)\n' % bench_called)
+            self.stream.write('LSProf output for {}({}, {})\n'.format(*bench_called))
             stats.pprint(file=self.stream)
         # flush the stream so that we get smooth output. This verbose mode is
         # used to show the output in PQM.
@@ -726,8 +722,7 @@ class VerboseTestResult(ExtendedTestResult):
 
     def report_unsupported(self, test, feature):
         """Test cannot be run because feature is missing."""
-        self.stream.write("NODEP %s\n    The feature '%s' is not available.\n"
-                          % (self._testTimeString(test), feature))
+        self.stream.write("NODEP {}\n    The feature '{}' is not available.\n".format(self._testTimeString(test), feature))
 
 
 class TextTestRunner:
@@ -1087,10 +1082,9 @@ class TestCase(testtools.TestCase):
             message = (
                 'Different number of acquired and '
                 'released or broken locks.\n'
-                'acquired=%s\n'
-                'released=%s\n'
-                'broken=%s\n' %
-                (acquired_locks, released_locks, broken_locks))
+                f'acquired={acquired_locks}\n'
+                f'released={released_locks}\n'
+                f'broken={broken_locks}\n')
             if not self._lock_check_thorough:
                 # Rather than fail, just warn
                 print(f"Broken test {self}: {message}")
@@ -1186,8 +1180,7 @@ class TestCase(testtools.TestCase):
         # are appropriately isolated and enable their use by calling
         # self.permit_transport()
         if not osutils.is_inside_any(self._bzr_selftest_roots, url):
-            raise errors.BzrError("Attempt to escape test isolation: %r %r"
-                                  % (url, self._bzr_selftest_roots))
+            raise errors.BzrError("Attempt to escape test isolation: {!r} {!r}".format(url, self._bzr_selftest_roots))
 
     def record_directory_isolation(self):
         """Gather accessed directories to permit later access.
@@ -1276,8 +1269,7 @@ class TestCase(testtools.TestCase):
             trace.mutter('UnicodeError: %s', e)
         if message:
             message += '\n'
-        raise AssertionError("%snot equal:\na = %s\nb = %s\n"
-                             % (message,
+        raise AssertionError("{}not equal:\na = {}\nb = {}\n".format(message,
                                 pprint.pformat(a), pprint.pformat(b)))
 
     # FIXME: This is deprecated in unittest2 but plugins may still use it so we
@@ -1408,8 +1400,7 @@ class TestCase(testtools.TestCase):
         """Assert that every entry in sublist is present in superlist."""
         missing = set(sublist) - set(superlist)
         if len(missing) > 0:
-            raise AssertionError("value(s) %r not present in container %r" %
-                                 (missing, superlist))
+            raise AssertionError("value(s) {!r} not present in container {!r}".format(missing, superlist))
 
     def assertListRaises(self, excClass, func, *args, **kwargs):  # noqa: N803
         """Fail unless excClass is raised when the iterator from func is used.
@@ -1475,8 +1466,7 @@ class TestCase(testtools.TestCase):
         path_stat = transport.stat(path)
         actual_mode = stat.S_IMODE(path_stat.st_mode)
         self.assertEqual(mode, actual_mode,
-                         'mode of %r incorrect (%s != %s)'
-                         % (path, oct(mode), oct(actual_mode)))
+                         'mode of {!r} incorrect ({} != {})'.format(path, oct(mode), oct(actual_mode)))
 
     def assertIsSameRealPath(self, path1, path2):
         """Fail if path1 and path2 points to different files."""
@@ -2904,7 +2894,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         """
         if type(shape) not in (list, tuple):
             raise AssertionError("Parameter 'shape' should be "
-                                 "a list or a tuple. Got %r instead" % (shape,))
+                                 f"a list or a tuple. Got {shape!r} instead")
         # It's OK to just create them using forward slashes on windows.
         if transport is None or transport.is_readonly():
             transport = _mod_transport.get_transport_from_path(".")
@@ -3041,8 +3031,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         except _mod_transport.NoSuchFile:
             self.fail(f"path {relpath} is not a directory; no such file")
         if not stat.S_ISDIR(mode):
-            self.fail("path %s is not a directory; has mode %#o"
-                      % (relpath, mode))
+            self.fail(f"path {relpath} is not a directory; has mode {mode:#o}")
 
     def assertTreesEqual(self, left, right):
         """Check that left and right have the same content and properties."""
@@ -4425,8 +4414,7 @@ def _rmtree_temp_dir(dirname, test_id=None):
             ui.ui_factory.clear_term()
             sys.stderr.write(f'\nWhile running: {test_id}\n')
         # Ugly, but the last thing we want here is fail, so bear with it.
-        sys.stderr.write('Unable to remove testing dir %s\n%s'
-                         % (os.path.basename(dirname), e))
+        sys.stderr.write('Unable to remove testing dir {}\n{}'.format(os.path.basename(dirname), e))
 
 
 def probe_unicode_in_user_encoding():

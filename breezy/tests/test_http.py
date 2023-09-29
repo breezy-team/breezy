@@ -451,7 +451,7 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
             socket.setdefaulttimeout(2)
             s = socket.socket()
             s.bind(('localhost', 0))
-            t = self._transport('http://%s:%s/' % s.getsockname())
+            t = self._transport('http://{}:{}/'.format(*s.getsockname()))
             self.assertRaises(ConnectionError, t.has, 'foo/bar')
         finally:
             socket.setdefaulttimeout(default_timeout)

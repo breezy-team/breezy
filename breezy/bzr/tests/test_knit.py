@@ -754,8 +754,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         alt2 = [(b'f-id', b'rev-%d' % i) for i in [5, 1, 2, 4, 3, 6]]
         if keys != alt1 and keys != alt2:
             self.fail('Returned key order did not match either expected order.'
-                      ' expected %s or %s, not %s'
-                      % (alt1, alt2, keys))
+                      f' expected {alt1} or {alt2}, not {keys}')
 
 
 class LowLevelKnitDataTests(TestCase):

@@ -522,7 +522,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
             if len(old_repository._fallback_repositories) != 1:
                 raise AssertionError(
                     "can't cope with fallback repositories "
-                    "of %r (fallbacks: %r)" % (
+                    "of {!r} (fallbacks: {!r})".format(
                         old_repository, old_repository._fallback_repositories))
             # Open the new repository object.
             # Repositories don't offer an interface to remove fallback

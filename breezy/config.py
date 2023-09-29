@@ -471,9 +471,8 @@ class Config:
             if isinstance(value, list):
                 value = self._expand_options_in_list(value)
             elif isinstance(value, dict):
-                trace.warning('Cannot expand "%s":'
-                              ' Dicts do not support option expansion'
-                              % (option_name,))
+                trace.warning(f'Cannot expand "{option_name}":'
+                              ' Dicts do not support option expansion')
             else:
                 value = self._expand_options_in_string(value)
         for hook in OldConfigHooks['get']:
@@ -2311,9 +2310,8 @@ class RegistryOption(Option):
             return self.registry.get(unicode_str)
         except KeyError as e:
             raise ValueError(
-                "Invalid value %s for %s."
-                "See help for a list of possible values." % (unicode_str,
-                                                             self.name)) from e
+                f"Invalid value {unicode_str} for {self.name}."
+                "See help for a list of possible values.") from e
 
     @property
     def help(self):
@@ -2899,7 +2897,7 @@ class Store:
 
 
 class CommandLineStore(Store):
-    "A store to carry command line overrides for the config options."""
+    """A store to carry command line overrides for the config options."""
 
     def __init__(self, opts=None):
         super().__init__()
@@ -3493,9 +3491,8 @@ class Stack:
                     if isinstance(val, str):
                         val = self._expand_options_in_string(val)
                     else:
-                        trace.warning('Cannot expand "%s":'
-                                      ' %s does not support option expansion'
-                                      % (name, type(val)))
+                        trace.warning(f'Cannot expand "{name}":'
+                                      f' {type(val)} does not support option expansion')
                 if opt is None:
                     val = found_store.unquote(val)
                 elif convert:

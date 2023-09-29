@@ -671,8 +671,7 @@ class VersionedFileRepository(Repository):
         if not (inv.revision_id is None or inv.revision_id == revision_id):
             raise AssertionError(
                 "Mismatch between inventory revision"
-                " id and insertion revid (%r, %r)"
-                % (inv.revision_id, revision_id))
+                f" id and insertion revid ({inv.revision_id!r}, {revision_id!r})")
         if inv.root is None:
             raise errors.RootMissing()
         return self._add_inventory_checked(revision_id, inv, parents)
@@ -875,8 +874,7 @@ class VersionedFileRepository(Repository):
         sum(map(len, chunks))
         if item_data and sha1 != item_data[1]:
             checker._report_items.append(
-                'sha1 mismatch: %s has sha1 %s expected %s referenced by %s' %
-                (record.key, sha1, item_data[1], item_data[2]))
+                'sha1 mismatch: {} has sha1 {} expected {} referenced by {}'.format(record.key, sha1, item_data[1], item_data[2]))
 
     def _eliminate_revisions_not_present(self, revision_ids):
         """Check every revision id in revision_ids to see if we have it.
@@ -2031,7 +2029,7 @@ class StreamSource:
             if vf is None and keys:
                 raise AssertionError(
                     "cannot fill in keys for a versioned file we don't"
-                    " have: %s needs %s" % (substream_kind, keys))
+                    f" have: {substream_kind} needs {keys}")
             if not keys:
                 # No need to stream something we don't have
                 continue

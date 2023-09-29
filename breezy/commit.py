@@ -628,8 +628,7 @@ class Commit:
             # the user) this is still showing progress, not showing overall
             # actions - its up to each plugin to show a UI if it want's to
             # (such as 'Emailing diff to foo@example.com').
-            self.pb_stage_name = "Running %s hooks [%s]" % \
-                (hook_name, Branch.hooks.get_hook_name(hook))
+            self.pb_stage_name = "Running {} hooks [{}]".format(hook_name, Branch.hooks.get_hook_name(hook))
             self._emit_progress()
             if debug.debug_flag_enabled('hooks'):
                 mutter("Invoking commit hook: %r", hook)
@@ -681,8 +680,8 @@ class Commit:
                 if report_changes:
                     reporter.missing(new_path)
                 if change.kind[0] == 'symlink' and not self.work_tree.supports_symlinks():
-                    trace.warning('Ignoring "%s" as symlinks are not '
-                                  'supported on this filesystem.' % (change.path[0],))
+                    trace.warning(f'Ignoring "{change.path[0]}" as symlinks are not '
+                                  'supported on this filesystem.')
                     continue
                 deleted_paths.append(change.path[1])
                 # Reset the new path (None) and new versioned flag (False)

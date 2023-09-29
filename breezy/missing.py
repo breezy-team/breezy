@@ -180,7 +180,7 @@ def _find_unmerged(local_branch, remote_branch, restrict,
     else:
         if restrict != 'all':
             raise ValueError('param restrict not one of "all", "local",'
-                             ' "remote": %r' % (restrict,))
+                             f' "remote": {restrict!r}')
         local_extra, remote_extra = graph.find_difference(local_revision_id,
                                                           remote_revision_id)
     if include_merged:

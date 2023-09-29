@@ -221,8 +221,7 @@ if len(sys.argv) == 2:
         uni_val, ue_val = probe_unicode_in_user_encoding()
         if ue_val is None:
             self.skipTest(
-                'Cannot find a unicode character that works in encoding %s'
-                % (osutils.get_user_encoding(),))
+                'Cannot find a unicode character that works in encoding {}'.format(osutils.get_user_encoding()))
 
         self.assertEqual('test message from fed\n',
                          msgeditor.edit_commit_message(uni_val))

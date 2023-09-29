@@ -120,8 +120,8 @@ class GitTreeFile(_mod_tree.TreeFile):
                 self.executable == other.executable)
 
     def __repr__(self):
-        return ("%s(file_id=%r, name=%r, parent_id=%r, text_size=%r, "
-                "git_sha1=%r, executable=%r)") % (
+        return ("{}(file_id={!r}, name={!r}, parent_id={!r}, text_size={!r}, "
+                "git_sha1={!r}, executable={!r})").format(
             type(self).__name__, self.file_id, self.name, self.parent_id,
             self.text_size, self.git_sha1, self.executable)
 
@@ -196,8 +196,8 @@ class GitTreeSubmodule(_mod_tree.TreeReference):
         return 'tree-reference'
 
     def __repr__(self):
-        return ("%s(file_id=%r, name=%r, parent_id=%r, "
-                "reference_revision=%r)") % (
+        return ("{}(file_id={!r}, name={!r}, parent_id={!r}, "
+                "reference_revision={!r})").format(
             type(self).__name__, self.file_id, self.name, self.parent_id,
             self.reference_revision)
 

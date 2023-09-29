@@ -227,8 +227,7 @@ class FakeClient(_SmartClient):
 
     def finished_test(self):
         if self._expected_calls:
-            raise AssertionError("%r finished but was still expecting %r"
-                                 % (self, self._expected_calls[0]))
+            raise AssertionError("{!r} finished but was still expecting {!r}".format(self, self._expected_calls[0]))
 
     def _get_next_response(self):
         try:
@@ -248,15 +247,13 @@ class FakeClient(_SmartClient):
         try:
             next_call = self._expected_calls.pop(0)
         except IndexError as e:
-            raise AssertionError("%r didn't expect any more calls "
-                                 "but got %r%r"
-                                 % (self, method, args,)) from e
+            raise AssertionError(f"{self!r} didn't expect any more calls "
+                                 f"but got {method!r}{args!r}") from e
         if next_call is None:
             return
         if method != next_call[0] or args != next_call[1]:
             raise AssertionError(
-                "%r expected %r%r but got %r%r" %
-                (self, next_call[0], next_call[1], method, args,))
+                "{!r} expected {!r}{!r} but got {!r}{!r}".format(self, next_call[0], next_call[1], method, args,))
 
     def call(self, method, *args):
         self._check_call(method, args)

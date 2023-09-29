@@ -80,8 +80,7 @@ class TransportLogDecorator(decorator.TransportDecorator):
             kwargs_str = dict(kwargs)
         else:
             kwargs_str = ''
-        mutter("%s %s %s %s"
-               % (methodname, relpath,
+        mutter("{} {} {} {}".format(methodname, relpath,
                   self._shorten(self._strip_tuple_parens(args)),
                   kwargs_str))
         return self._call_and_log_result(methodname, (relpath,) + args, kwargs)

@@ -71,7 +71,7 @@ class TextConflict(_mod_conflicts.Conflict):
     _conflict_re = re.compile(b'^(<{7}|={7}|>{7})')
 
     def __init__(self, path):
-        super(TextConflict, self).__init__(path)
+        super().__init__(path)
 
     def associated_filenames(self):
         return [self.path + suffix for suffix in ('.BASE', '.OTHER', '.THIS')]

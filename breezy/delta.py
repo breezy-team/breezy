@@ -76,9 +76,9 @@ class TreeDelta:
         return not (self == other)
 
     def __repr__(self):
-        return "TreeDelta(added=%r, removed=%r, renamed=%r," \
-            " copied=%r, kind_changed=%r, modified=%r, unchanged=%r," \
-            " unversioned=%r)" % (
+        return "TreeDelta(added={!r}, removed={!r}, renamed={!r}," \
+            " copied={!r}, kind_changed={!r}, modified={!r}, unchanged={!r}," \
+            " unversioned={!r})".format(
                 self.added, self.removed, self.renamed, self.copied,
                 self.kind_changed, self.modified, self.unchanged,
                 self.unversioned)
@@ -123,8 +123,8 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
             else:
                 if change.kind[0] == 'symlink' and not new_tree.supports_symlinks():
                     trace.warning(
-                        'Ignoring "%s" as symlinks '
-                        'are not supported on this filesystem.' % (change.path[0],))
+                        f'Ignoring "{change.path[0]}" as symlinks '
+                        'are not supported on this filesystem.')
                 else:
                     delta.removed.append(change)
         elif fully_present[0] is False:
@@ -222,7 +222,7 @@ class _ChangeReporter:
             self.view_name = view_info[0]
             self.view_files = view_info[1]
             self.output("Operating on whole tree but only reporting on "
-                        "'%s' view." % (self.view_name,))
+                        f"'{self.view_name}' view.")
 
     def report(self, paths, versioned, renamed, copied, modified, exe_change,
                kind):

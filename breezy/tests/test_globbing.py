@@ -67,12 +67,10 @@ class TestGlobster(TestCase):
             globster = Globster([glob])
             for name in positive:
                 self.assertTrue(globster.match(name), repr(
-                    'name "%s" does not match glob "%s" (re=%s)' %
-                    (name, glob, globster._regex_patterns[0][0].pattern)))
+                    'name "{}" does not match glob "{}" (re={})'.format(name, glob, globster._regex_patterns[0][0].pattern)))
             for name in negative:
                 self.assertFalse(globster.match(name), repr(
-                    'name "%s" does match glob "%s" (re=%s)' %
-                    (name, glob, globster._regex_patterns[0][0].pattern)))
+                    'name "{}" does match glob "{}" (re={})'.format(name, glob, globster._regex_patterns[0][0].pattern)))
 
     def assertMatchBasenameAndFullpath(self, matchset):
         # test basename matcher

@@ -71,7 +71,7 @@ class TCPClient:
     def read(self, bufsize=4096):
         try:
             return self.sock.recv(bufsize)
-        except socket.error as e:
+        except OSError as e:
             if e.errno == errno.ECONNRESET:
                 return b""
             raise

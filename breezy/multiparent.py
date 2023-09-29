@@ -296,8 +296,8 @@ class ParentText:
                 b'num_lines': self.num_lines}
 
     def __repr__(self):
-        return ('ParentText(%(parent)r, %(parent_pos)r, %(child_pos)r,'
-                ' %(num_lines)r)' % self._as_dict())
+        return ('ParentText({parent!r}, {parent_pos!r}, {child_pos!r},'
+                ' {num_lines!r})'.format(**self._as_dict()))
 
     def __eq__(self, other):
         if self.__class__ is not other.__class__:

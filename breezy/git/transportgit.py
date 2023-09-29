@@ -72,7 +72,7 @@ from ..trace import warning
 from ..transport import FileExists, NoSuchFile
 
 
-class _RemoteGitFile(object):
+class _RemoteGitFile:
 
     def __init__(self, transport, filename, mode, bufsize, mask):
         self.transport = transport

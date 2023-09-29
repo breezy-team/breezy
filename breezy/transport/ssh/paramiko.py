@@ -82,8 +82,7 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
     if ('password' not in supported_auth_types and
             'keyboard-interactive' not in supported_auth_types):
         raise ConnectionError('Unable to authenticate to SSH host as'
-                              '\n  %s@%s\nsupported auth types: %s'
-                              % (username, host, supported_auth_types))
+                              '\n  {}@{}\nsupported auth types: {}'.format(username, host, supported_auth_types))
 
     if password:
         try:
@@ -103,7 +102,7 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
                 f'Unable to authenticate to SSH host as\n  {username}@{host}\n', e) from e
     else:
         raise ConnectionError('Unable to authenticate to SSH host as'
-                                     '  %s@%s' % (username, host))
+                                     f'  {username}@{host}')
 
 
 def _try_pkey_auth(paramiko_transport, pkey_class, username, filename):
@@ -121,8 +120,7 @@ def _try_pkey_auth(paramiko_transport, pkey_class, username, filename):
             paramiko_transport.auth_publickey(username, key)
             return True
         except paramiko.SSHException:
-            trace.mutter('SSH authentication via %s key failed.'
-                         % (os.path.basename(filename),))
+            trace.mutter('SSH authentication via {} key failed.'.format(os.path.basename(filename)))
     except paramiko.SSHException:
         trace.mutter(f'SSH authentication via {os.path.basename(filename)} key failed.')
     except OSError:
@@ -216,8 +214,7 @@ class ParamikoVendor(SSHVendor):
             filename1 = os.path.expanduser('~/.ssh/known_hosts')
             filename2 = _ssh_host_keys_config_dir()
             raise errors.TransportError(
-                'Host keys for %s do not match!  %s != %s' %
-                (host, our_server_key_hex, server_key_hex),
+                'Host keys for {} do not match!  {} != {}'.format(host, our_server_key_hex, server_key_hex),
                 [f'Try editing {filename1} or {filename2}'])
 
         _paramiko_auth(username, password, host, port, t)

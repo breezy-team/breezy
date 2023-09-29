@@ -154,7 +154,7 @@ MAPILogoff.argtypes = (LHANDLE, c_ulong, FLAGS, c_ulong)
 class MAPIError(WindowsError):  # type: ignore
 
     def __init__(self, code):
-        WindowsError.__init__(self)  # type: ignore
+        OSError(self)  # type: ignore
         self.code = code
 
     def __str__(self):

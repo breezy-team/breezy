@@ -306,8 +306,8 @@ class NotInOtherForRevs(AbstractSearch):
         else:
             ifp_revs_repr = repr(self.if_present_ids)
 
-        return ("<%s from:%r to:%r find_ghosts:%r req'd:%r if-present:%r"
-                "limit:%r>") % (
+        return ("<{} from:{!r} to:{!r} find_ghosts:{!r} req'd:{!r} if-present:{!r}"
+                "limit:{!r}>").format(
             self.__class__.__name__, self.from_repo, self.to_repo,
             self.find_ghosts, reqd_revs_repr, ifp_revs_repr,
             self.limit)
