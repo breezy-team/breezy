@@ -92,6 +92,20 @@ impl MergeProposalStatus {
     }
 }
 
+impl std::str::FromStr for MergeProposalStatus {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "all" => Ok(MergeProposalStatus::All),
+            "open" => Ok(MergeProposalStatus::Open),
+            "merged" => Ok(MergeProposalStatus::Merged),
+            "closed" => Ok(MergeProposalStatus::Closed),
+            _ => Err(format!("Invalid merge proposal status: {}", s)),
+        }
+    }
+}
+
 impl ToString for MergeProposalStatus {
     fn to_string(&self) -> String {
         match self {

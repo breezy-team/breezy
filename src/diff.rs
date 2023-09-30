@@ -6,7 +6,7 @@ use std::io::Write;
 #[pyclass]
 struct PyOut(Box<dyn Write + Send>);
 
-pub fn show_diff_trees<W: Write>(
+pub fn show_diff_trees(
     tree1: &dyn Tree,
     tree2: &dyn Tree,
     o: Box<dyn Write + Send>,
