@@ -677,8 +677,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         if not isinstance(real_branch, RemoteBranch):
             if not isinstance(repository, RemoteRepository):
                 raise AssertionError(
-                    'need a RemoteRepository to use with RemoteBranch, got %r'
-                    % (repository,))
+                    'need a RemoteRepository to use with RemoteBranch, got {!r}'.format(repository))
             result = RemoteBranch(self, repository, real_branch, name=name)
         else:
             result = real_branch
@@ -3362,9 +3361,8 @@ class RemoteBranchFormat(branch.BranchFormat):
                                              remote_repo_url)
             if url_diff != '.':
                 raise AssertionError(
-                    'repository.user_url %r does not match URL from server '
-                    'response (%r + %r)'
-                    % (repository.user_url, a_controldir.user_url, repo_path))
+                    'repository.user_url {!r} does not match URL from server '
+                    'response ({!r} + {!r})'.format(repository.user_url, a_controldir.user_url, repo_path))
             remote_repo = repository
         else:
             if repo_path == '':
@@ -3738,7 +3736,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             if len(old_repository._fallback_repositories) != 1:
                 raise AssertionError(
                     "can't cope with fallback repositories "
-                    "of %r (fallbacks: %r)" % (
+                    "of {!r} (fallbacks: {!r})".format(
                         old_repository, old_repository._fallback_repositories))
             # Open the new repository object.
             # Repositories don't offer an interface to remove fallback

@@ -201,8 +201,7 @@ class DataCollector:
                     enum_data.registry_keys = opt.registry.keys()
                 except ImportError as e:
                     enum_data.error_messages.append(
-                        "ERROR getting registry keys for '--%s': %s"
-                        % (opt.name, str(e).split('\n')[0]))
+                        "ERROR getting registry keys for '--{}': {}".format(opt.name, str(e).split('\n')[0]))
         return sorted(optswitches.values())
 
     def wrap_container(self, optswitches, parser):

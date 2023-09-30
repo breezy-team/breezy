@@ -184,8 +184,7 @@ class _SmartClientRequest:
             self.client._medium.reset()
             if not self._is_safe_to_send_twice():
                 raise
-            trace.warning('ConnectionReset reading response for %r, retrying'
-                          % (self.method,))
+            trace.warning('ConnectionReset reading response for {!r}, retrying'.format(self.method))
             trace.log_exception_quietly()
             encoder, response_handler = self._construct_protocol(
                 protocol_version)

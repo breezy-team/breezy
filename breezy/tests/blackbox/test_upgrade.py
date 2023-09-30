@@ -85,9 +85,8 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         burl = self.get_transport('current_format_branch').local_abspath(".")
         (out, err) = self.run_bzr('upgrade current_format_branch', retcode=0)
         self.assertEqual(
-            'Upgrading branch %s/ ...\n'
-            'The branch format %s is already at the most recent format.\n'
-            % (burl, 'Meta directory format 1'),
+            'Upgrading branch {}/ ...\n'
+            'The branch format {} is already at the most recent format.\n'.format(burl, 'Meta directory format 1'),
             out)
 
     def test_upgrade_up_to_date_checkout_warns_branch_left_alone(self):
@@ -99,10 +98,9 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         curl = self.get_transport('current_format_checkout').local_abspath(".")
         (out, err) = self.run_bzr('upgrade current_format_checkout', retcode=0)
         self.assertEqual(
-            'Upgrading branch %s/ ...\nThis is a checkout.'
-            ' The branch (%s/) needs to be upgraded separately.\n'
-            'The branch format %s is already at the most recent format.\n'
-            % (curl, burl, 'Meta directory format 1'),
+            'Upgrading branch {}/ ...\nThis is a checkout.'
+            ' The branch ({}/) needs to be upgraded separately.\n'
+            'The branch format {} is already at the most recent format.\n'.format(curl, burl, 'Meta directory format 1'),
             out)
 
     def test_upgrade_checkout(self):

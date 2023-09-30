@@ -80,7 +80,7 @@ def _resolve_via_api(path, url, api_base_url=LPNET_SERVICE_ROOT):
                 git_repo = None
             else:
                 raise errors.BzrError(
-                    "Unknown default vcs %s for %s" % (vcs, target))
+                    f"Unknown default vcs {vcs} for {target}")
         if lp_branch or git_repo:
             break
         path, subpath = split(path)

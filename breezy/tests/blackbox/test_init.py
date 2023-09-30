@@ -92,14 +92,12 @@ Using shared repository: {}
 
     def test_init_branch(self):
         out, err = self.run_bzr('init')
-        self.assertEqual("Created a standalone tree (format: {})\n".format(
-            self._default_label), out)
+        self.assertEqual(f"Created a standalone tree (format: {self._default_label})\n", out)
         self.assertEqual('', err)
 
         # Can it handle subdirectories of branches too ?
         out, err = self.run_bzr('init subdir1')
-        self.assertEqual("Created a standalone tree (format: {})\n".format(
-            self._default_label), out)
+        self.assertEqual(f"Created a standalone tree (format: {self._default_label})\n", out)
         self.assertEqual('', err)
         WorkingTree.open('subdir1')
 
@@ -110,8 +108,7 @@ Using shared repository: {}
 
         os.mkdir('subdir2')
         out, err = self.run_bzr('init subdir2')
-        self.assertEqual("Created a standalone tree (format: {})\n".format(
-            self._default_label), out)
+        self.assertEqual(f"Created a standalone tree (format: {self._default_label})\n", out)
         self.assertEqual('', err)
         # init an existing branch.
         out, err = self.run_bzr('init subdir2', retcode=3)

@@ -258,9 +258,9 @@ def _load_plugins(state, paths):
         if name not in imported_names:
             if not valid_plugin_name(name):
                 sanitised_name = sanitise_plugin_name(name)
-                trace.warning("Unable to load %r in %r as a plugin because the "
+                trace.warning("Unable to load {!r} in {!r} as a plugin because the "
                               "file path isn't a valid module name; try renaming "
-                              "it to %r." % (name, path, sanitised_name))
+                              "it to {!r}.".format(name, path, sanitised_name))
                 continue
             msg = _load_plugin_module(name, path)
             if msg is not None:
@@ -421,9 +421,8 @@ def _load_plugin_module(name, dir):
         __import__(_MODULE_PREFIX + name)
     except _mod_errors.IncompatibleVersion as e:
         warning_message = (
-            "Unable to load plugin %r. It supports %s "
-            "versions %r but the current version is %s" %
-            (name, e.api.__name__, e.wanted, e.current))
+            f"Unable to load plugin {name!r}. It supports {e.api.__name__} "
+            f"versions {e.wanted!r} but the current version is {e.current}")
         return record_plugin_warning(warning_message)
     except Exception as e:
         trace.log_exception_quietly()

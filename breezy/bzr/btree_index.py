@@ -1489,8 +1489,7 @@ class BTreeGraphIndex:
             else:
                 if offset > self._size:
                     raise AssertionError('tried to read past the end'
-                                         ' of the file %s > %s'
-                                         % (offset, self._size))
+                                         f' of the file {offset} > {self._size}')
                 size = min(size, self._size - offset)
             ranges.append((base_offset + offset, size))
         if not ranges:

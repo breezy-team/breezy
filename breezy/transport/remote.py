@@ -110,9 +110,9 @@ class RemoteTransport(transport.ConnectedTransport):
             medium = self._shared_connection.connection
         else:
             raise AssertionError(
-                "Both _from_transport (%r) and medium (%r) passed to "
+                "Both _from_transport ({!r}) and medium ({!r}) passed to "
                 "RemoteTransport.__init__, but these parameters are mutally "
-                "exclusive." % (_from_transport, medium))
+                "exclusive.".format(_from_transport, medium))
 
         if _client is None:
             self._client = client._SmartClient(medium)
@@ -596,8 +596,8 @@ class HintingSSHTransport(transport.Transport):
 
     def __init__(self, url):
         raise transport.UnsupportedProtocol(
-            url, 'Use bzr+ssh for Bazaar operations over SSH, e.g. "bzr+%s". '
-            'Use git+ssh for Git operations over SSH, e.g. "git+%s".' % (url, url))
+            url, f'Use bzr+ssh for Bazaar operations over SSH, e.g. "bzr+{url}". '
+            f'Use git+ssh for Git operations over SSH, e.g. "git+{url}".')
 
 
 def get_test_permutations():

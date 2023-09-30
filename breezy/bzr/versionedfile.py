@@ -251,16 +251,14 @@ class AbsentContentFactory(ContentFactory):
         self.parents = None
 
     def get_bytes_as(self, storage_kind):
-        raise ValueError('A request was made for key: %s, but that'
+        raise ValueError(f'A request was made for key: {self.key}, but that'
                          ' content is not available, and the calling'
-                         ' code does not handle if it is missing.'
-                         % (self.key,))
+                         ' code does not handle if it is missing.')
 
     def iter_bytes_as(self, storage_kind):
-        raise ValueError('A request was made for key: %s, but that'
+        raise ValueError(f'A request was made for key: {self.key}, but that'
                          ' content is not available, and the calling'
-                         ' code does not handle if it is missing.'
-                         % (self.key,))
+                         ' code does not handle if it is missing.')
 
 
 class AdapterFactory(ContentFactory):

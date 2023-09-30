@@ -45,7 +45,7 @@ class SSHVendorManager(registry.Registry[str, "SSHVendor", None]):
     """Manager for manage SSH vendors."""
 
     def __init__(self):
-        super(SSHVendorManager, self).__init__()
+        super().__init__()
         self._cached_ssh_vendor = None
 
     def clear_cache(self):

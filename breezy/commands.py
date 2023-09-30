@@ -57,10 +57,9 @@ class CommandAvailableInPlugin(Exception):
 
     def __str__(self):
 
-        _fmt = ('"%s" is not a standard brz command. \n'
-                'However, the following official plugin provides this command: %s\n'
-                'You can install it by going to: %s'
-                % (self.cmd_name, self.plugin_metadata['name'],
+        _fmt = ('"{}" is not a standard brz command. \n'
+                'However, the following official plugin provides this command: {}\n'
+                'You can install it by going to: {}'.format(self.cmd_name, self.plugin_metadata['name'],
                     self.plugin_metadata['url']))
 
         return _fmt

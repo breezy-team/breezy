@@ -43,7 +43,7 @@ class StaticTuple(tuple):
             if type(bit) not in _valid_types:
                 raise TypeError('StaticTuple can only point to'
                                 ' StaticTuple, str, unicode, int, float, bool, or'
-                                ' None not %s' % (type(bit),))
+                                f' None not {type(bit)}')
         # We don't need to pass args to tuple.__init__, because that was
         # already handled in __new__.
         tuple.__init__(self)

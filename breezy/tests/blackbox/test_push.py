@@ -236,8 +236,7 @@ class TestPush(tests.TestCaseWithTransport):
                  message='first commit')
         self.run_bzr('push -d from to-one')
         self.assertPathExists('to-one')
-        self.run_bzr('push -d %s %s'
-                     % tuple(map(urlutils.local_path_to_url, ['from', 'to-two'])))
+        self.run_bzr('push -d {} {}'.format(*tuple(map(urlutils.local_path_to_url, ['from', 'to-two']))))
         self.assertPathExists('to-two')
 
     def test_push_repository_no_branch_doesnt_fetch_all_revs(self):

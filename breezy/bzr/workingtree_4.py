@@ -361,8 +361,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     inv.add(inv_entry)
                 except DuplicateFileId as err:
                     raise AssertionError(
-                        'file_id %s already in'
-                        ' inventory as %s' % (file_id, inv.get_entry(file_id))) from err
+                        f'file_id {file_id} already in'
+                        f' inventory as {inv.get_entry(file_id)}') from err
                 except errors.InconsistentDelta as err:
                     raise AssertionError(f'name {name_unicode!r} already in parent') from err
         self._inventory = inv
@@ -1900,8 +1900,8 @@ class DirStateRevisionTree(InventoryTree):
                     inv.add(inv_entry)
                 except DuplicateFileId as err:
                     raise AssertionError(
-                        'file_id %s already in'
-                        ' inventory as %s' % (file_id, inv.get_entry(file_id))) from err
+                        f'file_id {file_id} already in'
+                        f' inventory as {inv.get_entry(file_id)}') from err
                 except errors.InconsistentDelta as err:
                     raise AssertionError(f'name {name_unicode!r} already in parent') from err
         self._inventory = inv
@@ -2246,9 +2246,8 @@ class InterDirStateTree(InterInventoryTree):
         if not (self.source._revision_id in parent_ids
                 or self.source._revision_id == _mod_revision.NULL_REVISION):
             raise AssertionError(
-                "revision {%s} is not stored in {%s}, but %s "
-                "can only be used for trees stored in the dirstate"
-                % (self.source._revision_id, self.target, self.iter_changes))
+                "revision {{{}}} is not stored in {{{}}}, but {} "
+                "can only be used for trees stored in the dirstate".format(self.source._revision_id, self.target, self.iter_changes))
         target_index = 0
         if self.source._revision_id == _mod_revision.NULL_REVISION:
             source_index = None

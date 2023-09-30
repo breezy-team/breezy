@@ -278,9 +278,8 @@ def get_terminal_encoding(trace=False):
         codecs.lookup(output_encoding)
     except LookupError:
         sys.stderr.write('brz: warning:'
-                         ' unknown terminal encoding %s.\n'
-                         '  Using encoding %s instead.\n'
-                         % (output_encoding, get_user_encoding())
+                         f' unknown terminal encoding {output_encoding}.\n'
+                         f'  Using encoding {get_user_encoding()} instead.\n'
                          )
         output_encoding = get_user_encoding()
 

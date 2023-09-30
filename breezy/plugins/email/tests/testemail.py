@@ -85,8 +85,7 @@ class TestGetTo(TestCaseInTempDir):
     def test_custom_body(self):
         sender, revid = self.get_sender(customized_mail_config)
         self.assertEqual(
-            '%s has committed revision 1 at %s.\n\n%s' %
-            (sender.revision.committer, sender.url(), sample_log % revid.decode('utf-8')),
+            '{} has committed revision 1 at {}.\n\n{}'.format(sender.revision.committer, sender.url(), sample_log % revid.decode('utf-8')),
             sender.body())
 
     def test_command_line(self):

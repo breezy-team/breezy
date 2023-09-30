@@ -287,8 +287,7 @@ class InventoryTree(Tree):
                 for path in specific_files:
                     inventory, inv_file_id = self._path2inv_file_id(path)
                     if inventory and inventory is not self.root_inventory:
-                        raise AssertionError("{!r} != {!r}".format(
-                            inventory, self.root_inventory))
+                        raise AssertionError(f"{inventory!r} != {self.root_inventory!r}")
                     inventory_file_ids.add(inv_file_id)
             else:
                 inventory_file_ids = None

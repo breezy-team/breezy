@@ -120,8 +120,8 @@ class TestAdduserBranch(script.TestCaseWithTransportAndScript):
     def assertAdduserBranchContent(self, revid):
         env = {'revid': revid, 'branch_name': revid}
         self.run_script("""\
-$ brz branch adduser -rrevid:%(revid)s %(branch_name)s
-""" % env, null_output_matches_anything=True)
+$ brz branch adduser -rrevid:{revid} {branch_name}
+""".format(**env), null_output_matches_anything=True)
         self.assertFileEqual(_Adduser[f"{env['revid']}_pot"],
                              f"{env['branch_name']}/po/adduser.pot")
         self.assertFileEqual(_Adduser[f"{env['revid']}_po"],
@@ -142,7 +142,7 @@ $ brz branch adduser -rrevid:%(revid)s %(branch_name)s
 # beginning of the file.
 
 _Adduser = {
-    'base_pot': (r"""# SOME DESCRIPTIVE TITLE.
+    'base_pot': (br"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -169,8 +169,8 @@ msgstr ""
 msgid "Warning: The home dir you specified already exists.\n"
 msgstr ""
 
-""").encode("utf-8"),
-    'this_pot': (r"""# SOME DESCRIPTIVE TITLE.
+"""),
+    'this_pot': (br"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -204,8 +204,8 @@ msgstr ""
 msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 
-""").encode("utf-8"),
-    'other_pot': (r"""# SOME DESCRIPTIVE TITLE.
+"""),
+    'other_pot': (br"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -239,8 +239,8 @@ msgstr ""
 msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 
-""").encode("utf-8"),
-    'resolved_pot': (r"""# SOME DESCRIPTIVE TITLE.
+"""),
+    'resolved_pot': (br"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -274,7 +274,7 @@ msgstr ""
 msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 
-""").encode("utf-8"),
+"""),
     'base_po': (r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
@@ -310,7 +310,7 @@ msgid "Warning: The home dir you specified already exists.\n"
 msgstr ""
 "Attention ! Le répertoire personnel que vous avez indiqué existe déjà.\n"
 
-""").encode("utf-8"),
+""").encode(),
     'this_po': (r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
@@ -353,7 +353,7 @@ msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 "Attention ! Le répertoire personnel que vous avez indiqué existe déjà.\n"
 
-""").encode("utf-8"),
+""").encode(),
     'other_po': (r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
@@ -396,7 +396,7 @@ msgstr ""
 "Attention ! Impossible d'accéder au répertoire personnel que vous avez "
 "indiqué (%s) : %s.\n"
 
-""").encode("utf-8"),
+""").encode(),
     'resolved_po': (r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
@@ -439,5 +439,5 @@ msgstr ""
 "Attention ! Impossible d'accéder au répertoire personnel que vous avez "
 "indiqué (%s) : %s.\n"
 
-""").encode("utf-8"),
+""").encode(),
 }

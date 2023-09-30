@@ -1215,8 +1215,7 @@ class Branch(ControlComponent):
             actual_revno = refs[('lefthand-distance', last_revision_id)]
             if actual_revno != last_revno:
                 result.errors.append(errors.BzrCheckError(
-                    'revno does not match len(mainline) {} != {}'.format(
-                        last_revno, actual_revno)))
+                    f'revno does not match len(mainline) {last_revno} != {actual_revno}'))
             # TODO: We should probably also check that self.revision_history
             # matches the repository for older branch formats.
             # If looking for the code that cross-checks repository parents

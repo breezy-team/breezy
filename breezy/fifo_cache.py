@@ -80,8 +80,7 @@ class FIFOCache(dict):
             self._remove_oldest()
         if len(self._queue) != len(self):
             raise AssertionError('The length of the queue should always equal'
-                                 ' the length of the dict. %s != %s'
-                                 % (len(self._queue), len(self)))
+                                 ' the length of the dict. {} != {}'.format(len(self._queue), len(self)))
 
     def clear(self):
         """Clear out all of the cache."""

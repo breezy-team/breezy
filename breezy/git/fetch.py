@@ -333,8 +333,7 @@ def verify_commit_reconstruction(target_git_object_retriever, lookup_object,
             for name in old_obj:
                 if old_obj[name][0] != new_obj[name][0]:
                     raise AssertionError(
-                        "Modes for %s differ: %o != %o" %
-                        (path, old_obj[name][0], new_obj[name][0]))
+                        "Modes for {} differ: {:o} != {:o}".format(path, old_obj[name][0], new_obj[name][0]))
                 if old_obj[name][1] != new_obj[name][1]:
                     # Found a differing child, delve deeper
                     path = posixpath.join(path, name)

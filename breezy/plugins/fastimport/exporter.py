@@ -517,8 +517,7 @@ class BzrFastExporter:
                         helpers.kind_to_mode('directory', False), None,
                         None)
             else:
-                self.warning("cannot export '%s' of kind %s yet - ignoring" %
-                             (change.path[1], change.kind[1]))
+                self.warning("cannot export '{}' of kind {} yet - ignoring".format(change.path[1], change.kind[1]))
 
         # TODO(jelmer): Improve performance on remote repositories
         # by using Repository.iter_files_bytes for bzr repositories here.
@@ -611,13 +610,11 @@ class BzrFastExporter:
         # If a previous rename is found, we should adjust the path
         for old, new in renamed:
             if path == old:
-                self.note("Changing path %s given rename to %s in revision %s"
-                          % (path, new, revision_id))
+                self.note("Changing path {} given rename to {} in revision {}".format(path, new, revision_id))
                 path = new
             elif path.startswith(old + '/'):
                 self.note(
-                    "Adjusting path %s given rename of %s to %s in revision %s"
-                    % (path, old, new, revision_id))
+                    "Adjusting path {} given rename of {} to {} in revision {}".format(path, old, new, revision_id))
                 path = path.replace(old + "/", new + "/")
         return path
 
@@ -626,8 +623,8 @@ class BzrFastExporter:
             try:
                 mark = self.revid_to_mark[revid]
             except KeyError:
-                self.warning('not creating tag %r pointing to non-existent '
-                             'revision %s' % (tag, revid))
+                self.warning(f'not creating tag {tag!r} pointing to non-existent '
+                             f'revision {revid}')
             else:
                 git_ref = b'refs/tags/%s' % tag.encode("utf-8")
                 if self.plain_format and not check_ref_format(git_ref):

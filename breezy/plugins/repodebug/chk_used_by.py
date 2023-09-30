@@ -44,5 +44,4 @@ class cmd_chk_used_by(Command):
                     f'id_to_entry of {inv.revision_id} -> {inv.id_to_entry.key()}\n')
             if inv.parent_id_basename_to_file_id.key() in key_list:
                 self.outf.write(
-                    'parent_id_basename_to_file_id of %s -> %s\n' %
-                    (inv.revision_id, inv.parent_id_basename_to_file_id.key(),))
+                    'parent_id_basename_to_file_id of {} -> {}\n'.format(inv.revision_id, inv.parent_id_basename_to_file_id.key(),))

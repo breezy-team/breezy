@@ -470,8 +470,7 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
             # shutdown. If an exception occurred in the thread it will be
             # re-raised
             if debug_threads():
-                sys.stderr.write('Client thread %s will be joined\n'
-                                 % (connection_thread.name,))
+                sys.stderr.write('Client thread {} will be joined\n'.format(connection_thread.name))
             connection_thread.join()
 
     def set_ignored_exceptions(self, thread, ignored_exceptions):
@@ -540,8 +539,7 @@ class TestingTCPServerInAThread(transport.Server):
                 self.server.ignored_exceptions_during_shutdown)
             self.server.serving = False
             if debug_threads():
-                sys.stderr.write('Server thread %s will be joined\n'
-                                 % (self._server_thread.name,))
+                sys.stderr.write('Server thread {} will be joined\n'.format(self._server_thread.name))
             # The server is listening for a last connection, let's give it:
             last_conn = None
             try:

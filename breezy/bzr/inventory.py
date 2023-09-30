@@ -855,14 +855,12 @@ class Inventory(CommonInventory):
 
         new_parent = self._byid[new_parent_id]
         if new_name in self._children[new_parent.file_id]:
-            raise errors.BzrError("%r already exists in %r" %
-                                  (new_name, self.id2path(new_parent_id)))
+            raise errors.BzrError("{!r} already exists in {!r}".format(new_name, self.id2path(new_parent_id)))
 
         new_parent_idpath = self.get_idpath(new_parent_id)
         if file_id in new_parent_idpath:
             raise errors.BzrError(
-                "cannot move directory %r into a subdirectory of itself, %r"
-                % (self.id2path(file_id), self.id2path(new_parent_id)))
+                "cannot move directory {!r} into a subdirectory of itself, {!r}".format(self.id2path(file_id), self.id2path(new_parent_id)))
 
         file_ie = self._byid[file_id]
         old_parent = self._byid[file_ie.parent_id]
@@ -1274,7 +1272,7 @@ class CHKInventory(CommonInventory):
             b'parent_id_basename_to_file_id', None)
         if not parent_id_basename_to_file_id.startswith(b'sha1:'):
             raise ValueError('parent_id_basename_to_file_id should be a sha1'
-                             ' key not %r' % (parent_id_basename_to_file_id,))
+                             f' key not {parent_id_basename_to_file_id!r}')
         id_to_entry = info[b'id_to_entry']
         if not id_to_entry.startswith(b'sha1:'):
             raise ValueError(f'id_to_entry should be a sha1 key not {id_to_entry!r}')
@@ -1295,8 +1293,7 @@ class CHKInventory(CommonInventory):
                                             StaticTuple(id_to_entry,),
                                             search_key_func=search_key_func)
         if (result.revision_id,) != expected_revision_id:
-            raise ValueError("Mismatched revision id and expected: %r, %r" %
-                             (result.revision_id, expected_revision_id))
+            raise ValueError("Mismatched revision id and expected: {!r}, {!r}".format(result.revision_id, expected_revision_id))
         return result
 
     @classmethod
@@ -1448,8 +1445,7 @@ class CHKInventory(CommonInventory):
                 if child_file_id != self.root_id:
                     raise ValueError('Data inconsistency detected.'
                                      ' We expected data with key ("","") to match'
-                                     ' the root id, but %s != %s'
-                                     % (child_file_id, self.root_id))
+                                     ' the root id, but {} != {}'.format(child_file_id, self.root_id))
                 continue
             parent_id, basename = key
             ie = cache[child_file_id]
@@ -1460,23 +1456,21 @@ class CHKInventory(CommonInventory):
             if parent_ie.kind != 'directory':
                 raise ValueError('Data inconsistency detected.'
                                  ' An entry in the parent_id_basename_to_file_id map'
-                                 ' has parent_id {%s} but the kind of that object'
-                                 ' is %r not "directory"' % (parent_id, parent_ie.kind))
+                                 ' has parent_id {{{}}} but the kind of that object'
+                                 ' is {!r} not "directory"'.format(parent_id, parent_ie.kind))
             siblings = self._children_cache.setdefault(parent_ie.file_id, {})
             basename = basename.decode('utf-8')
             if basename in siblings:
                 existing_ie = siblings[basename]
                 if existing_ie != ie:
                     raise ValueError('Data inconsistency detected.'
-                                     ' Two entries with basename %r were found'
-                                     ' in the parent entry {%s}'
-                                     % (basename, parent_id))
+                                     ' Two entries with basename {!r} were found'
+                                     ' in the parent entry {{{}}}'.format(basename, parent_id))
             if basename != ie.name:
                 raise ValueError('Data inconsistency detected.'
                                  ' In the parent_id_basename_to_file_id map, file_id'
-                                 ' {%s} is listed as having basename %r, but in the'
-                                 ' id_to_entry map it is %r'
-                                 % (child_file_id, basename, ie.name))
+                                 ' {{{}}} is listed as having basename {!r}, but in the'
+                                 ' id_to_entry map it is {!r}'.format(child_file_id, basename, ie.name))
             siblings[basename] = ie
         self._fully_cached = True
 
@@ -1612,7 +1606,7 @@ class CHKInventory(CommonInventory):
                 for (parent_id, name_utf8), file_id in items:  # noqa: B007
                     if parent_id != current_id or name_utf8 != basename_utf8:
                         raise errors.BzrError("corrupt inventory lookup! "
-                                              "%r %r %r %r" % (parent_id, current_id, name_utf8,
+                                              "{!r} {!r} {!r} {!r}".format(parent_id, current_id, name_utf8,
                                                                basename_utf8))
                 if file_id is None:
                     return None
