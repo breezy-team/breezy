@@ -529,3 +529,11 @@ pub fn create_project(name: &str, summary: Option<&str>) -> Result<(), Error> {
         Ok(())
     })
 }
+
+pub fn get_proposal_by_url(url: &url::Url) -> Result<MergeProposal, Error> {
+    Python::with_gil(|py| {
+        let m = py.import("breezy.forge").unwrap();
+        let proposal = m.call_method1("get_proposal_by_url", (url.to_string(),))?;
+        Ok(MergeProposal::new(proposal.to_object(py)))
+    })
+}
