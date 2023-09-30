@@ -61,11 +61,11 @@ impl From<PyErr> for Error {
 
 impl From<Error> for PyErr {
     fn from(err: Error) -> PyErr {
-        Python::with_gil(|py| match err {
+        match err {
             Error::LoginRequired => ForgeLoginRequired::new_err("Login required"),
             Error::UnsupportedForge(url) => UnsupportedForge::new_err(url.to_string()),
             Error::ProjectExists(name) => AlreadyControlDirError::new_err(name),
-        })
+        }
     }
 }
 
