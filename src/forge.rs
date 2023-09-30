@@ -489,13 +489,11 @@ impl ToPyObject for Forge {
     }
 }
 
-pub fn get_forge(branch: &dyn Branch) -> Forge {
+pub fn get_forge(branch: &dyn Branch) -> Result<Forge, Error> {
     Python::with_gil(|py| {
         let m = py.import("breezy.forge").unwrap();
-        let forge = m
-            .call_method1("get_forge", (branch.to_object(py),))
-            .unwrap();
-        Forge(forge.to_object(py))
+        let forge = m.call_method1("get_forge", (branch.to_object(py),))?;
+        Ok(Forge(forge.to_object(py)))
     })
 }
 
