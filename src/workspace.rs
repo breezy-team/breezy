@@ -41,13 +41,13 @@ impl std::fmt::Display for CheckCleanTreeError {
 
 impl std::error::Error for CheckCleanTreeError {}
 
-impl From<CheckCleanError> for PyErr {
-    fn from(e: CheckCleanError) -> Self {
+impl From<CheckCleanTreeError> for PyErr {
+    fn from(e: CheckCleanTreeError) -> Self {
         match e {
-            CheckCleanError::WorkspaceDirty(path) => {
+            CheckCleanTreeError::WorkspaceDirty(path) => {
                 WorkspaceDirty::new_err(path.to_string_lossy().to_string())
             }
-            CheckCleanError::Python(e) => e,
+            CheckCleanTreeError::Python(e) => e,
         }
     }
 }
