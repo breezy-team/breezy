@@ -16,7 +16,8 @@ lazy_static = "1.4.0"
 
 [features]
 default = [ "debian",]
-debian = [ "dep:debversion",]
+debian = [ "dep:debversion" ]
+auto-initialize = ["pyo3/auto-initialize"]
 
 [dependencies.debversion]
 version = "0.2"

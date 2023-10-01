@@ -65,4 +65,11 @@ pub fn init_bzr() {
 pub fn init() {
     init_git();
     init_bzr();
+
+    // Work around a breezy bug
+    pyo3::Python::with_gil(|py| {
+        let m = py.import("breezy.controldir").unwrap();
+        let f = m.getattr("ControlDirFormat").unwrap();
+        f.call_method0("known_formats").unwrap();
+    })
 }
