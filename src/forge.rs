@@ -327,6 +327,15 @@ impl ProposalBuilder {
 }
 
 impl Forge {
+    pub fn get_proposal_by_url(&self, url: &url::Url) -> PyResult<MergeProposal> {
+        Python::with_gil(|py| {
+            let proposal =
+                self.to_object(py)
+                    .call_method1(py, "get_proposal_by_url", (url.as_str(),))?;
+            Ok(MergeProposal::new(proposal))
+        })
+    }
+
     pub fn base_url(&self) -> url::Url {
         Python::with_gil(|py| {
             let base_url = self.to_object(py).getattr(py, "base_url").unwrap();
