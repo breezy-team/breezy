@@ -1,6 +1,6 @@
 [package]
 name = "breezyshim"
-version = "0.1.39"
+version = "0.1.40"
 edition = "2021"
 license = "GPL-2.0+"
 description = "Rust shim around the Breezy Python API"
@@ -16,8 +16,8 @@ lazy_static = "1.4.0"
 
 [features]
 default = [ "debian",]
-debian = [ "dep:debversion" ]
-auto-initialize = ["pyo3/auto-initialize"]
+debian = [ "dep:debversion",]
+auto-initialize = [ "pyo3/auto-initialize",]
 
 [dependencies.debversion]
 version = "0.2"
