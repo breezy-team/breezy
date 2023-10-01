@@ -134,6 +134,14 @@ pub trait Branch: ToPyObject + Send {
         })
     }
 
+    fn basis_tree(&self) -> PyResult<crate::tree::RevisionTree> {
+        Python::with_gil(|py| {
+            Ok(crate::tree::RevisionTree(
+                self.to_object(py).call_method0(py, "basis_tree")?,
+            ))
+        })
+    }
+
     fn get_user_url(&self) -> url::Url {
         Python::with_gil(|py| {
             let url = self
