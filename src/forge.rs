@@ -327,6 +327,24 @@ impl ProposalBuilder {
 }
 
 impl Forge {
+    pub fn base_url(&self) -> url::Url {
+        Python::with_gil(|py| {
+            let base_url = self.to_object(py).getattr(py, "base_url").unwrap();
+            base_url.extract::<String>(py).unwrap().parse().unwrap()
+        })
+    }
+
+    pub fn forge_kind(&self) -> String {
+        Python::with_gil(|py| {
+            self.to_object(py)
+                .as_ref(py)
+                .get_type()
+                .name()
+                .unwrap()
+                .to_string()
+        })
+    }
+
     pub fn merge_proposal_description_format(&self) -> String {
         Python::with_gil(|py| {
             let merge_proposal_description_format = self
