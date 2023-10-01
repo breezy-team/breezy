@@ -370,6 +370,16 @@ impl WorkingTree {
         })
     }
 
+    pub fn revision_tree(&self, revision_id: &RevisionId) -> Box<dyn Tree> {
+        Python::with_gil(|py| {
+            let tree = self
+                .to_object(py)
+                .call_method1(py, "revision_tree", (revision_id.to_object(py),))
+                .unwrap();
+            Box::new(RevisionTree(tree))
+        })
+    }
+
     pub fn get_tag_dict(&self) -> Result<std::collections::HashMap<String, RevisionId>, PyErr> {
         Python::with_gil(|py| {
             let branch = self.to_object(py).getattr(py, "branch")?;

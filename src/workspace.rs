@@ -3,6 +3,8 @@ use crate::tree::{Tree, WorkingTree};
 use pyo3::import_exception;
 use pyo3::prelude::*;
 
+import_exception!(breezy.workspace, WorkspaceDirty);
+
 pub fn reset_tree(
     local_tree: &WorkingTree,
     basis_tree: Option<&Box<dyn Tree>>,
@@ -20,12 +22,35 @@ pub fn reset_tree(
     })
 }
 
+#[derive(Debug)]
 pub enum CheckCleanTreeError {
     WorkspaceDirty(std::path::PathBuf),
     Python(PyErr),
 }
 
-import_exception!(breezy.workspace, WorkspaceDirty);
+impl std::fmt::Display for CheckCleanTreeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CheckCleanTreeError::WorkspaceDirty(path) => {
+                write!(f, "Workspace dirty at {}", path.display())
+            }
+            CheckCleanTreeError::Python(e) => write!(f, "{}", e),
+        }
+    }
+}
+
+impl std::error::Error for CheckCleanTreeError {}
+
+impl From<CheckCleanError> for PyErr {
+    fn from(e: CheckCleanError) -> Self {
+        match e {
+            CheckCleanError::WorkspaceDirty(path) => {
+                WorkspaceDirty::new_err(path.to_string_lossy().to_string())
+            }
+            CheckCleanError::Python(e) => e,
+        }
+    }
+}
 
 impl From<PyErr> for CheckCleanTreeError {
     fn from(e: PyErr) -> Self {
