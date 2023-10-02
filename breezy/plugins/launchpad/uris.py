@@ -83,7 +83,7 @@ def web_root_for_service_root(service_root):
     web_root_uri = web_root_uri._replace(path="")
     web_root_uri = web_root_uri._replace(
         netloc=web_root_uri.netloc.replace("api.", "", 1))
-    return str(web_root_uri)
+    return urlunparse(web_root_uri)
 
 
 def canonical_url(object):
