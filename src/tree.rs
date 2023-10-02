@@ -134,7 +134,7 @@ pub trait Tree: ToPyObject {
 
     fn iter_changes(
         &self,
-        other: &Box<dyn Tree>,
+        other: &dyn Tree,
         specific_files: Option<&[&std::path::Path]>,
         want_unversioned: Option<bool>,
         require_versioned: Option<bool>,

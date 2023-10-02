@@ -73,3 +73,10 @@ pub fn init() {
         f.call_method0("known_formats").unwrap();
     })
 }
+
+pub fn load_plugins() {
+    pyo3::Python::with_gil(|py| {
+        let m = py.import("breezy.plugin").unwrap();
+        m.call_method0("load_plugins").unwrap();
+    })
+}

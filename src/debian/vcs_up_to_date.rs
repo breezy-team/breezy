@@ -65,7 +65,7 @@ pub fn check_up_to_date(
                 })
             }
             Ok(_o) => Ok(UpToDateStatus::UpToDate),
-            Err(e) => Err(e.into()),
+            Err(e) => Err(e),
         }
     })
 }
