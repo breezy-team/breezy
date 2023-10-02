@@ -70,6 +70,7 @@ def load_tests(loader, basic_tests, pattern):
         'test_lp_api',
         'test_lp_directory',
         'test_lp_login',
+        'test_uris',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
         ["{}.{}".format(__name__, tmn) for tmn in testmod_names]))
