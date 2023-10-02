@@ -16,7 +16,6 @@
 
 
 from ...tests import TestCase
-
 from . import uris
 
 
