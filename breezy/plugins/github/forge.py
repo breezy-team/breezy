@@ -26,6 +26,7 @@ from ... import branch as _mod_branch
 from ...config import AuthenticationConfig
 from ...errors import PermissionDenied, UnexpectedHttpStatus
 from ...forge import (
+    AutoMergeUnavailable,
     Forge,
     ForgeLoginRequired,
     MergeProposal,
@@ -98,15 +99,6 @@ class NotGitHubUrl(errors.BzrError):
     def __init__(self, url):
         errors.BzrError.__init__(self)
         self.url = url
-
-
-class AutoMergeUnavailable(errors.BzrError):
-
-    _fmt = "Unable to enable auto-merge: %(msg)s"
-
-    def __init__(self, msg):
-        errors.BzrError.__init__(self)
-        self.msg = msg
 
 
 class GitHubLoginRequired(ForgeLoginRequired):
@@ -245,6 +237,9 @@ mutation ($pullRequestId: ID!) {
                 if (first_error['type'] == 'UNPROCESSABLE' and
                         first_error['path'] == ['enablePullRequestAutoMerge']):
                     raise AutoMergeUnavailable(first_error['message']) from e
+                if (first_error['type'] == 'FORBIDDEN' and
+                        first_error['path'] == ['enablePullRequestAutoMerge']):
+                    raise PermissionDenied(path=self.get_web_url(), extra=first_error['message']) from e
                 raise Exception(first_error['message']) from e
         else:
             # https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button
