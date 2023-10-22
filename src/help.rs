@@ -144,8 +144,8 @@ pub fn help_as_plain_text(text: &str) -> String {
     let lines = text.split('\n');
     let mut ret = lines
         .map(|l| {
-            let l = if l.starts_with(':') {
-                l[1..].to_string()
+            let l = if let Some(suffix) = l.strip_prefix(':') {
+                suffix.to_string()
             } else if l.ends_with("::") {
                 l[..l.len() - 1].to_string()
             } else {
