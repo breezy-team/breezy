@@ -517,7 +517,7 @@ class BzrFastExporter:
                         helpers.kind_to_mode('directory', False), None,
                         None)
             else:
-                self.warning("cannot export '{}' of kind {} yet - ignoring".format(change.path[1], change.kind[1]))
+                self.warning(f"cannot export '{change.path[1]}' of kind {change.kind[1]} yet - ignoring")
 
         # TODO(jelmer): Improve performance on remote repositories
         # by using Repository.iter_files_bytes for bzr repositories here.
@@ -610,11 +610,11 @@ class BzrFastExporter:
         # If a previous rename is found, we should adjust the path
         for old, new in renamed:
             if path == old:
-                self.note("Changing path {} given rename to {} in revision {}".format(path, new, revision_id))
+                self.note(f"Changing path {path} given rename to {new} in revision {revision_id}")
                 path = new
             elif path.startswith(old + '/'):
                 self.note(
-                    "Adjusting path {} given rename of {} to {} in revision {}".format(path, old, new, revision_id))
+                    f"Adjusting path {path} given rename of {old} to {new} in revision {revision_id}")
                 path = path.replace(old + "/", new + "/")
         return path
 

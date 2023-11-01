@@ -190,7 +190,7 @@ class TestSource(TestSourceHelper):
             else:
                 if 'by Canonical' in match.group():
                     incorrect.append((fname,
-                                      'should not have: "by Canonical": {}'.format(match.group())))
+                                      f'should not have: "by Canonical": {match.group()}'))
 
         if incorrect:
             help_text = ["Some files have missing or incorrect copyright"

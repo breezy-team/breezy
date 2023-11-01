@@ -333,7 +333,7 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file,
             else:
                 msg = 'exit code %d' % rc
 
-            raise errors.BzrError('external diff failed with {}; command: {!r}'.format(msg, diffcmd))
+            raise errors.BzrError(f'external diff failed with {msg}; command: {diffcmd!r}')
 
     finally:
         oldtmpf.close()                 # and delete

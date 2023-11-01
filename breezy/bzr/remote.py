@@ -677,7 +677,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         if not isinstance(real_branch, RemoteBranch):
             if not isinstance(repository, RemoteRepository):
                 raise AssertionError(
-                    'need a RemoteRepository to use with RemoteBranch, got {!r}'.format(repository))
+                    f'need a RemoteRepository to use with RemoteBranch, got {repository!r}')
             result = RemoteBranch(self, repository, real_branch, name=name)
         else:
             result = real_branch
@@ -3361,8 +3361,8 @@ class RemoteBranchFormat(branch.BranchFormat):
                                              remote_repo_url)
             if url_diff != '.':
                 raise AssertionError(
-                    'repository.user_url {!r} does not match URL from server '
-                    'response ({!r} + {!r})'.format(repository.user_url, a_controldir.user_url, repo_path))
+                    f'repository.user_url {repository.user_url!r} does not match URL from server '
+                    f'response ({a_controldir.user_url!r} + {repo_path!r})')
             remote_repo = repository
         else:
             if repo_path == '':

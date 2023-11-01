@@ -855,12 +855,12 @@ class Inventory(CommonInventory):
 
         new_parent = self._byid[new_parent_id]
         if new_name in self._children[new_parent.file_id]:
-            raise errors.BzrError("{!r} already exists in {!r}".format(new_name, self.id2path(new_parent_id)))
+            raise errors.BzrError(f"{new_name!r} already exists in {self.id2path(new_parent_id)!r}")
 
         new_parent_idpath = self.get_idpath(new_parent_id)
         if file_id in new_parent_idpath:
             raise errors.BzrError(
-                "cannot move directory {!r} into a subdirectory of itself, {!r}".format(self.id2path(file_id), self.id2path(new_parent_id)))
+                f"cannot move directory {self.id2path(file_id)!r} into a subdirectory of itself, {self.id2path(new_parent_id)!r}")
 
         file_ie = self._byid[file_id]
         old_parent = self._byid[file_ie.parent_id]
@@ -1293,7 +1293,7 @@ class CHKInventory(CommonInventory):
                                             StaticTuple(id_to_entry,),
                                             search_key_func=search_key_func)
         if (result.revision_id,) != expected_revision_id:
-            raise ValueError("Mismatched revision id and expected: {!r}, {!r}".format(result.revision_id, expected_revision_id))
+            raise ValueError(f"Mismatched revision id and expected: {result.revision_id!r}, {expected_revision_id!r}")
         return result
 
     @classmethod
@@ -1445,7 +1445,7 @@ class CHKInventory(CommonInventory):
                 if child_file_id != self.root_id:
                     raise ValueError('Data inconsistency detected.'
                                      ' We expected data with key ("","") to match'
-                                     ' the root id, but {} != {}'.format(child_file_id, self.root_id))
+                                     f' the root id, but {child_file_id} != {self.root_id}')
                 continue
             parent_id, basename = key
             ie = cache[child_file_id]
@@ -1456,16 +1456,16 @@ class CHKInventory(CommonInventory):
             if parent_ie.kind != 'directory':
                 raise ValueError('Data inconsistency detected.'
                                  ' An entry in the parent_id_basename_to_file_id map'
-                                 ' has parent_id {{{}}} but the kind of that object'
-                                 ' is {!r} not "directory"'.format(parent_id, parent_ie.kind))
+                                 f' has parent_id {{{parent_id}}} but the kind of that object'
+                                 f' is {parent_ie.kind!r} not "directory"')
             siblings = self._children_cache.setdefault(parent_ie.file_id, {})
             basename = basename.decode('utf-8')
             if basename in siblings:
                 existing_ie = siblings[basename]
                 if existing_ie != ie:
                     raise ValueError('Data inconsistency detected.'
-                                     ' Two entries with basename {!r} were found'
-                                     ' in the parent entry {{{}}}'.format(basename, parent_id))
+                                     f' Two entries with basename {basename!r} were found'
+                                     f' in the parent entry {{{parent_id}}}')
             if basename != ie.name:
                 raise ValueError('Data inconsistency detected.'
                                  ' In the parent_id_basename_to_file_id map, file_id'

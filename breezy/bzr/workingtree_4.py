@@ -2246,8 +2246,8 @@ class InterDirStateTree(InterInventoryTree):
         if not (self.source._revision_id in parent_ids
                 or self.source._revision_id == _mod_revision.NULL_REVISION):
             raise AssertionError(
-                "revision {{{}}} is not stored in {{{}}}, but {} "
-                "can only be used for trees stored in the dirstate".format(self.source._revision_id, self.target, self.iter_changes))
+                f"revision {{{self.source._revision_id}}} is not stored in {{{self.target}}}, but {self.iter_changes} "
+                "can only be used for trees stored in the dirstate")
         target_index = 0
         if self.source._revision_id == _mod_revision.NULL_REVISION:
             source_index = None

@@ -919,7 +919,7 @@ class TestImportProcessor(TestCase):
         proc = lazy_import.ImportProcessor()
         proc._build_map(text)
         self.assertEqual(expected, proc.imports,
-                         'Incorrect processing of:\n{}\n{}\n!=\n{}'.format(text, expected, proc.imports))
+                         f'Incorrect processing of:\n{text}\n{expected}\n!=\n{proc.imports}')
 
     def test_import_one(self):
         exp = {'one': (['one'], None, {})}

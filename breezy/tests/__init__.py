@@ -722,7 +722,7 @@ class VerboseTestResult(ExtendedTestResult):
 
     def report_unsupported(self, test, feature):
         """Test cannot be run because feature is missing."""
-        self.stream.write("NODEP {}\n    The feature '{}' is not available.\n".format(self._testTimeString(test), feature))
+        self.stream.write(f"NODEP {self._testTimeString(test)}\n    The feature '{feature}' is not available.\n")
 
 
 class TextTestRunner:
@@ -1180,7 +1180,7 @@ class TestCase(testtools.TestCase):
         # are appropriately isolated and enable their use by calling
         # self.permit_transport()
         if not osutils.is_inside_any(self._bzr_selftest_roots, url):
-            raise errors.BzrError("Attempt to escape test isolation: {!r} {!r}".format(url, self._bzr_selftest_roots))
+            raise errors.BzrError(f"Attempt to escape test isolation: {url!r} {self._bzr_selftest_roots!r}")
 
     def record_directory_isolation(self):
         """Gather accessed directories to permit later access.
@@ -1400,7 +1400,7 @@ class TestCase(testtools.TestCase):
         """Assert that every entry in sublist is present in superlist."""
         missing = set(sublist) - set(superlist)
         if len(missing) > 0:
-            raise AssertionError("value(s) {!r} not present in container {!r}".format(missing, superlist))
+            raise AssertionError(f"value(s) {missing!r} not present in container {superlist!r}")
 
     def assertListRaises(self, excClass, func, *args, **kwargs):  # noqa: N803
         """Fail unless excClass is raised when the iterator from func is used.
@@ -1466,7 +1466,7 @@ class TestCase(testtools.TestCase):
         path_stat = transport.stat(path)
         actual_mode = stat.S_IMODE(path_stat.st_mode)
         self.assertEqual(mode, actual_mode,
-                         'mode of {!r} incorrect ({} != {})'.format(path, oct(mode), oct(actual_mode)))
+                         f'mode of {path!r} incorrect ({oct(mode)} != {oct(actual_mode)})')
 
     def assertIsSameRealPath(self, path1, path2):
         """Fail if path1 and path2 points to different files."""
@@ -4414,7 +4414,7 @@ def _rmtree_temp_dir(dirname, test_id=None):
             ui.ui_factory.clear_term()
             sys.stderr.write(f'\nWhile running: {test_id}\n')
         # Ugly, but the last thing we want here is fail, so bear with it.
-        sys.stderr.write('Unable to remove testing dir {}\n{}'.format(os.path.basename(dirname), e))
+        sys.stderr.write(f'Unable to remove testing dir {os.path.basename(dirname)}\n{e}')
 
 
 def probe_unicode_in_user_encoding():

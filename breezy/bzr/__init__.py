@@ -174,7 +174,7 @@ def register_metadir(registry, key,
         except ImportError as e:
             raise ImportError(f'failed to load {full_name}: {e}') from e
         except AttributeError as e:
-            raise AttributeError('no factory {} in module {!r}'.format(full_name, sys.modules[mod_name])) from e
+            raise AttributeError(f'no factory {full_name} in module {sys.modules[mod_name]!r}') from e
         return factory()
 
     def helper():
