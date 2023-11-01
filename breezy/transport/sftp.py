@@ -595,10 +595,10 @@ class SFTPTransport(ConnectedTransport):
                 mode = mode & 0o777  # can't set special bits anyway
                 if mode != stat.st_mode & 0o777:
                     if stat.st_mode & 0o6000:
-                        warning('About to chmod {} over sftp, which will result'
+                        warning(f'About to chmod {abspath} over sftp, which will result'
                                 ' in its suid or sgid bits being cleared.  If'
                                 ' you want to preserve those bits, change your '
-                                ' environment on the server to use umask 0{:03o}.'.format(abspath, 0o777 - mode))
+                                f' environment on the server to use umask 0{0o777 - mode:03o}.')
                     self._get_sftp().chmod(abspath, mode=mode)
         except (SFTPError, OSError) as e:
             self._translate_io_exception(e, abspath, ': unable to mkdir',

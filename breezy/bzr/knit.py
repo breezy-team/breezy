@@ -588,7 +588,7 @@ class AnnotatedKnitContent(KnitContent):
             # missing annotation information because of a bug - see thread
             # around 20071015
             raise KnitCorrupt(self,
-                              "line in annotated knit missing annotation information: {}".format(e)) from e
+                              f"line in annotated knit missing annotation information: {e}") from e
         if self._should_strip_eol:
             lines[-1] = lines[-1].rstrip(b'\n')
         return lines
@@ -1564,7 +1564,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         else:
             if ordering != 'unordered':
                 raise AssertionError('valid values for ordering are:'
-                                     ' "unordered", "groupcompress" or "topological" not: {!r}'.format(ordering))
+                                     f' "unordered", "groupcompress" or "topological" not: {ordering!r}')
             # Just group by source; remote sources first.
             present_keys = []
             source_keys = []
@@ -1972,7 +1972,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             rec = self._check_header(key, df.readline())
         except Exception as e:
             raise KnitCorrupt(self,
-                              "While reading {{{}}} got {}({})".format(key, e.__class__.__name__, str(e))) from e
+                              f"While reading {{{key}}} got {e.__class__.__name__}({str(e)})") from e
         return df, rec
 
     def _parse_record_unchecked(self, data):
@@ -1984,7 +1984,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             try:
                 record_contents = df.readlines()
             except Exception as e:
-                raise KnitCorrupt(self, "Corrupt compressed record {!r}, got {}({})".format(data, e.__class__.__name__, str(e))) from e
+                raise KnitCorrupt(self, f"Corrupt compressed record {data!r}, got {e.__class__.__name__}({str(e)})") from e
             header = record_contents.pop(0)
             rec = self._split_header(header)
             last_line = record_contents.pop()
@@ -1995,7 +1995,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                                      rec[1], record_contents))
             if last_line != b'end %s\n' % rec[1]:
                 raise KnitCorrupt(self,
-                                  'unexpected version end line {!r}, wanted {!r}'.format(last_line, rec[1]))
+                                  f'unexpected version end line {last_line!r}, wanted {rec[1]!r}')
         return rec, record_contents
 
     def _read_records_iter(self, records):

@@ -1361,7 +1361,7 @@ class Merge3Merger:
             return 'delete', None
         else:
             raise AssertionError(
-                'winner is OTHER, but file {!r} not in THIS or OTHER tree'.format(merge_hook_params.base_path))
+                f'winner is OTHER, but file {merge_hook_params.base_path!r} not in THIS or OTHER tree')
 
     def merge_contents(self, merge_hook_params):
         """Fallback merge logic after user installed hooks."""
@@ -2292,7 +2292,7 @@ class _PlanMerge(_PlanMergeBase):
                 plan = 'new-a'
             else:
                 if self._head_key != self.b_key:
-                    raise AssertionError('There was an invalid head: {} != {}'.format(self.b_key, self._head_key))
+                    raise AssertionError(f'There was an invalid head: {self.b_key} != {self._head_key}')
                 plan = 'new-b'
             head_rev = self._head_key[-1]
             lines = self.get_lines([head_rev])[head_rev]

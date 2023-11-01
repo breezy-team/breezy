@@ -3551,14 +3551,14 @@ class MockMedium(medium.SmartClientMedium):
             expected_event = self._expected_events.pop(0)
         except IndexError as e:
             raise AssertionError(
-                'Mock medium observed event {!r}, but no more events expected'.format(observed_event)) from e
+                f'Mock medium observed event {observed_event!r}, but no more events expected') from e
         if expected_event[0] == 'read response (partial)':
             if observed_event[0] != 'read response':
                 raise AssertionError(
-                    'Mock medium observed event {!r}, but expected event {!r}'.format(observed_event, expected_event))
+                    f'Mock medium observed event {observed_event!r}, but expected event {expected_event!r}')
         elif observed_event != expected_event:
             raise AssertionError(
-                'Mock medium observed event {!r}, but expected event {!r}'.format(observed_event, expected_event))
+                f'Mock medium observed event {observed_event!r}, but expected event {expected_event!r}')
         if self._expected_events:
             next_event = self._expected_events[0]
             if next_event[0].startswith('read response'):

@@ -674,7 +674,7 @@ class AbstractHTTPHandler(urllib.request.AbstractHTTPHandler):
                     hdrs.append(f'{k}: {v}')
                 trace.mutter('> ' + '\n> '.join(hdrs) + '\n')
             if self._debuglevel >= 1:
-                print('Request sent: [{!r}] from ({})'.format(request, request.connection.sock.getsockname()))
+                print(f'Request sent: [{request!r}] from ({request.connection.sock.getsockname()})')
             response = connection.getresponse()
             convert_to_addinfourl = True
         except (ssl.SSLError, ssl.CertificateError):

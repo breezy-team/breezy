@@ -94,7 +94,7 @@ def open_destination_directory(location, format=None, verbose=True):
         contents = os.listdir(location)
         if contents:
             errors.CommandError("Destination must have a .bzr directory, "
-                                " not yet exist or be empty - files found in {}".format(location))
+                                f" not yet exist or be empty - files found in {location}")
     else:
         try:
             os.mkdir(location)

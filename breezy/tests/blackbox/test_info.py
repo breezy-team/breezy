@@ -1268,9 +1268,8 @@ Location:
                                                             friendly_location(lco_tree.branch.controldir.root_transport.base)))
         if shared_repo is not None:
             branch_data = (
-                "   checkout of branch: {}\n"
-                "    shared repository: {}\n".format(friendly_location(repo_branch.controldir.root_transport.base),
-                 friendly_location(shared_repo.controldir.root_transport.base)))
+                f"   checkout of branch: {friendly_location(repo_branch.controldir.root_transport.base)}\n"
+                f"    shared repository: {friendly_location(shared_repo.controldir.root_transport.base)}\n")
         elif repo_branch is not None:
             branch_data = (
                 "{}  checkout of branch: {}\n".format(extra_space,

@@ -243,7 +243,7 @@ class GroupCompressBlock:
         out = cls()
         header = bytes[:6]
         if header not in cls.GCB_KNOWN_HEADERS:
-            raise ValueError('bytes did not start with any of {!r}'.format(cls.GCB_KNOWN_HEADERS))
+            raise ValueError(f'bytes did not start with any of {cls.GCB_KNOWN_HEADERS!r}')
         if header == cls.GCB_HEADER:
             out._compressor_name = 'zlib'
         elif header == cls.GCB_LZ_HEADER:
@@ -1054,7 +1054,7 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
                                    self.endpoint, chunk_end)
         if not self._delta_index._source_offset == self.endpoint:
             raise AssertionError('the delta index is out of sync'
-                                 'with the output lines {} != {}'.format(self._delta_index._source_offset, self.endpoint))
+                                 f'with the output lines {self._delta_index._source_offset} != {self.endpoint}')
         return start, self.endpoint, type
 
     def _output_chunks(self, new_chunks):

@@ -52,8 +52,8 @@ complete -F {self.function_name} -o default brz
 """)
 
     def function(self):
-        return ("""\
-{function_name} ()
+        return (f"""\
+{self.function_name} ()
 {{
     local cur cmds cmdIdx cmd cmdOpts fixedWords i globalOpts
     local curOpt optEnums
@@ -62,8 +62,8 @@ complete -F {self.function_name} -o default brz
     COMPREPLY=()
     cur=${{COMP_WORDS[COMP_CWORD]}}
 
-    cmds='{cmds}'
-    globalOpts=( {global_options} )
+    cmds='{self.command_names()}'
+    globalOpts=( {self.global_options()} )
 
     # do ordinary expansion if we are anywhere after a -- argument
     for ((i = 1; i < COMP_CWORD; ++i)); do
@@ -98,12 +98,12 @@ complete -F {self.function_name} -o default brz
             curOpt=${{COMP_WORDS[COMP_CWORD - 2]}}:
         fi
     fi
-{debug}
+{self.debug_output()}
     cmdOpts=( )
     optEnums=( )
     fixedWords=( )
     case $cmd in
-{cases}\
+{self.command_cases()}\
     *)
         cmdOpts=(--help -h)
         ;;
@@ -142,13 +142,7 @@ complete -F {self.function_name} -o default brz
 
     return 0
 }}
-""".format(
-            cmds=self.command_names(),
-            function_name=self.function_name,
-            cases=self.command_cases(),
-            global_options=self.global_options(),
-            debug=self.debug_output(),
-        ))
+""")
         # Help Emacs terminate strings: "
 
     def command_names(self):

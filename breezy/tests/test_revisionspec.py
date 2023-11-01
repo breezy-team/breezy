@@ -64,7 +64,7 @@ class TestRevisionSpec(TestCaseWithTransport):
     def assertInHistoryIs(self, exp_revno, exp_revision_id, revision_spec):
         rev_info = self.get_in_history(revision_spec)
         self.assertEqual(exp_revno, rev_info.revno,
-                         'Revision spec: {!r} returned wrong revno: {!r} != {!r}'.format(revision_spec, exp_revno, rev_info.revno))
+                         f'Revision spec: {revision_spec!r} returned wrong revno: {exp_revno!r} != {rev_info.revno!r}')
         self.assertEqual(exp_revision_id, rev_info.rev_id,
                          f'Revision spec: {revision_spec!r} returned wrong revision id:'
                          f' {exp_revision_id!r} != {rev_info.rev_id!r}')

@@ -423,7 +423,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
             rev1 = checkout_b.commit('rev1')
         except errors.NoRoundtrippingSupport as err:
             raise tests.TestNotApplicable(
-                'roundtripping between {!r} and {!r} not supported'.format(checkout_b.branch, checkout_b.branch.get_master_branch())) from err
+                f'roundtripping between {checkout_b.branch!r} and {checkout_b.branch.get_master_branch()!r} not supported') from err
         self.assertEqual(rev1, branch_a.last_revision())
         self.assertNotEqual(checkout_b.branch.base, branch_a.base)
 

@@ -874,7 +874,7 @@ class VersionedFileRepository(Repository):
         sum(map(len, chunks))
         if item_data and sha1 != item_data[1]:
             checker._report_items.append(
-                'sha1 mismatch: {} has sha1 {} expected {} referenced by {}'.format(record.key, sha1, item_data[1], item_data[2]))
+                f'sha1 mismatch: {record.key} has sha1 {sha1} expected {item_data[1]} referenced by {item_data[2]}')
 
     def _eliminate_revisions_not_present(self, revision_ids):
         """Check every revision id in revision_ids to see if we have it.

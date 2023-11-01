@@ -516,7 +516,7 @@ class TestBranchStacked(tests.TestCaseWithTransport):
             '  Branch format 7\n'
             'Doing on-the-fly conversion from RepositoryFormatKnitPack1() to RepositoryFormatKnitPack5().\n'
             'This may take some time. Upgrade the repositories to the same format for better performance.\n'
-            'Created new stacked branch referring to {}.\n'.format(trunk.base),
+            f'Created new stacked branch referring to {trunk.base}.\n',
             err)
 
     def test_branch_stacked_from_rich_root_non_stackable(self):
@@ -531,7 +531,7 @@ class TestBranchStacked(tests.TestCaseWithTransport):
             '  Branch format 7\n'
             'Doing on-the-fly conversion from RepositoryFormatKnitPack4() to RepositoryFormatKnitPack5RichRoot().\n'
             'This may take some time. Upgrade the repositories to the same format for better performance.\n'
-            'Created new stacked branch referring to {}.\n'.format(trunk.base),
+            f'Created new stacked branch referring to {trunk.base}.\n',
             err)
 
 

@@ -1644,7 +1644,7 @@ class DirState:
             if real_add:
                 if old_path is not None:
                     self._raise_invalid(new_path, file_id,
-                                        'considered a real add but still had old_path at {}'.format(old_path))
+                                        f'considered a real add but still had old_path at {old_path}')
             if present:
                 entry = block[entry_index]
                 basis_kind = entry[1][1][0]
@@ -1676,7 +1676,7 @@ class DirState:
                     if basis_kind not in (b'a', b'r'):
                         self._raise_invalid(new_path, file_id,
                                             "we have an add record for path, but the path"
-                                            " is already present with another file_id {}".format(maybe_entry[0][2]))
+                                            f" is already present with another file_id {maybe_entry[0][2]}")
 
                 entry = (entry_key, [DirState.NULL_PARENT_DETAILS,
                                      new_details])
@@ -2074,7 +2074,7 @@ class DirState:
         self._read_dirblocks_if_needed()
         if path_utf8 is not None:
             if not isinstance(path_utf8, bytes):
-                raise errors.BzrError('path_utf8 is not bytes: {} {!r}'.format(type(path_utf8), path_utf8))
+                raise errors.BzrError(f'path_utf8 is not bytes: {type(path_utf8)} {path_utf8!r}')
             # path lookups are faster
             dirname, basename = osutils.split(path_utf8)
             block_index, entry_index, dir_present, file_present = \
@@ -2927,7 +2927,7 @@ class DirState:
                         other_key, other_block)
                     if not present:
                         raise AssertionError(
-                            'update_minimal: could not find other entry for {}'.format(other_key))
+                            f'update_minimal: could not find other entry for {other_key}')
                     if path_utf8 is None:
                         raise AssertionError('no path')
                     # Turn this other location into a reference to the new
@@ -3157,7 +3157,7 @@ class DirState:
                         target_location = tree_state[1]
                         if previous_path != target_location:
                             raise AssertionError(
-                                "file {} relocation in row {!r} but also at {!r}".format(file_id, entry, previous_path))
+                                f"file {file_id} relocation in row {entry!r} but also at {previous_path!r}")
                     else:
                         # a file, directory, etc - may have been previously
                         # pointed to by a relocation, which must point here
@@ -3558,7 +3558,7 @@ class ProcessEntryPython:
                                                                 path_utf8=new_dirname)
                     if target_parent_entry == (None, None):
                         raise AssertionError(
-                            "Could not find target parent in wt: {}\nparent of: {}".format(new_dirname, entry)) from e
+                            f"Could not find target parent in wt: {new_dirname}\nparent of: {entry}") from e
                     target_parent_id = target_parent_entry[0][2]
                 if target_parent_id == entry[0][2]:
                     # This is the root, so the parent is None
@@ -3671,7 +3671,7 @@ class ProcessEntryPython:
             pass
         else:
             raise AssertionError("don't know how to compare "
-                                 "source_minikind={!r}, target_minikind={!r}".format(source_minikind, target_minikind))
+                                 f"source_minikind={source_minikind!r}, target_minikind={target_minikind!r}")
         return None, None
 
     def __iter__(self):
