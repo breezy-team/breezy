@@ -73,10 +73,14 @@ impl HelpTopicRegistry {
             breezy::help::HelpContents::Closure(Box::new(move |_| contents.clone()))
         } else {
             let f = contents.extract::<PyObject>(py)?;
+            let name = name.to_string();
             breezy::help::HelpContents::Closure(Box::new(move |h| {
-                Python::with_gil(|py| {
-                    let s = f.call1(py, (h,)).unwrap();
-                    s.extract::<String>(py).unwrap()
+                Python::with_gil(|py| match f.call1(py, (h,)) {
+                    Ok(s) => s.extract::<String>(py).unwrap(),
+                    Err(e) => {
+                        e.print(py);
+                        panic!("error while generating help text for {}", name);
+                    }
                 })
             }))
         };
