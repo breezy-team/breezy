@@ -1615,7 +1615,7 @@ class RepositoryPackCollection:
             all_missing.update([(prefix,) + key for key in missing])
         if all_missing:
             raise errors.BzrCheckError(
-                "Repository {} has missing compression parent(s) {!r} ".format(self.repo, sorted(all_missing)))
+                f"Repository {self.repo} has missing compression parent(s) {sorted(all_missing)!r} ")
         problems = self._check_new_inventories()
         if problems:
             problems_summary = '\n'.join(problems)

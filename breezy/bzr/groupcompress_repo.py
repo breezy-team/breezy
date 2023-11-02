@@ -418,7 +418,7 @@ class GCCHKPacker(Packer):
             really_missing = missing_inventories.difference(pmap)
             if really_missing:
                 missing_inventories = sorted(really_missing)
-                raise ValueError('We are missing inventories for revisions: {}'.format(missing_inventories))
+                raise ValueError(f'We are missing inventories for revisions: {missing_inventories}')
         self._copy_stream(source_vf, target_vf, inventory_keys,
                           'inventories', self._get_filtered_inv_stream, 2)
 
@@ -712,7 +712,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         missing_corresponding = set(new_revisions_keys)
         missing_corresponding.difference_update(corresponding_invs)
         if missing_corresponding:
-            problems.append("inventories missing for revisions {}".format(sorted(missing_corresponding)))
+            problems.append(f"inventories missing for revisions {sorted(missing_corresponding)}")
             return problems
         # Are any chk root entries missing for any inventories?  This includes
         # any present parent inventories, which may be used when calculating

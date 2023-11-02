@@ -899,8 +899,8 @@ class LeafNode(Node):
             serialized = b"%s\x00%d\n" % (self._serialise_key(key),
                                           len(value_lines))
             if not serialized.startswith(self._common_serialised_prefix):
-                raise AssertionError('We thought the common prefix was {!r}'
-                                     ' but entry {!r} does not have it in common'.format(self._common_serialised_prefix, serialized))
+                raise AssertionError(f'We thought the common prefix was {self._common_serialised_prefix!r}'
+                                     f' but entry {serialized!r} does not have it in common')
             lines.append(serialized[prefix_len:])
             lines.extend(value_lines)
         sha1, _, _ = store.add_lines((None,), (), lines)
@@ -1000,7 +1000,7 @@ class InternalNode(Node):
         if self._search_prefix is None:
             raise AssertionError("_search_prefix should not be None")
         if not prefix.startswith(self._search_prefix):
-            raise AssertionError("prefixes mismatch: {} must start with {}".format(prefix, self._search_prefix))
+            raise AssertionError(f"prefixes mismatch: {prefix} must start with {self._search_prefix}")
         if len(prefix) != len(self._search_prefix) + 1:
             raise AssertionError("prefix wrong length: len(%s) is not %d" %
                                  (prefix, len(self._search_prefix) + 1))
@@ -1299,7 +1299,7 @@ class InternalNode(Node):
                 key = node._key[0]
             serialised = b"%s\x00%s\n" % (prefix, key)
             if not serialised.startswith(self._search_prefix):
-                raise AssertionError("prefixes mismatch: {} must start with {}".format(serialised, self._search_prefix))
+                raise AssertionError(f"prefixes mismatch: {serialised} must start with {self._search_prefix}")
             lines.append(serialised[prefix_len:])
         sha1, _, _ = store.add_lines((None,), (), lines)
         self._key = StaticTuple(b"sha1:" + sha1,).intern()

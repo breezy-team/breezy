@@ -138,7 +138,7 @@ class SmartMedium:
             raise TypeError(data)
         if self._push_back_buffer is not None:
             raise AssertionError(
-                "_push_back called when self._push_back_buffer is {!r}".format(self._push_back_buffer))
+                f"_push_back called when self._push_back_buffer is {self._push_back_buffer!r}")
         if data == b'':
             return
         self._push_back_buffer = data
@@ -327,7 +327,7 @@ class SmartServerStreamMedium(SmartMedium):
                 return  # Socket may already be closed
         if rs or xs:
             return
-        raise errors.ConnectionTimeout('disconnecting client after {:.1f} seconds'.format(timeout_seconds))
+        raise errors.ConnectionTimeout(f'disconnecting client after {timeout_seconds:.1f} seconds')
 
     def _serve_one_request(self, protocol):
         """Read one request from input, process, send back a response.
@@ -798,8 +798,8 @@ class SmartClientMedium(SmartMedium):
                 "_remember_remote_is_before(%r) was called previously.", version_tuple, self._remote_version_is_before)
             if debug.debug_flag_enabled('hpss'):
                 ui.ui_factory.show_warning(
-                    "_remember_remote_is_before({!r}) called, but "
-                    "_remember_remote_is_before({!r}) was called previously.".format(version_tuple, self._remote_version_is_before))
+                    f"_remember_remote_is_before({version_tuple!r}) called, but "
+                    f"_remember_remote_is_before({self._remote_version_is_before!r}) was called previously.")
             return
         self._remote_version_is_before = version_tuple
 

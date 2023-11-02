@@ -45,13 +45,13 @@ class TestPush(TestCaseWithInterBranch):
             other = self.sprout_to(mine.controldir, 'other').open_workingtree()
         except errors.NoRoundtrippingSupport as err:
             raise tests.TestNotApplicable(
-                'lossless push between {!r} and {!r} not supported'.format(self.branch_format_from, self.branch_format_to)) from err
+                f'lossless push between {self.branch_format_from!r} and {self.branch_format_to!r} not supported') from err
         m1 = other.commit('my change', allow_pointless=True)
         try:
             mine.merge_from_branch(other.branch)
         except errors.NoRoundtrippingSupport as err:
             raise tests.TestNotApplicable(
-                'lossless push between {!r} and {!r} not supported'.format(self.branch_format_from, self.branch_format_to)) from err
+                f'lossless push between {self.branch_format_from!r} and {self.branch_format_to!r} not supported') from err
         p2 = mine.commit('merge my change')
         result = mine.branch.push(other.branch)
         self.assertEqual(p2, other.branch.last_revision())
@@ -71,7 +71,7 @@ class TestPush(TestCaseWithInterBranch):
                 mine.controldir, 'target').open_workingtree()
         except errors.NoRoundtrippingSupport as err:
             raise tests.TestNotApplicable(
-                'lossless push between {!r} and {!r} not supported'.format(self.branch_format_from, self.branch_format_to)) from err
+                f'lossless push between {self.branch_format_from!r} and {self.branch_format_to!r} not supported') from err
         target.commit('my change', allow_pointless=True)
         other = self.sprout_to(mine.controldir, 'other').open_workingtree()
         other.merge_from_branch(target.branch)
@@ -80,7 +80,7 @@ class TestPush(TestCaseWithInterBranch):
             mine.merge_from_branch(other.branch)
         except errors.NoRoundtrippingSupport as err:
             raise tests.TestNotApplicable(
-                'lossless push between {!r} and {!r} not supported'.format(self.branch_format_from, self.branch_format_to)) from err
+                f'lossless push between {self.branch_format_from!r} and {self.branch_format_to!r} not supported') from err
         p2 = mine.commit('merge other')
         mine.branch.push(target.branch)
         self.assertEqual(p2, target.branch.last_revision())
@@ -101,7 +101,7 @@ class TestPush(TestCaseWithInterBranch):
                 master_tree.branch.controldir, 'other')
         except errors.NoRoundtrippingSupport as err:
             raise tests.TestNotApplicable(
-                'lossless push between {!r} and {!r} not supported'.format(self.branch_format_from, self.branch_format_to)) from err
+                f'lossless push between {self.branch_format_from!r} and {self.branch_format_to!r} not supported') from err
         other = other_bzrdir.open_workingtree()
         rev2 = other.commit('other commit')
         # now push, which should update both checkout and master.
@@ -141,7 +141,7 @@ class TestPush(TestCaseWithInterBranch):
                     target, stop_revision=source.last_revision())
         except errors.NoRoundtrippingSupport as err:
             raise tests.TestNotApplicable(
-                'lossless push between {!r} and {!r} not supported'.format(self.branch_format_from, self.branch_format_to)) from err
+                f'lossless push between {self.branch_format_from!r} and {self.branch_format_to!r} not supported') from err
 
     def test_push_uses_read_lock_lossy(self):
         """Push should only need a read lock on the source side."""
@@ -238,7 +238,7 @@ class TestPush(TestCaseWithInterBranch):
             source.branch.push(target)
         except errors.NoRoundtrippingSupport as err:
             raise tests.TestNotApplicable(
-                'lossless push between {!r} and {!r} not supported'.format(self.branch_format_from, self.branch_format_to)) from err
+                f'lossless push between {self.branch_format_from!r} and {self.branch_format_to!r} not supported') from err
         rev2 = source.commit('2nd commit')
         source.commit('3rd commit')
 
@@ -363,7 +363,7 @@ class TestPush(TestCaseWithInterBranch):
                 tree_a.controldir, 'tree_b').open_workingtree()
         except errors.NoRoundtrippingSupport as err:
             raise tests.TestNotApplicable(
-                'lossless push between {!r} and {!r} not supported'.format(self.branch_format_from, self.branch_format_to)) from err
+                f'lossless push between {self.branch_format_from!r} and {self.branch_format_to!r} not supported') from err
         tree_b.branch.tags.set_tag('tag1', revid1)
         tree_b.branch.tags.set_tag('tag2', revid1)
         tree_b.branch.get_config_stack().set('branch.fetch_tags', True)

@@ -497,7 +497,7 @@ class WorkingTreeRevisionRewriter:
         merger.set_other_revision(oldrevid, self.wt.branch)
         base_revid = self.determine_base(
             oldrevid, oldrev.parent_ids, newrevid, newparents)
-        mutter('replaying {!r} as {!r} with base {!r} and new parents {!r}'.format(oldrevid, newrevid, base_revid, newparents))
+        mutter(f'replaying {oldrevid!r} as {newrevid!r} with base {base_revid!r} and new parents {newparents!r}')
         merger.set_base_revision(base_revid, self.wt.branch)
         merger.merge_type = merge_type
         merger.do_merge()

@@ -375,7 +375,7 @@ class CommitHandler(processor.CommitHandler):
             try:
                 self.record_new(path, ie)
             except:
-                print("failed to add path '{}' with entry '{}' in command {}".format(path, ie, self.command.id))
+                print(f"failed to add path '{path}' with entry '{ie}' in command {self.command.id}")
                 print(f"parent's children are:\n{inv.get_children(ie.parent_id)!r}\n")
                 raise
         else:

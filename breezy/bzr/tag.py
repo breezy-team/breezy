@@ -102,4 +102,4 @@ class BasicTags(Tags):
                 r[k.decode('utf-8')] = v
             return r
         except ValueError as e:
-            raise ValueError("failed to deserialize tag dictionary {!r}: {}".format(tag_content, e)) from e
+            raise ValueError(f"failed to deserialize tag dictionary {tag_content!r}: {e}") from e

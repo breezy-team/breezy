@@ -321,7 +321,7 @@ class BzrUploader:
                     except errors.TransportNotPossible:
                         if not self.quiet:
                             target = self.tree.path_content_summary(relpath)[3]
-                            self.outf.write('Not uploading symlink {} -> {}\n'.format(relpath, target))
+                            self.outf.write(f'Not uploading symlink {relpath} -> {target}\n')
                 elif ie.kind == 'directory':
                     self.make_remote_dir_robustly(relpath)
                 else:
@@ -416,7 +416,7 @@ class BzrUploader:
                         self.upload_symlink(change.path[1], target)
                     except errors.TransportNotPossible:
                         if not self.quiet:
-                            self.outf.write('Not uploading symlink {} -> {}\n'.format(change.path[1], target))
+                            self.outf.write(f'Not uploading symlink {change.path[1]} -> {target}\n')
                 else:
                     raise NotImplementedError
 

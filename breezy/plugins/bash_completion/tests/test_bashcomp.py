@@ -85,12 +85,12 @@ class BashCompletionMixin:
     def assertCompletionContains(self, *words):
         missing = set(words) - self.completion_result
         if missing:
-            raise AssertionError('Completion should contain {!r} but it has {!r}'.format(missing, self.completion_result))
+            raise AssertionError(f'Completion should contain {missing!r} but it has {self.completion_result!r}')
 
     def assertCompletionOmits(self, *words):
         surplus = set(words) & self.completion_result
         if surplus:
-            raise AssertionError('Completion should omit {!r} but it has {!r}'.format(surplus, self.completion_result))
+            raise AssertionError(f'Completion should omit {surplus!r} but it has {self.completion_result!r}')
 
     def get_script(self):
         commands.install_bzr_command_hooks()

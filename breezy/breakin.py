@@ -25,9 +25,9 @@ _breakin_signal_name: Optional[str] = None
 def _debug(signal_number, interrupted_frame):
     import pdb
     import sys
-    sys.stderr.write("** {} received, entering debugger\n"
+    sys.stderr.write(f"** {_breakin_signal_name} received, entering debugger\n"
                      "** Type 'c' to continue or 'q' to stop the process\n"
-                     "** Or {} again to quit (and possibly dump core)\n".format(_breakin_signal_name, _breakin_signal_name))
+                     f"** Or {_breakin_signal_name} again to quit (and possibly dump core)\n")
     # It seems that on Windows, when sys.stderr is to a PIPE, then we need to
     # flush. Not sure why it is buffered, but that seems to be the case.
     sys.stderr.flush()

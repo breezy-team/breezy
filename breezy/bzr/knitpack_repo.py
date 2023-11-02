@@ -1118,7 +1118,7 @@ class KnitReconcilePacker(KnitPacker):
             for parent_key in parent_keys:
                 if parent_key[0] != key[0]:
                     # Graph parents must match the fileid
-                    raise errors.BzrError('Mismatched key parent {!r}:{!r}'.format(key, parent_keys))
+                    raise errors.BzrError(f'Mismatched key parent {key!r}:{parent_keys!r}')
                 parents.append(parent_key[1])
             text_lines = next(repo.texts.get_record_stream(
                 [key], 'unordered', True)).get_bytes_as('lines')
@@ -1127,7 +1127,7 @@ class KnitReconcilePacker(KnitPacker):
         # 5) check that nothing inserted has a reference outside the keyspace.
         missing_text_keys = self.new_pack.text_index._external_references()
         if missing_text_keys:
-            raise errors.BzrCheckError('Reference to missing compression parents {!r}'.format(missing_text_keys))
+            raise errors.BzrCheckError(f'Reference to missing compression parents {missing_text_keys!r}')
         self._log_copied_texts()
 
     def _use_pack(self, new_pack):
