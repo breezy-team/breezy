@@ -637,18 +637,6 @@ impl TreeReference {
         }
     }
 
-    #[setter]
-    fn set__reference_revision(slf: PyRefMut<Self>, reference_revision: Option<RevisionId>) {
-        let mut s = slf.into_super();
-        match &mut s.0 {
-            Entry::TreeReference {
-                reference_revision: r,
-                ..
-            } => *r = reference_revision,
-            _ => panic!("Not a tree reference"),
-        }
-    }
-
     fn copy(slf: PyRef<Self>, py: Python) -> PyResult<PyObject> {
         let s = slf.into_super();
         let init = PyClassInitializer::from(InventoryEntry(s.0.clone()));
@@ -688,17 +676,6 @@ impl InventoryLink {
             Entry::Link {
                 ref symlink_target, ..
             } => symlink_target.clone(),
-            _ => panic!("Not a link"),
-        }
-    }
-
-    #[setter]
-    fn set__symlink_target(slf: PyRefMut<Self>, target: Option<String>) {
-        match slf.into_super().0 {
-            Entry::Link {
-                ref mut symlink_target,
-                ..
-            } => *symlink_target = target,
             _ => panic!("Not a link"),
         }
     }
