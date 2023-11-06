@@ -672,7 +672,7 @@ class CommitHandler(processor.CommitHandler):
             # If this is a merge, the file was most likely added already.
             # The per-file parent(s) must therefore be calculated and
             # we can't assume there are none.
-            per_file_parents, ie.revision = \
+            per_file_parents, ie._revision = \
                 self.rev_store.get_parents_and_revision_for_entry(ie)
             self.per_file_parents_for_commit[file_id] = per_file_parents
         elif new_path is None:
@@ -685,7 +685,7 @@ class CommitHandler(processor.CommitHandler):
             self.per_file_parents_for_commit[file_id] = per_file_parents
         else:
             # modify
-            per_file_parents, ie.revision = \
+            per_file_parents, ie._revision = \
                 self.rev_store.get_parents_and_revision_for_entry(ie)
             self.per_file_parents_for_commit[file_id] = per_file_parents
 
@@ -720,9 +720,9 @@ class CommitHandler(processor.CommitHandler):
         new_ie = old_ie.copy()
         new_basename, new_parent_id = self._ensure_directory(new_path,
                                                              self.basis_inventory)
-        new_ie.name = new_basename
-        new_ie.parent_id = new_parent_id
-        new_ie.revision = self.revision_id
+        new_ie._name = new_basename
+        new_ie._parent_id = new_parent_id
+        new_ie._revision = self.revision_id
         self._add_entry((old_path, new_path, file_id, new_ie))
         self._modified_file_ids[new_path] = file_id
         self._paths_deleted_this_commit.discard(new_path)

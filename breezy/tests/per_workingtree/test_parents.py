@@ -484,7 +484,7 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
         basis_shape.revision_id = basis_revid
         new_shape.revision_id = new_revid
         if new_shape.root.revision is None:
-            new_shape.root.revision = new_revid
+            new_shape.root._revision = new_revid
         delta = self.make_inv_delta(basis_shape, new_shape)
         tree = self.make_branch_and_tree('tree')
         # the shapes need to be in the tree's repository to be able to set them

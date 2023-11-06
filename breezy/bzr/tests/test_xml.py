@@ -380,8 +380,7 @@ class TestSerializer(TestCase):
         s_v5 = breezy.bzr.xml5.inventory_serializer_v5
         s_v6 = breezy.bzr.xml6.inventory_serializer_v6
         s_v7 = xml7.inventory_serializer_v7
-        inv = Inventory(b'tree-root-321', revision_id=b'rev-outer')
-        inv.root.revision = b'root-rev'
+        inv = Inventory(b'tree-root-321', revision_id=b'rev-outer', root_revision=b'root-rev')
         inv.add(inventory.TreeReference(b'nested-id', 'nested', b'tree-root-321',
                                         b'rev-outer', b'rev-inner'))
         self.assertRaises(serializer.UnsupportedInventoryKind,

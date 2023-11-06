@@ -799,7 +799,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         :param parent_ids: the parents for the new revision.
         """
         inv.revision_id = revision_id
-        inv.root.revision = revision_id
+        inv.root._revision = revision_id
         if repo.supports_rich_root():
             root_id = inv.root.file_id
             repo.texts.add_lines((root_id, revision_id), [], [])

@@ -205,7 +205,8 @@ class _InventorySerializer_v4(XMLInventorySerializer):
 
             ie = inventory.InventoryFile(file_id,
                                          elt.get('name'),
-                                         parent_id, text_size=text_size, text_sha1=text_sha1)
+                                         parent_id, text_size=text_size, text_sha1=text_sha1,
+                                         text_id=text_id)
         elif kind == 'symlink':
             ie = inventory.InventoryLink(file_id,
                                          elt.get('name'),

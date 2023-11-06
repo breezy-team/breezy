@@ -43,7 +43,7 @@ class InventorySerializer_v5(xml6.InventorySerializer_v6):
         if data_revision_id is not None:
             revision_id = data_revision_id.encode('utf-8')
         inv = inventory.Inventory(root_id=None, revision_id=revision_id)
-        root = inventory.InventoryDirectory(root_id, "", None, revision_id)
+        root = inventory.InventoryDirectory(root_id, "", None, revision=revision_id)
         inv.add(root)
 
         # Optimizations tested

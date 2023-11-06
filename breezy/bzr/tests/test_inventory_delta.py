@@ -426,8 +426,7 @@ class TestSerialization(TestCase):
     def test_to_inventory_has_tree_not_meant_to(self):
         make_entry = inventory.make_entry
         tree_ref = make_entry(
-            'tree-reference', 'foo', b'changed-in', b'ref-id')
-        tree_ref.reference_revision = b'ref-revision'
+            'tree-reference', 'foo', b'changed-in', b'ref-id', reference_revision=b'ref-revision')
         delta = InventoryDelta([
             (None, '', b'an-id',
              make_entry('directory', '', b'changed-in', b'an-id')),
@@ -441,10 +440,7 @@ class TestSerialization(TestCase):
 
     def test_to_inventory_torture(self):
         def make_entry(kind, name, parent_id, file_id, **attrs):
-            entry = inventory.make_entry(kind, name, parent_id, file_id)
-            for name, value in attrs.items():
-                setattr(entry, name, value)
-            return entry
+            return inventory.make_entry(kind, name, parent_id, file_id, **attrs)
         # this delta is crafted to have all the following:
         # - deletes
         # - renamed roots
@@ -516,54 +512,42 @@ class TestContent(TestCase):
         self.assertEqual(b'dir', inventory_delta.serialize_inventory_entry(entry))
 
     def test_file_0_short_sha(self):
-        file_entry = inventory.make_entry('file', 'a file', b'parent', b'file-id')
-        file_entry.text_sha1 = b''
-        file_entry.text_size = 0
+        file_entry = inventory.make_entry('file', 'a file', b'parent', b'file-id', text_sha1=b'', text_size=0)
         self.assertEqual(b'file\x000\x00\x00',
                          inventory_delta.serialize_inventory_entry(file_entry))
 
     def test_file_10_foo(self):
-        file_entry = inventory.make_entry('file', 'a file', b'parent', b'file-id')
-        file_entry.text_sha1 = b'foo'
-        file_entry.text_size = 10
+        file_entry = inventory.make_entry('file', 'a file', b'parent', b'file-id', text_sha1=b'foo', text_size=10)
         self.assertEqual(b'file\x0010\x00\x00foo',
                          inventory_delta.serialize_inventory_entry(file_entry))
 
     def test_file_executable(self):
-        file_entry = inventory.make_entry('file', 'a file', b'parent', b'file-id')
-        file_entry.executable = True
-        file_entry.text_sha1 = b'foo'
-        file_entry.text_size = 10
+        file_entry = inventory.make_entry('file', 'a file', b'parent', b'file-id', executable=True, text_sha1=b'foo', text_size=10)
         self.assertEqual(b'file\x0010\x00Y\x00foo',
                          inventory_delta.serialize_inventory_entry(file_entry))
 
     def test_file_without_size(self):
-        file_entry = inventory.make_entry('file', 'a file', b'parent', b'file-id')
-        file_entry.text_sha1 = b'foo'
+        file_entry = inventory.make_entry('file', 'a file', b'parent', b'file-id', text_sha1=b'foo')
         self.assertRaises(InventoryDeltaError,
                           inventory_delta.serialize_inventory_entry, file_entry)
 
     def test_file_without_sha1(self):
-        file_entry = inventory.make_entry('file', 'a file', b'parent', b'file-id')
-        file_entry.text_size = 10
+        file_entry = inventory.make_entry('file', 'a file', b'parent', b'file-id', text_size=10)
         self.assertRaises(InventoryDeltaError,
                           inventory_delta.serialize_inventory_entry, file_entry)
 
     def test_link_empty_target(self):
-        entry = inventory.make_entry('symlink', 'a link', b'parent')
-        entry.symlink_target = ''
+        entry = inventory.make_entry('symlink', 'a link', b'parent', symlink_target='')
         self.assertEqual(b'link\x00',
                          inventory_delta.serialize_inventory_entry(entry))
 
     def test_link_unicode_target(self):
-        entry = inventory.make_entry('symlink', 'a link', b'parent')
-        entry.symlink_target = b' \xc3\xa5'.decode('utf8')
+        entry = inventory.make_entry('symlink', 'a link', b'parent', symlink_target=b' \xc3\xa5'.decode('utf8'))
         self.assertEqual(b'link\x00 \xc3\xa5',
                          inventory_delta.serialize_inventory_entry(entry))
 
     def test_link_space_target(self):
-        entry = inventory.make_entry('symlink', 'a link', b'parent')
-        entry.symlink_target = ' '
+        entry = inventory.make_entry('symlink', 'a link', b'parent', symlink_target=' ')
         self.assertEqual(b'link\x00 ',
                          inventory_delta.serialize_inventory_entry(entry))
 
@@ -573,14 +557,12 @@ class TestContent(TestCase):
                           inventory_delta.serialize_inventory_entry, entry)
 
     def test_reference_null(self):
-        entry = inventory.make_entry('tree-reference', 'a tree', b'parent')
-        entry.reference_revision = NULL_REVISION
+        entry = inventory.make_entry('tree-reference', 'a tree', b'parent', reference_revision=NULL_REVISION)
         self.assertEqual(b'tree\x00null:',
                          inventory_delta.serialize_inventory_entry(entry))
 
     def test_reference_revision(self):
-        entry = inventory.make_entry('tree-reference', 'a tree', b'parent')
-        entry.reference_revision = b'foo@\xc3\xa5b-lah'
+        entry = inventory.make_entry('tree-reference', 'a tree', b'parent', reference_revision=b'foo@\xc3\xa5b-lah')
         self.assertEqual(b'tree\x00foo@\xc3\xa5b-lah',
                          inventory_delta.serialize_inventory_entry(entry))
 

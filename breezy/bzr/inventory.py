@@ -451,7 +451,7 @@ class Inventory(CommonInventory):
     ['', 'hello.c']
     """
 
-    def __init__(self, root_id=ROOT_ID, revision_id=None):
+    def __init__(self, root_id=ROOT_ID, revision_id=None, root_revision=None):
         """Create or read an inventory.
 
         If a working directory is specified, the inventory is read
@@ -464,8 +464,8 @@ class Inventory(CommonInventory):
         self.root = None
         self._byid = {}
         self._children = {}
-        if root_id is not None:
-            self._set_root(InventoryDirectory(root_id, '', None))
+        if root_id is not None or root_revision is not None:
+            self._set_root(InventoryDirectory(root_id, '', None, revision=root_revision))
         self.revision_id = revision_id
 
     def change_root_id(self, file_id):
@@ -500,7 +500,7 @@ class Inventory(CommonInventory):
     def get_children(self, file_id):
         return self._children[file_id]
 
-    def apply_delta(self, delta):
+    def apply_delta(self, delta: list[tuple[str | None, str | None, FileID, object | None]]) -> None:
         """Apply a delta to this inventory.
 
         See the inventory developers documentation for the theory behind
@@ -714,7 +714,7 @@ class Inventory(CommonInventory):
         if len(parts) == 0:
             if file_id is None:
                 file_id = generate_ids.gen_root_id()
-            self.root = InventoryDirectory(file_id, '', None)
+            self.root = InventoryDirectory(file_id, '', None, revision=kwargs.get('revision'))
             self._byid = {self.root.file_id: self.root}
             if self.root.file_id in self._children:
                 raise AssertionError('Root id already in children')

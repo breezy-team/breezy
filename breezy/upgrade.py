@@ -279,7 +279,7 @@ def _convert_items(items, format, clean_up, dry_run, label=None):
                 ui.ui_factory.note(str(ex))
                 succeeded.append(control_dir)
                 continue
-            except RuntimeError as ex:
+            except Exception as ex:
                 trace.warning(f'conversion error: {ex}')
                 exceptions.append(ex)
                 continue

@@ -868,8 +868,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
             repo.start_write_group()
             cleanups.append(repo.commit_write_group)
             # make rev1a: A well-formed revision, containing 'file1'
-            inv = inventory.Inventory(revision_id=b'rev1a')
-            inv.root.revision = b'rev1a'
+            inv = inventory.Inventory(revision_id=b'rev1a', root_revision=b'rev1a')
             self.add_file(repo, inv, 'file1', b'rev1a', [])
             repo.texts.add_lines((inv.root.file_id, b'rev1a'), [], [])
             repo.add_inventory(b'rev1a', inv, [])
@@ -881,8 +880,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
 
             # make rev1b, which has no Revision, but has an Inventory, and
             # file1
-            inv = inventory.Inventory(revision_id=b'rev1b')
-            inv.root.revision = b'rev1b'
+            inv = inventory.Inventory(revision_id=b'rev1b', root_revision=b'rev1b')
             self.add_file(repo, inv, 'file1', b'rev1b', [])
             repo.add_inventory(b'rev1b', inv, [])
 
@@ -890,7 +888,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
             # file2 is sane
             # file1 has 'rev1b' as an ancestor, even though this is not
             # mentioned by 'rev1a', making it an unreferenced ancestor
-            inv = inventory.Inventory()
+            inv = inventory.Inventory(root_revision=b'rev2')
             self.add_file(repo, inv, 'file1', b'rev2', [b'rev1a', b'rev1b'])
             self.add_file(repo, inv, 'file2', b'rev2', [])
             self.add_revision(repo, b'rev2', inv, [b'rev1a'])
@@ -902,7 +900,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
             # make rev3 with file2
             # file2 refers to 'rev1c', which is a ghost in this repository, so
             # file2 cannot have rev1c as its ancestor.
-            inv = inventory.Inventory()
+            inv = inventory.Inventory(root_revision=b'rev3')
             self.add_file(repo, inv, 'file2', b'rev3', [b'rev1c'])
             self.add_revision(repo, b'rev3', inv, [b'rev1c'])
             return repo
@@ -912,7 +910,6 @@ class TestWithBrokenRepo(TestCaseWithTransport):
 
     def add_revision(self, repo, revision_id, inv, parent_ids):
         inv.revision_id = revision_id
-        inv.root.revision = revision_id
         repo.texts.add_lines((inv.root.file_id, revision_id), [], [])
         repo.add_inventory(revision_id, inv, parent_ids)
         revision = _mod_revision.Revision(
@@ -924,10 +921,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
     def add_file(self, repo, inv, filename, revision, parents):
         file_id = filename.encode('utf-8') + b'-id'
         content = [b'line\n']
-        entry = inventory.InventoryFile(file_id, filename, b'TREE_ROOT')
-        entry.revision = revision
-        entry.text_sha1 = osutils.sha_strings(content)
-        entry.text_size = 0
+        entry = inventory.InventoryFile(file_id, filename, b'TREE_ROOT', revision=revision, text_sha1=osutils.sha_strings(content), text_size=0)
         inv.add(entry)
         text_key = (file_id, revision)
         parent_keys = [(file_id, parent) for parent in parents]
