@@ -218,8 +218,8 @@ class BundleInfo:
                 # This really should have been validated as part
                 # of _validate_revisions but lets do it again
                 if sha1 != d[revision_id]:
-                    raise BzrError('** Revision %r referenced with 2 different'
-                                   ' sha hashes %s != %s' % (revision_id,
+                    raise BzrError('** Revision {!r} referenced with 2 different'
+                                   ' sha hashes {} != {}'.format(revision_id,
                                                              sha1, d[revision_id]))
             else:
                 d[revision_id] = sha1
@@ -243,8 +243,8 @@ class BundleInfo:
                 local_sha1 = self._testament_sha1_from_revision(repository,
                                                                 revision_id)
                 if sha1 != local_sha1:
-                    raise BzrError('sha1 mismatch. For revision id {%s}'
-                                   'local: %s, bundle: %s' % (revision_id, local_sha1, sha1))
+                    raise BzrError(f'sha1 mismatch. For revision id {{{revision_id}}}'
+                                   f'local: {local_sha1}, bundle: {sha1}')
                 else:
                     count += 1
             elif revision_id not in checked:
@@ -271,8 +271,8 @@ class BundleInfo:
         if sha1 != rev.inventory_sha1:
             with open(',,bogus-inv', 'wb') as f:
                 f.writelines(cs)
-            warning('Inventory sha hash mismatch for revision %s. %s'
-                    ' != %s' % (revision_id, sha1, rev.inventory_sha1))
+            warning(f'Inventory sha hash mismatch for revision {revision_id}. {sha1}'
+                    f' != {rev.inventory_sha1}')
 
     def _testament(self, revision, tree):
         raise NotImplementedError(self._testament)
@@ -425,7 +425,7 @@ class BundleInfo:
             kind = action_line[first + 1:second]
             if kind not in ('file', 'directory', 'symlink'):
                 raise BzrError('Bogus action line'
-                               ' (invalid object kind %r): %r' % (kind, action_line))
+                               f' (invalid object kind {kind!r}): {action_line!r}')
             extra = action_line[second + 1:]
 
             if action not in valid_actions:
@@ -489,10 +489,8 @@ class BundleTree(InventoryTree):
     def note_last_changed(self, file_id, revision_id):
         if (file_id in self._last_changed
                 and self._last_changed[file_id] != revision_id):
-            raise BzrError('Mismatched last-changed revision for file_id {%s}'
-                           ': %s != %s' % (file_id,
-                                           self._last_changed[file_id],
-                                           revision_id))
+            raise BzrError(f'Mismatched last-changed revision for file_id {{{file_id}}}'
+                           f': {self._last_changed[file_id]} != {revision_id}')
         self._last_changed[file_id] = revision_id
 
     def note_patch(self, new_path, patch):

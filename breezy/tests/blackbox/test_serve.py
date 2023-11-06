@@ -417,14 +417,14 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
         cmd.run(directory=base_dir, protocol=capture_transport)
         server_maker = BzrServerFactory()
         self.assertEqual(
-            f'readonly+{base_url}', self.bzr_serve_transport.base)
+            f'readonly+{base_url}', self.bzr_serve_transport.base + '/')
         self.assertEqual(
             base_dir, server_maker.get_base_path(self.bzr_serve_transport))
         # Read-write
         cmd.run(directory=base_dir, protocol=capture_transport,
                 allow_writes=True)
         server_maker = BzrServerFactory()
-        self.assertEqual(base_url, self.bzr_serve_transport.base)
+        self.assertEqual(base_url, self.bzr_serve_transport.base + '/')
         self.assertEqual(base_dir,
                          server_maker.get_base_path(self.bzr_serve_transport))
         # Read-only, from a URL
@@ -433,4 +433,4 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
         self.assertEqual(
             f'readonly+{base_url}', self.bzr_serve_transport.base)
         self.assertEqual(
-            base_dir, server_maker.get_base_path(self.bzr_serve_transport))
+            base_dir + '/', server_maker.get_base_path(self.bzr_serve_transport))

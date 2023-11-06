@@ -770,9 +770,8 @@ class TestConvertImportToMap(TestCase):
         for import_str in import_strings:
             proc._convert_import_str(import_str)
         self.assertEqual(expected, proc.imports,
-                         'Import of %r was not converted correctly'
-                         ' %s != %s' % (import_strings, expected,
-                                        proc.imports))
+                         f'Import of {import_strings!r} was not converted correctly'
+                         f' {expected} != {proc.imports}')
 
     def test_import_one(self):
         self.check({'one': (['one'], None, {}),
@@ -833,8 +832,8 @@ class TestFromToMap(TestCase):
         for from_str in from_strings:
             proc._convert_from_str(from_str)
         self.assertEqual(expected, proc.imports,
-                         'Import of %r was not converted correctly'
-                         ' %s != %s' % (from_strings, expected, proc.imports))
+                         f'Import of {from_strings!r} was not converted correctly'
+                         f' {expected} != {proc.imports}')
 
     def test_from_one_import_two(self):
         self.check_result({'two': (['one'], 'two', {})},
@@ -866,8 +865,7 @@ class TestCanonicalize(TestCase):
         proc = lazy_import.ImportProcessor()
         parsed = proc._canonicalize_import_text(text)
         self.assertEqual(expected, parsed,
-                         'Incorrect parsing of text:\n%s\n%s\n!=\n%s'
-                         % (text, expected, parsed))
+                         f'Incorrect parsing of text:\n{text}\n{expected}\n!=\n{parsed}')
 
     def test_import_one(self):
         self.check(['import one'], 'import one')
@@ -921,8 +919,7 @@ class TestImportProcessor(TestCase):
         proc = lazy_import.ImportProcessor()
         proc._build_map(text)
         self.assertEqual(expected, proc.imports,
-                         'Incorrect processing of:\n%s\n%s\n!=\n%s'
-                         % (text, expected, proc.imports))
+                         f'Incorrect processing of:\n{text}\n{expected}\n!=\n{proc.imports}')
 
     def test_import_one(self):
         exp = {'one': (['one'], None, {})}
@@ -1081,8 +1078,8 @@ class TestLazyImportProcessor(ImportReplacerHelper):
             self.fail('submoda7 was not supposed to exist yet')
 
         text = """\
-import %(root_name)s.%(sub_name)s.%(submoda_name)s as submoda7
-""" % self.__dict__
+import {root_name}.{sub_name}.{submoda_name} as submoda7
+""".format(**self.__dict__)
         proc = lazy_import.ImportProcessor(InstrumentedImportReplacer)
         proc.lazy_import(scope=globals(), text=text)
 

@@ -1424,8 +1424,7 @@ class TestControlDir(TestCaseWithControlDir):
         try:
             self.bzrdir_format.initialize(t.base)
         except (errors.NotLocalUrl, errors.UnsupportedOperation) as e:
-            raise TestSkipped("Can't initialize %r on transport %r"
-                              % (self.bzrdir_format, t)) from e
+            raise TestSkipped(f"Can't initialize {self.bzrdir_format!r} on transport {t!r}") from e
         dir = controldir.ControlDir.open(t.base + ",branch=foo")
         self.assertEqual(
             {"branch": "foo"}, dir.user_transport.get_segment_parameters())
@@ -1439,8 +1438,7 @@ class TestControlDir(TestCaseWithControlDir):
         try:
             self.bzrdir_format.initialize(t.base)
         except (errors.NotLocalUrl, errors.UnsupportedOperation) as e:
-            raise TestSkipped("Can't initialize %r on transport %r"
-                              % (self.bzrdir_format, t)) from e
+            raise TestSkipped(f"Can't initialize {self.bzrdir_format!r} on transport {t!r}") from e
         dir = controldir.ControlDir.open(t.base)
         self.assertEqual("", dir._get_selected_branch())
 

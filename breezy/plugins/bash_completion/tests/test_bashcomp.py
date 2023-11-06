@@ -85,14 +85,12 @@ class BashCompletionMixin:
     def assertCompletionContains(self, *words):
         missing = set(words) - self.completion_result
         if missing:
-            raise AssertionError('Completion should contain %r but it has %r'
-                                 % (missing, self.completion_result))
+            raise AssertionError(f'Completion should contain {missing!r} but it has {self.completion_result!r}')
 
     def assertCompletionOmits(self, *words):
         surplus = set(words) & self.completion_result
         if surplus:
-            raise AssertionError('Completion should omit %r but it has %r'
-                                 % (surplus, self.completion_result))
+            raise AssertionError(f'Completion should omit {surplus!r} but it has {self.completion_result!r}')
 
     def get_script(self):
         commands.install_bzr_command_hooks()
@@ -177,7 +175,7 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport,
 
     def test_revspec_tag_all(self):
         self.requireFeature(features.sed_feature)
-        wt = self.make_branch_and_tree('.', format='dirstate-tags')
+        wt = self.make_branch_and_tree('.')
         wt.branch.tags.set_tag('tag1', b'null:')
         wt.branch.tags.set_tag('tag2', b'null:')
         wt.branch.tags.set_tag('3tag', b'null:')
@@ -186,7 +184,7 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport,
 
     def test_revspec_tag_prefix(self):
         self.requireFeature(features.sed_feature)
-        wt = self.make_branch_and_tree('.', format='dirstate-tags')
+        wt = self.make_branch_and_tree('.')
         wt.branch.tags.set_tag('tag1', b'null:')
         wt.branch.tags.set_tag('tag2', b'null:')
         wt.branch.tags.set_tag('3tag', b'null:')
@@ -195,7 +193,7 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport,
 
     def test_revspec_tag_spaces(self):
         self.requireFeature(features.sed_feature)
-        wt = self.make_branch_and_tree('.', format='dirstate-tags')
+        wt = self.make_branch_and_tree('.')
         wt.branch.tags.set_tag('tag with spaces', b'null:')
         self.complete(['brz', 'log', '-r', 'tag', ':', 't'])
         self.assertCompletionEquals(r'tag\ with\ spaces')
@@ -206,7 +204,7 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport,
 
     def test_revspec_tag_endrange(self):
         self.requireFeature(features.sed_feature)
-        wt = self.make_branch_and_tree('.', format='dirstate-tags')
+        wt = self.make_branch_and_tree('.')
         wt.branch.tags.set_tag('tag1', b'null:')
         wt.branch.tags.set_tag('tag2', b'null:')
         self.complete(['brz', 'log', '-r', '3..tag', ':', 't'])

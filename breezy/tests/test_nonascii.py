@@ -155,8 +155,7 @@ class NormalizedFilename(TestCaseWithTransport):
                                                   os.linesep.encode('utf-8'))
                 actual = f.read()
             self.assertEqual(shouldbe, actual,
-                             'contents of %r is incorrect: %r != %r'
-                             % (path, shouldbe, actual))
+                             f'contents of {path!r} is incorrect: {shouldbe!r} != {actual!r}')
 
     def test_access_non_normalized(self):
         # Sometimes we can access non-normalized files by their normalized

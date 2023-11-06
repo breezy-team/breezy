@@ -243,8 +243,7 @@ class GroupCompressBlock:
         out = cls()
         header = bytes[:6]
         if header not in cls.GCB_KNOWN_HEADERS:
-            raise ValueError('bytes did not start with any of %r'
-                             % (cls.GCB_KNOWN_HEADERS,))
+            raise ValueError(f'bytes did not start with any of {cls.GCB_KNOWN_HEADERS!r}')
         if header == cls.GCB_HEADER:
             out._compressor_name = 'zlib'
         elif header == cls.GCB_LZ_HEADER:
@@ -279,7 +278,7 @@ class GroupCompressBlock:
         content_start = start + 1 + len_len
         if end != content_start + content_len:
             raise ValueError('end != len according to field header'
-                             ' %s != %s' % (end, content_start + content_len))
+                             f' {end} != {content_start + content_len}')
         if c == b'f':
             return [self._content[content_start:end]]
         # Must be type delta as checked above
@@ -907,8 +906,7 @@ class _CommonGroupCompressor:
             data_len = fulltext_len + 1 + offset
             if data_len != len(stored_bytes):
                 raise ValueError('Index claimed fulltext len, but stored bytes'
-                                 ' claim %s != %s'
-                                 % (len(stored_bytes), data_len))
+                                 f' claim {len(stored_bytes)} != {data_len}')
             data = [stored_bytes[offset + 1:]]
         else:
             if kind != b'd':
@@ -919,8 +917,7 @@ class _CommonGroupCompressor:
             data_len = delta_len + 1 + offset
             if data_len != len(stored_bytes):
                 raise ValueError('Index claimed delta len, but stored bytes'
-                                 ' claim %s != %s'
-                                 % (len(stored_bytes), data_len))
+                                 f' claim {len(stored_bytes)} != {data_len}')
             data = [apply_delta(source, stored_bytes[offset + 1:])]
         data_sha1 = osutils.sha_strings(data)
         return data, data_sha1
@@ -1057,8 +1054,7 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
                                    self.endpoint, chunk_end)
         if not self._delta_index._source_offset == self.endpoint:
             raise AssertionError('the delta index is out of sync'
-                                 'with the output lines %s != %s'
-                                 % (self._delta_index._source_offset, self.endpoint))
+                                 f'with the output lines {self._delta_index._source_offset} != {self.endpoint}')
         return start, self.endpoint, type
 
     def _output_chunks(self, new_chunks):
@@ -1201,7 +1197,7 @@ class _BatchingBlockFetcher:
                     if block_read_memo != read_memo:
                         raise AssertionError(
                             "block_read_memo out of sync with read_memo"
-                            "(%r != %r)" % (block_read_memo, read_memo))
+                            f"({block_read_memo!r} != {read_memo!r})")
                     self.batch_memos[read_memo] = block
                     memos_to_get_stack.pop()
                 else:
@@ -1700,8 +1696,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                 except ValueError:
                     trace.warning('Value for '
                                   '"bzr.groupcompress.max_bytes_to_index"'
-                                  ' %r is not an integer'
-                                  % (val,))
+                                  f' {val!r} is not an integer')
                     val = None
             if val is None:
                 val = self._DEFAULT_MAX_BYTES_TO_INDEX

@@ -512,8 +512,7 @@ class TestMerge(tests.TestCaseWithTransport):
         if message:
             message += '\n'
         raise AssertionError(
-            '%s"%s" directory content is different:\na = %s\nb = %s\n'
-            % (message, directory, sorted(entries), sorted(ondisk)))
+            f'{message}"{directory}" directory content is different:\na = {sorted(entries)}\nb = {sorted(ondisk)}\n')
 
     def test_cherrypicking_merge(self):
         # make source branch

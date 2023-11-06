@@ -2347,8 +2347,8 @@ class TestStoreMinimalAPI(tests.TestCaseWithTransport):
         store = self.get_store(self)
         if isinstance(store, config.TransportIniFileStore):
             raise tests.TestNotApplicable(
-                "%s is not a concrete Store implementation"
-                " so it doesn't need an id" % (store.__class__.__name__,))
+                f"{store.__class__.__name__} is not a concrete Store implementation"
+                " so it doesn't need an id")
         self.assertIsNot(None, store.id)
 
 
@@ -2929,8 +2929,7 @@ class TestConcurrentStoreUpdates(TestStore):
         self.stack = self.get_stack(self)
         if not isinstance(self.stack, config._CompatibleStack):
             raise tests.TestNotApplicable(
-                '%s is not meant to be compatible with the old config design'
-                % (self.stack,))
+                f'{self.stack} is not meant to be compatible with the old config design')
         self.stack.set('one', '1')
         self.stack.set('two', '2')
         # Flush the store

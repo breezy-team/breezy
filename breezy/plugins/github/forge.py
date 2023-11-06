@@ -26,6 +26,7 @@ from ... import branch as _mod_branch
 from ...config import AuthenticationConfig
 from ...errors import PermissionDenied, UnexpectedHttpStatus
 from ...forge import (
+    AutoMergeUnavailable,
     Forge,
     ForgeLoginRequired,
     MergeProposal,
@@ -39,7 +40,7 @@ from ...forge import (
 )
 from ...git.urls import git_url_to_bzr_url
 from ...i18n import gettext
-from ...trace import note
+from ...trace import mutter, note
 from ...transport import get_transport
 
 GITHUB_HOST = 'github.com'
@@ -234,9 +235,11 @@ mutation ($pullRequestId: ID!) {
                 mutter('graphql errors: %r', e.errors)
                 first_error = e.errors[0]
                 if (first_error['type'] == 'UNPROCESSABLE' and
-                        first_error['path'] == 'enablePullRequestAutoMerge'):
-                    # TODO(jelmer): better exception type
-                    raise Exception(first_error['message']) from e
+                        first_error['path'] == ['enablePullRequestAutoMerge']):
+                    raise AutoMergeUnavailable(first_error['message']) from e
+                if (first_error['type'] == 'FORBIDDEN' and
+                        first_error['path'] == ['enablePullRequestAutoMerge']):
+                    raise PermissionDenied(path=self.get_web_url(), extra=first_error['message']) from e
                 raise Exception(first_error['message']) from e
         else:
             # https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button

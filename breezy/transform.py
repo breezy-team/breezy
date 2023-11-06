@@ -550,8 +550,7 @@ def move_orphan(tt, orphan_id, parent_id):
     actual_name = tt.final_name(orphan_id)
     new_name = tt._available_backup_name(actual_name, od_id)
     tt.adjust_path(new_name, od_id, orphan_id)
-    trace.warning('%s has been orphaned in %s'
-                  % (joinpath(parent_path, actual_name), orphan_dir_basename))
+    trace.warning(f'{joinpath(parent_path, actual_name)} has been orphaned in {orphan_dir_basename}')
 
 
 def refuse_orphan(tt, orphan_id, parent_id):

@@ -884,8 +884,7 @@ class BzrDirPreSplitOut(BzrDir):
             my_branch = self.open_branch()
             if source_branch.base != my_branch.base:
                 raise AssertionError(
-                    "source branch %r is not within %r with branch %r" %
-                    (source_branch, self, my_branch))
+                    f"source branch {source_branch!r} is not within {self!r} with branch {my_branch!r}")
         if stacked:
             raise _mod_branch.UnstackableBranchFormat(
                 self._format, self.root_transport.base)

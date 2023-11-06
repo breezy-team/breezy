@@ -93,7 +93,7 @@ class TestVersionUnicodeOutput(TestCaseInTempDir):
         uni_val, str_val = probe_unicode_in_user_encoding()
         if uni_val is None:
             raise TestSkipped('Cannot find a unicode character that works in'
-                              ' encoding %s' % (osutils.get_user_encoding(),))
+                              f' encoding {osutils.get_user_encoding()}')
 
         self.overrideEnv('BRZ_HOME', uni_val)
         self.permit_source_tree_branch_repo()

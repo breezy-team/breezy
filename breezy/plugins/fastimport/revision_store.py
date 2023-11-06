@@ -266,8 +266,7 @@ class RevisionStore:
                                  " before get_parents_and_revision_for_entry()")
         if ie.revision != self._current_rev_id:
             raise AssertionError("start_new_revision() registered a different"
-                                 " revision (%s) to that in the inventory entry (%s)" %
-                                 (self._current_rev_id, ie.revision))
+                                 f" revision ({self._current_rev_id}) to that in the inventory entry ({ie.revision})")
 
         # Find the heads. This code is lifted from
         # repository.CommitBuilder.record_entry_contents().

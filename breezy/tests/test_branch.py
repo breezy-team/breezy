@@ -437,7 +437,7 @@ class BzrBranch8(tests.TestCaseWithTransport):
 
     @staticmethod
     def instrument_branch(branch, gets):
-        class WrapTransport(object):
+        class WrapTransport:
 
             __slots__ = ('t', )
 

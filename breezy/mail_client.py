@@ -110,10 +110,10 @@ class Editor(MailClient):
 
     def _get_merge_prompt(self, prompt, to, subject, attachment):
         """See MailClient._get_merge_prompt."""
-        return ("%s\n\n"
-                "To: %s\n"
-                "Subject: %s\n\n"
-                "%s" % (prompt, to, subject,
+        return ("{}\n\n"
+                "To: {}\n"
+                "Subject: {}\n\n"
+                "{}".format(prompt, to, subject,
                          attachment.decode('utf-8', 'replace')))
 
     def compose(self, prompt, to, subject, attachment, mime_subtype,

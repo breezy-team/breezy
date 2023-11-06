@@ -44,7 +44,7 @@ class TestPatch(TestCaseInTempDir):
 class PatchesTester(TestCase):
 
     def setUp(self):
-        super(PatchesTester, self).setUp()
+        super().setUp()
         self.requireFeature(features.patch_feature)
 
     def datafile(self, filename):
@@ -82,7 +82,7 @@ class PatchesTester(TestCase):
 class RunPatchTests(TestCaseInTempDir):
 
     def setUp(self):
-        super(RunPatchTests, self).setUp()
+        super().setUp()
         self.requireFeature(features.patch_feature)
 
     def test_new_file(self):

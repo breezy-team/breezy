@@ -418,8 +418,7 @@ class GCCHKPacker(Packer):
             really_missing = missing_inventories.difference(pmap)
             if really_missing:
                 missing_inventories = sorted(really_missing)
-                raise ValueError('We are missing inventories for revisions: %s'
-                                 % (missing_inventories,))
+                raise ValueError(f'We are missing inventories for revisions: {missing_inventories}')
         self._copy_stream(source_vf, target_vf, inventory_keys,
                           'inventories', self._get_filtered_inv_stream, 2)
 
@@ -653,8 +652,8 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
                     search_key_name=search_key_name)
                 if chk_inv.id_to_entry.key() != canonical_inv.id_to_entry.key():
                     trace.mutter(
-                        'Non-canonical CHK map for id_to_entry of inv: %s '
-                        '(root is %s, should be %s)' % (chk_inv.revision_id,
+                        'Non-canonical CHK map for id_to_entry of inv: {} '
+                        '(root is {}, should be {})'.format(chk_inv.revision_id,
                                                         chk_inv.id_to_entry.key()[
                                                             0],
                                                         canonical_inv.id_to_entry.key()[0]))
@@ -665,8 +664,7 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
                 if p_id_map.key() != canon_p_id_map.key():
                     trace.mutter(
                         'Non-canonical CHK map for parent_id_to_basename of '
-                        'inv: %s (root is %s, should be %s)'
-                        % (chk_inv.revision_id, p_id_map.key()[0],
+                        'inv: {} (root is {}, should be {})'.format(chk_inv.revision_id, p_id_map.key()[0],
                            canon_p_id_map.key()[0]))
                     self._data_changed = True
                 yield versionedfile.ChunkedContentFactory(
@@ -714,8 +712,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         missing_corresponding = set(new_revisions_keys)
         missing_corresponding.difference_update(corresponding_invs)
         if missing_corresponding:
-            problems.append("inventories missing for revisions %s" %
-                            (sorted(missing_corresponding),))
+            problems.append(f"inventories missing for revisions {sorted(missing_corresponding)}")
             return problems
         # Are any chk root entries missing for any inventories?  This includes
         # any present parent inventories, which may be used when calculating
@@ -738,10 +735,9 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         missing_chk_roots = expected_chk_roots.difference(present_chk_roots)
         if missing_chk_roots:
             problems.append(
-                "missing referenced chk root keys: %s."
+                f"missing referenced chk root keys: {sorted(missing_chk_roots)}."
                 "Run 'brz reconcile --canonicalize-chks' on the affected "
-                "repository."
-                % (sorted(missing_chk_roots),))
+                "repository.")
             # Don't bother checking any further.
             return problems
         # Find all interesting chk_bytes records, and make sure they are
@@ -872,12 +868,11 @@ class CHKInventoryRepository(PackRepository):
         parent_id_basename_dict = {}
         for old_path, new_path, file_id, entry in delta:
             if old_path is not None:
-                raise ValueError('Invalid delta, somebody tried to delete %r'
-                                 ' from the NULL_REVISION'
-                                 % ((old_path, file_id),))
+                raise ValueError('Invalid delta, somebody tried to delete {!r}'
+                                 ' from the NULL_REVISION'.format((old_path, file_id)))
             if new_path is None:
                 raise ValueError('Invalid delta, delta from NULL_REVISION has'
-                                 ' no new_path %r' % (file_id,))
+                                 f' no new_path {file_id!r}')
             if new_path == '':
                 new_inv.root_id = file_id
                 parent_id_basename_key = StaticTuple(b'', b'').intern()
@@ -1276,8 +1271,7 @@ class GroupCHKStreamSource(StreamSource):
         for key in missing_keys:
             if key[0] != 'inventories':
                 raise AssertionError('The only missing keys we should'
-                                     ' be filling in are inventory keys, not %s'
-                                     % (key[0],))
+                                     f' be filling in are inventory keys, not {key[0]}')
             missing_inventory_keys.add(key[1:])
         if self._chk_id_roots or self._chk_p_id_roots:
             raise AssertionError('Cannot call get_stream_for_missing_keys'

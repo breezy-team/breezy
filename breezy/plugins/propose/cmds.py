@@ -229,7 +229,14 @@ class cmd_propose_merge(Command):
                 note(gettext('Opening %s in web browser'), web_url)
                 webbrowser.open(web_url)
             if auto:
-                proposal.merge(auto=True)
+                try:
+                    proposal.merge(auto=True)
+                except _mod_forge.AutoMergeUnavailable as e:
+                    note(gettext('Auto merge not available: %s'), e.msg)
+                except errors.PermissionDenied as e:
+                    note(gettext('Permission denied enabling auto-merge: %s'), e.extra)
+                else:
+                    note(gettext('Auto merge enabled'))
 
 
 class cmd_find_merge_proposal(Command):
@@ -299,8 +306,7 @@ class cmd_my_merge_proposals(Command):
                         source_branch_url = mp.get_source_branch_url()
                         if source_branch_url:
                             self.outf.write(
-                                '(Merging %s into %s)\n' %
-                                (source_branch_url,
+                                '(Merging {} into {})\n'.format(source_branch_url,
                                  mp.get_target_branch_url()))
                         else:
                             self.outf.write(

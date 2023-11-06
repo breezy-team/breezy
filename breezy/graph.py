@@ -796,9 +796,8 @@ class Graph:
                     raise AssertionError("Somehow we ended up converging"
                                          " without actually marking them as"
                                          " in common."
-                                         "\nStart_nodes: %s"
-                                         "\nuncommon_nodes: %s"
-                                         % (revisions, uncommon_nodes))
+                                         f"\nStart_nodes: {revisions}"
+                                         f"\nuncommon_nodes: {uncommon_nodes}")
                 break
         return border_ancestors, common_ancestors, searchers
 

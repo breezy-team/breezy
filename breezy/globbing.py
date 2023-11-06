@@ -44,8 +44,8 @@ def _sub_group(m):
 
 def _invalid_regex(repl):
     def _(m):
-        warning("'%s' not allowed within a regular expression. "
-                "Replacing with '%s'" % (m, repl))
+        warning(f"'{m}' not allowed within a regular expression. "
+                f"Replacing with '{repl}'")
         return repl
     return _
 

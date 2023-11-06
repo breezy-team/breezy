@@ -21,6 +21,15 @@ from typing import Optional, Type
 from . import errors, hooks, registry, urlutils
 
 
+class AutoMergeUnavailable(errors.BzrError):
+
+    _fmt = "Unable to enable auto-merge: %(msg)s"
+
+    def __init__(self, msg):
+        errors.BzrError.__init__(self)
+        self.msg = msg
+
+
 class NoSuchProject(errors.BzrError):
 
     _fmt = "Project does not exist: %(project)s."

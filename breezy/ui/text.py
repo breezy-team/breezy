@@ -610,9 +610,8 @@ class TextProgressView:
             bps = self._total_byte_count / transfer_time
 
         # using base-10 units (see HACKING.txt).
-        msg = ('Transferred: %.0fkB'
-               ' (%.1fkB/s r:%.0fkB w:%.0fkB'
-               % (self._total_byte_count / 1000.,
+        msg = ('Transferred: {:.0f}kB'
+               ' ({:.1f}kB/s r:{:.0f}kB w:{:.0f}kB'.format(self._total_byte_count / 1000.,
                   bps / 1000.,
                   self._bytes_by_direction['read'] / 1000.,
                   self._bytes_by_direction['write'] / 1000.,

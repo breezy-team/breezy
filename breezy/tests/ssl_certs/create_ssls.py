@@ -130,15 +130,14 @@ def build_ca_certificate():
               # Will need to be generated again in 1000 years -- 20210106
               '-days', '365242',
               '-key', key_path, '-out', cert_path],
-             input='%(ca_pass)s\n'
-             '%(ca_country_code)s\n'
-             '%(ca_state)s\n'
-             '%(ca_locality)s\n'
-             '%(ca_organization)s\n'
-             '%(ca_section)s\n'
-             '%(ca_name)s\n'
-             '%(ca_email)s\n'
-             % ssl_params)
+             input='{ca_pass}\n'
+             '{ca_country_code}\n'
+             '{ca_state}\n'
+             '{ca_locality}\n'
+             '{ca_organization}\n'
+             '{ca_section}\n'
+             '{ca_name}\n'
+             '{ca_email}\n'.format(**ssl_params))
 
 
 def build_server_key():
@@ -168,17 +167,16 @@ def build_server_signing_request():
     rm_f(server_csr_path)
     _openssl(['req', '-passin', 'stdin', '-new', '-key', key_path,
               '-out', server_csr_path],
-             input='%(server_pass)s\n'
-             '%(server_country_code)s\n'
-             '%(server_state)s\n'
-             '%(server_locality)s\n'
-             '%(server_organization)s\n'
-             '%(server_section)s\n'
-             '%(server_name)s\n'
-             '%(server_email)s\n'
-             '%(server_challenge_pass)s\n'
-             '%(server_optional_company_name)s\n'
-             % ssl_params)
+             input='{server_pass}\n'
+             '{server_country_code}\n'
+             '{server_state}\n'
+             '{server_locality}\n'
+             '{server_organization}\n'
+             '{server_section}\n'
+             '{server_name}\n'
+             '{server_email}\n'
+             '{server_challenge_pass}\n'
+             '{server_optional_company_name}\n'.format(**ssl_params))
 
 
 def sign_server_certificate():

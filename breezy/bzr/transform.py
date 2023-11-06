@@ -387,8 +387,7 @@ class TreeTransformBase(TreeTransform):
             # Not known by the tree transform yet, check the filesystem
             return osutils.lexists(self._tree.abspath(child_path))
         else:
-            raise AssertionError('child_id is missing: %s, %s, %s'
-                                 % (name, parent_id, child_id))
+            raise AssertionError(f'child_id is missing: {name}, {parent_id}, {child_id}')
 
     def _available_backup_name(self, name, target_id):
         """Find an available backup name.

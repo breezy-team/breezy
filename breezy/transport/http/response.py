@@ -193,8 +193,7 @@ class RangeFile(ResponseFile):
                     b'--' + self._boundary + b'\r\n'):
                 raise errors.InvalidHttpResponse(
                     self._path,
-                    "Expected a boundary (%s) line, got '%s'"
-                    % (self._boundary, boundary_line))
+                    f"Expected a boundary ({self._boundary}) line, got '{boundary_line}'")
 
     def _unquote_boundary(self, b):
         return b[:2] + email_utils.unquote(b[2:-2].decode('ascii')).encode('ascii') + b[-2:]
@@ -291,8 +290,7 @@ class RangeFile(ResponseFile):
             if size > 0 and self._pos + size > self._start + self._size:
                 raise errors.InvalidRange(
                     self._path, self._pos,
-                    "Can't read %s bytes across range (%s, %s)"
-                    % (size, self._start, self._size))
+                    f"Can't read {size} bytes across range ({self._start}, {self._size})")
 
         # read data from file
         buf = BytesIO()

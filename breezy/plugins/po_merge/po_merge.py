@@ -97,8 +97,7 @@ class PoMerger(merge.PerFileMerger):
                 trace.mutter(f'po {po_path} matches: {glob}')
                 break
         else:
-            trace.mutter('PoMerger did not match for %s and %s'
-                         % (self.po_dirs, self.po_glob))
+            trace.mutter(f'PoMerger did not match for {self.po_dirs} and {self.po_glob}')
             return False
         # Do we have the corresponding .pot file
         for path, _file_class, _kind, entry in self.merger.this_tree.list_files(

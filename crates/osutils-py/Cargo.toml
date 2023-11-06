@@ -7,11 +7,11 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = ">=0.19", features = ["extension-module", "chrono" ]}
+pyo3 = { workspace = true, features = ["extension-module", "chrono" ]}
 breezy-osutils = { path = "../osutils" }
-pyo3-file = { git = "https://github.com/breezy-team/pyo3-file" }
+pyo3-file = { workspace = true }
 memchr = "2.3.4"
 termion = ">=1"
 
 [target.'cfg(unix)'.dependencies]
-nix = ">=0.26"
+nix = { workspace = true }

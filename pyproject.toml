@@ -2,7 +2,7 @@
 requires = [
     "setuptools>=60",
     "setuptools-rust",
-    "setuptools-gettext",
+    "setuptools-gettext>=0.1.4",
     "cython>=0.29",
 ]
 build-backend = "setuptools.build_meta"
@@ -35,7 +35,7 @@ dependencies = [
     "urllib3>=1.24.1",
     "pyyaml",
 ]
-dynamic = ["version"]
+dynamic = ["version", "scripts"]
 
 [project.urls]
 Homepage = "https://www.breezy-vcs.org/"
@@ -111,6 +111,7 @@ select = [
     "INT", # gettext
 #   "SIM", # simplify
     "C4",  # comprehensions
+    "UP",  # pyupgrade
 ]
 ignore = [
     "ANN001",
@@ -165,3 +166,6 @@ extend-exclude = ["lib", "bin"]
 
 [tool.ruff.pydocstyle]
 convention = "google"
+
+[tool.setuptools-gettext]
+build_dir = "breezy/locale"

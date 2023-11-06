@@ -2925,9 +2925,8 @@ class TestBisectDirblock(tests.TestCase):
         bisect_left_idx = bisect.bisect_left(split_dirblocks, split_dirblock,
                                              *args)
         self.assertEqual(bisect_left_idx, bisect_split_idx,
-                         'bisect_split disagreed. %s != %s'
-                         ' for key %r'
-                         % (bisect_left_idx, bisect_split_idx, path)
+                         'bisect_split disagreed. {} != {}'
+                         ' for key {!r}'.format(bisect_left_idx, bisect_split_idx, path)
                          )
 
     def paths_to_dirblocks(self, paths):

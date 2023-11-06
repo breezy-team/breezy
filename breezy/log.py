@@ -1739,8 +1739,7 @@ class ShortLogFormatter(LogFormatter):
                                                      tags, self.merge_marker(revision)))
         self.show_properties(revision.rev, indent + offset)
         if self.show_ids or revision.revno is None:
-            to_file.write(indent + offset + 'revision-id:%s\n'
-                          % (revision.rev.revision_id.decode('utf-8'),))
+            to_file.write(indent + offset + 'revision-id:{}\n'.format(revision.rev.revision_id.decode('utf-8')))
         if not revision.rev.message:
             to_file.write(indent + offset + '(no message)\n')
         else:

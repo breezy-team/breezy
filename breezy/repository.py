@@ -149,8 +149,8 @@ class CommitBuilder:
             # We know that the XML serializers do not round trip '\r'
             # correctly, so refuse to accept them
             if not isinstance(value, str):
-                raise ValueError('revision property (%s) is not a valid'
-                                 ' (unicode) string: %r' % (key, value))
+                raise ValueError(f'revision property ({key}) is not a valid'
+                                 f' (unicode) string: {value!r}')
             # TODO(jelmer): Make this repository-format specific
             self._validate_unicode_text(value,
                                         f'revision property ({key})')
@@ -298,8 +298,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                     self._write_group, self.get_transaction())
                 return
             raise errors.BzrError(
-                'mismatched lock context and write group. %r, %r' %
-                (self._write_group, self.get_transaction()))
+                f'mismatched lock context and write group. {self._write_group!r}, {self.get_transaction()!r}')
         try:
             self._abort_write_group()
         except Exception as exc:
@@ -646,9 +645,8 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """
         if self._write_group is not self.get_transaction():
             # has an unlock or relock occured ?
-            raise errors.BzrError('mismatched lock context %r and '
-                                  'write group %r.' %
-                                  (self.get_transaction(), self._write_group))
+            raise errors.BzrError(f'mismatched lock context {self.get_transaction()!r} and '
+                                  f'write group {self._write_group!r}.')
         result = self._commit_write_group()
         self._write_group = None
         return result
@@ -1212,9 +1210,8 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 conf = branch.get_config_stack()
             if 'format_deprecation' in conf.get('suppress_warnings'):
                 return
-            warning("Format %s for %s is deprecated -"
-                    " please use 'brz upgrade' to get better performance"
-                    % (self._format, self.controldir.transport.base))
+            warning(f"Format {self._format} for {self.controldir.transport.base} is deprecated -"
+                    " please use 'brz upgrade' to get better performance")
         finally:
             _deprecation_warning_done = True
 

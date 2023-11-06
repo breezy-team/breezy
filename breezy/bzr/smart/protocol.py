@@ -357,8 +357,7 @@ class _StatefulDecoder:
         in_buffer = b''.join(self._in_buffer_list)
         if len(in_buffer) != self._in_buffer_len:
             raise AssertionError(
-                "Length of buffer did not match expected value: %s != %s"
-                % self._in_buffer_len, len(in_buffer))
+                "Length of buffer did not match expected value: {} != {}".format(*self._in_buffer_len), len(in_buffer))
         self._in_buffer_list = [in_buffer]
         return in_buffer
 

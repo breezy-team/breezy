@@ -61,5 +61,4 @@ class cmd_check_chk(commands.Command):
                     key_width=pid._root_node._key_width,
                     search_key_func=pid._search_key_func)
                 if pid.key() != test_key:
-                    trace.warning('Failed for parent_id_to_basename inv: %s'
-                                  % (inv.revision_id,))
+                    trace.warning(f'Failed for parent_id_to_basename inv: {inv.revision_id}')

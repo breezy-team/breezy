@@ -370,8 +370,7 @@ class CommitHandler(processor.CommitHandler):
             # make sure the cache used by get_lines knows that
             self.data_for_commit[file_id] = b''
         else:
-            self.warning("Cannot import items of kind '%s' yet - ignoring '%s'"
-                         % (kind, path))
+            self.warning(f"Cannot import items of kind '{kind}' yet - ignoring '{path}'")
             return
         # Record it
         try:
@@ -380,8 +379,7 @@ class CommitHandler(processor.CommitHandler):
             try:
                 self.record_new(path, ie)
             except:
-                print("failed to add path '%s' with entry '%s' in command %s"
-                      % (path, ie, self.command.id))
+                print(f"failed to add path '{path}' with entry '{ie}' in command {self.command.id}")
                 print(f"parent's children are:\n{inv.get_children(ie.parent_id)!r}\n")
                 raise
         else:
@@ -508,8 +506,7 @@ class CommitHandler(processor.CommitHandler):
         file_id = inv.path2id(old_path)
         if file_id is None:
             self.warning(
-                "ignoring rename of %s to %s - old path does not exist" %
-                (old_path, new_path))
+                f"ignoring rename of {old_path} to {new_path} - old path does not exist")
             return
         ie = inv.get_entry(file_id)
         rev_id = ie.revision

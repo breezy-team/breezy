@@ -869,8 +869,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
             else:
                 found_parents = self.file_parents(repo, version)
                 self.assertEqual(expected_parents, found_parents,
-                                 "%s reconcile %s has parents %s, should have %s."
-                                 % (when_description, version, found_parents,
+                                 "{} reconcile {} has parents {}, should have {}.".format(when_description, version, found_parents,
                                     expected_parents))
 
     def prepare_test_repository(self):

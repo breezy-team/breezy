@@ -133,7 +133,7 @@ class TestSmartRequest(TestCase):
                 unclassified_requests.append(key)
         if unclassified_requests:
             self.fail('These requests were not categorized as safe/unsafe'
-                      ' to retry: %s' % (unclassified_requests,))
+                      f' to retry: {unclassified_requests}')
 
 
 class TestSmartRequestHandlerErrorTranslation(TestCase):

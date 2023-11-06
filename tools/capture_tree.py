@@ -23,13 +23,13 @@ def main(argv):
     print('[')
     for tt in capture_tree_contents('.'):
         if not isinstance(tt, tuple):
-            raise AssertionError("Unexpected type: %r" % (tt,))
+            raise AssertionError(f"Unexpected type: {tt!r}")
         print('    (', repr(tt[0]) + ',', end=' ')
         if len(tt) == 1:
             print('),')
         else:
             if len(tt) != 2:
-                raise AssertionError("Unexpected tuple length: %r" % (tt,))
+                raise AssertionError(f"Unexpected tuple length: {tt!r}")
             val = tt[1]
             print()
             if val == '':
