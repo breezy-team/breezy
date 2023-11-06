@@ -483,8 +483,6 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
         # set the inventory revision ids.
         basis_shape.revision_id = basis_revid
         new_shape.revision_id = new_revid
-        if new_shape.root.revision is None:
-            new_shape.root._revision = new_revid
         delta = self.make_inv_delta(basis_shape, new_shape)
         tree = self.make_branch_and_tree('tree')
         # the shapes need to be in the tree's repository to be able to set them
@@ -514,7 +512,7 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
     def test_no_parents_just_root(self):
         """Test doing an empty commit - no parent, set a root only."""
         basis_shape = Inventory(root_id=None)  # empty tree
-        new_shape = Inventory()  # tree with a root
+        new_shape = Inventory(root_revision=b'new_parent')  # tree with a root
         self.assertTransitionFromBasisToShape(basis_shape, None, new_shape,
                                               b'new_parent')
 

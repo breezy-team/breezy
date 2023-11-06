@@ -210,6 +210,64 @@ impl InventoryEntry {
         self.0.unchanged(&other.0)
     }
 
+    fn derive(
+        &self,
+        revision: Option<RevisionId>,
+        name: Option<String>,
+        parent_id: Option<FileId>,
+    ) -> InventoryEntry {
+        let mut entry = self.0.clone();
+        let revision = revision.or_else(|| entry.revision().cloned());
+        let name = name.unwrap_or_else(|| entry.name().to_string());
+        let parent_id = parent_id.or_else(|| entry.parent_id().cloned());
+        match &mut entry {
+            Entry::File {
+                revision: r,
+                name: n,
+                parent_id: p,
+                ..
+            } => {
+                *r = revision;
+                *n = name;
+                *p = parent_id.unwrap();
+            }
+            Entry::Directory {
+                revision: r,
+                name: n,
+                parent_id: p,
+                ..
+            } => {
+                *r = revision;
+                *n = name;
+                *p = parent_id.unwrap();
+            }
+            Entry::TreeReference {
+                revision: r,
+                name: n,
+                parent_id: p,
+                ..
+            } => {
+                *r = revision;
+                *n = name;
+                *p = parent_id.unwrap();
+            }
+            Entry::Link {
+                revision: r,
+                name: n,
+                parent_id: p,
+                ..
+            } => {
+                *r = revision;
+                *n = name;
+                *p = parent_id.unwrap();
+            }
+            Entry::Root { revision: r, .. } => {
+                *r = revision;
+            }
+        }
+        InventoryEntry(entry)
+    }
+
     /// Find possible per-file graph parents.
     ///
     /// This is currently defined by:
@@ -306,15 +364,6 @@ impl InventoryFile {
         Ok((Self(), InventoryEntry(entry)))
     }
 
-    #[setter]
-    fn set__executable(slf: PyRefMut<Self>, executable: bool) {
-        let mut s = slf.into_super();
-        match &mut s.0 {
-            Entry::File { executable: e, .. } => *e = executable,
-            _ => panic!("Not a file"),
-        }
-    }
-
     #[getter]
     fn get_executable(slf: PyRef<Self>) -> bool {
         match slf.into_super().0 {
@@ -334,29 +383,11 @@ impl InventoryFile {
         }
     }
 
-    #[setter]
-    fn set__text_sha1(slf: PyRefMut<Self>, text_sha1: Option<Vec<u8>>) {
-        let mut s = slf.into_super();
-        match &mut s.0 {
-            Entry::File { text_sha1: t, .. } => *t = text_sha1,
-            _ => panic!("Not a file"),
-        }
-    }
-
     #[getter]
     fn get_text_size(slf: PyRef<Self>) -> Option<u64> {
         let s = slf.into_super();
         match &s.0 {
             Entry::File { text_size, .. } => *text_size,
-            _ => panic!("Not a file"),
-        }
-    }
-
-    #[setter]
-    fn set__text_size(slf: PyRefMut<Self>, text_size: Option<u64>) {
-        let mut s = slf.into_super();
-        match &mut s.0 {
-            Entry::File { text_size: t, .. } => *t = text_size,
             _ => panic!("Not a file"),
         }
     }
@@ -368,15 +399,6 @@ impl InventoryFile {
             Entry::File { text_id, .. } => text_id
                 .as_ref()
                 .map(|text_id| PyBytes::new(py, text_id).into()),
-            _ => panic!("Not a file"),
-        }
-    }
-
-    #[setter]
-    fn set__text_id(slf: PyRefMut<Self>, text_id: Option<Vec<u8>>) {
-        let mut s = slf.into_super();
-        match &mut s.0 {
-            Entry::File { text_id: t, .. } => *t = text_id,
             _ => panic!("Not a file"),
         }
     }
