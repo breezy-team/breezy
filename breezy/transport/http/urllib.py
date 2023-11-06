@@ -22,7 +22,6 @@ There are separate implementation modules for each http client implementation.
 DEBUG = 0
 
 import base64
-import cgi
 import errno
 import hashlib
 import http.client
@@ -1852,8 +1851,10 @@ class HttpTransport(ConnectedTransport):
             def text(self):
                 if self.status == 204:
                     return None
-                charset = cgi.parse_header(
-                    self._actual.headers['Content-Type'])[1].get('charset')
+                from email.message import EmailMessage
+                msg = EmailMessage()
+                msg['content-type'] = self._actual.headers['Content-Type']
+                charset = msg['content-type'].params.get('charset')
                 if charset:
                     return self.data.decode(charset)
                 else:
