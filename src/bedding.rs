@@ -3,7 +3,7 @@ use std::env;
 
 use std::fs::create_dir;
 
-use std::io::{BufRead};
+use std::io::BufRead;
 
 use std::path::{Path, PathBuf};
 
