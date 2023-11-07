@@ -227,12 +227,9 @@ class InventoryTree(Tree):
             remaining = osutils.splitpath(path)
         ie = inv.root
         while remaining:
-            ret = inv.get_entry_by_path_partial(remaining)
-            if ret is not None:
-                ie, base, remaining = ret
+            ie, base, remaining = inv.get_entry_by_path_partial(remaining)
+            if remaining:
                 inv = self._get_nested_tree('/'.join(base), ie.file_id, ie.reference_revision).root_inventory
-            else:
-                remaining = None
         if ie is None:
             return None, None
         return inv, ie

@@ -23,7 +23,7 @@ from breezy import errors, osutils
 from breezy.bzr import inventory
 from breezy.bzr.tests.per_inventory import TestCaseWithInventory
 
-from ...inventory import InventoryFile, InventoryLink, InventoryDirectory
+from ...inventory import InventoryFile, InventoryLink
 from ...inventory_delta import InventoryDelta
 
 

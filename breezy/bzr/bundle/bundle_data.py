@@ -671,7 +671,7 @@ class BundleTree(InventoryTree):
         This need to be called before ever accessing self.inventory
         """
         from os.path import basename, dirname
-        inv = Inventory(root_id=None, revision_id=self.revision_id)
+        inv = Inventory(None, self.revision_id)
 
         def add_entry(path, file_id):
             if path == '':
