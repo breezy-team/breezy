@@ -803,7 +803,7 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
                 mp.setStatus, status='Approved',
                 revid=self.source_branch.last_revision())
 
-    def create_proposal(self, description, reviewers=None, labels=None,
+    def create_proposal(self, description, title=None, reviewers=None, labels=None,
                         prerequisite_branch=None, commit_message=None,
                         work_in_progress=False, allow_collaboration=False,
                         delete_source_after_merge: Optional[bool] = False):
