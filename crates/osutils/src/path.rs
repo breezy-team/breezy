@@ -350,7 +350,7 @@ pub mod win32 {
         #[test]
         fn test_abspath() {
             assert_eq!(
-                super::abspath(std::path::Path::new("C:\\foo\\bar")).unwrap(),
+                super::abspath(std::path::Path::new("C:/foo/bar")).unwrap(),
                 std::path::Path::new("C:/foo/bar")
             );
         }

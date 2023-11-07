@@ -67,15 +67,15 @@ check-ci: docs extensions brz
 brz:
 	$(PYTHON) setup.py build_rust -i $(PYTHON_BUILDFLAGS)
 
-fmt-check:: rust-fmt-check
-
-rust-fmt-check:
-	find crates breezy -name '*.rs' | xargs rustfmt --check
-
 check:: mypy
 
 mypy:
 	$(PYTHON) -m mypy breezy
+
+check:: cargo-check
+
+cargo-check:
+	cargo check --all
 
 clean:
 	$(PYTHON) setup.py clean
@@ -316,7 +316,7 @@ check-dist-tarball:
 	rm -rf $$tmpdir
 
 reformat:
-	find breezy crates  -name '*.rs' | xargs rustfmt
+	cargo fmt --all
 	ruff format .
 
 clippy-fix:
@@ -337,10 +337,17 @@ ruff:
 ruff-fix:
 	ruff check --fix .
 
-fix: clippy ruff-fix
+fix:: clippy-fix ruff-fix
 	$(MAKE) reformat
 
-format-check:
+fmt-check:: rust-fmt-check
+
+rust-fmt-check:
+	cargo fmt --all --check
+
+fmt-check:: ruff-fmt-check
+
+ruff-fmt-check:
 	$(MAKE) ruff --check
 
 .testrepository:
