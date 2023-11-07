@@ -685,20 +685,21 @@ class BundleTree(InventoryTree):
 
             name = basename(path)
             if kind == 'directory':
-                ie = InventoryDirectory(file_id, name, parent_id)
+                ie = InventoryDirectory(file_id, name, parent_id, revision_id)
             elif kind == 'file':
-                ie = InventoryFile(file_id, name, parent_id)
-                ie.executable = self.is_executable(path)
-            elif kind == 'symlink':
-                ie = InventoryLink(file_id, name, parent_id)
-                ie.symlink_target = self.get_symlink_target(path)
-            ie.revision = revision_id
-
-            if kind == 'file':
-                ie.text_size, ie.text_sha1 = self.get_size_and_sha1(path)
-                if ie.text_size is None:
+                text_size, text_sha1 = self.get_size_and_sha1(path)
+                if text_size is None:
                     raise BzrError(
                         f'Got a text_size of None for file_id {file_id!r}')
+                ie = InventoryFile(
+                    file_id, name, parent_id, revision_id,
+                    executable=self.is_executable(path), text_size=text_size,
+                    text_sha1=text_sha1)
+            elif kind == 'symlink':
+                ie = InventoryLink(
+                    file_id, name, parent_id, revision_id,
+                    symlink_target=self.get_symlink_target(path))
+
             inv.add(ie)
 
         sorted_entries = self.sorted_path_id()

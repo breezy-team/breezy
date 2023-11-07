@@ -45,8 +45,9 @@ class TrivialTest(tests.TestCaseWithTransport):
         t = controldir.ControlDir.create_standalone_workingtree('.')
         # an empty inventory with no revision will trigger reconciliation.
         repo = t.branch.repository
-        inv = inventory.Inventory(revision_id=b'missing')
-        inv.root.revision = b'missing'
+        inv = inventory.Inventory(revision_id=b'missing', root_id=None)
+        root = inventory.InventoryDirectory(inventory.ROOT_ID, "", None, b'missing')
+        inv.add(root)
         repo.lock_write()
         with repo.lock_write(), WriteGroup(repo):
             repo.add_inventory(b'missing', inv, [])

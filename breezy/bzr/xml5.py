@@ -42,7 +42,10 @@ class InventorySerializer_v5(xml6.InventorySerializer_v6):
         data_revision_id = elt.get('revision_id')
         if data_revision_id is not None:
             revision_id = data_revision_id.encode('utf-8')
-        inv = inventory.Inventory(root_id, revision_id=revision_id)
+        inv = inventory.Inventory(root_id=None, revision_id=revision_id)
+        root = inventory.InventoryDirectory(root_id, "", None, revision=revision_id)
+        inv.add(root)
+
         # Optimizations tested
         #   baseline w/entry cache  2.85s
         #   using inv._byid         2.55s
@@ -70,19 +73,8 @@ class InventorySerializer_v5(xml6.InventorySerializer_v6):
             byid[ie.file_id] = ie
             if ie.kind == 'directory':
                 children[ie.file_id] = {}
-        if revision_id is not None:
-            inv.root.revision = revision_id
         self._check_cache_size(len(inv), entry_cache)
         return inv
-
-    def _check_revisions(self, inv):
-        """Extension point for subclasses to check during serialisation.
-
-        In this version, no checking is done.
-
-        :param inv: An inventory about to be serialised, to be checked.
-        :raises: AssertionError if an error has occurred.
-        """
 
     def _append_inventory_root(self, append, inv):
         """Append the inventory root to output."""

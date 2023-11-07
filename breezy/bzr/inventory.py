@@ -40,6 +40,7 @@ from .._bzr_rs import ROOT_ID
 from .._bzr_rs import inventory as _mod_inventory_rs
 from .static_tuple import StaticTuple
 
+FileID = bytes
 InventoryEntry = _mod_inventory_rs.InventoryEntry
 InventoryFile = _mod_inventory_rs.InventoryFile
 InventoryDirectory = _mod_inventory_rs.InventoryDirectory
@@ -265,9 +266,9 @@ class CommonInventory:
         from .inventory_delta import InventoryDelta
         return InventoryDelta(delta)
 
-    def make_entry(self, kind, name, parent_id, file_id=None):
+    def make_entry(self, kind, name, parent_id, file_id=None, revision=None, **kwargs):
         """Simple thunk to breezy.bzr.inventory.make_entry."""
-        return make_entry(kind, name, parent_id, file_id)
+        return make_entry(kind, name, parent_id, file_id, revision, **kwargs)
 
     def entries(self):
         """Return list of (path, ie) for all entries except the root.
@@ -387,8 +388,9 @@ class CommonInventory:
         entries = self.iter_entries()
         if self.root is None:
             return Inventory(root_id=None)
-        other = Inventory(next(entries)[1].file_id)
-        other.root.revision = self.root.revision
+        other = Inventory(root_id=None)
+        root = InventoryDirectory(next(entries)[1].file_id, "", None, self.root.revision)
+        other.add(root)
         other.revision_id = self.revision_id
         directories_to_expand = set()
         for _path, entry in entries:
@@ -449,7 +451,7 @@ class Inventory(CommonInventory):
     ['', 'hello.c']
     """
 
-    def __init__(self, root_id=ROOT_ID, revision_id=None):
+    def __init__(self, root_id=ROOT_ID, revision_id=None, root_revision=None):
         """Create or read an inventory.
 
         If a working directory is specified, the inventory is read
@@ -462,8 +464,8 @@ class Inventory(CommonInventory):
         self.root = None
         self._byid = {}
         self._children = {}
-        if root_id is not None:
-            self._set_root(InventoryDirectory(root_id, '', None))
+        if root_id is not None or root_revision is not None:
+            self._set_root(InventoryDirectory(root_id, '', None, revision=root_revision))
         self.revision_id = revision_id
 
     def change_root_id(self, file_id):
@@ -476,14 +478,14 @@ class Inventory(CommonInventory):
         self._children[self.root.file_id] = children
         # and finally update all children to reference the new id.
         for child in children.values():
-            child.parent_id = file_id
+            child._parent_id = file_id
 
     def rename_id(self, old_file_id, new_file_id):
         self._byid[new_file_id] = self._byid.pop(old_file_id)
         if self._byid[new_file_id].kind == 'directory':
             self._children[new_file_id] = self._children.pop(old_file_id)
             for child in self._children[new_file_id].values():
-                child.parent_id = new_file_id
+                child._parent_id = new_file_id
         self._byid[new_file_id]._file_id = new_file_id
 
     def __repr__(self):
@@ -498,7 +500,7 @@ class Inventory(CommonInventory):
     def get_children(self, file_id):
         return self._children[file_id]
 
-    def apply_delta(self, delta):
+    def apply_delta(self, delta) -> None:
         """Apply a delta to this inventory.
 
         See the inventory developers documentation for the theory behind
@@ -617,8 +619,9 @@ class Inventory(CommonInventory):
         entries = self.iter_entries()
         if self.root is None:
             return Inventory(root_id=None)
-        other = Inventory(next(entries)[1].file_id)
-        other.root.revision = self.root.revision
+        other = Inventory(root_id=None)
+        root = InventoryDirectory(next(entries)[1].file_id, "", None, self.root.revision)
+        other.add(root)
         # copy recursively so we know directories will be added before
         # their children.  There are more efficient ways than this...
         for _path, entry in entries:
@@ -699,7 +702,7 @@ class Inventory(CommonInventory):
             self._children[entry.file_id] = {}
         return entry
 
-    def add_path(self, relpath, kind, file_id=None, parent_id=None):
+    def add_path(self, relpath, kind, file_id=None, parent_id=None, **kwargs):
         """Add entry from a path.
 
         The immediate parent must already be versioned.
@@ -711,7 +714,7 @@ class Inventory(CommonInventory):
         if len(parts) == 0:
             if file_id is None:
                 file_id = generate_ids.gen_root_id()
-            self.root = InventoryDirectory(file_id, '', None)
+            self.root = InventoryDirectory(file_id, '', None, revision=kwargs.get('revision'))
             self._byid = {self.root.file_id: self.root}
             if self.root.file_id in self._children:
                 raise AssertionError('Root id already in children')
@@ -722,7 +725,7 @@ class Inventory(CommonInventory):
             parent_id = self.path2id(parent_path)
             if parent_id is None:
                 raise errors.NotVersionedError(path=parent_path)
-        ie = make_entry(kind, parts[-1], parent_id, file_id)
+        ie = make_entry(kind, parts[-1], parent_id, file_id, **kwargs)
         return self.add(ie)
 
     def delete(self, file_id):
@@ -868,10 +871,9 @@ class Inventory(CommonInventory):
         # TODO: Don't leave things messed up if this fails
 
         del self._children[old_parent.file_id][file_ie.name]
-        self._children[new_parent.file_id][new_name] = file_ie
-
-        file_ie.name = new_name
-        file_ie.parent_id = new_parent_id
+        self._byid[file_id] = self._children[new_parent.file_id][new_name] = file_ie.derive(
+            name=new_name,
+            parent_id=new_parent_id)
 
     def is_root(self, file_id):
         return self.root is not None and file_id == self.root.file_id
@@ -1052,8 +1054,9 @@ class CHKInventory(CommonInventory):
         # determine if they were a dir we wanted to recurse, or just a file
         # This should give us all the entries we'll want to add, so start
         # adding
-        other = Inventory(self.root_id)
-        other.root.revision = self.root.revision
+        other = Inventory(root_id=None)
+        root = InventoryDirectory(self.root_id, "", None, self.root.revision)
+        other.add(root)
         other.revision_id = self.revision_id
         if not interesting or not parent_to_children:
             # empty filter, or filtering entrys that don't exist
@@ -1650,7 +1653,7 @@ entry_factory = {
 }
 
 
-def make_entry(kind, name, parent_id, file_id=None):
+def make_entry(kind, name, parent_id, file_id=None, revision=None, **kwargs):
     """Create an inventory entry.
 
     :param kind: the type of inventory entry to create.
@@ -1665,7 +1668,7 @@ def make_entry(kind, name, parent_id, file_id=None):
         factory = entry_factory[kind]
     except KeyError as e:
         raise errors.BadFileKindError(name, kind) from e
-    return factory(file_id, name, parent_id)
+    return factory(file_id, name, parent_id, revision, **kwargs)
 
 
 ensure_normalized_name = _mod_inventory_rs.ensure_normalized_name

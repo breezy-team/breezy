@@ -836,10 +836,8 @@ class TestCorruptDirstate(TestCaseWithTransport):
         tree.flush()
 
         # self.assertRaises(Exception, tree.update_basis_by_delta,
-        new_dir = inventory.InventoryDirectory(b'dir-id', 'new-dir', root_id)
-        new_dir.revision = b'new-revision-id'
-        new_file = inventory.InventoryFile(b'file-id', 'new-file', root_id)
-        new_file.revision = b'new-revision-id'
+        new_dir = inventory.InventoryDirectory(b'dir-id', 'new-dir', root_id, revision=b'new-revision-id')
+        new_file = inventory.InventoryFile(b'file-id', 'new-file', root_id, revision=b'new-revision-id')
         self.assertRaises(
             errors.InconsistentDelta,
             tree.update_basis_by_delta, b'new-revision-id',

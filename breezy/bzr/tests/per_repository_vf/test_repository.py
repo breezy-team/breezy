@@ -137,8 +137,7 @@ class TestRepository(TestCaseWithRepository):
 
     def test_add_revision_inventory_sha1(self):
         inv = inventory.Inventory(revision_id=b'A')
-        root = inventory.InventoryDirectory(b'fixed-root', '', None)
-        root.revision = b'A'
+        root = inventory.InventoryDirectory(b'fixed-root', '', None, b'A')
         inv.add(root)
         # Insert the inventory on its own to an identical repository, to get
         # its sha1.
@@ -385,8 +384,9 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         repo = self.make_repository('inventory_with_unnecessary_ghost')
         repo.lock_write()
         repo.start_write_group()
-        inv = inventory.Inventory(revision_id=b'ghost')
-        inv.root.revision = b'ghost'
+        inv = inventory.Inventory(revision_id=b'ghost', root_id=None)
+        root = inventory.InventoryDirectory(b'TREE_ROOT', "", None, b'ghost')
+        inv.add(root)
         if repo.supports_rich_root():
             root_id = inv.root.file_id
             repo.texts.add_lines((root_id, b'ghost'), [], [])
@@ -401,8 +401,9 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
             raise tests.TestNotApplicable(
                 "Cannot test with ghosts for this format.") from e
 
-        inv = inventory.Inventory(revision_id=b'the_ghost')
-        inv.root.revision = b'the_ghost'
+        inv = inventory.Inventory(revision_id=b'the_ghost', root_id=None)
+        root = inventory.InventoryDirectory(b'TREE_ROOT', "", None, b'the_ghost')
+        inv.add(root)
         if repo.supports_rich_root():
             root_id = inv.root.file_id
             repo.texts.add_lines((root_id, b'the_ghost'), [], [])
