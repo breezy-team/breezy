@@ -20,7 +20,7 @@ import stat
 from ... import controldir
 
 
-def escape_commit_message(message):
+def escape_commit_message(message: str) -> str:
     """Replace xml-incompatible control characters."""
     # This really ought to be provided by breezy.
     # Code copied from breezy.commit.
@@ -32,10 +32,10 @@ def escape_commit_message(message):
     import re
 
     message, _ = re.subn(
-        "[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+",
-        lambda match: match.group(0).encode("unicode_escape"),
+        "[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+",  # type: ignore
+        lambda match: match.group(0).encode("unicode_escape"),  # type: ignore
         message,
-    )
+    )  # type: ignore
     return message
 
 

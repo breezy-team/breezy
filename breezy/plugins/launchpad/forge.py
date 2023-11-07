@@ -919,12 +919,14 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
     def create_proposal(
         self,
         description,
+        title=None,
         reviewers=None,
         labels=None,
         prerequisite_branch=None,
         commit_message=None,
         work_in_progress=False,
         allow_collaboration=False,
+        delete_source_after_merge: Optional[bool] = False,
     ):
         """Perform the submission."""
         if labels:
@@ -938,6 +940,11 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
             prereq_branch_lp = None
         if reviewers is None:
             reviewers = []
+        if delete_source_after_merge:
+            mutter(
+                "Ignoring request to delete source after merge, "
+                "which launchpad does not support"
+            )
         try:
             mp = _call_webservice(
                 self.source_branch_lp.createMergeProposal,

@@ -95,21 +95,6 @@ impl InventoryEntry {
         }
     }
 
-    #[setter]
-    fn set_name(&mut self, name: String) {
-        match &mut self.0 {
-            Entry::File { name: n, .. } => *n = name,
-            Entry::Directory { name: n, .. } => *n = name,
-            Entry::TreeReference { name: n, .. } => *n = name,
-            Entry::Link { name: n, .. } => *n = name,
-            Entry::Root { .. } => {
-                if !name.is_empty() {
-                    panic!("Root entry name must be empty");
-                }
-            }
-        }
-    }
-
     #[getter]
     fn get_file_id(&self, py: Python) -> PyObject {
         let file_id = &self.0.file_id();
@@ -136,7 +121,7 @@ impl InventoryEntry {
     }
 
     #[setter]
-    fn set_parent_id(&mut self, parent_id: Option<FileId>) {
+    fn set__parent_id(&mut self, parent_id: Option<FileId>) {
         match &mut self.0 {
             Entry::File { parent_id: p, .. } => *p = parent_id.unwrap(),
             Entry::Directory { parent_id: p, .. } => *p = parent_id.unwrap(),
@@ -158,7 +143,7 @@ impl InventoryEntry {
     }
 
     #[setter]
-    fn set_revision(&mut self, revision: Option<RevisionId>) {
+    fn set__revision(&mut self, revision: Option<RevisionId>) {
         match &mut self.0 {
             Entry::File { revision: r, .. } => *r = revision,
             Entry::Directory { revision: r, .. } => *r = revision,
@@ -208,6 +193,64 @@ impl InventoryEntry {
 
     fn _unchanged(&self, other: &InventoryEntry) -> bool {
         self.0.unchanged(&other.0)
+    }
+
+    fn derive(
+        &self,
+        revision: Option<RevisionId>,
+        name: Option<String>,
+        parent_id: Option<FileId>,
+    ) -> InventoryEntry {
+        let mut entry = self.0.clone();
+        let revision = revision.or_else(|| entry.revision().cloned());
+        let name = name.unwrap_or_else(|| entry.name().to_string());
+        let parent_id = parent_id.or_else(|| entry.parent_id().cloned());
+        match &mut entry {
+            Entry::File {
+                revision: r,
+                name: n,
+                parent_id: p,
+                ..
+            } => {
+                *r = revision;
+                *n = name;
+                *p = parent_id.unwrap();
+            }
+            Entry::Directory {
+                revision: r,
+                name: n,
+                parent_id: p,
+                ..
+            } => {
+                *r = revision;
+                *n = name;
+                *p = parent_id.unwrap();
+            }
+            Entry::TreeReference {
+                revision: r,
+                name: n,
+                parent_id: p,
+                ..
+            } => {
+                *r = revision;
+                *n = name;
+                *p = parent_id.unwrap();
+            }
+            Entry::Link {
+                revision: r,
+                name: n,
+                parent_id: p,
+                ..
+            } => {
+                *r = revision;
+                *n = name;
+                *p = parent_id.unwrap();
+            }
+            Entry::Root { revision: r, .. } => {
+                *r = revision;
+            }
+        }
+        InventoryEntry(entry)
     }
 
     /// Find possible per-file graph parents.
@@ -306,15 +349,6 @@ impl InventoryFile {
         Ok((Self(), InventoryEntry(entry)))
     }
 
-    #[setter]
-    fn set_executable(slf: PyRefMut<Self>, executable: bool) {
-        let mut s = slf.into_super();
-        match &mut s.0 {
-            Entry::File { executable: e, .. } => *e = executable,
-            _ => panic!("Not a file"),
-        }
-    }
-
     #[getter]
     fn get_executable(slf: PyRef<Self>) -> bool {
         match slf.into_super().0 {
@@ -334,29 +368,11 @@ impl InventoryFile {
         }
     }
 
-    #[setter]
-    fn set_text_sha1(slf: PyRefMut<Self>, text_sha1: Option<Vec<u8>>) {
-        let mut s = slf.into_super();
-        match &mut s.0 {
-            Entry::File { text_sha1: t, .. } => *t = text_sha1,
-            _ => panic!("Not a file"),
-        }
-    }
-
     #[getter]
     fn get_text_size(slf: PyRef<Self>) -> Option<u64> {
         let s = slf.into_super();
         match &s.0 {
             Entry::File { text_size, .. } => *text_size,
-            _ => panic!("Not a file"),
-        }
-    }
-
-    #[setter]
-    fn set_text_size(slf: PyRefMut<Self>, text_size: Option<u64>) {
-        let mut s = slf.into_super();
-        match &mut s.0 {
-            Entry::File { text_size: t, .. } => *t = text_size,
             _ => panic!("Not a file"),
         }
     }
@@ -368,15 +384,6 @@ impl InventoryFile {
             Entry::File { text_id, .. } => text_id
                 .as_ref()
                 .map(|text_id| PyBytes::new(py, text_id).into()),
-            _ => panic!("Not a file"),
-        }
-    }
-
-    #[setter]
-    fn set_text_id(slf: PyRefMut<Self>, text_id: Option<Vec<u8>>) {
-        let mut s = slf.into_super();
-        match &mut s.0 {
-            Entry::File { text_id: t, .. } => *t = text_id,
             _ => panic!("Not a file"),
         }
     }
@@ -615,18 +622,6 @@ impl TreeReference {
         }
     }
 
-    #[setter]
-    fn set_reference_revision(slf: PyRefMut<Self>, reference_revision: Option<RevisionId>) {
-        let mut s = slf.into_super();
-        match &mut s.0 {
-            Entry::TreeReference {
-                reference_revision: r,
-                ..
-            } => *r = reference_revision,
-            _ => panic!("Not a tree reference"),
-        }
-    }
-
     fn copy(slf: PyRef<Self>, py: Python) -> PyResult<PyObject> {
         let s = slf.into_super();
         let init = PyClassInitializer::from(InventoryEntry(s.0.clone()));
@@ -666,17 +661,6 @@ impl InventoryLink {
             Entry::Link {
                 ref symlink_target, ..
             } => symlink_target.clone(),
-            _ => panic!("Not a link"),
-        }
-    }
-
-    #[setter]
-    fn set_symlink_target(slf: PyRefMut<Self>, target: Option<String>) {
-        match slf.into_super().0 {
-            Entry::Link {
-                ref mut symlink_target,
-                ..
-            } => *symlink_target = target,
             _ => panic!("Not a link"),
         }
     }

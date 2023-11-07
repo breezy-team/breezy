@@ -1984,8 +1984,9 @@ class MergeIntoMergeType(Merge3Merger):
             # an edge case, so we don't do anything special for those.  We let
             # them cause conflicts.
             file_id = generate_ids.gen_file_id(name_in_target)
-        merge_into_root = InventoryDirectory(file_id, name_in_target, target_id)
-        merge_into_root.revision = subdir.revision
+        merge_into_root = InventoryDirectory(
+            file_id, name_in_target, target_id, subdir.revision
+        )
         yield (merge_into_root, target_id, "")
         if subdir.kind != "directory":
             # No children, so we are done.

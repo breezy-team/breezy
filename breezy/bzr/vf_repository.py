@@ -63,7 +63,13 @@ from ..repository import (
     WriteGroup,
 )
 from ..trace import mutter, note
-from .inventory import Inventory, entry_factory
+from .inventory import (
+    Inventory,
+    InventoryDirectory,
+    InventoryFile,
+    InventoryLink,
+    TreeReference,
+)
 from .inventory_delta import InventoryDelta
 from .inventorytree import InventoryTreeChange
 from .repository import MetaDirRepository, RepositoryFormatMetaDir
@@ -269,8 +275,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
             return
         if len(self.parents) == 0:
             raise errors.RootMissing()
-        entry = entry_factory["directory"](tree.path2id(""), "", None)
-        entry.revision = self._new_revision_id
+        entry = InventoryDirectory(tree.path2id(""), "", None, self._new_revision_id)
         self._basis_delta.append(("", "", entry.file_id, entry))
 
     def _get_delta(self, ie, basis_inv, path):
@@ -306,9 +311,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
         """
         return InventoryDelta(self._basis_delta)
 
-    def record_iter_changes(
-        self, tree, basis_revision_id, iter_changes, _entry_factory=entry_factory
-    ):
+    def record_iter_changes(self, tree, basis_revision_id, iter_changes):
         """Record a new tree via iter_changes.
 
         :param tree: The tree to obtain text contents from for changed objects.
@@ -319,8 +322,6 @@ class VersionedFileCommitBuilder(CommitBuilder):
             to basis_revision_id. The iterator must not include any items with
             a current kind of None - missing items must be either filtered out
             or errored-on before record_iter_changes sees the item.
-        :param _entry_factory: Private method to bind entry_factory locally for
-            performance.
         :return: A generator of (relpath, fs_hash) tuples for use with
             tree._observed_sha1.
         """
@@ -453,9 +454,6 @@ class VersionedFileCommitBuilder(CommitBuilder):
                 #  - record the change with the content from tree
                 kind = change.kind[1]
                 file_id = change.file_id
-                entry = _entry_factory[kind](
-                    file_id, change.name[1], change.parent_id[1]
-                )
                 head_set = self._heads(change.file_id, set(head_candidates))
                 heads = []
                 # Preserve ordering.
@@ -483,9 +481,9 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         # merge to determine if it was changed after the merge
                         # or carried over.
                         if (
-                            parent_entry.kind != entry.kind
-                            or parent_entry.parent_id != entry.parent_id
-                            or parent_entry.name != entry.name
+                            parent_entry.kind != kind
+                            or parent_entry.parent_id != change.parent_id[1]
+                            or parent_entry.name != change.name[1]
                         ):
                             # Metadata common to all entries has changed
                             # against per-file parent
@@ -506,13 +504,10 @@ class VersionedFileCommitBuilder(CommitBuilder):
                     # commit is running (with the revert happening after
                     # iter_changes did its examination).
                     if change.executable[1]:
-                        entry.executable = True
+                        executable = True
                     else:
-                        entry.executable = False
-                    if (
-                        carry_over_possible
-                        and parent_entry.executable == entry.executable
-                    ):
+                        executable = False
+                    if carry_over_possible and parent_entry.executable == executable:
                         # Check the file length, content hash after reading
                         # the file.
                         nostore_sha = parent_entry.text_sha1
@@ -520,34 +515,58 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         nostore_sha = None
                     file_obj, stat_value = tree.get_file_with_stat(change.path[1])
                     try:
-                        entry.text_sha1, entry.text_size = self._add_file_to_weave(
+                        text_sha1, text_size = self._add_file_to_weave(
                             file_id,
                             file_obj,
                             heads,
                             nostore_sha,
                             size=(stat_value.st_size if stat_value else None),
                         )
-                        yield change.path[1], (entry.text_sha1, stat_value)
+                        yield change.path[1], (text_sha1, stat_value)
                     except versionedfile.ExistingContent:
                         # No content change against a carry_over parent
                         # Perhaps this should also yield a fs hash update?
                         carried_over = True
-                        entry.text_size = parent_entry.text_size
-                        entry.text_sha1 = parent_entry.text_sha1
+                        text_size = parent_entry.text_size
+                        text_sha1 = parent_entry.text_sha1
                     finally:
                         file_obj.close()
+                    if not carried_over:
+                        revision = modified_rev
+                    else:
+                        revision = parent_entry.revision
+                    entry = InventoryFile(
+                        file_id,
+                        change.name[1],
+                        change.parent_id[1],
+                        revision=revision,
+                        executable=executable,
+                        text_size=text_size,
+                        text_sha1=text_sha1,
+                    )
                 elif kind == "symlink":
                     # Wants a path hint?
-                    entry.symlink_target = tree.get_symlink_target(change.path[1])
+                    symlink_target = tree.get_symlink_target(change.path[1])
                     if (
                         carry_over_possible
-                        and parent_entry.symlink_target == entry.symlink_target
+                        and parent_entry.symlink_target == symlink_target
                     ):
                         carried_over = True
                     else:
                         self._add_file_to_weave(
                             change.file_id, BytesIO(), heads, None, size=0
                         )
+                    if not carried_over:
+                        revision = modified_rev
+                    else:
+                        revision = parent_entry.revision
+                    entry = InventoryLink(
+                        file_id,
+                        change.name[1],
+                        change.parent_id[1],
+                        revision=revision,
+                        symlink_target=symlink_target,
+                    )
                 elif kind == "directory":
                     if carry_over_possible:
                         carried_over = True
@@ -558,6 +577,13 @@ class VersionedFileCommitBuilder(CommitBuilder):
                             self._add_file_to_weave(
                                 change.file_id, BytesIO(), heads, None, size=0
                             )
+                    if not carried_over:
+                        revision = modified_rev
+                    else:
+                        revision = parent_entry.revision
+                    entry = InventoryDirectory(
+                        file_id, change.name[1], change.parent_id[1], revision=revision
+                    )
                 elif kind == "tree-reference":
                     if not self.repository._format.supports_tree_reference:
                         # This isn't quite sane as an error, but we shouldn't
@@ -568,7 +594,6 @@ class VersionedFileCommitBuilder(CommitBuilder):
                             tree.add_reference, self.repository
                         )
                     reference_revision = tree.get_reference_revision(change.path[1])
-                    entry.reference_revision = reference_revision
                     if (
                         carry_over_possible
                         and parent_entry.reference_revision == reference_revision
@@ -578,12 +603,19 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         self._add_file_to_weave(
                             change.file_id, BytesIO(), heads, None, size=0
                         )
+                    if not carried_over:
+                        revision = modified_rev
+                    else:
+                        revision = parent_entry.revision
+                    entry = TreeReference(
+                        file_id,
+                        change.name[1],
+                        change.parent_id[1],
+                        revision=revision,
+                        reference_revision=reference_revision,
+                    )
                 else:
-                    raise AssertionError(f"unknown kind {kind!r}")
-                if not carried_over:
-                    entry.revision = modified_rev
-                else:
-                    entry.revision = parent_entry.revision
+                    raise errors.BadFileKindError(change.name[1], kind)
             else:
                 entry = None
             new_path = change.path[1]
@@ -1586,7 +1618,7 @@ class VersionedFileRepository(Repository):
         )
         if result.revision_id != revision_id:
             raise AssertionError(
-                f"revision id mismatch {result.revision_id} != {revision_id}"
+                "revision id mismatch {} != {}".format(result.revision_id, revision_id)
             )
         return result
 

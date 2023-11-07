@@ -194,10 +194,15 @@ class RevisionStore:
         if self._supports_chks:
             inv = self._init_chk_inventory(revision_id, inventory.ROOT_ID)
         else:
-            inv = inventory.Inventory(revision_id=revision_id)
             if self.expects_rich_root():
+                inv = inventory.Inventory(root_id=None, revision_id=revision_id)
                 # The very first root needs to have the right revision
-                inv.root.revision = revision_id
+                root = inventory.InventoryDirectory(
+                    inventory.ROOT_ID, "", None, revision_id
+                )
+                inv.add(root)
+            else:
+                inv = inventory.Inventory(revision_id=revision_id)
         return inv
 
     def _init_chk_inventory(self, revision_id, root_id):

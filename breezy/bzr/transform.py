@@ -1883,16 +1883,22 @@ class InventoryTreeTransform(DiskTreeTransform):
                         self._new_reference_revision[trans_id],
                     )
                 else:
+                    new_executability = self._new_executability.get(trans_id)
+                    kwargs = {}
+                    if new_executability is not None:
+                        kwargs["executable"] = bool(new_executability)
+
                     new_entry = inventory.make_entry(
-                        kind, self.final_name(trans_id), parent_file_id, file_id
+                        kind,
+                        self.final_name(trans_id),
+                        parent_file_id,
+                        file_id,
+                        **kwargs,
                     )
                 try:
                     old_path = self._tree.id2path(new_entry.file_id)
                 except errors.NoSuchId:
                     old_path = None
-                new_executability = self._new_executability.get(trans_id)
-                if new_executability is not None:
-                    new_entry.executable = bool(new_executability)
                 inventory_delta.append((old_path, path, new_entry.file_id, new_entry))
         return inventory_delta
 

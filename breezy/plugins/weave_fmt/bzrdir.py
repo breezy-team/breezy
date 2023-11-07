@@ -514,7 +514,7 @@ class ConvertBzrDir4To5(Converter):
             self.text_count += 1
         else:
             w.add_lines(rev_id, previous_revisions, [])
-        ie.revision = rev_id
+        ie._revision = rev_id
 
     def _make_order(self):
         """Return a suitable order for importing revisions.

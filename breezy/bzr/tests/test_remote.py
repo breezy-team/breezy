@@ -4027,8 +4027,7 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
            * texts substream: (some-rev, some-file)
         """
         # Define a stream using generators so that it isn't rewindable.
-        inv = inventory.Inventory(revision_id=b"rev1")
-        inv.root.revision = b"rev1"
+        inv = inventory.Inventory(revision_id=b"rev1", root_revision=b"rev1")
 
         def stream_with_inv_delta():
             yield ("inventories", inventories_substream())
@@ -4053,9 +4052,8 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
             # An inventory delta.  This can't be streamed via this verb, so it
             # will trigger a fallback to VFS insert_stream.
             entry = inv.make_entry(
-                "directory", "newdir", inv.root.file_id, b"newdir-id"
+                "directory", "newdir", inv.root.file_id, b"newdir-id", revision=b"ghost"
             )
-            entry.revision = b"ghost"
             delta = inventory_delta.InventoryDelta(
                 [(None, "newdir", b"newdir-id", entry)]
             )

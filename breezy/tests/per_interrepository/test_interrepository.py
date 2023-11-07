@@ -24,7 +24,7 @@ import breezy.gpg
 from breezy.tests import TestNotApplicable, TestSkipped
 from breezy.tests.per_interrepository import TestCaseWithInterRepository
 
-from ...bzr.inventory import Inventory
+from ...bzr.inventory import ROOT_ID, Inventory, InventoryDirectory
 from ...repository import WriteGroup
 from ...revision import NULL_REVISION
 from ...workingtree import WorkingTree
@@ -190,8 +190,9 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         def add_commit(repo, revision_id, parent_ids):
             repo.lock_write()
             repo.start_write_group()
-            inv = Inventory(revision_id=revision_id)
-            inv.root.revision = revision_id
+            inv = Inventory(revision_id=revision_id, root_id=None)
+            root = InventoryDirectory(ROOT_ID, "", None, revision_id)
+            inv.add(root)
             root_id = inv.root.file_id
             sha1 = repo.add_inventory(revision_id, inv, parent_ids)
             repo.texts.add_lines((root_id, revision_id), [], [])

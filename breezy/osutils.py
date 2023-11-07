@@ -386,7 +386,7 @@ def report_extension_load_failures():
 
 
 from ._osutils_rs import (  # noqa: F401
-    _accessible_normalized_filename,  # noqa: F401; noqa: F401
+    _accessible_normalized_filename,  # noqa: F401
     _inaccessible_normalized_filename,
     check_legal_path,
     chunks_to_lines,  # noqa: F401

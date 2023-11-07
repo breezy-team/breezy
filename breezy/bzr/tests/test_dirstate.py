@@ -2916,12 +2916,14 @@ class Test_InvEntryToDetails(tests.TestCase):
         self.assertIsInstance(tree_data, bytes)
 
     def test_unicode_symlink(self):
-        inv_entry = inventory.InventoryLink(
-            b"link-file-id", "nam\N{Euro Sign}e", b"link-parent-id"
-        )
-        inv_entry.revision = b"link-revision-id"
         target = "link-targ\N{Euro Sign}t"
-        inv_entry.symlink_target = target
+        inv_entry = inventory.InventoryLink(
+            b"link-file-id",
+            "nam\N{Euro Sign}e",
+            b"link-parent-id",
+            b"link-revision-id",
+            symlink_target=target,
+        )
         self.assertDetails(
             (b"l", target.encode("UTF-8"), 0, False, b"link-revision-id"), inv_entry
         )
@@ -2977,13 +2979,12 @@ class TestUpdateBasisByDelta(tests.TestCase):
         except KeyError:
             dir_id = osutils.basename(dirname).encode("utf-8") + b"-id"
         if is_dir:
-            ie = inventory.InventoryDirectory(file_id, basename, dir_id)
+            ie = inventory.InventoryDirectory(file_id, basename, dir_id, rev_id)
             dir_ids[path] = file_id
         else:
-            ie = inventory.InventoryFile(file_id, basename, dir_id)
-            ie.text_size = 0
-            ie.text_sha1 = b""
-        ie.revision = rev_id
+            ie = inventory.InventoryFile(
+                file_id, basename, dir_id, rev_id, text_size=0, text_sha1=b""
+            )
         return ie
 
     def create_tree_from_shape(self, rev_id, shape):

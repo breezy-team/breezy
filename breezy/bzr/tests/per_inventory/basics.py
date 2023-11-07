@@ -29,28 +29,30 @@ from ...inventory_delta import InventoryDelta
 
 class TestInventory(TestCaseWithInventory):
     def make_init_inventory(self):
-        inv = inventory.Inventory(b"tree-root")
-        inv.revision_id = b"initial-rev"
-        inv.root.revision = b"initial-rev"
+        inv = inventory.Inventory(root_id=None, revision_id=b"initial-rev")
+        root = inventory.InventoryDirectory(b"tree-root", "", None, b"initial-rev")
+        inv.add(root)
         return self.inv_to_test_inv(inv)
 
     def make_file(
         self, file_id, name, parent_id, content=b"content\n", revision=b"new-test-rev"
     ):
-        ie = InventoryFile(file_id, name, parent_id)
-        ie.text_sha1 = osutils.sha_string(content)
-        ie.text_size = len(content)
-        ie.revision = revision
-        return ie
+        return InventoryFile(
+            file_id,
+            name,
+            parent_id,
+            text_sha1=osutils.sha_string(content),
+            text_size=len(content),
+            revision=revision,
+        )
 
     def make_link(self, file_id, name, parent_id, target="link-target\n"):
-        ie = InventoryLink(file_id, name, parent_id)
-        ie.symlink_target = target
-        return ie
+        return InventoryLink(file_id, name, parent_id, symlink_target=target)
 
     def prepare_inv_with_nested_dirs(self):
-        inv = inventory.Inventory(b"tree-root")
-        inv.root.revision = b"revision"
+        inv = inventory.Inventory(root_id=None)
+        root = inventory.InventoryDirectory(b"tree-root", "", None, b"revision")
+        inv.add(root)
         for args in [
             ("src", "directory", b"src-id"),
             ("doc", "directory", b"doc-id"),
@@ -62,11 +64,11 @@ class TestInventory(TestCaseWithInventory):
             ("src/sub/a", "file", b"a-id"),
             ("Makefile", "file", b"makefile-id"),
         ]:
-            ie = inv.add_path(*args)
-            ie.revision = b"revision"
+            kwargs = {}
             if args[1] == "file":
-                ie.text_sha1 = osutils.sha_string(b"content\n")
-                ie.text_size = len(b"content\n")
+                kwargs["text_sha1"] = osutils.sha_string(b"content\n")
+                kwargs["text_size"] = len(b"content\n")
+            inv.add_path(*args, revision=b"revision", **kwargs)
         return self.inv_to_test_inv(inv)
 
 
@@ -150,8 +152,9 @@ class TestInventoryReads(TestInventory):
         inv = self.make_init_inventory()
         self.assertTrue(inv.is_root(b"tree-root"))
         self.assertFalse(inv.is_root(b"booga"))
-        ie = inv.get_entry(b"tree-root").copy()
-        ie._file_id = b"booga"
+        ie = inventory.InventoryDirectory(
+            b"booga", "", None, revision=inv.root.revision
+        )
         inv = inv.create_by_apply_delta(
             InventoryDelta([("", None, b"tree-root", None), (None, "", b"booga", ie)]),
             b"new-rev-2",
@@ -161,8 +164,9 @@ class TestInventoryReads(TestInventory):
 
     def test_ids(self):
         """Test detection of files within selected directories."""
-        inv = inventory.Inventory(b"TREE_ROOT")
-        inv.root.revision = b"revision"
+        inv = inventory.Inventory(root_id=None)
+        root = inventory.InventoryDirectory(b"tree-root", "", None, b"revision")
+        inv.add(root)
         for args in [
             ("src", "directory", b"src-id"),
             ("doc", "directory", b"doc-id"),
@@ -170,18 +174,19 @@ class TestInventoryReads(TestInventory):
             ("src/bye.c", "file", b"bye-id"),
             ("Makefile", "file"),
         ]:
-            ie = inv.add_path(*args)
-            ie.revision = b"revision"
+            kwargs = {}
             if args[1] == "file":
-                ie.text_sha1 = osutils.sha_string(b"content\n")
-                ie.text_size = len(b"content\n")
+                kwargs["text_sha1"] = osutils.sha_string(b"content\n")
+                kwargs["text_size"] = len(b"content\n")
+            inv.add_path(*args, revision=b"revision", **kwargs)
         inv = self.inv_to_test_inv(inv)
         self.assertEqual(inv.path2id("src"), b"src-id")
         self.assertEqual(inv.path2id("src/bye.c"), b"bye-id")
 
     def test_get_entry_by_path_partial(self):
-        inv = inventory.Inventory(b"TREE_ROOT")
-        inv.root.revision = b"revision"
+        inv = inventory.Inventory(root_id=None)
+        root = inventory.InventoryDirectory(b"TREE_ROOT", "", None, b"revision")
+        inv.add(root)
         for args in [
             ("src", "directory", b"src-id"),
             ("doc", "directory", b"doc-id"),
@@ -190,13 +195,13 @@ class TestInventoryReads(TestInventory):
             ("Makefile", "file"),
             ("external", "tree-reference", b"other-root"),
         ]:
-            ie = inv.add_path(*args)
-            ie.revision = b"revision"
+            kwargs = {}
             if args[1] == "file":
-                ie.text_sha1 = osutils.sha_string(b"content\n")
-                ie.text_size = len(b"content\n")
+                kwargs["text_sha1"] = osutils.sha_string(b"content\n")
+                kwargs["text_size"] = len(b"content\n")
             if args[1] == "tree-reference":
-                ie.reference_revision = b"reference"
+                kwargs["reference_revision"] = b"reference"
+            ie = inv.add_path(*args, revision=b"revision", **kwargs)
         inv = self.inv_to_test_inv(inv)
 
         # Standard lookups
@@ -232,16 +237,13 @@ class TestInventoryReads(TestInventory):
         self.assertIs(None, inv.path2id("link/subfile"))
 
     def test_is_unmodified(self):
-        f1 = self.make_file(b"file-id", "file", b"tree-root")
-        f1.revision = b"rev"
+        f1 = self.make_file(b"file-id", "file", b"tree-root", revision=b"rev")
         self.assertTrue(f1.is_unmodified(f1))
-        f2 = self.make_file(b"file-id", "file", b"tree-root")
-        f2.revision = b"rev"
+        f2 = self.make_file(b"file-id", "file", b"tree-root", revision=b"rev")
         self.assertTrue(f1.is_unmodified(f2))
         f3 = self.make_file(b"file-id", "file", b"tree-root")
         self.assertFalse(f1.is_unmodified(f3))
-        f4 = self.make_file(b"file-id", "file", b"tree-root")
-        f4.revision = b"rev1"
+        f4 = self.make_file(b"file-id", "file", b"tree-root", revision=b"rev1")
         self.assertFalse(f1.is_unmodified(f4))
 
     def test_iter_entries(self):

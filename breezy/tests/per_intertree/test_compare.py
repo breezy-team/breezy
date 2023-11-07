@@ -1245,7 +1245,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2.add(["a"], ["file"], [b"a-id"])
         try:
             tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
-        except KeyError as err:
+        except errors.BadFileKindError as err:
             raise tests.TestNotApplicable(
                 f"Cannot represent a FIFO in this case {self.id()}"
             ) from err

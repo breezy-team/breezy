@@ -232,8 +232,9 @@ class TestPackRepository(TestCaseWithTransport):
                 revid = b"%d" % pos
                 repo.start_write_group()
                 try:
-                    inv = inventory.Inventory(revision_id=revid)
-                    inv.root.revision = revid
+                    inv = inventory.Inventory(revision_id=revid, root_id=None)
+                    root = inventory.InventoryDirectory(b"TREE_ROOT", "", None, revid)
+                    inv.add(root)
                     repo.texts.add_lines((inv.root.file_id, revid), [], [])
                     rev = _mod_revision.Revision(
                         timestamp=0,
@@ -633,8 +634,9 @@ class TestPackRepository(TestCaseWithTransport):
         def add_commit(repo, revision_id, parent_ids):
             repo.lock_write()
             repo.start_write_group()
-            inv = inventory.Inventory(revision_id=revision_id)
-            inv.root.revision = revision_id
+            inv = inventory.Inventory(revision_id=revision_id, root_id=None)
+            root = inventory.InventoryDirectory(b"TREE_ROOT", "", None, revision_id)
+            inv.add(root)
             root_id = inv.root.file_id
             sha1 = repo.add_inventory(revision_id, inv, [])
             repo.texts.add_lines((root_id, revision_id), [], [])
