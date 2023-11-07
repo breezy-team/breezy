@@ -500,7 +500,7 @@ class Inventory(CommonInventory):
     def get_children(self, file_id):
         return self._children[file_id]
 
-    def apply_delta(self, delta: list[tuple[str | None, str | None, FileID, object | None]]) -> None:
+    def apply_delta(self, delta) -> None:
         """Apply a delta to this inventory.
 
         See the inventory developers documentation for the theory behind
