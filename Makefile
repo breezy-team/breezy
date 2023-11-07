@@ -32,7 +32,7 @@ BRZ_PLUGIN_PATH=-site:-user
 sw = $(sort $(wildcard $(1)))
 
 
-.PHONY: all clean realclean extensions flake8 api-docs check-nodocs check clippy clippy-fix ruff ruff-fix
+.PHONY: all clean realclean extensions api-docs check-nodocs check clippy clippy-fix
 
 all: extensions
 
@@ -40,7 +40,7 @@ extensions:
 	@echo "building extension modules."
 	$(PYTHON) setup.py build_ext -i $(PYTHON_BUILDFLAGS)
 
-check: docs check-nodocs
+check:: docs check-nodocs
 
 check-nodocs: brz
 	-$(RM) -f selftest.log
@@ -67,16 +67,12 @@ check-ci: docs extensions brz
 brz:
 	$(PYTHON) setup.py build_rust -i $(PYTHON_BUILDFLAGS)
 
-# Run Python style checker (apt-get install flake8)
-#
-# Note that at present this gives many false warnings, because it doesn't
-# know about identifiers loaded through lazy_import.
-flake8:
-	$(PYTHON) -m flake8 breezy
+fmt-check:: rust-fmt-check
 
-fmt-check:
+rust-fmt-check:
 	find crates breezy -name '*.rs' | xargs rustfmt --check
-	flake8 breezy
+
+check:: mypy
 
 mypy:
 	$(PYTHON) -m mypy breezy
@@ -320,8 +316,8 @@ check-dist-tarball:
 	rm -rf $$tmpdir
 
 reformat:
-	isort .
 	find breezy crates  -name '*.rs' | xargs rustfmt
+	ruff format .
 
 clippy-fix:
 	cargo clippy --fix --all --allow-no-vcs
@@ -329,14 +325,23 @@ clippy-fix:
 clippy:
 	cargo clippy --all
 
+.PHONY: ruff
+
+check:: ruff
+
 ruff:
 	ruff check .
+
+.PHONY: ruff-fix
 
 ruff-fix:
 	ruff check --fix .
 
 fix: clippy ruff-fix
 	$(MAKE) reformat
+
+format-check:
+	$(MAKE) ruff --check
 
 .testrepository:
 	testr init
