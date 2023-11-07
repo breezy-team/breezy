@@ -218,8 +218,8 @@ class BundleInfo:
                 # of _validate_revisions but lets do it again
                 if sha1 != d[revision_id]:
                     raise BzrError(
-                        "** Revision {!r} referenced with 2 different"
-                        " sha hashes {} != {}".format(revision_id, sha1, d[revision_id])
+                        f"** Revision {revision_id!r} referenced with 2 different"
+                        f" sha hashes {sha1} != {d[revision_id]}"
                     )
             else:
                 d[revision_id] = sha1

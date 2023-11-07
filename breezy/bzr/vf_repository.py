@@ -1618,7 +1618,7 @@ class VersionedFileRepository(Repository):
         )
         if result.revision_id != revision_id:
             raise AssertionError(
-                "revision id mismatch {} != {}".format(result.revision_id, revision_id)
+                f"revision id mismatch {result.revision_id} != {revision_id}"
             )
         return result
 

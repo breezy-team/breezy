@@ -431,9 +431,7 @@ def verify_commit_reconstruction(
     new_unusual_modes = mapping.export_unusual_file_modes(rev)
     if new_unusual_modes != unusual_modes:
         raise AssertionError(
-            "unusual modes don't match: {!r} != {!r}".format(
-                unusual_modes, new_unusual_modes
-            )
+            f"unusual modes don't match: {unusual_modes!r} != {new_unusual_modes!r}"
         )
     # Verify that we can reconstruct the commit properly
     rec_o = target_git_object_retriever._reconstruct_commit(
