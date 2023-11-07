@@ -22,8 +22,7 @@ from ..matchers import *  # noqa: F403
 
 
 class TestLocking(TestCaseWithTree):
-
     def test_lock_read(self):
-        work_tree = self.make_branch_and_tree('wt')
+        work_tree = self.make_branch_and_tree("wt")
         tree = self.workingtree_to_test_tree(work_tree)
         self.assertThat(tree.lock_read, ReturnsUnlockable(tree))

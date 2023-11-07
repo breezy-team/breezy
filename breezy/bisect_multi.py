@@ -17,8 +17,8 @@
 """Bisection lookup multiple keys."""
 
 __all__ = [
-    'bisect_multi_bytes',
-    ]
+    "bisect_multi_bytes",
+]
 
 
 def bisect_multi_bytes(content_lookup, size, keys):

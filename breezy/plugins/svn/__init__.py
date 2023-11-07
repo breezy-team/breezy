@@ -29,11 +29,12 @@ from ...revisionspec import revspec_registry
 
 
 class SubversionUnsupportedError(errors.UnsupportedVcs):
-
     vcs = "svn"
 
-    _fmt = ('Subversion branches are not yet supported. '
-            'To interoperate with Subversion branches, use fastimport.')
+    _fmt = (
+        "Subversion branches are not yet supported. "
+        "To interoperate with Subversion branches, use fastimport."
+    )
 
 
 class SvnWorkingTreeDirFormat(controldir.ControlDirFormat):
@@ -54,8 +55,9 @@ class SvnWorkingTreeDirFormat(controldir.ControlDirFormat):
     def supports_transport(self, transport):
         return False
 
-    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
-                             basedir=None):
+    def check_support_status(
+        self, allow_unsupported, recommend_upgrade=True, basedir=None
+    ):
         raise SubversionUnsupportedError(format=self)
 
     def open(self, transport):
@@ -65,14 +67,13 @@ class SvnWorkingTreeDirFormat(controldir.ControlDirFormat):
 
 
 class SvnWorkingTreeProber(controldir.Prober):
-
     @classmethod
     def priority(klass, transport):
         return 100
 
     def probe_transport(self, transport):
         try:
-            transport.local_abspath('.')
+            transport.local_abspath(".")
         except errors.NotLocalUrl as err:
             raise errors.NotBranchError(path=transport.base) from err
         else:
@@ -103,8 +104,9 @@ class SvnRepositoryFormat(controldir.ControlDirFormat):
     def supports_transport(self, transport):
         return False
 
-    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
-                             basedir=None):
+    def check_support_status(
+        self, allow_unsupported, recommend_upgrade=True, basedir=None
+    ):
         raise SubversionUnsupportedError()
 
     def open(self, transport):
@@ -114,12 +116,11 @@ class SvnRepositoryFormat(controldir.ControlDirFormat):
 
 
 class SvnRepositoryProber(controldir.Prober):
-
     _supported_schemes = ["http", "https", "file", "svn"]
 
     @classmethod
     def priority(klass, transport):
-        if 'svn' in transport.base:
+        if "svn" in transport.base:
             return 90
         return 100
 
@@ -136,14 +137,13 @@ class SvnRepositoryProber(controldir.Prober):
         if scheme not in self._supported_schemes:
             raise errors.NotBranchError(path=transport.base)
 
-        if scheme == 'file':
+        if scheme == "file":
             # Cheaper way to figure out if there is a svn repo
             maybe = False
             subtransport = transport
             while subtransport:
                 try:
-                    if all(subtransport.has(name)
-                            for name in ["format", "db", "conf"]):
+                    if all(subtransport.has(name) for name in ["format", "db", "conf"]):
                         maybe = True
                         break
                 except UnicodeEncodeError:
@@ -160,16 +160,18 @@ class SvnRepositoryProber(controldir.Prober):
         if scheme in ("http", "https"):
             priv_transport = getattr(transport, "_decorated", transport)
             try:
-                headers = priv_transport._options('.')
-            except (errors.InProcessTransport, _mod_transport.NoSuchFile,
-                    errors.InvalidHttpResponse) as err:
+                headers = priv_transport._options(".")
+            except (
+                errors.InProcessTransport,
+                _mod_transport.NoSuchFile,
+                errors.InvalidHttpResponse,
+            ) as err:
                 raise errors.NotBranchError(path=transport.base) from err
             else:
                 dav_entries = set()
                 for key, value in headers:
-                    if key.upper() == 'DAV':
-                        dav_entries.update(
-                            [x.strip() for x in value.split(',')])
+                    if key.upper() == "DAV":
+                        dav_entries.update([x.strip() for x in value.split(",")])
                 if "version-control" not in dav_entries:
                     raise errors.NotBranchError(path=transport.base)
 
@@ -188,12 +190,10 @@ revspec_registry.register_lazy("svn:", __name__ + ".revspec", "RevisionSpec_svn"
 
 
 _mod_transport.register_transport_proto(
-    'svn+ssh://',
-    help="Access using the Subversion smart server tunneled over SSH.")
+    "svn+ssh://", help="Access using the Subversion smart server tunneled over SSH."
+)
+_mod_transport.register_transport_proto("svn+http://")
+_mod_transport.register_transport_proto("svn+https://")
 _mod_transport.register_transport_proto(
-    'svn+http://')
-_mod_transport.register_transport_proto(
-    'svn+https://')
-_mod_transport.register_transport_proto(
-    'svn://',
-    help="Access using the Subversion smart server.")
+    "svn://", help="Access using the Subversion smart server."
+)

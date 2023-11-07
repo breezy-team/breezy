@@ -44,7 +44,7 @@ class XMLRevisionSerializer(serializer.RevisionSerializer):
         raise NotImplementedError(self._unpack_revision)
 
     def write_revision_to_string(self, rev):
-        return b''.join(self.write_revision_to_lines(rev))
+        return b"".join(self.write_revision_to_lines(rev))
 
     def read_revision(self, f):
         return self._unpack_revision(self._read_element(f))
@@ -59,8 +59,9 @@ class XMLRevisionSerializer(serializer.RevisionSerializer):
 class XMLInventorySerializer(serializer.InventorySerializer):
     """Abstract XML object serialize/deserialize."""
 
-    def read_inventory_from_lines(self, lines, revision_id=None,
-                                  entry_cache=None, return_from_cache=False):
+    def read_inventory_from_lines(
+        self, lines, revision_id=None, entry_cache=None, return_from_cache=False
+    ):
         """Read xml_string into an inventory object.
 
         :param chunks: The xml to read.
@@ -80,20 +81,28 @@ class XMLInventorySerializer(serializer.InventorySerializer):
             make some operations significantly faster.
         """
         try:
-            return self._unpack_inventory(fromstringlist(lines), revision_id,
-                                          entry_cache=entry_cache,
-                                          return_from_cache=return_from_cache)
+            return self._unpack_inventory(
+                fromstringlist(lines),
+                revision_id,
+                entry_cache=entry_cache,
+                return_from_cache=return_from_cache,
+            )
         except ParseError as e:
             raise serializer.UnexpectedInventoryFormat(str(e)) from e
 
-    def _unpack_inventory(self, element, revision_id: Optional[bytes] = None, entry_cache=None, return_from_cache=False):
+    def _unpack_inventory(
+        self,
+        element,
+        revision_id: Optional[bytes] = None,
+        entry_cache=None,
+        return_from_cache=False,
+    ):
         raise NotImplementedError(self._unpack_inventory)
 
     def read_inventory(self, f, revision_id=None):
         try:
             try:
-                return self._unpack_inventory(self._read_element(f),
-                                              revision_id=None)
+                return self._unpack_inventory(self._read_element(f), revision_id=None)
             finally:
                 f.close()
         except ParseError as e:
@@ -119,7 +128,7 @@ def get_utf8_or_ascii(a_str):
     # not meant as a generic function for all cases. Because it is possible for
     # an 8-bit string to not be ascii or valid utf8.
     if a_str.__class__ is str:
-        return a_str.encode('utf-8')
+        return a_str.encode("utf-8")
     else:
         return a_str
 
@@ -127,10 +136,12 @@ def get_utf8_or_ascii(a_str):
 from .._bzr_rs import encode_and_escape, escape_invalid_chars  # noqa: F401
 
 
-def unpack_inventory_entry(elt, entry_cache=None, return_from_cache=False, root_id=None):
+def unpack_inventory_entry(
+    elt, entry_cache=None, return_from_cache=False, root_id=None
+):
     elt_get = elt.get
-    file_id = elt_get('file_id')
-    revision = elt_get('revision')
+    file_id = elt_get("file_id")
+    revision = elt_get("revision")
     # Check and see if we have already unpacked this exact entry
     # Some timings for "repo.revision_trees(last_100_revs)"
     #               bzr     mysql
@@ -172,55 +183,59 @@ def unpack_inventory_entry(elt, entry_cache=None, return_from_cache=False, root_
         else:
             # Only copying directory entries drops us 2.85s => 2.35s
             if return_from_cache:
-                if cached_ie.kind == 'directory':
+                if cached_ie.kind == "directory":
                     return cached_ie.copy()
                 return cached_ie
             return cached_ie.copy()
 
     kind = elt.tag
     if not inventory.InventoryEntry.versionable_kind(kind):
-        raise AssertionError(f'unsupported entry kind {kind}')
+        raise AssertionError(f"unsupported entry kind {kind}")
 
     file_id = get_utf8_or_ascii(file_id)
     if revision is not None:
         revision = get_utf8_or_ascii(revision)
-    parent_id = elt_get('parent_id')
+    parent_id = elt_get("parent_id")
     if parent_id is not None:
         parent_id = get_utf8_or_ascii(parent_id)
     else:
         parent_id = root_id
 
-    if kind == 'directory':
-        ie = inventory.InventoryDirectory(file_id,
-                                          elt_get('name'),
-                                          parent_id, revision)
-    elif kind == 'file':
-        text_sha1 = elt_get('text_sha1')
+    if kind == "directory":
+        ie = inventory.InventoryDirectory(file_id, elt_get("name"), parent_id, revision)
+    elif kind == "file":
+        text_sha1 = elt_get("text_sha1")
         if text_sha1 is not None:
-            text_sha1 = text_sha1.encode('ascii')
-        if elt_get('executable') == 'yes':
+            text_sha1 = text_sha1.encode("ascii")
+        if elt_get("executable") == "yes":
             executable = True
         else:
             executable = False
-        v = elt_get('text_size')
+        v = elt_get("text_size")
         text_size = v and int(v)
-        ie = inventory.InventoryFile(file_id,
-                                     elt_get('name'),
-                                     parent_id, revision, text_sha1=text_sha1,
-                                     executable=executable, text_size=text_size)
-    elif kind == 'symlink':
-        symlink_target = elt_get('symlink_target')
-        ie = inventory.InventoryLink(file_id,
-                                     elt_get('name'),
-                                     parent_id, revision, symlink_target=symlink_target)
-    elif kind == 'tree-reference':
-        file_id = get_utf8_or_ascii(elt.attrib['file_id'])
-        name = elt.attrib['name']
-        parent_id = get_utf8_or_ascii(elt.attrib['parent_id'])
-        revision = get_utf8_or_ascii(elt.get('revision'))
-        reference_revision = get_utf8_or_ascii(elt.get('reference_revision'))
-        ie = inventory.TreeReference(file_id, name, parent_id, revision,
-                                     reference_revision)
+        ie = inventory.InventoryFile(
+            file_id,
+            elt_get("name"),
+            parent_id,
+            revision,
+            text_sha1=text_sha1,
+            executable=executable,
+            text_size=text_size,
+        )
+    elif kind == "symlink":
+        symlink_target = elt_get("symlink_target")
+        ie = inventory.InventoryLink(
+            file_id, elt_get("name"), parent_id, revision, symlink_target=symlink_target
+        )
+    elif kind == "tree-reference":
+        file_id = get_utf8_or_ascii(elt.attrib["file_id"])
+        name = elt.attrib["name"]
+        parent_id = get_utf8_or_ascii(elt.attrib["parent_id"])
+        revision = get_utf8_or_ascii(elt.get("revision"))
+        reference_revision = get_utf8_or_ascii(elt.get("reference_revision"))
+        ie = inventory.TreeReference(
+            file_id, name, parent_id, revision, reference_revision
+        )
     else:
         raise serializer.UnsupportedInventoryKind(kind)
     if revision is not None and entry_cache is not None:
@@ -233,8 +248,9 @@ def unpack_inventory_entry(elt, entry_cache=None, return_from_cache=False, root_
     return ie
 
 
-def unpack_inventory_flat(elt, format_num, unpack_entry,
-                          entry_cache=None, return_from_cache=False):
+def unpack_inventory_flat(
+    elt, format_num, unpack_entry, entry_cache=None, return_from_cache=False
+):
     """Unpack a flat XML inventory.
 
     :param elt: XML element for the inventory
@@ -244,15 +260,14 @@ def unpack_inventory_flat(elt, format_num, unpack_entry,
     :raise UnexpectedInventoryFormat: When unexpected elements or data is
         encountered
     """
-    if elt.tag != 'inventory':
-        raise serializer.UnexpectedInventoryFormat(f'Root tag is {elt.tag!r}')
-    format = elt.get('format')
-    if ((format is None and format_num is not None) or
-            format.encode() != format_num):
-        raise serializer.UnexpectedInventoryFormat(f'Invalid format version {format!r}')
-    revision_id = elt.get('revision_id')
+    if elt.tag != "inventory":
+        raise serializer.UnexpectedInventoryFormat(f"Root tag is {elt.tag!r}")
+    format = elt.get("format")
+    if (format is None and format_num is not None) or format.encode() != format_num:
+        raise serializer.UnexpectedInventoryFormat(f"Invalid format version {format!r}")
+    revision_id = elt.get("revision_id")
     if revision_id is not None:
-        revision_id = revision_id.encode('utf-8')
+        revision_id = revision_id.encode("utf-8")
     inv = inventory.Inventory(root_id=None, revision_id=revision_id)
     for e in elt:
         ie = unpack_entry(e, entry_cache, return_from_cache)
@@ -273,69 +288,107 @@ def serialize_inventory_flat(inv, append, root_id, supported_kinds, working):
     root_path, root_ie = next(entries)
     for _path, ie in entries:
         if ie.parent_id != root_id:
-            parent_str = b''.join(
-                [b' parent_id="', encode_and_escape(ie.parent_id), b'"'])
+            parent_str = b"".join(
+                [b' parent_id="', encode_and_escape(ie.parent_id), b'"']
+            )
         else:
-            parent_str = b''
-        if ie.kind == 'file':
+            parent_str = b""
+        if ie.kind == "file":
             if ie.executable:
                 executable = b' executable="yes"'
             else:
-                executable = b''
+                executable = b""
             if not working:
-                append(b'<file%s file_id="%s" name="%s"%s revision="%s" '
-                       b'text_sha1="%s" text_size="%d" />\n' % (
-                           executable, encode_and_escape(ie.file_id),
-                           encode_and_escape(ie.name), parent_str,
-                           encode_and_escape(ie.revision), ie.text_sha1,
-                           ie.text_size))
+                append(
+                    b'<file%s file_id="%s" name="%s"%s revision="%s" '
+                    b'text_sha1="%s" text_size="%d" />\n'
+                    % (
+                        executable,
+                        encode_and_escape(ie.file_id),
+                        encode_and_escape(ie.name),
+                        parent_str,
+                        encode_and_escape(ie.revision),
+                        ie.text_sha1,
+                        ie.text_size,
+                    )
+                )
             else:
-                append(b'<file%s file_id="%s" name="%s"%s />\n' % (
-                    executable, encode_and_escape(ie.file_id),
-                    encode_and_escape(ie.name), parent_str))
-        elif ie.kind == 'directory':
+                append(
+                    b'<file%s file_id="%s" name="%s"%s />\n'
+                    % (
+                        executable,
+                        encode_and_escape(ie.file_id),
+                        encode_and_escape(ie.name),
+                        parent_str,
+                    )
+                )
+        elif ie.kind == "directory":
             if not working:
-                append(b'<directory file_id="%s" name="%s"%s revision="%s" '
-                       b'/>\n' % (
-                           encode_and_escape(ie.file_id),
-                           encode_and_escape(ie.name),
-                           parent_str,
-                           encode_and_escape(ie.revision)))
+                append(
+                    b'<directory file_id="%s" name="%s"%s revision="%s" '
+                    b"/>\n"
+                    % (
+                        encode_and_escape(ie.file_id),
+                        encode_and_escape(ie.name),
+                        parent_str,
+                        encode_and_escape(ie.revision),
+                    )
+                )
             else:
-                append(b'<directory file_id="%s" name="%s"%s />\n' % (
-                    encode_and_escape(ie.file_id),
-                    encode_and_escape(ie.name),
-                    parent_str))
-        elif ie.kind == 'symlink':
+                append(
+                    b'<directory file_id="%s" name="%s"%s />\n'
+                    % (
+                        encode_and_escape(ie.file_id),
+                        encode_and_escape(ie.name),
+                        parent_str,
+                    )
+                )
+        elif ie.kind == "symlink":
             if not working:
-                append(b'<symlink file_id="%s" name="%s"%s revision="%s" '
-                       b'symlink_target="%s" />\n' % (
-                           encode_and_escape(ie.file_id),
-                           encode_and_escape(ie.name),
-                           parent_str,
-                           encode_and_escape(ie.revision),
-                           encode_and_escape(ie.symlink_target)))
+                append(
+                    b'<symlink file_id="%s" name="%s"%s revision="%s" '
+                    b'symlink_target="%s" />\n'
+                    % (
+                        encode_and_escape(ie.file_id),
+                        encode_and_escape(ie.name),
+                        parent_str,
+                        encode_and_escape(ie.revision),
+                        encode_and_escape(ie.symlink_target),
+                    )
+                )
             else:
-                append(b'<symlink file_id="%s" name="%s"%s />\n' % (
-                    encode_and_escape(ie.file_id),
-                    encode_and_escape(ie.name),
-                    parent_str))
-        elif ie.kind == 'tree-reference':
+                append(
+                    b'<symlink file_id="%s" name="%s"%s />\n'
+                    % (
+                        encode_and_escape(ie.file_id),
+                        encode_and_escape(ie.name),
+                        parent_str,
+                    )
+                )
+        elif ie.kind == "tree-reference":
             if ie.kind not in supported_kinds:
                 raise serializer.UnsupportedInventoryKind(ie.kind)
             if not working:
-                append(b'<tree-reference file_id="%s" name="%s"%s '
-                       b'revision="%s" reference_revision="%s" />\n' % (
-                           encode_and_escape(ie.file_id),
-                           encode_and_escape(ie.name),
-                           parent_str,
-                           encode_and_escape(ie.revision),
-                           encode_and_escape(ie.reference_revision)))
+                append(
+                    b'<tree-reference file_id="%s" name="%s"%s '
+                    b'revision="%s" reference_revision="%s" />\n'
+                    % (
+                        encode_and_escape(ie.file_id),
+                        encode_and_escape(ie.name),
+                        parent_str,
+                        encode_and_escape(ie.revision),
+                        encode_and_escape(ie.reference_revision),
+                    )
+                )
             else:
-                append(b'<tree-reference file_id="%s" name="%s"%s />\n' % (
-                    encode_and_escape(ie.file_id),
-                    encode_and_escape(ie.name),
-                    parent_str))
+                append(
+                    b'<tree-reference file_id="%s" name="%s"%s />\n'
+                    % (
+                        encode_and_escape(ie.file_id),
+                        encode_and_escape(ie.name),
+                        parent_str,
+                    )
+                )
         else:
             raise serializer.UnsupportedInventoryKind(ie.kind)
-    append(b'</inventory>\n')
+    append(b"</inventory>\n")

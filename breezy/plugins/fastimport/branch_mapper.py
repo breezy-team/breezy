@@ -21,22 +21,22 @@ import re
 
 
 class BranchMapper:
-    _GIT_TRUNK_RE = re.compile(b'(?:git-)*trunk')
+    _GIT_TRUNK_RE = re.compile(b"(?:git-)*trunk")
 
     def git_to_bzr(self, ref_name):
         """Map a git reference name to a Bazaar branch name."""
-        parts = ref_name.split(b'/')
-        if parts[0] == b'refs':
+        parts = ref_name.split(b"/")
+        if parts[0] == b"refs":
             parts.pop(0)
         category = parts.pop(0)
-        if category == b'heads':
-            git_name = b'/'.join(parts)
+        if category == b"heads":
+            git_name = b"/".join(parts)
             bazaar_name = self._git_to_bzr_name(git_name)
         else:
-            if category == b'remotes' and parts[0] == b'origin':
+            if category == b"remotes" and parts[0] == b"origin":
                 parts.pop(0)
-            git_name = b'/'.join(parts)
-            if category.endswith(b's'):
+            git_name = b"/".join(parts)
+            if category.endswith(b"s"):
                 category = category[:-1]
             name_no_ext = self._git_to_bzr_name(git_name)
             bazaar_name = f"{name_no_ext}.{category.decode('ascii')}"
@@ -47,10 +47,10 @@ class BranchMapper:
         # To avoid collision, map git 'trunk' to bzr 'git-trunk'.  Likewise
         # 'git-trunk' to 'git-git-trunk' and so on, such that the mapping is
         # one-to-one in both directions.
-        if git_name == b'master':
-            bazaar_name = 'trunk'
+        if git_name == b"master":
+            bazaar_name = "trunk"
         elif self._GIT_TRUNK_RE.match(git_name):
             bazaar_name = f"git-{git_name.decode('utf-8')}"
         else:
-            bazaar_name = git_name.decode('utf-8')
+            bazaar_name = git_name.decode("utf-8")
         return bazaar_name

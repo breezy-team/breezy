@@ -25,25 +25,22 @@ from ...repository import WriteGroup
 
 
 class TestAddInventory(TestCaseWithExternalReferenceRepository):
-
     def test_add_inventory_goes_to_repo(self):
         # adding an inventory only writes to the repository add_inventory is
         # called on.
-        tree = self.make_branch_and_tree('sample')
-        revid = tree.commit('one')
+        tree = self.make_branch_and_tree("sample")
+        revid = tree.commit("one")
         inv = tree.branch.repository.get_inventory(revid)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        base = self.make_repository('base')
-        repo = self.make_referring('referring', base)
+        base = self.make_repository("base")
+        repo = self.make_referring("referring", base)
         with repo.lock_write(), WriteGroup(repo):
             repo.add_inventory(revid, inv, [])
         repo.lock_read()
         self.addCleanup(repo.unlock)
         inv2 = repo.get_inventory(revid)
-        content1 = {file_id: inv.get_entry(file_id)
-                        for file_id in inv.iter_all_ids()}
-        content2 = {file_id: inv.get_entry(file_id)
-                        for file_id in inv2.iter_all_ids()}
+        content1 = {file_id: inv.get_entry(file_id) for file_id in inv.iter_all_ids()}
+        content2 = {file_id: inv.get_entry(file_id) for file_id in inv2.iter_all_ids()}
         self.assertEqual(content1, content2)
         self.assertRaises(errors.NoSuchRevision, base.get_inventory, revid)

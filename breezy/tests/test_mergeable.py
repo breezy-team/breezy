@@ -24,7 +24,6 @@ from . import test_server
 
 
 class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
-
     def test_read_mergeable_skips_local(self):
         """A local bundle named like the URL should not be read."""
         out, wt = test_read_bundle.create_bundle_file(self)
@@ -33,19 +32,20 @@ class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
             """A directory service that always returns source."""
 
             def look_up(self, name, url):
-                return 'source'
-        directories.register('foo:', FooService, 'Testing directory service')
-        self.addCleanup(directories.remove, 'foo:')
-        self.build_tree_contents([('./foo:bar', out.getvalue())])
-        self.assertRaises(errors.NotABundle, read_mergeable_from_url,
-                          'foo:bar')
+                return "source"
+
+        directories.register("foo:", FooService, "Testing directory service")
+        self.addCleanup(directories.remove, "foo:")
+        self.build_tree_contents([("./foo:bar", out.getvalue())])
+        self.assertRaises(errors.NotABundle, read_mergeable_from_url, "foo:bar")
 
     def test_infinite_redirects_are_not_a_bundle(self):
         """If a URL causes TooManyRedirections then NotABundle is raised."""
         from .blackbox.test_push import RedirectingMemoryServer
+
         server = RedirectingMemoryServer()
         self.start_server(server)
-        url = server.get_url() + 'infinite-loop'
+        url = server.get_url() + "infinite-loop"
         self.assertRaises(errors.NotABundle, read_mergeable_from_url, url)
 
     def test_smart_server_connection_reset(self):
@@ -69,12 +69,10 @@ class DisconnectingHandler(socketserver.BaseRequestHandler):
 
 
 class DisconnectingServer(test_server.TestingTCPServerInAThread):
-
     def __init__(self):
         super().__init__(
-            ('127.0.0.1', 0),
-            test_server.TestingTCPServer,
-            DisconnectingHandler)
+            ("127.0.0.1", 0), test_server.TestingTCPServer, DisconnectingHandler
+        )
 
     def get_url(self):
         """Return the url of the server."""

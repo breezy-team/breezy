@@ -30,7 +30,8 @@ class ExternalCommand(Command):
     @classmethod
     def find_command(cls, cmd):
         import os.path
-        bzrpath = os.environ.get('BZRPATH', '')
+
+        bzrpath = os.environ.get("BZRPATH", "")
 
         for dir in bzrpath.split(os.pathsep):
             # Empty directories are not real paths
@@ -51,12 +52,12 @@ class ExternalCommand(Command):
         return os.path.basename(self.path)
 
     def run(self, *args, **kwargs):
-        raise NotImplementedError(f'should not be called on {self!r}')
+        raise NotImplementedError(f"should not be called on {self!r}")
 
     def run_argv_aliases(self, argv, alias_argv=None):
         return os.spawnv(os.P_WAIT, self.path, [self.path] + argv)  # noqa: S606
 
     def help(self):
-        m = f'external command from {self.path}\n\n'
-        pipe = os.popen(f'{self.path} --help')  # noqa: S605
+        m = f"external command from {self.path}\n\n"
+        pipe = os.popen(f"{self.path} --help")  # noqa: S605
         return m + pipe.read()

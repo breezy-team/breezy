@@ -20,20 +20,22 @@ from breezy.tests.per_repository import TestCaseWithRepository
 
 
 class TestGatherStats(TestCaseWithRepository):
-
     def test_gather_stats(self):
         """First smoke test covering the refactoring into the Repository api."""
-        tree = self.make_branch_and_memory_tree('.')
+        tree = self.make_branch_and_memory_tree(".")
         tree.lock_write()
-        tree.add('')
+        tree.add("")
         # three commits: one to be included by reference, one to be
         # requested, and one to be in the repository but [mostly] ignored.
-        tree.commit('first post', committer='person 1',
-                           timestamp=1170491381, timezone=0)
-        rev2 = tree.commit('second post', committer='person 2',
-                           timestamp=1171491381, timezone=0)
-        tree.commit('third post', committer='person 3',
-                           timestamp=1172491381, timezone=0)
+        tree.commit(
+            "first post", committer="person 1", timestamp=1170491381, timezone=0
+        )
+        rev2 = tree.commit(
+            "second post", committer="person 2", timestamp=1171491381, timezone=0
+        )
+        tree.commit(
+            "third post", committer="person 3", timestamp=1172491381, timezone=0
+        )
         tree.unlock()
         # now, in the same repository, asking for stats with/without the
         # committers flag generates the same date information.
@@ -41,9 +43,9 @@ class TestGatherStats(TestCaseWithRepository):
         # this test explicitly only checks for certain keys
         # in the dictionary, as implementations are allowed to
         # provide arbitrary data in other keys.
-        self.assertEqual(stats['firstrev'], (1170491381.0, 0))
-        self.assertEqual(stats['latestrev'], (1171491381.0, 0))
-        self.assertEqual(stats['revisions'], 3)
+        self.assertEqual(stats["firstrev"], (1170491381.0, 0))
+        self.assertEqual(stats["latestrev"], (1171491381.0, 0))
+        self.assertEqual(stats["revisions"], 3)
         stats = tree.branch.repository.gather_stats(rev2, committers=True)
         self.assertEqual(2, stats["committers"])
         self.assertEqual((1170491381.0, 0), stats["firstrev"])
@@ -52,10 +54,10 @@ class TestGatherStats(TestCaseWithRepository):
 
     def test_gather_stats_empty_repo(self):
         """An empty repository still has revisions."""
-        tree = self.make_branch_and_memory_tree('.')
+        tree = self.make_branch_and_memory_tree(".")
         # now ask for global repository stats.
         stats = tree.branch.repository.gather_stats()
-        self.assertEqual(0, stats['revisions'])
+        self.assertEqual(0, stats["revisions"])
         self.assertNotIn("committers", stats)
         self.assertNotIn("firstrev", stats)
         self.assertNotIn("latestrev", stats)

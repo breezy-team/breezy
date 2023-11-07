@@ -32,14 +32,14 @@ class TextMerge:
     Index 1 is text_b, e.g. OTHER.  Index 2 is optional.  If present, it
     represents BASE.
     """
+
     # TODO: Show some version information (e.g. author, date) on conflicted
     # regions.
-    A_MARKER = b'<<<<<<< \n'
-    B_MARKER = b'>>>>>>> \n'
-    SPLIT_MARKER = b'=======\n'
+    A_MARKER = b"<<<<<<< \n"
+    B_MARKER = b">>>>>>> \n"
+    SPLIT_MARKER = b"=======\n"
 
-    def __init__(self, a_marker=A_MARKER, b_marker=B_MARKER,
-                 split_marker=SPLIT_MARKER):
+    def __init__(self, a_marker=A_MARKER, b_marker=B_MARKER, split_marker=SPLIT_MARKER):
         self.a_marker = a_marker
         self.b_marker = b_marker
         self.split_marker = split_marker
@@ -48,7 +48,7 @@ class TextMerge:
         """Return structured merge info.  Must be implemented by subclasses.
         See TextMerge docstring for details on the format.
         """
-        raise NotImplementedError('_merge_struct is abstract')
+        raise NotImplementedError("_merge_struct is abstract")
 
     def struct_to_lines(self, struct_iter):
         """Convert merge result tuples to lines."""
@@ -114,9 +114,14 @@ class Merge2(TextMerge):
     regions produce conflicts.
     """
 
-    def __init__(self, lines_a, lines_b, a_marker=TextMerge.A_MARKER,
-                 b_marker=TextMerge.B_MARKER,
-                 split_marker=TextMerge.SPLIT_MARKER):
+    def __init__(
+        self,
+        lines_a,
+        lines_b,
+        a_marker=TextMerge.A_MARKER,
+        b_marker=TextMerge.B_MARKER,
+        split_marker=TextMerge.SPLIT_MARKER,
+    ):
         TextMerge.__init__(self, a_marker, b_marker, split_marker)
         self.lines_a = lines_a
         self.lines_b = lines_b
@@ -126,15 +131,15 @@ class Merge2(TextMerge):
         See TextMerge docstring.
         """
         import patiencediff
-        sm = patiencediff.PatienceSequenceMatcher(
-            None, self.lines_a, self.lines_b)
+
+        sm = patiencediff.PatienceSequenceMatcher(None, self.lines_a, self.lines_b)
         pos_a = 0
         pos_b = 0
         for ai, bi, l in sm.get_matching_blocks():
             # non-matching lines
             yield (self.lines_a[pos_a:ai], self.lines_b[pos_b:bi])
             # matching lines
-            yield (self.lines_a[ai:ai + l],)
+            yield (self.lines_a[ai : ai + l],)
             pos_a = ai + l
             pos_b = bi + l
         # final non-matching lines

@@ -22,10 +22,9 @@ from .. import tests
 
 
 class TestDistutilsVersion(tests.TestCase):
-
     def test_version_with_string(self):
         # We really care about two pyrex specific versions and our ability to
         # detect them
         lv = version.Version
-        self.assertLess(lv("0.9.4.1"), lv('0.17.beta1'))
-        self.assertLess(lv("0.9.6.3"), lv('0.10'))
+        self.assertLess(lv("0.9.4.1"), lv("0.17.beta1"))
+        self.assertLess(lv("0.9.6.3"), lv("0.10"))

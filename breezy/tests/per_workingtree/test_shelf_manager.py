@@ -22,9 +22,8 @@ from ...workingtree import ShelvingUnsupported
 
 
 class TestShelfManager(TestCaseWithWorkingTree):
-
     def test_shelf_manager(self):
-        tree = self.make_branch_and_tree('.')
+        tree = self.make_branch_and_tree(".")
         if self.workingtree_format.supports_store_uncommitted:
             self.assertIsNot(None, tree.get_shelf_manager())
         else:

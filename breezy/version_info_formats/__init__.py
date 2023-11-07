@@ -38,19 +38,28 @@ def create_date_str(timestamp=None, offset=None):
     if timestamp is None and offset is None:
         timestamp = time.time()
         offset = local_time_offset()
-    return format_date(timestamp, offset, date_fmt='%Y-%m-%d %H:%M:%S',
-                       timezone='original', show_offset=True)
+    return format_date(
+        timestamp,
+        offset,
+        date_fmt="%Y-%m-%d %H:%M:%S",
+        timezone="original",
+        show_offset=True,
+    )
 
 
 class VersionInfoBuilder:
     """A class which lets you build up information about a revision."""
 
-    def __init__(self, branch, working_tree=None,
-                 check_for_clean=False,
-                 include_revision_history=False,
-                 include_file_revisions=False,
-                 template=None,
-                 revision_id=None):
+    def __init__(
+        self,
+        branch,
+        working_tree=None,
+        check_for_clean=False,
+        include_revision_history=False,
+        include_file_revisions=False,
+        template=None,
+        revision_id=None,
+    ):
         """Build up information about the given branch.
         If working_tree is given, it can be checked for changes.
 
@@ -82,8 +91,7 @@ class VersionInfoBuilder:
             self._tree = working_tree
             self._working_tree = working_tree
         else:
-            self._tree = self._branch.repository.revision_tree(
-                self._revision_id)
+            self._tree = self._branch.repository.revision_tree(self._revision_id)
             # the working tree is not relevant if an explicit revision was specified
             self._working_tree = None
 
@@ -102,20 +110,19 @@ class VersionInfoBuilder:
                 #       a higher level, but this will do for now.
                 es.enter_context(self._working_tree.lock_read())
             else:
-                basis_tree = self._branch.repository.revision_tree(
-                    self._revision_id)
+                basis_tree = self._branch.repository.revision_tree(self._revision_id)
 
             es.enter_context(basis_tree.lock_read())
             # Build up the list from the basis inventory
             for info in basis_tree.list_files(include_root=True):
-                self._file_revisions[info[0]] = info[-1].revision.decode('utf-8')
+                self._file_revisions[info[0]] = info[-1].revision.decode("utf-8")
 
             if not self._check or self._working_tree is not self._tree:
                 return
 
-            delta = self._working_tree.changes_from(basis_tree,
-                                                    include_root=True,
-                                                    want_unversioned=True)
+            delta = self._working_tree.changes_from(
+                basis_tree, include_root=True, want_unversioned=True
+            )
 
             # Using a 2-pass algorithm for renames. This is because you might have
             # renamed something out of the way, and then created a new file
@@ -124,25 +131,25 @@ class VersionInfoBuilder:
             # in which case we would rather see the renamed marker
             for change in delta.renamed:
                 self._clean = False
-                self._file_revisions[change.path[0]] = f'renamed to {change.path[1]}'
+                self._file_revisions[change.path[0]] = f"renamed to {change.path[1]}"
             for change in delta.removed:
                 self._clean = False
-                self._file_revisions[change.path[0]] = 'removed'
+                self._file_revisions[change.path[0]] = "removed"
             for change in delta.added:
                 self._clean = False
-                self._file_revisions[change.path[1]] = 'new'
+                self._file_revisions[change.path[1]] = "new"
             for change in delta.renamed:
                 self._clean = False
-                self._file_revisions[change.path[1]] = f'renamed from {change.path[0]}'
+                self._file_revisions[change.path[1]] = f"renamed from {change.path[0]}"
             for change in delta.copied:
                 self._clean = False
-                self._file_revisions[change.path[1]] = f'copied from {change.path[0]}'
+                self._file_revisions[change.path[1]] = f"copied from {change.path[0]}"
             for change in delta.modified:
                 self._clean = False
-                self._file_revisions[change.path[1]] = 'modified'
+                self._file_revisions[change.path[1]] = "modified"
             for change in delta.unversioned:
                 self._clean = False
-                self._file_revisions[change.path[1]] = 'unversioned'
+                self._file_revisions[change.path[1]] = "unversioned"
 
     def _iter_revision_history(self):
         """Find the messages for all revisions in history."""
@@ -151,12 +158,12 @@ class VersionInfoBuilder:
         repository = self._branch.repository
         with repository.lock_read():
             graph = repository.get_graph()
-            revhistory = list(graph.iter_lefthand_ancestry(
-                last_rev, [_mod_revision.NULL_REVISION]))
+            revhistory = list(
+                graph.iter_lefthand_ancestry(last_rev, [_mod_revision.NULL_REVISION])
+            )
             for revision_id in reversed(revhistory):
                 rev = repository.get_revision(revision_id)
-                yield (rev.revision_id, rev.message,
-                       rev.timestamp, rev.timezone)
+                yield (rev.revision_id, rev.message, rev.timestamp, rev.timezone)
 
     def _get_revision_id(self):
         """Get the revision id we are working on."""
@@ -168,7 +175,7 @@ class VersionInfoBuilder:
 
     def _get_revno_str(self, revision_id):
         numbers = self._branch.revision_id_to_dotted_revno(revision_id)
-        revno_str = '.'.join([str(num) for num in numbers])
+        revno_str = ".".join([str(num) for num in numbers])
         return revno_str
 
     def generate(self, to_file):
@@ -186,23 +193,27 @@ format_registry = registry.Registry[str, Type[VersionInfoBuilder], None]()
 
 
 format_registry.register_lazy(
-    'rio',
-    'breezy.version_info_formats.format_rio',
-    'RioVersionInfoBuilder',
-    'Version info in RIO (simple text) format (default).')
+    "rio",
+    "breezy.version_info_formats.format_rio",
+    "RioVersionInfoBuilder",
+    "Version info in RIO (simple text) format (default).",
+)
 format_registry.register_lazy(
-    'yaml',
-    'breezy.version_info_formats.format_yaml',
-    'YamlVersionInfoBuilder',
-    'Version info in YAML format.')
+    "yaml",
+    "breezy.version_info_formats.format_yaml",
+    "YamlVersionInfoBuilder",
+    "Version info in YAML format.",
+)
 format_registry.register_lazy(
-    'python',
-    'breezy.version_info_formats.format_python',
-    'PythonVersionInfoBuilder',
-    'Version info in Python format.')
+    "python",
+    "breezy.version_info_formats.format_python",
+    "PythonVersionInfoBuilder",
+    "Version info in Python format.",
+)
 format_registry.register_lazy(
-    'custom',
-    'breezy.version_info_formats.format_custom',
-    'CustomVersionInfoBuilder',
-    'Version info in Custom template-based format.')
-format_registry.default_key = 'rio'
+    "custom",
+    "breezy.version_info_formats.format_custom",
+    "CustomVersionInfoBuilder",
+    "Version info in Custom template-based format.",
+)
+format_registry.default_key = "rio"

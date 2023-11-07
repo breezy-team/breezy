@@ -32,8 +32,9 @@ from ...bzr.remote import RemoteRepositoryFormat
 from ..per_controldir.test_controldir import TestCaseWithControlDir
 
 
-def formats_to_scenarios(formats, transport_server, transport_readonly_server,
-                         vfs_transport_factory=None):
+def formats_to_scenarios(
+    formats, transport_server, transport_readonly_server, vfs_transport_factory=None
+):
     """Transform the input formats to a list of scenarios.
 
     :param formats: A list of (scenario_name_suffix, repo_format)
@@ -46,16 +47,19 @@ def formats_to_scenarios(formats, transport_server, transport_readonly_server,
     for scenario_name_suffix, repository_format in formats:
         scenario_name = repository_format.__class__.__name__
         scenario_name += scenario_name_suffix
-        scenario = (scenario_name,
-                    {"transport_server": transport_server,
-                     "transport_readonly_server": transport_readonly_server,
-                     "bzrdir_format": repository_format._matchingcontroldir,
-                     "repository_format": repository_format,
-                     })
+        scenario = (
+            scenario_name,
+            {
+                "transport_server": transport_server,
+                "transport_readonly_server": transport_readonly_server,
+                "bzrdir_format": repository_format._matchingcontroldir,
+                "repository_format": repository_format,
+            },
+        )
         # Only override the test's vfs_transport_factory if one was
         # specified, otherwise just leave the default in place.
         if vfs_transport_factory:
-            scenario[1]['vfs_transport_factory'] = vfs_transport_factory
+            scenario[1]["vfs_transport_factory"] = vfs_transport_factory
         result.append(scenario)
     return result
 
@@ -66,26 +70,32 @@ def all_repository_format_scenarios():
     # format_scenarios is all the implementations of Repository; i.e. all disk
     # formats plus RemoteRepository.
     format_scenarios = formats_to_scenarios(
-        [('', format) for format in all_formats],
+        [("", format) for format in all_formats],
         default_transport,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
-        None)
-    format_scenarios.extend(formats_to_scenarios(
-        [('-default', RemoteRepositoryFormat())],
-        test_server.SmartTCPServer_for_testing,
-        test_server.ReadonlySmartTCPServer_for_testing,
-        memory.MemoryServer))
-    format_scenarios.extend(formats_to_scenarios(
-        [('-v2', RemoteRepositoryFormat())],
-        test_server.SmartTCPServer_for_testing_v2_only,
-        test_server.ReadonlySmartTCPServer_for_testing_v2_only,
-        memory.MemoryServer))
+        None,
+    )
+    format_scenarios.extend(
+        formats_to_scenarios(
+            [("-default", RemoteRepositoryFormat())],
+            test_server.SmartTCPServer_for_testing,
+            test_server.ReadonlySmartTCPServer_for_testing,
+            memory.MemoryServer,
+        )
+    )
+    format_scenarios.extend(
+        formats_to_scenarios(
+            [("-v2", RemoteRepositoryFormat())],
+            test_server.SmartTCPServer_for_testing_v2_only,
+            test_server.ReadonlySmartTCPServer_for_testing_v2_only,
+            memory.MemoryServer,
+        )
+    )
     return format_scenarios
 
 
 class TestCaseWithRepository(TestCaseWithControlDir):
-
     def get_default_format(self):
         format = self.repository_format._matchingcontroldir
         self.assertEqual(format.repository_format, self.repository_format)
@@ -93,8 +103,7 @@ class TestCaseWithRepository(TestCaseWithControlDir):
 
     def make_repository(self, relpath, shared=None, format=None):
         format = self.resolve_format(format)
-        repo = super().make_repository(
-            relpath, shared=shared, format=format)
+        repo = super().make_repository(relpath, shared=shared, format=format)
         if format is None or format.repository_format is self.repository_format:
             # Create a repository of the type we are trying to test.
             if getattr(self, "repository_to_test_repository", None):
@@ -103,30 +112,31 @@ class TestCaseWithRepository(TestCaseWithControlDir):
 
 
 def load_tests(loader, standard_tests, pattern):
-    prefix = 'breezy.tests.per_repository.'
+    prefix = "breezy.tests.per_repository."
     test_repository_modules = [
-        'test_add_fallback_repository',
-        'test_break_lock',
-        'test_check',
-        'test_commit_builder',
-        'test_fetch',
-        'test_file_graph',
-        'test_get_parent_map',
-        'test_get_rev_id_for_revno',
-        'test_has_same_location',
-        'test_has_revisions',
-        'test_locking',
-        'test_pack',
-        'test_reconcile',
-        'test_refresh_data',
-        'test_repository',
-        'test_revision',
-        'test_signatures',
-        'test_statistics',
-        'test_write_group',
-        ]
+        "test_add_fallback_repository",
+        "test_break_lock",
+        "test_check",
+        "test_commit_builder",
+        "test_fetch",
+        "test_file_graph",
+        "test_get_parent_map",
+        "test_get_rev_id_for_revno",
+        "test_has_same_location",
+        "test_has_revisions",
+        "test_locking",
+        "test_pack",
+        "test_reconcile",
+        "test_refresh_data",
+        "test_repository",
+        "test_revision",
+        "test_signatures",
+        "test_statistics",
+        "test_write_group",
+    ]
     # Parameterize per_repository test modules by format.
     submod_tests = loader.loadTestsFromModuleNames(
-        [prefix + module_name for module_name in test_repository_modules])
+        [prefix + module_name for module_name in test_repository_modules]
+    )
     format_scenarios = all_repository_format_scenarios()
     return multiply_tests(submod_tests, format_scenarios, standard_tests)

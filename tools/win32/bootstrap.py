@@ -29,53 +29,73 @@ import urllib2
 
 tmpeggs = tempfile.mkdtemp()
 
-is_jython = sys.platform.startswith('java')
+is_jython = sys.platform.startswith("java")
 
 try:
     import pkg_resources
 except ModuleNotFoundError:
     ez = {}
-    exec(urllib2.urlopen('http://peak.telecommunity.com/dist/ez_setup.py'  # noqa: S301,S310,S102
-                         ).read(), ez)
-    ez['use_setuptools'](to_dir=tmpeggs, download_delay=0)
+    exec(  # noqa: S301,S310,S102
+        urllib2.urlopen("http://peak.telecommunity.com/dist/ez_setup.py").read(),
+        ez,
+    )
+    ez["use_setuptools"](to_dir=tmpeggs, download_delay=0)
 
     import pkg_resources
 
-if sys.platform == 'win32':
+if sys.platform == "win32":
+
     def quote(c):
-        if ' ' in c:
-            return f'"{c}"' # work around spawn lamosity on windows
+        if " " in c:
+            return f'"{c}"'  # work around spawn lamosity on windows
         else:
             return c
 else:
+
     def quote(c):
         return c
 
-cmd = 'from setuptools.command.easy_install import main; main()'
+
+cmd = "from setuptools.command.easy_install import main; main()"
 ws = pkg_resources.working_set
 env = dict(
     os.environ,
-    PYTHONPATH=ws.find(pkg_resources.Requirement.parse('setuptools')).location)
+    PYTHONPATH=ws.find(pkg_resources.Requirement.parse("setuptools")).location,
+)
 
 if is_jython:
     import subprocess
 
-    if subprocess.Popen(
-            [sys.executable] +
-            ['-c', quote(cmd), '-mqNxd', quote(tmpeggs), 'zc.buildout'],
-            env=env,).wait() != 0:
+    if (
+        subprocess.Popen(
+            [sys.executable]
+            + ["-c", quote(cmd), "-mqNxd", quote(tmpeggs), "zc.buildout"],
+            env=env,
+        ).wait()
+        != 0
+    ):
         raise ASsertionError("Failed to bootstrap zc.buildout")
 
 else:
-    if os.spawnle(  # noqa: S606
-            os.P_WAIT, sys.executable, quote(sys.executable),
-            '-c', quote(cmd), '-mqNxd', quote(tmpeggs), 'zc.buildout', env,
-            ) != 0:
+    if (
+        os.spawnle(  # noqa: S606
+            os.P_WAIT,
+            sys.executable,
+            quote(sys.executable),
+            "-c",
+            quote(cmd),
+            "-mqNxd",
+            quote(tmpeggs),
+            "zc.buildout",
+            env,
+        )
+        != 0
+    ):
         raise AssertionError("Failed to bootstrap zc.buildout")
 
 ws.add_entry(tmpeggs)
-ws.require('zc.buildout')
+ws.require("zc.buildout")
 import zc.buildout.buildout
 
-zc.buildout.buildout.main(sys.argv[1:] + ['bootstrap'])
+zc.buildout.buildout.main(sys.argv[1:] + ["bootstrap"])
 shutil.rmtree(tmpeggs)

@@ -24,38 +24,41 @@ import tempfile
 
 from .lazy_import import lazy_import
 
-lazy_import(globals(), """
+lazy_import(
+    globals(),
+    """
 from breezy import (
     cmdline,
 )
-""")
+""",
+)
 
 from . import osutils, trace
 
 known_merge_tools = {
-    'bcompare': 'bcompare {this} {other} {base} {result}',
-    'kdiff3': 'kdiff3 {base} {this} {other} -o {result}',
-    'xdiff': 'xxdiff -m -O -M {result} {this} {base} {other}',
-    'meld': 'meld {base} {this_temp} {other}',
-    'opendiff': 'opendiff {this} {other} -ancestor {base} -merge {result}',
-    'winmergeu': 'winmergeu {result}',
+    "bcompare": "bcompare {this} {other} {base} {result}",
+    "kdiff3": "kdiff3 {base} {this} {other} -o {result}",
+    "xdiff": "xxdiff -m -O -M {result} {this} {base} {other}",
+    "meld": "meld {base} {this_temp} {other}",
+    "opendiff": "opendiff {this} {other} -ancestor {base} -merge {result}",
+    "winmergeu": "winmergeu {result}",
 }
 
 
 def check_availability(command_line):
     cmd_list = cmdline.split(command_line)
     exe = cmd_list[0]
-    if sys.platform == 'win32':
+    if sys.platform == "win32":
         exe = _get_executable_path(exe)
         if exe is None:
             return False
         base, ext = os.path.splitext(exe)
-        path_ext = [s.lower()
-                    for s in os.getenv('PATHEXT', '').split(os.pathsep)]
+        path_ext = [s.lower() for s in os.getenv("PATHEXT", "").split(os.pathsep)]
         return os.path.exists(exe) and ext in path_ext
     else:
-        return (os.access(exe, os.X_OK) or
-                osutils.find_executable_on_path(exe) is not None)
+        return (
+            os.access(exe, os.X_OK) or osutils.find_executable_on_path(exe) is not None
+        )
 
 
 def invoke(command_line, filename, invoker=None):
@@ -78,6 +81,7 @@ def invoke(command_line, filename, invoker=None):
                 shutil.move(tmp_file, filename)
             else:  # otherwise, delete temp file
                 os.remove(tmp_file)
+
     return invoker(args[0], args[1:], cleanup)
 
 
@@ -89,21 +93,22 @@ def _get_executable_path(exe):
 
 def _subst_filename(args, filename):
     subst_names = {
-        'base': filename + '.BASE',
-        'this': filename + '.THIS',
-        'other': filename + '.OTHER',
-        'result': filename,
+        "base": filename + ".BASE",
+        "this": filename + ".THIS",
+        "other": filename + ".OTHER",
+        "result": filename,
     }
     tmp_file = None
     subst_args = []
     for arg in args:
-        if '{this_temp}' in arg and 'this_temp' not in subst_names:
-            fh, tmp_file = tempfile.mkstemp("_bzr_mergetools_%s.THIS" %
-                                            os.path.basename(filename))
-            trace.mutter('fh=%r, tmp_file=%r', fh, tmp_file)
+        if "{this_temp}" in arg and "this_temp" not in subst_names:
+            fh, tmp_file = tempfile.mkstemp(
+                "_bzr_mergetools_%s.THIS" % os.path.basename(filename)
+            )
+            trace.mutter("fh=%r, tmp_file=%r", fh, tmp_file)
             os.close(fh)
             shutil.copy(filename + ".THIS", tmp_file)
-            subst_names['this_temp'] = tmp_file
+            subst_names["this_temp"] = tmp_file
         arg = _format_arg(arg, subst_names)
         subst_args.append(arg)
     return subst_args, tmp_file
@@ -111,12 +116,12 @@ def _subst_filename(args, filename):
 
 # This would be better implemented using format() from python 2.6
 def _format_arg(arg, subst_names):
-    arg = arg.replace('{base}', subst_names['base'])
-    arg = arg.replace('{this}', subst_names['this'])
-    arg = arg.replace('{other}', subst_names['other'])
-    arg = arg.replace('{result}', subst_names['result'])
-    if 'this_temp' in subst_names:
-        arg = arg.replace('{this_temp}', subst_names['this_temp'])
+    arg = arg.replace("{base}", subst_names["base"])
+    arg = arg.replace("{this}", subst_names["this"])
+    arg = arg.replace("{other}", subst_names["other"])
+    arg = arg.replace("{result}", subst_names["result"])
+    if "this_temp" in subst_names:
+        arg = arg.replace("{this_temp}", subst_names["this_temp"])
     return arg
 
 

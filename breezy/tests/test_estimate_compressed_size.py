@@ -24,8 +24,7 @@ from ..zlib_util import ZLibEstimator
 
 
 class TestZLibEstimator(tests.TestCase):
-
-    def get_slightly_random_content(self, length, seed=b''):
+    def get_slightly_random_content(self, length, seed=b""):
         """We generate some hex-data that can be seeded.
 
         The output should be deterministic, but the data stream is effectively
@@ -35,43 +34,51 @@ class TestZLibEstimator(tests.TestCase):
         hex_content = []
         count = 0
         while count < length:
-            b = h.hexdigest().encode('ascii')
+            b = h.hexdigest().encode("ascii")
             hex_content.append(b)
             h.update(b)
             count += len(b)
-        return b''.join(hex_content)[:length]
+        return b"".join(hex_content)[:length]
 
     def test_adding_content(self):
         ze = ZLibEstimator(32000)
         raw_data = self.get_slightly_random_content(60000)
         block_size = 1000
         for start in range(0, len(raw_data), block_size):
-            ze.add_content(raw_data[start:start + block_size])
+            ze.add_content(raw_data[start : start + block_size])
             if ze.full():
                 break
         # Practise showed that 'start' was 56000. However, zlib is a bit
         # platform dependent, so give it +/- 5%.
-        self.assertTrue(54000 <= start <= 60000,
-                        "Unexpected amount of raw data added: %d bytes" % (start,))
+        self.assertTrue(
+            54000 <= start <= 60000,
+            "Unexpected amount of raw data added: %d bytes" % (start,),
+        )
         # The real compression should be 'close' to 32000, real measurement was
         # 32401
         raw_comp = zlib.compress(raw_data[:start])
-        self.assertTrue(31000 < len(raw_comp) < 35000,
-                        f"Unexpected compressed size: {len(raw_comp)} bytes")
+        self.assertTrue(
+            31000 < len(raw_comp) < 35000,
+            f"Unexpected compressed size: {len(raw_comp)} bytes",
+        )
 
     def test_adding_more_content(self):
         ze = ZLibEstimator(64000)
         raw_data = self.get_slightly_random_content(150000)
         block_size = 1000
         for start in range(0, len(raw_data), block_size):
-            ze.add_content(raw_data[start:start + block_size])
+            ze.add_content(raw_data[start : start + block_size])
             if ze.full():
                 break
         # Practise showed that 'start' was 112000
-        self.assertTrue(110000 <= start <= 114000,
-                        "Unexpected amount of raw data added: %d bytes" % (start,))
+        self.assertTrue(
+            110000 <= start <= 114000,
+            "Unexpected amount of raw data added: %d bytes" % (start,),
+        )
         # The real compression should be 'close' to 32000, real measurement was
         # 32401
         raw_comp = zlib.compress(raw_data[:start])
-        self.assertTrue(63000 < len(raw_comp) < 65000,
-                        f"Unexpected compressed size: {len(raw_comp)} bytes")
+        self.assertTrue(
+            63000 < len(raw_comp) < 65000,
+            f"Unexpected compressed size: {len(raw_comp)} bytes",
+        )

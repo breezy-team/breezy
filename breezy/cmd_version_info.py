@@ -18,13 +18,16 @@
 
 from .lazy_import import lazy_import
 
-lazy_import(globals(), """
+lazy_import(
+    globals(),
+    """
 from breezy import (
     branch,
     workingtree,
     )
 from breezy.i18n import gettext
-""")
+""",
+)
 
 from . import errors
 from .commands import Command
@@ -38,13 +41,16 @@ def _parse_version_info_format(format):
     cannot be found, generates a useful error exception.
     """
     from . import version_info_formats
+
     try:
         return version_info_formats.get_builder(format)
     except KeyError as err:
         formats = version_info_formats.get_builder_formats()
         raise errors.CommandError(
-            gettext('No known version info format {0}.'
-                    ' Supported types are: {1}').format(format, formats)) from err
+            gettext(
+                "No known version info format {0}." " Supported types are: {1}"
+            ).format(format, formats)
+        ) from err
 
 
 class cmd_version_info(Command):
@@ -71,40 +77,51 @@ class cmd_version_info(Command):
                   otherwise 1
     """
 
-    takes_options = [RegistryOption('format',
-                                    'Select the output format.',
-                                    value_switches=True,
-                                    lazy_registry=('breezy.version_info_formats',
-                                                   'format_registry')),
-                     Option('all', help='Include all possible information.'),
-                     Option('check-clean', help='Check if tree is clean.'),
-                     Option('include-history',
-                            help='Include the revision-history.'),
-                     Option('include-file-revisions',
-                            help='Include the last revision for each file.'),
-                     Option('template', type=str,
-                            help='Template for the output.'),
-                     'revision',
-                     ]
-    takes_args = ['location?']
+    takes_options = [
+        RegistryOption(
+            "format",
+            "Select the output format.",
+            value_switches=True,
+            lazy_registry=("breezy.version_info_formats", "format_registry"),
+        ),
+        Option("all", help="Include all possible information."),
+        Option("check-clean", help="Check if tree is clean."),
+        Option("include-history", help="Include the revision-history."),
+        Option(
+            "include-file-revisions", help="Include the last revision for each file."
+        ),
+        Option("template", type=str, help="Template for the output."),
+        "revision",
+    ]
+    takes_args = ["location?"]
 
-    encoding_type = 'replace'
+    encoding_type = "replace"
 
-    def run(self, location=None, format=None,
-            all=False, check_clean=False, include_history=False,
-            include_file_revisions=False, template=None,
-            revision=None):
-
+    def run(
+        self,
+        location=None,
+        format=None,
+        all=False,
+        check_clean=False,
+        include_history=False,
+        include_file_revisions=False,
+        template=None,
+        revision=None,
+    ):
         if revision and len(revision) > 1:
             raise errors.CommandError(
-                gettext('brz version-info --revision takes exactly'
-                        ' one revision specifier'))
+                gettext(
+                    "brz version-info --revision takes exactly"
+                    " one revision specifier"
+                )
+            )
 
         if location is None:
-            location = '.'
+            location = "."
 
         if format is None:
             from . import version_info_formats
+
             format = version_info_formats.format_registry.get()
 
         try:
@@ -122,7 +139,7 @@ class cmd_version_info(Command):
         if template:
             include_history = True
             include_file_revisions = True
-            if '{clean}' in template:
+            if "{clean}" in template:
                 check_clean = True
 
         if revision is not None:
@@ -130,9 +147,13 @@ class cmd_version_info(Command):
         else:
             revision_id = None
 
-        builder = format(b, working_tree=wt,
-                         check_for_clean=check_clean,
-                         include_revision_history=include_history,
-                         include_file_revisions=include_file_revisions,
-                         template=template, revision_id=revision_id)
+        builder = format(
+            b,
+            working_tree=wt,
+            check_for_clean=check_clean,
+            include_revision_history=include_history,
+            include_file_revisions=include_file_revisions,
+            template=template,
+            revision_id=revision_id,
+        )
         builder.generate(self.outf)

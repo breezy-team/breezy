@@ -20,15 +20,13 @@ from ...commands import Command
 
 
 class cmd_chk_used_by(Command):
-
-    __doc__ = \
-        """Find the inventories/revisions that reference a CHK."""
+    __doc__ = """Find the inventories/revisions that reference a CHK."""
 
     hidden = True
-    takes_args = ['key*']
-    takes_options = ['directory']
+    takes_args = ["key*"]
+    takes_options = ["directory"]
 
-    def run(self, key_list, directory='.'):
+    def run(self, key_list, directory="."):
         key_list = [static_tuple.StaticTuple(k) for k in key_list]
         if len(key_list) > 1:
             key_list = frozenset(key_list)
@@ -41,7 +39,9 @@ class cmd_chk_used_by(Command):
         for inv in repo.iter_inventories(all_invs):
             if inv.id_to_entry.key() in key_list:
                 self.outf.write(
-                    f'id_to_entry of {inv.revision_id} -> {inv.id_to_entry.key()}\n')
+                    f"id_to_entry of {inv.revision_id} -> {inv.id_to_entry.key()}\n"
+                )
             if inv.parent_id_basename_to_file_id.key() in key_list:
                 self.outf.write(
-                    f'parent_id_basename_to_file_id of {inv.revision_id} -> {inv.parent_id_basename_to_file_id.key()}\n')
+                    f"parent_id_basename_to_file_id of {inv.revision_id} -> {inv.parent_id_basename_to_file_id.key()}\n"
+                )

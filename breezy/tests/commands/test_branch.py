@@ -20,23 +20,22 @@ from ..transport_util import TestCaseWithConnectionHookedTransport
 
 
 class TestBranch(TestCaseWithConnectionHookedTransport):
-
     def setUp(self):
         super().setUp()
-        self.make_branch_and_tree('branch')
+        self.make_branch_and_tree("branch")
         self.start_logging_connections()
 
     def test_branch_remote_local(self):
         cmd = cmd_branch()
-        cmd.run(self.get_url('branch'), 'local')
+        cmd.run(self.get_url("branch"), "local")
         self.assertEqual(1, len(self.connections))
 
     def test_branch_local_remote(self):
         cmd = cmd_branch()
-        cmd.run('branch', self.get_url('remote'))
+        cmd.run("branch", self.get_url("remote"))
         self.assertEqual(1, len(self.connections))
 
     def test_branch_remote_remote(self):
         cmd = cmd_branch()
-        cmd.run(self.get_url('branch'), self.get_url('remote'))
+        cmd.run(self.get_url("branch"), self.get_url("remote"))
         self.assertEqual(2, len(self.connections))

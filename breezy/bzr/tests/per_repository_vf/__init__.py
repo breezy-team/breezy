@@ -29,7 +29,7 @@ from breezy.tests.per_repository import (
 def all_repository_vf_format_scenarios():
     scenarios = []
     for test_name, scenario_info in all_repository_format_scenarios():
-        format = scenario_info['repository_format']
+        format = scenario_info["repository_format"]
         if format.supports_full_versioned_files:
             scenarios.append((test_name, scenario_info))
     return scenarios
@@ -37,19 +37,20 @@ def all_repository_vf_format_scenarios():
 
 def load_tests(loader, basic_tests, pattern):
     testmod_names = [
-        'test_add_inventory_by_delta',
-        'test_check',
-        'test_check_reconcile',
-        'test_find_text_key_references',
-        'test__generate_text_key_index',
-        'test_fetch',
-        'test_fileid_involved',
-        'test_merge_directive',
-        'test_reconcile',
-        'test_refresh_data',
-        'test_repository',
-        'test_write_group',
-        ]
-    basic_tests.addTest(loader.loadTestsFromModuleNames(
-        [f"{__name__}.{tmn}" for tmn in testmod_names]))
+        "test_add_inventory_by_delta",
+        "test_check",
+        "test_check_reconcile",
+        "test_find_text_key_references",
+        "test__generate_text_key_index",
+        "test_fetch",
+        "test_fileid_involved",
+        "test_merge_directive",
+        "test_reconcile",
+        "test_refresh_data",
+        "test_repository",
+        "test_write_group",
+    ]
+    basic_tests.addTest(
+        loader.loadTestsFromModuleNames([f"{__name__}.{tmn}" for tmn in testmod_names])
+    )
     return basic_tests

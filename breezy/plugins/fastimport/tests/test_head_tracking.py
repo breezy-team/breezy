@@ -22,8 +22,7 @@ from fastimport import commands, parser
 from fastimport.reftracker import RefTracker
 
 # A sample input stream that only adds files to a branch
-_SAMPLE_MAINLINE = \
-    """blob
+_SAMPLE_MAINLINE = """blob
 mark :1
 data 9
 Welcome!
@@ -68,8 +67,7 @@ M 644 :4 doc/index.txt
 """
 
 # A sample input stream that adds files to two branches
-_SAMPLE_TWO_HEADS = \
-    """blob
+_SAMPLE_TWO_HEADS = """blob
 mark :1
 data 9
 Welcome!
@@ -114,8 +112,7 @@ M 644 :4 doc/index.txt
 """
 
 # A sample input stream that adds files to two branches
-_SAMPLE_TWO_BRANCHES_MERGED = \
-    """blob
+_SAMPLE_TWO_BRANCHES_MERGED = """blob
 mark :1
 data 9
 Welcome!
@@ -169,8 +166,7 @@ D doc/index.txt
 """
 
 # A sample input stream that contains a reset
-_SAMPLE_RESET = \
-    """blob
+_SAMPLE_RESET = """blob
 mark :1
 data 9
 Welcome!
@@ -185,8 +181,7 @@ from :100
 """
 
 # A sample input stream that contains a reset and more commits
-_SAMPLE_RESET_WITH_MORE_COMMITS = \
-    """blob
+_SAMPLE_RESET_WITH_MORE_COMMITS = """blob
 mark :1
 data 9
 Welcome!
@@ -210,7 +205,6 @@ D doc/README.txt
 
 
 class TestHeadTracking(testtools.TestCase):
-
     def assertHeads(self, input, expected):
         s = StringIO(input)
         p = parser.ImportParser(s)
@@ -226,27 +220,42 @@ class TestHeadTracking(testtools.TestCase):
         self.assertEqual(reftracker.heads, expected)
 
     def test_mainline(self):
-        self.assertHeads(_SAMPLE_MAINLINE, {
-            ':102': {'refs/heads/master'},
-            })
+        self.assertHeads(
+            _SAMPLE_MAINLINE,
+            {
+                ":102": {"refs/heads/master"},
+            },
+        )
 
     def test_two_heads(self):
-        self.assertHeads(_SAMPLE_TWO_HEADS, {
-            ':101': {'refs/heads/mybranch'},
-            ':102': {'refs/heads/master'},
-            })
+        self.assertHeads(
+            _SAMPLE_TWO_HEADS,
+            {
+                ":101": {"refs/heads/mybranch"},
+                ":102": {"refs/heads/master"},
+            },
+        )
 
     def test_two_branches_merged(self):
-        self.assertHeads(_SAMPLE_TWO_BRANCHES_MERGED, {
-            ':103': {'refs/heads/master'},
-            })
+        self.assertHeads(
+            _SAMPLE_TWO_BRANCHES_MERGED,
+            {
+                ":103": {"refs/heads/master"},
+            },
+        )
 
     def test_reset(self):
-        self.assertHeads(_SAMPLE_RESET, {
-            ':100': {'refs/heads/master', 'refs/remotes/origin/master'},
-            })
+        self.assertHeads(
+            _SAMPLE_RESET,
+            {
+                ":100": {"refs/heads/master", "refs/remotes/origin/master"},
+            },
+        )
 
     def test_reset_with_more_commits(self):
-        self.assertHeads(_SAMPLE_RESET_WITH_MORE_COMMITS, {
-            ':101': {'refs/remotes/origin/master'},
-            })
+        self.assertHeads(
+            _SAMPLE_RESET_WITH_MORE_COMMITS,
+            {
+                ":101": {"refs/remotes/origin/master"},
+            },
+        )

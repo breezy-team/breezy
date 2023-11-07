@@ -27,8 +27,8 @@ assertions in Test Case objects, so they are recommended for new testing work.
 """
 
 __all__ = [
-    'ContainsNoVfsCalls',
-    ]
+    "ContainsNoVfsCalls",
+]
 
 from testtools.matchers import Matcher, Mismatch
 
@@ -44,16 +44,19 @@ class _NoVfsCallsMismatch(Mismatch):
         self.vfs_calls = vfs_calls
 
     def describe(self):
-        return "no VFS calls expected, got: %s" % ",".join([
-            "{}({})".format(c.method,
-                        ", ".join([repr(a) for a in c.args])) for c in self.vfs_calls])
+        return "no VFS calls expected, got: %s" % ",".join(
+            [
+                "{}({})".format(c.method, ", ".join([repr(a) for a in c.args]))
+                for c in self.vfs_calls
+            ]
+        )
 
 
 class ContainsNoVfsCalls(Matcher):
     """Ensure that none of the specified calls are HPSS calls."""
 
     def __str__(self):
-        return 'ContainsNoVfsCalls()'
+        return "ContainsNoVfsCalls()"
 
     @classmethod
     def match(cls, hpss_calls):

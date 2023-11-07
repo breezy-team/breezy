@@ -35,11 +35,10 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
     # paramiko requires a username, but it might be none if nothing was
     # supplied.  If so, use the local username.
     if username is None:
-        username = auth.get_user('ssh', host, port=port,
-                                 default=getpass.getuser())
+        username = auth.get_user("ssh", host, port=port, default=getpass.getuser())
     agent = paramiko.Agent()
     for key in agent.get_keys():
-        trace.mutter(f'Trying SSH agent key {hexlify(key.get_fingerprint()).upper()}')
+        trace.mutter(f"Trying SSH agent key {hexlify(key.get_fingerprint()).upper()}")
         try:
             paramiko_transport.auth_publickey(username, key)
             return
@@ -47,9 +46,9 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
             pass
 
     # okay, try finding id_rsa or id_dss?  (posix only)
-    if _try_pkey_auth(paramiko_transport, paramiko.RSAKey, username, 'id_rsa'):
+    if _try_pkey_auth(paramiko_transport, paramiko.RSAKey, username, "id_rsa"):
         return
-    if _try_pkey_auth(paramiko_transport, paramiko.DSSKey, username, 'id_dsa'):
+    if _try_pkey_auth(paramiko_transport, paramiko.DSSKey, username, "id_dsa"):
         return
 
     # If we have gotten this far, we are about to try for passwords, do an
@@ -79,10 +78,14 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
     # XXX: It's possible for a server to require keyboard-interactive auth that
     # requires something other than a single password, but we currently don't
     # support that.
-    if ('password' not in supported_auth_types and
-            'keyboard-interactive' not in supported_auth_types):
-        raise ConnectionError('Unable to authenticate to SSH host as'
-                              f'\n  {username}@{host}\nsupported auth types: {supported_auth_types}')
+    if (
+        "password" not in supported_auth_types
+        and "keyboard-interactive" not in supported_auth_types
+    ):
+        raise ConnectionError(
+            "Unable to authenticate to SSH host as"
+            f"\n  {username}@{host}\nsupported auth types: {supported_auth_types}"
+        )
 
     if password:
         try:
@@ -92,44 +95,48 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
             pass
 
     # give up and ask for a password
-    password = auth.get_password('ssh', host, username, port=port)
+    password = auth.get_password("ssh", host, username, port=port)
     # get_password can still return None, which means we should not prompt
     if password is not None:
         try:
             paramiko_transport.auth_password(username, password)
         except paramiko.SSHException as e:
             raise ConnectionError(
-                f'Unable to authenticate to SSH host as\n  {username}@{host}\n', e) from e
+                f"Unable to authenticate to SSH host as\n  {username}@{host}\n", e
+            ) from e
     else:
-        raise ConnectionError('Unable to authenticate to SSH host as'
-                                     f'  {username}@{host}')
+        raise ConnectionError(
+            "Unable to authenticate to SSH host as" f"  {username}@{host}"
+        )
 
 
 def _try_pkey_auth(paramiko_transport, pkey_class, username, filename):
-    filename = os.path.expanduser('~/.ssh/' + filename)
+    filename = os.path.expanduser("~/.ssh/" + filename)
     try:
         key = pkey_class.from_private_key_file(filename)
         paramiko_transport.auth_publickey(username, key)
         return True
     except paramiko.PasswordRequiredException:
         password = ui.ui_factory.get_password(
-            prompt='SSH %(filename)s password',
-            filename=os.fsdecode(filename))
+            prompt="SSH %(filename)s password", filename=os.fsdecode(filename)
+        )
         try:
             key = pkey_class.from_private_key_file(filename, password)
             paramiko_transport.auth_publickey(username, key)
             return True
         except paramiko.SSHException:
-            trace.mutter(f'SSH authentication via {os.path.basename(filename)} key failed.')
+            trace.mutter(
+                f"SSH authentication via {os.path.basename(filename)} key failed."
+            )
     except paramiko.SSHException:
-        trace.mutter(f'SSH authentication via {os.path.basename(filename)} key failed.')
+        trace.mutter(f"SSH authentication via {os.path.basename(filename)} key failed.")
     except OSError:
         pass
     return False
 
 
 def _ssh_host_keys_config_dir():
-    return osutils.pathjoin(bedding.config_dir(), 'ssh_host_keys')
+    return osutils.pathjoin(bedding.config_dir(), "ssh_host_keys")
 
 
 def load_host_keys():
@@ -139,14 +146,15 @@ def load_host_keys():
     global SYSTEM_HOSTKEYS, BRZ_HOSTKEYS
     try:
         SYSTEM_HOSTKEYS = paramiko.util.load_host_keys(
-            os.path.expanduser('~/.ssh/known_hosts'))
+            os.path.expanduser("~/.ssh/known_hosts")
+        )
     except OSError as e:
-        trace.mutter('failed to load system host keys: ' + str(e))
+        trace.mutter("failed to load system host keys: " + str(e))
     brz_hostkey_path = _ssh_host_keys_config_dir()
     try:
         BRZ_HOSTKEYS = paramiko.util.load_host_keys(brz_hostkey_path)
     except OSError as e:
-        trace.mutter('failed to load brz host keys: ' + str(e))
+        trace.mutter("failed to load brz host keys: " + str(e))
         save_host_keys()
 
 
@@ -157,13 +165,13 @@ def save_host_keys():
     bedding.ensure_config_dir_exists()
 
     try:
-        with open(bzr_hostkey_path, 'w') as f:
-            f.write('# SSH host keys collected by bzr\n')
+        with open(bzr_hostkey_path, "w") as f:
+            f.write("# SSH host keys collected by bzr\n")
             for hostname, keys in BRZ_HOSTKEYS.items():
                 for keytype, key in keys.items():
-                    f.write(f'{hostname} {keytype} {key.get_base64()}\n')
+                    f.write(f"{hostname} {keytype} {key.get_base64()}\n")
     except OSError as e:
-        trace.mutter('failed to save bzr host keys: ' + str(e))
+        trace.mutter("failed to save bzr host keys: " + str(e))
 
 
 class ParamikoVendor(SSHVendor):
@@ -186,7 +194,7 @@ class ParamikoVendor(SSHVendor):
 
         try:
             t = paramiko.Transport((host, port or 22))
-            t.set_log_channel('bzr.paramiko')
+            t.set_log_channel("bzr.paramiko")
             t.start_client()
         except (paramiko.SSHException, OSError) as e:
             self._raise_connection_error(host, port=port, orig_error=e)
@@ -201,8 +209,8 @@ class ParamikoVendor(SSHVendor):
             our_server_key = BRZ_HOSTKEYS[host][keytype]
             our_server_key_hex = self._hexify(our_server_key.get_fingerprint())
         else:
-            trace.warning(f'Adding {keytype} host key for {host}: {server_key_hex}')
-            add = getattr(BRZ_HOSTKEYS, 'add', None)
+            trace.warning(f"Adding {keytype} host key for {host}: {server_key_hex}")
+            add = getattr(BRZ_HOSTKEYS, "add", None)
             if add is not None:  # paramiko >= 1.X.X
                 BRZ_HOSTKEYS.add(host, keytype, server_key)
             else:
@@ -211,11 +219,12 @@ class ParamikoVendor(SSHVendor):
             our_server_key_hex = self._hexify(our_server_key.get_fingerprint())
             save_host_keys()
         if server_key != our_server_key:
-            filename1 = os.path.expanduser('~/.ssh/known_hosts')
+            filename1 = os.path.expanduser("~/.ssh/known_hosts")
             filename2 = _ssh_host_keys_config_dir()
             raise errors.TransportError(
-                f'Host keys for {host} do not match!  {our_server_key_hex} != {server_key_hex}',
-                [f'Try editing {filename1} or {filename2}'])
+                f"Host keys for {host} do not match!  {our_server_key_hex} != {server_key_hex}",
+                [f"Try editing {filename1} or {filename2}"],
+            )
 
         _paramiko_auth(username, password, host, port, t)
         return t
@@ -225,19 +234,21 @@ class ParamikoVendor(SSHVendor):
         try:
             return t.open_sftp_client()
         except paramiko.SSHException as e:
-            self._raise_connection_error(host, port=port, orig_error=e,
-                                         msg='Unable to start sftp client')
+            self._raise_connection_error(
+                host, port=port, orig_error=e, msg="Unable to start sftp client"
+            )
 
     def connect_ssh(self, username, password, host, port, command):
         t = self._connect(username, password, host, port)
         try:
             channel = t.open_session()
-            cmdline = ' '.join(command)
+            cmdline = " ".join(command)
             channel.exec_command(cmdline)
             return _ParamikoSSHConnection(channel)
         except paramiko.SSHException as e:
-            self._raise_connection_error(host, port=port, orig_error=e,
-                                         msg='Unable to invoke remote bzr')
+            self._raise_connection_error(
+                host, port=port, orig_error=e, msg="Unable to invoke remote bzr"
+            )
 
 
 class _ParamikoSSHConnection(SSHConnection):
@@ -247,7 +258,7 @@ class _ParamikoSSHConnection(SSHConnection):
         self.channel = channel
 
     def get_sock_or_pipes(self):
-        return ('socket', self.channel)
+        return ("socket", self.channel)
 
     def close(self):
         return self.channel.close()

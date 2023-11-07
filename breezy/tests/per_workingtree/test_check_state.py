@@ -21,7 +21,6 @@ from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 
 class TestCaseWithState(TestCaseWithWorkingTree):
-
     def make_tree_with_broken_dirstate(self, path):
         tree = self.make_branch_and_tree(path)
         self.break_dirstate(tree)
@@ -29,9 +28,8 @@ class TestCaseWithState(TestCaseWithWorkingTree):
 
     def break_dirstate(self, tree, completely=False):
         """Write garbage into the dirstate file."""
-        if getattr(tree, 'current_dirstate', None) is None:
-            raise tests.TestNotApplicable(
-                'Only applies to dirstate-based trees')
+        if getattr(tree, "current_dirstate", None) is None:
+            raise tests.TestNotApplicable("Only applies to dirstate-based trees")
         tree.lock_read()
         try:
             dirstate = tree.current_dirstate()
@@ -42,54 +40,52 @@ class TestCaseWithState(TestCaseWithWorkingTree):
         # We have to have the tree unlocked at this point, so we can safely
         # mutate the state file on all platforms.
         if completely:
-            f = open(dirstate_path, 'wb')
+            f = open(dirstate_path, "wb")
         else:
-            f = open(dirstate_path, 'ab')
+            f = open(dirstate_path, "ab")
         try:
-            f.write(b'garbage-at-end-of-file\n')
+            f.write(b"garbage-at-end-of-file\n")
         finally:
             f.close()
 
 
 class TestCheckState(TestCaseWithState):
-
     def test_check_state(self):
-        tree = self.make_branch_and_tree('tree')
+        tree = self.make_branch_and_tree("tree")
         # Everything should be fine with an unmodified tree, no exception
         # should be raised.
         tree.check_state()
 
     def test_check_broken_dirstate(self):
-        tree = self.make_tree_with_broken_dirstate('tree')
+        tree = self.make_tree_with_broken_dirstate("tree")
         self.assertRaises(errors.BzrError, tree.check_state)
 
 
 class TestResetState(TestCaseWithState):
-
     def make_initial_tree(self):
-        tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/foo', 'tree/dir/', 'tree/dir/bar'])
-        tree.add(['foo', 'dir', 'dir/bar'])
-        tree.commit('initial')
+        tree = self.make_branch_and_tree("tree")
+        self.build_tree(["tree/foo", "tree/dir/", "tree/dir/bar"])
+        tree.add(["foo", "dir", "dir/bar"])
+        tree.commit("initial")
         return tree
 
     def test_reset_state_forgets_changes(self):
         tree = self.make_initial_tree()
-        tree.rename_one('foo', 'baz')
-        self.assertFalse(tree.is_versioned('foo'))
+        tree.rename_one("foo", "baz")
+        self.assertFalse(tree.is_versioned("foo"))
         if tree.supports_rename_tracking() and tree.supports_file_ids:
-            foo_id = tree.basis_tree().path2id('foo')
-            self.assertEqual(foo_id, tree.path2id('baz'))
+            foo_id = tree.basis_tree().path2id("foo")
+            self.assertEqual(foo_id, tree.path2id("baz"))
         else:
-            self.assertTrue(tree.is_versioned('baz'))
+            self.assertTrue(tree.is_versioned("baz"))
         tree.reset_state()
         # After reset, we should have forgotten about the rename, but we won't
         # have
         if tree.supports_file_ids:
-            self.assertEqual(foo_id, tree.path2id('foo'))
-            self.assertEqual(None, tree.path2id('baz'))
-        self.assertPathDoesNotExist('tree/foo')
-        self.assertPathExists('tree/baz')
+            self.assertEqual(foo_id, tree.path2id("foo"))
+            self.assertEqual(None, tree.path2id("baz"))
+        self.assertPathDoesNotExist("tree/foo")
+        self.assertPathExists("tree/baz")
 
     def test_reset_state_handles_corrupted_dirstate(self):
         tree = self.make_initial_tree()

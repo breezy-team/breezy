@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Map Tree."""
 
+
 def map_file_ids(repository, old_parents, new_parents):
     """Try to determine the equivalent file ids in two sets of parents.
 
@@ -23,9 +24,11 @@ def map_file_ids(repository, old_parents, new_parents):
     :param new_parents: List of revision ids of new parents
     """
     if len(old_parents) != len(new_parents):
-        raise ValueError(f"Number of parents does not match: {len(old_parents)} != {len(new_parents)}")
+        raise ValueError(
+            f"Number of parents does not match: {len(old_parents)} != {len(new_parents)}"
+        )
     ret = {}
-    for (oldp, newp) in zip(old_parents, new_parents):
+    for oldp, newp in zip(old_parents, new_parents):
         oldtree = repository.revision_tree(oldp)
         newtree = repository.revision_tree(newp)
         for path, ie in oldtree.iter_entries_by_dir():
@@ -118,5 +121,5 @@ class MapTree:
             return None
         return self.new_id(file_id)
 
-    def id2path(self, file_id, recurse='down'):
+    def id2path(self, file_id, recurse="down"):
         return self.oldtree.id2path(self.old_id(file_id=file_id), recurse=recurse)

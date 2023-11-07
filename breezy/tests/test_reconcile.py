@@ -25,13 +25,12 @@ from ..reconcile import Reconciler, reconcile
 
 
 class TestWorksWithSharedRepositories(per_repository.TestCaseWithRepository):
-
     def test_reweave_empty(self):
         # we want a repo capable format
-        parent = bzrdir.BzrDirMetaFormat1().initialize('.')
+        parent = bzrdir.BzrDirMetaFormat1().initialize(".")
         parent.create_repository(shared=True)
-        parent.root_transport.mkdir('child')
-        child = bzrdir.BzrDirMetaFormat1().initialize('child')
+        parent.root_transport.mkdir("child")
+        child = bzrdir.BzrDirMetaFormat1().initialize("child")
         self.assertRaises(errors.NoRepositoryPresent, child.open_repository)
         reconciler = Reconciler(child)
         result = reconciler.reconcile()
@@ -45,9 +44,8 @@ class TestWorksWithSharedRepositories(per_repository.TestCaseWithRepository):
 
 
 class TestReconciler(tests.TestCaseWithTransport):
-
     def test_reconciler_with_no_branch(self):
-        repo = self.make_repository('repo')
+        repo = self.make_repository("repo")
         reconciler = Reconciler(repo.controldir)
         result = reconciler.reconcile()
         # no inconsistent parents should have been found
@@ -58,7 +56,7 @@ class TestReconciler(tests.TestCaseWithTransport):
         self.assertIs(None, result.fixed_branch_history)
 
     def test_reconciler_finds_branch(self):
-        a_branch = self.make_branch('a_branch')
+        a_branch = self.make_branch("a_branch")
         reconciler = Reconciler(a_branch.controldir)
         result = reconciler.reconcile()
 

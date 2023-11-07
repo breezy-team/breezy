@@ -30,7 +30,6 @@ from ...errors import BzrError
 
 
 class Revision(_mod_revision.Revision):
-
     def __new__(cls, *args, **kwargs):
         inventory_id = kwargs.pop("inventory_id", None)
         parent_sha1s = kwargs.pop("parent_sha1s", None)
@@ -52,62 +51,67 @@ class _RevisionSerializer_v4(XMLRevisionSerializer):
 
     def _pack_revision(self, rev):
         """Revision object -> xml tree."""
-        root = Element('revision',
-                       committer=rev.committer,
-                       timestamp=f'{rev.timestamp:.9f}',
-                       revision_id=rev.revision_id,
-                       inventory_id=rev.inventory_id,
-                       inventory_sha1=rev.inventory_sha1,
-                       )
+        root = Element(
+            "revision",
+            committer=rev.committer,
+            timestamp=f"{rev.timestamp:.9f}",
+            revision_id=rev.revision_id,
+            inventory_id=rev.inventory_id,
+            inventory_sha1=rev.inventory_sha1,
+        )
         if rev.timezone:
-            root.set('timezone', str(rev.timezone))
-        root.text = '\n'
+            root.set("timezone", str(rev.timezone))
+        root.text = "\n"
 
-        msg = SubElement(root, 'message')
+        msg = SubElement(root, "message")
         msg.text = escape_invalid_chars(rev.message)[0]
-        msg.tail = '\n'
+        msg.tail = "\n"
 
         if rev.parents:
-            pelts = SubElement(root, 'parents')
-            pelts.tail = pelts.text = '\n'
+            pelts = SubElement(root, "parents")
+            pelts.tail = pelts.text = "\n"
             for i, parent_id in enumerate(rev.parents):
-                p = SubElement(pelts, 'revision_ref')
-                p.tail = '\n'
-                p.set('revision_id', parent_id)
+                p = SubElement(pelts, "revision_ref")
+                p.tail = "\n"
+                p.set("revision_id", parent_id)
                 if i < len(rev.parent_sha1s):
-                    p.set('revision_sha1', rev.parent_sha1s[i])
+                    p.set("revision_sha1", rev.parent_sha1s[i])
         return root
 
     def write_revision_to_string(self, rev):
-        return tostring(self._pack_revision(rev)) + b'\n'
+        return tostring(self._pack_revision(rev)) + b"\n"
 
     def _write_element(self, elt, f):
-        ElementTree(elt).write(f, 'utf-8')
-        f.write(b'\n')
+        ElementTree(elt).write(f, "utf-8")
+        f.write(b"\n")
 
     def _unpack_revision(self, elt):
         """XML Element -> Revision object."""
         # <changeset> is deprecated...
-        if elt.tag not in ('revision', 'changeset'):
+        if elt.tag not in ("revision", "changeset"):
             raise BzrError(f"unexpected tag in revision file: {elt!r}")
 
-        v = elt.get('timezone')
+        v = elt.get("timezone")
         timezone = v and int(v)
 
-        message = elt.findtext('message')  # text of <message>
+        message = elt.findtext("message")  # text of <message>
 
-        precursor = elt.get('precursor')
-        precursor_sha1 = elt.get('precursor_sha1')
+        precursor = elt.get("precursor")
+        precursor_sha1 = elt.get("precursor_sha1")
 
-        pelts = elt.find('parents')
+        pelts = elt.find("parents")
 
         parent_ids = []
         parent_sha1s = []
 
         if pelts:
             for p in pelts:
-                parent_ids.append(p.get('revision_id').encode('utf-8'))
-                parent_sha1s.append(p.get('revision_sha1').encode('utf-8') if p.get('revision_sha1') else None)
+                parent_ids.append(p.get("revision_id").encode("utf-8"))
+                parent_sha1s.append(
+                    p.get("revision_sha1").encode("utf-8")
+                    if p.get("revision_sha1")
+                    else None
+                )
             if precursor:
                 # must be consistent
                 parent_ids[0]
@@ -118,17 +122,17 @@ class _RevisionSerializer_v4(XMLRevisionSerializer):
             parent_sha1s.append(precursor_sha1)
 
         return Revision(
-                committer=elt.get('committer'),
-                timestamp=float(elt.get('timestamp')),
-                revision_id=elt.get('revision_id').encode('utf-8'),
-                inventory_id=elt.get('inventory_id').encode('utf-8'),
-                inventory_sha1=elt.get('inventory_sha1').encode('utf-8'),
-                timezone=timezone,
-                message=message,
-                parent_ids=parent_ids,
-                parent_sha1s=parent_sha1s,
-                properties={},
-                )
+            committer=elt.get("committer"),
+            timestamp=float(elt.get("timestamp")),
+            revision_id=elt.get("revision_id").encode("utf-8"),
+            inventory_id=elt.get("inventory_id").encode("utf-8"),
+            inventory_sha1=elt.get("inventory_sha1").encode("utf-8"),
+            timezone=timezone,
+            message=message,
+            parent_ids=parent_ids,
+            parent_sha1s=parent_sha1s,
+            properties={},
+        )
 
 
 class _InventorySerializer_v4(XMLInventorySerializer):
@@ -141,15 +145,15 @@ class _InventorySerializer_v4(XMLInventorySerializer):
 
     def _pack_entry(self, ie):
         """Convert InventoryEntry to XML element."""
-        e = Element('entry')
-        e.set('name', ie.name)
-        e.set('file_id', ie.file_id.decode('ascii'))
-        e.set('kind', ie.kind)
+        e = Element("entry")
+        e.set("name", ie.name)
+        e.set("file_id", ie.file_id.decode("ascii"))
+        e.set("kind", ie.kind)
 
         if ie.text_size is not None:
-            e.set('text_size', '%d' % ie.text_size)
+            e.set("text_size", "%d" % ie.text_size)
 
-        for f in ['text_id', 'text_sha1', 'symlink_target']:
+        for f in ["text_id", "text_sha1", "symlink_target"]:
             v = getattr(ie, f)
             if v is not None:
                 e.set(f, v)
@@ -158,24 +162,29 @@ class _InventorySerializer_v4(XMLInventorySerializer):
         # for now, leaving them as null in the xml form.  in a future
         # version it will be implied by nested elements.
         if ie.parent_id != ROOT_ID:
-            e.set('parent_id', ie.parent_id)
+            e.set("parent_id", ie.parent_id)
 
-        e.tail = '\n'
+        e.tail = "\n"
 
         return e
 
-    def _unpack_inventory(self, elt, revision_id=None, entry_cache=None,
-                          return_from_cache=False):
+    def _unpack_inventory(
+        self, elt, revision_id=None, entry_cache=None, return_from_cache=False
+    ):
         """Construct from XML Element.
 
         :param revision_id: Ignored parameter used by xml5.
         """
-        root_id = elt.get('file_id')
-        root_id = (root_id.encode('ascii') if root_id else ROOT_ID)
+        root_id = elt.get("file_id")
+        root_id = root_id.encode("ascii") if root_id else ROOT_ID
         inv = Inventory(root_id)
         for e in elt:
-            ie = self._unpack_entry(e, entry_cache=entry_cache,
-                                    return_from_cache=return_from_cache, root_id=root_id)
+            ie = self._unpack_entry(
+                e,
+                entry_cache=entry_cache,
+                return_from_cache=return_from_cache,
+                root_id=root_id,
+            )
             inv.add(ie)
         return inv
 
@@ -183,40 +192,46 @@ class _InventorySerializer_v4(XMLInventorySerializer):
         # original format inventories don't have a parent_id for
         # nodes in the root directory, but it's cleaner to use one
         # internally.
-        parent_id = elt.get('parent_id')
-        parent_id = (parent_id.encode('ascii') if parent_id else ROOT_ID)
+        parent_id = elt.get("parent_id")
+        parent_id = parent_id.encode("ascii") if parent_id else ROOT_ID
         if parent_id == ROOT_ID:
             parent_id = root_id
-        file_id = elt.get('file_id').encode('ascii')
-        kind = elt.get('kind')
-        if kind == 'directory':
-            ie = inventory.InventoryDirectory(file_id,
-                                              elt.get('name'),
-                                              parent_id)
-        elif kind == 'file':
-            text_id = elt.get('text_id')
+        file_id = elt.get("file_id").encode("ascii")
+        kind = elt.get("kind")
+        if kind == "directory":
+            ie = inventory.InventoryDirectory(file_id, elt.get("name"), parent_id)
+        elif kind == "file":
+            text_id = elt.get("text_id")
             if text_id is not None:
-                text_id = text_id.encode('utf-8')
-            text_sha1 = elt.get('text_sha1')
+                text_id = text_id.encode("utf-8")
+            text_sha1 = elt.get("text_sha1")
             if text_sha1 is not None:
-                text_sha1 = text_sha1.encode('ascii')
-            v = elt.get('text_size')
+                text_sha1 = text_sha1.encode("ascii")
+            v = elt.get("text_size")
             text_size = v and int(v)
 
-            ie = inventory.InventoryFile(file_id,
-                                         elt.get('name'),
-                                         parent_id, text_size=text_size, text_sha1=text_sha1,
-                                         text_id=text_id)
-        elif kind == 'symlink':
-            ie = inventory.InventoryLink(file_id,
-                                         elt.get('name'),
-                                         parent_id, symlink_target=elt.get('symlink_target'))
+            ie = inventory.InventoryFile(
+                file_id,
+                elt.get("name"),
+                parent_id,
+                text_size=text_size,
+                text_sha1=text_sha1,
+                text_id=text_id,
+            )
+        elif kind == "symlink":
+            ie = inventory.InventoryLink(
+                file_id,
+                elt.get("name"),
+                parent_id,
+                symlink_target=elt.get("symlink_target"),
+            )
         else:
             raise BzrError(f"unknown kind {kind!r}")
 
         ## mutter("read inventoryentry: %r", elt.attrib)
 
         return ie
+
 
 revision_serializer_v4 = _RevisionSerializer_v4()
 inventory_serializer_v4 = _InventorySerializer_v4()

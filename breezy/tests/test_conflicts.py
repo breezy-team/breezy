@@ -33,23 +33,26 @@ load_tests = scenarios.load_tests_apply_scenarios
 # '\xc3\xae' == u'\xee' == i with hat
 # So these are u'path' and 'id' only with a circle and a hat. (shappo?)
 example_conflicts = [
-    bzr_conflicts.MissingParent('Not deleting', 'p\xe5thg', b'\xc3\xaedg'),
-    bzr_conflicts.ContentsConflict('p\xe5tha', None, b'\xc3\xaeda'),
-    bzr_conflicts.TextConflict('p\xe5tha'),
-    bzr_conflicts.PathConflict('p\xe5thb', 'p\xe5thc', b'\xc3\xaedb'),
-    bzr_conflicts.DuplicateID('Unversioned existing file',
-                              'p\xe5thc', 'p\xe5thc2',
-                              b'\xc3\xaedc', b'\xc3\xaedc'),
-    bzr_conflicts.DuplicateEntry('Moved existing file to',
-                                 'p\xe5thdd.moved', 'p\xe5thd',
-                                 b'\xc3\xaedd', None),
-    bzr_conflicts.ParentLoop('Cancelled move', 'p\xe5the', 'p\xe5th2e',
-                             None, b'\xc3\xaed2e'),
-    bzr_conflicts.UnversionedParent('Versioned directory',
-                                    'p\xe5thf', b'\xc3\xaedf'),
-    bzr_conflicts.NonDirectoryParent('Created directory',
-                                     'p\xe5thg', b'\xc3\xaedg'),
-    ]
+    bzr_conflicts.MissingParent("Not deleting", "p\xe5thg", b"\xc3\xaedg"),
+    bzr_conflicts.ContentsConflict("p\xe5tha", None, b"\xc3\xaeda"),
+    bzr_conflicts.TextConflict("p\xe5tha"),
+    bzr_conflicts.PathConflict("p\xe5thb", "p\xe5thc", b"\xc3\xaedb"),
+    bzr_conflicts.DuplicateID(
+        "Unversioned existing file",
+        "p\xe5thc",
+        "p\xe5thc2",
+        b"\xc3\xaedc",
+        b"\xc3\xaedc",
+    ),
+    bzr_conflicts.DuplicateEntry(
+        "Moved existing file to", "p\xe5thdd.moved", "p\xe5thd", b"\xc3\xaedd", None
+    ),
+    bzr_conflicts.ParentLoop(
+        "Cancelled move", "p\xe5the", "p\xe5th2e", None, b"\xc3\xaed2e"
+    ),
+    bzr_conflicts.UnversionedParent("Versioned directory", "p\xe5thf", b"\xc3\xaedf"),
+    bzr_conflicts.NonDirectoryParent("Created directory", "p\xe5thg", b"\xc3\xaedg"),
+]
 
 
 def vary_by_conflicts():
@@ -58,77 +61,76 @@ def vary_by_conflicts():
 
 
 class TestConflicts(tests.TestCaseWithTransport):
-
     def test_resolve_conflict_dir(self):
-        tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([('hello', b'hello world4'),
-                                  ('hello.THIS', b'hello world2'),
-                                  ('hello.BASE', b'hello world1'),
-                                  ])
-        os.mkdir('hello.OTHER')
-        tree.add('hello', ids=b'q')
-        l = conflicts.ConflictList([bzr_conflicts.TextConflict('hello')])
+        tree = self.make_branch_and_tree(".")
+        self.build_tree_contents(
+            [
+                ("hello", b"hello world4"),
+                ("hello.THIS", b"hello world2"),
+                ("hello.BASE", b"hello world1"),
+            ]
+        )
+        os.mkdir("hello.OTHER")
+        tree.add("hello", ids=b"q")
+        l = conflicts.ConflictList([bzr_conflicts.TextConflict("hello")])
         l.remove_files(tree)
 
     def test_select_conflicts(self):
-        tree = self.make_branch_and_tree('.')
+        tree = self.make_branch_and_tree(".")
         clist = conflicts.ConflictList
 
         def check_select(not_selected, selected, paths, **kwargs):
             self.assertEqual(
                 (not_selected, selected),
-                tree_conflicts.select_conflicts(tree, paths, **kwargs))
+                tree_conflicts.select_conflicts(tree, paths, **kwargs),
+            )
 
-        foo = bzr_conflicts.ContentsConflict('foo')
-        bar = bzr_conflicts.ContentsConflict('bar')
+        foo = bzr_conflicts.ContentsConflict("foo")
+        bar = bzr_conflicts.ContentsConflict("bar")
         tree_conflicts = clist([foo, bar])
 
-        check_select(clist([bar]), clist([foo]), ['foo'])
-        check_select(clist(), tree_conflicts,
-                     [''], ignore_misses=True, recurse=True)
+        check_select(clist([bar]), clist([foo]), ["foo"])
+        check_select(clist(), tree_conflicts, [""], ignore_misses=True, recurse=True)
 
-        foobaz = bzr_conflicts.ContentsConflict('foo/baz')
+        foobaz = bzr_conflicts.ContentsConflict("foo/baz")
         tree_conflicts = clist([foobaz, bar])
 
-        check_select(clist([bar]), clist([foobaz]),
-                     ['foo'], ignore_misses=True, recurse=True)
+        check_select(
+            clist([bar]), clist([foobaz]), ["foo"], ignore_misses=True, recurse=True
+        )
 
-        qux = bzr_conflicts.PathConflict('qux', 'foo/baz')
+        qux = bzr_conflicts.PathConflict("qux", "foo/baz")
         tree_conflicts = clist([qux])
 
-        check_select(tree_conflicts, clist(),
-                     ['foo'], ignore_misses=True, recurse=True)
-        check_select(tree_conflicts, clist(), ['foo'], ignore_misses=True)
+        check_select(tree_conflicts, clist(), ["foo"], ignore_misses=True, recurse=True)
+        check_select(tree_conflicts, clist(), ["foo"], ignore_misses=True)
 
     def test_resolve_conflicts_recursive(self):
-        tree = self.make_branch_and_tree('.')
-        self.build_tree(['dir/', 'dir/hello'])
-        tree.add(['dir', 'dir/hello'])
+        tree = self.make_branch_and_tree(".")
+        self.build_tree(["dir/", "dir/hello"])
+        tree.add(["dir", "dir/hello"])
 
-        dirhello = [bzr_conflicts.TextConflict('dir/hello')]
+        dirhello = [bzr_conflicts.TextConflict("dir/hello")]
         tree.set_conflicts(dirhello)
 
-        conflicts.resolve(tree, ['dir'], recursive=False, ignore_misses=True)
+        conflicts.resolve(tree, ["dir"], recursive=False, ignore_misses=True)
         self.assertEqual(dirhello, tree.conflicts())
 
-        conflicts.resolve(tree, ['dir'], recursive=True, ignore_misses=True)
+        conflicts.resolve(tree, ["dir"], recursive=True, ignore_misses=True)
         self.assertEqual(conflicts.ConflictList([]), tree.conflicts())
 
 
 class TestPerConflict(tests.TestCase):
-
     scenarios = scenarios.multiply_scenarios(vary_by_conflicts())
 
     def test_stringification(self):
         text = str(self.conflict)
         self.assertContainsString(text, self.conflict.path)
         self.assertContainsString(text.lower(), "conflict")
-        self.assertContainsString(repr(self.conflict),
-                                  self.conflict.__class__.__name__)
+        self.assertContainsString(repr(self.conflict), self.conflict.__class__.__name__)
 
 
 class TestConflictList(tests.TestCase):
-
     def test_stanzas_roundtrip(self):
         stanzas_iter = bzr_conflicts.ConflictList(example_conflicts).to_stanzas()
         processed = bzr_conflicts.ConflictList.from_stanzas(stanzas_iter)
@@ -136,8 +138,9 @@ class TestConflictList(tests.TestCase):
 
     def test_stringification(self):
         for text, o in zip(
-                bzr_conflicts.ConflictList(example_conflicts).to_strings(),
-                example_conflicts):
+            bzr_conflicts.ConflictList(example_conflicts).to_strings(),
+            example_conflicts,
+        ):
             self.assertEqual(text, str(o))
 
 
@@ -146,9 +149,9 @@ class TestConflictList(tests.TestCase):
 
 # FIXME: test missing for multiple conflicts
 
+
 # FIXME: Tests missing for DuplicateID conflict type
 class TestResolveConflicts(script.TestCaseWithTransportAndScript):
-
     preamble: str  # The setup script set by daughter classes
 
     def setUp(self):
@@ -164,10 +167,12 @@ def mirror_scenarios(base_scenarios):
     """
     scenarios = []
     for common, (lname, ldict), (rname, rdict) in base_scenarios:
-        a = tests.multiply_scenarios([(lname, {'_this': ldict})],
-                                     [(rname, {'_other': rdict})])
-        b = tests.multiply_scenarios([(rname, {'_this': rdict})],
-                                     [(lname, {'_other': ldict})])
+        a = tests.multiply_scenarios(
+            [(lname, {"_this": ldict})], [(rname, {"_other": rdict})]
+        )
+        b = tests.multiply_scenarios(
+            [(rname, {"_this": rdict})], [(lname, {"_other": ldict})]
+        )
         # Inject the common parameters in all scenarios
         for _name, d in a + b:
             d.update(common)
@@ -234,10 +239,9 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
     _this = None
     _other = None
 
-    scenarios: List[Tuple[
-        Dict[str, Any],
-        Tuple[str, Dict[str, Any]],
-        Tuple[str, Dict[str, Any]]]] = []
+    scenarios: List[
+        Tuple[Dict[str, Any], Tuple[str, Dict[str, Any]], Tuple[str, Dict[str, Any]]]
+    ] = []
     """The scenario list for the conflict type defined by the class.
 
     Each scenario is of the form:
@@ -265,37 +269,37 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
 
     def setUp(self):
         super().setUp()
-        builder = self.make_branch_builder('trunk')
+        builder = self.make_branch_builder("trunk")
         builder.start_series()
 
         # Create an empty trunk
-        builder.build_snapshot(None, [
-            ('add', ('', b'root-id', 'directory', ''))],
-            revision_id=b'start')
+        builder.build_snapshot(
+            None, [("add", ("", b"root-id", "directory", ""))], revision_id=b"start"
+        )
         # Add a minimal base content
         base_actions = self._get_actions(self._base_actions)()
-        builder.build_snapshot([b'start'], base_actions, revision_id=b'base')
+        builder.build_snapshot([b"start"], base_actions, revision_id=b"base")
         # Modify the base content in branch
-        actions_other = self._get_actions(self._other['actions'])()
-        builder.build_snapshot([b'base'], actions_other, revision_id=b'other')
+        actions_other = self._get_actions(self._other["actions"])()
+        builder.build_snapshot([b"base"], actions_other, revision_id=b"other")
         # Modify the base content in trunk
-        actions_this = self._get_actions(self._this['actions'])()
-        builder.build_snapshot([b'base'], actions_this, revision_id=b'this')
+        actions_this = self._get_actions(self._this["actions"])()
+        builder.build_snapshot([b"base"], actions_this, revision_id=b"this")
         # builder.get_branch() tip is now 'this'
 
         builder.finish_series()
         self.builder = builder
 
     def _get_actions(self, name):
-        return getattr(self, f'do_{name}')
+        return getattr(self, f"do_{name}")
 
     def _get_check(self, name):
-        return getattr(self, f'check_{name}')
+        return getattr(self, f"check_{name}")
 
     def _merge_other_into_this(self):
         b = self.builder.get_branch()
-        wt = b.controldir.sprout('branch').open_workingtree()
-        wt.merge_from_branch(b, b'other')
+        wt = b.controldir.sprout("branch").open_workingtree()
+        wt.merge_from_branch(b, b"other")
         return wt
 
     def assertConflict(self, wt):
@@ -318,20 +322,19 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
     def test_resolve_taking_this(self):
         wt = self._merge_other_into_this()
         self.assertConflict(wt)
-        self.check_resolved(wt, 'take_this')
-        check_this = self._get_check(self._this['check'])
+        self.check_resolved(wt, "take_this")
+        check_this = self._get_check(self._this["check"])
         check_this()
 
     def test_resolve_taking_other(self):
         wt = self._merge_other_into_this()
         self.assertConflict(wt)
-        self.check_resolved(wt, 'take_other')
-        check_other = self._get_check(self._other['check'])
+        self.check_resolved(wt, "take_other")
+        check_other = self._get_check(self._other["check"])
         check_other()
 
 
 class TestResolveTextConflicts(TestParametrizedResolveConflicts):
-
     _conflict_type = bzr_conflicts.TextConflict
 
     # Set by the scenarios
@@ -342,55 +345,81 @@ class TestResolveTextConflicts(TestParametrizedResolveConflicts):
     scenarios = mirror_scenarios(
         [
             # File modified on both sides
-            ({'_base_actions': 'create_file',
-                  '_path': 'file', '_file_id': b'file-id'},
-             ('filed_modified_A',
-              {'actions': 'modify_file_A', 'check': 'file_has_content_A'}),
-             ('file_modified_B',
-              {'actions': 'modify_file_B', 'check': 'file_has_content_B'}),),
+            (
+                {
+                    "_base_actions": "create_file",
+                    "_path": "file",
+                    "_file_id": b"file-id",
+                },
+                (
+                    "filed_modified_A",
+                    {"actions": "modify_file_A", "check": "file_has_content_A"},
+                ),
+                (
+                    "file_modified_B",
+                    {"actions": "modify_file_B", "check": "file_has_content_B"},
+                ),
+            ),
             # File modified on both sides in dir
-            ({'_base_actions': 'create_file_in_dir',
-                  '_path': 'dir/file', '_file_id': b'file-id'},
-             ('filed_modified_A_in_dir',
-              {'actions': 'modify_file_A_in_dir',
-                   'check': 'file_in_dir_has_content_A'}),
-             ('file_modified_B',
-              {'actions': 'modify_file_B_in_dir',
-                   'check': 'file_in_dir_has_content_B'}),),
-            ])
+            (
+                {
+                    "_base_actions": "create_file_in_dir",
+                    "_path": "dir/file",
+                    "_file_id": b"file-id",
+                },
+                (
+                    "filed_modified_A_in_dir",
+                    {
+                        "actions": "modify_file_A_in_dir",
+                        "check": "file_in_dir_has_content_A",
+                    },
+                ),
+                (
+                    "file_modified_B",
+                    {
+                        "actions": "modify_file_B_in_dir",
+                        "check": "file_in_dir_has_content_B",
+                    },
+                ),
+            ),
+        ]
+    )
 
-    def do_create_file(self, path='file'):
-        return [('add', (path, b'file-id', 'file', b'trunk content\n'))]
+    def do_create_file(self, path="file"):
+        return [("add", (path, b"file-id", "file", b"trunk content\n"))]
 
     def do_modify_file_A(self):
-        return [('modify', ('file', b'trunk content\nfeature A\n'))]
+        return [("modify", ("file", b"trunk content\nfeature A\n"))]
 
     def do_modify_file_B(self):
-        return [('modify', ('file', b'trunk content\nfeature B\n'))]
+        return [("modify", ("file", b"trunk content\nfeature B\n"))]
 
     def do_modify_file_A_in_dir(self):
-        return [('modify', ('dir/file', b'trunk content\nfeature A\n'))]
+        return [("modify", ("dir/file", b"trunk content\nfeature A\n"))]
 
     def do_modify_file_B_in_dir(self):
-        return [('modify', ('dir/file', b'trunk content\nfeature B\n'))]
+        return [("modify", ("dir/file", b"trunk content\nfeature B\n"))]
 
-    def check_file_has_content_A(self, path='file'):
-        self.assertFileEqual(b'trunk content\nfeature A\n',
-                             osutils.pathjoin('branch', path))
+    def check_file_has_content_A(self, path="file"):
+        self.assertFileEqual(
+            b"trunk content\nfeature A\n", osutils.pathjoin("branch", path)
+        )
 
-    def check_file_has_content_B(self, path='file'):
-        self.assertFileEqual(b'trunk content\nfeature B\n',
-                             osutils.pathjoin('branch', path))
+    def check_file_has_content_B(self, path="file"):
+        self.assertFileEqual(
+            b"trunk content\nfeature B\n", osutils.pathjoin("branch", path)
+        )
 
     def do_create_file_in_dir(self):
-        return [('add', ('dir', b'dir-id', 'directory', '')),
-                ] + self.do_create_file('dir/file')
+        return [
+            ("add", ("dir", b"dir-id", "directory", "")),
+        ] + self.do_create_file("dir/file")
 
     def check_file_in_dir_has_content_A(self):
-        self.check_file_has_content_A('dir/file')
+        self.check_file_has_content_A("dir/file")
 
     def check_file_in_dir_has_content_B(self):
-        self.check_file_has_content_B('dir/file')
+        self.check_file_has_content_B("dir/file")
 
     def _get_resolve_path_arg(self, wt, action):
         return self._path
@@ -398,11 +427,11 @@ class TestResolveTextConflicts(TestParametrizedResolveConflicts):
     def assertTextConflict(self, wt, c):
         self.assertEqual(self._file_id, c.file_id)
         self.assertEqual(self._path, c.path)
+
     _assert_conflict = assertTextConflict
 
 
 class TestResolveContentsConflict(TestParametrizedResolveConflicts):
-
     _conflict_type = bzr_conflicts.ContentsConflict
 
     # Set by the scenarios
@@ -413,70 +442,106 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
     scenarios = mirror_scenarios(
         [
             # File modified/deleted
-            ({'_base_actions': 'create_file',
-                  '_path': 'file', '_file_id': b'file-id'},
-             ('file_modified',
-              {'actions': 'modify_file', 'check': 'file_has_more_content'}),
-             ('file_deleted',
-              {'actions': 'delete_file', 'check': 'file_doesnt_exist'}),),
+            (
+                {
+                    "_base_actions": "create_file",
+                    "_path": "file",
+                    "_file_id": b"file-id",
+                },
+                (
+                    "file_modified",
+                    {"actions": "modify_file", "check": "file_has_more_content"},
+                ),
+                (
+                    "file_deleted",
+                    {"actions": "delete_file", "check": "file_doesnt_exist"},
+                ),
+            ),
             # File renamed-modified/deleted
-            ({'_base_actions': 'create_file',
-                  '_path': 'new-file', '_file_id': b'file-id'},
-             ('file_renamed_and_modified',
-              {'actions': 'modify_and_rename_file',
-                   'check': 'file_renamed_and_more_content'}),
-             ('file_deleted',
-              {'actions': 'delete_file', 'check': 'file_doesnt_exist'}),),
+            (
+                {
+                    "_base_actions": "create_file",
+                    "_path": "new-file",
+                    "_file_id": b"file-id",
+                },
+                (
+                    "file_renamed_and_modified",
+                    {
+                        "actions": "modify_and_rename_file",
+                        "check": "file_renamed_and_more_content",
+                    },
+                ),
+                (
+                    "file_deleted",
+                    {"actions": "delete_file", "check": "file_doesnt_exist"},
+                ),
+            ),
             # File modified/deleted in dir
-            ({'_base_actions': 'create_file_in_dir',
-                  '_path': 'dir/file', '_file_id': b'file-id'},
-             ('file_modified_in_dir',
-              {'actions': 'modify_file_in_dir',
-                   'check': 'file_in_dir_has_more_content'}),
-             ('file_deleted_in_dir',
-              {'actions': 'delete_file_in_dir',
-                   'check': 'file_in_dir_doesnt_exist'}),),
-            ])
+            (
+                {
+                    "_base_actions": "create_file_in_dir",
+                    "_path": "dir/file",
+                    "_file_id": b"file-id",
+                },
+                (
+                    "file_modified_in_dir",
+                    {
+                        "actions": "modify_file_in_dir",
+                        "check": "file_in_dir_has_more_content",
+                    },
+                ),
+                (
+                    "file_deleted_in_dir",
+                    {
+                        "actions": "delete_file_in_dir",
+                        "check": "file_in_dir_doesnt_exist",
+                    },
+                ),
+            ),
+        ]
+    )
 
     def do_create_file(self):
-        return [('add', ('file', b'file-id', 'file', b'trunk content\n'))]
+        return [("add", ("file", b"file-id", "file", b"trunk content\n"))]
 
     def do_modify_file(self):
-        return [('modify', ('file', b'trunk content\nmore content\n'))]
+        return [("modify", ("file", b"trunk content\nmore content\n"))]
 
     def do_modify_and_rename_file(self):
-        return [('modify', ('new-file', b'trunk content\nmore content\n')),
-                ('rename', ('file', 'new-file'))]
+        return [
+            ("modify", ("new-file", b"trunk content\nmore content\n")),
+            ("rename", ("file", "new-file")),
+        ]
 
     def check_file_has_more_content(self):
-        self.assertFileEqual(b'trunk content\nmore content\n', 'branch/file')
+        self.assertFileEqual(b"trunk content\nmore content\n", "branch/file")
 
     def check_file_renamed_and_more_content(self):
-        self.assertFileEqual(
-            b'trunk content\nmore content\n', 'branch/new-file')
+        self.assertFileEqual(b"trunk content\nmore content\n", "branch/new-file")
 
     def do_delete_file(self):
-        return [('unversion', 'file')]
+        return [("unversion", "file")]
 
     def do_delete_file_in_dir(self):
-        return [('unversion', 'dir/file')]
+        return [("unversion", "dir/file")]
 
     def check_file_doesnt_exist(self):
-        self.assertPathDoesNotExist('branch/file')
+        self.assertPathDoesNotExist("branch/file")
 
     def do_create_file_in_dir(self):
-        return [('add', ('dir', b'dir-id', 'directory', '')),
-                ('add', ('dir/file', b'file-id', 'file', b'trunk content\n'))]
+        return [
+            ("add", ("dir", b"dir-id", "directory", "")),
+            ("add", ("dir/file", b"file-id", "file", b"trunk content\n")),
+        ]
 
     def do_modify_file_in_dir(self):
-        return [('modify', ('dir/file', b'trunk content\nmore content\n'))]
+        return [("modify", ("dir/file", b"trunk content\nmore content\n"))]
 
     def check_file_in_dir_has_more_content(self):
-        self.assertFileEqual(
-            b'trunk content\nmore content\n', 'branch/dir/file')
+        self.assertFileEqual(b"trunk content\nmore content\n", "branch/dir/file")
 
     def check_file_in_dir_doesnt_exist(self):
-        self.assertPathDoesNotExist('branch/dir/file')
+        self.assertPathDoesNotExist("branch/dir/file")
 
     def _get_resolve_path_arg(self, wt, action):
         return self._path
@@ -484,11 +549,11 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
     def assertContentsConflict(self, wt, c):
         self.assertEqual(self._file_id, c.file_id)
         self.assertEqual(self._path, c.path)
+
     _assert_conflict = assertContentsConflict
 
 
 class TestResolvePathConflict(TestParametrizedResolveConflicts):
-
     _conflict_type = bzr_conflicts.PathConflict
 
     def do_nothing(self):
@@ -500,134 +565,208 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
     scenarios = mirror_scenarios(
         [
             # File renamed/deleted
-            ({'_base_actions': 'create_file'},
-             ('file_renamed',
-              {'actions': 'rename_file', 'check': 'file_renamed',
-                   'path': 'new-file', 'file_id': b'file-id'}),
-             ('file_deleted',
-              {'actions': 'delete_file', 'check': 'file_doesnt_exist',
-                   # PathConflicts deletion handling requires a special
-                   # hard-coded value
-                   'path': '<deleted>', 'file_id': b'file-id'}),),
+            (
+                {"_base_actions": "create_file"},
+                (
+                    "file_renamed",
+                    {
+                        "actions": "rename_file",
+                        "check": "file_renamed",
+                        "path": "new-file",
+                        "file_id": b"file-id",
+                    },
+                ),
+                (
+                    "file_deleted",
+                    {
+                        "actions": "delete_file",
+                        "check": "file_doesnt_exist",
+                        # PathConflicts deletion handling requires a special
+                        # hard-coded value
+                        "path": "<deleted>",
+                        "file_id": b"file-id",
+                    },
+                ),
+            ),
             # File renamed/deleted in dir
-            ({'_base_actions': 'create_file_in_dir'},
-             ('file_renamed_in_dir',
-              {'actions': 'rename_file_in_dir', 'check': 'file_in_dir_renamed',
-                   'path': 'dir/new-file', 'file_id': b'file-id'}),
-             ('file_deleted',
-              {'actions': 'delete_file_in_dir', 'check': 'file_in_dir_doesnt_exist',
-                   # PathConflicts deletion handling requires a special
-                   # hard-coded value
-                   'path': '<deleted>', 'file_id': b'file-id'}),),
+            (
+                {"_base_actions": "create_file_in_dir"},
+                (
+                    "file_renamed_in_dir",
+                    {
+                        "actions": "rename_file_in_dir",
+                        "check": "file_in_dir_renamed",
+                        "path": "dir/new-file",
+                        "file_id": b"file-id",
+                    },
+                ),
+                (
+                    "file_deleted",
+                    {
+                        "actions": "delete_file_in_dir",
+                        "check": "file_in_dir_doesnt_exist",
+                        # PathConflicts deletion handling requires a special
+                        # hard-coded value
+                        "path": "<deleted>",
+                        "file_id": b"file-id",
+                    },
+                ),
+            ),
             # File renamed/renamed differently
-            ({'_base_actions': 'create_file'},
-             ('file_renamed',
-              {'actions': 'rename_file', 'check': 'file_renamed',
-                   'path': 'new-file', 'file_id': b'file-id'}),
-             ('file_renamed2',
-              {'actions': 'rename_file2', 'check': 'file_renamed2',
-                   'path': 'new-file2', 'file_id': b'file-id'}),),
+            (
+                {"_base_actions": "create_file"},
+                (
+                    "file_renamed",
+                    {
+                        "actions": "rename_file",
+                        "check": "file_renamed",
+                        "path": "new-file",
+                        "file_id": b"file-id",
+                    },
+                ),
+                (
+                    "file_renamed2",
+                    {
+                        "actions": "rename_file2",
+                        "check": "file_renamed2",
+                        "path": "new-file2",
+                        "file_id": b"file-id",
+                    },
+                ),
+            ),
             # Dir renamed/deleted
-            ({'_base_actions': 'create_dir'},
-             ('dir_renamed',
-              {'actions': 'rename_dir', 'check': 'dir_renamed',
-                   'path': 'new-dir', 'file_id': b'dir-id'}),
-             ('dir_deleted',
-              {'actions': 'delete_dir', 'check': 'dir_doesnt_exist',
-                   # PathConflicts deletion handling requires a special
-                   # hard-coded value
-                   'path': '<deleted>', 'file_id': b'dir-id'}),),
+            (
+                {"_base_actions": "create_dir"},
+                (
+                    "dir_renamed",
+                    {
+                        "actions": "rename_dir",
+                        "check": "dir_renamed",
+                        "path": "new-dir",
+                        "file_id": b"dir-id",
+                    },
+                ),
+                (
+                    "dir_deleted",
+                    {
+                        "actions": "delete_dir",
+                        "check": "dir_doesnt_exist",
+                        # PathConflicts deletion handling requires a special
+                        # hard-coded value
+                        "path": "<deleted>",
+                        "file_id": b"dir-id",
+                    },
+                ),
+            ),
             # Dir renamed/renamed differently
-            ({'_base_actions': 'create_dir'},
-             ('dir_renamed',
-              {'actions': 'rename_dir', 'check': 'dir_renamed',
-                   'path': 'new-dir', 'file_id': b'dir-id'}),
-             ('dir_renamed2',
-              {'actions': 'rename_dir2', 'check': 'dir_renamed2',
-                   'path': 'new-dir2', 'file_id': b'dir-id'}),),
-            ])
+            (
+                {"_base_actions": "create_dir"},
+                (
+                    "dir_renamed",
+                    {
+                        "actions": "rename_dir",
+                        "check": "dir_renamed",
+                        "path": "new-dir",
+                        "file_id": b"dir-id",
+                    },
+                ),
+                (
+                    "dir_renamed2",
+                    {
+                        "actions": "rename_dir2",
+                        "check": "dir_renamed2",
+                        "path": "new-dir2",
+                        "file_id": b"dir-id",
+                    },
+                ),
+            ),
+        ]
+    )
 
     def do_create_file(self):
-        return [('add', ('file', b'file-id', 'file', b'trunk content\n'))]
+        return [("add", ("file", b"file-id", "file", b"trunk content\n"))]
 
     def do_create_dir(self):
-        return [('add', ('dir', b'dir-id', 'directory', ''))]
+        return [("add", ("dir", b"dir-id", "directory", ""))]
 
     def do_rename_file(self):
-        return [('rename', ('file', 'new-file'))]
+        return [("rename", ("file", "new-file"))]
 
     def check_file_renamed(self):
-        self.assertPathDoesNotExist('branch/file')
-        self.assertPathExists('branch/new-file')
+        self.assertPathDoesNotExist("branch/file")
+        self.assertPathExists("branch/new-file")
 
     def do_rename_file2(self):
-        return [('rename', ('file', 'new-file2'))]
+        return [("rename", ("file", "new-file2"))]
 
     def check_file_renamed2(self):
-        self.assertPathDoesNotExist('branch/file')
-        self.assertPathExists('branch/new-file2')
+        self.assertPathDoesNotExist("branch/file")
+        self.assertPathExists("branch/new-file2")
 
     def do_rename_dir(self):
-        return [('rename', ('dir', 'new-dir'))]
+        return [("rename", ("dir", "new-dir"))]
 
     def check_dir_renamed(self):
-        self.assertPathDoesNotExist('branch/dir')
-        self.assertPathExists('branch/new-dir')
+        self.assertPathDoesNotExist("branch/dir")
+        self.assertPathExists("branch/new-dir")
 
     def do_rename_dir2(self):
-        return [('rename', ('dir', 'new-dir2'))]
+        return [("rename", ("dir", "new-dir2"))]
 
     def check_dir_renamed2(self):
-        self.assertPathDoesNotExist('branch/dir')
-        self.assertPathExists('branch/new-dir2')
+        self.assertPathDoesNotExist("branch/dir")
+        self.assertPathExists("branch/new-dir2")
 
     def do_delete_file(self):
-        return [('unversion', 'file')]
+        return [("unversion", "file")]
 
     def do_delete_file_in_dir(self):
-        return [('unversion', 'dir/file')]
+        return [("unversion", "dir/file")]
 
     def check_file_doesnt_exist(self):
-        self.assertPathDoesNotExist('branch/file')
+        self.assertPathDoesNotExist("branch/file")
 
     def do_delete_dir(self):
-        return [('unversion', 'dir')]
+        return [("unversion", "dir")]
 
     def check_dir_doesnt_exist(self):
-        self.assertPathDoesNotExist('branch/dir')
+        self.assertPathDoesNotExist("branch/dir")
 
     def do_create_file_in_dir(self):
-        return [('add', ('dir', b'dir-id', 'directory', '')),
-                ('add', ('dir/file', b'file-id', 'file', b'trunk content\n'))]
+        return [
+            ("add", ("dir", b"dir-id", "directory", "")),
+            ("add", ("dir/file", b"file-id", "file", b"trunk content\n")),
+        ]
 
     def do_rename_file_in_dir(self):
-        return [('rename', ('dir/file', 'dir/new-file'))]
+        return [("rename", ("dir/file", "dir/new-file"))]
 
     def check_file_in_dir_renamed(self):
-        self.assertPathDoesNotExist('branch/dir/file')
-        self.assertPathExists('branch/dir/new-file')
+        self.assertPathDoesNotExist("branch/dir/file")
+        self.assertPathExists("branch/dir/new-file")
 
     def check_file_in_dir_doesnt_exist(self):
-        self.assertPathDoesNotExist('branch/dir/file')
+        self.assertPathDoesNotExist("branch/dir/file")
 
     def _get_resolve_path_arg(self, wt, action):
-        tpath = self._this['path']
-        opath = self._other['path']
-        if tpath == '<deleted>':
+        tpath = self._this["path"]
+        opath = self._other["path"]
+        if tpath == "<deleted>":
             path = opath
         else:
             path = tpath
         return path
 
     def assertPathConflict(self, wt, c):
-        tpath = self._this['path']
-        tfile_id = self._this['file_id']
-        opath = self._other['path']
-        ofile_id = self._other['file_id']
+        tpath = self._this["path"]
+        tfile_id = self._this["file_id"]
+        opath = self._other["path"]
+        ofile_id = self._other["file_id"]
         self.assertEqual(tfile_id, ofile_id)  # Sanity check
         self.assertEqual(tfile_id, c.file_id)
         self.assertEqual(tpath, c.path)
         self.assertEqual(opath, c.conflict_path)
+
     _assert_conflict = assertPathConflict
 
 
@@ -638,77 +777,106 @@ class TestResolvePathConflictBefore531967(TestResolvePathConflict):
         # We create a conflict object as it was created before the fix and
         # inject it into the working tree, the test will exercise the
         # compatibility code.
-        old_c = bzr_conflicts.PathConflict(
-            '<deleted>', self._item_path, file_id=None)
+        old_c = bzr_conflicts.PathConflict("<deleted>", self._item_path, file_id=None)
         wt.set_conflicts([old_c])
 
 
 class TestResolveDuplicateEntry(TestParametrizedResolveConflicts):
-
     _conflict_type = bzr_conflicts.DuplicateEntry
 
     scenarios = mirror_scenarios(
         [
             # File created with different file-ids
-            ({'_base_actions': 'nothing'},
-             ('filea_created',
-              {'actions': 'create_file_a', 'check': 'file_content_a',
-                   'path': 'file', 'file_id': b'file-a-id'}),
-             ('fileb_created',
-              {'actions': 'create_file_b', 'check': 'file_content_b',
-                   'path': 'file', 'file_id': b'file-b-id'}),),
+            (
+                {"_base_actions": "nothing"},
+                (
+                    "filea_created",
+                    {
+                        "actions": "create_file_a",
+                        "check": "file_content_a",
+                        "path": "file",
+                        "file_id": b"file-a-id",
+                    },
+                ),
+                (
+                    "fileb_created",
+                    {
+                        "actions": "create_file_b",
+                        "check": "file_content_b",
+                        "path": "file",
+                        "file_id": b"file-b-id",
+                    },
+                ),
+            ),
             # File created with different file-ids but deleted on one side
-            ({'_base_actions': 'create_file_a'},
-             ('filea_replaced',
-              {'actions': 'replace_file_a_by_b', 'check': 'file_content_b',
-                   'path': 'file', 'file_id': b'file-b-id'}),
-             ('filea_modified',
-              {'actions': 'modify_file_a', 'check': 'file_new_content',
-                   'path': 'file', 'file_id': b'file-a-id'}),),
-            ])
+            (
+                {"_base_actions": "create_file_a"},
+                (
+                    "filea_replaced",
+                    {
+                        "actions": "replace_file_a_by_b",
+                        "check": "file_content_b",
+                        "path": "file",
+                        "file_id": b"file-b-id",
+                    },
+                ),
+                (
+                    "filea_modified",
+                    {
+                        "actions": "modify_file_a",
+                        "check": "file_new_content",
+                        "path": "file",
+                        "file_id": b"file-a-id",
+                    },
+                ),
+            ),
+        ]
+    )
 
     def do_nothing(self):
         return []
 
     def do_create_file_a(self):
-        return [('add', ('file', b'file-a-id', 'file', b'file a content\n'))]
+        return [("add", ("file", b"file-a-id", "file", b"file a content\n"))]
 
     def check_file_content_a(self):
-        self.assertFileEqual(b'file a content\n', 'branch/file')
+        self.assertFileEqual(b"file a content\n", "branch/file")
 
     def do_create_file_b(self):
-        return [('add', ('file', b'file-b-id', 'file', b'file b content\n'))]
+        return [("add", ("file", b"file-b-id", "file", b"file b content\n"))]
 
     def check_file_content_b(self):
-        self.assertFileEqual(b'file b content\n', 'branch/file')
+        self.assertFileEqual(b"file b content\n", "branch/file")
 
     def do_replace_file_a_by_b(self):
-        return [('unversion', 'file'),
-                ('add', ('file', b'file-b-id', 'file', b'file b content\n'))]
+        return [
+            ("unversion", "file"),
+            ("add", ("file", b"file-b-id", "file", b"file b content\n")),
+        ]
 
     def do_modify_file_a(self):
-        return [('modify', ('file', b'new content\n'))]
+        return [("modify", ("file", b"new content\n"))]
 
     def check_file_new_content(self):
-        self.assertFileEqual(b'new content\n', 'branch/file')
+        self.assertFileEqual(b"new content\n", "branch/file")
 
     def _get_resolve_path_arg(self, wt, action):
-        return self._this['path']
+        return self._this["path"]
 
     def assertDuplicateEntry(self, wt, c):
-        tpath = self._this['path']
-        tfile_id = self._this['file_id']
-        opath = self._other['path']
-        self._other['file_id']
+        tpath = self._this["path"]
+        tfile_id = self._this["file_id"]
+        opath = self._other["path"]
+        self._other["file_id"]
         self.assertEqual(tpath, opath)  # Sanity check
         self.assertEqual(tfile_id, c.file_id)
-        self.assertEqual(tpath + '.moved', c.path)
+        self.assertEqual(tpath + ".moved", c.path)
         self.assertEqual(tpath, c.conflict_path)
+
     _assert_conflict = assertDuplicateEntry
 
 
 class TestResolveUnversionedParent(TestResolveConflicts):
-
     # FIXME: Add the reverse tests: dir deleted in trunk, file added in branch
 
     # FIXME: While this *creates* UnversionedParent conflicts, this really only
@@ -736,23 +904,26 @@ $ brz merge ../trunk
 """
 
     def test_take_this(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz rm -q dir --no-backup
 $ brz resolve dir
 2>2 conflicts resolved, 0 remaining
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
     def test_take_other(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz resolve dir
 2>2 conflicts resolved, 0 remaining
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
 
 class TestResolveMissingParent(TestResolveConflicts):
-
     preamble = """
 $ brz init trunk
 ...
@@ -778,46 +949,55 @@ $ brz merge ../trunk
 """
 
     def test_keep_them_all(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz resolve dir
 2>2 conflicts resolved, 0 remaining
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
     def test_adopt_child(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz mv -q dir/file2 file2
 $ brz rm -q dir --no-backup
 $ brz resolve dir
 2>2 conflicts resolved, 0 remaining
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
     def test_kill_them_all(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz rm -q dir --no-backup
 $ brz resolve dir
 2>2 conflicts resolved, 0 remaining
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
     def test_resolve_taking_this(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz resolve --take-this dir
 2>...
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
     def test_resolve_taking_other(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz resolve --take-other dir
 2>...
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
 
 class TestResolveDeletingParent(TestResolveConflicts):
-
     preamble = """
 $ brz init trunk
 ...
@@ -842,48 +1022,57 @@ $ brz merge ../trunk
 """
 
     def test_keep_them_all(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz resolve dir
 2>2 conflicts resolved, 0 remaining
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
     def test_adopt_child(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz mv -q dir/file2 file2
 $ brz rm -q dir --no-backup
 $ brz resolve dir
 2>2 conflicts resolved, 0 remaining
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
     def test_kill_them_all(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz rm -q dir --no-backup
 $ brz resolve dir
 2>2 conflicts resolved, 0 remaining
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
     def test_resolve_taking_this(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz resolve --take-this dir
 2>2 conflicts resolved, 0 remaining
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
     def test_resolve_taking_other(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz resolve --take-other dir
 2>deleted dir/file2
 2>deleted dir
 2>2 conflicts resolved, 0 remaining
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
 
 class TestResolveParentLoop(TestParametrizedResolveConflicts):
-
     _conflict_type = bzr_conflicts.ParentLoop
 
     _this_args = None
@@ -897,85 +1086,123 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
     scenarios = mirror_scenarios(
         [
             # Dirs moved into each other
-            ({'_base_actions': 'create_dir1_dir2'},
-             ('dir1_into_dir2',
-              {'actions': 'move_dir1_into_dir2', 'check': 'dir1_moved',
-                   'dir_id': b'dir1-id', 'target_id': b'dir2-id', 'xfail': False}),
-             ('dir2_into_dir1',
-              {'actions': 'move_dir2_into_dir1', 'check': 'dir2_moved',
-                   'dir_id': b'dir2-id', 'target_id': b'dir1-id', 'xfail': False})),
+            (
+                {"_base_actions": "create_dir1_dir2"},
+                (
+                    "dir1_into_dir2",
+                    {
+                        "actions": "move_dir1_into_dir2",
+                        "check": "dir1_moved",
+                        "dir_id": b"dir1-id",
+                        "target_id": b"dir2-id",
+                        "xfail": False,
+                    },
+                ),
+                (
+                    "dir2_into_dir1",
+                    {
+                        "actions": "move_dir2_into_dir1",
+                        "check": "dir2_moved",
+                        "dir_id": b"dir2-id",
+                        "target_id": b"dir1-id",
+                        "xfail": False,
+                    },
+                ),
+            ),
             # Subdirs moved into each other
-            ({'_base_actions': 'create_dir1_4'},
-             ('dir1_into_dir4',
-              {'actions': 'move_dir1_into_dir4', 'check': 'dir1_2_moved',
-                   'dir_id': b'dir1-id', 'target_id': b'dir4-id', 'xfail': True}),
-             ('dir3_into_dir2',
-              {'actions': 'move_dir3_into_dir2', 'check': 'dir3_4_moved',
-                   'dir_id': b'dir3-id', 'target_id': b'dir2-id', 'xfail': True})),
-            ])
+            (
+                {"_base_actions": "create_dir1_4"},
+                (
+                    "dir1_into_dir4",
+                    {
+                        "actions": "move_dir1_into_dir4",
+                        "check": "dir1_2_moved",
+                        "dir_id": b"dir1-id",
+                        "target_id": b"dir4-id",
+                        "xfail": True,
+                    },
+                ),
+                (
+                    "dir3_into_dir2",
+                    {
+                        "actions": "move_dir3_into_dir2",
+                        "check": "dir3_4_moved",
+                        "dir_id": b"dir3-id",
+                        "target_id": b"dir2-id",
+                        "xfail": True,
+                    },
+                ),
+            ),
+        ]
+    )
 
     def do_create_dir1_dir2(self):
-        return [('add', ('dir1', b'dir1-id', 'directory', '')),
-                ('add', ('dir2', b'dir2-id', 'directory', '')), ]
+        return [
+            ("add", ("dir1", b"dir1-id", "directory", "")),
+            ("add", ("dir2", b"dir2-id", "directory", "")),
+        ]
 
     def do_move_dir1_into_dir2(self):
-        return [('rename', ('dir1', 'dir2/dir1'))]
+        return [("rename", ("dir1", "dir2/dir1"))]
 
     def check_dir1_moved(self):
-        self.assertPathDoesNotExist('branch/dir1')
-        self.assertPathExists('branch/dir2/dir1')
+        self.assertPathDoesNotExist("branch/dir1")
+        self.assertPathExists("branch/dir2/dir1")
 
     def do_move_dir2_into_dir1(self):
-        return [('rename', ('dir2', 'dir1/dir2'))]
+        return [("rename", ("dir2", "dir1/dir2"))]
 
     def check_dir2_moved(self):
-        self.assertPathDoesNotExist('branch/dir2')
-        self.assertPathExists('branch/dir1/dir2')
+        self.assertPathDoesNotExist("branch/dir2")
+        self.assertPathExists("branch/dir1/dir2")
 
     def do_create_dir1_4(self):
-        return [('add', ('dir1', b'dir1-id', 'directory', '')),
-                ('add', ('dir1/dir2', b'dir2-id', 'directory', '')),
-                ('add', ('dir3', b'dir3-id', 'directory', '')),
-                ('add', ('dir3/dir4', b'dir4-id', 'directory', '')), ]
+        return [
+            ("add", ("dir1", b"dir1-id", "directory", "")),
+            ("add", ("dir1/dir2", b"dir2-id", "directory", "")),
+            ("add", ("dir3", b"dir3-id", "directory", "")),
+            ("add", ("dir3/dir4", b"dir4-id", "directory", "")),
+        ]
 
     def do_move_dir1_into_dir4(self):
-        return [('rename', ('dir1', 'dir3/dir4/dir1'))]
+        return [("rename", ("dir1", "dir3/dir4/dir1"))]
 
     def check_dir1_2_moved(self):
-        self.assertPathDoesNotExist('branch/dir1')
-        self.assertPathExists('branch/dir3/dir4/dir1')
-        self.assertPathExists('branch/dir3/dir4/dir1/dir2')
+        self.assertPathDoesNotExist("branch/dir1")
+        self.assertPathExists("branch/dir3/dir4/dir1")
+        self.assertPathExists("branch/dir3/dir4/dir1/dir2")
 
     def do_move_dir3_into_dir2(self):
-        return [('rename', ('dir3', 'dir1/dir2/dir3'))]
+        return [("rename", ("dir3", "dir1/dir2/dir3"))]
 
     def check_dir3_4_moved(self):
-        self.assertPathDoesNotExist('branch/dir3')
-        self.assertPathExists('branch/dir1/dir2/dir3')
-        self.assertPathExists('branch/dir1/dir2/dir3/dir4')
+        self.assertPathDoesNotExist("branch/dir3")
+        self.assertPathExists("branch/dir1/dir2/dir3")
+        self.assertPathExists("branch/dir1/dir2/dir3/dir4")
 
     def _get_resolve_path_arg(self, wt, action):
         # ParentLoop says: moving <conflict_path> into <path>. Cancelled move.
         # But since <path> doesn't exist in the working tree, we need to use
         # <conflict_path> instead, and that, in turn, is given by dir_id. Pfew.
-        return wt.id2path(self._other['dir_id'])
+        return wt.id2path(self._other["dir_id"])
 
     def assertParentLoop(self, wt, c):
-        self.assertEqual(self._other['dir_id'], c.file_id)
-        self.assertEqual(self._other['target_id'], c.conflict_file_id)
+        self.assertEqual(self._other["dir_id"], c.file_id)
+        self.assertEqual(self._other["target_id"], c.conflict_file_id)
         # The conflict paths are irrelevant (they are deterministic but not
         # worth checking since they don't provide the needed information
         # anyway)
-        if self._other['xfail']:
+        if self._other["xfail"]:
             # It's a bit hackish to raise from here relying on being called for
             # both tests but this avoid overriding test_resolve_taking_other
             self.knownFailure(
-                "ParentLoop doesn't carry enough info to resolve --take-other")
+                "ParentLoop doesn't carry enough info to resolve --take-other"
+            )
+
     _assert_conflict = assertParentLoop
 
 
 class TestResolveNonDirectoryParent(TestResolveConflicts):
-
     preamble = """
 $ brz init trunk
 ...
@@ -1001,7 +1228,8 @@ $ brz merge ../trunk
 """
 
     def test_take_this(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz rm -q foo.new --no-backup
 # FIXME: Isn't it weird that foo is now unkown even if foo.new has been put
 # aside ? -- vila 090916
@@ -1009,40 +1237,48 @@ $ brz add -q foo
 $ brz resolve foo.new
 2>1 conflict resolved, 0 remaining
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
     def test_take_other(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz rm -q foo --no-backup
 $ brz mv -q foo.new foo
 $ brz resolve foo
 2>1 conflict resolved, 0 remaining
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
     def test_resolve_taking_this(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz resolve --take-this foo.new
 2>...
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
     def test_resolve_taking_other(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz resolve --take-other foo.new
 2>...
 $ brz commit -q --strict -m 'No more conflicts nor unknown files'
-""")
+"""
+        )
 
 
 class TestMalformedTransform(script.TestCaseWithTransportAndScript):
-
     def test_bug_430129(self):
         # This is nearly like TestResolveNonDirectoryParent but with branch and
         # trunk switched. As such it should certainly produce the same
         # conflict.
-        self.assertRaises(transform.MalformedTransform,
-                          self.run_script, """
+        self.assertRaises(
+            transform.MalformedTransform,
+            self.run_script,
+            """
 $ brz init trunk
 ...
 $ cd trunk
@@ -1059,13 +1295,14 @@ $ brz add -q foo/bar -q
 $ brz commit -m 'Add foo/bar' -q
 $ brz merge ../trunk
 2>brz: ERROR: Tree transform is malformed [('unversioned executability', 'new-1')]
-""")
+""",
+        )
 
 
 class TestNoFinalPath(script.TestCaseWithTransportAndScript):
-
     def test_bug_805809(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ brz init trunk
 Created a standalone tree (format: 2a)
 $ cd trunk
@@ -1144,11 +1381,11 @@ $ brz merge ../experimental
 2>+N  not-empty
 2>Path conflict: dir / dir
 2>1 conflicts encountered.
-""")
+"""
+        )
 
 
 class TestResolveActionOption(tests.TestCase):
-
     def setUp(self):
         super().setUp()
         self.options = [conflicts.ResolveActionOption()]
@@ -1158,21 +1395,22 @@ class TestResolveActionOption(tests.TestCase):
         return self.parser.parse_args(args)
 
     def test_unknown_action(self):
-        self.assertRaises(option.BadOptionValue,
-                          self.parse, ['--action', 'take-me-to-the-moon'])
+        self.assertRaises(
+            option.BadOptionValue, self.parse, ["--action", "take-me-to-the-moon"]
+        )
 
     def test_done(self):
-        opts, args = self.parse(['--action', 'done'])
-        self.assertEqual({'action': 'done'}, opts)
+        opts, args = self.parse(["--action", "done"])
+        self.assertEqual({"action": "done"}, opts)
 
     def test_take_this(self):
-        opts, args = self.parse(['--action', 'take-this'])
-        self.assertEqual({'action': 'take_this'}, opts)
-        opts, args = self.parse(['--take-this'])
-        self.assertEqual({'action': 'take_this'}, opts)
+        opts, args = self.parse(["--action", "take-this"])
+        self.assertEqual({"action": "take_this"}, opts)
+        opts, args = self.parse(["--take-this"])
+        self.assertEqual({"action": "take_this"}, opts)
 
     def test_take_other(self):
-        opts, args = self.parse(['--action', 'take-other'])
-        self.assertEqual({'action': 'take_other'}, opts)
-        opts, args = self.parse(['--take-other'])
-        self.assertEqual({'action': 'take_other'}, opts)
+        opts, args = self.parse(["--action", "take-other"])
+        self.assertEqual({"action": "take_other"}, opts)
+        opts, args = self.parse(["--take-other"])
+        self.assertEqual({"action": "take_other"}, opts)

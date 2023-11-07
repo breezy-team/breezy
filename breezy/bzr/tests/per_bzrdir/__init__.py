@@ -40,7 +40,6 @@ from ...bzrdir import BzrDirFormat
 
 
 class TestCaseWithBzrDir(TestCaseWithTransport):
-
     def setUp(self):
         super().setUp()
         self.controldir = None
@@ -56,35 +55,45 @@ class TestCaseWithBzrDir(TestCaseWithTransport):
 
 def load_tests(loader, standard_tests, pattern):
     test_per_bzrdir = [
-        'breezy.bzr.tests.per_bzrdir.test_bzrdir',
-        ]
+        "breezy.bzr.tests.per_bzrdir.test_bzrdir",
+    ]
     submod_tests = loader.loadTestsFromModuleNames(test_per_bzrdir)
-    formats = [format for format in ControlDirFormat.known_formats()
-               if isinstance(format, BzrDirFormat)]
+    formats = [
+        format
+        for format in ControlDirFormat.known_formats()
+        if isinstance(format, BzrDirFormat)
+    ]
     scenarios = make_scenarios(
         default_transport,
         None,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
-        formats)
+        formats,
+    )
     # This will always add scenarios using the smart server.
     from ...remote import RemoteBzrDirFormat
 
     # test the remote server behaviour when backed with a MemoryTransport
     # Once for the current version
-    scenarios.extend(make_scenarios(
-        memory.MemoryServer,
-        test_server.SmartTCPServer_for_testing,
-        test_server.ReadonlySmartTCPServer_for_testing,
-        [(RemoteBzrDirFormat())],
-        name_suffix='-default'))
+    scenarios.extend(
+        make_scenarios(
+            memory.MemoryServer,
+            test_server.SmartTCPServer_for_testing,
+            test_server.ReadonlySmartTCPServer_for_testing,
+            [(RemoteBzrDirFormat())],
+            name_suffix="-default",
+        )
+    )
     # And once with < 1.6 - the 'v2' protocol.
-    scenarios.extend(make_scenarios(
-        memory.MemoryServer,
-        test_server.SmartTCPServer_for_testing_v2_only,
-        test_server.ReadonlySmartTCPServer_for_testing_v2_only,
-        [(RemoteBzrDirFormat())],
-        name_suffix='-v2'))
+    scenarios.extend(
+        make_scenarios(
+            memory.MemoryServer,
+            test_server.SmartTCPServer_for_testing_v2_only,
+            test_server.ReadonlySmartTCPServer_for_testing_v2_only,
+            [(RemoteBzrDirFormat())],
+            name_suffix="-v2",
+        )
+    )
     # add the tests for the sub modules
     return multiply_tests(submod_tests, scenarios, standard_tests)
