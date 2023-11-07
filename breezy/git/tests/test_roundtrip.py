@@ -28,7 +28,6 @@ from ..roundtrip import (
 
 
 class RoundtripTests(TestCase):
-
     def test_revid(self):
         md = parse_roundtripping_metadata(b"revision-id: foo\n")
         self.assertEqual(b"foo", md.revision_id)
@@ -43,52 +42,56 @@ class RoundtripTests(TestCase):
 
 
 class FormatTests(TestCase):
-
     def test_revid(self):
         metadata = CommitSupplement()
         metadata.revision_id = b"bla"
-        self.assertEqual(b"revision-id: bla\n",
-                         generate_roundtripping_metadata(metadata, "utf-8"))
+        self.assertEqual(
+            b"revision-id: bla\n", generate_roundtripping_metadata(metadata, "utf-8")
+        )
 
     def test_parent_ids(self):
         metadata = CommitSupplement()
         metadata.explicit_parent_ids = (b"foo", b"bar")
-        self.assertEqual(b"parent-ids: foo bar\n",
-                         generate_roundtripping_metadata(metadata, "utf-8"))
+        self.assertEqual(
+            b"parent-ids: foo bar\n", generate_roundtripping_metadata(metadata, "utf-8")
+        )
 
     def test_properties(self):
         metadata = CommitSupplement()
         metadata.properties = {b"foo": b"bar"}
-        self.assertEqual(b"property-foo: bar\n",
-                         generate_roundtripping_metadata(metadata, "utf-8"))
+        self.assertEqual(
+            b"property-foo: bar\n", generate_roundtripping_metadata(metadata, "utf-8")
+        )
 
     def test_empty(self):
         metadata = CommitSupplement()
-        self.assertEqual(b"",
-                         generate_roundtripping_metadata(metadata, "utf-8"))
+        self.assertEqual(b"", generate_roundtripping_metadata(metadata, "utf-8"))
 
 
 class ExtractMetadataTests(TestCase):
-
     def test_roundtrip(self):
-        (msg, metadata) = extract_bzr_metadata(b"""Foo
+        (msg, metadata) = extract_bzr_metadata(
+            b"""Foo
 --BZR--
 revision-id: foo
-""")
+"""
+        )
         self.assertEqual(b"Foo", msg)
         self.assertEqual(b"foo", metadata.revision_id)
 
 
 class GenerateMetadataTests(TestCase):
-
     def test_roundtrip(self):
         metadata = CommitSupplement()
         metadata.revision_id = b"myrevid"
         msg = inject_bzr_metadata(b"Foo", metadata, "utf-8")
-        self.assertEqual(b"""Foo
+        self.assertEqual(
+            b"""Foo
 --BZR--
 revision-id: myrevid
-""", msg)
+""",
+            msg,
+        )
 
     def test_no_metadata(self):
         metadata = CommitSupplement()

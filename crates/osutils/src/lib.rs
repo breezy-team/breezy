@@ -4,7 +4,10 @@ use rand::Rng;
 use std::borrow::Cow;
 
 fn is_well_formed_line(line: &[u8]) -> bool {
-    memchr(b'\n', &line) == Some(line.len() - 1)
+    if line.is_empty() {
+        return false;
+    }
+    memchr(b'\n', line) == Some(line.len() - 1)
 }
 
 pub fn chunks_to_lines<'a, I, E>(chunks: I) -> impl Iterator<Item = Result<Cow<'a, [u8]>, E>>

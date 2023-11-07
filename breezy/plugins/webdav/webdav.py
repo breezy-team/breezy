@@ -55,8 +55,7 @@ class DavResponseHandler(xml.sax.handler.ContentHandler):
     def endDocument(self):
         self._validate_handling()
         if not self.expected_content_handled:
-            raise errors.InvalidHttpResponse(self.url,
-                                             msg='Unknown xml response')
+            raise errors.InvalidHttpResponse(self.url, msg="Unknown xml response")
 
     def startElement(self, name, attrs):
         self.elt_stack.append(self._strip_ns(name))
@@ -64,7 +63,7 @@ class DavResponseHandler(xml.sax.handler.ContentHandler):
         # intermixed with chars in a higher level element. That's not the case
         # here (otherwise the chars_wanted will have to be stacked too).
         if self.chars_wanted:
-            self.chars = ''
+            self.chars = ""
         else:
             self.chars = None
 
@@ -86,11 +85,11 @@ class DavResponseHandler(xml.sax.handler.ContentHandler):
         We don't have namespaces clashes in our context, stripping it makes the
         code simpler.
         """
-        where = name.find(':')
+        where = name.find(":")
         if where == -1:
             return name
         else:
-            return name[where + 1:]
+            return name[where + 1 :]
 
 
 class DavStatHandler(DavResponseHandler):
@@ -127,7 +126,7 @@ class DavStatHandler(DavResponseHandler):
 
     def startElement(self, name, attrs):
         sname = self._strip_ns(name)
-        self.chars_wanted = sname in ('href', 'getcontentlength', 'executable')
+        self.chars_wanted = sname in ("href", "getcontentlength", "executable")
         DavResponseHandler.startElement(self, name, attrs)
 
     def endElement(self, name):
@@ -143,11 +142,10 @@ class DavStatHandler(DavResponseHandler):
         elif self._collection_end():
             self.is_dir = True
 
-        if self._strip_ns(name) == 'response':
+        if self._strip_ns(name) == "response":
             self._response_seen = True
             self._response_handled()
         DavResponseHandler.endElement(self, name)
-
 
     def _response_handled(self):
         """A response element inside a multistatus have been parsed."""
@@ -156,44 +154,51 @@ class DavStatHandler(DavResponseHandler):
     def _additional_response_starting(self, name):
         """A additional response element inside a multistatus begins."""
         sname = self._strip_ns(name)
-        if sname != 'multistatus':
-            raise errors.InvalidHttpResponse(
-                self.url, msg=f'Unexpected {name} element')
+        if sname != "multistatus":
+            raise errors.InvalidHttpResponse(self.url, msg=f"Unexpected {name} element")
 
     def _href_end(self):
         stack = self.elt_stack
-        return (len(stack) == 3
-                and stack[0] == 'multistatus'
-                and stack[1] == 'response'
-                and stack[2] == 'href')
+        return (
+            len(stack) == 3
+            and stack[0] == "multistatus"
+            and stack[1] == "response"
+            and stack[2] == "href"
+        )
 
     def _getcontentlength_end(self):
         stack = self.elt_stack
-        return (len(stack) == 5
-                and stack[0] == 'multistatus'
-                and stack[1] == 'response'
-                and stack[2] == 'propstat'
-                and stack[3] == 'prop'
-                and stack[4] == 'getcontentlength')
+        return (
+            len(stack) == 5
+            and stack[0] == "multistatus"
+            and stack[1] == "response"
+            and stack[2] == "propstat"
+            and stack[3] == "prop"
+            and stack[4] == "getcontentlength"
+        )
 
     def _executable_end(self):
         stack = self.elt_stack
-        return (len(stack) == 5
-                and stack[0] == 'multistatus'
-                and stack[1] == 'response'
-                and stack[2] == 'propstat'
-                and stack[3] == 'prop'
-                and stack[4] == 'executable')
+        return (
+            len(stack) == 5
+            and stack[0] == "multistatus"
+            and stack[1] == "response"
+            and stack[2] == "propstat"
+            and stack[3] == "prop"
+            and stack[4] == "executable"
+        )
 
     def _collection_end(self):
         stack = self.elt_stack
-        return (len(stack) == 6
-                and stack[0] == 'multistatus'
-                and stack[1] == 'response'
-                and stack[2] == 'propstat'
-                and stack[3] == 'prop'
-                and stack[4] == 'resourcetype'
-                and stack[5] == 'collection')
+        return (
+            len(stack) == 6
+            and stack[0] == "multistatus"
+            and stack[1] == "response"
+            and stack[2] == "propstat"
+            and stack[3] == "prop"
+            and stack[4] == "resourcetype"
+            and stack[5] == "collection"
+        )
 
 
 class _DAVStat:
@@ -230,19 +235,19 @@ def _extract_stat_info(url, infile):
     try:
         parser.parse(infile)
     except xml.sax.SAXParseException as e:
-        raise errors.InvalidHttpResponse(
-            url, msg=f'Malformed xml response: {e}') from e
+        raise errors.InvalidHttpResponse(url, msg=f"Malformed xml response: {e}") from e
     if handler.is_dir:
-        size = -1 # directory sizes are meaningless for bzr
+        size = -1  # directory sizes are meaningless for bzr
         is_exec = True
     else:
         size = handler.length
-        is_exec = (handler.executable == 'T')
+        is_exec = handler.executable == "T"
     return _DAVStat(size, handler.is_dir, is_exec)
 
 
 class DavListDirHandler(DavStatHandler):
     """Handle a PROPPFIND depth 1 DAV response for a directory."""
+
     def __init__(self):
         DavStatHandler.__init__(self)
         self.dir_content = None
@@ -252,7 +257,7 @@ class DavListDirHandler(DavStatHandler):
             self.expected_content_handled = True
 
     def _make_response_tuple(self):
-        if self.executable == 'T':
+        if self.executable == "T":
             is_exec = True
         else:
             is_exec = False
@@ -286,8 +291,7 @@ def _extract_dir_content(url, infile):
     try:
         parser.parse(infile)
     except xml.sax.SAXParseException as e:
-        raise errors.InvalidHttpResponse(
-            url, msg=f'Malformed xml response: {e}') from e
+        raise errors.InvalidHttpResponse(url, msg=f"Malformed xml response: {e}") from e
     # Reformat for bzr needs
     dir_content = handler.dir_content
     (dir_name, is_dir) = dir_content[0][:2]
@@ -295,10 +299,10 @@ def _extract_dir_content(url, infile):
         raise errors.NotADirectory(url)
     dir_len = len(dir_name)
     elements = []
-    for (href, is_dir, size, is_exec) in dir_content[1:]: # Ignore first element
+    for href, is_dir, size, is_exec in dir_content[1:]:  # Ignore first element
         if href.startswith(dir_name):
             name = href[dir_len:]
-            if name.endswith('/'):
+            if name.endswith("/"):
                 # Get rid of final '/'
                 name = name[0:-1]
             # We receive already url-encoded strings so down-casting is
@@ -312,10 +316,13 @@ class DavResponse(urllib.Response):
 
     DAV have some reponses for which the body is of no interest.
     """
-    _body_ignored_responses = (
-        urllib.Response._body_ignored_responses
-        + [201, 405, 409, 412]
-        )
+
+    _body_ignored_responses = urllib.Response._body_ignored_responses + [
+        201,
+        405,
+        409,
+        412,
+    ]
 
     def begin(self):
         """Begin to read the response from the server.
@@ -330,12 +337,10 @@ class DavResponse(urllib.Response):
 
 # Takes DavResponse into account:
 class DavHTTPConnection(urllib.HTTPConnection):
-
     response_class = DavResponse
 
 
 class DavHTTPSConnection(urllib.HTTPSConnection):
-
     response_class = DavResponse
 
 
@@ -358,9 +363,11 @@ class DavOpener(urllib.Opener):
     """Dav specific needs regarding HTTP(S)."""
 
     def __init__(self, report_activity=None, ca_certs=None):
-        super().__init__(connection=DavConnectionHandler,
-                                        report_activity=report_activity,
-                                        ca_certs=ca_certs)
+        super().__init__(
+            connection=DavConnectionHandler,
+            report_activity=report_activity,
+            ca_certs=ca_certs,
+        )
 
 
 class HttpDavTransport(urllib.HttpTransport):
@@ -385,11 +392,12 @@ class HttpDavTransport(urllib.HttpTransport):
 
     def _raise_http_error(self, url, response, info=None):
         if info is None:
-            msg = ''
+            msg = ""
         else:
-            msg = ': ' + info
-        raise errors.InvalidHttpResponse(url, 'Unable to handle http code %d%s'
-                                         % (response.status, msg))
+            msg = ": " + info
+        raise errors.InvalidHttpResponse(
+            url, "Unable to handle http code %d%s" % (response.status, msg)
+        )
 
     def open_write_stream(self, relpath, mode=None):
         """See Transport.open_write_stream."""
@@ -429,9 +437,11 @@ class HttpDavTransport(urllib.HttpTransport):
         # We generate a sufficiently random name to *assume* that
         # no collisions will occur and don't worry about it (nor
         # handle it).
-        stamp = '.tmp.%.9f.%d.%d' % (time.time(),
-                                     os.getpid(),
-                                     random.randint(0, 0x7FFFFFFF))  # noqa: S311
+        stamp = ".tmp.%.9f.%d.%d" % (
+            time.time(),
+            os.getpid(),
+            random.randint(0, 0x7FFFFFFF),  # noqa: S311
+        )
         # A temporary file to hold  all the data to guard against
         # client death
         tmp_relpath = relpath + stamp
@@ -451,50 +461,51 @@ class HttpDavTransport(urllib.HttpTransport):
                 self.delete(tmp_relpath)
             except BaseException as err:
                 raise exc_type(exc_val).with_traceback(exc_tb) from err
-            raise # raise the original with its traceback if we can.
+            raise  # raise the original with its traceback if we can.
 
-    def put_file_non_atomic(self, relpath, f,
-                            mode=None,
-                            create_parent_dir=False,
-                            dir_mode=False):
+    def put_file_non_atomic(
+        self, relpath, f, mode=None, create_parent_dir=False, dir_mode=False
+    ):
         # Implementing put_bytes_non_atomic rather than put_file_non_atomic
         # because to do a put request, we must read all of the file into
         # RAM anyway. Better to do that than to have the contents, put
         # into a StringIO() and then read them all out again later.
-        self.put_bytes_non_atomic(relpath, f.read(), mode=mode,
-                                  create_parent_dir=create_parent_dir,
-                                  dir_mode=dir_mode)
+        self.put_bytes_non_atomic(
+            relpath,
+            f.read(),
+            mode=mode,
+            create_parent_dir=create_parent_dir,
+            dir_mode=dir_mode,
+        )
 
-    def put_bytes_non_atomic(self, relpath, bytes: bytes,
-                            mode=None,
-                            create_parent_dir=False,
-                            dir_mode=False):
+    def put_bytes_non_atomic(
+        self, relpath, bytes: bytes, mode=None, create_parent_dir=False, dir_mode=False
+    ):
         """See Transport.put_file_non_atomic."""
         abspath = self._remote_path(relpath)
 
         # FIXME: Accept */* ? Why ? *we* send, we do not receive :-/
-        headers = {'Accept': '*/*',
-                   'Content-type': 'application/octet-stream',
-                   # FIXME: We should complete the
-                   # implementation of
-                   # htmllib.HTTPConnection, it's just a
-                   # shame (at least a waste) that we
-                   # can't use the following.
-
-                   #  'Expect': '100-continue',
-                   #  'Transfer-Encoding': 'chunked',
-                   }
+        headers = {
+            "Accept": "*/*",
+            "Content-type": "application/octet-stream",
+            # FIXME: We should complete the
+            # implementation of
+            # htmllib.HTTPConnection, it's just a
+            # shame (at least a waste) that we
+            # can't use the following.
+            #  'Expect': '100-continue',
+            #  'Transfer-Encoding': 'chunked',
+        }
 
         def bare_put_file_non_atomic():
-
-            response = self.request('PUT', abspath, body=bytes, headers=headers)
+            response = self.request("PUT", abspath, body=bytes, headers=headers)
             code = response.status
 
             if code in (403, 404, 409):
                 # Intermediate directories missing
                 raise transport.NoSuchFile(abspath)
             elif code not in (200, 201, 204):
-                raise self._raise_http_error(abspath, response, 'put file failed')
+                raise self._raise_http_error(abspath, response, "put file failed")
 
         try:
             bare_put_file_non_atomic()
@@ -530,37 +541,36 @@ class HttpDavTransport(urllib.HttpTransport):
         abspath = self._remote_path(relpath)
 
         # FIXME: Accept */* ? Why ? *we* send, we do not receive :-/
-        headers = {'Accept': '*/*',
-                   'Content-type': 'application/octet-stream',
-                   'Content-Range': 'bytes %d-%d/*' % (at, at + len(bytes) - 1),
-                   # FIXME: We should complete the
-                   # implementation of
-                   # htmllib.HTTPConnection, it's just a
-                   # shame (at least a waste) that we
-                   # can't use the following.
-
-                   #  'Expect': '100-continue',
-                   #  'Transfer-Encoding': 'chunked',
+        headers = {
+            "Accept": "*/*",
+            "Content-type": "application/octet-stream",
+            "Content-Range": "bytes %d-%d/*" % (at, at + len(bytes) - 1),
+            # FIXME: We should complete the
+            # implementation of
+            # htmllib.HTTPConnection, it's just a
+            # shame (at least a waste) that we
+            # can't use the following.
+            #  'Expect': '100-continue',
+            #  'Transfer-Encoding': 'chunked',
         }
-
 
         # Content-Range is start-end/size. 'size' is the file size, not the
         # chunk size. We can't be sure about the size of the file so put '*' at
         # the end of the range instead.
-        response = self.request('PUT', abspath, body=bytes, headers=headers)
+        response = self.request("PUT", abspath, body=bytes, headers=headers)
         code = response.status
 
         if code in (403, 404, 409):
-            raise transport.NoSuchFile(abspath) # Intermediate directories missing
+            raise transport.NoSuchFile(abspath)  # Intermediate directories missing
 
         if code not in (200, 201, 204):
-            raise self._raise_http_error(abspath, response, 'put file failed')
+            raise self._raise_http_error(abspath, response, "put file failed")
 
     def mkdir(self, relpath, mode=None):
         """See Transport.mkdir."""
         abspath = self._remote_path(relpath)
 
-        response = self.request('MKCOL', abspath)
+        response = self.request("MKCOL", abspath)
 
         code = response.status
         # jam 20060908: The error handling seems to be repeated for
@@ -571,15 +581,15 @@ class HttpDavTransport(urllib.HttpTransport):
         if code == 403:
             # Forbidden  (generally server  misconfigured  or not
             # configured for DAV)
-            raise self._raise_http_error(abspath, response, 'mkdir failed')
+            raise self._raise_http_error(abspath, response, "mkdir failed")
         elif code == 405:
             # Not allowed (generally already exists)
             raise transport.FileExists(abspath)
         elif code in (404, 409):
             # Conflict (intermediate directories do not exist)
             raise transport.NoSuchFile(abspath)
-        elif code != 201: # Created
-            raise self._raise_http_error(abspath, response, 'mkdir failed')
+        elif code != 201:  # Created
+            raise self._raise_http_error(abspath, response, "mkdir failed")
 
     def rename(self, rel_from, rel_to):
         """Rename without special overwriting."""
@@ -587,7 +597,8 @@ class HttpDavTransport(urllib.HttpTransport):
         abs_to = self._remote_path(rel_to)
 
         response = self.request(
-            'MOVE', abs_from, headers={'Destination': abs_to, 'Overwrite': 'F'})
+            "MOVE", abs_from, headers={"Destination": abs_to, "Overwrite": "F"}
+        )
 
         code = response.status
         if code == 404:
@@ -603,8 +614,9 @@ class HttpDavTransport(urllib.HttpTransport):
             # non-empty case is 412))  will be an error, a server
             # bug  even,  since  we  require explicitely  to  not
             # overwrite.
-            self._raise_http_error(abs_from, response,
-                                   f'unable to rename to {abs_to!r}')
+            self._raise_http_error(
+                abs_from, response, f"unable to rename to {abs_to!r}"
+            )
 
     def move(self, rel_from, rel_to):
         """See Transport.move."""
@@ -612,7 +624,8 @@ class HttpDavTransport(urllib.HttpTransport):
         abs_to = self._remote_path(rel_to)
 
         response = self.request(
-            'MOVE', abs_from, headers={'Destination': abs_to, 'Overwrite': 'T'})
+            "MOVE", abs_from, headers={"Destination": abs_to, "Overwrite": "T"}
+        )
 
         code = response.status
         if code == 404:
@@ -622,8 +635,7 @@ class HttpDavTransport(urllib.HttpTransport):
         # Overwriting  allowed, 201 means  abs_to did  not exist,
         # 204 means it did exist.
         if code not in (201, 204):
-            self._raise_http_error(abs_from, response,
-                                   f'unable to move to {abs_to!r}')
+            self._raise_http_error(abs_from, response, f"unable to move to {abs_to!r}")
 
     def delete(self, rel_path):
         """Delete the item at relpath.
@@ -634,21 +646,20 @@ class HttpDavTransport(urllib.HttpTransport):
         """
         abs_path = self._remote_path(rel_path)
 
-        response = self.request('DELETE', abs_path)
+        response = self.request("DELETE", abs_path)
 
         code = response.status
         if code == 404:
             raise transport.NoSuchFile(abs_path)
         if code not in (200, 204):
-            self._raise_http_error(abs_path, response, 'unable to delete')
+            self._raise_http_error(abs_path, response, "unable to delete")
 
     def copy(self, rel_from, rel_to):
         """See Transport.copy."""
         abs_from = self._remote_path(rel_from)
         abs_to = self._remote_path(rel_to)
 
-        response = self.request(
-            'COPY', abs_from, headers={'Destination': abs_to})
+        response = self.request("COPY", abs_from, headers={"Destination": abs_to})
 
         code = response.status
         if code in (404, 409):
@@ -656,8 +667,9 @@ class HttpDavTransport(urllib.HttpTransport):
         # XXX: our test server returns 201 but apache2 returns 204, needs
         # investivation.
         if code not in (201, 204):
-            self._raise_http_error(abs_from, response,
-                                   f'unable to copy from {abs_from!r} to {abs_to!r}')
+            self._raise_http_error(
+                abs_from, response, f"unable to copy from {abs_from!r} to {abs_to!r}"
+            )
 
     def copy_to(self, relpaths, other, mode=None, pb=None):
         """Copy a set of entries from self into another Transport.
@@ -669,8 +681,7 @@ class HttpDavTransport(urllib.HttpTransport):
         # a put(get())
         # We only override, because the default HttpTransportBase, explicitly
         # disabled it for HTTP
-        return transport.Transport.copy_to(self, relpaths, other,
-                                           mode=mode, pb=pb)
+        return transport.Transport.copy_to(self, relpaths, other, mode=mode, pb=pb)
 
     def listable(self):
         """See Transport.listable."""
@@ -688,9 +699,14 @@ class HttpDavTransport(urllib.HttpTransport):
    </D:propfind>
 """
         response = self.request(
-            'PROPFIND', abspath, body=propfind, headers={
-                'Depth': f'{depth}',
-                'Content-Type': 'application/xml; charset="utf-8"'})
+            "PROPFIND",
+            abspath,
+            body=propfind,
+            headers={
+                "Depth": f"{depth}",
+                "Content-Type": 'application/xml; charset="utf-8"',
+            },
+        )
 
         code = response.status
         if code == 404:
@@ -699,8 +715,9 @@ class HttpDavTransport(urllib.HttpTransport):
             # More precisely some intermediate directories are missing
             raise transport.NoSuchFile(abspath)
         if code != 207:
-            self._raise_http_error(abspath, response,
-                                   f'unable to list  {abspath!r} directory')
+            self._raise_http_error(
+                abspath, response, f"unable to list  {abspath!r} directory"
+            )
         return _extract_dir_content(abspath, response)
 
     def lock_write(self, relpath):
@@ -735,8 +752,11 @@ class HttpDavTransport(urllib.HttpTransport):
    </D:propfind>
 """
         response = self.request(
-            'PROPFIND', abspath, body=propfind,
-            headers={'Depth': '0', 'Content-Type': 'application/xml; charset="utf-8"'})
+            "PROPFIND",
+            abspath,
+            body=propfind,
+            headers={"Depth": "0", "Content-Type": 'application/xml; charset="utf-8"'},
+        )
 
         code = response.status
         if code == 404:
@@ -746,16 +766,17 @@ class HttpDavTransport(urllib.HttpTransport):
             # More precisely some intermediate directories are missing
             raise transport.NoSuchFile(abspath)
         if code != 207:
-            self._raise_http_error(abspath, response,
-                                   f'unable to list  {abspath!r} directory')
+            self._raise_http_error(
+                abspath, response, f"unable to list  {abspath!r} directory"
+            )
         return _extract_stat_info(abspath, response)
 
     def iter_files_recursive(self):
         """Walk the relative paths of all files in this transport."""
         # We get the whole tree with a single request
-        tree = self._list_tree('.', 'Infinity')
+        tree = self._list_tree(".", "Infinity")
         # Now filter out the directories
-        for (name, is_dir, _size, _is_exex) in tree:
+        for name, is_dir, _size, _is_exex in tree:
             if not is_dir:
                 yield name
 
@@ -796,9 +817,9 @@ class HttpDavTransport(urllib.HttpTransport):
             # do not exist we get a 404, if the file does exist,
             # is not empty and we get no Content-Length header,
             # then the server is buggy :-/ )
-            relpath_size = int(response.getheader('Content-Length', 0))
+            relpath_size = int(response.getheader("Content-Length", 0))
             if relpath_size == 0:
-                trace.mutter(f'if {relpath} is not empty, the server is buggy')
+                trace.mutter(f"if {relpath} is not empty, the server is buggy")
         if relpath_size:
             self._put_bytes_ranged(relpath, bytes, relpath_size)
         else:
@@ -835,5 +856,8 @@ class HttpDavTransport(urllib.HttpTransport):
 def get_test_permutations():
     """Return the permutations to be used in testing."""
     from .tests import dav_server
-    return [(HttpDavTransport, dav_server.DAVServer),
-            (HttpDavTransport, dav_server.QuirkyDAVServer)]
+
+    return [
+        (HttpDavTransport, dav_server.DAVServer),
+        (HttpDavTransport, dav_server.QuirkyDAVServer),
+    ]

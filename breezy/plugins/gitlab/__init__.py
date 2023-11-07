@@ -24,13 +24,14 @@ plugin_cmds.register_lazy("cmd_gitlab_login", ["gl-login"], __name__ + ".cmds")
 
 from ...forge import forges
 
-forges.register_lazy("gitlab", __name__ + '.forge', "GitLab")
+forges.register_lazy("gitlab", __name__ + ".forge", "GitLab")
 
 
 def test_suite():
     from unittest import TestSuite
 
     from .tests import test_suite
+
     result = TestSuite()
     result.addTest(test_suite())
     return result

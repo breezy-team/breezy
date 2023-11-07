@@ -22,7 +22,6 @@ from . import errors, hooks, registry, urlutils
 
 
 class AutoMergeUnavailable(errors.BzrError):
-
     _fmt = "Unable to enable auto-merge: %(msg)s"
 
     def __init__(self, msg):
@@ -31,7 +30,6 @@ class AutoMergeUnavailable(errors.BzrError):
 
 
 class NoSuchProject(errors.BzrError):
-
     _fmt = "Project does not exist: %(project)s."
 
     def __init__(self, project):
@@ -40,7 +38,6 @@ class NoSuchProject(errors.BzrError):
 
 
 class MergeProposalExists(errors.BzrError):
-
     _fmt = "A merge proposal already exists: %(url)s."
 
     def __init__(self, url, existing_proposal=None):
@@ -50,7 +47,6 @@ class MergeProposalExists(errors.BzrError):
 
 
 class UnsupportedForge(errors.BzrError):
-
     _fmt = "No supported forge for %(branch)s."
 
     def __init__(self, branch):
@@ -59,17 +55,14 @@ class UnsupportedForge(errors.BzrError):
 
 
 class ReopenFailed(errors.BzrError):
-
     _fmt = "Reopening the merge proposal failed: %(error)s."
 
 
 class TitleUnsupported(errors.BzrError):
-
     _fmt = "The merge proposal %(mp)s does not support a title."
 
 
 class AutoMergeUnsupported(errors.BzrError):
-
     _fmt = "The merge proposal %(mp)s does not support automerge."
 
 
@@ -79,11 +72,15 @@ class ProposeMergeHooks(hooks.Hooks):
     def __init__(self):
         hooks.Hooks.__init__(self, __name__, "Proposer.hooks")
         self.add_hook(
-            'get_prerequisite',
-            "Return the prerequisite branch for proposing as merge.", (3, 0))
+            "get_prerequisite",
+            "Return the prerequisite branch for proposing as merge.",
+            (3, 0),
+        )
         self.add_hook(
-            'merge_proposal_body',
-            "Return an initial body for the merge proposal message.", (3, 0))
+            "merge_proposal_body",
+            "Return an initial body for the merge proposal message.",
+            (3, 0),
+        )
 
 
 class LabelsUnsupported(errors.BzrError):
@@ -107,7 +104,7 @@ class PrerequisiteBranchUnsupported(errors.BzrError):
 class ForgeLoginRequired(errors.BzrError):
     """Action requires forge login credentials."""
 
-    _fmt = "Action requires credentials for hosting site %(forge)r."""
+    _fmt = "Action requires credentials for hosting site %(forge)r." ""
 
     def __init__(self, forge):
         errors.BzrError.__init__(self)
@@ -117,13 +114,12 @@ class ForgeLoginRequired(errors.BzrError):
 class SourceNotDerivedFromTarget(errors.BzrError):
     """Source branch is not derived from target branch."""
 
-    _fmt = ("Source %(source_branch)r not derived from "
-            "target %(target_branch)r.")
+    _fmt = "Source %(source_branch)r not derived from " "target %(target_branch)r."
 
     def __init__(self, source_branch, target_branch):
         errors.BzrError.__init__(
-            self, source_branch=source_branch,
-            target_branch=target_branch)
+            self, source_branch=source_branch, target_branch=target_branch
+        )
 
 
 class MergeProposal:
@@ -257,11 +253,18 @@ class MergeProposalBuilder:
         """Determine the initial comment for the merge proposal."""
         raise NotImplementedError(self.get_infotext)
 
-    def create_proposal(self, description, title=None, reviewers=None,
-                        labels=None, prerequisite_branch=None,
-                        commit_message=None,
-                        work_in_progress=False, allow_collaboration=False,
-                        delete_source_after_merge: Optional[bool] = None):
+    def create_proposal(
+        self,
+        description,
+        title=None,
+        reviewers=None,
+        labels=None,
+        prerequisite_branch=None,
+        commit_message=None,
+        work_in_progress=False,
+        allow_collaboration=False,
+        delete_source_after_merge: Optional[bool] = None,
+    ):
         """Create a proposal to merge a branch for merging.
 
         Args:
@@ -311,9 +314,18 @@ class Forge:
     # Does this forge support the allow_collaboration flag?
     supports_allow_collaboration: bool = False
 
-    def publish_derived(self, new_branch, base_branch, name, project=None,
-                        owner=None, revision_id=None, overwrite=False,
-                        allow_lossy=True, tag_selector=None):
+    def publish_derived(
+        self,
+        new_branch,
+        base_branch,
+        name,
+        project=None,
+        owner=None,
+        revision_id=None,
+        overwrite=False,
+        allow_lossy=True,
+        tag_selector=None,
+    ):
         """Publish a branch to the site, derived from base_branch.
 
         :param base_branch: branch to derive the new branch from
@@ -324,7 +336,9 @@ class Forge:
         """
         raise NotImplementedError(self.publish_derived)
 
-    def get_derived_branch(self, base_branch, name, project=None, owner=None, preferred_schemes=None):
+    def get_derived_branch(
+        self, base_branch, name, project=None, owner=None, preferred_schemes=None
+    ):
         """Get a derived branch ('a fork')."""
         raise NotImplementedError(self.get_derived_branch)
 
@@ -347,7 +361,7 @@ class Forge:
         """
         raise NotImplementedError(self.get_proposer)
 
-    def iter_proposals(self, source_branch, target_branch, status='open'):
+    def iter_proposals(self, source_branch, target_branch, status="open"):
         """Get the merge proposals for a specified branch tuple.
 
         :param source_branch: Source branch
@@ -379,16 +393,17 @@ class Forge:
     def probe_from_branch(cls, branch):
         """Create a Forge object if this forge knows about a branch."""
         url = urlutils.strip_segment_parameters(branch.user_url)
-        return cls.probe_from_url(
-            url, possible_transports=[branch.control_transport])
+        return cls.probe_from_url(url, possible_transports=[branch.control_transport])
 
     @classmethod
     def probe_from_url(cls, url, possible_transports=None):
         """Create a Forge object if this forge knows about a URL."""
         hostname = urlutils.URL.from_string(url).host
-        return cls.probe_from_hostname(hostname, possible_transports=possible_transports)
+        return cls.probe_from_hostname(
+            hostname, possible_transports=possible_transports
+        )
 
-    def iter_my_proposals(self, status='open', author=None):
+    def iter_my_proposals(self, status="open", author=None):
         """Iterate over the proposals created by the currently logged in user.
 
         :param status: Only yield proposals with this status
@@ -444,9 +459,9 @@ def determine_title(description):
     else:
         raise ValueError
     try:
-        i = firstline.index('. ')
+        i = firstline.index(". ")
     except ValueError:
-        return firstline.rstrip('.')
+        return firstline.rstrip(".")
     else:
         return firstline[:i]
 

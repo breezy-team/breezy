@@ -27,51 +27,50 @@ from . import TestCaseInTempDir
 
 
 class TestCleanTree(TestCaseInTempDir):
-
     def test_symlinks(self):
         if supports_symlinks(self.test_dir) is False:
             return
-        os.mkdir('branch')
-        ControlDir.create_standalone_workingtree('branch')
-        os.symlink(os.path.realpath('no-die-please'), 'branch/die-please')
-        os.mkdir('no-die-please')
-        self.assertPathExists('branch/die-please')
-        os.mkdir('no-die-please/child')
+        os.mkdir("branch")
+        ControlDir.create_standalone_workingtree("branch")
+        os.symlink(os.path.realpath("no-die-please"), "branch/die-please")
+        os.mkdir("no-die-please")
+        self.assertPathExists("branch/die-please")
+        os.mkdir("no-die-please/child")
 
-        clean_tree('branch', unknown=True, no_prompt=True)
-        self.assertPathExists('no-die-please')
-        self.assertPathExists('no-die-please/child')
+        clean_tree("branch", unknown=True, no_prompt=True)
+        self.assertPathExists("no-die-please")
+        self.assertPathExists("no-die-please/child")
 
     def test_iter_deletable(self):
         """Files are selected for deletion appropriately."""
-        os.mkdir('branch')
-        tree = ControlDir.create_standalone_workingtree('branch')
+        os.mkdir("branch")
+        tree = ControlDir.create_standalone_workingtree("branch")
         transport = tree.controldir.root_transport
-        transport.put_bytes('.bzrignore', b'*~\n*.pyc\n.bzrignore\n')
-        transport.put_bytes('file.BASE', b'contents')
+        transport.put_bytes(".bzrignore", b"*~\n*.pyc\n.bzrignore\n")
+        transport.put_bytes("file.BASE", b"contents")
         with tree.lock_write():
             self.assertEqual(len(list(iter_deletables(tree, unknown=True))), 1)
-            transport.put_bytes('file', b'contents')
-            transport.put_bytes('file~', b'contents')
-            transport.put_bytes('file.pyc', b'contents')
+            transport.put_bytes("file", b"contents")
+            transport.put_bytes("file~", b"contents")
+            transport.put_bytes("file.pyc", b"contents")
             dels = sorted([r for a, r in iter_deletables(tree, unknown=True)])
-            self.assertEqual(['file', 'file.BASE'], dels)
+            self.assertEqual(["file", "file.BASE"], dels)
 
             dels = [r for a, r in iter_deletables(tree, detritus=True)]
-            self.assertEqual(sorted(['file~', 'file.BASE']), dels)
+            self.assertEqual(sorted(["file~", "file.BASE"]), dels)
 
             dels = [r for a, r in iter_deletables(tree, ignored=True)]
-            self.assertEqual(sorted(['file~', 'file.pyc', '.bzrignore']),
-                             dels)
+            self.assertEqual(sorted(["file~", "file.pyc", ".bzrignore"]), dels)
 
             dels = [r for a, r in iter_deletables(tree, unknown=False)]
             self.assertEqual([], dels)
 
     def test_delete_items_warnings(self):
         """Ensure delete_items issues warnings on EACCES. (bug #430785)."""
+
         def _dummy_unlink(path):
             """unlink() files other than files named '0foo'."""
-            if path.endswith('0foo'):
+            if path.endswith("0foo"):
                 # Simulate 'permission denied' error.
                 # This should show up as a warning for the
                 # user.
@@ -88,29 +87,29 @@ class TestCleanTree(TestCaseInTempDir):
             except PermissionError:
                 excinfo = sys.exc_info()
                 function = os.remove
-                if 'subdir0' not in path:
+                if "subdir0" not in path:
                     # onerror should show warning only for os.remove
                     # error. For any other failures the error should
                     # be shown to the user.
                     function = os.listdir
-                onerror(function=function,
-                        path=path, excinfo=excinfo)
+                onerror(function=function, path=path, excinfo=excinfo)
 
-        self.overrideAttr(os, 'unlink', _dummy_unlink)
-        self.overrideAttr(shutil, 'rmtree', _dummy_rmtree)
+        self.overrideAttr(os, "unlink", _dummy_unlink)
+        self.overrideAttr(shutil, "rmtree", _dummy_rmtree)
         ui.ui_factory = tests.TestUIFactory()
         stderr = ui.ui_factory.stderr
 
-        ControlDir.create_standalone_workingtree('.')
-        self.build_tree(['0foo', '1bar', '2baz', 'subdir0/'])
-        clean_tree('.', unknown=True, no_prompt=True)
-        self.assertContainsRe(stderr.getvalue(),
-                              'bzr: warning: unable to remove.*0foo')
-        self.assertContainsRe(stderr.getvalue(),
-                              'bzr: warning: unable to remove.*subdir0')
+        ControlDir.create_standalone_workingtree(".")
+        self.build_tree(["0foo", "1bar", "2baz", "subdir0/"])
+        clean_tree(".", unknown=True, no_prompt=True)
+        self.assertContainsRe(stderr.getvalue(), "bzr: warning: unable to remove.*0foo")
+        self.assertContainsRe(
+            stderr.getvalue(), "bzr: warning: unable to remove.*subdir0"
+        )
 
         # Ensure that error other than EACCES during os.remove are
         # not turned into warnings.
-        self.build_tree(['subdir1/'])
-        self.assertRaises(PermissionError, clean_tree, '.',
-                          unknown=True, no_prompt=True)
+        self.build_tree(["subdir1/"])
+        self.assertRaises(
+            PermissionError, clean_tree, ".", unknown=True, no_prompt=True
+        )

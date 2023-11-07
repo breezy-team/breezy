@@ -20,13 +20,16 @@ from typing import TYPE_CHECKING, Union
 
 from ..lazy_import import lazy_import
 
-lazy_import(globals(), """
+lazy_import(
+    globals(),
+    """
 from breezy import (
     config as _mod_config,
     lockdir,
     ui,
     )
-""")
+""",
+)
 
 from .. import errors, urlutils
 from .. import revision as _mod_revision
@@ -72,18 +75,22 @@ class BzrBranch(Branch, _RelockDebugMixin):
     def control_transport(self) -> _mod_transport.Transport:
         return self._transport
 
-    def __init__(self, *, a_controldir: bzrdir.BzrDir, name: str,
-                 _repository: MetaDirRepository,
-                 _control_files: lockable_files.LockableFiles,
-                 _format=None,
-                  ignore_fallbacks=False,
-                 possible_transports=None):
+    def __init__(
+        self,
+        *,
+        a_controldir: bzrdir.BzrDir,
+        name: str,
+        _repository: MetaDirRepository,
+        _control_files: lockable_files.LockableFiles,
+        _format=None,
+        ignore_fallbacks=False,
+        possible_transports=None,
+    ):
         """Create new branch object at a particular location."""
         self.controldir = a_controldir
-        self._user_transport = self.controldir.transport.clone('..')
+        self._user_transport = self.controldir.transport.clone("..")
         if name != "":
-            self._user_transport.set_segment_parameter(
-                "branch", urlutils.escape(name))
+            self._user_transport.set_segment_parameter("branch", urlutils.escape(name))
         self._base = self._user_transport.base
         self.name = name
         self._format = _format
@@ -95,7 +102,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         self._tags_bytes = None
 
     def __str__(self):
-        return f'{self.__class__.__name__}({self.user_url})'
+        return f"{self.__class__.__name__}({self.user_url})"
 
     __repr__ = __str__
 
@@ -119,7 +126,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
 
         :return: An object supporting get_option and set_option.
         """
-        return _mod_config.TransportConfig(self._transport, 'branch.conf')
+        return _mod_config.TransportConfig(self._transport, "branch.conf")
 
     def _get_config_store(self):
         if self.conf_store is None:
@@ -143,14 +150,14 @@ class BzrBranch(Branch, _RelockDebugMixin):
         """
         branch = self._uncommitted_branch()
         if creator is None:
-            branch._transport.delete('stored-transform')
+            branch._transport.delete("stored-transform")
             return
-        if branch._transport.has('stored-transform'):
+        if branch._transport.has("stored-transform"):
             raise errors.ChangesAlreadyStored
         transform = BytesIO()
         creator.write_shelf(transform)
         transform.seek(0)
-        branch._transport.put_file('stored-transform', transform)
+        branch._transport.put_file("stored-transform", transform)
 
     def get_unshelver(self, tree):
         """Return a shelf.Unshelver for this branch and tree.
@@ -160,10 +167,11 @@ class BzrBranch(Branch, _RelockDebugMixin):
         """
         branch = self._uncommitted_branch()
         try:
-            transform = branch._transport.get('stored-transform')
+            transform = branch._transport.get("stored-transform")
         except _mod_transport.NoSuchFile:
             return None
         from ..shelf import Unshelver
+
         return Unshelver.from_tree_and_shelf(tree, transform)
 
     def is_locked(self) -> bool:
@@ -177,7 +185,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         :return: A BranchWriteLockResult.
         """
         if not self.is_locked():
-            self._note_lock('w')
+            self._note_lock("w")
             self.repository._warn_if_deprecated(self)
             self.repository.lock_write()
             took_lock = True
@@ -185,8 +193,8 @@ class BzrBranch(Branch, _RelockDebugMixin):
             took_lock = False
         try:
             return BranchWriteLockResult(
-                self.unlock,
-                self.control_files.lock_write(token=token))
+                self.unlock, self.control_files.lock_write(token=token)
+            )
         except BaseException:
             if took_lock:
                 self.repository.unlock()
@@ -198,7 +206,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         :return: A breezy.lock.LogicalLockResult.
         """
         if not self.is_locked():
-            self._note_lock('r')
+            self._note_lock("r")
             self.repository._warn_if_deprecated(self)
             self.repository.lock_read()
             took_lock = True
@@ -235,8 +243,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
 
     def set_last_revision_info(self, revno, revision_id):
         if not revision_id or not isinstance(revision_id, bytes):
-            raise errors.InvalidRevisionId(
-                revision_id=revision_id, branch=self)
+            raise errors.InvalidRevisionId(revision_id=revision_id, branch=self)
         with self.lock_write():
             old_revno, old_revid = self.last_revision_info()
             if self.get_append_revisions_only():
@@ -252,14 +259,14 @@ class BzrBranch(Branch, _RelockDebugMixin):
         return self.repository.revision_tree(self.last_revision())
 
     def _get_parent_location(self):
-        _locs = ['parent', 'pull', 'x-pull']
+        _locs = ["parent", "pull", "x-pull"]
         for l in _locs:
             try:
                 contents = self._transport.get_bytes(l)
             except _mod_transport.NoSuchFile:
                 pass
             else:
-                return contents.strip(b'\n').decode('utf-8')
+                return contents.strip(b"\n").decode("utf-8")
         return None
 
     def get_stacked_on_url(self):
@@ -268,17 +275,18 @@ class BzrBranch(Branch, _RelockDebugMixin):
     def set_push_location(self, location):
         """See Branch.set_push_location."""
         self.get_config().set_user_option(
-            'push_location', location,
-            store=_mod_config.STORE_LOCATION_NORECURSE)
+            "push_location", location, store=_mod_config.STORE_LOCATION_NORECURSE
+        )
 
     def _set_parent_location(self, url):
         if url is None:
-            self._transport.delete('parent')
+            self._transport.delete("parent")
         else:
             if isinstance(url, str):
-                url = url.encode('utf-8')
-            self._transport.put_bytes('parent', url + b'\n',
-                                      mode=self.controldir._get_file_mode())
+                url = url.encode("utf-8")
+            self._transport.put_bytes(
+                "parent", url + b"\n", mode=self.controldir._get_file_mode()
+            )
 
     def unbind(self):
         """If bound, unbind."""
@@ -313,7 +321,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
 
     def get_bound_location(self):
         try:
-            return self._transport.get_bytes('bound')[:-1].decode('utf-8')
+            return self._transport.get_bytes("bound")[:-1].decode("utf-8")
         except _mod_transport.NoSuchFile:
             return None
 
@@ -324,8 +332,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         """
         with self.lock_read():
             if self._master_branch_cache is None:
-                self._master_branch_cache = self._get_master_branch(
-                    possible_transports)
+                self._master_branch_cache = self._get_master_branch(possible_transports)
             return self._master_branch_cache
 
     def _get_master_branch(self, possible_transports):
@@ -333,11 +340,9 @@ class BzrBranch(Branch, _RelockDebugMixin):
         if not bound_loc:
             return None
         try:
-            return Branch.open(bound_loc,
-                               possible_transports=possible_transports)
+            return Branch.open(bound_loc, possible_transports=possible_transports)
         except (errors.NotBranchError, ConnectionError) as exc:
-            raise errors.BoundBranchConnectionFailure(
-                self, bound_loc, exc) from exc
+            raise errors.BoundBranchConnectionFailure(self, bound_loc, exc) from exc
 
     def set_bound_location(self, location):
         """Set the target where this branch is bound to.
@@ -348,11 +353,13 @@ class BzrBranch(Branch, _RelockDebugMixin):
             self._master_branch_cache = None
             if location:
                 self._transport.put_bytes(
-                    'bound', location.encode('utf-8') + b'\n',
-                    mode=self.controldir._get_file_mode())
+                    "bound",
+                    location.encode("utf-8") + b"\n",
+                    mode=self.controldir._get_file_mode(),
+                )
             else:
                 try:
-                    self._transport.delete('bound')
+                    self._transport.delete("bound")
                 except _mod_transport.NoSuchFile:
                     return False
                 return True
@@ -369,15 +376,17 @@ class BzrBranch(Branch, _RelockDebugMixin):
                 old_tip = self.last_revision()
                 self.pull(master, overwrite=True)
                 if self.repository.get_graph().is_ancestor(
-                        old_tip, self.last_revision()):
+                    old_tip, self.last_revision()
+                ):
                     return None
                 return old_tip
             return None
 
     def _read_last_revision_info(self):
         from .. import cache_utf8
-        revision_string = self._transport.get_bytes('last-revision')
-        revno, revision_id = revision_string.rstrip(b'\n').split(b' ', 1)
+
+        revision_string = self._transport.get_bytes("last-revision")
+        revno, revision_id = revision_string.rstrip(b"\n").split(b" ", 1)
         revision_id = cache_utf8.get_cached_utf8(revision_id)
         revno = int(revno)
         return revno, revision_id
@@ -389,9 +398,10 @@ class BzrBranch(Branch, _RelockDebugMixin):
 
         Does not update the revision_history cache.
         """
-        out_string = b'%d %s\n' % (revno, revision_id)
-        self._transport.put_bytes('last-revision', out_string,
-                                  mode=self.controldir._get_file_mode())
+        out_string = b"%d %s\n" % (revno, revision_id)
+        self._transport.put_bytes(
+            "last-revision", out_string, mode=self.controldir._get_file_mode()
+        )
 
     def update_feature_flags(self, updated_flags):
         """Update the feature flags for this branch.
@@ -401,8 +411,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         """
         with self.lock_write():
             self._format._update_feature_flags(updated_flags)
-            self.control_transport.put_bytes(
-                'format', self._format.as_string())
+            self.control_transport.put_bytes("format", self._format.as_string())
 
     def _get_tags_bytes(self):
         """Get the bytes of a serialised tags dict.
@@ -418,7 +427,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         """
         with self.lock_read():
             if self._tags_bytes is None:
-                self._tags_bytes = self._transport.get_bytes('tags')
+                self._tags_bytes = self._transport.get_bytes("tags")
             return self._tags_bytes
 
     def _set_tags_bytes(self, bytes):
@@ -428,7 +437,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         """
         with self.lock_write():
             self._tags_bytes = bytes
-            return self._transport.put_bytes('tags', bytes)
+            return self._transport.put_bytes("tags", bytes)
 
     def _clear_cached_state(self):
         super()._clear_cached_state()
@@ -437,6 +446,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
     def reconcile(self, thorough=True):
         """Make sure the data stored in this branch is consistent."""
         from .reconcile import BranchReconciler
+
         with self.lock_write():
             reconciler = BranchReconciler(self, thorough=thorough)
             return reconciler.reconcile()
@@ -463,13 +473,16 @@ class BzrBranch(Branch, _RelockDebugMixin):
             try:
                 return Branch.open_from_transport(
                     self.controldir.root_transport.clone(path),
-                    possible_transports=possible_transports)
+                    possible_transports=possible_transports,
+                )
             except errors.NotBranchError:
                 return None
         return Branch.open(
             urlutils.join(
-                urlutils.strip_segment_parameters(self.user_url), branch_location),
-            possible_transports=possible_transports)
+                urlutils.strip_segment_parameters(self.user_url), branch_location
+            ),
+            possible_transports=possible_transports,
+        )
 
     def set_stacked_on_url(self, url: str) -> None:
         """Set the URL this branch is stacked against.
@@ -489,21 +502,26 @@ class BzrBranch(Branch, _RelockDebugMixin):
             if not url:
                 try:
                     self.get_stacked_on_url()
-                except (errors.NotStacked, UnstackableBranchFormat,
-                        errors.UnstackableRepositoryFormat):
+                except (
+                    errors.NotStacked,
+                    UnstackableBranchFormat,
+                    errors.UnstackableRepositoryFormat,
+                ):
                     return
                 self._unstack()
             else:
                 self._activate_fallback_location(
-                    url, possible_transports=[self.controldir.root_transport])
+                    url, possible_transports=[self.controldir.root_transport]
+                )
             # write this out after the repository is stacked to avoid setting a
             # stacked config that doesn't work.
-            self._set_config_location('stacked_on_location', url)
+            self._set_config_location("stacked_on_location", url)
 
     def _check_stackable_repo(self) -> None:
         if not self.repository._format.supports_external_lookups:
             raise errors.UnstackableRepositoryFormat(
-                self.repository._format, self.repository.user_url)
+                self.repository._format, self.repository.user_url
+            )
 
     def _unstack(self):
         """Change a branch to be unstacked, copying data as needed.
@@ -511,6 +529,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         Don't call this directly, use set_stacked_on_url(None).
         """
         from .vf_search import NotInOtherForRevs
+
         with ui.ui_factory.nested_progress_bar():
             # The basic approach here is to fetch the tip of the branch,
             # including all available ghosts, from the existing stacked
@@ -523,7 +542,9 @@ class BzrBranch(Branch, _RelockDebugMixin):
                 raise AssertionError(
                     "can't cope with fallback repositories "
                     "of {!r} (fallbacks: {!r})".format(
-                        old_repository, old_repository._fallback_repositories))
+                        old_repository, old_repository._fallback_repositories
+                    )
+                )
             # Open the new repository object.
             # Repositories don't offer an interface to remove fallback
             # repositories today; take the conceptually simpler option and just
@@ -532,12 +553,12 @@ class BzrBranch(Branch, _RelockDebugMixin):
             # stream from one of them to the other.  This does mean doing
             # separate SSH connection setup, but unstacking is not a
             # common operation so it's tolerable.
-            new_bzrdir = ControlDir.open(
-                self.controldir.root_transport.base)
+            new_bzrdir = ControlDir.open(self.controldir.root_transport.base)
             new_repository = new_bzrdir.find_repository()
             if new_repository._fallback_repositories:
                 raise AssertionError(
-                    f"didn't expect {self.repository!r} to have fallback_repositories")
+                    f"didn't expect {self.repository!r} to have fallback_repositories"
+                )
             # Replace self.repository with the new repository.
             # Do our best to transfer the lock state (i.e. lock-tokens and
             # lock count) of self.repository to the new repository.
@@ -563,7 +584,8 @@ class BzrBranch(Branch, _RelockDebugMixin):
                 old_lock_count += 1
             if old_lock_count == 0:
                 raise AssertionError(
-                    'old_repository should have been locked at least once.')
+                    "old_repository should have been locked at least once."
+                )
             for _i in range(old_lock_count - 1):
                 self.repository.lock_write()
             # Fetch from the old repository into the new.
@@ -576,9 +598,12 @@ class BzrBranch(Branch, _RelockDebugMixin):
                 except errors.TagsNotSupported:
                     tags_to_fetch = set()
                 fetch_spec = NotInOtherForRevs(
-                    self.repository, old_repository,
+                    self.repository,
+                    old_repository,
                     required_ids=[self.last_revision()],
-                    if_present_ids=tags_to_fetch, find_ghosts=True).execute()
+                    if_present_ids=tags_to_fetch,
+                    find_ghosts=True,
+                ).execute()
                 self.repository.fetch(old_repository, fetch_spec=fetch_spec)
 
     def break_lock(self) -> None:
@@ -606,22 +631,27 @@ class BzrBranch8(BzrBranch):
             possible_transports = [self.controldir.root_transport]
         try:
             url = self.get_stacked_on_url()
-        except (errors.UnstackableRepositoryFormat, errors.NotStacked,
-                UnstackableBranchFormat):
+        except (
+            errors.UnstackableRepositoryFormat,
+            errors.NotStacked,
+            UnstackableBranchFormat,
+        ):
             pass
         else:
-            for hook in Branch.hooks['transform_fallback_location']:
+            for hook in Branch.hooks["transform_fallback_location"]:
                 url = hook(self, url)
                 if url is None:
                     hook_name = Branch.hooks.get_hook_name(hook)
                     raise AssertionError(
                         "'transform_fallback_location' hook %s returned "
-                        "None, not a URL." % hook_name)
+                        "None, not a URL." % hook_name
+                    )
             self._activate_fallback_location(
-                url, possible_transports=possible_transports)
+                url, possible_transports=possible_transports
+            )
 
     def __init__(self, *args, **kwargs):
-        self._ignore_fallbacks = kwargs.get('ignore_fallbacks', False)
+        self._ignore_fallbacks = kwargs.get("ignore_fallbacks", False)
         super().__init__(*args, **kwargs)
         self._last_revision_info_cache = None
         self._reference_info = None
@@ -650,13 +680,12 @@ class BzrBranch8(BzrBranch):
     def _set_parent_location(self, url):
         """Set the parent branch."""
         with self.lock_write():
-            self._set_config_location(
-                'parent_location', url, make_relative=True)
+            self._set_config_location("parent_location", url, make_relative=True)
 
     def _get_parent_location(self):
         """Set the parent branch."""
         with self.lock_read():
-            return self._get_config_location('parent_location')
+            return self._get_config_location("parent_location")
 
     def _set_all_reference_info(self, info_dict):
         """Replace all reference info stored in a branch.
@@ -666,13 +695,14 @@ class BzrBranch8(BzrBranch):
         s = BytesIO()
         writer = rio.RioWriter(s)
         for file_id, (branch_location, tree_path) in info_dict.items():
-            stanza = rio.Stanza(file_id=file_id.decode('utf-8'),
-                                branch_location=branch_location)
+            stanza = rio.Stanza(
+                file_id=file_id.decode("utf-8"), branch_location=branch_location
+            )
             if tree_path is not None:
-                stanza.add('tree_path', tree_path)
+                stanza.add("tree_path", tree_path)
             writer.write_stanza(stanza)
         with self.lock_write():
-            self._transport.put_bytes('references', s.getvalue())
+            self._transport.put_bytes("references", s.getvalue())
             self._reference_info = info_dict
 
     def _get_all_reference_info(self):
@@ -684,13 +714,15 @@ class BzrBranch8(BzrBranch):
             if self._reference_info is not None:
                 return self._reference_info
             try:
-                with self._transport.get('references') as rio_file:
+                with self._transport.get("references") as rio_file:
                     stanzas = rio.read_stanzas(rio_file)
                     info_dict = {
-                        s.get('file_id').encode('utf-8'): (
-                            s.get('branch_location'),
-                            s.get('tree_path') if 'tree_path' in s else None)
-                        for s in stanzas}
+                        s.get("file_id").encode("utf-8"): (
+                            s.get("branch_location"),
+                            s.get("tree_path") if "tree_path" in s else None,
+                        )
+                        for s in stanzas
+                    }
             except _mod_transport.NoSuchFile:
                 info_dict = {}
             self._reference_info = info_dict
@@ -719,22 +751,21 @@ class BzrBranch8(BzrBranch):
 
     def set_push_location(self, location):
         """See Branch.set_push_location."""
-        self._set_config_location('push_location', location)
+        self._set_config_location("push_location", location)
 
     def set_bound_location(self, location):
         """See Branch.set_push_location."""
         self._master_branch_cache = None
         conf = self.get_config_stack()
         if location is None:
-            if not conf.get('bound'):
+            if not conf.get("bound"):
                 return False
             else:
-                conf.set('bound', 'False')
+                conf.set("bound", "False")
                 return True
         else:
-            self._set_config_location('bound_location', location,
-                                      config=conf)
-            conf.set('bound', 'True')
+            self._set_config_location("bound_location", location, config=conf)
+            conf.set("bound", "True")
         return True
 
     def _get_bound_location(self, bound):
@@ -743,9 +774,9 @@ class BzrBranch8(BzrBranch):
         Return None if the bound parameter does not match
         """
         conf = self.get_config_stack()
-        if conf.get('bound') != bound:
+        if conf.get("bound") != bound:
             return None
-        return self._get_config_location('bound_location', config=conf)
+        return self._get_config_location("bound_location", config=conf)
 
     def get_bound_location(self):
         """See Branch.get_bound_location."""
@@ -762,8 +793,7 @@ class BzrBranch8(BzrBranch):
         # stacked_on_location is only ever defined in branch.conf, so don't
         # waste effort reading the whole stack of config files.
         conf = _mod_config.BranchOnlyStack(self)
-        stacked_url = self._get_config_location('stacked_on_location',
-                                                config=conf)
+        stacked_url = self._get_config_location("stacked_on_location", config=conf)
         if stacked_url is None:
             raise errors.NotStacked(self)
         # TODO(jelmer): Clean this up for pad.lv/1696545
@@ -802,7 +832,8 @@ class BzrBranch8(BzrBranch):
                     self._extend_partial_history(stop_revision=revision_id)
                 except errors.RevisionNotPresent as exc:
                     raise errors.GhostRevisionsHaveNoRevno(
-                        revision_id, exc.revision_id) from exc
+                        revision_id, exc.revision_id
+                    ) from exc
                 index = len(self._partial_revision_history_cache) - 1
                 if index < 0:
                     raise errors.NoSuchRevision(self, revision_id) from e
@@ -815,11 +846,10 @@ class BzrBranch7(BzrBranch8):
     """A branch with support for a fallback repository."""
 
     def set_reference_info(self, file_id, branch_location, tree_path=None):
-        super().set_reference_info(
-            file_id, branch_location, tree_path)
+        super().set_reference_info(file_id, branch_location, tree_path)
         format_string = BzrBranchFormat8.get_format_string()
-        mutter('Upgrading branch to format %r', format_string)
-        self._transport.put_bytes('format', format_string)
+        mutter("Upgrading branch to format %r", format_string)
+        self._transport.put_bytes("format", format_string)
 
 
 class BzrBranch6(BzrBranch7):
@@ -851,8 +881,9 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
             format_string = transport.get_bytes("format")
         except _mod_transport.NoSuchFile as exc:
             raise errors.NotBranchError(
-                path=transport.base, controldir=controldir) from exc
-        return klass._find_format(format_registry, 'branch', format_string)
+                path=transport.base, controldir=controldir
+            ) from exc
+        return klass._find_format(format_registry, "branch", format_string)
 
     def _branch_class(self):
         """What class to instantiate on open calls."""
@@ -866,8 +897,7 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
             # as that is the default.
             return b""
 
-    def _initialize_helper(self, a_controldir, utf8_files, name=None,
-                           repository=None):
+    def _initialize_helper(self, a_controldir, utf8_files, name=None, repository=None):
         """Initialize a branch in a control dir, with specified files.
 
         :param a_controldir: The bzrdir to initialize the branch in
@@ -878,28 +908,34 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
         """
         if name is None:
             name = a_controldir._get_selected_branch()
-        mutter('creating branch %r in %s', self, a_controldir.user_url)
+        mutter("creating branch %r in %s", self, a_controldir.user_url)
         branch_transport = a_controldir.get_branch_transport(self, name=name)
-        control_files = lockable_files.LockableFiles(branch_transport,
-                                                     'lock', lockdir.LockDir)
+        control_files = lockable_files.LockableFiles(
+            branch_transport, "lock", lockdir.LockDir
+        )
         control_files.create_lock()
         control_files.lock_write()
         try:
-            utf8_files += [('format', self.as_string())]
-            for (filename, content) in utf8_files:
+            utf8_files += [("format", self.as_string())]
+            for filename, content in utf8_files:
                 branch_transport.put_bytes(
-                    filename, content,
-                    mode=a_controldir._get_file_mode())
+                    filename, content, mode=a_controldir._get_file_mode()
+                )
         finally:
             control_files.unlock()
-        branch = self.open(a_controldir, name, _found=True,
-                           found_repository=repository)
+        branch = self.open(a_controldir, name, _found=True, found_repository=repository)
         self._run_post_branch_init_hooks(a_controldir, name, branch)
         return branch
 
-    def open(self, a_controldir, name=None, _found=False,
-             ignore_fallbacks=False, found_repository=None,
-             possible_transports=None):
+    def open(
+        self,
+        a_controldir,
+        name=None,
+        _found=False,
+        ignore_fallbacks=False,
+        found_repository=None,
+        possible_transports=None,
+    ):
         """See BranchFormat.open()."""
         if name is None:
             name = a_controldir._get_selected_branch()
@@ -909,18 +945,24 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
                 raise AssertionError(f"wrong format {format!r} found for {self!r}")
         transport = a_controldir.get_branch_transport(None, name=name)
         try:
-            control_files = lockable_files.LockableFiles(transport, 'lock',
-                                                         lockdir.LockDir)
+            control_files = lockable_files.LockableFiles(
+                transport, "lock", lockdir.LockDir
+            )
             if found_repository is None:
                 found_repository = a_controldir.find_repository()
             return self._branch_class()(
-                _format=self, _control_files=control_files, name=name,
-                a_controldir=a_controldir, _repository=found_repository,
+                _format=self,
+                _control_files=control_files,
+                name=name,
+                a_controldir=a_controldir,
+                _repository=found_repository,
                 ignore_fallbacks=ignore_fallbacks,
-                possible_transports=possible_transports)
+                possible_transports=possible_transports,
+            )
         except _mod_transport.NoSuchFile as exc:
             raise errors.NotBranchError(
-                path=transport.base, controldir=a_controldir) from exc
+                path=transport.base, controldir=a_controldir
+            ) from exc
 
     @property
     def _matchingcontroldir(self):
@@ -934,14 +976,21 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
     def supports_leaving_lock(self):
         return True
 
-    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
-                             basedir=None):
+    def check_support_status(
+        self, allow_unsupported, recommend_upgrade=True, basedir=None
+    ):
         BranchFormat.check_support_status(
-            self, allow_unsupported=allow_unsupported,
-            recommend_upgrade=recommend_upgrade, basedir=basedir)
+            self,
+            allow_unsupported=allow_unsupported,
+            recommend_upgrade=recommend_upgrade,
+            basedir=basedir,
+        )
         bzrdir.BzrFormat.check_support_status(
-            self, allow_unsupported=allow_unsupported,
-            recommend_upgrade=recommend_upgrade, basedir=basedir)
+            self,
+            allow_unsupported=allow_unsupported,
+            recommend_upgrade=recommend_upgrade,
+            basedir=basedir,
+        )
 
 
 class BzrBranchFormat6(BranchFormatMetadir):
@@ -967,20 +1016,21 @@ class BzrBranchFormat6(BranchFormatMetadir):
         """See BranchFormat.get_format_description()."""
         return "Branch format 6"
 
-    def initialize(self, a_controldir, name=None, repository=None,
-                   append_revisions_only=None):
+    def initialize(
+        self, a_controldir, name=None, repository=None, append_revisions_only=None
+    ):
         """Create a branch of this format in a_controldir."""
         utf8_files = [
-            ('last-revision', b'0 null:\n'),
-            ('branch.conf', self._get_initial_config(append_revisions_only)),
-            ('tags', b''),
-            ]
-        return self._initialize_helper(
-            a_controldir, utf8_files, name, repository)
+            ("last-revision", b"0 null:\n"),
+            ("branch.conf", self._get_initial_config(append_revisions_only)),
+            ("tags", b""),
+        ]
+        return self._initialize_helper(a_controldir, utf8_files, name, repository)
 
     def make_tags(self, branch):
         """See breezy.branch.BranchFormat.make_tags()."""
         from .tag import BasicTags
+
         return BasicTags(branch)
 
     def supports_set_append_revisions_only(self):
@@ -1004,21 +1054,22 @@ class BzrBranchFormat8(BranchFormatMetadir):
         """See BranchFormat.get_format_description()."""
         return "Branch format 8"
 
-    def initialize(self, a_controldir, name=None, repository=None,
-                   append_revisions_only=None):
+    def initialize(
+        self, a_controldir, name=None, repository=None, append_revisions_only=None
+    ):
         """Create a branch of this format in a_controldir."""
-        utf8_files = [('last-revision', b'0 null:\n'),
-                      ('branch.conf',
-                          self._get_initial_config(append_revisions_only)),
-                      ('tags', b''),
-                      ('references', b'')
-                      ]
-        return self._initialize_helper(
-            a_controldir, utf8_files, name, repository)
+        utf8_files = [
+            ("last-revision", b"0 null:\n"),
+            ("branch.conf", self._get_initial_config(append_revisions_only)),
+            ("tags", b""),
+            ("references", b""),
+        ]
+        return self._initialize_helper(a_controldir, utf8_files, name, repository)
 
     def make_tags(self, branch):
         """See breezy.branch.BranchFormat.make_tags()."""
         from .tag import BasicTags
+
         return BasicTags(branch)
 
     def supports_set_append_revisions_only(self):
@@ -1039,16 +1090,16 @@ class BzrBranchFormat7(BranchFormatMetadir):
     This format was introduced in bzr 1.6.
     """
 
-    def initialize(self, a_controldir, name=None, repository=None,
-                   append_revisions_only=None):
+    def initialize(
+        self, a_controldir, name=None, repository=None, append_revisions_only=None
+    ):
         """Create a branch of this format in a_controldir."""
-        utf8_files = [('last-revision', b'0 null:\n'),
-                      ('branch.conf',
-                          self._get_initial_config(append_revisions_only)),
-                      ('tags', b''),
-                      ]
-        return self._initialize_helper(
-            a_controldir, utf8_files, name, repository)
+        utf8_files = [
+            ("last-revision", b"0 null:\n"),
+            ("branch.conf", self._get_initial_config(append_revisions_only)),
+            ("tags", b""),
+        ]
+        return self._initialize_helper(a_controldir, utf8_files, name, repository)
 
     def _branch_class(self):
         return BzrBranch7
@@ -1071,6 +1122,7 @@ class BzrBranchFormat7(BranchFormatMetadir):
     def make_tags(self, branch):
         """See breezy.branch.BranchFormat.make_tags()."""
         from .tag import BasicTags
+
         return BasicTags(branch)
 
     # This is a white lie; as soon as you set a reference location, we upgrade
@@ -1102,8 +1154,7 @@ class BranchReferenceFormat(BranchFormatMetadir):
         """See BranchFormat.get_reference()."""
         transport = a_controldir.get_branch_transport(None, name=name)
         url = urlutils.strip_segment_parameters(a_controldir.user_url)
-        return urlutils.join(
-            url, transport.get_bytes('location').decode('utf-8'))
+        return urlutils.join(url, transport.get_bytes("location").decode("utf-8"))
 
     def _write_reference(self, a_controldir, transport, to_branch):
         to_url = to_branch.user_url
@@ -1113,47 +1164,71 @@ class BranchReferenceFormat(BranchFormatMetadir):
         # does not support relative URLs. See pad.lv/1803845 -- jelmer
         # to_url = urlutils.relative_url(
         #    a_controldir.user_url, to_branch.user_url)
-        transport.put_bytes('location', to_url.encode('utf-8'))
+        transport.put_bytes("location", to_url.encode("utf-8"))
 
     def set_reference(self, a_controldir, name, to_branch):
         """See BranchFormat.set_reference()."""
         transport = a_controldir.get_branch_transport(None, name=name)
         self._write_reference(a_controldir, transport, to_branch)
 
-    def initialize(self, a_controldir, name=None, target_branch=None,
-                   repository=None, append_revisions_only=None):
+    def initialize(
+        self,
+        a_controldir,
+        name=None,
+        target_branch=None,
+        repository=None,
+        append_revisions_only=None,
+    ):
         """Create a branch of this format in a_controldir."""
         if target_branch is None:
             # this format does not implement branch itself, thus the implicit
             # creation contract must see it as uninitializable
             raise errors.UninitializableFormat(self)
-        mutter('creating branch reference in %s', a_controldir.user_url)
+        mutter("creating branch reference in %s", a_controldir.user_url)
         if a_controldir._format.fixed_components:
             raise errors.IncompatibleFormat(self, a_controldir._format)
         if name is None:
             name = a_controldir._get_selected_branch()
         branch_transport = a_controldir.get_branch_transport(self, name=name)
         self._write_reference(a_controldir, branch_transport, target_branch)
-        branch_transport.put_bytes('format', self.as_string())
-        branch = self.open(a_controldir, name, _found=True,
-                           possible_transports=[target_branch.controldir.root_transport])
+        branch_transport.put_bytes("format", self.as_string())
+        branch = self.open(
+            a_controldir,
+            name,
+            _found=True,
+            possible_transports=[target_branch.controldir.root_transport],
+        )
         self._run_post_branch_init_hooks(a_controldir, name, branch)
         return branch
 
     def _make_reference_clone_function(self, a_branch):
         """Create a clone() routine for a branch dynamically."""
-        def clone(to_bzrdir, revision_id=None, repository_policy=None, name=None,
-                  tag_selector=None):
+
+        def clone(
+            to_bzrdir,
+            revision_id=None,
+            repository_policy=None,
+            name=None,
+            tag_selector=None,
+        ):
             """See Branch.clone()."""
             return self.initialize(to_bzrdir, target_branch=a_branch, name=name)
             # cannot obey revision_id limits when cloning a reference ...
             # FIXME RBC 20060210 either nuke revision_id for clone, or
             # emit some sort of warning/error to the caller ?!
+
         return clone
 
-    def open(self, a_controldir, name=None, _found=False, location=None,
-             possible_transports=None, ignore_fallbacks=False,
-             found_repository=None):
+    def open(
+        self,
+        a_controldir,
+        name=None,
+        _found=False,
+        location=None,
+        possible_transports=None,
+        ignore_fallbacks=False,
+        found_repository=None,
+    ):
         """Return the branch that the branch reference in a_controldir points at.
 
         :param a_controldir: A BzrDir that contains a branch.
@@ -1175,11 +1250,10 @@ class BranchReferenceFormat(BranchFormatMetadir):
                 raise AssertionError(f"wrong format {format!r} found for {self!r}")
         if location is None:
             location = self.get_reference(a_controldir, name)
-        real_bzrdir = ControlDir.open(
-            location, possible_transports=possible_transports)
+        real_bzrdir = ControlDir.open(location, possible_transports=possible_transports)
         result = real_bzrdir.open_branch(
-            ignore_fallbacks=ignore_fallbacks,
-            possible_transports=possible_transports)
+            ignore_fallbacks=ignore_fallbacks, possible_transports=possible_transports
+        )
         # this changes the behaviour of result.clone to create a new reference
         # rather than a copy of the content of the branch.
         # I did not use a proxy object because that needs much more extensive
@@ -1212,11 +1286,11 @@ class Converter5to6:
 
         # Copying done; now update target format
         new_branch._transport.put_bytes(
-            'format', format.as_string(),
-            mode=new_branch.controldir._get_file_mode())
+            "format", format.as_string(), mode=new_branch.controldir._get_file_mode()
+        )
 
         # Clean up old files
-        new_branch._transport.delete('revision-history')
+        new_branch._transport.delete("revision-history")
         with branch.lock_write():
             try:
                 branch.set_parent(None)
@@ -1230,9 +1304,9 @@ class Converter6to7:
 
     def convert(self, branch):
         format = BzrBranchFormat7()
-        branch._set_config_location('stacked_on_location', '')
+        branch._set_config_location("stacked_on_location", "")
         # update target format
-        branch._transport.put_bytes('format', format.as_string())
+        branch._transport.put_bytes("format", format.as_string())
 
 
 class Converter7to8:
@@ -1240,6 +1314,6 @@ class Converter7to8:
 
     def convert(self, branch):
         format = BzrBranchFormat8()
-        branch._transport.put_bytes('references', b'')
+        branch._transport.put_bytes("references", b"")
         # update target format
-        branch._transport.put_bytes('format', format.as_string())
+        branch._transport.put_bytes("format", format.as_string())

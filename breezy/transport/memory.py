@@ -38,7 +38,6 @@ from ..transport import (
 
 
 class MemoryStat:
-
     def __init__(self, size, kind, perms=None):
         self.st_size = size
         if not S_ISDIR(kind):
@@ -58,14 +57,14 @@ class MemoryTransport(transport.Transport):
         """Set the 'base' path where files will be stored."""
         if url == "":
             url = "memory:///"
-        if url[-1] != '/':
-            url = url + '/'
+        if url[-1] != "/":
+            url = url + "/"
         super().__init__(url)
-        split = url.find(':') + 3
+        split = url.find(":") + 3
         self._scheme = url[:split]
         self._cwd = url[split:]
         # dictionaries from absolute path to file mode
-        self._dirs = {'/': None}
+        self._dirs = {"/": None}
         self._symlinks = {}
         self._files = {}
         self._locks = {}
@@ -73,8 +72,8 @@ class MemoryTransport(transport.Transport):
     def clone(self, offset=None):
         """See Transport.clone()."""
         path = urlutils.combine_paths(self._cwd, offset)
-        if len(path) == 0 or path[-1] != '/':
-            path += '/'
+        if len(path) == 0 or path[-1] != "/":
+            path += "/"
         url = self._scheme + path
         result = self.__class__(url)
         result._dirs = self._dirs
@@ -89,7 +88,7 @@ class MemoryTransport(transport.Transport):
         # current environment - XXX RBC 20060404 move the clone '..' handling
         # into here and call abspath from clone
         temp_t = self.clone(relpath)
-        if temp_t.base.count('/') == 3:
+        if temp_t.base.count("/") == 3:
             return temp_t.base
         else:
             return temp_t.base[:-1]
@@ -106,7 +105,7 @@ class MemoryTransport(transport.Transport):
 
     def _check_parent(self, _abspath):
         dir = os.path.dirname(_abspath)
-        if dir != '/':
+        if dir != "/":
             if dir not in self._dirs:
                 raise NoSuchFile(_abspath)
 
@@ -156,7 +155,7 @@ class MemoryTransport(transport.Transport):
         """Create a symlink pointing to source named link_name."""
         _abspath = self._abspath(link_name)
         self._check_parent(_abspath)
-        self._symlinks[_abspath] = source.split('/')
+        self._symlinks[_abspath] = source.split("/")
 
     def mkdir(self, relpath, mode=None):
         """See Transport.mkdir()."""
@@ -180,23 +179,23 @@ class MemoryTransport(transport.Transport):
     def iter_files_recursive(self):
         for file in itertools.chain(self._files, self._symlinks):
             if file.startswith(self._cwd):
-                yield urlutils.escape(file[len(self._cwd):])
+                yield urlutils.escape(file[len(self._cwd) :])
 
     def list_dir(self, relpath):
         """See Transport.list_dir()."""
         _abspath = self._resolve_symlinks(relpath)
-        if _abspath != '/' and _abspath not in self._dirs:
+        if _abspath != "/" and _abspath not in self._dirs:
             raise NoSuchFile(relpath)
         result = []
 
-        if not _abspath.endswith('/'):
-            _abspath += '/'
+        if not _abspath.endswith("/"):
+            _abspath += "/"
 
         for path_group in self._files, self._dirs, self._symlinks:
             for path in path_group:
                 if path.startswith(_abspath):
-                    trailing = path[len(_abspath):]
-                    if trailing and '/' not in trailing:
+                    trailing = path[len(_abspath) :]
+                    if trailing and "/" not in trailing:
                         result.append(urlutils.escape(trailing))
         return result
 
@@ -208,8 +207,8 @@ class MemoryTransport(transport.Transport):
         def replace(x):
             if x == abs_from:
                 x = abs_to
-            elif x.startswith(abs_from + '/'):
-                x = abs_to + x[len(abs_from):]
+            elif x.startswith(abs_from + "/"):
+                x = abs_to + x[len(abs_from) :]
             return x
 
         def do_renames(container):
@@ -247,13 +246,11 @@ class MemoryTransport(transport.Transport):
         if _abspath in self._files:
             self._translate_error(OSError(errno.ENOTDIR, relpath), relpath)
         for path in itertools.chain(self._files, self._symlinks):
-            if path.startswith(_abspath + '/'):
-                self._translate_error(OSError(errno.ENOTEMPTY, relpath),
-                                      relpath)
+            if path.startswith(_abspath + "/"):
+                self._translate_error(OSError(errno.ENOTEMPTY, relpath), relpath)
         for path in self._dirs:
-            if path.startswith(_abspath + '/') and path != _abspath:
-                self._translate_error(
-                    OSError(errno.ENOTEMPTY, relpath), relpath)
+            if path.startswith(_abspath + "/") and path != _abspath:
+                self._translate_error(OSError(errno.ENOTEMPTY, relpath), relpath)
         if _abspath not in self._dirs:
             raise NoSuchFile(relpath)
         del self._dirs[_abspath]
@@ -262,8 +259,9 @@ class MemoryTransport(transport.Transport):
         """See Transport.stat()."""
         _abspath = self._abspath(relpath)
         if _abspath in self._files.keys():
-            return MemoryStat(len(self._files[_abspath][0]), S_IFREG,
-                              self._files[_abspath][1])
+            return MemoryStat(
+                len(self._files[_abspath][0]), S_IFREG, self._files[_abspath][1]
+            )
         elif _abspath in self._dirs.keys():
             return MemoryStat(0, S_IFDIR, self._dirs[_abspath])
         elif _abspath in self._symlinks.keys():
@@ -288,27 +286,27 @@ class MemoryTransport(transport.Transport):
     def _abspath(self, relpath):
         """Generate an internal absolute path."""
         relpath = urlutils.unescape(relpath)
-        if relpath[:1] == '/':
+        if relpath[:1] == "/":
             return relpath
-        cwd_parts = self._cwd.split('/')
-        rel_parts = relpath.split('/')
+        cwd_parts = self._cwd.split("/")
+        rel_parts = relpath.split("/")
         r = []
         for i in cwd_parts + rel_parts:
-            if i == '..':
+            if i == "..":
                 if not r:
                     raise ValueError(f"illegal relpath {relpath!r} under {self._cwd!r}")
                 r = r[:-1]
-            elif i == '.' or i == '':
+            elif i == "." or i == "":
                 pass
             else:
                 r.append(i)
-                r = self._symlinks.get('/'.join(r), r)
-        return '/' + '/'.join(r)
+                r = self._symlinks.get("/".join(r), r)
+        return "/" + "/".join(r)
 
     def readlink(self, link_name):
         _abspath = self._abspath(link_name)
         try:
-            return '/'.join(self._symlinks[_abspath])
+            return "/".join(self._symlinks[_abspath])
         except KeyError as err:
             raise NoSuchFile(link_name) from err
 
@@ -320,7 +318,7 @@ class _MemoryLock:
         self.path = path
         self.transport = transport
         if self.path in self.transport._locks:
-            raise LockError(f'File {self.path!r} already locked')
+            raise LockError(f"File {self.path!r} already locked")
         self.transport._locks[self.path] = self
 
     def unlock(self):
@@ -332,7 +330,7 @@ class MemoryServer(transport.Server):
     """Server for the MemoryTransport for testing with."""
 
     def start_server(self):
-        self._dirs = {'/': None}
+        self._dirs = {"/": None}
         self._files = {}
         self._symlinks = {}
         self._locks = {}
@@ -340,12 +338,14 @@ class MemoryServer(transport.Server):
 
         def memory_factory(url):
             from . import memory
+
             result = memory.MemoryTransport(url)
             result._dirs = self._dirs
             result._files = self._files
             result._symlinks = self._symlinks
             result._locks = self._locks
             return result
+
         self._memory_factory = memory_factory
         transport.register_transport(self._scheme, self._memory_factory)
 
@@ -363,5 +363,6 @@ class MemoryServer(transport.Server):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    return [(MemoryTransport, MemoryServer),
-            ]
+    return [
+        (MemoryTransport, MemoryServer),
+    ]

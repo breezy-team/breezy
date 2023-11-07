@@ -34,7 +34,7 @@ from ...workingtree import WorkingTreeFormat
 def get_conflicted_stem(path):
     for suffix in _mod_bzr_conflicts.CONFLICT_SUFFIXES:
         if path.endswith(suffix):
-            return path[:-len(suffix)]
+            return path[: -len(suffix)]
 
 
 class WorkingTreeFormat2(WorkingTreeFormat):
@@ -53,7 +53,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
 
     supports_versioned_directories = True
 
-    ignore_filename = '.bzrignore'
+    ignore_filename = ".bzrignore"
 
     supports_setting_file_ids = True
     """If this format allows setting the file id."""
@@ -73,11 +73,17 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         inv = inventory.Inventory()
         xml5.inventory_serializer_v5.write_inventory(inv, sio, working=True)
         sio.seek(0)
-        transport.put_file('inventory', sio, file_mode)
-        transport.put_bytes('pending-merges', b'', file_mode)
+        transport.put_file("inventory", sio, file_mode)
+        transport.put_bytes("pending-merges", b"", file_mode)
 
-    def initialize(self, a_controldir, revision_id=None, from_branch=None,
-                   accelerator_tree=None, hardlink=False):
+    def initialize(
+        self,
+        a_controldir,
+        revision_id=None,
+        from_branch=None,
+        accelerator_tree=None,
+        hardlink=False,
+    ):
         """See WorkingTreeFormat.initialize()."""
         if not isinstance(a_controldir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_controldir.transport.base)
@@ -90,16 +96,18 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         with branch.lock_write():
             branch.generate_revision_history(revision_id)
         inv = inventory.Inventory()
-        wt = WorkingTree2(a_controldir.root_transport.local_abspath('.'),
-                          branch,
-                          inv,
-                          _internal=True,
-                          _format=self,
-                          _controldir=a_controldir,
-                          _control_files=branch.control_files)
+        wt = WorkingTree2(
+            a_controldir.root_transport.local_abspath("."),
+            branch,
+            inv,
+            _internal=True,
+            _format=self,
+            _controldir=a_controldir,
+            _control_files=branch.control_files,
+        )
         basis_tree = branch.repository.revision_tree(revision_id)
-        if basis_tree.path2id('') is not None:
-            wt.set_root_id(basis_tree.path2id(''))
+        if basis_tree.path2id("") is not None:
+            wt.set_root_id(basis_tree.path2id(""))
         # set the parent list and cache the basis tree.
         if _mod_revision.is_null(revision_id):
             parent_trees = []
@@ -107,13 +115,14 @@ class WorkingTreeFormat2(WorkingTreeFormat):
             parent_trees = [(revision_id, basis_tree)]
         wt.set_parent_trees(parent_trees)
         bzr_transform.build_tree(basis_tree, wt)
-        for hook in MutableTree.hooks['post_build_tree']:
+        for hook in MutableTree.hooks["post_build_tree"]:
             hook(wt)
         return wt
 
     def __init__(self):
         super().__init__()
         from .bzrdir import BzrDirFormat6
+
         self._matchingcontroldir = BzrDirFormat6()
 
     def open(self, a_controldir, _found=False):
@@ -127,11 +136,13 @@ class WorkingTreeFormat2(WorkingTreeFormat):
             raise NotImplementedError
         if not isinstance(a_controldir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_controldir.transport.base)
-        wt = WorkingTree2(a_controldir.root_transport.local_abspath('.'),
-                          _internal=True,
-                          _format=self,
-                          _controldir=a_controldir,
-                          _control_files=a_controldir.open_branch().control_files)
+        wt = WorkingTree2(
+            a_controldir.root_transport.local_abspath("."),
+            _internal=True,
+            _format=self,
+            _controldir=a_controldir,
+            _control_files=a_controldir.open_branch().control_files,
+        )
         return wt
 
 
@@ -156,7 +167,7 @@ class WorkingTree2(PreDirStateWorkingTree):
 
     def _get_check_refs(self):
         """Return the references needed to perform a check of this tree."""
-        return [('trees', self.last_revision())]
+        return [("trees", self.last_revision())]
 
     def lock_tree_write(self):
         """See WorkingTree.lock_tree_write().
@@ -212,20 +223,21 @@ class WorkingTree2(PreDirStateWorkingTree):
                 except _mod_transport.NoSuchFile:
                     text = False
                 if text is True:
-                    for suffix in ('.THIS', '.OTHER'):
+                    for suffix in (".THIS", ".OTHER"):
                         try:
-                            kind = file_kind(
-                                self.abspath(conflicted + suffix))
+                            kind = file_kind(self.abspath(conflicted + suffix))
                             if kind != "file":
                                 text = False
                         except _mod_transport.NoSuchFile:
                             text = False
                         if text is False:
                             break
-                ctype = {True: 'text conflict',
-                         False: 'contents conflict'}[text]
-                conflicts.append(_mod_bzr_conflicts.Conflict.factory(
-                    ctype, path=conflicted, file_id=self.path2id(conflicted)))
+                ctype = {True: "text conflict", False: "contents conflict"}[text]
+                conflicts.append(
+                    _mod_bzr_conflicts.Conflict.factory(
+                        ctype, path=conflicted, file_id=self.path2id(conflicted)
+                    )
+                )
             return conflicts
 
     def set_conflicts(self, arg):

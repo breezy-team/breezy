@@ -17,9 +17,9 @@
 """Reconcilers are able to fix some potential data errors in a branch."""
 
 __all__ = [
-    'reconcile',
-    'Reconciler',
-    ]
+    "reconcile",
+    "Reconciler",
+]
 
 
 from . import errors, ui
@@ -62,12 +62,13 @@ class Reconciler:
             repo_result = self._reconcile_repository()
             # TODO(jelmer): Don't hardcode supported attributes here
             result.inconsistent_parents = getattr(
-                repo_result, 'inconsistent_parents', None)
-            result.aborted = getattr(repo_result, 'aborted', None)
+                repo_result, "inconsistent_parents", None
+            )
+            result.aborted = getattr(repo_result, "aborted", None)
             result.garbage_inventories = getattr(
-                repo_result, 'garbage_inventories', None)
-            result.fixed_branch_history = getattr(
-                branch_result, 'fixed_history', None)
+                repo_result, "garbage_inventories", None
+            )
+            result.fixed_branch_history = getattr(branch_result, "fixed_history", None)
             return result
 
     def _reconcile_branch(self):
@@ -76,28 +77,28 @@ class Reconciler:
         except errors.NotBranchError:
             # Nothing to check here
             return
-        ui.ui_factory.note(gettext('Reconciling branch %s') % self.branch.base)
+        ui.ui_factory.note(gettext("Reconciling branch %s") % self.branch.base)
         return self.branch.reconcile(thorough=True)
 
     def _reconcile_repository(self):
         self.repo = self.controldir.find_repository()
-        ui.ui_factory.note(gettext('Reconciling repository %s') %
-                           self.repo.user_url)
+        ui.ui_factory.note(gettext("Reconciling repository %s") % self.repo.user_url)
         self.pb.update(gettext("Reconciling repository"), 0, 1)
         if self.canonicalize_chks:
             try:
                 self.repo.reconcile_canonicalize_chks  # noqa: B018
             except AttributeError as err:
                 raise errors.BzrError(
-                    gettext("%s cannot canonicalize CHKs.") % (self.repo,)) from err
+                    gettext("%s cannot canonicalize CHKs.") % (self.repo,)
+                ) from err
             reconcile_result = self.repo.reconcile_canonicalize_chks()
         else:
             reconcile_result = self.repo.reconcile(thorough=True)
         if reconcile_result.aborted:
-            ui.ui_factory.note(gettext(
-                'Reconcile aborted: revision index has inconsistent parents.'))
-            ui.ui_factory.note(gettext(
-                'Run "brz check" for more details.'))
+            ui.ui_factory.note(
+                gettext("Reconcile aborted: revision index has inconsistent parents.")
+            )
+            ui.ui_factory.note(gettext('Run "brz check" for more details.'))
         else:
-            ui.ui_factory.note(gettext('Reconciliation complete.'))
+            ui.ui_factory.note(gettext("Reconciliation complete."))
         return reconcile_result

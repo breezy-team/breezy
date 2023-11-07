@@ -37,6 +37,7 @@ RevisionID = bytes
 def iter_bugs(rev):
     """Iterate over the bugs associated with this revision."""
     from . import bugtracker
+
     return bugtracker.decode_bug_urls(rev.bug_urls())
 
 
@@ -59,7 +60,9 @@ def get_history(repository, current_revision):
     return reversed_result
 
 
-def iter_ancestors(revision_id: RevisionID, revision_source, only_present: bool = False):
+def iter_ancestors(
+    revision_id: RevisionID, revision_source, only_present: bool = False
+):
     ancestors = [revision_id]
     distance = 0
     while len(ancestors) > 0:
@@ -81,15 +84,18 @@ def iter_ancestors(revision_id: RevisionID, revision_source, only_present: bool 
         distance += 1
 
 
-def find_present_ancestors(revision_id: RevisionID, revision_source) -> Dict[RevisionID, Tuple[int, int]]:
+def find_present_ancestors(
+    revision_id: RevisionID, revision_source
+) -> Dict[RevisionID, Tuple[int, int]]:
     """Return the ancestors of a revision present in a branch.
 
     It's possible that a branch won't have the complete ancestry of
     one of its revisions.
     """
     found_ancestors: Dict[RevisionID, Tuple[int, int]] = {}
-    anc_iter = enumerate(iter_ancestors(revision_id, revision_source,
-                                        only_present=True))
+    anc_iter = enumerate(
+        iter_ancestors(revision_id, revision_source, only_present=True)
+    )
     for anc_order, (anc_id, anc_distance) in anc_iter:
         if anc_id not in found_ancestors:
             found_ancestors[anc_id] = (anc_order, anc_distance)

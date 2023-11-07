@@ -27,10 +27,9 @@ def import_marks(filename):
     """
     # Check that the file is readable and in the right format
     try:
-        f = open(filename, 'rb')
+        f = open(filename, "rb")
     except OSError:
-        warning("Could not import marks file %s - not importing marks",
-                filename)
+        warning("Could not import marks file %s - not importing marks", filename)
         return None
 
     try:
@@ -38,21 +37,21 @@ def import_marks(filename):
         revision_ids = {}
 
         line = f.readline()
-        if line == b'format=1\n':
+        if line == b"format=1\n":
             # Cope with old-style marks files
             # Read the branch info
             branch_names = {}
-            for string in f.readline().rstrip(b'\n').split(b'\0'):
+            for string in f.readline().rstrip(b"\n").split(b"\0"):
                 if not string:
                     continue
-                name, integer = string.rsplit(b'.', 1)
+                name, integer = string.rsplit(b".", 1)
                 branch_names[name] = int(integer)
             line = f.readline()
 
         while line:
-            line = line.rstrip(b'\n')
-            mark, revid = line.split(b' ', 1)
-            mark = mark.lstrip(b':')
+            line = line.rstrip(b"\n")
+            mark, revid = line.split(b" ", 1)
+            mark = mark.lstrip(b":")
             revision_ids[mark] = revid
             line = f.readline()
     finally:
@@ -67,15 +66,14 @@ def export_marks(filename, revision_ids):
     :param revision_ids: dictionary mapping marks -> bzr revision-ids
     """
     try:
-        f = open(filename, 'wb')
+        f = open(filename, "wb")
     except OSError:
-        warning("Could not open export-marks file %s - not exporting marks",
-                filename)
+        warning("Could not open export-marks file %s - not exporting marks", filename)
         return
 
     try:
         # Write the revision info
         for mark, revid in sorted(revision_ids.items()):
-            f.write(b':%s %s\n' % (mark.lstrip(b':'), revid))
+            f.write(b":%s %s\n" % (mark.lstrip(b":"), revid))
     finally:
         f.close()

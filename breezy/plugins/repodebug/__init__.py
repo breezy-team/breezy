@@ -28,26 +28,23 @@ def test_suite():
     from unittest import TestSuite
 
     from .tests import test_suite
+
     result = TestSuite()
     result.addTest(test_suite())
     return result
 
 
+plugin_cmds.register_lazy("cmd_check_chk", [], __name__ + ".check_chk")
+plugin_cmds.register_lazy("cmd_chk_used_by", [], __name__ + ".chk_used_by")
+plugin_cmds.register_lazy("cmd_fetch_all_records", [], __name__ + ".fetch_all_records")
+plugin_cmds.register_lazy("cmd_file_refs", [], __name__ + ".file_refs")
 plugin_cmds.register_lazy(
-    'cmd_check_chk', [], __name__ + '.check_chk')
+    "cmd_fix_missing_keys_for_stacking",
+    [],
+    __name__ + ".missing_keys_for_stacking_fixer",
+)
 plugin_cmds.register_lazy(
-    'cmd_chk_used_by', [], __name__ + '.chk_used_by')
-plugin_cmds.register_lazy(
-    'cmd_fetch_all_records', [], __name__ + '.fetch_all_records')
-plugin_cmds.register_lazy(
-    'cmd_file_refs', [], __name__ + '.file_refs')
-plugin_cmds.register_lazy(
-    'cmd_fix_missing_keys_for_stacking', [],
-    __name__ + '.missing_keys_for_stacking_fixer')
-plugin_cmds.register_lazy(
-    'cmd_mirror_revs_into', [],
-    __name__ + '.missing_keys_for_stacking_fixer')
-plugin_cmds.register_lazy(
-    'cmd_repo_has_key', [], __name__ + '.repo_has_key')
-plugin_cmds.register_lazy(
-    'cmd_repo_keys', [], __name__ + '.repo_keys')
+    "cmd_mirror_revs_into", [], __name__ + ".missing_keys_for_stacking_fixer"
+)
+plugin_cmds.register_lazy("cmd_repo_has_key", [], __name__ + ".repo_has_key")
+plugin_cmds.register_lazy("cmd_repo_keys", [], __name__ + ".repo_keys")

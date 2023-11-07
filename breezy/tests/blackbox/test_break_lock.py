@@ -22,7 +22,6 @@ from ..script import run_script
 
 
 class TestBreakLock(tests.TestCaseWithTransport):
-
     # General principal for break-lock: All the elements that might be locked
     # by a brz operation on PATH, are candidates that break-lock may unlock.
     # so pathologically if we have a lightweight checkout A, of branch B, which
@@ -40,38 +39,45 @@ class TestBreakLock(tests.TestCaseWithTransport):
     def setUp(self):
         super().setUp()
         self.build_tree(
-            ['master-repo/',
-             'master-repo/master-branch/',
-             'repo/',
-             'repo/branch/',
-             'checkout/'])
-        controldir.ControlDir.create('master-repo').create_repository()
+            [
+                "master-repo/",
+                "master-repo/master-branch/",
+                "repo/",
+                "repo/branch/",
+                "checkout/",
+            ]
+        )
+        controldir.ControlDir.create("master-repo").create_repository()
         self.master_branch = controldir.ControlDir.create_branch_convenience(
-            'master-repo/master-branch')
-        controldir.ControlDir.create('repo').create_repository()
-        local_branch = controldir.ControlDir.create_branch_convenience(
-            'repo/branch')
+            "master-repo/master-branch"
+        )
+        controldir.ControlDir.create("repo").create_repository()
+        local_branch = controldir.ControlDir.create_branch_convenience("repo/branch")
         try:
             local_branch.bind(self.master_branch)
         except branch.BindingUnsupported as err:
             raise tests.TestNotApplicable(
-                'default format does not support bound branches') from err
-        checkoutdir = controldir.ControlDir.create('checkout')
+                "default format does not support bound branches"
+            ) from err
+        checkoutdir = controldir.ControlDir.create("checkout")
         checkoutdir.set_branch_reference(local_branch)
         self.wt = checkoutdir.create_workingtree()
 
     def test_break_lock_help(self):
-        out, err = self.run_bzr('break-lock --help')
+        out, err = self.run_bzr("break-lock --help")
         # shouldn't fail and should not produce error output
-        self.assertEqual('', err)
+        self.assertEqual("", err)
 
     def test_break_lock_no_interaction(self):
         """With --force, the user isn't asked for confirmation."""
         self.master_branch.lock_write()
-        run_script(self, """
+        run_script(
+            self,
+            """
         $ brz break-lock --force master-repo/master-branch
         Broke lock ...master-branch/.bzr/...
-        """)
+        """,
+        )
         # lock should now be dead
         self.assertRaises(errors.LockBroken, self.master_branch.unlock)
 
@@ -87,9 +93,9 @@ class TestBreakLock(tests.TestCaseWithTransport):
         self.master_branch.lock_write()
         # run the break-lock
         # we need 5 yes's - wt, branch, repo, bound branch, bound repo.
-        self.run_bzr('break-lock checkout', stdin="y\ny\ny\ny\n")
+        self.run_bzr("break-lock checkout", stdin="y\ny\ny\ny\n")
         # a new tree instance should be lockable
-        br = branch.Branch.open('checkout')
+        br = branch.Branch.open("checkout")
         br.lock_write()
         br.unlock()
         # and a new instance of the master branch
@@ -101,12 +107,10 @@ class TestBreakLock(tests.TestCaseWithTransport):
 
 
 class TestConfigBreakLock(tests.TestCaseWithTransport):
-
     def setUp(self):
         super().setUp()
-        self.config_file_name = './my.conf'
-        self.build_tree_contents([(self.config_file_name,
-                                   b'[DEFAULT]\none=1\n')])
+        self.config_file_name = "./my.conf"
+        self.build_tree_contents([(self.config_file_name, b"[DEFAULT]\none=1\n")])
         self.config = config.LockableConfig(file_name=self.config_file_name)
         self.config.lock_write()
 
@@ -115,6 +119,7 @@ class TestConfigBreakLock(tests.TestCaseWithTransport):
         self.assertTrue(self.config._lock.is_held)
 
     def test_break_lock(self):
-        self.run_bzr(f'break-lock --config {osutils.dirname(self.config_file_name)}',
-                     stdin="y\n")
+        self.run_bzr(
+            f"break-lock --config {osutils.dirname(self.config_file_name)}", stdin="y\n"
+        )
         self.assertRaises(errors.LockBroken, self.config.unlock)

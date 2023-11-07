@@ -29,10 +29,11 @@ class cmd_ping(Command):
     smart protocol, and reports the response.
     """
 
-    takes_args = ['location']
+    takes_args = ["location"]
 
     def run(self, location):
         from breezy.bzr.smart.client import _SmartClient
+
         transport = get_transport(location)
         try:
             medium = transport.get_smart_medium()
@@ -41,11 +42,12 @@ class cmd_ping(Command):
         client = _SmartClient(medium)
         # Use call_expecting_body (even though we don't expect a body) so that
         # we can see the response headers (if any) via the handler object.
-        response, handler = client.call_expecting_body(b'hello')
+        response, handler = client.call_expecting_body(b"hello")
         handler.cancel_read_body()
-        self.outf.write(f'Response: {response!r}\n')
-        if getattr(handler, 'headers', None) is not None:
+        self.outf.write(f"Response: {response!r}\n")
+        if getattr(handler, "headers", None) is not None:
             headers = {
-                k.decode('utf-8'): v.decode('utf-8')
-                for (k, v) in handler.headers.items()}
-            self.outf.write(f'Headers: {headers!r}\n')
+                k.decode("utf-8"): v.decode("utf-8")
+                for (k, v) in handler.headers.items()
+            }
+            self.outf.write(f"Headers: {headers!r}\n")

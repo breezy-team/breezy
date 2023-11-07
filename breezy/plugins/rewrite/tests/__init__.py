@@ -19,11 +19,13 @@
 
 def load_tests(loader, basic_tests, pattern):
     testmod_names = [
-        'test_blackbox',
-        'test_maptree',
-        'test_pseudonyms',
-        'test_rebase',
-        'test_upgrade']
-    basic_tests.addTest(loader.loadTestsFromModuleNames(
-        [f"{__name__}.{tmn}" for tmn in testmod_names]))
+        "test_blackbox",
+        "test_maptree",
+        "test_pseudonyms",
+        "test_rebase",
+        "test_upgrade",
+    ]
+    basic_tests.addTest(
+        loader.loadTestsFromModuleNames([f"{__name__}.{tmn}" for tmn in testmod_names])
+    )
     return basic_tests

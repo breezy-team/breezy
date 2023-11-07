@@ -21,107 +21,114 @@ from .. import _transport_rs, errors, lock, tests
 
 
 class TestOSLock(tests.TestCaseInTempDir):
-
     read_lock = _transport_rs.ReadLock
     write_lock = _transport_rs.WriteLock
 
     def setUp(self):
         super().setUp()
-        self.build_tree(['a-lock-file'])
+        self.build_tree(["a-lock-file"])
 
     def test_create_read_lock(self):
-        r_lock = self.read_lock('a-lock-file')
+        r_lock = self.read_lock("a-lock-file")
         r_lock.unlock()
 
     def test_create_write_lock(self):
-        w_lock = self.write_lock('a-lock-file')
+        w_lock = self.write_lock("a-lock-file")
         w_lock.unlock()
 
     def test_read_locks_share(self):
-        r_lock = self.read_lock('a-lock-file')
+        r_lock = self.read_lock("a-lock-file")
         try:
-            lock2 = self.read_lock('a-lock-file')
+            lock2 = self.read_lock("a-lock-file")
             lock2.unlock()
         finally:
             r_lock.unlock()
 
     def test_write_locks_are_exclusive(self):
-        w_lock = self.write_lock('a-lock-file')
+        w_lock = self.write_lock("a-lock-file")
         try:
-            self.assertRaises(errors.LockContention,
-                              self.write_lock, 'a-lock-file')
+            self.assertRaises(errors.LockContention, self.write_lock, "a-lock-file")
         finally:
             w_lock.unlock()
 
     def test_read_locks_block_write_locks(self):
-        r_lock = self.read_lock('a-lock-file')
+        r_lock = self.read_lock("a-lock-file")
         try:
             if lock.have_fcntl:
                 # With -Dlock, fcntl locks are properly exclusive
-                self.assertRaises(errors.LockContention,
-                                  self.write_lock, 'a-lock-file', True)
+                self.assertRaises(
+                    errors.LockContention, self.write_lock, "a-lock-file", True
+                )
                 # But not without it
                 try:
-                    w_lock = self.write_lock('a-lock-file', False)
+                    w_lock = self.write_lock("a-lock-file", False)
                 except errors.LockContention:
-                    self.fail('Unexpected success. fcntl read locks'
-                              ' do not usually block write locks')
+                    self.fail(
+                        "Unexpected success. fcntl read locks"
+                        " do not usually block write locks"
+                    )
                 else:
                     w_lock.unlock()
-                    self.knownFailure('fcntl read locks don\'t'
-                                      ' block write locks without -Dlock')
+                    self.knownFailure(
+                        "fcntl read locks don't" " block write locks without -Dlock"
+                    )
             else:
                 w_lock.unlock()
-                self.knownFailure('fcntl read locks don\'t'
-                                  ' block write locks without -Dlock')
+                self.knownFailure(
+                    "fcntl read locks don't" " block write locks without -Dlock"
+                )
         finally:
             r_lock.unlock()
 
     def test_write_locks_block_read_lock(self):
-        w_lock = self.write_lock('a-lock-file')
+        w_lock = self.write_lock("a-lock-file")
         try:
             if lock.have_fcntl:
                 # With -Dlock, fcntl locks are properly exclusive
-                self.assertRaises(errors.LockContention,
-                                  self.read_lock, 'a-lock-file', True)
+                self.assertRaises(
+                    errors.LockContention, self.read_lock, "a-lock-file", True
+                )
                 # But not without it
                 try:
-                    r_lock = self.read_lock('a-lock-file', False)
+                    r_lock = self.read_lock("a-lock-file", False)
                 except errors.LockContention:
-                    self.fail('Unexpected success. fcntl write locks'
-                              ' do not usually block read locks')
+                    self.fail(
+                        "Unexpected success. fcntl write locks"
+                        " do not usually block read locks"
+                    )
                 else:
                     r_lock.unlock()
-                    self.knownFailure('fcntl write locks don\'t'
-                                      ' block read locks without -Dlock')
+                    self.knownFailure(
+                        "fcntl write locks don't" " block read locks without -Dlock"
+                    )
             else:
                 r_lock.unlock()
-                self.knownFailure('fcntl write locks don\'t'
-                                  ' block read locks without -Dlock')
+                self.knownFailure(
+                    "fcntl write locks don't" " block read locks without -Dlock"
+                )
         finally:
             w_lock.unlock()
 
     def test_temporary_write_lock(self):
-        r_lock = self.read_lock('a-lock-file')
+        r_lock = self.read_lock("a-lock-file")
         try:
             status, w_lock = r_lock.temporary_write_lock()
             self.assertTrue(status)
             # This should block another write lock
             try:
-                self.assertRaises(errors.LockContention,
-                                  self.write_lock, 'a-lock-file')
+                self.assertRaises(errors.LockContention, self.write_lock, "a-lock-file")
             finally:
                 r_lock = w_lock.restore_read_lock()
             # We should be able to take a read lock now
-            r_lock2 = self.read_lock('a-lock-file')
+            r_lock2 = self.read_lock("a-lock-file")
             r_lock2.unlock()
         finally:
             r_lock.unlock()
 
     def test_temporary_write_lock_fails(self):
-        r_lock = self.read_lock('a-lock-file')
+        r_lock = self.read_lock("a-lock-file")
         try:
-            r_lock2 = self.read_lock('a-lock-file')
+            r_lock2 = self.read_lock("a-lock-file")
             try:
                 status, w_lock = r_lock.temporary_write_lock()
                 self.assertFalse(status)
@@ -131,7 +138,7 @@ class TestOSLock(tests.TestCaseInTempDir):
             finally:
                 r_lock2.unlock()
             # We should be able to take a read lock now
-            r_lock2 = self.read_lock('a-lock-file')
+            r_lock2 = self.read_lock("a-lock-file")
             r_lock2.unlock()
         finally:
             r_lock.unlock()

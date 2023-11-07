@@ -8,10 +8,10 @@
 import os
 import sys
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # clobber me, new sys.argv[0] is the script to run.
     del sys.argv[0]
     if os.path.isabs(sys.argv[0]):
         raise AssertionError("If you know the FQ path, just use it!")
     sys.argv[0] = os.path.join(sys.prefix, "Scripts", sys.argv[0])
-    exec(compile(open(sys.argv[0]).read(), sys.argv[0], 'exec'))  # noqa: S102
+    exec(compile(open(sys.argv[0]).read(), sys.argv[0], "exec"))  # noqa: S102

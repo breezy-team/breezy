@@ -35,7 +35,7 @@ def _supports_progress(f):
 
     This doesn't check the policy for whether we *should* use them.
     """
-    isatty = getattr(f, 'isatty', None)
+    isatty = getattr(f, "isatty", None)
     if isatty is None:
         return False
     if not isatty():
@@ -44,7 +44,7 @@ def _supports_progress(f):
     # typically never set, so the case None is treated as a smart terminal,
     # not dumb.  <https://bugs.launchpad.net/bugs/334808>  win32 files do have
     # isatty methods that return true.
-    if os.environ.get('TERM') == 'dumb':
+    if os.environ.get("TERM") == "dumb":
         # e.g. emacs compile window
         return False
     return True
@@ -89,24 +89,22 @@ class ProgressTask:
         self._last_update = 0
         self.total_cnt = None
         self.current_cnt = None
-        self.msg = ''
+        self.msg = ""
         # TODO: deprecate passing ui_factory
         self.ui_factory = ui_factory
         self.progress_view = progress_view
         self.show_pct = False
         self.show_spinner = True
-        self.show_eta = False,
+        self.show_eta = (False,)
         self.show_count = True
         self.show_bar = True
         self.update_latency = 0.1
         self.show_transport_activity = True
 
     def __repr__(self):
-        return '{}({!r}/{!r}, msg={!r})'.format(
-            self.__class__.__name__,
-            self.current_cnt,
-            self.total_cnt,
-            self.msg)
+        return "{}({!r}/{!r}, msg={!r})".format(
+            self.__class__.__name__, self.current_cnt, self.total_cnt, self.msg
+        )
 
     def update(self, msg, current_cnt=None, total_cnt=None):
         """Report updated task message and if relevent progress counters.
@@ -132,8 +130,9 @@ class ProgressTask:
             self.ui_factory._progress_finished(self)
 
     def make_sub_task(self):
-        return ProgressTask(self, ui_factory=self.ui_factory,
-                            progress_view=self.progress_view)
+        return ProgressTask(
+            self, ui_factory=self.ui_factory, progress_view=self.progress_view
+        )
 
     def _overall_completion_fraction(self, child_fraction=0.0):
         """Return fractional completion of this task and its parents.
@@ -141,8 +140,7 @@ class ProgressTask:
         Returns None if no completion can be computed.
         """
         if self.current_cnt is not None and self.total_cnt:
-            own_fraction = (float(self.current_cnt) +
-                            child_fraction) / self.total_cnt
+            own_fraction = (float(self.current_cnt) + child_fraction) / self.total_cnt
         else:
             # if this task has no estimation, it just passes on directly
             # whatever the child has measured...

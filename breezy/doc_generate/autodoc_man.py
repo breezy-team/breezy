@@ -44,12 +44,12 @@ def get_filename(options):
 def infogen(options, outfile):
     """Assembles a man page."""
     d = get_autodoc_datetime()
-    params = \
-        {"brzcmd": options.brz_name,
-         "datestamp": d.strftime("%Y-%m-%d"),
-         "timestamp": d.strftime("%Y-%m-%d %H:%M:%S +0000"),
-         "version": breezy.__version__,
-         }
+    params = {
+        "brzcmd": options.brz_name,
+        "datestamp": d.strftime("%Y-%m-%d"),
+        "timestamp": d.strftime("%Y-%m-%d %H:%M:%S +0000"),
+        "version": breezy.__version__,
+    }
     outfile.write(man_preamble % params)
     outfile.write(man_escape(man_head % params))
     outfile.write(man_escape(getcommand_list(params)))
@@ -72,8 +72,10 @@ def command_name_list():
     command_names = breezy.commands.builtin_command_names()
     for cmdname in breezy.commands.plugin_command_names():
         cmd_object = breezy.commands.get_cmd_object(cmdname)
-        if (PLUGINS_TO_DOCUMENT is None or
-                cmd_object.plugin_name() in PLUGINS_TO_DOCUMENT):
+        if (
+            PLUGINS_TO_DOCUMENT is None
+            or cmd_object.plugin_name() in PLUGINS_TO_DOCUMENT
+        ):
             command_names.append(cmdname)
     command_names.sort()
     return command_names
@@ -89,7 +91,7 @@ def getcommand_list(params):
             continue
         cmd_help = cmd_object.help()
         if cmd_help:
-            firstline = cmd_help.split('\n', 1)[0]
+            firstline = cmd_help.split("\n", 1)[0]
             usage = cmd_object._usage()
             tmp = f'.TP\n.B "{usage}"\n{firstline}\n'
             output = output + tmp
@@ -116,7 +118,7 @@ def getcommand_help(params):
 
 def format_command(params, cmd):
     """Provides long help for each public command."""
-    subsection_header = f'.SS "{cmd._usage()}\"\n'
+    subsection_header = f'.SS "{cmd._usage()}"\n'
     doc = f"{cmd.__doc__}\n"
     doc = breezy.help_topics.help_as_plain_text(cmd.help())
 
@@ -133,50 +135,55 @@ def format_command(params, cmd):
             for name, short_name, argname, help in option.iter_switches():
                 if option.is_hidden(name):
                     continue
-                l = '    --' + name
+                l = "    --" + name
                 if argname is not None:
-                    l += ' ' + argname
+                    l += " " + argname
                 if short_name:
-                    l += ', -' + short_name
-                l += (30 - len(l)) * ' ' + (help or '')
-                wrapped = textwrap.fill(l, initial_indent='',
-                                        subsequent_indent=30 * ' ',
-                                        break_long_words=False,
-                                        )
-                option_str += wrapped + '\n'
+                    l += ", -" + short_name
+                l += (30 - len(l)) * " " + (help or "")
+                wrapped = textwrap.fill(
+                    l,
+                    initial_indent="",
+                    subsequent_indent=30 * " ",
+                    break_long_words=False,
+                )
+                option_str += wrapped + "\n"
 
     aliases_str = ""
     if cmd.aliases:
         if len(cmd.aliases) > 1:
-            aliases_str += '\nAliases: '
+            aliases_str += "\nAliases: "
         else:
-            aliases_str += '\nAlias: '
-        aliases_str += ', '.join(cmd.aliases)
-        aliases_str += '\n'
+            aliases_str += "\nAlias: "
+        aliases_str += ", ".join(cmd.aliases)
+        aliases_str += "\n"
 
     see_also_str = ""
     see_also = cmd.get_see_also()
     if see_also:
-        see_also_str += '\nSee also: '
-        see_also_str += ', '.join(see_also)
-        see_also_str += '\n'
+        see_also_str += "\nSee also: "
+        see_also_str += ", ".join(see_also)
+        see_also_str += "\n"
 
-    return subsection_header + option_str + aliases_str + see_also_str + "\n" + doc + "\n"
+    return (
+        subsection_header + option_str + aliases_str + see_also_str + "\n" + doc + "\n"
+    )
 
 
 def format_alias(params, alias, cmd_name):
-    help = f'.SS "brz {alias}\"\n'
+    help = f'.SS "brz {alias}"\n'
     help += f'Alias for "{cmd_name}", see "brz {cmd_name}".\n'
     return help
 
 
 def environment_variables():
-    yield ".SH \"ENVIRONMENT\"\n"
+    yield '.SH "ENVIRONMENT"\n'
 
     from breezy.help_topics import known_env_variables
+
     for k, desc in known_env_variables():
         yield ".TP\n"
-        yield f".I \"{k}\"\n"
+        yield f'.I "{k}"\n'
         yield man_escape(desc) + "\n"
 
 

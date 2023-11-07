@@ -25,7 +25,6 @@ from .features import strace_feature
 
 
 class TestStrace(tests.TestCaseWithTransport):
-
     _test_needs_features = [strace_feature]
 
     def setUp(self):
@@ -47,7 +46,8 @@ class TestStrace(tests.TestCaseWithTransport):
         active = threading.activeCount()
         if active > 1:  # There is always the main thread at least
             self.knownFailure(
-                '%d active threads, bug #103133 needs to be fixed.' % active)
+                "%d active threads, bug #103133 needs to be fixed." % active
+            )
 
     def strace_detailed_or_skip(self, *args, **kwargs):
         """Run strace, but cope if it's not allowed."""
@@ -55,7 +55,8 @@ class TestStrace(tests.TestCaseWithTransport):
             return strace_detailed(*args, **kwargs)
         except strace.StraceError as e:
             if e.err_messages.startswith(
-                    "attach: ptrace(PTRACE_ATTACH, ...): Operation not permitted"):
+                "attach: ptrace(PTRACE_ATTACH, ...): Operation not permitted"
+            ):
                 raise tests.TestSkipped("ptrace not permitted") from e
             else:
                 raise
@@ -67,9 +68,10 @@ class TestStrace(tests.TestCaseWithTransport):
 
         def function(positional, *args, **kwargs):
             output.append((positional, args, kwargs))
+
         self.strace_detailed_or_skip(
-            function, ["a", "b"], {"c": "c"},
-            follow_children=False)
+            function, ["a", "b"], {"c": "c"}, follow_children=False
+        )
         self.assertEqual([("a", ("b",), {"c": "c"})], output)
 
     def test_strace_callable_result(self):
@@ -77,8 +79,10 @@ class TestStrace(tests.TestCaseWithTransport):
 
         def function():
             return "foo"
-        result, strace_result = self.strace_detailed_or_skip(function, [], {},
-                                                             follow_children=False)
+
+        result, strace_result = self.strace_detailed_or_skip(
+            function, [], {}, follow_children=False
+        )
         self.assertEqual("foo", result)
         self.assertIsInstance(strace_result, StraceResult)
 
@@ -87,7 +91,9 @@ class TestStrace(tests.TestCaseWithTransport):
         self._check_threads()
 
         def function():
-            self.build_tree(['myfile'])
-        unused, result = self.strace_detailed_or_skip(function, [], {},
-                                                      follow_children=False)
-        self.assertContainsRe(result.raw_log, 'myfile')
+            self.build_tree(["myfile"])
+
+        unused, result = self.strace_detailed_or_skip(
+            function, [], {}, follow_children=False
+        )
+        self.assertContainsRe(result.raw_log, "myfile")

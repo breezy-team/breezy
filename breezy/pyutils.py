@@ -44,7 +44,7 @@ def get_named_object(module_name, member_name=None):
     if member_name:
         # Give __import__ a from_list.  It will return the last module in
         # the dotted module name.
-        attr_chain = member_name.split('.')
+        attr_chain = member_name.split(".")
         from_list = attr_chain[:1]
         obj = __import__(module_name, {}, {}, from_list)
         for attr in attr_chain:
@@ -67,23 +67,24 @@ def calc_parent_name(module_name, member_name=None):
 
     :return: (module_name, member_name, final_attr) tuple.
     """
-# +SKIP is not recognized by python2.4
-# Typical use is::
-#
-#     >>> parent_mod, parent_member, final_attr = calc_parent_name(
-#     ...     module_name, member_name) # doctest: +SKIP
-#     >>> parent_obj = get_named_object(parent_mod, parent_member)
-#     ... # doctest: +SKIP
+    # +SKIP is not recognized by python2.4
+    # Typical use is::
+    #
+    #     >>> parent_mod, parent_member, final_attr = calc_parent_name(
+    #     ...     module_name, member_name) # doctest: +SKIP
+    #     >>> parent_obj = get_named_object(parent_mod, parent_member)
+    #     ... # doctest: +SKIP
     if member_name is not None:
-        split_name = member_name.rsplit('.', 1)
+        split_name = member_name.rsplit(".", 1)
         if len(split_name) == 1:
             return (module_name, None, member_name)
         else:
             return (module_name, split_name[0], split_name[1])
     else:
-        split_name = module_name.rsplit('.', 1)
+        split_name = module_name.rsplit(".", 1)
         if len(split_name) == 1:
             raise AssertionError(
-                f'No parent object for top-level module {module_name!r}')
+                f"No parent object for top-level module {module_name!r}"
+            )
         else:
             return (split_name[0], None, split_name[1])

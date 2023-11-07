@@ -22,7 +22,9 @@ from typing import Type
 
 from ..lazy_import import lazy_import
 
-lazy_import(globals(), """
+lazy_import(
+    globals(),
+    """
 import time
 
 from breezy import (
@@ -37,7 +39,8 @@ from breezy.bzr import (
 from breezy.bzr.index import (
     CombinedGraphIndex,
     )
-""")
+""",
+)
 from .. import debug, errors, lockdir, osutils
 from .. import transport as _mod_transport
 from ..bzr import btree_index, lockable_files
@@ -65,8 +68,10 @@ class RetryWithNewPacks(errors.BzrError):
 
     internal_error = True
 
-    _fmt = ("Pack files have changed, reload and retry. context: %(context)s"
-            " %(orig_error)s")
+    _fmt = (
+        "Pack files have changed, reload and retry. context: %(context)s"
+        " %(orig_error)s"
+    )
 
     def __init__(self, context, reload_occurred, exc_info):
         """Create a new RetryWithNewPacks error.
@@ -98,8 +103,10 @@ class RetryAutopack(RetryWithNewPacks):
 
     internal_error = True
 
-    _fmt = ("Pack files have changed, reload and try autopack again."
-            " context: %(context)s %(orig_error)s")
+    _fmt = (
+        "Pack files have changed, reload and try autopack again."
+        " context: %(context)s %(orig_error)s"
+    )
 
 
 class PackCommitBuilder(VersionedFileCommitBuilder):
@@ -109,15 +116,35 @@ class PackCommitBuilder(VersionedFileCommitBuilder):
     added text, reducing memory and object pressure.
     """
 
-    def __init__(self, repository, parents, config, timestamp=None,
-                 timezone=None, committer=None, revprops=None,
-                 revision_id=None, lossy=False, owns_transaction=True):
-        VersionedFileCommitBuilder.__init__(self, repository, parents, config,
-                                            timestamp=timestamp, timezone=timezone, committer=committer,
-                                            revprops=revprops, revision_id=revision_id, lossy=lossy,
-                                            owns_transaction=owns_transaction)
+    def __init__(
+        self,
+        repository,
+        parents,
+        config,
+        timestamp=None,
+        timezone=None,
+        committer=None,
+        revprops=None,
+        revision_id=None,
+        lossy=False,
+        owns_transaction=True,
+    ):
+        VersionedFileCommitBuilder.__init__(
+            self,
+            repository,
+            parents,
+            config,
+            timestamp=timestamp,
+            timezone=timezone,
+            committer=committer,
+            revprops=revprops,
+            revision_id=revision_id,
+            lossy=lossy,
+            owns_transaction=owns_transaction,
+        )
         self._file_graph = graph.Graph(
-            repository._pack_collection.text_index.combined_index)
+            repository._pack_collection.text_index.combined_index
+        )
 
     def _heads(self, file_id, revision_ids):
         keys = [(file_id, revision_id) for revision_id in revision_ids]
@@ -134,15 +161,21 @@ class Pack:
     # A map of index 'type' to the file extension and position in the
     # index_sizes array.
     index_definitions = {
-        'chk': ('.cix', 4),
-        'revision': ('.rix', 0),
-        'inventory': ('.iix', 1),
-        'text': ('.tix', 2),
-        'signature': ('.six', 3),
-        }
+        "chk": (".cix", 4),
+        "revision": (".rix", 0),
+        "inventory": (".iix", 1),
+        "text": (".tix", 2),
+        "signature": (".six", 3),
+    }
 
-    def __init__(self, revision_index, inventory_index, text_index,
-                 signature_index, chk_index=None):
+    def __init__(
+        self,
+        revision_index,
+        inventory_index,
+        text_index,
+        signature_index,
+        chk_index=None,
+    ):
         """Create a pack instance.
 
         :param revision_index: A GraphIndex for determining what revisions are
@@ -177,28 +210,34 @@ class Pack:
         (See <https://bugs.launchpad.net/bzr/+bug/288751>)
         """
         missing_items = {}
-        for (index_name, external_refs, index) in [
-                ('texts',
-                    self._get_external_refs(self.text_index),
-                    self._pack_collection.text_index.combined_index),
-                ('inventories',
-                    self._get_external_refs(self.inventory_index),
-                    self._pack_collection.inventory_index.combined_index),
-                ]:
+        for index_name, external_refs, index in [
+            (
+                "texts",
+                self._get_external_refs(self.text_index),
+                self._pack_collection.text_index.combined_index,
+            ),
+            (
+                "inventories",
+                self._get_external_refs(self.inventory_index),
+                self._pack_collection.inventory_index.combined_index,
+            ),
+        ]:
             missing = external_refs.difference(
-                k for (idx, k, v, r) in
-                index.iter_entries(external_refs))
+                k for (idx, k, v, r) in index.iter_entries(external_refs)
+            )
             if missing:
                 missing_items[index_name] = sorted(missing)
         if missing_items:
             from pprint import pformat
+
             raise errors.BzrCheckError(
                 f"Newly created pack file {self!r} has delta references to "
-                f"items not in its repository:\n{pformat(missing_items)}")
+                f"items not in its repository:\n{pformat(missing_items)}"
+            )
 
     def file_name(self):
         """Get the file name for the pack on disk."""
-        return self.name + '.pack'
+        return self.name + ".pack"
 
     def get_revision_count(self):
         return self.revision_index.key_count()
@@ -213,59 +252,88 @@ class Pack:
 
     def inventory_index_name(self, name):
         """The inv index is the name + .iix."""
-        return self.index_name('inventory', name)
+        return self.index_name("inventory", name)
 
     def revision_index_name(self, name):
         """The revision index is the name + .rix."""
-        return self.index_name('revision', name)
+        return self.index_name("revision", name)
 
     def signature_index_name(self, name):
         """The signature index is the name + .six."""
-        return self.index_name('signature', name)
+        return self.index_name("signature", name)
 
     def text_index_name(self, name):
         """The text index is the name + .tix."""
-        return self.index_name('text', name)
+        return self.index_name("text", name)
 
     def _replace_index_with_readonly(self, index_type):
         unlimited_cache = False
-        if index_type == 'chk':
+        if index_type == "chk":
             unlimited_cache = True
-        index = self.index_class(self.index_transport,
-                                 self.index_name(index_type, self.name),
-                                 self.index_sizes[self.index_offset(
-                                     index_type)],
-                                 unlimited_cache=unlimited_cache)
-        if index_type == 'chk':
+        index = self.index_class(
+            self.index_transport,
+            self.index_name(index_type, self.name),
+            self.index_sizes[self.index_offset(index_type)],
+            unlimited_cache=unlimited_cache,
+        )
+        if index_type == "chk":
             index._leaf_factory = btree_index._gcchk_factory
-        setattr(self, index_type + '_index', index)
+        setattr(self, index_type + "_index", index)
 
     def __lt__(self, other):
         if not isinstance(other, Pack):
             raise TypeError(other)
-        return (id(self) < id(other))
+        return id(self) < id(other)
 
     def __hash__(self):
-        return hash((type(self), self.revision_index, self.inventory_index,
-                     self.text_index, self.signature_index, self.chk_index))
+        return hash(
+            (
+                type(self),
+                self.revision_index,
+                self.inventory_index,
+                self.text_index,
+                self.signature_index,
+                self.chk_index,
+            )
+        )
 
 
 class ExistingPack(Pack):
     """An in memory proxy for an existing .pack and its disk indices."""
 
-    def __init__(self, pack_transport, name, revision_index, inventory_index,
-                 text_index, signature_index, chk_index=None):
+    def __init__(
+        self,
+        pack_transport,
+        name,
+        revision_index,
+        inventory_index,
+        text_index,
+        signature_index,
+        chk_index=None,
+    ):
         """Create an ExistingPack object.
 
         :param pack_transport: The transport where the pack file resides.
         :param name: The name of the pack on disk in the pack_transport.
         """
-        Pack.__init__(self, revision_index, inventory_index, text_index,
-                      signature_index, chk_index)
+        Pack.__init__(
+            self,
+            revision_index,
+            inventory_index,
+            text_index,
+            signature_index,
+            chk_index,
+        )
         self.name = name
         self.pack_transport = pack_transport
-        if None in (revision_index, inventory_index, text_index,
-                    signature_index, name, pack_transport):
+        if None in (
+            revision_index,
+            inventory_index,
+            text_index,
+            signature_index,
+            name,
+            pack_transport,
+        ):
             raise AssertionError()
 
     def __eq__(self, other):
@@ -276,54 +344,78 @@ class ExistingPack(Pack):
 
     def __repr__(self):
         return "<{}.{} object at 0x{:x}, {}, {}".format(
-            self.__class__.__module__, self.__class__.__name__, id(self),
-            self.pack_transport, self.name)
+            self.__class__.__module__,
+            self.__class__.__name__,
+            id(self),
+            self.pack_transport,
+            self.name,
+        )
 
     def __hash__(self):
         return hash((type(self), self.name))
 
 
 class ResumedPack(ExistingPack):
-
-    def __init__(self, name, revision_index, inventory_index, text_index,
-                 signature_index, upload_transport, pack_transport, index_transport,
-                 pack_collection, chk_index=None):
+    def __init__(
+        self,
+        name,
+        revision_index,
+        inventory_index,
+        text_index,
+        signature_index,
+        upload_transport,
+        pack_transport,
+        index_transport,
+        pack_collection,
+        chk_index=None,
+    ):
         """Create a ResumedPack object."""
-        ExistingPack.__init__(self, pack_transport, name, revision_index,
-                              inventory_index, text_index, signature_index,
-                              chk_index=chk_index)
+        ExistingPack.__init__(
+            self,
+            pack_transport,
+            name,
+            revision_index,
+            inventory_index,
+            text_index,
+            signature_index,
+            chk_index=chk_index,
+        )
         self.upload_transport = upload_transport
         self.index_transport = index_transport
         self.index_sizes = [None, None, None, None]
         indices = [
-            ('revision', revision_index),
-            ('inventory', inventory_index),
-            ('text', text_index),
-            ('signature', signature_index),
-            ]
+            ("revision", revision_index),
+            ("inventory", inventory_index),
+            ("text", text_index),
+            ("signature", signature_index),
+        ]
         if chk_index is not None:
-            indices.append(('chk', chk_index))
+            indices.append(("chk", chk_index))
             self.index_sizes.append(None)
         for index_type, index in indices:
             offset = self.index_offset(index_type)
             self.index_sizes[offset] = index._size
         self.index_class = pack_collection._index_class
         self._pack_collection = pack_collection
-        self._state = 'resumed'
+        self._state = "resumed"
         # XXX: perhaps check that the .pack file exists?
 
     def access_tuple(self):
-        if self._state == 'finished':
+        if self._state == "finished":
             return Pack.access_tuple(self)
-        elif self._state == 'resumed':
+        elif self._state == "resumed":
             return self.upload_transport, self.file_name()
         else:
             raise AssertionError(self._state)
 
     def abort(self):
         self.upload_transport.delete(self.file_name())
-        indices = [self.revision_index, self.inventory_index, self.text_index,
-                   self.signature_index]
+        indices = [
+            self.revision_index,
+            self.inventory_index,
+            self.text_index,
+            self.signature_index,
+        ]
         if self.chk_index is not None:
             indices.append(self.chk_index)
         for index in indices:
@@ -331,17 +423,17 @@ class ResumedPack(ExistingPack):
 
     def finish(self):
         self._check_references()
-        index_types = ['revision', 'inventory', 'text', 'signature']
+        index_types = ["revision", "inventory", "text", "signature"]
         if self.chk_index is not None:
-            index_types.append('chk')
+            index_types.append("chk")
         for index_type in index_types:
             old_name = self.index_name(index_type, self.name)
-            new_name = '../indices/' + old_name
+            new_name = "../indices/" + old_name
             self.upload_transport.move(old_name, new_name)
             self._replace_index_with_readonly(index_type)
-        new_name = '../packs/' + self.file_name()
+        new_name = "../packs/" + self.file_name()
         self.upload_transport.move(self.file_name(), new_name)
-        self._state = 'finished'
+        self._state = "finished"
 
     def _get_external_refs(self, index):
         """Return compression parents for this index that are not present.
@@ -355,7 +447,7 @@ class ResumedPack(ExistingPack):
 class NewPack(Pack):
     """An in memory proxy for a pack which is being created."""
 
-    def __init__(self, pack_collection, upload_suffix='', file_mode=None):
+    def __init__(self, pack_collection, upload_suffix="", file_mode=None):
         """Create a NewPack instance.
 
         :param pack_collection: A PackCollection into which this is being inserted.
@@ -370,23 +462,24 @@ class NewPack(Pack):
             chk_index = index_builder_class(reference_lists=0)
         else:
             chk_index = None
-        Pack.__init__(self,
-                      # Revisions: parents list, no text compression.
-                      index_builder_class(reference_lists=1),
-                      # Inventory: We want to map compression only, but currently the
-                      # knit code hasn't been updated enough to understand that, so we
-                      # have a regular 2-list index giving parents and compression
-                      # source.
-                      index_builder_class(reference_lists=2),
-                      # Texts: compression and per file graph, for all fileids - so two
-                      # reference lists and two elements in the key tuple.
-                      index_builder_class(reference_lists=2, key_elements=2),
-                      # Signatures: Just blobs to store, no compression, no parents
-                      # listing.
-                      index_builder_class(reference_lists=0),
-                      # CHK based storage - just blobs, no compression or parents.
-                      chk_index=chk_index
-                      )
+        Pack.__init__(
+            self,
+            # Revisions: parents list, no text compression.
+            index_builder_class(reference_lists=1),
+            # Inventory: We want to map compression only, but currently the
+            # knit code hasn't been updated enough to understand that, so we
+            # have a regular 2-list index giving parents and compression
+            # source.
+            index_builder_class(reference_lists=2),
+            # Texts: compression and per file graph, for all fileids - so two
+            # reference lists and two elements in the key tuple.
+            index_builder_class(reference_lists=2, key_elements=2),
+            # Signatures: Just blobs to store, no compression, no parents
+            # listing.
+            index_builder_class(reference_lists=0),
+            # CHK based storage - just blobs, no compression or parents.
+            chk_index=chk_index,
+        )
         self._pack_collection = pack_collection
         # When we make readonly indices, we need this.
         self.index_class = pack_collection._index_class
@@ -414,11 +507,16 @@ class NewPack(Pack):
         self.start_time = time.time()
         # open an output stream for the data added to the pack.
         self.write_stream = self.upload_transport.open_write_stream(
-            self.random_name, mode=self._file_mode)
-        if debug.debug_flag_enabled('pack'):
-            mutter('%s: create_pack: pack stream open: %s%s t+%6.3fs',
-                   time.ctime(), self.upload_transport.base, self.random_name,
-                   time.time() - self.start_time)
+            self.random_name, mode=self._file_mode
+        )
+        if debug.debug_flag_enabled("pack"):
+            mutter(
+                "%s: create_pack: pack stream open: %s%s t+%6.3fs",
+                time.ctime(),
+                self.upload_transport.base,
+                self.random_name,
+                time.time() - self.start_time,
+            )
         # A list of byte sequences to be written to the new pack, and the
         # aggregate size of them.  Stored as a list rather than separate
         # variables so that the _write_data closure below can update them.
@@ -429,29 +527,35 @@ class NewPack(Pack):
         # so that the variables are locals, and faster than accessing object
         # members.
 
-        def _write_data(bytes, flush=False, _buffer=self._buffer,
-                        _write=self.write_stream.write, _update=self._hash.update):
+        def _write_data(
+            bytes,
+            flush=False,
+            _buffer=self._buffer,
+            _write=self.write_stream.write,
+            _update=self._hash.update,
+        ):
             _buffer[0].append(bytes)
             _buffer[1] += len(bytes)
             # buffer cap
             if _buffer[1] > self._cache_limit or flush:
-                bytes = b''.join(_buffer[0])
+                bytes = b"".join(_buffer[0])
                 _write(bytes)
                 _update(bytes)
                 _buffer[:] = [[], 0]
+
         # expose this on self, for the occasion when clients want to add data.
         self._write_data = _write_data
         # a pack writer object to serialise pack records.
         self._writer = pack.ContainerWriter(self._write_data)
         self._writer.begin()
         # what state is the pack in? (open, finished, aborted)
-        self._state = 'open'
+        self._state = "open"
         # no name until we finish writing the content
         self.name = None
 
     def abort(self):
         """Cancel creating this pack."""
-        self._state = 'aborted'
+        self._state = "aborted"
         self.write_stream.close()
         # Remove the temporary pack file.
         self.upload_transport.delete(self.random_name)
@@ -459,27 +563,29 @@ class NewPack(Pack):
 
     def access_tuple(self):
         """Return a tuple (transport, name) for the pack content."""
-        if self._state == 'finished':
+        if self._state == "finished":
             return Pack.access_tuple(self)
-        elif self._state == 'open':
+        elif self._state == "open":
             return self.upload_transport, self.random_name
         else:
             raise AssertionError(self._state)
 
     def data_inserted(self):
         """True if data has been added to this pack."""
-        return bool(self.get_revision_count() or
-                    self.inventory_index.key_count() or
-                    self.text_index.key_count() or
-                    self.signature_index.key_count() or
-                    (self.chk_index is not None and self.chk_index.key_count()))
+        return bool(
+            self.get_revision_count()
+            or self.inventory_index.key_count()
+            or self.text_index.key_count()
+            or self.signature_index.key_count()
+            or (self.chk_index is not None and self.chk_index.key_count())
+        )
 
     def finish_content(self):
         if self.name is not None:
             return
         self._writer.end()
         if self._buffer[1]:
-            self._write_data(b'', flush=True)
+            self._write_data(b"", flush=True)
         self.name = self._hash.hexdigest()
 
     def finish(self, suspend=False):
@@ -502,19 +608,20 @@ class NewPack(Pack):
         # visible is smaller.  On the other hand none will be seen until
         # they're in the names list.
         self.index_sizes = [None, None, None, None]
-        self._write_index('revision', self.revision_index, 'revision',
-                          suspend)
-        self._write_index('inventory', self.inventory_index, 'inventory',
-                          suspend)
-        self._write_index('text', self.text_index, 'file texts', suspend)
-        self._write_index('signature', self.signature_index,
-                          'revision signatures', suspend)
+        self._write_index("revision", self.revision_index, "revision", suspend)
+        self._write_index("inventory", self.inventory_index, "inventory", suspend)
+        self._write_index("text", self.text_index, "file texts", suspend)
+        self._write_index(
+            "signature", self.signature_index, "revision signatures", suspend
+        )
         if self.chk_index is not None:
             self.index_sizes.append(None)
-            self._write_index('chk', self.chk_index,
-                              'content hash bytes', suspend)
+            self._write_index("chk", self.chk_index, "content hash bytes", suspend)
         self.write_stream.close(
-            want_fdatasync=self._pack_collection.config_stack.get('repository.fdatasync'))
+            want_fdatasync=self._pack_collection.config_stack.get(
+                "repository.fdatasync"
+            )
+        )
         # Note that this will clobber an existing pack with the same name,
         # without checking for hash collisions. While this is undesirable this
         # is something that can be rectified in a subsequent release. One way
@@ -526,21 +633,26 @@ class NewPack(Pack):
         #  - try for HASH.pack
         #  - try for temporary-name
         #  - refresh the pack-list to see if the pack is now absent
-        new_name = self.name + '.pack'
+        new_name = self.name + ".pack"
         if not suspend:
-            new_name = '../packs/' + new_name
+            new_name = "../packs/" + new_name
         self.upload_transport.move(self.random_name, new_name)
-        self._state = 'finished'
-        if debug.debug_flag_enabled('pack'):
+        self._state = "finished"
+        if debug.debug_flag_enabled("pack"):
             # XXX: size might be interesting?
-            mutter('%s: create_pack: pack finished: %s%s->%s t+%6.3fs',
-                   time.ctime(), self.upload_transport.base, self.random_name,
-                   new_name, time.time() - self.start_time)
+            mutter(
+                "%s: create_pack: pack finished: %s%s->%s t+%6.3fs",
+                time.ctime(),
+                self.upload_transport.base,
+                self.random_name,
+                new_name,
+                time.time() - self.start_time,
+            )
 
     def flush(self):
         """Flush any current data."""
         if self._buffer[1]:
-            bytes = b''.join(self._buffer[0])
+            bytes = b"".join(self._buffer[0])
             self.write_stream.write(bytes)
             self._hash.update(bytes)
             self._buffer[:] = [[], 0]
@@ -565,17 +677,24 @@ class NewPack(Pack):
             transport = self.index_transport
         index_tempfile = index.finish()
         index_bytes = index_tempfile.read()
-        write_stream = transport.open_write_stream(index_name,
-                                                   mode=self._file_mode)
+        write_stream = transport.open_write_stream(index_name, mode=self._file_mode)
         write_stream.write(index_bytes)
         write_stream.close(
-            want_fdatasync=self._pack_collection.config_stack.get('repository.fdatasync'))
+            want_fdatasync=self._pack_collection.config_stack.get(
+                "repository.fdatasync"
+            )
+        )
         self.index_sizes[self.index_offset(index_type)] = len(index_bytes)
-        if debug.debug_flag_enabled('pack'):
+        if debug.debug_flag_enabled("pack"):
             # XXX: size might be interesting?
-            mutter('%s: create_pack: wrote %s index: %s%s t+%6.3fs',
-                   time.ctime(), label, self.upload_transport.base,
-                   self.random_name, time.time() - self.start_time)
+            mutter(
+                "%s: create_pack: wrote %s index: %s%s t+%6.3fs",
+                time.ctime(),
+                label,
+                self.upload_transport.base,
+                self.random_name,
+                time.time() - self.start_time,
+            )
         # Replace the writable index on this object with a readonly,
         # presently unloaded index. We should alter
         # the index layer to make its finish() error if add_node is
@@ -608,9 +727,9 @@ class AggregateIndex:
         self._reload_func = reload_func
         self.index_to_pack = {}
         self.combined_index = CombinedGraphIndex([], reload_func=reload_func)
-        self.data_access = _DirectPackAccess(self.index_to_pack,
-                                             reload_func=reload_func,
-                                             flush_func=flush_func)
+        self.data_access = _DirectPackAccess(
+            self.index_to_pack, reload_func=reload_func, flush_func=flush_func
+        )
         self.add_callback = None
 
     def add_index(self, index, pack):
@@ -638,7 +757,8 @@ class AggregateIndex:
         """
         if self.add_callback is not None:
             raise AssertionError(
-                f"{self} already has a writable index through {self.add_callback}")
+                f"{self} already has a writable index through {self.add_callback}"
+            )
         # allow writing: queue writes to a new index
         self.add_index(index, pack)
         # Updates the index to packs mapping as a side effect,
@@ -662,8 +782,10 @@ class AggregateIndex:
         pos = self.combined_index._indices.index(index)
         del self.combined_index._indices[pos]
         del self.combined_index._index_names[pos]
-        if (self.add_callback is not None and
-                getattr(index, 'add_nodes', None) == self.add_callback):
+        if (
+            self.add_callback is not None
+            and getattr(index, "add_nodes", None) == self.add_callback
+        ):
             self.add_callback = None
             self.data_access.set_writer(None, None, (None, None))
 
@@ -671,8 +793,9 @@ class AggregateIndex:
 class Packer:
     """Create a pack from packs."""
 
-    def __init__(self, pack_collection, packs, suffix, revision_ids=None,
-                 reload_func=None):
+    def __init__(
+        self, pack_collection, packs, suffix, revision_ids=None, reload_func=None
+    ):
         """Create a Packer.
 
         :param pack_collection: A RepositoryPackCollection object where the
@@ -717,16 +840,18 @@ class Packer:
         # XXX: - duplicate code warning with start_write_group; fix before
         #      considering 'done'.
         if self._pack_collection._new_pack is not None:
-            raise errors.BzrError('call to {}.pack() while another pack is'
-                                  ' being written.'.format(self.__class__.__name__))
+            raise errors.BzrError(
+                "call to {}.pack() while another pack is" " being written.".format(
+                    self.__class__.__name__
+                )
+            )
         if self.revision_ids is not None:
             if len(self.revision_ids) == 0:
                 # silly fetch request.
                 return None
             else:
                 self.revision_ids = frozenset(self.revision_ids)
-                self.revision_keys = frozenset((revid,) for revid in
-                                               self.revision_ids)
+                self.revision_keys = frozenset((revid,) for revid in self.revision_ids)
         if pb is None:
             self.pb = ui.ui_factory.nested_progress_bar()
         else:
@@ -739,9 +864,11 @@ class Packer:
 
     def open_pack(self):
         """Open a pack for the pack we are creating."""
-        new_pack = self._pack_collection.pack_factory(self._pack_collection,
-                                                      upload_suffix=self.suffix,
-                                                      file_mode=self._pack_collection.repo.controldir._get_file_mode())
+        new_pack = self._pack_collection.pack_factory(
+            self._pack_collection,
+            upload_suffix=self.suffix,
+            file_mode=self._pack_collection.repo.controldir._get_file_mode(),
+        )
         # We know that we will process all nodes in order, and don't need to
         # query, so don't combine any indices spilled to disk until we are done
         new_pack.revision_index.set_optimize(combine_backing_indices=False)
@@ -770,12 +897,15 @@ class Packer:
         raise NotImplementedError(self._create_pack_from_packs)
 
     def _log_copied_texts(self):
-        if debug.debug_flag_enabled('pack'):
-            mutter('%s: create_pack: file texts copied: %s%s %d items t+%6.3fs',
-                   time.ctime(), self._pack_collection._upload_transport.base,
-                   self.new_pack.random_name,
-                   self.new_pack.text_index.key_count(),
-                   time.time() - self.new_pack.start_time)
+        if debug.debug_flag_enabled("pack"):
+            mutter(
+                "%s: create_pack: file texts copied: %s%s %d items t+%6.3fs",
+                time.ctime(),
+                self._pack_collection._upload_transport.base,
+                self.new_pack.random_name,
+                self.new_pack.text_index.key_count(),
+                time.time() - self.new_pack.start_time,
+            )
 
     def _use_pack(self, new_pack):
         """Return True if new_pack should be used.
@@ -797,9 +927,17 @@ class RepositoryPackCollection:
     normal_packer_class: Type[Packer]
     optimising_packer_class: Type[Packer]
 
-    def __init__(self, repo, transport, index_transport, upload_transport,
-                 pack_transport, index_builder_class, index_class,
-                 use_chk_index):
+    def __init__(
+        self,
+        repo,
+        transport,
+        index_transport,
+        upload_transport,
+        pack_transport,
+        index_builder_class,
+        index_class,
+        use_chk_index,
+    ):
         """Create a new RepositoryPackCollection.
 
         :param transport: Addresses the repository base directory
@@ -820,8 +958,7 @@ class RepositoryPackCollection:
         self._pack_transport = pack_transport
         self._index_builder_class = index_builder_class
         self._index_class = index_class
-        self._suffix_offsets = {'.rix': 0, '.iix': 1, '.tix': 2, '.six': 3,
-                                '.cix': 4}
+        self._suffix_offsets = {".rix": 0, ".iix": 1, ".tix": 2, ".six": 3, ".cix": 4}
         self.packs = []
         # name:Pack mapping
         self._names = None
@@ -836,8 +973,12 @@ class RepositoryPackCollection:
         self.inventory_index = AggregateIndex(self.reload_pack_names, flush)
         self.text_index = AggregateIndex(self.reload_pack_names, flush)
         self.signature_index = AggregateIndex(self.reload_pack_names, flush)
-        all_indices = [self.revision_index, self.inventory_index,
-                       self.text_index, self.signature_index]
+        all_indices = [
+            self.revision_index,
+            self.inventory_index,
+            self.text_index,
+            self.signature_index,
+        ]
         if use_chk_index:
             self.chk_index = AggregateIndex(self.reload_pack_names, flush)
             all_indices.append(self.chk_index)
@@ -849,13 +990,14 @@ class RepositoryPackCollection:
         all_combined = [agg_idx.combined_index for agg_idx in all_indices]
         for combined_idx in all_combined:
             combined_idx.set_sibling_indices(
-                set(all_combined).difference([combined_idx]))
+                set(all_combined).difference([combined_idx])
+            )
         # resumed packs
         self._resumed_packs = []
         self.config_stack = config.LocationStack(self.transport.base)
 
     def __repr__(self):
-        return f'{self.__class__.__name__}({self.repo!r})'
+        return f"{self.__class__.__name__}({self.repo!r})"
 
     def add_pack_to_memory(self, pack):
         """Make a Pack object available to the repository to satisfy queries.
@@ -863,8 +1005,7 @@ class RepositoryPackCollection:
         :param pack: A Pack object.
         """
         if pack.name in self._packs_by_name:
-            raise AssertionError(
-                f'pack {pack.name} already in _packs_by_name')
+            raise AssertionError(f"pack {pack.name} already in _packs_by_name")
         self.packs.append(pack)
         self._packs_by_name[pack.name] = pack
         self.revision_index.add_index(pack.revision_index, pack)
@@ -935,22 +1076,31 @@ class RepositoryPackCollection:
                 continue
             existing_packs.append((revision_count, pack))
         pack_operations = self.plan_autopack_combinations(
-            existing_packs, pack_distribution)
+            existing_packs, pack_distribution
+        )
         num_new_packs = len(pack_operations)
         num_old_packs = sum([len(po[1]) for po in pack_operations])
         num_revs_affected = sum([po[0] for po in pack_operations])
-        mutter('Auto-packing repository %s, which has %d pack files, '
-               'containing %d revisions. Packing %d files into %d affecting %d'
-               ' revisions', str(
-                   self), total_packs, total_revisions, num_old_packs,
-               num_new_packs, num_revs_affected)
-        result = self._execute_pack_operations(pack_operations, packer_class=self.normal_packer_class,
-                                               reload_func=self._restart_autopack)
-        mutter('Auto-packing repository %s completed', str(self))
+        mutter(
+            "Auto-packing repository %s, which has %d pack files, "
+            "containing %d revisions. Packing %d files into %d affecting %d"
+            " revisions",
+            str(self),
+            total_packs,
+            total_revisions,
+            num_old_packs,
+            num_new_packs,
+            num_revs_affected,
+        )
+        result = self._execute_pack_operations(
+            pack_operations,
+            packer_class=self.normal_packer_class,
+            reload_func=self._restart_autopack,
+        )
+        mutter("Auto-packing repository %s completed", str(self))
         return result
 
-    def _execute_pack_operations(self, pack_operations, packer_class,
-                                 reload_func=None):
+    def _execute_pack_operations(self, pack_operations, packer_class, reload_func=None):
         """Execute a series of pack operations.
 
         :param pack_operations: A list of [revision_count, packs_to_combine].
@@ -961,8 +1111,7 @@ class RepositoryPackCollection:
             # we may have no-ops from the setup logic
             if len(packs) == 0:
                 continue
-            packer = packer_class(self, packs, '.autopack',
-                                  reload_func=reload_func)
+            packer = packer_class(self, packs, ".autopack", reload_func=reload_func)
             try:
                 result = packer.pack()
             except RetryWithNewPacks:
@@ -982,8 +1131,9 @@ class RepositoryPackCollection:
         to_be_obsoleted = []
         for _, packs in pack_operations:
             to_be_obsoleted.extend(packs)
-        result = self._save_pack_names(clear_obsolete_packs=True,
-                                       obsolete_packs=to_be_obsoleted)
+        result = self._save_pack_names(
+            clear_obsolete_packs=True, obsolete_packs=to_be_obsoleted
+        )
         return result
 
     def _flush_new_pack(self):
@@ -1011,9 +1161,14 @@ class RepositoryPackCollection:
         total_revisions = self.revision_index.combined_index.key_count()
         # XXX: the following may want to be a class, to pack with a given
         # policy.
-        mutter('Packing repository %s, which has %d pack files, '
-               'containing %d revisions with hint %r.', str(self), total_packs,
-               total_revisions, hint)
+        mutter(
+            "Packing repository %s, which has %d pack files, "
+            "containing %d revisions with hint %r.",
+            str(self),
+            total_packs,
+            total_revisions,
+            hint,
+        )
         while True:
             try:
                 self._try_pack_operations(hint)
@@ -1036,9 +1191,11 @@ class RepositoryPackCollection:
                 # or this pack was included in the hint.
                 pack_operations[-1][0] += pack.get_revision_count()
                 pack_operations[-1][1].append(pack)
-        self._execute_pack_operations(pack_operations,
-                                      packer_class=self.optimising_packer_class,
-                                      reload_func=self._restart_pack_operations)
+        self._execute_pack_operations(
+            pack_operations,
+            packer_class=self.optimising_packer_class,
+            reload_func=self._restart_pack_operations,
+        )
 
     def plan_autopack_combinations(self, existing_packs, pack_distribution):
         """Plan a pack operation.
@@ -1087,8 +1244,10 @@ class RepositoryPackCollection:
             final_rev_count += num_revs
             final_pack_list.extend(pack_files)
         if len(final_pack_list) == 1:
-            raise AssertionError('We somehow generated an autopack with a'
-                                 ' single pack file being moved.')
+            raise AssertionError(
+                "We somehow generated an autopack with a"
+                " single pack file being moved."
+            )
             return []
         return [[final_rev_count, final_pack_list]]
 
@@ -1105,7 +1264,7 @@ class RepositoryPackCollection:
             self._names = {}
             self._packs_at_load = set()
             for _index, key, value in self._iter_disk_pack_index():
-                name = key[0].decode('ascii')
+                name = key[0].decode("ascii")
                 self._names[name] = self._parse_index_sizes(value)
                 self._packs_at_load.add((name, value))
             result = True
@@ -1117,7 +1276,7 @@ class RepositoryPackCollection:
 
     def _parse_index_sizes(self, value):
         """Parse a string of index sizes."""
-        return tuple(int(digits) for digits in value.split(b' '))
+        return tuple(int(digits) for digits in value.split(b" "))
 
     def get_pack_by_name(self, name):
         """Get a Pack object by name.
@@ -1128,16 +1287,23 @@ class RepositoryPackCollection:
         try:
             return self._packs_by_name[name]
         except KeyError:
-            rev_index = self._make_index(name, '.rix')
-            inv_index = self._make_index(name, '.iix')
-            txt_index = self._make_index(name, '.tix')
-            sig_index = self._make_index(name, '.six')
+            rev_index = self._make_index(name, ".rix")
+            inv_index = self._make_index(name, ".iix")
+            txt_index = self._make_index(name, ".tix")
+            sig_index = self._make_index(name, ".six")
             if self.chk_index is not None:
-                chk_index = self._make_index(name, '.cix', is_chk=True)
+                chk_index = self._make_index(name, ".cix", is_chk=True)
             else:
                 chk_index = None
-            result = ExistingPack(self._pack_transport, name, rev_index,
-                                  inv_index, txt_index, sig_index, chk_index)
+            result = ExistingPack(
+                self._pack_transport,
+                name,
+                rev_index,
+                inv_index,
+                txt_index,
+                sig_index,
+                chk_index,
+            )
             self.add_pack_to_memory(result)
             return result
 
@@ -1147,25 +1313,33 @@ class RepositoryPackCollection:
         :param name: The name of the pack - e.g. '123456'
         :return: A Pack object.
         """
-        if not re.match('[a-f0-9]{32}', name):
+        if not re.match("[a-f0-9]{32}", name):
             # Tokens should be md5sums of the suspended pack file, i.e. 32 hex
             # digits.
             raise errors.UnresumableWriteGroup(
-                self.repo, [name], 'Malformed write group token')
+                self.repo, [name], "Malformed write group token"
+            )
         try:
-            rev_index = self._make_index(name, '.rix', resume=True)
-            inv_index = self._make_index(name, '.iix', resume=True)
-            txt_index = self._make_index(name, '.tix', resume=True)
-            sig_index = self._make_index(name, '.six', resume=True)
+            rev_index = self._make_index(name, ".rix", resume=True)
+            inv_index = self._make_index(name, ".iix", resume=True)
+            txt_index = self._make_index(name, ".tix", resume=True)
+            sig_index = self._make_index(name, ".six", resume=True)
             if self.chk_index is not None:
-                chk_index = self._make_index(name, '.cix', resume=True,
-                                             is_chk=True)
+                chk_index = self._make_index(name, ".cix", resume=True, is_chk=True)
             else:
                 chk_index = None
-            result = self.resumed_pack_factory(name, rev_index, inv_index,
-                                               txt_index, sig_index, self._upload_transport,
-                                               self._pack_transport, self._index_transport, self,
-                                               chk_index=chk_index)
+            result = self.resumed_pack_factory(
+                name,
+                rev_index,
+                inv_index,
+                txt_index,
+                sig_index,
+                self._upload_transport,
+                self._pack_transport,
+                self._index_transport,
+                self,
+                chk_index=chk_index,
+            )
         except _mod_transport.NoSuchFile as e:
             raise errors.UnresumableWriteGroup(self.repo, [name], str(e)) from e
         self.add_pack_to_memory(result)
@@ -1180,8 +1354,7 @@ class RepositoryPackCollection:
         """
         self.ensure_loaded()
         if a_new_pack.name in self._names:
-            raise errors.BzrError(
-                f'Pack {a_new_pack.name!r} already exists in {self}')
+            raise errors.BzrError(f"Pack {a_new_pack.name!r} already exists in {self}")
         self._names[a_new_pack.name] = tuple(a_new_pack.index_sizes)
         self.add_pack_to_memory(a_new_pack)
 
@@ -1192,8 +1365,7 @@ class RepositoryPackCollection:
         detect updates from others during our write operation.
         :return: An iterator of the index contents.
         """
-        return self._index_class(self.transport, 'pack-names', None
-                                 ).iter_all_entries()
+        return self._index_class(self.transport, "pack-names", None).iter_all_entries()
 
     def _make_index(self, name, suffix, resume=False, is_chk=False):
         size_offset = self._suffix_offsets[suffix]
@@ -1204,8 +1376,9 @@ class RepositoryPackCollection:
         else:
             transport = self._index_transport
             index_size = self._names[name][size_offset]
-        index = self._index_class(transport, index_name, index_size,
-                                  unlimited_cache=is_chk)
+        index = self._index_class(
+            transport, index_name, index_size, unlimited_cache=is_chk
+        )
         if is_chk and self._index_class is btree_index.BTreeGraphIndex:
             index._leaf_factory = btree_index._gcchk_factory
         return index
@@ -1244,30 +1417,33 @@ class RepositoryPackCollection:
         for pack in packs:
             try:
                 try:
-                    pack.pack_transport.move(pack.file_name(),
-                                             '../obsolete_packs/' + pack.file_name())
+                    pack.pack_transport.move(
+                        pack.file_name(), "../obsolete_packs/" + pack.file_name()
+                    )
                 except _mod_transport.NoSuchFile:
                     # perhaps obsolete_packs was removed? Let's create it and
                     # try again
                     try:
-                        pack.pack_transport.mkdir('../obsolete_packs/')
+                        pack.pack_transport.mkdir("../obsolete_packs/")
                     except _mod_transport.FileExists:
                         pass
-                    pack.pack_transport.move(pack.file_name(),
-                                             '../obsolete_packs/' + pack.file_name())
+                    pack.pack_transport.move(
+                        pack.file_name(), "../obsolete_packs/" + pack.file_name()
+                    )
             except (errors.PathError, errors.TransportError) as e:
                 # TODO: Should these be warnings or mutters?
                 mutter(f"couldn't rename obsolete pack, skipping it:\n{e}")
             # TODO: Probably needs to know all possible indices for this pack
             # - or maybe list the directory and move all indices matching this
             # name whether we recognize it or not?
-            suffixes = ['.iix', '.six', '.tix', '.rix']
+            suffixes = [".iix", ".six", ".tix", ".rix"]
             if self.chk_index is not None:
-                suffixes.append('.cix')
+                suffixes.append(".cix")
             for suffix in suffixes:
                 try:
-                    self._index_transport.move(pack.name + suffix,
-                                               '../obsolete_packs/' + pack.name + suffix)
+                    self._index_transport.move(
+                        pack.name + suffix, "../obsolete_packs/" + pack.name + suffix
+                    )
                 except (errors.PathError, errors.TransportError) as e:
                     mutter(f"couldn't rename obsolete index, skipping it:\n{e}")
 
@@ -1282,14 +1458,14 @@ class RepositoryPackCollection:
         digits = reversed(str(total_revisions))
         result = []
         for exponent, count in enumerate(digits):
-            size = 10 ** exponent
+            size = 10**exponent
             for _pos in range(int(count)):
                 result.append(size)
         return list(reversed(result))
 
     def _pack_tuple(self, name):
         """Return a tuple with the transport and file name for a pack name."""
-        return self._pack_transport, name + '.pack'
+        return self._pack_transport, name + ".pack"
 
     def _remove_pack_from_memory(self, pack):
         """Remove pack from the packs accessed by this repository.
@@ -1307,7 +1483,7 @@ class RepositoryPackCollection:
         :param ignore_missing: Suppress KeyErrors from calling remove_index.
         """
         for index_type in Pack.index_definitions:
-            attr_name = index_type + '_index'
+            attr_name = index_type + "_index"
             aggregate_index = getattr(self, attr_name)
             if aggregate_index is not None:
                 pack_index = getattr(pack, attr_name)
@@ -1354,14 +1530,13 @@ class RepositoryPackCollection:
         # load the disk nodes across
         disk_nodes = set()
         for _index, key, value in self._iter_disk_pack_index():
-            disk_nodes.add((key[0].decode('ascii'), value))
+            disk_nodes.add((key[0].decode("ascii"), value))
         orig_disk_nodes = set(disk_nodes)
 
         # do a two-way diff against our original content
         current_nodes = set()
         for name, sizes in self._names.items():
-            current_nodes.add(
-                (name, b' '.join(b'%d' % size for size in sizes)))
+            current_nodes.add((name, b" ".join(b"%d" % size for size in sizes)))
 
         # Packs no longer present in the repository, which were present when we
         # locked the repository
@@ -1437,15 +1612,22 @@ class RepositoryPackCollection:
         self.lock_names()
         try:
             builder = self._index_builder_class()
-            (disk_nodes, deleted_nodes, new_nodes,
-             orig_disk_nodes) = self._diff_pack_names()
+            (
+                disk_nodes,
+                deleted_nodes,
+                new_nodes,
+                orig_disk_nodes,
+            ) = self._diff_pack_names()
             # TODO: handle same-name, index-size-changes here -
             # e.g. use the value from disk, not ours, *unless* we're the one
             # changing it.
             for name, value in disk_nodes:
-                builder.add_node((name.encode('ascii'), ), value)
-            self.transport.put_file('pack-names', builder.finish(),
-                                    mode=self.repo.controldir._get_file_mode())
+                builder.add_node((name.encode("ascii"),), value)
+            self.transport.put_file(
+                "pack-names",
+                builder.finish(),
+                mode=self.repo.controldir._get_file_mode(),
+            )
             self._packs_at_load = disk_nodes
             if clear_obsolete_packs:
                 to_preserve = None
@@ -1462,8 +1644,9 @@ class RepositoryPackCollection:
             #       disk yet. However, the new pack object is not easily
             #       accessible here (it would have to be passed through the
             #       autopacking code, etc.)
-            obsolete_packs = [o for o in obsolete_packs
-                              if o.name not in already_obsolete]
+            obsolete_packs = [
+                o for o in obsolete_packs if o.name not in already_obsolete
+            ]
             self._obsolete_packs(obsolete_packs)
         return [new_node[0] for new_node in new_nodes]
 
@@ -1485,14 +1668,19 @@ class RepositoryPackCollection:
         if first_read:
             return True
         # out the new value.
-        (disk_nodes, deleted_nodes, new_nodes,
-         orig_disk_nodes) = self._diff_pack_names()
+        (
+            disk_nodes,
+            deleted_nodes,
+            new_nodes,
+            orig_disk_nodes,
+        ) = self._diff_pack_names()
         # _packs_at_load is meant to be the explicit list of names in
         # 'pack-names' at then start. As such, it should not contain any
         # pending names that haven't been written out yet.
         self._packs_at_load = orig_disk_nodes
-        (removed, added,
-         modified) = self._syncronize_pack_names_from_disk_nodes(disk_nodes)
+        (removed, added, modified) = self._syncronize_pack_names_from_disk_nodes(
+            disk_nodes
+        )
         if removed or added or modified:
             return True
         return False
@@ -1520,16 +1708,16 @@ class RepositoryPackCollection:
             were found in obsolete_packs.
         """
         found = []
-        obsolete_pack_transport = self.transport.clone('obsolete_packs')
+        obsolete_pack_transport = self.transport.clone("obsolete_packs")
         if preserve is None:
             preserve = set()
         try:
-            obsolete_pack_files = obsolete_pack_transport.list_dir('.')
+            obsolete_pack_files = obsolete_pack_transport.list_dir(".")
         except _mod_transport.NoSuchFile:
             return found
         for filename in obsolete_pack_files:
             name, ext = osutils.splitext(filename)
-            if ext == '.pack':
+            if ext == ".pack":
                 found.append(name)
             if name in preserve:
                 continue
@@ -1543,24 +1731,25 @@ class RepositoryPackCollection:
         # Do not permit preparation for writing if we're not in a 'write lock'.
         if not self.repo.is_write_locked():
             raise errors.NotWriteLocked(self)
-        self._new_pack = self.pack_factory(self, upload_suffix='.pack',
-                                           file_mode=self.repo.controldir._get_file_mode())
+        self._new_pack = self.pack_factory(
+            self, upload_suffix=".pack", file_mode=self.repo.controldir._get_file_mode()
+        )
         # allow writing: queue writes to a new index
-        self.revision_index.add_writable_index(self._new_pack.revision_index,
-                                               self._new_pack)
-        self.inventory_index.add_writable_index(self._new_pack.inventory_index,
-                                                self._new_pack)
-        self.text_index.add_writable_index(self._new_pack.text_index,
-                                           self._new_pack)
+        self.revision_index.add_writable_index(
+            self._new_pack.revision_index, self._new_pack
+        )
+        self.inventory_index.add_writable_index(
+            self._new_pack.inventory_index, self._new_pack
+        )
+        self.text_index.add_writable_index(self._new_pack.text_index, self._new_pack)
         self._new_pack.text_index.set_optimize(combine_backing_indices=False)
-        self.signature_index.add_writable_index(self._new_pack.signature_index,
-                                                self._new_pack)
+        self.signature_index.add_writable_index(
+            self._new_pack.signature_index, self._new_pack
+        )
         if self.chk_index is not None:
-            self.chk_index.add_writable_index(self._new_pack.chk_index,
-                                              self._new_pack)
+            self.chk_index.add_writable_index(self._new_pack.chk_index, self._new_pack)
             self.repo.chk_bytes._index._add_callback = self.chk_index.add_callback
-            self._new_pack.chk_index.set_optimize(
-                combine_backing_indices=False)
+            self._new_pack.chk_index.set_optimize(combine_backing_indices=False)
 
         self.repo.inventories._index._add_callback = self.inventory_index.add_callback
         self.repo.revisions._index._add_callback = self.revision_index.add_callback
@@ -1572,19 +1761,21 @@ class RepositoryPackCollection:
         # forget what names there are
         if self._new_pack is not None:
             with contextlib.ExitStack() as stack:
-                stack.callback(setattr, self, '_new_pack', None)
+                stack.callback(setattr, self, "_new_pack", None)
                 # If we aborted while in the middle of finishing the write
                 # group, _remove_pack_indices could fail because the indexes are
                 # already gone.  But they're not there we shouldn't fail in this
                 # case, so we pass ignore_missing=True.
-                stack.callback(self._remove_pack_indices, self._new_pack,
-                               ignore_missing=True)
+                stack.callback(
+                    self._remove_pack_indices, self._new_pack, ignore_missing=True
+                )
                 self._new_pack.abort()
         for resumed_pack in self._resumed_packs:
             with contextlib.ExitStack() as stack:
                 # See comment in previous finally block.
-                stack.callback(self._remove_pack_indices, resumed_pack,
-                               ignore_missing=True)
+                stack.callback(
+                    self._remove_pack_indices, resumed_pack, ignore_missing=True
+                )
                 resumed_pack.abort()
         del self._resumed_packs[:]
 
@@ -1606,21 +1797,23 @@ class RepositoryPackCollection:
     def _commit_write_group(self):
         all_missing = set()
         for prefix, versioned_file in (
-                ('revisions', self.repo.revisions),
-                ('inventories', self.repo.inventories),
-                ('texts', self.repo.texts),
-                ('signatures', self.repo.signatures),
-                ):
+            ("revisions", self.repo.revisions),
+            ("inventories", self.repo.inventories),
+            ("texts", self.repo.texts),
+            ("signatures", self.repo.signatures),
+        ):
             missing = versioned_file.get_missing_compression_parent_keys()
             all_missing.update([(prefix,) + key for key in missing])
         if all_missing:
             raise errors.BzrCheckError(
-                f"Repository {self.repo} has missing compression parent(s) {sorted(all_missing)!r} ")
+                f"Repository {self.repo} has missing compression parent(s) {sorted(all_missing)!r} "
+            )
         problems = self._check_new_inventories()
         if problems:
-            problems_summary = '\n'.join(problems)
+            problems_summary = "\n".join(problems)
             raise errors.BzrCheckError(
-                "Cannot add revision(s) to repository: " + problems_summary)
+                "Cannot add revision(s) to repository: " + problems_summary
+            )
         self._remove_pack_indices(self._new_pack)
         any_new_content = False
         if self._new_pack.data_inserted():
@@ -1702,8 +1895,15 @@ class PackRepository(MetaDirVersionedFileRepository):
     _revision_serializer: RevisionSerializer
     _inventory_serializer: InventorySerializer
 
-    def __init__(self, _format, a_controldir, control_files, _commit_builder_class,
-                 _revision_serializer, _inventory_serializer):
+    def __init__(
+        self,
+        _format,
+        a_controldir,
+        control_files,
+        _commit_builder_class,
+        _revision_serializer,
+        _inventory_serializer,
+    ):
         MetaDirRepository.__init__(self, _format, a_controldir, control_files)
         self._commit_builder_class = _commit_builder_class
         self._revision_serializer = _revision_serializer
@@ -1711,7 +1911,8 @@ class PackRepository(MetaDirVersionedFileRepository):
         self._reconcile_fixes_text_parents = True
         if self._format.supports_external_lookups:
             self._unstacked_provider = graph.CachingParentsProvider(
-                self._make_parents_provider_unstacked())
+                self._make_parents_provider_unstacked()
+            )
         else:
             self._unstacked_provider = graph.CachingParentsProvider(self)
         self._unstacked_provider.disable_cache()
@@ -1728,8 +1929,9 @@ class PackRepository(MetaDirVersionedFileRepository):
     def _make_parents_provider(self):
         if not self._format.supports_external_lookups:
             return self._unstacked_provider
-        return graph.StackedParentsProvider(_LazyListJoin(
-            [self._unstacked_provider], self._fallback_repositories))
+        return graph.StackedParentsProvider(
+            _LazyListJoin([self._unstacked_provider], self._fallback_repositories)
+        )
 
     def _refresh_data(self):
         if not self.is_locked():
@@ -1791,9 +1993,9 @@ class PackRepository(MetaDirVersionedFileRepository):
         if self._write_lock_count == 1:
             self._transaction = transactions.WriteTransaction()
         if not locked:
-            if debug.debug_flag_enabled('relock') and self._prev_lock == 'w':
-                note('%r was write locked again', self)
-            self._prev_lock = 'w'
+            if debug.debug_flag_enabled("relock") and self._prev_lock == "w":
+                note("%r was write locked again", self)
+            self._prev_lock = "w"
             self._unstacked_provider.enable_cache()
             for repo in self._fallback_repositories:
                 # Writes don't affect fallback repos
@@ -1812,9 +2014,9 @@ class PackRepository(MetaDirVersionedFileRepository):
         else:
             self.control_files.lock_read()
         if not locked:
-            if debug.debug_flag_enabled('relock') and self._prev_lock == 'r':
-                note('%r was read locked again', self)
-            self._prev_lock = 'r'
+            if debug.debug_flag_enabled("relock") and self._prev_lock == "r":
+                note("%r was read locked again", self)
+            self._prev_lock = "r"
             self._unstacked_provider.enable_cache()
             for repo in self._fallback_repositories:
                 repo.lock_read()
@@ -1837,11 +2039,13 @@ class PackRepository(MetaDirVersionedFileRepository):
         """
         with self.lock_write():
             self._pack_collection.pack(
-                hint=hint, clean_obsolete_packs=clean_obsolete_packs)
+                hint=hint, clean_obsolete_packs=clean_obsolete_packs
+            )
 
     def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""
         from .reconcile import PackReconciler
+
         with self.lock_write():
             reconciler = PackReconciler(self, thorough=thorough)
             return reconciler.reconcile()
@@ -1857,7 +2061,8 @@ class PackRepository(MetaDirVersionedFileRepository):
             self._transaction = None
             self._write_lock_count = 0
             raise errors.BzrError(
-                f'Must end write group before releasing write lock on {self}')
+                f"Must end write group before releasing write lock on {self}"
+            )
         if self._write_lock_count:
             self._write_lock_count -= 1
             if not self._write_lock_count:
@@ -1921,14 +2126,13 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
         :param shared: If true the repository will be initialized as a shared
                        repository.
         """
-        mutter('creating repository in %s.', a_controldir.transport.base)
-        dirs = ['indices', 'obsolete_packs', 'packs', 'upload']
+        mutter("creating repository in %s.", a_controldir.transport.base)
+        dirs = ["indices", "obsolete_packs", "packs", "upload"]
         builder = self.index_builder_class()
-        files = [('pack-names', builder.finish())]
-        utf8_files = [('format', self.get_format_string())]
+        files = [("pack-names", builder.finish())]
+        utf8_files = [("format", self.get_format_string())]
 
-        self._upload_blank_content(
-            a_controldir, dirs, files, utf8_files, shared)
+        self._upload_blank_content(a_controldir, dirs, files, utf8_files, shared)
         repository = self.open(a_controldir=a_controldir, _found=True)
         self._run_post_repo_init_hooks(repository, a_controldir, shared)
         return repository
@@ -1946,14 +2150,17 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
             repo_transport = _override_transport
         else:
             repo_transport = a_controldir.get_repository_transport(None)
-        control_files = lockable_files.LockableFiles(repo_transport,
-                                                     'lock', lockdir.LockDir)
-        return self.repository_class(_format=self,
-                                     a_controldir=a_controldir,
-                                     control_files=control_files,
-                                     _commit_builder_class=self._commit_builder_class,
-                                     _revision_serializer=self._revision_serializer,
-                                     _inventory_serializer=self._inventory_serializer)
+        control_files = lockable_files.LockableFiles(
+            repo_transport, "lock", lockdir.LockDir
+        )
+        return self.repository_class(
+            _format=self,
+            a_controldir=a_controldir,
+            control_files=control_files,
+            _commit_builder_class=self._commit_builder_class,
+            _revision_serializer=self._revision_serializer,
+            _inventory_serializer=self._inventory_serializer,
+        )
 
 
 class RetryPackOperations(RetryWithNewPacks):
@@ -1965,8 +2172,10 @@ class RetryPackOperations(RetryWithNewPacks):
 
     internal_error = True
 
-    _fmt = ("Pack files have changed, reload and try pack again."
-            " context: %(context)s %(orig_error)s")
+    _fmt = (
+        "Pack files have changed, reload and try pack again."
+        " context: %(context)s %(orig_error)s"
+    )
 
 
 class _DirectPackAccess:
@@ -2000,8 +2209,7 @@ class _DirectPackAccess:
             (index, pos, length), where the index field is the write_index
             object supplied to the PackAccess object.
         """
-        p_offset, p_length = self._container_writer.add_bytes_record(
-            raw_data, size, [])
+        p_offset, p_length = self._container_writer.add_bytes_record(raw_data, size, [])
         return (self._write_index, p_offset, p_length)
 
     def add_raw_records(self, key_sizes, raw_data):
@@ -2018,15 +2226,15 @@ class _DirectPackAccess:
             length), where the index field is the write_index object supplied
             to the PackAccess object.
         """
-        raw_data = b''.join(raw_data)
+        raw_data = b"".join(raw_data)
         if not isinstance(raw_data, bytes):
-            raise AssertionError(
-                f'data must be plain bytes was {type(raw_data)}')
+            raise AssertionError(f"data must be plain bytes was {type(raw_data)}")
         result = []
         offset = 0
         for key, size in key_sizes:
             result.append(
-                self.add_raw_record(key, size, [raw_data[offset:offset + size]]))
+                self.add_raw_record(key, size, [raw_data[offset : offset + size]])
+            )
             offset += size
         return result
 
@@ -2050,7 +2258,7 @@ class _DirectPackAccess:
         # first pass, group into same-index requests
         request_lists = []
         current_index = None
-        for (index, offset, length) in memos_for_retrieval:
+        for index, offset, length in memos_for_retrieval:
             if current_index == index:
                 current_list.append((offset, length))
             else:
@@ -2072,9 +2280,9 @@ class _DirectPackAccess:
                     # If we don't have a _reload_func there is nothing that can
                     # be done
                     raise
-                raise RetryWithNewPacks(index,
-                                        reload_occurred=True,
-                                        exc_info=sys.exc_info()) from e
+                raise RetryWithNewPacks(
+                    index, reload_occurred=True, exc_info=sys.exc_info()
+                ) from e
             try:
                 reader = pack.make_readv_reader(transport, path, offsets)
                 for _names, read_func in reader.iter_records():
@@ -2084,9 +2292,11 @@ class _DirectPackAccess:
                 # missing on disk, we need to trigger a reload, and start over.
                 if self._reload_func is None:
                     raise
-                raise RetryWithNewPacks(transport.abspath(path),
-                                        reload_occurred=False,
-                                        exc_info=sys.exc_info()) from e
+                raise RetryWithNewPacks(
+                    transport.abspath(path),
+                    reload_occurred=False,
+                    exc_info=sys.exc_info(),
+                ) from e
 
     def set_writer(self, writer, index, transport_packname):
         """Set a writer to use for adding data."""

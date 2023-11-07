@@ -19,23 +19,22 @@ from . import TestCaseWithTransport
 
 
 class TestFetchGhosts(TestCaseWithTransport):
-
     def prepare_with_ghosts(self):
-        tree = self.make_branch_and_tree('.')
-        tree.commit('rev1', rev_id=b'rev1-id')
-        tree.set_parent_ids([b'rev1-id', b'ghost-id'])
-        tree.commit('rev2')
+        tree = self.make_branch_and_tree(".")
+        tree.commit("rev1", rev_id=b"rev1-id")
+        tree.set_parent_ids([b"rev1-id", b"ghost-id"])
+        tree.commit("rev2")
         return tree
 
     def test_fetch_ghosts_failure(self):
         tree = self.prepare_with_ghosts()
-        branch = self.make_branch('branch')
+        branch = self.make_branch("branch")
         GhostFetcher(tree.branch, branch).run()
-        self.assertFalse(tree.branch.repository.has_revision(b'ghost-id'))
+        self.assertFalse(tree.branch.repository.has_revision(b"ghost-id"))
 
     def test_fetch_ghosts_success(self):
         tree = self.prepare_with_ghosts()
-        ghost_tree = self.make_branch_and_tree('ghost_tree')
-        ghost_tree.commit('ghost', rev_id=b'ghost-id')
+        ghost_tree = self.make_branch_and_tree("ghost_tree")
+        ghost_tree.commit("ghost", rev_id=b"ghost-id")
         GhostFetcher(tree.branch, ghost_tree.branch).run()
-        self.assertTrue(tree.branch.repository.has_revision(b'ghost-id'))
+        self.assertTrue(tree.branch.repository.has_revision(b"ghost-id"))
