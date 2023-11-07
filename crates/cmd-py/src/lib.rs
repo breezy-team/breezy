@@ -457,9 +457,10 @@ impl LockHeldInfo {
         _cls: &PyType,
         extra_holder_info: Option<std::collections::HashMap<String, String>>,
     ) -> Self {
-        let mut extra_holder_info =
-            extra_holder_info.unwrap_or_default();
-        let pid = extra_holder_info.remove("pid").map(|pid| pid.parse::<u32>().unwrap());
+        let mut extra_holder_info = extra_holder_info.unwrap_or_default();
+        let pid = extra_holder_info
+            .remove("pid")
+            .map(|pid| pid.parse::<u32>().unwrap());
         let mut ret = breezy::lockdir::LockHeldInfo::for_this_process(extra_holder_info);
 
         if let Some(pid) = pid {
