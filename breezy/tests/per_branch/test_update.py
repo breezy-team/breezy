@@ -15,9 +15,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from breezy import branch, errors
+from breezy import branch, errors, tests
 from breezy import revision as _mod_revision
-from breezy import tests
 from breezy.tests import per_branch
 
 """Tests for branch.update()"""
@@ -71,17 +70,16 @@ class TestUpdate(per_branch.TestCaseWithBranch):
         rev1 = tree1.commit('one')
         try:
             tree1.branch.tags.set_tag('test-tag', rev1)
-        except errors.TagsNotSupported:
+        except errors.TagsNotSupported as e:
             # Tags not supported
-            raise tests.TestNotApplicable("only triggered from branches with"
-                                          " tags")
+            raise tests.TestNotApplicable("only triggered from branches with tags") from e
         readonly_branch1 = branch.Branch.open('readonly+' + tree1.branch.base)
         tree2 = tree1.controldir.sprout('tree2').open_workingtree()
         try:
             tree2.branch.bind(readonly_branch1)
-        except branch.BindingUnsupported:
+        except branch.BindingUnsupported as e:
             # old branch, cant test.
-            raise tests.TestNotApplicable("only triggered in bound branches")
+            raise tests.TestNotApplicable("only triggered in bound branches") from e
         rev2 = tree1.commit('two')
         tree2.update()
         self.assertEqual(rev2, tree2.branch.last_revision())

@@ -23,8 +23,15 @@ import os
 
 from testtools import matchers
 
-from breezy import (branch, controldir, merge_directive, osutils, tests,
-                    urlutils, workingtree)
+from breezy import (
+    branch,
+    controldir,
+    merge_directive,
+    osutils,
+    tests,
+    urlutils,
+    workingtree,
+)
 from breezy.bzr import conflicts
 from breezy.tests import scenarios, script
 from breezy.transport.local import file_kind
@@ -505,8 +512,7 @@ class TestMerge(tests.TestCaseWithTransport):
         if message:
             message += '\n'
         raise AssertionError(
-            '%s"%s" directory content is different:\na = %s\nb = %s\n'
-            % (message, directory, sorted(entries), sorted(ondisk)))
+            f'{message}"{directory}" directory content is different:\na = {sorted(entries)}\nb = {sorted(ondisk)}\n')
 
     def test_cherrypicking_merge(self):
         # make source branch

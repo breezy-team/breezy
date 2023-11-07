@@ -34,9 +34,14 @@ except ImportError:  # dulwich < 0.21.3
 from dulwich.walk import Walker
 
 from .. import config, trace, ui
-from ..errors import (DivergedBranches, FetchLimitUnsupported,
-                      InvalidRevisionId, LossyPushToSameVCS,
-                      NoRoundtrippingSupport, NoSuchRevision)
+from ..errors import (
+    DivergedBranches,
+    FetchLimitUnsupported,
+    InvalidRevisionId,
+    LossyPushToSameVCS,
+    NoRoundtrippingSupport,
+    NoSuchRevision,
+)
 from ..repository import AbstractSearchResult, FetchResult, InterRepository
 from ..revision import NULL_REVISION, RevisionID
 from .errors import NoPushSupport
@@ -103,8 +108,8 @@ class InterToGitRepository(InterRepository):
                     continue
                 try:
                     git_sha = self.source_store._lookup_revision_sha1(revid)
-                except KeyError:
-                    raise NoSuchRevision(revid, self.source)
+                except KeyError as err:
+                    raise NoSuchRevision(revid, self.source) from err
                 git_shas.append(git_sha)
             walker = Walker(
                 self.source_store,
@@ -298,8 +303,8 @@ class InterToLocalGitRepository(InterToGitRepository):
         self._warn_slow()
         try:
             revidmap = self.fetch_revs(stop_revisions, lossy=lossy)
-        except NoPushSupport:
-            raise NoRoundtrippingSupport(self.source, self.target)
+        except NoPushSupport as err:
+            raise NoRoundtrippingSupport(self.source, self.target) from err
         return FetchResult(revidmap)
 
     @staticmethod

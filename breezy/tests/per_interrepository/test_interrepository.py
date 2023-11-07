@@ -24,7 +24,7 @@ import breezy.gpg
 from breezy.tests import TestNotApplicable, TestSkipped
 from breezy.tests.per_interrepository import TestCaseWithInterRepository
 
-from ...bzr.inventory import Inventory
+from ...bzr.inventory import ROOT_ID, Inventory, InventoryDirectory
 from ...repository import WriteGroup
 from ...revision import NULL_REVISION
 from ...workingtree import WorkingTree
@@ -80,8 +80,8 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         repo_a = self.controldir.open_repository()
         try:
             repo_b.fetch(repo_a, self.rev1)
-        except errors.NoRoundtrippingSupport:
-            raise TestNotApplicable('roundtripping not supported')
+        except errors.NoRoundtrippingSupport as err:
+            raise TestNotApplicable('roundtripping not supported') from err
         # check the test will be valid
         self.assertFalse(repo_b.has_revision(self.rev2))
         result = repo_b.search_missing_revision_ids(repo_a)
@@ -128,9 +128,9 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         self.assertFalse(repo_b.has_revision(self.rev2))
         try:
             result = repo_b.search_missing_revision_ids(repo_a, limit=1)
-        except errors.FetchLimitUnsupported:
+        except errors.FetchLimitUnsupported as err:
             raise TestNotApplicable(
-                'interrepo does not support limited fetches')
+                'interrepo does not support limited fetches') from err
         self.assertEqual(('search', {self.rev1}, {b'null:'}, 1),
                          result.get_recipe())
 
@@ -153,8 +153,8 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         to_repo = self.make_to_repository('target')
         try:
             to_repo.fetch(from_repo)
-        except errors.NoRoundtrippingSupport:
-            raise TestNotApplicable('interrepo does not support roundtripping')
+        except errors.NoRoundtrippingSupport as err:
+            raise TestNotApplicable('interrepo does not support roundtripping') from err
         to_signature = to_repo.get_signature_text(self.rev2)
         self.assertEqual(from_signature, to_signature)
 
@@ -183,8 +183,9 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         def add_commit(repo, revision_id, parent_ids):
             repo.lock_write()
             repo.start_write_group()
-            inv = Inventory(revision_id=revision_id)
-            inv.root.revision = revision_id
+            inv = Inventory(revision_id=revision_id, root_id=None)
+            root = InventoryDirectory(ROOT_ID, "", None, revision_id)
+            inv.add(root)
             root_id = inv.root.file_id
             sha1 = repo.add_inventory(revision_id, inv, parent_ids)
             repo.texts.add_lines((root_id, revision_id), [], [])

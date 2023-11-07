@@ -23,17 +23,35 @@ from io import BytesIO
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 from ... import osutils, tests, trace, urlutils
-from ...bzr.conflicts import (DeletingParent, DuplicateEntry, DuplicateID,
-                              MissingParent, NonDirectoryParent, ParentLoop,
-                              UnversionedParent)
+from ...bzr.conflicts import (
+    DeletingParent,
+    DuplicateEntry,
+    DuplicateID,
+    MissingParent,
+    NonDirectoryParent,
+    ParentLoop,
+    UnversionedParent,
+)
 from ...bzr.transform import resolve_checkout
-from ...errors import (DuplicateKey, ExistingLimbo, ExistingPendingDeletion,
-                       ImmortalPendingDeletion, LockError)
+from ...errors import (
+    DuplicateKey,
+    ExistingLimbo,
+    ExistingPendingDeletion,
+    ImmortalPendingDeletion,
+    LockError,
+)
 from ...osutils import pathjoin
-from ...transform import (ROOT_PARENT, FinalPaths, ImmortalLimbo,
-                          MalformedTransform, NoFinalPath, ReusingTransform,
-                          TransformRenameFailed, create_from_tree,
-                          resolve_conflicts)
+from ...transform import (
+    ROOT_PARENT,
+    FinalPaths,
+    ImmortalLimbo,
+    MalformedTransform,
+    NoFinalPath,
+    ReusingTransform,
+    TransformRenameFailed,
+    create_from_tree,
+    resolve_conflicts,
+)
 from ...transport import FileExists
 from ...transport.local import file_kind
 from ...tree import TreeChange
@@ -907,10 +925,14 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             self.assertEqual(cooked_conflicts[5], unversioned_parent2)
             self.assertEqual(cooked_conflicts[6], parent_loop)
             self.assertEqual(len(cooked_conflicts), 7)
-        else:
+        elif self.wt.has_versioned_directories():
             self.assertEqual(
                 {c.path for c in cooked_conflicts},
                 {'oz/emeraldcity', 'oz', 'munchkincity', 'dorothy.moved'})
+        else:
+            self.assertEqual(
+                {c.path for c in cooked_conflicts},
+                {'oz/emeraldcity', 'oz', 'dorothy.moved'})
         tt.finalize()
 
     def test_string_conflicts(self):
@@ -940,10 +962,16 @@ class TestTreeTransform(TestCaseWithWorkingTree):
                                              ' children.  Versioned directory.')
             self.assertEqual(conflicts_s[6], 'Conflict moving oz/emeraldcity into'
                                              ' oz/emeraldcity. Cancelled move.')
-        else:
+        elif self.wt.has_versioned_directories():
             self.assertEqual(
                 {'Text conflict in dorothy.moved',
                  'Text conflict in munchkincity',
+                 'Text conflict in oz',
+                 'Text conflict in oz/emeraldcity'},
+                set(conflicts_s))
+        else:
+            self.assertEqual(
+                {'Text conflict in dorothy.moved',
                  'Text conflict in oz',
                  'Text conflict in oz/emeraldcity'},
                 set(conflicts_s))

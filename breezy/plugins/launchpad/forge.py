@@ -24,9 +24,16 @@ from typing import Any, List, Optional
 
 from ... import branch as _mod_branch
 from ... import controldir, errors, urlutils
-from ...forge import (AutoMergeUnsupported, Forge, LabelsUnsupported,
-                      MergeProposal, MergeProposalBuilder, MergeProposalExists,
-                      TitleUnsupported, UnsupportedForge)
+from ...forge import (
+    AutoMergeUnsupported,
+    Forge,
+    LabelsUnsupported,
+    MergeProposal,
+    MergeProposalBuilder,
+    MergeProposalExists,
+    TitleUnsupported,
+    UnsupportedForge,
+)
 from ...git.urls import git_url_to_bzr_url
 from ...lazy_import import lazy_import
 from ...trace import mutter
@@ -105,7 +112,7 @@ def _call_webservice(call, *args, **kwargs):
             if line.startswith(b'Traceback (most recent call last):'):
                 break
             error_lines.append(line)
-        raise WebserviceFailure(b''.join(error_lines))
+        raise WebserviceFailure(b''.join(error_lines)) from e
 
 
 class LaunchpadMergeProposal(MergeProposal):
@@ -697,7 +704,7 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
             # Urgh.
             if (b'There is already a branch merge proposal '
                     b'registered for branch ') in e.message:
-                raise MergeProposalExists(self.source_branch.user_url)
+                raise MergeProposalExists(self.source_branch.user_url) from e
             raise
 
         if self.approve:
@@ -824,7 +831,7 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
             # Urgh.
             if ('There is already a branch merge proposal '
                     'registered for branch ') in e.message:
-                raise MergeProposalExists(self.source_branch.user_url)
+                raise MergeProposalExists(self.source_branch.user_url) from e
             raise
         if self.approve:
             self.approve_proposal(mp)

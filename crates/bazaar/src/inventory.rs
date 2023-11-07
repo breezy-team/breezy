@@ -99,24 +99,6 @@ pub enum Error {
 /// (reading a version 4 tree created a text_id field.)
 
 impl Entry {
-    pub fn new(kind: Kind, name: String, file_id: FileId, parent_id: Option<FileId>) -> Self {
-        if !is_valid_name(&name) {
-            panic!("Invalid name: {}", name);
-        }
-        match kind {
-            Kind::File => Entry::file(file_id, name, parent_id.unwrap()),
-            Kind::Directory => {
-                if parent_id.is_none() {
-                    Entry::root(file_id)
-                } else {
-                    Entry::directory(file_id, None, parent_id.unwrap(), name)
-                }
-            }
-            Kind::Symlink => Entry::link(file_id, name, parent_id.unwrap()),
-            Kind::TreeReference => Entry::tree_reference(file_id, name, parent_id.unwrap()),
-        }
-    }
-
     /// Return true if the object this entry represents has textual data.
     ///
     /// Note that textual data includes binary content.
@@ -146,9 +128,9 @@ impl Entry {
 
     pub fn directory(
         file_id: FileId,
-        revision: Option<RevisionId>,
-        parent_id: FileId,
         name: String,
+        parent_id: FileId,
+        revision: Option<RevisionId>,
     ) -> Self {
         Self::Directory {
             file_id,
@@ -158,43 +140,62 @@ impl Entry {
         }
     }
 
-    pub fn root(file_id: FileId) -> Self {
-        Entry::Root {
-            file_id,
-            revision: None,
-        }
+    pub fn root(file_id: FileId, revision: Option<RevisionId>) -> Self {
+        Entry::Root { file_id, revision }
     }
 
-    pub fn file(file_id: FileId, name: String, parent_id: FileId) -> Self {
+    pub fn file(
+        file_id: FileId,
+        name: String,
+        parent_id: FileId,
+        revision: Option<RevisionId>,
+        text_sha1: Option<Vec<u8>>,
+        text_size: Option<u64>,
+        executable: Option<bool>,
+        text_id: Option<Vec<u8>>,
+    ) -> Self {
+        let executable = executable.unwrap_or(false);
         Entry::File {
             file_id,
             name,
             parent_id,
-            revision: None,
-            text_sha1: None,
-            text_size: None,
-            text_id: None,
-            executable: false,
+            revision,
+            text_sha1,
+            text_size,
+            text_id,
+            executable,
         }
     }
 
-    pub fn tree_reference(file_id: FileId, name: String, parent_id: FileId) -> Self {
+    pub fn tree_reference(
+        file_id: FileId,
+        name: String,
+        parent_id: FileId,
+        revision: Option<RevisionId>,
+        reference_revision: Option<RevisionId>,
+    ) -> Self {
         Entry::TreeReference {
             file_id,
-            revision: None,
-            reference_revision: None,
+            revision,
+            reference_revision,
             name,
             parent_id,
         }
     }
 
-    pub fn link(file_id: FileId, name: String, parent_id: FileId) -> Self {
+    pub fn link(
+        file_id: FileId,
+        name: String,
+        parent_id: FileId,
+        revision: Option<RevisionId>,
+        symlink_target: Option<String>,
+    ) -> Self {
         Entry::Link {
             file_id,
             name,
             parent_id,
-            symlink_target: None,
-            revision: None,
+            symlink_target,
+            revision,
         }
     }
 
@@ -222,32 +223,40 @@ impl Entry {
             Entry::TreeReference { file_id, .. } => {
                 *file_id = new_file_id;
             }
+            Entry::Root { file_id, .. } => {
+                *file_id = new_file_id;
+            }
         }
     }
 
     pub fn parent_id(&self) -> Option<&FileId> {
         match self {
-            Entry::Directory { parent_id, .. } => Some(&parent_id),
-            Entry::File { parent_id, .. } => Some(&parent_id),
-            Entry::Link { parent_id, .. } => Some(&parent_id),
-            Entry::TreeReference { parent_id, .. } => Some(&parent_id),
+            Entry::Directory { parent_id, .. } => Some(parent_id),
+            Entry::File { parent_id, .. } => Some(parent_id),
+            Entry::Link { parent_id, .. } => Some(parent_id),
+            Entry::TreeReference { parent_id, .. } => Some(parent_id),
             Entry::Root { .. } => None,
         }
     }
 
     pub fn set_parent_id(&mut self, new_parent_id: Option<FileId>) {
         match self {
+            Entry::Root { .. } => {
+                if new_parent_id.is_some() {
+                    panic!("Cannot set parent_id on root");
+                }
+            }
             Entry::Directory { parent_id, .. } => {
-                *parent_id = new_parent_id;
+                *parent_id = new_parent_id.unwrap();
             }
             Entry::File { parent_id, .. } => {
-                *parent_id = new_parent_id;
+                *parent_id = new_parent_id.unwrap();
             }
             Entry::Link { parent_id, .. } => {
-                *parent_id = new_parent_id;
+                *parent_id = new_parent_id.unwrap();
             }
             Entry::TreeReference { parent_id, .. } => {
-                *parent_id = new_parent_id;
+                *parent_id = new_parent_id.unwrap();
             }
         }
     }
@@ -275,6 +284,9 @@ impl Entry {
             }
             Entry::TreeReference { name, .. } => {
                 *name = new_name;
+            }
+            Entry::Root { .. } => {
+                panic!("Cannot set name on root");
             }
         }
     }
@@ -548,10 +560,8 @@ impl MutableInventory {
         self.root_id = Some(new_root_id.clone());
         self.by_id.insert(
             new_root_id.clone(),
-            Entry::Directory {
-                parent_id: None,
+            Entry::Root {
                 file_id: new_root_id.clone(),
-                name: "".to_string(),
                 revision: None,
             },
         );
@@ -605,10 +615,12 @@ impl MutableInventory {
         accum
     }
 
-    pub fn rename_id(&mut self, old_file_id: &FileId, new_file_id: &FileId) {
-        let mut ie = self.by_id.remove(old_file_id).unwrap();
-        if let Entry::Directory { .. } = ie {
-            let children = self.children.remove(old_file_id).unwrap();
+    pub fn rename_id(&mut self, old_file_id: &FileId, new_file_id: &FileId) -> Result<(), Error> {
+        let mut ie = self
+            .by_id
+            .remove(old_file_id)
+            .ok_or_else(|| Error::NoSuchId(old_file_id.clone()))?;
+        if let Some(children) = self.children.remove(old_file_id) {
             for child_id in children.values() {
                 let child = self.by_id.get_mut(child_id).unwrap();
                 assert_eq!(child.parent_id(), Some(old_file_id));
@@ -618,6 +630,7 @@ impl MutableInventory {
         }
         ie.set_file_id(new_file_id.clone());
         self.by_id.insert(new_file_id.clone(), ie);
+        Ok(())
     }
 
     pub fn path2id(&self, relpath: &str) -> Option<&FileId> {
@@ -1002,10 +1015,8 @@ impl MutableInventory {
                     self.id2path(new_entry.file_id()),
                 ));
             }
-            if let Entry::Directory { .. } = new_entry {
-                if let Some(children) = children.remove(new_entry.file_id()) {
-                    self.children.insert(new_entry.file_id().clone(), children);
-                }
+            if let Some(children) = children.remove(new_entry.file_id()) {
+                self.children.insert(new_entry.file_id().clone(), children);
             }
             if !children.is_empty() {
                 // Get the parent id that was deleted
@@ -1124,7 +1135,7 @@ impl MutableInventory {
                 .get(parent_id)
                 .ok_or_else(|| Error::ParentMissing(parent_id.clone()))?;
             match parent {
-                Entry::Directory { .. } => {}
+                Entry::Directory { .. } | Entry::Root { .. } => {}
                 _ => {
                     return Err(Error::ParentNotDirectory(
                         self.id2path(parent_id),
@@ -1146,12 +1157,15 @@ impl MutableInventory {
                 }
             }
         } else {
-            assert_eq!(ie.kind(), Kind::Directory);
+            assert!(matches!(ie, Entry::Root { .. }));
             self.root_id = Some(ie.file_id().clone());
         }
 
-        if let Entry::Directory { ref file_id, .. } = ie {
-            self.children.insert(file_id.clone(), HashMap::new());
+        match ie {
+            Entry::Directory { ref file_id, .. } | Entry::Root { ref file_id, .. } => {
+                self.children.insert(file_id.clone(), HashMap::new());
+            }
+            _ => {}
         }
         self.by_id.insert(ie.file_id().clone(), ie);
         Ok(())
@@ -1162,18 +1176,20 @@ impl MutableInventory {
         relpath: &str,
         kind: Kind,
         file_id: Option<FileId>,
+        revision: Option<RevisionId>,
+        text_sha1: Option<Vec<u8>>,
+        text_size: Option<u64>,
+        executable: Option<bool>,
+        text_id: Option<Vec<u8>>,
+        symlink_target: Option<String>,
+        reference_revision: Option<RevisionId>,
     ) -> Result<FileId, Error> {
         let parts = breezy_osutils::path::splitpath(relpath).unwrap();
 
         if parts.is_empty() {
             self.clear();
             let file_id = Some(file_id.unwrap_or_else(FileId::generate_root_id));
-            let root = Entry::directory(
-                file_id.as_ref().unwrap().clone(),
-                None,
-                None,
-                "".to_string(),
-            );
+            let root = Entry::root(file_id.as_ref().unwrap().clone(), revision);
             self.add(root)?;
             Ok(self.root_id.as_ref().unwrap().clone())
         } else {
@@ -1182,7 +1198,19 @@ impl MutableInventory {
             if parent_id.is_none() {
                 return Err(Error::ParentNotVersioned(parent_path.join("/")));
             }
-            let ie = make_entry(kind, basename.to_string(), parent_id.cloned(), file_id);
+            let ie = make_entry(
+                kind,
+                basename.to_string(),
+                parent_id.cloned(),
+                file_id,
+                revision,
+                text_sha1,
+                text_size,
+                executable,
+                text_id,
+                symlink_target,
+                reference_revision,
+            );
             let file_id = ie.file_id().clone();
             self.add(ie)?;
             Ok(file_id)
@@ -1400,12 +1428,43 @@ pub fn make_entry(
     name: String,
     parent_id: Option<FileId>,
     file_id: Option<FileId>,
+    revision: Option<RevisionId>,
+    text_sha1: Option<Vec<u8>>,
+    text_size: Option<u64>,
+    executable: Option<bool>,
+    text_id: Option<Vec<u8>>,
+    symlink_target: Option<String>,
+    reference_revision: Option<RevisionId>,
 ) -> Entry {
     let file_id = file_id.unwrap_or_else(|| FileId::generate(name.as_str()));
+    if !is_valid_name(&name) {
+        panic!("Invalid name: {}", name);
+    }
     match kind {
-        Kind::Directory => Entry::directory(file_id, None, parent_id, name),
-        Kind::File => Entry::file(file_id, name, parent_id),
-        Kind::Symlink => Entry::link(file_id, name, parent_id),
-        Kind::TreeReference => Entry::tree_reference(file_id, name, parent_id),
+        Kind::File => Entry::file(
+            file_id,
+            name,
+            parent_id.unwrap(),
+            revision,
+            text_sha1,
+            text_size,
+            executable,
+            text_id,
+        ),
+        Kind::Directory => {
+            if let Some(parent_id) = parent_id {
+                Entry::directory(file_id, name, parent_id, revision)
+            } else {
+                Entry::root(file_id, revision)
+            }
+        }
+        Kind::Symlink => Entry::link(file_id, name, parent_id.unwrap(), revision, symlink_target),
+        Kind::TreeReference => Entry::tree_reference(
+            file_id,
+            name,
+            parent_id.unwrap(),
+            revision,
+            reference_revision,
+        ),
     }
 }

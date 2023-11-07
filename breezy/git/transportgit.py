@@ -23,30 +23,56 @@ from io import BytesIO
 
 from dulwich.errors import NoIndexPresent
 from dulwich.file import FileLocked, _GitFile
-from dulwich.object_store import (PACK_MODE, PACKDIR, PackBasedObjectStore,
-                                  read_packs_file)
+from dulwich.object_store import (
+    PACK_MODE,
+    PACKDIR,
+    PackBasedObjectStore,
+    read_packs_file,
+)
 from dulwich.objects import ShaFile
-from dulwich.pack import (Pack, PackData, PackIndexer, PackStreamCopier,
-                          extend_pack, iter_sha1, load_pack_index_file,
-                          write_pack_index)
+from dulwich.pack import (
+    Pack,
+    PackData,
+    PackIndexer,
+    PackStreamCopier,
+    extend_pack,
+    iter_sha1,
+    load_pack_index_file,
+    write_pack_index,
+)
 from dulwich.refs import SymrefLoop
-from dulwich.repo import (BASE_DIRECTORIES, COMMONDIR, CONTROLDIR,
-                          INDEX_FILENAME, OBJECTDIR, SYMREF, BaseRepo,
-                          InfoRefsContainer, RefsContainer, check_ref_format,
-                          read_packed_refs, read_packed_refs_with_peeled,
-                          write_packed_refs)
+from dulwich.repo import (
+    BASE_DIRECTORIES,
+    COMMONDIR,
+    CONTROLDIR,
+    INDEX_FILENAME,
+    OBJECTDIR,
+    SYMREF,
+    BaseRepo,
+    InfoRefsContainer,
+    RefsContainer,
+    check_ref_format,
+    read_packed_refs,
+    read_packed_refs_with_peeled,
+    write_packed_refs,
+)
 
-from .. import osutils
+from .. import osutils, urlutils
 from .. import transport as _mod_transport
-from .. import urlutils
-from ..errors import (AlreadyControlDirError, LockBroken, LockContention,
-                      NotLocalUrl, ReadError, TransportNotPossible)
+from ..errors import (
+    AlreadyControlDirError,
+    LockBroken,
+    LockContention,
+    NotLocalUrl,
+    ReadError,
+    TransportNotPossible,
+)
 from ..lock import LogicalLockResult
 from ..trace import warning
 from ..transport import FileExists, NoSuchFile
 
 
-class _RemoteGitFile(object):
+class _RemoteGitFile:
 
     def __init__(self, transport, filename, mode, bufsize, mask):
         self.transport = transport
@@ -378,23 +404,23 @@ class TransportRefsContainer(RefsContainer):
         try:
             transport.local_abspath(
                 urlutils.quote_from_bytes(name))
-        except NotLocalUrl:
+        except NotLocalUrl as err:
             # This is racy, but what can we do?
             if transport.has(lockname):
-                raise LockContention(name)
+                raise LockContention(name) from err
             transport.put_bytes(lockname, b'Locked by brz-git')
             return LogicalLockResult(lambda: transport.delete(lockname))
         else:
             try:
                 gf = TransportGitFile(transport, urlutils.quote_from_bytes(name), 'wb')
             except FileLocked as e:
-                raise LockContention(name, e)
+                raise LockContention(name, e) from e
             else:
                 def unlock():
                     try:
                         transport.delete(lockname)
-                    except NoSuchFile:
-                        raise LockBroken(lockname)
+                    except NoSuchFile as err:
+                        raise LockBroken(lockname) from err
                     # GitFile.abort doesn't care if the lock has already
                     # disappeared
                     gf.abort()
@@ -419,7 +445,7 @@ def read_gitfile(f):
 
 class TransportRepo(BaseRepo):
 
-    def __init__(self, transport, bare, refs_text=None):
+    def __init__(self, transport, bare, refs_text=None) -> None:
         self.transport = transport
         self.bare = bare
         try:
@@ -554,8 +580,8 @@ class TransportRepo(BaseRepo):
         if not bare:
             try:
                 transport.mkdir(".git")
-            except FileExists:
-                raise AlreadyControlDirError(transport.base)
+            except FileExists as err:
+                raise AlreadyControlDirError(transport.base) from err
             control_transport = transport.clone(".git")
         else:
             control_transport = transport
@@ -566,8 +592,8 @@ class TransportRepo(BaseRepo):
                 pass
         try:
             control_transport.mkdir(OBJECTDIR)
-        except FileExists:
-            raise AlreadyControlDirError(transport.base)
+        except FileExists as err:
+            raise AlreadyControlDirError(transport.base) from err
         TransportObjectStore.init(control_transport.clone(OBJECTDIR))
         ret = cls(transport, bare)
         ret.refs.set_symbolic_ref(b"HEAD", b"refs/heads/master")

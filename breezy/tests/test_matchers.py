@@ -16,10 +16,10 @@
 
 """Tests of breezy test matchers."""
 
-from testtools.matchers import *
+from testtools.matchers import *  # noqa: F403
 
 from . import TestCase, TestCaseWithTransport
-from .matchers import *
+from .matchers import *  # noqa: F403
 
 
 class StubTree:
@@ -97,8 +97,7 @@ class TestMatchesAncestry(TestCaseWithTransport):
         mismatch = m.match([])
         self.assertIsNot(None, mismatch)
         self.assertEqual(
-            "mismatched ancestry for revision {!r} was [{!r}], expected []".format(
-                revid1, revid1),
+            f"mismatched ancestry for revision {revid1!r} was [{revid1!r}], expected []",
             mismatch.describe())
 
 

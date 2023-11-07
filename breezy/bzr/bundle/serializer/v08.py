@@ -16,9 +16,8 @@
 
 """Serializer factory for reading and writing bundles."""
 
-from .... import errors
+from .... import errors, ui
 from .... import transport as _mod_transport
-from .... import ui
 from ....diff import internal_diff
 from ....osutils import format_highres_date
 from ....revision import NULL_REVISION
@@ -64,7 +63,7 @@ class Action:
             if len(prop) == 1:
                 p_texts.append(prop[0])
             else:
-                p_texts.append('%s:%s' % prop)
+                p_texts.append('{}:{}'.format(*prop))
         text = ['=== ']
         text.append(' // '.join(p_texts))
         text_line = ''.join(text).encode('utf-8')
@@ -130,7 +129,7 @@ class BundleSerializerV08(BundleSerializer):
         f.write(b'#\n')
 
     def _write(self, key, value, indent=1, trailing_space_when_empty=False):
-        """Write out meta information, with proper indenting, etc.
+        r"""Write out meta information, with proper indenting, etc.
 
         :param trailing_space_when_empty: To work around a bug in earlier
             bundle readers, when writing an empty property, we use "prop: \n"
@@ -239,7 +238,7 @@ class BundleSerializerV08(BundleSerializer):
     def _write_action(self, name, parameters, properties=None):
         if properties is None:
             properties = []
-        p_texts = ['%s:%s' % v for v in properties]
+        p_texts = ['{}:{}'.format(*v) for v in properties]
         self.to_file.write(b'=== ')
         self.to_file.write(' '.join([name] + parameters).encode('utf-8'))
         self.to_file.write(' // '.join(p_texts).encode('utf-8'))

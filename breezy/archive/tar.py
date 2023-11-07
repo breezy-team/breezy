@@ -69,8 +69,7 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
         item.linkname = tree.get_symlink_target(tree_path)
         fileobj = None
     else:
-        raise errors.BzrError("don't know how to export {%s} of kind %r"
-                              % (final_path, entry.kind))
+        raise errors.BzrError(f"don't know how to export {{{final_path}}} of kind {entry.kind!r}")
     return (item, fileobj)
 
 
@@ -79,9 +78,12 @@ def tarball_generator(tree, root, subdir=None, force_mtime=None, format='', recu
 
     Args:
       tree: Tree to export
+      root: Root directory to export
       subdir: Sub directory to export
       force_mtime: Option mtime to force, instead of using tree
         timestamps.
+      format: Tarball format to use (tgz, tar, tbz, etc)
+      recurse_nested: Whether to recurse into nested trees.
     Returns: A generator that will produce file content chunks.
     """
     buf = BytesIO()

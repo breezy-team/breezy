@@ -17,9 +17,8 @@
 import sys
 
 from .. import branch as _mod_branch
-from .. import controldir, info
+from .. import controldir, info, tests, workingtree
 from .. import repository as _mod_repository
-from .. import tests, workingtree
 from ..bzr import branch as _mod_bzrbranch
 
 
@@ -108,8 +107,7 @@ class TestInfo(tests.TestCaseWithTransport):
             format_description = info.describe_format(tree.controldir,
                                                       tree.branch.repository, tree.branch, tree)
             self.assertEqual(expected, format_description,
-                             "checkout of format called %r was described as %r" %
-                             (expected, format_description))
+                             f"checkout of format called {expected!r} was described as {format_description!r}")
         finally:
             control._format.workingtree_format = old_format
 
@@ -300,8 +298,8 @@ class TestInfo(tests.TestCaseWithTransport):
             'repo/bound_branch')
         try:
             bound_branch.bind(branch)
-        except _mod_branch.BindingUnsupported:
-            raise tests.TestNotApplicable('format does not support bound branches')
+        except _mod_branch.BindingUnsupported as err:
+            raise tests.TestNotApplicable('format does not support bound branches') from err
         self.assertEqual(
             [('shared repository', bound_branch.repository.controldir.user_url),
              ('repository branch', bound_branch.controldir.user_url),

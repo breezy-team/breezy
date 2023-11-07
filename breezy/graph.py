@@ -14,7 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from . import debug, errors, osutils, revision, trace
+from . import debug, errors, osutils, trace
+from . import revision as _mod_revision
 
 STEP_UNIQUE_SEARCHER_EVERY = 5
 
@@ -349,7 +350,7 @@ class Graph:
         known_revnos = dict(known_revision_ids)
         cur_tip = target_revision_id
         num_steps = 0
-        NULL_REVISION = revision.NULL_REVISION
+        NULL_REVISION = _mod_revision.NULL_REVISION
         known_revnos[NULL_REVISION] = 0
 
         searching_known_tips = list(known_revnos)
@@ -457,7 +458,7 @@ class Graph:
         self._refine_unique_nodes(unique_searcher, all_unique_searcher,
                                   unique_tip_searchers, common_searcher)
         true_unique_nodes = unique_nodes.difference(common_searcher.seen)
-        if 'graph' in debug.debug_flags:
+        if debug.debug_flag_enabled('graph'):
             trace.mutter('Found %d truly unique nodes out of %d',
                          len(true_unique_nodes), len(unique_nodes))
         return true_unique_nodes
@@ -553,7 +554,7 @@ class Graph:
             for searcher in unique_tip_searchers:
                 total_stopped += len(searcher.stop_searching_any(
                     searcher.find_seen_ancestors(ancestor_all_unique)))
-        if 'graph' in debug.debug_flags:
+        if debug.debug_flag_enabled('graph'):
             trace.mutter('For %d unique nodes, created %d + 1 unique searchers'
                          ' (%d stopped search tips, %d common ancestors'
                          ' (%d stopped common)',
@@ -600,7 +601,7 @@ class Graph:
             tstart = osutils.perf_counter()
             nodes = all_unique_searcher.step()
             common_to_all_unique_nodes.update(nodes)
-            if 'graph' in debug.debug_flags:
+            if debug.debug_flag_enabled('graph'):
                 tdelta = osutils.perf_counter() - tstart
                 trace.mutter('all_unique_searcher step() took %.3fs'
                              'for %d nodes (%d total), iteration: %s',
@@ -625,7 +626,7 @@ class Graph:
             stopped = searcher.stop_searching_any(common_to_all_unique_nodes)
             will_search_set = frozenset(searcher._next_query)
             if not will_search_set:
-                if 'graph' in debug.debug_flags:
+                if debug.debug_flag_enabled('graph'):
                     trace.mutter('Unique searcher %s was stopped.'
                                  ' (%s iterations) %d nodes stopped',
                                  searcher._label,
@@ -651,7 +652,7 @@ class Graph:
                 next_searcher = searchers[0]
                 for searcher in searchers[1:]:
                     next_searcher.seen.intersection_update(searcher.seen)
-                if 'graph' in debug.debug_flags:
+                if debug.debug_flag_enabled('graph'):
                     trace.mutter('Combining %d searchers into a single'
                                  ' searcher searching %d nodes with'
                                  ' %d ancestry',
@@ -705,7 +706,7 @@ class Graph:
             next_unique_searchers = self._collapse_unique_searchers(
                 unique_tip_searchers, common_to_all_unique_nodes)
             if len(unique_tip_searchers) != len(next_unique_searchers):
-                if 'graph' in debug.debug_flags:
+                if debug.debug_flag_enabled('graph'):
                     trace.mutter('Collapsed %d unique searchers => %d'
                                  ' at %s iterations',
                                  len(unique_tip_searchers),
@@ -795,9 +796,8 @@ class Graph:
                     raise AssertionError("Somehow we ended up converging"
                                          " without actually marking them as"
                                          " in common."
-                                         "\nStart_nodes: %s"
-                                         "\nuncommon_nodes: %s"
-                                         % (revisions, uncommon_nodes))
+                                         f"\nStart_nodes: {revisions}"
+                                         f"\nuncommon_nodes: {uncommon_nodes}")
                 break
         return border_ancestors, common_ancestors, searchers
 
@@ -817,11 +817,11 @@ class Graph:
             order if they need it.
         """
         candidate_heads = set(keys)
-        if revision.NULL_REVISION in candidate_heads:
+        if _mod_revision.NULL_REVISION in candidate_heads:
             # NULL_REVISION is only a head if it is the only entry
-            candidate_heads.remove(revision.NULL_REVISION)
+            candidate_heads.remove(_mod_revision.NULL_REVISION)
             if not candidate_heads:
-                return {revision.NULL_REVISION}
+                return {_mod_revision.NULL_REVISION}
         if len(candidate_heads) < 2:
             return candidate_heads
         searchers = {c: self._make_breadth_first_searcher([c])
@@ -1022,8 +1022,8 @@ class Graph:
         def get_parents(key):
             try:
                 return self._parents_provider.get_parent_map([key])[key]
-            except KeyError:
-                raise errors.RevisionNotPresent(next_key, self)
+            except KeyError as err:
+                raise errors.RevisionNotPresent(next_key, self) from err
         while True:
             if next_key in stop_keys:
                 return

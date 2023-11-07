@@ -193,8 +193,7 @@ class RangeFile(ResponseFile):
                     b'--' + self._boundary + b'\r\n'):
                 raise errors.InvalidHttpResponse(
                     self._path,
-                    "Expected a boundary (%s) line, got '%s'"
-                    % (self._boundary, boundary_line))
+                    f"Expected a boundary ({self._boundary}) line, got '{boundary_line}'")
 
     def _unquote_boundary(self, b):
         return b[:2] + email_utils.unquote(b[2:-2].decode('ascii')).encode('ascii') + b[-2:]
@@ -219,9 +218,9 @@ class RangeFile(ResponseFile):
         """Helper to set the new range from its description in the headers."""
         try:
             rtype, values = content_range.split()
-        except ValueError:
+        except ValueError as e:
             raise errors.InvalidHttpRange(self._path, content_range,
-                                          'Malformed header')
+                                          'Malformed header') from e
         if rtype != 'bytes':
             raise errors.InvalidHttpRange(self._path, content_range,
                                           f"Unsupported range type '{rtype}'")
@@ -233,9 +232,9 @@ class RangeFile(ResponseFile):
             start, end = start_end.split('-')
             start = int(start)
             end = int(end)
-        except ValueError:
+        except ValueError as e:
             raise errors.InvalidHttpRange(self._path, content_range,
-                                          'Invalid range values')
+                                          'Invalid range values') from e
         size = end - start + 1
         if size <= 0:
             raise errors.InvalidHttpRange(self._path, content_range,
@@ -291,8 +290,7 @@ class RangeFile(ResponseFile):
             if size > 0 and self._pos + size > self._start + self._size:
                 raise errors.InvalidRange(
                     self._path, self._pos,
-                    "Can't read %s bytes across range (%s, %s)"
-                    % (size, self._start, self._size))
+                    f"Can't read {size} bytes across range ({self._start}, {self._size})")
 
         # read data from file
         buf = BytesIO()

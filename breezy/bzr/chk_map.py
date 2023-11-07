@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Persistent maps from tuple_of_strings->string using CHK stores.
+r"""Persistent maps from tuple_of_strings->string using CHK stores.
 
 Overview and current status:
 
@@ -85,7 +85,7 @@ def _search_key_plain(key):
     return b'\x00'.join(key)
 
 
-search_key_registry = registry.Registry[bytes, Callable[[bytes], bytes]]()
+search_key_registry = registry.Registry[bytes, Callable[[bytes], bytes], None]()
 search_key_registry.register(b'plain', _search_key_plain)
 
 
@@ -135,7 +135,7 @@ class CHKMap:
             if old is not None and old != new:
                 self.unmap(old, check_remap=False)
                 has_deletes = True
-        for old, new, value in delta:
+        for _old, new, value in delta:
             if new is not None:
                 self.map(new, value)
         if has_deletes:
@@ -697,8 +697,7 @@ class LeafNode(Node):
         if len(items_str) > 20:
             items_str = items_str[:16] + '...]'
         return \
-            '%s(key:%s len:%s size:%s max:%s prefix:%s keywidth:%s items:%s)' \
-            % (self.__class__.__name__, self._key, self._len, self._raw_size,
+            '{}(key:{} len:{} size:{} max:{} prefix:{} keywidth:{} items:{})'.format(self.__class__.__name__, self._key, self._len, self._raw_size,
                self._maximum_size, self._search_prefix, self._key_width, items_str)
 
     def _current_size(self):
@@ -900,9 +899,8 @@ class LeafNode(Node):
             serialized = b"%s\x00%d\n" % (self._serialise_key(key),
                                           len(value_lines))
             if not serialized.startswith(self._common_serialised_prefix):
-                raise AssertionError('We thought the common prefix was %r'
-                                     ' but entry %r does not have it in common'
-                                     % (self._common_serialised_prefix, serialized))
+                raise AssertionError(f'We thought the common prefix was {self._common_serialised_prefix!r}'
+                                     f' but entry {serialized!r} does not have it in common')
             lines.append(serialized[prefix_len:])
             lines.extend(value_lines)
         sha1, _, _ = store.add_lines((None,), (), lines)
@@ -1002,8 +1000,7 @@ class InternalNode(Node):
         if self._search_prefix is None:
             raise AssertionError("_search_prefix should not be None")
         if not prefix.startswith(self._search_prefix):
-            raise AssertionError("prefixes mismatch: %s must start with %s"
-                                 % (prefix, self._search_prefix))
+            raise AssertionError(f"prefixes mismatch: {prefix} must start with {self._search_prefix}")
         if len(prefix) != len(self._search_prefix) + 1:
             raise AssertionError("prefix wrong length: len(%s) is not %d" %
                                  (prefix, len(self._search_prefix) + 1))
@@ -1081,7 +1078,7 @@ class InternalNode(Node):
             # 0.105us   for key in key_filter: break
             #       no func() overhead, might malloc an iterator, probably
             #       avoids checking an 'else' clause as part of the for
-            for key in key_filter:
+            for key in key_filter:  # noqa: B007
                 break
             search_prefix = self._search_prefix_filter(key)
             if len(search_prefix) == self._node_width:
@@ -1302,8 +1299,7 @@ class InternalNode(Node):
                 key = node._key[0]
             serialised = b"%s\x00%s\n" % (prefix, key)
             if not serialised.startswith(self._search_prefix):
-                raise AssertionError("prefixes mismatch: %s must start with %s"
-                                     % (serialised, self._search_prefix))
+                raise AssertionError(f"prefixes mismatch: {serialised} must start with {self._search_prefix}")
             lines.append(serialised[prefix_len:])
         sha1, _, _ = store.add_lines((None,), (), lines)
         self._key = StaticTuple(b"sha1:" + sha1,).intern()
@@ -1704,12 +1700,14 @@ def iter_interesting_nodes(store, interesting_root_keys,
     return iterator.process()
 
 
-from ._chk_map_rs import (_bytes_to_text_key, _search_key_16,  # noqa: F401
-                          _search_key_255)
+from .._bzr_rs import chk_map as _chk_map_rs
+
+_bytes_to_text_key = _chk_map_rs._bytes_to_text_key
+_search_key_16 = _chk_map_rs._search_key_16
+_search_key_255 = _chk_map_rs._search_key_255
 
 try:
-    from ._chk_map_pyx import (_deserialise_internal_node,
-                               _deserialise_leaf_node)
+    from ._chk_map_pyx import _deserialise_internal_node, _deserialise_leaf_node
 except ImportError as e:
     osutils.failed_to_load_extension(e)
     from ._chk_map_py import _deserialise_internal_node, _deserialise_leaf_node

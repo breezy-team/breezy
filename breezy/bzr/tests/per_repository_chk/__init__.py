@@ -26,8 +26,10 @@ run.
 from breezy import repository
 from breezy.bzr import remote
 from breezy.tests import multiply_tests
-from breezy.tests.per_repository import (TestCaseWithRepository,
-                                         all_repository_format_scenarios)
+from breezy.tests.per_repository import (
+    TestCaseWithRepository,
+    all_repository_format_scenarios,
+)
 
 from ...groupcompress_repo import RepositoryFormat2a
 from ...knitpack_repo import RepositoryFormatKnitPack5

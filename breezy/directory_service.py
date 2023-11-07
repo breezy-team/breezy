@@ -114,7 +114,7 @@ class AliasDirectory(Directory):
     supported.  On error, a subclass of DirectoryLookupFailure will be raised.
     """
 
-    branch_aliases = registry.Registry[str, Callable[[_mod_branch.Branch], Optional[str]]]()
+    branch_aliases = registry.Registry[str, Callable[[_mod_branch.Branch], Optional[str]], None]()
     branch_aliases.register('parent', lambda b: b.get_parent(),
                             help="The parent of this branch.")
     branch_aliases.register('submit', lambda b: b.get_submit_branch(),
@@ -138,8 +138,8 @@ class AliasDirectory(Directory):
             extra = None
         try:
             method = self.branch_aliases.get(name[1:])
-        except KeyError:
-            raise InvalidLocationAlias(url)
+        except KeyError as e:
+            raise InvalidLocationAlias(url) from e
         else:
             result = method(branch)
         if result is None:

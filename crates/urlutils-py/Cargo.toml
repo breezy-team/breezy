@@ -1,11 +1,11 @@
 [package]
 name = "urlutils-py"
-version = "3.3.3"
+version = { workspace = true }
 edition = "2018"
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = ">=0.17, <0.19", features = ["extension-module"]}
+pyo3 = { version = ">=0.19", features = ["extension-module"]}
 breezy-urlutils = { path = "../urlutils" }

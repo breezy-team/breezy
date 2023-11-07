@@ -11,7 +11,7 @@
 try:
     import locale
     locale.setlocale(locale.LC_ALL, '')
-except:
+except BaseException:
     pass
 
 from docutils.core import default_description, publish_cmdline
@@ -24,9 +24,9 @@ if True: # this is still required in the distutils trunk as-at June 2008.
     #
     # This is a bit gross to patch because all this is built up at load time.
     Body.pats['optname'] = r'[a-zA-Z0-9][a-zA-Z0-9._-]*'
-    Body.pats['longopt'] = r'(--|/)%(optname)s([ =]%(optarg)s)?' % Body.pats
-    Body.pats['option'] = r'(%(shortopt)s|%(longopt)s)' % Body.pats
-    Body.patterns['option_marker'] = r'%(option)s(, %(option)s)*(  +| ?$)' % Body.pats
+    Body.pats['longopt'] = r'(--|/){optname}([ =]{optarg})?'.format(**Body.pats)
+    Body.pats['option'] = r'({shortopt}|{longopt})'.format(**Body.pats)
+    Body.patterns['option_marker'] = r'{option}(, {option})*(  +| ?$)'.format(**Body.pats)
 
 
 description = ('Generates (X)HTML documents from standalone reStructuredText '

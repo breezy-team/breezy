@@ -20,8 +20,7 @@
 import os
 import sys
 
-from breezy import (branch, debug, osutils, tests, uncommit, urlutils,
-                    workingtree)
+from breezy import branch, debug, osutils, tests, uncommit, urlutils, workingtree
 from breezy.bzr import remote
 from breezy.tests import fixtures, script
 
@@ -381,7 +380,7 @@ class TestPull(tests.TestCaseWithTransport):
         repository.
 
         See <https://launchpad.net/bugs/380314>
-        """
+        """  # noqa: D403
         self.setup_smart_server_with_call_log()
         # Make a stacked-on branch with two commits so that the
         # revision-history can't be determined just by looking at the parent
@@ -422,7 +421,7 @@ class TestPull(tests.TestCaseWithTransport):
         # this simulates what would happen across the network, where
         # interdifferingserializer is not active
 
-        debug.debug_flags.add('IDS_never')
+        debug.set_debug_flag('IDS_never')
         # TestCase take care of restoring them
 
         from_tree = self.make_branch_and_tree('from', format='2a')

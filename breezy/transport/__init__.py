@@ -32,8 +32,15 @@ from io import BytesIO
 from stat import S_ISDIR
 from typing import Any, Callable, Dict, TypeVar
 
-from .. import _transport_rs  # type: ignore
-from .. import errors, hooks, osutils, registry, ui, urlutils
+from .. import (
+    _transport_rs,  # type: ignore
+    errors,
+    hooks,
+    osutils,
+    registry,
+    ui,
+    urlutils,
+)
 from ..trace import mutter
 
 # a dictionary of open file streams. Keys are absolute paths, values are
@@ -223,7 +230,7 @@ class LateReadError:
         # If there was an error raised, prefer the original one
         try:
             self.close()
-        except:
+        except BaseException:
             if exc_type is None:
                 raise
         return False
@@ -297,12 +304,12 @@ class FileFileStream(FileStream):
         self.file_handle.flush()
         try:
             fileno = self.file_handle.fileno()
-        except AttributeError:
-            raise errors.TransportNotPossible()
+        except AttributeError as err:
+            raise errors.TransportNotPossible() from err
         osutils.fdatasync(fileno)
 
     def write(self, bytes):
-        class F(object):
+        class F:
             def __init__(self, f):
                 self.f = f
             def write(self, b):
@@ -393,6 +400,8 @@ class Transport:
                 raise errors.DirectoryNotEmpty(path, extra=e)
             if e.errno == errno.EBUSY:
                 raise errors.ResourceBusy(path, extra=e)
+        if isinstance(e, (NotADirectoryError, FileNotFoundError)):
+            raise NoSuchFile(path, extra=e)
         if raise_generic:
             raise errors.TransportError(orig_error=e)
 
@@ -1710,7 +1719,7 @@ register_lazy_transport('ssh:', 'breezy.transport.remote',
                         'HintingSSHTransport')
 
 
-transport_server_registry = registry.Registry[str, Callable]()
+transport_server_registry = registry.Registry[str, Callable, None]()
 transport_server_registry.register_lazy('bzr', 'breezy.bzr.smart.server',
                                         'serve_bzr', help="The Bazaar smart server protocol over TCP. (default port: 4155)")
 transport_server_registry.default_key = 'bzr'

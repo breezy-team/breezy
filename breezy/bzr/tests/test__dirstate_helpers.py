@@ -100,9 +100,8 @@ class TestBisectPathMixin:
         bisect_func, offset = self.get_bisect()
         bisect_split_idx = bisect_func(split_paths, split_path)
         self.assertEqual(bisect_split_idx, bisect_path_idx,
-                         '%s disagreed. %s != %s'
-                         ' for key %r'
-                         % (bisect_path.__name__,
+                         '{} disagreed. {} != {}'
+                         ' for key {!r}'.format(bisect_path.__name__,
                             bisect_split_idx, bisect_path_idx, path)
                          )
         if exists:
@@ -363,8 +362,7 @@ class TestLtPathByDirblock(tests.TestCase):
             for idx2, path2 in enumerate(paths):
                 lt_result = lt_path_by_dirblock(path1, path2)
                 self.assertEqual(idx1 < idx2, lt_result,
-                                 '%s did not state that %r < %r, lt=%s'
-                                 % (lt_path_by_dirblock.__name__,
+                                 '{} did not state that {!r} < {!r}, lt={}'.format(lt_path_by_dirblock.__name__,
                                     path1, path2, lt_result))
 
     def test_cmp_simple_paths(self):
@@ -774,9 +772,9 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         t = time.time() - 100.0
         try:
             os.utime('a', (t, t))
-        except OSError:
+        except OSError as e:
             # It looks like Win32 + FAT doesn't allow to change times on a dir.
-            raise tests.TestSkipped("can't update mtime of a dir on FAT")
+            raise tests.TestSkipped("can't update mtime of a dir on FAT") from e
         saved_packed_stat = entry[1][0][-1]
         self.assertIs(None, self.do_update_entry(state, entry, b'a'))
         # We *do* go ahead and update the information in the dirblocks, but we

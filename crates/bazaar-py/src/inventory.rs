@@ -11,7 +11,7 @@ use pyo3::exceptions::{
 };
 use pyo3::prelude::*;
 use pyo3::pyclass_init::PyClassInitializer;
-use pyo3::types::{PyBytes, PyDict};
+use pyo3::types::{PyBytes, PyDict, PyString};
 use pyo3::wrap_pyfunction;
 use pyo3::{create_exception, import_exception};
 use std::collections::HashMap;
@@ -55,22 +55,17 @@ fn common_ie_check(
     ie: &Entry,
     py: Python,
     checker: &PyObject,
-    rev_id: &[u8],
+    rev_id: &RevisionId,
     inv: PyObject,
 ) -> PyResult<()> {
     if let Some(parent_id) = ie.parent_id() {
         let present = inv
-            .call_method1(
-                py,
-                "has_id",
-                (PyBytes::new(py, parent_id.as_bytes()).to_object(py),),
-            )?
+            .call_method1(py, "has_id", (parent_id.to_object(py),))?
             .extract::<bool>(py)?;
         if !present {
             return Err(BzrCheckError::new_err(format!(
                 "missing parent {{{}}} in inventory for revision {{{}}}",
-                parent_id,
-                RevisionId::from(rev_id)
+                parent_id, rev_id
             )));
         }
     }
@@ -109,36 +104,21 @@ impl InventoryEntry {
         }
     }
 
-    #[setter]
-    fn set_name(&mut self, name: String) {
-        match &mut self.0 {
-            Entry::File { name: n, .. } => *n = name,
-            Entry::Directory { name: n, .. } => *n = name,
-            Entry::TreeReference { name: n, .. } => *n = name,
-            Entry::Link { name: n, .. } => *n = name,
-            Entry::Root { .. } => {
-                if !name.is_empty() {
-                    panic!("Root entry name must be empty");
-                }
-            }
-        }
-    }
-
     #[getter]
     fn get_file_id(&self, py: Python) -> PyObject {
         let file_id = &self.0.file_id();
 
-        PyBytes::new(py, file_id.as_bytes()).into()
+        file_id.to_object(py)
     }
 
     #[setter]
-    fn set__file_id(&mut self, _py: Python, file_id: &[u8]) {
+    fn set__file_id(&mut self, _py: Python, file_id: FileId) {
         match &mut self.0 {
-            Entry::File { file_id: f, .. } => *f = FileId::from(file_id),
-            Entry::Directory { file_id: f, .. } => *f = FileId::from(file_id),
-            Entry::TreeReference { file_id: f, .. } => *f = FileId::from(file_id),
-            Entry::Link { file_id: f, .. } => *f = FileId::from(file_id),
-            Entry::Root { file_id: f, .. } => *f = FileId::from(file_id),
+            Entry::File { file_id: f, .. } => *f = file_id,
+            Entry::Directory { file_id: f, .. } => *f = file_id,
+            Entry::TreeReference { file_id: f, .. } => *f = file_id,
+            Entry::Link { file_id: f, .. } => *f = file_id,
+            Entry::Root { file_id: f, .. } => *f = file_id,
         }
     }
 
@@ -146,18 +126,16 @@ impl InventoryEntry {
     fn get_parent_id(&self, py: Python) -> Option<PyObject> {
         let parent_id = &self.0.parent_id();
 
-        parent_id
-            .as_ref()
-            .map(|parent_id| PyBytes::new(py, parent_id.as_bytes()).into())
+        parent_id.map(|parent_id| parent_id.to_object(py))
     }
 
     #[setter]
-    fn set_parent_id(&mut self, parent_id: Option<Vec<u8>>) {
+    fn set__parent_id(&mut self, parent_id: Option<FileId>) {
         match &mut self.0 {
-            Entry::File { parent_id: p, .. } => *p = parent_id.unwrap().into(),
-            Entry::Directory { parent_id: p, .. } => *p = parent_id.unwrap().into(),
-            Entry::TreeReference { parent_id: p, .. } => *p = parent_id.unwrap().into(),
-            Entry::Link { parent_id: p, .. } => *p = parent_id.unwrap().into(),
+            Entry::File { parent_id: p, .. } => *p = parent_id.unwrap(),
+            Entry::Directory { parent_id: p, .. } => *p = parent_id.unwrap(),
+            Entry::TreeReference { parent_id: p, .. } => *p = parent_id.unwrap(),
+            Entry::Link { parent_id: p, .. } => *p = parent_id.unwrap(),
             Entry::Root { .. } => {
                 if parent_id.is_some() {
                     panic!("Root entry cannot have a parent")
@@ -170,21 +148,17 @@ impl InventoryEntry {
     fn get_revision(&self, py: Python) -> Option<PyObject> {
         let revision = &self.0.revision();
 
-        revision
-            .as_ref()
-            .map(|revision| PyBytes::new(py, revision.as_bytes()).into())
+        revision.as_ref().map(|revision| revision.to_object(py))
     }
 
     #[setter]
-    fn set_revision(&mut self, revision: Option<Vec<u8>>) {
+    fn set__revision(&mut self, revision: Option<RevisionId>) {
         match &mut self.0 {
-            Entry::File { revision: r, .. } => *r = revision.map(RevisionId::from),
-            Entry::Directory { revision: r, .. } => *r = revision.map(RevisionId::from),
-            Entry::TreeReference { revision: r, .. } => *r = revision.map(RevisionId::from),
-            Entry::Link { revision: r, .. } => *r = revision.map(RevisionId::from),
-            Entry::Root { revision: r, .. } => {
-                *r = revision.map(RevisionId::from);
-            }
+            Entry::File { revision: r, .. } => *r = revision,
+            Entry::Directory { revision: r, .. } => *r = revision,
+            Entry::TreeReference { revision: r, .. } => *r = revision,
+            Entry::Link { revision: r, .. } => *r = revision,
+            Entry::Root { revision: r, .. } => *r = revision,
         }
     }
 
@@ -228,6 +202,64 @@ impl InventoryEntry {
 
     fn _unchanged(&self, other: &InventoryEntry) -> bool {
         self.0.unchanged(&other.0)
+    }
+
+    fn derive(
+        &self,
+        revision: Option<RevisionId>,
+        name: Option<String>,
+        parent_id: Option<FileId>,
+    ) -> InventoryEntry {
+        let mut entry = self.0.clone();
+        let revision = revision.or_else(|| entry.revision().cloned());
+        let name = name.unwrap_or_else(|| entry.name().to_string());
+        let parent_id = parent_id.or_else(|| entry.parent_id().cloned());
+        match &mut entry {
+            Entry::File {
+                revision: r,
+                name: n,
+                parent_id: p,
+                ..
+            } => {
+                *r = revision;
+                *n = name;
+                *p = parent_id.unwrap();
+            }
+            Entry::Directory {
+                revision: r,
+                name: n,
+                parent_id: p,
+                ..
+            } => {
+                *r = revision;
+                *n = name;
+                *p = parent_id.unwrap();
+            }
+            Entry::TreeReference {
+                revision: r,
+                name: n,
+                parent_id: p,
+                ..
+            } => {
+                *r = revision;
+                *n = name;
+                *p = parent_id.unwrap();
+            }
+            Entry::Link {
+                revision: r,
+                name: n,
+                parent_id: p,
+                ..
+            } => {
+                *r = revision;
+                *n = name;
+                *p = parent_id.unwrap();
+            }
+            Entry::Root { revision: r, .. } => {
+                *r = revision;
+            }
+        }
+        InventoryEntry(entry)
     }
 
     /// Find possible per-file graph parents.
@@ -289,7 +321,7 @@ impl InventoryEntry {
         }
         let ret = PyDict::new(py);
         for (revision, entry) in candidates.iter() {
-            ret.set_item(PyBytes::new(py, revision.as_bytes()), entry)?;
+            ret.set_item(revision.to_object(py), entry)?;
         }
         Ok(ret.into_py(py))
     }
@@ -301,28 +333,29 @@ struct InventoryFile();
 #[pymethods]
 impl InventoryFile {
     #[new]
-    fn new(file_id: Vec<u8>, name: String, parent_id: Vec<u8>) -> PyResult<(Self, InventoryEntry)> {
+    fn new(
+        file_id: FileId,
+        name: String,
+        parent_id: FileId,
+        revision: Option<RevisionId>,
+        text_sha1: Option<Vec<u8>>,
+        text_size: Option<u64>,
+        executable: Option<bool>,
+        text_id: Option<Vec<u8>>,
+    ) -> PyResult<(Self, InventoryEntry)> {
+        let executable = executable.unwrap_or(false);
         check_name(name.as_str())?;
         let entry = Entry::File {
-            file_id: file_id.into(),
+            file_id,
             name,
-            parent_id: parent_id.into(),
-            revision: None,
-            text_sha1: None,
-            text_size: None,
-            text_id: None,
-            executable: false,
+            parent_id,
+            revision,
+            text_sha1,
+            text_size,
+            text_id,
+            executable,
         };
         Ok((Self(), InventoryEntry(entry)))
-    }
-
-    #[setter]
-    fn set_executable(slf: PyRefMut<Self>, executable: bool) {
-        let mut s = slf.into_super();
-        match &mut s.0 {
-            Entry::File { executable: e, .. } => *e = executable,
-            _ => panic!("Not a file"),
-        }
     }
 
     #[getter]
@@ -344,29 +377,11 @@ impl InventoryFile {
         }
     }
 
-    #[setter]
-    fn set_text_sha1(slf: PyRefMut<Self>, text_sha1: Option<Vec<u8>>) {
-        let mut s = slf.into_super();
-        match &mut s.0 {
-            Entry::File { text_sha1: t, .. } => *t = text_sha1,
-            _ => panic!("Not a file"),
-        }
-    }
-
     #[getter]
     fn get_text_size(slf: PyRef<Self>) -> Option<u64> {
         let s = slf.into_super();
         match &s.0 {
             Entry::File { text_size, .. } => *text_size,
-            _ => panic!("Not a file"),
-        }
-    }
-
-    #[setter]
-    fn set_text_size(slf: PyRefMut<Self>, text_size: Option<u64>) {
-        let mut s = slf.into_super();
-        match &mut s.0 {
-            Entry::File { text_size: t, .. } => *t = text_size,
             _ => panic!("Not a file"),
         }
     }
@@ -382,17 +397,8 @@ impl InventoryFile {
         }
     }
 
-    #[setter]
-    fn set_text_id(slf: PyRefMut<Self>, text_id: Option<Vec<u8>>) {
-        let mut s = slf.into_super();
-        match &mut s.0 {
-            Entry::File { text_id: t, .. } => *t = text_id,
-            _ => panic!("Not a file"),
-        }
-    }
-
     #[getter]
-    fn get_reference_revision(&self, py: Python) -> PyObject {
+    fn get_reference_revision(slf: PyRef<Self>, py: Python) -> PyObject {
         py.None()
     }
 
@@ -416,25 +422,17 @@ impl InventoryFile {
                 ..
             } => format!(
                 "InventoryFile({}, {}, parent_id={}, sha1={}, len={}, revision={})",
-                PyBytes::new(py, file_id.as_bytes())
-                    .to_object(py)
-                    .as_ref(py)
-                    .repr()?,
+                file_id.to_object(py).as_ref(py).repr()?,
                 name.to_object(py).as_ref(py).repr()?,
-                PyBytes::new(py, parent_id.as_bytes())
-                    .to_object(py)
-                    .as_ref(py)
-                    .repr()?,
+                parent_id.to_object(py).as_ref(py).repr()?,
                 text_sha1
                     .as_ref()
-                    .map(|r| PyBytes::new(py, r).to_object(py))
-                    .to_object(py)
-                    .as_ref(py)
-                    .repr()?,
+                    .map(|s| PyBytes::new(py, s.as_slice()).repr())
+                    .unwrap_or_else(|| Ok(PyString::new(py, "None")))?,
                 text_size.to_object(py).as_ref(py).repr()?,
                 revision
                     .as_ref()
-                    .map(|r| PyBytes::new(py, r.as_bytes()).to_object(py))
+                    .map(|r| r.to_object(py))
                     .to_object(py)
                     .as_ref(py)
                     .repr()?,
@@ -447,18 +445,11 @@ impl InventoryFile {
         slf: &PyCell<Self>,
         py: Python,
         checker: PyObject,
-        rev_id: Vec<u8>,
+        rev_id: RevisionId,
         inv: PyObject,
     ) -> PyResult<()> {
         let spr = slf.borrow().into_super();
-        common_ie_check(
-            slf.to_object(py),
-            &spr.0,
-            py,
-            &checker,
-            rev_id.as_slice(),
-            inv,
-        )?;
+        common_ie_check(slf.to_object(py), &spr.0, py, &checker, &rev_id, inv)?;
 
         let (file_id, revision, text_sha1, text_size) = match spr.0 {
             Entry::File {
@@ -475,18 +466,14 @@ impl InventoryFile {
             py,
             "add_pending_item",
             (
-                PyBytes::new(py, rev_id.as_slice()).to_object(py),
+                rev_id.to_object(py),
                 (
                     "texts",
-                    PyBytes::new(py, file_id.bytes()).to_object(py),
-                    revision
-                        .as_ref()
-                        .map(|p| PyBytes::new(py, p.bytes()).to_object(py)),
+                    file_id.to_object(py),
+                    revision.as_ref().map(|p| p.to_object(py)),
                 ),
                 PyBytes::new(py, b"text").to_object(py),
-                text_sha1
-                    .as_ref()
-                    .map(|t| PyBytes::new(py, t.as_slice()).to_object(py)),
+                PyBytes::new(py, text_sha1.as_ref().unwrap()).to_object(py),
             ),
         )?;
 
@@ -496,8 +483,7 @@ impl InventoryFile {
                 "append",
                 (format!(
                     "fileid {{{}}} in {{{}}} has None for text_size",
-                    String::from_utf8(file_id.bytes().to_vec()).unwrap(),
-                    String::from_utf8(rev_id).unwrap()
+                    file_id, rev_id
                 ),),
             )?;
         }
@@ -513,23 +499,21 @@ struct InventoryDirectory();
 impl InventoryDirectory {
     #[new]
     fn new(
-        file_id: Vec<u8>,
+        file_id: FileId,
         name: String,
-        parent_id: Option<Vec<u8>>,
+        parent_id: Option<FileId>,
+        revision: Option<RevisionId>,
     ) -> PyResult<(Self, InventoryEntry)> {
         check_name(name.as_str())?;
         let entry = if let Some(parent_id) = parent_id {
             Entry::Directory {
-                file_id: FileId::from(file_id),
+                file_id,
                 name,
-                parent_id: FileId::from(parent_id),
-                revision: None,
+                parent_id,
+                revision,
             }
         } else {
-            Entry::Root {
-                file_id: FileId::from(file_id),
-                revision: None,
-            }
+            Entry::Root { file_id, revision }
         };
         Ok((Self(), InventoryEntry(entry)))
     }
@@ -562,36 +546,17 @@ impl InventoryDirectory {
                 ..
             } => format!(
                 "InventoryDirectory({}, {}, parent_id={}, revision={})",
-                PyBytes::new(py, file_id.as_bytes())
-                    .to_object(py)
-                    .as_ref(py)
-                    .repr()?,
+                file_id.to_object(py).as_ref(py).repr()?,
                 name.to_object(py).as_ref(py).repr()?,
-                PyBytes::new(py, parent_id.as_bytes())
-                    .to_object(py)
-                    .as_ref(py)
-                    .repr()?,
-                revision
-                    .as_ref()
-                    .map(|r| PyBytes::new(py, r.as_bytes()))
-                    .to_object(py)
-                    .as_ref(py)
-                    .repr()?,
+                parent_id.to_object(py).as_ref(py).repr()?,
+                revision.to_object(py).as_ref(py).repr()?,
             ),
             Entry::Root {
                 file_id, revision, ..
             } => format!(
                 "InventoryDirectory({}, \"\", parent_id=None, revision={})",
-                PyBytes::new(py, file_id.as_bytes())
-                    .to_object(py)
-                    .as_ref(py)
-                    .repr()?,
-                revision
-                    .as_ref()
-                    .map(|r| PyBytes::new(py, r.as_bytes()))
-                    .to_object(py)
-                    .as_ref(py)
-                    .repr()?,
+                file_id.to_object(py).as_ref(py).repr()?,
+                revision.to_object(py).as_ref(py).repr()?,
             ),
             _ => panic!("Not a directory"),
         })
@@ -601,18 +566,11 @@ impl InventoryDirectory {
         slf: &PyCell<Self>,
         py: Python,
         checker: PyObject,
-        rev_id: Vec<u8>,
+        rev_id: RevisionId,
         inv: PyObject,
     ) -> PyResult<()> {
         let spr = slf.borrow().into_super();
-        common_ie_check(
-            slf.to_object(py),
-            &spr.0,
-            py,
-            &checker,
-            rev_id.as_slice(),
-            inv,
-        )?;
+        common_ie_check(slf.to_object(py), &spr.0, py, &checker, &rev_id, inv)?;
 
         // In non rich root repositories we do not expect a file graph for the
         // root.
@@ -626,13 +584,11 @@ impl InventoryDirectory {
             py,
             "add_pending_item",
             (
-                PyBytes::new(py, rev_id.as_slice()).to_object(py),
+                rev_id.to_object(py),
                 (
                     "texts",
-                    PyBytes::new(py, spr.0.file_id().as_bytes()).to_object(py),
-                    spr.0
-                        .revision()
-                        .map(|p| PyBytes::new(py, p.as_bytes()).to_object(py)),
+                    spr.0.file_id().to_object(py),
+                    spr.0.revision().to_object(py),
                 ),
                 PyBytes::new(py, b"text").to_object(py),
                 PyBytes::new(py, b"da39a3ee5e6b4b0d3255bfef95601890afd80709").to_object(py),
@@ -650,19 +606,19 @@ struct TreeReference();
 impl TreeReference {
     #[new]
     fn new(
-        file_id: Vec<u8>,
+        file_id: FileId,
         name: String,
-        parent_id: Vec<u8>,
-        revision: Option<Vec<u8>>,
-        reference_revision: Option<Vec<u8>>,
+        parent_id: FileId,
+        revision: Option<RevisionId>,
+        reference_revision: Option<RevisionId>,
     ) -> PyResult<(Self, InventoryEntry)> {
         check_name(name.as_str())?;
         let entry = Entry::TreeReference {
-            file_id: FileId::from(file_id),
+            file_id,
             name,
-            parent_id: FileId::from(parent_id),
-            revision: revision.map(RevisionId::from),
-            reference_revision: reference_revision.map(RevisionId::from),
+            parent_id,
+            revision,
+            reference_revision,
         };
         Ok((Self(), InventoryEntry(entry)))
     }
@@ -675,19 +631,7 @@ impl TreeReference {
                 reference_revision, ..
             } => reference_revision
                 .as_ref()
-                .map(|reference_revision| PyBytes::new(py, reference_revision.as_bytes()).into()),
-            _ => panic!("Not a tree reference"),
-        }
-    }
-
-    #[setter]
-    fn set_reference_revision(slf: PyRefMut<Self>, reference_revision: Option<Vec<u8>>) {
-        let mut s = slf.into_super();
-        match &mut s.0 {
-            Entry::TreeReference {
-                reference_revision: r,
-                ..
-            } => *r = reference_revision.map(RevisionId::from),
+                .map(|reference_revision| reference_revision.to_object(py)),
             _ => panic!("Not a tree reference"),
         }
     }
@@ -706,14 +650,20 @@ struct InventoryLink();
 #[pymethods]
 impl InventoryLink {
     #[new]
-    fn new(file_id: Vec<u8>, name: String, parent_id: Vec<u8>) -> PyResult<(Self, InventoryEntry)> {
+    fn new(
+        file_id: FileId,
+        name: String,
+        parent_id: FileId,
+        revision: Option<RevisionId>,
+        symlink_target: Option<String>,
+    ) -> PyResult<(Self, InventoryEntry)> {
         check_name(name.as_str())?;
         let entry = Entry::Link {
-            file_id: FileId::from(file_id),
+            file_id,
             name,
-            parent_id: FileId::from(parent_id),
-            symlink_target: None,
-            revision: None,
+            parent_id,
+            symlink_target,
+            revision,
         };
         Ok((Self(), InventoryEntry(entry)))
     }
@@ -725,17 +675,6 @@ impl InventoryLink {
             Entry::Link {
                 ref symlink_target, ..
             } => symlink_target.clone(),
-            _ => panic!("Not a link"),
-        }
-    }
-
-    #[setter]
-    fn set_symlink_target(slf: PyRefMut<Self>, target: Option<String>) {
-        match slf.into_super().0 {
-            Entry::Link {
-                ref mut symlink_target,
-                ..
-            } => *symlink_target = target,
             _ => panic!("Not a link"),
         }
     }
@@ -761,18 +700,11 @@ impl InventoryLink {
         slf: &PyCell<Self>,
         py: Python,
         checker: PyObject,
-        rev_id: Vec<u8>,
+        rev_id: RevisionId,
         inv: PyObject,
     ) -> PyResult<()> {
         let spr = slf.borrow().into_super();
-        common_ie_check(
-            slf.to_object(py),
-            &spr.0,
-            py,
-            &checker,
-            rev_id.as_slice(),
-            inv,
-        )?;
+        common_ie_check(slf.to_object(py), &spr.0, py, &checker, &rev_id, inv)?;
 
         if spr.0.symlink_target().is_none() {
             let report_items = checker.getattr(py, "_report_items")?;
@@ -781,10 +713,10 @@ impl InventoryLink {
                 "append",
                 (format!(
                     "symlink {} has no target in revision {}",
-                    String::from_utf8(spr.0.file_id().as_bytes().to_vec()).unwrap(),
+                    spr.0.file_id(),
                     spr.0
                         .revision()
-                        .map(|p| String::from_utf8(p.as_bytes().to_vec()).unwrap())
+                        .map(|p| p.to_string())
                         .unwrap_or_else(|| String::from("None"))
                 ),),
             )?;
@@ -795,11 +727,11 @@ impl InventoryLink {
             py,
             "add_pending_item",
             (
-                PyBytes::new(py, rev_id.as_slice()).to_object(py),
+                rev_id.to_object(py),
                 (
                     "texts",
-                    PyBytes::new(py, spr.0.file_id().as_bytes()),
-                    spr.0.revision().map(|r| PyBytes::new(py, r.as_bytes())),
+                    spr.0.file_id().to_object(py),
+                    spr.0.revision().to_object(py),
                 ),
                 PyBytes::new(py, b"text").to_object(py),
                 PyBytes::new(py, b"da39a3ee5e6b4b0d3255bfef95601890afd80709").to_object(py),
@@ -837,8 +769,15 @@ fn make_entry(
     py: Python,
     kind: &str,
     name: &str,
-    parent_id: Option<&[u8]>,
-    file_id: Option<&[u8]>,
+    parent_id: Option<FileId>,
+    revision: Option<RevisionId>,
+    file_id: Option<FileId>,
+    text_sha1: Option<Vec<u8>>,
+    text_size: Option<u64>,
+    executable: Option<bool>,
+    text_id: Option<Vec<u8>>,
+    symlink_target: Option<String>,
+    reference_revision: Option<RevisionId>,
 ) -> PyResult<PyObject> {
     let kind = match kind {
         "file" => Kind::File,
@@ -848,8 +787,22 @@ fn make_entry(
         _ => panic!("Unknown kind"),
     };
     let parent_id = parent_id.map(FileId::from);
-    let file_id = file_id.map_or_else(|| FileId::generate(name), FileId::from);
-    entry_to_py(py, Entry::new(kind, name.to_string(), file_id, parent_id))
+    entry_to_py(
+        py,
+        bazaar::inventory::make_entry(
+            kind,
+            name.to_string(),
+            file_id,
+            parent_id,
+            revision,
+            text_sha1,
+            text_size,
+            executable,
+            text_id,
+            symlink_target,
+            reference_revision,
+        ),
+    )
 }
 
 #[pyfunction]
@@ -864,7 +817,7 @@ fn ensure_normalized_name(name: std::path::PathBuf) -> PyResult<std::path::PathB
 }
 
 fn file_id_python(py: Python, file_id: &FileId) -> PyObject {
-    PyBytes::new(py, file_id.bytes()).to_object(py)
+    PyBytes::new(py, file_id.as_bytes()).to_object(py)
 }
 
 fn delta_err_to_py_err(py: Python, e: InventoryDeltaInconsistency) -> PyErr {
@@ -941,23 +894,22 @@ impl InventoryDelta {
             Vec<(
                 Option<String>,
                 Option<String>,
-                Vec<u8>,
+                FileId,
                 Option<PyRef<InventoryEntry>>,
             )>,
         >,
     ) -> PyResult<Self> {
         let delta = delta.unwrap_or_default();
         let delta = delta
-            .iter()
+            .into_iter()
             .map(|(old_name, new_name, file_id, entry)| {
-                let old_name = old_name.as_ref().map(|s| s.as_str());
-                let new_name = new_name.as_ref().map(|s| s.as_str());
-                let file_id = file_id.as_slice();
+                let old_name = old_name.as_deref();
+                let new_name = new_name.as_deref();
                 let entry = entry.as_ref().map(|e| e.0.clone());
                 InventoryDeltaEntry {
                     old_path: old_name.map(|s| s.to_string()),
                     new_path: new_name.map(|s| s.to_string()),
-                    file_id: FileId::from(file_id),
+                    file_id,
                     new_entry: entry,
                 }
             })
@@ -1004,7 +956,7 @@ impl InventoryDelta {
         Ok((
             entry.old_path.clone(),
             entry.new_path.clone(),
-            PyBytes::new(py, entry.file_id.as_bytes()).to_object(py),
+            entry.file_id.to_object(py),
             entry
                 .new_entry
                 .as_ref()
@@ -1012,66 +964,62 @@ impl InventoryDelta {
         ))
     }
 
-    fn check(slf: PyRef<Self>, py: Python) -> PyResult<()> {
-        slf.0.check().map_err(|e| match e {
+    fn check(&self, py: Python) -> PyResult<()> {
+        self.0.check().map_err(|e| match e {
             InventoryDeltaInconsistency::NoPath => {
                 InconsistentDelta::new_err(("", "", "No path in entry"))
             }
             InventoryDeltaInconsistency::DuplicateFileId(ref path, ref fid) => {
-                InconsistentDelta::new_err((
-                    path.clone(),
-                    file_id_python(py, &fid),
-                    "repeated file_id",
-                ))
+                InconsistentDelta::new_err((path.clone(), fid.to_object(py), "repeated file_id"))
             }
             InventoryDeltaInconsistency::DuplicateOldPath(path, fid) => {
-                InconsistentDelta::new_err((path, file_id_python(py, &fid), "repeated path"))
+                InconsistentDelta::new_err((path, fid.to_object(py), "repeated path"))
             }
             InventoryDeltaInconsistency::DuplicateNewPath(path, fid) => {
-                InconsistentDelta::new_err((path, file_id_python(py, &fid), "repeated path"))
+                InconsistentDelta::new_err((path, fid.to_object(py), "repeated path"))
             }
             InventoryDeltaInconsistency::MismatchedId(path, fid1, fid2) => {
                 InconsistentDelta::new_err((
                     path,
-                    fid1.as_bytes().to_vec(),
+                    fid1.to_object(py),
                     format!("mismatched id with entry {}", fid2),
                 ))
             }
-            InventoryDeltaInconsistency::EntryWithoutPath(path, fid) => InconsistentDelta::new_err(
-                (path, file_id_python(py, &fid), "Entry with no new_path"),
-            ),
-            InventoryDeltaInconsistency::PathWithoutEntry(path, fid) => InconsistentDelta::new_err(
-                (path, file_id_python(py, &fid), "new_path with no entry"),
-            ),
             InventoryDeltaInconsistency::PathMismatch(fid, path1, path2) => {
                 InconsistentDelta::new_err((
                     path1,
-                    file_id_python(py, &fid),
+                    fid.to_object(py),
                     format!("mismatched path with entry {}", path2),
                 ))
             }
             InventoryDeltaInconsistency::OrphanedChild(fid) => {
-                InconsistentDelta::new_err(("", file_id_python(py, &fid), "orphaned child"))
+                InconsistentDelta::new_err(("", fid.to_object(py), "orphaned child"))
             }
             InventoryDeltaInconsistency::ParentNotDirectory(path, fid) => {
-                InconsistentDelta::new_err((path, file_id_python(py, &fid), "parent not directory"))
+                InconsistentDelta::new_err((path, fid.to_object(py), "parent not directory"))
             }
             InventoryDeltaInconsistency::ParentMissing(fid) => {
-                InconsistentDelta::new_err(("", file_id_python(py, &fid), "parent missing"))
+                InconsistentDelta::new_err(("", fid.to_object(py), "parent missing"))
             }
             InventoryDeltaInconsistency::NoSuchId(fid) => {
-                NoSuchId::new_err((py.None(), file_id_python(py, &fid)))
+                NoSuchId::new_err((py.None(), fid.to_object(py)))
             }
             InventoryDeltaInconsistency::InvalidEntryName(n) => InvalidEntryName::new_err((n,)),
             InventoryDeltaInconsistency::FileIdCycle(fid, path, parent_path) => {
                 InconsistentDelta::new_err((
                     path,
-                    file_id_python(py, &fid),
+                    fid.to_object(py),
                     format!("file_id cycle with {}", parent_path),
                 ))
             }
             InventoryDeltaInconsistency::PathAlreadyVersioned(path, fid) => {
-                InconsistentDelta::new_err((path, fid, "path already versioned"))
+                InconsistentDelta::new_err((path, fid.to_object(py), "path already versioned"))
+            }
+            InventoryDeltaInconsistency::EntryWithoutPath(path, fid) => {
+                InconsistentDelta::new_err((path, fid.to_object(py), "Entry with no new_path"))
+            }
+            InventoryDeltaInconsistency::PathWithoutEntry(path, fid) => {
+                InconsistentDelta::new_err((path, fid.to_object(py), "new_path with no entry"))
             }
         })
     }
@@ -1121,7 +1069,8 @@ impl Inventory {
         let root_id = root_id.map(FileId::from);
 
         if let Some(root_id) = root_id {
-            let root = bazaar::inventory::Entry::directory(root_id, None, None, "".to_string());
+            let root =
+                bazaar::inventory::Entry::root(root_id, revision_id.clone().map(RevisionId::from));
             inv.0.add(root).unwrap();
         }
         inv.0.revision_id = revision_id.map(RevisionId::from);
@@ -1149,7 +1098,14 @@ impl Inventory {
         py: Python,
         relpath: &str,
         kind: &str,
-        file_id: Option<Vec<u8>>,
+        file_id: Option<FileId>,
+        revision: Option<RevisionId>,
+        text_sha1: Option<Vec<u8>>,
+        text_size: Option<u64>,
+        executable: Option<bool>,
+        text_id: Option<Vec<u8>>,
+        symlink_target: Option<String>,
+        reference_revision: Option<RevisionId>,
     ) -> PyResult<PyObject> {
         let kind = match kind {
             "file" => breezy_osutils::Kind::File,
@@ -1160,15 +1116,26 @@ impl Inventory {
         };
         let file_id = self
             .0
-            .add_path(relpath, kind, file_id.map(FileId::from))
+            .add_path(
+                relpath,
+                kind,
+                file_id,
+                revision,
+                text_sha1,
+                text_size,
+                executable,
+                text_id,
+                symlink_target,
+                reference_revision,
+            )
             .map_err(|e| inventory_err_to_py_err(e, py))?;
-        Ok(self.get_entry(py, file_id.bytes().to_vec()).unwrap())
+        Ok(self.get_entry(py, file_id.as_bytes().to_vec()).unwrap())
     }
 
     #[getter]
     fn get_revision_id(&self, py: Python) -> PyResult<PyObject> {
         if let Some(revision_id) = self.0.revision_id.as_ref() {
-            Ok(PyBytes::new(py, revision_id.bytes()).to_object(py))
+            Ok(PyBytes::new(py, revision_id.as_bytes()).to_object(py))
         } else {
             Ok(py.None())
         }
@@ -1187,7 +1154,7 @@ impl Inventory {
     fn path2id(&self, py: Python, path: &str) -> Option<PyObject> {
         self.0
             .path2id(path)
-            .map(|fid| PyBytes::new(py, fid.bytes()).to_object(py))
+            .map(|fid| PyBytes::new(py, fid.as_bytes()).to_object(py))
     }
 
     fn is_root(&self, py: Python, file_id: Vec<u8>) -> PyResult<bool> {
@@ -1237,7 +1204,7 @@ impl Inventory {
     fn path2id_segments(&self, py: Python, names: Vec<&str>) -> Option<PyObject> {
         self.0
             .path2id_segments(names.as_slice())
-            .map(|fid| PyBytes::new(py, fid.bytes()).to_object(py))
+            .map(|fid| PyBytes::new(py, fid.as_bytes()).to_object(py))
     }
 
     fn filter(&self, py: Python, specific_fileids: HashSet<Vec<u8>>) -> PyResult<Self> {
@@ -1259,22 +1226,14 @@ impl Inventory {
                 .0
                 .get_entry_by_path_partial(relpath)
                 .map(|(entry, segments, missing)| {
-                    (
-                        entry_to_py(Python::acquire_gil().python(), entry.clone()).unwrap(),
-                        segments,
-                        missing,
-                    )
+                    (entry_to_py(py, entry.clone()).unwrap(), segments, missing)
                 }))
         } else if let Ok(segments) = relpath.extract::<Vec<&str>>(py) {
             Ok(self
                 .0
                 .get_entry_by_path_segments_partial(segments.as_slice())
                 .map(|(entry, segments, missing)| {
-                    (
-                        entry_to_py(Python::acquire_gil().python(), entry.clone()).unwrap(),
-                        segments,
-                        missing,
-                    )
+                    (entry_to_py(py, entry.clone()).unwrap(), segments, missing)
                 }))
         } else {
             Err(PyTypeError::new_err("expected str or list of str"))
@@ -1286,12 +1245,12 @@ impl Inventory {
             Ok(self
                 .0
                 .get_entry_by_path(relpath)
-                .map(|entry| entry_to_py(Python::acquire_gil().python(), entry.clone()).unwrap()))
+                .map(|entry| entry_to_py(py, entry.clone()).unwrap()))
         } else if let Ok(segments) = relpath.extract::<Vec<&str>>(py) {
             Ok(self
                 .0
                 .get_entry_by_path_segments(segments.as_slice())
-                .map(|entry| entry_to_py(Python::acquire_gil().python(), entry.clone()).unwrap()))
+                .map(|entry| entry_to_py(py, entry.clone()).unwrap()))
         } else {
             Err(PyTypeError::new_err("expected str or list of str"))
         }
@@ -1365,8 +1324,7 @@ impl Inventory {
     }
 
     fn has_id(&self, file_id: Vec<u8>) -> bool {
-        let file_id = FileId::from(file_id);
-        self.0.has_id(&file_id)
+        self.0.has_id(&file_id.into())
     }
 
     fn get_child(&self, py: Python, file_id: Vec<u8>, name: &str) -> Option<PyObject> {
@@ -1388,12 +1346,12 @@ impl Inventory {
         Ok(PyCell::new(py, InventoryDelta(inventory_delta))?.to_object(py))
     }
 
-    fn remove_recursive_id(&mut self, file_id: Vec<u8>) -> PyResult<Vec<PyObject>> {
+    fn remove_recursive_id(&mut self, py: Python, file_id: Vec<u8>) -> PyResult<Vec<PyObject>> {
         let file_id = FileId::from(file_id);
         self.0
             .remove_recursive_id(&file_id)
             .into_iter()
-            .map(|entry| entry_to_py(Python::acquire_gil().python(), entry))
+            .map(|entry| entry_to_py(py, entry))
             .collect::<PyResult<Vec<_>>>()
     }
 
@@ -1428,7 +1386,7 @@ impl Inventory {
     fn iter_all_ids(&self, py: Python) -> PyResult<PyObject> {
         let ids = self.0.iter_all_ids();
         ids.into_iter()
-            .map(|id| PyBytes::new(py, id.bytes()).to_object(py))
+            .map(|id| PyBytes::new(py, id.as_bytes()).to_object(py))
             .collect::<Vec<_>>()
             .to_object(py)
             .call_method0(py, "__iter__")
@@ -1475,13 +1433,19 @@ impl Inventory {
 
     fn make_entry(
         &self,
+        py: Python,
         kind: &str,
         name: &str,
-        parent_id: Option<&[u8]>,
-        file_id: Option<&[u8]>,
+        parent_id: Option<FileId>,
+        file_id: Option<FileId>,
+        revision: Option<RevisionId>,
+        text_sha1: Option<Vec<u8>>,
+        text_size: Option<u64>,
+        text_id: Option<Vec<u8>>,
+        executable: Option<bool>,
+        symlink_target: Option<String>,
+        reference_revision: Option<RevisionId>,
     ) -> PyResult<PyObject> {
-        let parent_id = parent_id.map(FileId::from);
-        let file_id = file_id.map(FileId::from);
         let kind = match kind {
             "directory" => Kind::Directory,
             "file" => Kind::File,
@@ -1489,8 +1453,20 @@ impl Inventory {
             "tree-reference" => Kind::TreeReference,
             _ => return Err(PyValueError::new_err(format!("Unknown kind: {}", kind))),
         };
-        let entry = bazaar::inventory::make_entry(kind, name.to_string(), parent_id, file_id);
-        entry_to_py(Python::acquire_gil().python(), entry)
+        let entry = bazaar::inventory::make_entry(
+            kind,
+            name.to_string(),
+            parent_id,
+            file_id,
+            revision,
+            text_sha1,
+            text_size,
+            executable,
+            text_id,
+            symlink_target,
+            reference_revision,
+        );
+        entry_to_py(py, entry)
     }
 }
 
@@ -1740,8 +1716,8 @@ fn parse_inventory_delta(
             InventoryDeltaParseError::Incompatible(m) => IncompatibleInventoryDelta::new_err((m,)),
         })?;
 
-    let parent = PyBytes::new(py, parent.bytes()).to_object(py);
-    let version = PyBytes::new(py, version.bytes()).to_object(py);
+    let parent = parent.to_object(py);
+    let version = version.to_object(py);
 
     let result = PyCell::new(py, InventoryDelta(result))?.to_object(py);
 
@@ -1750,18 +1726,14 @@ fn parse_inventory_delta(
 
 #[pyfunction]
 fn parse_inventory_entry(
-    file_id: Vec<u8>,
+    file_id: FileId,
     name: String,
-    parent_id: Option<Vec<u8>>,
-    revision: Option<Vec<u8>>,
+    parent_id: Option<FileId>,
+    revision: Option<RevisionId>,
     lines: &[u8],
 ) -> InventoryEntry {
     InventoryEntry(bazaar::inventory_delta::parse_inventory_entry(
-        FileId::from(file_id),
-        name,
-        parent_id.map(FileId::from),
-        revision.map(RevisionId::from),
-        lines,
+        file_id, name, parent_id, revision, lines,
     ))
 }
 
@@ -1782,15 +1754,15 @@ fn serialize_inventory_entry(py: Python, entry: &InventoryEntry) -> PyResult<PyO
 #[pyfunction]
 fn serialize_inventory_delta(
     py: Python,
-    old_name: Vec<u8>,
-    new_name: Vec<u8>,
+    old_name: RevisionId,
+    new_name: RevisionId,
     delta_to_new: &InventoryDelta,
     versioned_root: bool,
     tree_references: bool,
 ) -> PyResult<Vec<PyObject>> {
     Ok(bazaar::inventory_delta::serialize_inventory_delta(
-        &RevisionId::from(old_name),
-        &RevisionId::from(new_name),
+        &old_name,
+        &new_name,
         &delta_to_new.0,
         versioned_root,
         tree_references,
@@ -1831,8 +1803,8 @@ fn chk_inventory_bytes_to_utf8name_key(
 
     Ok((
         PyBytes::new(py, name).to_object(py),
-        PyBytes::new(py, file_id.as_bytes()).to_object(py),
-        PyBytes::new(py, revision_id.as_bytes()).to_object(py),
+        file_id.to_object(py),
+        revision_id.to_object(py),
     ))
 }
 

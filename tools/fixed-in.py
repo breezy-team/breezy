@@ -51,8 +51,7 @@ class NewsParser:
     def try_date(self):
         if self.release is None:
             return False
-        date_re = re.compile(r':%s: (NOT RELEASED YET|\d{4}-\d{2}-\d{2})'
-                             % (self.release,))
+        date_re = re.compile(fr':{self.release}: (NOT RELEASED YET|\d{{4}}-\d{{2}}-\d{{2}})')
         match = date_re.match(self.lrs)
         if match is not None:
             self.date = match.group(1)

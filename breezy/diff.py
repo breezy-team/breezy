@@ -200,7 +200,7 @@ def _spawn_external_diff(diffcmd, capture_errors=True):
                                 stderr=stderr,
                                 env=env)
     except FileNotFoundError as e:
-        raise errors.NoDiff(str(e))
+        raise errors.NoDiff(str(e)) from e
 
     return pipe
 
@@ -311,14 +311,14 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file,
                 raise errors.BzrError(
                     'external diff failed with exit code 2'
                     ' when run with LANG=C and LC_ALL=C,'
-                    ' but not when run natively: %r' % (diffcmd,))
+                    f' but not when run natively: {diffcmd!r}')
 
             first_line = lang_c_out.split(b'\n', 1)[0]
             # Starting with diffutils 2.8.4 the word "binary" was dropped.
             m = re.match(b'^(binary )?files.*differ$', first_line, re.I)
             if m is None:
                 raise errors.BzrError('external diff failed with exit code 2;'
-                                      ' command: %r' % (diffcmd,))
+                                      f' command: {diffcmd!r}')
             else:
                 # Binary files differ, just return
                 return
@@ -333,8 +333,7 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file,
             else:
                 msg = 'exit code %d' % rc
 
-            raise errors.BzrError('external diff failed with %s; command: %r'
-                                  % (msg, diffcmd))
+            raise errors.BzrError(f'external diff failed with {msg}; command: {diffcmd!r}')
 
     finally:
         oldtmpf.close()                 # and delete
@@ -749,8 +748,7 @@ class DiffText(DiffPath):
                              context_lines=self.context_lines)
         except errors.BinaryFile:
             self.to_file.write(
-                ("Binary files %s%s and %s%s differ\n" %
-                 (self.old_label, from_path or to_path,
+                ("Binary files {}{} and {}{} differ\n".format(self.old_label, from_path or to_path,
                   self.new_label, to_path or from_path)
                  ).encode(self.path_encoding, 'replace'))
         return self.CHANGED
@@ -764,7 +762,6 @@ class DiffFromTool(DiffPath):
         import tempfile
         DiffPath.__init__(self, old_tree, new_tree, to_file, path_encoding)
         self.command_template = command_template
-        import tempfile
         self._root = tempfile.mkdtemp(prefix='brz-diff-')
 
     @classmethod
@@ -807,8 +804,8 @@ class DiffFromTool(DiffPath):
         try:
             proc = subprocess.Popen(command, stdout=subprocess.PIPE,
                                     cwd=self._root)
-        except FileNotFoundError:
-            raise errors.ExecutableMissing(command[0])
+        except FileNotFoundError as e:
+            raise errors.ExecutableMissing(command[0]) from e
         self.to_file.write(proc.stdout.read())
         proc.stdout.close()
         return proc.wait()
@@ -895,8 +892,8 @@ class DiffFromTool(DiffPath):
         except FileNotFoundError:
             pass
         except OSError as e:
-            mutter("The temporary directory \"%s\" was not "
-                   "cleanly removed: %s." % (self._root, e))
+            mutter(f"The temporary directory \"{self._root}\" was not "
+                   f"cleanly removed: {e}.")
 
     def diff(self, old_path, new_path, old_kind, new_kind):
         if (old_kind, new_kind) != ('file', 'file'):
@@ -1041,8 +1038,8 @@ class DiffTree:
                 continue
             if change.kind[0] == 'symlink' and not self.new_tree.supports_symlinks():
                 warning(
-                    'Ignoring "%s" as symlinks are not '
-                    'supported on this filesystem.' % (change.path[0],))
+                    f'Ignoring "{change.path[0]}" as symlinks are not '
+                    'supported on this filesystem.')
                 continue
             oldpath, newpath = change.path
             oldpath_encoded = get_encoded_path(oldpath)
@@ -1110,5 +1107,5 @@ class DiffTree:
             raise errors.NoDiffFound(error_path)
 
 
-format_registry = Registry[str, Type[DiffTree]]()
+format_registry = Registry[str, Type[DiffTree], None]()
 format_registry.register('default', DiffTree)

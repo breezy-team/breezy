@@ -68,8 +68,7 @@ def _run_editor(filename):
                 # environment variable or config file) said to try it.  Let
                 # the user know their configuration is broken.
                 trace.warning(
-                    'Could not start editor "%s" (specified by %s): %s\n'
-                    % (candidate, candidate_source, str(e)))
+                    f'Could not start editor "{candidate}" (specified by {candidate_source}): {str(e)}\n')
             continue
             raise
         if x == 0:
@@ -84,8 +83,7 @@ def _run_editor(filename):
                    bedding.config_path())
 
 
-DEFAULT_IGNORE_LINE = "%(bar)s %(msg)s %(bar)s" % \
-    {'bar': '-' * 14, 'msg': 'This line and the following will be ignored'}
+DEFAULT_IGNORE_LINE = "{bar} {msg} {bar}".format(bar='-' * 14, msg='This line and the following will be ignored')
 
 
 def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
@@ -178,8 +176,8 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
                     if stripped_line != "":
                         lastline = nlines
                     msg.append(line)
-            except UnicodeDecodeError:
-                raise BadCommitMessageEncoding()
+            except UnicodeDecodeError as e:
+                raise BadCommitMessageEncoding() from e
 
         if len(msg) == 0:
             return ""

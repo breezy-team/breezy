@@ -22,8 +22,14 @@ __docformat__ = "google"
 from typing import Dict, List, Tuple
 
 from . import errors
-from ._bzr_rs import (CURRENT_REVISION, NULL_REVISION, Revision,  # noqa: F401
-                      check_not_reserved_id, is_null, is_reserved_id)
+from ._bzr_rs import (  # noqa: F401
+    CURRENT_REVISION,
+    NULL_REVISION,
+    Revision,
+    check_not_reserved_id,
+    is_null,
+    is_reserved_id,
+)
 
 RevisionID = bytes
 

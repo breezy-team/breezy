@@ -22,9 +22,8 @@ import sys
 import threading
 from _thread import interrupt_main  # type: ignore
 
-from ... import builtins, config, errors, osutils
+from ... import builtins, config, errors, osutils, trace, transport, urlutils
 from ... import revision as _mod_revision
-from ... import trace, transport, urlutils
 from ...branch import Branch
 from ...bzr.smart import client, medium
 from ...bzr.smart.server import BzrServerFactory, SmartTCPServer
@@ -334,7 +333,7 @@ class TestCmdServeChrooting(TestBzrServeBase):
         So requests that search up through the parent directories (like
         find_repositoryV3) will give "not found" responses, rather than
         InvalidURLJoin or jail break errors.
-        """
+        """  # noqa: D403
         t = self.get_transport()
         t.mkdir('server-root')
         self.run_bzr_serve_then_func(
@@ -418,14 +417,14 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
         cmd.run(directory=base_dir, protocol=capture_transport)
         server_maker = BzrServerFactory()
         self.assertEqual(
-            f'readonly+{base_url}', self.bzr_serve_transport.base)
+            f'readonly+{base_url}', self.bzr_serve_transport.base + '/')
         self.assertEqual(
             base_dir, server_maker.get_base_path(self.bzr_serve_transport))
         # Read-write
         cmd.run(directory=base_dir, protocol=capture_transport,
                 allow_writes=True)
         server_maker = BzrServerFactory()
-        self.assertEqual(base_url, self.bzr_serve_transport.base)
+        self.assertEqual(base_url, self.bzr_serve_transport.base + '/')
         self.assertEqual(base_dir,
                          server_maker.get_base_path(self.bzr_serve_transport))
         # Read-only, from a URL
@@ -434,4 +433,4 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
         self.assertEqual(
             f'readonly+{base_url}', self.bzr_serve_transport.base)
         self.assertEqual(
-            base_dir, server_maker.get_base_path(self.bzr_serve_transport))
+            base_dir + '/', server_maker.get_base_path(self.bzr_serve_transport))

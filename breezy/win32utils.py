@@ -188,7 +188,7 @@ def get_local_appdata_location():
 
 
 def get_home_location():
-    """Return user's home location.
+    r"""Return user's home location.
     Assume on win32 it's the <My Documents> folder.
     If location cannot be obtained return system drive root,
     i.e. C:\.
@@ -419,7 +419,7 @@ is_local_pid_dead = _ctypes_is_local_pid_dead
 
 
 def get_fs_type(drive):
-    """Return file system type for a drive on the system.
+    r"""Return file system type for a drive on the system.
 
     Args:
       drive: Unicode string with drive including trailing backslash (e.g.

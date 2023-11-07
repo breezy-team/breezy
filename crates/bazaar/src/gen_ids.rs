@@ -1,4 +1,5 @@
 use breezy_osutils::rand_chars;
+use lazy_regex::regex;
 use lazy_static::lazy_static;
 use regex::bytes::Regex;
 use std::time::{SystemTime, UNIX_EPOCH};

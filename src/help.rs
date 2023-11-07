@@ -57,7 +57,7 @@ pub struct DynamicHelpTopic {
 }
 
 impl HelpContents {
-    fn get_contents(&self, topic: &str) -> Cow<str> {
+    fn get_contents(&self, topic: &str) -> Cow<'_, str> {
         match self {
             HelpContents::Text(text) => Cow::Borrowed(text),
             HelpContents::Callback(ref callback) => callback(topic).into(),
@@ -80,7 +80,7 @@ impl HelpTopic {
             section,
         }
     }
-    pub fn get_contents(&self) -> std::borrow::Cow<str> {
+    pub fn get_contents(&self) -> std::borrow::Cow<'_, str> {
         self.contents.get_contents(self.name)
     }
 
@@ -165,7 +165,7 @@ pub fn help_as_plain_text(text: &str) -> String {
 }
 
 impl DynamicHelpTopic {
-    pub fn get_contents(&self) -> std::borrow::Cow<str> {
+    pub fn get_contents(&self) -> std::borrow::Cow<'_, str> {
         self.contents.get_contents(self.name.as_str())
     }
 

@@ -16,7 +16,7 @@
 
 __docformat__ = "google"
 
-from typing import Iterable, Optional
+from typing import TYPE_CHECKING, Iterable, Optional
 
 from .lazy_import import lazy_import
 
@@ -29,15 +29,15 @@ from breezy import (
 from breezy.i18n import gettext
 """)
 
-from . import controldir, debug, errors, graph, osutils, registry
+from . import controldir, debug, errors, graph, osutils, registry, ui
 from . import revision as _mod_revision
-from . import ui
 from .decorators import only_raises
 from .inter import InterObject
 from .lock import LogicalLockResult, _RelockDebugMixin
-from .revisiontree import RevisionTree
-from .trace import (log_exception_quietly, mutter, mutter_callsite, note,
-                    warning)
+from .trace import log_exception_quietly, mutter, mutter_callsite, note, warning
+
+if TYPE_CHECKING:
+    from .revisiontree import RevisionTree
 
 # Old formats display a warning, but only once
 _deprecation_warning_done = False
@@ -149,8 +149,8 @@ class CommitBuilder:
             # We know that the XML serializers do not round trip '\r'
             # correctly, so refuse to accept them
             if not isinstance(value, str):
-                raise ValueError('revision property (%s) is not a valid'
-                                 ' (unicode) string: %r' % (key, value))
+                raise ValueError(f'revision property ({key}) is not a valid'
+                                 f' (unicode) string: {value!r}')
             # TODO(jelmer): Make this repository-format specific
             self._validate_unicode_text(value,
                                         f'revision property ({key})')
@@ -298,8 +298,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                     self._write_group, self.get_transaction())
                 return
             raise errors.BzrError(
-                'mismatched lock context and write group. %r, %r' %
-                (self._write_group, self.get_transaction()))
+                f'mismatched lock context and write group. {self._write_group!r}, {self.get_transaction()!r}')
         try:
             self._abort_write_group()
         except Exception as exc:
@@ -350,7 +349,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         revisions that might be present.  There is no direct replacement
         method.
         """
-        if 'evil' in debug.debug_flags:
+        if debug.debug_flag_enabled('evil'):
             mutter_callsite(2, "all_revision_ids is linear with history.")
         return self._all_revision_ids()
 
@@ -646,9 +645,8 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """
         if self._write_group is not self.get_transaction():
             # has an unlock or relock occured ?
-            raise errors.BzrError('mismatched lock context %r and '
-                                  'write group %r.' %
-                                  (self.get_transaction(), self._write_group))
+            raise errors.BzrError(f'mismatched lock context {self.get_transaction()!r} and '
+                                  f'write group {self._write_group!r}.')
         result = self._commit_write_group()
         self._write_group = None
         return result
@@ -865,7 +863,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         against the revision one as get_revision does: but it should only
         be used by reconcile, or reconcile-alike commands that are correcting
         or testing the revision graph.
-        """
+        """  # noqa: D403
         raise NotImplementedError(self.get_revision_reconcile)
 
     def get_revisions(self, revision_ids):
@@ -993,7 +991,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         except errors.RevisionNotPresent as err:
             if err.revision_id == known_revid:
                 # The start revision (known_revid) wasn't found.
-                raise errors.NoSuchRevision(self, known_revid)
+                raise errors.NoSuchRevision(self, known_revid) from err
             # This is a stacked repository with no fallbacks, or a there's a
             # left-hand ghost.  Either way, even though the revision named in
             # the error isn't in this repo, we know it's the next step in this
@@ -1212,9 +1210,8 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 conf = branch.get_config_stack()
             if 'format_deprecation' in conf.get('suppress_warnings'):
                 return
-            warning("Format %s for %s is deprecated -"
-                    " please use 'brz upgrade' to get better performance"
-                    % (self._format, self.controldir.transport.base))
+            warning(f"Format {self._format} for {self.controldir.transport.base} is deprecated -"
+                    " please use 'brz upgrade' to get better performance")
         finally:
             _deprecation_warning_done = True
 
@@ -1229,13 +1226,13 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             if isinstance(revision_id, str):
                 try:
                     revision_id.encode('ascii')
-                except UnicodeEncodeError:
-                    raise errors.NonAsciiRevisionId(method, self)
+                except UnicodeEncodeError as err:
+                    raise errors.NonAsciiRevisionId(method, self) from err
             else:
                 try:
                     revision_id.decode('ascii')
-                except UnicodeDecodeError:
-                    raise errors.NonAsciiRevisionId(method, self)
+                except UnicodeDecodeError as err:
+                    raise errors.NonAsciiRevisionId(method, self) from err
 
 
 class RepositoryFormatRegistry(controldir.ControlComponentFormatRegistry):
@@ -1246,7 +1243,7 @@ class RepositoryFormatRegistry(controldir.ControlComponentFormatRegistry):
         return controldir.format_registry.make_controldir('default').repository_format
 
 
-network_format_registry = registry.FormatRegistry["RepositoryFormat"]()
+network_format_registry = registry.FormatRegistry["RepositoryFormat", None]()
 """Registry of formats indexed by their network name.
 
 The network name for a repository format is an identifier that can be used when

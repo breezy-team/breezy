@@ -360,8 +360,8 @@ class TestUrlToPath(TestCase):
 
         try:
             result = to_url('/path/to/r\xe4ksm\xf6rg\xe5s')
-        except UnicodeError:
-            raise TestSkipped("local encoding cannot handle unicode")
+        except UnicodeError as err:
+            raise TestSkipped("local encoding cannot handle unicode") from err
 
         self.assertEqual('file:///path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
         self.assertIsInstance(result, str)
@@ -404,8 +404,8 @@ class TestUrlToPath(TestCase):
                          to_url('C:/path/to/foo,bar'))
         try:
             result = to_url('d:/path/to/r\xe4ksm\xf6rg\xe5s')
-        except UnicodeError:
-            raise TestSkipped("local encoding cannot handle unicode")
+        except UnicodeError as err:
+            raise TestSkipped("local encoding cannot handle unicode") from err
 
         self.assertEqual(
             'file:///D:/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
@@ -421,8 +421,8 @@ class TestUrlToPath(TestCase):
 
         try:
             result = to_url('//HOST/path/to/r\xe4ksm\xf6rg\xe5s')
-        except UnicodeError:
-            raise TestSkipped("local encoding cannot handle unicode")
+        except UnicodeError as err:
+            raise TestSkipped("local encoding cannot handle unicode") from err
 
         self.assertEqual(
             'file://HOST/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
@@ -790,8 +790,8 @@ class TestCwdToURL(TestCaseInTempDir):
     def test_non_ascii(self):
         try:
             os.mkdir('dod\xe9')
-        except UnicodeError:
-            raise TestSkipped('cannot create unicode directory')
+        except UnicodeError as err:
+            raise TestSkipped('cannot create unicode directory') from err
 
         os.chdir('dod\xe9')
 
@@ -1108,12 +1108,7 @@ class QuoteTests(TestCase):
         self.assertEqual('abc/def', urlutils.quote('abc/def', safe='/'))
 
     def test_quote_tildes(self):
-        # Whether ~ is quoted by default depends on the python version
-        if sys.version_info[:2] >= (3, 7):
-            # https://docs.python.org/3/whatsnew/3.7.html#urllib-parse
-            self.assertEqual('~foo', urlutils.quote('~foo'))
-        else:
-            self.assertEqual('%7Efoo', urlutils.quote('~foo'))
+        self.assertEqual('~foo', urlutils.quote('~foo'))
         self.assertEqual('~foo', urlutils.quote('~foo', safe='/~'))
 
     def test_unquote(self):

@@ -40,16 +40,19 @@ from breezy.bzr.index import (
 """)
 from .. import debug, errors, lockdir, osutils
 from .. import transport as _mod_transport
-from ..bzr import btree_index, index, lockable_files
+from ..bzr import btree_index, lockable_files
+from ..bzr import index as _mod_index
 from ..decorators import only_raises
 from ..lock import LogicalLockResult
 from ..repository import RepositoryWriteLockResult, _LazyListJoin
 from ..trace import mutter, note, warning
 from .repository import MetaDirRepository, RepositoryFormatMetaDir
 from .serializer import InventorySerializer, RevisionSerializer
-from .vf_repository import (MetaDirVersionedFileRepository,
-                            MetaDirVersionedFileRepositoryFormat,
-                            VersionedFileCommitBuilder)
+from .vf_repository import (
+    MetaDirVersionedFileRepository,
+    MetaDirVersionedFileRepositoryFormat,
+    VersionedFileCommitBuilder,
+)
 
 
 class RetryWithNewPacks(errors.BzrError):
@@ -190,9 +193,8 @@ class Pack:
         if missing_items:
             from pprint import pformat
             raise errors.BzrCheckError(
-                "Newly created pack file %r has delta references to "
-                "items not in its repository:\n%s"
-                % (self, pformat(missing_items)))
+                f"Newly created pack file {self!r} has delta references to "
+                f"items not in its repository:\n{pformat(missing_items)}")
 
     def file_name(self):
         """Get the file name for the pack on disk."""
@@ -397,7 +399,7 @@ class NewPack(Pack):
         # What file mode to upload the pack and indices with.
         self._file_mode = file_mode
         # tracks the content written to the .pack file.
-        self._hash = hashlib.md5()
+        self._hash = hashlib.md5()  # noqa: S324
         # a tuple with the length in bytes of the indices, once the pack
         # is finalised. (rev, inv, text, sigs, chk_if_in_use)
         self.index_sizes = None
@@ -413,7 +415,7 @@ class NewPack(Pack):
         # open an output stream for the data added to the pack.
         self.write_stream = self.upload_transport.open_write_stream(
             self.random_name, mode=self._file_mode)
-        if 'pack' in debug.debug_flags:
+        if debug.debug_flag_enabled('pack'):
             mutter('%s: create_pack: pack stream open: %s%s t+%6.3fs',
                    time.ctime(), self.upload_transport.base, self.random_name,
                    time.time() - self.start_time)
@@ -529,7 +531,7 @@ class NewPack(Pack):
             new_name = '../packs/' + new_name
         self.upload_transport.move(self.random_name, new_name)
         self._state = 'finished'
-        if 'pack' in debug.debug_flags:
+        if debug.debug_flag_enabled('pack'):
             # XXX: size might be interesting?
             mutter('%s: create_pack: pack finished: %s%s->%s t+%6.3fs',
                    time.ctime(), self.upload_transport.base, self.random_name,
@@ -569,7 +571,7 @@ class NewPack(Pack):
         write_stream.close(
             want_fdatasync=self._pack_collection.config_stack.get('repository.fdatasync'))
         self.index_sizes[self.index_offset(index_type)] = len(index_bytes)
-        if 'pack' in debug.debug_flags:
+        if debug.debug_flag_enabled('pack'):
             # XXX: size might be interesting?
             mutter('%s: create_pack: wrote %s index: %s%s t+%6.3fs',
                    time.ctime(), label, self.upload_transport.base,
@@ -715,9 +717,8 @@ class Packer:
         # XXX: - duplicate code warning with start_write_group; fix before
         #      considering 'done'.
         if self._pack_collection._new_pack is not None:
-            raise errors.BzrError('call to %s.pack() while another pack is'
-                                  ' being written.'
-                                  % (self.__class__.__name__,))
+            raise errors.BzrError('call to {}.pack() while another pack is'
+                                  ' being written.'.format(self.__class__.__name__))
         if self.revision_ids is not None:
             if len(self.revision_ids) == 0:
                 # silly fetch request.
@@ -769,7 +770,7 @@ class Packer:
         raise NotImplementedError(self._create_pack_from_packs)
 
     def _log_copied_texts(self):
-        if 'pack' in debug.debug_flags:
+        if debug.debug_flag_enabled('pack'):
             mutter('%s: create_pack: file texts copied: %s%s %d items t+%6.3fs',
                    time.ctime(), self._pack_collection._upload_transport.base,
                    self.new_pack.random_name,
@@ -1166,7 +1167,7 @@ class RepositoryPackCollection:
                                                self._pack_transport, self._index_transport, self,
                                                chk_index=chk_index)
         except _mod_transport.NoSuchFile as e:
-            raise errors.UnresumableWriteGroup(self.repo, [name], str(e))
+            raise errors.UnresumableWriteGroup(self.repo, [name], str(e)) from e
         self.add_pack_to_memory(result)
         self._resumed_packs.append(result)
         return result
@@ -1614,8 +1615,7 @@ class RepositoryPackCollection:
             all_missing.update([(prefix,) + key for key in missing])
         if all_missing:
             raise errors.BzrCheckError(
-                "Repository %s has missing compression parent(s) %r "
-                % (self.repo, sorted(all_missing)))
+                f"Repository {self.repo} has missing compression parent(s) {sorted(all_missing)!r} ")
         problems = self._check_new_inventories()
         if problems:
             problems_summary = '\n'.join(problems)
@@ -1791,7 +1791,7 @@ class PackRepository(MetaDirVersionedFileRepository):
         if self._write_lock_count == 1:
             self._transaction = transactions.WriteTransaction()
         if not locked:
-            if 'relock' in debug.debug_flags and self._prev_lock == 'w':
+            if debug.debug_flag_enabled('relock') and self._prev_lock == 'w':
                 note('%r was write locked again', self)
             self._prev_lock = 'w'
             self._unstacked_provider.enable_cache()
@@ -1812,7 +1812,7 @@ class PackRepository(MetaDirVersionedFileRepository):
         else:
             self.control_files.lock_read()
         if not locked:
-            if 'relock' in debug.debug_flags and self._prev_lock == 'r':
+            if debug.debug_flag_enabled('relock') and self._prev_lock == 'r':
                 note('%r was read locked again', self)
             self._prev_lock = 'r'
             self._unstacked_provider.enable_cache()
@@ -1906,7 +1906,7 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
     # Most pack formats do not use chk lookups.
     supports_chks: bool = False
     # What index classes to use
-    index_builder_class: Type[index.GraphIndexBuilder]
+    index_builder_class: Type[_mod_index.GraphIndexBuilder]
     index_class: Type[object]
     _fetch_uses_deltas: bool = True
     fast_deltas: bool = False
@@ -2064,7 +2064,7 @@ class _DirectPackAccess:
         for index, offsets in request_lists:
             try:
                 transport, path = self._indices[index]
-            except KeyError:
+            except KeyError as e:
                 # A KeyError here indicates that someone has triggered an index
                 # reload, and this index has gone missing, we need to start
                 # over.
@@ -2074,19 +2074,19 @@ class _DirectPackAccess:
                     raise
                 raise RetryWithNewPacks(index,
                                         reload_occurred=True,
-                                        exc_info=sys.exc_info())
+                                        exc_info=sys.exc_info()) from e
             try:
                 reader = pack.make_readv_reader(transport, path, offsets)
                 for _names, read_func in reader.iter_records():
                     yield read_func(None)
-            except _mod_transport.NoSuchFile:
+            except _mod_transport.NoSuchFile as e:
                 # A NoSuchFile error indicates that a pack file has gone
                 # missing on disk, we need to trigger a reload, and start over.
                 if self._reload_func is None:
                     raise
                 raise RetryWithNewPacks(transport.abspath(path),
                                         reload_occurred=False,
-                                        exc_info=sys.exc_info())
+                                        exc_info=sys.exc_info()) from e
 
     def set_writer(self, writer, index, transport_packname):
         """Set a writer to use for adding data."""

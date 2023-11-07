@@ -21,8 +21,14 @@
 import os
 
 from ....tests import TestCaseWithTransport
-from ..wrapper import (quilt_applied, quilt_delete, quilt_pop_all,
-                       quilt_push_all, quilt_series, quilt_unapplied)
+from ..wrapper import (
+    quilt_applied,
+    quilt_delete,
+    quilt_pop_all,
+    quilt_push_all,
+    quilt_series,
+    quilt_unapplied,
+)
 from . import quilt_feature
 
 TRIVIAL_PATCH = """--- /dev/null	2012-01-02 01:09:10.986490031 +0100

@@ -27,10 +27,20 @@ import tempfile
 from io import StringIO
 
 from .. import debug, errors, trace
-from ..trace import (_rollover_trace_maybe, be_quiet, get_verbosity_level,
-                     is_quiet, is_verbose, mutter, mutter_callsite,
-                     pop_log_file, push_log_file, report_exception,
-                     set_verbosity_level, show_error)
+from ..trace import (
+    _rollover_trace_maybe,
+    be_quiet,
+    get_verbosity_level,
+    is_quiet,
+    is_verbose,
+    mutter,
+    mutter_callsite,
+    pop_log_file,
+    push_log_file,
+    report_exception,
+    set_verbosity_level,
+    show_error,
+)
 from . import TestCase, TestCaseInTempDir, TestSkipped, features
 
 
@@ -76,7 +86,7 @@ class TestTrace(TestCase):
 
     def test_format_mem_dump(self):
         self.requireFeature(features.meliae)
-        debug.debug_flags.add('mem_dump')
+        debug.set_debug_flag('mem_dump')
         try:
             raise MemoryError()
         except MemoryError:

@@ -174,7 +174,9 @@ impl PyParentsProvider {
         for key in keys.as_ref(py).iter()? {
             hash_key.insert(key?.into());
         }
-        let result = self.provider.get_parent_map(&hash_key.iter().collect());
+        let result = self
+            .provider
+            .get_parent_map(&hash_key.into_iter().collect());
         let ret = PyDict::new(py);
         for (k, vs) in result {
             ret.set_item::<PyObject, &PyTuple>(
@@ -204,8 +206,11 @@ struct TopoSorter {
 impl TopoSorter {
     #[new]
     fn new(py: Python, graph: PyObject) -> PyResult<TopoSorter> {
-        let iter = if graph.as_ref(py).is_instance_of::<PyDict>()? {
-            graph.cast_as::<PyDict>(py)?.call_method0("items")?.iter()?
+        let iter = if graph.as_ref(py).is_instance_of::<PyDict>() {
+            graph
+                .downcast::<PyDict>(py)?
+                .call_method0("items")?
+                .iter()?
         } else {
             graph.as_ref(py).iter()?
         };
@@ -272,8 +277,11 @@ impl MergeSorter {
         mainline_revisions: Option<PyObject>,
         generate_revno: Option<bool>,
     ) -> PyResult<MergeSorter> {
-        let iter = if graph.as_ref(py).is_instance_of::<PyDict>()? {
-            graph.cast_as::<PyDict>(py)?.call_method0("items")?.iter()?
+        let iter = if graph.as_ref(py).is_instance_of::<PyDict>() {
+            graph
+                .downcast::<PyDict>(py)?
+                .call_method0("items")?
+                .iter()?
         } else {
             graph.as_ref(py).iter()?
         };

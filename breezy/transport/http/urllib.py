@@ -22,7 +22,6 @@ There are separate implementation modules for each http client implementation.
 DEBUG = 0
 
 import base64
-import cgi
 import errno
 import hashlib
 import http.client
@@ -41,7 +40,8 @@ from ... import config, debug, errors, osutils, trace, transport, ui, urlutils
 from ...bzr.smart import medium
 from ...trace import mutter, mutter_callsite
 from ...transport import ConnectedTransport, NoSuchFile, UnusableRedirect
-from . import default_user_agent, ssl
+from . import default_user_agent
+
 # TODO: handle_response should be integrated into the http/__init__.py
 from .response import handle_response
 
@@ -290,7 +290,7 @@ class HTTPConnection(AbstractHTTPConnection, http.client.HTTPConnection):  # typ
         # ca_certs is ignored, it's only relevant for https
 
     def connect(self):
-        if 'http' in debug.debug_flags:
+        if debug.debug_flag_enabled('http'):
             self._mutter_connect()
         http.client.HTTPConnection.connect(self)
         self._wrap_socket_for_reporting(self.sock)
@@ -308,7 +308,7 @@ class HTTPSConnection(AbstractHTTPConnection, http.client.HTTPSConnection):  # t
         self.ca_certs = ca_certs
 
     def connect(self):
-        if 'http' in debug.debug_flags:
+        if debug.debug_flag_enabled('http'):
             self._mutter_connect()
         http.client.HTTPConnection.connect(self)
         self._wrap_socket_for_reporting(self.sock)
@@ -373,9 +373,11 @@ class Request(urllib.request.Request):
        been made.
     """
 
-    def __init__(self, method, url, data=None, headers={},
+    def __init__(self, method, url, data=None, headers=None,
                  origin_req_host=None, unverifiable=False,
                  connection=None, parent=None):
+        if headers is None:
+            headers = {}
         urllib.request.Request.__init__(
             self, url, data, headers,
             origin_req_host, unverifiable)
@@ -433,12 +435,13 @@ class _ConnectRequest(Request):
             raise AssertionError()
         self.proxied_host = request.proxied_host
 
-    @property
-    def selector(self):
+    def get_selector(self):
         return self.proxied_host
 
-    def get_selector(self):
-        return self.selector
+    def set_selector(self, selector):
+        self.proxied_host = selector
+
+    selector = property(get_selector, set_selector)  # type: ignore
 
     def set_proxy(self, proxy, type):
         """Set the proxy without remembering the proxied host.
@@ -483,10 +486,10 @@ class ConnectionHandler(urllib.request.BaseHandler):
                 host, proxied_host=request.proxied_host,
                 report_activity=self._report_activity,
                 ca_certs=self.ca_certs)
-        except http.client.InvalidURL:
+        except http.client.InvalidURL as e:
             # There is only one occurrence of InvalidURL in http.client
             raise urlutils.InvalidURL(request.get_full_url(),
-                                      extra='nonnumeric port')
+                                      extra='nonnumeric port') from e
 
         return connection
 
@@ -659,8 +662,8 @@ class AbstractHTTPHandler(urllib.request.AbstractHTTPHandler):
                                      request.data,
                                      headers,
                                      encode_chunked=(headers.get('Transfer-Encoding') == 'chunked'))
-            if 'http' in debug.debug_flags:
-                trace.mutter(f'> {method} {url}')
+            if debug.debug_flag_enabled('http'):
+                trace.mutter('> %s %s', method, url)
                 hdrs = []
                 for k, v in headers.items():
                     # People are often told to paste -Dhttp output to help
@@ -670,8 +673,7 @@ class AbstractHTTPHandler(urllib.request.AbstractHTTPHandler):
                     hdrs.append(f'{k}: {v}')
                 trace.mutter('> ' + '\n> '.join(hdrs) + '\n')
             if self._debuglevel >= 1:
-                print('Request sent: [%r] from (%s)'
-                      % (request, request.connection.sock.getsockname()))
+                print(f'Request sent: [{request!r}] from ({request.connection.sock.getsockname()})')
             response = connection.getresponse()
             convert_to_addinfourl = True
         except (ssl.SSLError, ssl.CertificateError):
@@ -712,14 +714,14 @@ class AbstractHTTPHandler(urllib.request.AbstractHTTPHandler):
             resp.msg = r.reason
             resp.version = r.version
             if self._debuglevel >= 2:
-                print(f'Create addinfourl: {resp!r}')
+                print('Create addinfourl: %r' % resp)
                 print(f'  For: {request.get_method()!r}({request.get_full_url()!r})')
-            if 'http' in debug.debug_flags:
+            if debug.debug_flag_enabled('http'):
                 version = 'HTTP/%d.%d'
                 try:
                     version = version % (resp.version / 10,
                                          resp.version % 10)
-                except:
+                except BaseException:
                     version = f'HTTP/{resp.version!r}'
                 trace.mutter(f'< {version} {resp.code} {resp.msg}')
                 # Use the raw header lines instead of treating resp.info() as a
@@ -1428,12 +1430,12 @@ def get_digest_algorithm_impls(algorithm):
     H = None
     KD = None
     if algorithm == 'MD5':
-        def H(x): return hashlib.md5(x).hexdigest()
+        def H(x): return hashlib.md5(x).hexdigest()  # noqa: S324
     elif algorithm == 'SHA':
         H = osutils.sha_string
     if H is not None:
         def KD(secret, data): return H(
-            f"{secret}:{data}".encode('utf-8'))
+            f"{secret}:{data}".encode())
     return H, KD
 
 
@@ -1502,8 +1504,8 @@ class DigestAuthHandler(AbstractAuthHandler):
     def build_auth_header(self, auth, request):
         uri = urlparse(request.selector).path
 
-        A1 = f"{auth['user']}:{auth['realm']}:{auth['password']}".encode('utf-8')
-        A2 = f'{request.get_method()}:{uri}'.encode('utf-8')
+        A1 = f"{auth['user']}:{auth['realm']}:{auth['password']}".encode()
+        A2 = f'{request.get_method()}:{uri}'.encode()
 
         nonce = auth['nonce']
         qop = auth['qop']
@@ -1849,15 +1851,17 @@ class HttpTransport(ConnectedTransport):
             def text(self):
                 if self.status == 204:
                     return None
-                charset = cgi.parse_header(
-                    self._actual.headers['Content-Type'])[1].get('charset')
+                from email.message import EmailMessage
+                msg = EmailMessage()
+                msg['content-type'] = self._actual.headers['Content-Type']
+                charset = msg['content-type'].params.get('charset')
                 if charset:
                     return self.data.decode(charset)
                 else:
                     return self.data.decode()
 
             def read(self, amt=None):
-                if amt is None and 'evil' in debug.debug_flags:
+                if amt is None and debug.debug_flag_enabled('evil'):
                     mutter_callsite(4, "reading full response.")
                 return self._actual.read(amt)
 
@@ -2023,7 +2027,7 @@ class HttpTransport(ConnectedTransport):
 
             # Turn it into a list, we will iterate it several times
             coalesced = list(coalesced)
-            if 'http' in debug.debug_flags:
+            if debug.debug_flag_enabled('http'):
                 mutter('http readv of %s  offsets => %s collapsed %s',
                        relpath, len(offsets), len(coalesced))
 
@@ -2438,7 +2442,7 @@ class SmartClientHTTPMedium(medium.SmartClientMedium):
                 raise errors.UnexpectedHttpStatus(
                     t._remote_path('.bzr/smart'), code)
         except (errors.InvalidHttpResponse, ConnectionResetError) as e:
-            raise errors.SmartProtocolError(str(e))
+            raise errors.SmartProtocolError(str(e)) from e
         return body_filelike
 
     def _report_activity(self, bytes, direction):
@@ -2480,7 +2484,7 @@ class SmartClientHTTPMediumRequest(medium.SmartClientMediumRequest):
         if excess != b'':
             raise AssertionError(
                 '_get_line returned excess bytes, but this mediumrequest '
-                'cannot handle excess. (%r)' % (excess,))
+                f'cannot handle excess. ({excess!r})')
         return line
 
     def _finished_reading(self):

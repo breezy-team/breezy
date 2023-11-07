@@ -37,17 +37,15 @@ class TestPull(TestCaseWithInterBranch):
         parent.commit('1st post', allow_pointless=True)
         try:
             mine = self.sprout_to(parent.controldir, 'mine').open_workingtree()
-        except errors.NoRoundtrippingSupport:
+        except errors.NoRoundtrippingSupport as e:
             raise TestNotApplicable(
-                'lossless push between %r and %r not supported' %
-                (self.branch_format_from, self.branch_format_to))
+                f'lossless push between {self.branch_format_from!r} and {self.branch_format_to!r} not supported') from e
         mine.commit('my change', allow_pointless=True)
         try:
             parent.merge_from_branch(mine.branch)
-        except errors.NoRoundtrippingSupport:
+        except errors.NoRoundtrippingSupport as e:
             raise TestNotApplicable(
-                'lossless push between %r and %r not supported' %
-                (self.branch_format_from, self.branch_format_to))
+                f'lossless push between {self.branch_format_from!r} and {self.branch_format_to!r} not supported') from e
         p2 = parent.commit('merge my change')
         mine.pull(parent.branch)
         self.assertEqual(p2, mine.branch.last_revision())
@@ -61,20 +59,18 @@ class TestPull(TestCaseWithInterBranch):
         parent.commit('1st post', allow_pointless=True)
         try:
             mine = self.sprout_to(parent.controldir, 'mine').open_workingtree()
-        except errors.NoRoundtrippingSupport:
+        except errors.NoRoundtrippingSupport as e:
             raise TestNotApplicable(
-                'lossless push between %r and %r not supported' %
-                (self.branch_format_from, self.branch_format_to))
+                f'lossless push between {self.branch_format_from!r} and {self.branch_format_to!r} not supported') from e
         mine.commit('my change', allow_pointless=True)
         other = self.sprout_to(parent.controldir, 'other').open_workingtree()
         other.merge_from_branch(mine.branch)
         other.commit('merge my change')
         try:
             parent.merge_from_branch(other.branch)
-        except errors.NoRoundtrippingSupport:
+        except errors.NoRoundtrippingSupport as e:
             raise TestNotApplicable(
-                'lossless push between %r and %r not supported' %
-                (self.branch_format_from, self.branch_format_to))
+                f'lossless push between {self.branch_format_from!r} and {self.branch_format_to!r} not supported') from e
         p2 = parent.commit('merge other')
         mine.pull(parent.branch)
         self.assertEqual(p2, mine.branch.last_revision())
@@ -87,18 +83,16 @@ class TestPull(TestCaseWithInterBranch):
         try:
             other = self.sprout_to(
                 master_tree.branch.controldir, 'other').open_workingtree()
-        except errors.NoRoundtrippingSupport:
+        except errors.NoRoundtrippingSupport as e:
             raise TestNotApplicable(
-                'lossless push between %r and %r not supported' %
-                (self.branch_format_from, self.branch_format_to))
+                f'lossless push between {self.branch_format_from!r} and {self.branch_format_to!r} not supported') from e
         rev2 = other.commit('other commit')
         # now pull, which should update both checkout and master.
         try:
             checkout.branch.pull(other.branch)
-        except errors.NoRoundtrippingSupport:
+        except errors.NoRoundtrippingSupport as e:
             raise TestNotApplicable(
-                'lossless push between %r and %r not supported' %
-                (self.branch_format_from, self.branch_format_to))
+                f'lossless push between {self.branch_format_from!r} and {self.branch_format_to!r} not supported') from e
         self.assertEqual(rev2, checkout.branch.last_revision())
         self.assertEqual(rev2, master_tree.branch.last_revision())
 
@@ -111,9 +105,9 @@ class TestPull(TestCaseWithInterBranch):
         # error.
         try:
             master_tree.branch.controldir.destroy_branch()
-        except errors.UnsupportedOperation:
+        except errors.UnsupportedOperation as e:
             raise TestNotApplicable(
-                'control format does not support destroying default branch')
+                'control format does not support destroying default branch') from e
         # try to pull, which should raise a BoundBranchConnectionFailure.
         self.assertRaises(errors.BoundBranchConnectionFailure,
                           checkout.branch.pull, other)
@@ -123,17 +117,15 @@ class TestPull(TestCaseWithInterBranch):
         p1 = parent.commit('1st post')
         try:
             mine = self.sprout_to(parent.controldir, 'mine').open_workingtree()
-        except errors.NoRoundtrippingSupport:
+        except errors.NoRoundtrippingSupport as e:
             raise TestNotApplicable(
-                'lossless push between %r and %r not supported' %
-                (self.branch_format_from, self.branch_format_to))
+                f'lossless push between {self.branch_format_from!r} and {self.branch_format_to!r} not supported') from e
         m1 = mine.commit('my change')
         try:
             result = parent.branch.pull(mine.branch)
-        except errors.NoRoundtrippingSupport:
+        except errors.NoRoundtrippingSupport as e:
             raise TestNotApplicable(
-                'lossless push between %r and %r not supported' %
-                (self.branch_format_from, self.branch_format_to))
+                f'lossless push between {self.branch_format_from!r} and {self.branch_format_to!r} not supported') from e
         self.assertIsNot(None, result)
         self.assertIs(mine.branch, result.source_branch)
         self.assertIs(parent.branch, result.target_branch)
@@ -151,20 +143,18 @@ class TestPull(TestCaseWithInterBranch):
         try:
             tree_b = self.sprout_to(
                 tree_a.controldir, 'tree_b').open_workingtree()
-        except errors.NoRoundtrippingSupport:
+        except errors.NoRoundtrippingSupport as e:
             raise TestNotApplicable(
-                'lossless push between %r and %r not supported' %
-                (self.branch_format_from, self.branch_format_to))
+                f'lossless push between {self.branch_format_from!r} and {self.branch_format_to!r} not supported') from e
 
         rev2a = tree_a.commit('message 2a')
         rev2b = tree_b.commit('message 2b')
         try:
             self.assertRaises(errors.DivergedBranches,
                               tree_a.pull, tree_b.branch)
-        except errors.NoRoundtrippingSupport:
+        except errors.NoRoundtrippingSupport as e:
             raise TestNotApplicable(
-                'lossless push between %r and %r not supported' %
-                (self.branch_format_from, self.branch_format_to))
+                f'lossless push between {self.branch_format_from!r} and {self.branch_format_to!r} not supported') from e
         self.assertRaises(errors.DivergedBranches,
                           tree_a.branch.pull, tree_b.branch,
                           overwrite=False, stop_revision=rev2b)
@@ -189,10 +179,9 @@ class TestPull(TestCaseWithInterBranch):
         try:
             tree_b = self.sprout_to(
                 tree_a.controldir, 'tree_b').open_workingtree()
-        except errors.NoRoundtrippingSupport:
+        except errors.NoRoundtrippingSupport as err:
             raise TestNotApplicable(
-                'lossless push between %r and %r not supported' %
-                (self.branch_format_from, self.branch_format_to))
+                f'lossless push between {self.branch_format_from!r} and {self.branch_format_to!r} not supported') from err
         tree_b.branch.tags.set_tag('tag1', revid1)
         tree_b.branch.tags.set_tag('tag2', revid1)
         tree_b.branch.get_config_stack().set('branch.fetch_tags', True)

@@ -20,20 +20,18 @@ import sys
 import tempfile
 from io import BytesIO
 
-from ... import diff, errors, merge, osutils
+from ... import diff, errors, merge, osutils, tests, treebuilder
 from ... import revision as _mod_revision
-from ... import tests
 from ... import transport as _mod_transport
-from ... import treebuilder
 from ...tests import features, test_commit
 from ...tree import InterTree
 from .. import bzrdir, inventory, knitrepo
 from ..bundle.apply_bundle import install_bundle, merge_bundle
 from ..bundle.bundle_data import BundleTree
-from ..bundle.serializer import read_bundle, v4, v09, write_bundle
-from ..bundle.serializer.v4 import BundleSerializerV4
+from ..bundle.serializer import read_bundle, v09, v4, write_bundle
 from ..bundle.serializer.v08 import BundleSerializerV08
 from ..bundle.serializer.v09 import BundleSerializerV09
+from ..bundle.serializer.v4 import BundleSerializerV4
 from ..inventorytree import InventoryTree
 
 
@@ -103,8 +101,7 @@ class MockTree(InventoryTree):
         return kind
 
     def make_entry(self, file_id, path):
-        from ..inventory import (InventoryDirectory, InventoryFile,
-                                 InventoryLink)
+        from ..inventory import InventoryDirectory, InventoryFile, InventoryLink
         if not isinstance(file_id, bytes):
             raise TypeError(file_id)
         name = os.path.basename(path)
@@ -114,9 +111,9 @@ class MockTree(InventoryTree):
         if kind == 'directory':
             ie = InventoryDirectory(file_id, name, parent_id)
         elif kind == 'file':
-            ie = InventoryFile(file_id, name, parent_id)
-            ie.text_sha1 = text_sha_1
-            ie.text_size = text_size
+            ie = InventoryFile(
+                file_id, name, parent_id,
+                text_sha1=text_sha_1, text_size=text_size)
         elif kind == 'symlink':
             ie = InventoryLink(file_id, name, parent_id)
         else:
@@ -141,15 +138,15 @@ class MockTree(InventoryTree):
     def id2path(self, file_id, recurse='down'):
         try:
             return self.paths[file_id]
-        except KeyError:
-            raise errors.NoSuchId(file_id, self)
+        except KeyError as e:
+            raise errors.NoSuchId(file_id, self) from e
 
     def get_file(self, path):
         result = BytesIO()
         try:
             result.write(self.contents[path])
-        except KeyError:
-            raise _mod_transport.NoSuchFile(path)
+        except KeyError as err:
+            raise _mod_transport.NoSuchFile(path) from err
         result.seek(0, 0)
         return result
 
@@ -306,7 +303,7 @@ class BTreeTester(tests.TestCase):
         self.get_file_test(btree)
 
     def test_delete(self):
-        "Deletion by bundle."
+        """Deletion by bundle."""
         btree = self.make_tree_1()[0]
         with btree.get_file(btree.id2path(b"c")) as f:
             self.assertEqual(f.read(), b"Hello\n")
@@ -1060,8 +1057,8 @@ class BundleTester:
         tree.commit('hello', rev_id=b'rev2')
         try:
             bundle = read_bundle(self.create_bundle_text(b'null:', b'rev1')[0])
-        except errors.IncompatibleBundleFormat:
-            raise tests.TestSkipped("Format 0.8 doesn't work with knit3")
+        except errors.IncompatibleBundleFormat as e:
+            raise tests.TestSkipped("Format 0.8 doesn't work with knit3") from e
         repo = self.make_repository('repo', format='knit')
         bundle.install_revisions(repo)
 
@@ -1087,8 +1084,8 @@ class BundleTester:
         tree.commit('hello', rev_id=b'rev1')
         try:
             bundle = read_bundle(self.create_bundle_text(b'null:', b'rev1')[0])
-        except errors.IncompatibleBundleFormat:
-            raise tests.TestSkipped("Format 0.8 doesn't work with knit3")
+        except errors.IncompatibleBundleFormat as e:
+            raise tests.TestSkipped("Format 0.8 doesn't work with knit3") from e
         if isinstance(bundle, v09.BundleInfo09):
             raise tests.TestSkipped("Format 0.9 doesn't work with subtrees")
         repo = self.make_repository('repo', format='knit')
@@ -1102,9 +1099,9 @@ class BundleTester:
         self.b1 = self.tree1.branch
         try:
             self.tree1.commit('Revision/id/with/slashes', rev_id=b'rev/id')
-        except ValueError:
+        except ValueError as e:
             raise tests.TestSkipped(
-                "Repository doesn't support revision ids with slashes")
+                "Repository doesn't support revision ids with slashes") from e
         self.get_valid_bundle(b'null:', b'rev/id')
 
     def test_skip_file(self):
@@ -1167,7 +1164,7 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
         return bundle.revision_tree(repository, b'revid1')
 
     def test_bundle_empty_property_alt(self):
-        """Test serializing revision properties with an empty value.
+        r"""Test serializing revision properties with an empty value.
 
         Older readers had a bug when reading an empty property.
         They assumed that all keys ended in ': \n'. However they would write an

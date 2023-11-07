@@ -22,9 +22,8 @@ import os
 import struct
 import tempfile
 
-from ... import controldir, errors, memorytree, osutils
+from ... import controldir, errors, memorytree, osutils, tests
 from ... import revision as _mod_revision
-from ... import tests
 from ...tests import features, test_osutils
 from ...tests.scenarios import load_tests_apply_scenarios
 from .. import dirstate, inventory, inventorytree, workingtree_4
@@ -110,7 +109,7 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
         return state
 
     def create_complex_dirstate(self):
-        """This dirstate contains multiple files and directories.
+        r"""This dirstate contains multiple files and directories.
 
          /        a-root-value
          a/       a-dir
@@ -1632,7 +1631,7 @@ class TestGetEntry(TestCaseWithDirState):
 class TestIterChildEntries(TestCaseWithDirState):
 
     def create_dirstate_with_two_trees(self):
-        """This dirstate contains multiple files and directories.
+        r"""This dirstate contains multiple files and directories.
 
          /        a-root-value
          a/       a-dir
@@ -2420,12 +2419,12 @@ class Test_InvEntryToDetails(tests.TestCase):
         self.assertIsInstance(tree_data, bytes)
 
     def test_unicode_symlink(self):
+        target = 'link-targ\N{Euro Sign}t'
         inv_entry = inventory.InventoryLink(b'link-file-id',
                                             'nam\N{Euro Sign}e',
-                                            b'link-parent-id')
-        inv_entry.revision = b'link-revision-id'
-        target = 'link-targ\N{Euro Sign}t'
-        inv_entry.symlink_target = target
+                                            b'link-parent-id',
+                                            b'link-revision-id',
+                                            symlink_target=target)
         self.assertDetails((b'l', target.encode('UTF-8'), 0, False,
                             b'link-revision-id'), inv_entry)
 
@@ -2482,13 +2481,10 @@ class TestUpdateBasisByDelta(tests.TestCase):
         except KeyError:
             dir_id = osutils.basename(dirname).encode('utf-8') + b'-id'
         if is_dir:
-            ie = inventory.InventoryDirectory(file_id, basename, dir_id)
+            ie = inventory.InventoryDirectory(file_id, basename, dir_id, rev_id)
             dir_ids[path] = file_id
         else:
-            ie = inventory.InventoryFile(file_id, basename, dir_id)
-            ie.text_size = 0
-            ie.text_sha1 = b''
-        ie.revision = rev_id
+            ie = inventory.InventoryFile(file_id, basename, dir_id, rev_id, text_size=0, text_sha1=b'')
         return ie
 
     def create_tree_from_shape(self, rev_id, shape):
@@ -2929,9 +2925,8 @@ class TestBisectDirblock(tests.TestCase):
         bisect_left_idx = bisect.bisect_left(split_dirblocks, split_dirblock,
                                              *args)
         self.assertEqual(bisect_left_idx, bisect_split_idx,
-                         'bisect_split disagreed. %s != %s'
-                         ' for key %r'
-                         % (bisect_left_idx, bisect_split_idx, path)
+                         'bisect_split disagreed. {} != {}'
+                         ' for key {!r}'.format(bisect_left_idx, bisect_split_idx, path)
                          )
 
     def paths_to_dirblocks(self, paths):

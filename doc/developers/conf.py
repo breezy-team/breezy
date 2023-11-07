@@ -13,7 +13,7 @@ import sys
 sys.path = [os.path.abspath('../..'), os.path.abspath('api')] + sys.path
 
 # Most of the configuration for Breezy docs is defined here ...
-from breezy.doc_generate.conf import *
+from breezy.doc_generate.conf import *  # noqa: F403
 
 ## Configuration specific to this site ##
 
@@ -48,10 +48,7 @@ latex_documents = [
     for start, target, title, author, doc_class in brz_documents
     ]
 
-texinfo_documents = [
-    (start, target, title, author, doc_class)
-    for start, target, title, author, doc_class in brz_documents
-    ]
+texinfo_documents = list(brz_documents)
 
 # List of documents that shouldn't be included in the build.
 # Note: Maybe some of them *ought* to be linked in somewhere?

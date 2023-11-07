@@ -268,7 +268,6 @@ impl Transport for LocalTransport {
 
         use nix::libc::off_t;
         use nix::sys::uio::pread;
-        use std::os::unix::io::AsRawFd;
         let abspath = match self._abspath(path) {
             Ok(p) => p,
             Err(err) => return Box::new(std::iter::once(Err(err))),
@@ -288,7 +287,7 @@ impl Transport for LocalTransport {
                 .into_iter()
                 .map(move |(offset, len)| -> Result<(u64, Vec<u8>)> {
                     let mut buf = vec![0; len];
-                    match pread(file.as_raw_fd(), &mut buf[..], offset as off_t) {
+                    match pread(&file, &mut buf[..], offset as off_t) {
                         Ok(n) if n == len => Ok((offset, buf)),
                         Ok(n) => Err(Error::ShortReadvError(
                             path.to_owned(),

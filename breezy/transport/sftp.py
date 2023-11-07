@@ -37,13 +37,19 @@ from .._transport_rs import sftp as _sftp_rs
 from ..errors import LockError, PathError
 from ..osutils import fancy_rename, pumpfile
 from ..trace import mutter, warning
-from ..transport import (ConnectedTransport, FileExists, FileFileStream,
-                         NoSuchFile, _file_streams, ssh)
+from ..transport import (
+    ConnectedTransport,
+    FileExists,
+    FileFileStream,
+    NoSuchFile,
+    _file_streams,
+    ssh,
+)
 
 SFTPError = _sftp_rs.SFTPError
 
 
-class WriteStream(object):
+class WriteStream:
 
     def __init__(self, f):
         self.f = f
@@ -72,8 +78,8 @@ class SFTPLock:
             # RBC 20060103 FIXME should we be using private methods here ?
             abspath = transport._remote_path(self.lock_path)
             self.lock_file = transport._sftp_open_exclusive(abspath)
-        except FileExists:
-            raise LockError(f'File {self.path!r} already locked')
+        except FileExists as err:
+            raise LockError(f'File {self.path!r} already locked') from err
 
     def unlock(self):
         if not self.lock_file:
@@ -126,7 +132,7 @@ class _SFTPReadvHelper:
             (c_offset.start, c_offset.length)
             for c_offset in coalesced]
 
-        if 'sftp' in debug.debug_flags:
+        if debug.debug_flag_enabled('sftp'):
             mutter('SFTP.readv(%s) %s offsets => %s coalesced => %s requests',
                    self.relpath, len(sorted_offsets), len(coalesced),
                    len(requests))
@@ -236,7 +242,7 @@ class _SFTPReadvHelper:
             del buffered_data[:]
             data_chunks.append((input_start, buffered))
         if data_chunks:
-            if 'sftp' in debug.debug_flags:
+            if debug.debug_flag_enabled('sftp'):
                 mutter('SFTP readv left with %d out-of-order bytes',
                        sum(len(x[1]) for x in data_chunks))
             # We've processed all the readv data, at this point, anything we
@@ -394,7 +400,7 @@ class SFTPTransport(ConnectedTransport):
             readv = getattr(fp, 'readv', None)
             if readv:
                 return self._sftp_readv(fp, offsets, relpath)
-            if 'sftp' in debug.debug_flags:
+            if debug.debug_flag_enabled('sftp'):
                 mutter('seek and read %s offsets', len(offsets))
             return self._seek_and_read(fp, offsets, relpath)
         except (OSError, SFTPError) as e:
@@ -431,7 +437,7 @@ class SFTPTransport(ConnectedTransport):
     def _put(self, abspath, f, mode=None):
         """Helper function so both put() and copy_abspaths can reuse the code."""
         tmp_abspath = '%s.tmp.%.9f.%d.%d' % (abspath, time.time(),
-                                             os.getpid(), random.randint(0, 0x7FFFFFFF))
+                                                  os.getpid(), random.randint(0, 0x7FFFFFFF))  # noqa: S311
         fout = self._sftp_open_exclusive(tmp_abspath, mode=mode)
         closed = False
         try:
@@ -470,9 +476,9 @@ class SFTPTransport(ConnectedTransport):
                 if not closed:
                     fout.close()
                 self._get_sftp().remove(tmp_abspath)
-            except:
+            except BaseException:
                 # raise the saved except
-                raise e
+                raise e from None
             # raise the original with its traceback if we can.
             raise
 
@@ -589,11 +595,10 @@ class SFTPTransport(ConnectedTransport):
                 mode = mode & 0o777  # can't set special bits anyway
                 if mode != stat.st_mode & 0o777:
                     if stat.st_mode & 0o6000:
-                        warning('About to chmod %s over sftp, which will result'
+                        warning(f'About to chmod {abspath} over sftp, which will result'
                                 ' in its suid or sgid bits being cleared.  If'
                                 ' you want to preserve those bits, change your '
-                                ' environment on the server to use umask 0%03o.'
-                                % (abspath, 0o777 - mode))
+                                f' environment on the server to use umask 0{0o777 - mode:03o}.')
                     self._get_sftp().chmod(abspath, mode=mode)
         except (SFTPError, OSError) as e:
             self._translate_io_exception(e, abspath, ': unable to mkdir',

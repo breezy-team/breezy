@@ -24,9 +24,8 @@ also see this file.
 
 from io import StringIO
 
-from .. import bedding
+from .. import bedding, config, controldir, errors, tests, trace, urlutils
 from .. import branch as _mod_branch
-from .. import config, controldir, errors, tests, trace, urlutils
 from ..bzr import branch as _mod_bzrbranch
 from ..bzr import bzrdir
 from ..bzr.fullhistory import BzrBranch5, BzrBranchFormat5
@@ -438,7 +437,7 @@ class BzrBranch8(tests.TestCaseWithTransport):
 
     @staticmethod
     def instrument_branch(branch, gets):
-        class WrapTransport(object):
+        class WrapTransport:
 
             __slots__ = ('t', )
 

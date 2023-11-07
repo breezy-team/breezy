@@ -31,9 +31,8 @@ from breezy import (
     )
 from breezy.i18n import gettext
 """)
-from . import decorators, errors, hooks, osutils, registry
+from . import decorators, errors, hooks, osutils, registry, trace, transform
 from . import revision as _mod_revision
-from . import trace, transform
 from . import transport as _mod_transport
 from . import tree as _mod_tree
 
@@ -1362,8 +1361,7 @@ class Merge3Merger:
             return 'delete', None
         else:
             raise AssertionError(
-                'winner is OTHER, but file %r not in THIS or OTHER tree'
-                % (merge_hook_params.base_path,))
+                f'winner is OTHER, but file {merge_hook_params.base_path!r} not in THIS or OTHER tree')
 
     def merge_contents(self, merge_hook_params):
         """Fallback merge logic after user installed hooks."""
@@ -1567,7 +1565,7 @@ class WeaveMerger(Merge3Merger):
         else:
             base = None
         plan = self._generate_merge_plan(this_path, base)
-        if 'merge' in debug.debug_flags:
+        if debug.debug_flag_enabled('merge'):
             plan = list(plan)
             trans_id = self.tt.trans_id_file_id(file_id)
             name = self.tt.final_name(trans_id) + '.plan'
@@ -1808,8 +1806,7 @@ class MergeIntoMergeType(Merge3Merger):
             file_id = generate_ids.gen_file_id(name_in_target)
         merge_into_root = InventoryDirectory(
             file_id,
-            name_in_target, target_id)
-        merge_into_root.revision = subdir.revision
+            name_in_target, target_id, subdir.revision)
         yield (merge_into_root, target_id, '')
         if subdir.kind != 'directory':
             # No children, so we are done.
@@ -1860,7 +1857,7 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
     return merger.do_merge()
 
 
-merge_type_registry = registry.Registry[str, Type[Merge3Merger]]()
+merge_type_registry = registry.Registry[str, Type[Merge3Merger], None]()
 merge_type_registry.register('diff3', Diff3Merger,
                              "Merge using external diff3.")
 merge_type_registry.register('lca', LCAMerger,
@@ -2294,8 +2291,7 @@ class _PlanMerge(_PlanMergeBase):
                 plan = 'new-a'
             else:
                 if self._head_key != self.b_key:
-                    raise AssertionError('There was an invalid head: %s != %s'
-                                         % (self.b_key, self._head_key))
+                    raise AssertionError(f'There was an invalid head: {self.b_key} != {self._head_key}')
                 plan = 'new-b'
             head_rev = self._head_key[-1]
             lines = self.get_lines([head_rev])[head_rev]
@@ -2304,7 +2300,9 @@ class _PlanMerge(_PlanMergeBase):
 
 
 class _PlanLCAMerge(_PlanMergeBase):
-    """This merge algorithm differs from _PlanMerge in that:
+    """Merger that uses LCA.
+
+    This merge algorithm differs from _PlanMerge in that:
 
     1. comparisons are done against LCAs only
     2. cases where a contested line is new versus one LCA but old versus

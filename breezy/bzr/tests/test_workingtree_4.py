@@ -64,7 +64,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.assertIs(None, tree._ignoreglobster)
 
     def test_uses_lockdir(self):
-        """WorkingTreeFormat4 uses its own LockDir:
+        """WorkingTreeFormat4 uses its own LockDir.
 
         - lock is a directory
         - when the WorkingTree is locked, LockDir can see that
@@ -93,8 +93,8 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         dir.create_branch()
         try:
             return workingtree_4.WorkingTreeFormat4().initialize(dir)
-        except errors.NotLocalUrl:
-            raise TestSkipped('Not a local URL')
+        except errors.NotLocalUrl as e:
+            raise TestSkipped('Not a local URL') from e
 
     def test_dirstate_stores_all_parent_inventories(self):
         tree = self.make_workingtree()
@@ -203,13 +203,13 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         rev1_tree = subtree.basis_tree()
         rev1_tree.lock_read()
         # Trigger reading of inventory
-        rev1_tree.root_inventory
+        rev1_tree.root_inventory  # noqa: B018
         self.addCleanup(rev1_tree.unlock)
         rev2 = subtree.commit('second commit in subdir', allow_pointless=True)
         rev2_tree = subtree.basis_tree()
         rev2_tree.lock_read()
         # Trigger reading of inventory
-        rev2_tree.root_inventory
+        rev2_tree.root_inventory  # noqa: B018
         self.addCleanup(rev2_tree.unlock)
 
         tree.branch.pull(subtree.branch)
@@ -836,10 +836,8 @@ class TestCorruptDirstate(TestCaseWithTransport):
         tree.flush()
 
         # self.assertRaises(Exception, tree.update_basis_by_delta,
-        new_dir = inventory.InventoryDirectory(b'dir-id', 'new-dir', root_id)
-        new_dir.revision = b'new-revision-id'
-        new_file = inventory.InventoryFile(b'file-id', 'new-file', root_id)
-        new_file.revision = b'new-revision-id'
+        new_dir = inventory.InventoryDirectory(b'dir-id', 'new-dir', root_id, revision=b'new-revision-id')
+        new_file = inventory.InventoryFile(b'file-id', 'new-file', root_id, revision=b'new-revision-id')
         self.assertRaises(
             errors.InconsistentDelta,
             tree.update_basis_by_delta, b'new-revision-id',

@@ -155,7 +155,7 @@ def cant_unlock_not_held(locked_object):
     # block, so it's useful to have the option not to generate a new error
     # here.  You can use -Werror to make it fatal.  It should possibly also
     # raise LockNotHeld.
-    if 'unlock' in debug.debug_flags:
+    if debug.debug_flag_enabled('unlock'):
         warnings.warn(f"{locked_object!r} is already unlocked",
                       stacklevel=3)
     else:
@@ -174,7 +174,7 @@ class _RelockDebugMixin:
     _prev_lock = None
 
     def _note_lock(self, lock_type):
-        if 'relock' in debug.debug_flags and self._prev_lock == lock_type:
+        if debug.debug_flag_enabled('relock') and self._prev_lock == lock_type:
             if lock_type == 'r':
                 type_name = 'read'
             else:

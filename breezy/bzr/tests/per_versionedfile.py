@@ -25,12 +25,15 @@ import itertools
 from gzip import GzipFile
 from io import BytesIO
 
-from ... import errors
+from ... import errors, osutils, progress, transport, ui
 from ... import graph as _mod_graph
-from ... import osutils, progress, transport, ui
 from ...errors import RevisionAlreadyPresent, RevisionNotPresent
-from ...tests import (TestCase, TestCaseWithMemoryTransport, TestNotApplicable,
-                      TestSkipped)
+from ...tests import (
+    TestCase,
+    TestCaseWithMemoryTransport,
+    TestNotApplicable,
+    TestSkipped,
+)
 from ...tests.http_utils import TestCaseWithWebserver
 from ...tests.scenarios import load_tests_apply_scenarios
 from ...transport.memory import MemoryTransport
@@ -38,11 +41,16 @@ from .. import groupcompress
 from .. import knit as _mod_knit
 from .. import versionedfile as versionedfile
 from ..knit import cleanup_pack_knit, make_file_factory, make_pack_factory
-from ..versionedfile import (ChunkedContentFactory, ConstantMapper,
-                             ExistingContent, HashEscapedPrefixMapper,
-                             PrefixMapper, UnavailableRepresentation,
-                             VirtualVersionedFiles,
-                             make_versioned_files_factory)
+from ..versionedfile import (
+    ChunkedContentFactory,
+    ConstantMapper,
+    ExistingContent,
+    HashEscapedPrefixMapper,
+    PrefixMapper,
+    UnavailableRepresentation,
+    VirtualVersionedFiles,
+    make_versioned_files_factory,
+)
 from ..weave import WeaveFile, WeaveInvalidChecksum
 from ..weavefile import write_weave
 
@@ -50,7 +58,7 @@ load_tests = load_tests_apply_scenarios
 
 
 def get_diamond_vf(f, trailing_eol=True, left_only=False):
-    """Get a diamond graph to exercise deltas and merges.
+    r"""Get a diamond graph to exercise deltas and merges.
 
     :param trailing_eol: If True end the last line with \n.
     """
@@ -79,7 +87,7 @@ def get_diamond_vf(f, trailing_eol=True, left_only=False):
 
 def get_diamond_files(files, key_length, trailing_eol=True, left_only=False,
                       nograph=False, nokeys=False):
-    """Get a diamond graph to exercise deltas and merges.
+    r"""Get a diamond graph to exercise deltas and merges.
 
     This creates a 5-node graph in files. If files supports 2-length keys two
     graphs are made to exercise the support for multiple ids.
@@ -299,8 +307,8 @@ class VersionedFileTestMixIn:
         # is the test applicable to this vf implementation?
         try:
             vf.add_lines_with_ghosts(b'd', [], [])
-        except NotImplementedError:
-            raise TestSkipped("add_lines_with_ghosts is optional")
+        except NotImplementedError as e:
+            raise TestSkipped("add_lines_with_ghosts is optional") from e
         for sha, (version, lines) in zip(
                 shas, (empty_text, sample_text_nl, sample_text_no_nl)):
             self.assertRaises(ExistingContent,
@@ -956,12 +964,12 @@ class MergeCasesMixin:
                      [b'aaa', b'xxx', b'bbb', b'ccc'],
                      [b'aaa', b'xxx', b'bbb', b'yyy', b'ccc'],
                      [b'aaa', b'xxx', b'bbb', b'yyy', b'ccc'])
-    overlappedInsertExpected = [b'aaa', b'xxx', b'yyy', b'bbb']
+    overlapped_insert_expected = [b'aaa', b'xxx', b'yyy', b'bbb']
 
     def testOverlappedInsert(self):
         self.doMerge([b'aaa', b'bbb'],
                      [b'aaa', b'xxx', b'yyy', b'bbb'],
-                     [b'aaa', b'xxx', b'bbb'], self.overlappedInsertExpected)
+                     [b'aaa', b'xxx', b'bbb'], self.overlapped_insert_expected)
 
         # really it ought to reduce this to
         # [b'aaa', b'xxx', b'yyy', b'bbb']
@@ -1157,7 +1165,7 @@ class TestWeaveMerge(TestCaseWithMemoryTransport, MergeCasesMixin):
         write_weave(w, tmpf)
         self.log(tmpf.getvalue())
 
-    overlappedInsertExpected = [b'aaa', b'<<<<<<< ', b'xxx', b'yyy', b'=======',
+    overlapped_insert_expected = [b'aaa', b'<<<<<<< ', b'xxx', b'yyy', b'=======',
                                 b'xxx', b'>>>>>>> ', b'bbb']
 
 

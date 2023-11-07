@@ -19,7 +19,9 @@
 import breezy
 from breezy import errors
 from breezy.bzr.tests.per_repository_vf import (
-    TestCaseWithRepository, all_repository_vf_format_scenarios)
+    TestCaseWithRepository,
+    all_repository_vf_format_scenarios,
+)
 from breezy.tests import TestSkipped
 
 from ....reconcile import Reconciler, reconcile
@@ -28,7 +30,7 @@ from ....tests.matchers import MatchesAncestry
 from ....tests.scenarios import load_tests_apply_scenarios
 from ....uncommit import uncommit
 from ...bzrdir import BzrDir
-from ...inventory import Inventory
+from ...inventory import Inventory, InventoryDirectory
 from .helpers import TestCaseWithBrokenRevisionIndex
 
 load_tests = load_tests_apply_scenarios
@@ -46,9 +48,9 @@ class TestReconcile(TestCaseWithRepository):
         self.assertEqual(0, reconciler.garbage_inventories)
         self.checkNoBackupInventory(d)
 
-    def checkNoBackupInventory(self, aBzrDir):
+    def checkNoBackupInventory(self, a_bzr_dir):
         """Check that there is no backup inventory in aBzrDir."""
-        repo = aBzrDir.open_repository()
+        repo = a_bzr_dir.open_repository()
         for path in repo.control_transport.list_dir('.'):
             self.assertNotIn('inventory.backup', path)
 
@@ -87,8 +89,9 @@ class TestsNeedingReweave(TestReconcile):
         repo = self.make_repository('inventory_without_revision')
         repo.lock_write()
         repo.start_write_group()
-        inv = Inventory(revision_id=b'missing')
-        inv.root.revision = b'missing'
+        inv = Inventory(revision_id=b'missing', root_id=None)
+        root = InventoryDirectory(b'TREE_ROOT', "", None, b'missing')
+        inv.add(root)
         repo.add_inventory(b'missing', inv, [])
         repo.commit_write_group()
         repo.unlock()
@@ -96,8 +99,9 @@ class TestsNeedingReweave(TestReconcile):
         def add_commit(repo, revision_id, parent_ids):
             repo.lock_write()
             repo.start_write_group()
-            inv = Inventory(revision_id=revision_id)
-            inv.root.revision = revision_id
+            inv = Inventory(revision_id=revision_id, root_id=None)
+            root = InventoryDirectory(b'TREE_ROOT', "", None, revision_id)
+            inv.add(root)
             root_id = inv.root.file_id
             sha1 = repo.add_inventory(revision_id, inv, parent_ids)
             repo.texts.add_lines((root_id, revision_id), [], [])
@@ -188,10 +192,10 @@ class TestsNeedingReweave(TestReconcile):
         self.assertEqual(1, result.garbage_inventories)
         self.check_missing_was_removed(repo)
 
-    def check_thorough_reweave_missing_revision(self, aBzrDir, reconcile,
+    def check_thorough_reweave_missing_revision(self, a_bzr_dir, reconcile,
                                                 **kwargs):
         # actual low level test.
-        repo = aBzrDir.open_repository()
+        repo = a_bzr_dir.open_repository()
         if not repo.has_revision(b'missing'):
             # the repo handles ghosts without corruption, so reconcile has
             # nothing to do here. Specifically, this test has the inventory
@@ -208,7 +212,7 @@ class TestsNeedingReweave(TestReconcile):
         # and one garbage inventories
         self.assertEqual(1, reconciler.garbage_inventories)
         # now the backup should have it but not the current inventory
-        repo = aBzrDir.open_repository()
+        repo = a_bzr_dir.open_repository()
         self.check_missing_was_removed(repo)
         # and the parent list for 'references_missing' should have that
         # revision a ghost now.
@@ -291,12 +295,10 @@ class TestsNeedingReweave(TestReconcile):
 
     def test_text_from_ghost_revision(self):
         repo = self.make_repository('text-from-ghost')
-        inv = Inventory(revision_id=b'final-revid')
-        inv.root.revision = b'root-revid'
-        ie = inv.add_path('bla', 'file', b'myfileid')
-        ie.revision = b'ghostrevid'
-        ie.text_size = 42
-        ie.text_sha1 = b"bee68c8acd989f5f1765b4660695275948bf5c00"
+        inv = Inventory(revision_id=b'final-revid', root_id=None)
+        root = InventoryDirectory(b'TREE_ROOT', "", None, revision=b'root-revid')
+        inv.add(root)
+        inv.add_path('bla', 'file', b'myfileid', revision=b'ghostrevid', text_size=42, text_sha1=b"bee68c8acd989f5f1765b4660695275948bf5c00")
         rev = breezy.revision.Revision(timestamp=0,
                                        timezone=None,
                                        committer="Foo Bar <foo@example.com>",
@@ -313,8 +315,8 @@ class TestsNeedingReweave(TestReconcile):
                     repo.texts.add_lines((b'myfileid', b'ghostrevid'),
                                          ((b'myfileid', b'ghost-text-parent'),),
                                          [b"line1\n", b"line2\n"])
-                except errors.RevisionNotPresent:
-                    raise TestSkipped("text ghost parents not supported")
+                except errors.RevisionNotPresent as e:
+                    raise TestSkipped("text ghost parents not supported") from e
                 if repo.supports_rich_root():
                     repo.texts.add_lines((inv.root.file_id, inv.root.revision),
                                          [], [])
@@ -364,8 +366,9 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         repo = self.first_tree.branch.repository
         repo.lock_write()
         repo.start_write_group()
-        inv = Inventory(revision_id=b'wrong-first-parent')
-        inv.root.revision = b'wrong-first-parent'
+        inv = Inventory(revision_id=b'wrong-first-parent', root_id=None)
+        root = InventoryDirectory(b'TREE_ROOT', "", None, b'wrong-first-parent')
+        inv.add(root)
         if repo.supports_rich_root():
             root_id = inv.root.file_id
             repo.texts.add_lines((root_id, b'wrong-first-parent'), [], [])
@@ -386,8 +389,9 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         repo = repo_secondary
         repo.lock_write()
         repo.start_write_group()
-        inv = Inventory(revision_id=b'wrong-secondary-parent')
-        inv.root.revision = b'wrong-secondary-parent'
+        inv = Inventory(revision_id=b'wrong-secondary-parent', root_id=None)
+        root = InventoryDirectory(b'TREE_ROOT', "", None, b'wrong-secondary-parent')
+        inv.add(root)
         if repo.supports_rich_root():
             root_id = inv.root.file_id
             repo.texts.add_lines((root_id, b'wrong-secondary-parent'), [], [])

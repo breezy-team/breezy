@@ -1,8 +1,26 @@
-use crate::tree::{MutableTree, RevisionTree, Tree, WorkingTree};
+use crate::tree::{Error, MutableTree, RevisionTree, Tree, WorkingTree};
 use bazaar::RevisionId;
+use pyo3::import_exception;
 use pyo3::prelude::*;
+use pyo3::types::PyBytes;
 
 pub struct PyTree(PyObject);
+
+impl PyTree {
+    pub fn new(obj: PyObject) -> Self {
+        PyTree(obj)
+    }
+}
+
+import_exception!(breezy.errors, NotVersionedError);
+
+fn map_py_err_to_err(py: Python<'_>, py_err: PyErr) -> Error {
+    if py_err.is_instance_of::<NotVersionedError>(py) {
+        Error::NotVersioned(py_err.value(py).getattr("path").unwrap().to_string())
+    } else {
+        Error::Other(py_err.to_string())
+    }
+}
 
 impl Tree for PyTree {
     fn supports_rename_tracking(&self) -> bool {
@@ -13,6 +31,16 @@ impl Tree for PyTree {
                 .unwrap()
                 .extract()
                 .unwrap()
+        })
+    }
+
+    fn unlock(&mut self) -> Result<(), String> {
+        Python::with_gil(|py| {
+            let pytree = self.0.as_ref(py);
+            pytree
+                .call_method0("unlock")
+                .map_err(|e| e.to_string())
+                .map(|_| ())
         })
     }
 }
@@ -53,6 +81,51 @@ impl MutableTree for PyTree {
                 .unwrap()
         });
         RevisionId::from(revid)
+    }
+
+    fn mkdir(&mut self, path: &str) -> Result<(), Error> {
+        Python::with_gil(|py| {
+            let pytree = self.0.as_ref(py);
+            pytree
+                .call_method1("mkdir", (path,))
+                .map_err(|e| map_py_err_to_err(py, e))
+                .map(|_| ())
+        })
+    }
+
+    fn put_file_bytes_non_atomic(
+        &mut self,
+        path: &str,
+        data: &[u8],
+    ) -> std::result::Result<(), Error> {
+        Python::with_gil(|py| {
+            let pytree = self.0.as_ref(py);
+            let data = PyBytes::new(py, data);
+            pytree
+                .call_method1("put_file_bytes_non_atomic", (path, data))
+                .map_err(|e| map_py_err_to_err(py, e))
+                .map(|_| ())
+        })
+    }
+
+    fn add(&mut self, paths: &[&str]) -> std::result::Result<(), Error> {
+        Python::with_gil(|py| {
+            let pytree = self.0.as_ref(py);
+            pytree
+                .call_method1("add", (paths.to_vec(),))
+                .map_err(|e| map_py_err_to_err(py, e))
+                .map(|_| ())
+        })
+    }
+
+    fn lock_tree_write(&mut self) -> Result<(), String> {
+        Python::with_gil(|py| {
+            let pytree = self.0.as_ref(py);
+            pytree
+                .call_method0("lock_tree_write")
+                .map_err(|e| e.to_string())
+                .map(|_| ())
+        })
     }
 }
 

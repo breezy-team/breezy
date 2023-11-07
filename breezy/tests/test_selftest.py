@@ -36,14 +36,23 @@ from testtools.matchers import DocTestMatches, Equals
 
 import breezy
 
-from .. import (branchbuilder, controldir, errors, hooks, lockdir, memorytree,
-                osutils, repository, symbol_versioning, tests, transport,
-                workingtree)
-from ..bzr import (bzrdir, groupcompress_repo, remote, workingtree_3,
-                   workingtree_4)
+from .. import (
+    branchbuilder,
+    controldir,
+    errors,
+    hooks,
+    lockdir,
+    memorytree,
+    osutils,
+    repository,
+    symbol_versioning,
+    tests,
+    transport,
+    workingtree,
+)
+from ..bzr import bzrdir, groupcompress_repo, remote, workingtree_3, workingtree_4
 from ..git import workingtree as git_workingtree
-from ..symbol_versioning import (deprecated_function, deprecated_in,
-                                 deprecated_method)
+from ..symbol_versioning import deprecated_function, deprecated_in, deprecated_method
 from ..trace import mutter, note
 from ..transport import memory
 from . import TestUtil, features, test_server
@@ -352,10 +361,14 @@ class TestTreeScenarios(tests.TestCase):
         # 'return_parameter' and the revision one set to
         # revision_tree_from_workingtree.
 
-        from .per_tree import (_dirstate_tree_from_workingtree, make_scenarios,
-                               preview_tree_post, preview_tree_pre,
-                               return_parameter,
-                               revision_tree_from_workingtree)
+        from .per_tree import (
+            _dirstate_tree_from_workingtree,
+            make_scenarios,
+            preview_tree_post,
+            preview_tree_pre,
+            return_parameter,
+            revision_tree_from_workingtree,
+        )
         server1 = "a"
         server2 = "b"
         smart_server = test_server.SmartTCPServer_for_testing
@@ -1337,7 +1350,7 @@ class TestTestCase(tests.TestCase):
         flags = set()
         if self._lock_check_thorough:
             flags.add('strict_locks')
-        self.assertEqual(flags, breezy.debug.debug_flags)
+        self.assertEqual(flags, breezy.debug.get_debug_flags())
 
     def change_selftest_debug_flags(self, new_flags):
         self.overrideAttr(tests, 'selftest_debug_flags', set(new_flags))
@@ -1347,11 +1360,12 @@ class TestTestCase(tests.TestCase):
         sanitised (i.e. cleared) before running a test.
         """
         self.change_selftest_debug_flags({'allow_debug'})
-        breezy.debug.debug_flags = {'a-flag'}
+        breezy.debug.clear_debug_flags()
+        breezy.debug.set_debug_flag('a-flag')
 
         class TestThatRecordsFlags(tests.TestCase):
-            def test_foo(nested_self):
-                self.flags = set(breezy.debug.debug_flags)
+            def test_foo(nested_self):  # noqa: N805
+                self.flags = breezy.debug.get_debug_flags()
         test = TestThatRecordsFlags('test_foo')
         test.run(self.make_test_result())
         flags = {'a-flag'}
@@ -1362,8 +1376,8 @@ class TestTestCase(tests.TestCase):
     def test_disable_lock_checks(self):
         """The -Edisable_lock_checks flag disables thorough checks."""
         class TestThatRecordsFlags(tests.TestCase):
-            def test_foo(nested_self):
-                self.flags = set(breezy.debug.debug_flags)
+            def test_foo(nested_self):  # noqa: N805
+                self.flags = breezy.debug.get_debug_flags()
                 self.test_lock_check_thorough = nested_self._lock_check_thorough
         self.change_selftest_debug_flags(set())
         test = TestThatRecordsFlags('test_foo')
@@ -1381,10 +1395,10 @@ class TestTestCase(tests.TestCase):
 
     def test_this_fails_strict_lock_check(self):
         class TestThatRecordsFlags(tests.TestCase):
-            def test_foo(nested_self):
-                self.flags1 = set(breezy.debug.debug_flags)
+            def test_foo(nested_self):  # noqa: N805
+                self.flags1 = breezy.debug.get_debug_flags()
                 self.thisFailsStrictLockCheck()
-                self.flags2 = set(breezy.debug.debug_flags)
+                self.flags2 = breezy.debug.get_debug_flags()
         # Make sure lock checking is active
         self.change_selftest_debug_flags(set())
         test = TestThatRecordsFlags('test_foo')
@@ -1398,14 +1412,16 @@ class TestTestCase(tests.TestCase):
         """
         self.change_selftest_debug_flags({'allow_debug'})
         # Now run a test that modifies debug.debug_flags.
-        breezy.debug.debug_flags = {'original-state'}
+        breezy.debug.clear_debug_flags()
+        breezy.debug.set_debug_flag('original-state')
 
         class TestThatModifiesFlags(tests.TestCase):
             def test_foo(self):
-                breezy.debug.debug_flags = {'modified'}
+                breezy.debug.clear_debug_flags()
+                breezy.debug.set_debug_flag('modified')
         test = TestThatModifiesFlags('test_foo')
         test.run(self.make_test_result())
-        self.assertEqual({'original-state'}, breezy.debug.debug_flags)
+        self.assertEqual({'original-state'}, breezy.debug.get_debug_flags())
 
     def make_test_result(self):
         """Get a test result that writes to a StringIO."""
@@ -2022,7 +2038,7 @@ class TestWarningTests(tests.TestCase):
 
     def test_callCatchWarnings(self):
         def meth(a, b):
-            warnings.warn("this is your last warning")
+            warnings.warn("this is your last warning", stacklevel=1)
             return a + b
         wlist, result = self.callCatchWarnings(meth, 1, 2)
         self.assertEqual(3, result)
@@ -2112,7 +2128,7 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
             def b(self):
                 pass
 
-            def c(telf):
+            def c(self):
                 pass
         return TestUtil.TestSuite([Test("a"), Test("b"), Test("c")])
 
@@ -2138,10 +2154,10 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
         results = []
 
         class Test:
-            def __call__(test, result):
+            def __call__(test, result):  # noqa: N805
                 test.run(result)
 
-            def run(test, result):
+            def run(test, result):  # noqa: N805
                 results.append(result)
 
             def countTestCases(self):

@@ -21,9 +21,15 @@ from dulwich.tests.utils import make_object
 
 from ...revision import Revision
 from .. import tests
-from ..mapping import (BzrGitMappingv1, UnknownCommitEncoding,
-                       UnknownCommitExtra, UnknownMercurialCommitExtra,
-                       escape_file_id, fix_person_identifier, unescape_file_id)
+from ..mapping import (
+    BzrGitMappingv1,
+    UnknownCommitEncoding,
+    UnknownCommitExtra,
+    UnknownMercurialCommitExtra,
+    escape_file_id,
+    fix_person_identifier,
+    unescape_file_id,
+)
 
 
 class TestRevidConversionV1(tests.TestCase):
@@ -115,7 +121,7 @@ class TestImportCommit(tests.TestCase):
         c.author_timezone = 60 * 3
         c.author = b"Author"
         try:
-            c.id
+            c.id  # noqa: B018
         except TypeError:  # old version of dulwich
             self.skipTest('dulwich too old')
         mapping = BzrGitMappingv1()

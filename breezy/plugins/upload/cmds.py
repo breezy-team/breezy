@@ -285,7 +285,7 @@ class BzrUploader:
 
         stamp = '.tmp.%.9f.%d.%d' % (time.time(),
                                      os.getpid(),
-                                     random.randint(0, 0x7FFFFFFF))
+                                     random.randint(0, 0x7FFFFFFF))  # noqa: S311
         if not self.quiet:
             self.outf.write(f'Renaming {old_relpath} to {new_relpath}\n')
         self._up_rename(old_relpath, stamp)
@@ -321,8 +321,7 @@ class BzrUploader:
                     except errors.TransportNotPossible:
                         if not self.quiet:
                             target = self.tree.path_content_summary(relpath)[3]
-                            self.outf.write('Not uploading symlink %s -> %s\n'
-                                            % (relpath, target))
+                            self.outf.write(f'Not uploading symlink {relpath} -> {target}\n')
                 elif ie.kind == 'directory':
                     self.make_remote_dir_robustly(relpath)
                 else:
@@ -417,8 +416,7 @@ class BzrUploader:
                         self.upload_symlink(change.path[1], target)
                     except errors.TransportNotPossible:
                         if not self.quiet:
-                            self.outf.write('Not uploading symlink %s -> %s\n'
-                                            % (change.path[1], target))
+                            self.outf.write(f'Not uploading symlink {change.path[1]} -> {target}\n')
                 else:
                     raise NotImplementedError
 

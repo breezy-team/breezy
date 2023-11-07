@@ -32,15 +32,31 @@ from http.server import SimpleHTTPRequestHandler
 
 import breezy
 
-from .. import (config, controldir, debug, errors, osutils, tests, trace,
-                transport, ui, urlutils)
+from .. import (
+    config,
+    controldir,
+    debug,
+    errors,
+    osutils,
+    tests,
+    trace,
+    transport,
+    ui,
+    urlutils,
+)
 from ..bzr import remote as _mod_remote
 from ..transport import remote
 from ..transport.http import urllib
-from ..transport.http.urllib import (AbstractAuthHandler, BasicAuthHandler,
-                                     HTTPAuthHandler, HTTPConnection,
-                                     HTTPSConnection, HttpTransport,
-                                     ProxyHandler, Request)
+from ..transport.http.urllib import (
+    AbstractAuthHandler,
+    BasicAuthHandler,
+    HTTPAuthHandler,
+    HTTPConnection,
+    HTTPSConnection,
+    HttpTransport,
+    ProxyHandler,
+    Request,
+)
 from . import features, http_server, http_utils, test_server
 from .scenarios import load_tests_apply_scenarios, multiply_scenarios
 
@@ -435,7 +451,7 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
             socket.setdefaulttimeout(2)
             s = socket.socket()
             s.bind(('localhost', 0))
-            t = self._transport('http://%s:%s/' % s.getsockname())
+            t = self._transport('http://{}:{}/'.format(*s.getsockname()))
             self.assertRaises(ConnectionError, t.has, 'foo/bar')
         finally:
             socket.setdefaulttimeout(default_timeout)
@@ -488,7 +504,9 @@ class TestPost(tests.TestCase):
 class TestRangeHeader(tests.TestCase):
     """Test range_header method."""
 
-    def check_header(self, value, ranges=[], tail=0):
+    def check_header(self, value, ranges=None, tail=0):
+        if ranges is None:
+            ranges = []
         offsets = [(start, end - start + 1) for start, end in ranges]
         coalesce = transport.Transport._coalesce_offsets
         coalesced = list(coalesce(offsets, limit=0, fudge_factor=0))
@@ -1658,7 +1676,9 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         self.assertEqual(1, self.server.auth_required_errors)
 
     def test_no_credential_leaks_in_log(self):
-        self.overrideAttr(debug, 'debug_flags', {'http'})
+        old_flags = debug.get_debug_flags()
+        self.addCleanup(debug.set_debug_flags, old_flags)
+        debug.set_debug_flag('http')
         user = 'joe'
         password = 'very-sensitive-password'
         self.server.add_user(user, password)

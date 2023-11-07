@@ -23,9 +23,14 @@
 # ElementTree bits
 
 from typing import Optional
-from xml.etree.ElementTree import (Element, ElementTree,  # noqa: F401
-                                   ParseError, SubElement, fromstring,
-                                   fromstringlist)
+from xml.etree.ElementTree import (  # noqa: F401
+    Element,
+    ElementTree,
+    ParseError,
+    SubElement,
+    fromstring,
+    fromstringlist,
+)
 
 from . import inventory, serializer
 
@@ -45,7 +50,7 @@ class XMLRevisionSerializer(serializer.RevisionSerializer):
         return self._unpack_revision(self._read_element(f))
 
     def read_revision_from_string(self, xml_string):
-        return self._unpack_revision(fromstring(xml_string))
+        return self._unpack_revision(fromstring(xml_string))  # noqa: S314
 
     def _read_element(self, f):
         return ElementTree().parse(f)
@@ -79,7 +84,7 @@ class XMLInventorySerializer(serializer.InventorySerializer):
                                           entry_cache=entry_cache,
                                           return_from_cache=return_from_cache)
         except ParseError as e:
-            raise serializer.UnexpectedInventoryFormat(str(e))
+            raise serializer.UnexpectedInventoryFormat(str(e)) from e
 
     def _unpack_inventory(self, element, revision_id: Optional[bytes] = None, entry_cache=None, return_from_cache=False):
         raise NotImplementedError(self._unpack_inventory)
@@ -92,7 +97,7 @@ class XMLInventorySerializer(serializer.InventorySerializer):
             finally:
                 f.close()
         except ParseError as e:
-            raise serializer.UnexpectedInventoryFormat(str(e))
+            raise serializer.UnexpectedInventoryFormat(str(e)) from e
 
     def _read_element(self, f):
         return ElementTree().parse(f)
@@ -188,23 +193,26 @@ def unpack_inventory_entry(elt, entry_cache=None, return_from_cache=False, root_
     if kind == 'directory':
         ie = inventory.InventoryDirectory(file_id,
                                           elt_get('name'),
-                                          parent_id)
+                                          parent_id, revision)
     elif kind == 'file':
-        ie = inventory.InventoryFile(file_id,
-                                     elt_get('name'),
-                                     parent_id)
         text_sha1 = elt_get('text_sha1')
         if text_sha1 is not None:
-            ie.text_sha1 = text_sha1.encode('ascii')
+            text_sha1 = text_sha1.encode('ascii')
         if elt_get('executable') == 'yes':
-            ie.executable = True
+            executable = True
+        else:
+            executable = False
         v = elt_get('text_size')
-        ie.text_size = v and int(v)
+        text_size = v and int(v)
+        ie = inventory.InventoryFile(file_id,
+                                     elt_get('name'),
+                                     parent_id, revision, text_sha1=text_sha1,
+                                     executable=executable, text_size=text_size)
     elif kind == 'symlink':
+        symlink_target = elt_get('symlink_target')
         ie = inventory.InventoryLink(file_id,
                                      elt_get('name'),
-                                     parent_id)
-        ie.symlink_target = elt_get('symlink_target')
+                                     parent_id, revision, symlink_target=symlink_target)
     elif kind == 'tree-reference':
         file_id = get_utf8_or_ascii(elt.attrib['file_id'])
         name = elt.attrib['name']
@@ -215,7 +223,6 @@ def unpack_inventory_entry(elt, entry_cache=None, return_from_cache=False, root_
                                      reference_revision)
     else:
         raise serializer.UnsupportedInventoryKind(kind)
-    ie.revision = revision
     if revision is not None and entry_cache is not None:
         # We cache a copy() because callers like to mutate objects, and
         # that would cause the item in cache to mutate as well.
@@ -259,7 +266,7 @@ def serialize_inventory_flat(inv, append, root_id, supported_kinds, working):
     :param inv: Inventory to serialize
     :param append: Function for writing a line of output
     :param working: If True skip history data - text_sha1, text_size,
-        reference_revision, symlink_target.    self._check_revisions(inv)
+        reference_revision, symlink_target.
     """
     entries = inv.iter_entries()
     # Skip the root

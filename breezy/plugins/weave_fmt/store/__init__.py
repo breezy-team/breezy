@@ -88,8 +88,7 @@ class TransportStore(Store):
         mutter("add store entry %r", fileid)
         names = self._id_to_names(fileid, suffix)
         if self._transport.has_any(names):
-            raise BzrError("store %r already contains id %r"
-                           % (self._transport.base, fileid))
+            raise BzrError(f"store {self._transport.base!r} already contains id {fileid!r}")
 
         # Most of the time, just adding the file will work
         # if we find a time where it fails, (because the dir

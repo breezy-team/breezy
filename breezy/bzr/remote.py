@@ -22,15 +22,25 @@ from typing import Callable, List, Optional
 
 import fastbencode as bencode
 
-from .. import branch
+from .. import (
+    branch,
+    controldir,
+    debug,
+    errors,
+    gpg,
+    graph,
+    lock,
+    lockdir,
+    osutils,
+    registry,
+    ui,
+    urlutils,
+)
 from .. import bzr as _mod_bzr
 from .. import config as _mod_config
-from .. import (controldir, debug, errors, gpg, graph, lock, lockdir, osutils,
-                registry)
 from .. import repository as _mod_repository
 from .. import revision as _mod_revision
 from .. import transport as _mod_transport
-from .. import ui, urlutils
 from ..branch import BranchWriteLockResult
 from ..decorators import only_raises
 from ..errors import NoSuchRevision, SmartProtocolError
@@ -40,18 +50,16 @@ from ..revision import NULL_REVISION, RevisionID
 from ..trace import log_exception_quietly, mutter, note, warning
 from . import branch as bzrbranch
 from . import bzrdir as _mod_bzrdir
-from . import inventory_delta
+from . import inventory_delta, vf_repository, vf_search
 from . import testament as _mod_testament
-from . import vf_repository, vf_search
 from .branch import BranchReferenceFormat
 from .inventory import Inventory
 from .inventory_delta import InventoryDelta
 from .inventorytree import InventoryRevisionTree
 from .lockable_files import LockableFiles
 from .serializer import revision_format_registry
-from .smart import client
+from .smart import client, vfs
 from .smart import repository as smart_repo
-from .smart import vfs
 from .smart.client import _SmartClient
 
 _DEFAULT_SEARCH_DEPTH = 100
@@ -507,7 +515,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         Used before calls to self._real_bzrdir.
         """
         if not self._real_bzrdir:
-            if 'hpssvfs' in debug.debug_flags:
+            if debug.debug_flag_enabled('hpssvfs'):
                 import traceback
                 warning('VFS BzrDir access triggered\n%s',
                         ''.join(traceback.format_stack()))
@@ -546,24 +554,24 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         control_name, repo_name, branch_name = response
         try:
             format = controldir.network_format_registry.get(control_name)
-        except KeyError:
+        except KeyError as e:
             raise errors.UnknownFormatError(kind='control',
-                                            format=control_name)
+                                            format=control_name) from e
         if repo_name:
             try:
                 repo_format = _mod_repository.network_format_registry.get(
                     repo_name)
-            except KeyError:
+            except KeyError as e:
                 raise errors.UnknownFormatError(kind='repository',
-                                                format=repo_name)
+                                                format=repo_name) from e
             format.repository_format = repo_format
         if branch_name:
             try:
                 format.set_branch_format(
                     branch.network_format_registry.get(branch_name))
-            except KeyError:
+            except KeyError as e:
                 raise errors.UnknownFormatError(kind='branch',
-                                                format=branch_name)
+                                                format=branch_name) from e
         return format
 
     def _vfs_cloning_metadir(self, require_stacking=False):
@@ -603,17 +611,17 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         branch_ref, branch_name = branch_info
         try:
             format = controldir.network_format_registry.get(control_name)
-        except KeyError:
+        except KeyError as e:
             raise errors.UnknownFormatError(
-                kind='control', format=control_name)
+                kind='control', format=control_name) from e
 
         if repo_name:
             try:
                 format.repository_format = _mod_repository.network_format_registry.get(
                     repo_name)
-            except KeyError:
+            except KeyError as e:
                 raise errors.UnknownFormatError(kind='repository',
-                                                format=repo_name)
+                                                format=repo_name) from e
         if branch_ref == b'ref':
             # XXX: we need possible_transports here to avoid reopening the
             # connection to the referenced location
@@ -625,9 +633,9 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
                 try:
                     branch_format = branch.network_format_registry.get(
                         branch_name)
-                except KeyError:
+                except KeyError as e:
                     raise errors.UnknownFormatError(kind='branch',
-                                                    format=branch_name)
+                                                    format=branch_name) from e
                 format.set_branch_format(branch_format)
         else:
             raise errors.UnexpectedSmartServerResponse(response)
@@ -669,8 +677,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         if not isinstance(real_branch, RemoteBranch):
             if not isinstance(repository, RemoteRepository):
                 raise AssertionError(
-                    'need a RemoteRepository to use with RemoteBranch, got %r'
-                    % (repository,))
+                    f'need a RemoteRepository to use with RemoteBranch, got {repository!r}')
             result = RemoteBranch(self, repository, real_branch, name=name)
         else:
             result = real_branch
@@ -1436,8 +1443,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
                 br"known revno \(([0-9]+)\)", e.error_tuple[2])
             if not m:
                 raise
-            raise errors.RevnoOutOfBounds(
-                int(m.group(1)), (0, int(m.group(2))))
+            raise errors.RevnoOutOfBounds(int(m.group(1)), (0, int(m.group(2)))) from e
         if response[0] == b'ok':
             return True, response[1]
         elif response[0] == b'history-incomplete':
@@ -1468,7 +1474,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         invocation. If in doubt chat to the bzr network team.
         """
         if self._real_repository is None:
-            if 'hpssvfs' in debug.debug_flags:
+            if debug.debug_flag_enabled('hpssvfs'):
                 import traceback
                 warning('VFS Repository access triggered\n%s',
                         ''.join(traceback.format_stack()))
@@ -3268,9 +3274,8 @@ class RemoteBranchFormat(branch.BranchFormat):
             try:
                 self._custom_format = branch.network_format_registry.get(
                     self._network_name)
-            except KeyError:
-                raise errors.UnknownFormatError(kind='branch',
-                                                format=self._network_name)
+            except KeyError as e:
+                raise errors.UnknownFormatError(kind='branch', format=self._network_name) from e
 
     def get_format_description(self):
         self._ensure_real()
@@ -3356,9 +3361,8 @@ class RemoteBranchFormat(branch.BranchFormat):
                                              remote_repo_url)
             if url_diff != '.':
                 raise AssertionError(
-                    'repository.user_url %r does not match URL from server '
-                    'response (%r + %r)'
-                    % (repository.user_url, a_controldir.user_url, repo_path))
+                    f'repository.user_url {repository.user_url!r} does not match URL from server '
+                    f'response ({a_controldir.user_url!r} + {repo_path!r})')
             remote_repo = repository
         else:
             if repo_path == '':
@@ -3732,7 +3736,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             if len(old_repository._fallback_repositories) != 1:
                 raise AssertionError(
                     "can't cope with fallback repositories "
-                    "of %r (fallbacks: %r)" % (
+                    "of {!r} (fallbacks: {!r})".format(
                         old_repository, old_repository._fallback_repositories))
             # Open the new repository object.
             # Repositories don't offer an interface to remove fallback
@@ -3898,12 +3902,11 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             response = self._call(
                 b'Branch.lock_write', self._remote_path(), branch_token,
                 repo_token or b'', **err_context)
-        except errors.LockContention:
+        except errors.LockContention as e:
             # The LockContention from the server doesn't have any
             # information about the lock_url. We re-raise LockContention
             # with valid lock_url.
-            raise errors.LockContention('(remote lock)',
-                                        self.repository.base.split('.bzr/')[0])
+            raise errors.LockContention('(remote lock)', self.repository.base.split('.bzr/')[0]) from e
         if response[0] != b'ok':
             raise errors.UnexpectedSmartServerResponse(response)
         ok, branch_token, repo_token = response
@@ -4180,8 +4183,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 # wrap GhostRevisionsHaveNoRevno.
                 if e.error_tuple[1] == b'GhostRevisionsHaveNoRevno':
                     (revid, ghost_revid) = re.findall(b"{([^}]+)}", e.error_tuple[2])
-                    raise errors.GhostRevisionsHaveNoRevno(
-                        revid, ghost_revid)
+                    raise errors.GhostRevisionsHaveNoRevno(revid, ghost_revid) from e
                 raise
             if response[0] == b'ok':
                 return tuple([int(x) for x in response[1:]])
@@ -4520,8 +4522,8 @@ class RemoteBzrDirConfig(RemoteConfig):
         return self._bzrdir._real_bzrdir
 
 
-error_translators = registry.Registry[bytes, Callable]()
-no_context_error_translators = registry.Registry[bytes, Callable]()
+error_translators = registry.Registry[bytes, Callable, None]()
+no_context_error_translators = registry.Registry[bytes, Callable, None]()
 
 
 def _translate_error(err, **context):
@@ -4543,7 +4545,7 @@ def _translate_error(err, **context):
             return context[name]
         except KeyError:
             mutter('Missing key \'%s\' in context %r', name, context)
-            raise err
+            raise err from None
 
     def get_path():
         """Get the path from the context if present, otherwise use first error
@@ -4556,7 +4558,7 @@ def _translate_error(err, **context):
                 return err.error_args[0].decode('utf-8')
             except IndexError:
                 mutter('Missing key \'path\' in context %r', context)
-                raise err
+                raise err from None
     if not isinstance(err.error_verb, bytes):
         raise TypeError(err.error_verb)
     try:
@@ -4568,7 +4570,7 @@ def _translate_error(err, **context):
     try:
         translator = no_context_error_translators.get(err.error_verb)
     except KeyError:
-        raise UnknownErrorFromSmartServer(err)
+        raise UnknownErrorFromSmartServer(err) from err
     else:
         raise translator(err)
 

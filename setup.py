@@ -6,13 +6,12 @@ Run it with
  './setup.py --help' for more options.
 """
 
-import glob
 import os
 import os.path
 import sys
 
 try:
-    import setuptools
+    import setuptools  # noqa: F401
 except ModuleNotFoundError as e:
     sys.stderr.write(f"[ERROR] Please install setuptools ({e})\n")
     sys.exit(1)
@@ -23,26 +22,8 @@ except ModuleNotFoundError as e:
     sys.stderr.write(f"[ERROR] Please install setuptools_rust ({e})\n")
     sys.exit(1)
 
-from setuptools.command.build import build
-
-try:
-    import setuptools_gettext
-except ModuleNotFoundError as e:
-    sys.stderr.write(f"[ERROR] Please install setuptools_gettext ({e})\n")
-    sys.exit(1)
-
-if setuptools_gettext.__version__ <= (0, 1, 3):
-    build.sub_commands.append(('build_mo', lambda _: True))
-    I18N_FILES = []
-    for filepath in glob.glob("breezy/locale/*/LC_MESSAGES/*.mo"):
-        langfile = filepath[len("breezy/locale/"):]
-        targetpath = os.path.dirname(os.path.join("share/locale", langfile))
-        I18N_FILES.append((targetpath, [filepath]))
-else:
-    I18N_FILES = []
-
-
 from setuptools import setup
+from setuptools.command.build import build
 
 try:
     from packaging.version import Version
@@ -123,8 +104,7 @@ else:
     cython_version_info = Version(cython_version)
     if cython_version_info < Version(minimum_cython_version):
         print("Version of Cython is too old. "
-              "Current is %s, need at least %s."
-              % (cython_version, minimum_cython_version))
+              f"Current is {cython_version}, need at least {minimum_cython_version}.")
         print("If the .c files are available, they will be built,"
               " but modifying the .pyx files will not rebuild them.")
         have_cython = False
@@ -137,7 +117,7 @@ command_classes['build_ext'] = build_ext
 unavailable_files = []
 
 
-def add_cython_extension(module_name, libraries=None, extra_source=[]):
+def add_cython_extension(module_name, libraries=None, extra_source=None):
     """Add a cython module to build.
 
     This will use Cython to auto-generate the .c file if it is available.
@@ -150,6 +130,8 @@ def add_cython_extension(module_name, libraries=None, extra_source=[]):
     :param module_name: The python path to the module. This will be used to
         determine the .pyx and .c files to use.
     """
+    if extra_source is None:
+        extra_source = []
     path = module_name.replace('.', '/')
     cython_name = path + '.pyx'
     c_name = path + '.c'
@@ -214,15 +196,11 @@ if ('bdist_egg' not in sys.argv and 'bdist_wheel' not in sys.argv
     build.sub_commands.append(('build_man', lambda _: True))
     DATA_FILES = [('man/man1', ['brz.1', 'breezy/git/git-remote-bzr.1'])]
 
-DATA_FILES = DATA_FILES + I18N_FILES
-
 import site
 
 site.ENABLE_USER_SITE = "--user" in sys.argv
 
 rust_extensions = [
-    RustExtension("breezy.bzr._chk_map_rs", "crates/chk-map-py/Cargo.toml", binding=Binding.PyO3),
-    RustExtension("breezy.bzr._groupcompress_rs", "crates/groupcompress-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy._cmd_rs", "crates/cmd-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy._osutils_rs", "crates/osutils-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy._transport_rs", "crates/transport-py/Cargo.toml", binding=Binding.PyO3),

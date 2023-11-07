@@ -28,8 +28,13 @@ from stat import S_IFDIR, S_IFLNK, S_IFREG, S_ISDIR
 
 from .. import transport, urlutils
 from ..errors import InProcessTransport, LockError
-from ..transport import (AppendBasedFileStream, FileExists, LateReadError,
-                         NoSuchFile, _file_streams)
+from ..transport import (
+    AppendBasedFileStream,
+    FileExists,
+    LateReadError,
+    NoSuchFile,
+    _file_streams,
+)
 
 
 class MemoryStat:
@@ -240,15 +245,15 @@ class MemoryTransport(transport.Transport):
         """See Transport.rmdir."""
         _abspath = self._resolve_symlinks(relpath)
         if _abspath in self._files:
-            self._translate_error(IOError(errno.ENOTDIR, relpath), relpath)
+            self._translate_error(OSError(errno.ENOTDIR, relpath), relpath)
         for path in itertools.chain(self._files, self._symlinks):
             if path.startswith(_abspath + '/'):
-                self._translate_error(IOError(errno.ENOTEMPTY, relpath),
+                self._translate_error(OSError(errno.ENOTEMPTY, relpath),
                                       relpath)
         for path in self._dirs:
             if path.startswith(_abspath + '/') and path != _abspath:
                 self._translate_error(
-                    IOError(errno.ENOTEMPTY, relpath), relpath)
+                    OSError(errno.ENOTEMPTY, relpath), relpath)
         if _abspath not in self._dirs:
             raise NoSuchFile(relpath)
         del self._dirs[_abspath]
@@ -304,8 +309,8 @@ class MemoryTransport(transport.Transport):
         _abspath = self._abspath(link_name)
         try:
             return '/'.join(self._symlinks[_abspath])
-        except KeyError:
-            raise NoSuchFile(link_name)
+        except KeyError as err:
+            raise NoSuchFile(link_name) from err
 
 
 class _MemoryLock:

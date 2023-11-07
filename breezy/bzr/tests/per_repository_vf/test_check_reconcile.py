@@ -19,15 +19,19 @@
 That is, tests for reconcile and check.
 """
 
+from typing import List
+
 from breezy import osutils
 from breezy.bzr.tests.per_repository_vf import (
-    TestCaseWithRepository, all_repository_vf_format_scenarios)
+    TestCaseWithRepository,
+    all_repository_vf_format_scenarios,
+)
 from breezy.tests import TestNotApplicable, multiply_scenarios
 
 from ....repository import WriteGroup
-from ....revision import NULL_REVISION, Revision
+from ....revision import NULL_REVISION, Revision, RevisionID
 from ....tests.scenarios import load_tests_apply_scenarios
-from ...inventory import Inventory, InventoryFile
+from ...inventory import ROOT_ID, Inventory, InventoryDirectory, InventoryFile
 
 load_tests = load_tests_apply_scenarios
 
@@ -785,7 +789,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
             factory(repo)
             return repo
 
-    def add_revision(self, repo, revision_id, inv, parent_ids):
+    def add_revision(self, repo, revision_id: RevisionID, inv: Inventory, parent_ids: List[RevisionID]) -> None:
         """Add a revision with a given inventory and parents to a repository.
 
         :param repo: a repository.
@@ -795,7 +799,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         :param parent_ids: the parents for the new revision.
         """
         inv.revision_id = revision_id
-        inv.root.revision = revision_id
+        self.assertEqual(inv.root.revision, revision_id)
         if repo.supports_rich_root():
             root_id = inv.root.file_id
             repo.texts.add_lines((root_id, revision_id), [], [])
@@ -825,19 +829,18 @@ class TestFileParentReconciliation(TestCaseWithRepository):
             Otherwise a unique default (based on revision ID) will be
             generated.
         """
-        inv = Inventory(revision_id=revision)
-        if root_revision is not None:
-            inv.root.revision = root_revision
+        inv = Inventory(revision_id=revision, root_id=None)
+        root = InventoryDirectory(ROOT_ID, "", None, root_revision)
+        inv.add(root)
         file_id = b'a-file-id'
-        entry = InventoryFile(file_id, 'a file name', b'TREE_ROOT')
         if inv_revision is not None:
-            entry.revision = inv_revision
+            entry_revision = inv_revision
         else:
-            entry.revision = revision
-        entry.text_size = 0
+            entry_revision = revision
         if file_contents is None:
-            file_contents = b'%sline\n' % entry.revision
-        entry.text_sha1 = osutils.sha_string(file_contents)
+            file_contents = b'%sline\n' % entry_revision
+        text_sha1 = osutils.sha_string(file_contents)
+        entry = InventoryFile(file_id, 'a file name', b'TREE_ROOT', revision=entry_revision, text_size=0, text_sha1=text_sha1)
         inv.add(entry)
         if make_file_version:
             repo.texts.add_lines((file_id, revision),
@@ -866,8 +869,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
             else:
                 found_parents = self.file_parents(repo, version)
                 self.assertEqual(expected_parents, found_parents,
-                                 "%s reconcile %s has parents %s, should have %s."
-                                 % (when_description, version, found_parents,
+                                 "{} reconcile {} has parents {}, should have {}.".format(when_description, version, found_parents,
                                     expected_parents))
 
     def prepare_test_repository(self):

@@ -104,7 +104,7 @@ def _check_name_encoding(name):
     try:
         name.decode('utf-8')
     except UnicodeDecodeError as e:
-        raise InvalidRecordError(str(e))
+        raise InvalidRecordError(str(e)) from e
 
 
 class ContainerSerialiser:
@@ -414,9 +414,9 @@ class BytesRecordReader(BaseReader):
         length_line = self._read_line()
         try:
             length = int(length_line)
-        except ValueError:
+        except ValueError as e:
             raise InvalidRecordError(
-                f"{length_line!r} is not a valid length.")
+                f"{length_line!r} is not a valid length.") from e
 
         # Read the list of names.
         names = []
@@ -537,9 +537,9 @@ class ContainerPushParser:
         if line is not None:
             try:
                 self._current_record_length = int(line)
-            except ValueError:
+            except ValueError as e:
                 raise InvalidRecordError(
-                    f"{line!r} is not a valid length.")
+                    f"{line!r} is not a valid length.") from e
             self._state_handler = self._state_expecting_name
 
     def _state_expecting_name(self):

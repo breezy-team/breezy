@@ -39,7 +39,7 @@ def split(s):
 
 
 def _script_to_commands(text, file_name=None):
-    """Turn a script into a list of commands with their associated IOs.
+    r"""Turn a script into a list of commands with their associated IOs.
 
     Each command appears on a line by itself starting with '$ '. It can be
     associated with an input that will feed it and an expected output.
@@ -222,12 +222,12 @@ class ScriptRunner:
         try:
             self._check_output(output, actual_output, test_case)
         except AssertionError as e:
-            raise AssertionError(str(e) + f" in stdout of command {cmd}")
+            raise AssertionError(str(e) + f" in stdout of command {cmd}") from e
         try:
             self._check_output(error, actual_error, test_case)
         except AssertionError as e:
             raise AssertionError(str(e)
-                                 + f" in stderr of running command {cmd}")
+                                 + f" in stderr of running command {cmd}") from e
         if retcode and not error and actual_error:
             test_case.fail(f"In \n\t{' '.join(cmd)}\nUnexpected error: {actual_error}")
         return retcode, actual_output, actual_error
@@ -348,7 +348,7 @@ class ScriptRunner:
         try:
             output = self._write_output(output, out_name, out_mode)
         except (FileNotFoundError, ValueError):
-            # If out_name cannot be created, we may get 'ENOENT', however if
+            # If out_name cannot be created, we may get FileNotFoundError, however if
             # out_name is something like '', we can get EINVAL
             return 1, None, f'{out_name}: No such file or directory\n'
         return 0, output, None

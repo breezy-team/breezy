@@ -18,6 +18,7 @@
 
 import os
 import re
+import stat
 from collections import deque
 
 from .. import branch as _mod_branch
@@ -36,8 +37,14 @@ from breezy.bzr import (
     inventory as _mod_inventory,
     )
 """)
-from ..tree import (FileTimestampUnavailable, InterTree, MissingNestedTree,
-                    Tree, TreeChange, TreeFile)
+from ..tree import (
+    FileTimestampUnavailable,
+    InterTree,
+    MissingNestedTree,
+    Tree,
+    TreeChange,
+    TreeFile,
+)
 
 
 class InventoryTreeChange(TreeChange):
@@ -94,6 +101,11 @@ class InventoryTreeChange(TreeChange):
             copied=False)
 
 
+def _filesize(f) -> int:
+    """Return size of given open file."""
+    return os.fstat(f.fileno())[stat.ST_SIZE]
+
+
 class InventoryTree(Tree):
     """A tree that relies on an inventory for its metadata.
 
@@ -136,7 +148,7 @@ class InventoryTree(Tree):
             file_id = file_id[0]
         return self.root_inventory, file_id
 
-    def find_related_paths_across_trees(self, paths, trees=[],
+    def find_related_paths_across_trees(self, paths, trees=None,
                                         require_versioned=True):
         """Find related paths in tree corresponding to specified filenames in any
         of `lookup_trees`.
@@ -152,6 +164,8 @@ class InventoryTree(Tree):
         :return: a set of paths for the specified filenames and their children
             in `tree`
         """
+        if trees is None:
+            trees = []
         if paths is None:
             return None
         file_ids = self.paths2ids(
@@ -164,7 +178,7 @@ class InventoryTree(Tree):
                 pass
         return ret
 
-    def paths2ids(self, paths, trees=[], require_versioned=True):
+    def paths2ids(self, paths, trees=None, require_versioned=True):
         """Return all the ids that can be reached by walking from paths.
 
         Each path is looked up in this tree and any extras provided in
@@ -181,6 +195,8 @@ class InventoryTree(Tree):
         :param require_versioned: If False, do not raise NotVersionedError if
             an element of paths is not versioned in this tree and all of trees.
         """
+        if trees is None:
+            trees = []
         return find_ids_across_trees(paths, [self] + list(trees), require_versioned)
 
     def path2id(self, path):
@@ -240,9 +256,9 @@ class InventoryTree(Tree):
         inventory, file_id = self._unpack_file_id(file_id)
         try:
             return inventory.id2path(file_id)
-        except errors.NoSuchId:
+        except errors.NoSuchId as e:
             if recurse == 'down':
-                if 'evil' in debug.debug_flags:
+                if debug.debug_flag_enabled('evil'):
                     trace.mutter_callsite(
                         2, "id2path with nested trees scales with tree size.")
                 for path in self.iter_references():
@@ -251,7 +267,7 @@ class InventoryTree(Tree):
                         return osutils.pathjoin(path, subtree.id2path(file_id))
                     except errors.NoSuchId:
                         pass
-            raise errors.NoSuchId(self, file_id)
+            raise errors.NoSuchId(self, file_id) from e
 
     def all_file_ids(self):
         return {entry.file_id for path, entry in self.iter_entries_by_dir()}
@@ -274,8 +290,7 @@ class InventoryTree(Tree):
                 for path in specific_files:
                     inventory, inv_file_id = self._path2inv_file_id(path)
                     if inventory and inventory is not self.root_inventory:
-                        raise AssertionError("{!r} != {!r}".format(
-                            inventory, self.root_inventory))
+                        raise AssertionError(f"{inventory!r} != {self.root_inventory!r}")
                     inventory_file_ids.add(inv_file_id)
             else:
                 inventory_file_ids = None
@@ -354,7 +369,7 @@ class InventoryTree(Tree):
         with self.get_file(path) as f:
             vf.add_content(
                 versionedfile.FileContentFactory(
-                    (file_id, last_revision), parent_keys, f, size=osutils.filesize(f)))
+                    (file_id, last_revision), parent_keys, f, size=_filesize(f)))
         repo = self.branch.repository
         base_vf = repo.texts
         if base_vf not in vf.fallback_versionedfiles:
@@ -937,8 +952,8 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         ie = self._path2ie(path)
         try:
             revision = self._repository.get_revision(ie.revision)
-        except errors.NoSuchRevision:
-            raise FileTimestampUnavailable(path)
+        except errors.NoSuchRevision as e:
+            raise FileTimestampUnavailable(path) from e
         return revision.timestamp
 
     def get_file_size(self, path):
@@ -1037,8 +1052,8 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         subrepo = subdir.find_repository()
         try:
             revtree = subrepo.revision_tree(reference_revision)
-        except errors.NoSuchRevision:
-            raise MissingNestedTree(path)
+        except errors.NoSuchRevision as e:
+            raise MissingNestedTree(path) from e
         if file_id is not None and file_id != revtree.path2id(''):
             raise AssertionError('invalid root id: {!r} != {!r}'.format(
                 file_id, revtree.path2id('')))
@@ -1105,7 +1120,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         try:
             yield from self._repository.iter_files_bytes(repo_desired_files)
         except errors.RevisionNotPresent as e:
-            raise _mod_transport.NoSuchFile(e.file_id)
+            raise _mod_transport.NoSuchFile(e.file_id) from e
 
     def annotate_iter(self, path, default_revision=revision.CURRENT_REVISION):
         """See Tree.annotate_iter."""
@@ -1211,7 +1226,7 @@ class InterInventoryTree(InterTree):
             versioned, parent, name, kind, executable), changes
 
     def iter_changes(self, include_unchanged=False,
-                     specific_files=None, pb=None, extra_trees=[],
+                     specific_files=None, pb=None, extra_trees=None,
                      require_versioned=True, want_unversioned=False):
         """Generate an iterator of changes between trees.
 
@@ -1521,16 +1536,18 @@ class InterCHKRevisionTree(InterInventoryTree):
                 isinstance(target, RevisionTree)):
             try:
                 # Only CHK inventories have id_to_entry attribute
-                source.root_inventory.id_to_entry
-                target.root_inventory.id_to_entry
+                source.root_inventory.id_to_entry  # noqa: B018
+                target.root_inventory.id_to_entry  # noqa: B018
                 return True
             except AttributeError:
                 pass
         return False
 
     def iter_changes(self, include_unchanged=False,
-                     specific_files=None, pb=None, extra_trees=[],
+                     specific_files=None, pb=None, extra_trees=None,
                      require_versioned=True, want_unversioned=False):
+        if extra_trees is None:
+            extra_trees = []
         lookup_trees = [self.source]
         if extra_trees:
             lookup_trees.extend(extra_trees)

@@ -69,7 +69,7 @@ class _Views:
 
 
 class PathBasedViews(_Views):
-    """View storage in an unversioned tree control file.
+    r"""View storage in an unversioned tree control file.
 
     Views are stored in terms of paths relative to the tree root.
 
@@ -144,8 +144,8 @@ class PathBasedViews(_Views):
                 else:
                     return []
             return self._views[view_name]
-        except KeyError:
-            raise NoSuchView(view_name)
+        except KeyError as err:
+            raise NoSuchView(view_name) from err
 
     def set_view(self, view_name, view_files, make_current=True):
         """Add or update a view definition.
@@ -171,8 +171,8 @@ class PathBasedViews(_Views):
             self._load_view_info()
             try:
                 del self._views[view_name]
-            except KeyError:
-                raise NoSuchView(view_name)
+            except KeyError as err:
+                raise NoSuchView(view_name) from err
             if view_name == self._current:
                 self._current = None
             self._save_view_info()
@@ -254,8 +254,7 @@ class PathBasedViews(_Views):
                                      text)
             return keywords, views
         except ValueError as e:
-            raise ValueError("failed to deserialize views content %r: %s"
-                             % (view_content, e))
+            raise ValueError(f"failed to deserialize views content {view_content!r}: {e}") from e
 
 
 class DisabledViews(_Views):

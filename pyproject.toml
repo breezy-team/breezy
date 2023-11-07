@@ -2,7 +2,7 @@
 requires = [
     "setuptools>=60",
     "setuptools-rust",
-    "setuptools-gettext",
+    "setuptools-gettext>=0.1.4",
     "cython>=0.29",
 ]
 build-backend = "setuptools.build_meta"
@@ -31,11 +31,11 @@ dependencies = [
     "fastbencode",
     "patiencediff",
     "merge3",
-    "dulwich>=0.21.3",
+    "dulwich>=0.21.6",
     "urllib3>=1.24.1",
     "pyyaml",
 ]
-dynamic = ["version"]
+dynamic = ["version", "scripts"]
 
 [project.urls]
 Homepage = "https://www.breezy-vcs.org/"
@@ -43,7 +43,7 @@ Download = "https://launchpad.net/brz/+download"
 
 [project.optional-dependencies]
 fastimport = ["fastimport"]
-git = ["dulwich>=0.21.3"]
+git = ["dulwich>=0.21.6"]
 launchpad = ["launchpadlib>=1.6.3"]
 workspace = ["pyinotify"]
 doc = [
@@ -57,17 +57,18 @@ github = ["github"]
 paramiko = ["paramiko>=1.6.2"]
 subunit = ["python-subunit"]
 dev = [
-    "testtools",
+    "testtools>=0.9.5",
     "testscenarios",
     "python-subunit",
     "flake8",
     "cython>=0.29",
+    "ruff",
 ]
 testing = [
     "testtools",
     "testscenarios",
     "python-subunit",
-    "dulwich>=0.21.3",
+    "dulwich>=0.21.6",
 ]
 
 [tool.setuptools]
@@ -105,16 +106,66 @@ select = [
     "N",  # naming
     "B",  # bugbear
     "I",  # isort
+    "S",  # bandit
     "TCH", # typecheck
     "INT", # gettext
 #   "SIM", # simplify
     "C4",  # comprehensions
+    "UP",  # pyupgrade
 ]
 ignore = [
+    "ANN001",
+    "ANN002",
+    "ANN003",  # missing-type-arg
     "ANN101",  # missing-type-self
+    "ANN102",  # missing-type-self
+    "ANN201",
+    "ANN202",
+    "ANN204",
+    "ANN205",
+    "ANN206",
+    "D100",  # Missing docstring in public module
+    "D101",  # Missing docstring in public class
+    "D103",  # Missing docstring in public function
+    "D105",  # Missing docstring in magic method
+    "D102",  # Missing docstring in public method
+    "D205",  # 1 blank line required between summary line and description
+    "D106",  # Missing docstring in public nested class
+    "D107",  # Missing docstring in __init__
+    "D417",  # Missing argument descriptions in the docstring
+    "F821",  # undefined-name
+    "E501",  # line too long
+    "D402",  # Missing blank line after last section
+    "E402",  # module level import not at top of file
+    "E741",  # ambiguous variable name
+    "F405",  # name may be undefined, or defined from star imports
+    "N801",  # Naming convention violation: invalid constant name
+    "N802",  # Naming convention violation: invalid variable name
+    "N804",  # Naming convention violation: invalid lowercase variable name
+    "N806",  # Naming convention violation: invalid lowercase function name
+    "N818",  # Naming convention violation: invalid argument name
+    "N999",  # Naming convention violation: invalid module name
+
+    "S602",  # subprocess with shell=True
+    "S603",  # check for execution of untrusted input
+    "S105",  # "hardcoded password"; false positives on "pwd"
+    "S106",  # "hardcoded password"; false positives on "pwd"
+    "S110",  # "consider logging exception"
+
+    "S317",  # use defusedxml
+
+    # This triggers for docstrings that uses __doc__
+    "D104", # Missing docstring in public package
 ]
 # These are actually fine, but they make mypy more strict and then it fails.
 unfixable = ["ANN204"]
+extend-exclude = ["lib", "bin"]
+
+[tool.ruff.isort]
+
 
 [tool.ruff.pydocstyle]
 convention = "google"
+
+[tool.setuptools-gettext]
+build_dir = "breezy/locale"

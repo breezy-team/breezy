@@ -179,7 +179,7 @@ class TextUIFactory(UIFactory):
         self.stderr = _wrap_out_stream(self.raw_stderr)
 
     def choose(self, msg, choices, default=None):
-        """Prompt the user for a list of alternatives.
+        r"""Prompt the user for a list of alternatives.
 
         Support both line-based and char-based editing.
 
@@ -349,7 +349,7 @@ class TextUIFactory(UIFactory):
     def _progress_updated(self, task):
         """A task has been updated and wants to be displayed."""
         if not self._task_stack:
-            warnings.warn(f"{task!r} updated but no tasks are active")
+            warnings.warn(f"{task!r} updated but no tasks are active", stacklevel=1)
         elif task != self._task_stack[-1]:
             # We used to check it was the top task, but it's hard to always
             # get this right and it's not necessarily useful: any actual
@@ -461,8 +461,8 @@ class TextProgressView:
             else:
                 completion_fraction = \
                     self._last_task._overall_completion_fraction() or 0
-            if (completion_fraction < self._fraction and 'progress' in
-                    debug.debug_flags):
+            if (completion_fraction < self._fraction and
+                    debug.debug_flags_enabled('progress')):
                 debug.set_trace()
             self._fraction = completion_fraction
             markers = int(round(float(cols) * completion_fraction)) - 1
@@ -573,7 +573,7 @@ class TextProgressView:
             self._bytes_by_direction[direction] += byte_count
         else:
             self._bytes_by_direction['unknown'] += byte_count
-        if 'no_activity' in debug.debug_flags:
+        if debug.debug_flag_enabled('no_activity'):
             # Can be used as a workaround if
             # <https://launchpad.net/bugs/321935> reappears and transport
             # activity is cluttering other output.  However, thanks to
@@ -610,9 +610,8 @@ class TextProgressView:
             bps = self._total_byte_count / transfer_time
 
         # using base-10 units (see HACKING.txt).
-        msg = ('Transferred: %.0fkB'
-               ' (%.1fkB/s r:%.0fkB w:%.0fkB'
-               % (self._total_byte_count / 1000.,
+        msg = ('Transferred: {:.0f}kB'
+               ' ({:.1f}kB/s r:{:.0f}kB w:{:.0f}kB'.format(self._total_byte_count / 1000.,
                   bps / 1000.,
                   self._bytes_by_direction['read'] / 1000.,
                   self._bytes_by_direction['write'] / 1000.,

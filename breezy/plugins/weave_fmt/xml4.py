@@ -19,8 +19,13 @@ from typing import List
 from ... import revision as _mod_revision
 from ...bzr import inventory
 from ...bzr.inventory import ROOT_ID, Inventory
-from ...bzr.xml_serializer import (Element, SubElement, XMLInventorySerializer,
-                                   XMLRevisionSerializer, escape_invalid_chars)
+from ...bzr.xml_serializer import (
+    Element,
+    SubElement,
+    XMLInventorySerializer,
+    XMLRevisionSerializer,
+    escape_invalid_chars,
+)
 from ...errors import BzrError
 
 
@@ -170,19 +175,18 @@ class _InventorySerializer_v4(XMLInventorySerializer):
         inv = Inventory(root_id)
         for e in elt:
             ie = self._unpack_entry(e, entry_cache=entry_cache,
-                                    return_from_cache=return_from_cache)
-            if ie.parent_id == ROOT_ID:
-                ie.parent_id = root_id
+                                    return_from_cache=return_from_cache, root_id=root_id)
             inv.add(ie)
         return inv
 
-    def _unpack_entry(self, elt, entry_cache=None, return_from_cache=False):
+    def _unpack_entry(self, elt, root_id, entry_cache=None, return_from_cache=False):
         # original format inventories don't have a parent_id for
         # nodes in the root directory, but it's cleaner to use one
         # internally.
         parent_id = elt.get('parent_id')
         parent_id = (parent_id.encode('ascii') if parent_id else ROOT_ID)
-
+        if parent_id == ROOT_ID:
+            parent_id = root_id
         file_id = elt.get('file_id').encode('ascii')
         kind = elt.get('kind')
         if kind == 'directory':
@@ -190,22 +194,23 @@ class _InventorySerializer_v4(XMLInventorySerializer):
                                               elt.get('name'),
                                               parent_id)
         elif kind == 'file':
-            ie = inventory.InventoryFile(file_id,
-                                         elt.get('name'),
-                                         parent_id)
             text_id = elt.get('text_id')
             if text_id is not None:
-                ie.text_id = text_id.encode('utf-8')
+                text_id = text_id.encode('utf-8')
             text_sha1 = elt.get('text_sha1')
             if text_sha1 is not None:
-                ie.text_sha1 = text_sha1.encode('ascii')
+                text_sha1 = text_sha1.encode('ascii')
             v = elt.get('text_size')
-            ie.text_size = v and int(v)
+            text_size = v and int(v)
+
+            ie = inventory.InventoryFile(file_id,
+                                         elt.get('name'),
+                                         parent_id, text_size=text_size, text_sha1=text_sha1,
+                                         text_id=text_id)
         elif kind == 'symlink':
             ie = inventory.InventoryLink(file_id,
                                          elt.get('name'),
-                                         parent_id)
-            ie.symlink_target = elt.get('symlink_target')
+                                         parent_id, symlink_target=elt.get('symlink_target'))
         else:
             raise BzrError(f"unknown kind {kind!r}")
 

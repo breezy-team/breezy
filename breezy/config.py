@@ -101,8 +101,18 @@ from breezy import (
     )
 from breezy.i18n import gettext
 """)
-from . import (bedding, commands, debug, errors, hooks, lazy_regex, osutils,
-               registry, trace, transport)
+from . import (
+    bedding,
+    commands,
+    debug,
+    errors,
+    hooks,
+    lazy_regex,
+    osutils,
+    registry,
+    trace,
+    transport,
+)
 from .option import Option as CommandOption
 
 CHECK_IF_POSSIBLE = 0
@@ -461,9 +471,8 @@ class Config:
             if isinstance(value, list):
                 value = self._expand_options_in_list(value)
             elif isinstance(value, dict):
-                trace.warning('Cannot expand "%s":'
-                              ' Dicts do not support option expansion'
-                              % (option_name,))
+                trace.warning(f'Cannot expand "{option_name}":'
+                              ' Dicts do not support option expansion')
             else:
                 value = self._expand_options_in_string(value)
         for hook in OldConfigHooks['get']:
@@ -730,9 +739,9 @@ class IniBasedConfig(Config):
         try:
             self._parser = ConfigObj(co_input, encoding='utf-8')
         except configobj.ConfigObjError as e:
-            raise ParseConfigError(e.errors, e.config.filename)
-        except UnicodeDecodeError:
-            raise ConfigContentError(self.file_name)
+            raise ParseConfigError(e.errors, e.config.filename) from e
+        except UnicodeDecodeError as e:
+            raise ConfigContentError(self.file_name) from e
         # Make sure self.reload() will use the right file name
         self._parser.filename = self.file_name
         for hook in OldConfigHooks['load']:
@@ -905,8 +914,8 @@ class IniBasedConfig(Config):
             section = parser[section_name]
         try:
             del section[option_name]
-        except KeyError:
-            raise NoSuchConfigOption(option_name)
+        except KeyError as e:
+            raise NoSuchConfigOption(option_name) from e
         self._write_config_file()
         for hook in OldConfigHooks['remove']:
             hook(self, option_name)
@@ -1498,9 +1507,9 @@ class AuthenticationConfig:
             # encoded, but the values in the ConfigObj are always Unicode.
             self._config = ConfigObj(self._input, encoding='utf-8')
         except configobj.ConfigObjError as e:
-            raise ParseConfigError(e.errors, e.config.filename)
-        except UnicodeError:
-            raise ConfigContentError(self._filename)
+            raise ParseConfigError(e.errors, e.config.filename) from e
+        except UnicodeError as e:
+            raise ConfigContentError(self._filename) from e
         return self._config
 
     def _check_permissions(self):
@@ -1586,15 +1595,15 @@ class AuthenticationConfig:
                 a_port = auth_def.as_int('port')
             except KeyError:
                 a_port = None
-            except ValueError:
-                raise ValueError(f"'port' not numeric in {auth_def_name}")
+            except ValueError as e:
+                raise ValueError(f"'port' not numeric in {auth_def_name}") from e
             try:
                 a_verify_certificates = auth_def.as_bool('verify_certificates')
             except KeyError:
                 a_verify_certificates = True
-            except ValueError:
+            except ValueError as e:
                 raise ValueError(
-                    f"'verify_certificates' not boolean in {auth_def_name}")
+                    f"'verify_certificates' not boolean in {auth_def_name}") from e
 
             # Attempt matching
             if a_scheme is not None and scheme != a_scheme:
@@ -1629,7 +1638,7 @@ class AuthenticationConfig:
             # Decode the password in the credentials (or get one)
             self.decode_password(credentials,
                                  auth_def.get('password_encoding', None))
-            if 'auth' in debug.debug_flags:
+            if debug.debug_flag_enabled('auth'):
                 trace.mutter("Using authentication section: %r", auth_def_name)
             break
 
@@ -1764,8 +1773,8 @@ class AuthenticationConfig:
     def decode_password(self, credentials, encoding):
         try:
             cs = credential_store_registry.get_credential_store(encoding)
-        except KeyError:
-            raise ValueError(f'{encoding!r} is not a known password_encoding')
+        except KeyError as e:
+            raise ValueError(f'{encoding!r} is not a known password_encoding') from e
         credentials['password'] = cs.decode_password(credentials)
         return credentials
 
@@ -2026,9 +2035,9 @@ class TransportConfig:
             try:
                 conf = ConfigObj(f, encoding='utf-8')
             except configobj.ConfigObjError as e:
-                raise ParseConfigError(e.errors, self._external_url())
-            except UnicodeDecodeError:
-                raise ConfigContentError(self._external_url())
+                raise ParseConfigError(e.errors, self._external_url()) from e
+            except UnicodeDecodeError as e:
+                raise ConfigContentError(self._external_url()) from e
         finally:
             f.close()
         return conf
@@ -2223,9 +2232,9 @@ def int_SI_from_store(unicode_str):
         if unit:
             try:
                 coeff = _unit_suffixes[unit.upper()]
-            except KeyError:
+            except KeyError as e:
                 raise ValueError(
-                    gettext('{0} is not an SI unit.').format(unit))
+                    gettext('{0} is not an SI unit.').format(unit)) from e
             val *= coeff
     return val
 
@@ -2299,11 +2308,10 @@ class RegistryOption(Option):
             raise TypeError
         try:
             return self.registry.get(unicode_str)
-        except KeyError:
+        except KeyError as e:
             raise ValueError(
-                "Invalid value %s for %s."
-                "See help for a list of possible values." % (unicode_str,
-                                                             self.name))
+                f"Invalid value {unicode_str} for {self.name}."
+                "See help for a list of possible values.") from e
 
     @property
     def help(self):
@@ -2765,9 +2773,9 @@ class MutableSection(Section):
                 # storage.
                 trace.warning(gettext(
                     "Option {} in section {} of {} was changed"
-                    " from {} to {}. The {} value will be saved.".format(
+                    " from {} to {}. The {} value will be saved.").format(
                         k, self.id, store.external_url(), expected,
-                        reloaded, actual)))
+                        reloaded, actual))
         # No need to keep track of these changes
         self.reset_changes()
 
@@ -2889,7 +2897,7 @@ class Store:
 
 
 class CommandLineStore(Store):
-    "A store to carry command line overrides for the config options."""
+    """A store to carry command line overrides for the config options."""
 
     def __init__(self, opts=None):
         super().__init__()
@@ -2908,10 +2916,10 @@ class CommandLineStore(Store):
         for over in overrides:
             try:
                 name, value = over.split('=', 1)
-            except ValueError:
+            except ValueError as e:
                 raise errors.CommandError(
                     gettext("Invalid '%s', should be of the form 'name=value'")
-                    % (over,))
+                    % (over,)) from e
             self.options[name] = value
 
     def external_url(self):
@@ -2986,9 +2994,9 @@ class IniFileStore(Store):
                                          list_values=False)
         except configobj.ConfigObjError as e:
             self._config_obj = None
-            raise ParseConfigError(e.errors, self.external_url())
-        except UnicodeDecodeError:
-            raise ConfigContentError(self.external_url())
+            raise ParseConfigError(e.errors, self.external_url()) from e
+        except UnicodeDecodeError as e:
+            raise ConfigContentError(self.external_url()) from e
 
     def save_changes(self):
         if not self.is_loaded():
@@ -3483,9 +3491,8 @@ class Stack:
                     if isinstance(val, str):
                         val = self._expand_options_in_string(val)
                     else:
-                        trace.warning('Cannot expand "%s":'
-                                      ' %s does not support option expansion'
-                                      % (name, type(val)))
+                        trace.warning(f'Cannot expand "{name}":'
+                                      f' {type(val)} does not support option expansion')
                 if opt is None:
                     val = found_store.unquote(val)
                 elif convert:
@@ -4025,8 +4032,8 @@ class cmd_config(commands.Command):
             conf.remove(name)
             # Explicitly save the changes
             conf.store.save_changes()
-        except KeyError:
-            raise NoSuchConfigOption(name)
+        except KeyError as e:
+            raise NoSuchConfigOption(name) from e
 
 
 # Test registries
@@ -4042,9 +4049,9 @@ class cmd_config(commands.Command):
 # The registered object should be a callable receiving a test instance
 # parameter (inheriting from tests.TestCaseWithTransport) and returning a Store
 # object.
-test_store_builder_registry = registry.Registry[str, Callable]()
+test_store_builder_registry = registry.Registry[str, Callable, None]()
 
 # The registered object should be a callable receiving a test instance
 # parameter (inheriting from tests.TestCaseWithTransport) and returning a Stack
 # object.
-test_stack_builder_registry = registry.Registry[str, Callable]()
+test_stack_builder_registry = registry.Registry[str, Callable, None]()

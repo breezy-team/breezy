@@ -357,8 +357,8 @@ class TreeTransform:
         except KeyError:
             try:
                 return os.path.basename(self._tree_id_paths[trans_id])
-            except KeyError:
-                raise NoFinalPath(trans_id, self)
+            except KeyError as err:
+                raise NoFinalPath(trans_id, self) from err
 
     def path_changed(self, trans_id):
         """Return True if a trans_id's path has changed."""
@@ -550,8 +550,7 @@ def move_orphan(tt, orphan_id, parent_id):
     actual_name = tt.final_name(orphan_id)
     new_name = tt._available_backup_name(actual_name, od_id)
     tt.adjust_path(new_name, od_id, orphan_id)
-    trace.warning('%s has been orphaned in %s'
-                  % (joinpath(parent_path, actual_name), orphan_dir_basename))
+    trace.warning(f'{joinpath(parent_path, actual_name)} has been orphaned in {orphan_dir_basename}')
 
 
 def refuse_orphan(tt, orphan_id, parent_id):
@@ -562,7 +561,7 @@ def refuse_orphan(tt, orphan_id, parent_id):
     raise OrphaningForbidden('never')
 
 
-orphaning_registry = registry.Registry[str, Callable[[TreeTransform, bytes, bytes], None]]()
+orphaning_registry = registry.Registry[str, Callable[[TreeTransform, bytes, bytes], None], None]()
 orphaning_registry.register(
     'conflict', refuse_orphan,
     'Leave orphans in place and create a conflict on the directory.')
@@ -860,7 +859,7 @@ def _alter_files(es, working_tree, target_tree, tt, pb, specific_files,
                 ContentFilterContext(target_path, working_tree))
             tt.create_file(bytes, trans_id, mode_id)
     else:
-        for (trans_id, mode_id, target_path), bytes in target_tree.iter_files_bytes(
+        for (trans_id, mode_id, _target_path), bytes in target_tree.iter_files_bytes(
                 deferred_files):
             tt.create_file(bytes, trans_id, mode_id)
     tt.fixup_new_roots()
@@ -1038,10 +1037,10 @@ class _FileMover:
             os.rename(from_, to)
         except OSError as e:
             if e.errno in (errno.EEXIST, errno.ENOTEMPTY):
-                raise FileExists(to, str(e))
+                raise FileExists(to, str(e)) from e
             # normal OSError doesn't include filenames so it's hard to see where
             # the problem is, see https://bugs.launchpad.net/bzr/+bug/491763
-            raise TransformRenameFailed(from_, to, str(e), e.errno)
+            raise TransformRenameFailed(from_, to, str(e), e.errno) from e
         self.past_renames.append((from_, to))
 
     def pre_delete(self, from_, to):
@@ -1060,7 +1059,7 @@ class _FileMover:
             try:
                 os.rename(to, from_)
             except OSError as e:
-                raise TransformRenameFailed(to, from_, str(e), e.errno)
+                raise TransformRenameFailed(to, from_, str(e), e.errno) from e
         # after rollback, don't reuse _FileMover
         self.past_renames = None
         self.pending_deletions = None

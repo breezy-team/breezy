@@ -18,7 +18,7 @@
 
 import time
 
-from testtools.matchers import *
+from testtools.matchers import *  # noqa: F403
 
 from .. import config, tests
 from .. import ui as _mod_ui

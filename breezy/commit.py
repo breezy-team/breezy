@@ -479,8 +479,8 @@ class Commit:
                 self.master_branch.tags)
             if tag_conflicts:
                 warning_lines = ['    ' + name for name, _, _ in tag_conflicts]
-                note(gettext("Conflicting tags in bound branch:\n{}".format(
-                    "\n".join(warning_lines))))
+                note(gettext("Conflicting tags in bound branch:\n{}").format(
+                    "\n".join(warning_lines)))
 
     def _select_reporter(self):
         """Select the CommitReporter to use."""
@@ -591,7 +591,7 @@ class Commit:
             hooks = post_commit.split(' ')
             # this would be nicer with twisted.python.reflect.namedAny
             for hook in hooks:
-                eval(hook + '(branch, rev_id)',
+                eval(hook + '(branch, rev_id)',  # noqa: S307
                               {'branch': self.branch,
                                'breezy': breezy,
                                'rev_id': self.rev_id})
@@ -628,10 +628,9 @@ class Commit:
             # the user) this is still showing progress, not showing overall
             # actions - its up to each plugin to show a UI if it want's to
             # (such as 'Emailing diff to foo@example.com').
-            self.pb_stage_name = "Running %s hooks [%s]" % \
-                (hook_name, Branch.hooks.get_hook_name(hook))
+            self.pb_stage_name = f"Running {hook_name} hooks [{Branch.hooks.get_hook_name(hook)}]"
             self._emit_progress()
-            if 'hooks' in debug.debug_flags:
+            if debug.debug_flag_enabled('hooks'):
                 mutter("Invoking commit hook: %r", hook)
             if hook_name == "post_commit":
                 hook(hook_local, hook_master, old_revno, old_revid, new_revno,
@@ -681,8 +680,8 @@ class Commit:
                 if report_changes:
                     reporter.missing(new_path)
                 if change.kind[0] == 'symlink' and not self.work_tree.supports_symlinks():
-                    trace.warning('Ignoring "%s" as symlinks are not '
-                                  'supported on this filesystem.' % (change.path[0],))
+                    trace.warning(f'Ignoring "{change.path[0]}" as symlinks are not '
+                                  'supported on this filesystem.')
                     continue
                 deleted_paths.append(change.path[1])
                 # Reset the new path (None) and new versioned flag (False)
@@ -723,7 +722,7 @@ class Commit:
                 raise StrictCommitFailed()
 
     def _commit_nested_tree(self, path):
-        "Commit a nested tree."
+        """Commit a nested tree."""
         sub_tree = self.work_tree.get_nested_tree(path)
         # FIXME: be more comprehensive here:
         # this works when both trees are in --trees repository,

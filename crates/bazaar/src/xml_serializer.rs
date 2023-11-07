@@ -1,16 +1,11 @@
 use crate::revision::Revision;
 use crate::serializer::{Error, RevisionSerializer};
 use crate::RevisionId;
+use lazy_regex::regex_replace_all;
 use std::collections::HashMap;
 use std::io::{BufRead, Read, Write};
 use std::str;
 use xmltree::Element;
-
-lazy_static::lazy_static! {
-    static ref UTF8_RE: regex::bytes::Regex = regex::bytes::Regex::new(r#"(?-u)[&<>'"]|[\x7f-\xff]+"#).unwrap();
-    static ref UNICODE_RE: regex::Regex = regex::Regex::new(r#"[&<>'"\u{007f}-\u{ffff}]"#).unwrap();
-
-}
 
 fn escape_low(c: u8) -> Option<&'static str> {
     match c {
@@ -50,13 +45,12 @@ fn utf8_escape_replace(cap: &regex::bytes::Captures) -> Vec<u8> {
 }
 
 pub fn encode_and_escape_string(text: &str) -> String {
-    UNICODE_RE
-        .replace_all(text, unicode_escape_replace)
-        .into_owned()
+    regex_replace_all!(r#"[&<>'"\u{007f}-\u{ffff}]"#, text, unicode_escape_replace).into_owned()
 }
 
 pub fn encode_and_escape_bytes(data: &[u8]) -> String {
-    let bytes = UTF8_RE.replace_all(data, utf8_escape_replace).into_owned();
+    let bytes =
+        regex_replace_all!(r#"(?-u)[&<>'"]|[\x7f-\xff]+"#B, data, utf8_escape_replace).into_owned();
     String::from_utf8_lossy(bytes.as_slice()).to_string()
 }
 
@@ -266,7 +260,7 @@ impl<T: XMLRevisionSerializer> RevisionSerializer for T {
         buf.write_all(
             format!(
                 "revision_id=\"{}\" timestamp=\"{:.3}\"",
-                encode_and_escape_bytes(rev.revision_id.bytes()),
+                encode_and_escape_bytes(rev.revision_id.as_bytes()),
                 rev.timestamp,
             )
             .as_bytes(),
@@ -290,7 +284,7 @@ impl<T: XMLRevisionSerializer> RevisionSerializer for T {
                 buf.write_all(
                     format!(
                         "<revision_ref revision_id=\"{}\" />\n",
-                        encode_and_escape_bytes(parent_id.bytes())
+                        encode_and_escape_bytes(parent_id.as_bytes())
                     )
                     .as_bytes(),
                 )?;

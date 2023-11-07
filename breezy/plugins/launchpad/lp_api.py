@@ -39,7 +39,7 @@ class LaunchpadlibMissing(errors.DependencyNotPresent):
 try:
     import launchpadlib
 except ModuleNotFoundError as e:
-    raise LaunchpadlibMissing(e)
+    raise LaunchpadlibMissing(e) from e
 
 from launchpadlib.credentials import AccessToken, Credentials, CredentialStore
 from launchpadlib.launchpad import Launchpad
@@ -64,8 +64,7 @@ def check_launchpadlib_compatibility():
     if installed_version < MINIMUM_LAUNCHPADLIB_VERSION:
         raise errors.DependencyNotPresent(
             'launchpadlib',
-            'At least launchpadlib %s is required, but installed version is %s'
-            % (MINIMUM_LAUNCHPADLIB_VERSION, installed_version))
+            f'At least launchpadlib {MINIMUM_LAUNCHPADLIB_VERSION} is required, but installed version is {installed_version}')
 
 
 class NoLaunchpadBranch(errors.BzrError):
@@ -200,24 +199,6 @@ class LaunchpadBranch:
         regex = re.compile('([a-z]*\\+)*(bzr\\+ssh|http)'
                            '://bazaar.*.launchpad.net')
         return bool(regex.match(url))
-
-    @staticmethod
-    def candidate_urls(bzr_branch):
-        """Iterate through related URLs that might be Launchpad URLs.
-
-        :param bzr_branch: A Bazaar branch to find URLs from.
-        :return: a generator of URL strings.
-        """
-        url = bzr_branch.get_public_branch()
-        if url is not None:
-            yield url
-        url = bzr_branch.get_push_location()
-        if url is not None:
-            yield url
-        url = bzr_branch.get_parent()
-        if url is not None:
-            yield url
-        yield bzr_branch.base
 
     def get_target(self):
         """Return the 'LaunchpadBranch' for the target of this one."""

@@ -146,7 +146,7 @@ class TestTagging(TestCaseWithTransport):
 
         (If the user runs 'brz commit', then that is when the tags from the
         merge are propagated.)
-        """
+        """  # noqa: D403
         master, child = self.make_master_and_checkout()
         fork = self.make_fork(master)
         fork.tags.set_tag('new-tag', fork.last_revision())
@@ -364,8 +364,7 @@ class TestTagging(TestCaseWithTransport):
         # upper bound of laziness
         out, err = self.run_bzr('tags ' + argstr)
         self.assertEqual(err, '')
-        self.assertContainsRe(out, "^" + ''.join(["tag {} +{}\n".format(
-            revno, revno) for revno in expected_revnos]) + "$")
+        self.assertContainsRe(out, "^" + ''.join([f"tag {revno} +{revno}\n" for revno in expected_revnos]) + "$")
 
     def test_conflicting_tags(self):
         # setup two empty branches with different tags

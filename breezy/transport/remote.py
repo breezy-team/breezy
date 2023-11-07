@@ -98,7 +98,7 @@ class RemoteTransport(transport.ConnectedTransport):
             credentials = None
             if medium is None:
                 medium, credentials = self._build_medium()
-                if 'hpss' in debug.debug_flags:
+                if debug.debug_flag_enabled('hpss'):
                     trace.mutter('hpss: Built a new medium: %s',
                                  medium.__class__.__name__)
             self._shared_connection = transport._SharedConnection(medium,
@@ -110,9 +110,9 @@ class RemoteTransport(transport.ConnectedTransport):
             medium = self._shared_connection.connection
         else:
             raise AssertionError(
-                "Both _from_transport (%r) and medium (%r) passed to "
+                "Both _from_transport ({!r}) and medium ({!r}) passed to "
                 "RemoteTransport.__init__, but these parameters are mutally "
-                "exclusive." % (_from_transport, medium))
+                "exclusive.".format(_from_transport, medium))
 
         if _client is None:
             self._client = client._SmartClient(medium)
@@ -338,7 +338,7 @@ class RemoteTransport(transport.ConnectedTransport):
             cur_len += c.length
         if cur_request:
             requests.append(cur_request)
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             trace.mutter('%s.readv %s offsets => %s coalesced'
                          ' => %s requests (%s)',
                          self.__class__.__name__, len(offsets), len(coalesced),
@@ -596,8 +596,8 @@ class HintingSSHTransport(transport.Transport):
 
     def __init__(self, url):
         raise transport.UnsupportedProtocol(
-            url, 'Use bzr+ssh for Bazaar operations over SSH, e.g. "bzr+%s". '
-            'Use git+ssh for Git operations over SSH, e.g. "git+%s".' % (url, url))
+            url, f'Use bzr+ssh for Bazaar operations over SSH, e.g. "bzr+{url}". '
+            f'Use git+ssh for Git operations over SSH, e.g. "git+{url}".')
 
 
 def get_test_permutations():

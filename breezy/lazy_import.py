@@ -188,7 +188,7 @@ class ImportReplacer(ScopeReplacer):
     # the replacement.
     __slots__ = ('_import_replacer_children', '_member', '_module_path')
 
-    def __init__(self, scope, name, module_path, member=None, children={}):
+    def __init__(self, scope, name, module_path, member=None, children=None):
         """Upon request import 'module_path' as the name 'module_name'.
         When imported, prepare children to also be imported.
 
@@ -219,6 +219,8 @@ class ImportReplacer(ScopeReplacer):
             from foo import bar, baz would get translated into 2 import
             requests. On for 'name=bar' and one for 'name=baz'
         """
+        if children is None:
+            children = {}
         if (member is not None) and children:
             raise ValueError('Cannot supply both a member and children')
 
@@ -268,7 +270,7 @@ class ImportProcessor:
 
     __slots__ = ['imports', '_lazy_import_class']
 
-    def __init__(self, lazy_import_class=None):
+    def __init__(self, lazy_import_class=None) -> None:
         self.imports: Dict[str, Any] = {}
         if lazy_import_class is None:
             self._lazy_import_class = ImportReplacer

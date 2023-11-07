@@ -24,19 +24,37 @@ from patiencediff import PatienceSequenceMatcher
 
 from ... import errors, multiparent, osutils
 from ... import transport as _mod_transport
-from ...tests import (TestCase, TestCaseWithMemoryTransport,
-                      TestCaseWithTransport, TestNotApplicable, features)
+from ...tests import (
+    TestCase,
+    TestCaseWithMemoryTransport,
+    TestCaseWithTransport,
+    TestNotApplicable,
+    features,
+)
 from .. import knit, knitpack_repo, pack, pack_repo
-from ..index import *
-from ..knit import (AnnotatedKnitContent, KnitContent, KnitCorrupt,
-                    KnitDataStreamIncompatible, KnitDataStreamUnknown,
-                    KnitHeaderError, KnitIndexUnknownMethod,
-                    KnitVersionedFiles, PlainKnitContent, _KndxIndex,
-                    _KnitGraphIndex, _KnitKeyAccess, _VFContentMapGenerator,
-                    make_file_factory)
-from ..versionedfile import (AbsentContentFactory, ConstantMapper,
-                             RecordingVersionedFilesDecorator,
-                             network_bytes_to_kind_and_offset)
+from ..index import *  # noqa: F403
+from ..knit import (
+    AnnotatedKnitContent,
+    KnitContent,
+    KnitCorrupt,
+    KnitDataStreamIncompatible,
+    KnitDataStreamUnknown,
+    KnitHeaderError,
+    KnitIndexUnknownMethod,
+    KnitVersionedFiles,
+    PlainKnitContent,
+    _KndxIndex,
+    _KnitGraphIndex,
+    _KnitKeyAccess,
+    _VFContentMapGenerator,
+    make_file_factory,
+)
+from ..versionedfile import (
+    AbsentContentFactory,
+    ConstantMapper,
+    RecordingVersionedFilesDecorator,
+    network_bytes_to_kind_and_offset,
+)
 
 compiled_knit_feature = features.ModuleAvailableFeature(
     'breezy.bzr._knit_load_data_pyx')
@@ -736,8 +754,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         alt2 = [(b'f-id', b'rev-%d' % i) for i in [5, 1, 2, 4, 3, 6]]
         if keys != alt1 and keys != alt2:
             self.fail('Returned key order did not match either expected order.'
-                      ' expected %s or %s, not %s'
-                      % (alt1, alt2, keys))
+                      f' expected {alt1} or {alt2}, not {keys}')
 
 
 class LowLevelKnitDataTests(TestCase):
@@ -1592,7 +1609,9 @@ class TestKnitIndex(KnitTests):
 class TestGraphIndexKnit(KnitTests):
     """Tests for knits using a GraphIndex rather than a KnitIndex."""
 
-    def make_g_index(self, name, ref_lists=0, nodes=[]):
+    def make_g_index(self, name, ref_lists=0, nodes=None):
+        if nodes is None:
+            nodes = []
         builder = GraphIndexBuilder(ref_lists)
         for node, references, value in nodes:
             builder.add_node(node, references, value)
@@ -1898,7 +1917,9 @@ class TestGraphIndexKnit(KnitTests):
 class TestNoParentsGraphIndexKnit(KnitTests):
     """Tests for knits using _KnitGraphIndex with no parents."""
 
-    def make_g_index(self, name, ref_lists=0, nodes=[]):
+    def make_g_index(self, name, ref_lists=0, nodes=None):
+        if nodes is None:
+            nodes = []
         builder = GraphIndexBuilder(ref_lists)
         for node, references in nodes:
             builder.add_node(node, references)

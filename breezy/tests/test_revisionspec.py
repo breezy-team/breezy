@@ -21,8 +21,13 @@ from breezy import errors
 from breezy import revision as _mod_revision
 from breezy.tests import TestCaseWithTransport
 
-from ..revisionspec import (InvalidRevisionSpec, RevisionInfo, RevisionSpec,
-                            RevisionSpec_dwim, RevisionSpec_tag)
+from ..revisionspec import (
+    InvalidRevisionSpec,
+    RevisionInfo,
+    RevisionSpec,
+    RevisionSpec_dwim,
+    RevisionSpec_tag,
+)
 
 
 def spec_in_history(spec, branch):
@@ -59,12 +64,10 @@ class TestRevisionSpec(TestCaseWithTransport):
     def assertInHistoryIs(self, exp_revno, exp_revision_id, revision_spec):
         rev_info = self.get_in_history(revision_spec)
         self.assertEqual(exp_revno, rev_info.revno,
-                         'Revision spec: %r returned wrong revno: %r != %r'
-                         % (revision_spec, exp_revno, rev_info.revno))
+                         f'Revision spec: {revision_spec!r} returned wrong revno: {exp_revno!r} != {rev_info.revno!r}')
         self.assertEqual(exp_revision_id, rev_info.rev_id,
-                         'Revision spec: %r returned wrong revision id:'
-                         ' %r != %r'
-                         % (revision_spec, exp_revision_id, rev_info.rev_id))
+                         f'Revision spec: {revision_spec!r} returned wrong revision id:'
+                         f' {exp_revision_id!r} != {rev_info.rev_id!r}')
 
     def assertInvalid(self, revision_spec, extra='',
                       invalid_as_revision_id=True):
@@ -75,7 +78,7 @@ class TestRevisionSpec(TestCaseWithTransport):
             self.assertEqual(extra, e.extra)
         else:
             self.fail('Expected InvalidRevisionSpec to be raised for'
-                      ' %r.in_history' % (revision_spec,))
+                      f' {revision_spec!r}.in_history')
         if invalid_as_revision_id:
             try:
                 spec = RevisionSpec.from_string(revision_spec)
@@ -85,7 +88,7 @@ class TestRevisionSpec(TestCaseWithTransport):
                 self.assertEqual(extra, e.extra)
             else:
                 self.fail('Expected InvalidRevisionSpec to be raised for'
-                          ' %r.as_revision_id' % (revision_spec,))
+                          f' {revision_spec!r}.as_revision_id')
 
     def assertAsRevisionId(self, revision_id, revision_spec):
         """Calling as_revision_id() should return the specified id."""

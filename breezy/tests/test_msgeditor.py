@@ -21,12 +21,21 @@ import sys
 
 from .. import commit, config, msgeditor, osutils, trace
 from .. import transport as _mod_transport
-from ..msgeditor import (edit_commit_message_encoded,
-                         make_commit_message_template_encoded)
+from ..msgeditor import (
+    edit_commit_message_encoded,
+    make_commit_message_template_encoded,
+)
 from ..trace import mutter
-from . import (TestCaseInTempDir, TestCaseWithTransport, TestNotApplicable,
-               features, multiply_tests, probe_bad_non_ascii,
-               probe_unicode_in_user_encoding, split_suite_by_re)
+from . import (
+    TestCaseInTempDir,
+    TestCaseWithTransport,
+    TestNotApplicable,
+    features,
+    multiply_tests,
+    probe_bad_non_ascii,
+    probe_unicode_in_user_encoding,
+    split_suite_by_re,
+)
 from .EncodingAdapter import encoding_scenarios
 
 
@@ -138,7 +147,7 @@ added:
             name = basename + '.sh'
             with open(name, 'wb') as f:
                 f.write(b'#!/bin/sh\n')
-            os.chmod(name, 0o755)
+            os.chmod(name, 0o755)  # noqa: S103
             return './' + name
 
     def test_run_editor(self):
@@ -184,7 +193,7 @@ if len(sys.argv) == 2:
             self.overrideEnv('BRZ_EDITOR', 'fed.bat')
         else:
             # [non-win32] make python script executable and set BRZ_EDITOR
-            os.chmod('fed.py', 0o755)
+            os.chmod('fed.py', 0o755)  # noqa: S103
             mutter('Setting BRZ_EDITOR to %r', f'{sys.executable} ./fed.py')
             self.overrideEnv('BRZ_EDITOR', f'{sys.executable} ./fed.py')
 
@@ -212,8 +221,7 @@ if len(sys.argv) == 2:
         uni_val, ue_val = probe_unicode_in_user_encoding()
         if ue_val is None:
             self.skipTest(
-                'Cannot find a unicode character that works in encoding %s'
-                % (osutils.get_user_encoding(),))
+                f'Cannot find a unicode character that works in encoding {osutils.get_user_encoding()}')
 
         self.assertEqual('test message from fed\n',
                          msgeditor.edit_commit_message(uni_val))

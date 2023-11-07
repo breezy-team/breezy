@@ -220,9 +220,9 @@ class GPGStrategy:
     def sign(self, content, mode):
         try:
             import gpg
-        except ModuleNotFoundError:
+        except ModuleNotFoundError as err:
             raise GpgNotInstalled(
-                'Set create_signatures=no to disable creating signatures.')
+                'Set create_signatures=no to disable creating signatures.') from err
 
         if isinstance(content, str):
             raise errors.BzrBadParameterUnicode('content')
@@ -236,9 +236,9 @@ class GPGStrategy:
                     MODE_NORMAL: gpg.constants.sig.mode.NORMAL,
                     }[mode])
         except gpg.errors.GPGMEError as error:
-            raise SigningFailed(str(error))
+            raise SigningFailed(str(error)) from error
         except gpg.errors.InvalidSigners as error:
-            raise SigningFailed(str(error))
+            raise SigningFailed(str(error)) from error
 
         return output
 
@@ -252,9 +252,9 @@ class GPGStrategy:
         """
         try:
             import gpg
-        except ModuleNotFoundError:
+        except ModuleNotFoundError as err:
             raise GpgNotInstalled(
-                'Set check_signatures=ignore to disable verifying signatures.')
+                'Set check_signatures=ignore to disable verifying signatures.') from err
 
         signed_data = gpg.Data(signed_data)
         if signature:
@@ -283,7 +283,7 @@ class GPGStrategy:
 
             return SIGNATURE_NOT_VALID, None, None
         except gpg.errors.GPGMEError as error:
-            raise SignatureVerificationFailed(error)
+            raise SignatureVerificationFailed(error) from error
 
         # No result if input is invalid.
         # test_verify_invalid()

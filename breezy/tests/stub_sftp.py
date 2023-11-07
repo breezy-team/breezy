@@ -480,8 +480,8 @@ class SFTPServer(test_server.TestingTCPServerInAThread):
         if not (backing_server is None
                 or isinstance(backing_server, test_server.LocalURLServer)):
             raise AssertionError(
-                'backing_server should not be %r, because this can only serve '
-                'the local current working directory.' % (backing_server,))
+                'backing_server should not be {!r}, because this can only serve '
+                'the local current working directory.'.format(backing_server))
         self._original_vendor = ssh._ssh_vendor_manager._cached_ssh_vendor
         ssh._ssh_vendor_manager._cached_ssh_vendor = self._vendor
         self._homedir = osutils.getcwd()
@@ -510,7 +510,7 @@ class SFTPServer(test_server.TestingTCPServerInAThread):
         # we just never listen on that port
         s = socket.socket()
         s.bind(('localhost', 0))
-        return 'sftp://%s:%s/' % s.getsockname()
+        return 'sftp://{}:{}/'.format(*s.getsockname())
 
 
 class SFTPFullAbsoluteServer(SFTPServer):

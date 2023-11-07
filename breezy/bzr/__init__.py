@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Bazaar support for Breezy."""
+
 from typing import TYPE_CHECKING
 
 from .. import _bzr_rs, config, controldir, errors, pyutils, registry
@@ -41,7 +43,7 @@ class LineEndingError(errors.BzrError):
 class BzrProber(controldir.Prober):
     """Prober for formats that use a .bzr/ control directory."""
 
-    formats = registry.FormatRegistry["BzrDirFormat"](controldir.network_format_registry)
+    formats = registry.FormatRegistry["BzrDirFormat", None](controldir.network_format_registry)
     """The known .bzr formats."""
 
     @classmethod
@@ -53,12 +55,12 @@ class BzrProber(controldir.Prober):
         """Return the .bzrdir style format present in a directory."""
         try:
             format_string = transport.get_bytes(".bzr/branch-format")
-        except _mod_transport.NoSuchFile:
-            raise errors.NotBranchError(path=transport.base)
+        except _mod_transport.NoSuchFile as e:
+            raise errors.NotBranchError(path=transport.base) from e
         except errors.BadHttpRequest as e:
             if e.reason == 'no such method: .bzr':
                 # hgweb
-                raise errors.NotBranchError(path=transport.base)
+                raise errors.NotBranchError(path=transport.base) from e
             raise
 
         try:
@@ -71,12 +73,12 @@ class BzrProber(controldir.Prober):
                 path=transport.base, detail="format file looks like HTML")
         try:
             cls = klass.formats.get(first_line)
-        except KeyError:
+        except KeyError as e:
             if first_line.endswith(b"\r\n"):
-                raise LineEndingError(file=".bzr/branch-format")
+                raise LineEndingError(file=".bzr/branch-format") from e
             else:
                 raise errors.UnknownFormatError(
-                    format=first_line, kind='bzrdir')
+                    format=first_line, kind='bzrdir') from e
         return cls.from_string(format_string)
 
     @classmethod
@@ -106,19 +108,19 @@ class RemoteBzrProber(controldir.Prober):
             medium = transport.get_smart_medium()
         except (NotImplementedError, AttributeError,
                 errors.TransportNotPossible, errors.NoSmartMedium,
-                errors.SmartProtocolError):
+                errors.SmartProtocolError) as e:
             # no smart server, so not a branch for this format type.
-            raise errors.NotBranchError(path=transport.base)
+            raise errors.NotBranchError(path=transport.base) from e
         else:
             # Decline to open it if the server doesn't support our required
             # version (3) so that the VFS-based transport will do it.
             if medium.should_probe():
                 try:
                     server_version = medium.protocol_version()
-                except errors.SmartProtocolError:
+                except errors.SmartProtocolError as e:
                     # Apparently there's no usable smart server there, even though
                     # the medium supports the smart protocol.
-                    raise errors.NotBranchError(path=transport.base)
+                    raise errors.NotBranchError(path=transport.base) from e
                 if server_version != '2':
                     raise errors.NotBranchError(path=transport.base)
             from .remote import RemoteBzrDirFormat
@@ -170,10 +172,9 @@ def register_metadir(registry, key,
         try:
             factory = pyutils.get_named_object(mod_name, factory_name)
         except ImportError as e:
-            raise ImportError(f'failed to load {full_name}: {e}')
-        except AttributeError:
-            raise AttributeError('no factory %s in module %r'
-                                 % (full_name, sys.modules[mod_name]))
+            raise ImportError(f'failed to load {full_name}: {e}') from e
+        except AttributeError as e:
+            raise AttributeError(f'no factory {full_name} in module {sys.modules[mod_name]!r}') from e
         return factory()
 
     def helper():

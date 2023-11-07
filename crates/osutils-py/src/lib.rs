@@ -62,7 +62,7 @@ impl PyChunksToLinesIterator {
                         return Ok(Some(bytes.to_object(py)));
                     }
                 } else {
-                    if let Some(next_chunk) = self.chunk_iter.cast_as::<PyIterator>(py)?.next() {
+                    if let Some(next_chunk) = self.chunk_iter.downcast::<PyIterator>(py)?.next() {
                         let next_chunk = next_chunk?;
                         let next_chunk = next_chunk.extract::<&[u8]>()?;
                         chunk.extend_from_slice(next_chunk);
@@ -74,12 +74,12 @@ impl PyChunksToLinesIterator {
                         self.tail = Some(chunk);
                     }
                 }
-            } else if let Some(next_chunk) = self.chunk_iter.cast_as::<PyIterator>(py)?.next() {
+            } else if let Some(next_chunk) = self.chunk_iter.downcast::<PyIterator>(py)?.next() {
                 let next_chunk_py = next_chunk?;
                 let next_chunk = next_chunk_py.extract::<&[u8]>()?;
                 if let Some(newline) = memchr::memchr(b'\n', next_chunk) {
                     if newline == next_chunk.len() - 1 {
-                        let line = next_chunk_py.cast_as::<PyBytes>()?;
+                        let line = next_chunk_py.downcast::<PyBytes>()?;
                         return Ok(Some(line.to_object(py)));
                     }
                 }
@@ -492,7 +492,7 @@ fn IterableFile(py_iterable: PyObject) -> PyResult<PyObject> {
         let line_iter: Box<dyn Iterator<Item = std::io::Result<Vec<u8>>> + Send> = Box::new(
             std::iter::from_fn(move || -> Option<std::io::Result<Vec<u8>>> {
                 Python::with_gil(
-                    |py| match py_iter.cast_as::<PyIterator>(py).unwrap().next() {
+                    |py| match py_iter.downcast::<PyIterator>(py).unwrap().next() {
                         None => None,
                         Some(Err(err)) => {
                             PyErr::restore(err.clone_ref(py), py);
@@ -501,7 +501,7 @@ fn IterableFile(py_iterable: PyObject) -> PyResult<PyObject> {
                                 err.to_string(),
                             )))
                         }
-                        Some(Ok(obj)) => match obj.cast_as::<PyBytes>() {
+                        Some(Ok(obj)) => match obj.downcast::<PyBytes>() {
                             Err(err) => {
                                 PyErr::restore(
                                     PyTypeError::new_err("unable to convert to bytes"),
@@ -563,18 +563,6 @@ fn check_text_lines(py: Python, lines: &PyAny) -> PyResult<()> {
     } else {
         Ok(())
     }
-}
-
-#[pyfunction]
-fn format_delta(py: Python, delta: PyObject) -> PyResult<String> {
-    let delta = if let Ok(delta) = delta.extract::<f64>(py) {
-        delta as i64
-    } else if let Ok(delta) = delta.extract::<i64>(py) {
-        delta
-    } else {
-        return Err(PyValueError::new_err("delta must be a float or int"));
-    };
-    Ok(breezy_osutils::time::format_delta(delta))
 }
 
 #[pyfunction]
@@ -1104,7 +1092,7 @@ fn joinpath(py: Python, parts: Vec<PyObject>) -> PyResult<PathBuf> {
 
 #[pyfunction(args = "*")]
 fn pathjoin(py: Python, args: Vec<PyObject>) -> PyResult<PyObject> {
-    let return_bytes = args[0].as_ref(py).is_instance_of::<PyBytes>()?;
+    let return_bytes = args[0].as_ref(py).is_instance_of::<PyBytes>();
     let parts = args
         .into_iter()
         .map(|p| extract_osstring(py, p))
@@ -1142,9 +1130,35 @@ fn get_user_name() -> PyResult<String> {
     Ok(breezy_osutils::get_user_name())
 }
 
+#[cfg(unix)]
 #[pyfunction]
 fn is_local_pid_dead(pid: i32) -> PyResult<bool> {
-    Ok(breezy_osutils::is_local_pid_dead(pid))
+    #[cfg(unix)]
+    use nix::unistd::Pid;
+
+    Ok(breezy_osutils::is_local_pid_dead(Pid::from_raw(pid)))
+}
+
+#[pyfunction]
+fn compare_files(a: PyObject, b: PyObject) -> PyResult<bool> {
+    let a = PyFileLikeObject::with_requirements(a, true, false, false)?;
+    let b = PyFileLikeObject::with_requirements(b, true, false, false)?;
+    Ok(breezy_osutils::file::compare_files(a, b)?)
+}
+
+#[pyfunction]
+fn readlink(path: PathBuf) -> PyResult<PathBuf> {
+    path.read_link().map_err(|e| e.into())
+}
+
+#[pyfunction]
+fn getchar() -> PyResult<char> {
+    Ok(breezy_osutils::terminal::getchar()?)
+}
+
+#[pyfunction]
+fn isdir(path: PathBuf) -> PyResult<bool> {
+    Ok(breezy_osutils::file::isdir(path.as_path()))
 }
 
 #[pymodule]
@@ -1176,7 +1190,6 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(IterableFile))?;
     m.add_wrapped(wrap_pyfunction!(check_text_path))?;
     m.add_wrapped(wrap_pyfunction!(check_text_lines))?;
-    m.add_wrapped(wrap_pyfunction!(format_delta))?;
     m.add_wrapped(wrap_pyfunction!(file_iterator))?;
     m.add_wrapped(wrap_pyfunction!(
         format_date_with_offset_in_original_timezone
@@ -1249,5 +1262,9 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(splitpath))?;
     m.add_wrapped(wrap_pyfunction!(is_local_pid_dead))?;
     m.add_wrapped(wrap_pyfunction!(get_user_name))?;
+    m.add_wrapped(wrap_pyfunction!(compare_files))?;
+    m.add_wrapped(wrap_pyfunction!(readlink))?;
+    m.add_wrapped(wrap_pyfunction!(getchar))?;
+    m.add_wrapped(wrap_pyfunction!(isdir))?;
     Ok(())
 }

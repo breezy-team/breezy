@@ -21,7 +21,6 @@ import os
 import socket
 import sys
 import tempfile
-import time
 from io import BytesIO
 
 from .. import errors, osutils, tests, trace
@@ -284,42 +283,6 @@ class TestUmask(tests.TestCaseInTempDir):
 
 
 class TestDateTime(tests.TestCase):
-
-    def assertFormatedDelta(self, expected, seconds):
-        """Assert osutils.format_delta formats as expected."""
-        actual = osutils.format_delta(seconds)
-        self.assertEqual(expected, actual)
-
-    def test_format_delta(self):
-        self.assertFormatedDelta('0 seconds ago', 0)
-        self.assertFormatedDelta('1 second ago', 1)
-        self.assertFormatedDelta('10 seconds ago', 10)
-        self.assertFormatedDelta('59 seconds ago', 59)
-        self.assertFormatedDelta('89 seconds ago', 89)
-        self.assertFormatedDelta('1 minute, 30 seconds ago', 90)
-        self.assertFormatedDelta('3 minutes, 0 seconds ago', 180)
-        self.assertFormatedDelta('3 minutes, 1 second ago', 181)
-        self.assertFormatedDelta('10 minutes, 15 seconds ago', 615)
-        self.assertFormatedDelta('30 minutes, 59 seconds ago', 1859)
-        self.assertFormatedDelta('31 minutes, 0 seconds ago', 1860)
-        self.assertFormatedDelta('60 minutes, 0 seconds ago', 3600)
-        self.assertFormatedDelta('89 minutes, 59 seconds ago', 5399)
-        self.assertFormatedDelta('1 hour, 30 minutes ago', 5400)
-        self.assertFormatedDelta('2 hours, 30 minutes ago', 9017)
-        self.assertFormatedDelta('10 hours, 0 minutes ago', 36000)
-        self.assertFormatedDelta('24 hours, 0 minutes ago', 86400)
-        self.assertFormatedDelta('35 hours, 59 minutes ago', 129599)
-        self.assertFormatedDelta('36 hours, 0 minutes ago', 129600)
-        self.assertFormatedDelta('36 hours, 0 minutes ago', 129601)
-        self.assertFormatedDelta('36 hours, 1 minute ago', 129660)
-        self.assertFormatedDelta('36 hours, 1 minute ago', 129661)
-        self.assertFormatedDelta('84 hours, 10 minutes ago', 303002)
-
-        # We handle when time steps the wrong direction because computers
-        # don't have synchronized clocks.
-        self.assertFormatedDelta('84 hours, 10 minutes in the future', -303002)
-        self.assertFormatedDelta('1 second in the future', -1)
-        self.assertFormatedDelta('2 seconds in the future', -2)
 
     def test_format_date(self):
         self.assertRaises(osutils.UnsupportedTimezoneFormat,
@@ -860,7 +823,7 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
         os.chdir('a')
         # You can't rename the working directory
         # doing rename non-existant . usually
-        # just raises ENOENT, since non-existant
+        # just raises FileNotFoundError, since non-existant
         # doesn't exist.
         try:
             osutils._win32_rename('b', '.')
@@ -891,23 +854,6 @@ class TestParentDirectories(tests.TestCaseInTempDir):
         self.assertEqual(['a'], osutils.parent_directories('a/b'))
         self.assertEqual(['a/b', 'a'], osutils.parent_directories('a/b/c'))
         self.assertEqual(['a1/b2/c3', 'a1/b2', 'a1'], osutils.parent_directories('a1/b2/c3/d4'))
-
-
-class TestMacFuncsDirs(tests.TestCaseInTempDir):
-    """Test mac special functions that require directories."""
-
-    def test_getcwd(self):
-        self.requireFeature(features.UnicodeFilenameFeature)
-        os.mkdir('B\xe5gfors')
-        os.chdir('B\xe5gfors')
-        self.assertEndsWith(osutils._mac_getcwd(), 'B\xe5gfors')
-
-    def test_getcwd_nonnorm(self):
-        self.requireFeature(features.UnicodeFilenameFeature)
-        # Test that _mac_getcwd() will normalize this path
-        os.mkdir('Ba\u030agfors')
-        os.chdir('Ba\u030agfors')
-        self.assertEndsWith(osutils._mac_getcwd(), 'B\xe5gfors')
 
 
 class TestChunksToLines(tests.TestCase):
@@ -1409,8 +1355,7 @@ class TestSetUnsetEnv(tests.TestCase):
         uni_val, env_val = tests.probe_unicode_in_user_encoding()
         if uni_val is None:
             raise tests.TestSkipped(
-                'Cannot find a unicode character that works in encoding %s'
-                % (osutils.get_user_encoding(),))
+                f'Cannot find a unicode character that works in encoding {osutils.get_user_encoding()}')
 
         osutils.set_or_unset_env('BRZ_TEST_ENV_VAR', uni_val)
         self.assertEqual(uni_val, os.environ.get('BRZ_TEST_ENV_VAR'))
@@ -1458,22 +1403,6 @@ class TestShaFileByName(tests.TestCaseInTempDir):
         self.build_tree_contents([('foo', text)])
         expected_sha = osutils.sha_string(text)
         self.assertEqual(expected_sha, osutils.sha_file_by_name('foo'))
-
-
-class TestResourceLoading(tests.TestCaseInTempDir):
-
-    def test_resource_string(self):
-        # test resource in breezy
-        text = osutils.resource_string('breezy', 'debug.py')
-        self.assertContainsRe(text, "debug_flags = set()")
-        # test resource under breezy
-        text = osutils.resource_string('breezy.ui', 'text.py')
-        self.assertContainsRe(text, "class TextUIFactory")
-        # test unsupported package
-        self.assertRaises(errors.BzrError, osutils.resource_string, 'zzzz',
-                          'yyy.xx')
-        # test unknown resource
-        self.assertRaises(IOError, osutils.resource_string, 'breezy', 'yyy.xx')
 
 
 class TestDirReader(tests.TestCaseInTempDir):
@@ -1766,7 +1695,7 @@ class TestTerminalWidth(tests.TestCase):
         termios = term_ios_feature.module
         # bug 63539 is about a termios without TIOCGWINSZ attribute
         try:
-            termios.TIOCGWINSZ
+            termios.TIOCGWINSZ  # noqa: B018
         except AttributeError:
             # We won't remove TIOCGWINSZ, because it doesn't exist anyway :)
             pass
@@ -1825,8 +1754,7 @@ class TestGetuserUnicode(tests.TestCase):
         uni_val, env_val = tests.probe_unicode_in_user_encoding()
         if uni_val is None:
             raise tests.TestSkipped(
-                'Cannot find a unicode character that works in encoding %s'
-                % (osutils.get_user_encoding(),))
+                f'Cannot find a unicode character that works in encoding {osutils.get_user_encoding()}')
         uni_username = 'jrandom' + uni_val
         uni_username.encode(ue)
         self.overrideEnv(self.envvar_to_override(), uni_username)

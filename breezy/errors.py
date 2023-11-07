@@ -101,8 +101,7 @@ class BzrError(Exception):
                 return s
         except Exception as e:
             err = e
-        return 'Unprintable exception %s: dict=%r, fmt=%r, error=%r' \
-            % (self.__class__.__name__,
+        return 'Unprintable exception {}: dict={!r}, fmt={!r}, error={!r}'.format(self.__class__.__name__,
                self.__dict__,
                getattr(self, '_fmt', None),
                err)

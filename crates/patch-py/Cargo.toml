@@ -1,12 +1,12 @@
 [package]
 name = "patch-py"
-version = "3.3.3"
+version = { workspace = true }
 edition = "2018"
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = ">=0.17, <0.19", features = ["extension-module", "chrono"]}
-pyo3-file = { git = "https://github.com/omerbenamram/pyo3-file" }
+pyo3 = { workspace = true, features = ["extension-module", "chrono"]}
+pyo3-file = { workspace = true }
 breezy-patch = { path = "../patch" }

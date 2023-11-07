@@ -47,8 +47,9 @@ class TestCaseWithBrokenRevisionIndex(TestCaseWithRepository):
 
         repo = self.make_repository('broken')
         with repo.lock_write(), WriteGroup(repo):
-            inv = inventory.Inventory(revision_id=b'revision-id')
-            inv.root.revision = b'revision-id'
+            inv = inventory.Inventory(revision_id=b'revision-id', root_id=None)
+            root = inventory.InventoryDirectory(b'TREE_ROOT', "", None, b'revision-id')
+            inv.add(root)
             inv_sha1 = repo.add_inventory(b'revision-id', inv, [])
             if repo.supports_rich_root():
                 root_id = inv.root.file_id

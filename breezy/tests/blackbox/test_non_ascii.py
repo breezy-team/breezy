@@ -85,9 +85,8 @@ class TestNonAscii(tests.TestCaseWithTransport):
             mac_encoded = normal_thing.encode(fs_enc)
             if mac_encoded != encoded:
                 self.knownFailure(
-                    'Unable to roundtrip path %r on OSX filesystem'
-                    ' using encoding "%s"'
-                    % (path, fs_enc))
+                    f'Unable to roundtrip path {path!r} on OSX filesystem'
+                    f' using encoding "{fs_enc}"')
 
     def _check_can_encode_paths(self):
         fs_enc = sys.getfilesystemencoding()
@@ -97,17 +96,15 @@ class TestNonAscii(tests.TestCaseWithTransport):
         for thing in [fname, dir_name]:
             try:
                 thing.encode(fs_enc)
-            except UnicodeEncodeError:
+            except UnicodeEncodeError as err:
                 raise tests.TestSkipped(
-                    'Unable to represent path %r in filesystem encoding "%s"'
-                    % (thing, fs_enc))
+                    f'Unable to represent path {thing!r} in filesystem encoding "{fs_enc}"') from err
             try:
                 thing.encode(terminal_enc)
-            except UnicodeEncodeError:
+            except UnicodeEncodeError as err:
                 raise tests.TestSkipped(
-                    'Unable to represent path %r in terminal encoding "%s"'
-                    ' (even though it is valid in filesystem encoding "%s")'
-                    % (thing, terminal_enc, fs_enc))
+                    f'Unable to represent path {thing!r} in terminal encoding "{terminal_enc}"'
+                    f' (even though it is valid in filesystem encoding "{fs_enc}")') from err
 
     def create_base(self):
         wt = self.make_branch_and_tree('.')
@@ -263,8 +260,8 @@ class TestNonAscii(tests.TestCaseWithTransport):
         txt = self.run_bzr_decode('pull', working_dir=dirname2)
 
         expected = osutils.pathjoin(osutils.getcwd(), dirname1)
-        self.assertEqual('Using saved parent location: %s/\n'
-                         'No revisions or tags to pull.\n' % (expected,), txt)
+        self.assertEqual(f'Using saved parent location: {expected}/\n'
+                         'No revisions or tags to pull.\n', txt)
 
         self.build_tree_contents(
             [(osutils.pathjoin(dirname1, 'a'), b'and yet more\n')])

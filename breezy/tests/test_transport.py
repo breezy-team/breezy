@@ -25,8 +25,17 @@ from io import BytesIO
 import breezy.transport.trace
 
 from .. import errors, osutils, tests, transport, urlutils
-from ..transport import (FileExists, NoSuchFile, UnsupportedProtocol, chroot,
-                         fakenfs, local, memory, pathfilter, readonly)
+from ..transport import (
+    FileExists,
+    NoSuchFile,
+    UnsupportedProtocol,
+    chroot,
+    fakenfs,
+    local,
+    memory,
+    pathfilter,
+    readonly,
+)
 from ..transport.local import file_kind
 from . import features, test_server
 
@@ -1100,9 +1109,8 @@ class TestKind(tests.TestCaseInTempDir):
         # TODO: jam 20060529 Test a block device
         try:
             os.lstat('/dev/null')
-        except OSError as e:
-            if e.errno not in (errno.ENOENT,):
-                raise
+        except FileNotFoundError:
+            pass
         else:
             self.assertEqual(
                 'chardev',

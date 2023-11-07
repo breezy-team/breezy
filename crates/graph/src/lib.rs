@@ -1,3 +1,4 @@
+#![allow(clippy::if_same_then_else)]
 use std::borrow::Borrow;
 /// DIAGRAM of terminology
 ///       A
@@ -26,18 +27,17 @@ use std::hash::Hash;
 mod parents_provider;
 pub use parents_provider::{DictParentsProvider, ParentsProvider, StackedParentsProvider};
 
-pub type ParentMap<'a, K> = HashMap<&'a K, &'a Vec<K>>;
+pub type ParentMap<K> = HashMap<K, Vec<K>>;
+pub type ChildMap<K> = HashMap<K, Vec<K>>;
 
-pub fn invert_parent_map<'a, K: Hash + Eq>(
-    parent_map: &'a HashMap<impl Borrow<K>, Vec<impl Borrow<K>>>,
-) -> HashMap<&'a K, Vec<&'a K>> {
-    let mut child_map: HashMap<&'a K, Vec<&'a K>> = HashMap::new();
+pub fn invert_parent_map<K: Hash + Eq + Clone>(parent_map: &ParentMap<K>) -> ChildMap<K> {
+    let mut child_map = ChildMap::new();
     for (child, parents) in parent_map.iter() {
         for p in parents.iter() {
             child_map
-                .entry(p.borrow())
+                .entry(p.clone())
                 .or_insert_with(Vec::new)
-                .push(child.borrow());
+                .push(child.clone());
         }
     }
     child_map
@@ -55,10 +55,8 @@ pub fn invert_parent_map<'a, K: Hash + Eq>(
 ///
 /// Args:
 ///   parent_map: A dictionary mapping children to their parents
-/// REturns: Another dictionary with 'linear' chains collapsed
-pub fn collapse_linear_regions<K: Hash + Eq>(
-    parent_map: &HashMap<impl Borrow<K>, Vec<impl Borrow<K>>>,
-) -> HashMap<&K, Vec<&K>> {
+/// Returns: Another dictionary with 'linear' chains collapsed
+pub fn collapse_linear_regions<K: Hash + Eq + Clone>(parent_map: &ParentMap<K>) -> ParentMap<K> {
     // Note: this isn't a strictly minimal collapse. For example:
     //   A
     //  / \
@@ -84,24 +82,24 @@ pub fn collapse_linear_regions<K: Hash + Eq>(
     //   F
     // Will not have any nodes removed, even though you do have an
     // 'uninteresting' linear D->B and E->C
-    let mut children: HashMap<&K, Vec<&K>> = HashMap::new();
+    let mut children: HashMap<K, Vec<K>> = HashMap::new();
     for (child, parents) in parent_map.iter() {
-        children.entry(child.borrow()).or_default();
+        children.entry(child.clone()).or_default();
         for p in parents.iter() {
-            children.entry(p.borrow()).or_default().push(child.borrow());
+            children.entry(p.clone()).or_default().push(child.clone());
         }
     }
 
     let mut removed = HashSet::new();
-    let mut result: HashMap<&K, Vec<&K>> = parent_map
+    let mut result: ParentMap<K> = parent_map
         .iter()
-        .map(|(k, v)| (k.borrow(), v.iter().map(|x| x.borrow()).collect()))
+        .map(|(k, v)| (k.clone(), v.to_vec()))
         .collect();
     for node in parent_map.keys() {
         let node = node.borrow();
         let parents = result.get(node).unwrap();
         if parents.len() == 1 {
-            let parent_children = children.get(parents[0]).unwrap();
+            let parent_children = children.get(&parents[0]).unwrap();
             if parent_children.len() != 1 {
                 // This is not the only child
                 continue;
@@ -119,8 +117,8 @@ pub fn collapse_linear_regions<K: Hash + Eq>(
                 // this as a child. remove this node, and join the others together
                 let parents = parents.clone();
                 result.remove(node);
-                result.insert(node_children[0], parents.clone());
-                children.insert(parents[0], node_children.clone());
+                result.insert(node_children[0].clone(), parents.clone());
+                children.insert(parents[0].clone(), node_children.clone());
                 children.remove(node);
                 removed.insert(node);
             }

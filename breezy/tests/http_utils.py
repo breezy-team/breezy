@@ -200,7 +200,7 @@ class HTTPServerRedirecting(http_server.HttpServer):
     def redirect_to(self, host, port):
         """Redirect all requests to a specific host:port."""
         self.redirections = [('(.*)',
-                              r'http://{}:{}\1'.format(host, port),
+                              fr'http://{host}:{port}\1',
                               301)]
 
     def is_redirected(self, path):
@@ -453,14 +453,14 @@ class DigestAuthServer(AuthServer):
 
         # Recalculate the response_digest to compare with the one
         # sent by the client
-        A1 = f'{user}:{realm}:{password}'.encode('utf-8')
-        A2 = f"{command}:{auth['uri']}".encode('utf-8')
+        A1 = f'{user}:{realm}:{password}'.encode()
+        A2 = f"{command}:{auth['uri']}".encode()
 
         def H(x):
-            return hashlib.md5(x).hexdigest()
+            return hashlib.md5(x).hexdigest()  # noqa: S324
 
         def KD(secret, data):
-            return H(f"{secret}:{data}".encode('utf-8'))
+            return H(f"{secret}:{data}".encode())
 
         nonce_count = int(auth['nc'], 16)
 

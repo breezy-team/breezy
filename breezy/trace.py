@@ -164,6 +164,11 @@ def enable_default_logging():
     :return: A memento from push_log_file for restoring the log state.
     """
     brz_log_file = _open_brz_log()
+    # TODO: What should happen if we fail to open the trace file?  Maybe the
+    # objects should be pointed at /dev/null or the equivalent?  Currently
+    # returns None which will cause failures later.
+    if brz_log_file is None:
+        return None
     memento = push_log_file(brz_log_file, short=False)
     # after hooking output into brz_log, we also need to attach a stderr
     # handler, writing only at level info and with encoding
@@ -330,7 +335,7 @@ def report_exception(exc_info, err_file):
     """
     # Log the full traceback to brz.log
     log_exception_quietly()
-    if 'error' in debug.debug_flags:
+    if debug.debug_flag_enabled('error'):
         print_exception(exc_info, err_file)
         return errors.EXIT_ERROR
     exc_type, exc_object, exc_tb = exc_info
@@ -339,7 +344,7 @@ def report_exception(exc_info, err_file):
         return errors.EXIT_ERROR
     elif isinstance(exc_object, MemoryError):
         err_file.write("brz: out of memory\n")
-        if 'mem_dump' in debug.debug_flags:
+        if debug.debug_flag_enabled('mem_dump'):
             _dump_memory_usage(err_file)
         else:
             err_file.write("Use -Dmem_dump to dump memory to a file.\n")

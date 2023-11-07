@@ -18,7 +18,6 @@
 
 import inspect
 import re
-import socket
 
 from .. import controldir, errors, osutils, tests, urlutils
 
@@ -410,7 +409,7 @@ class TestErrorFormatting(tests.TestCase):
     def test_cannot_bind_address(self):
         # see <https://bugs.launchpad.net/bzr/+bug/286871>
         e = errors.CannotBindAddress('example.com', 22,
-                                     socket.error(13, 'Permission denied'))
+                                     OSError(13, 'Permission denied'))
         self.assertContainsRe(
             str(e),
             r'Cannot bind address "example\.com:22":.*Permission denied')

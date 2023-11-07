@@ -337,18 +337,12 @@ class TestSerializer(TestCase):
         self.assertEqual(props, new_rev.properties)
 
     def get_sample_inventory(self):
-        inv = Inventory(b'tree-root-321', revision_id=b'rev_outer')
-        inv.add(inventory.InventoryFile(b'file-id', 'file', b'tree-root-321'))
+        inv = Inventory(root_id=None, revision_id=b'rev_outer')
+        inv.add(inventory.InventoryDirectory(b'tree-root-321', "", None, b'rev_outer'))
+        inv.add(inventory.InventoryFile(b'file-id', 'file', b'tree-root-321', b'rev_outer', text_sha1=b'A', text_size=1))
         inv.add(inventory.InventoryDirectory(b'dir-id', 'dir',
-                                             b'tree-root-321'))
-        inv.add(inventory.InventoryLink(b'link-id', 'link', b'tree-root-321'))
-        inv.get_entry(b'tree-root-321').revision = b'rev_outer'
-        inv.get_entry(b'dir-id').revision = b'rev_outer'
-        inv.get_entry(b'file-id').revision = b'rev_outer'
-        inv.get_entry(b'file-id').text_sha1 = b'A'
-        inv.get_entry(b'file-id').text_size = 1
-        inv.get_entry(b'link-id').revision = b'rev_outer'
-        inv.get_entry(b'link-id').symlink_target = 'a'
+                                             b'tree-root-321', b'rev_outer'))
+        inv.add(inventory.InventoryLink(b'link-id', 'link', b'tree-root-321', b'rev_outer', symlink_target='a'))
         return inv
 
     def test_roundtrip_inventory_v7(self):
@@ -386,8 +380,7 @@ class TestSerializer(TestCase):
         s_v5 = breezy.bzr.xml5.inventory_serializer_v5
         s_v6 = breezy.bzr.xml6.inventory_serializer_v6
         s_v7 = xml7.inventory_serializer_v7
-        inv = Inventory(b'tree-root-321', revision_id=b'rev-outer')
-        inv.root.revision = b'root-rev'
+        inv = Inventory(b'tree-root-321', revision_id=b'rev-outer', root_revision=b'root-rev')
         inv.add(inventory.TreeReference(b'nested-id', 'nested', b'tree-root-321',
                                         b'rev-outer', b'rev-inner'))
         self.assertRaises(serializer.UnsupportedInventoryKind,

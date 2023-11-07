@@ -41,7 +41,7 @@ class IdentityMap:
         """Return the weave for 'id', or None if it is not present."""
         return self._map.get(self._weave_key(id), None)
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self._map: Dict[object, object] = {}
         self._reverse_map: Dict[object, object] = {}

@@ -17,7 +17,6 @@
 import codecs
 import errno
 import os
-import stat
 import sys
 import time
 from typing import List
@@ -33,11 +32,9 @@ import socket
 
 from breezy import (
     config,
-    trace,
     )
 """)
 
-import breezy
 
 from . import _osutils_rs, errors
 
@@ -169,11 +166,6 @@ def _win32_rename(old, new):
         raise
 
 
-def _mac_getcwd():
-    import unicodedata
-    return unicodedata.normalize('NFC', os.getcwd())
-
-
 def _rename_wrap_exception(rename_func):
     """Adds extra information to any exceptions that come from rename().
 
@@ -189,7 +181,7 @@ def _rename_wrap_exception(rename_func):
                                      f" [occurred when renaming '{old}' to '{new}']")
             detailed_error.old_filename = old
             detailed_error.new_filename = new
-            raise detailed_error
+            raise detailed_error from e
 
     return _rename_wrapper
 
@@ -242,10 +234,6 @@ if sys.platform == 'win32':
         """Replacer for shutil.rmtree: could remove readonly dirs/files."""
         return shutil.rmtree(path, ignore_errors, onerror)
 
-elif sys.platform == 'darwin':
-    getcwd = _mac_getcwd
-
-
 def get_terminal_encoding(trace=False):
     """Find the best encoding for printing to the screen.
 
@@ -290,38 +278,15 @@ def get_terminal_encoding(trace=False):
         codecs.lookup(output_encoding)
     except LookupError:
         sys.stderr.write('brz: warning:'
-                         ' unknown terminal encoding %s.\n'
-                         '  Using encoding %s instead.\n'
-                         % (output_encoding, get_user_encoding())
+                         f' unknown terminal encoding {output_encoding}.\n'
+                         f'  Using encoding {get_user_encoding()} instead.\n'
                          )
         output_encoding = get_user_encoding()
 
     return output_encoding
 
 
-def isdir(f):
-    """True if f is an accessible directory."""
-    try:
-        return stat.S_ISDIR(os.lstat(f)[stat.ST_MODE])
-    except OSError:
-        return False
-
-
-def isfile(f):
-    """True if f is a regular file."""
-    try:
-        return stat.S_ISREG(os.lstat(f)[stat.ST_MODE])
-    except OSError:
-        return False
-
-
-def islink(f):
-    """True if f is a symlink."""
-    try:
-        return stat.S_ISLNK(os.lstat(f)[stat.ST_MODE])
-    except OSError:
-        return False
-
+isdir = _osutils_rs.isdir
 is_inside = _osutils_rs.is_inside
 is_inside_any = _osutils_rs.is_inside_any
 is_inside_or_parent_of_any = _osutils_rs.is_inside_or_parent_of_any
@@ -335,54 +300,14 @@ size_sha_file = _osutils_rs.size_sha_file
 sha_file_by_name = _osutils_rs.sha_file_by_name
 sha_strings = _osutils_rs.sha_strings
 sha_string = _osutils_rs.sha_string
-
-
-def compare_files(a, b):
-    """Returns true if equal in contents."""
-    BUFSIZE = 4096
-    while True:
-        ai = a.read(BUFSIZE)
-        bi = b.read(BUFSIZE)
-        if ai != bi:
-            return False
-        if not ai:
-            return True
-
-
+compare_files = _osutils_rs.compare_files
 local_time_offset = _osutils_rs.local_time_offset
 format_date = _osutils_rs.format_date
 format_date_with_offset_in_original_timezone = _osutils_rs.format_date_with_offset_in_original_timezone
 format_local_date = _osutils_rs.format_local_date
-format_delta = _osutils_rs.format_delta
 compact_date = _osutils_rs.compact_date
 format_highres_date = _osutils_rs.format_highres_date
 unpack_highres_date = _osutils_rs.unpack_highres_date
-
-
-def filesize(f):
-    """Return size of given open file."""
-    return os.fstat(f.fileno())[stat.ST_SIZE]
-
-
-# Alias os.urandom to support platforms (which?) without /dev/urandom and
-# override if it doesn't work. Avoid checking on windows where there is
-# significant initialisation cost that can be avoided for some bzr calls.
-
-rand_bytes = os.urandom
-
-if rand_bytes.__module__ != "nt":
-    try:
-        rand_bytes(1)
-    except NotImplementedError:
-        # not well seeded, but better than nothing
-        def rand_bytes(n):
-            import random
-            s = ''
-            while n:
-                s += chr(random.randint(0, 255))
-                n -= 1
-            return s
-
 
 rand_chars = _osutils_rs.rand_chars
 
@@ -422,7 +347,8 @@ def failed_to_load_extension(exception):
     # with 10 warnings.
     exception_str = str(exception)
     if exception_str not in _extension_load_failures:
-        trace.mutter(f"failed to load compiled extension: {exception_str}")
+        from .trace import mutter
+        mutter(f"failed to load compiled extension: {exception_str}")
         _extension_load_failures.append(exception_str)
 
 
@@ -441,57 +367,24 @@ def report_extension_load_failures():
     # https://bugs.launchpad.net/bzr/+bug/430529
 
 
-from ._osutils_rs import _accessible_normalized_filename  # noqa: F401
-from ._osutils_rs import (_inaccessible_normalized_filename, check_legal_path,
-                          chunks_to_lines, chunks_to_lines_iter, get_host_name,
-                          link_or_copy, local_concurrency, normalized_filename,
-                          normalizes_filenames, split_lines)
+from ._osutils_rs import (  # noqa: F401
+    _accessible_normalized_filename,  # noqa: F401
+    _inaccessible_normalized_filename,
+    check_legal_path,
+    chunks_to_lines,  # noqa: F401
+    chunks_to_lines_iter,
+    delete_any,
+    get_host_name,  # noqa: F401
+    link_or_copy,
+    local_concurrency,
+    normalized_filename,  # noqa: F401
+    normalizes_filenames,
+    split_lines,  # noqa: F401
+)
 
-
-def delete_any(path):
-    """Delete a file, symlink or directory.
-
-    Will delete even if readonly.
-    """
-    def _delete_file_or_dir(path):
-        # Look Before You Leap (LBYL) is appropriate here instead of Easier to Ask for
-        # Forgiveness than Permission (EAFP) because:
-        # - root can damage a solaris file system by using unlink,
-        # - unlink raises different exceptions on different OSes (linux: EISDIR, win32:
-        #   EACCES, OSX: EPERM) when invoked on a directory.
-        if isdir(path):  # Takes care of symlinks
-            os.rmdir(path)
-        else:
-            os.unlink(path)
-    try:
-        _delete_file_or_dir(path)
-    except PermissionError:
-        # make writable and try again
-        try:
-            make_writable(path)
-        except PermissionError:
-            pass
-        _delete_file_or_dir(path)
-
-
-def readlink(abspath):
-    """Return a string representing the path to which the symbolic link points.
-
-    :param abspath: The link absolute unicode path.
-
-    This his guaranteed to return the symbolic link in unicode in all python
-    versions.
-    """
-    link = os.fsencode(abspath)
-    target = os.readlink(link)
-    target = os.fsdecode(target)
-    return target
-
-
+readlink = _osutils_rs.readlink
 contains_whitespace = _osutils_rs.contains_whitespace
 contains_linebreaks = _osutils_rs.contains_linebreaks
-
-
 relpath = _osutils_rs.relpath
 
 
@@ -574,8 +467,8 @@ def safe_unicode(unicode_or_utf8_string):
         return unicode_or_utf8_string
     try:
         return unicode_or_utf8_string.decode('utf8')
-    except UnicodeDecodeError:
-        raise errors.BzrBadParameterNotUnicode(unicode_or_utf8_string)
+    except UnicodeDecodeError as e:
+        raise errors.BzrBadParameterNotUnicode(unicode_or_utf8_string) from e
 
 
 def safe_utf8(unicode_or_utf8_string):
@@ -591,8 +484,8 @@ def safe_utf8(unicode_or_utf8_string):
         try:
             # Make sure it is a valid utf-8 string
             unicode_or_utf8_string.decode('utf-8')
-        except UnicodeDecodeError:
-            raise errors.BzrBadParameterNotUnicode(unicode_or_utf8_string)
+        except UnicodeDecodeError as e:
+            raise errors.BzrBadParameterNotUnicode(unicode_or_utf8_string) from e
         return unicode_or_utf8_string
     return unicode_or_utf8_string.encode('utf-8')
 
@@ -1007,7 +900,7 @@ def send_all(sock, bytes, report_activity=None):
         except OSError as e:
             if e.args[0] in _end_of_stream_errors:
                 raise ConnectionResetError(
-                    "Error trying to write to socket", e)
+                    "Error trying to write to socket", e) from e
             if e.args[0] != errno.EINTR:
                 raise
         else:
@@ -1045,57 +938,13 @@ def connect_socket(address):
 dereference_path = _osutils_rs.dereference_path
 
 
-def resource_string(package, resource_name):
-    """Load a resource from a package and return it as a string.
-
-    Note: Only packages that start with breezy are currently supported.
-
-    This is designed to be a lightweight implementation of resource
-    loading in a way which is API compatible with the same API from
-    pkg_resources. See
-    http://peak.telecommunity.com/DevCenter/PkgResources#basic-resource-access.
-    If and when pkg_resources becomes a standard library, this routine
-    can delegate to it.
-    """
-    # Check package name is within breezy
-    if package == "breezy":
-        resource_relpath = resource_name
-    elif package.startswith("breezy."):
-        package = package[len("breezy."):].replace('.', os.sep)
-        resource_relpath = pathjoin(package, resource_name)
-    else:
-        raise errors.BzrError(f'resource package {package} not in breezy')
-
-    # Map the resource to a file and read its contents
-    base = dirname(breezy.__file__)
-    if getattr(sys, 'frozen', None):    # bzr.exe
-        base = abspath(pathjoin(base, '..', '..'))
-    with open(pathjoin(base, resource_relpath)) as f:
-        return f.read()
-
-
 file_kind_from_stat_mode = _osutils_rs.kind_from_mode
 
 
 MIN_ABS_PATHLENGTH = _osutils_rs.MIN_ABS_PATHLENGTH
 
 
-if sys.platform == "win32":
-    def getchar():
-        import msvcrt
-        return msvcrt.getch()
-else:
-    def getchar():
-        import termios
-        import tty
-        fd = sys.stdin.fileno()
-        settings = termios.tcgetattr(fd)
-        try:
-            tty.setraw(fd)
-            ch = sys.stdin.read(1)
-        finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, settings)
-        return ch
+getchar = _osutils_rs.getchar
 
 
 class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
@@ -1153,7 +1002,8 @@ def fdatasync(fileno):
             # raise ENOTSUP. However, we are calling fdatasync to be helpful
             # and reduce the chance of corruption-on-powerloss situations. It
             # is not a mandatory call, so it is ok to suppress failures.
-            trace.mutter(f"ignoring error calling fdatasync: {e}")
+            from .trace import mutter
+            mutter(f"ignoring error calling fdatasync: {e}")
             if getattr(e, 'errno', None) not in _fdatasync_ignored:
                 raise
 

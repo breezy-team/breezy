@@ -20,7 +20,7 @@ import stat
 from ... import controldir
 
 
-def escape_commit_message(message):
+def escape_commit_message(message: str) -> str:
     """Replace xml-incompatible control characters."""
     # This really ought to be provided by breezy.
     # Code copied from breezy.commit.
@@ -31,9 +31,9 @@ def escape_commit_message(message):
     # (http://www.w3.org/TR/REC-xml/#NT-Char).
     import re
     message, _ = re.subn(
-        '[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
-        lambda match: match.group(0).encode('unicode_escape'),
-        message)
+        '[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',  # type: ignore
+        lambda match: match.group(0).encode('unicode_escape'),  # type: ignore
+        message)  # type: ignore
     return message
 
 
@@ -94,13 +94,13 @@ def open_destination_directory(location, format=None, verbose=True):
         contents = os.listdir(location)
         if contents:
             errors.CommandError("Destination must have a .bzr directory, "
-                                " not yet exist or be empty - files found in %s" % (location,))
+                                f" not yet exist or be empty - files found in {location}")
     else:
         try:
             os.mkdir(location)
         except OSError as ex:
             raise errors.CommandError(
-                f"Unable to create {location}: {ex}")
+                f"Unable to create {location}: {ex}") from ex
 
     # Create a repository for the nominated format.
     trace.note("Creating destination repository ...")

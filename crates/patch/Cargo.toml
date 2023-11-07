@@ -1,6 +1,6 @@
 [package]
 name = "breezy-patch"
-version = "3.3.3"
+version = { workspace = true }
 edition = "2018"
 description = "Patch invocation"
 license = "GPLv2+"

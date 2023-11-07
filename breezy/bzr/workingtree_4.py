@@ -34,7 +34,6 @@ import stat
 
 from breezy import (
     branch as _mod_branch,
-    cache_utf8,
     controldir,
     filters as _mod_filters,
     revisiontree,
@@ -46,9 +45,8 @@ from breezy.bzr import (
     )
 """)
 
-from .. import debug, errors, osutils
+from .. import cache_utf8, debug, errors, osutils, trace
 from .. import revision as _mod_revision
-from .. import trace
 from ..lock import LogicalLockResult
 from ..lockdir import LockDir
 from ..mutabletree import BadReferenceTarget, MutableTree
@@ -58,11 +56,18 @@ from ..transport.local import file_kind
 from ..tree import FileTimestampUnavailable, InterTree, MissingNestedTree
 from ..workingtree import WorkingTree
 from . import dirstate
-from .inventory import (ROOT_ID, DuplicateFileId, Inventory, InventoryEntry,
-                        entry_factory)
+from .inventory import (
+    ROOT_ID,
+    DuplicateFileId,
+    Inventory,
+    InventoryDirectory,
+    InventoryEntry,
+    InventoryFile,
+    InventoryLink,
+    TreeReference,
+)
 from .inventory_delta import InventoryDelta
-from .inventorytree import (InterInventoryTree, InventoryRevisionTree,
-                            InventoryTree)
+from .inventorytree import InterInventoryTree, InventoryRevisionTree, InventoryTree
 from .lockable_files import LockableFiles
 from .workingtree import InventoryWorkingTree, WorkingTreeFormatMetaDir
 
@@ -149,9 +154,9 @@ class DirStateWorkingTree(InventoryWorkingTree):
         with self.lock_tree_write():
             try:
                 sub_tree_path = self.relpath(sub_tree.basedir)
-            except errors.PathNotChild:
+            except errors.PathNotChild as e:
                 raise BadReferenceTarget(self, sub_tree,
-                                         'Target not inside tree.')
+                                         'Target not inside tree.') from e
             sub_tree_id = sub_tree.path2id('')
             if sub_tree_id == self.path2id(''):
                 raise BadReferenceTarget(self, sub_tree,
@@ -189,11 +194,11 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     # try for a write lock - need permission to get one anyhow
                     # to break locks.
                     state.lock_write()
-                except errors.LockContention:
+                except errors.LockContention as err:
                     # oslocks fail when a process is still live: fail.
                     # TODO: get the locked lockdir info and give to the user to
                     # assist in debugging.
-                    raise errors.LockActive(self.basedir)
+                    raise errors.LockActive(self.basedir) from err
                 else:
                     state.unlock()
         finally:
@@ -301,7 +306,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 if kinds[pos] is None:
                     kinds[pos] = self.kind(f)
 
-    def _generate_inventory(self):
+    def _generate_inventory(self) -> None:
         """Create and set self.inventory from the dirstate object.
 
         This is relatively expensive: we have to walk the entire dirstate.
@@ -318,7 +323,6 @@ class DirStateWorkingTree(InventoryWorkingTree):
         inv = Inventory(root_id=current_id)
         # Turn some things into local variables
         minikind_to_kind = dirstate.DirState._minikind_to_kind
-        factory = entry_factory
         utf8_decode = cache_utf8._utf8_decode
         # we could do this straight out of the dirstate; it might be fast
         # and should be profiled - RBC 20070216
@@ -339,30 +343,40 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 name_unicode = utf8_decode(name)[0]
                 file_id = key[2]
                 kind = minikind_to_kind[minikind]
-                inv_entry = factory[kind](file_id, name_unicode,
-                                          parent_ie.file_id)
                 if kind == 'file':
-                    # This is only needed on win32, where this is the only way
+                    # The executable bit is only needed on win32, where this is the only way
                     # we know the executable bit.
-                    inv_entry.executable = bool(executable)
-                    # not strictly needed: working tree
-                    # inv_entry.text_size = size
-                    # inv_entry.text_sha1 = sha1
+                    # the text {sha1,size} fields are optional
+                    inv_entry = InventoryFile(
+                        file_id, name_unicode, parent_ie.file_id,
+                        revision=None,
+                        executable=(executable != 0))
                 elif kind == 'directory':
+                    inv_entry = InventoryDirectory(
+                        file_id, name_unicode, parent_ie.file_id,
+                        revision=None)
                     # add this entry to the parent map.
                     parent_ies[(dirname + b'/' + name).strip(b'/')] = inv_entry
                 elif kind == 'tree-reference':
-                    inv_entry.reference_revision = link_or_sha1 or None
-                elif kind != 'symlink':
+                    inv_entry = TreeReference(
+                        file_id, name_unicode, parent_ie.file_id,
+                        revision=None,
+                        reference_revision=link_or_sha1 or None)
+                elif kind == 'symlink':
+                    inv_entry = InventoryLink(
+                        file_id, name_unicode, parent_ie.file_id,
+                        revision=None,
+                        symlink_target=utf8_decode(link_or_sha1)[0])
+                else:
                     raise AssertionError(f"unknown kind {kind!r}")
                 try:
                     inv.add(inv_entry)
-                except DuplicateFileId:
+                except DuplicateFileId as err:
                     raise AssertionError(
-                        'file_id %s already in'
-                        ' inventory as %s' % (file_id, inv.get_entry(file_id)))
-                except errors.InconsistentDelta:
-                    raise AssertionError(f'name {name_unicode!r} already in parent')
+                        f'file_id {file_id} already in'
+                        f' inventory as {inv.get_entry(file_id)}') from err
+                except errors.InconsistentDelta as err:
+                    raise AssertionError(f'name {name_unicode!r} already in parent') from err
         self._inventory = inv
 
     def _get_entry(self, file_id=None, path=None):
@@ -415,7 +429,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
 
     def _get_root_inventory(self):
         """Get the inventory for the tree. This is only valid within a lock."""
-        if 'evil' in debug.debug_flags:
+        if debug.debug_flag_enabled('evil'):
             trace.mutter_callsite(
                 2, "accessing .inventory forces a size of tree translation.")
         if self._inventory is not None:
@@ -439,26 +453,26 @@ class DirStateWorkingTree(InventoryWorkingTree):
         # referenced tree's revision is whatever's currently there
         try:
             return self.get_nested_tree(path).last_revision()
-        except MissingNestedTree:
+        except MissingNestedTree as err:
             entry = self._get_entry(path=path)
             if entry == (None, None):
-                raise NoSuchFile(self, path)
+                raise NoSuchFile(self, path) from err
             return entry[1][0][1]
 
     def get_nested_tree(self, path):
         try:
             return WorkingTree.open(self.abspath(path))
-        except errors.NotBranchError:
-            raise MissingNestedTree(path)
+        except errors.NotBranchError as err:
+            raise MissingNestedTree(path) from err
 
     def id2path(self, file_id, recurse='down'):
-        "Convert a file-id to a path."
+        """Convert a file-id to a path."""
         with self.lock_read():
             self.current_dirstate()
             entry = self._get_entry(file_id=file_id)
             if entry == (None, None):
                 if recurse == 'down':
-                    if 'evil' in debug.debug_flags:
+                    if debug.debug_flag_enabled('evil'):
                         trace.mutter_callsite(
                             2, "Tree.id2path scans all nested trees.")
                     for nested_path in self.iter_references():
@@ -758,7 +772,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     try:
                         osutils.rename(from_rel_abs, to_rel_abs)
                     except OSError as e:
-                        raise errors.BzrMoveFailedError(from_rel, to_rel, e[1])
+                        raise errors.BzrMoveFailedError(from_rel, to_rel, e[1]) from e
                     rollbacks.callback(
                         osutils.rename, to_rel_abs, from_rel_abs)
                 try:
@@ -882,12 +896,14 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 return None
             return entry[0][2]
 
-    def paths2ids(self, paths, trees=[], require_versioned=True):
+    def paths2ids(self, paths, trees=None, require_versioned=True):
         """See Tree.paths2ids().
 
         This specialisation fast-paths the case where all the trees are in the
         dirstate.
         """
+        if trees is None:
+            trees = []
         if paths is None:
             return None
         parents = self.get_parent_ids()
@@ -1748,12 +1764,12 @@ class DirStateRevisionTree(InventoryTree):
         return {p for p in paths if not pred(p)}
 
     def id2path(self, file_id, recurse='down'):
-        "Convert a file-id to a path."
+        """Convert a file-id to a path."""
         with self.lock_read():
             entry = self._get_entry(file_id=file_id)
             if entry == (None, None):
                 if recurse == 'down':
-                    if 'evil' in debug.debug_flags:
+                    if debug.debug_flag_enabled('evil'):
                         trace.mutter_callsite(
                             2, "Tree.id2path scans all nested trees.")
 
@@ -1816,8 +1832,8 @@ class DirStateRevisionTree(InventoryTree):
             path = path.encode('utf8')
         try:
             parent_index = self._get_parent_index()
-        except ValueError:
-            raise errors.NoSuchRevisionInTree(self._dirstate, self._revision_id)
+        except ValueError as err:
+            raise errors.NoSuchRevisionInTree(self._dirstate, self._revision_id) from err
         return self._dirstate._get_entry(parent_index, fileid_utf8=file_id,
                                          path_utf8=path)
 
@@ -1847,14 +1863,15 @@ class DirStateRevisionTree(InventoryTree):
         current_id = root_key[2]
         if current_entry[parent_index][0] != b'd':
             raise AssertionError()
-        inv = Inventory(root_id=current_id, revision_id=self._revision_id)
         if current_entry[parent_index][4] == b"":
-            inv.root.revision = None
+            root_revision = None
         else:
-            inv.root.revision = current_entry[parent_index][4]
+            root_revision = current_entry[parent_index][4]
+        inv = Inventory(revision_id=self._revision_id, root_id=None)
+        root = InventoryDirectory(current_id, "", None, root_revision)
+        inv.add(root)
         # Turn some things into local variables
         minikind_to_kind = dirstate.DirState._minikind_to_kind
-        factory = entry_factory
         utf8_decode = cache_utf8._utf8_decode
         # we could do this straight out of the dirstate; it might be fast
         # and should be profiled - RBC 20070216
@@ -1876,30 +1893,37 @@ class DirStateRevisionTree(InventoryTree):
                 name_unicode = utf8_decode(name)[0]
                 file_id = key[2]
                 kind = minikind_to_kind[minikind]
-                inv_entry = factory[kind](file_id, name_unicode,
-                                          parent_ie.file_id)
-                inv_entry.revision = revid
                 if kind == 'file':
-                    inv_entry.executable = bool(executable)
-                    inv_entry.text_size = size
-                    inv_entry.text_sha1 = fingerprint
+                    inv_entry = InventoryFile(
+                        file_id, name_unicode,
+                        parent_ie.file_id, revision=revid,
+                        executable=bool(executable),
+                        text_size=size, text_sha1=fingerprint)
                 elif kind == 'directory':
+                    inv_entry = InventoryDirectory(
+                        file_id, name_unicode, parent_ie.file_id, revision=revid)
+
                     parent_ies[(dirname + b'/' + name).strip(b'/')] = inv_entry
                 elif kind == 'symlink':
-                    inv_entry.symlink_target = utf8_decode(fingerprint)[0]
+                    inv_entry = InventoryLink(
+                        file_id, name_unicode, parent_ie.file_id,
+                        revision=revid,
+                        symlink_target=utf8_decode(fingerprint)[0])
                 elif kind == 'tree-reference':
-                    inv_entry.reference_revision = fingerprint or None
+                    inv_entry = TreeReference(
+                        file_id, name_unicode, parent_ie.file_id,
+                        revision=revid, reference_revision=fingerprint or None)
                 else:
                     raise AssertionError(
                         f"cannot convert entry {entry!r} into an InventoryEntry")
                 try:
                     inv.add(inv_entry)
-                except DuplicateFileId:
+                except DuplicateFileId as err:
                     raise AssertionError(
-                        'file_id %s already in'
-                        ' inventory as %s' % (file_id, inv.get_entry(file_id)))
-                except errors.InconsistentDelta:
-                    raise AssertionError(f'name {name_unicode!r} already in parent')
+                        f'file_id {file_id} already in'
+                        f' inventory as {inv.get_entry(file_id)}') from err
+                except errors.InconsistentDelta as err:
+                    raise AssertionError(f'name {name_unicode!r} already in parent') from err
         self._inventory = inv
 
     def get_file_mtime(self, path):
@@ -1918,8 +1942,8 @@ class DirStateRevisionTree(InventoryTree):
         last_changed_revision = entry[1][parent_index][4]
         try:
             rev = self._repository.get_revision(last_changed_revision)
-        except errors.NoSuchRevision:
-            raise FileTimestampUnavailable(path)
+        except errors.NoSuchRevision as err:
+            raise FileTimestampUnavailable(path) from err
         return rev.timestamp
 
     def get_file_sha1(self, path, stat_value=None):
@@ -2192,8 +2216,7 @@ class InterDirStateTree(InterInventoryTree):
     @classmethod
     def make_source_parent_tree_compiled_dirstate(klass, test_case, source,
                                                   target):
-        from .tests.test__dirstate_helpers import \
-            compiled_dirstate_helpers_feature
+        from .tests.test__dirstate_helpers import compiled_dirstate_helpers_feature
         test_case.requireFeature(compiled_dirstate_helpers_feature)
         from ._dirstate_helpers_pyx import ProcessEntryC
         result = klass.make_source_parent_tree(source, target)
@@ -2210,7 +2233,7 @@ class InterDirStateTree(InterInventoryTree):
         raise NotImplementedError
 
     def iter_changes(self, include_unchanged=False,
-                     specific_files=None, pb=None, extra_trees=[],
+                     specific_files=None, pb=None, extra_trees=None,
                      require_versioned=True, want_unversioned=False):
         """Return the changes from source to target.
 
@@ -2231,6 +2254,8 @@ class InterDirStateTree(InterInventoryTree):
             output. An unversioned file is defined as one with (False, False)
             for the versioned pair.
         """
+        if extra_trees is None:
+            extra_trees = []
         # TODO: handle extra trees in the dirstate.
         if (extra_trees or specific_files == []):
             # we can't fast-path these cases (yet)
@@ -2241,9 +2266,8 @@ class InterDirStateTree(InterInventoryTree):
         if not (self.source._revision_id in parent_ids
                 or self.source._revision_id == _mod_revision.NULL_REVISION):
             raise AssertionError(
-                "revision {%s} is not stored in {%s}, but %s "
-                "can only be used for trees stored in the dirstate"
-                % (self.source._revision_id, self.target, self.iter_changes))
+                f"revision {{{self.source._revision_id}}} is not stored in {{{self.target}}}, but {self.iter_changes} "
+                "can only be used for trees stored in the dirstate")
         target_index = 0
         if self.source._revision_id == _mod_revision.NULL_REVISION:
             source_index = None

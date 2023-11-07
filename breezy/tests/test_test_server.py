@@ -71,7 +71,7 @@ class TCPClient:
     def read(self, bufsize=4096):
         try:
             return self.sock.recv(bufsize)
-        except socket.error as e:
+        except OSError as e:
             if e.errno == errno.ECONNRESET:
                 return b""
             raise
@@ -214,7 +214,7 @@ class TestTCPServerInAThread(tests.TestCase):
 
             # We use 'request' instead of 'self' below because the test matters
             # more and we need a container to properly set connection_thread.
-            def handle_connection(request):
+            def handle_connection(request):  # noqa: N805
                 request.readline()
                 # Capture the thread and make it use 'caught' so we can wait on
                 # the event that will be set when the exception is caught. We
@@ -257,7 +257,7 @@ class TestTCPServerInAThread(tests.TestCase):
 
             # We use 'request' instead of 'self' below because the test matters
             # more and we need a container to properly set connection_thread.
-            def handle(request):
+            def handle(request):  # noqa: N805
                 # Capture the thread and make it use 'caught' so we can wait on
                 # the event that will be set when the exception is caught. We
                 # also capture the thread to know where to look.

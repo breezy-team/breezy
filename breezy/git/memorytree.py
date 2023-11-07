@@ -24,10 +24,9 @@ import stat
 from dulwich.index import index_entry_from_stat
 from dulwich.objects import Blob, Tree
 
-from breezy import errors, lock, osutils
+from breezy import errors, lock, osutils, urlutils
 from breezy import revision as _mod_revision
 from breezy import tree as _mod_tree
-from breezy import urlutils
 
 from ..transport.memory import MemoryTransport
 from .mapping import decode_git_path, encode_git_path
@@ -177,7 +176,7 @@ class GitMemoryTree(MutableGitIndexTree, _mod_tree.Tree):
             blob = Blob.from_string(self._file_transport.get_bytes(path))
         else:
             raise AssertionError('unknown type %d' % stat_val.st_mode)
-        return index_entry_from_stat(stat_val, blob.id, 0)
+        return index_entry_from_stat(stat_val, blob.id, mode=stat_val.st_mode)
 
     def get_file_with_stat(self, path):
         return (self.get_file(path), self._lstat(path))

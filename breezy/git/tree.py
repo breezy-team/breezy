@@ -23,39 +23,50 @@ import stat
 from collections import deque
 from functools import partial
 from io import BytesIO
+from typing import List, Set, Tuple, Union
 
 from dulwich.config import ConfigFile as GitConfigFile
 from dulwich.config import parse_submodules
 from dulwich.diff_tree import RenameDetector, tree_changes
 from dulwich.errors import NotTreeError
-from dulwich.index import (IndexEntry, blob_from_path_and_stat, cleanup_mode,
-                           commit_tree, index_entry_from_stat)
-from dulwich.object_store import (BaseObjectStore, OverlayObjectStore,
-                                  iter_tree_contents)
-from dulwich.objects import S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Blob, Tree
+from dulwich.index import (
+    ConflictedIndexEntry,
+    IndexEntry,
+    blob_from_path_and_stat,
+    cleanup_mode,
+    commit_tree,
+    index_entry_from_stat,
+)
+from dulwich.object_store import BaseObjectStore, OverlayObjectStore, iter_tree_contents
+from dulwich.objects import S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Blob, ObjectID, Tree
 
 from .. import controldir as _mod_controldir
-from .. import delta, errors, mutabletree, osutils, revisiontree, trace
+from .. import delta, errors, mutabletree, osutils, revisiontree, trace, urlutils
 from .. import transport as _mod_transport
 from .. import tree as _mod_tree
-from .. import urlutils
 from ..bzr.inventorytree import InventoryTreeChange
 from ..revision import CURRENT_REVISION, NULL_REVISION
 from ..transport import get_transport
 from ..transport.local import file_kind
 from ..tree import MissingNestedTree
-from .mapping import (decode_git_path, default_mapping, encode_git_path,
-                      mode_is_executable, mode_kind)
+from .mapping import (
+    decode_git_path,
+    default_mapping,
+    encode_git_path,
+    mode_is_executable,
+    mode_kind,
+)
 
 
 class GitTreeDirectory(_mod_tree.TreeDirectory):
 
-    __slots__ = ['file_id', 'name', 'parent_id']
+    __slots__ = ['file_id', 'name', 'parent_id', 'git_sha1']
 
-    def __init__(self, file_id, name, parent_id):
+    def __init__(self, file_id, name, parent_id, git_sha1=None):
         self.file_id = file_id
         self.name = name
         self.parent_id = parent_id
+        self.git_sha1 = git_sha1
 
     @property
     def kind(self):
@@ -109,8 +120,8 @@ class GitTreeFile(_mod_tree.TreeFile):
                 self.executable == other.executable)
 
     def __repr__(self):
-        return ("%s(file_id=%r, name=%r, parent_id=%r, text_size=%r, "
-                "git_sha1=%r, executable=%r)") % (
+        return ("{}(file_id={!r}, name={!r}, parent_id={!r}, text_size={!r}, "
+                "git_sha1={!r}, executable={!r})").format(
             type(self).__name__, self.file_id, self.name, self.parent_id,
             self.text_size, self.git_sha1, self.executable)
 
@@ -125,14 +136,15 @@ class GitTreeFile(_mod_tree.TreeFile):
 
 class GitTreeSymlink(_mod_tree.TreeLink):
 
-    __slots__ = ['file_id', 'name', 'parent_id', 'symlink_target']
+    __slots__ = ['file_id', 'name', 'parent_id', 'symlink_target', 'git_sha1']
 
     def __init__(self, file_id, name, parent_id,
-                 symlink_target=None):
+                 symlink_target=None, git_sha1=None):
         self.file_id = file_id
         self.name = name
         self.parent_id = parent_id
         self.symlink_target = symlink_target
+        self.git_sha1 = git_sha1
 
     @property
     def kind(self):
@@ -166,13 +178,14 @@ class GitTreeSymlink(_mod_tree.TreeLink):
 
 class GitTreeSubmodule(_mod_tree.TreeReference):
 
-    __slots__ = ['file_id', 'name', 'parent_id', 'reference_revision']
+    __slots__ = ['file_id', 'name', 'parent_id', 'reference_revision', 'git_sha1']
 
-    def __init__(self, file_id, name, parent_id, reference_revision=None):
+    def __init__(self, file_id, name, parent_id, reference_revision=None, git_sha1=None):
         self.file_id = file_id
         self.name = name
         self.parent_id = parent_id
         self.reference_revision = reference_revision
+        self.git_sha1 = git_sha1
 
     @property
     def executable(self):
@@ -183,8 +196,8 @@ class GitTreeSubmodule(_mod_tree.TreeReference):
         return 'tree-reference'
 
     def __repr__(self):
-        return ("%s(file_id=%r, name=%r, parent_id=%r, "
-                "reference_revision=%r)") % (
+        return ("{}(file_id={!r}, name={!r}, parent_id={!r}, "
+                "reference_revision={!r})").format(
             type(self).__name__, self.file_id, self.name, self.parent_id,
             self.reference_revision)
 
@@ -256,8 +269,10 @@ class GitTree(_mod_tree.Tree):
         from .transform import GitTransformPreview
         return GitTransformPreview(self, pb=pb)
 
-    def find_related_paths_across_trees(self, paths, trees=[],
+    def find_related_paths_across_trees(self, paths, trees=None,
                                         require_versioned=True):
+        if trees is None:
+            trees = []
         if paths is None:
             return None
 
@@ -329,8 +344,8 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         else:
             try:
                 commit = self.store[self.commit_id]
-            except KeyError:
-                raise errors.NoSuchRevision(repository, revision_id)
+            except KeyError as err:
+                raise errors.NoSuchRevision(repository, revision_id) from err
             self.tree = commit.tree
 
     def git_snapshot(self, want_unversioned=False):
@@ -396,8 +411,8 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         try:
             (store, unused_path, commit_id) = change_scanner.find_last_change_revision(
                 encode_git_path(path), self.commit_id)
-        except KeyError:
-            raise _mod_transport.NoSuchFile(path)
+        except KeyError as err:
+            raise _mod_transport.NoSuchFile(path) from err
         commit = store[commit_id]
         return commit.commit_time
 
@@ -443,8 +458,8 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
                 raise NotTreeError(hexsha)
             try:
                 mode, hexsha = obj[p]
-            except KeyError:
-                raise _mod_transport.NoSuchFile(path)
+            except KeyError as err:
+                raise _mod_transport.NoSuchFile(path) from err
             if S_ISGITLINK(mode) and i != len(parts) - 1:
                 store = self._get_submodule_store(b'/'.join(parts[:i + 1]))
                 hexsha = store[hexsha].tree
@@ -519,7 +534,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
                         store, child_path, name, mode, hexsha, parent_id)
                 yield (decode_git_path(child_relpath), "V", ie.kind, ie)
 
-    def _get_file_ie(self, store, path, name, mode, hexsha, parent_id):
+    def _get_file_ie(self, store, path: str, name: str, mode: int, hexsha: bytes, parent_id):
         if not isinstance(path, bytes):
             raise TypeError(path)
         if not isinstance(name, bytes):
@@ -528,7 +543,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         path = decode_git_path(path)
         name = decode_git_path(name)
         file_id = self.mapping.generate_file_id(path)
-        ie = entry_factory[kind](file_id, name, parent_id)
+        ie = entry_factory[kind](file_id, name, parent_id, git_sha1=hexsha)
         if kind == 'symlink':
             ie.symlink_target = decode_git_path(store[hexsha].data)
         elif kind == 'tree-reference':
@@ -540,12 +555,12 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
             ie.executable = mode_is_executable(mode)
         return ie
 
-    def _get_dir_ie(self, path, parent_id):
+    def _get_dir_ie(self, path, parent_id) -> GitTreeDirectory:
         path = decode_git_path(path)
         file_id = self.mapping.generate_file_id(path)
         return GitTreeDirectory(file_id, posixpath.basename(path), parent_id)
 
-    def iter_child_entries(self, path):
+    def iter_child_entries(self, path: str):
         (store, mode, tree_sha) = self._lookup_path(path)
 
         if mode is not None and not stat.S_ISDIR(mode):
@@ -1032,8 +1047,10 @@ class InterGitTrees(_mod_tree.InterTree):
                 source_extras=source_extras, target_extras=target_extras)
 
     def iter_changes(self, include_unchanged=False, specific_files=None,
-                     pb=None, extra_trees=[], require_versioned=True,
+                     pb=None, extra_trees=None, require_versioned=True,
                      want_unversioned=False):
+        if extra_trees is None:
+            extra_trees = []
         with self.lock_read():
             changes, source_extras, target_extras = self._iter_git_changes(
                 want_unchanged=include_unchanged,
@@ -1128,6 +1145,8 @@ _mod_tree.InterTree.register_optimiser(InterGitTrees)
 
 
 class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
+
+    store: BaseObjectStore
 
     def __init__(self):
         self._lock_mode = None
@@ -1284,7 +1303,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
         self.flush()
 
     def _index_add_entry(
-            self, path, kind, flags=0, reference_revision=None,
+            self, path, kind, reference_revision=None,
             symlink_target=None):
         if kind == "directory":
             # Git indexes don't contain directories
@@ -1345,7 +1364,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             trace.mutter('ignoring path with invalid newline in it: %r', path)
             return
         (index, index_path) = self._lookup_index(encoded_path)
-        index[index_path] = index_entry_from_stat(stat_val, hexsha, flags)
+        index[index_path] = index_entry_from_stat(stat_val, hexsha)
         self._index_dirty = True
         if self._versioned_dirs is not None:
             self._ensure_versioned_dir(index_path)
@@ -1361,7 +1380,13 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             if index is None:
                 index = self.index
             for path, value in index.items():
-                if S_ISGITLINK(value.mode) and recurse_nested:
+                if isinstance(value, ConflictedIndexEntry):
+                    if value.this is None:
+                        continue
+                    mode = value.this.mode
+                else:
+                    mode = value.mode
+                if S_ISGITLINK(mode) and recurse_nested:
                     subindex = self._get_submodule_index(path)
                     yield from self._recurse_index_entries(
                             index=subindex, basepath=path,
@@ -1415,34 +1440,45 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                 if entry.kind == 'tree-reference':
                     yield path
 
-    def _get_dir_ie(self, path, parent_id):
+    def _get_dir_ie(self, path: str, parent_id) -> GitTreeDirectory:
         file_id = self.path2id(path)
-        return GitTreeDirectory(file_id,
-                                posixpath.basename(path).strip("/"), parent_id)
+        return GitTreeDirectory(file_id, posixpath.basename(path).strip("/"), parent_id)
 
-    def _get_file_ie(self, name, path, value, parent_id):
+    def _get_file_ie(self, name: str, path: str, value: Union[IndexEntry, ConflictedIndexEntry], parent_id) -> Union[GitTreeSymlink, GitTreeDirectory, GitTreeFile, GitTreeSubmodule]:
         if not isinstance(name, str):
             raise TypeError(name)
         if not isinstance(path, str):
             raise TypeError(path)
-        if not isinstance(value, tuple) and not isinstance(value, IndexEntry):
+        if isinstance(value, IndexEntry):
+            mode = value.mode
+            sha = value.sha
+            size = value.size
+        elif isinstance(value, ConflictedIndexEntry):
+            if value.this is None:
+                raise _mod_transport.NoSuchFile(path)
+            mode = value.this.mode
+            sha = value.this.sha
+            size = value.this.size
+        else:
             raise TypeError(value)
         file_id = self.path2id(path)
         if not isinstance(file_id, bytes):
             raise TypeError(file_id)
-        kind = mode_kind(value.mode)
-        ie = entry_factory[kind](file_id, name, parent_id)
+        kind = mode_kind(mode)
+        ie = entry_factory[kind](file_id, name, parent_id, git_sha1=sha)
         if kind == 'symlink':
             ie.symlink_target = self.get_symlink_target(path)
         elif kind == 'tree-reference':
             ie.reference_revision = self.get_reference_revision(path)
+        elif kind == 'directory':
+            pass
         else:
-            ie.git_sha1 = value.sha
-            ie.text_size = value.size
-            ie.executable = bool(stat.S_ISREG(value.mode) and stat.S_IEXEC & value.mode)
+            ie.git_sha1 = sha
+            ie.text_size = size
+            ie.executable = bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
         return ie
 
-    def _add_missing_parent_ids(self, path, dir_ids):
+    def _add_missing_parent_ids(self, path: str, dir_ids) -> List[Tuple[str, GitTreeDirectory]]:
         if path in dir_ids:
             return []
         parent = posixpath.dirname(path).strip("/")
@@ -1575,9 +1611,9 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             if not after:
                 try:
                     self._rename_one(from_rel, to_rel)
-                except FileNotFoundError:
+                except FileNotFoundError as err:
                     raise errors.BzrMoveFailedError(
-                        from_rel, to_rel, _mod_transport.NoSuchFile(to_rel))
+                        from_rel, to_rel, _mod_transport.NoSuchFile(to_rel)) from err
             if kind != 'directory':
                 (index, from_index_path) = self._lookup_index(from_path)
                 try:
@@ -1706,14 +1742,16 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                 return True
 
 
-def snapshot_workingtree(target, want_unversioned=False):
+def snapshot_workingtree(target: MutableGitIndexTree, want_unversioned: bool = False) -> Tuple[ObjectID, Set[bytes]]:
+    """Snapshot a working tree into a tree object."""
     extras = set()
     blobs = {}
     # Report dirified directories to commit_tree first, so that they can be
     # replaced with non-empty directories if they have contents.
     dirified = []
-    trust_executable = target._supports_executable()
+    trust_executable = target._supports_executable()  # type: ignore
     for path, index_entry in target._recurse_index_entries():
+        index_entry = getattr(index_entry, 'this', index_entry)
         try:
             live_entry = target._live_entry(path)
         except FileNotFoundError:
@@ -1750,21 +1788,22 @@ def snapshot_workingtree(target, want_unversioned=False):
                         target.store.add_object(blob)
                 blobs[path] = (live_entry.sha, cleanup_mode(live_entry.mode))
     if want_unversioned:
-        for extra in target._iter_files_recursive(include_dirs=False):
+        for extra in target._iter_files_recursive(include_dirs=False):  # type: ignore
             extra, accessible = osutils.normalized_filename(extra)
             np = encode_git_path(extra)
             if np in blobs:
                 continue
-            st = target._lstat(extra)
+            st = target._lstat(extra)  # type: ignore
+            obj: Union[Tree, Blob]
             if stat.S_ISDIR(st.st_mode):
-                blob = Tree()
+                obj = Tree()
             elif stat.S_ISREG(st.st_mode) or stat.S_ISLNK(st.st_mode):
-                blob = blob_from_path_and_stat(
-                    os.fsencode(target.abspath(extra)), st)
+                obj = blob_from_path_and_stat(
+                    os.fsencode(target.abspath(extra)), st)  # type: ignore
             else:
                 continue
-            target.store.add_object(blob)
-            blobs[np] = (blob.id, cleanup_mode(st.st_mode))
+            target.store.add_object(obj)
+            blobs[np] = (obj.id, cleanup_mode(st.st_mode))
             extras.add(np)
     return commit_tree(
         target.store, dirified + [(p, s, m) for (p, (s, m)) in blobs.items()]), extras

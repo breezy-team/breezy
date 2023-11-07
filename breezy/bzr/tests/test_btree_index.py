@@ -604,7 +604,10 @@ class TestBTreeBuilder(BTreeTestCase):
 
 class TestBTreeIndex(BTreeTestCase):
 
-    def make_index(self, ref_lists=0, key_elements=1, nodes=[]):
+    def make_index(self, ref_lists=0, key_elements=1, nodes=None):
+        if nodes is None:
+            nodes = []
+
         builder = btree_index.BTreeBuilder(reference_lists=ref_lists,
                                            key_elements=key_elements)
         for key, value, references in nodes:
@@ -614,8 +617,10 @@ class TestBTreeIndex(BTreeTestCase):
         size = trans.put_file('index', stream)
         return btree_index.BTreeGraphIndex(trans, 'index', size)
 
-    def make_index_with_offset(self, ref_lists=1, key_elements=1, nodes=[],
+    def make_index_with_offset(self, ref_lists=1, key_elements=1, nodes=None,
                                offset=0):
+        if nodes is None:
+            nodes = []
         builder = btree_index.BTreeBuilder(key_elements=key_elements,
                                            reference_lists=ref_lists)
         builder.add_nodes(nodes)

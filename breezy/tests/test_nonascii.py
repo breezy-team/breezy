@@ -32,9 +32,8 @@ class NonAsciiTest(TestCaseWithTransport):
         br_dir = "\u1234"
         try:
             wt = self.make_branch_and_tree(br_dir)
-        except UnicodeEncodeError:
-            raise TestSkipped("filesystem can't accomodate nonascii names")
-            return
+        except UnicodeEncodeError as err:
+            raise TestSkipped("filesystem can't accomodate nonascii names") from err
         with open(pathjoin(br_dir, "a"), "w") as f:
             f.write("hello")
         wt.add(["a"], ids=[b"a-id"])
@@ -116,8 +115,8 @@ class NormalizedFilename(TestCaseWithTransport):
         files = [a_circle_c + '.1', a_dots_c + '.2', z_umlat_c + '.3']
         try:
             self.build_tree(files)
-        except UnicodeError:
-            raise TestSkipped("filesystem cannot create unicode files")
+        except UnicodeError as err:
+            raise TestSkipped("filesystem cannot create unicode files") from err
 
         if sys.platform == 'darwin':
             expected = sorted(
@@ -139,8 +138,8 @@ class NormalizedFilename(TestCaseWithTransport):
                  squared_c + '.4', quarter_c + '.5']
         try:
             self.build_tree(files, line_endings='native')
-        except UnicodeError:
-            raise TestSkipped("filesystem cannot create unicode files")
+        except UnicodeError as err:
+            raise TestSkipped("filesystem cannot create unicode files") from err
 
         for fname in files:
             # We should get an exception if we can't open the file at
@@ -156,8 +155,7 @@ class NormalizedFilename(TestCaseWithTransport):
                                                   os.linesep.encode('utf-8'))
                 actual = f.read()
             self.assertEqual(shouldbe, actual,
-                             'contents of %r is incorrect: %r != %r'
-                             % (path, shouldbe, actual))
+                             f'contents of {path!r} is incorrect: {shouldbe!r} != {actual!r}')
 
     def test_access_non_normalized(self):
         # Sometimes we can access non-normalized files by their normalized
@@ -166,8 +164,8 @@ class NormalizedFilename(TestCaseWithTransport):
 
         try:
             self.build_tree(files)
-        except UnicodeError:
-            raise TestSkipped("filesystem cannot create unicode files")
+        except UnicodeError as err:
+            raise TestSkipped("filesystem cannot create unicode files") from err
 
         for fname in files:
             # We should get an exception if we can't open the file at

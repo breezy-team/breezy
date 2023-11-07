@@ -22,12 +22,19 @@ from ....revision import NULL_REVISION
 from ....tests import TestCase, TestCaseWithTransport
 from ....tests.matchers import RevisionHistoryMatches
 from ....transport import NoSuchFile
-from ..rebase import (REBASE_CURRENT_REVID_FILENAME, REBASE_PLAN_FILENAME,
-                      CommitBuilderRevisionRewriter, RebaseState1,
-                      ReplaySnapshotError, WorkingTreeRevisionRewriter,
-                      generate_simple_plan, generate_transpose_plan,
-                      marshall_rebase_plan, rebase_todo,
-                      unmarshall_rebase_plan)
+from ..rebase import (
+    REBASE_CURRENT_REVID_FILENAME,
+    REBASE_PLAN_FILENAME,
+    CommitBuilderRevisionRewriter,
+    RebaseState1,
+    ReplaySnapshotError,
+    WorkingTreeRevisionRewriter,
+    generate_simple_plan,
+    generate_transpose_plan,
+    marshall_rebase_plan,
+    rebase_todo,
+    unmarshall_rebase_plan,
+)
 
 
 class RebasePlanReadWriterTests(TestCase):

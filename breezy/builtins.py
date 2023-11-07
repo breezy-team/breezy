@@ -49,8 +49,7 @@ from breezy.i18n import gettext, ngettext
 """)
 
 from .commands import Command, builtin_command_registry, display_command
-from .option import (ListOption, Option, RegistryOption, _parse_revision_str,
-                     custom_help)
+from .option import ListOption, Option, RegistryOption, _parse_revision_str, custom_help
 from .revisionspec import RevisionInfo, RevisionSpec
 from .trace import get_verbosity_level, is_quiet, mutter, note, warning
 
@@ -612,7 +611,7 @@ class cmd_revision_info(Command):
 
     @display_command
     def run(self, revision=None, directory='.', tree=False,
-            revision_info_list=[]):
+            revision_info_list=None):
         from .workingtree import WorkingTree
 
         try:
@@ -948,11 +947,11 @@ class cmd_cp(Command):
                     % (src, dst, src)) from exc
             if src_kind is None:
                 raise errors.CommandError(
-                    gettext('Could not copy %s => %s . %s is not versioned\\.'
-                            % (src, dst, src)))
+                    gettext('Could not copy %s => %s . %s is not versioned\\.') % (src, dst, src))
             if src_kind == 'directory':
                 raise errors.CommandError(
-                    gettext(f'Could not copy {src} => {dst} . {src} is a directory.'))
+                    gettext('Could not copy %s => %s . %s is a directory.') % (
+                        src, dst, src))
             dst_parent = osutils.split(dst)[0]
             if dst_parent != '':
                 try:
@@ -1389,9 +1388,9 @@ class cmd_push(Command):
                 if parent_loc:
                     raise errors.CommandError(gettext(
                         "No push location known or specified. To push to the "
-                        "parent branch (at %s), use 'brz push :parent'." %
+                        "parent branch (at %s), use 'brz push :parent'.") %
                         urlutils.unescape_for_display(parent_loc,
-                                                      self.outf.encoding)))
+                                                      self.outf.encoding))
                 else:
                     raise errors.CommandError(gettext(
                         "No push location known or specified."))
@@ -2379,8 +2378,7 @@ class cmd_diff(Command):
     def run(self, revision=None, file_list=None, diff_options=None,
             prefix=None, old=None, new=None, using=None, format=None,
             context=None, color='auto'):
-        from .diff import (get_trees_and_branches_to_diff_locked,
-                           show_diff_trees)
+        from .diff import get_trees_and_branches_to_diff_locked, show_diff_trees
 
         if prefix == '0':
             # diff -p0 format
@@ -3660,10 +3658,12 @@ class cmd_commit(Command):
 
         from .commit import PointlessCommit
         from .errors import ConflictsInTree, StrictCommitFailed
-        from .msgeditor import (edit_commit_message_encoded,
-                                generate_commit_message_template,
-                                make_commit_message_template_encoded,
-                                set_commit_message)
+        from .msgeditor import (
+            edit_commit_message_encoded,
+            generate_commit_message_template,
+            make_commit_message_template_encoded,
+            set_commit_message,
+        )
         from .workingtree import WorkingTree
 
         commit_stamp = offset = None
@@ -3707,9 +3707,8 @@ class cmd_commit(Command):
                 file_exists = False
             if file_exists:
                 warning_msg = (
-                    'The commit message is a file name: "%(f)s".\n'
-                    '(use --file "%(f)s" to take commit message from that file)'
-                    % {'f': message})
+                    f'The commit message is a file name: "{message}".\n'
+                    f'(use --file "{message}" to take commit message from that file)')
                 ui.ui_factory.show_warning(warning_msg)
             if '\r' in message:
                 message = message.replace('\r\n', '\n')
@@ -4131,6 +4130,7 @@ class cmd_selftest(Command):
     # NB: this is used from the class without creating an instance, which is
     # why it does not have a self parameter.
 
+    @staticmethod
     def get_transport_type(typestring):
         """Parse and return a transport specifier."""
         if typestring == "sftp":
@@ -6905,7 +6905,7 @@ class cmd_fetch_ghosts(Command):
 
 
 class cmd_grep(Command):
-    """Print lines matching PATTERN for specified files and revisions.
+    r"""Print lines matching PATTERN for specified files and revisions.
 
     This command searches the specified files and revisions for a given
     pattern.  The pattern is specified as a Python regular expressions[1].
@@ -6924,7 +6924,7 @@ class cmd_grep(Command):
 
     --include and --exclude options can be used to search only (or exclude
     from search) files with base name matches the specified Unix style GLOB
-    pattern.  The GLOB pattern an use *, ?, and [...] as wildcards, and \\
+    pattern.  The GLOB pattern an use *, ?, and [...] as wildcards, and \
     to quote wildcard or backslash character literally. Note that the glob
     pattern is not a regular expression.
 
@@ -7094,8 +7094,7 @@ class cmd_patch(Command):
                      Option('silent', help='Suppress chatter.')]
 
     def run(self, filename=None, strip=None, silent=False):
-        from .patch import patch_tree
-        from .workingtree import WorkingTree
+        from .workingtree import WorkingTree, patch_tree
         wt = WorkingTree.open_containing('.')[0]
         if strip is None:
             strip = 1

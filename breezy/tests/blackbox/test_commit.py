@@ -794,7 +794,7 @@ altered in u2
         else:
             with open('fed.sh', 'wb') as f:
                 f.write(b'#!/bin/sh\n')
-            os.chmod('fed.sh', 0o755)
+            os.chmod('fed.sh', 0o755)  # noqa: S103
             self.overrideEnv('BRZ_EDITOR', "./fed.sh")
 
     def setup_commit_with_template(self):

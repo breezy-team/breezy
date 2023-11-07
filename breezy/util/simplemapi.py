@@ -36,7 +36,7 @@ software, please contact me at the above email address.
 """
 
 import os
-from ctypes import *
+from ctypes import *  # noqa: F403
 
 FLAGS = c_ulong
 LHANDLE = c_ulong
@@ -91,8 +91,8 @@ class MapiRecipDesc(Structure):
     ]
 
 
-lpMapiRecipDesc = POINTER(MapiRecipDesc)
-lppMapiRecipDesc = POINTER(lpMapiRecipDesc)
+lpMapiRecipDesc = POINTER(MapiRecipDesc)  # noqa: N816
+lppMapiRecipDesc = POINTER(lpMapiRecipDesc)  # noqa: N816
 
 
 class MapiFileDesc(Structure):
@@ -106,7 +106,7 @@ class MapiFileDesc(Structure):
     ]
 
 
-lpMapiFileDesc = POINTER(MapiFileDesc)
+lpMapiFileDesc = POINTER(MapiFileDesc)  # noqa: N816
 
 
 class MapiMessage(Structure):
@@ -126,7 +126,7 @@ class MapiMessage(Structure):
     ]
 
 
-lpMapiMessage = POINTER(MapiMessage)
+lpMapiMessage = POINTER(MapiMessage)  # noqa: N816
 
 MAPI = windll.mapi32  # type: ignore
 MAPISendMail = MAPI.MAPISendMail
@@ -154,14 +154,14 @@ MAPILogoff.argtypes = (LHANDLE, c_ulong, FLAGS, c_ulong)
 class MAPIError(WindowsError):  # type: ignore
 
     def __init__(self, code):
-        WindowsError.__init__(self)  # type: ignore
+        OSError(self)  # type: ignore
         self.code = code
 
     def __str__(self):
         return 'MAPI error %d' % (self.code,)
 
 
-def _logon(profileName=None, password=None):
+def _logon(profileName=None, password=None):  # noqa: N803
     pSession = LHANDLE()
     rc = MAPILogon(0, profileName, password, MAPI_LOGON_UI, 0, byref(pSession))
     if rc != SUCCESS_SUCCESS:

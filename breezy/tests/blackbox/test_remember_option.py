@@ -77,7 +77,7 @@ class TestSendRemember(script.TestCaseWithTransportAndScript,
 
     def setUp(self):
         super().setUp()
-        self.run_script('''
+        self.run_script(f'''
             $ brz init grand_parent
             $ cd grand_parent
             $ echo grand_parent > file
@@ -89,12 +89,12 @@ class TestSendRemember(script.TestCaseWithTransportAndScript,
             $ echo parent > file
             $ brz commit -m 'parent'
             $ cd ..
-            $ brz branch parent {working_dir}
-            $ cd {working_dir}
-            $ echo {working_dir} > file
-            $ brz commit -m '{working_dir}'
+            $ brz branch parent {self.working_dir}
+            $ cd {self.working_dir}
+            $ echo {self.working_dir} > file
+            $ brz commit -m '{self.working_dir}'
             $ cd ..
-            '''.format(working_dir=self.working_dir),
+            ''',
             null_output_matches_anything=True)
 
     def setup_next_uses(self):
@@ -127,14 +127,14 @@ class TestPushRemember(script.TestCaseWithTransportAndScript,
 
     def setUp(self):
         super().setUp()
-        self.run_script('''
-            $ brz init {working_dir}
-            $ cd {working_dir}
+        self.run_script(f'''
+            $ brz init {self.working_dir}
+            $ cd {self.working_dir}
             $ echo some content > file
             $ brz add
             $ brz commit -m 'initial commit'
             $ cd ..
-            '''.format(working_dir=self.working_dir),
+            ''',
             null_output_matches_anything=True)
 
     def setup_next_uses(self):

@@ -17,9 +17,8 @@
 
 import os
 
-from breezy import branch, controldir, errors, mutabletree, osutils
+from breezy import branch, controldir, errors, mutabletree, osutils, tests, ui
 from breezy import revision as _mod_revision
-from breezy import tests, ui
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 from ...commit import CannotCommitSelectedFileMerge, PointlessCommit
@@ -94,7 +93,7 @@ class TestCommit(TestCaseWithWorkingTree):
         if tree_b.has_versioned_directories():
             self.assertEqual(3, len(conflicts))
         else:
-            self.assertEqual(2, len(conflicts))
+            self.assertEqual(1, len(conflicts))
 
         self.assertThat(
             tree_b, HasPathRelations(

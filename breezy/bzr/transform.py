@@ -23,21 +23,41 @@ import time
 from stat import S_IEXEC, S_ISREG
 from typing import Any, Dict, Optional, Set, Tuple
 
-from .. import annotate, controldir, errors, multiparent, osutils
+from .. import (
+    annotate,
+    controldir,
+    errors,
+    multiparent,
+    osutils,
+    trace,
+    tree,
+    ui,
+    urlutils,
+)
 from .. import revision as _mod_revision
-from .. import trace
 from .. import transport as _mod_transport
-from .. import tree, ui, urlutils
 from ..filters import ContentFilterContext, filtered_output_bytes
 from ..i18n import gettext
 from ..mutabletree import MutableTree
 from ..progress import ProgressPhase
-from ..transform import (ROOT_PARENT, FinalPaths, ImmortalLimbo,
-                         MalformedTransform, NoFinalPath, PreviewTree,
-                         ReusingTransform, TransformRenameFailed,
-                         TreeTransform, _FileMover, _reparent_children,
-                         _TransformResults, joinpath, new_by_entry,
-                         resolve_conflicts, unique_add)
+from ..transform import (
+    ROOT_PARENT,
+    FinalPaths,
+    ImmortalLimbo,
+    MalformedTransform,
+    NoFinalPath,
+    PreviewTree,
+    ReusingTransform,
+    TransformRenameFailed,
+    TreeTransform,
+    _FileMover,
+    _reparent_children,
+    _TransformResults,
+    joinpath,
+    new_by_entry,
+    resolve_conflicts,
+    unique_add,
+)
 from ..transport.local import file_kind
 from ..tree import find_previous_path
 from . import inventory, inventorytree
@@ -63,7 +83,7 @@ def _content_match(tree, entry, tree_path, kind, target_path):
 class TreeTransformBase(TreeTransform):
     """The base class for TreeTransform and its kin."""
 
-    def __init__(self, tree, pb=None, case_sensitive=True):
+    def __init__(self, tree, pb=None, case_sensitive: bool = True) -> None:
         """Constructor.
 
         :param tree: The tree that will be transformed, but not necessarily
@@ -367,8 +387,7 @@ class TreeTransformBase(TreeTransform):
             # Not known by the tree transform yet, check the filesystem
             return osutils.lexists(self._tree.abspath(child_path))
         else:
-            raise AssertionError('child_id is missing: %s, %s, %s'
-                                 % (name, parent_id, child_id))
+            raise AssertionError(f'child_id is missing: {name}, {parent_id}, {child_id}')
 
     def _available_backup_name(self, name, target_id):
         """Find an available backup name.
@@ -1093,7 +1112,9 @@ def iter_cook_conflicts(raw_conflicts, tt):
 class DiskTreeTransform(TreeTransformBase):
     """Tree transform storing its contents on disk."""
 
-    def __init__(self, tree, limbodir, pb=None, case_sensitive=True):
+    _deletiondir: Optional[str]
+
+    def __init__(self, tree, limbodir, pb=None, case_sensitive: bool = True) -> None:
         """Constructor.
         :param tree: The tree that will be transformed, but not necessarily
             the output tree.
@@ -1141,14 +1162,14 @@ class DiskTreeTransform(TreeTransformBase):
                     pass
             try:
                 osutils.delete_any(self._limbodir)
-            except OSError:
+            except OSError as e:
                 # We don't especially care *why* the dir is immortal.
-                raise ImmortalLimbo(self._limbodir)
+                raise ImmortalLimbo(self._limbodir) from e
             try:
                 if self._deletiondir is not None:
                     osutils.delete_any(self._deletiondir)
-            except OSError:
-                raise errors.ImmortalPendingDeletion(self._deletiondir)
+            except OSError as e:
+                raise errors.ImmortalPendingDeletion(self._deletiondir) from e
         finally:
             TreeTransformBase.finalize(self)
 
@@ -1263,8 +1284,8 @@ class DiskTreeTransform(TreeTransformBase):
         name = self._limbo_name(trans_id)
         try:
             os.link(path, name)
-        except PermissionError:
-            raise errors.HardLinkNotSupported(path)
+        except PermissionError as e:
+            raise errors.HardLinkNotSupported(path) from e
         try:
             unique_add(self._new_contents, trans_id, 'file')
         except BaseException:
@@ -1387,7 +1408,7 @@ class InventoryTreeTransform(DiskTreeTransform):
     happen.
     """
 
-    def __init__(self, tree, pb=None):
+    def __init__(self, tree, pb=None) -> None:
         """Note: a tree_write lock is taken on the tree.
 
         Use TreeTransform.finalize() to release the lock (can be omitted if
@@ -1400,15 +1421,15 @@ class InventoryTreeTransform(DiskTreeTransform):
             try:
                 osutils.ensure_empty_directory_exists(
                     limbodir)
-            except errors.DirectoryNotEmpty:
-                raise errors.ExistingLimbo(limbodir)
+            except errors.DirectoryNotEmpty as e:
+                raise errors.ExistingLimbo(limbodir) from e
             deletiondir = urlutils.local_path_from_url(
                 tree._transport.abspath('pending-deletion'))
             try:
                 osutils.ensure_empty_directory_exists(
                     deletiondir)
-            except errors.DirectoryNotEmpty:
-                raise errors.ExistingPendingDeletion(deletiondir)
+            except errors.DirectoryNotEmpty as e:
+                raise errors.ExistingPendingDeletion(deletiondir) from e
         except BaseException:
             tree.unlock()
             raise
@@ -1680,7 +1701,7 @@ class InventoryTreeTransform(DiskTreeTransform):
                     o_sha1, o_st_val = self._observed_sha1s[trans_id]
                     st = osutils.lstat(full_path)
                     self._observed_sha1s[trans_id] = (o_sha1, st)
-        for path, trans_id in new_paths:
+        for _path, trans_id in new_paths:
             # new_paths includes stuff like workingtree conflicts. Only the
             # stuff in new_contents actually comes from limbo.
             if trans_id in self._limbo_files:
@@ -1797,16 +1818,18 @@ class InventoryTreeTransform(DiskTreeTransform):
                         self.final_file_id(self._new_parent[trans_id]),
                         None, self._new_reference_revision[trans_id])
                 else:
+                    new_executability = self._new_executability.get(trans_id)
+                    kwargs = {}
+                    if new_executability is not None:
+                        kwargs["executable"] = bool(new_executability)
+
                     new_entry = inventory.make_entry(kind,
                                                      self.final_name(trans_id),
-                                                     parent_file_id, file_id)
+                                                     parent_file_id, file_id, **kwargs)
                 try:
                     old_path = self._tree.id2path(new_entry.file_id)
                 except errors.NoSuchId:
                     old_path = None
-                new_executability = self._new_executability.get(trans_id)
-                if new_executability is not None:
-                    new_entry.executable = bool(new_executability)
                 inventory_delta.append(
                     (old_path, path, new_entry.file_id, new_entry))
         return inventory_delta
@@ -1950,8 +1973,8 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         trans_id = self._transform.trans_id_file_id(file_id)
         try:
             return self._final_paths._determine_path(trans_id)
-        except NoFinalPath:
-            raise errors.NoSuchId(self, file_id)
+        except NoFinalPath as e:
+            raise errors.NoSuchId(self, file_id) from e
 
     def extras(self):
         possible_extras = {self._transform.trans_id_tree_path(p) for p
@@ -2000,7 +2023,7 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
             raise _mod_transport.NoSuchFile(path)
         todo = [(child_trans_id, trans_id) for child_trans_id in
                 self._all_children(trans_id)]
-        for entry, trans_id in self._make_inv_entries(todo):
+        for entry, _trans_id in self._make_inv_entries(todo):
             yield entry
 
     def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):

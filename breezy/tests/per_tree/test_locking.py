@@ -18,7 +18,7 @@
 
 from breezy.tests.per_tree import TestCaseWithTree
 
-from ..matchers import *
+from ..matchers import *  # noqa: F403
 
 
 class TestLocking(TestCaseWithTree):

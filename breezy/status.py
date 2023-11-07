@@ -19,9 +19,8 @@ import sys
 from . import delta as _mod_delta
 from . import errors as errors
 from . import hooks as _mod_hooks
-from . import log, osutils
+from . import log, osutils, tsort
 from . import revision as _mod_revision
-from . import tsort
 from .trace import mutter, warning
 from .workingtree import ShelvingUnsupported
 
@@ -132,13 +131,13 @@ def show_tree_status(wt,
             try:
                 old = revision[0].as_tree(wt.branch)
             except errors.NoSuchRevision as e:
-                raise errors.CommandError(str(e))
+                raise errors.CommandError(str(e)) from e
             if (len(revision) > 1) and (revision[1].spec is not None):
                 try:
                     new = revision[1].as_tree(wt.branch)
                     new_is_working_tree = False
                 except errors.NoSuchRevision as e:
-                    raise errors.CommandError(str(e))
+                    raise errors.CommandError(str(e)) from e
             else:
                 new = wt
         with old.lock_read(), new.lock_read():
@@ -308,7 +307,7 @@ def show_pending_merges(new, to_file, short=False, verbose=False):
         num, first, depth, eom = next(rev_id_iterator)
         if first != merge:
             raise AssertionError('Somehow we misunderstood how'
-                                 ' iter_topo_order works %s != %s' % (first, merge))
+                                 f' iter_topo_order works {first} != {merge}')
         for _num, sub_merge, _depth, _eom in rev_id_iterator:
             rev = revisions[sub_merge]
             if rev is None:

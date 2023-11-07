@@ -172,7 +172,7 @@ class UIFactory:
             "Not checking SSL certificate for %(host)s."),
         }
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._task_stack: List["ProgressTask"] = []
         self.suppressed_warnings: Set[str] = set()
         self._quiet = False
@@ -284,11 +284,11 @@ class UIFactory:
     def _progress_finished(self, task):
         """Called by the ProgressTask when it finishes."""
         if not self._task_stack:
-            warnings.warn(f"{task!r} finished but nothing is active")
+            warnings.warn(f"{task!r} finished but nothing is active", stacklevel=1)
         if task in self._task_stack:
             self._task_stack.remove(task)
         else:
-            warnings.warn(f"{task!r} is not in active stack {self._task_stack!r}")
+            warnings.warn(f"{task!r} is not in active stack {self._task_stack!r}", stacklevel=1)
         if not self._task_stack:
             self._progress_all_finished()
 
@@ -317,17 +317,17 @@ class UIFactory:
         except KeyError:
             fail = f"brz warning: {warning_id!r}, {message_args!r}"
             warnings.warn("no template for warning: "
-                          + fail)   # so tests will fail etc
+                          + fail, stacklevel=1)   # so tests will fail etc
             return str(fail)
         try:
             return str(template) % message_args
         except ValueError as e:
             fail = f"brz unprintable warning: {warning_id!r}, {message_args!r}, {e}"
-            warnings.warn(fail)   # so tests will fail etc
+            warnings.warn(fail, stacklevel=1)   # so tests will fail etc
             return str(fail)
 
     def choose(self, msg, choices, default=None):
-        """Prompt the user for a list of alternatives.
+        r"""Prompt the user for a list of alternatives.
 
         Args:
           msg: message to be shown as part of the prompt.
@@ -349,11 +349,11 @@ class UIFactory:
         raise NotImplementedError(self.choose)
 
     def get_boolean(self, prompt):
-        """Get a boolean question answered from the user.
+        r"""Get a boolean question answered from the user.
 
         Args:
           prompt: a message to prompt the user with. Should be a single
-            line without terminating \\n.
+            line without terminating \n.
 
         Returns:
           True or False for y/yes or n/no.
@@ -362,11 +362,11 @@ class UIFactory:
         return 0 == choice
 
     def get_integer(self, prompt):
-        """Get an integer from the user.
+        r"""Get an integer from the user.
 
         Args:
           prompt: a message to prompt the user with. Could be a multi-line
-            prompt but without a terminating \\n.
+            prompt but without a terminating \n.
 
         Returns:
           A signed integer.

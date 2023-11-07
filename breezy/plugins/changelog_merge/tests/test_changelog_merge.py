@@ -94,7 +94,9 @@ class TestMergeCoreLogic(tests.TestCase):
             [b'NEW-2', b'NEW-1', b'OLD-1'], result_entries)
 
     def test_acceptance_bug_723968(self):
-        """Merging a branch that:
+        """Acceptance test for bug 723968.
+
+        Merging a branch that:
 
          1. adds a new entry, and
          2. edits an old entry (e.g. to fix a typo or twiddle formatting)

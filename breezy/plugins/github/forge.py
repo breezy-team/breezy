@@ -21,18 +21,26 @@ import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from ... import bedding
+from ... import bedding, controldir, errors, urlutils
 from ... import branch as _mod_branch
-from ... import controldir, errors, urlutils
 from ...config import AuthenticationConfig
 from ...errors import PermissionDenied, UnexpectedHttpStatus
-from ...forge import (Forge, ForgeLoginRequired, MergeProposal,
-                      MergeProposalBuilder, MergeProposalExists, NoSuchProject,
-                      PrerequisiteBranchUnsupported, ReopenFailed,
-                      UnsupportedForge, determine_title)
+from ...forge import (
+    AutoMergeUnavailable,
+    Forge,
+    ForgeLoginRequired,
+    MergeProposal,
+    MergeProposalBuilder,
+    MergeProposalExists,
+    NoSuchProject,
+    PrerequisiteBranchUnsupported,
+    ReopenFailed,
+    UnsupportedForge,
+    determine_title,
+)
 from ...git.urls import git_url_to_bzr_url
 from ...i18n import gettext
-from ...trace import note
+from ...trace import mutter, note
 from ...transport import get_transport
 
 GITHUB_HOST = 'github.com'
@@ -193,7 +201,7 @@ class GitHubMergeProposal(MergeProposal):
         try:
             self._patch(state='open')
         except ValidationFailed as e:
-            raise ReopenFailed(e.error['errors'][0]['message'])
+            raise ReopenFailed(e.error['errors'][0]['message']) from e
 
     def close(self):
         self._patch(state='closed')
@@ -227,10 +235,12 @@ mutation ($pullRequestId: ID!) {
                 mutter('graphql errors: %r', e.errors)
                 first_error = e.errors[0]
                 if (first_error['type'] == 'UNPROCESSABLE' and
-                        first_error['path'] == 'enablePullRequestAutoMerge'):
-                    # TODO(jelmer): better exception type
-                    raise Exception(first_error['message'])
-                raise Exception(first_error['message'])
+                        first_error['path'] == ['enablePullRequestAutoMerge']):
+                    raise AutoMergeUnavailable(first_error['message']) from e
+                if (first_error['type'] == 'FORBIDDEN' and
+                        first_error['path'] == ['enablePullRequestAutoMerge']):
+                    raise PermissionDenied(path=self.get_web_url(), extra=first_error['message']) from e
+                raise Exception(first_error['message']) from e
         else:
             # https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button
             data = {}
@@ -421,7 +431,7 @@ class GitHub(Forge):
                 headers=headers, body=body, retries=3)
         except UnexpectedHttpStatus as e:
             if e.code == 401:
-                raise GitHubLoginRequired(self.base_url)
+                raise GitHubLoginRequired(self.base_url) from e
             else:
                 raise
         if response.status == 401:
@@ -623,8 +633,8 @@ class GitHub(Forge):
             project = base_repo['name']
         try:
             remote_repo = self._get_repo(owner, project)
-        except NoSuchProject:
-            raise errors.NotBranchError(f'{WEB_GITHUB_URL}/{owner}/{project}')
+        except NoSuchProject as e:
+            raise errors.NotBranchError(f'{WEB_GITHUB_URL}/{owner}/{project}') from e
         if preferred_schemes is None:
             preferred_schemes = DEFAULT_PREFERRED_SCHEMES
         for scheme in preferred_schemes:
@@ -688,8 +698,8 @@ class GitHub(Forge):
     def probe_from_url(cls, url, possible_transports=None):
         try:
             parse_github_url(url)
-        except NotGitHubUrl:
-            raise UnsupportedForge(url)
+        except NotGitHubUrl as e:
+            raise UnsupportedForge(url) from e
         transport = get_transport(
             API_GITHUB_URL, possible_transports=possible_transports)
         return cls(transport)
@@ -714,9 +724,9 @@ class GitHub(Forge):
         query.append(f'author:{author}')
         for issue in self._search_issues(query=' '.join(query)):
             def retrieve_full():
-                response = self._api_request('GET', issue['pull_request']['url'])
+                response = self._api_request('GET', issue['pull_request']['url'])  # noqa: B023
                 if response.status != 200:
-                    raise UnexpectedHttpStatus(issue['pull_request']['url'], response.status, headers=response.getheaders())
+                    raise UnexpectedHttpStatus(issue['pull_request']['url'], response.status, headers=response.getheaders())  # noqa: B023
                 return json.loads(response.text)
             yield GitHubMergeProposal(self, _LazyDict(issue['pull_request'], retrieve_full))
 
@@ -851,8 +861,8 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
                 maintainer_can_modify=allow_collaboration,
                 **kwargs
                 )
-        except ValidationFailed:
+        except ValidationFailed as e:
             # TODO(jelmer): Check the actual error message rather than assuming
             # a merge proposal exists?
-            raise MergeProposalExists(self.source_branch.user_url)
+            raise MergeProposalExists(self.source_branch.user_url) from e
         return GitHubMergeProposal(self.gh, pull_request)

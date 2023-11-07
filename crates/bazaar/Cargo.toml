@@ -1,11 +1,12 @@
 [package]
 name = "bazaar"
-version = "3.3.4"
+version = { workspace = true }
 authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@jelmer.uk>"]
 edition = "2018"
 description = "Rust implementation of the Bazaar formats and protocols"
 license = "GPL-2.0+"
 homepage = "https://www.breezy-vcs.org/"
+repository = "https://github.com/breezy-team/breezy"
 
 [lib]
 
@@ -20,6 +21,15 @@ xmltree = "0.10"
 sha1 = "0.10"
 tempfile = "3"
 log = "0.4"
+pyo3 = { version = ">=0.17", optional = true }
+crc32fast = "1.2.0"
+base64 = "0.21.0"
+maplit = "1.0.2"
+lazy-regex = "3.0.0"
 
 [target.'cfg(unix)'.dependencies]
-nix = ">= 0.26"
+nix = { workspace = true }
+
+[features]
+default = ["pyo3"]
+pyo3 = ["dep:pyo3"]

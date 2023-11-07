@@ -1,10 +1,15 @@
+#[cfg(feature = "pyo3")]
+use pyo3::{prelude::*, types::PyBytes, ToPyObject};
 use std::fmt::{Debug, Error, Formatter};
 
 pub mod bencode_serializer;
 pub mod chk_inventory;
+pub mod chk_map;
+pub mod dirstate;
 pub mod filters;
 pub mod gen_ids;
 pub mod globbing;
+pub mod groupcompress;
 pub mod hashcache;
 pub mod inventory;
 pub mod inventory_delta;
@@ -57,13 +62,30 @@ impl FileId {
         Self::from(gen_ids::gen_root_id())
     }
 
-    #[deprecated]
-    pub fn bytes(&self) -> &[u8] {
-        &self.0
-    }
-
     pub fn as_bytes(&self) -> &[u8] {
         &self.0
+    }
+}
+
+#[cfg(feature = "pyo3")]
+impl FromPyObject<'_> for FileId {
+    fn extract(ob: &PyAny) -> PyResult<Self> {
+        let s: Vec<u8> = ob.extract()?;
+        Ok(FileId::from(s))
+    }
+}
+
+#[cfg(feature = "pyo3")]
+impl ToPyObject for FileId {
+    fn to_object(&self, py: Python) -> PyObject {
+        PyBytes::new(py, &self.0).to_object(py)
+    }
+}
+
+#[cfg(feature = "pyo3")]
+impl IntoPy<PyObject> for FileId {
+    fn into_py(self, py: Python) -> PyObject {
+        PyBytes::new(py, &self.0).to_object(py)
     }
 }
 
@@ -108,6 +130,28 @@ impl From<RevisionId> for Vec<u8> {
     }
 }
 
+#[cfg(feature = "pyo3")]
+impl FromPyObject<'_> for RevisionId {
+    fn extract(ob: &PyAny) -> PyResult<Self> {
+        let s: Vec<u8> = ob.extract()?;
+        Ok(RevisionId::from(s))
+    }
+}
+
+#[cfg(feature = "pyo3")]
+impl ToPyObject for RevisionId {
+    fn to_object(&self, py: Python) -> PyObject {
+        PyBytes::new(py, &self.0).to_object(py)
+    }
+}
+
+#[cfg(feature = "pyo3")]
+impl IntoPy<PyObject> for RevisionId {
+    fn into_py(self, py: Python) -> PyObject {
+        PyBytes::new(py, &self.0).to_object(py)
+    }
+}
+
 pub const NULL_REVISION: &[u8] = b"null:";
 pub const CURRENT_REVISION: &[u8] = b"current:";
 
@@ -140,11 +184,6 @@ impl RevisionId {
 
     pub fn generate(username: &str, timestamp: Option<u64>) -> Self {
         Self::from(gen_ids::gen_revision_id(username, timestamp))
-    }
-
-    #[deprecated]
-    pub fn bytes(&self) -> &[u8] {
-        &self.0
     }
 
     pub fn as_bytes(&self) -> &[u8] {

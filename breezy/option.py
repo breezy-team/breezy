@@ -23,9 +23,8 @@ import optparse
 import re
 from typing import Callable, Dict
 
-from . import errors
+from . import errors, revisionspec
 from . import registry as _mod_registry
-from . import revisionspec
 
 
 class BadOptionValue(errors.BzrError):
@@ -37,7 +36,7 @@ class BadOptionValue(errors.BzrError):
 
 
 def _parse_revision_str(revstr):
-    """This handles a revision string -> revno.
+    r"""This handles a revision string -> revno.
 
     This always returns a list.  The list will have one element for
     each revision specifier supplied.
@@ -125,12 +124,12 @@ def get_merge_type(typestring):
     from merge import merge_types
     try:
         return merge_types[typestring][0]
-    except KeyError:
+    except KeyError as e:
         templ = '%s%%7s: %%s' % (' ' * 12)
         lines = [templ % (f[0], f[1][1]) for f in merge_types.items()]
         type_list = '\n'.join(lines)
         msg = f"No known merge type {typestring}. Supported types are:\n{type_list}"
-        raise errors.CommandError(msg)
+        raise errors.CommandError(msg) from e
 
 
 class Option:
@@ -213,23 +212,23 @@ class Option:
             help = self.help
         optargfn = self.type
         if optargfn is None:
-            parser.add_option(action='callback',
+            parser.add_option(*option_strings, action='callback',
                               callback=self._optparse_bool_callback,
                               callback_args=(True,),
-                              help=help,
-                              *option_strings)
+                              help=help)
             negation_strings = [f'--{self.get_negation_name()}']
-            parser.add_option(action='callback',
+            parser.add_option(*negation_strings,
+                              action='callback',
                               callback=self._optparse_bool_callback,
                               callback_args=(False,),
-                              help=optparse.SUPPRESS_HELP, *negation_strings)
+                              help=optparse.SUPPRESS_HELP)
         else:
-            parser.add_option(action='callback',
+            parser.add_option(*option_strings,
+                              action='callback',
                               callback=self._optparse_callback,
                               type='string', metavar=self.argname.upper(),
                               help=help,
-                              default=OptionParser.DEFAULT_VALUE,
-                              *option_strings)
+                              default=OptionParser.DEFAULT_VALUE)
 
     def _optparse_bool_callback(self, option, opt_str, value, parser, bool_v):
         setattr(parser.values, self._param_name, bool_v)
@@ -239,9 +238,9 @@ class Option:
     def _optparse_callback(self, option, opt, value, parser):
         try:
             v = self.type(value)
-        except ValueError:
+        except ValueError as e:
             raise optparse.OptionValueError(
-                f'invalid value for option {option}: {value}')
+                f'invalid value for option {option}: {value}') from e
         setattr(parser.values, self._param_name, v)
         if self.custom_callback is not None:
             self.custom_callback(option, self.name, v, parser)
@@ -276,11 +275,11 @@ class ListOption(Option):
         option_strings = [f'--{self.name}']
         if short_name is not None:
             option_strings.append(f'-{short_name}')
-        parser.add_option(action='callback',
+        parser.add_option(*option_strings,
+                          action='callback',
                           callback=self._optparse_callback,
                           type='string', metavar=self.argname.upper(),
-                          help=self.help, dest=self._param_name, default=[],
-                          *option_strings)
+                          help=self.help, dest=self._param_name, default=[])
 
     def _optparse_callback(self, option, opt, value, parser):
         values = getattr(parser.values, self._param_name)
@@ -404,10 +403,9 @@ class RegistryOption(Option):
                 if (self.short_value_switches and
                         key in self.short_value_switches):
                     option_strings.append(f'-{self.short_value_switches[key]}')
-                parser.add_option(action='callback',
+                parser.add_option(*option_strings, action='callback',
                                   callback=self._optparse_value_callback(key),
-                                  help=help,
-                                  *option_strings)
+                                  help=help)
 
     def _optparse_value_callback(self, cb_value):
         def cb(option, opt, value, parser):
@@ -583,6 +581,6 @@ _global_option('timezone',
                type=str,
                help='Display timezone as local, original, or utc.')
 
-diff_writer_registry = _mod_registry.Registry[str, Callable]()
+diff_writer_registry = _mod_registry.Registry[str, Callable, None]()
 diff_writer_registry.register('plain', lambda x: x, 'Plaintext diff output.')
 diff_writer_registry.default_key = 'plain'

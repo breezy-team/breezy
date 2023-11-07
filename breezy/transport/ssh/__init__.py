@@ -41,11 +41,11 @@ class StrangeHostname(errors.BzrError):
     _fmt = "Refusing to connect to strange SSH hostname %(hostname)s"
 
 
-class SSHVendorManager(registry.Registry[str, "SSHVendor"]):
+class SSHVendorManager(registry.Registry[str, "SSHVendor", None]):
     """Manager for manage SSH vendors."""
 
     def __init__(self):
-        super(SSHVendorManager, self).__init__()
+        super().__init__()
         self._cached_ssh_vendor = None
 
     def clear_cache(self):
@@ -57,10 +57,10 @@ class SSHVendorManager(registry.Registry[str, "SSHVendor"]):
         if vendor_name is not None:
             try:
                 vendor = self.get(vendor_name)
-            except KeyError:
+            except KeyError as err:
                 vendor = self._get_vendor_from_path(vendor_name)
                 if vendor is None:
-                    raise errors.UnknownSSH(vendor_name)
+                    raise errors.UnknownSSH(vendor_name) from err
                 vendor.executable_path = vendor_name
             return vendor
         return None

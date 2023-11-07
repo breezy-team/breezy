@@ -77,10 +77,15 @@ from ..errors import RevisionAlreadyPresent, RevisionNotPresent
 from ..osutils import dirname, sha_strings
 from ..revision import NULL_REVISION
 from ..trace import mutter
-from .versionedfile import (AbsentContentFactory, ContentFactory,
-                            ExistingContent, UnavailableRepresentation,
-                            VersionedFile, adapter_registry,
-                            sort_groupcompress)
+from .versionedfile import (
+    AbsentContentFactory,
+    ContentFactory,
+    ExistingContent,
+    UnavailableRepresentation,
+    VersionedFile,
+    adapter_registry,
+    sort_groupcompress,
+)
 from .weavefile import _read_weave_v5, write_weave_v5
 
 
@@ -338,8 +343,8 @@ class Weave(VersionedFile):
             self.check_not_reserved_id(name)
         try:
             return self._name_map[name]
-        except KeyError:
-            raise RevisionNotPresent(name, self._weave_name)
+        except KeyError as e:
+            raise RevisionNotPresent(name, self._weave_name) from e
 
     def versions(self):
         """See VersionedFile.versions."""
@@ -591,8 +596,8 @@ class Weave(VersionedFile):
         for i in indexes:
             try:
                 self._parents[i]
-            except IndexError:
-                raise IndexError(f"invalid version number {i!r}")
+            except IndexError as err:
+                raise IndexError(f"invalid version number {i!r}") from err
 
     def _compatible_parents(self, my_parents, other_parents):
         """During join check that other_parents are joinable with my_parents.
@@ -804,8 +809,7 @@ class Weave(VersionedFile):
         measured_sha1 = sha_strings(result)
         if measured_sha1 != expected_sha1:
             raise WeaveInvalidChecksum(
-                'file %s, revision %s, expected: %s, measured %s'
-                % (self._weave_name, version_id,
+                'file {}, revision {}, expected: {}, measured {}'.format(self._weave_name, version_id,
                    expected_sha1, measured_sha1))
         return result
 
@@ -844,7 +848,7 @@ class Weave(VersionedFile):
             # For creating the ancestry, IntSet is much faster (3.7s vs 0.17s)
             # The problem is that set membership is much more expensive
             name = self._idx_to_name(i)
-            sha1s[name] = hashlib.sha1()
+            sha1s[name] = hashlib.sha1()  # noqa: S324
             texts[name] = []
             new_inc = {name}
             for p in self._parents[i]:
@@ -881,9 +885,8 @@ class Weave(VersionedFile):
             expected = self._sha1s[i]
             if hd != expected:
                 raise WeaveInvalidChecksum(
-                    "mismatched sha1 for version %s: "
-                    "got %s, expected %s"
-                    % (version, hd, expected))
+                    f"mismatched sha1 for version {version}: "
+                    f"got {hd}, expected {expected}")
 
         # TODO: check insertions are properly nested, that there are
         # no lines outside of insertion blocks, that deletions are
@@ -896,8 +899,7 @@ class Weave(VersionedFile):
             parent_name = other._names[parent_idx]
             if parent_name not in self._name_map:
                 # should not be possible
-                raise WeaveError("missing parent {%s} of {%s} in %r"
-                                 % (parent_name, other._name_map[other_idx], self))
+                raise WeaveError(f"missing parent {{{parent_name}}} of {{{other._name_map[other_idx]}}} in {self!r}")
             new_parents.append(self._name_map[parent_name])
         return new_parents
 
@@ -925,7 +927,7 @@ class Weave(VersionedFile):
             if not self._compatible_parents(n1, n2):
                 raise WeaveParentMismatch(
                     "inconsistent parents "
-                    "for version {%s}: %s vs %s" % (name, n1, n2))
+                    f"for version {{{name}}}: {n1} vs {n2}")
             else:
                 return True         # ok!
         else:

@@ -20,8 +20,13 @@ import sys
 
 from dulwich.object_store import MissingObjectFinder, peel_sha
 from dulwich.protocol import Protocol
-from dulwich.server import (Backend, BackendRepo, ReceivePackHandler,
-                            TCPGitServer, UploadPackHandler)
+from dulwich.server import (
+    Backend,
+    BackendRepo,
+    ReceivePackHandler,
+    TCPGitServer,
+    UploadPackHandler,
+)
 
 from .. import errors, trace
 from ..controldir import ControlDir
@@ -103,8 +108,7 @@ def serve_git(transport, host=None, port=None, inet=False, timeout=None):
 
 
 def git_http_hook(branch, method, path):
-    from dulwich.web import (DEFAULT_HANDLERS, HTTPGitApplication,
-                             HTTPGitRequest)
+    from dulwich.web import DEFAULT_HANDLERS, HTTPGitApplication, HTTPGitRequest
     handler = None
     for (smethod, spath) in HTTPGitApplication.services:
         if smethod != method:

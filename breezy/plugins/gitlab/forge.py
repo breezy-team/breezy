@@ -23,14 +23,20 @@ import time
 from datetime import datetime
 from typing import Optional
 
-from ... import bedding
+from ... import bedding, controldir, errors, urlutils
 from ... import branch as _mod_branch
-from ... import controldir, errors, urlutils
-from ...forge import (Forge, ForgeLoginRequired, MergeProposal,
-                      MergeProposalBuilder, MergeProposalExists, NoSuchProject,
-                      PrerequisiteBranchUnsupported,
-                      SourceNotDerivedFromTarget, UnsupportedForge,
-                      determine_title)
+from ...forge import (
+    Forge,
+    ForgeLoginRequired,
+    MergeProposal,
+    MergeProposalBuilder,
+    MergeProposalExists,
+    NoSuchProject,
+    PrerequisiteBranchUnsupported,
+    SourceNotDerivedFromTarget,
+    UnsupportedForge,
+    determine_title,
+)
 from ...git.urls import git_url_to_bzr_url
 from ...trace import mutter
 from ...transport import get_transport
@@ -159,6 +165,7 @@ def store_gitlab_token(name, url, private_token):
     from ...config import AuthenticationConfig
     auth_config = AuthenticationConfig()
     auth_config._set_option(name, 'url', url)
+    auth_config._set_option(name, 'forge', 'gitlab')
     auth_config._set_option(name, 'private_token', private_token)
 
 
@@ -169,17 +176,25 @@ def iter_tokens():
         [os.path.expanduser(p) for p in _DEFAULT_FILES] +
         # backwards compatibility
         [os.path.join(bedding.config_dir(), 'gitlab.conf')])
-    yield from config.items()
+    for name, creds in config.items():
+        if 'url' not in creds:
+            continue
+        yield name, creds
 
     from ...config import AuthenticationConfig
     auth_config = AuthenticationConfig()
-    yield from auth_config._get_config().iteritems()
+    for name, creds in auth_config._get_config().iteritems():
+        if creds.get("forge") == "gitlab":
+            yield name, creds
+        else:
+            url = creds.get("url")
+            # Hack for those without forge set
+            if url and url.startswith('https://gitlab.com/'):
+                yield name, creds
 
 
 def get_credentials_by_url(url):
     for _name, credentials in iter_tokens():
-        if 'url' not in credentials:
-            continue
         if credentials['url'].rstrip('/') == url.rstrip('/'):
             return credentials
     else:
@@ -558,7 +573,7 @@ class GitLab(Forge):
             parameters['page'] = page
             response = self._api_request(
                 'GET', path + '?' +
-                '&'.join(['%s=%s' % item for item in parameters.items()]))
+                '&'.join(['{}={}'.format(*item) for item in parameters.items()]))
             if response.status == 403:
                 raise errors.PermissionDenied(response.text)
             if response.status != 200:
@@ -712,8 +727,8 @@ class GitLab(Forge):
             project = self._get_project(base_project)['path']
         try:
             target_project = self._get_project(f'{owner}/{project}')
-        except NoSuchProject:
-            raise errors.NotBranchError(f'{self.base_url}/{owner}/{project}')
+        except NoSuchProject as e:
+            raise errors.NotBranchError(f'{self.base_url}/{owner}/{project}') from e
         if preferred_schemes is None:
             preferred_schemes = ['git+ssh']
         for scheme in preferred_schemes:
@@ -765,7 +780,7 @@ class GitLab(Forge):
             response = self._api_request('GET', 'user')
         except errors.UnexpectedHttpStatus as e:
             if e.code == 401:
-                raise GitLabLoginMissing(self.base_url)
+                raise GitLabLoginMissing(self.base_url) from e
             raise
         if response.status == 200:
             self._current_user = json.loads(response.data)
@@ -796,8 +811,8 @@ class GitLab(Forge):
     def probe_from_url(cls, url, possible_transports=None):
         try:
             (host, project) = parse_gitlab_url(url)
-        except NotGitLabUrl:
-            raise UnsupportedForge(url)
+        except NotGitLabUrl as e:
+            raise UnsupportedForge(url) from e
         transport = get_transport(
             f'https://{host}', possible_transports=possible_transports)
         credentials = get_credentials_by_url(transport.base)
@@ -808,11 +823,11 @@ class GitLab(Forge):
         try:
             resp = transport.request(
                 'GET', f"https://{host}/api/v4/projects/{urlutils.quote(str(project), '')}")
-        except errors.UnexpectedHttpStatus:
-            raise UnsupportedForge(url)
-        except errors.RedirectRequested:
+        except errors.UnexpectedHttpStatus as e:
+            raise UnsupportedForge(url) from e
+        except errors.RedirectRequested as e:
             # GitLab doesn't send redirects for these URLs
-            raise UnsupportedForge(url)
+            raise UnsupportedForge(url) from e
         else:
             if not resp.getheader('X-Gitlab-Feature-Category'):
                 raise UnsupportedForge(url)
@@ -823,8 +838,6 @@ class GitLab(Forge):
     @classmethod
     def iter_instances(cls):
         for _name, credentials in iter_tokens():
-            if 'url' not in credentials:
-                continue
             yield cls(
                 get_transport(credentials['url']),
                 private_token=credentials.get('private_token'))
@@ -848,13 +861,13 @@ class GitLab(Forge):
     def get_proposal_by_url(self, url: str) -> GitLabMergeProposal:
         try:
             (host, project, merge_id) = parse_gitlab_merge_request_url(url)
-        except NotGitLabUrl:
-            raise UnsupportedForge(url)
+        except NotGitLabUrl as e:
+            raise UnsupportedForge(url) from e
         except NotMergeRequestUrl as e:
             if self.base_hostname == e.host:
                 raise
             else:
-                raise UnsupportedForge(url)
+                raise UnsupportedForge(url) from e
         if self.base_hostname != host:
             raise UnsupportedForge(url)
         project = self._get_project(project)
@@ -946,7 +959,7 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
             if e.error == [
                     "Source project is not a fork of the target project"]:
                 raise SourceNotDerivedFromTarget(
-                    self.source_branch, self.target_branch)
+                    self.source_branch, self.target_branch) from e
             raise
         return GitLabMergeProposal(self.gl, merge_request)
 

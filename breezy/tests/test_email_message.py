@@ -47,22 +47,22 @@ SIMPLE_MESSAGE_8BIT = _SIMPLE_MESSAGE % ('8-bit', 'base64', 'YvRkeQ==\n')
 
 BOUNDARY = '=====123456=='
 
-_MULTIPART_HEAD = '''\
-Content-Type: multipart/mixed; boundary="{boundary}"
+_MULTIPART_HEAD = f'''\
+Content-Type: multipart/mixed; boundary="{BOUNDARY}"
 MIME-Version: 1.0
 From: from@from.com
 Subject: subject
 To: to@to.com
-User-Agent: Bazaar ({version})
+User-Agent: Bazaar ({_breezy_version})
 
---{boundary}
+--{BOUNDARY}
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 Content-Disposition: inline
 
 body
-'''.format(version=_breezy_version, boundary=BOUNDARY)
+'''
 
 
 def simple_multipart_message():
@@ -71,10 +71,10 @@ def simple_multipart_message():
 
 
 def complex_multipart_message(typ):
-    msg = _MULTIPART_HEAD + '''\
---%(boundary)s
+    msg = _MULTIPART_HEAD + f'''\
+--{BOUNDARY}
 MIME-Version: 1.0
-Content-Type: text/%%s; charset="us-ascii"; name="lines.txt"
+Content-Type: text/%s; charset="us-ascii"; name="lines.txt"
 Content-Transfer-Encoding: 7bit
 Content-Disposition: inline
 
@@ -84,8 +84,8 @@ c
 d
 e
 
---%(boundary)s--
-''' % {'boundary': BOUNDARY}
+--{BOUNDARY}--
+'''
     return msg % (typ,)
 
 

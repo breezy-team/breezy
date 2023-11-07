@@ -18,15 +18,17 @@ __docformat__ = "google"
 
 import contextlib
 import itertools
-from typing import (TYPE_CHECKING, Dict, List, Optional, TextIO, Tuple, Union,
-                    cast)
+from typing import TYPE_CHECKING, Dict, List, Optional, TextIO, Tuple, Union, cast
 
 from . import config as _mod_config
-from . import debug, errors, registry, repository
+from . import debug, errors, registry, repository, urlutils
 from . import revision as _mod_revision
-from . import urlutils
-from .controldir import (ControlComponent, ControlComponentFormat,
-                         ControlComponentFormatRegistry, ControlDir)
+from .controldir import (
+    ControlComponent,
+    ControlComponentFormat,
+    ControlComponentFormatRegistry,
+    ControlDir,
+)
 from .hooks import Hooks
 from .inter import InterObject
 from .lock import LogicalLockResult
@@ -287,7 +289,7 @@ class Branch(ControlComponent):
 
     def _lefthand_history(self, revision_id, last_rev=None,
                           other_branch=None):
-        if 'evil' in debug.debug_flags:
+        if debug.debug_flag_enabled('evil'):
             mutter_callsite(4, "_lefthand_history scales with history.")
         # stop_revision must be a descendant of last_revision
         graph = self.repository.get_graph()
@@ -414,7 +416,7 @@ class Branch(ControlComponent):
         Returns: A dictionary mapping revision_id => dotted revno.
             This dictionary should not be modified by the caller.
         """
-        if 'evil' in debug.debug_flags:
+        if debug.debug_flag_enabled('evil'):
             mutter_callsite(
                 3, "get_revision_id_to_revno_map scales with ancestry.")
         with self.lock_read():
@@ -681,6 +683,7 @@ class Branch(ControlComponent):
           stop_revision: What revision to stop at (None for at the end
                               of the branch.
           limit: Optional rough limit of revisions to fetch
+          lossy: Whether to allow lossy fetching
         Returns: None
         """
         with self.lock_write():
@@ -714,6 +717,7 @@ class Branch(ControlComponent):
           revision_id: Optional revision id.
           lossy: Whether to discard data that can not be natively
             represented, when pushing to a foreign VCS
+          config_stack: Optional configuration stack to use.
         """
         if config_stack is None:
             config_stack = self.get_config_stack()
@@ -857,7 +861,7 @@ class Branch(ControlComponent):
         raise NotImplementedError(self._gen_revision_history)
 
     def _revision_history(self) -> List[RevisionID]:
-        if 'evil' in debug.debug_flags:
+        if debug.debug_flag_enabled('evil'):
             mutter_callsite(3, "revision_history scales with history.")
         if self._revision_history_cache is not None:
             history = self._revision_history_cache
@@ -1211,8 +1215,7 @@ class Branch(ControlComponent):
             actual_revno = refs[('lefthand-distance', last_revision_id)]
             if actual_revno != last_revno:
                 result.errors.append(errors.BzrCheckError(
-                    'revno does not match len(mainline) {} != {}'.format(
-                        last_revno, actual_revno)))
+                    f'revno does not match len(mainline) {last_revno} != {actual_revno}'))
             # TODO: We should probably also check that self.revision_history
             # matches the repository for older branch formats.
             # If looking for the code that cross-checks repository parents
@@ -1242,6 +1245,8 @@ class Branch(ControlComponent):
           create_prefix: Create any missing directories leading up to
             to_transport.
           use_existing_dir: Use an existing directory if one exists.
+          no_tree: If True, don't create tree
+          tag_selector: Optional callback that receives a tag name
         """
         # XXX: Fix the bzrdir API to allow getting the branch back from the
         # clone call. Or something. 20090224 RBC/spiv.
@@ -1482,7 +1487,10 @@ class BranchFormat(ControlComponentFormat):
         """Create a branch of this format in controldir.
 
         Args:
+          controldir: The controldir to create the branch in.
+          repository: Optional repository that already exists
           name: Name of the colocated branch to create.
+          append_revisions_only: If True, the branch only allow appending revisions
         """
         raise NotImplementedError(self.initialize)
 
@@ -1526,11 +1534,13 @@ class BranchFormat(ControlComponentFormat):
 
         Args:
           controldir: A ControlDir that contains a branch.
+          found_repository: Previously found repository in controldir
           name: Name of colocated branch to open
           _found: a private parameter, do not use it. It is used to
             indicate if format probing has already be done.
           ignore_fallbacks: when set, no fallback branches will be opened
             (if there are any).  Default is to open fallbacks.
+          possible_transports: a list of transports that may be reused
         """
         raise NotImplementedError(self.open)
 
@@ -1815,7 +1825,7 @@ class BranchFormatRegistry(ControlComponentFormatRegistry):
         self._default_format = None
 
 
-network_format_registry = registry.FormatRegistry[BranchFormat]()
+network_format_registry = registry.FormatRegistry[BranchFormat, None]()
 """Registry of formats indexed by their network name.
 
 The network name for a branch format is an identifier that can be used when
@@ -2040,6 +2050,7 @@ class InterBranch(InterObject[Branch]):
         Args:
           stop_revision: Last revision to fetch
           limit: Optional rough limit of revisions to fetch
+          lossy: If True, allow lossy fetches
         Returns: FetchResult object
         """
         raise NotImplementedError(self.fetch)

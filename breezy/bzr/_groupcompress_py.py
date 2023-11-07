@@ -21,7 +21,10 @@ useless stuff.
 """
 
 from .. import osutils
-from ._groupcompress_rs import encode_base128_int, encode_copy_instruction
+from .._bzr_rs import groupcompress as _groupcompress_rs
+
+encode_base128_int = _groupcompress_rs.encode_base128_int
+encode_copy_instruction = _groupcompress_rs.encode_copy_instruction
 
 
 class _OutputHandler:
@@ -37,7 +40,7 @@ class _OutputHandler:
     def add_copy(self, start_byte, end_byte):
         # The data stream allows >64kB in a copy, but to match the compiled
         # code, we will also limit it to a 64kB copy
-        for start_byte in range(start_byte, end_byte, 64 * 1024):
+        for start_byte in range(start_byte, end_byte, 64 * 1024):  # noqa: B020
             num_bytes = min(64 * 1024, end_byte - start_byte)
             copy_bytes = encode_copy_instruction(start_byte, num_bytes)
             self.out_lines.append(copy_bytes)

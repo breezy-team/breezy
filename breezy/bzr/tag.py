@@ -44,8 +44,8 @@ class BasicTags(Tags):
         td = self.get_tag_dict()
         try:
             return td[tag_name]
-        except KeyError:
-            raise errors.NoSuchTag(tag_name)
+        except KeyError as e:
+            raise errors.NoSuchTag(tag_name) from e
 
     def get_tag_dict(self):
         with self.branch.lock_read():
@@ -53,10 +53,9 @@ class BasicTags(Tags):
                 tag_content = self.branch._get_tags_bytes()
             except _mod_transport.NoSuchFile:
                 # ugly, but only abentley should see this :)
-                trace.warning('No branch/tags file in %s.  '
+                trace.warning(f'No branch/tags file in {self.branch}.  '
                               'This branch was probably created by bzr 0.15pre.  '
-                              'Create an empty file to silence this message.'
-                              % (self.branch, ))
+                              'Create an empty file to silence this message.')
                 return {}
             return self._deserialize_tag_dict(tag_content)
 
@@ -66,8 +65,8 @@ class BasicTags(Tags):
             d = self.get_tag_dict()
             try:
                 del d[tag_name]
-            except KeyError:
-                raise errors.NoSuchTag(tag_name)
+            except KeyError as e:
+                raise errors.NoSuchTag(tag_name) from e
             master = self.branch.get_master_branch()
             if master is not None:
                 try:
@@ -103,5 +102,4 @@ class BasicTags(Tags):
                 r[k.decode('utf-8')] = v
             return r
         except ValueError as e:
-            raise ValueError("failed to deserialize tag dictionary %r: %s"
-                             % (tag_content, e))
+            raise ValueError(f"failed to deserialize tag dictionary {tag_content!r}: {e}") from e

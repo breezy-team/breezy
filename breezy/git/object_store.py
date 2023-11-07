@@ -19,11 +19,10 @@
 
 import posixpath
 import stat
-from typing import Dict, Iterable, Iterator, List
+from typing import Dict, Iterable, Iterator, List, Tuple
 
 from dulwich.object_store import BaseObjectStore
-from dulwich.objects import (ZERO_SHA, Blob, Commit, ObjectID, ShaFile, Tree,
-                             sha_to_hex)
+from dulwich.objects import ZERO_SHA, Blob, Commit, ObjectID, ShaFile, Tree, sha_to_hex
 from dulwich.pack import Pack, PackData, pack_objects_to_data
 
 from .. import errors, lru_cache, osutils, trace, ui
@@ -32,8 +31,14 @@ from ..lock import LogicalLockResult
 from ..revision import NULL_REVISION
 from ..tree import InterTree
 from .cache import from_repository as cache_from_repository
-from .mapping import (default_mapping, encode_git_path, entry_mode,
-                      extract_unusual_modes, mapping_registry, symlink_to_blob)
+from .mapping import (
+    default_mapping,
+    encode_git_path,
+    entry_mode,
+    extract_unusual_modes,
+    mapping_registry,
+    symlink_to_blob,
+)
 from .unpeel_map import UnpeelMap
 
 BANNED_FILENAMES = ['.git']
@@ -669,13 +674,13 @@ class BazaarObjectStore(BaseObjectStore):
                     (revid, tree_sha, verifiers) = type_data
                     try:
                         rev = self.repository.get_revision(revid)
-                    except errors.NoSuchRevision:
+                    except errors.NoSuchRevision as err:
                         if revid == NULL_REVISION:
                             raise AssertionError(
-                                "should not try to look up NULL_REVISION")
+                                "should not try to look up NULL_REVISION") from err
                         trace.mutter('entry for %s %s in shamap: %r, but not '
                                      'found in repository', kind, sha, type_data)
-                        raise KeyError(sha)
+                        raise KeyError(sha) from err
                     # FIXME: the type data should say whether conversion was
                     # lossless
                     commit = self._reconstruct_commit(
@@ -692,17 +697,17 @@ class BazaarObjectStore(BaseObjectStore):
                     try:
                         tree = self.tree_cache.revision_tree(revid)
                         rev = self.repository.get_revision(revid)
-                    except errors.NoSuchRevision:
+                    except errors.NoSuchRevision as err:
                         trace.mutter(
                             'entry for %s %s in shamap: %r, but not found in '
                             'repository', kind, sha, type_data)
-                        raise KeyError(sha)
+                        raise KeyError(sha) from err
                     unusual_modes = extract_unusual_modes(rev)
                     try:
                         return self._reconstruct_tree(
                             fileid, revid, tree, unusual_modes, expected_sha=sha)
-                    except errors.NoSuchRevision:
-                        raise KeyError(sha)
+                    except errors.NoSuchRevision as err:
+                        raise KeyError(sha) from err
                 else:
                     raise AssertionError(f"Unknown object type '{kind}'")
             else:
@@ -717,16 +722,16 @@ class BazaarObjectStore(BaseObjectStore):
         return pack_objects_to_data([
             (self[oid], path) for (oid, (type_num, path)) in object_ids])
 
-    def find_missing_objects(self, have, want, shallow=None, progress=None,
-                             ofs_delta=False, get_tagged=None, lossy=False):
+    def find_missing_objects(self, haves, wants, shallow=None, progress=None,
+                             get_tagged=None, lossy: bool = False, ofs_delta=False) -> Iterator[Tuple[ObjectID, Tuple[int, str]]]:
         """Iterate over the contents of a pack file.
 
-        :param have: List of SHA1s of objects that should not be sent
-        :param want: List of SHA1s of objects that should be sent
+        :param haves: List of SHA1s of objects that should not be sent
+        :param wants: List of SHA1s of objects that should be sent
         """
         processed = set()
-        ret: Dict[ObjectID, List] = self.lookup_git_shas(have + want)
-        for commit_sha in have:
+        ret: Dict[ObjectID, List] = self.lookup_git_shas(haves + wants)
+        for commit_sha in haves:
             commit_sha = self.unpeel_map.peel_tag(commit_sha, commit_sha)
             try:
                 for (type, type_data) in ret[commit_sha]:
@@ -736,8 +741,8 @@ class BazaarObjectStore(BaseObjectStore):
             except KeyError:
                 trace.mutter("unable to find remote ref %s", commit_sha)
         pending = set()
-        for commit_sha in want:
-            if commit_sha in have:
+        for commit_sha in wants:
+            if commit_sha in haves:
                 continue
             try:
                 for (type, type_data) in ret[commit_sha]:

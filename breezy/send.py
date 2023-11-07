@@ -23,7 +23,7 @@ from .branch import Branch
 from .i18n import gettext
 from .revision import NULL_REVISION
 
-format_registry = registry.Registry[str, Callable]()
+format_registry = registry.Registry[str, Callable, None]()
 
 
 def send(target_branch, revision, public_branch, remember,
@@ -81,9 +81,9 @@ def send(target_branch, revision, public_branch, remember,
                 formatname = submit_branch.get_child_submit_format()
                 try:
                     format = format_registry.get(formatname)
-                except KeyError:
+                except KeyError as err:
                     raise errors.CommandError(
-                        gettext("No such send format '%s'.") % formatname)
+                        gettext("No such send format '%s'.") % formatname) from err
 
         stored_public_branch = branch.get_public_branch()
         if public_branch is None:

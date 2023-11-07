@@ -19,7 +19,9 @@ import sys
 
 import breezy
 
-from ... import cmdline, commands, config, help_topics, option, plugin
+from ... import cmdline, commands, config, help_topics
+from ... import option as _mod_option
+from ... import plugin as _mod_plugin
 
 
 class BashCodeGen:
@@ -50,65 +52,65 @@ complete -F {self.function_name} -o default brz
 """)
 
     def function(self):
-        return ("""\
-%(function_name)s ()
-{
+        return (f"""\
+{self.function_name} ()
+{{
     local cur cmds cmdIdx cmd cmdOpts fixedWords i globalOpts
     local curOpt optEnums
     local IFS=$' \\n'
 
     COMPREPLY=()
-    cur=${COMP_WORDS[COMP_CWORD]}
+    cur=${{COMP_WORDS[COMP_CWORD]}}
 
-    cmds='%(cmds)s'
-    globalOpts=( %(global_options)s )
+    cmds='{self.command_names()}'
+    globalOpts=( {self.global_options()} )
 
     # do ordinary expansion if we are anywhere after a -- argument
     for ((i = 1; i < COMP_CWORD; ++i)); do
-        [[ ${COMP_WORDS[i]} == "--" ]] && return 0
+        [[ ${{COMP_WORDS[i]}} == "--" ]] && return 0
     done
 
     # find the command; it's the first word not starting in -
     cmd=
-    for ((cmdIdx = 1; cmdIdx < ${#COMP_WORDS[@]}; ++cmdIdx)); do
-        if [[ ${COMP_WORDS[cmdIdx]} != -* ]]; then
-            cmd=${COMP_WORDS[cmdIdx]}
+    for ((cmdIdx = 1; cmdIdx < ${{#COMP_WORDS[@]}}; ++cmdIdx)); do
+        if [[ ${{COMP_WORDS[cmdIdx]}} != -* ]]; then
+            cmd=${{COMP_WORDS[cmdIdx]}}
             break
         fi
     done
 
     # complete command name if we are not already past the command
     if [[ $COMP_CWORD -le cmdIdx ]]; then
-        COMPREPLY=( $( compgen -W "$cmds ${globalOpts[*]}" -- $cur ) )
+        COMPREPLY=( $( compgen -W "$cmds ${{globalOpts[*]}}" -- $cur ) )
         return 0
     fi
 
     # find the option for which we want to complete a value
     curOpt=
     if [[ $cur != -* ]] && [[ $COMP_CWORD -gt 1 ]]; then
-        curOpt=${COMP_WORDS[COMP_CWORD - 1]}
+        curOpt=${{COMP_WORDS[COMP_CWORD - 1]}}
         if [[ $curOpt == = ]]; then
-            curOpt=${COMP_WORDS[COMP_CWORD - 2]}
+            curOpt=${{COMP_WORDS[COMP_CWORD - 2]}}
         elif [[ $cur == : ]]; then
             cur=
             curOpt="$curOpt:"
         elif [[ $curOpt == : ]]; then
-            curOpt=${COMP_WORDS[COMP_CWORD - 2]}:
+            curOpt=${{COMP_WORDS[COMP_CWORD - 2]}}:
         fi
     fi
-%(debug)s
+{self.debug_output()}
     cmdOpts=( )
     optEnums=( )
     fixedWords=( )
     case $cmd in
-%(cases)s\
+{self.command_cases()}\
     *)
         cmdOpts=(--help -h)
         ;;
     esac
 
     IFS=$'\\n'
-    if [[ ${#fixedWords[@]} -eq 0 ]] && [[ ${#optEnums[@]} -eq 0 ]] && [[ $cur != -* ]]; then
+    if [[ ${{#fixedWords[@]}} -eq 0 ]] && [[ ${{#optEnums[@]}} -eq 0 ]] && [[ $cur != -* ]]; then
         case $curOpt in
             tag:|*..tag:)
                 fixedWords=( $(brz tags 2>/dev/null | sed 's/  *[^ ]*$//; s/ /\\\\\\\\ /g;') )
@@ -120,33 +122,27 @@ complete -F {self.function_name} -o default brz
                 ;;
             [\\"\\']*..tag:*)
                 fixedWords=( $(brz tags 2>/dev/null | sed 's/  *[^ ]*$//') )
-                fixedWords=( $(for i in "${fixedWords[@]}"; do echo "${cur%%..tag:*}..tag:${i}"; done) )
+                fixedWords=( $(for i in "${{fixedWords[@]}}"; do echo "${{cur%..tag:*}}..tag:${{i}}"; done) )
                 ;;
         esac
-    elif [[ $cur == = ]] && [[ ${#optEnums[@]} -gt 0 ]]; then
+    elif [[ $cur == = ]] && [[ ${{#optEnums[@]}} -gt 0 ]]; then
         # complete directly after "--option=", list all enum values
-        COMPREPLY=( "${optEnums[@]}" )
+        COMPREPLY=( "${{optEnums[@]}}" )
         return 0
     else
-        fixedWords=( "${cmdOpts[@]}"
-                     "${globalOpts[@]}"
-                     "${optEnums[@]}"
-                     "${fixedWords[@]}" )
+        fixedWords=( "${{cmdOpts[@]}}"
+                     "${{globalOpts[@]}}"
+                     "${{optEnums[@]}}"
+                     "${{fixedWords[@]}}" )
     fi
 
-    if [[ ${#fixedWords[@]} -gt 0 ]]; then
-        COMPREPLY=( $( compgen -W "${fixedWords[*]}" -- $cur ) )
+    if [[ ${{#fixedWords[@]}} -gt 0 ]]; then
+        COMPREPLY=( $( compgen -W "${{fixedWords[*]}}" -- $cur ) )
     fi
 
     return 0
-}
-""" % {
-            "cmds": self.command_names(),
-            "function_name": self.function_name,
-            "cases": self.command_cases(),
-            "global_options": self.global_options(),
-            "debug": self.debug_output(),
-        })
+}}
+""")
         # Help Emacs terminate strings: "
 
     def command_names(self):
@@ -200,8 +196,7 @@ complete -F {self.function_name} -o default brz
             if option.registry_keys:
                 for key in option.registry_keys:
                     options.append(f"{option}={key}")
-                enums.append("%s) optEnums=( %s ) ;;" %
-                             (option, ' '.join(option.registry_keys)))
+                enums.append("{}) optEnums=( {} ) ;;".format(option, ' '.join(option.registry_keys)))
             else:
                 options.append(str(option))
         case += f"\t\tcmdOpts=( {' '.join(options)} )\n"
@@ -246,7 +241,7 @@ class PluginData:
         if version is None:
             try:
                 version = breezy.plugin.plugins()[name].__version__
-            except:
+            except BaseException:
                 version = 'unknown'
         self.name = name
         self.version = version
@@ -348,11 +343,11 @@ class DataCollector:
 
     def option(self, opt):
         optswitches = {}
-        parser = option.get_optparser([opt])
+        parser = _mod_option.get_optparser([opt])
         parser = self.wrap_parser(optswitches, parser)
         optswitches.clear()
         opt.add_option(parser, opt.short_name())
-        if isinstance(opt, option.RegistryOption) and opt.enum_switch:
+        if isinstance(opt, _mod_option.RegistryOption) and opt.enum_switch:
             enum_switch = f'--{opt.name}'
             enum_data = optswitches.get(enum_switch)
             if enum_data:
@@ -360,8 +355,7 @@ class DataCollector:
                     enum_data.registry_keys = opt.registry.keys()
                 except ImportError as e:
                     enum_data.error_messages.append(
-                        "ERROR getting registry keys for '--%s': %s"
-                        % (opt.name, str(e).split('\n')[0]))
+                        "ERROR getting registry keys for '--{}': {}".format(opt.name, str(e).split('\n')[0]))
         return sorted(optswitches.values())
 
     def wrap_container(self, optswitches, parser):
@@ -407,13 +401,13 @@ class cmd_bash_completion(commands.Command):
     """
 
     takes_options = [
-        option.Option("function-name", short_name="f", type=str, argname="name",
+        _mod_option.Option("function-name", short_name="f", type=str, argname="name",
                       help="Name of the generated function (default: _brz)"),
-        option.Option("function-only", short_name="o", type=None,
+        _mod_option.Option("function-only", short_name="o", type=None,
                       help="Generate only the shell function, don't enable it"),
-        option.Option("debug", type=None, hidden=True,
+        _mod_option.Option("debug", type=None, hidden=True,
                       help="Enable shell code useful for debugging"),
-        option.ListOption("plugin", type=str, argname="name",
+        _mod_option.ListOption("plugin", type=str, argname="name",
                           # param_name="selected_plugins", # doesn't work, bug #387117
                           help="Enable completions for the selected plugin"
                           + " (default: all plugins)"),
@@ -464,6 +458,6 @@ if __name__ == '__main__':
 
     locale.setlocale(locale.LC_ALL, '')
     if not kwargs.get('no_plugins', False):
-        plugin.load_plugins()
+        _mod_plugin.load_plugins()
     commands.install_bzr_command_hooks()
     bash_completion_function(sys.stdout, **kwargs)

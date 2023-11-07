@@ -27,8 +27,7 @@ from ...osutils import pathjoin, sha_string, sha_strings
 from ...revision import NULL_REVISION, Revision
 from ...trace import mutter, warning
 from ...tree import InterTree
-from ..inventory import (Inventory, InventoryDirectory, InventoryFile,
-                         InventoryLink)
+from ..inventory import Inventory, InventoryDirectory, InventoryFile, InventoryLink
 from ..inventorytree import InventoryTree
 from ..testament import StrictTestament
 from ..xml5 import inventory_serializer_v5
@@ -219,8 +218,8 @@ class BundleInfo:
                 # This really should have been validated as part
                 # of _validate_revisions but lets do it again
                 if sha1 != d[revision_id]:
-                    raise BzrError('** Revision %r referenced with 2 different'
-                                   ' sha hashes %s != %s' % (revision_id,
+                    raise BzrError('** Revision {!r} referenced with 2 different'
+                                   ' sha hashes {} != {}'.format(revision_id,
                                                              sha1, d[revision_id]))
             else:
                 d[revision_id] = sha1
@@ -244,8 +243,8 @@ class BundleInfo:
                 local_sha1 = self._testament_sha1_from_revision(repository,
                                                                 revision_id)
                 if sha1 != local_sha1:
-                    raise BzrError('sha1 mismatch. For revision id {%s}'
-                                   'local: %s, bundle: %s' % (revision_id, local_sha1, sha1))
+                    raise BzrError(f'sha1 mismatch. For revision id {{{revision_id}}}'
+                                   f'local: {local_sha1}, bundle: {sha1}')
                 else:
                     count += 1
             elif revision_id not in checked:
@@ -272,8 +271,8 @@ class BundleInfo:
         if sha1 != rev.inventory_sha1:
             with open(',,bogus-inv', 'wb') as f:
                 f.writelines(cs)
-            warning('Inventory sha hash mismatch for revision %s. %s'
-                    ' != %s' % (revision_id, sha1, rev.inventory_sha1))
+            warning(f'Inventory sha hash mismatch for revision {revision_id}. {sha1}'
+                    f' != {rev.inventory_sha1}')
 
     def _testament(self, revision, tree):
         raise NotImplementedError(self._testament)
@@ -321,8 +320,8 @@ class BundleInfo:
             for info_item in info:
                 try:
                     name, value = info_item.split(':', 1)
-                except ValueError:
-                    raise ValueError(f'Value {info_item!r} has no colon')
+                except ValueError as e:
+                    raise ValueError(f'Value {info_item!r} has no colon') from e
                 if name == 'last-changed':
                     last_changed = value
                 elif name == 'executable':
@@ -426,7 +425,7 @@ class BundleInfo:
             kind = action_line[first + 1:second]
             if kind not in ('file', 'directory', 'symlink'):
                 raise BzrError('Bogus action line'
-                               ' (invalid object kind %r): %r' % (kind, action_line))
+                               f' (invalid object kind {kind!r}): {action_line!r}')
             extra = action_line[second + 1:]
 
             if action not in valid_actions:
@@ -490,10 +489,8 @@ class BundleTree(InventoryTree):
     def note_last_changed(self, file_id, revision_id):
         if (file_id in self._last_changed
                 and self._last_changed[file_id] != revision_id):
-            raise BzrError('Mismatched last-changed revision for file_id {%s}'
-                           ': %s != %s' % (file_id,
-                                           self._last_changed[file_id],
-                                           revision_id))
+            raise BzrError(f'Mismatched last-changed revision for file_id {{{file_id}}}'
+                           f': {self._last_changed[file_id]} != {revision_id}')
         self._last_changed[file_id] = revision_id
 
     def note_patch(self, new_path, patch):
@@ -674,7 +671,7 @@ class BundleTree(InventoryTree):
         This need to be called before ever accessing self.inventory
         """
         from os.path import basename, dirname
-        inv = Inventory(None, self.revision_id)
+        inv = Inventory(root_id=None, revision_id=self.revision_id)
 
         def add_entry(path, file_id):
             if path == '':
@@ -688,20 +685,21 @@ class BundleTree(InventoryTree):
 
             name = basename(path)
             if kind == 'directory':
-                ie = InventoryDirectory(file_id, name, parent_id)
+                ie = InventoryDirectory(file_id, name, parent_id, revision_id)
             elif kind == 'file':
-                ie = InventoryFile(file_id, name, parent_id)
-                ie.executable = self.is_executable(path)
-            elif kind == 'symlink':
-                ie = InventoryLink(file_id, name, parent_id)
-                ie.symlink_target = self.get_symlink_target(path)
-            ie.revision = revision_id
-
-            if kind == 'file':
-                ie.text_size, ie.text_sha1 = self.get_size_and_sha1(path)
-                if ie.text_size is None:
+                text_size, text_sha1 = self.get_size_and_sha1(path)
+                if text_size is None:
                     raise BzrError(
                         f'Got a text_size of None for file_id {file_id!r}')
+                ie = InventoryFile(
+                    file_id, name, parent_id, revision_id,
+                    executable=self.is_executable(path), text_size=text_size,
+                    text_sha1=text_sha1)
+            elif kind == 'symlink':
+                ie = InventoryLink(
+                    file_id, name, parent_id, revision_id,
+                    symlink_target=self.get_symlink_target(path))
+
             inv.add(ie)
 
         sorted_entries = self.sorted_path_id()

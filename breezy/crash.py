@@ -55,7 +55,7 @@ from . import bedding, debug, osutils, plugin, trace
 
 
 def report_bug(exc_info, stderr):
-    if ('no_apport' in debug.debug_flags) or \
+    if (debug.debug_flag_enabled('no_apport')) or \
             os.environ.get('APPORT_DISABLE', None):
         return report_bug_legacy(exc_info, stderr)
     try:
@@ -81,8 +81,7 @@ def report_bug_legacy(exc_info, err_file):
     def print_wrapped(l):
         err_file.write(textwrap.fill(
             l, width=78, subsequent_indent='    ') + '\n')
-    print_wrapped('brz %s on python %s (%s)\n' %
-                  (breezy.__version__,
+    print_wrapped('brz {} on python {} ({})\n'.format(breezy.__version__,
                    breezy._format_version_tuple(sys.version_info),
                    platform.platform(aliased=1)))
     print_wrapped(f'arguments: {sys.argv!r}\n')

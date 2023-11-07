@@ -21,8 +21,14 @@ from os.path import expanduser
 import patiencediff
 
 from . import terminal
-from .patches import (ContextLine, Hunk, HunkLine, InsertLine, RemoveLine,
-                      hunk_from_header)
+from .patches import (
+    ContextLine,
+    Hunk,
+    HunkLine,
+    InsertLine,
+    RemoveLine,
+    hunk_from_header,
+)
 
 GLOBAL_COLORDIFFRC = '/etc/colordiffrc'
 

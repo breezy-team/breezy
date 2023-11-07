@@ -70,7 +70,8 @@ class _TreeShim:
             return self._content_provider(file_id)
         except KeyError:
             # The content wasn't shown as 'new'. Just validate this fact
-            assert file_id not in self._new_info_by_id
+            if file_id in self._new_info_by_id:
+                raise AssertionError(f"file_id {file_id} was in {self._new_info_by_id}") from None
             old_ie = self._basis_inv.get_entry(file_id)
             old_text_key = (file_id, old_ie.revision)
             stream = self._repo.texts.get_record_stream([old_text_key],
@@ -108,10 +109,10 @@ class _TreeShim:
             # probably is better to optimize for that
             try:
                 old_ie = basis_inv.get_entry(file_id)
-            except errors.NoSuchId:
+            except errors.NoSuchId as e:
                 old_ie = None
                 if ie is None:
-                    raise AssertionError('How is both old and new None?')
+                    raise AssertionError('How is both old and new None?') from e
                     change = InventoryTreeChange(
                         file_id,
                         (old_path, new_path),
@@ -187,10 +188,13 @@ class RevisionStore:
         if self._supports_chks:
             inv = self._init_chk_inventory(revision_id, inventory.ROOT_ID)
         else:
-            inv = inventory.Inventory(revision_id=revision_id)
             if self.expects_rich_root():
+                inv = inventory.Inventory(root_id=None, revision_id=revision_id)
                 # The very first root needs to have the right revision
-                inv.root.revision = revision_id
+                root = inventory.InventoryDirectory(inventory.ROOT_ID, "", None, revision_id)
+                inv.add(root)
+            else:
+                inv = inventory.Inventory(revision_id=revision_id)
         return inv
 
     def _init_chk_inventory(self, revision_id, root_id):
@@ -262,8 +266,7 @@ class RevisionStore:
                                  " before get_parents_and_revision_for_entry()")
         if ie.revision != self._current_rev_id:
             raise AssertionError("start_new_revision() registered a different"
-                                 " revision (%s) to that in the inventory entry (%s)" %
-                                 (self._current_rev_id, ie.revision))
+                                 f" revision ({self._current_rev_id}) to that in the inventory entry ({ie.revision})")
 
         # Find the heads. This code is lifted from
         # repository.CommitBuilder.record_entry_contents().

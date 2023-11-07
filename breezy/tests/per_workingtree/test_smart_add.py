@@ -54,10 +54,10 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('tree')
         try:
             self.build_tree(['tree/' + filename])
-        except transport.NoSuchFile:
+        except transport.NoSuchFile as err:
             if sys.platform == 'win32':
-                raise tests.TestNotApplicable('Cannot create files named %r on'
-                                              ' win32' % (filename,))
+                raise tests.TestNotApplicable('Cannot create files named {!r} on'
+                                              ' win32'.format(filename)) from err
         tree.smart_add(['tree'])
         self.assertFalse(tree.is_versioned(filename))
 

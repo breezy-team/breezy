@@ -138,8 +138,7 @@ class SmartMedium:
             raise TypeError(data)
         if self._push_back_buffer is not None:
             raise AssertionError(
-                "_push_back called when self._push_back_buffer is %r"
-                % (self._push_back_buffer,))
+                f"_push_back called when self._push_back_buffer is {self._push_back_buffer!r}")
         if data == b'':
             return
         self._push_back_buffer = data
@@ -147,8 +146,8 @@ class SmartMedium:
     def _get_push_back_buffer(self):
         if self._push_back_buffer == b'':
             raise AssertionError(
-                '%s._push_back_buffer should never be the empty string, '
-                'which can be confused with EOF' % (self,))
+                f'{self}._push_back_buffer should never be the empty string, '
+                'which can be confused with EOF')
         bytes = self._push_back_buffer
         self._push_back_buffer = None
         return bytes
@@ -328,8 +327,7 @@ class SmartServerStreamMedium(SmartMedium):
                 return  # Socket may already be closed
         if rs or xs:
             return
-        raise errors.ConnectionTimeout('disconnecting client after %.1f seconds'
-                                       % (timeout_seconds,))
+        raise errors.ConnectionTimeout(f'disconnecting client after {timeout_seconds:.1f} seconds')
 
     def _serve_one_request(self, protocol):
         """Read one request from input, process, send back a response.
@@ -426,7 +424,7 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
     def _write_out(self, bytes):
         tstart = osutils.perf_counter()
         osutils.send_all(self.socket, bytes, self._report_activity)
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             thread_id = _thread.get_ident()
             trace.mutter('%12s: [%s] %d bytes to the socket in %.3fs'
                          % ('wrote', thread_id, len(bytes),
@@ -752,12 +750,12 @@ class SmartClientMedium(SmartMedium):
         # can be based on what we've seen so far.
         self._remote_version_is_before = None
         # Install debug hook function if debug flag is set.
-        if 'hpss' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss'):
             global _debug_counter
             if _debug_counter is None:
                 _debug_counter = _DebugCounter()
             _debug_counter.track(self)
-        if 'hpss_client_no_vfs' in debug.debug_flags:
+        if debug.debug_flag_enabled('hpss_client_no_vfs'):
             global _vfs_refuser
             if _vfs_refuser is None:
                 _vfs_refuser = _VfsRefuser()
@@ -798,11 +796,10 @@ class SmartClientMedium(SmartMedium):
             trace.mutter(
                 "_remember_remote_is_before(%r) called, but "
                 "_remember_remote_is_before(%r) was called previously.", version_tuple, self._remote_version_is_before)
-            if 'hpss' in debug.debug_flags:
+            if debug.debug_flag_enabled('hpss'):
                 ui.ui_factory.show_warning(
-                    "_remember_remote_is_before(%r) called, but "
-                    "_remember_remote_is_before(%r) was called previously."
-                    % (version_tuple, self._remote_version_is_before))
+                    f"_remember_remote_is_before({version_tuple!r}) called, but "
+                    f"_remember_remote_is_before({self._remote_version_is_before!r}) was called previously.")
             return
         self._remote_version_is_before = version_tuple
 
@@ -925,7 +922,7 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
         except OSError as e:
             if e.errno in (errno.EINVAL, errno.EPIPE):
                 raise ConnectionResetError(
-                    "Error trying to write to subprocess", e)
+                    "Error trying to write to subprocess", e) from e
             raise
         self._report_activity(len(data), 'write')
 
@@ -1119,9 +1116,9 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
         try:
             sockaddrs = socket.getaddrinfo(self._host, port, socket.AF_UNSPEC,
                                            socket.SOCK_STREAM, 0, 0)
-        except socket.gaierror as xxx_todo_changeme:
-            (err_num, err_msg) = xxx_todo_changeme.args
-            raise ConnectionError("failed to lookup %s:%d: %s" % (self._host, port, err_msg))
+        except socket.gaierror as e:
+            (err_num, err_msg) = e.args
+            raise ConnectionError("failed to lookup %s:%d: %s" % (self._host, port, err_msg)) from e
         # Initialize err in case there are no addresses returned:
         last_err = socket.error(f"no address found for {self._host}")
         for (family, socktype, proto, _canonname, sockaddr) in sockaddrs:

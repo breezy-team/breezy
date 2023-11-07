@@ -191,7 +191,7 @@ class MultiParent:
 
     @staticmethod
     def _from_patch(lines):
-        """This is private because it is essential to split lines on \n only."""
+        r"""This is private because it is essential to split lines on \n only."""
         line_iter = iter(lines)
         hunks = []
         cur_line = None
@@ -296,8 +296,8 @@ class ParentText:
                 b'num_lines': self.num_lines}
 
     def __repr__(self):
-        return ('ParentText(%(parent)r, %(parent_pos)r, %(child_pos)r,'
-                ' %(num_lines)r)' % self._as_dict())
+        return ('ParentText({parent!r}, {parent_pos!r}, {child_pos!r},'
+                ' {num_lines!r})'.format(**self._as_dict()))
 
     def __eq__(self, other):
         if self.__class__ is not other.__class__:
@@ -347,7 +347,7 @@ class BaseVersionedFile:
 
     def add_version(self, lines, version_id, parent_ids,
                     force_snapshot=None, single_parent=False):
-        """Add a version to the versionedfile.
+        r"""Add a version to the versionedfile.
 
         :param lines: The list of lines to add.  Must be split on '\n'.
         :param version_id: The version_id of the version to add
@@ -533,8 +533,8 @@ class MultiMemoryVersionedFile(BaseVersionedFile):
     def get_diff(self, version_id):
         try:
             return self._diffs[version_id]
-        except KeyError:
-            raise errors.RevisionNotPresent(version_id, self)
+        except KeyError as e:
+            raise errors.RevisionNotPresent(version_id, self) from e
 
     def destroy(self):
         self._diffs = {}

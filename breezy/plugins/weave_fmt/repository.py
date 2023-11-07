@@ -34,19 +34,23 @@ from breezy import (
     ui,
     )
 """)
-from ... import debug, errors, lockdir, osutils, trace
+from ... import debug, errors, lockdir, osutils, trace, urlutils
 from ... import transport as _mod_transport
-from ... import urlutils
 from ...bzr import lockable_files, tuned_gzip, versionedfile, weave, weavefile
 from ...bzr.repository import RepositoryFormatMetaDir
-from ...bzr.versionedfile import (AbsentContentFactory, FulltextContentFactory,
-                                  VersionedFiles)
-from ...bzr.vf_repository import (InterSameDataRepository,
-                                  MetaDirVersionedFileRepository,
-                                  MetaDirVersionedFileRepositoryFormat,
-                                  VersionedFileCommitBuilder,
-                                  VersionedFileRepository,
-                                  VersionedFileRepositoryFormat)
+from ...bzr.versionedfile import (
+    AbsentContentFactory,
+    FulltextContentFactory,
+    VersionedFiles,
+)
+from ...bzr.vf_repository import (
+    InterSameDataRepository,
+    MetaDirVersionedFileRepository,
+    MetaDirVersionedFileRepositoryFormat,
+    VersionedFileCommitBuilder,
+    VersionedFileRepository,
+    VersionedFileRepositoryFormat,
+)
 from ...repository import InterRepository
 from . import bzrdir as weave_bzrdir
 from .store.text import TextStore
@@ -101,7 +105,7 @@ class AllInOneRepository(VersionedFileRepository):
 
     def _all_possible_ids(self):
         """Return all the possible revisions that we could find."""
-        if 'evil' in debug.debug_flags:
+        if debug.debug_flag_enabled('evil'):
             trace.mutter_callsite(
                 3, "_all_possible_ids scales with size of history.")
         with self.lock_read():
@@ -186,7 +190,7 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
 
     def _all_possible_ids(self):
         """Return all the possible revisions that we could find."""
-        if 'evil' in debug.debug_flags:
+        if debug.debug_flag_enabled('evil'):
             trace.mutter_callsite(
                 3, "_all_possible_ids scales with size of history.")
         with self.lock_read():

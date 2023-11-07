@@ -20,8 +20,7 @@
 import shutil
 import sys
 
-from breezy import (branch, controldir, errors, info, osutils, tests, upgrade,
-                    urlutils)
+from breezy import branch, controldir, errors, info, osutils, tests, upgrade, urlutils
 from breezy.bzr import bzrdir
 from breezy.transport import memory
 
@@ -1253,12 +1252,9 @@ Location:
             expected_lock_output = (
                 "\n"
                 "Lock status:\n"
-                "  working tree: %s\n"
-                "        branch: %s\n"
-                "    repository: %s\n" % (
-                    locked_message(tree_locked),
-                    locked_message(branch_locked),
-                    locked_message(repo_locked)))
+                f"  working tree: {locked_message(tree_locked)}\n"
+                f"        branch: {locked_message(branch_locked)}\n"
+                f"    repository: {locked_message(repo_locked)}\n")
         else:
             expected_lock_output = ''
         tree_data = ''
@@ -1272,14 +1268,11 @@ Location:
                                                             friendly_location(lco_tree.branch.controldir.root_transport.base)))
         if shared_repo is not None:
             branch_data = (
-                "   checkout of branch: %s\n"
-                "    shared repository: %s\n" %
-                (friendly_location(repo_branch.controldir.root_transport.base),
-                 friendly_location(shared_repo.controldir.root_transport.base)))
+                f"   checkout of branch: {friendly_location(repo_branch.controldir.root_transport.base)}\n"
+                f"    shared repository: {friendly_location(shared_repo.controldir.root_transport.base)}\n")
         elif repo_branch is not None:
             branch_data = (
-                "%s  checkout of branch: %s\n" %
-                (extra_space,
+                "{}  checkout of branch: {}\n".format(extra_space,
                  friendly_location(repo_branch.controldir.root_transport.base)))
         else:
             branch_data = ("   checkout of branch: %s\n" %
@@ -1291,15 +1284,15 @@ Location:
             verbose_info = ''
 
         self.assertEqualDiff(
-            """{} (format: {})
+            f"""{description} (format: {format})
 Location:
-{}{}
+{tree_data}{branch_data}
 Format:
        control: Meta directory format 1
-  working tree: {}
-        branch: {}
-    repository: {}
-{}
+  working tree: {lco_tree._format.get_format_description()}
+        branch: {lco_tree.branch._format.get_format_description()}
+    repository: {lco_tree.branch.repository._format.get_format_description()}
+{expected_lock_output}
 Control directory:
          1 branches
 
@@ -1316,19 +1309,10 @@ In the working tree:
 
 Branch history:
          0 revisions
-{}
+{verbose_info}
 Repository:
          0 revisions
-""".format(description,
-                format,
-                tree_data,
-                branch_data,
-                lco_tree._format.get_format_description(),
-                lco_tree.branch._format.get_format_description(),
-                lco_tree.branch.repository._format.get_format_description(),
-                expected_lock_output,
-                verbose_info,
-       ), out)
+""", out)
         self.assertEqual('', err)
 
     def test_info_locking(self):

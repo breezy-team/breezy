@@ -241,7 +241,7 @@ def _command_helps(exporter, plugin_name=None):
 
     plugins = _mod_plugin.plugins()
     if plugin_name is not None and plugin_name not in plugins:
-        raise errors.BzrError(gettext(f'Plugin {plugin_name} is not loaded'))
+        raise errors.BzrError(gettext('Plugin {} is not loaded').format(plugin_name))
     core_plugins = {
         name for name in plugins
         if plugins[name].path().startswith(breezy.__path__[0])}

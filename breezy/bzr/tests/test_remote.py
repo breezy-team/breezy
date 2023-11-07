@@ -31,29 +31,43 @@ from io import BytesIO
 
 import fastbencode as bencode
 
-from ... import branch, config, controldir, errors, repository, tests
+from ... import branch, config, controldir, errors, repository, tests, treebuilder
 from ... import transport as _mod_transport
-from ... import treebuilder
 from ..._bzr_rs import revision_bencode_serializer
 from ...branch import Branch
 from ...revision import NULL_REVISION, Revision
 from ...tests import test_server
 from ...tests.scenarios import load_tests_apply_scenarios
 from ...transport.memory import MemoryTransport
-from ...transport.remote import (RemoteSSHTransport, RemoteTCPTransport,
-                                 RemoteTransport)
-from .. import (RemoteBzrProber, bzrdir, groupcompress_repo, inventory,
-                inventory_delta, knitpack_repo, remote, versionedfile,
-                vf_search)
+from ...transport.remote import RemoteSSHTransport, RemoteTCPTransport, RemoteTransport
+from .. import (
+    RemoteBzrProber,
+    bzrdir,
+    groupcompress_repo,
+    inventory,
+    inventory_delta,
+    knitpack_repo,
+    remote,
+    versionedfile,
+    vf_search,
+)
 from ..bzrdir import BzrDir, BzrDirFormat
-from ..remote import (RemoteBranch, RemoteBranchFormat, RemoteBzrDir,
-                      RemoteBzrDirFormat, RemoteRepository,
-                      RemoteRepositoryFormat, UnknownErrorFromSmartServer)
+from ..remote import (
+    RemoteBranch,
+    RemoteBranchFormat,
+    RemoteBzrDir,
+    RemoteBzrDirFormat,
+    RemoteRepository,
+    RemoteRepositoryFormat,
+    UnknownErrorFromSmartServer,
+)
 from ..smart import medium, request
 from ..smart.client import _SmartClient
-from ..smart.repository import (SmartServerRepositoryGetParentMap,
-                                SmartServerRepositoryGetStream_1_19,
-                                _stream_to_byte_stream)
+from ..smart.repository import (
+    SmartServerRepositoryGetParentMap,
+    SmartServerRepositoryGetStream_1_19,
+    _stream_to_byte_stream,
+)
 
 load_tests = load_tests_apply_scenarios
 
@@ -213,14 +227,13 @@ class FakeClient(_SmartClient):
 
     def finished_test(self):
         if self._expected_calls:
-            raise AssertionError("%r finished but was still expecting %r"
-                                 % (self, self._expected_calls[0]))
+            raise AssertionError(f"{self!r} finished but was still expecting {self._expected_calls[0]!r}")
 
     def _get_next_response(self):
         try:
             response_tuple = self.responses.pop(0)
-        except IndexError:
-            raise AssertionError(f"{self!r} didn't expect any more calls")
+        except IndexError as e:
+            raise AssertionError(f"{self!r} didn't expect any more calls") from e
         if response_tuple[0] == b'unknown':
             raise errors.UnknownSmartMethod(response_tuple[1])
         elif response_tuple[0] == b'error':
@@ -233,16 +246,14 @@ class FakeClient(_SmartClient):
             return
         try:
             next_call = self._expected_calls.pop(0)
-        except IndexError:
-            raise AssertionError("%r didn't expect any more calls "
-                                 "but got %r%r"
-                                 % (self, method, args,))
+        except IndexError as e:
+            raise AssertionError(f"{self!r} didn't expect any more calls "
+                                 f"but got {method!r}{args!r}") from e
         if next_call is None:
             return
         if method != next_call[0] or args != next_call[1]:
             raise AssertionError(
-                "%r expected %r%r but got %r%r" %
-                (self, next_call[0], next_call[1], method, args,))
+                f"{self!r} expected {next_call[0]!r}{next_call[1]!r} but got {method!r}{args!r}")
 
     def call(self, method, *args):
         self._check_call(method, args)
@@ -3485,8 +3496,7 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
            * texts substream: (some-rev, some-file)
         """
         # Define a stream using generators so that it isn't rewindable.
-        inv = inventory.Inventory(revision_id=b'rev1')
-        inv.root.revision = b'rev1'
+        inv = inventory.Inventory(revision_id=b'rev1', root_revision=b'rev1')
 
         def stream_with_inv_delta():
             yield ('inventories', inventories_substream())
@@ -3505,8 +3515,7 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
             # An inventory delta.  This can't be streamed via this verb, so it
             # will trigger a fallback to VFS insert_stream.
             entry = inv.make_entry(
-                'directory', 'newdir', inv.root.file_id, b'newdir-id')
-            entry.revision = b'ghost'
+                'directory', 'newdir', inv.root.file_id, b'newdir-id', revision=b'ghost')
             delta = inventory_delta.InventoryDelta([(None, 'newdir', b'newdir-id', entry)])
             serializer = inventory_delta.InventoryDeltaSerializer(
                 versioned_root=True, tree_references=False)

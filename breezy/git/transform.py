@@ -24,21 +24,34 @@ from stat import S_IEXEC, S_ISREG
 from dulwich.index import blob_from_path_and_stat, commit_tree
 from dulwich.objects import Blob
 
-from .. import annotate, errors, osutils
+from .. import annotate, errors, osutils, trace, ui, urlutils
 from .. import revision as _mod_revision
-from .. import trace
 from .. import transport as _mod_transport
-from .. import ui, urlutils
 from ..i18n import gettext
 from ..mutabletree import MutableTree
-from ..transform import (ROOT_PARENT, FinalPaths, ImmortalLimbo,
-                         MalformedTransform, PreviewTree, ReusingTransform,
-                         TransformRenameFailed, TreeTransform, _FileMover,
-                         _TransformResults, joinpath, unique_add)
+from ..transform import (
+    ROOT_PARENT,
+    FinalPaths,
+    ImmortalLimbo,
+    MalformedTransform,
+    PreviewTree,
+    ReusingTransform,
+    TransformRenameFailed,
+    TreeTransform,
+    _FileMover,
+    _TransformResults,
+    joinpath,
+    unique_add,
+)
 from ..transport.local import file_kind
 from ..tree import InterTree, TreeChange
-from .mapping import (decode_git_path, encode_git_path, mode_is_executable,
-                      mode_kind, object_mode)
+from .mapping import (
+    decode_git_path,
+    encode_git_path,
+    mode_is_executable,
+    mode_kind,
+    object_mode,
+)
 from .tree import GitTree, GitTreeDirectory, GitTreeFile, GitTreeSymlink
 
 
@@ -263,8 +276,7 @@ class TreeTransformBase(TreeTransform):
             # Not known by the tree transform yet, check the filesystem
             return osutils.lexists(self._tree.abspath(child_path))
         else:
-            raise AssertionError('child_id is missing: %s, %s, %s'
-                                 % (name, parent_id, child_id))
+            raise AssertionError(f'child_id is missing: {name}, {parent_id}, {child_id}')
 
     def _available_backup_name(self, name, target_id):
         """Find an available backup name.
@@ -735,17 +747,16 @@ class TreeTransformBase(TreeTransform):
         if not raw_conflicts:
             return
         fp = FinalPaths(self)
-        from .workingtree import TextConflict
+        from .workingtree import ContentsConflict, TextConflict
         for c in raw_conflicts:
             if c[0] == 'text conflict':
                 yield TextConflict(fp.get_path(c[1]))
+            elif c[0] == 'contents conflict':
+                yield ContentsConflict(fp.get_path(c[1][0]))
             elif c[0] == 'duplicate':
                 yield TextConflict(fp.get_path(c[2]))
-            elif c[0] == 'contents conflict':
-                yield TextConflict(fp.get_path(c[1][0]))
             elif c[0] == 'missing parent':
-                # TODO(jelmer): This should not make it to here
-                yield TextConflict(fp.get_path(c[2]))
+                pass
             elif c[0] == 'non-directory parent':
                 yield TextConflict(fp.get_path(c[2]))
             elif c[0] == 'deleting parent':
@@ -754,8 +765,6 @@ class TreeTransformBase(TreeTransform):
             elif c[0] == 'parent loop':
                 # TODO(jelmer): This should not make it to here
                 yield TextConflict(fp.get_path(c[2]))
-            elif c[0] == 'path conflict':
-                yield TextConflict(fp.get_path(c[1]))
             else:
                 raise AssertionError(f'unknown conflict {c[0]}')
 
@@ -811,14 +820,14 @@ class DiskTreeTransform(TreeTransformBase):
                     pass
             try:
                 osutils.delete_any(self._limbodir)
-            except OSError:
+            except OSError as err:
                 # We don't especially care *why* the dir is immortal.
-                raise ImmortalLimbo(self._limbodir)
+                raise ImmortalLimbo(self._limbodir) from err
             try:
                 if self._deletiondir is not None:
                     osutils.delete_any(self._deletiondir)
-            except OSError:
-                raise errors.ImmortalPendingDeletion(self._deletiondir)
+            except OSError as err:
+                raise errors.ImmortalPendingDeletion(self._deletiondir) from err
         finally:
             TreeTransformBase.finalize(self)
 
@@ -933,8 +942,8 @@ class DiskTreeTransform(TreeTransformBase):
         name = self._limbo_name(trans_id)
         try:
             os.link(path, name)
-        except PermissionError:
-            raise errors.HardLinkNotSupported(path)
+        except PermissionError as err:
+            raise errors.HardLinkNotSupported(path) from err
         try:
             unique_add(self._new_contents, trans_id, 'file')
         except BaseException:
@@ -1160,15 +1169,15 @@ class GitTreeTransform(DiskTreeTransform):
             try:
                 osutils.ensure_empty_directory_exists(
                     limbodir)
-            except errors.DirectoryNotEmpty:
-                raise errors.ExistingLimbo(limbodir)
+            except errors.DirectoryNotEmpty as err:
+                raise errors.ExistingLimbo(limbodir) from err
             deletiondir = urlutils.local_path_from_url(
                 tree._transport.abspath('pending-deletion'))
             try:
                 osutils.ensure_empty_directory_exists(
                     deletiondir)
-            except errors.DirectoryNotEmpty:
-                raise errors.ExistingPendingDeletion(deletiondir)
+            except errors.DirectoryNotEmpty as err:
+                raise errors.ExistingPendingDeletion(deletiondir) from err
         except BaseException:
             tree.unlock()
             raise
@@ -1415,7 +1424,7 @@ class GitTreeTransform(DiskTreeTransform):
                     st = osutils.lstat(full_path)
                     self._observed_sha1s[trans_id] = (o_sha1, st)
                 if trans_id in self._new_reference_revision:
-                    for (submodule_path, _submodule_url, submodule_name) in self._tree._submodule_config():
+                    for (submodule_path, _submodule_url, _submodule_name) in self._tree._submodule_config():
                         if decode_git_path(submodule_path) == path:
                             break
                     else:
@@ -1430,7 +1439,7 @@ class GitTreeTransform(DiskTreeTransform):
                     with open(os.path.join(full_path, '.git'), 'w') as f:
                         submodule_abspath = submodule_transport.local_abspath('.')
                         f.write(f'gitdir: {os.path.relpath(submodule_abspath, full_path)}\n')
-        for path, trans_id in new_paths:
+        for _path, trans_id in new_paths:
             # new_paths includes stuff like workingtree conflicts. Only the
             # stuff in new_contents actually comes from limbo.
             if trans_id in self._limbo_files:

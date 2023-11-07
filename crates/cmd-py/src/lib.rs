@@ -1,13 +1,22 @@
+use breezy::graphshim::Graph;
+use breezy::pybranch::PyBranch;
+use breezy::pytree::PyTree;
+use breezy::RevisionId;
+
 use log::Log;
-use pyo3::exceptions::PyValueError;
+use pyo3::exceptions::{PyNotImplementedError, PyRuntimeError, PyValueError};
 use pyo3::import_exception;
 use pyo3::prelude::*;
-use pyo3::types::{PyString, PyTuple};
+use pyo3::pyclass::CompareOp;
+use pyo3::types::{PyBytes, PyString, PyTuple, PyType};
 use pyo3_file::PyFileLikeObject;
 use std::io::Write;
 use std::path::PathBuf;
 
 import_exception!(breezy.errors, NoWhoami);
+import_exception!(breezy.errors, LockCorrupt);
+import_exception!(breezy.errors, NoSuchTag);
+import_exception!(breezy.errors, TagAlreadyExists);
 
 #[pyfunction(name = "disable_i18n")]
 fn i18n_disable_i18n() {
@@ -332,6 +341,34 @@ impl BreezyTraceHandler {
 }
 
 #[pyfunction]
+fn set_debug_flag(flag: &str) -> PyResult<()> {
+    breezy::debug::set_debug_flag(flag);
+    Ok(())
+}
+
+#[pyfunction]
+fn unset_debug_flag(flag: &str) -> PyResult<()> {
+    breezy::debug::unset_debug_flag(flag);
+    Ok(())
+}
+
+#[pyfunction]
+fn get_debug_flags() -> PyResult<std::collections::HashSet<String>> {
+    Ok(breezy::debug::get_debug_flags())
+}
+
+#[pyfunction]
+fn clear_debug_flags() -> PyResult<()> {
+    breezy::debug::clear_debug_flags();
+    Ok(())
+}
+
+#[pyfunction]
+fn debug_flag_enabled(flag: &str) -> PyResult<bool> {
+    Ok(breezy::debug::debug_flag_enabled(flag))
+}
+
+#[pyfunction]
 fn str_tdelta(delt: Option<f64>) -> PyResult<String> {
     Ok(breezy::progress::str_tdelta(delt))
 }
@@ -384,6 +421,157 @@ fn format_see_also(see_also: Option<Vec<&str>>) -> PyResult<String> {
 
 mod help;
 
+#[pyclass]
+struct TreeBuilder(breezy::treebuilder::TreeBuilder<PyTree>);
+
+#[pymethods]
+impl TreeBuilder {
+    #[new]
+    fn new() -> Self {
+        TreeBuilder(breezy::treebuilder::TreeBuilder::new())
+    }
+
+    fn build(&mut self, recipe: Vec<&str>) -> PyResult<()> {
+        self.0
+            .build(recipe.as_slice())
+            .map_err(|e| PyRuntimeError::new_err(format!("Failed to build tree: {:?}", e)))
+    }
+
+    fn start_tree(&mut self, tree: PyObject) {
+        let tree = PyTree::new(tree);
+        self.0.start_tree(tree);
+    }
+
+    fn finish_tree(&mut self) {
+        self.0.finish_tree();
+    }
+}
+
+#[pyclass]
+struct LockHeldInfo(breezy::lockdir::LockHeldInfo);
+
+#[pymethods]
+impl LockHeldInfo {
+    #[classmethod]
+    fn for_this_process(
+        _cls: &PyType,
+        extra_holder_info: Option<std::collections::HashMap<String, String>>,
+    ) -> Self {
+        let mut extra_holder_info = extra_holder_info.unwrap_or_default();
+        let pid = extra_holder_info
+            .remove("pid")
+            .map(|pid| pid.parse::<u32>().unwrap());
+        let mut ret = breezy::lockdir::LockHeldInfo::for_this_process(extra_holder_info);
+
+        if let Some(pid) = pid {
+            ret.pid = Some(pid);
+        }
+
+        Self(ret)
+    }
+
+    fn to_readable_dict(&self) -> std::collections::HashMap<String, String> {
+        self.0.to_readable_dict()
+    }
+
+    #[getter]
+    fn nonce(&self, py: Python) -> Option<PyObject> {
+        self.0.nonce().map(|x| PyBytes::new(py, x).to_object(py))
+    }
+
+    #[getter]
+    fn user(&self) -> Option<String> {
+        self.0.user.clone()
+    }
+
+    #[setter]
+    fn set_user(&mut self, user: Option<String>) {
+        self.0.user = user;
+    }
+
+    #[getter]
+    fn pid(&self) -> Option<u32> {
+        self.0.pid
+    }
+
+    #[setter]
+    fn set_pid(&mut self, pid: Option<u32>) {
+        self.0.pid = pid;
+    }
+
+    #[getter]
+    fn hostname(&self) -> Option<String> {
+        self.0.hostname.clone()
+    }
+
+    #[setter]
+    fn set_hostname(&mut self, hostname: Option<String>) {
+        self.0.hostname = hostname;
+    }
+
+    fn to_bytes(&self, py: Python) -> PyObject {
+        PyBytes::new(py, self.0.to_bytes().as_slice()).to_object(py)
+    }
+
+    fn __str__(&self) -> String {
+        self.0.to_string()
+    }
+
+    fn __repr__(&self) -> String {
+        format!("LockHeldInfo({:?})", self.0.to_readable_dict())
+    }
+
+    fn __richcmp__(&self, other: &LockHeldInfo, op: CompareOp) -> PyResult<bool> {
+        match op {
+            CompareOp::Eq => Ok(self.0 == other.0),
+            CompareOp::Ne => Ok(self.0 != other.0),
+            _ => Err(PyNotImplementedError::new_err(
+                "Only == and != are supported",
+            )),
+        }
+    }
+
+    #[classmethod]
+    fn from_info_file_bytes(_cls: &PyType, py: Python, info_file_bytes: &[u8]) -> PyResult<Self> {
+        Ok(Self(
+            breezy::lockdir::LockHeldInfo::from_info_file_bytes(info_file_bytes).map_err(|e| {
+                let fb = PyBytes::new(py, info_file_bytes).to_object(py);
+
+                match e {
+                    breezy::lockdir::Error::LockCorrupt(s) => LockCorrupt::new_err((s, fb)),
+                }
+            })?,
+        ))
+    }
+
+    fn is_locked_by_this_process(&self) -> bool {
+        self.0.is_locked_by_this_process()
+    }
+
+    fn is_lock_holder_known_dead(&self) -> bool {
+        self.0.is_lock_holder_known_dead()
+    }
+}
+
+#[pyfunction]
+fn remove_tags(
+    branch: PyObject,
+    graph: PyObject,
+    old_tip: RevisionId,
+    parents: Vec<RevisionId>,
+) -> PyResult<Vec<String>> {
+    breezy::uncommit::remove_tags(
+        PyBranch::new(branch),
+        &Graph::new(graph),
+        old_tip,
+        parents.as_slice(),
+    )
+    .map_err(|e| match e {
+        breezy::tags::Error::NoSuchTag(n) => NoSuchTag::new_err(n),
+        breezy::tags::Error::TagAlreadyExists(n) => TagAlreadyExists::new_err(n),
+    })
+}
+
 #[pymodule]
 fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     let i18n = PyModule::new(_py, "i18n")?;
@@ -418,6 +606,11 @@ fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_brz_log_filename, m)?)?;
     m.add_function(wrap_pyfunction!(get_brz_log_filename, m)?)?;
     m.add_class::<BreezyTraceHandler>()?;
+    m.add_function(wrap_pyfunction!(set_debug_flag, m)?)?;
+    m.add_function(wrap_pyfunction!(unset_debug_flag, m)?)?;
+    m.add_function(wrap_pyfunction!(clear_debug_flags, m)?)?;
+    m.add_function(wrap_pyfunction!(get_debug_flags, m)?)?;
+    m.add_function(wrap_pyfunction!(debug_flag_enabled, m)?)?;
     m.add_function(wrap_pyfunction!(str_tdelta, m)?)?;
     m.add_function(wrap_pyfunction!(debug_memory_proc, m)?)?;
     m.add_function(wrap_pyfunction!(rcp_location_to_url, m)?)?;
@@ -426,10 +619,17 @@ fn _cmd_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(parse_rcp_location, m)?)?;
     m.add_function(wrap_pyfunction!(help_as_plain_text, m)?)?;
     m.add_function(wrap_pyfunction!(format_see_also, m)?)?;
+    m.add_class::<LockHeldInfo>()?;
 
     let helpm = PyModule::new(_py, "help")?;
     help::help_topics(helpm)?;
     m.add_submodule(helpm)?;
+
+    let uncommitm = PyModule::new(_py, "uncommit")?;
+    uncommitm.add_function(wrap_pyfunction!(remove_tags, uncommitm)?)?;
+    m.add_submodule(uncommitm)?;
+
+    m.add_class::<TreeBuilder>()?;
 
     Ok(())
 }

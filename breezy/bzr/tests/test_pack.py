@@ -429,8 +429,7 @@ class TestBytesRecordReader(tests.TestCase):
                 pass
             else:
                 self.fail(
-                    "UnexpectedEndOfContainerError not raised when parsing %r"
-                    % (incomplete_record,))
+                    f"UnexpectedEndOfContainerError not raised when parsing {incomplete_record!r}")
 
     def test_initial_eof(self):
         """EOF before any bytes read at all."""

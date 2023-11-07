@@ -1,3 +1,4 @@
+#![allow(clippy::if_same_then_else)]
 use crate::RevnoVec;
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;

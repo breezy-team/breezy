@@ -36,10 +36,15 @@ from breezy.bzr import (
 from .. import errors, osutils, trace
 from ..lru_cache import LRUSizeCache
 from .btree_index import BTreeBuilder
-from .versionedfile import (AbsentContentFactory, ChunkedContentFactory,
-                            ExistingContent, UnavailableRepresentation,
-                            VersionedFilesWithFallbacks, _KeyRefs,
-                            adapter_registry)
+from .versionedfile import (
+    AbsentContentFactory,
+    ChunkedContentFactory,
+    ExistingContent,
+    UnavailableRepresentation,
+    VersionedFilesWithFallbacks,
+    _KeyRefs,
+    adapter_registry,
+)
 
 # Minimum number of uncompressed bytes to try fetch at once when retrieving
 # groupcompress blocks.
@@ -238,8 +243,7 @@ class GroupCompressBlock:
         out = cls()
         header = bytes[:6]
         if header not in cls.GCB_KNOWN_HEADERS:
-            raise ValueError('bytes did not start with any of %r'
-                             % (cls.GCB_KNOWN_HEADERS,))
+            raise ValueError(f'bytes did not start with any of {cls.GCB_KNOWN_HEADERS!r}')
         if header == cls.GCB_HEADER:
             out._compressor_name = 'zlib'
         elif header == cls.GCB_LZ_HEADER:
@@ -274,7 +278,7 @@ class GroupCompressBlock:
         content_start = start + 1 + len_len
         if end != content_start + content_len:
             raise ValueError('end != len according to field header'
-                             ' %s != %s' % (end, content_start + content_len))
+                             f' {end} != {content_start + content_len}')
         if c == b'f':
             return [self._content[content_start:end]]
         # Must be type delta as checked above
@@ -445,7 +449,7 @@ class _LazyGroupCompressFactory:
         try:
             self._manager._prepare_for_extract()
         except zlib.error as value:
-            raise DecompressCorruption("zlib: " + str(value))
+            raise DecompressCorruption("zlib: " + str(value)) from value
         block = self._manager._block
         self._chunks = block.extract(self.key, self._start, self._end)
         # There are code paths that first extract as fulltext, and then
@@ -902,8 +906,7 @@ class _CommonGroupCompressor:
             data_len = fulltext_len + 1 + offset
             if data_len != len(stored_bytes):
                 raise ValueError('Index claimed fulltext len, but stored bytes'
-                                 ' claim %s != %s'
-                                 % (len(stored_bytes), data_len))
+                                 f' claim {len(stored_bytes)} != {data_len}')
             data = [stored_bytes[offset + 1:]]
         else:
             if kind != b'd':
@@ -914,8 +917,7 @@ class _CommonGroupCompressor:
             data_len = delta_len + 1 + offset
             if data_len != len(stored_bytes):
                 raise ValueError('Index claimed delta len, but stored bytes'
-                                 ' claim %s != %s'
-                                 % (len(stored_bytes), data_len))
+                                 f' claim {len(stored_bytes)} != {data_len}')
             data = [apply_delta(source, stored_bytes[offset + 1:])]
         data_sha1 = osutils.sha_strings(data)
         return data, data_sha1
@@ -1052,8 +1054,7 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
                                    self.endpoint, chunk_end)
         if not self._delta_index._source_offset == self.endpoint:
             raise AssertionError('the delta index is out of sync'
-                                 'with the output lines %s != %s'
-                                 % (self._delta_index._source_offset, self.endpoint))
+                                 f'with the output lines {self._delta_index._source_offset} != {self.endpoint}')
         return start, self.endpoint, type
 
     def _output_chunks(self, new_chunks):
@@ -1196,7 +1197,7 @@ class _BatchingBlockFetcher:
                     if block_read_memo != read_memo:
                         raise AssertionError(
                             "block_read_memo out of sync with read_memo"
-                            "(%r != %r)" % (block_read_memo, read_memo))
+                            f"({block_read_memo!r} != {read_memo!r})")
                     self.batch_memos[read_memo] = block
                     memos_to_get_stack.pop()
                 else:
@@ -1261,14 +1262,14 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
     def add_lines(self, key, parents, lines, parent_texts=None,
                   left_matching_blocks=None, nostore_sha=None, random_id=False,
                   check_content=True):
-        """Add a text to the store.
+        r"""Add a text to the store.
 
         :param key: The key tuple of the text to add.
         :param parents: The parents key tuples of the text to add.
         :param lines: A list of lines. Each line must be a bytestring. And all
-            of them except the last must be terminated with \\n and contain no
-            other \\n's. The last line may either contain no \\n's or a single
-            terminating \\n. If the lines list does meet this constraint the
+            of them except the last must be terminated with \n and contain no
+            other \n's. The last line may either contain no \n's or a single
+            terminating \n. If the lines list does meet this constraint the
             add routine may error or may succeed - but you will be unable to
             read the data back accurately. (Checking the lines have been split
             correctly is expensive and extremely unlikely to catch bugs so it
@@ -1695,8 +1696,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                 except ValueError:
                     trace.warning('Value for '
                                   '"bzr.groupcompress.max_bytes_to_index"'
-                                  ' %r is not an integer'
-                                  % (val,))
+                                  f' {val!r} is not an integer')
                     val = None
             if val is None:
                 val = self._DEFAULT_MAX_BYTES_TO_INDEX
@@ -1879,7 +1879,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         self._compressor = None
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
-        """Iterate over the lines in the versioned files from keys.
+        r"""Iterate over the lines in the versioned files from keys.
 
         This may return lines from other keys. Each item the returned
         iterator yields is a tuple of a line and a text version that that line
@@ -1919,7 +1919,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
 
     def keys(self):
         """See VersionedFiles.keys."""
-        if 'evil' in debug.debug_flags:
+        if debug.debug_flag_enabled('evil'):
             trace.mutter_callsite(2, "keys scales with size of history")
         sources = [self._index] + self._immediate_fallback_vfs
         result = set()
@@ -2069,17 +2069,17 @@ class _GCGraphIndex:
                 for key, (value, node_refs) in keys.items():
                     result.append((key, value, node_refs))
             else:
-                for key, (value, node_refs) in keys.items():
+                for key, (value, node_refs) in keys.items():  # noqa: B007
                     result.append((key, value))
             records = result
         key_dependencies = self._key_dependencies
         if key_dependencies is not None:
             if self._parents:
-                for key, value, refs in records:
+                for key, value, refs in records:  # noqa: B007
                     parents = refs[0]
                     key_dependencies.add_references(key, parents)
             else:
-                for key, value, refs in records:
+                for key, value, refs in records:  # noqa: B007
                     new_keys.add_key(key)
         self._add_callback(records)
 
@@ -2229,10 +2229,14 @@ class _GCGraphIndex:
 GroupCompressor: Type[_CommonGroupCompressor]
 
 
+from .._bzr_rs import groupcompress
 from ._groupcompress_py import LinesDeltaIndex
-from ._groupcompress_rs import (apply_delta, apply_delta_to_source,
-                                decode_base128_int, decode_copy_instruction,
-                                encode_base128_int)
+
+apply_delta = groupcompress.apply_delta
+apply_delta_to_source = groupcompress.apply_delta_to_source
+decode_base128_int = groupcompress.decode_base128_int
+decode_copy_instruction = groupcompress.decode_copy_instruction
+encode_base128_int = groupcompress.encode_base128_int
 
 try:
     from ._groupcompress_pyx import DeltaIndex

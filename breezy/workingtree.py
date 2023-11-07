@@ -49,8 +49,12 @@ from breezy import (
 
 from . import errors, mutabletree, osutils
 from . import revision as _mod_revision
-from .controldir import (ControlComponent, ControlComponentFormat,
-                         ControlComponentFormatRegistry, ControlDir)
+from .controldir import (
+    ControlComponent,
+    ControlComponentFormat,
+    ControlComponentFormatRegistry,
+    ControlDir,
+)
 from .i18n import gettext
 from .trace import mutter, note
 from .transport import NoSuchFile
@@ -357,8 +361,8 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         abspath = self.abspath(path)
         try:
             file_obj = open(abspath, 'rb')
-        except FileNotFoundError:
-            raise NoSuchFile(path)
+        except FileNotFoundError as err:
+            raise NoSuchFile(path) from err
         stat_value = _fstat(file_obj.fileno())
         if filtered and self.supports_content_filtering():
             filters = self._content_filter_stack(path)
@@ -444,8 +448,8 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
                     fullpath = osutils.normpath(self.abspath(f))
                     try:
                         kinds[pos] = file_kind(fullpath)
-                    except FileNotFoundError:
-                        raise NoSuchFile(fullpath)
+                    except FileNotFoundError as err:
+                        raise NoSuchFile(fullpath) from err
 
     def add_parent_tree_id(self, revision_id, allow_leftmost_as_ghost=False):
         """Add revision_id as a parent.
@@ -658,8 +662,8 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         abspath = self.abspath(path)
         try:
             return osutils.readlink(abspath)
-        except FileNotFoundError:
-            raise NoSuchFile(path)
+        except FileNotFoundError as err:
+            raise NoSuchFile(path) from err
 
     def subsume(self, other_tree):
         raise NotImplementedError(self.subsume)
@@ -1259,4 +1263,17 @@ class WorkingTreeFormat(ControlComponentFormat):
         return self._matchingcontroldir
 
 
+def patch_tree(tree: WorkingTree, patches, strip: int = 0, reverse: bool = False, dry_run: bool = False,
+               quiet: bool = False, out=None):
+    """Apply a patch to a tree.
 
+    Args:
+      tree: A MutableTree object
+      patches: list of patches as bytes
+      strip: Strip X segments of paths
+      reverse: Apply reversal of patch
+      dry_run: Dry run
+    """
+    from .patch import run_patch
+    return run_patch(tree.basedir, patches=patches, strip=strip,
+                     reverse=reverse, dry_run=dry_run, quiet=quiet, out=out)

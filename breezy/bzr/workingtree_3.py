@@ -16,9 +16,8 @@
 
 """WorkingTree3 format and implementation."""
 
-from .. import errors
+from .. import errors, trace
 from .. import revision as _mod_revision
-from .. import trace
 from .. import transport as _mod_transport
 from ..lockdir import LockDir
 from ..mutabletree import MutableTree

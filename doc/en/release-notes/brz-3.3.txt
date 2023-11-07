@@ -5,10 +5,25 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+brz 3.3.5
+#########
+
+:3.3.5: UNRELEASED
+
 brz 3.3.4
 #########
 
-:3.3.4: UNRELEASED
+:3.3.4: 2023-09-04
+
+* Improve handling of lp: URLs when lp: insteadOf is set in gitconfig.
+  (Jelmer Vernooĳ)
+
+* Allow setting _ConnectRequestor.selector.  (Jelmer Vernooĳ)
+
+* Fix brz-email bug on Python 3. (Triss)
+
+* Fix compatibility with newer versions of dulwich.
+  (Jelmer Vernooĳ)
 
 brz 3.3.3
 #########

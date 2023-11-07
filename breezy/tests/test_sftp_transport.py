@@ -20,9 +20,8 @@ import socket
 import sys
 import time
 
-from breezy import config, controldir, errors, tests
+from breezy import config, controldir, errors, tests, ui
 from breezy import transport as _mod_transport
-from breezy import ui
 from breezy.tests import TestCase, TestCaseWithTransport, TestSkipped, features
 
 from ..osutils import lexists
@@ -270,7 +269,7 @@ class SSHVendorBadConnection(TestCaseWithTransport):
         s = socket.socket()
         s.bind(('localhost', 0))
         self.addCleanup(s.close)
-        self.bogus_url = 'sftp://%s:%s/' % s.getsockname()
+        self.bogus_url = 'sftp://{}:{}/'.format(*s.getsockname())
 
     def set_vendor(self, vendor, subprocess_stderr=None):
         from breezy.transport import ssh

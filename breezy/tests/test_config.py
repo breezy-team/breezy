@@ -25,12 +25,23 @@ from textwrap import dedent
 import configobj
 from testtools import matchers
 
-from .. import (bedding, branch, config, controldir, diff, errors, lock,
-                mail_client, osutils)
+from .. import (
+    bedding,
+    branch,
+    config,
+    controldir,
+    diff,
+    errors,
+    lock,
+    mail_client,
+    osutils,
+    tests,
+    trace,
+    ui,
+    urlutils,
+)
 from .. import registry as _mod_registry
-from .. import tests, trace
 from .. import transport as _mod_transport
-from .. import ui, urlutils
 from ..bzr import remote
 from ..transport import remote as transport_remote
 from . import features, scenarios, test_server
@@ -352,15 +363,15 @@ class FakeControlFilesAndTransport:
         # from Transport
         try:
             return BytesIO(self.files[filename])
-        except KeyError:
-            raise _mod_transport.NoSuchFile(filename)
+        except KeyError as e:
+            raise _mod_transport.NoSuchFile(filename) from e
 
     def get_bytes(self, filename):
         # from Transport
         try:
             return self.files[filename]
-        except KeyError:
-            raise _mod_transport.NoSuchFile(filename)
+        except KeyError as e:
+            raise _mod_transport.NoSuchFile(filename) from e
 
     def put(self, filename, fileobj):
         self.files[filename] = fileobj.read()
@@ -2336,8 +2347,8 @@ class TestStoreMinimalAPI(tests.TestCaseWithTransport):
         store = self.get_store(self)
         if isinstance(store, config.TransportIniFileStore):
             raise tests.TestNotApplicable(
-                "%s is not a concrete Store implementation"
-                " so it doesn't need an id" % (store.__class__.__name__,))
+                f"{store.__class__.__name__} is not a concrete Store implementation"
+                " so it doesn't need an id")
         self.assertIsNot(None, store.id)
 
 
@@ -2515,8 +2526,8 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
             raise errors.PermissionDenied(relpath, "")
         try:
             t.get_bytes = get_bytes
-        except AttributeError:
-            raise tests.TestSkipped('unable to override Transport.get_bytes')
+        except AttributeError as e:
+            raise tests.TestSkipped('unable to override Transport.get_bytes') from e
         store = config.TransportIniFileStore(t, 'foo.conf')
         self.assertRaises(errors.PermissionDenied, store.load)
         self.assertEqual(
@@ -2918,8 +2929,7 @@ class TestConcurrentStoreUpdates(TestStore):
         self.stack = self.get_stack(self)
         if not isinstance(self.stack, config._CompatibleStack):
             raise tests.TestNotApplicable(
-                '%s is not meant to be compatible with the old config design'
-                % (self.stack,))
+                f'{self.stack} is not meant to be compatible with the old config design')
         self.stack.set('one', '1')
         self.stack.set('two', '2')
         # Flush the store

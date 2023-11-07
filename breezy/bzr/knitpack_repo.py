@@ -39,13 +39,24 @@ from breezy.bzr.knit import (
 """)
 
 from ..bzr import btree_index
-from ..bzr.index import (CombinedGraphIndex, GraphIndex,
-                         GraphIndexPrefixAdapter, InMemoryGraphIndex)
+from ..bzr.index import (
+    CombinedGraphIndex,
+    GraphIndex,
+    GraphIndexPrefixAdapter,
+    InMemoryGraphIndex,
+)
 from ..bzr.vf_repository import StreamSource
 from .knitrepo import KnitRepository
-from .pack_repo import (NewPack, PackCommitBuilder, Packer, PackRepository,
-                        RepositoryFormatPack, RepositoryPackCollection,
-                        ResumedPack, _DirectPackAccess)
+from .pack_repo import (
+    NewPack,
+    PackCommitBuilder,
+    Packer,
+    PackRepository,
+    RepositoryFormatPack,
+    RepositoryPackCollection,
+    ResumedPack,
+    _DirectPackAccess,
+)
 
 
 class KnitPackRepository(PackRepository, KnitRepository):
@@ -570,7 +581,7 @@ class KnitPackStreamSource(StreamSource):
         def find_text_keys_from_content(record):
             if record.storage_kind not in ('knit-delta-gz', 'knit-ft-gz'):
                 raise ValueError("Unknown content storage kind for"
-                                 " inventory text: %s" % (record.storage_kind,))
+                                 f" inventory text: {record.storage_kind}")
             # It's a knit record, it has a _raw_record field (even if it was
             # reconstituted from a network stream).
             raw_data = record._raw_record
@@ -799,7 +810,7 @@ class KnitPacker(Packer):
             # eat the iterator to cause it to execute.
             list(inv_lines)
             self._text_filter = None
-        if 'pack' in debug.debug_flags:
+        if debug.debug_flag_enabled('pack'):
             trace.mutter('%s: create_pack: inventories copied: %s%s %d items t+%6.3fs',
                          time.ctime(), self._pack_collection._upload_transport.base,
                          self.new_pack.random_name,
@@ -825,7 +836,7 @@ class KnitPacker(Packer):
                 packs.append(index_to_pack_map[index])
                 seen_indexes.add(index)
         if len(packs) == len(self.packs):
-            if 'pack' in debug.debug_flags:
+            if debug.debug_flag_enabled('pack'):
                 trace.mutter('Not changing pack list, all packs used.')
             return
         seen_packs = set(packs)
@@ -833,7 +844,7 @@ class KnitPacker(Packer):
             if pack not in seen_packs:
                 packs.append(pack)
                 seen_packs.add(pack)
-        if 'pack' in debug.debug_flags:
+        if debug.debug_flag_enabled('pack'):
             old_names = [p.access_tuple()[1] for p in self.packs]
             new_names = [p.access_tuple()[1] for p in packs]
             trace.mutter('Reordering packs\nfrom: %s\n  to: %s',
@@ -859,7 +870,7 @@ class KnitPacker(Packer):
             revision_nodes)
         list(self._copy_nodes_graph(revision_index_map, self.new_pack._writer,
                                     self.new_pack.revision_index, readv_group_iter, total_items))
-        if 'pack' in debug.debug_flags:
+        if debug.debug_flag_enabled('pack'):
             trace.mutter('%s: create_pack: revisions copied: %s%s %d items t+%6.3fs',
                          time.ctime(), self._pack_collection._upload_transport.base,
                          self.new_pack.random_name,
@@ -909,7 +920,7 @@ class KnitPacker(Packer):
         # buffer data - we won't be reading-back during the pack creation and
         # this makes a significant difference on sftp pushes.
         new_pack.set_write_cache_size(1024 * 1024)
-        if 'pack' in debug.debug_flags:
+        if debug.debug_flag_enabled('pack'):
             plain_pack_list = [f'{a_pack.pack_transport.base}{a_pack.name}'
                                for a_pack in self.packs]
             if self.revision_ids is not None:
@@ -933,7 +944,7 @@ class KnitPacker(Packer):
         self.pb.update("Copying signature texts", 4)
         self._copy_nodes(signature_nodes, signature_index_map, new_pack._writer,
                          new_pack.signature_index)
-        if 'pack' in debug.debug_flags:
+        if debug.debug_flag_enabled('pack'):
             trace.mutter('%s: create_pack: revision signatures copied: %s%s %d items t+%6.3fs',
                          time.ctime(), self._pack_collection._upload_transport.base, new_pack.random_name,
                          new_pack.signature_index.key_count(),
@@ -1107,8 +1118,7 @@ class KnitReconcilePacker(KnitPacker):
             for parent_key in parent_keys:
                 if parent_key[0] != key[0]:
                     # Graph parents must match the fileid
-                    raise errors.BzrError('Mismatched key parent %r:%r' %
-                                          (key, parent_keys))
+                    raise errors.BzrError(f'Mismatched key parent {key!r}:{parent_keys!r}')
                 parents.append(parent_key[1])
             text_lines = next(repo.texts.get_record_stream(
                 [key], 'unordered', True)).get_bytes_as('lines')
@@ -1117,8 +1127,7 @@ class KnitReconcilePacker(KnitPacker):
         # 5) check that nothing inserted has a reference outside the keyspace.
         missing_text_keys = self.new_pack.text_index._external_references()
         if missing_text_keys:
-            raise errors.BzrCheckError('Reference to missing compression parents %r'
-                                       % (missing_text_keys,))
+            raise errors.BzrCheckError(f'Reference to missing compression parents {missing_text_keys!r}')
         self._log_copied_texts()
 
     def _use_pack(self, new_pack):
