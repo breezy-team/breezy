@@ -855,7 +855,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
 
     def test__len__(self):
         inv = Inventory(revision_id=b"revid", root_revision=b"rootrev")
-        inv.add(InventoryFile(b"fileid", "file", inv.root.file_id, revision = b"filerev", executable=True, text_sha1=b"ffff", text_size=1))
+        inv.add(InventoryFile(b"fileid", "file", inv.root.file_id, revision=b"filerev", executable=True, text_sha1=b"ffff", text_size=1))
         chk_bytes = self.get_chk_bytes()
         chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
         self.assertEqual(2, len(chk_inv))

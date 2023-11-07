@@ -143,7 +143,7 @@ def import_git_blob(texts, mapping, path, name, hexshas,
     if kind == 'symlink':
         ie = InventoryLink(file_id, decoded_name, parent_id, **kwargs)
     else:
-        ie = InventoryFile(file_id, decoded_name, parent_id,  **kwargs)
+        ie = InventoryFile(file_id, decoded_name, parent_id, **kwargs)
     invdelta.append((old_path, decoded_path, file_id, ie))
     if base_hexsha != hexsha:
         store_updater.add_object(blob, (ie.file_id, ie.revision), path)
