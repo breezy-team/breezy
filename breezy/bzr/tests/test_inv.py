@@ -274,7 +274,7 @@ class TestInventoryUpdates(TestCase):
     def test_copy(self):
         """Make sure copy() works and creates a deep copy."""
         inv = inventory.Inventory(root_id=b'some-tree-root')
-        ie = inv.add_path('hello', 'file', b'hello-id')
+        inv.add_path('hello', 'file', b'hello-id')
         inv2 = inv.copy()
         inv.rename_id(b'some-tree-root', b'some-new-root')
         self.assertEqual(b'some-tree-root', inv2.root.file_id)
@@ -1171,7 +1171,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
     def test_filter_change_in_renamed_subfolder(self):
         inv = Inventory(b'tree-root', root_revision=b'rootrev')
         src_ie = inv.add_path('src', 'directory', b'src-id', revision=b'srcrev')
-        sub_ie = inv.add_path('src/sub/', 'directory', b'sub-id', revision=b'subrev')
+        inv.add_path('src/sub/', 'directory', b'sub-id', revision=b'subrev')
         a_ie = inv.add_path('src/sub/a', 'file', b'a-id', revision=b'filerev', text_sha1=osutils.sha_string(b'content\n'), text_size=len(b'content\n'))
         chk_bytes = self.get_chk_bytes()
         inv = CHKInventory.from_inventory(chk_bytes, inv)
