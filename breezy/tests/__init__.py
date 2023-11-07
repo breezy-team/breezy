@@ -117,54 +117,54 @@ TestLoader = TestUtil.TestLoader
 # the tests should start without this variable in the environment. There are a
 # few exceptions but you shouldn't violate this rule lightly.
 isolated_environ = {
-    'BRZ_HOME': None,
-    'HOME': None,
-    'GNUPGHOME': None,
-    'XDG_CONFIG_HOME': None,
+    "BRZ_HOME": None,
+    "HOME": None,
+    "GNUPGHOME": None,
+    "XDG_CONFIG_HOME": None,
     # brz now uses the Win32 API and doesn't rely on APPDATA, but the
     # tests do check our impls match APPDATA
-    'BRZ_EDITOR': None,  # test_msgeditor manipulates this variable
-    'VISUAL': None,
-    'EDITOR': None,
-    'BRZ_EMAIL': None,
-    'BZREMAIL': None,  # may still be present in the environment
-    'EMAIL': 'jrandom@example.com',  # set EMAIL as brz does not guess
-    'BRZ_PROGRESS_BAR': None,
+    "BRZ_EDITOR": None,  # test_msgeditor manipulates this variable
+    "VISUAL": None,
+    "EDITOR": None,
+    "BRZ_EMAIL": None,
+    "BZREMAIL": None,  # may still be present in the environment
+    "EMAIL": "jrandom@example.com",  # set EMAIL as brz does not guess
+    "BRZ_PROGRESS_BAR": None,
     # Trap leaks to $XDG_CACHE_HOME/breezy/brz.log. This occurs when tests use
     # TestCase as a base class instead of TestCaseInTempDir. Tests inheriting
     # from TestCase should not use disk resources, BRZ_LOG is one.
-    'BRZ_LOG': '/you-should-use-TestCaseInTempDir-if-you-need-a-log-file',
-    'BRZ_PLUGIN_PATH': '-site',
-    'BRZ_DISABLE_PLUGINS': None,
-    'BRZ_PLUGINS_AT': None,
-    'BRZ_CONCURRENCY': None,
+    "BRZ_LOG": "/you-should-use-TestCaseInTempDir-if-you-need-a-log-file",
+    "BRZ_PLUGIN_PATH": "-site",
+    "BRZ_DISABLE_PLUGINS": None,
+    "BRZ_PLUGINS_AT": None,
+    "BRZ_CONCURRENCY": None,
     # Make sure that any text ui tests are consistent regardless of
     # the environment the test case is run in; you may want tests that
     # test other combinations.  'dumb' is a reasonable guess for tests
     # going to a pipe or a BytesIO.
-    'TERM': 'dumb',
-    'LINES': '25',
-    'COLUMNS': '80',
-    'BRZ_COLUMNS': '80',
+    "TERM": "dumb",
+    "LINES": "25",
+    "COLUMNS": "80",
+    "BRZ_COLUMNS": "80",
     # Disable SSH Agent
-    'SSH_AUTH_SOCK': None,
+    "SSH_AUTH_SOCK": None,
     # Proxies
-    'http_proxy': None,
-    'HTTP_PROXY': None,
-    'https_proxy': None,
-    'HTTPS_PROXY': None,
-    'no_proxy': None,
-    'NO_PROXY': None,
-    'all_proxy': None,
-    'ALL_PROXY': None,
-    'BZR_REMOTE_PATH': None,
-    'BRZ_SSH': None,
+    "http_proxy": None,
+    "HTTP_PROXY": None,
+    "https_proxy": None,
+    "HTTPS_PROXY": None,
+    "no_proxy": None,
+    "NO_PROXY": None,
+    "all_proxy": None,
+    "ALL_PROXY": None,
+    "BZR_REMOTE_PATH": None,
+    "BRZ_SSH": None,
     # Generally speaking, we don't want apport reporting on crashes in
     # the test envirnoment unless we're specifically testing apport,
     # so that it doesn't leak into the real system environment.  We
     # use an env var so it propagates to subprocesses.
-    'APPORT_DISABLE': '1',
-    }
+    "APPORT_DISABLE": "1",
+}
 
 
 def override_os_environ(test, env=None):
@@ -235,10 +235,14 @@ class ExtendedTestResult(testtools.TextTestResult):
 
     stop_early = False
 
-    def __init__(self, stream, descriptions, verbosity,
-                 bench_history=None,
-                 strict=False,
-                 ):
+    def __init__(
+        self,
+        stream,
+        descriptions,
+        verbosity,
+        bench_history=None,
+        strict=False,
+    ):
         """Construct new TestResult.
 
         :param bench_history: Optionally, a writable file object to accumulate
@@ -247,6 +251,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         testtools.TextTestResult.__init__(self, stream)
         if bench_history is not None:
             from ..version import _get_bzr_source_tree
+
             src_tree = _get_bzr_source_tree()
             if src_tree:
                 try:
@@ -254,10 +259,10 @@ class ExtendedTestResult(testtools.TextTestResult):
                 except IndexError:
                     # XXX: if this is a brand new tree, do the same as if there
                     # is no branch.
-                    revision_id = b''
+                    revision_id = b""
             else:
                 # XXX: If there's no branch, what should we do?
-                revision_id = b''
+                revision_id = b""
             bench_history.write(f"--date {time.time()} {revision_id}\n")
         self._bench_history = bench_history
         self.ui = ui.ui_factory
@@ -282,11 +287,13 @@ class ExtendedTestResult(testtools.TextTestResult):
         timeTaken = stopTime - self.startTime
         # GZ 2010-07-19: Seems testtools has no printErrors method, and though
         #                the parent class method is similar have to duplicate
-        self._show_list('ERROR', self.errors)
-        self._show_list('FAIL', self.failures)
+        self._show_list("ERROR", self.errors)
+        self._show_list("FAIL", self.failures)
         self.stream.write(self.sep2)
-        self.stream.write("%s %d test%s in %.3fs\n\n" % (
-            actionTaken, run, run != 1 and "s" or "", timeTaken))
+        self.stream.write(
+            "%s %d test%s in %.3fs\n\n"
+            % (actionTaken, run, run != 1 and "s" or "", timeTaken)
+        )
         if not self.wasSuccessful():
             self.stream.write("FAILED (")
             failed, errored = map(len, (self.failures, self.errors))
@@ -299,44 +306,45 @@ class ExtendedTestResult(testtools.TextTestResult):
             if self.known_failure_count:
                 if failed or errored:
                     self.stream.write(", ")
-                self.stream.write("known_failure_count=%d" %
-                                  self.known_failure_count)
+                self.stream.write("known_failure_count=%d" % self.known_failure_count)
             self.stream.write(")\n")
         else:
             if self.known_failure_count:
-                self.stream.write("OK (known_failures=%d)\n" %
-                                  self.known_failure_count)
+                self.stream.write("OK (known_failures=%d)\n" % self.known_failure_count)
             else:
                 self.stream.write("OK\n")
         if self.skip_count > 0:
             skipped = self.skip_count
-            self.stream.write('%d test%s skipped\n' %
-                              (skipped, skipped != 1 and "s" or ""))
+            self.stream.write(
+                "%d test%s skipped\n" % (skipped, skipped != 1 and "s" or "")
+            )
         if self.unsupported:
             for feature, count in sorted(self.unsupported.items()):
-                self.stream.write("Missing feature '%s' skipped %d tests.\n" %
-                                  (feature, count))
+                self.stream.write(
+                    "Missing feature '%s' skipped %d tests.\n" % (feature, count)
+                )
         if self._strict:
             self.wasStrictlySuccessful()
         else:
             self.wasSuccessful()
         if self._first_thread_leaker_id:
             self.stream.write(
-                '%s is leaking threads among %d leaking tests.\n' % (
-                    self._first_thread_leaker_id,
-                    self._tests_leaking_threads_count))
+                "%s is leaking threads among %d leaking tests.\n"
+                % (self._first_thread_leaker_id, self._tests_leaking_threads_count)
+            )
             # We don't report the main thread as an active one.
             self.stream.write(
-                '%d non-main threads were left active in the end.\n'
-                % (len(self._active_threads) - 1))
+                "%d non-main threads were left active in the end.\n"
+                % (len(self._active_threads) - 1)
+            )
 
     def getDescription(self, test):
         return test.id()
 
     def _extractBenchmarkTime(self, test_case, details=None):
         """Add a benchmark time for the current test case."""
-        if details and 'benchtime' in details:
-            return float(''.join(details['benchtime'].iter_bytes()))
+        if details and "benchtime" in details:
+            return float("".join(details["benchtime"].iter_bytes()))
         return getattr(test_case, "_benchtime", None)
 
     def _delta_to_float(self, a_timedelta, precision):
@@ -344,15 +352,24 @@ class ExtendedTestResult(testtools.TextTestResult):
         # taken is shown (rather than leaving it to the Python %f operator
         # to decide whether to round/floor/ceiling. This was added when we
         # had pyp3 test failures that suggest a floor was happening.
-        shift = 10 ** precision
-        return math.ceil(
-            (a_timedelta.days * 86400.0 + a_timedelta.seconds +
-             a_timedelta.microseconds / 1000000.0) * shift) / shift
+        shift = 10**precision
+        return (
+            math.ceil(
+                (
+                    a_timedelta.days * 86400.0
+                    + a_timedelta.seconds
+                    + a_timedelta.microseconds / 1000000.0
+                )
+                * shift
+            )
+            / shift
+        )
 
     def _elapsedTestTimeString(self):
         """Return time string for overall time the current test has taken."""
-        return self._formatTime(self._delta_to_float(
-            self._now() - self._start_datetime, 3))
+        return self._formatTime(
+            self._delta_to_float(self._now() - self._start_datetime, 3)
+        )
 
     def _testTimeString(self, test_case):
         benchmark_time = self._extractBenchmarkTime(test_case)
@@ -369,7 +386,7 @@ class ExtendedTestResult(testtools.TextTestResult):
 
     def _shortened_test_description(self, test):
         what = test.id()
-        what = re.sub(r'^breezy\.tests\.', '', what)
+        what = re.sub(r"^breezy\.tests\.", "", what)
         return what
 
     # GZ 2010-10-04: Cloned tests may end up harmlessly calling this method
@@ -463,12 +480,12 @@ class ExtendedTestResult(testtools.TextTestResult):
         if self._bench_history is not None:
             benchmark_time = self._extractBenchmarkTime(test, details)
             if benchmark_time is not None:
-                self._bench_history.write("{} {}\n".format(
-                    self._formatTime(benchmark_time),
-                    test.id()))
+                self._bench_history.write(
+                    f"{self._formatTime(benchmark_time)} {test.id()}\n"
+                )
         self.report_success(test)
         super().addSuccess(test)
-        test._log_contents = ''
+        test._log_contents = ""
 
     def addExpectedFailure(self, test, err):
         self.known_failure_count += 1
@@ -482,8 +499,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         """
         super().addFailure(test, details=details)
         self.failure_count += 1
-        self.report_unexpected_success(test,
-                                       "".join(details["reason"].iter_text()))
+        self.report_unexpected_success(test, "".join(details["reason"].iter_text()))
         if self.stop_early:
             self.stop()
 
@@ -514,8 +530,9 @@ class ExtendedTestResult(testtools.TextTestResult):
 
     def _post_mortem(self, tb=None):
         """Start a PDB post mortem session."""
-        if os.environ.get('BRZ_TEST_PDB', None):
+        if os.environ.get("BRZ_TEST_PDB", None):
             import pdb
+
             pdb.post_mortem(tb)
 
     def progress(self, offset, whence):
@@ -530,17 +547,16 @@ class ExtendedTestResult(testtools.TextTestResult):
     def report_tests_starting(self):
         """Display information before the test run begins."""
         bzr_path = osutils.realpath(sys.argv[0])
+        self.stream.write(f"brz selftest: {bzr_path}\n")
+        self.stream.write(f"   {breezy.__path__[0]}\n")
         self.stream.write(
-            f'brz selftest: {bzr_path}\n')
-        self.stream.write(
-            f'   {breezy.__path__[0]}\n')
-        self.stream.write(
-            '   bzr-{} python-{} {}\n'.format(
+            "   bzr-{} python-{} {}\n".format(
                 breezy.version_string,
                 breezy._format_version_tuple(sys.version_info),
                 platform.platform(aliased=1),
-                ))
-        self.stream.write('\n')
+            )
+        )
+        self.stream.write("\n")
 
     def report_test_start(self, test):
         """Display information on the test just about to be run."""
@@ -551,9 +567,10 @@ class ExtendedTestResult(testtools.TextTestResult):
         #                thread debugging would be nice. Tests under subunit
         #                need something not using stream, perhaps adding a
         #                testtools details object would be fitting.
-        if 'threads' in selftest_debug_flags.debug_flag_enabled('threads'):
-            self.stream.write('%s is leaking, active is now %d\n' %
-                              (test.id(), len(active_threads)))
+        if "threads" in selftest_debug_flags.debug_flag_enabled("threads"):
+            self.stream.write(
+                "%s is leaking, active is now %d\n" % (test.id(), len(active_threads))
+            )
 
     def startTestRun(self):
         self.startTime = time.time()
@@ -570,16 +587,21 @@ class ExtendedTestResult(testtools.TextTestResult):
 class TextTestResult(ExtendedTestResult):
     """Displays progress and results of tests in text form."""
 
-    def __init__(self, stream, descriptions, verbosity,
-                 bench_history=None,
-                 strict=None,
-                 ):
-        ExtendedTestResult.__init__(self, stream, descriptions, verbosity,
-                                    bench_history, strict)
+    def __init__(
+        self,
+        stream,
+        descriptions,
+        verbosity,
+        bench_history=None,
+        strict=None,
+    ):
+        ExtendedTestResult.__init__(
+            self, stream, descriptions, verbosity, bench_history, strict
+        )
         self.pb = self.ui.nested_progress_bar()
         self.pb.show_pct = False
         self.pb.show_spinner = False
-        self.pb.show_eta = False,
+        self.pb.show_eta = (False,)
         self.pb.show_count = False
         self.pb.show_bar = False
         self.pb.update_latency = 0
@@ -593,12 +615,12 @@ class TextTestResult(ExtendedTestResult):
 
     def report_tests_starting(self):
         super().report_tests_starting()
-        self.pb.update('[test 0/%d] Starting' % (self.num_tests))
+        self.pb.update("[test 0/%d] Starting" % (self.num_tests))
 
     def _progress_prefix_text(self):
         # the longer this text, the less space we have to show the test
         # name...
-        a = '[%d' % self.count              # total that have been run
+        a = "[%d" % self.count  # total that have been run
         # tests skipped as known not to be relevant are not important enough
         # to show here
         # if self.skip_count:
@@ -606,45 +628,46 @@ class TextTestResult(ExtendedTestResult):
         # if self.known_failure_count:
         #     a += '+%dX' % self.known_failure_count
         if self.num_tests:
-            a += '/%d' % self.num_tests
-        a += ' in '
+            a += "/%d" % self.num_tests
+        a += " in "
         runtime = time.time() - self._overall_start_time
         if runtime >= 60:
-            a += '%dm%ds' % (runtime / 60, runtime % 60)
+            a += "%dm%ds" % (runtime / 60, runtime % 60)
         else:
-            a += '%ds' % runtime
+            a += "%ds" % runtime
         total_fail_count = self.error_count + self.failure_count
         if total_fail_count:
-            a += ', %d failed' % total_fail_count
+            a += ", %d failed" % total_fail_count
         # if self.unsupported:
         #     a += ', %d missing' % len(self.unsupported)
-        a += ']'
+        a += "]"
         return a
 
     def report_test_start(self, test):
         self.pb.update(
-            self._progress_prefix_text() +
-            ' ' +
-            self._shortened_test_description(test))
+            self._progress_prefix_text() + " " + self._shortened_test_description(test)
+        )
 
     def _test_description(self, test):
         return self._shortened_test_description(test)
 
     def report_error(self, test, err):
-        self.stream.write(f'ERROR: {self._test_description(test)}\n    {err[1]}\n')
+        self.stream.write(f"ERROR: {self._test_description(test)}\n    {err[1]}\n")
 
     def report_failure(self, test, err):
-        self.stream.write(f'FAIL: {self._test_description(test)}\n    {err[1]}\n')
+        self.stream.write(f"FAIL: {self._test_description(test)}\n    {err[1]}\n")
 
     def report_known_failure(self, test, err):
         pass
 
     def report_unexpected_success(self, test, reason):
-        self.stream.write('FAIL: {}\n    {}: {}\n'.format(
-            self._test_description(test),
-            "Unexpected success. Should have failed",
-            reason,
-            ))
+        self.stream.write(
+            "FAIL: {}\n    {}: {}\n".format(
+                self._test_description(test),
+                "Unexpected success. Should have failed",
+                reason,
+            )
+        )
 
     def report_skip(self, test, reason):
         pass
@@ -662,13 +685,13 @@ class VerboseTestResult(ExtendedTestResult):
     def _ellipsize_to_right(self, a_string, final_width):
         """Truncate and pad a string, keeping the right hand side."""
         if len(a_string) > final_width:
-            result = '...' + a_string[3 - final_width:]
+            result = "..." + a_string[3 - final_width :]
         else:
             result = a_string
         return result.ljust(final_width)
 
     def report_tests_starting(self):
-        self.stream.write('running %d tests...\n' % self.num_tests)
+        self.stream.write("running %d tests...\n" % self.num_tests)
         super().report_tests_starting()
 
     def report_test_start(self, test):
@@ -685,57 +708,67 @@ class VerboseTestResult(ExtendedTestResult):
         self.stream.flush()
 
     def _error_summary(self, err):
-        indent = ' ' * 4
-        return f'{indent}{err[1]}'
+        indent = " " * 4
+        return f"{indent}{err[1]}"
 
     def report_error(self, test, err):
-        self.stream.write('ERROR {}\n{}\n'.format(self._testTimeString(test),
-                             self._error_summary(err)))
+        self.stream.write(
+            f"ERROR {self._testTimeString(test)}\n{self._error_summary(err)}\n"
+        )
 
     def report_failure(self, test, err):
-        self.stream.write(' FAIL {}\n{}\n'.format(self._testTimeString(test),
-                             self._error_summary(err)))
+        self.stream.write(
+            f" FAIL {self._testTimeString(test)}\n{self._error_summary(err)}\n"
+        )
 
     def report_known_failure(self, test, err):
-        self.stream.write('XFAIL {}\n{}\n'.format(self._testTimeString(test),
-                             self._error_summary(err)))
+        self.stream.write(
+            f"XFAIL {self._testTimeString(test)}\n{self._error_summary(err)}\n"
+        )
 
     def report_unexpected_success(self, test, reason):
-        self.stream.write(' FAIL {}\n{}: {}\n'.format(self._testTimeString(test),
-                             "Unexpected success. Should have failed",
-                             reason))
+        self.stream.write(
+            " FAIL {}\n{}: {}\n".format(
+                self._testTimeString(test),
+                "Unexpected success. Should have failed",
+                reason,
+            )
+        )
 
     def report_success(self, test):
-        self.stream.write(f'   OK {self._testTimeString(test)}\n')
-        for bench_called, stats in getattr(test, '_benchcalls', []):
-            self.stream.write('LSProf output for {}({}, {})\n'.format(*bench_called))
+        self.stream.write(f"   OK {self._testTimeString(test)}\n")
+        for bench_called, stats in getattr(test, "_benchcalls", []):
+            self.stream.write("LSProf output for {}({}, {})\n".format(*bench_called))
             stats.pprint(file=self.stream)
         # flush the stream so that we get smooth output. This verbose mode is
         # used to show the output in PQM.
         self.stream.flush()
 
     def report_skip(self, test, reason):
-        self.stream.write(f' SKIP {self._testTimeString(test)}\n{reason}\n')
+        self.stream.write(f" SKIP {self._testTimeString(test)}\n{reason}\n")
 
     def report_not_applicable(self, test, reason):
-        self.stream.write(f'  N/A {self._testTimeString(test)}\n    {reason}\n')
+        self.stream.write(f"  N/A {self._testTimeString(test)}\n    {reason}\n")
 
     def report_unsupported(self, test, feature):
         """Test cannot be run because feature is missing."""
-        self.stream.write(f"NODEP {self._testTimeString(test)}\n    The feature '{feature}' is not available.\n")
+        self.stream.write(
+            f"NODEP {self._testTimeString(test)}\n    The feature '{feature}' is not available.\n"
+        )
 
 
 class TextTestRunner:
     stop_on_failure = False
 
-    def __init__(self,
-                 stream=sys.stderr,
-                 descriptions=0,
-                 verbosity=1,
-                 bench_history=None,
-                 strict=False,
-                 result_decorators=None,
-                 ):
+    def __init__(
+        self,
+        stream=sys.stderr,
+        descriptions=0,
+        verbosity=1,
+        bench_history=None,
+        strict=False,
+        result_decorators=None,
+    ):
         """Create a TextTestRunner.
 
         :param result_decorators: An optional list of decorators to apply
@@ -752,8 +785,7 @@ class TextTestRunner:
         encode = codec.encode
         # GZ 2010-09-08: Really we don't want to be writing arbitrary bytes,
         #                so should swap to the plain codecs.StreamWriter
-        stream = osutils.UnicodeOrBytesToBytesWriter(encode, stream,
-                                                     "backslashreplace")
+        stream = osutils.UnicodeOrBytesToBytesWriter(encode, stream, "backslashreplace")
         stream.encoding = new_encoding
         self.stream = stream
         self.descriptions = descriptions
@@ -768,12 +800,13 @@ class TextTestRunner:
             result_class = TextTestResult
         elif self.verbosity >= 2:
             result_class = VerboseTestResult
-        original_result = result_class(self.stream,
-                                       self.descriptions,
-                                       self.verbosity,
-                                       bench_history=self._bench_history,
-                                       strict=self._strict,
-                                       )
+        original_result = result_class(
+            self.stream,
+            self.descriptions,
+            self.verbosity,
+            bench_history=self._bench_history,
+            strict=self._strict,
+        )
         # Signal to result objects that look at stop early policy to stop,
         original_result.stop_early = self.stop_on_failure
         result = original_result
@@ -798,7 +831,7 @@ def iter_suite_tests(suite):
         for item in suite:
             yield from iter_suite_tests(item)
     else:
-        raise Exception(f'unknown type {type(suite)!r} for object {suite!r}')
+        raise Exception(f"unknown type {type(suite)!r} for object {suite!r}")
 
 
 from testtools.testcase import TestSkipped
@@ -821,9 +854,9 @@ def _clever_some_str(value):
         return str(value)
     except BaseException:
         try:
-            return repr(value).replace('\\n', '\n')
+            return repr(value).replace("\\n", "\n")
         except BaseException:
-            return f'<unprintable {type(value).__name__} object>'
+            return f"<unprintable {type(value).__name__} object>"
 
 
 traceback._some_str = _clever_some_str  # type: ignore
@@ -843,9 +876,7 @@ class UnavailableFeature(Exception):
 
 
 class StringIOWrapper(ui_testing.BytesIOWithEncoding):
-
-    @symbol_versioning.deprecated_method(
-        symbol_versioning.deprecated_in((3, 0)))
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((3, 0)))
     def __init__(self, s=None):
         super().__init__(s)
 
@@ -855,7 +886,7 @@ TestUIFactory = ui_testing.TestUIFactory
 
 def isolated_doctest_setUp(test):
     override_os_environ(test)
-    osutils.set_or_unset_env('BRZ_HOME', '/nonexistent')
+    osutils.set_or_unset_env("BRZ_HOME", "/nonexistent")
     test._orig_ui_factory = ui.ui_factory
     ui.ui_factory = ui.SilentUIFactory()
 
@@ -870,8 +901,8 @@ def IsolatedDocTestSuite(*args, **kwargs):
 
     The method is really a factory and users are expected to use it as such.
     """
-    kwargs['setUp'] = isolated_doctest_setUp
-    kwargs['tearDown'] = isolated_doctest_tearDown
+    kwargs["setUp"] = isolated_doctest_setUp
+    kwargs["tearDown"] = isolated_doctest_tearDown
     return doctest.DocTestSuite(*args, **kwargs)
 
 
@@ -900,31 +931,32 @@ class TestCase(testtools.TestCase):
     # record lsprof data when performing benchmark calls.
     _gather_lsprof_in_benchmarks = False
 
-    def __init__(self, methodName='testMethod'):  # noqa: N803
+    def __init__(self, methodName="testMethod"):  # noqa: N803
         super().__init__(methodName)
         self._directory_isolation = True
         self.exception_handlers.insert(
-            0, (UnavailableFeature, self._do_unsupported_or_skip))
-        self.exception_handlers.insert(
-            0, (TestNotApplicable, self._do_not_applicable))
+            0, (UnavailableFeature, self._do_unsupported_or_skip)
+        )
+        self.exception_handlers.insert(0, (TestNotApplicable, self._do_not_applicable))
 
     def setUp(self):
         super().setUp()
 
         # At this point we're still accessing the config files in $BRZ_HOME (as
         # set by the user running selftest).
-        timeout = config.GlobalStack().get('selftest.timeout')
+        timeout = config.GlobalStack().get("selftest.timeout")
         if timeout:
             timeout_fixture = fixtures.TimeoutFixture(timeout, gentle=True)
             timeout_fixture.setUp()
             self.addCleanup(timeout_fixture.cleanUp)
 
-        for feature in getattr(self, '_test_needs_features', []):
+        for feature in getattr(self, "_test_needs_features", []):
             self.requireFeature(feature)
         self._cleanEnvironment()
 
-        self.overrideAttr(breezy.get_global_state(), 'cmdline_overrides',
-                          config.CommandLineStore())
+        self.overrideAttr(
+            breezy.get_global_state(), "cmdline_overrides", config.CommandLineStore()
+        )
 
         self._silenceUI()
         self._startLogFile()
@@ -937,13 +969,13 @@ class TestCase(testtools.TestCase):
         # Isolate global verbosity level, to make sure it's reproducible
         # between tests.  We should get rid of this altogether: bug 656694. --
         # mbp 20101008
-        self.overrideAttr(breezy.trace, '_verbosity_level', 0)
+        self.overrideAttr(breezy.trace, "_verbosity_level", 0)
         self._log_files = set()
         # Each key in the ``_counters`` dict holds a value for a different
         # counter. When the test ends, addDetail() should be used to output the
         # counter values. This happens in install_counter_hook().
         self._counters = {}
-        if 'config_stats' in selftest_debug_flags:
+        if "config_stats" in selftest_debug_flags:
             self._install_config_stats_hooks()
         # Do not use i18n for tests (unless the test reverses this)
         i18n.disable_i18n()
@@ -953,8 +985,9 @@ class TestCase(testtools.TestCase):
         import pdb
 
         # The sys preserved stdin/stdout should allow blackbox tests debugging
-        pdb.Pdb(stdin=sys.__stdin__, stdout=sys.__stdout__
-                ).set_trace(sys._getframe().f_back)
+        pdb.Pdb(stdin=sys.__stdin__, stdout=sys.__stdout__).set_trace(
+            sys._getframe().f_back
+        )
 
     def discardDetail(self, name):
         """Extend the addDetail, getDetails api so we can remove a detail.
@@ -988,32 +1021,38 @@ class TestCase(testtools.TestCase):
         if counter_name is None:
             counter_name = name
         if counter_name in _counters:
-            raise AssertionError(f'{counter_name} is already used as a counter name')
+            raise AssertionError(f"{counter_name} is already used as a counter name")
         _counters[counter_name] = 0
-        self.addDetail(counter_name, content.Content(
-            content.UTF8_TEXT,
-            lambda: [b'%d' % (_counters[counter_name],)]))
+        self.addDetail(
+            counter_name,
+            content.Content(
+                content.UTF8_TEXT, lambda: [b"%d" % (_counters[counter_name],)]
+            ),
+        )
 
         def increment_counter(*args, **kwargs):
             _counters[counter_name] += 1
-        label = f'count {counter_name} calls'
+
+        label = f"count {counter_name} calls"
         hooks.install_named_hook(name, increment_counter, label)
         self.addCleanup(hooks.uninstall_named_hook, name, label)
 
     def _install_config_stats_hooks(self):
         """Install config hooks to count hook calls."""
-        for hook_name in ('get', 'set', 'remove', 'load', 'save'):
-            self.install_counter_hook(config.ConfigHooks, hook_name,
-                                      f'config.{hook_name}')
+        for hook_name in ("get", "set", "remove", "load", "save"):
+            self.install_counter_hook(
+                config.ConfigHooks, hook_name, f"config.{hook_name}"
+            )
 
         # The OldConfigHooks are private and need special handling to protect
         # against recursive tests (tests that run other tests), so we just do
         # manually what registering them into _builtin_known_hooks will provide
         # us.
-        self.overrideAttr(config, 'OldConfigHooks', config._OldConfigHooks())
-        for hook_name in ('get', 'set', 'remove', 'load', 'save'):
-            self.install_counter_hook(config.OldConfigHooks, hook_name,
-                                      f'old_config.{hook_name}')
+        self.overrideAttr(config, "OldConfigHooks", config._OldConfigHooks())
+        for hook_name in ("get", "set", "remove", "load", "save"):
+            self.install_counter_hook(
+                config.OldConfigHooks, hook_name, f"old_config.{hook_name}"
+            )
 
     def _clear_debug_flags(self):
         """Prevent externally set debug flags affecting tests.
@@ -1023,15 +1062,17 @@ class TestCase(testtools.TestCase):
         """
         # Start with a copy of the current debug flags we can safely modify.
         flags = debug.get_debug_flags()
+
         def restore_debug_flags(flags):
             debug.clear_debug_flags()
             for flag in flags:
                 debug.set_debug_flag(flag)
+
         self.addCleanup(restore_debug_flags, flags)
-        if 'allow_debug' not in selftest_debug_flags:
+        if "allow_debug" not in selftest_debug_flags:
             debug.clear_debug_flags()
-        if 'disable_lock_checks' not in selftest_debug_flags:
-            debug.set_debug_flag('strict_locks')
+        if "disable_lock_checks" not in selftest_debug_flags:
+            debug.set_debug_flag("strict_locks")
 
     def _clear_hooks(self):
         # prevent hooks affecting tests
@@ -1060,7 +1101,7 @@ class TestCase(testtools.TestCase):
     def _silenceUI(self):
         """Turn off UI for duration of test."""
         # by default the UI is off; tests can turn it on if they want it.
-        self.overrideAttr(ui, 'ui_factory', ui.SilentUIFactory())
+        self.overrideAttr(ui, "ui_factory", ui.SilentUIFactory())
 
     def _check_locks(self):
         """Check that all lock take/release actions have been paired."""
@@ -1068,23 +1109,27 @@ class TestCase(testtools.TestCase):
         # fail unless -Edisable_lock_checks is supplied to selftest, in which
         # case we just print a warning.
         # unhook:
-        acquired_locks = [lock for action, lock in self._lock_actions
-                          if action == 'acquired']
-        released_locks = [lock for action, lock in self._lock_actions
-                          if action == 'released']
-        broken_locks = [lock for action, lock in self._lock_actions
-                        if action == 'broken']
+        acquired_locks = [
+            lock for action, lock in self._lock_actions if action == "acquired"
+        ]
+        released_locks = [
+            lock for action, lock in self._lock_actions if action == "released"
+        ]
+        broken_locks = [
+            lock for action, lock in self._lock_actions if action == "broken"
+        ]
         # trivially, given the tests for lock acquistion and release, if we
         # have as many in each list, it should be ok. Some lock tests also
         # break some locks on purpose and should be taken into account by
         # considering that breaking a lock is just a dirty way of releasing it.
         if len(acquired_locks) != (len(released_locks) + len(broken_locks)):
             message = (
-                'Different number of acquired and '
-                'released or broken locks.\n'
-                f'acquired={acquired_locks}\n'
-                f'released={released_locks}\n'
-                f'broken={broken_locks}\n')
+                "Different number of acquired and "
+                "released or broken locks.\n"
+                f"acquired={acquired_locks}\n"
+                f"released={released_locks}\n"
+                f"broken={broken_locks}\n"
+            )
             if not self._lock_check_thorough:
                 # Rather than fail, just warn
                 print(f"Broken test {self}: {message}")
@@ -1094,27 +1139,28 @@ class TestCase(testtools.TestCase):
     def _track_locks(self):
         """Track lock activity during tests."""
         self._lock_actions = []
-        if 'disable_lock_checks' in selftest_debug_flags:
+        if "disable_lock_checks" in selftest_debug_flags:
             self._lock_check_thorough = False
         else:
             self._lock_check_thorough = True
 
         self.addCleanup(self._check_locks)
-        _mod_lock.Lock.hooks.install_named_hook('lock_acquired',
-                                                self._lock_acquired, None)
-        _mod_lock.Lock.hooks.install_named_hook('lock_released',
-                                                self._lock_released, None)
-        _mod_lock.Lock.hooks.install_named_hook('lock_broken',
-                                                self._lock_broken, None)
+        _mod_lock.Lock.hooks.install_named_hook(
+            "lock_acquired", self._lock_acquired, None
+        )
+        _mod_lock.Lock.hooks.install_named_hook(
+            "lock_released", self._lock_released, None
+        )
+        _mod_lock.Lock.hooks.install_named_hook("lock_broken", self._lock_broken, None)
 
     def _lock_acquired(self, result):
-        self._lock_actions.append(('acquired', result))
+        self._lock_actions.append(("acquired", result))
 
     def _lock_released(self, result):
-        self._lock_actions.append(('released', result))
+        self._lock_actions.append(("released", result))
 
     def _lock_broken(self, result):
-        self._lock_actions.append(('broken', result))
+        self._lock_actions.append(("broken", result))
 
     def permit_dir(self, name):
         """Permit a directory to be used by this test. See permit_url."""
@@ -1130,8 +1176,8 @@ class TestCase(testtools.TestCase):
         Do not do this for the current working directory, /tmp, or any other
         preexisting non isolated url.
         """
-        if not url.endswith('/'):
-            url += '/'
+        if not url.endswith("/"):
+            url += "/"
         self._bzr_selftest_roots.append(url)
 
     def permit_source_tree_branch_repo(self):
@@ -1147,7 +1193,7 @@ class TestCase(testtools.TestCase):
             try:
                 workingtree.WorkingTree.open(path)
             except (errors.NotBranchError, errors.NoWorkingTree) as e:
-                raise TestSkipped('Needs a working tree of brz sources') from e
+                raise TestSkipped("Needs a working tree of brz sources") from e
         finally:
             self.enable_directory_isolation()
 
@@ -1155,8 +1201,7 @@ class TestCase(testtools.TestCase):
         """Check that all transport openings are done in the test work area."""
         while isinstance(transport, pathfilter.PathFilteringTransport):
             # Unwrap pathfiltered transports
-            transport = transport.server.backing_transport.clone(
-                transport._filter('.'))
+            transport = transport.server.backing_transport.clone(transport._filter("."))
         url = transport.base
         # ReadonlySmartTCPServer_for_testing decorates the backing transport
         # urls it is given by prepending readonly+. This is appropriate as the
@@ -1164,14 +1209,14 @@ class TestCase(testtools.TestCase):
         # We could register all servers twice, with readonly+ prepending, but
         # that makes for a long list; this is about the same but easier to
         # read.
-        if url.startswith('readonly+'):
-            url = url[len('readonly+'):]
+        if url.startswith("readonly+"):
+            url = url[len("readonly+") :]
         self._preopen_isolate_url(url)
 
     def _preopen_isolate_url(self, url):
         if not self._directory_isolation:
             return
-        if self._directory_isolation == 'record':
+        if self._directory_isolation == "record":
             self._bzr_selftest_roots.append(url)
             return
         # This prevents all transports, including e.g. sftp ones backed on disk
@@ -1180,7 +1225,9 @@ class TestCase(testtools.TestCase):
         # are appropriately isolated and enable their use by calling
         # self.permit_transport()
         if not osutils.is_inside_any(self._bzr_selftest_roots, url):
-            raise errors.BzrError(f"Attempt to escape test isolation: {url!r} {self._bzr_selftest_roots!r}")
+            raise errors.BzrError(
+                f"Attempt to escape test isolation: {url!r} {self._bzr_selftest_roots!r}"
+            )
 
     def record_directory_isolation(self):
         """Gather accessed directories to permit later access.
@@ -1216,19 +1263,18 @@ class TestCase(testtools.TestCase):
         # means that the self.get_url/self.get_transport methods would need
         # to transform all their results. On balance its cleaner to handle it
         # here, and permit a higher url when we have one of these transports.
-        if t.base.endswith('/work/'):
+        if t.base.endswith("/work/"):
             # we have safety net/test root/work
-            t = t.clone('../..')
-        elif isinstance(transport_server,
-                        test_server.SmartTCPServer_for_testing):
+            t = t.clone("../..")
+        elif isinstance(transport_server, test_server.SmartTCPServer_for_testing):
             # The smart server adds a path similar to work, which is traversed
             # up from by the client. But the server is chrooted - the actual
             # backing transport is not escaped from, and VFS requests to the
             # root will error (because they try to escape the chroot).
-            t2 = t.clone('..')
+            t2 = t.clone("..")
             while t2.base != t.base:
                 t = t2
-                t2 = t.clone('..')
+                t2 = t.clone("..")
         self.permit_url(t.base)
 
     def _track_transports(self):
@@ -1240,8 +1286,10 @@ class TestCase(testtools.TestCase):
         # transport tests, but they are well known, and we can improve on this
         # step.
         controldir.ControlDir.hooks.install_named_hook(
-            "pre_open", self._preopen_isolate_transport,
-            "Check brz directories are safe.")
+            "pre_open",
+            self._preopen_isolate_transport,
+            "Check brz directories are safe.",
+        )
 
     def _ndiff_strings(self, a, b):
         """Return ndiff between two strings containing lines.
@@ -1249,28 +1297,31 @@ class TestCase(testtools.TestCase):
         A trailing newline is added if missing to make the strings
         print properly.
         """
-        if b and not b.endswith('\n'):
-            b += '\n'
-        if a and not a.endswith('\n'):
-            a += '\n'
-        difflines = difflib.ndiff(a.splitlines(True),
-                                  b.splitlines(True),
-                                  linejunk=lambda x: False,
-                                  charjunk=lambda x: False)
-        return ''.join(difflines)
+        if b and not b.endswith("\n"):
+            b += "\n"
+        if a and not a.endswith("\n"):
+            a += "\n"
+        difflines = difflib.ndiff(
+            a.splitlines(True),
+            b.splitlines(True),
+            linejunk=lambda x: False,
+            charjunk=lambda x: False,
+        )
+        return "".join(difflines)
 
-    def assertEqual(self, a, b, message=''):
+    def assertEqual(self, a, b, message=""):
         try:
             if a == b:
                 return
         except UnicodeError as e:
             # If we can't compare without getting a UnicodeError, then
             # obviously they are different
-            trace.mutter('UnicodeError: %s', e)
+            trace.mutter("UnicodeError: %s", e)
         if message:
-            message += '\n'
-        raise AssertionError("{}not equal:\na = {}\nb = {}\n".format(message,
-                                pprint.pformat(a), pprint.pformat(b)))
+            message += "\n"
+        raise AssertionError(
+            f"{message}not equal:\na = {pprint.pformat(a)}\nb = {pprint.pformat(b)}\n"
+        )
 
     # FIXME: This is deprecated in unittest2 but plugins may still use it so we
     # need a deprecation period for them -- vila 2016-02-01
@@ -1287,18 +1338,20 @@ class TestCase(testtools.TestCase):
             return
         if message is None:
             message = "texts not equal:\n"
-        if a + ('\n' if isinstance(a, str) else b'\n') == b:
-            message = 'first string is missing a final newline.\n'
-        if a == b + ('\n' if isinstance(b, str) else b'\n'):
-            message = 'second string is missing a final newline.\n'
-        raise AssertionError(message
-                             + self._ndiff_strings(
-                                 a if isinstance(a, str) else a.decode(),
-                                 b if isinstance(b, str) else b.decode()))
+        if a + ("\n" if isinstance(a, str) else b"\n") == b:
+            message = "first string is missing a final newline.\n"
+        if a == b + ("\n" if isinstance(b, str) else b"\n"):
+            message = "second string is missing a final newline.\n"
+        raise AssertionError(
+            message
+            + self._ndiff_strings(
+                a if isinstance(a, str) else a.decode(),
+                b if isinstance(b, str) else b.decode(),
+            )
+        )
 
     def assertEqualMode(self, mode, mode_test):
-        self.assertEqual(mode, mode_test,
-                         f'mode mismatch {mode:o} != {mode_test:o}')
+        self.assertEqual(mode, mode_test, f"mode mismatch {mode:o} != {mode_test:o}")
 
     def assertEqualStat(self, expected, actual):
         """Assert that expected and actual are the same stat result.
@@ -1308,13 +1361,10 @@ class TestCase(testtools.TestCase):
         :raises AssertionError: If the expected and actual stat values differ
             other than by atime.
         """
-        self.assertEqual(expected.st_size, actual.st_size,
-                         'st_size did not match')
-        self.assertEqual(expected.st_mtime, actual.st_mtime,
-                         'st_mtime did not match')
-        self.assertEqual(expected.st_ctime, actual.st_ctime,
-                         'st_ctime did not match')
-        if sys.platform == 'win32':
+        self.assertEqual(expected.st_size, actual.st_size, "st_size did not match")
+        self.assertEqual(expected.st_mtime, actual.st_mtime, "st_mtime did not match")
+        self.assertEqual(expected.st_ctime, actual.st_ctime, "st_ctime did not match")
+        if sys.platform == "win32":
             # On Win32 both 'dev' and 'ino' cannot be trusted. In python2.4 it
             # is 'dev' that varies, in python 2.5 (6?) it is st_ino that is
             # odd. We just force it to always be 0 to avoid any problems.
@@ -1323,27 +1373,28 @@ class TestCase(testtools.TestCase):
             self.assertEqual(0, expected.st_ino)
             self.assertEqual(0, actual.st_ino)
         else:
-            self.assertEqual(expected.st_dev, actual.st_dev,
-                             'st_dev did not match')
-            self.assertEqual(expected.st_ino, actual.st_ino,
-                             'st_ino did not match')
-        self.assertEqual(expected.st_mode, actual.st_mode,
-                         'st_mode did not match')
+            self.assertEqual(expected.st_dev, actual.st_dev, "st_dev did not match")
+            self.assertEqual(expected.st_ino, actual.st_ino, "st_ino did not match")
+        self.assertEqual(expected.st_mode, actual.st_mode, "st_mode did not match")
 
     def assertLength(self, length, obj_with_len):
         """Assert that obj_with_len is of length length."""
         if len(obj_with_len) != length:
-            self.fail("Incorrect length: wanted %d, got %d for %r" % (
-                length, len(obj_with_len), obj_with_len))
+            self.fail(
+                "Incorrect length: wanted %d, got %d for %r"
+                % (length, len(obj_with_len), obj_with_len)
+            )
 
     def assertLogsError(self, exception_class, func, *args, **kwargs):
         """Assert that `func(*args, **kwargs)` quietly logs a specific error."""
         captured = []
         orig_log_exception_quietly = trace.log_exception_quietly
         try:
+
             def capture():
                 orig_log_exception_quietly()
                 captured.append(sys.exc_info()[1])
+
             trace.log_exception_quietly = capture
             func(*args, **kwargs)
         finally:
@@ -1355,31 +1406,31 @@ class TestCase(testtools.TestCase):
 
     def assertPositive(self, val):
         """Assert that val is greater than 0."""
-        self.assertTrue(val > 0, f'expected a positive value, but got {val}')
+        self.assertTrue(val > 0, f"expected a positive value, but got {val}")
 
     def assertNegative(self, val):
         """Assert that val is less than 0."""
-        self.assertTrue(val < 0, f'expected a negative value, but got {val}')
+        self.assertTrue(val < 0, f"expected a negative value, but got {val}")
 
     def assertStartsWith(self, s, prefix):
         if not s.startswith(prefix):
-            raise AssertionError(
-                f'string {s!r} does not start with {prefix!r}')
+            raise AssertionError(f"string {s!r} does not start with {prefix!r}")
 
     def assertEndsWith(self, s, suffix):
         """Asserts that s ends with suffix."""
         if not s.endswith(suffix):
-            raise AssertionError(
-                f'string {s!r} does not end with {suffix!r}')
+            raise AssertionError(f"string {s!r} does not end with {suffix!r}")
 
     def assertContainsRe(self, haystack, needle_re, flags=0):
         """Assert that a contains something matching a regular expression."""
         if not re.search(needle_re, haystack, flags):
-            if (('\n' if isinstance(haystack, str) else b'\n') in haystack or
-                    len(haystack) > 60):
+            if ("\n" if isinstance(haystack, str) else b"\n") in haystack or len(
+                haystack
+            ) > 60:
                 # a long string, format it in a more readable way
                 raise AssertionError(
-                    f'pattern "{needle_re}" not found in\n""\"\\\n{haystack}""\"\n')
+                    f'pattern "{needle_re}" not found in\n"""\\\n{haystack}"""\n'
+                )
             else:
                 raise AssertionError(f'pattern "{needle_re}" not found in "{haystack}"')
 
@@ -1400,7 +1451,9 @@ class TestCase(testtools.TestCase):
         """Assert that every entry in sublist is present in superlist."""
         missing = set(sublist) - set(superlist)
         if len(missing) > 0:
-            raise AssertionError(f"value(s) {missing!r} not present in container {superlist!r}")
+            raise AssertionError(
+                f"value(s) {missing!r} not present in container {superlist!r}"
+            )
 
     def assertListRaises(self, excClass, func, *args, **kwargs):  # noqa: N803
         """Fail unless excClass is raised when the iterator from func is used.
@@ -1414,7 +1467,7 @@ class TestCase(testtools.TestCase):
         except excClass as e:
             return e
         else:
-            if getattr(excClass, '__name__', None) is not None:
+            if getattr(excClass, "__name__", None) is not None:
                 excName = excClass.__name__
             else:
                 excName = str(excClass)
@@ -1435,7 +1488,7 @@ class TestCase(testtools.TestCase):
         except excClass as e:
             return e
         else:
-            if getattr(excClass, '__name__', None) is not None:
+            if getattr(excClass, "__name__", None) is not None:
                 excName = excClass.__name__
             else:
                 # probably a tuple
@@ -1450,7 +1503,7 @@ class TestCase(testtools.TestCase):
                 raise AssertionError(f"{left!r} is not {right!r}.")
 
     def assertIsNot(self, left, right, message=None):
-        if (left is right):
+        if left is right:
             if message is not None:
                 raise AssertionError(message)
             else:
@@ -1465,14 +1518,19 @@ class TestCase(testtools.TestCase):
             return
         path_stat = transport.stat(path)
         actual_mode = stat.S_IMODE(path_stat.st_mode)
-        self.assertEqual(mode, actual_mode,
-                         f'mode of {path!r} incorrect ({oct(mode)} != {oct(actual_mode)})')
+        self.assertEqual(
+            mode,
+            actual_mode,
+            f"mode of {path!r} incorrect ({oct(mode)} != {oct(actual_mode)})",
+        )
 
     def assertIsSameRealPath(self, path1, path2):
         """Fail if path1 and path2 points to different files."""
-        self.assertEqual(osutils.realpath(path1),
-                         osutils.realpath(path2),
-                         f"apparent paths:\na = {path1}\nb = {path2}\n,")
+        self.assertEqual(
+            osutils.realpath(path1),
+            osutils.realpath(path2),
+            f"apparent paths:\na = {path1}\nb = {path2}\n,",
+        )
 
     def assertIsInstance(self, obj, kls, msg=None):
         """Fail if obj is not an instance of kls.
@@ -1489,7 +1547,7 @@ class TestCase(testtools.TestCase):
         """Fail if path does not contain 'content'."""
         self.assertPathExists(path)
 
-        mode = 'r' + ('b' if isinstance(content, bytes) else '')
+        mode = "r" + ("b" if isinstance(content, bytes) else "")
         with open(path, mode) as f:
             s = f.read()
         self.assertEqualDiff(content, s)
@@ -1509,8 +1567,7 @@ class TestCase(testtools.TestCase):
             for p in path:
                 self.assertPathExists(p)
         else:
-            self.assertTrue(osutils.lexists(path),
-                            path + " does not exist")
+            self.assertTrue(osutils.lexists(path), path + " does not exist")
 
     def assertPathDoesNotExist(self, path):
         """Fail if path or paths, which may be abs or relative, exist."""
@@ -1518,8 +1575,7 @@ class TestCase(testtools.TestCase):
             for p in path:
                 self.assertPathDoesNotExist(p)
         else:
-            self.assertFalse(osutils.lexists(path),
-                             path + " exists")
+            self.assertFalse(osutils.lexists(path), path + " exists")
 
     def _capture_deprecation_warnings(self, a_callable, *args, **kwargs):
         """A helper for callDeprecated and applyDeprecated.
@@ -1537,6 +1593,7 @@ class TestCase(testtools.TestCase):
             # only deprecations should getting sent via it.
             self.assertEqual(cls, DeprecationWarning)
             local_warnings.append(msg)
+
         original_warning_method = symbol_versioning.warn
         symbol_versioning.set_warning_method(capture_warnings)
         try:
@@ -1574,9 +1631,11 @@ class TestCase(testtools.TestCase):
         :return: The result of a_callable(``*args``, ``**kwargs``)
         """
         call_warnings, result = self._capture_deprecation_warnings(
-            a_callable, *args, **kwargs)
+            a_callable, *args, **kwargs
+        )
         expected_first_warning = symbol_versioning.deprecation_string(
-            a_callable, deprecation_format)
+            a_callable, deprecation_format
+        )
         if len(call_warnings) == 0:
             self.fail(f"No deprecation warning generated by call to {a_callable}")
         self.assertEqual(expected_first_warning, call_warnings[0])
@@ -1603,6 +1662,7 @@ class TestCase(testtools.TestCase):
             # despite the name, 'message' is normally(?) a Warning subclass
             # instance
             wlist.append(message)
+
         saved_showwarning = warnings.showwarning
         saved_filters = warnings.filters
         try:
@@ -1632,7 +1692,8 @@ class TestCase(testtools.TestCase):
         :param kwargs: The keyword arguments for the callable
         """
         call_warnings, result = self._capture_deprecation_warnings(
-            callable, *args, **kwargs)
+            callable, *args, **kwargs
+        )
         self.assertEqual(expected, call_warnings)
         return result
 
@@ -1641,19 +1702,24 @@ class TestCase(testtools.TestCase):
         pseudo_log_file = BytesIO()
 
         def _get_log_contents_for_weird_testtools_api():
-            return [pseudo_log_file.getvalue().decode(
-                "utf-8", "replace").encode("utf-8")]
+            return [
+                pseudo_log_file.getvalue().decode("utf-8", "replace").encode("utf-8")
+            ]
+
         self.addDetail(
-            'log', content.Content(
+            "log",
+            content.Content(
                 content.ContentType("text", "plain", {"charset": "utf8"}),
-                _get_log_contents_for_weird_testtools_api))
+                _get_log_contents_for_weird_testtools_api,
+            ),
+        )
         self._log_file = pseudo_log_file
         self._log_memento = trace.push_log_file(self._log_file, short=True)
         self.addCleanup(self._finishLogFile)
 
     @contextlib.contextmanager
     def text_log_file(self, **kwargs):
-        stream = TextIOWrapper(self._log_file, encoding='utf-8', **kwargs)
+        stream = TextIOWrapper(self._log_file, encoding="utf-8", **kwargs)
         yield stream
         stream.detach()
 
@@ -1677,7 +1743,7 @@ class TestCase(testtools.TestCase):
         This should be used sparingly, it is much better to fix the locking
         issues rather than papering over the problem by calling this function.
         """
-        debug.unset_debug_flag('strict_locks')
+        debug.unset_debug_flag("strict_locks")
 
     def overrideAttr(self, obj, attr_name, new=_unitialized_attr):
         """Overrides an object attribute restoring it after the test.
@@ -1737,6 +1803,7 @@ class TestCase(testtools.TestCase):
         def decorator(*args, **kwargs):
             calls.append((args, kwargs))
             return orig(*args, **kwargs)
+
         orig = self.overrideAttr(obj, attr_name, decorator)
         return calls
 
@@ -1780,11 +1847,11 @@ class TestCase(testtools.TestCase):
 
     def _suppress_log(self):
         """Remove the log info from details."""
-        self.discardDetail('log')
+        self.discardDetail("log")
 
     def _do_skip(self, result, reason):
         self._suppress_log()
-        addSkip = getattr(result, 'addSkip', None)
+        addSkip = getattr(result, "addSkip", None)
         if not callable(addSkip):
             result.addSuccess(result)
         else:
@@ -1794,7 +1861,7 @@ class TestCase(testtools.TestCase):
     def _do_known_failure(self, result, e):
         self._suppress_log()
         err = sys.exc_info()
-        addExpectedFailure = getattr(result, 'addExpectedFailure', None)
+        addExpectedFailure = getattr(result, "addExpectedFailure", None)
         if addExpectedFailure is not None:
             addExpectedFailure(self, err)
         else:
@@ -1803,11 +1870,11 @@ class TestCase(testtools.TestCase):
     @staticmethod
     def _do_not_applicable(self, result, e):
         if not e.args:
-            reason = 'No reason given'
+            reason = "No reason given"
         else:
             reason = e.args[0]
         self._suppress_log()
-        addNotApplicable = getattr(result, 'addNotApplicable', None)
+        addNotApplicable = getattr(result, "addNotApplicable", None)
         if addNotApplicable is not None:
             result.addNotApplicable(self, reason)
         else:
@@ -1837,7 +1904,7 @@ class TestCase(testtools.TestCase):
     def _do_unsupported_or_skip(self, result, e):
         reason = e.args[0]
         self._suppress_log()
-        addNotSupported = getattr(result, 'addNotSupported', None)
+        addNotSupported = getattr(result, "addNotSupported", None)
         if addNotSupported is not None:
             result.addNotSupported(self, reason)
         else:
@@ -1851,9 +1918,12 @@ class TestCase(testtools.TestCase):
         self._benchcalls.
         """
         if self._benchtime is None:
-            self.addDetail('benchtime', content.Content(
-                content.UTF8_TEXT,
-                lambda: [str(self._benchtime).encode('utf-8')]))
+            self.addDetail(
+                "benchtime",
+                content.Content(
+                    content.UTF8_TEXT, lambda: [str(self._benchtime).encode("utf-8")]
+                ),
+            )
             self._benchtime = 0
         start = time.time()
         try:
@@ -1876,7 +1946,7 @@ class TestCase(testtools.TestCase):
 
         Undecodable characters are replaced.
         """
-        return "".join(self.getDetails()['log'].iter_text())
+        return "".join(self.getDetails()["log"].iter_text())
 
     def requireFeature(self, feature):
         """This test requires a specific feature is available.
@@ -1886,22 +1956,20 @@ class TestCase(testtools.TestCase):
         if not feature.available():
             raise UnavailableFeature(feature)
 
-    def _run_bzr_core(self, args, encoding, stdin, stdout, stderr,
-                      working_dir):
+    def _run_bzr_core(self, args, encoding, stdin, stdout, stderr, working_dir):
         # Clear chk_map page cache, because the contents are likely to mask
         # locking errors.
         chk_map.clear_cache()
 
-        self.log('run brz: %r', args)
+        self.log("run brz: %r", args)
 
         self._last_cmd_stdout = stdout
         self._last_cmd_stderr = stderr
 
         old_ui_factory = ui.ui_factory
         ui.ui_factory = ui_testing.TestUIFactory(
-            stdin=stdin,
-            stdout=self._last_cmd_stdout,
-            stderr=self._last_cmd_stderr)
+            stdin=stdin, stdout=self._last_cmd_stdout, stderr=self._last_cmd_stderr
+        )
 
         cwd = None
         if working_dir is not None:
@@ -1912,9 +1980,11 @@ class TestCase(testtools.TestCase):
             with ui.ui_factory:
                 result = self.apply_redirected(
                     ui.ui_factory.stdin,
-                    stdout, stderr,
+                    stdout,
+                    stderr,
                     _mod_commands.run_bzr_catch_user_errors,
-                    args)
+                    args,
+                )
         finally:
             ui.ui_factory = old_ui_factory
             if cwd is not None:
@@ -1922,8 +1992,15 @@ class TestCase(testtools.TestCase):
 
         return result
 
-    def run_bzr_raw(self, args, retcode=0, stdin=None, encoding=None,
-                    working_dir=None, error_regexes=None):
+    def run_bzr_raw(
+        self,
+        args,
+        retcode=0,
+        stdin=None,
+        encoding=None,
+        working_dir=None,
+        error_regexes=None,
+    ):
         """Invoke brz, as if it were run from the command line.
 
         The argument list should not include the brz program name - the
@@ -1970,13 +2047,17 @@ class TestCase(testtools.TestCase):
         handler = logging.StreamHandler(wrapped_stderr)
         handler.setLevel(logging.INFO)
 
-        logger = logging.getLogger('')
+        logger = logging.getLogger("")
         logger.addHandler(handler)
         try:
             result = self._run_bzr_core(
-                args, encoding=encoding, stdin=stdin, stdout=wrapped_stdout,
-                stderr=wrapped_stderr, working_dir=working_dir,
-                )
+                args,
+                encoding=encoding,
+                stdin=stdin,
+                stdout=wrapped_stdout,
+                stderr=wrapped_stderr,
+                working_dir=working_dir,
+            )
         finally:
             logger.removeHandler(handler)
 
@@ -1986,19 +2067,25 @@ class TestCase(testtools.TestCase):
         out = stdout.getvalue()
         err = stderr.getvalue()
         if out:
-            self.log('output:\n%r', out)
+            self.log("output:\n%r", out)
         if err:
-            self.log('errors:\n%r', err)
+            self.log("errors:\n%r", err)
         if retcode is not None:
-            self.assertEqual(retcode, result,
-                             message='Unexpected return code')
+            self.assertEqual(retcode, result, message="Unexpected return code")
         self.assertIsInstance(error_regexes, (list, tuple))
         for regex in error_regexes:
             self.assertContainsRe(err, regex)
         return out, err
 
-    def run_bzr(self, args, retcode=0, stdin=None, encoding=None,
-                working_dir=None, error_regexes=None):
+    def run_bzr(
+        self,
+        args,
+        retcode=0,
+        stdin=None,
+        encoding=None,
+        working_dir=None,
+        error_regexes=None,
+    ):
         """Invoke brz, as if it were run from the command line.
 
         The argument list should not include the brz program name - the
@@ -2044,25 +2131,29 @@ class TestCase(testtools.TestCase):
         handler = logging.StreamHandler(stream=stderr)
         handler.setLevel(logging.INFO)
 
-        logger = logging.getLogger('')
+        logger = logging.getLogger("")
         logger.addHandler(handler)
 
         try:
             result = self._run_bzr_core(
-                args, encoding=encoding, stdin=stdin, stdout=stdout,
-                stderr=stderr, working_dir=working_dir)
+                args,
+                encoding=encoding,
+                stdin=stdin,
+                stdout=stdout,
+                stderr=stderr,
+                working_dir=working_dir,
+            )
         finally:
             logger.removeHandler(handler)
 
         out = stdout.getvalue()
         err = stderr.getvalue()
         if out:
-            self.log('output:\n%r', out)
+            self.log("output:\n%r", out)
         if err:
-            self.log('errors:\n%r', err)
+            self.log("errors:\n%r", err)
         if retcode is not None:
-            self.assertEqual(retcode, result,
-                             message='Unexpected return code')
+            self.assertEqual(retcode, result, message="Unexpected return code")
         self.assertIsInstance(error_regexes, (list, tuple))
         for regex in error_regexes:
             self.assertContainsRe(err, regex)
@@ -2094,8 +2185,8 @@ class TestCase(testtools.TestCase):
                 ['Commit refused because there are unknown files'],
                 ['commit', --strict', '-m', 'my commit comment'])
         """
-        kwargs.setdefault('retcode', 3)
-        kwargs['error_regexes'] = error_regexes
+        kwargs.setdefault("retcode", 3)
+        kwargs["error_regexes"] = error_regexes
         out, err = self.run_bzr(*args, **kwargs)
         return out, err
 
@@ -2120,9 +2211,9 @@ class TestCase(testtools.TestCase):
             for system-wide plugins to create unexpected output on stderr,
             which can cause unnecessary test failures.
         """
-        env_changes = kwargs.get('env_changes', None)
-        working_dir = kwargs.get('working_dir', None)
-        allow_plugins = kwargs.get('allow_plugins', False)
+        env_changes = kwargs.get("env_changes", None)
+        working_dir = kwargs.get("working_dir", None)
+        allow_plugins = kwargs.get("allow_plugins", False)
         if len(args) == 1:
             if isinstance(args[0], list):
                 args = args[0]
@@ -2130,20 +2221,30 @@ class TestCase(testtools.TestCase):
                 args = list(shlex.split(args[0]))
         else:
             raise ValueError("passing varargs to run_brz_subprocess")
-        process = self.start_brz_subprocess(args, env_changes=env_changes,
-                                            working_dir=working_dir,
-                                            allow_plugins=allow_plugins)
+        process = self.start_brz_subprocess(
+            args,
+            env_changes=env_changes,
+            working_dir=working_dir,
+            allow_plugins=allow_plugins,
+        )
         # We distinguish between retcode=None and retcode not passed.
-        supplied_retcode = kwargs.get('retcode', 0)
-        return self.finish_brz_subprocess(process, retcode=supplied_retcode,
-                                          universal_newlines=kwargs.get(
-                                              'universal_newlines', False),
-                                          process_args=args)
+        supplied_retcode = kwargs.get("retcode", 0)
+        return self.finish_brz_subprocess(
+            process,
+            retcode=supplied_retcode,
+            universal_newlines=kwargs.get("universal_newlines", False),
+            process_args=args,
+        )
 
-    def start_brz_subprocess(self, process_args, env_changes=None,
-                             skip_if_plan_to_signal=False,
-                             working_dir=None,
-                             allow_plugins=False, stderr=subprocess.PIPE):
+    def start_brz_subprocess(
+        self,
+        process_args,
+        env_changes=None,
+        skip_if_plan_to_signal=False,
+        working_dir=None,
+        allow_plugins=False,
+        stderr=subprocess.PIPE,
+    ):
         """Start brz in a subprocess for testing.
 
         This starts a new Python interpreter and runs brz in there.
@@ -2179,8 +2280,8 @@ class TestCase(testtools.TestCase):
         if site.USER_BASE is not None:
             env_changes["PYTHONUSERBASE"] = site.USER_BASE
 
-        if 'PYTHONPATH' not in env_changes:
-            env_changes['PYTHONPATH'] = ':'.join(sys.path)
+        if "PYTHONPATH" not in env_changes:
+            env_changes["PYTHONPATH"] = ":".join(sys.path)
 
         old_env = {}
 
@@ -2207,11 +2308,15 @@ class TestCase(testtools.TestCase):
             self._add_subprocess_log(trace._initialize_brz_log_filename())
             command = self.get_brz_command()
             if not allow_plugins:
-                command.append('--no-plugins')
+                command.append("--no-plugins")
             command.extend(process_args)
-            process = self._popen(command, stdin=subprocess.PIPE,
-                                  stdout=subprocess.PIPE,
-                                  stderr=stderr, bufsize=0)
+            process = self._popen(
+                command,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=stderr,
+                bufsize=0,
+            )
         finally:
             restore_environment()
             if cwd is not None:
@@ -2239,13 +2344,13 @@ class TestCase(testtools.TestCase):
             # XXX: Testtools 0.9.5 doesn't have the content_from_file helper
             # detail_content = content.content_from_file(
             #    log_file_path, buffer_now=True)
-            with open(log_file_path, 'rb') as log_file:
+            with open(log_file_path, "rb") as log_file:
                 log_file_bytes = log_file.read()
             detail_content = content.Content(
                 content.ContentType("text", "plain", {"charset": "utf8"}),
-                lambda: [log_file_bytes])  # noqa: B023
-            self.addDetail("start_brz_subprocess-log-%d" % (count,),
-                           detail_content)
+                lambda: [log_file_bytes],  # noqa: B023
+            )
+            self.addDetail("start_brz_subprocess-log-%d" % (count,), detail_content)
 
     def _popen(self, *args, **kwargs):
         """Place a call to Popen.
@@ -2269,13 +2374,19 @@ class TestCase(testtools.TestCase):
 
     def get_brz_command(self):
         bzr_path = self.get_brz_path()
-        if bzr_path.endswith('__main__.py'):
-            return [sys.executable, '-m', 'breezy']
+        if bzr_path.endswith("__main__.py"):
+            return [sys.executable, "-m", "breezy"]
         else:
             return [bzr_path]
 
-    def finish_brz_subprocess(self, process, retcode=0, send_signal=None,
-                              universal_newlines=False, process_args=None):
+    def finish_brz_subprocess(
+        self,
+        process,
+        retcode=0,
+        send_signal=None,
+        universal_newlines=False,
+        process_args=None,
+    ):
         """Finish the execution of process.
 
         :param process: the Popen object returned from start_brz_subprocess.
@@ -2290,16 +2401,18 @@ class TestCase(testtools.TestCase):
         out, err = process.communicate()
 
         if universal_newlines:
-            out = out.replace(b'\r\n', b'\n')
-            err = err.replace(b'\r\n', b'\n')
+            out = out.replace(b"\r\n", b"\n")
+            err = err.replace(b"\r\n", b"\n")
 
         if retcode is not None and retcode != process.returncode:
             if process_args is None:
                 process_args = "(unknown args)"
-            trace.mutter('Output of brz %r:\n%s', process_args, out)
-            trace.mutter('Error for brz %r:\n%s', process_args, err)
-            self.fail('Command brz %r failed with retcode %d != %d'
-                      % (process_args, retcode, process.returncode))
+            trace.mutter("Output of brz %r:\n%s", process_args, out)
+            trace.mutter("Error for brz %r:\n%s", process_args, err)
+            self.fail(
+                "Command brz %r failed with retcode %d != %d"
+                % (process_args, retcode, process.returncode)
+            )
         return [out, err]
 
     def check_tree_shape(self, tree, shape):
@@ -2308,11 +2421,11 @@ class TestCase(testtools.TestCase):
         Fail if they are not precisely equal.
         """
         extras = []
-        shape = list(shape)             # copy
+        shape = list(shape)  # copy
         for path, ie in tree.iter_entries_by_dir():
-            name = path.replace('\\', '/')
-            if ie.kind == 'directory':
-                name = name + '/'
+            name = path.replace("\\", "/")
+            if ie.kind == "directory":
+                name = name + "/"
             if name == "/":
                 pass  # ignore root entry
             elif name in shape:
@@ -2324,8 +2437,9 @@ class TestCase(testtools.TestCase):
         if extras:
             self.fail(f"unexpected paths found in inventory: {extras!r}")
 
-    def apply_redirected(self, stdin=None, stdout=None, stderr=None,
-                         a_callable=None, *args, **kwargs):
+    def apply_redirected(
+        self, stdin=None, stdout=None, stderr=None, a_callable=None, *args, **kwargs
+    ):
         """Call callable with redirected std io pipes.
 
         Returns the return code.
@@ -2363,14 +2477,14 @@ class TestCase(testtools.TestCase):
 
         Tests that expect to provoke LockContention errors should call this.
         """
-        self.overrideAttr(lockdir, '_DEFAULT_TIMEOUT_SECONDS', 0)
+        self.overrideAttr(lockdir, "_DEFAULT_TIMEOUT_SECONDS", 0)
 
     def make_utf8_encoded_stringio(self, encoding_type=None):
         """Return a wrapped BytesIO, that will encode text input to UTF-8."""
         if encoding_type is None:
-            encoding_type = 'strict'
+            encoding_type = "strict"
         bio = BytesIO()
-        output_encoding = 'utf-8'
+        output_encoding = "utf-8"
         sio = codecs.getwriter(output_encoding)(bio, errors=encoding_type)
         sio.encoding = output_encoding
         return sio
@@ -2378,12 +2492,12 @@ class TestCase(testtools.TestCase):
     def disable_verb(self, verb):
         """Disable a smart server verb for one test."""
         from breezy.bzr.smart import request
+
         request_handlers = request.request_handlers
         orig_method = request_handlers.get(verb)
         orig_info = request_handlers.get_info(verb)
         request_handlers.remove(verb)
-        self.addCleanup(request_handlers.register, verb, orig_method,
-                        info=orig_info)
+        self.addCleanup(request_handlers.register, verb, orig_method, info=orig_info)
 
     def __hash__(self):
         return id(self)
@@ -2401,13 +2515,13 @@ class CapturedCall:
         # client frames. Beyond this we could get more clever, but this is good
         # enough for now.
         stack = traceback.extract_stack()[prefix_length:-5]
-        self._stack = ''.join(traceback.format_list(stack))
+        self._stack = "".join(traceback.format_list(stack))
 
     def __str__(self):
-        return self.call.method.decode('utf-8')
+        return self.call.method.decode("utf-8")
 
     def __repr__(self):
-        return self.call.method.decode('utf-8')
+        return self.call.method.decode("utf-8")
 
     def stack(self):
         return self._stack
@@ -2434,9 +2548,9 @@ class TestCaseWithMemoryTransport(TestCase):
     """
 
     TEST_ROOT = None
-    _TEST_NAME = 'test'
+    _TEST_NAME = "test"
 
-    def __init__(self, methodName='runTest'):  # noqa: N803
+    def __init__(self, methodName="runTest"):  # noqa: N803
         # allow test parameterization after test construction and before test
         # execution. Variables that the parameterizer sets need to be
         # ones that are not set by setUp, or setUp will trash them.
@@ -2460,7 +2574,8 @@ class TestCaseWithMemoryTransport(TestCase):
             self.addCleanup(transport.disconnect)
 
         _mod_transport.Transport.hooks.install_named_hook(
-            'post_connect', _add_disconnect_cleanup, None)
+            "post_connect", _add_disconnect_cleanup, None
+        )
 
         self._make_test_root()
         self.addCleanup(os.chdir, osutils.getcwd())
@@ -2472,7 +2587,7 @@ class TestCaseWithMemoryTransport(TestCase):
         # Each test may use its own config files even if the local config files
         # don't actually exist. They'll rightly fail if they try to create them
         # though.
-        self.overrideAttr(config, '_shared_stores', {})
+        self.overrideAttr(config, "_shared_stores", {})
 
     def get_transport(self, relpath=None):
         """Return a writeable transport.
@@ -2494,8 +2609,7 @@ class TestCaseWithMemoryTransport(TestCase):
 
         :param relpath: a path relative to the base url.
         """
-        t = _mod_transport.get_transport_from_url(
-            self.get_readonly_url(relpath))
+        t = _mod_transport.get_transport_from_url(self.get_readonly_url(relpath))
         self.assertTrue(t.is_readonly())
         return t
 
@@ -2517,10 +2631,8 @@ class TestCaseWithMemoryTransport(TestCase):
                 self.__readonly_server = test_server.ReadonlyServer()
             else:
                 # explicit readonly transport.
-                self.__readonly_server = (
-                    self.create_transport_readonly_server())
-            self.start_server(self.__readonly_server,
-                              self.get_vfs_only_server())
+                self.__readonly_server = self.create_transport_readonly_server()
+            self.start_server(self.__readonly_server, self.get_vfs_only_server())
         return self.__readonly_server
 
     def get_readonly_url(self, relpath=None):
@@ -2558,8 +2670,10 @@ class TestCaseWithMemoryTransport(TestCase):
         then the self.get_vfs_server is returned.
         """
         if self.__server is None:
-            if (self.transport_server is None or self.transport_server is
-                    self.vfs_transport_factory):
+            if (
+                self.transport_server is None
+                or self.transport_server is self.vfs_transport_factory
+            ):
                 self.__server = self.get_vfs_only_server()
             else:
                 # bring up a decorated means of access to the vfs only server.
@@ -2575,14 +2689,14 @@ class TestCaseWithMemoryTransport(TestCase):
         relpath provides for clients to get a path relative to the base url.
         These should only be downwards relative, not upwards.
         """
-        if relpath is not None and relpath != '.':
-            if not base.endswith('/'):
-                base = base + '/'
+        if relpath is not None and relpath != ".":
+            if not base.endswith("/"):
+                base = base + "/"
             # XXX: Really base should be a url; we did after all call
             # get_url()!  But sometimes it's just a path (from
             # LocalAbspathServer), and it'd be wrong to append urlescaped data
             # to a non-escaped local path.
-            if base.startswith('./') or base.startswith('/'):
+            if base.startswith("./") or base.startswith("/"):
                 base += relpath
             else:
                 base += urlutils.escape(relpath)
@@ -2627,18 +2741,21 @@ class TestCaseWithMemoryTransport(TestCase):
             # Make sure we get a readable and accessible home for brz.log
             # and/or config files, and not fallback to weird defaults (see
             # http://pad.lv/825027).
-            self.assertIs(None, os.environ.get('BRZ_HOME', None))
-            os.environ['BRZ_HOME'] = root
+            self.assertIs(None, os.environ.get("BRZ_HOME", None))
+            os.environ["BRZ_HOME"] = root
             from ..bzr.bzrdir import BzrDirMetaFormat1
+
             wt = controldir.ControlDir.create_standalone_workingtree(
-                root, format=BzrDirMetaFormat1())
-            del os.environ['BRZ_HOME']
+                root, format=BzrDirMetaFormat1()
+            )
+            del os.environ["BRZ_HOME"]
         except Exception as e:
             self.fail(f"Fail to initialize the safety net: {e!r}\n")
         # Hack for speed: remember the raw bytes of the dirstate file so that
         # we don't need to re-open the wt to check it hasn't changed.
         TestCaseWithMemoryTransport._SAFETY_NET_PRISTINE_DIRSTATE = (
-            wt.control_transport.get_bytes('dirstate'))
+            wt.control_transport.get_bytes("dirstate")
+        )
 
     def _check_safety_net(self):
         """Check that the safety .bzr directory have not been touched.
@@ -2649,21 +2766,22 @@ class TestCaseWithMemoryTransport(TestCase):
         root = TestCaseWithMemoryTransport.TEST_ROOT
         t = _mod_transport.get_transport_from_path(root)
         self.permit_url(t.base)
-        if (t.get_bytes('.bzr/checkout/dirstate') !=
-                TestCaseWithMemoryTransport._SAFETY_NET_PRISTINE_DIRSTATE):
+        if (
+            t.get_bytes(".bzr/checkout/dirstate")
+            != TestCaseWithMemoryTransport._SAFETY_NET_PRISTINE_DIRSTATE
+        ):
             # The current test have modified the /bzr directory, we need to
             # recreate a new one or all the followng tests will fail.
             # If you need to inspect its content uncomment the following line
             # import pdb; pdb.set_trace()
-            _rmtree_temp_dir(root + '/.bzr', test_id=self.id())
+            _rmtree_temp_dir(root + "/.bzr", test_id=self.id())
             self._create_safety_net()
-            raise AssertionError(f'{root}/.bzr should not be modified')
+            raise AssertionError(f"{root}/.bzr should not be modified")
 
     def _make_test_root(self):
         if TestCaseWithMemoryTransport.TEST_ROOT is None:
             # Watch out for tricky test dir (on OSX /tmp -> /private/tmp)
-            root = osutils.realpath(tempfile.mkdtemp(prefix='testbzr-',
-                                                     suffix='.tmp'))
+            root = osutils.realpath(tempfile.mkdtemp(prefix="testbzr-", suffix=".tmp"))
             TestCaseWithMemoryTransport.TEST_ROOT = root
 
             self._create_safety_net()
@@ -2695,7 +2813,7 @@ class TestCaseWithMemoryTransport(TestCase):
         return repo.controldir.create_branch(append_revisions_only=False, name=name)
 
     def get_default_format(self):
-        return 'default'
+        return "default"
 
     def resolve_format(self, format):
         """Resolve an object to a ControlDir format object.
@@ -2717,9 +2835,9 @@ class TestCaseWithMemoryTransport(TestCase):
         try:
             # might be a relative or absolute path
             maybe_a_url = self.get_url(relpath)
-            segments = maybe_a_url.rsplit('/', 1)
+            segments = maybe_a_url.rsplit("/", 1)
             t = _mod_transport.get_transport(maybe_a_url)
-            if len(segments) > 1 and segments[-1] not in ('', '.'):
+            if len(segments) > 1 and segments[-1] not in ("", "."):
                 t.ensure_base()
             format = self.resolve_format(format)
             return format.initialize_on_transport(t)
@@ -2743,8 +2861,9 @@ class TestCaseWithMemoryTransport(TestCase):
             backing_server = self.get_server()
         smart_server = test_server.SmartTCPServer_for_testing()
         self.start_server(smart_server, backing_server)
-        remote_transport = _mod_transport.get_transport_from_url(smart_server.get_url()
-                                                                 ).clone(path)
+        remote_transport = _mod_transport.get_transport_from_url(
+            smart_server.get_url()
+        ).clone(path)
         return remote_transport
 
     def make_branch_and_memory_tree(self, relpath, format=None):
@@ -2758,9 +2877,9 @@ class TestCaseWithMemoryTransport(TestCase):
 
     def overrideEnvironmentForTesting(self):
         test_home_dir = self.test_home_dir
-        self.overrideEnv('HOME', test_home_dir)
-        self.overrideEnv('BRZ_HOME', test_home_dir)
-        self.overrideEnv('GNUPGHOME', os.path.join(test_home_dir, '.gnupg'))
+        self.overrideEnv("HOME", test_home_dir)
+        self.overrideEnv("BRZ_HOME", test_home_dir)
+        self.overrideEnv("GNUPGHOME", os.path.join(test_home_dir, ".gnupg"))
 
     def setup_smart_server_with_call_log(self):
         """Sets up a smart server as the transport server with a call log."""
@@ -2774,15 +2893,15 @@ class TestCaseWithMemoryTransport(TestCase):
         prefix_length = len(traceback.extract_stack()) - 2
 
         def capture_hpss_call(params):
-            self.hpss_calls.append(
-                CapturedCall(params, prefix_length))
+            self.hpss_calls.append(CapturedCall(params, prefix_length))
 
         def capture_connect(transport):
             self.hpss_connections.append(transport)
-        client._SmartClient.hooks.install_named_hook(
-            'call', capture_hpss_call, None)
+
+        client._SmartClient.hooks.install_named_hook("call", capture_hpss_call, None)
         _mod_transport.Transport.hooks.install_named_hook(
-            'post_connect', capture_connect, None)
+            "post_connect", capture_connect, None
+        )
 
     def reset_smart_call_log(self):
         self.hpss_calls = []
@@ -2809,17 +2928,17 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
     directory when the test proper is run.
     """
 
-    OVERRIDE_PYTHON = 'python'
+    OVERRIDE_PYTHON = "python"
 
     def setUp(self):
         super().setUp()
         # Remove the protection set in isolated_environ, we have a proper
         # access to disk resources now.
-        self.overrideEnv('BRZ_LOG', None)
+        self.overrideEnv("BRZ_LOG", None)
 
     def check_file_contents(self, filename, expect):
         self.log(f"check contents of file {filename}")
-        with open(filename, 'rb') as f:
+        with open(filename, "rb") as f:
             contents = f.read()
         if contents != expect:
             self.log(f"expected: {expect!r}")
@@ -2828,12 +2947,12 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
     def _getTestDirPrefix(self):
         # create a directory within the top level test directory
-        if sys.platform in ('win32', 'cygwin'):
-            name_prefix = re.sub('[<>*=+",:;_/\\-]', '_', self.id())
+        if sys.platform in ("win32", "cygwin"):
+            name_prefix = re.sub('[<>*=+",:;_/\\-]', "_", self.id())
             # windows is likely to have path-length limits so use a short name
             name_prefix = name_prefix[-30:]
         else:
-            name_prefix = re.sub('[/]', '_', self.id())
+            name_prefix = re.sub("[/]", "_", self.id())
         return name_prefix
 
     def makeAndChdirToTestDir(self):
@@ -2842,12 +2961,13 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         For TestCaseInTempDir we create a temporary directory based on the test
         name and then create two subdirs - test and home under it.
         """
-        name_prefix = osutils.pathjoin(TestCaseWithMemoryTransport.TEST_ROOT,
-                                       self._getTestDirPrefix())
+        name_prefix = osutils.pathjoin(
+            TestCaseWithMemoryTransport.TEST_ROOT, self._getTestDirPrefix()
+        )
         name = name_prefix
         for i in range(100):
             if os.path.exists(name):
-                name = name_prefix + '_' + str(i)
+                name = name_prefix + "_" + str(i)
             else:
                 # now create test and home directories within this dir
                 self.test_base_dir = name
@@ -2861,20 +2981,20 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         # then!) to stop them, and permit it to be read.
         # control = controldir.ControlDir.create(self.test_base_dir)
         # control.create_repository()
-        self.test_home_dir = self.test_base_dir + '/home'
+        self.test_home_dir = self.test_base_dir + "/home"
         os.mkdir(self.test_home_dir)
-        self.test_dir = self.test_base_dir + '/work'
+        self.test_dir = self.test_base_dir + "/work"
         os.mkdir(self.test_dir)
         os.chdir(self.test_dir)
         # put name of test inside
-        with open(self.test_base_dir + '/name', 'w') as f:
+        with open(self.test_base_dir + "/name", "w") as f:
             f.write(self.id())
 
     def deleteTestDir(self):
         os.chdir(TestCaseWithMemoryTransport.TEST_ROOT)
         _rmtree_temp_dir(self.test_base_dir, test_id=self.id())
 
-    def build_tree(self, shape, line_endings='binary', transport=None):
+    def build_tree(self, shape, line_endings="binary", transport=None):
         """Build a test tree according to a pattern.
 
         shape is a sequence of file specifications.  If the final
@@ -2893,29 +3013,32 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         :return: None
         """
         if type(shape) not in (list, tuple):
-            raise AssertionError("Parameter 'shape' should be "
-                                 f"a list or a tuple. Got {shape!r} instead")
+            raise AssertionError(
+                "Parameter 'shape' should be "
+                f"a list or a tuple. Got {shape!r} instead"
+            )
         # It's OK to just create them using forward slashes on windows.
         if transport is None or transport.is_readonly():
             transport = _mod_transport.get_transport_from_path(".")
         for name in shape:
             self.assertIsInstance(name, str)
-            if name[-1] == '/':
+            if name[-1] == "/":
                 transport.mkdir(urlutils.escape(name[:-1]))
             else:
-                if line_endings == 'binary':
-                    end = b'\n'
-                elif line_endings == 'native':
-                    end = os.linesep.encode('ascii')
+                if line_endings == "binary":
+                    end = b"\n"
+                elif line_endings == "native":
+                    end = os.linesep.encode("ascii")
                 else:
                     raise errors.BzrError(
-                        f'Invalid line ending request {line_endings!r}')
-                content = b"contents of %s%s" % (name.encode('utf-8'), end)
+                        f"Invalid line ending request {line_endings!r}"
+                    )
+                content = b"contents of %s%s" % (name.encode("utf-8"), end)
                 transport.put_bytes_non_atomic(urlutils.escape(name), content)
 
     build_tree_contents = staticmethod(treeshape.build_tree_contents)
 
-    def assertInWorkingTree(self, path, root_path='.', tree=None):
+    def assertInWorkingTree(self, path, root_path=".", tree=None):
         """Assert whether path or paths are in the WorkingTree."""
         if tree is None:
             tree = workingtree.WorkingTree.open(root_path)
@@ -2923,10 +3046,9 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             for p in path:
                 self.assertInWorkingTree(p, tree=tree)
         else:
-            self.assertTrue(tree.is_versioned(path),
-                            path + ' not in working tree.')
+            self.assertTrue(tree.is_versioned(path), path + " not in working tree.")
 
-    def assertNotInWorkingTree(self, path, root_path='.', tree=None):
+    def assertNotInWorkingTree(self, path, root_path=".", tree=None):
         """Assert whether path or paths are not in the WorkingTree."""
         if tree is None:
             tree = workingtree.WorkingTree.open(root_path)
@@ -2934,8 +3056,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             for p in path:
                 self.assertNotInWorkingTree(p, tree=tree)
         else:
-            self.assertFalse(tree.is_versioned(
-                path), path + ' in working tree.')
+            self.assertFalse(tree.is_versioned(path), path + " in working tree.")
 
 
 class TestCaseWithTransport(TestCaseInTempDir):
@@ -2995,7 +3116,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         # RBC 20060208
         format = self.resolve_format(format=format)
         if not format.supports_workingtrees:
-            b = self.make_branch(relpath + '.branch', format=format)
+            b = self.make_branch(relpath + ".branch", format=format)
             return b.create_checkout(relpath, lightweight=True)
         b = self.make_branch(relpath, format=format)
         try:
@@ -3008,7 +3129,8 @@ class TestCaseWithTransport(TestCaseInTempDir):
                 # the branch is colocated on disk, we cannot create a checkout.
                 # hopefully callers will expect this.
                 local_controldir = controldir.ControlDir.open(
-                    self.get_vfs_only_url(relpath))
+                    self.get_vfs_only_url(relpath)
+                )
                 wt = local_controldir.create_workingtree()
                 if wt.branch._format != b._format:
                     wt._branch = b
@@ -3039,8 +3161,10 @@ class TestCaseWithTransport(TestCaseInTempDir):
         # manually check for equality of other things such as the parents list.
         self.assertEqual(left.get_parent_ids(), right.get_parent_ids())
         differences = left.changes_from(right)
-        self.assertFalse(differences.has_changed(),
-                         f"Trees {left!r} and {right!r} are different: {differences!r}")
+        self.assertFalse(
+            differences.has_changed(),
+            f"Trees {left!r} and {right!r} are different: {differences!r}",
+        )
 
     def disable_missing_extensions_warning(self):
         """Some tests expect a precise stderr content.
@@ -3048,8 +3172,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         There is no point in forcing them to duplicate the extension related
         warning.
         """
-        config.GlobalConfig().set_user_option(
-            'suppress_warnings', 'missing_extensions')
+        config.GlobalConfig().set_user_option("suppress_warnings", "missing_extensions")
 
 
 class ChrootedTestCase(TestCaseWithTransport):
@@ -3066,6 +3189,7 @@ class ChrootedTestCase(TestCaseWithTransport):
 
     def setUp(self):
         from breezy.tests import http_server
+
         super().setUp()
         if not self.vfs_transport_factory == memory.MemoryServer:
             self.transport_readonly_server = http_server.HttpServer
@@ -3082,6 +3206,7 @@ def condition_id_re(pattern):
     def condition(test):
         test_id = test.id()
         return filter_re.search(test_id)
+
     return condition
 
 
@@ -3091,8 +3216,10 @@ def condition_isinstance(klass_or_klass_list):
     :return: A callable which when called with one parameter obj return the
         result of isinstance(obj, klass_or_klass_list).
     """
+
     def condition(obj):
         return isinstance(obj, klass_or_klass_list)
+
     return condition
 
 
@@ -3102,8 +3229,10 @@ def condition_id_in_list(id_list):
     :param id_list: A TestIdList object.
     :return: A callable that returns True if the test's id appears in the list.
     """
+
     def condition(test):
         return id_list.includes(test.id())
+
     return condition
 
 
@@ -3114,11 +3243,13 @@ def condition_id_startswith(starts):
     :return: A callable that returns True if the test's id starts with one of
         the given strings.
     """
+
     def condition(test):
         for start in starts:
             if test.id().startswith(start):
                 return True
         return False
+
     return condition
 
 
@@ -3261,19 +3392,25 @@ def split_suite_by_re(suite, pattern):
     return split_suite_by_condition(suite, condition_id_re(pattern))
 
 
-def run_suite(suite, name='test', verbose=False, pattern=".*",
-              stop_on_failure=False,
-              transport=None, lsprof_timed=None, bench_history=None,
-              matching_tests_first=None,
-              list_only=False,
-              random_seed=None,
-              exclude_pattern=None,
-              strict=False,
-              runner_class=None,
-              suite_decorators=None,
-              stream=None,
-              result_decorators=None,
-              ):
+def run_suite(
+    suite,
+    name="test",
+    verbose=False,
+    pattern=".*",
+    stop_on_failure=False,
+    transport=None,
+    lsprof_timed=None,
+    bench_history=None,
+    matching_tests_first=None,
+    list_only=False,
+    random_seed=None,
+    exclude_pattern=None,
+    strict=False,
+    runner_class=None,
+    suite_decorators=None,
+    stream=None,
+    result_decorators=None,
+):
     """Run a test suite for brz selftest.
 
     :param runner_class: The class of runner to use. Must support the
@@ -3290,13 +3427,14 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
         runner_class = TextTestRunner
     if stream is None:
         stream = sys.stdout
-    runner = runner_class(stream=stream,
-                          descriptions=0,
-                          verbosity=verbosity,
-                          bench_history=bench_history,
-                          strict=strict,
-                          result_decorators=result_decorators,
-                          )
+    runner = runner_class(
+        stream=stream,
+        descriptions=0,
+        verbosity=verbosity,
+        bench_history=bench_history,
+        strict=strict,
+        result_decorators=result_decorators,
+    )
     runner.stop_on_failure = stop_on_failure
     if isinstance(suite, unittest.TestSuite):
         # Empty out _tests list of passed suite and populate new TestSuite
@@ -3305,7 +3443,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
     decorators = [
         random_order(random_seed, runner),
         exclude_tests(exclude_pattern),
-        ]
+    ]
     if matching_tests_first:
         decorators.append(tests_first(pattern))
     else:
@@ -3324,14 +3462,14 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
         # to take effect, though that is of marginal benefit.
         if verbosity >= 2:
             stream.write("Listing tests only ...\n")
-        if getattr(runner, 'list', None) is not None:
+        if getattr(runner, "list", None) is not None:
             runner.list(suite)
         else:
             for t in iter_suite_tests(suite):
                 stream.write(f"{t.id()}\n")
         return True
     result = runner.run(suite)
-    if strict and getattr(result, 'wasStrictlySuccessful', False):
+    if strict and getattr(result, "wasStrictlySuccessful", False):
         return result.wasStrictlySuccessful()
     else:
         return result.wasSuccessful()
@@ -3343,16 +3481,18 @@ parallel_registry = registry.Registry[str, Callable, None]()
 
 def fork_decorator(suite):
     if getattr(os, "fork", None) is None:
-        raise errors.CommandError("platform does not support fork,"
-                                  " try --parallel=subprocess instead.")
+        raise errors.CommandError(
+            "platform does not support fork," " try --parallel=subprocess instead."
+        )
     concurrency = osutils.local_concurrency()
     if concurrency == 1:
         return suite
     from testtools import ConcurrentTestSuite
+
     return ConcurrentTestSuite(suite, fork_for_tests)
 
 
-parallel_registry.register('fork', fork_decorator)
+parallel_registry.register("fork", fork_decorator)
 
 
 def subprocess_decorator(suite):
@@ -3360,10 +3500,11 @@ def subprocess_decorator(suite):
     if concurrency == 1:
         return suite
     from testtools import ConcurrentTestSuite
+
     return ConcurrentTestSuite(suite, reinvoke_for_tests)
 
 
-parallel_registry.register('subprocess', subprocess_decorator)
+parallel_registry.register("subprocess", subprocess_decorator)
 
 
 def exclude_tests(exclude_pattern):
@@ -3373,15 +3514,17 @@ def exclude_tests(exclude_pattern):
 
     def decorator(suite):
         return ExcludeDecorator(suite, exclude_pattern)
+
     return decorator
 
 
 def filter_tests(pattern):
-    if pattern == '.*':
+    if pattern == ".*":
         return identity_decorator
 
     def decorator(suite):
         return FilterTestsDecorator(suite, pattern)
+
     return decorator
 
 
@@ -3396,15 +3539,17 @@ def random_order(random_seed, runner):
 
     def decorator(suite):
         return RandomDecorator(suite, random_seed, runner.stream)
+
     return decorator
 
 
 def tests_first(pattern):
-    if pattern == '.*':
+    if pattern == ".*":
         return identity_decorator
 
     def decorator(suite):
         return TestFirstDecorator(suite, pattern)
+
     return decorator
 
 
@@ -3432,7 +3577,7 @@ class CountingDecorator(TestDecorator):
     """A decorator which calls result.progress(self.countTestCases)."""
 
     def run(self, result):
-        progress_method = getattr(result, 'progress', None)
+        progress_method = getattr(result, "progress", None)
         if callable(progress_method):
             progress_method(self.countTestCases(), SUBUNIT_SEEK_SET)
         return super().run(result)
@@ -3442,16 +3587,14 @@ class ExcludeDecorator(TestDecorator):
     """A decorator which excludes test matching an exclude pattern."""
 
     def __init__(self, suite, exclude_pattern):
-        super().__init__(
-            exclude_tests_by_re(suite, exclude_pattern))
+        super().__init__(exclude_tests_by_re(suite, exclude_pattern))
 
 
 class FilterTestsDecorator(TestDecorator):
     """A decorator which filters tests to those matching a pattern."""
 
     def __init__(self, suite, pattern):
-        super().__init__(
-            filter_suite_by_re(suite, pattern))
+        super().__init__(filter_suite_by_re(suite, pattern))
 
 
 class RandomDecorator(TestDecorator):
@@ -3509,6 +3652,7 @@ def workaround_zealous_crypto_random():
     """
     try:
         from Crypto.Random import atfork
+
         atfork()
     except ModuleNotFoundError:
         pass
@@ -3550,7 +3694,7 @@ def fork_for_tests(suite):
         pid = os.fork()
         if pid == 0:
             try:
-                stream = os.fdopen(c2pwrite, 'wb', 0)
+                stream = os.fdopen(c2pwrite, "wb", 0)
                 workaround_zealous_crypto_random()
                 try:
                     import coverage
@@ -3565,7 +3709,8 @@ def fork_for_tests(suite):
                 # child actually gets keystrokes for pdb etc).
                 sys.stdin.close()
                 subunit_result = AutoTimingTestResultDecorator(
-                    SubUnitBzrProtocolClientv1(stream))
+                    SubUnitBzrProtocolClientv1(stream)
+                )
                 process_suite.run(subunit_result)
             except BaseException:
                 # Try and report traceback on stream, but exit with error even
@@ -3574,7 +3719,7 @@ def fork_for_tests(suite):
                 # to avoid interleaving lines from multiple failing children.
                 tb = traceback.format_exc()
                 if isinstance(tb, str):
-                    tb = tb.encode('utf-8')
+                    tb = tb.encode("utf-8")
                 try:
                     stream.write(tb)
                 finally:
@@ -3583,7 +3728,7 @@ def fork_for_tests(suite):
             os._exit(0)
         else:
             os.close(c2pwrite)
-            stream = os.fdopen(c2pread, 'rb', 0)
+            stream = os.fdopen(c2pread, "rb", 0)
             test = TestInOtherProcess(stream, pid)
             result.append(test)
     return result
@@ -3613,30 +3758,38 @@ def reinvoke_for_tests(suite):
                 self.process.wait()
                 os.unlink(self.name)
             # print "pid %d finished" % finished_process
+
     test_blocks = partition_tests(suite, concurrency)
     for process_tests in test_blocks:
         # ugly; currently reimplement rather than reuses TestCase methods.
-        bzr_path = os.path.dirname(os.path.dirname(breezy.__file__)) + '/bzr'
+        bzr_path = os.path.dirname(os.path.dirname(breezy.__file__)) + "/bzr"
         if not os.path.isfile(bzr_path):
             # We are probably installed. Assume sys.argv is the right file
             bzr_path = sys.argv[0]
         bzr_path = [bzr_path]
         fd, test_list_file_name = tempfile.mkstemp()
-        test_list_file = os.fdopen(fd, 'wb', 1)
+        test_list_file = os.fdopen(fd, "wb", 1)
         for test in process_tests:
-            test_list_file.write(test.id() + '\n')
+            test_list_file.write(test.id() + "\n")
         test_list_file.close()
         try:
-            argv = bzr_path + ['selftest', '--load-list', test_list_file_name,
-                               '--subunit']
-            if '--no-plugins' in sys.argv:
-                argv.append('--no-plugins')
+            argv = bzr_path + [
+                "selftest",
+                "--load-list",
+                test_list_file_name,
+                "--subunit",
+            ]
+            if "--no-plugins" in sys.argv:
+                argv.append("--no-plugins")
             # stderr=subprocess.STDOUT would be ideal, but until we prevent
             # noise on stderr it can interrupt the subunit protocol.
-            process = subprocess.Popen(argv, stdin=subprocess.PIPE,
-                                       stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE,
-                                       bufsize=1)
+            process = subprocess.Popen(
+                argv,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                bufsize=1,
+            )
             test = TestInSubprocess(process, test_list_file_name)
             result.append(test)
         except:
@@ -3696,29 +3849,33 @@ class ProfileResult(testtools.ExtendedToOriginalDecorator):
 selftest_debug_flags: Set[str] = set()
 
 
-def selftest(verbose=False, pattern=".*", stop_on_failure=True,
-             transport=None,
-             test_suite_factory=None,
-             lsprof_timed=None,
-             bench_history=None,
-             matching_tests_first=None,
-             list_only=False,
-             random_seed=None,
-             exclude_pattern=None,
-             strict=False,
-             load_list=None,
-             debug_flags=None,
-             starting_with=None,
-             runner_class=None,
-             suite_decorators=None,
-             stream=None,
-             lsprof_tests=False,
-             ):
+def selftest(
+    verbose=False,
+    pattern=".*",
+    stop_on_failure=True,
+    transport=None,
+    test_suite_factory=None,
+    lsprof_timed=None,
+    bench_history=None,
+    matching_tests_first=None,
+    list_only=False,
+    random_seed=None,
+    exclude_pattern=None,
+    strict=False,
+    load_list=None,
+    debug_flags=None,
+    starting_with=None,
+    runner_class=None,
+    suite_decorators=None,
+    stream=None,
+    lsprof_tests=False,
+):
     """Run the whole test suite under the enhanced runner."""
     # XXX: Very ugly way to do this...
     # Disable warning about old formats because we don't want it to disturb
     # any blackbox tests.
     from breezy import repository
+
     repository._deprecation_warning_done = True
 
     global default_transport
@@ -3736,11 +3893,13 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
         else:
             keep_only = load_test_id_list(load_list)
         if starting_with:
-            starting_with = [test_prefix_alias_registry.resolve_alias(start)
-                             for start in starting_with]
+            starting_with = [
+                test_prefix_alias_registry.resolve_alias(start)
+                for start in starting_with
+            ]
             # Always consider 'unittest' an interesting name so that failed
             # suites wrapped as test cases appear in the output.
-            starting_with.append('unittest')
+            starting_with.append("unittest")
         if test_suite_factory is None:
             # Reduce loading time by loading modules based on the starting_with
             # patterns.
@@ -3753,21 +3912,25 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
         result_decorators = []
         if lsprof_tests:
             result_decorators.append(ProfileResult)
-        return run_suite(suite, 'testbzr', verbose=verbose, pattern=pattern,
-                         stop_on_failure=stop_on_failure,
-                         transport=transport,
-                         lsprof_timed=lsprof_timed,
-                         bench_history=bench_history,
-                         matching_tests_first=matching_tests_first,
-                         list_only=list_only,
-                         random_seed=random_seed,
-                         exclude_pattern=exclude_pattern,
-                         strict=strict,
-                         runner_class=runner_class,
-                         suite_decorators=suite_decorators,
-                         stream=stream,
-                         result_decorators=result_decorators,
-                         )
+        return run_suite(
+            suite,
+            "testbzr",
+            verbose=verbose,
+            pattern=pattern,
+            stop_on_failure=stop_on_failure,
+            transport=transport,
+            lsprof_timed=lsprof_timed,
+            bench_history=bench_history,
+            matching_tests_first=matching_tests_first,
+            list_only=list_only,
+            random_seed=random_seed,
+            exclude_pattern=exclude_pattern,
+            strict=strict,
+            runner_class=runner_class,
+            suite_decorators=suite_decorators,
+            stream=stream,
+            result_decorators=result_decorators,
+        )
     finally:
         default_transport = old_transport
         selftest_debug_flags = old_debug_flags
@@ -3856,11 +4019,11 @@ class TestIdList:
 
         modules = {}
         for test_id in test_id_list:
-            parts = test_id.split('.')
+            parts = test_id.split(".")
             mod_name = parts.pop(0)
             modules[mod_name] = True
             for part in parts:
-                mod_name += '.' + part
+                mod_name += "." + part
                 modules[mod_name] = True
         self.modules = modules
 
@@ -3880,33 +4043,33 @@ class TestPrefixAliasRegistry(registry.Registry):
     warning will be emitted).
     """
 
-    def register(self, key, obj, help=None, info=None,
-                 override_existing=False):
+    def register(self, key, obj, help=None, info=None, override_existing=False):
         """See Registry.register.
 
         Trying to override an existing alias causes a warning to be emitted,
         not a fatal execption.
         """
         try:
-            super().register(
-                key, obj, help=help, info=info, override_existing=False)
+            super().register(key, obj, help=help, info=info, override_existing=False)
         except KeyError:
             actual = self.get(key)
             trace.note(
-                f'Test prefix alias {key} is already used for {actual}, ignoring {obj}')
+                f"Test prefix alias {key} is already used for {actual}, ignoring {obj}"
+            )
 
     def resolve_alias(self, id_start):
         """Replace the alias by the prefix in the given string.
 
         Using an unknown prefix is an error to help catching typos.
         """
-        parts = id_start.split('.')
+        parts = id_start.split(".")
         try:
             parts[0] = self.get(parts[0])
         except KeyError as err:
             raise errors.CommandError(
-                f'{parts[0]} is not a known test prefix alias') from err
-        return '.'.join(parts)
+                f"{parts[0]} is not a known test prefix alias"
+            ) from err
+        return ".".join(parts)
 
 
 test_prefix_alias_registry = TestPrefixAliasRegistry()
@@ -3915,194 +4078,194 @@ test_prefix_alias_registry = TestPrefixAliasRegistry()
 
 # This alias allows to detect typos ('bzrlin.') by making all valid test ids
 # appear prefixed ('breezy.' is "replaced" by 'breezy.').
-test_prefix_alias_registry.register('breezy', 'breezy')
+test_prefix_alias_registry.register("breezy", "breezy")
 
 # Obvious highest levels prefixes, feel free to add your own via a plugin
-test_prefix_alias_registry.register('bd', 'breezy.doc')
-test_prefix_alias_registry.register('bu', 'breezy.utils')
-test_prefix_alias_registry.register('bt', 'breezy.tests')
-test_prefix_alias_registry.register('bgt', 'breezy.git.tests')
-test_prefix_alias_registry.register('bbt', 'breezy.bzr.tests')
-test_prefix_alias_registry.register('bb', 'breezy.tests.blackbox')
-test_prefix_alias_registry.register('bp', 'breezy.plugins')
+test_prefix_alias_registry.register("bd", "breezy.doc")
+test_prefix_alias_registry.register("bu", "breezy.utils")
+test_prefix_alias_registry.register("bt", "breezy.tests")
+test_prefix_alias_registry.register("bgt", "breezy.git.tests")
+test_prefix_alias_registry.register("bbt", "breezy.bzr.tests")
+test_prefix_alias_registry.register("bb", "breezy.tests.blackbox")
+test_prefix_alias_registry.register("bp", "breezy.plugins")
 
 
 def _test_suite_testmod_names():
     """Return the standard list of test module names to test."""
     return [
-        'breezy.bzr.tests',
-        'breezy.git.tests',
-        'breezy.tests.blackbox',
-        'breezy.tests.commands',
-        'breezy.tests.per_branch',
-        'breezy.tests.per_controldir',
-        'breezy.tests.per_controldir_colo',
-        'breezy.tests.per_foreign_vcs',
-        'breezy.tests.per_interrepository',
-        'breezy.tests.per_intertree',
-        'breezy.tests.per_interbranch',
-        'breezy.tests.per_lock',
-        'breezy.tests.per_merger',
-        'breezy.tests.per_transport',
-        'breezy.tests.per_tree',
-        'breezy.tests.per_repository',
-        'breezy.tests.per_repository_reference',
-        'breezy.tests.per_uifactory',
-        'breezy.tests.per_workingtree',
-        'breezy.tests.test__annotator',
-        'breezy.tests.test__known_graph',
-        'breezy.tests.test_ancestry',
-        'breezy.tests.test_annotate',
-        'breezy.tests.test_atomicfile',
-        'breezy.tests.test_bad_files',
-        'breezy.tests.test_bisect',
-        'breezy.tests.test_bisect_multi',
-        'breezy.tests.test_branch',
-        'breezy.tests.test_branchbuilder',
-        'breezy.tests.test_bugtracker',
-        'breezy.tests.test_cache_utf8',
-        'breezy.tests.test_chunk_writer',
-        'breezy.tests.test_clean_tree',
-        'breezy.tests.test_cmdline',
-        'breezy.tests.test_commands',
-        'breezy.tests.test_commit',
-        'breezy.tests.test_commit_merge',
-        'breezy.tests.test_config',
-        'breezy.tests.test_bedding',
-        'breezy.tests.test_conflicts',
-        'breezy.tests.test_controldir',
-        'breezy.tests.test_counted_lock',
-        'breezy.tests.test_crash',
-        'breezy.tests.test_decorators',
-        'breezy.tests.test_delta',
-        'breezy.tests.test_debug',
-        'breezy.tests.test_diff',
-        'breezy.tests.test_directory_service',
-        'breezy.tests.test_dirty_tracker',
-        'breezy.tests.test_email_message',
-        'breezy.tests.test_eol_filters',
-        'breezy.tests.test_errors',
-        'breezy.tests.test_estimate_compressed_size',
-        'breezy.tests.test_export',
-        'breezy.tests.test_export_pot',
-        'breezy.tests.test_extract',
-        'breezy.tests.test_features',
-        'breezy.tests.test_fetch',
-        'breezy.tests.test_fetch_ghosts',
-        'breezy.tests.test_fixtures',
-        'breezy.tests.test_fifo_cache',
-        'breezy.tests.test_filters',
-        'breezy.tests.test_filter_tree',
-        'breezy.tests.test_foreign',
-        'breezy.tests.test_forge',
-        'breezy.tests.test_generate_docs',
-        'breezy.tests.test_globbing',
-        'breezy.tests.test_gpg',
-        'breezy.tests.test_graph',
-        'breezy.tests.test_grep',
-        'breezy.tests.test_help',
-        'breezy.tests.test_hooks',
-        'breezy.tests.test_http',
-        'breezy.tests.test_http_response',
-        'breezy.tests.test_https_ca_bundle',
-        'breezy.tests.test_https_urllib',
-        'breezy.tests.test_i18n',
-        'breezy.tests.test_identitymap',
-        'breezy.tests.test_ignores',
-        'breezy.tests.test_import_tariff',
-        'breezy.tests.test_info',
-        'breezy.tests.test_iterablefile',
-        'breezy.tests.test_lazy_import',
-        'breezy.tests.test_lazy_regex',
-        'breezy.tests.test_library_state',
-        'breezy.tests.test_location',
-        'breezy.tests.test_lock',
-        'breezy.tests.test_lockdir',
-        'breezy.tests.test_log',
-        'breezy.tests.test_lru_cache',
-        'breezy.tests.test_lsprof',
-        'breezy.tests.test_mail_client',
-        'breezy.tests.test_matchers',
-        'breezy.tests.test_memorybranch',
-        'breezy.tests.test_memorytree',
-        'breezy.tests.test_merge',
-        'breezy.tests.test_mergeable',
-        'breezy.tests.test_merge_core',
-        'breezy.tests.test_merge_directive',
-        'breezy.tests.test_mergetools',
-        'breezy.tests.test_missing',
-        'breezy.tests.test_msgeditor',
-        'breezy.tests.test_multiparent',
-        'breezy.tests.test_multiwalker',
-        'breezy.tests.test_mutabletree',
-        'breezy.tests.test_nonascii',
-        'breezy.tests.test_options',
-        'breezy.tests.test_osutils',
-        'breezy.tests.test_osutils_encodings',
-        'breezy.tests.test_patch',
-        'breezy.tests.test_patches',
-        'breezy.tests.test_permissions',
-        'breezy.tests.test_plugins',
-        'breezy.tests.test_progress',
-        'breezy.tests.test_pyutils',
-        'breezy.tests.test_reconcile',
-        'breezy.tests.test_reconfigure',
-        'breezy.tests.test_registry',
-        'breezy.tests.test_rename_map',
-        'breezy.tests.test_revert',
-        'breezy.tests.test_revision',
-        'breezy.tests.test_revisionspec',
-        'breezy.tests.test_revisiontree',
-        'breezy.tests.test_rules',
-        'breezy.tests.test_url_policy_open',
-        'breezy.tests.test_sampler',
-        'breezy.tests.test_scenarios',
-        'breezy.tests.test_script',
-        'breezy.tests.test_selftest',
-        'breezy.tests.test_setup',
-        'breezy.tests.test_sftp_transport',
-        'breezy.tests.test_shelf',
-        'breezy.tests.test_shelf_ui',
-        'breezy.tests.test_smart_add',
-        'breezy.tests.test_smtp_connection',
-        'breezy.tests.test_source',
-        'breezy.tests.test_ssh_transport',
-        'breezy.tests.test_status',
-        'breezy.tests.test_strace',
-        'breezy.tests.test_subsume',
-        'breezy.tests.test_switch',
-        'breezy.tests.test_symbol_versioning',
-        'breezy.tests.test_tag',
-        'breezy.tests.test_test_server',
-        'breezy.tests.test_textfile',
-        'breezy.tests.test_textmerge',
-        'breezy.tests.test_cethread',
-        'breezy.tests.test_timestamp',
-        'breezy.tests.test_trace',
-        'breezy.tests.test_transactions',
-        'breezy.tests.test_transform',
-        'breezy.tests.test_transport',
-        'breezy.tests.test_transport_log',
-        'breezy.tests.test_tree',
-        'breezy.tests.test_treebuilder',
-        'breezy.tests.test_treeshape',
-        'breezy.tests.test_tsort',
-        'breezy.tests.test_ui',
-        'breezy.tests.test_uncommit',
-        'breezy.tests.test_upgrade',
-        'breezy.tests.test_upgrade_stacked',
-        'breezy.tests.test_upstream_import',
-        'breezy.tests.test_urlutils',
-        'breezy.tests.test_utextwrap',
-        'breezy.tests.test_version',
-        'breezy.tests.test_version_info',
-        'breezy.tests.test_views',
-        'breezy.tests.test_whitebox',
-        'breezy.tests.test_win32utils',
-        'breezy.tests.test_workspace',
-        'breezy.tests.test_workingtree',
-        'breezy.tests.test_wsgi',
-        ]
+        "breezy.bzr.tests",
+        "breezy.git.tests",
+        "breezy.tests.blackbox",
+        "breezy.tests.commands",
+        "breezy.tests.per_branch",
+        "breezy.tests.per_controldir",
+        "breezy.tests.per_controldir_colo",
+        "breezy.tests.per_foreign_vcs",
+        "breezy.tests.per_interrepository",
+        "breezy.tests.per_intertree",
+        "breezy.tests.per_interbranch",
+        "breezy.tests.per_lock",
+        "breezy.tests.per_merger",
+        "breezy.tests.per_transport",
+        "breezy.tests.per_tree",
+        "breezy.tests.per_repository",
+        "breezy.tests.per_repository_reference",
+        "breezy.tests.per_uifactory",
+        "breezy.tests.per_workingtree",
+        "breezy.tests.test__annotator",
+        "breezy.tests.test__known_graph",
+        "breezy.tests.test_ancestry",
+        "breezy.tests.test_annotate",
+        "breezy.tests.test_atomicfile",
+        "breezy.tests.test_bad_files",
+        "breezy.tests.test_bisect",
+        "breezy.tests.test_bisect_multi",
+        "breezy.tests.test_branch",
+        "breezy.tests.test_branchbuilder",
+        "breezy.tests.test_bugtracker",
+        "breezy.tests.test_cache_utf8",
+        "breezy.tests.test_chunk_writer",
+        "breezy.tests.test_clean_tree",
+        "breezy.tests.test_cmdline",
+        "breezy.tests.test_commands",
+        "breezy.tests.test_commit",
+        "breezy.tests.test_commit_merge",
+        "breezy.tests.test_config",
+        "breezy.tests.test_bedding",
+        "breezy.tests.test_conflicts",
+        "breezy.tests.test_controldir",
+        "breezy.tests.test_counted_lock",
+        "breezy.tests.test_crash",
+        "breezy.tests.test_decorators",
+        "breezy.tests.test_delta",
+        "breezy.tests.test_debug",
+        "breezy.tests.test_diff",
+        "breezy.tests.test_directory_service",
+        "breezy.tests.test_dirty_tracker",
+        "breezy.tests.test_email_message",
+        "breezy.tests.test_eol_filters",
+        "breezy.tests.test_errors",
+        "breezy.tests.test_estimate_compressed_size",
+        "breezy.tests.test_export",
+        "breezy.tests.test_export_pot",
+        "breezy.tests.test_extract",
+        "breezy.tests.test_features",
+        "breezy.tests.test_fetch",
+        "breezy.tests.test_fetch_ghosts",
+        "breezy.tests.test_fixtures",
+        "breezy.tests.test_fifo_cache",
+        "breezy.tests.test_filters",
+        "breezy.tests.test_filter_tree",
+        "breezy.tests.test_foreign",
+        "breezy.tests.test_forge",
+        "breezy.tests.test_generate_docs",
+        "breezy.tests.test_globbing",
+        "breezy.tests.test_gpg",
+        "breezy.tests.test_graph",
+        "breezy.tests.test_grep",
+        "breezy.tests.test_help",
+        "breezy.tests.test_hooks",
+        "breezy.tests.test_http",
+        "breezy.tests.test_http_response",
+        "breezy.tests.test_https_ca_bundle",
+        "breezy.tests.test_https_urllib",
+        "breezy.tests.test_i18n",
+        "breezy.tests.test_identitymap",
+        "breezy.tests.test_ignores",
+        "breezy.tests.test_import_tariff",
+        "breezy.tests.test_info",
+        "breezy.tests.test_iterablefile",
+        "breezy.tests.test_lazy_import",
+        "breezy.tests.test_lazy_regex",
+        "breezy.tests.test_library_state",
+        "breezy.tests.test_location",
+        "breezy.tests.test_lock",
+        "breezy.tests.test_lockdir",
+        "breezy.tests.test_log",
+        "breezy.tests.test_lru_cache",
+        "breezy.tests.test_lsprof",
+        "breezy.tests.test_mail_client",
+        "breezy.tests.test_matchers",
+        "breezy.tests.test_memorybranch",
+        "breezy.tests.test_memorytree",
+        "breezy.tests.test_merge",
+        "breezy.tests.test_mergeable",
+        "breezy.tests.test_merge_core",
+        "breezy.tests.test_merge_directive",
+        "breezy.tests.test_mergetools",
+        "breezy.tests.test_missing",
+        "breezy.tests.test_msgeditor",
+        "breezy.tests.test_multiparent",
+        "breezy.tests.test_multiwalker",
+        "breezy.tests.test_mutabletree",
+        "breezy.tests.test_nonascii",
+        "breezy.tests.test_options",
+        "breezy.tests.test_osutils",
+        "breezy.tests.test_osutils_encodings",
+        "breezy.tests.test_patch",
+        "breezy.tests.test_patches",
+        "breezy.tests.test_permissions",
+        "breezy.tests.test_plugins",
+        "breezy.tests.test_progress",
+        "breezy.tests.test_pyutils",
+        "breezy.tests.test_reconcile",
+        "breezy.tests.test_reconfigure",
+        "breezy.tests.test_registry",
+        "breezy.tests.test_rename_map",
+        "breezy.tests.test_revert",
+        "breezy.tests.test_revision",
+        "breezy.tests.test_revisionspec",
+        "breezy.tests.test_revisiontree",
+        "breezy.tests.test_rules",
+        "breezy.tests.test_url_policy_open",
+        "breezy.tests.test_sampler",
+        "breezy.tests.test_scenarios",
+        "breezy.tests.test_script",
+        "breezy.tests.test_selftest",
+        "breezy.tests.test_setup",
+        "breezy.tests.test_sftp_transport",
+        "breezy.tests.test_shelf",
+        "breezy.tests.test_shelf_ui",
+        "breezy.tests.test_smart_add",
+        "breezy.tests.test_smtp_connection",
+        "breezy.tests.test_source",
+        "breezy.tests.test_ssh_transport",
+        "breezy.tests.test_status",
+        "breezy.tests.test_strace",
+        "breezy.tests.test_subsume",
+        "breezy.tests.test_switch",
+        "breezy.tests.test_symbol_versioning",
+        "breezy.tests.test_tag",
+        "breezy.tests.test_test_server",
+        "breezy.tests.test_textfile",
+        "breezy.tests.test_textmerge",
+        "breezy.tests.test_cethread",
+        "breezy.tests.test_timestamp",
+        "breezy.tests.test_trace",
+        "breezy.tests.test_transactions",
+        "breezy.tests.test_transform",
+        "breezy.tests.test_transport",
+        "breezy.tests.test_transport_log",
+        "breezy.tests.test_tree",
+        "breezy.tests.test_treebuilder",
+        "breezy.tests.test_treeshape",
+        "breezy.tests.test_tsort",
+        "breezy.tests.test_ui",
+        "breezy.tests.test_uncommit",
+        "breezy.tests.test_upgrade",
+        "breezy.tests.test_upgrade_stacked",
+        "breezy.tests.test_upstream_import",
+        "breezy.tests.test_urlutils",
+        "breezy.tests.test_utextwrap",
+        "breezy.tests.test_version",
+        "breezy.tests.test_version_info",
+        "breezy.tests.test_views",
+        "breezy.tests.test_whitebox",
+        "breezy.tests.test_win32utils",
+        "breezy.tests.test_workspace",
+        "breezy.tests.test_workingtree",
+        "breezy.tests.test_wsgi",
+    ]
 
 
 def _test_suite_modules_to_doctest():
@@ -4111,18 +4274,18 @@ def _test_suite_modules_to_doctest():
         # GZ 2009-03-31: No docstrings with -OO so there's nothing to doctest
         return []
     return [
-        'breezy',
-        'breezy.branchbuilder',
-        'breezy.bzr.inventory',
-        'breezy.decorators',
-        'breezy.lockdir',
-        'breezy.option',
-        'breezy.pyutils',
-        'breezy.symbol_versioning',
-        'breezy.tests',
-        'breezy.tests.fixtures',
-        'breezy.version_info_formats.format_custom',
-        ]
+        "breezy",
+        "breezy.branchbuilder",
+        "breezy.bzr.inventory",
+        "breezy.decorators",
+        "breezy.lockdir",
+        "breezy.option",
+        "breezy.pyutils",
+        "breezy.symbol_versioning",
+        "breezy.tests",
+        "breezy.tests.fixtures",
+        "breezy.version_info_formats.format_custom",
+    ]
 
 
 def test_suite(keep_only=None, starting_with=None):
@@ -4150,6 +4313,7 @@ def test_suite(keep_only=None, starting_with=None):
                 if name.startswith(start) or start.startswith(name):
                     return True
             return False
+
         loader = TestUtil.FilteredByModuleTestLoader(interesting_module)
 
     elif keep_only is not None:
@@ -4170,7 +4334,7 @@ def test_suite(keep_only=None, starting_with=None):
     # modules building their suite with loadTestsFromModuleNames
     suite.addTest(loader.loadTestsFromModuleNames(_test_suite_testmod_names()))
 
-    suite.addTest(loader.loadTestsFromModuleNames(['breezy.doc']))
+    suite.addTest(loader.loadTestsFromModuleNames(["breezy.doc"]))
 
     for mod in _test_suite_modules_to_doctest():
         if not interesting_module(mod):
@@ -4180,9 +4344,10 @@ def test_suite(keep_only=None, starting_with=None):
             # note that this really does mean "report only" -- doctest
             # still runs the rest of the examples
             doc_suite = IsolatedDocTestSuite(
-                mod, optionflags=doctest.REPORT_ONLY_FIRST_FAILURE)
+                mod, optionflags=doctest.REPORT_ONLY_FIRST_FAILURE
+            )
         except ValueError as e:
-            print(f'**failed to get doctest for: {mod}\n{e}')
+            print(f"**failed to get doctest for: {mod}\n{e}")
             raise
         if len(doc_suite._tests) == 0:
             raise errors.BzrError(f"no doctests found in {mod}")
@@ -4202,8 +4367,10 @@ def test_suite(keep_only=None, starting_with=None):
             suite.addTest(plugin_suite)
         if default_encoding != sys.getdefaultencoding():
             trace.warning(
-                'Plugin "%s" tried to reset default encoding to: %s', name,
-                sys.getdefaultencoding())
+                'Plugin "%s" tried to reset default encoding to: %s',
+                name,
+                sys.getdefaultencoding(),
+            )
             reload(sys)
             sys.setdefaultencoding(default_encoding)
 
@@ -4249,10 +4416,10 @@ def _multiply_two_scenarios(scenarios_left, scenarios_right):
         right scenario.
     """
     return [
-        (f'{left_name},{right_name}',
-         dict(left_dict, **right_dict))
+        (f"{left_name},{right_name}", dict(left_dict, **right_dict))
         for left_name, left_dict in scenarios_left
-        for right_name, right_dict in scenarios_right]
+        for right_name, right_dict in scenarios_right
+    ]
 
 
 def multiply_tests(tests, scenarios, result):
@@ -4348,9 +4515,9 @@ def clone_test(test, new_id):
     return new_test
 
 
-
-def permute_tests_for_extension(standard_tests, loader, py_module_name,
-                                ext_module_name):
+def permute_tests_for_extension(
+    standard_tests, loader, py_module_name, ext_module_name
+):
     """Helper for permutating tests against an extension module.
 
     This is meant to be used inside a modules 'load_tests()' function. It will
@@ -4372,20 +4539,24 @@ def permute_tests_for_extension(standard_tests, loader, py_module_name,
         the module is available.
     """
     from .features import ModuleAvailableFeature
+
     py_module = pyutils.get_named_object(py_module_name)
     scenarios = [
-        ('python', {'module': py_module}),
+        ("python", {"module": py_module}),
     ]
     suite = loader.suiteClass()
     feature = ModuleAvailableFeature(ext_module_name)
     if feature.available():
-        scenarios.append(('C', {'module': feature.module}))
+        scenarios.append(("C", {"module": feature.module}))
     else:
+
         class FailWithoutFeature(TestCase):
             def id(self):
-                return ext_module_name + '.' + super().id()
+                return ext_module_name + "." + super().id()
+
             def test_fail(self):
                 self.requireFeature(feature)
+
         # the compiled module isn't available, so we add a failing test
         suite.addTest(loader.loadTestsFromTestCase(FailWithoutFeature))
     result = multiply_tests(standard_tests, scenarios, suite)
@@ -4399,9 +4570,9 @@ def _rmtree_temp_dir(dirname, test_id=None):
     # except on win32, where rmtree(str) will fail
     # since it doesn't have the property of byte-stream paths
     # (they are either ascii or mbcs)
-    if sys.platform == 'win32' and isinstance(dirname, bytes):
+    if sys.platform == "win32" and isinstance(dirname, bytes):
         # make sure we are using the unicode win32 api
-        dirname = dirname.decode('mbcs')
+        dirname = dirname.decode("mbcs")
     else:
         dirname = dirname.encode(sys.getfilesystemencoding())
     try:
@@ -4412,9 +4583,11 @@ def _rmtree_temp_dir(dirname, test_id=None):
         # possible info to the test runner is even worse.
         if test_id is not None:
             ui.ui_factory.clear_term()
-            sys.stderr.write(f'\nWhile running: {test_id}\n')
+            sys.stderr.write(f"\nWhile running: {test_id}\n")
         # Ugly, but the last thing we want here is fail, so bear with it.
-        sys.stderr.write(f'Unable to remove testing dir {os.path.basename(dirname)}\n{e}')
+        sys.stderr.write(
+            f"Unable to remove testing dir {os.path.basename(dirname)}\n{e}"
+        )
 
 
 def probe_unicode_in_user_encoding():
@@ -4423,7 +4596,7 @@ def probe_unicode_in_user_encoding():
 
     :return:  (unicode value, encoded plain string value) or (None, None)
     """
-    possible_vals = ['m\xb5', '\xe1', '\u0410']
+    possible_vals = ["m\xb5", "\xe1", "\u0410"]
     for uni_val in possible_vals:
         try:
             str_val = uni_val.encode(osutils.get_user_encoding())
@@ -4456,7 +4629,6 @@ try:
     from subunit.test_results import AutoTimingTestResultDecorator
 
     class SubUnitBzrProtocolClientv1(TestProtocolClient):
-
         def stopTest(self, test):
             super().stopTest(test)
             _clear__type_equality_funcs(test)
@@ -4464,16 +4636,15 @@ try:
         def addSuccess(self, test, details=None):
             # The subunit client always includes the details in the subunit
             # stream, but we don't want to include it in ours.
-            if details is not None and 'log' in details:
-                del details['log']
-            return super().addSuccess(
-                test, details)
+            if details is not None and "log" in details:
+                del details["log"]
+            return super().addSuccess(test, details)
 
     class SubUnitBzrRunnerv1(TextTestRunner):
-
         def run(self, test):
             result = AutoTimingTestResultDecorator(
-                SubUnitBzrProtocolClientv1(self.stream))
+                SubUnitBzrProtocolClientv1(self.stream)
+            )
             test.run(result)
             return result
 except ModuleNotFoundError:
@@ -4484,16 +4655,25 @@ try:
     from subunit.run import SubunitTestRunner
 
     class SubUnitBzrRunnerv2(TextTestRunner, SubunitTestRunner):
-
-        def __init__(self, stream=sys.stderr, descriptions=0, verbosity=1,
-                     bench_history=None, strict=False, result_decorators=None):
+        def __init__(
+            self,
+            stream=sys.stderr,
+            descriptions=0,
+            verbosity=1,
+            bench_history=None,
+            strict=False,
+            result_decorators=None,
+        ):
             TextTestRunner.__init__(
-                self, stream=stream,
-                descriptions=descriptions, verbosity=verbosity,
-                bench_history=bench_history, strict=strict,
-                result_decorators=result_decorators)
-            SubunitTestRunner.__init__(self, verbosity=verbosity,
-                                       stream=stream)
+                self,
+                stream=stream,
+                descriptions=descriptions,
+                verbosity=verbosity,
+                bench_history=bench_history,
+                strict=strict,
+                result_decorators=result_decorators,
+            )
+            SubunitTestRunner.__init__(self, verbosity=verbosity, stream=stream)
 
         run = SubunitTestRunner.run
 except ModuleNotFoundError:

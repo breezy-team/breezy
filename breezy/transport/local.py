@@ -45,14 +45,15 @@ class EmulatedWin32LocalTransport(LocalTransport):  # type:ignore
     """Special transport for testing Win32 [UNC] paths on non-windows."""
 
     def __init__(self, base):
-        if base[-1] != '/':
-            base = base + '/'
+        if base[-1] != "/":
+            base = base + "/"
         super(LocalTransport, self).__init__(base)
         self._local_base = urlutils._win32_local_path_from_url(base)
 
     def abspath(self, relpath):
-        path = osutils._win32_normpath(osutils.pathjoin(
-            self._local_base, urlutils.unescape(relpath)))
+        path = osutils._win32_normpath(
+            osutils.pathjoin(self._local_base, urlutils.unescape(relpath))
+        )
         return urlutils._win32_local_path_to_url(path)
 
     def clone(self, offset=None):
@@ -64,7 +65,7 @@ class EmulatedWin32LocalTransport(LocalTransport):  # type:ignore
             return EmulatedWin32LocalTransport(self.base)
         else:
             abspath = self.abspath(offset)
-            if abspath == 'file://':
+            if abspath == "file://":
                 # fix upwalk for UNC path
                 # when clone from //HOST/path updir recursively
                 # we should stop at least at //HOST part
@@ -75,4 +76,7 @@ class EmulatedWin32LocalTransport(LocalTransport):  # type:ignore
 def get_test_permutations():
     """Return the permutations to be used in testing."""
     from ..tests import test_server
-    return [(LocalTransport, test_server.LocalURLServer), ]
+
+    return [
+        (LocalTransport, test_server.LocalURLServer),
+    ]

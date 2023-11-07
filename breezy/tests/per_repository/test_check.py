@@ -24,20 +24,33 @@ from ...bzr.inventorytree import InventoryTreeChange
 
 
 class TestCleanRepository(TestCaseWithRepository):
-
     def test_new_repo(self):
-        branch = self.make_branch('foo')
+        branch = self.make_branch("foo")
         branch.lock_write()
         self.addCleanup(branch.unlock)
-        self.overrideEnv('BRZ_EMAIL', 'foo@sample.com')
+        self.overrideEnv("BRZ_EMAIL", "foo@sample.com")
         builder = branch.get_commit_builder([], branch.get_config_stack())
-        list(builder.record_iter_changes(None, _mod_revision.NULL_REVISION, [
-            InventoryTreeChange(
-                b'TREE_ROOT', (None, ''), True, (False, True), (None, None),
-                (None, ''), (None, 'directory'), (None, False))]))
+        list(
+            builder.record_iter_changes(
+                None,
+                _mod_revision.NULL_REVISION,
+                [
+                    InventoryTreeChange(
+                        b"TREE_ROOT",
+                        (None, ""),
+                        True,
+                        (False, True),
+                        (None, None),
+                        (None, ""),
+                        (None, "directory"),
+                        (None, False),
+                    )
+                ],
+            )
+        )
         builder.finish_inventory()
-        builder.commit('first post')
+        builder.commit("first post")
         result = branch.repository.check(None, check_repo=True)
         result.report_results(True)
         log = self.get_log()
-        self.assertNotIn('Missing', log, f"Something was missing in {log!r}")
+        self.assertNotIn("Missing", log, f"Something was missing in {log!r}")

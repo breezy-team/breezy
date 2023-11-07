@@ -18,65 +18,75 @@ from breezy import tests
 from breezy.tests import features, script
 
 
-def make_tree_with_conflicts(test, this_path='this', other_path='other',
-                             prefix='my'):
+def make_tree_with_conflicts(test, this_path="this", other_path="other", prefix="my"):
     this_tree = test.make_branch_and_tree(this_path)
-    test.build_tree_contents([
-        (f'{this_path}/{prefix}file', b'this content\n'),
-        (f'{this_path}/{prefix}_other_file', b'this content\n'),
-        (f'{this_path}/{prefix}dir/',),
-        ])
-    this_tree.add(prefix + 'file')
-    this_tree.add(prefix + '_other_file')
-    this_tree.add(prefix + 'dir')
+    test.build_tree_contents(
+        [
+            (f"{this_path}/{prefix}file", b"this content\n"),
+            (f"{this_path}/{prefix}_other_file", b"this content\n"),
+            (f"{this_path}/{prefix}dir/",),
+        ]
+    )
+    this_tree.add(prefix + "file")
+    this_tree.add(prefix + "_other_file")
+    this_tree.add(prefix + "dir")
     this_tree.commit(message="new")
     other_tree = this_tree.controldir.sprout(other_path).open_workingtree()
-    test.build_tree_contents([
-        (f'{other_path}/{prefix}file', b'contentsb\n'),
-        (f'{other_path}/{prefix}_other_file', b'contentsb\n'),
-        ])
-    other_tree.rename_one(prefix + 'dir', prefix + 'dir2')
+    test.build_tree_contents(
+        [
+            (f"{other_path}/{prefix}file", b"contentsb\n"),
+            (f"{other_path}/{prefix}_other_file", b"contentsb\n"),
+        ]
+    )
+    other_tree.rename_one(prefix + "dir", prefix + "dir2")
     other_tree.commit(message="change")
-    test.build_tree_contents([
-        (f'{this_path}/{prefix}file', b'contentsa2\n'),
-        (f'{this_path}/{prefix}_other_file', b'contentsa2\n'),
-        ])
-    this_tree.rename_one(prefix + 'dir', prefix + 'dir3')
-    this_tree.commit(message='change')
+    test.build_tree_contents(
+        [
+            (f"{this_path}/{prefix}file", b"contentsa2\n"),
+            (f"{this_path}/{prefix}_other_file", b"contentsa2\n"),
+        ]
+    )
+    this_tree.rename_one(prefix + "dir", prefix + "dir3")
+    this_tree.commit(message="change")
     this_tree.merge_from_branch(other_tree.branch)
     return this_tree, other_tree
 
 
 class TestConflicts(script.TestCaseWithTransportAndScript):
-
     def setUp(self):
         super().setUp()
-        make_tree_with_conflicts(self, 'branch', 'other')
+        make_tree_with_conflicts(self, "branch", "other")
 
     def test_conflicts(self):
-        self.run_script("""\
+        self.run_script(
+            """\
 $ cd branch
 $ brz conflicts
 Text conflict in my_other_file
 Path conflict: mydir3 / mydir2
 Text conflict in myfile
-""")
+"""
+        )
 
     def test_conflicts_text(self):
-        self.run_script("""\
+        self.run_script(
+            """\
 $ cd branch
 $ brz conflicts --text
 my_other_file
 myfile
-""")
+"""
+        )
 
     def test_conflicts_directory(self):
-        self.run_script("""\
+        self.run_script(
+            """\
 $ brz conflicts  -d branch
 Text conflict in my_other_file
 Path conflict: mydir3 / mydir2
 Text conflict in myfile
-""")
+"""
+        )
 
 
 class TestUnicodePaths(tests.TestCaseWithTransport):
@@ -91,22 +101,22 @@ class TestUnicodePaths(tests.TestCaseWithTransport):
     def test_messages(self):
         """Conflict messages involving non-ascii paths are displayed okay."""
         make_tree_with_conflicts(self, "branch", prefix="\xA7")
-        out, err = self.run_bzr(["conflicts", "-d", "branch"],
-                                encoding=self.encoding)
-        self.assertEqual(out,
-                         "Text conflict in \xA7_other_file\n"
-                         "Path conflict: \xA7dir3 / \xA7dir2\n"
-                         "Text conflict in \xA7file\n")
+        out, err = self.run_bzr(["conflicts", "-d", "branch"], encoding=self.encoding)
+        self.assertEqual(
+            out,
+            "Text conflict in \xA7_other_file\n"
+            "Path conflict: \xA7dir3 / \xA7dir2\n"
+            "Text conflict in \xA7file\n",
+        )
         self.assertEqual(err, "")
 
     def test_text_conflict_paths(self):
         """Text conflicts on non-ascii paths are displayed okay."""
         make_tree_with_conflicts(self, "branch", prefix="\xA7")
-        out, err = self.run_bzr(["conflicts", "-d", "branch", "--text"],
-                                encoding=self.encoding)
-        self.assertEqual(out,
-                         "\xA7_other_file\n"
-                         "\xA7file\n")
+        out, err = self.run_bzr(
+            ["conflicts", "-d", "branch", "--text"], encoding=self.encoding
+        )
+        self.assertEqual(out, "\xA7_other_file\n" "\xA7file\n")
         self.assertEqual(err, "")
 
 

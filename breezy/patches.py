@@ -21,7 +21,7 @@ from typing import Iterator, List
 
 from .errors import BzrError
 
-binary_files_re = b'Binary files (.*) and (.*) differ\n'
+binary_files_re = b"Binary files (.*) and (.*) differ\n"
 
 
 class PatchSyntax(BzrError):
@@ -29,7 +29,6 @@ class PatchSyntax(BzrError):
 
 
 class MalformedLine(PatchSyntax):
-
     _fmt = "Malformed line.  %(desc)s\n%(line)r"
 
     def __init__(self, desc, line):
@@ -38,18 +37,18 @@ class MalformedLine(PatchSyntax):
 
 
 class PatchConflict(BzrError):
-
-    _fmt = ('Text contents mismatch at line %(line_no)d.  Original has '
-            '"%(orig_line)s", but patch says it should be "%(patch_line)s"')
+    _fmt = (
+        "Text contents mismatch at line %(line_no)d.  Original has "
+        '"%(orig_line)s", but patch says it should be "%(patch_line)s"'
+    )
 
     def __init__(self, line_no, orig_line, patch_line):
         self.line_no = line_no
-        self.orig_line = orig_line.rstrip('\n')
-        self.patch_line = patch_line.rstrip('\n')
+        self.orig_line = orig_line.rstrip("\n")
+        self.patch_line = patch_line.rstrip("\n")
 
 
 class MalformedHunkHeader(PatchSyntax):
-
     _fmt = "Malformed hunk header.  %(desc)s\n%(line)r"
 
     def __init__(self, desc, line):
@@ -69,18 +68,19 @@ from ._patch_rs import (  # noqa: F401
 
 def hunk_from_header(line):
     import re
-    matches = re.match(br'\@\@ ([^@]*) \@\@( (.*))?\n', line)
+
+    matches = re.match(rb"\@\@ ([^@]*) \@\@( (.*))?\n", line)
     if matches is None:
         raise MalformedHunkHeader("Does not match format.", line)
     try:
         (orig, mod) = matches.group(1).split(b" ")
     except (ValueError, IndexError) as e:
         raise MalformedHunkHeader(str(e), line) from e
-    if not orig.startswith(b'-') or not mod.startswith(b'+'):
+    if not orig.startswith(b"-") or not mod.startswith(b"+"):
         raise MalformedHunkHeader("Positions don't start with + or -.", line)
     try:
-        (orig_pos, orig_range) = parse_range(orig[1:].decode('utf-8'))
-        (mod_pos, mod_range) = parse_range(mod[1:].decode('utf-8'))
+        (orig_pos, orig_range) = parse_range(orig[1:].decode("utf-8"))
+        (mod_pos, mod_range) = parse_range(mod[1:].decode("utf-8"))
     except (ValueError, IndexError) as e:
         raise MalformedHunkHeader(str(e), line) from e
     if mod_range < 0 or orig_range < 0:
@@ -90,17 +90,16 @@ def hunk_from_header(line):
 
 
 class HunkLine:
-
     def __init__(self, contents):
         self.contents = contents
 
     def get_str(self, leadchar):
         if self.contents == b"\n" and leadchar == b" " and False:
             return b"\n"
-        if not self.contents.endswith(b'\n'):
-            terminator = b'\n' + NO_NL
+        if not self.contents.endswith(b"\n"):
+            terminator = b"\n" + NO_NL
         else:
-            terminator = b''
+            terminator = b""
         return leadchar + self.contents + terminator
 
     def as_bytes(self):
@@ -108,7 +107,6 @@ class HunkLine:
 
 
 class ContextLine(HunkLine):
-
     def __init__(self, contents):
         HunkLine.__init__(self, contents)
 
@@ -132,7 +130,7 @@ class RemoveLine(HunkLine):
         return self.get_str(b"-")
 
 
-NO_NL = b'\\ No newline at end of file\n'
+NO_NL = b"\\ No newline at end of file\n"
 __pychecker__ = "no-returnvalues"
 
 
@@ -153,7 +151,6 @@ __pychecker__ = ""
 
 
 class Hunk:
-
     def __init__(self, orig_pos, orig_range, mod_pos, mod_range, tail=None) -> None:
         self.orig_pos = orig_pos
         self.orig_range = orig_range
@@ -164,14 +161,14 @@ class Hunk:
 
     def get_header(self):
         if self.tail is None:
-            tail_str = b''
+            tail_str = b""
         else:
-            tail_str = b' ' + self.tail
-        return b"@@ -%s +%s @@%s\n" % (self.range_str(self.orig_pos,
-                                                      self.orig_range),
-                                       self.range_str(self.mod_pos,
-                                                      self.mod_range),
-                                       tail_str)
+            tail_str = b" " + self.tail
+        return b"@@ -%s +%s @@%s\n" % (
+            self.range_str(self.orig_pos, self.orig_range),
+            self.range_str(self.mod_pos, self.mod_range),
+            tail_str,
+        )
 
     def range_str(self, pos, range):
         """Return a file range, special-casing for 1-line files.
@@ -259,18 +256,15 @@ def iter_hunks(iter_lines, allow_dirty=False):
 
 
 class BinaryPatch:
-
     def __init__(self, oldname, newname):
         self.oldname = oldname
         self.newname = newname
 
     def as_bytes(self):
-        return b'Binary files %s and %s differ\n' % (
-            self.oldname, self.newname)
+        return b"Binary files %s and %s differ\n" % (self.oldname, self.newname)
 
 
 class Patch(BinaryPatch):
-
     def __init__(self, oldname, newname, oldts=None, newts=None) -> None:
         BinaryPatch.__init__(self, oldname, newname)
         self.oldts = oldts
@@ -284,16 +278,16 @@ class Patch(BinaryPatch):
 
     @classmethod
     def _headerline(cls, start, name, ts):
-        l = start + b' ' + name
+        l = start + b" " + name
         if ts is not None:
-            l += b'\t%s' % ts
-        l += b'\n'
+            l += b"\t%s" % ts
+        l += b"\n"
         return l
 
     def get_header(self):
-        return (
-            self._headerline(b'---', self.oldname, self.oldts) +
-            self._headerline(b'+++', self.newname, self.newts))
+        return self._headerline(b"---", self.oldname, self.oldts) + self._headerline(
+            b"+++", self.newname, self.newts
+        )
 
     def stats_values(self):
         """Calculate the number of inserts and removes."""
@@ -309,8 +303,7 @@ class Patch(BinaryPatch):
 
     def stats_str(self):
         """Return a string of patch statistics."""
-        return "%i inserts, %i removes in %i hunks" % \
-            self.stats_values()
+        return "%i inserts, %i removes in %i hunks" % self.stats_values()
 
     def pos_in_mod(self, position):
         newpos = position
@@ -344,10 +337,9 @@ def parse_patch(iter_lines, allow_dirty=False):
     """
     iter_lines = iter_lines_handle_nl(iter_lines)
     try:
-        ((orig_name, orig_ts), (mod_name, mod_ts)) = get_patch_names(
-            iter_lines)
+        ((orig_name, orig_ts), (mod_name, mod_ts)) = get_patch_names(iter_lines)
     except BinaryFiles as e:
-        return BinaryPatch(e.args[0].encode('utf-8'), e.args[1].encode('utf-8'))
+        return BinaryPatch(e.args[0].encode("utf-8"), e.args[1].encode("utf-8"))
     else:
         patch = Patch(orig_name, mod_name, orig_ts, mod_ts)
         for hunk in iter_hunks(iter_lines, allow_dirty):
@@ -355,7 +347,9 @@ def parse_patch(iter_lines, allow_dirty=False):
         return patch
 
 
-def iter_file_patch(iter_lines: Iterator[bytes], allow_dirty: bool = False, keep_dirty: bool = False):
+def iter_file_patch(
+    iter_lines: Iterator[bytes], allow_dirty: bool = False, keep_dirty: bool = False
+):
     """:arg iter_lines: iterable of lines to parse for patches
     :kwarg allow_dirty: If True, allow comments and other non-patch text
         before the first patch.  Note that the algorithm here can only find
@@ -375,7 +369,7 @@ def iter_file_patch(iter_lines: Iterator[bytes], allow_dirty: bool = False, keep
     beginning = True
 
     for line in iter_lines:
-        if line.startswith(b'=== '):
+        if line.startswith(b"=== "):
             if allow_dirty and beginning:
                 # Patches can have "junk" at the beginning
                 # Stripping junk from the end of patches is handled when we
@@ -383,22 +377,21 @@ def iter_file_patch(iter_lines: Iterator[bytes], allow_dirty: bool = False, keep
                 pass
             elif len(saved_lines) > 0:
                 if keep_dirty and len(dirty_head) > 0:
-                    yield {'saved_lines': saved_lines,
-                           'dirty_head': dirty_head}
+                    yield {"saved_lines": saved_lines, "dirty_head": dirty_head}
                     dirty_head = []
                 else:
                     yield saved_lines
                 saved_lines = []
             dirty_head.append(line)
             continue
-        if line.startswith(b'*** '):
+        if line.startswith(b"*** "):
             continue
-        if line.startswith(b'#'):
+        if line.startswith(b"#"):
             continue
         elif orig_range > 0:
-            if line.startswith(b'-') or line.startswith(b' '):
+            if line.startswith(b"-") or line.startswith(b" "):
                 orig_range -= 1
-        elif line.startswith(b'--- ') or regex.match(line):
+        elif line.startswith(b"--- ") or regex.match(line):
             if allow_dirty and beginning:
                 # Patches can have "junk" at the beginning
                 # Stripping junk from the end of patches is handled when we
@@ -406,20 +399,18 @@ def iter_file_patch(iter_lines: Iterator[bytes], allow_dirty: bool = False, keep
                 beginning = False
             elif len(saved_lines) > 0:
                 if keep_dirty and len(dirty_head) > 0:
-                    yield {'saved_lines': saved_lines,
-                           'dirty_head': dirty_head}
+                    yield {"saved_lines": saved_lines, "dirty_head": dirty_head}
                     dirty_head = []
                 else:
                     yield saved_lines
             saved_lines = []
-        elif line.startswith(b'@@'):
+        elif line.startswith(b"@@"):
             hunk = hunk_from_header(line)
             orig_range = hunk.orig_range
         saved_lines.append(line)
     if len(saved_lines) > 0:
         if keep_dirty and len(dirty_head) > 0:
-            yield {'saved_lines': saved_lines,
-                   'dirty_head': dirty_head}
+            yield {"saved_lines": saved_lines, "dirty_head": dirty_head}
         else:
             yield saved_lines
 
@@ -433,9 +424,13 @@ def parse_patches(iter_lines, allow_dirty=False, keep_dirty=False):
         Default False.
     """
     for patch_lines in iter_file_patch(iter_lines, allow_dirty, keep_dirty):
-        if 'dirty_head' in patch_lines:
-            yield ({'patch': parse_patch(patch_lines['saved_lines'], allow_dirty),
-                    'dirty_head': patch_lines['dirty_head']})
+        if "dirty_head" in patch_lines:
+            yield (
+                {
+                    "patch": parse_patch(patch_lines["saved_lines"], allow_dirty),
+                    "dirty_head": patch_lines["dirty_head"],
+                }
+            )
         else:
             yield parse_patch(patch_lines, allow_dirty)
 
@@ -472,8 +467,7 @@ def iter_patched_from_hunks(orig_lines, hunks):
             elif isinstance(hunk_line, (ContextLine, RemoveLine)):
                 orig_line = next(orig_lines)
                 if orig_line != hunk_line.contents:
-                    raise PatchConflict(line_no, orig_line,
-                                        b''.join(seen_patch))
+                    raise PatchConflict(line_no, orig_line, b"".join(seen_patch))
                 if isinstance(hunk_line, ContextLine):
                     yield orig_line
                 else:
@@ -491,34 +485,36 @@ def apply_patches(tt, patches, prefix=1):
     :param patches: List of patches
     :param prefix: Number leading path segments to strip
     """
+
     def strip_prefix(p):
-        return '/'.join(p.split('/')[1:])
+        return "/".join(p.split("/")[1:])
 
     from .bzr.generate_ids import gen_file_id
 
     # TODO(jelmer): Extract and set mode
     for patch in patches:
-        if patch.oldname == b'/dev/null':
+        if patch.oldname == b"/dev/null":
             trans_id = None
-            orig_contents = b''
+            orig_contents = b""
         else:
             oldname = strip_prefix(patch.oldname.decode())
             trans_id = tt.trans_id_tree_path(oldname)
             orig_contents = tt._tree.get_file_text(oldname)
             tt.delete_contents(trans_id)
 
-        if patch.newname != b'/dev/null':
+        if patch.newname != b"/dev/null":
             newname = strip_prefix(patch.newname.decode())
             new_contents = iter_patched_from_hunks(
-                orig_contents.splitlines(True), patch.hunks)
+                orig_contents.splitlines(True), patch.hunks
+            )
             if trans_id is None:
                 parts = os.path.split(newname)
                 trans_id = tt.root
                 for part in parts[1:-1]:
                     trans_id = tt.new_directory(part, trans_id)
                 tt.new_file(
-                    parts[-1], trans_id, new_contents,
-                    file_id=gen_file_id(newname))
+                    parts[-1], trans_id, new_contents, file_id=gen_file_id(newname)
+                )
             else:
                 tt.create_file(new_contents, trans_id)
 

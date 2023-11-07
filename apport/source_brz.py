@@ -8,12 +8,13 @@ import os
 
 from apport.hookutils import *  # noqa: F403
 
-brz_log = os.path.expanduser('~/.brz.log')
-dot_brz = os.path.expanduser('~/.config/breezy')
+brz_log = os.path.expanduser("~/.brz.log")
+dot_brz = os.path.expanduser("~/.config/breezy")
+
 
 def _add_log_tail(report):
     # may have already been added in-process
-    if 'BrzLogTail' in report:
+    if "BrzLogTail" in report:
         return
 
     with open(brz_log) as f:
@@ -23,33 +24,33 @@ def _add_log_tail(report):
     brz_log_tail = []
     blanks = 0
     for line in brz_log_lines:
-        if line == '\n':
+        if line == "\n":
             blanks += 1
         brz_log_tail.append(line)
         if blanks >= 2:
             break
 
     brz_log_tail.reverse()
-    report['BrzLogTail'] = ''.join(brz_log_tail)
+    report["BrzLogTail"] = "".join(brz_log_tail)
 
 
 def add_info(report):
     _add_log_tail(report)
-    if 'BrzPlugins' not in report:
+    if "BrzPlugins" not in report:
         # may already be present in-process
-        report['BrzPlugins'] = command_output(['brz', 'plugins', '-v'])
+        report["BrzPlugins"] = command_output(["brz", "plugins", "-v"])
 
     # by default assume brz crashes are upstream bugs; this relies on
     # having a brz entry under /etc/apport/crashdb.conf.d/
-    report['CrashDB'] = 'brz'
+    report["CrashDB"] = "brz"
 
     # these may contain some sensitive info (smtp_passwords)
     # TODO: strip that out and attach the rest
 
-    #attach_file_if_exists(report,
-    #	os.path.join(dot_brz, 'breezy.conf', 'BrzConfig')
-    #attach_file_if_exists(report,
-    #	os.path.join(dot_brz, 'locations.conf', 'BrzLocations')
+    # attach_file_if_exists(report,
+    # os.path.join(dot_brz, 'breezy.conf', 'BrzConfig')
+    # attach_file_if_exists(report,
+    # os.path.join(dot_brz, 'locations.conf', 'BrzLocations')
 
 
 # vim: expandtab shiftwidth=4

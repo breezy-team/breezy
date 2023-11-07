@@ -38,13 +38,13 @@ def infogen(options, outfile):
     """Create manual in RSTX format."""
     t = time.time()
     tt = time.gmtime(t)
-    params = \
-        {"brzcmd": options.brz_name,
-         "datestamp": time.strftime("%Y-%m-%d", tt),
-         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S +0000", tt),
-         "version": breezy.__version__,
-         }
-    nominated_filename = getattr(options, 'filename', None)
+    params = {
+        "brzcmd": options.brz_name,
+        "datestamp": time.strftime("%Y-%m-%d", tt),
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S +0000", tt),
+        "version": breezy.__version__,
+    }
+    nominated_filename = getattr(options, "filename", None)
     if nominated_filename is None:
         topic_dir = None
     else:
@@ -58,18 +58,20 @@ def infogen(options, outfile):
 def _get_body(params, topic_dir):
     """Build the manual content."""
     from breezy.help_topics import SECT_CONCEPT, SECT_LIST
+
     registry = breezy.help_topics.topic_registry
     result = []
-    result.append(_get_section(registry, SECT_CONCEPT, "Concepts",
-                               output_dir=topic_dir))
-    result.append(_get_section(registry, SECT_LIST, "Lists",
-                               output_dir=topic_dir))
+    result.append(
+        _get_section(registry, SECT_CONCEPT, "Concepts", output_dir=topic_dir)
+    )
+    result.append(_get_section(registry, SECT_LIST, "Lists", output_dir=topic_dir))
     result.append(_get_commands_section(registry, output_dir=topic_dir))
     return "\n".join(result)
 
 
-def _get_section(registry, section, title, hdg_level1="#", hdg_level2="=",
-                 output_dir=None):
+def _get_section(
+    registry, section, title, hdg_level1="#", hdg_level2="=", output_dir=None
+):
     """Build the manual part from topics matching that section.
 
     If output_dir is not None, topics are dumped into text files there
@@ -98,8 +100,9 @@ def _get_section(registry, section, title, hdg_level1="#", hdg_level2="=",
     return "\n" + "\n".join(lines) + "\n"
 
 
-def _get_commands_section(registry, title="Commands", hdg_level1="#",
-                          hdg_level2="=", output_dir=None):
+def _get_commands_section(
+    registry, title="Commands", hdg_level1="#", hdg_level2="=", output_dir=None
+):
     """Build the commands reference section of the manual."""
     file_per_topic = output_dir is not None
     lines = [title, hdg_level1 * len(title), ""]
@@ -129,7 +132,7 @@ def _dump_text(output_dir, topic, text):
     topic_id = f"{topic}-help"
     filename = breezy.osutils.pathjoin(output_dir, topic_id + ".txt")
     with open(filename, "wb") as f:
-        f.write(text.encode('utf-8'))
+        f.write(text.encode("utf-8"))
     return topic_id
 
 

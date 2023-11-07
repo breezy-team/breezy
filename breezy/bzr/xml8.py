@@ -28,11 +28,11 @@ from .xml_serializer import (
 )
 
 _xml_unescape_map = {
-    b'apos': b"'",
-    b'quot': b'"',
-    b'amp': b'&',
-    b'lt': b'<',
-    b'gt': b'>'
+    b"apos": b"'",
+    b"quot": b'"',
+    b"amp": b"&",
+    b"lt": b"<",
+    b"gt": b">",
 }
 
 
@@ -41,12 +41,12 @@ def _unescaper(match, _map=_xml_unescape_map):
     try:
         return _map[code]
     except KeyError:
-        if not code.startswith(b'#'):
+        if not code.startswith(b"#"):
             raise
-        return chr(int(code[1:])).encode('utf8')
+        return chr(int(code[1:])).encode("utf8")
 
 
-_unescape_re = lazy_regex.lazy_compile(b'\\&([^;]*);')
+_unescape_re = lazy_regex.lazy_compile(b"\\&([^;]*);")
 
 
 def _unescape_xml(data):
@@ -67,15 +67,14 @@ class InventorySerializer_v8(XMLInventorySerializer):
     # This format supports the altered-by hack that reads file ids directly out
     # of the versionedfile, without doing XML parsing.
 
-    supported_kinds = {'file', 'directory', 'symlink'}
-    format_num = b'8'
+    supported_kinds = {"file", "directory", "symlink"}
+    format_num = b"8"
 
     # The search regex used by xml based repositories to determine what things
     # where changed in a single commit.
     _file_ids_altered_regex = lazy_regex.lazy_compile(
-        b'file_id="(?P<file_id>[^"]+)"'
-        b'.* revision="(?P<revision_id>[^"]+)"'
-        )
+        b'file_id="(?P<file_id>[^"]+)"' b'.* revision="(?P<revision_id>[^"]+)"'
+    )
 
     def _check_revisions(self, inv):
         """Extension point for subclasses to check during serialisation.
@@ -112,8 +111,11 @@ class InventorySerializer_v8(XMLInventorySerializer):
         recommended_min_cache_size = inv_size * 1.5
         if entry_cache.cache_size() < recommended_min_cache_size:
             recommended_cache_size = inv_size * 2
-            trace.mutter('Resizing the inventory entry cache from %d to %d',
-                         entry_cache.cache_size(), recommended_cache_size)
+            trace.mutter(
+                "Resizing the inventory entry cache from %d to %d",
+                entry_cache.cache_size(),
+                recommended_cache_size,
+            )
             entry_cache.resize(recommended_cache_size)
 
     def write_inventory_to_lines(self, inv):
@@ -136,8 +138,9 @@ class InventorySerializer_v8(XMLInventorySerializer):
         output = []
         append = output.append
         self._append_inventory_root(append, inv)
-        serialize_inventory_flat(inv, append,
-                                 self.root_id, self.supported_kinds, working)
+        serialize_inventory_flat(
+            inv, append, self.root_id, self.supported_kinds, working
+        )
         if f is not None:
             f.writelines(output)
         # Just to keep the cache from growing without bounds
@@ -148,27 +151,32 @@ class InventorySerializer_v8(XMLInventorySerializer):
     def _append_inventory_root(self, append, inv):
         """Append the inventory root to output."""
         if inv.revision_id is not None:
-            revid1 = b''.join(
-                [b' revision_id="', encode_and_escape(inv.revision_id), b'"'])
+            revid1 = b"".join(
+                [b' revision_id="', encode_and_escape(inv.revision_id), b'"']
+            )
         else:
             revid1 = b""
-        append(b'<inventory format="%s"%s>\n' % (
-            self.format_num, revid1))
-        append(b'<directory file_id="%s" name="%s" revision="%s" />\n' % (
-            encode_and_escape(inv.root.file_id),
-            encode_and_escape(inv.root.name),
-            encode_and_escape(inv.root.revision)))
+        append(b'<inventory format="%s"%s>\n' % (self.format_num, revid1))
+        append(
+            b'<directory file_id="%s" name="%s" revision="%s" />\n'
+            % (
+                encode_and_escape(inv.root.file_id),
+                encode_and_escape(inv.root.name),
+                encode_and_escape(inv.root.revision),
+            )
+        )
 
     def _unpack_entry(self, elt, entry_cache=None, return_from_cache=False):
         # This is here because it's overridden by xml7
-        return unpack_inventory_entry(elt, entry_cache,
-                                      return_from_cache)
+        return unpack_inventory_entry(elt, entry_cache, return_from_cache)
 
-    def _unpack_inventory(self, elt, revision_id=None, entry_cache=None,
-                          return_from_cache=False):
+    def _unpack_inventory(
+        self, elt, revision_id=None, entry_cache=None, return_from_cache=False
+    ):
         """Construct from XML Element."""
-        inv = unpack_inventory_flat(elt, self.format_num, self._unpack_entry,
-                                    entry_cache, return_from_cache)
+        inv = unpack_inventory_flat(
+            elt, self.format_num, self._unpack_entry, entry_cache, return_from_cache
+        )
         self._check_cache_size(len(inv), entry_cache)
         return inv
 
@@ -188,7 +196,8 @@ class InventorySerializer_v8(XMLInventorySerializer):
             raise AssertionError(
                 "_find_text_key_references only "
                 "supported for branches which store inventory as unnested xml"
-                ", not on %r" % self)
+                ", not on %r" % self
+            )
         result = {}
 
         # this code needs to read every new line in every inventory for the
@@ -216,7 +225,7 @@ class InventorySerializer_v8(XMLInventorySerializer):
                 continue
             # One call to match.group() returning multiple items is quite a
             # bit faster than 2 calls to match.group() each returning 1
-            file_id, revision_id = match.group('file_id', 'revision_id')
+            file_id, revision_id = match.group("file_id", "revision_id")
 
             # Inlining the cache lookups helps a lot when you make 170,000
             # lines and 350k ids, versus 8.4 unique ids.

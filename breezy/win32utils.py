@@ -22,12 +22,15 @@ import struct
 
 from .lazy_import import lazy_import
 
-lazy_import(globals(), """
+lazy_import(
+    globals(),
+    """
 import ctypes
 
 from breezy import cmdline
 from breezy.i18n import gettext
-""")
+""",
+)
 
 
 # Special Win32 API constants
@@ -37,10 +40,10 @@ WIN32_STDOUT_HANDLE = -11
 WIN32_STDERR_HANDLE = -12
 
 # CSIDL constants (from MSDN 2003)
-CSIDL_APPDATA = 0x001A      # Application Data folder
+CSIDL_APPDATA = 0x001A  # Application Data folder
 # <user name>\Local Settings\Application Data (non roaming)
-CSIDL_LOCAL_APPDATA = 0x001c
-CSIDL_PERSONAL = 0x0005     # My Documents folder
+CSIDL_LOCAL_APPDATA = 0x001C
+CSIDL_PERSONAL = 0x0005  # My Documents folder
 
 # from winapi C headers
 MAX_PATH = 260
@@ -52,63 +55,69 @@ REG_SZ = 1
 REG_EXPAND_SZ = 2
 
 
-def debug_memory_win32api(message='', short=True):
+def debug_memory_win32api(message="", short=True):
     """Use trace.note() to dump the running memory info."""
     from breezy import trace
+
     class PROCESS_MEMORY_COUNTERS_EX(ctypes.Structure):
         """Used by GetProcessMemoryInfo."""
-        _fields_ = [('cb', ctypes.c_ulong),
-                    ('PageFaultCount', ctypes.c_ulong),
-                    ('PeakWorkingSetSize', ctypes.c_size_t),
-                    ('WorkingSetSize', ctypes.c_size_t),
-                    ('QuotaPeakPagedPoolUsage', ctypes.c_size_t),
-                    ('QuotaPagedPoolUsage', ctypes.c_size_t),
-                    ('QuotaPeakNonPagedPoolUsage', ctypes.c_size_t),
-                    ('QuotaNonPagedPoolUsage', ctypes.c_size_t),
-                    ('PagefileUsage', ctypes.c_size_t),
-                    ('PeakPagefileUsage', ctypes.c_size_t),
-                    ('PrivateUsage', ctypes.c_size_t),
-                    ]
+
+        _fields_ = [
+            ("cb", ctypes.c_ulong),
+            ("PageFaultCount", ctypes.c_ulong),
+            ("PeakWorkingSetSize", ctypes.c_size_t),
+            ("WorkingSetSize", ctypes.c_size_t),
+            ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
+            ("QuotaPagedPoolUsage", ctypes.c_size_t),
+            ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+            ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+            ("PagefileUsage", ctypes.c_size_t),
+            ("PeakPagefileUsage", ctypes.c_size_t),
+            ("PrivateUsage", ctypes.c_size_t),
+        ]
+
     cur_process = ctypes.windll.kernel32.GetCurrentProcess()
     mem_struct = PROCESS_MEMORY_COUNTERS_EX()
     ret = ctypes.windll.psapi.GetProcessMemoryInfo(
-        cur_process, ctypes.byref(mem_struct), ctypes.sizeof(mem_struct))
+        cur_process, ctypes.byref(mem_struct), ctypes.sizeof(mem_struct)
+    )
     if not ret:
-        trace.note(gettext('Failed to GetProcessMemoryInfo()'))
+        trace.note(gettext("Failed to GetProcessMemoryInfo()"))
         return
-    info = {'PageFaultCount': mem_struct.PageFaultCount,
-            'PeakWorkingSetSize': mem_struct.PeakWorkingSetSize,
-            'WorkingSetSize': mem_struct.WorkingSetSize,
-            'QuotaPeakPagedPoolUsage': mem_struct.QuotaPeakPagedPoolUsage,
-            'QuotaPagedPoolUsage': mem_struct.QuotaPagedPoolUsage,
-            'QuotaPeakNonPagedPoolUsage':
-                mem_struct.QuotaPeakNonPagedPoolUsage,
-            'QuotaNonPagedPoolUsage': mem_struct.QuotaNonPagedPoolUsage,
-            'PagefileUsage': mem_struct.PagefileUsage,
-            'PeakPagefileUsage': mem_struct.PeakPagefileUsage,
-            'PrivateUsage': mem_struct.PrivateUsage,
-            }
+    info = {
+        "PageFaultCount": mem_struct.PageFaultCount,
+        "PeakWorkingSetSize": mem_struct.PeakWorkingSetSize,
+        "WorkingSetSize": mem_struct.WorkingSetSize,
+        "QuotaPeakPagedPoolUsage": mem_struct.QuotaPeakPagedPoolUsage,
+        "QuotaPagedPoolUsage": mem_struct.QuotaPagedPoolUsage,
+        "QuotaPeakNonPagedPoolUsage": mem_struct.QuotaPeakNonPagedPoolUsage,
+        "QuotaNonPagedPoolUsage": mem_struct.QuotaNonPagedPoolUsage,
+        "PagefileUsage": mem_struct.PagefileUsage,
+        "PeakPagefileUsage": mem_struct.PeakPagefileUsage,
+        "PrivateUsage": mem_struct.PrivateUsage,
+    }
     if short:
         # using base-2 units (see HACKING.txt).
-        trace.note(gettext('WorkingSize {0:>7}KiB'
-                           '\tPeakWorking {1:>7}KiB\t{2}').format(
-                   info['WorkingSetSize'] / 1024,
-                   info['PeakWorkingSetSize'] / 1024,
-                   message))
+        trace.note(
+            gettext("WorkingSize {0:>7}KiB" "\tPeakWorking {1:>7}KiB\t{2}").format(
+                info["WorkingSetSize"] / 1024,
+                info["PeakWorkingSetSize"] / 1024,
+                message,
+            )
+        )
         return
     if message:
-        trace.note('%s', message)
-    trace.note(gettext('WorkingSize       %8d KiB'),
-               info['WorkingSetSize'] / 1024)
-    trace.note(gettext('PeakWorking       %8d KiB'),
-               info['PeakWorkingSetSize'] / 1024)
-    trace.note(gettext('PagefileUsage     %8d KiB'),
-               info.get('PagefileUsage', 0) / 1024)
-    trace.note(gettext('PeakPagefileUsage %8d KiB'),
-               info.get('PeakPagefileUsage', 0) / 1024)
-    trace.note(gettext('PrivateUsage      %8d KiB'),
-               info.get('PrivateUsage', 0) / 1024)
-    trace.note(gettext('PageFaultCount    %8d'), info.get('PageFaultCount', 0))
+        trace.note("%s", message)
+    trace.note(gettext("WorkingSize       %8d KiB"), info["WorkingSetSize"] / 1024)
+    trace.note(gettext("PeakWorking       %8d KiB"), info["PeakWorkingSetSize"] / 1024)
+    trace.note(
+        gettext("PagefileUsage     %8d KiB"), info.get("PagefileUsage", 0) / 1024
+    )
+    trace.note(
+        gettext("PeakPagefileUsage %8d KiB"), info.get("PeakPagefileUsage", 0) / 1024
+    )
+    trace.note(gettext("PrivateUsage      %8d KiB"), info.get("PrivateUsage", 0) / 1024)
+    trace.note(gettext("PageFaultCount    %8d"), info.get("PageFaultCount", 0))
 
 
 def get_console_size(defaultx=80, defaulty=25):
@@ -125,9 +134,19 @@ def get_console_size(defaultx=80, defaulty=25):
     res = ctypes.windll.kernel32.GetConsoleScreenBufferInfo(h, csbi)
 
     if res:
-        (bufx, bufy, curx, cury, wattr,
-         left, top, right, bottom, maxx, maxy) = struct.unpack(
-            "hhhhHhhhhhh", csbi.raw)
+        (
+            bufx,
+            bufy,
+            curx,
+            cury,
+            wattr,
+            left,
+            top,
+            right,
+            bottom,
+            maxx,
+            maxy,
+        ) = struct.unpack("hhhhHhhhhhh", csbi.raw)
         sizex = right - left + 1
         sizey = bottom - top + 1
         return (sizex, sizey)
@@ -141,8 +160,7 @@ def _get_sh_special_folder_path(csidl):
     Result is always unicode (or None).
     """
     try:
-        SHGetSpecialFolderPath = \
-            ctypes.windll.shell32.SHGetSpecialFolderPathW
+        SHGetSpecialFolderPath = ctypes.windll.shell32.SHGetSpecialFolderPathW
     except AttributeError:
         pass
     else:
@@ -164,7 +182,7 @@ def get_appdata_location():
     if appdata:
         return appdata
     # Use APPDATA if defined, will return None if not
-    return os.environ.get('APPDATA')
+    return os.environ.get("APPDATA")
 
 
 def get_local_appdata_location():
@@ -181,7 +199,7 @@ def get_local_appdata_location():
     if local:
         return local
     # Vista supplies LOCALAPPDATA, but XP and earlier do not.
-    local = os.environ.get('LOCALAPPDATA')
+    local = os.environ.get("LOCALAPPDATA")
     if local:
         return local
     return get_appdata_location()
@@ -196,18 +214,18 @@ def get_home_location():
     home = _get_sh_special_folder_path(CSIDL_PERSONAL)
     if home:
         return home
-    home = os.environ.get('HOME')
+    home = os.environ.get("HOME")
     if home is not None:
         return home
-    homepath = os.environ.get('HOMEPATH')
+    homepath = os.environ.get("HOMEPATH")
     if homepath is not None:
-        return os.path.join(os.environ.get('HOMEDIR', ''), home)
+        return os.path.join(os.environ.get("HOMEDIR", ""), home)
     # at least return windows root directory
-    windir = os.environ.get('WINDIR')
+    windir = os.environ.get("WINDIR")
     if windir:
-        return os.path.splitdrive(windir)[0] + '/'
+        return os.path.splitdrive(windir)[0] + "/"
     # otherwise C:\ is good enough for 98% users
-    return 'C:/'
+    return "C:/"
 
 
 def get_user_name():
@@ -225,7 +243,7 @@ def get_user_name():
         if GetUserName(buf, ctypes.byref(n)):
             return buf.value
     # otherwise try env variables
-    return os.environ.get('USERNAME')
+    return os.environ.get("USERNAME")
 
 
 # 1 == ComputerNameDnsHostname, which returns "The DNS host name of the local
@@ -243,19 +261,17 @@ def get_host_name():
     n = ctypes.c_int(MAX_COMPUTERNAME_LENGTH + 1)
 
     # Try GetComputerNameEx which gives a proper Unicode hostname
-    GetComputerNameEx = getattr(
-        ctypes.windll.kernel32, 'GetComputerNameExW', None)
-    if (GetComputerNameEx is not None
-        and GetComputerNameEx(_WIN32_ComputerNameDnsHostname,
-                              buf, ctypes.byref(n))):
+    GetComputerNameEx = getattr(ctypes.windll.kernel32, "GetComputerNameExW", None)
+    if GetComputerNameEx is not None and GetComputerNameEx(
+        _WIN32_ComputerNameDnsHostname, buf, ctypes.byref(n)
+    ):
         return buf.value
-    return os.environ.get('COMPUTERNAME')
+    return os.environ.get("COMPUTERNAME")
 
 
 def _ensure_with_dir(path):
-    if (not os.path.split(path)[0] or path.startswith('*')
-            or path.startswith('?')):
-        return './' + path, True
+    if not os.path.split(path)[0] or path.startswith("*") or path.startswith("?"):
+        return "./" + path, True
     else:
         return path, False
 
@@ -282,9 +298,8 @@ def glob_one(possible_glob):
         # files that do not exist, etc.
         glob_files = [possible_glob]
     elif corrected:
-        glob_files = [_undo_ensure_with_dir(elem, corrected)
-                      for elem in glob_files]
-    return [elem.replace('\\', '/') for elem in glob_files]
+        glob_files = [_undo_ensure_with_dir(elem, corrected) for elem in glob_files]
+    return [elem.replace("\\", "/") for elem in glob_files]
 
 
 def glob_expand(file_list):
@@ -320,19 +335,19 @@ def get_app_path(appname):
 
     basename = appname
     if not os.path.splitext(basename)[1]:
-        basename = appname + '.exe'
+        basename = appname + ".exe"
 
     try:
         hkey = winreg.OpenKey(
             winreg.HKEY_LOCAL_MACHINE,
-            'SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\'
-            + basename)
+            "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\" + basename,
+        )
     except OSError:
         return appname
 
     try:
         try:
-            path, type_id = winreg.QueryValueEx(hkey, '')
+            path, type_id = winreg.QueryValueEx(hkey, "")
         except OSError:
             return appname
     finally:
@@ -355,7 +370,8 @@ def set_file_attr_hidden(path):
     if not SetFileAttributes(path, FILE_ATTRIBUTE_HIDDEN):
         e = ctypes.WinError()
         from . import trace
-        trace.mutter('Unable to set hidden attribute on %r: %s', path, e)
+
+        trace.mutter("Unable to set hidden attribute on %r: %s", path, e)
 
 
 def _command_line_to_argv(command_line, argv, single_quotes_allowed=False):
@@ -372,8 +388,7 @@ def _command_line_to_argv(command_line, argv, single_quotes_allowed=False):
     :return: A list of unicode strings.
     """
     # First, split the command line
-    s = cmdline.Splitter(
-        command_line, single_quotes_allowed=single_quotes_allowed)
+    s = cmdline.Splitter(command_line, single_quotes_allowed=single_quotes_allowed)
 
     # Bug #587868 Now make sure that the length of s agrees with sys.argv
     # we do this by simply counting the number of arguments in each. The counts should
@@ -385,7 +400,7 @@ def _command_line_to_argv(command_line, argv, single_quotes_allowed=False):
     # Now shorten the command line we get from GetCommandLineW to match sys.argv
     if len(arguments) < len(argv):
         raise AssertionError("Split command line can't be shorter than argv")
-    arguments = arguments[len(arguments) - len(argv):]
+    arguments = arguments[len(arguments) - len(argv) :]
 
     # Carry on to process globs (metachars) in the command line
     # expand globs if necessary
@@ -415,6 +430,7 @@ def _ctypes_is_local_pid_dead(pid):
     kernel32.CloseHandle(handle)
     return False
 
+
 is_local_pid_dead = _ctypes_is_local_pid_dead
 
 
@@ -435,11 +451,13 @@ def get_fs_type(drive):
     fs_type = ctypes.create_unicode_buffer(MAX_FS_TYPE_LENGTH + 1)
     if GetVolumeInformation(
         drive,
-        None, 0, # lpVolumeName
-        None, # lpVolumeSerialNumber
-        None, # lpMaximumComponentLength
-        None, # lpFileSystemFlags
-        fs_type, MAX_FS_TYPE_LENGTH,
+        None,
+        0,  # lpVolumeName
+        None,  # lpVolumeSerialNumber
+        None,  # lpMaximumComponentLength
+        None,  # lpFileSystemFlags
+        fs_type,
+        MAX_FS_TYPE_LENGTH,
     ):
         return fs_type.value
     return None

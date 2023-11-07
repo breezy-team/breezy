@@ -18,20 +18,19 @@ from breezy.tests import TestCaseWithTransport
 
 
 class TestFindMergeBase(TestCaseWithTransport):
-
     def test_find_merge_base(self):
-        a_tree = self.make_branch_and_tree('a')
-        a_tree.commit(message='foo', allow_pointless=True)
-        b_tree = a_tree.controldir.sprout('b').open_workingtree()
-        q = self.run_bzr('find-merge-base a b')[0]
-        a_tree.commit(message='bar', allow_pointless=True)
-        b_tree.commit(message='baz', allow_pointless=True)
-        r = self.run_bzr('find-merge-base b a')[0]
+        a_tree = self.make_branch_and_tree("a")
+        a_tree.commit(message="foo", allow_pointless=True)
+        b_tree = a_tree.controldir.sprout("b").open_workingtree()
+        q = self.run_bzr("find-merge-base a b")[0]
+        a_tree.commit(message="bar", allow_pointless=True)
+        b_tree.commit(message="baz", allow_pointless=True)
+        r = self.run_bzr("find-merge-base b a")[0]
         self.assertEqual(q, r)
 
     def test_find_null_merge_base(self):
-        tree = self.make_branch_and_tree('foo')
-        tree.commit('message')
-        self.make_branch_and_tree('bar')
-        r = self.run_bzr('find-merge-base foo bar')[0]
-        self.assertEqual('merge base is revision null:\n', r)
+        tree = self.make_branch_and_tree("foo")
+        tree.commit("message")
+        self.make_branch_and_tree("bar")
+        r = self.run_bzr("find-merge-base foo bar")[0]
+        self.assertEqual("merge base is revision null:\n", r)

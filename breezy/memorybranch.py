@@ -25,7 +25,6 @@ from .tag import DisabledTags, MemoryTags
 
 
 class MemoryBranch(Branch, _RelockDebugMixin):
-
     def __init__(self, repository, last_revision_info, tags=None):
         self.repository = repository
         self._last_revision_info = last_revision_info
@@ -38,7 +37,7 @@ class MemoryBranch(Branch, _RelockDebugMixin):
         self._last_revision_info_cache = None
         self._revision_id_to_revno_cache = None
         self._partial_revision_id_to_revno_cache = {}
-        self.base = 'memory://' + osutils.rand_chars(10)
+        self.base = "memory://" + osutils.rand_chars(10)
 
     def __repr__(self):
         return "<MemoryBranch()>"
@@ -80,13 +79,13 @@ class MemoryBranch(Branch, _RelockDebugMixin):
             if last_revno is None:
                 self._extend_partial_history()
                 return self._partial_revision_history_cache[
-                    len(self._partial_revision_history_cache) - revno]
+                    len(self._partial_revision_history_cache) - revno
+                ]
             else:
                 if revno <= 0 or revno > last_revno:
                     raise errors.NoSuchRevision(self, revno)
                 distance_from_last = last_revno - revno
-                if len(self._partial_revision_history_cache) <= \
-                        distance_from_last:
+                if len(self._partial_revision_history_cache) <= distance_from_last:
                     self._extend_partial_history(distance_from_last)
                 return self._partial_revision_history_cache[distance_from_last]
 
@@ -99,4 +98,6 @@ class MemoryBranch(Branch, _RelockDebugMixin):
         :return: A breezy.config.BranchStack.
         """
         gstore = _mod_config.GlobalStore()
-        return _mod_config.Stack([_mod_config.NameMatcher(gstore, 'DEFAULT').get_sections])
+        return _mod_config.Stack(
+            [_mod_config.NameMatcher(gstore, "DEFAULT").get_sections]
+        )

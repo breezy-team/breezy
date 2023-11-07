@@ -24,12 +24,10 @@ from . import errors, osutils
 
 
 class InvalidURL(errors.PathError):
-
     _fmt = 'Invalid url supplied to transport: "%(path)s"%(extra)s'
 
 
 class InvalidURLJoin(errors.PathError):
-
     _fmt = "Invalid URL join request: %(reason)s: %(base)r + %(join_args)r"
 
     def __init__(self, reason, base, join_args):
@@ -40,14 +38,12 @@ class InvalidURLJoin(errors.PathError):
 
 
 class InvalidRebaseURLs(errors.PathError):
-
     _fmt = "URLs differ by more than path: %(from_)r and %(to)r"
 
     def __init__(self, from_, to):
         self.from_ = from_
         self.to = to
-        errors.PathError.__init__(
-            self, from_, 'URLs differ by more than path.')
+        errors.PathError.__init__(self, from_, "URLs differ by more than path.")
 
 
 quote_from_bytes = urlparse.quote_from_bytes
@@ -89,14 +85,14 @@ _win32_local_path_from_url = win32_rs.local_path_from_url  # noqa: F401
 _posix_local_path_from_url = posix_rs.local_path_from_url  # noqa: F401
 
 
-MIN_ABS_FILEURL_LENGTH = len('file:///')
-WIN32_MIN_ABS_FILEURL_LENGTH = len('file:///C:/')
+MIN_ABS_FILEURL_LENGTH = len("file:///")
+WIN32_MIN_ABS_FILEURL_LENGTH = len("file:///C:/")
 
-if sys.platform == 'win32':
+if sys.platform == "win32":
     MIN_ABS_FILEURL_LENGTH = WIN32_MIN_ABS_FILEURL_LENGTH
 
 
-_url_hex_escapes_re = re.compile('(%[0-9a-fA-F]{2})')
+_url_hex_escapes_re = re.compile("(%[0-9a-fA-F]{2})")
 
 
 def _unescape_safe_chars(matchobj):
@@ -117,15 +113,17 @@ _win32_strip_local_trailing_slash = win32_rs.strip_local_trailing_slash
 
 
 # These are characters that if escaped, should stay that way
-_no_decode_chars = ';/?:@&=+$,#'
+_no_decode_chars = ";/?:@&=+$,#"
 _no_decode_ords = [ord(c) for c in _no_decode_chars]
-_no_decode_hex = ([f'{o:02x}' for o in _no_decode_ords]
-                  + [f'{o:02X}' for o in _no_decode_ords])
-_hex_display_map = dict([(f'{o:02x}', bytes([o])) for o in range(256)]
-                         + [(f'{o:02X}', bytes([o])) for o in range(256)])
+_no_decode_hex = [f"{o:02x}" for o in _no_decode_ords] + [
+    f"{o:02X}" for o in _no_decode_ords
+]
+_hex_display_map = dict(
+    [(f"{o:02x}", bytes([o])) for o in range(256)]
+    + [(f"{o:02X}", bytes([o])) for o in range(256)]
+)
 # These entries get mapped to themselves
-_hex_display_map.update((hex, b'%' + hex.encode('ascii'))
-                        for hex in _no_decode_hex)
+_hex_display_map.update((hex, b"%" + hex.encode("ascii")) for hex in _no_decode_hex)
 
 # These characters shouldn't be percent-encoded, and it's always safe to
 # unencode them if they are.
@@ -135,6 +133,7 @@ _url_dont_escape_characters = set(
     "0123456789"  # Numbers
     "-._~"  # Unreserved characters
 )
+
 
 def _unescape_segment_for_display(segment, encoding):
     """Unescape a segment for display.
@@ -148,21 +147,21 @@ def _unescape_segment_for_display(segment, encoding):
     Returns: A unicode string which can be safely encoded into the
          specified encoding.
     """
-    escaped_chunks = segment.split('%')
-    escaped_chunks[0] = escaped_chunks[0].encode('utf-8')
+    escaped_chunks = segment.split("%")
+    escaped_chunks[0] = escaped_chunks[0].encode("utf-8")
     for j in range(1, len(escaped_chunks)):
         item = escaped_chunks[j]
         try:
             escaped_chunks[j] = _hex_display_map[item[:2]]
         except KeyError:
             # Put back the percent symbol
-            escaped_chunks[j] = b'%' + (item[:2].encode('utf-8'))
+            escaped_chunks[j] = b"%" + (item[:2].encode("utf-8"))
         except UnicodeDecodeError:
-            escaped_chunks[j] = chr(int(item[:2], 16)).encode('utf-8')
-        escaped_chunks[j] += (item[2:].encode('utf-8'))
-    unescaped = b''.join(escaped_chunks)
+            escaped_chunks[j] = chr(int(item[:2], 16)).encode("utf-8")
+        escaped_chunks[j] += item[2:].encode("utf-8")
+    unescaped = b"".join(escaped_chunks)
     try:
-        decoded = unescaped.decode('utf-8')
+        decoded = unescaped.decode("utf-8")
     except UnicodeDecodeError:
         # If this path segment cannot be properly utf-8 decoded
         # after doing unescaping we will just leave it alone
@@ -196,8 +195,8 @@ def unescape_for_display(url, encoding):
          specified encoding.
     """
     if encoding is None:
-        raise ValueError('you cannot specify None for the display encoding')
-    if url.startswith('file://'):
+        raise ValueError("you cannot specify None for the display encoding")
+    if url.startswith("file://"):
         try:
             path = local_path_from_url(url)
             path.encode(encoding)
@@ -206,14 +205,14 @@ def unescape_for_display(url, encoding):
             return url
 
     # Split into sections to try to decode utf-8
-    res = url.split('/')
+    res = url.split("/")
     for i in range(1, len(res)):
         res[i] = _unescape_segment_for_display(res[i], encoding)
-    return '/'.join(res)
+    return "/".join(res)
 
 
 def _is_absolute(url):
-    return (osutils.pathjoin('/foo', url) == url)
+    return osutils.pathjoin("/foo", url) == url
 
 
 def rebase_url(url, old_base, new_base):
@@ -231,8 +230,7 @@ def rebase_url(url, old_base, new_base):
     new_parsed = urlparse.urlparse(new_base)
     if (old_parsed[:2]) != (new_parsed[:2]):
         raise InvalidRebaseURLs(old_base, new_base)
-    return determine_relative_path(new_parsed[2],
-                                   join(old_parsed[2], url))
+    return determine_relative_path(new_parsed[2], join(old_parsed[2], url))
 
 
 def determine_relative_path(from_path, to_path):
@@ -240,25 +238,30 @@ def determine_relative_path(from_path, to_path):
     from_segments = osutils.splitpath(from_path)
     to_segments = osutils.splitpath(to_path)
     count = -1
-    for count, (from_element, to_element) in enumerate(zip(from_segments,  # noqa: B007
-                                                           to_segments)):
+    for count, (from_element, to_element) in enumerate(  # noqa: B007
+        zip(
+            from_segments,
+            to_segments,
+        )
+    ):
         if from_element != to_element:
             break
     else:
         count += 1
     unique_from = from_segments[count:]
     unique_to = to_segments[count:]
-    segments = (['..'] * len(unique_from) + unique_to)
+    segments = [".."] * len(unique_from) + unique_to
     if len(segments) == 0:
-        return '.'
+        return "."
     return osutils.pathjoin(*segments)
 
 
 class URL:
     """Parsed URL."""
 
-    def __init__(self, scheme, quoted_user, quoted_password, quoted_host,
-                 port, quoted_path):
+    def __init__(
+        self, scheme, quoted_user, quoted_password, quoted_host, port, quoted_path
+    ):
         self.scheme = scheme
         self.quoted_host = quoted_host
         self.host = unquote(self.quoted_host)
@@ -273,23 +276,29 @@ class URL:
         else:
             self.password = None
         self.port = port
-        self.quoted_path = _url_hex_escapes_re.sub(
-            _unescape_safe_chars, quoted_path)
+        self.quoted_path = _url_hex_escapes_re.sub(_unescape_safe_chars, quoted_path)
         self.path = unquote(self.quoted_path)
 
     def __eq__(self, other):
-        return (isinstance(other, self.__class__) and
-                self.scheme == other.scheme and
-                self.host == other.host and
-                self.user == other.user and
-                self.password == other.password and
-                self.path == other.path)
+        return (
+            isinstance(other, self.__class__)
+            and self.scheme == other.scheme
+            and self.host == other.host
+            and self.user == other.user
+            and self.password == other.password
+            and self.path == other.path
+        )
 
     def __repr__(self):
         return "<{}({!r}, {!r}, {!r}, {!r}, {!r}, {!r})>".format(
             self.__class__.__name__,
-            self.scheme, self.quoted_user, self.quoted_password,
-            self.quoted_host, self.port, self.quoted_path)
+            self.scheme,
+            self.quoted_user,
+            self.quoted_password,
+            self.quoted_host,
+            self.port,
+            self.quoted_path,
+        )
 
     @classmethod
     def from_string(cls, url):
@@ -310,27 +319,30 @@ class URL:
                 raise InvalidURL(url) from err
         else:
             raise InvalidURL(url)
-        (scheme, netloc, path, params,
-         query, fragment) = urlparse.urlparse(url, allow_fragments=False)
+        (scheme, netloc, path, params, query, fragment) = urlparse.urlparse(
+            url, allow_fragments=False
+        )
         user = password = host = port = None
-        if '@' in netloc:
-            user, host = netloc.rsplit('@', 1)
-            if ':' in user:
-                user, password = user.split(':', 1)
+        if "@" in netloc:
+            user, host = netloc.rsplit("@", 1)
+            if ":" in user:
+                user, password = user.split(":", 1)
         else:
             host = netloc
 
-        if ':' in host and not (host[0] == '[' and host[-1] == ']'):
+        if ":" in host and not (host[0] == "[" and host[-1] == "]"):
             # there *is* port
-            host, port = host.rsplit(':', 1)
+            host, port = host.rsplit(":", 1)
             if port:
                 try:
                     port = int(port)
                 except ValueError as err:
-                    raise InvalidURL(f'invalid port number {port} in url:\n{url}') from err
+                    raise InvalidURL(
+                        f"invalid port number {port} in url:\n{url}"
+                    ) from err
             else:
                 port = None
-        if host != "" and host[0] == '[' and host[-1] == ']':  # IPv6
+        if host != "" and host[0] == "[" and host[-1] == "]":  # IPv6
             host = host[1:-1]
 
         return cls(scheme, user, password, host, port, path)
@@ -343,11 +355,12 @@ class URL:
             # Note that we don't put the password back even if we
             # have one so that it doesn't get accidentally
             # exposed.
-            netloc = f'{self.quoted_user}@{netloc}'
+            netloc = f"{self.quoted_user}@{netloc}"
         if self.port is not None:
-            netloc = '%s:%d' % (netloc, self.port)
+            netloc = "%s:%d" % (netloc, self.port)
         return urlparse.urlunparse(
-            (self.scheme, netloc, self.quoted_path, None, None, None))
+            (self.scheme, netloc, self.quoted_path, None, None, None)
+        )
 
     def clone(self, offset=None):
         """Return a new URL for a path relative to this URL.
@@ -362,9 +375,14 @@ class URL:
             path = quote(path, safe="/~")
         else:
             path = self.quoted_path
-        return self.__class__(self.scheme, self.quoted_user,
-                              self.quoted_password, self.quoted_host, self.port,
-                              path)
+        return self.__class__(
+            self.scheme,
+            self.quoted_user,
+            self.quoted_password,
+            self.quoted_host,
+            self.port,
+            path,
+        )
 
 
 def parse_url(url):
@@ -379,5 +397,11 @@ def parse_url(url):
         are unquoted.
     """
     parsed_url = URL.from_string(url)
-    return (parsed_url.scheme, parsed_url.user, parsed_url.password,
-            parsed_url.host, parsed_url.port, parsed_url.path)
+    return (
+        parsed_url.scheme,
+        parsed_url.user,
+        parsed_url.password,
+        parsed_url.host,
+        parsed_url.port,
+        parsed_url.path,
+    )

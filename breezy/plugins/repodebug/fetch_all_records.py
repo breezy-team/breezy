@@ -32,19 +32,19 @@ class cmd_fetch_all_records(Command):
     """
 
     hidden = True
-    takes_args = ['source_repo']
+    takes_args = ["source_repo"]
     takes_options = [
-        'directory',
-        Option('dry-run',
-               help="Show what would be done, but don't actually do anything."),
-        ]
+        "directory",
+        Option(
+            "dry-run", help="Show what would be done, but don't actually do anything."
+        ),
+    ]
 
-    def run(self, source_repo, directory='.', dry_run=False):
+    def run(self, source_repo, directory=".", dry_run=False):
         try:
             source = ControlDir.open(source_repo).open_repository()
         except (errors.NotBranchError, urlutils.InvalidURL):
-            print(f"Not a branch or invalid URL: {source_repo}",
-                  file=self.outf)
+            print(f"Not a branch or invalid URL: {source_repo}", file=self.outf)
             return
 
         try:
@@ -60,8 +60,7 @@ class cmd_fetch_all_records(Command):
         # Otherwise we'll be querying the target repo while we're trying to
         # insert into it.
         needed = []
-        for vf_name in ['signatures', 'texts', 'chk_bytes', 'inventories',
-                        'revisions']:
+        for vf_name in ["signatures", "texts", "chk_bytes", "inventories", "revisions"]:
             vf = getattr(source, vf_name)
             target_vf = getattr(target, vf_name)
             source_keys = vf.keys()
@@ -72,10 +71,11 @@ class cmd_fetch_all_records(Command):
         def source_stream():
             for vf_name, keys in needed:
                 vf = getattr(source, vf_name)
-                yield (vf_name, vf.get_record_stream(keys, 'unordered', True))
+                yield (vf_name, vf.get_record_stream(keys, "unordered", True))
 
         resume_tokens, missing_keys = target._get_sink().insert_stream(
-            source_stream(), source._format, [])
+            source_stream(), source._format, []
+        )
 
         if not resume_tokens:
             print("Done.", file=self.outf)

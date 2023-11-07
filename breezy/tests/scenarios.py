@@ -50,7 +50,7 @@ def multiply_tests_by_their_scenarios(some_tests, into_suite):
         inserted.
     """
     for test in iter_suite_tests(some_tests):
-        scenarios = getattr(test, 'scenarios', None)
+        scenarios = getattr(test, "scenarios", None)
         if scenarios is None:
             into_suite.addTest(test)
         else:

@@ -23,24 +23,27 @@ class CHKSerializer(serializer.InventorySerializer):
     """A CHKInventory based serializer with 'plain' behaviour."""
 
     support_altered_by_hack = False
-    supported_kinds = {'file', 'directory', 'symlink', 'tree-reference'}
+    supported_kinds = {"file", "directory", "symlink", "tree-reference"}
 
     def __init__(self, format_num, node_size, search_key_name):
         self.format_num = format_num
         self.maximum_size = node_size
         self.search_key_name = search_key_name
 
-    def _unpack_inventory(self, elt, revision_id=None, entry_cache=None,
-                          return_from_cache=False):
+    def _unpack_inventory(
+        self, elt, revision_id=None, entry_cache=None, return_from_cache=False
+    ):
         """Construct from XML Element."""
         from .xml_serializer import unpack_inventory_entry, unpack_inventory_flat
-        inv = unpack_inventory_flat(elt, self.format_num,
-                                                   unpack_inventory_entry, entry_cache,
-                                                   return_from_cache)
+
+        inv = unpack_inventory_flat(
+            elt, self.format_num, unpack_inventory_entry, entry_cache, return_from_cache
+        )
         return inv
 
-    def read_inventory_from_lines(self, xml_lines, revision_id=None,
-                                  entry_cache=None, return_from_cache=False):
+    def read_inventory_from_lines(
+        self, xml_lines, revision_id=None, entry_cache=None, return_from_cache=False
+    ):
         """Read xml_string into an inventory object.
 
         :param xml_string: The xml to read.
@@ -55,21 +58,24 @@ class CHKSerializer(serializer.InventorySerializer):
             make some operations significantly faster.
         """
         from .xml_serializer import ParseError, fromstringlist
+
         try:
             return self._unpack_inventory(
-                fromstringlist(xml_lines), revision_id,
+                fromstringlist(xml_lines),
+                revision_id,
                 entry_cache=entry_cache,
-                return_from_cache=return_from_cache)
+                return_from_cache=return_from_cache,
+            )
         except ParseError as e:
             raise serializer.UnexpectedInventoryFormat(e) from e
 
     def read_inventory(self, f, revision_id=None):
         """Read an inventory from a file-like object."""
         from .xml_serializer import ParseError
+
         try:
             try:
-                return self._unpack_inventory(self._read_element(f),
-                                              revision_id=None)
+                return self._unpack_inventory(self._read_element(f), revision_id=None)
             finally:
                 f.close()
         except ParseError as e:
@@ -94,28 +100,36 @@ class CHKSerializer(serializer.InventorySerializer):
         :return: The inventory as a list of lines.
         """
         from .xml_serializer import encode_and_escape, serialize_inventory_flat
+
         output = []
         append = output.append
         if inv.revision_id is not None:
-            revid = b''.join(
-                [b' revision_id="',
-                 encode_and_escape(inv.revision_id), b'"'])
+            revid = b"".join(
+                [b' revision_id="', encode_and_escape(inv.revision_id), b'"']
+            )
         else:
             revid = b""
-        append(b'<inventory format="%s"%s>\n' % (
-            self.format_num, revid))
-        append(b'<directory file_id="%s" name="%s" revision="%s" />\n' % (
-            encode_and_escape(inv.root.file_id),
-            encode_and_escape(inv.root.name),
-            encode_and_escape(inv.root.revision)))
-        serialize_inventory_flat(inv, append, root_id=None,
-                                 supported_kinds=self.supported_kinds,
-                                 working=working)
+        append(b'<inventory format="%s"%s>\n' % (self.format_num, revid))
+        append(
+            b'<directory file_id="%s" name="%s" revision="%s" />\n'
+            % (
+                encode_and_escape(inv.root.file_id),
+                encode_and_escape(inv.root.name),
+                encode_and_escape(inv.root.revision),
+            )
+        )
+        serialize_inventory_flat(
+            inv,
+            append,
+            root_id=None,
+            supported_kinds=self.supported_kinds,
+            working=working,
+        )
         if f is not None:
             f.writelines(output)
         return output
 
 
 # A CHKInventory based serializer with 'plain' behaviour.
-inventory_chk_serializer_255_bigpage_9 = CHKSerializer(b'9', 65536, b'hash-255-way')
-inventory_chk_serializer_255_bigpage_10 = CHKSerializer(b'10', 65536, b'hash-255-way')
+inventory_chk_serializer_255_bigpage_9 = CHKSerializer(b"9", 65536, b"hash-255-way")
+inventory_chk_serializer_255_bigpage_10 = CHKSerializer(b"10", 65536, b"hash-255-way")
