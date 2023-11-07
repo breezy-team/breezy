@@ -95,21 +95,6 @@ impl InventoryEntry {
         }
     }
 
-    #[setter]
-    fn set__name(&mut self, name: String) {
-        match &mut self.0 {
-            Entry::File { name: n, .. } => *n = name,
-            Entry::Directory { name: n, .. } => *n = name,
-            Entry::TreeReference { name: n, .. } => *n = name,
-            Entry::Link { name: n, .. } => *n = name,
-            Entry::Root { .. } => {
-                if !name.is_empty() {
-                    panic!("Root entry name must be empty");
-                }
-            }
-        }
-    }
-
     #[getter]
     fn get_file_id(&self, py: Python) -> PyObject {
         let file_id = &self.0.file_id();

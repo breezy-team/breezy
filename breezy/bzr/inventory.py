@@ -871,10 +871,9 @@ class Inventory(CommonInventory):
         # TODO: Don't leave things messed up if this fails
 
         del self._children[old_parent.file_id][file_ie.name]
-        self._children[new_parent.file_id][new_name] = file_ie
-
-        file_ie._name = new_name
-        file_ie._parent_id = new_parent_id
+        self._byid[file_id] = self._children[new_parent.file_id][new_name] = file_ie.derive(
+            name=new_name,
+            parent_id=new_parent_id)
 
     def is_root(self, file_id):
         return self.root is not None and file_id == self.root.file_id

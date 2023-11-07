@@ -352,8 +352,7 @@ class TestDeltaApplication(TestCaseWithTransport):
     def test_repeated_file_id(self):
         inv = self.get_empty_inventory()
         file1 = inventory.InventoryFile(b'id', 'path1', inv.root.file_id, b'result', text_size=0, text_sha1=b"")
-        file2 = file1.copy()
-        file2._name = 'path2'
+        file2 = file1.derive(name='path2')
         delta = InventoryDelta(
                 [(None, 'path1', b'id', file1),
                  (None, 'path2', b'id', file2)])

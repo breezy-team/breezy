@@ -717,12 +717,12 @@ class CommitHandler(processor.CommitHandler):
                             pass
 
     def record_rename(self, old_path: str, new_path: str, file_id: inventory.FileID, old_ie: inventory.InventoryEntry) -> None:
-        new_ie = old_ie.copy()
         new_basename, new_parent_id = self._ensure_directory(new_path,
                                                              self.basis_inventory)
-        new_ie._name = new_basename
-        new_ie._parent_id = new_parent_id
-        new_ie._revision = self.revision_id
+        new_ie = old_ie.derive(
+            name=new_basename,
+            parent_id=new_parent_id,
+            revision=self.revision_id)
         self._add_entry((old_path, new_path, file_id, new_ie))
         self._modified_file_ids[new_path] = file_id
         self._paths_deleted_this_commit.discard(new_path)
