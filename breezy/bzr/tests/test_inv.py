@@ -291,7 +291,7 @@ class TestInventoryUpdates(TestCase):
         # add a root entry by adding its path
         ie = inv.add_path("", "directory", b"my-root", revision=b"test-rev")
         self.assertEqual(b"my-root", ie.file_id)
-        self.assertIs(ie, inv.root)
+        self.assertEqual(ie, inv.root)
 
     def test_add_path(self):
         inv = inventory.Inventory(root_id=b"tree_root")
@@ -678,7 +678,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         self.assertFalse(inv.is_root(b"TREE_ROOT"))
         self.assertTrue(inv.is_root(b"booga"))
         # works properly even if no root is set
-        inv.root = None
+        inv.delete(inv.root.file_id)
         self.assertFalse(inv.is_root(b"TREE_ROOT"))
         self.assertFalse(inv.is_root(b"booga"))
 

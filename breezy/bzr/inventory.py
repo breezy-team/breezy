@@ -522,9 +522,6 @@ class CHKInventory:
         root = InventoryDirectory(self.root_id, "", None, self.root.revision)
         other.add(root)
         other.revision_id = self.revision_id
-        root = InventoryDirectory(self.root_id, "", None)
-        root.revision = self.root.revision
-        other.add(root)
         if not interesting or not parent_to_children:
             # empty filter, or filtering entrys that don't exist
             # (if even 1 existed, then we would have populated
@@ -1104,6 +1101,7 @@ class CHKInventory:
 
     def _make_delta(self, old):
         """Make an inventory delta from two inventories."""
+        from .inventory_delta import InventoryDelta
         if not isinstance(old, CHKInventory):
             old_ids = set(old.iter_all_ids())
             new_ids = set(self.iter_all_ids())
@@ -1120,7 +1118,7 @@ class CHKInventory:
                 if old.get_entry(file_id) != self.get_entry(file_id):
                     delta.append((old.id2path(file_id), self.id2path(file_id),
                                   file_id, self.get_entry(file_id)))
-            return delta
+            return InventoryDelta(delta)
 
         delta = []
         for key, old_value, self_value in self.id_to_entry.iter_changes(
@@ -1139,7 +1137,6 @@ class CHKInventory:
                 entry = None
                 new_path = None
             delta.append((old_path, new_path, file_id, entry))
-        from .inventory_delta import InventoryDelta
 
         return InventoryDelta(delta)
 

@@ -531,14 +531,14 @@ impl MutableInventory {
         self.path2id(filename).is_some()
     }
 
-    pub fn id2path(&self, file_id: &FileId) -> String {
+    pub fn id2path(&self, file_id: &FileId) -> Result<String, Error> {
         let mut segments = self
-            .iter_file_id_parents(file_id)
+            .iter_file_id_parents(file_id)?
             .map(|p| p.name())
             .collect::<Vec<_>>();
         segments.pop();
         segments.reverse();
-        segments.join("/")
+        Ok(segments.join("/"))
     }
 
     pub fn get_children(&self, file_id: &FileId) -> Option<HashMap<&str, &Entry>> {
@@ -616,6 +616,12 @@ impl MutableInventory {
     }
 
     pub fn rename_id(&mut self, old_file_id: &FileId, new_file_id: &FileId) -> Result<(), Error> {
+        if self.by_id.contains_key(new_file_id) {
+            return Err(Error::DuplicateFileId(
+                new_file_id.clone(),
+                self.id2path(new_file_id).unwrap(),
+            ));
+        }
         let mut ie = self
             .by_id
             .remove(old_file_id)
@@ -630,6 +636,9 @@ impl MutableInventory {
         }
         ie.set_file_id(new_file_id.clone());
         self.by_id.insert(new_file_id.clone(), ie);
+        if self.root_id == Some(old_file_id.clone()) {
+            self.root_id = Some(new_file_id.clone());
+        }
         Ok(())
     }
 
@@ -655,17 +664,17 @@ impl MutableInventory {
     ///
     /// The result may or may not reference the underlying inventory
     /// so it should be treated as immutable.
-    pub fn filter(&self, specific_fileids: &HashSet<&FileId>) -> Self {
+    pub fn filter(&self, specific_fileids: &HashSet<&FileId>) -> Result<Self, Error> {
         let mut interesting_parents = HashSet::new();
         for file_id in specific_fileids {
-            interesting_parents.extend(self.get_idpath(file_id));
+            interesting_parents.extend(self.get_idpath(file_id)?);
         }
 
         let mut entries = self.iter_entries(None);
         let root = entries.next();
         let mut other = Self::new();
         if root.is_none() {
-            return other;
+            return Ok(other);
         }
 
         other.set_root(root.unwrap().1.clone());
@@ -684,7 +693,7 @@ impl MutableInventory {
             }
             other.add(entry.clone()).unwrap();
         }
-        other
+        Ok(other)
     }
 
     /// Return a list of file_ids for the path to an entry.
@@ -693,10 +702,11 @@ impl MutableInventory {
     /// the id of the file itself.  So the length of the returned list
     /// is equal to the depth of the file in the tree, counting the
     /// root directory as depth 1.
-    pub fn get_idpath<'a>(&'a self, file_id: &'a FileId) -> Vec<&'a FileId> {
-        self.iter_file_id_parents(file_id)
+    pub fn get_idpath<'a>(&'a self, file_id: &'a FileId) -> Result<Vec<&'a FileId>, Error> {
+        Ok(self
+            .iter_file_id_parents(file_id)?
             .map(|e| e.file_id())
-            .collect()
+            .collect())
     }
 
     pub fn get_entry_by_path_partial(
@@ -949,11 +959,11 @@ impl MutableInventory {
         old.sort();
         old.reverse();
         for (old_path, file_id) in old {
-            if &self.id2path(&file_id) != old_path {
+            if &self.id2path(&file_id).unwrap() != old_path {
                 return Err(InventoryDeltaInconsistency::PathMismatch(
                     file_id.clone(),
                     old_path.clone(),
-                    self.id2path(&file_id),
+                    self.id2path(&file_id).unwrap(),
                 ));
             }
             // Remove file_id and the unaltered children. If file_id is not being deleted it will
@@ -984,13 +994,13 @@ impl MutableInventory {
             })
             .collect::<Vec<_>>();
         new.sort();
-        for (new_path, fid, new_entry) in new {
+        for (new_path, _fid, new_entry) in new {
             let new_entry = new_entry.as_ref().unwrap();
             self.add(new_entry.clone()).map_err(|e| match e {
-                Error::DuplicateFileId(fid, path) => {
+                Error::DuplicateFileId(fid, _path) => {
                     InventoryDeltaInconsistency::DuplicateFileId(new_path.clone(), fid)
                 }
-                Error::ParentNotDirectory(path, fid) => {
+                Error::ParentNotDirectory(_path, fid) => {
                     InventoryDeltaInconsistency::ParentNotDirectory(new_path.clone(), fid)
                 }
                 Error::NoSuchId(fid) => InventoryDeltaInconsistency::NoSuchId(fid),
@@ -1004,15 +1014,15 @@ impl MutableInventory {
                 Error::PathAlreadyVersioned(new_name, parent_path) => {
                     InventoryDeltaInconsistency::PathAlreadyVersioned(new_name, parent_path)
                 }
-                Error::ParentNotVersioned(parent_path) => {
+                Error::ParentNotVersioned(_parent_path) => {
                     unreachable!();
                 }
             })?;
-            if &self.id2path(new_entry.file_id()) != new_path {
+            if &self.id2path(new_entry.file_id()).unwrap() != new_path {
                 return Err(InventoryDeltaInconsistency::PathMismatch(
                     new_entry.file_id().clone(),
                     new_path.clone(),
-                    self.id2path(new_entry.file_id()),
+                    self.id2path(new_entry.file_id()).unwrap(),
                 ));
             }
             if let Some(children) = children.remove(new_entry.file_id()) {
@@ -1077,21 +1087,27 @@ impl MutableInventory {
         self.by_id.contains_key(id)
     }
 
-    fn iter_file_id_parents<'a>(&'a self, id: &'a FileId) -> impl Iterator<Item = &'a Entry> + 'a {
-        let mut id: Option<&'a FileId> = Some(id);
-        std::iter::from_fn(move || {
-            if let Some(fid) = id {
-                let entry = self.by_id.get(fid)?;
-                if let Some(parent_id) = entry.parent_id() {
-                    id = Some(parent_id);
+    /// Returns the entries leading up to the given file_id, including the entry
+    fn iter_file_id_parents<'a>(
+        &'a self,
+        id: &'a FileId,
+    ) -> Result<impl Iterator<Item = &'a Entry> + 'a, Error> {
+        let mut entry: Option<&'a Entry> = self.by_id.get(id);
+        if entry.is_none() {
+            return Err(Error::NoSuchId(id.clone()));
+        }
+        Ok(std::iter::from_fn(move || {
+            if let Some(e) = entry {
+                if let Some(parent_id) = e.parent_id() {
+                    entry = Some(self.by_id.get(parent_id).unwrap());
                 } else {
-                    id = None;
+                    entry = None;
                 }
-                Some(entry)
+                Some(e)
             } else {
                 None
             }
-        })
+        }))
     }
 
     pub fn root(&self) -> Option<&Entry> {
@@ -1126,7 +1142,7 @@ impl MutableInventory {
         if self.by_id.contains_key(ie.file_id()) {
             return Err(Error::DuplicateFileId(
                 ie.file_id().clone(),
-                self.id2path(ie.file_id()),
+                self.id2path(ie.file_id()).unwrap(),
             ));
         }
         if let Some(parent_id) = ie.parent_id() {
@@ -1138,7 +1154,7 @@ impl MutableInventory {
                 Entry::Directory { .. } | Entry::Root { .. } => {}
                 _ => {
                     return Err(Error::ParentNotDirectory(
-                        self.id2path(parent_id),
+                        self.id2path(parent_id).unwrap(),
                         ie.file_id().clone(),
                     ));
                 }
@@ -1151,8 +1167,8 @@ impl MutableInventory {
                 std::collections::hash_map::Entry::Occupied(entry) => {
                     let fid = entry.get().clone();
                     return Err(Error::PathAlreadyVersioned(
-                        self.id2path(&fid),
-                        self.id2path(parent.file_id()),
+                        self.id2path(&fid).unwrap(),
+                        self.id2path(parent.file_id()).unwrap(),
                     ));
                 }
             }
@@ -1226,6 +1242,7 @@ impl MutableInventory {
             let siblings = self.children.get_mut(parent_id).unwrap();
             siblings.remove(ie.name());
         } else {
+            assert_eq!(file_id, self.root_id.as_ref().unwrap());
             self.root_id = None;
         }
         Ok(())
@@ -1247,7 +1264,7 @@ impl MutableInventory {
         let mut delta = Vec::new();
         for file_id in deletes {
             delta.push(InventoryDeltaEntry {
-                old_path: Some(old.id2path(file_id)),
+                old_path: Some(old.id2path(file_id).unwrap()),
                 new_path: None,
                 file_id: file_id.clone(),
                 new_entry: None,
@@ -1256,7 +1273,7 @@ impl MutableInventory {
         for file_id in adds {
             delta.push(InventoryDeltaEntry {
                 old_path: None,
-                new_path: Some(self.id2path(file_id)),
+                new_path: Some(self.id2path(file_id).unwrap()),
                 file_id: file_id.clone(),
                 new_entry: self.get_entry(file_id).cloned(),
             });
@@ -1273,8 +1290,8 @@ impl MutableInventory {
                 continue;
             }
             delta.push(InventoryDeltaEntry {
-                old_path: Some(old.id2path(&file_id)),
-                new_path: Some(self.id2path(&file_id)),
+                old_path: Some(old.id2path(&file_id).unwrap()),
+                new_path: Some(self.id2path(&file_id).unwrap()),
                 file_id: file_id.clone(),
                 new_entry: new_ie.cloned(),
             });
@@ -1338,16 +1355,16 @@ impl MutableInventory {
         if new_siblings.contains_key(new_name) {
             return Err(Error::PathAlreadyVersioned(
                 new_name.to_string(),
-                self.id2path(new_parent_id),
+                self.id2path(new_parent_id).unwrap(),
             ));
         }
 
-        let new_parent_idpath = self.get_idpath(new_parent_id);
+        let new_parent_idpath = self.get_idpath(new_parent_id).unwrap();
         if new_parent_idpath.contains(&file_id) {
             return Err(Error::FileIdCycle(
                 file_id.clone(),
-                self.id2path(file_id),
-                self.id2path(new_parent_id),
+                self.id2path(file_id).unwrap(),
+                self.id2path(new_parent_id).unwrap(),
             ));
         }
 
