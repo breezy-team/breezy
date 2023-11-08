@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::revision::Revision;
 use crate::serializer::{Error, RevisionSerializer};
 use crate::RevisionId;

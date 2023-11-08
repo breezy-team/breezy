@@ -1,4 +1,4 @@
-use std::io::Read;
+#![allow(dead_code)]
 
 /// diff-delta.rs: generate a delta between two buffers
 ///
