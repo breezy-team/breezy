@@ -24,40 +24,39 @@ import string
 
 from ..... import (
     errors,
-    )
+)
 from .....tests import TestNotApplicable
 from ... import pre_merge_fix_ancestry
 from .. import BuilddebTestCase
 
 
-_Debian_changelog = '''\
+_Debian_changelog = """\
 ipsec-tools (%s) unstable; urgency=high
 
   * debian packaging -- %s
 
  -- Nico Golde <nion@debian.org>  Tue, %02d May 2009 13:26:14 +0200
 
-'''
+"""
 
-_Ubuntu_changelog = '''\
+_Ubuntu_changelog = """\
 ipsec-tools (%s) karmic; urgency=low
 
   * ubuntu packaging -- %s
 
  -- Jamie Strandboge <jamie@ubuntu.com>  Fri, %02d Jul 2009 13:24:17 -0500
 
-'''
+"""
 
 
 def _prepend_log(text, path):
     with open(path) as f:
         content = f.read()
-    with open(path, 'w') as fh:
-        fh.write(text+content)
+    with open(path, "w") as fh:
+        fh.write(text + content)
 
 
 class TestMergePackageBB(BuilddebTestCase):
-
     def test_merge_package_shared_rev_conflict(self):
         """Source upstream conflicts with target packaging -> Error.
 
@@ -69,11 +68,11 @@ class TestMergePackageBB(BuilddebTestCase):
         thrown instead.
         """
         target, _source = self.make_conflicting_branches_setup()
-        os.chdir('ubup-o')
-        merge_source = '../debp-n'
+        os.chdir("ubup-o")
+        merge_source = "../debp-n"
         self.run_bzr_error(
-            ['2 conflicts encountered.'],
-            'merge %s' % merge_source, retcode=1)
+            ["2 conflicts encountered."], "merge %s" % merge_source, retcode=1
+        )
 
     def test_pre_merge_hook_shared_rev_conflict(self):
         """Source upstream conflicts with target packaging -> Error.
@@ -86,16 +85,18 @@ class TestMergePackageBB(BuilddebTestCase):
         thrown instead.
         """
         target, _source = self.make_conflicting_branches_setup()
-        os.chdir('ubup-o')
-        merge_source = '../debp-n'
+        os.chdir("ubup-o")
+        merge_source = "../debp-n"
         try:
             Merger.hooks.install_named_hook(
-                "pre_merge", pre_merge_fix_ancestry, "fix ancestry")
+                "pre_merge", pre_merge_fix_ancestry, "fix ancestry"
+            )
         except errors.UnknownHook as e:
             raise TestNotApplicable("pre_merge hook requires bzr 2.5") from e
         self.run_bzr_error(
-            ['branches for the merge source and target have diverged'],
-            'merge %s' % merge_source)
+            ["branches for the merge source and target have diverged"],
+            "merge %s" % merge_source,
+        )
 
     def make_conflicting_branches_setup(self):
         r"""
@@ -127,41 +128,46 @@ class TestMergePackageBB(BuilddebTestCase):
         branches will have a conflict with respect to the file 'c'.
         """
         # Set up the debian upstream branch.
-        name = 'debu-n'
+        name = "debu-n"
         vdata = [
-            ('upstream-1.0', ('a',), None, None),
-            ('upstream-1.1', ('b',), None, None),
-            ('upstream-2.0', ('c',), None, None)]
+            ("upstream-1.0", ("a",), None, None),
+            ("upstream-1.1", ("b",), None, None),
+            ("upstream-2.0", ("c",), None, None),
+        ]
         debu_n = self._setup_branch(name, vdata)
 
         # Set up the debian packaging branch.
-        name = 'debp-n'
+        name = "debp-n"
         debp_n = self.make_branch_and_tree(name)
         debp_n.pull(debu_n.branch, stop_revision=self.revid_debu_n_A)
 
         vdata = [
-            ('1.0-1', ('debian/', 'debian/changelog'), None, None),
-            ('1.1-1', ('o',), debu_n, self.revid_debu_n_B),
-            ('2.0-1', ('p',), debu_n, self.revid_debu_n_C)]
-        self._setup_branch(name, vdata, debp_n, 'd')
+            ("1.0-1", ("debian/", "debian/changelog"), None, None),
+            ("1.1-1", ("o",), debu_n, self.revid_debu_n_B),
+            ("2.0-1", ("p",), debu_n, self.revid_debu_n_C),
+        ]
+        self._setup_branch(name, vdata, debp_n, "d")
 
         # Set up the ubuntu upstream branch.
-        name = 'ubuu-o'
+        name = "ubuu-o"
         ubuu_o = debu_n.controldir.sprout(
-            name, revision_id=self.revid_debu_n_B).open_workingtree()
+            name, revision_id=self.revid_debu_n_B
+        ).open_workingtree()
 
-        vdata = [('upstream-1.1.2', (), None, None)]
+        vdata = [("upstream-1.1.2", (), None, None)]
         self._setup_branch(name, vdata, ubuu_o)
 
         # Set up the ubuntu packaging branch.
-        name = 'ubup-o'
+        name = "ubup-o"
         ubup_o = debu_n.controldir.sprout(
-            name, revision_id=self.revid_debu_n_A).open_workingtree()
+            name, revision_id=self.revid_debu_n_A
+        ).open_workingtree()
 
         vdata = [
-            ('1.0-1ubuntu1', (), debp_n, self.revid_debp_n_A),
-            ('1.1.2-0ubuntu1', ('c',), ubuu_o, self.revid_ubuu_o_A)]
-        self._setup_branch(name, vdata, ubup_o, 'u')
+            ("1.0-1ubuntu1", (), debp_n, self.revid_debp_n_A),
+            ("1.1.2-0ubuntu1", ("c",), ubuu_o, self.revid_ubuu_o_A),
+        ]
+        self._setup_branch(name, vdata, ubup_o, "u")
 
         # Return the ubuntu and the debian packaging branches.
         return (ubup_o, debp_n)
@@ -174,15 +180,15 @@ class TestMergePackageBB(BuilddebTestCase):
             tree = self.make_branch_and_tree(name)
 
         def revid_name(vid):
-            return 'revid_{}_{}'.format(name.replace('-', '_'), vid)
+            return "revid_{}_{}".format(name.replace("-", "_"), vid)
 
         def add_paths(paths):
-            qpaths = ['{}/{}'.format(name, path) for path in paths]
+            qpaths = ["{}/{}".format(name, path) for path in paths]
             self.build_tree(qpaths)
             tree.add(paths)
 
         def changelog(vdata, vid):
-            result = ''
+            result = ""
             day = days.pop(0)
             if isinstance(vdata, tuple):
                 uver, dver = vdata[:2]
@@ -190,9 +196,9 @@ class TestMergePackageBB(BuilddebTestCase):
                 dcle = _Debian_changelog % (dver, vid, day)
                 result = ucle + dcle
             else:
-                if log_format == 'u':
+                if log_format == "u":
                     result = _Ubuntu_changelog % (vdata, vid, day)
-                elif log_format == 'd':
+                elif log_format == "d":
                     result = _Debian_changelog % (vdata, vid, day)
 
             return result
@@ -201,30 +207,28 @@ class TestMergePackageBB(BuilddebTestCase):
             vid = vids.pop(0)
             if log_format is not None:
                 cle = changelog(version, vid)
-                p = '{}/work/{}/debian/changelog'.format(
-                    self.test_base_dir, name)
+                p = "{}/work/{}/debian/changelog".format(self.test_base_dir, name)
                 _prepend_log(cle, p)
-            revid = tree.commit('{}: {}'.format(vid, msg))
+            revid = tree.commit("{}: {}".format(vid, msg))
             setattr(self, revid_name(vid), revid)
             tree.branch.tags.set_tag(version, revid)
 
         def tree_nick(tree):
-            return str(tree)[1:-1].split('/')[-1]
+            return str(tree)[1:-1].split("/")[-1]
 
         with tree.lock_write():
             for version, paths, utree, urevid in vdata:
-                msg = ''
+                msg = ""
                 if utree is not None:
                     tree.merge_from_branch(utree.branch, to_revision=urevid)
                     utree.branch.tags.merge_to(tree.branch.tags)
                     if urevid is not None:
-                        msg += 'Merged tree {}|{}. '.format(
-                            tree_nick(utree), urevid)
+                        msg += "Merged tree {}|{}. ".format(tree_nick(utree), urevid)
                     else:
-                        msg += 'Merged tree %s. ' % utree
+                        msg += "Merged tree %s. " % utree
                 if paths is not None:
                     add_paths(paths)
-                    msg += 'Added paths: %s. ' % str(paths)
+                    msg += "Added paths: %s. " % str(paths)
 
                 commit(msg, version)
 

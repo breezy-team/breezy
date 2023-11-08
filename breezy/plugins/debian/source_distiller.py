@@ -33,7 +33,7 @@ from .util import (
     export_with_nested,
     extract_orig_tarballs,
     get_parent_dir,
-    )
+)
 
 
 class SourceDistiller:
@@ -125,9 +125,9 @@ class FullSourceDistiller(SourceDistiller):
 
 
 class MergeModeDistiller(SourceDistiller):
-
-    def __init__(self, tree, subpath, upstream_provider, top_level=False,
-                 use_existing=False):
+    def __init__(
+        self, tree, subpath, upstream_provider, top_level=False, use_existing=False
+    ):
         """Create a SourceDistiller to distill from the specified tree.
 
         :param tree: The tree to use as the source.
@@ -162,7 +162,7 @@ class MergeModeDistiller(SourceDistiller):
 
         # Get the upstream tarball
         parent_dir = get_parent_dir(target)
-        if parent_dir != '' and not os.path.exists(parent_dir):
+        if parent_dir != "" and not os.path.exists(parent_dir):
             os.makedirs(parent_dir)
         if not self.use_existing:
             tarballs = self.upstream_provider.provide(parent_dir)
@@ -171,37 +171,36 @@ class MergeModeDistiller(SourceDistiller):
             extract_orig_tarballs(tarballs, target)
         # Now export the tree to provide the debian dir
         with tempfile.TemporaryDirectory(
-                prefix='builddeb-merge-debian-') as basetempdir:
+            prefix="builddeb-merge-debian-"
+        ) as basetempdir:
             tempdir = os.path.join(basetempdir, "export")
             if self.top_level:
                 os.makedirs(tempdir)
-                export_dir = os.path.join(tempdir, 'debian')
+                export_dir = os.path.join(tempdir, "debian")
             else:
                 export_dir = tempdir
             export_with_nested(self.tree, export_dir, subdir=self.subpath)
             # Remove any upstream debian dir, or from previous export with
             # use_existing
-            if os.path.exists(os.path.join(target, 'debian')):
-                shutil.rmtree(os.path.join(target, 'debian'))
-            shutil.copytree(
-                tempdir, target, symlinks=True, dirs_exist_ok=True)
+            if os.path.exists(os.path.join(target, "debian")):
+                shutil.rmtree(os.path.join(target, "debian"))
+            shutil.copytree(tempdir, target, symlinks=True, dirs_exist_ok=True)
 
 
 class DebcargoError(bzr_errors.BzrError):
-
     _fmt = "Debcargo failed to run."
 
 
 def cargo_translate_dashes(crate):
-    output = subprocess.check_output(['cargo', 'search', crate])
+    output = subprocess.check_output(["cargo", "search", crate])
     for line in output.splitlines(False):
-        name = line.split(b' = ')[0].decode()
+        name = line.split(b" = ")[0].decode()
         return name
     return crate
 
 
 def unmangle_debcargo_version(version):
-    return version.replace('~', '-')
+    return version.replace("~", "-")
 
 
 class DebcargoDistiller(SourceDistiller):
@@ -227,48 +226,61 @@ class DebcargoDistiller(SourceDistiller):
             place the tree containing the buildable source.
         """
         from debmutate.debcargo import parse_debcargo_source_name
+
         if os.path.exists(target):
             raise FileExists(target)
-        with self.tree.get_file(os.path.join(
-                self.subpath,
-                'debian/changelog' if not self.top_level else
-                'changelog'), 'r') as f:
+        with self.tree.get_file(
+            os.path.join(
+                self.subpath, "debian/changelog" if not self.top_level else "changelog"
+            ),
+            "r",
+        ) as f:
             cl = Changelog(f, max_blocks=1)
             package = cl.package
             version = cl.version
 
-        if not package.startswith('rust-'):
+        if not package.startswith("rust-"):
             raise NotImplementedError
 
         debcargo_path = [self.subpath]
         if not self.top_level:
-            debcargo_path.append('debian')
-        debcargo_path.append('debcargo.toml')
+            debcargo_path.append("debian")
+        debcargo_path.append("debcargo.toml")
         try:
-            debcargo_text = self.tree.get_file_text(
-                os.path.join(*debcargo_path))
+            debcargo_text = self.tree.get_file_text(os.path.join(*debcargo_path))
         except NoSuchFile:
             semver_suffix = False
         else:
             from toml.decoder import loads as loads_toml
+
             debcargo = loads_toml(debcargo_text.decode())
-            semver_suffix = debcargo.get('semver_suffix')
-        crate, crate_semver_version = parse_debcargo_source_name(
-            package, semver_suffix)
-        if '-' in crate:
+            semver_suffix = debcargo.get("semver_suffix")
+        crate, crate_semver_version = parse_debcargo_source_name(package, semver_suffix)
+        if "-" in crate:
             crate = cargo_translate_dashes(crate)
         crate_version = unmangle_debcargo_version(version.upstream_version)
         if crate_semver_version is not None:
-            note('Using crate name: %s, version %s (semver: %s)', crate,
-                 crate_version, crate_semver_version)
+            note(
+                "Using crate name: %s, version %s (semver: %s)",
+                crate,
+                crate_version,
+                crate_semver_version,
+            )
         else:
-            note('Using crate name: %s, version %s', crate, crate_version)
+            note("Using crate name: %s, version %s", crate, crate_version)
         try:
-            subprocess.check_call([
-                'debcargo', 'package',
-                '--changelog-ready',
-                '--config', self.tree.abspath(os.path.join(*debcargo_path)),
-                '--directory', target, crate]
-                + ([crate_version] if crate_version else []))
+            subprocess.check_call(
+                [
+                    "debcargo",
+                    "package",
+                    "--changelog-ready",
+                    "--config",
+                    self.tree.abspath(os.path.join(*debcargo_path)),
+                    "--directory",
+                    target,
+                    crate,
+                ]
+                + ([crate_version] if crate_version else [])
+            )
         except subprocess.CalledProcessError as e:
             raise DebcargoError() from e

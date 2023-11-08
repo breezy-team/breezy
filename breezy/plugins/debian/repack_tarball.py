@@ -39,9 +39,11 @@ from .util import open_file, open_file_via_transport
 
 
 class UnsupportedRepackFormat(BzrError):
-    _fmt = ('Either the file extension of "%(location)s" indicates that '
-            'it is a format unsupported for repacking or it is a '
-            'remote directory.')
+    _fmt = (
+        'Either the file extension of "%(location)s" indicates that '
+        "it is a format unsupported for repacking or it is a "
+        "remote directory."
+    )
 
     def __init__(self, location):
         BzrError.__init__(self, location=location)
@@ -78,7 +80,7 @@ class TarTgzRepacker(TgzRepacker):
     """A TgzRepacker that just gzips the input."""
 
     def repack(self, target_f):
-        with gzip.GzipFile(mode='w', fileobj=target_f) as gz:
+        with gzip.GzipFile(mode="w", fileobj=target_f) as gz:
             shutil.copyfileobj(self.source_f, gz)
 
 
@@ -87,7 +89,7 @@ class Tbz2TgzRepacker(TgzRepacker):
 
     def repack(self, target_f):
         content = bz2.decompress(self.source_f.read())
-        with gzip.GzipFile(mode='w', fileobj=target_f) as gz:
+        with gzip.GzipFile(mode="w", fileobj=target_f) as gz:
             gz.write(content)
 
 
@@ -98,9 +100,9 @@ class TarLzma2TgzRepacker(TgzRepacker):
         try:
             import lzma
         except ImportError as e:
-            raise DependencyNotPresent('lzma', e) from e
+            raise DependencyNotPresent("lzma", e) from e
         content = lzma.decompress(self.source_f.read())
-        with gzip.GzipFile(mode='w', fileobj=target_f) as gz:
+        with gzip.GzipFile(mode="w", fileobj=target_f) as gz:
             gz.write(content)
 
 
@@ -136,7 +138,7 @@ def get_filetype(filename):
         ".tar.lzma": "lzma",
         ".tbz2": "bz2",
         ".tar": "tar",
-        ".zip": "zip"
+        ".zip": "zip",
     }
     for filetype, name in types.items():
         if filename.endswith(filetype):
@@ -169,7 +171,7 @@ def _error_if_exists(target_transport, new_name, source_name):
 def _repack_directory(target_transport, new_name, source_name):
     target_transport.ensure_base()
     with target_transport.open_write_stream(new_name) as target_f:
-        with tarfile.open(mode='w:gz', fileobj=target_f) as tar:
+        with tarfile.open(mode="w:gz", fileobj=target_f) as tar:
             tar.add(source_name, os.path.basename(source_name))
 
 

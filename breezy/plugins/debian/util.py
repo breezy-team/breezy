@@ -38,7 +38,7 @@ from debmutate.changelog import (
     find_extra_authors,
     find_last_distribution,
     strip_changelog_message,
-    )
+)
 from debmutate.versions import get_snapshot_revision
 
 from ... import (
@@ -46,42 +46,42 @@ from ... import (
     errors,
     osutils,
     urlutils,
-    )
+)
 from ...transport import NoSuchFile
 from ...export import export
 from ...trace import (
     mutter,
     note,
     warning,
-    )
+)
 from ...transport import (
     do_catching_redirections,
     get_transport,
-    )
+)
 from ...tree import Tree
 from . import (
     global_conf,
-    )
+)
 from .config import (
     DebBuildConfig,
     BUILD_TYPE_MERGE,
     BUILD_TYPE_NATIVE,
     BUILD_TYPE_NORMAL,
-    )
+)
 from .errors import (
     BzrError,
-    )
+)
 
-BUILDDEB_DIR = '.bzr-builddeb'
+BUILDDEB_DIR = ".bzr-builddeb"
 
-NEW_LOCAL_CONF = 'debian/local.conf.local'
-NEW_CONF = 'debian/bzr-builddeb.conf'
-DEFAULT_CONF = os.path.join(BUILDDEB_DIR, 'default.conf')
-LOCAL_CONF = os.path.join(BUILDDEB_DIR, 'local.conf')
+NEW_LOCAL_CONF = "debian/local.conf.local"
+NEW_CONF = "debian/bzr-builddeb.conf"
+DEFAULT_CONF = os.path.join(BUILDDEB_DIR, "default.conf")
+LOCAL_CONF = os.path.join(BUILDDEB_DIR, "local.conf")
 
 
 class MissingChangelogError(BzrError):
-    _fmt = 'Could not find changelog at %(location)s in tree.'
+    _fmt = "Could not find changelog at %(location)s in tree."
 
     def __init__(self, locations):
         BzrError.__init__(self, location=locations)
@@ -97,8 +97,8 @@ def _get_release_names():
         from distro_info import DebianDistroInfo, UbuntuDistroInfo
     except ImportError:
         warning(
-            "distro_info not available. Unable to retrieve current "
-            "list of releases.")
+            "distro_info not available. Unable to retrieve current " "list of releases."
+        )
         _DEBIAN_RELEASES = []
         _UBUNTU_RELEASES = []
     else:
@@ -106,7 +106,7 @@ def _get_release_names():
         _DEBIAN_RELEASES = DebianDistroInfo().all
         _UBUNTU_RELEASES = UbuntuDistroInfo().all
 
-    _DEBIAN_RELEASES.extend(['stable', 'testing', 'unstable', 'frozen'])
+    _DEBIAN_RELEASES.extend(["stable", "testing", "unstable", "frozen"])
 
 
 def debian_releases():
@@ -121,8 +121,8 @@ def ubuntu_releases():
     return _UBUNTU_RELEASES
 
 
-DEBIAN_POCKETS = ('', '-security', '-proposed-updates', '-backports')
-UBUNTU_POCKETS = ('', '-proposed', '-updates', '-security', '-backports')
+DEBIAN_POCKETS = ("", "-security", "-proposed-updates", "-backports")
+UBUNTU_POCKETS = ("", "-proposed", "-updates", "-security", "-backports")
 
 
 def recursive_copy(fromdir, todir):
@@ -155,7 +155,7 @@ class AddChangelogError(BzrError):
         BzrError.__init__(self, changelog=changelog)
 
 
-def find_changelog(t, subpath='', merge=False, max_blocks=1, strict=False):
+def find_changelog(t, subpath="", merge=False, max_blocks=1, strict=False):
     """Find the changelog in the given tree.
 
     First looks for 'debian/changelog'. If "merge" is true will also
@@ -181,12 +181,12 @@ def find_changelog(t, subpath='', merge=False, max_blocks=1, strict=False):
     """
     top_level = False
     with t.lock_read():
-        changelog_file = osutils.pathjoin(subpath, 'debian/changelog')
+        changelog_file = osutils.pathjoin(subpath, "debian/changelog")
         if not t.has_filename(changelog_file):
             checked_files = [changelog_file]
             if merge:
                 # Assume LarstiQ's layout (.bzr in debian/)
-                changelog_file = osutils.pathjoin(subpath, 'changelog')
+                changelog_file = osutils.pathjoin(subpath, "changelog")
                 top_level = True
                 if not t.has_filename(changelog_file):
                     checked_files.append(changelog_file)
@@ -197,15 +197,17 @@ def find_changelog(t, subpath='', merge=False, max_blocks=1, strict=False):
                 if getattr(t, "abspath", None):
                     checked_files = [t.abspath(f) for f in checked_files]
                 raise MissingChangelogError(" or ".join(checked_files))
-        elif merge and t.has_filename(osutils.pathjoin(subpath, 'changelog')):
+        elif merge and t.has_filename(osutils.pathjoin(subpath, "changelog")):
             # If it is a "top_level" package and debian is a symlink to
             # "." then it will have found debian/changelog. Try and detect
             # this.
-            debian_file = osutils.pathjoin(subpath, 'debian')
-            if (t.is_versioned(debian_file)
-                    and t.kind(debian_file) == 'symlink'
-                    and t.get_symlink_target(debian_file) == '.'):
-                changelog_file = 'changelog'
+            debian_file = osutils.pathjoin(subpath, "debian")
+            if (
+                t.is_versioned(debian_file)
+                and t.kind(debian_file) == "symlink"
+                and t.get_symlink_target(debian_file) == "."
+            ):
+                changelog_file = "changelog"
                 top_level = True
         mutter("Using '%s' to get package information", changelog_file)
         if not t.is_versioned(changelog_file):
@@ -213,8 +215,8 @@ def find_changelog(t, subpath='', merge=False, max_blocks=1, strict=False):
         contents = t.get_file_text(changelog_file)
     changelog = Changelog()
     changelog.parse_changelog(
-        contents, max_blocks=max_blocks, allow_empty_author=True,
-        strict=strict)
+        contents, max_blocks=max_blocks, allow_empty_author=True, strict=strict
+    )
     return changelog, top_level
 
 
@@ -229,7 +231,7 @@ def tarball_name(package, version, component=None, format=None):
     :return: a string that is the name of the upstream tarball to use.
     """
     if format is None:
-        format = 'gz'
+        format = "gz"
     name = "{}_{}.orig".format(package, str(version))
     if component is not None:
         name += "-" + component
@@ -253,7 +255,7 @@ def suite_to_distribution(suite):
         return "debian"
     if suite in all_ubuntu:
         return "ubuntu"
-    if suite == 'kali' or suite.startswith('kali-'):
+    if suite == "kali" or suite.startswith("kali-"):
         return "kali"
     return None
 
@@ -277,7 +279,7 @@ def md5sum_filename(filename):
     :return: MD5 Checksum as hex digest
     """
     m = hashlib.md5()
-    with open(filename, 'rb') as f:
+    with open(filename, "rb") as f:
         for line in f:
             m.update(line)
     return m.hexdigest()
@@ -325,7 +327,7 @@ def write_if_different(contents, target):
 def _download_part(name, base_transport, target_dir, md5sum):
     part_base_dir, part_path = urlutils.split(name)
     f_t = base_transport
-    if part_base_dir != '':
+    if part_base_dir != "":
         f_t = base_transport.clone(part_base_dir)
     with f_t.get(part_path) as f_f:
         target_path = os.path.join(target_dir, part_path)
@@ -361,6 +363,7 @@ def open_transport(path):
 
 def open_file_via_transport(filename, transport):
     """Open a file using the transport, follow redirects as necessary."""
+
     def open_file(transport):
         return transport.get(filename)
 
@@ -389,9 +392,9 @@ def _dget(cls, dsc_location, target_dir):
     with open_file_via_transport(path, dsc_t) as f:
         dsc_contents = f.read()
     dsc = cls(dsc_contents)
-    for file_details in dsc['files']:
-        name = file_details['name']
-        _download_part(name, dsc_t, target_dir, file_details['md5sum'])
+    for file_details in dsc["files"]:
+        name = file_details["name"]
+        _download_part(name, dsc_t, target_dir, file_details["md5sum"])
     target_file = os.path.join(target_dir, path)
     write_if_different(dsc_contents, target_file)
     return target_file
@@ -407,7 +410,7 @@ def dget_changes(changes_location, target_dir):
 
 def get_parent_dir(target):
     parent = os.path.dirname(target)
-    if os.path.basename(target) == '':
+    if os.path.basename(target) == "":
         parent = os.path.dirname(parent)
     return parent
 
@@ -425,9 +428,10 @@ def find_bugs_fixed(changes, branch, _lplib=None):
     bugs = []
     for new_author, linenos, lines in changes_by_author(changes):
         for match in re.finditer(
-                "closes:\\s*(?:bug)?\\#?\\s?\\d+"
-                "(?:,\\s*(?:bug)?\\#?\\s?\\d+)*", ''.join(lines),
-                re.IGNORECASE):
+            "closes:\\s*(?:bug)?\\#?\\s?\\d+" "(?:,\\s*(?:bug)?\\#?\\s?\\d+)*",
+            "".join(lines),
+            re.IGNORECASE,
+        ):
             closes_list = match.group(0)
             for match in re.finditer("\\d+", closes_list):
                 bug_url = bugtracker.get_bug_url("deb", branch, match.group(0))
@@ -437,16 +441,15 @@ def find_bugs_fixed(changes, branch, _lplib=None):
                     bug_url = bugtracker.get_bug_url("lp", branch, lp_bugs[0])
                     bugs.append(bug_url + " fixed")
         for match in re.finditer(
-                "lp:\\s+\\#\\d+(?:,\\s*\\#\\d+)*",
-                ''.join(lines), re.IGNORECASE):
+            "lp:\\s+\\#\\d+(?:,\\s*\\#\\d+)*", "".join(lines), re.IGNORECASE
+        ):
             closes_list = match.group(0)
             for match in re.finditer("\\d+", closes_list):
                 bug_url = bugtracker.get_bug_url("lp", branch, match.group(0))
                 bugs.append(bug_url + " fixed")
                 deb_bugs = _lplib.debian_bugs_for_ubuntu_bug(match.group(0))
                 if len(deb_bugs) == 1:
-                    bug_url = bugtracker.get_bug_url(
-                        "deb", branch, deb_bugs[0])
+                    bug_url = bugtracker.get_bug_url("deb", branch, deb_bugs[0])
                     bugs.append(bug_url + " fixed")
     return bugs
 
@@ -495,8 +498,8 @@ def debuild_config(tree, subpath):
     """
     config_files = []
     user_config = None
-    if subpath in ('.', None):
-        subpath = ''
+    if subpath in (".", None):
+        subpath = ""
     new_local_conf = osutils.pathjoin(subpath, NEW_LOCAL_CONF)
     local_conf = osutils.pathjoin(subpath, LOCAL_CONF)
     new_conf = osutils.pathjoin(subpath, NEW_CONF)
@@ -504,34 +507,29 @@ def debuild_config(tree, subpath):
 
     if tree.has_filename(new_local_conf):
         if not tree.is_versioned(new_local_conf):
-            config_files.append(
-                (tree.get_file(new_local_conf), True, "local.conf"))
+            config_files.append((tree.get_file(new_local_conf), True, "local.conf"))
         else:
-            warning('Not using configuration from %s as it is versioned.',
-                    new_local_conf)
+            warning(
+                "Not using configuration from %s as it is versioned.", new_local_conf
+            )
     if tree.has_filename(local_conf):
         if not tree.is_versioned(local_conf):
-            config_files.append(
-                (tree.get_file(local_conf), True, "local.conf"))
+            config_files.append((tree.get_file(local_conf), True, "local.conf"))
         else:
-            warning('Not using configuration from %s as it is versioned.',
-                    local_conf)
+            warning("Not using configuration from %s as it is versioned.", local_conf)
     config_files.append((global_conf(), True))
     user_config = global_conf()
     if tree.is_versioned(new_conf):
-        config_files.append(
-            (tree.get_file(new_conf), False, "bzr-builddeb.conf"))
+        config_files.append((tree.get_file(new_conf), False, "bzr-builddeb.conf"))
     if tree.is_versioned(default_conf):
-        config_files.append(
-            (tree.get_file(default_conf), False, "default.conf"))
+        config_files.append((tree.get_file(default_conf), False, "default.conf"))
     config = DebBuildConfig(config_files, tree=tree)
     config.set_user_config(user_config)
     return config
 
 
 class UnableToFindPreviousUpload(BzrError):
-
-    _fmt = ("Unable to determine the previous upload for --package-merge.")
+    _fmt = "Unable to determine the previous upload for --package-merge."
 
 
 def find_previous_upload(tree, subpath, merge=False):
@@ -559,8 +557,7 @@ def find_previous_upload(tree, subpath, merge=False):
 
 
 class NoPreviousUpload(BzrError):
-
-    _fmt = ("There was no previous upload to %(distribution)s.")
+    _fmt = "There was no previous upload to %(distribution)s."
 
     def __init__(self, distribution):
         BzrError.__init__(self, distribution=distribution)
@@ -582,7 +579,8 @@ def changelog_find_previous_upload(cl):
         match_targets = ubuntu_releases()
         if "-" in current_target:
             match_targets += tuple(
-                [current_target.split("-", 1)[0] + t for t in UBUNTU_POCKETS])
+                [current_target.split("-", 1)[0] + t for t in UBUNTU_POCKETS]
+            )
     else:
         # If we do not recognize the current target in order to apply special
         # rules to it, then just assume that only previous uploads to exactly
@@ -594,7 +592,7 @@ def changelog_find_previous_upload(cl):
     raise NoPreviousUpload(current_target)
 
 
-def tree_contains_upstream_source(tree, subpath=''):
+def tree_contains_upstream_source(tree, subpath=""):
     """Guess if the specified tree contains the upstream source.
 
     :param tree: A RevisionTree.
@@ -602,16 +600,15 @@ def tree_contains_upstream_source(tree, subpath=''):
         source. None if the tree is empty
     """
     present_files = {
-        f[0] for f in tree.list_files(recursive=False, from_dir=subpath)
-        if f[1] == 'V'}
+        f[0] for f in tree.list_files(recursive=False, from_dir=subpath) if f[1] == "V"
+    }
     if len(present_files) == 0:
         return None
-    packaging_files = frozenset([
-        "debian", ".bzr-builddeb", ".bzrignore", ".gitignore"])
-    return (len(present_files - packaging_files) > 0)
+    packaging_files = frozenset(["debian", ".bzr-builddeb", ".bzrignore", ".gitignore"])
+    return len(present_files - packaging_files) > 0
 
 
-def tree_get_source_format(tree, subpath=''):
+def tree_get_source_format(tree, subpath=""):
     """Retrieve the source format name from a package.
 
     :param path: Path to the package
@@ -626,7 +623,7 @@ def tree_get_source_format(tree, subpath=''):
         raise
     except NoSuchFile:
         return FORMAT_1_0
-    return text.strip().decode('ascii')
+    return text.strip().decode("ascii")
 
 
 FORMAT_1_0 = "1.0"
@@ -638,10 +635,11 @@ NORMAL_SOURCE_FORMATS = [FORMAT_3_0_QUILT]
 
 
 class InconsistentSourceFormatError(BzrError):
-
-    _fmt = ("Inconsistency between source format and version: "
-            "version %(version)s is %(version_bool)snative, "
-            "format '%(format)s' is %(format_bool)snative.")
+    _fmt = (
+        "Inconsistency between source format and version: "
+        "version %(version)s is %(version_bool)snative, "
+        "format '%(format)s' is %(format_bool)snative."
+    )
 
     def __init__(self, version_native, format_native, version_str, format_str):
         if version_native:
@@ -653,11 +651,15 @@ class InconsistentSourceFormatError(BzrError):
         else:
             format_bool = "not "
         BzrError.__init__(
-            self, version_bool=version_bool, format_bool=format_bool,
-            version=version_str, format=format_str)
+            self,
+            version_bool=version_bool,
+            format_bool=format_bool,
+            version=version_str,
+            format=format_str,
+        )
 
 
-def guess_build_type(tree, version, subpath='', contains_upstream_source=True):
+def guess_build_type(tree, version, subpath="", contains_upstream_source=True):
     """Guess the build type based on the contents of a tree.
 
     :param tree: A `Tree` object.
@@ -675,7 +677,7 @@ def guess_build_type(tree, version, subpath='', contains_upstream_source=True):
         format_native = None
 
     if version is not None:
-        version_native = (not version.debian_version)
+        version_native = not version.debian_version
     else:
         version_native = None
 
@@ -684,12 +686,15 @@ def guess_build_type(tree, version, subpath='', contains_upstream_source=True):
     if type(version_native) is bool and type(format_native) is bool:
         if version_native is True and format_native is False:
             raise InconsistentSourceFormatError(
-                version_native, format_native, version, source_format)
+                version_native, format_native, version, source_format
+            )
         if version_native is False and format_native is True:
             warning(
-                'Version (%s) suggests non-native package, '
-                'but format (%s) is for native.',
-                version, source_format)
+                "Version (%s) suggests non-native package, "
+                "but format (%s) is for native.",
+                version,
+                source_format,
+            )
 
     if version_native or format_native:
         return BUILD_TYPE_NATIVE
@@ -706,15 +711,15 @@ def component_from_orig_tarball(tarball_filename, package, version):
     if not tarball_filename.startswith(prefix):
         raise ValueError(
             f"invalid orig tarball file {tarball_filename} "
-            f"does not have expected prefix {prefix}")
-    base = tarball_filename[len(prefix):]
+            f"does not have expected prefix {prefix}"
+        )
+    base = tarball_filename[len(prefix) :]
     for ext in (".tar.gz", ".tar.bz2", ".tar.lzma", ".tar.xz"):
         if tarball_filename.endswith(ext):
-            base = base[:-len(ext)]
+            base = base[: -len(ext)]
             break
     else:
-        raise ValueError(
-            f"orig tarball file {tarball_filename} has unknown extension")
+        raise ValueError(f"orig tarball file {tarball_filename} has unknown extension")
     if base == "":
         return None
     elif base[0] == "-":
@@ -722,27 +727,29 @@ def component_from_orig_tarball(tarball_filename, package, version):
         return base[1:]
     else:
         raise ValueError(
-            f"Invalid extra characters in tarball filename {tarball_filename}")
+            f"Invalid extra characters in tarball filename {tarball_filename}"
+        )
 
 
 class TarFailed(BzrError):
-    _fmt = ("There was an error executing tar to %(operation)s %(tarball)s: "
-            "%(error)s.")
+    _fmt = (
+        "There was an error executing tar to %(operation)s %(tarball)s: " "%(error)s."
+    )
 
     def __init__(self, operation, tarball, error):
-        BzrError.__init__(
-            self, operation=operation, tarball=tarball, error=error)
+        BzrError.__init__(self, operation=operation, tarball=tarball, error=error)
 
 
 def needs_strip_components(tf):
     top_level_directories = set()
     for name in tf.getnames():
-        top_level_directories.add(name.split('/')[0])
+        top_level_directories.add(name.split("/")[0])
     return len(top_level_directories) == 1
 
 
-def extract_orig_tarball(tarball_filename, component, target,
-                         strip_components: Optional[bool] = None) -> None:
+def extract_orig_tarball(
+    tarball_filename, component, target, strip_components: Optional[bool] = None
+) -> None:
     """Extract an orig tarball.
 
     :param tarball: Path to the tarball
@@ -750,26 +757,24 @@ def extract_orig_tarball(tarball_filename, component, target,
     :param target: Target path
     """
     from tarfile import TarFile
+
     tar_args = ["tar"]
     if tarball_filename.endswith(".tar.bz2"):
-        tar_args.append('xjf')
+        tar_args.append("xjf")
         tf = TarFile.bz2open(tarball_filename)
-    elif (tarball_filename.endswith(".tar.lzma")
-            or tarball_filename.endswith(".tar.xz")):
-        tar_args.append('xJf')
+    elif tarball_filename.endswith(".tar.lzma") or tarball_filename.endswith(".tar.xz"):
+        tar_args.append("xJf")
         tf = TarFile.xzopen(tarball_filename)
     elif tarball_filename.endswith(".tar"):
-        tar_args.append('xf')
+        tar_args.append("xf")
         tf = TarFile.open(tarball_filename)
-    elif (tarball_filename.endswith(".tar.gz") or
-            tarball_filename.endswith(".tgz")):
+    elif tarball_filename.endswith(".tar.gz") or tarball_filename.endswith(".tgz"):
         tf = TarFile.gzopen(tarball_filename)
-        tar_args.append('xzf')
+        tar_args.append("xzf")
     else:
-        note('Unable to figure out type of %s, '
-             'assuming .tar.gz', tarball_filename)
+        note("Unable to figure out type of %s, " "assuming .tar.gz", tarball_filename)
         tf = TarFile.gzopen(tarball_filename)
-        tar_args.append('xzf')
+        tar_args.append("xzf")
 
     try:
         if strip_components is None:
@@ -787,8 +792,9 @@ def extract_orig_tarball(tarball_filename, component, target,
     tar_args.extend([tarball_filename, "-C", target_path])
     if strip_components is not None:
         tar_args.extend(["--strip-components", str(strip_components)])
-    proc = subprocess.Popen(tar_args, preexec_fn=subprocess_setup,
-                            stderr=subprocess.PIPE)
+    proc = subprocess.Popen(
+        tar_args, preexec_fn=subprocess_setup, stderr=subprocess.PIPE
+    )
     (stdout, stderr) = proc.communicate()
     if proc.returncode != 0:
         raise TarFailed("extract", tarball_filename, error=stderr)
@@ -802,8 +808,8 @@ def extract_orig_tarballs(tarballs, target, strip_components=None):
     """
     for tarball_filename, component in tarballs:
         extract_orig_tarball(
-            tarball_filename, component, target,
-            strip_components=strip_components)
+            tarball_filename, component, target, strip_components=strip_components
+        )
 
 
 def dput_changes(path: str) -> None:
@@ -813,24 +819,25 @@ def dput_changes(path: str) -> None:
 
 
 def find_changes_files(
-        path: str, package: str, version: Version) -> Iterator[
-            Tuple[str, os.DirEntry]]:
+    path: str, package: str, version: Version
+) -> Iterator[Tuple[str, os.DirEntry]]:
     non_epoch_version = version.upstream_version
     if version.debian_version is not None:
         non_epoch_version += "-%s" % version.debian_version
-    c = re.compile('{}_{}_(.*).changes'.format(
-        re.escape(package), re.escape(non_epoch_version)))
+    c = re.compile(
+        "{}_{}_(.*).changes".format(re.escape(package), re.escape(non_epoch_version))
+    )
     for entry in os.scandir(path):
         m = c.match(entry.name)
         if m:
             yield m.group(1), entry
 
 
-def get_files_excluded(tree, subpath='', top_level=False):
+def get_files_excluded(tree, subpath="", top_level=False):
     if top_level:
-        path = os.path.join(subpath, 'copyright')
+        path = os.path.join(subpath, "copyright")
     else:
-        path = os.path.join(subpath, 'debian', 'copyright')
+        path = os.path.join(subpath, "debian", "copyright")
     with tree.get_file(path) as f:
         try:
             copyright = Copyright(f, strict=False)
@@ -873,8 +880,8 @@ def detect_version_kind(upstream_version):
     """Detect the version kind from the upstream version."""
     snapshot_info = get_snapshot_revision(upstream_version)
     if snapshot_info is None:
-        return 'release'
-    return 'snapshot'
+        return "release"
+    return "snapshot"
 
 
 def export_with_nested(tree, dest, **kwargs):

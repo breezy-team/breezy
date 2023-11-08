@@ -26,57 +26,57 @@ from ..builder import (
     DebBuild,
     BuildFailedError,
     NoSourceDirError,
-    )
+)
 
 
 class TestDebBuild(TestCaseInTempDir):
-
     def test_prepare_makes_parents(self):
-        builder = DebBuild(None, 'target/sub/sub2', None)
+        builder = DebBuild(None, "target/sub/sub2", None)
         builder.prepare()
-        self.assertPathExists('target/sub')
-        self.assertPathDoesNotExist('target/sub/sub2')
+        self.assertPathExists("target/sub")
+        self.assertPathDoesNotExist("target/sub/sub2")
 
     def test_prepare_purges_dir(self):
-        self.build_tree(['target/', 'target/sub/'])
-        builder = DebBuild(None, 'target/sub/', None)
+        self.build_tree(["target/", "target/sub/"])
+        builder = DebBuild(None, "target/sub/", None)
         builder.prepare()
-        self.assertPathExists('target')
-        self.assertPathDoesNotExist('target/sub')
+        self.assertPathExists("target")
+        self.assertPathDoesNotExist("target/sub")
 
     def test_use_existing_preserves(self):
-        self.build_tree(['target/', 'target/sub/'])
-        builder = DebBuild(None, 'target/sub/', None, use_existing=True)
+        self.build_tree(["target/", "target/sub/"])
+        builder = DebBuild(None, "target/sub/", None, use_existing=True)
         builder.prepare()
-        self.assertPathExists('target/sub')
+        self.assertPathExists("target/sub")
 
     def test_use_existing_errors_if_not_present(self):
-        self.build_tree(['target/'])
-        builder = DebBuild(None, 'target/sub/', None, use_existing=True)
+        self.build_tree(["target/"])
+        builder = DebBuild(None, "target/sub/", None, use_existing=True)
         self.assertRaises(NoSourceDirError, builder.prepare)
-        self.assertPathDoesNotExist('target/sub')
+        self.assertPathDoesNotExist("target/sub")
 
     def test_export(self):
         class MkdirDistiller:
             def distill(self, target):
                 os.mkdir(target)
-        builder = DebBuild(MkdirDistiller(), 'target', None)
+
+        builder = DebBuild(MkdirDistiller(), "target", None)
         builder.export()
-        self.assertPathExists('target')
+        self.assertPathExists("target")
 
     def test_build(self):
-        builder = DebBuild(None, 'target', "touch built")
-        self.build_tree(['target/'])
+        builder = DebBuild(None, "target", "touch built")
+        self.build_tree(["target/"])
         builder.build()
-        self.assertPathExists('target/built')
+        self.assertPathExists("target/built")
 
     def test_build_fails(self):
-        builder = DebBuild(None, 'target', "false")
-        self.build_tree(['target/'])
+        builder = DebBuild(None, "target", "false")
+        self.build_tree(["target/"])
         self.assertRaises(BuildFailedError, builder.build)
 
     def test_clean(self):
-        builder = DebBuild(None, 'target', None)
-        self.build_tree(['target/', 'target/foo'])
+        builder = DebBuild(None, "target", None)
+        self.build_tree(["target/", "target/foo"])
         builder.clean()
-        self.assertPathDoesNotExist('target')
+        self.assertPathDoesNotExist("target")

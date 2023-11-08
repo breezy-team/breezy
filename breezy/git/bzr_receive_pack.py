@@ -26,6 +26,7 @@ import breezy.bzr
 import breezy.git
 from breezy.git.server import BzrBackend
 
+
 def main():
     if len(sys.argv) < 2:
         print("usage: %s <git-dir>" % os.path.basename(sys.argv[0]))

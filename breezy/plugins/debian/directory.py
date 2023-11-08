@@ -34,40 +34,42 @@ def fixup_broken_git_url(url):
 
     A common misspelling is to add an extra ":" after the hostname
     """
-    (scheme, netloc, path, params,
-     query, fragment) = urlutils.urlparse.urlparse(url, allow_fragments=False)
-    if '@' in netloc:
-        credentials, host = netloc.rsplit('@', 1)
+    (scheme, netloc, path, params, query, fragment) = urlutils.urlparse.urlparse(
+        url, allow_fragments=False
+    )
+    if "@" in netloc:
+        credentials, host = netloc.rsplit("@", 1)
     else:
         credentials = None
         host = netloc
 
-    if ':' in host and not (host[0] == '[' and host[-1] == ']'):
+    if ":" in host and not (host[0] == "[" and host[-1] == "]"):
         # there *is* port
-        host, port = host.rsplit(':', 1)
+        host, port = host.rsplit(":", 1)
         if not port or port.isdigit():
             return url
     else:
         port = None
 
-    if host in ('salsa.debian.org', 'github.com'):
-        if '/' not in path[1:] and port:
-            path = '{}/{}'.format(port, path.lstrip('/'))
+    if host in ("salsa.debian.org", "github.com"):
+        if "/" not in path[1:] and port:
+            path = "{}/{}".format(port, path.lstrip("/"))
         netloc = host
         if ":" in netloc:
             netloc = "[%s]" % netloc
-        if (credentials is not None and
-            not (credentials == 'git' and
-                 scheme not in ('git', 'http', 'https'))):
-            netloc = '{}@{}'.format(credentials, netloc)
-        if host == 'salsa.debian.org':
-            scheme = 'https'
-        if host == 'salsa.debian.org' and path.startswith('/cgit/'):
+        if credentials is not None and not (
+            credentials == "git" and scheme not in ("git", "http", "https")
+        ):
+            netloc = "{}@{}".format(credentials, netloc)
+        if host == "salsa.debian.org":
+            scheme = "https"
+        if host == "salsa.debian.org" and path.startswith("/cgit/"):
             path = path[5:]
         new_url = urlutils.urlparse.urlunparse(
-            (scheme, netloc, path, params, query, fragment))
+            (scheme, netloc, path, params, query, fragment)
+        )
         if url != new_url:
-            warning('Fixing up URL: %s -> %s', url, new_url)
+            warning("Fixing up URL: %s -> %s", url, new_url)
         return new_url
     return url
 
@@ -81,9 +83,8 @@ def vcs_git_url_to_bzr_url(url):
     url = fixup_broken_git_url(url)
     url = git_url_to_bzr_url(url)
     if branch:
-        branch = urlutils.quote(branch, '')
-        url = urlutils.join_segment_parameters(
-            url, {'branch': branch})
+        branch = urlutils.quote(branch, "")
+        url = urlutils.join_segment_parameters(url, {"branch": branch})
     if subpath:
         url = urlutils.join(url, subpath)
     return url
@@ -107,14 +108,15 @@ def vcs_arch_url_to_bzr_url(url):
 
 def vcs_cvs_url_to_bzr_url(location):
     from breezy.location import cvs_to_url
+
     try:
-        (loc, module) = location.split(' ', 1)
+        (loc, module) = location.split(" ", 1)
     except ValueError:
         loc = location
         module = None
     url = cvs_to_url(loc)
     if module is not None:
-        url = url + '?module=' + urlutils.quote(module)
+        url = url + "?module=" + urlutils.quote(module)
     return url
 
 
@@ -122,9 +124,8 @@ def vcs_hg_url_to_bzr_url(url):
     (url, branch, subpath) = split_vcs_url(url)
 
     if branch:
-        branch = urlutils.quote(branch, '')
-        url = urlutils.join_segment_parameters(
-            url, {'branch': branch})
+        branch = urlutils.quote(branch, "")
+        url = urlutils.join_segment_parameters(url, {"branch": branch})
     if subpath:
         url = urlutils.join(url, subpath)
     return url
@@ -147,8 +148,7 @@ vcs_field_to_bzr_url_converters = [
 
 
 def source_package_vcs_url(control):
-    """Extract a Breezy-compatible URL from a source package.
-    """
+    """Extract a Breezy-compatible URL from a source package."""
     (vcs_type, vcs_url) = source_package_vcs(control)
     return vcs_type, dict(vcs_field_to_bzr_url_converters)[vcs_type](vcs_url)
 
@@ -165,7 +165,7 @@ class AptDirectory:
         try:
             import apt_pkg
         except ImportError as e:
-            raise DependencyNotPresent('apt_pkg', e) from e
+            raise DependencyNotPresent("apt_pkg", e) from e
         apt_pkg.init()
 
         sources = apt_pkg.SourceRecords()
@@ -175,28 +175,24 @@ class AptDirectory:
             by_version[sources.version] = sources.record
 
         if len(by_version) == 0:
-            raise urlutils.InvalidURL(path=url, extra='package not found')
+            raise urlutils.InvalidURL(path=url, extra="package not found")
 
         if version is None:
             # Try the latest version
             version = sorted(by_version, key=Version)[-1]
 
         if version not in by_version:
-            raise urlutils.InvalidURL(
-                path=url, extra='version %s not found' % version)
+            raise urlutils.InvalidURL(path=url, extra="version %s not found" % version)
 
         control = Deb822(by_version[version])
 
         try:
             vcs, url = source_package_vcs_url(control)
         except KeyError as e:
-            note("Retrieving Vcs locating from %s Debian version %s", name,
-                 version)
-            raise urlutils.InvalidURL(
-                path=url, extra='no VCS URL found') from e
+            note("Retrieving Vcs locating from %s Debian version %s", name, version)
+            raise urlutils.InvalidURL(path=url, extra="no VCS URL found") from e
 
-        note("Resolved package URL from Debian package %s/%s: %s",
-             name, version, url)
+        note("Resolved package URL from Debian package %s/%s: %s", name, version, url)
         return url
 
 
@@ -212,7 +208,7 @@ class DgitDirectory:
         try:
             import apt_pkg
         except ImportError as e:
-            raise DependencyNotPresent('apt_pkg', e) from e
+            raise DependencyNotPresent("apt_pkg", e) from e
 
         apt_pkg.init()
 
@@ -223,32 +219,30 @@ class DgitDirectory:
             control = Deb822(sources.record)
             pkg_version = control["Version"]
             try:
-                urls[pkg_version] = control["Dgit"].split(' ')
+                urls[pkg_version] = control["Dgit"].split(" ")
             except KeyError:
                 pass
 
         if len(urls) == 0:
-            raise urlutils.InvalidURL(path=url, extra='no URLs found')
+            raise urlutils.InvalidURL(path=url, extra="no URLs found")
 
         if version is None:
             # Try the latest version
             version = sorted(urls, key=Version)[-1]
 
         if version not in urls:
-            raise urlutils.InvalidURL(
-                path=url, extra='version %s not found' % version)
+            raise urlutils.InvalidURL(path=url, extra="version %s not found" % version)
 
         if len(urls[version]) < 3:
             raise urlutils.InvalidURL(
-                path=url,
-                extra='dgit header does not have location information')
+                path=url, extra="dgit header does not have location information"
+            )
 
         url = urlutils.join_segment_parameters(
-                urls[version][3],
-                {"tag": urlutils.quote(urls[version][2], '')})
+            urls[version][3], {"tag": urlutils.quote(urls[version][2], "")}
+        )
 
-        note("Resolved package URL from Debian package %s/%s: %s",
-             name, version, url)
+        note("Resolved package URL from Debian package %s/%s: %s", name, version, url)
         return url
 
 
@@ -257,7 +251,8 @@ class VcsDirectory:
 
     def look_up(self, name, url, purpose=None):
         from debian.deb822 import Deb822
-        with open('debian/control') as f:
+
+        with open("debian/control") as f:
             source = Deb822(f)
             vcs, url = source_package_vcs_url(source)
             return url
@@ -265,7 +260,8 @@ class VcsDirectory:
 
 def upstream_branch_alias(b):
     from .util import debuild_config
+
     with b.lock_read():
         tree = b.basis_tree()
-        config = debuild_config(tree, subpath='.')
+        config = debuild_config(tree, subpath=".")
         return directories.dereference(config.upstream_branch)

@@ -22,6 +22,7 @@ from ...errors import BzrError
 
 
 class MultipleUpstreamTarballsNotSupported(BzrError):
-
-    _fmt = ("Importing packages using source format 3.0 multiple tarballs "
-            "is not yet supported.")
+    _fmt = (
+        "Importing packages using source format 3.0 multiple tarballs "
+        "is not yet supported."
+    )

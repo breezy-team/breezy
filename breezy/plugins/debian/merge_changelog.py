@@ -25,7 +25,7 @@ import tempfile
 from ... import (
     merge,
     osutils,
-    )
+)
 
 
 # A logger in the 'bzr' hierarchy.  By default messages will be propagated to
@@ -35,39 +35,40 @@ _logger = logging.getLogger(__name__)
 
 
 class ChangeLogFileMerge(merge.ConfigurableFileMerger):
-
-    name_prefix = 'deb_changelog'
-    default_files = ['debian/changelog']
+    name_prefix = "deb_changelog"
+    default_files = ["debian/changelog"]
 
     def merge_text(self, params):
-        return merge_changelog(
-            params.this_lines, params.other_lines, params.base_lines)
+        return merge_changelog(params.this_lines, params.other_lines, params.base_lines)
 
 
 def merge_changelog(this_lines, other_lines, base_lines=[]):
     """Merge a changelog file."""
     # Write the BASE, THIS and OTHER versions to files in a temporary
     # directory, and use dpkg-mergechangelogs to merge them.
-    with tempfile.TemporaryDirectory('deb_changelog_merge') as tmpdir:
+    with tempfile.TemporaryDirectory("deb_changelog_merge") as tmpdir:
+
         def writelines(filename, lines):
-            with open(filename, 'wb') as f:
+            with open(filename, "wb") as f:
                 for line in lines:
                     f.write(line)
-        base_filename = os.path.join(tmpdir, 'changelog.base')
-        this_filename = os.path.join(tmpdir, 'changelog.this')
-        other_filename = os.path.join(tmpdir, 'changelog.other')
+
+        base_filename = os.path.join(tmpdir, "changelog.base")
+        this_filename = os.path.join(tmpdir, "changelog.this")
+        other_filename = os.path.join(tmpdir, "changelog.other")
         writelines(base_filename, base_lines)
         writelines(this_filename, this_lines)
         writelines(other_filename, other_lines)
         try:
             proc = subprocess.Popen(
-                ['dpkg-mergechangelogs', base_filename, this_filename,
-                 other_filename], stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE)
+                ["dpkg-mergechangelogs", base_filename, this_filename, other_filename],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
         except OSError as e:
             if e.errno == errno.ENOENT:
                 # No dpkg-mergechangelogs command available
-                return 'not_applicable', ''
+                return "not_applicable", ""
             raise
         stdout, stderr = proc.communicate()
         retcode = proc.returncode
@@ -78,7 +79,7 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
             # warning:" which makes the origin of the messages quite clear.
             encoding = osutils.get_user_encoding()
             # Errors are output using the locale, and log needs unicode.
-            _logger.warning('%s', stderr.decode(encoding, "replace"))
+            _logger.warning("%s", stderr.decode(encoding, "replace"))
         if retcode == 1:
             # dpkg-mergechangelogs reports a conflict.  Unfortunately it uses
             # slightly non-standard conflict markers (<http://pad.lv/815700>:
@@ -95,14 +96,14 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
             def replace_func(match_obj):
                 match_text = match_obj.group(0)
                 return match_text[0] * 7
-            stdout = re.sub(b'(?m)^[<=>]{6}$', replace_func, stdout)
-            return 'conflicted', stdout.splitlines(True)
+
+            stdout = re.sub(b"(?m)^[<=>]{6}$", replace_func, stdout)
+            return "conflicted", stdout.splitlines(True)
         elif retcode != 0:
             # dpkg-mergechangelogs exited with an error. There is probably no
             # output at all, but regardless the merge should fall back to
             # another method.
-            _logger.warning(
-                "dpkg-mergechangelogs failed with status %d", retcode)
-            return 'not_applicable', stdout.splitlines(True)
+            _logger.warning("dpkg-mergechangelogs failed with status %d", retcode)
+            return "not_applicable", stdout.splitlines(True)
         else:
-            return 'success', stdout.splitlines(True)
+            return "success", stdout.splitlines(True)

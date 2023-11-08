@@ -22,27 +22,25 @@ from debian.changelog import Changelog, Version
 
 from ....tests import (
     TestCaseWithTransport,
-    )
+)
 
 from ..merge_upstream import (
     changelog_add_new_version,
-    )
+)
 
 
 class ChangelogAddNewVersionTests(TestCaseWithTransport):
-
     def test_add_new(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
         self.addCleanup(tree.unlock)
         tree.mkdir("debian")
-        changelog_add_new_version(tree, '', "1.0", "sid", None, "somepkg")
+        changelog_add_new_version(tree, "", "1.0", "sid", None, "somepkg")
         # changelog_add_new_version will version the changelog if it was
         # created
-        with open('debian/changelog', 'rb') as f:
+        with open("debian/changelog", "rb") as f:
             cl = Changelog(f)
         self.assertEqual(cl._blocks[0].package, "somepkg")
         self.assertEqual(cl._blocks[0].distributions, "UNRELEASED")
         self.assertEqual(cl._blocks[0].version, Version("1.0-1"))
-        self.assertEqual(
-            [], list(tree.filter_unversioned_files(["debian/changelog"])))
+        self.assertEqual([], list(tree.filter_unversioned_files(["debian/changelog"])))

@@ -13,7 +13,7 @@ from ...upstream_import import (
     do_directory,
     names_of_files,
     DirWrapper,
-    )
+)
 from ...bzr import generate_ids
 
 from ...errors import BzrError
@@ -23,7 +23,7 @@ from ...osutils import (
     splitpath,
     normpath,
     is_inside_any,
-    )
+)
 from ...trace import warning
 from ...tree import Tree
 from ...transform import resolve_conflicts
@@ -36,9 +36,7 @@ class UnknownType(BzrError):
         BzrError.__init__(self, path=path)
 
 
-files_to_ignore = {
-    '.shelf', '.bzr', '.bzr.backup', '.bzrtags',
-    '.bzr-builddeb'}
+files_to_ignore = {".shelf", ".bzr", ".bzr.backup", ".bzrtags", ".bzr-builddeb"}
 
 
 def should_ignore(relative_path: str) -> bool:
@@ -48,14 +46,14 @@ def should_ignore(relative_path: str) -> bool:
     for part in parts:
         if part in files_to_ignore:
             return True
-        if part.endswith(',v'):
+        if part.endswith(",v"):
             return True
 
 
 def import_dir(
-        tree: Tree, dir: str, file_ids_from=None, target_tree=None,
-        exclude=None):
-    dir_input = BytesIO(dir.encode('utf-8'))
+    tree: Tree, dir: str, file_ids_from=None, target_tree=None, exclude=None
+):
+    dir_input = BytesIO(dir.encode("utf-8"))
     dir_input.seek(0)
     dir_file = DirWrapper(dir_input)
     if file_ids_from is None:
@@ -64,25 +62,23 @@ def import_dir(
         for other_tree in file_ids_from:
             es.enter_context(other_tree.lock_read())
         return _import_archive(
-            tree, dir_file, file_ids_from, target_tree=target_tree,
-            exclude=exclude)
+            tree, dir_file, file_ids_from, target_tree=target_tree, exclude=exclude
+        )
 
 
-def _get_paths_to_process(
-        archive_file: str, prefix,
-        implied_parents, exclude=None):
+def _get_paths_to_process(archive_file: str, prefix, implied_parents, exclude=None):
     to_process = set()
     for member in archive_file.getmembers():
-        if member.type == 'g':
+        if member.type == "g":
             # type 'g' is a header
             continue
         relative_path = member.name
         relative_path = normpath(relative_path)
-        relative_path = relative_path.lstrip('/')
+        relative_path = relative_path.lstrip("/")
         if prefix is not None:
-            relative_path = relative_path[len(prefix)+1:]
-            relative_path = relative_path.rstrip('/')
-        if relative_path == '' or relative_path == '.':
+            relative_path = relative_path[len(prefix) + 1 :]
+            relative_path = relative_path.rstrip("/")
+        if relative_path == "" or relative_path == ".":
             continue
         if should_ignore(relative_path):
             continue
@@ -94,8 +90,8 @@ def _get_paths_to_process(
 
 
 def _import_archive(
-        tree: Tree, archive_file: str, file_ids_from,
-        target_tree=None, exclude=None):
+    tree: Tree, archive_file: str, file_ids_from, target_tree=None, exclude=None
+):
     prefix = common_directory(names_of_files(archive_file))
     with tree.transform() as tt:
         removed = set()
@@ -110,7 +106,8 @@ def _import_archive(
         implied_parents = set()
         seen = set()
         to_process = _get_paths_to_process(
-            archive_file, prefix, implied_parents, exclude=exclude)
+            archive_file, prefix, implied_parents, exclude=exclude
+        )
         renames = {}
 
         if not tree.supports_setting_file_ids():
@@ -125,15 +122,17 @@ def _import_archive(
                 trans_id = tt.trans_id_tree_path(relative_path)
                 existing_file_id = tt.tree_file_id(trans_id)
                 target_id = other_tree.path2id(relative_path)
-                if (target_id is not None
-                        and target_id != existing_file_id
-                        and target_id not in renames):
+                if (
+                    target_id is not None
+                    and target_id != existing_file_id
+                    and target_id not in renames
+                ):
                     renames[target_id] = relative_path
 
         # The we do the work
         for relative_path, member in to_process:
             trans_id = tt.trans_id_tree_path(relative_path)
-            added.add(relative_path.rstrip('/'))
+            added.add(relative_path.rstrip("/"))
             # To handle renames, we need to not use the preserved file id,
             # rather we need to lookup the file id in target_tree, if there is
             # one. If there isn't, we should use the one in the current tree,
@@ -163,8 +162,7 @@ def _import_archive(
                                     found_file_id = None
                                     continue
                             break
-                if (found_file_id is not None
-                        and found_file_id != existing_file_id):
+                if found_file_id is not None and found_file_id != existing_file_id:
                     # Found a specific file id in one of the source trees
                     tt.version_file(trans_id=trans_id, file_id=found_file_id)
                     if existing_file_id is not None:
@@ -176,7 +174,7 @@ def _import_archive(
                 if not found_file_id and not existing_file_id:
                     # No file_id in any of the source trees and no file id in
                     # the base tree.
-                    name = basename(member.name.rstrip('/'))
+                    name = basename(member.name.rstrip("/"))
                     file_id = generate_ids.gen_file_id(name)
                     tt.version_file(file_id=file_id, trans_id=trans_id)
             else:
@@ -184,13 +182,14 @@ def _import_archive(
 
             path = tree.abspath(relative_path)
             if member.name in seen:
-                if tt.final_kind(trans_id) == 'file':
+                if tt.final_kind(trans_id) == "file":
                     tt.set_executability(None, trans_id)
                 tt.cancel_creation(trans_id)
             seen.add(member.name)
             if member.isreg():
-                tt.create_file(file_iterator(archive_file.extractfile(member)),
-                               trans_id)
+                tt.create_file(
+                    file_iterator(archive_file.extractfile(member)), trans_id
+                )
                 executable = (member.mode & 0o111) != 0
                 tt.set_executability(executable, trans_id)
             elif member.isdir():
@@ -213,8 +212,7 @@ def _import_archive(
                         if other_tree.has_filename(relative_path):
                             file_id = other_tree.path2id(relative_path)
                             if file_id is not None:
-                                tt.version_file(
-                                    trans_id=trans_id, file_id=file_id)
+                                tt.version_file(trans_id=trans_id, file_id=file_id)
                                 found = True
                                 break
                 if not found:
@@ -229,5 +227,5 @@ def _import_archive(
         conflicts = tt.cook_conflicts(resolve_conflicts(tt))
 
         for conflict in conflicts:
-            warning('%s', conflict)
+            warning("%s", conflict)
         tt.apply()

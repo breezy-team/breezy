@@ -28,6 +28,7 @@ import sys
 def handle_sigint(signal, frame):
     sys.exit(0)
 
+
 signal.signal(signal.SIGINT, handle_sigint)
 
 import breezy
@@ -38,9 +39,9 @@ from breezy.plugin import load_plugins
 
 load_plugins()
 
-from breezy.git.git_remote_helper import (RemoteHelper, open_local_dir,
-                                          open_remote_dir)
+from breezy.git.git_remote_helper import RemoteHelper, open_local_dir, open_remote_dir
 from breezy.trace import warning
+
 
 def main():
     parser = optparse.OptionParser()
@@ -48,9 +49,10 @@ def main():
     (shortname, url) = args
 
     warning(
-        'git-remote-bzr is experimental and has not been optimized for '
-        'performance. Use \'brz fast-export\' and \'git fast-import\' for '
-        'large repositories.')
+        "git-remote-bzr is experimental and has not been optimized for "
+        "performance. Use 'brz fast-export' and 'git fast-import' for "
+        "large repositories."
+    )
 
     helper = RemoteHelper(open_local_dir(), shortname, open_remote_dir(url))
     helper.process(sys.stdin.buffer, sys.stdout.buffer)

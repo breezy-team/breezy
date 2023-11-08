@@ -16,11 +16,11 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 __all__ = [
-    'PackageMissingInArchive',
-    'NewArchiveVersion',
-    'MissingChangelogError',
-    'TreeVersionNotInArchive',
-    'check_up_to_date',
+    "PackageMissingInArchive",
+    "NewArchiveVersion",
+    "MissingChangelogError",
+    "TreeVersionNotInArchive",
+    "check_up_to_date",
 ]
 
 import asyncio
@@ -44,8 +44,7 @@ from breezy.plugins.debian.apt_repo import (
 class PackageMissingInArchive(Exception):
     def __init__(self, package):
         self.package = package
-        super().__init__(
-            "package %s is missing in archive" % package)
+        super().__init__("package %s is missing in archive" % package)
 
 
 class NewArchiveVersion(Exception):
@@ -54,17 +53,16 @@ class NewArchiveVersion(Exception):
         self.tree_version = tree_version
         super().__init__(
             "archive version {} is newer than version {} in tree".format(
-                archive_version, tree_version))
+                archive_version, tree_version
+            )
+        )
 
 
 class TreeVersionNotInArchive(Exception):
     def __init__(self, tree_version, archive_versions):
         self.tree_version = tree_version
         self.archive_versions = archive_versions
-        super().__init__(
-            "tree version %s does not appear in archive" %
-            tree_version
-        )
+        super().__init__("tree version %s does not appear in archive" % tree_version)
 
 
 def check_up_to_date(tree: Tree, subpath: str, apt: Apt) -> None:
@@ -80,8 +78,9 @@ def check_up_to_date(tree: Tree, subpath: str, apt: Apt) -> None:
             # to assume it's not in the archive
             with apt:
                 last_archive_version = max(
-                    entry['Version']
-                    for entry in apt.iter_source_by_name(tree_cl.package))
+                    entry["Version"]
+                    for entry in apt.iter_source_by_name(tree_cl.package)
+                )
 
             raise TreeVersionNotInArchive(block._raw_version, None)
 
@@ -96,7 +95,7 @@ def check_up_to_date(tree: Tree, subpath: str, apt: Apt) -> None:
     archive_versions: List[Version] = []
     with apt:
         for entry in apt.iter_source_by_name(package):
-            archive_versions.append(Version(entry['Version']))
+            archive_versions.append(Version(entry["Version"]))
 
     archive_versions.sort()
 
@@ -108,44 +107,47 @@ def check_up_to_date(tree: Tree, subpath: str, apt: Apt) -> None:
 
     last_archive_version = archive_versions[-1]
 
-    if (last_archive_version not in released_tree_versions and
-            last_archive_version > last_released_tree_version):
-        raise NewArchiveVersion(
-            last_archive_version, last_released_tree_version)
+    if (
+        last_archive_version not in released_tree_versions
+        and last_archive_version > last_released_tree_version
+    ):
+        raise NewArchiveVersion(last_archive_version, last_released_tree_version)
 
     if last_released_tree_version not in archive_versions:
-        raise TreeVersionNotInArchive(
-            last_released_tree_version, archive_versions)
+        raise TreeVersionNotInArchive(last_released_tree_version, archive_versions)
 
 
 def main():
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--apt-repository', type=str,
-        help='APT repository to use. Defaults to locally configured.',
-        default=(
-            os.environ.get('APT_REPOSITORY')
-            or os.environ.get('REPOSITORIES')))
+        "--apt-repository",
+        type=str,
+        help="APT repository to use. Defaults to locally configured.",
+        default=(os.environ.get("APT_REPOSITORY") or os.environ.get("REPOSITORIES")),
+    )
     parser.add_argument(
-        '--apt-repository-key', type=str,
-        help=('APT repository key to use for validation, '
-              'if --apt-repository is set.'),
-        default=os.environ.get('APT_REPOSITORY_KEY'))
+        "--apt-repository-key",
+        type=str,
+        help=(
+            "APT repository key to use for validation, " "if --apt-repository is set."
+        ),
+        default=os.environ.get("APT_REPOSITORY_KEY"),
+    )
     parser.add_argument(
-        'directory', default='.', nargs='?',
-        type=str, help='Path to working tree')
+        "directory", default=".", nargs="?", type=str, help="Path to working tree"
+    )
 
     import breezy.bzr  # noqa: F401
     import breezy.git  # noqa: F401
 
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.INFO, format='%(message)s')
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
 
     if args.apt_repository:
-        apt = RemoteApt.from_string(
-            args.apt_repository, args.apt_repository_key)
+        apt = RemoteApt.from_string(args.apt_repository, args.apt_repository_key)
     else:
         apt = LocalApt()
     tree, subpath = WorkingTree.open_containing(args.directory)
@@ -154,23 +156,22 @@ def main():
         check_up_to_date(tree, subpath, apt)
     except TreeVersionNotInArchive as exc:
         logging.fatal(
-            'Last released tree version %s not in archive (%s)',
+            "Last released tree version %s not in archive (%s)",
             exc.tree_version,
             f"latest: {exc.archive_versions[-1]}"
-            if exc.archive_versions else "not present")
+            if exc.archive_versions
+            else "not present",
+        )
         return 1
     except NewArchiveVersion as exc:
         # TODO(jelmer): Downgrade to a warning if there are only no-op changes
-        logging.fatal(
-            'New archive version %s is missing in tree',
-            exc.archive_version)
+        logging.fatal("New archive version %s is missing in tree", exc.archive_version)
         return 1
     except PackageMissingInArchive as exc:
-        logging.fatal(
-            '%s not found in the specified archive', exc.package)
+        logging.fatal("%s not found in the specified archive", exc.package)
         return 1
     except MissingChangelogError:
-        logging.fatal('Unable to find a changelog file')
+        logging.fatal("Unable to find a changelog file")
         return 1
 
     return 0

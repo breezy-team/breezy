@@ -21,13 +21,15 @@
 from ...errors import (
     NoSuchTag,
     BzrError,
-    )
+)
 from ...revisionspec import RevisionSpec, RevisionInfo, InvalidRevisionSpec
 
 
 class UnknownVersion(BzrError):
-    _fmt = ('No tag exists in this branch indicating that version '
-            '"%(version)s" has been uploaded.')
+    _fmt = (
+        "No tag exists in this branch indicating that version "
+        '"%(version)s" has been uploaded.'
+    )
 
     def __init__(self, version):
         BzrError.__init__(self, version=version)
@@ -47,19 +49,18 @@ class RevisionSpec_package(RevisionSpec):
     the package.
     """
     wants_revision_history = False
-    prefix = 'package:'
+    prefix = "package:"
 
     def _match_on(self, branch, revs=None):
         version_spec = self.spec
         dist_spec = None  # noqa: F841
 
-        if version_spec == '':
+        if version_spec == "":
             raise VersionNotSpecified
 
         try:
             revision_id = branch.tags.lookup_tag(version_spec)
-            return RevisionInfo.from_revision_id(
-                branch, revision_id)
+            return RevisionInfo.from_revision_id(branch, revision_id)
         except NoSuchTag as e:
             raise UnknownVersion(version_spec) from e
 
@@ -74,30 +75,31 @@ class RevisionSpec_upstream(RevisionSpec):
     and then look up the upstream.
     """
     wants_revision_history = False
-    prefix = 'upstream:'
+    prefix = "upstream:"
 
     def _match_on(self, branch, revs=None):
         from ...workingtree import WorkingTree
         from .util import (
             find_changelog,
             MissingChangelogError,
-            )
+        )
         from .upstream.pristinetar import get_pristine_tar_source
         from .upstream import StackedUpstreamSource
         from debian.changelog import Version
-        tree, subpath = WorkingTree.open_containing('.')
+
+        tree, subpath = WorkingTree.open_containing(".")
         try:
             (cl, top_level) = find_changelog(tree, subpath, merge=False)
         except MissingChangelogError as e:
             raise InvalidRevisionSpec(
-                self.user_spec, branch,
-                "no debian/changelog file found: %s" % e) from e
-        if self.spec == '':
+                self.user_spec, branch, "no debian/changelog file found: %s" % e
+            ) from e
+        if self.spec == "":
             version_spec = cl.version.upstream_version
             if not cl.version.debian_version:
                 raise InvalidRevisionSpec(
-                    self.user_spec, branch,
-                    "This is a native package.")
+                    self.user_spec, branch, "This is a native package."
+                )
         else:
             version = Version(self.spec)
             if version.upstream_version:
@@ -105,13 +107,15 @@ class RevisionSpec_upstream(RevisionSpec):
             else:
                 version_spec = self.spec
 
-        upstream_source = StackedUpstreamSource([
-            get_pristine_tar_source(tree, branch),
-            ])
+        upstream_source = StackedUpstreamSource(
+            [
+                get_pristine_tar_source(tree, branch),
+            ]
+        )
         try:
             revision_id, subpath = upstream_source.version_as_revisions(
-                cl.package, version_spec)[None]
-            return RevisionInfo.from_revision_id(
-                branch, revision_id)
+                cl.package, version_spec
+            )[None]
+            return RevisionInfo.from_revision_id(branch, revision_id)
         except NoSuchTag as e:
             raise UnknownVersion(version_spec) from e

@@ -21,9 +21,9 @@
 import yaml
 
 from ...config import (
-  configobj,
-  ConfigObj,
-  TreeConfig,
+    configobj,
+    ConfigObj,
+    TreeConfig,
 )
 from ...errors import BzrError
 from ...trace import mutter, warning
@@ -61,7 +61,7 @@ class SvnBuildPackageMappedConfig:
 class UpstreamMetadataSyntaxError(BzrError):
     """There is a syntax error in the debian/upstream/metadata file."""
 
-    _fmt = 'Unable to parse upstream metadata file %(path)s: %(error)s'
+    _fmt = "Unable to parse upstream metadata file %(path)s: %(error)s"
 
     def __init__(self, path, error):
         self.path = path
@@ -69,39 +69,40 @@ class UpstreamMetadataSyntaxError(BzrError):
 
 
 class UpstreamMetadataConfig:
-    """Config object that represents debian/upstream/metadata.
-    """
+    """Config object that represents debian/upstream/metadata."""
 
-    filename = 'debian/upstream/metadata'
+    filename = "debian/upstream/metadata"
 
     def __init__(self, text):
         try:
             self.metadata = yaml.safe_load(text)
         except yaml.composer.ComposerError as e:
-            all_metadata = [
-                x for x in yaml.safe_load_all(text) if x is not None]
+            all_metadata = [x for x in yaml.safe_load_all(text) if x is not None]
             if len(all_metadata) != 1:
                 raise UpstreamMetadataSyntaxError(
-                    'debian/upstream/metadata',
-                    Exception('multiple documents found')) from e
-            warning(
-                'ignoring empty extra documents in debian/upstream/metadata')
+                    "debian/upstream/metadata", Exception("multiple documents found")
+                ) from e
+            warning("ignoring empty extra documents in debian/upstream/metadata")
             self.metadata = all_metadata[0]
-        except (yaml.scanner.ScannerError, yaml.composer.ComposerError,
-                yaml.parser.ParserError) as e:
-            raise UpstreamMetadataSyntaxError(
-                'debian/upstream/metadata', e) from e
+        except (
+            yaml.scanner.ScannerError,
+            yaml.composer.ComposerError,
+            yaml.parser.ParserError,
+        ) as e:
+            raise UpstreamMetadataSyntaxError("debian/upstream/metadata", e) from e
         if isinstance(self.metadata, str):
             raise UpstreamMetadataSyntaxError(
-              'debian/upstream/metadata', TypeError(self.metadata))
+                "debian/upstream/metadata", TypeError(self.metadata)
+            )
         if isinstance(self.metadata, list):
             raise UpstreamMetadataSyntaxError(
-              'debian/upstream/metadata', TypeError(self.metadata))
+                "debian/upstream/metadata", TypeError(self.metadata)
+            )
 
     def get_value(self, section, option):
         if section == "BUILDDEB":
             if option == "upstream-branch":
-                return self.metadata.get('Repository')
+                return self.metadata.get("Repository")
             if option == "export-upstream-revision":
                 tag_prefix = self.metadata.get("Repository-Tag-Prefix")
                 if tag_prefix is not None:
@@ -126,7 +127,7 @@ class DebBuildConfig:
     finally .bzr-builddeb/default.conf. The value is
     taken from the first file in which it is specified."""
 
-    section = 'BUILDDEB'
+    section = "BUILDDEB"
 
     def __init__(self, files, branch=None, tree=None):
         """
@@ -189,10 +190,13 @@ class DebBuildConfig:
                 # installed
                 from ..svn.config import (
                     SubversionBuildPackageConfig,
-                    NoSubversionBuildPackageConfig)
+                    NoSubversionBuildPackageConfig,
+                )
+
                 try:
                     self._tree_config = SvnBuildPackageMappedConfig(
-                        SubversionBuildPackageConfig(tree))
+                        SubversionBuildPackageConfig(tree)
+                    )
                 except NoSubversionBuildPackageConfig:
                     pass  # Not a svn tree
             except ImportError:
@@ -200,20 +204,19 @@ class DebBuildConfig:
             try:
                 try:
                     upstream_metadata_text = tree.get_file_text(
-                        UpstreamMetadataConfig.filename)
+                        UpstreamMetadataConfig.filename
+                    )
                 except IsADirectoryError:
-                    upstream_metadata_text = tree.get_file_text(
-                        'debian/upstream')
+                    upstream_metadata_text = tree.get_file_text("debian/upstream")
             except NoSuchFile:
                 pass
             else:
                 try:
                     self._config_files.append(
-                        (UpstreamMetadataConfig(upstream_metadata_text),
-                         False))
+                        (UpstreamMetadataConfig(upstream_metadata_text), False)
+                    )
                 except UpstreamMetadataSyntaxError as e:
-                    warning(
-                        'Ignoring upstream metadata due to %s', e)
+                    warning("Ignoring upstream metadata due to %s", e)
         self.user_config = None
 
     def set_user_config(self, user_conf):
@@ -242,8 +245,8 @@ class DebBuildConfig:
                 config[key]
                 warning(
                     "'%s' defines a value for '%s', but it is not in a '%s' "
-                    "section, so it is ignored" % (
-                      config.filename, key, section))
+                    "section, so it is ignored" % (config.filename, key, section)
+                )
             except KeyError:
                 pass
         return None
@@ -262,11 +265,9 @@ class DebBuildConfig:
             section = self.section
         if not trusted:
             if self._branch_config is not None:
-                value = self._branch_config.get_option(
-                    key, section=self.section)
+                value = self._branch_config.get_option(key, section=self.section)
                 if value is not None:
-                    mutter("Using %s for %s, taken from the branch",
-                           value, key)
+                    mutter("Using %s for %s, taken from the branch", value, key)
                     return value
             if self._tree_config is not None:
                 value = self._tree_config.get_option(key, section=self.section)
@@ -277,17 +278,21 @@ class DebBuildConfig:
             if not trusted or config_file[1]:
                 value = self._get_opt(config_file[0], key, section=section)
                 if value is not None:
-                    mutter("Using %s for %s, taken from %s", value, key,
-                           config_file[0].filename)
+                    mutter(
+                        "Using %s for %s, taken from %s",
+                        value,
+                        key,
+                        config_file[0].filename,
+                    )
                     return value
         return None
 
     def get_hook(self, hook_name):
-        return self._get_best_opt(hook_name, section='HOOKS')
+        return self._get_best_opt(hook_name, section="HOOKS")
 
     def _get_bool(self, config, key):
         try:
-            return True, config.get_bool('BUILDDEB', key)
+            return True, config.get_bool("BUILDDEB", key)
         except KeyError:
             pass
         if config.filename is not None:
@@ -295,8 +300,8 @@ class DebBuildConfig:
                 config.as_bool(key)
                 warning(
                     "'%s' defines a value for '%s', but it is not in a "
-                    "'BUILDDEB' section, so it is ignored" %
-                    (config.filename, key))
+                    "'BUILDDEB' section, so it is ignored" % (config.filename, key)
+                )
             except KeyError:
                 pass
         return False, False
@@ -313,11 +318,9 @@ class DebBuildConfig:
         """
         if not trusted:
             if self._branch_config is not None:
-                value = self._branch_config.get_option(
-                    key, section=self.section)
+                value = self._branch_config.get_option(key, section=self.section)
                 if value is not None:
-                    mutter("Using %s for %s, taken from the branch",
-                           value, key)
+                    mutter("Using %s for %s, taken from the branch", value, key)
                     return value
             if self._tree_config is not None:
                 value = self._tree_config.get_option(key, section=self.section)
@@ -328,38 +331,40 @@ class DebBuildConfig:
             if not trusted or config_file[1]:
                 (found, value) = self._get_bool(config_file[0], key)
                 if found:
-                    mutter("Using %s for %s, taken from %s", str(value), key,
-                           config_file[0].filename)
+                    mutter(
+                        "Using %s for %s, taken from %s",
+                        str(value),
+                        key,
+                        config_file[0].filename,
+                    )
                     return value
         return default
 
     def _opt_property(name, help=None, trusted=False):
-        return property(lambda self: self._get_best_opt(name, trusted), None,
-                        None, help)
+        return property(
+            lambda self: self._get_best_opt(name, trusted), None, None, help
+        )
 
     def _bool_property(name, help=None, trusted=False, default=False):
         return property(
-            lambda self: self._get_best_bool(name, trusted, default),
-            None, None, help)
+            lambda self: self._get_best_bool(name, trusted, default), None, None, help
+        )
 
-    build_dir = _opt_property('build-dir', "The dir to build in")
+    build_dir = _opt_property("build-dir", "The dir to build in")
 
-    user_build_dir = property(
-            lambda self: self._user_config_value('build-dir'))
+    user_build_dir = property(lambda self: self._user_config_value("build-dir"))
 
-    orig_dir = _opt_property(
-      'orig-dir', "The dir to get upstream tarballs from")
+    orig_dir = _opt_property("orig-dir", "The dir to get upstream tarballs from")
 
-    user_orig_dir = property(lambda self: self._user_config_value('orig-dir'))
+    user_orig_dir = property(lambda self: self._user_config_value("orig-dir"))
 
-    builder = _opt_property('builder', "The command to build with", True)
+    builder = _opt_property("builder", "The command to build with", True)
 
-    result_dir = _opt_property('result-dir', "The dir to put the results in")
+    result_dir = _opt_property("result-dir", "The dir to put the results in")
 
-    user_result_dir = property(
-            lambda self: self._user_config_value('result-dir'))
+    user_result_dir = property(lambda self: self._user_config_value("result-dir"))
 
-    merge = _bool_property('merge', "Run in merge mode")
+    merge = _bool_property("merge", "Run in merge mode")
 
     @property
     def build_type(self):
@@ -373,24 +378,27 @@ class DebBuildConfig:
             return None
 
     quick_builder = _opt_property(
-        'quick-builder', "A quick command to build with", True)
+        "quick-builder", "A quick command to build with", True
+    )
 
-    native = _bool_property('native', "Build a native package")
+    native = _bool_property("native", "Build a native package")
 
-    split = _bool_property('split', "Split a full source package")
+    split = _bool_property("split", "Split a full source package")
 
     upstream_branch = _opt_property(
-        'upstream-branch', "The upstream branch to merge from")
+        "upstream-branch", "The upstream branch to merge from"
+    )
 
     export_upstream_revision = _opt_property(
-        'export-upstream-revision',
-        "The revision of the upstream source to use.")
+        "export-upstream-revision", "The revision of the upstream source to use."
+    )
 
 
 def _test():
     import doctest
+
     doctest.testmod()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     _test()

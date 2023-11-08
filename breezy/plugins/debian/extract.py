@@ -74,36 +74,45 @@ class OneZeroSourceExtractor(SourceExtractor):
         dsc_filename = os.path.abspath(self.dsc_path)
         proc = subprocess.Popen(
             ["dpkg-source", "-su", "-x", dsc_filename],
-            cwd=tempdir, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT, preexec_fn=subprocess_setup)
+            cwd=tempdir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            preexec_fn=subprocess_setup,
+        )
         (stdout, _) = proc.communicate()
-        assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % \
-            (stdout,)
-        name = self.dsc['Source']
-        version = Version(self.dsc['Version'])
+        assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % (stdout,)
+        name = self.dsc["Source"]
+        version = Version(self.dsc["Version"])
         self.extracted_upstream = os.path.join(
-            tempdir, "{}-{}.orig".format(name, str(version.upstream_version)))
+            tempdir, "{}-{}.orig".format(name, str(version.upstream_version))
+        )
         self.extracted_debianised = os.path.join(
-            tempdir, "{}-{}".format(name, str(version.upstream_version)))
+            tempdir, "{}-{}".format(name, str(version.upstream_version))
+        )
         if not os.path.exists(self.extracted_upstream):
             mutter("It's a native package")
             self.extracted_upstream = None
-        for part in self.dsc['files']:
+        for part in self.dsc["files"]:
             if self.extracted_upstream is None:
-                if part['name'].endswith(".tar.gz"):
-                    self.unextracted_debian_md5 = part['md5sum']
+                if part["name"].endswith(".tar.gz"):
+                    self.unextracted_debian_md5 = part["md5sum"]
             else:
-                if part['name'].endswith(".orig.tar.gz"):
-                    self.upstream_tarballs.append((os.path.abspath(
-                            os.path.join(
-                                osutils.dirname(self.dsc_path),
-                                part['name'])),
+                if part["name"].endswith(".orig.tar.gz"):
+                    self.upstream_tarballs.append(
+                        (
+                            os.path.abspath(
+                                os.path.join(
+                                    osutils.dirname(self.dsc_path), part["name"]
+                                )
+                            ),
                             component_from_orig_tarball(
-                                part['name'], name,
-                                str(version.upstream_version)),
-                            str(part['md5sum'])))
-                elif part['name'].endswith(".diff.gz"):
-                    self.unextracted_debian_md5 = part['md5sum']
+                                part["name"], name, str(version.upstream_version)
+                            ),
+                            str(part["md5sum"]),
+                        )
+                    )
+                elif part["name"].endswith(".diff.gz"):
+                    self.unextracted_debian_md5 = part["md5sum"]
 
 
 class ThreeDotZeroNativeSourceExtractor(SourceExtractor):
@@ -113,22 +122,27 @@ class ThreeDotZeroNativeSourceExtractor(SourceExtractor):
         tempdir = self.exit_stack.enter_context(tempfile.TemporaryDirectory())
         dsc_filename = os.path.abspath(self.dsc_path)
         proc = subprocess.Popen(
-            ['dpkg-source', '-x', dsc_filename],
-            cwd=tempdir, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT, preexec_fn=subprocess_setup)
+            ["dpkg-source", "-x", dsc_filename],
+            cwd=tempdir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            preexec_fn=subprocess_setup,
+        )
         (stdout, _) = proc.communicate()
-        assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % \
-            (stdout,)
-        name = self.dsc['Source']
-        version = Version(self.dsc['Version'])
+        assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % (stdout,)
+        name = self.dsc["Source"]
+        version = Version(self.dsc["Version"])
         self.extracted_debianised = os.path.join(
-            tempdir, "{}-{}".format(name, str(version.upstream_version)))
+            tempdir, "{}-{}".format(name, str(version.upstream_version))
+        )
         self.extracted_upstream = None
-        for part in self.dsc['files']:
-            if (part['name'].endswith(".tar.gz")
-                    or part['name'].endswith(".tar.bz2")
-                    or part['name'].endswith(".tar.xz")):
-                self.unextracted_debian_md5 = part['md5sum']
+        for part in self.dsc["files"]:
+            if (
+                part["name"].endswith(".tar.gz")
+                or part["name"].endswith(".tar.bz2")
+                or part["name"].endswith(".tar.xz")
+            ):
+                self.unextracted_debian_md5 = part["md5sum"]
 
 
 class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
@@ -137,57 +151,90 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
     def extract(self):
         tempdir = self.exit_stack.enter_context(tempfile.TemporaryDirectory())
         dsc_filename = os.path.abspath(self.dsc_path)
-        args = ['--no-preparation']
+        args = ["--no-preparation"]
         if not self.apply_patches:
-            args.extend(['--skip-patches', '--unapply-patches'])
+            args.extend(["--skip-patches", "--unapply-patches"])
         else:
-            args.extend(['--no-unapply-patches'])
+            args.extend(["--no-unapply-patches"])
         proc = subprocess.Popen(
-            ['dpkg-source', '-x', '--skip-debianization'] + args
-            + [dsc_filename],
-            cwd=tempdir, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT, preexec_fn=subprocess_setup)
+            ["dpkg-source", "-x", "--skip-debianization"] + args + [dsc_filename],
+            cwd=tempdir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            preexec_fn=subprocess_setup,
+        )
         (stdout, _) = proc.communicate()
-        assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % \
-            (stdout,)
-        name = self.dsc['Source']
-        version = Version(self.dsc['Version'])
+        assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % (stdout,)
+        name = self.dsc["Source"]
+        version = Version(self.dsc["Version"])
         self.extracted_debianised = os.path.join(
-            tempdir, "{}-{}".format(name, str(version.upstream_version)))
+            tempdir, "{}-{}".format(name, str(version.upstream_version))
+        )
         self.extracted_upstream = self.extracted_debianised + ".orig"
         os.rename(self.extracted_debianised, self.extracted_upstream)
         proc = subprocess.Popen(
-            ['dpkg-source', '-x'] + args + [dsc_filename],
-            cwd=tempdir, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT, preexec_fn=subprocess_setup)
+            ["dpkg-source", "-x"] + args + [dsc_filename],
+            cwd=tempdir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            preexec_fn=subprocess_setup,
+        )
         (stdout, _) = proc.communicate()
-        assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % \
-            (stdout,)
+        assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % (stdout,)
         # Check that there are no unreadable files extracted.
         subprocess.call(
-            ["find", self.extracted_upstream, "-perm",
-             "0000", "-exec", "chmod", "644", "{}", ";"])
+            [
+                "find",
+                self.extracted_upstream,
+                "-perm",
+                "0000",
+                "-exec",
+                "chmod",
+                "644",
+                "{}",
+                ";",
+            ]
+        )
         subprocess.call(
-            ["find", self.extracted_debianised, "-perm",
-             "0000", "-exec", "chmod", "644", "{}", ";"])
-        for part in self.dsc['files']:
-            if (part['name'].startswith(
-                    "{}_{}.orig".format(name, str(version.upstream_version)))
-                    and not part['name'].endswith('.asc')):
-                self.upstream_tarballs.append((
-                    os.path.abspath(os.path.join(
-                        osutils.dirname(self.dsc_path), part['name'])),
-                    component_from_orig_tarball(
-                        part['name'], name, str(version.upstream_version)),
-                    str(part['md5sum'])))
-            elif (part['name'].endswith(".debian.tar.gz")
-                    or part['name'].endswith(".debian.tar.bz2")
-                    or part['name'].endswith(".debian.tar.xz")):
-                self.unextracted_debian_md5 = str(part['md5sum'])
-        assert self.upstream_tarballs is not None, \
-            "Can't handle non gz|bz2|xz tarballs yet"
-        assert self.unextracted_debian_md5 is not None, \
-            "Can't handle non gz|bz2|xz tarballs yet"
+            [
+                "find",
+                self.extracted_debianised,
+                "-perm",
+                "0000",
+                "-exec",
+                "chmod",
+                "644",
+                "{}",
+                ";",
+            ]
+        )
+        for part in self.dsc["files"]:
+            if part["name"].startswith(
+                "{}_{}.orig".format(name, str(version.upstream_version))
+            ) and not part["name"].endswith(".asc"):
+                self.upstream_tarballs.append(
+                    (
+                        os.path.abspath(
+                            os.path.join(osutils.dirname(self.dsc_path), part["name"])
+                        ),
+                        component_from_orig_tarball(
+                            part["name"], name, str(version.upstream_version)
+                        ),
+                        str(part["md5sum"]),
+                    )
+                )
+            elif (
+                part["name"].endswith(".debian.tar.gz")
+                or part["name"].endswith(".debian.tar.bz2")
+                or part["name"].endswith(".debian.tar.xz")
+            ):
+                self.unextracted_debian_md5 = str(part["md5sum"])
+        assert (
+            self.upstream_tarballs is not None
+        ), "Can't handle non gz|bz2|xz tarballs yet"
+        assert (
+            self.unextracted_debian_md5 is not None
+        ), "Can't handle non gz|bz2|xz tarballs yet"
 
 
 SOURCE_EXTRACTORS = {}
@@ -196,11 +243,9 @@ SOURCE_EXTRACTORS[FORMAT_3_0_NATIVE] = ThreeDotZeroNativeSourceExtractor
 SOURCE_EXTRACTORS[FORMAT_3_0_QUILT] = ThreeDotZeroQuiltSourceExtractor
 
 
-def extract(dsc_filename: str, dsc: str, *,
-            apply_patches: bool = False) -> None:
-    format = dsc.get('Format', FORMAT_1_0).strip()
+def extract(dsc_filename: str, dsc: str, *, apply_patches: bool = False) -> None:
+    format = dsc.get("Format", FORMAT_1_0).strip()
     extractor_cls = SOURCE_EXTRACTORS.get(format)
     if extractor_cls is None:
-        raise AssertionError(
-            "Don't know how to import source format %s yet" % format)
+        raise AssertionError("Don't know how to import source format %s yet" % format)
     return extractor_cls(dsc_filename, dsc, apply_patches=apply_patches)

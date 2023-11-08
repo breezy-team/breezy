@@ -21,7 +21,7 @@
 from breezy.tests.scenarios import (
     load_tests_apply_scenarios,
     multiply_scenarios,
-    )
+)
 
 from ..bzrtools_import import import_dir
 from .. import tests
@@ -30,14 +30,12 @@ load_tests = load_tests_apply_scenarios
 
 
 class ImportArchiveTests(tests.TestCaseWithTransport):
-
-    scenarios = multiply_scenarios([
-        ('git', dict(_format='git')),
-        ('bzr', dict(_format='bzr'))])
+    scenarios = multiply_scenarios(
+        [("git", dict(_format="git")), ("bzr", dict(_format="bzr"))]
+    )
 
     def make_branch_and_tree(self, path):
-        return super().make_branch_and_tree(
-            path, format=self._format)
+        return super().make_branch_and_tree(path, format=self._format)
 
     def test_strips_common_prefix(self):
         tree = self.make_branch_and_tree(".")
@@ -45,11 +43,12 @@ class ImportArchiveTests(tests.TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         self.build_tree(["source/", "source/a/", "source/a/a", "source/a/b"])
         import_dir(tree, "source")
-        self.assertEqual({'', 'a/a', 'a', 'a/b'}, tree.all_versioned_paths())
+        self.assertEqual({"", "a/a", "a", "a/b"}, tree.all_versioned_paths())
         if tree.supports_setting_file_ids():
             self.assertEqual(
                 ["", "a", "a/a", "a/b"],
-                sorted([tree.id2path(i) for i in tree.all_file_ids()]))
+                sorted([tree.id2path(i) for i in tree.all_file_ids()]),
+            )
 
     def _add(self, tree, ps, fids=None):
         if tree.supports_setting_file_ids():
@@ -65,11 +64,11 @@ class ImportArchiveTests(tests.TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         self.build_tree(["source/", "source/a"])
         import_dir(tree, "source")
-        self.assertEqual({'', 'a'}, tree.all_versioned_paths())
+        self.assertEqual({"", "a"}, tree.all_versioned_paths())
         if tree.supports_setting_file_ids():
             self.assertEqual(
-                ["", "a"],
-                sorted([tree.id2path(i) for i in tree.all_file_ids()]))
+                ["", "a"], sorted([tree.id2path(i) for i in tree.all_file_ids()])
+            )
 
     def test_takes_file_id_from_another_tree(self):
         tree = self.make_branch_and_tree(".")
@@ -93,8 +92,7 @@ class ImportArchiveTests(tests.TestCaseWithTransport):
         self._add(file_ids_tree, ["a"], [b"a-id"])
         self._add(file_ids_tree2, ["a"], [b"other-a-id"])
         self.build_tree(["source/", "source/a"])
-        import_dir(
-            tree, "source", file_ids_from=[file_ids_tree, file_ids_tree2])
+        import_dir(tree, "source", file_ids_from=[file_ids_tree, file_ids_tree2])
         if tree.supports_setting_file_ids():
             self.assertEqual(b"a-id", tree.path2id("a"))
 
@@ -108,8 +106,7 @@ class ImportArchiveTests(tests.TestCaseWithTransport):
         self._add(file_ids_tree, ["b"], [b"b-id"])
         self._add(file_ids_tree2, ["a"], [b"other-a-id"])
         self.build_tree(["source/", "source/a"])
-        import_dir(
-            tree, "source", file_ids_from=[file_ids_tree, file_ids_tree2])
+        import_dir(tree, "source", file_ids_from=[file_ids_tree, file_ids_tree2])
         if tree.supports_setting_file_ids():
             self.assertEqual(b"other-a-id", tree.path2id("a"))
 
@@ -124,8 +121,8 @@ class ImportArchiveTests(tests.TestCaseWithTransport):
         self._add(file_ids_tree2, ["a"], [b"other-a-id"])
         self.build_tree(["source/", "source/a"])
         import_dir(
-            tree, "source", file_ids_from=[file_ids_tree2],
-            target_tree=file_ids_tree)
+            tree, "source", file_ids_from=[file_ids_tree2], target_tree=file_ids_tree
+        )
         if tree.supports_setting_file_ids():
             self.assertEqual(b"a-id", tree.path2id("a"))
 
@@ -217,20 +214,21 @@ class ImportArchiveTests(tests.TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         self.build_tree(["source/", "source/\xa7"])
         import_dir(tree, "source")
-        self.assertEqual({'', "\xa7"}, tree.all_versioned_paths())
+        self.assertEqual({"", "\xa7"}, tree.all_versioned_paths())
         if tree.supports_setting_file_ids():
             self.assertEqual(
-                ["", "\xa7"],
-                sorted([tree.id2path(i) for i in tree.all_file_ids()]))
+                ["", "\xa7"], sorted([tree.id2path(i) for i in tree.all_file_ids()])
+            )
 
     def test_exclude(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
         self.addCleanup(tree.unlock)
         self.build_tree(["source/", "source/not-excluded", "source/test"])
-        import_dir(tree, "source", exclude=['test'])
-        self.assertEqual({'', 'not-excluded'}, tree.all_versioned_paths())
+        import_dir(tree, "source", exclude=["test"])
+        self.assertEqual({"", "not-excluded"}, tree.all_versioned_paths())
         if tree.supports_setting_file_ids():
             self.assertEqual(
                 ["", "not-excluded"],
-                sorted([tree.id2path(i) for i in tree.all_file_ids()]))
+                sorted([tree.id2path(i) for i in tree.all_file_ids()]),
+            )

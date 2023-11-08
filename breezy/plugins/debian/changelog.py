@@ -30,7 +30,6 @@ from . import tree_debian_tag_name
 
 
 class UnreleasedChanges(BzrError):
-
     _fmt = "%(path)s says it's UNRELEASED."
 
     def __init__(self, path):
@@ -39,11 +38,10 @@ class UnreleasedChanges(BzrError):
 
 
 def changelog_changes(
-        tree: Tree, basis_tree: Tree,
-        cl_path: str = 'debian/changelog') -> list[str]:
+    tree: Tree, basis_tree: Tree, cl_path: str = "debian/changelog"
+) -> list[str]:
     changes = []
-    for change in tree.iter_changes(
-            basis_tree, specific_files=[cl_path]):
+    for change in tree.iter_changes(basis_tree, specific_files=[cl_path]):
         paths = change.path
         changed_content = change.changed_content
         versioned = change.versioned
@@ -55,7 +53,7 @@ def changelog_changes(
         if not versioned[1]:
             return None
         # Not a file in one tree
-        if kind[0] != 'file' or kind[1] != 'file':
+        if kind[0] != "file" or kind[1] != "file":
             return None
 
         old_text = basis_tree.get_file_lines(paths[0])
@@ -65,18 +63,18 @@ def changelog_changes(
 
 
 def changelog_commit_message(
-        tree: Tree, basis_tree: Tree,
-        path: str = 'debian/changelog') -> Optional[str]:
+    tree: Tree, basis_tree: Tree, path: str = "debian/changelog"
+) -> Optional[str]:
     changes = changelog_changes(tree, basis_tree, path)
     if not changes:
         return None
 
-    return ''.join(strip_changelog_message(changes))
+    return "".join(strip_changelog_message(changes))
 
 
 def debcommit(
-        tree, committer=None, subpath="", paths=None, reporter=None,
-        message=None):
+    tree, committer=None, subpath="", paths=None, reporter=None, message=None
+):
     """Create a git commit with message based on the new entries in changelog.
 
     Args:
@@ -91,8 +89,7 @@ def debcommit(
     """
     if message is None:
         message = changelog_commit_message(
-            tree, tree.basis_tree(),
-            path=posixpath.join(subpath, "debian/changelog")
+            tree, tree.basis_tree(), path=posixpath.join(subpath, "debian/changelog")
         )
     if paths:
         specific_files = [posixpath.join(subpath, p) for p in paths]
@@ -101,23 +98,26 @@ def debcommit(
     else:
         specific_files = None
     return tree.commit(
-        committer=committer, message=message, specific_files=specific_files,
-        reporter=reporter)
+        committer=committer,
+        message=message,
+        specific_files=specific_files,
+        reporter=reporter,
+    )
 
 
-def debcommit_release(
-        tree, committer=None, subpath="", message=None, vendor=None):
+def debcommit_release(tree, committer=None, subpath="", message=None, vendor=None):
     cl_path = posixpath.join(subpath, "debian/changelog")
     if message is None or vendor is None:
         cl = Changelog(tree.get_file(cl_path), max_blocks=1)
         if message is None:
             message = "releasing package {} version {}".format(
-                    cl[0].package, cl[0].version)
+                cl[0].package, cl[0].version
+            )
         if vendor is None:
             from .util import suite_to_distribution
+
             vendor = suite_to_distribution(cl[0].distributions)
-    tag_name = tree_debian_tag_name(
-        tree, tree.branch, subpath=subpath, vendor=vendor)
+    tag_name = tree_debian_tag_name(tree, tree.branch, subpath=subpath, vendor=vendor)
     if tag_name is None:
         raise UnreleasedChanges(cl_path)
     revid = tree.commit(committer=committer, message=message)

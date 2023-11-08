@@ -56,7 +56,7 @@ from breezy.transport import (
     Transport,
     UnusableRedirect,
     get_transport,
-    )
+)
 from .config import UpstreamMetadataSyntaxError
 from .info import versions_dict
 from .util import (
@@ -128,7 +128,7 @@ from debmutate.versions import (
     new_upstream_package_version,
     initial_debian_revision,
     debianize_upstream_version,
-    )
+)
 
 from debmutate.vcs import split_vcs_url
 from debmutate.watch import WatchSyntaxError
@@ -266,26 +266,23 @@ class MergingUpstreamSubpathUnsupported(Exception):
 RELEASE_BRANCH_NAME = "new-upstream-release"
 SNAPSHOT_BRANCH_NAME = "new-upstream-snapshot"
 DEFAULT_DISTRIBUTION = "unstable"
-VALUE_IMPORT = {
-    'release': 20,
-    'snapshot': 10
-}
+VALUE_IMPORT = {"release": 20, "snapshot": 10}
 VALUE_MERGE = {
-    'release': 40,
-    'snapshot': 30,
+    "release": 40,
+    "snapshot": 30,
 }
 
 
 def is_big_version_jump(old_upstream_version, new_upstream_version):
     try:
-        old_major_version = int(str(old_upstream_version).split('.')[0])
+        old_major_version = int(str(old_upstream_version).split(".")[0])
     except ValueError:
         return False
     try:
-        new_major_version = int(str(new_upstream_version).split('.')[0])
+        new_major_version = int(str(new_upstream_version).split(".")[0])
     except ValueError:
         return False
-    if old_major_version > 0 and new_major_version > 5*old_major_version:
+    if old_major_version > 0 and new_major_version > 5 * old_major_version:
         return True
     return False
 
@@ -400,7 +397,8 @@ def open_branch(
 ) -> Branch:
     """Open a branch by URL."""
     from breezy.directory_service import directories
-    url = directories.dereference(url, purpose='read')
+
+    url = directories.dereference(url, purpose="read")
 
     url, params = urlutils.split_segment_parameters(url)
     if name is None:
@@ -437,20 +435,21 @@ def find_new_upstream(  # noqa: C901
     require_uscan: bool = False,
     skip_signatures: bool = False,
 ):
-
     # TODO(jelmer): Find the lastest upstream present in the upstream branch
     # rather than what's in the changelog.
 
-    upstream_branch_location, upstream_branch_browse = (
-            get_upstream_branch_location(
-                tree, subpath, config, trust_package=trust_package))
+    upstream_branch_location, upstream_branch_browse = get_upstream_branch_location(
+        tree, subpath, config, trust_package=trust_package
+    )
 
     if upstream_branch_location:
-        (upstream_branch_url, upstream_branch_name,
-         upstream_subpath) = split_vcs_url(upstream_branch_location)
+        (upstream_branch_url, upstream_branch_name, upstream_subpath) = split_vcs_url(
+            upstream_branch_location
+        )
         if upstream_branch_name:
             upstream_branch_url = urlutils.join_segment_parameters(
-                upstream_branch_url, {'branch': upstream_branch_name})
+                upstream_branch_url, {"branch": upstream_branch_name}
+            )
         try:
             upstream_branch = open_branch(upstream_branch_url)
         except BranchOpenError as e:
@@ -467,8 +466,8 @@ def find_new_upstream(  # noqa: C901
         except urlutils.InvalidURL as e:
             if version_kind != "snapshot" and allow_ignore_upstream_branch:
                 logging.warning(
-                    "Upstream branch location %s invalid; ignoring. %s",
-                    e.path, e)
+                    "Upstream branch location %s invalid; ignoring. %s", e.path, e
+                )
             else:
                 raise UpstreamBranchLocationInvalid(e.path, e.extra)
             upstream_branch = None
@@ -498,15 +497,14 @@ def find_new_upstream(  # noqa: C901
         try:
             branch = open_branch(location)
         except BranchOpenError:
-            primary_upstream_source = TarfileSource(
-                location, new_upstream_version)
+            primary_upstream_source = TarfileSource(location, new_upstream_version)
         else:
             primary_upstream_source = UpstreamBranchSource.from_branch(
                 branch,
                 config=config,
                 local_dir=tree.controldir,
                 create_dist=create_dist,
-                version_kind=version_kind
+                version_kind=version_kind,
             )
     else:
         if version_kind == "snapshot":
@@ -516,7 +514,10 @@ def find_new_upstream(  # noqa: C901
         else:
             try:
                 primary_upstream_source = UScanSource.from_tree(
-                    tree, subpath, top_level, auto_fix=True,
+                    tree,
+                    subpath,
+                    top_level,
+                    auto_fix=True,
                     skip_signatures=skip_signatures,
                 )
             except NoWatchFile:
@@ -529,12 +530,12 @@ def find_new_upstream(  # noqa: C901
                 primary_upstream_source = upstream_branch_source
 
     if new_upstream_version is None and primary_upstream_source is not None:
-        unmangled_new_upstream_version, new_upstream_version = (
-                primary_upstream_source.get_latest_version(
-                    package, old_upstream_version))
+        (
+            unmangled_new_upstream_version,
+            new_upstream_version,
+        ) = primary_upstream_source.get_latest_version(package, old_upstream_version)
     else:
-        new_upstream_version = debianize_upstream_version(
-            new_upstream_version)
+        new_upstream_version = debianize_upstream_version(new_upstream_version)
 
     if new_upstream_version is None:
         raise NewUpstreamMissing()
@@ -553,8 +554,9 @@ def find_new_upstream(  # noqa: C901
         )
 
     if old_upstream_version:
-        if (strip_dfsg_suffix(str(old_upstream_version))
-                == strip_dfsg_suffix(str(new_upstream_version))):
+        if strip_dfsg_suffix(str(old_upstream_version)) == strip_dfsg_suffix(
+            str(new_upstream_version)
+        ):
             raise UpstreamAlreadyImported(new_upstream_version)
         if old_upstream_version > new_upstream_version:
             if version_kind == "release" and matches_release(
@@ -564,8 +566,10 @@ def find_new_upstream(  # noqa: C901
             raise NewerUpstreamAlreadyImported(
                 old_upstream_version, new_upstream_version
             )
-        if (is_big_version_jump(old_upstream_version, new_upstream_version) and
-                not force_big_version_jump):
+        if (
+            is_big_version_jump(old_upstream_version, new_upstream_version)
+            and not force_big_version_jump
+        ):
             raise BigVersionJump(old_upstream_version, new_upstream_version)
 
     # TODO(jelmer): Check if new_upstream_version is already imported
@@ -591,13 +595,11 @@ def find_new_upstream(  # noqa: C901
                 # The branch is our primary upstream source, so if it can't
                 # find the version then there's nothing we can do.
                 raise UpstreamVersionMissingInUpstreamBranch(
-                    upstream_branch_source.upstream_branch,
-                    str(new_upstream_version)
+                    upstream_branch_source.upstream_branch, str(new_upstream_version)
                 )
             elif not allow_ignore_upstream_branch:
                 raise UpstreamVersionMissingInUpstreamBranch(
-                    upstream_branch_source.upstream_branch,
-                    str(new_upstream_version)
+                    upstream_branch_source.upstream_branch, str(new_upstream_version)
                 )
             else:
                 logging.warning(
@@ -617,12 +619,13 @@ def find_new_upstream(  # noqa: C901
         files_excluded = None
     else:
         if files_excluded:
-            new_upstream_version = Version(add_dfsg_suffix(
-                str(new_upstream_version),
-                old_upstream_version))
+            new_upstream_version = Version(
+                add_dfsg_suffix(str(new_upstream_version), old_upstream_version)
+            )
             logging.info(
                 "Adding DFSG suffix since upstream files are excluded: %s",
-                new_upstream_version)
+                new_upstream_version,
+            )
 
     return (
         primary_upstream_source,
@@ -648,8 +651,7 @@ def import_upstream(
     committer: Optional[str] = None,
     subpath: str = "",
     include_upstream_history: Optional[bool] = None,
-    create_dist:
-        Optional[Callable[[Tree, str, Version, str], Optional[str]]] = None,
+    create_dist: Optional[Callable[[Tree, str, Version, str], Optional[str]]] = None,
     force_big_version_jump: bool = False,
     skip_signatures: bool = False,
 ) -> ImportUpstreamResult:
@@ -683,8 +685,7 @@ def import_upstream(
     # TODO(jelmer): support more components
     components = [None]
     config = debuild_config(tree, subpath)
-    (changelog, top_level) = find_changelog(
-        tree, subpath, merge=False, max_blocks=2)
+    (changelog, top_level) = find_changelog(tree, subpath, merge=False, max_blocks=2)
     old_upstream_version = changelog.version.upstream_version
     package = changelog.package
     contains_upstream_source = tree_contains_upstream_source(tree, subpath)
@@ -733,8 +734,8 @@ def import_upstream(
         os.mkdir(initial_path)
         try:
             locations = primary_upstream_source.fetch_tarballs(
-                package, str(new_upstream_version), target_dir,
-                components=components)
+                package, str(new_upstream_version), target_dir, components=components
+            )
         except (PackageVersionNotPresent, WatchLineWithoutMatchingHrefs):
             if upstream_revisions is not None:
                 locations = upstream_branch_source.fetch_tarballs(
@@ -742,7 +743,8 @@ def import_upstream(
                     str(new_upstream_version),
                     initial_path,
                     components=components,
-                    revisions=upstream_revisions)
+                    revisions=upstream_revisions,
+                )
             else:
                 raise
         orig_path = os.path.join(target_dir, "orig")
@@ -764,8 +766,7 @@ def import_upstream(
             package,
             str(new_upstream_version),
             str(old_upstream_version),
-            upstream_branch_source.upstream_branch
-            if upstream_branch_source else None,
+            upstream_branch_source.upstream_branch if upstream_branch_source else None,
             upstream_revisions,
             merge_type=None,
             force=force,
@@ -840,8 +841,7 @@ def merge_upstream(  # noqa: C901
     update_changelog: bool = True,
     subpath: str = "",
     include_upstream_history: Optional[bool] = None,
-    create_dist: Optional[
-        Callable[[Tree, str, Version, str], Optional[str]]] = None,
+    create_dist: Optional[Callable[[Tree, str, Version, str], Optional[str]]] = None,
     force_big_version_jump: bool = False,
     debian_revision: Optional[str] = None,
     require_uscan: bool = False,
@@ -879,8 +879,7 @@ def merge_upstream(  # noqa: C901
     """
     components = [None]
     config = debuild_config(tree, subpath)
-    (changelog, top_level) = find_changelog(
-        tree, subpath, merge=False, max_blocks=2)
+    (changelog, top_level) = find_changelog(tree, subpath, merge=False, max_blocks=2)
     old_upstream_version = changelog.version.upstream_version
     old_revision = tree.last_revision()
     package = changelog.package
@@ -932,8 +931,11 @@ def merge_upstream(  # noqa: C901
 
             try:
                 locations = primary_upstream_source.fetch_tarballs(
-                    package, str(new_upstream_version), initial_path,
-                    components=components)
+                    package,
+                    str(new_upstream_version),
+                    initial_path,
+                    components=components,
+                )
             except PackageVersionNotPresent as e:
                 if upstream_revisions is not None:
                     locations = upstream_branch_source.fetch_tarballs(
@@ -944,8 +946,7 @@ def merge_upstream(  # noqa: C901
                         revisions=upstream_revisions,
                     )
                 else:
-                    raise NewUpstreamTarballMissing(
-                        e.package, e.version, e.upstream)
+                    raise NewUpstreamTarballMissing(e.package, e.version, e.upstream)
 
             orig_path = os.path.join(target_dir, "orig")
             os.mkdir(orig_path)
@@ -980,10 +981,10 @@ def merge_upstream(  # noqa: C901
                 # TODO(jelmer): Perhaps reconcile these two exceptions?
                 raise UpstreamAlreadyMerged(new_upstream_version)
             except UpstreamAlreadyImported:
-                pristine_tar_source = get_pristine_tar_source(
-                    tree, tree.branch)
+                pristine_tar_source = get_pristine_tar_source(tree, tree.branch)
                 imported_revids = get_existing_imported_upstream_revids(
-                    pristine_tar_source, package, new_upstream_version)
+                    pristine_tar_source, package, new_upstream_version
+                )
                 for entry in imported_revids:
                     if entry[0] is None:
                         upstream_revid = entry[2]
@@ -993,8 +994,8 @@ def merge_upstream(  # noqa: C901
                 try:
                     try:
                         conflicts = tree.merge_from_branch(
-                            pristine_tar_source.branch,
-                            to_revision=upstream_revid)
+                            pristine_tar_source.branch, to_revision=upstream_revid
+                        )
                     except NoCommits:
                         # Maybe it's somewhere in our history, but
                         # there isn't a viable upstream branch.
@@ -1018,8 +1019,7 @@ def merge_upstream(  # noqa: C901
     # Re-read changelog, since it may have been changed by the merge
     # from upstream.
     try:
-        (changelog, top_level) = find_changelog(
-            tree, subpath, False, max_blocks=2)
+        (changelog, top_level) = find_changelog(tree, subpath, False, max_blocks=2)
     except (ChangelogParseError, MissingChangelogError):
         # If there was a conflict that affected debian/changelog, then that
         # might be to blame.
@@ -1038,16 +1038,21 @@ def merge_upstream(  # noqa: C901
 
     try:
         with ChangelogEditor(
-                tree.abspath(os.path.join(debian_path, "changelog"))) as cl:
+            tree.abspath(os.path.join(debian_path, "changelog"))
+        ) as cl:
             if debian_revision is None:
                 debian_revision = initial_debian_revision(distribution_name)
-            new_version = str(new_upstream_package_version(
-                new_upstream_version, debian_revision, cl[0].version.epoch))
+            new_version = str(
+                new_upstream_package_version(
+                    new_upstream_version, debian_revision, cl[0].version.epoch
+                )
+            )
             if not update_changelog:
                 # We need to run "gbp dch" here, since the next "gbp dch" runs
                 # won't pick up the pending changes, as we're about to change
                 # debian/changelog.
                 from debmutate.changelog import gbp_dch
+
                 gbp_dch(tree.basedir)
             cl.auto_version(new_version)
 
@@ -1077,26 +1082,36 @@ def merge_upstream(  # noqa: C901
 
 
 def report_fatal(
-        code: str, description: str, *, upstream_version: Optional[str] = None,
-        details=None, hint: Optional[str] = None,
-        transient: Optional[bool] = None, stage=None):
-    if os.environ.get('SVP_API') == '1':
+    code: str,
+    description: str,
+    *,
+    upstream_version: Optional[str] = None,
+    details=None,
+    hint: Optional[str] = None,
+    transient: Optional[bool] = None,
+    stage=None,
+):
+    if os.environ.get("SVP_API") == "1":
         context = {}
         if upstream_version is not None:
-            context['upstream_version'] = str(upstream_version)
-        with open(os.environ['SVP_RESULT'], 'w') as f:
-            json.dump({
-                'result_code': code,
-                'hint': hint,
-                'transient': transient,
-                'stage': stage,
-                'description': description,
-                'versions': versions_dict(),
-                'details': details,
-                'context': context}, f)
-    logging.fatal('%s', description)
+            context["upstream_version"] = str(upstream_version)
+        with open(os.environ["SVP_RESULT"], "w") as f:
+            json.dump(
+                {
+                    "result_code": code,
+                    "hint": hint,
+                    "transient": transient,
+                    "stage": stage,
+                    "description": description,
+                    "versions": versions_dict(),
+                    "details": details,
+                    "context": context,
+                },
+                f,
+            )
+    logging.fatal("%s", description)
     if hint:
-        logging.info('%s', hint)
+        logging.info("%s", hint)
 
 
 def main(argv=None):
@@ -1134,7 +1149,7 @@ def main(argv=None):
         "--dist-command",
         type=str,
         help="Command to run to create tarball from source tree.",
-        default=os.environ.get('DIST'),
+        default=os.environ.get("DIST"),
     )
     parser.add_argument(
         "--no-include-upstream-history",
@@ -1153,77 +1168,88 @@ def main(argv=None):
     parser.add_argument(
         "--force-big-version-jump",
         action="store_true",
-        help="force through big version jumps")
+        help="force through big version jumps",
+    )
     parser.add_argument(
         "--debian-revision",
         type=str,
         help="Debian revision to use (e.g. '1' or '0ubuntu1')",
-        default=None)
+        default=None,
+    )
     parser.add_argument(
         "--require-uscan",
         action="store_true",
-        help=("Require that uscan provides a tarball"
-              "(if --snapshot is not specified)"))
+        help=(
+            "Require that uscan provides a tarball" "(if --snapshot is not specified)"
+        ),
+    )
     parser.add_argument(
         "--upstream-location",
         type=str,
         default=None,
         help="Location of the upstream location "
-        "(defaults to reading debian/upstream/metadata or guessing)")
+        "(defaults to reading debian/upstream/metadata or guessing)",
+    )
+    parser.add_argument("--verbose", action="store_true")
     parser.add_argument(
-        "--verbose", action="store_true")
+        "--skip-signatures", action="store_true", help="Skip signature validation"
+    )
     parser.add_argument(
-        "--skip-signatures", action="store_true",
-        help="Skip signature validation")
-    parser.add_argument(
-        "--skip-empty", action="store_true",
-        help="Skip releases without changes")
+        "--skip-empty", action="store_true", help="Skip releases without changes"
+    )
     # TODO(jelmer): Support "auto"
     parser.add_argument(
-        "--version-kind", choices=["snapshot", "release"],
+        "--version-kind",
+        choices=["snapshot", "release"],
         default="release",
-        help="Version kind to merge.")
+        help="Version kind to merge.",
+    )
     args = parser.parse_args(argv)
 
     if args.verbose:
         loglevel = logging.DEBUG
     else:
         loglevel = logging.INFO
-    logging.basicConfig(level=loglevel, format='%(message)s')
+    logging.basicConfig(level=loglevel, format="%(message)s")
 
     from breezy.plugin import load_plugins
+
     load_plugins()
 
-    local_tree, subpath = WorkingTree.open_containing('.')
+    local_tree, subpath = WorkingTree.open_containing(".")
 
     with local_tree.lock_write():
-        committer = os.environ.get('COMMITTER')
+        committer = os.environ.get("COMMITTER")
 
         if control_files_in_root(local_tree, subpath):
             report_fatal(
                 "control-files-in-root",
-                "control files live in root rather than debian/ "
-                "(LarstIQ mode)",
+                "control files live in root rather than debian/ " "(LarstIQ mode)",
                 transient=False,
             )
             return 1
 
         if args.dist_command:
 
-            def create_dist(tree, package, version, target_dir, subpath=''):
+            def create_dist(tree, package, version, target_dir, subpath=""):
                 try:
                     return run_dist_command(
-                        tree, package, version, target_dir, args.dist_command,
-                        subpath=subpath)
+                        tree,
+                        package,
+                        version,
+                        target_dir,
+                        args.dist_command,
+                        subpath=subpath,
+                    )
                 except MissingNestedTree as e:
                     raise DistMissingNestedTree(e.path) from e
         else:
             create_dist = None
 
         update_changelog = True
-        if os.environ.get('DEB_UPDATE_CHANGELOG') == 'leave':
+        if os.environ.get("DEB_UPDATE_CHANGELOG") == "leave":
             update_changelog = False
-        elif os.environ.get('DEB_UPDATE_CHANGELOG') == 'update':
+        elif os.environ.get("DEB_UPDATE_CHANGELOG") == "update":
             update_changelog = True
 
         if args.snapshot:
@@ -1256,16 +1282,12 @@ def main(argv=None):
                         "Malformed tree transform during new upstream merge"
                     )
                     error_code = "malformed-transform"
-                    report_fatal(
-                        error_code, error_description, transient=False)
+                    report_fatal(error_code, error_description, transient=False)
                     return 1
                 except CorruptUpstreamSourceFile as e:
-                    report_fatal(
-                        'corrupt-upstream-file',
-                        str(e), transient=False)
+                    report_fatal("corrupt-upstream-file", str(e), transient=False)
                 except UncommittedChanges as e:
-                    report_fatal(
-                        'uncommitted-changes', str(e), transient=False)
+                    report_fatal("uncommitted-changes", str(e), transient=False)
                     return 1
             else:
                 result = import_upstream(
@@ -1288,7 +1310,7 @@ def main(argv=None):
                     "nothing-to-do",
                     "Last upstream version %s already imported." % e.version,
                     upstream_version=e.version,
-                    transient=False
+                    transient=False,
                 )
             else:
                 report_fatal(
@@ -1296,7 +1318,7 @@ def main(argv=None):
                     "Last upstream version %s already imported. " % e.version,
                     upstream_version=e.version,
                     hint="Import a snapshot by specifying --snapshot.",
-                    transient=False
+                    transient=False,
                 )
             return 1
         except ReleaseWithoutChanges as e:
@@ -1305,21 +1327,24 @@ def main(argv=None):
                 "New release %s is available, but does not contain changes."
                 % e.new_upstream_version,
                 upstream_version=e.new_upstream_version,
-                transient=False
+                transient=False,
             )
             return 1
         except UpstreamBranchLocationInvalid as e:
             report_fatal(
                 "upstream-branch-invalid",
                 "The upstream branch location ({}) is invalid: {}".format(
-                    e.url, e.extra), transient=False)
+                    e.url, e.extra
+                ),
+                transient=False,
+            )
             return 1
         except ChangelogGeneratedFile as e:
             report_fatal(
                 "changelog-generated-file",
                 "changelog file can't be updated because it is generated. "
-                "(template type: %s, path: %s)" % (
-                    e.template_type, e.template_path))
+                "(template type: %s, path: %s)" % (e.template_type, e.template_path),
+            )
             return 1
         except UnsupportedRepackFormat as e:
             error_description = (
@@ -1327,47 +1352,51 @@ def main(argv=None):
                 % (os.path.basename(e.location))
             )
             report_fatal(
-                "unsupported-repack-format", error_description,
-                transient=False)
+                "unsupported-repack-format", error_description, transient=False
+            )
             return 1
         except NewUpstreamMissing:
-            report_fatal(
-                "new-upstream-missing",
-                "Unable to find new upstream source.")
+            report_fatal("new-upstream-missing", "Unable to find new upstream source.")
             return 1
         except UpstreamAlreadyMerged as e:
             report_fatal(
                 "nothing-to-do",
                 "Last upstream version %s already merged." % e.version,
-                upstream_version=e.version, transient=False)
+                upstream_version=e.version,
+                transient=False,
+            )
             return 1
         except NoWatchFile:
             report_fatal(
                 "no-watch-file",
                 "No watch file is present, but --require-uscan was specified",
-                transient=False)
+                transient=False,
+            )
             return 1
         except PreviousVersionTagMissing as e:
             report_fatal(
                 "previous-upstream-missing",
                 "Previous upstream version %s missing (tag: %s)."
-                % (e.version, e.tag_name), transient=False
+                % (e.version, e.tag_name),
+                transient=False,
             )
             return 1
         except InvalidFormatUpstreamVersion as e:
             report_fatal(
                 "invalid-upstream-version-format",
                 "{!r} reported invalid format version string {}.".format(
-                    e.source, e.version), transient=False
+                    e.source, e.version
+                ),
+                transient=False,
             )
             return 1
         except PristineTarError as e:
             report_fatal("pristine-tar-error", "Pristine tar error: %s" % e)
             return 1
         except UpstreamBranchUnavailable as e:
-            error_description = (
-                "The upstream branch at {} was unavailable: {}".format(
-                    e.location, e.error))
+            error_description = "The upstream branch at {} was unavailable: {}".format(
+                e.location, e.error
+            )
             transient = None
             error_code = "upstream-branch-unavailable"
             if "Fossil branches are not yet supported" in str(e.error):
@@ -1397,7 +1426,7 @@ def main(argv=None):
                 "upstream-branch-unknown",
                 "Upstream branch location unknown.",
                 hint="Set 'Repository' field in debian/upstream/metadata?",
-                transient=False
+                transient=False,
             )
             return 1
         except UpstreamMergeConflicted as e:
@@ -1407,17 +1436,17 @@ def main(argv=None):
                 conflicts = [[c.path, c.typestring] for c in e.conflicts]
             report_fatal(
                 "upstream-merged-conflicts",
-                "Merging upstream version %s resulted in conflicts."
-                % e.version,
-                upstream_version=e.version, details={'conflicts': conflicts},
-                transient=False)
+                "Merging upstream version %s resulted in conflicts." % e.version,
+                upstream_version=e.version,
+                details={"conflicts": conflicts},
+                transient=False,
+            )
             return 1
         except PackageIsNative as e:
             report_fatal(
                 "native-package",
-                "Package {} is native; unable to merge new upstream.".format(
-                    e.package),
-                transient=False
+                "Package {} is native; unable to merge new upstream.".format(e.package),
+                transient=False,
             )
             return 1
         except ChangelogParseError as e:
@@ -1428,7 +1457,9 @@ def main(argv=None):
         except UpstreamVersionMissingInUpstreamBranch as e:
             error_description = (
                 "Upstream version {} not in upstream branch {!r}".format(
-                    e.version, e.branch))
+                    e.version, e.branch
+                )
+            )
             error_code = "upstream-version-missing-in-upstream-branch"
             report_fatal(error_code, error_description, transient=False)
             return 1
@@ -1436,20 +1467,19 @@ def main(argv=None):
             report_fatal(
                 "inconsistent-source-format",
                 "Inconsistencies in type of package: %s" % e,
-                transient=False
+                transient=False,
             )
             return 1
         except WatchLineWithoutMatches as e:
             report_fatal(
                 "uscan-watch-line-without-matches",
                 "UScan did not find matches for line: %s" % e.line.strip(),
-                transient=False
+                transient=False,
             )
             return 1
         except NoRoundtrippingSupport:
             error_description = (
-                "Unable to import upstream repository into "
-                "packaging repository."
+                "Unable to import upstream repository into " "packaging repository."
             )
             error_code = "roundtripping-error"
             report_fatal(error_code, error_description, transient=False)
@@ -1465,8 +1495,9 @@ def main(argv=None):
         except UpstreamMetadataSyntaxError as e:
             report_fatal(
                 "upstream-metadata-syntax-error",
-                "Unable to parse {}: {}".format(
-                    e.path, e.error), transient=False)
+                "Unable to parse {}: {}".format(e.path, e.error),
+                transient=False,
+            )
             return 1
         except InvalidNormalization as e:
             error_description = str(e)
@@ -1475,19 +1506,19 @@ def main(argv=None):
             return 1
         except MissingChangelogError as e:
             report_fatal(
-                "missing-changelog", "Missing changelog %s" % e,
-                transient=False)
+                "missing-changelog", "Missing changelog %s" % e, transient=False
+            )
             return 1
         except DistCommandFailed as e:
             report_fatal(
-                e.kind or "dist-command-failed", e.error, transient=False,
-                stage=("dist", ))
+                e.kind or "dist-command-failed",
+                e.error,
+                transient=False,
+                stage=("dist",),
+            )
             return 1
         except MissingUpstreamTarball as e:
-            report_fatal(
-                "missing-upstream-tarball",
-                "Missing upstream tarball: %s" % e
-            )
+            report_fatal("missing-upstream-tarball", "Missing upstream tarball: %s" % e)
             return 1
         except NewUpstreamTarballMissing as e:
             report_fatal(
@@ -1495,7 +1526,8 @@ def main(argv=None):
                 "New upstream version (%s/%s) found, but was missing "
                 "when retrieved as tarball from %r."
                 % (e.package, e.version, e.upstream),
-                upstream_version=e.version)
+                upstream_version=e.version,
+            )
             return 1
         except NoUpstreamLocationsKnown:
             report_fatal(
@@ -1510,28 +1542,34 @@ def main(argv=None):
                 "newer-upstream-version-already-imported",
                 "A newer upstream release (%s) has already been imported. "
                 "Found: %s" % (e.old_upstream_version, e.new_upstream_version),
-                upstream_version=e.new_upstream_version, transient=False
+                upstream_version=e.new_upstream_version,
+                transient=False,
             )
             return 1
         except MergingUpstreamSubpathUnsupported as e:
             report_fatal(
-                "unsupported-merging-upstream-with-subpath",
-                str(e), transient=False)
+                "unsupported-merging-upstream-with-subpath", str(e), transient=False
+            )
         except WatchSyntaxError as e:
-            report_fatal('watch-syntax-error', str(e), transient=False)
+            report_fatal("watch-syntax-error", str(e), transient=False)
             return 1
         except BigVersionJump as e:
             report_fatal(
                 "big-version-jump",
                 "There was a big jump in upstream versions: {} ⇒ {}".format(
-                    e.old_upstream_version, e.new_upstream_version),
-                upstream_version=e.new_upstream_version, transient=False)
+                    e.old_upstream_version, e.new_upstream_version
+                ),
+                upstream_version=e.new_upstream_version,
+                transient=False,
+            )
             return 1
         except DistMissingNestedTree as e:
             report_fatal(
                 "requires-nested-tree-support",
                 "Unable to find nested tree at %s" % e.path,
-                transient=False, stage=("dist", ))
+                transient=False,
+                stage=("dist",),
+            )
             return 1
         except OSError as e:
             if e.errno == errno.ENOSPC:
@@ -1540,20 +1578,17 @@ def main(argv=None):
             raise
 
         svp_context = {
-            "old_upstream_version":
-                str(result.old_upstream_version)
-                if result.old_upstream_version else None,
+            "old_upstream_version": str(result.old_upstream_version)
+            if result.old_upstream_version
+            else None,
             "upstream_version": str(result.new_upstream_version),
         }
 
         if result.upstream_branch:
-            svp_context["upstream_branch_url"] = full_branch_url(
-                result.upstream_branch)
-            svp_context["upstream_branch_browse"] = (
-                result.upstream_branch_browse)
+            svp_context["upstream_branch_url"] = full_branch_url(result.upstream_branch)
+            svp_context["upstream_branch_browse"] = result.upstream_branch_browse
 
-        svp_context["include_upstream_history"] = (
-            result.include_upstream_history)
+        svp_context["include_upstream_history"] = result.include_upstream_history
 
         if args.import_only:
             logging.info(
@@ -1562,15 +1597,18 @@ def main(argv=None):
                 result.old_upstream_version,
             )
 
-            if os.environ.get('SVP_API') == '1':
-                with open(os.environ['SVP_RESULT'], 'w') as f:
-                    json.dump({
-                        'value': VALUE_IMPORT[version_kind],
-                        'description': "Imported new upstream version %s" % (
-                            result.new_upstream_version),
-                        'context': svp_context,
-                        'versions': versions_dict(),
-                        }, f)
+            if os.environ.get("SVP_API") == "1":
+                with open(os.environ["SVP_RESULT"], "w") as f:
+                    json.dump(
+                        {
+                            "value": VALUE_IMPORT[version_kind],
+                            "description": "Imported new upstream version %s"
+                            % (result.new_upstream_version),
+                            "context": svp_context,
+                            "versions": versions_dict(),
+                        },
+                        f,
+                    )
             return 0
         else:
             logging.info(
@@ -1583,24 +1621,24 @@ def main(argv=None):
                 from .update_packaging import (
                     update_packaging,
                 )
+
                 old_tree = local_tree.branch.repository.revision_tree(
                     result.old_revision
                 )
-                notes = update_packaging(
-                    local_tree, old_tree, committer=committer)
+                notes = update_packaging(local_tree, old_tree, committer=committer)
                 svp_context["notes"] = notes
                 for n in notes:
                     logging.info("%s", n)
 
             patch_series_path = os.path.join(subpath, "debian/patches/series")
-            if args.refresh_patches and local_tree.has_filename(
-                    patch_series_path):
+            if args.refresh_patches and local_tree.has_filename(patch_series_path):
                 from .quilt_refresh import (
                     QuiltError,
                     QuiltPatchPushFailure,
                     QuiltPatchDoesNotApply,
                     refresh_quilt_patches,
                 )
+
                 logging.info("Refresh quilt patches.")
                 try:
                     refresh_quilt_patches(
@@ -1610,14 +1648,15 @@ def main(argv=None):
                     )
                 except QuiltPatchDoesNotApply as e:
                     error_description = (
-                        "Quilt patch %s no longer applies" % e.patch_name)
+                        "Quilt patch %s no longer applies" % e.patch_name
+                    )
                     error_code = "quilt-patch-out-of-date"
                     report_fatal(error_code, error_description)
                     return 1
                 except QuiltPatchPushFailure as e:
                     error_description = (
-                        "An error occurred refreshing quilt patch %s"
-                        % (e.patch_name, ))
+                        "An error occurred refreshing quilt patch %s" % (e.patch_name,)
+                    )
                     error_code = "quilt-refresh-error"
                     report_fatal(error_code, error_description)
                     return 1
@@ -1627,8 +1666,7 @@ def main(argv=None):
                         "%s%s" % (e.retcode, e.stderr, e.extra)
                     )
                     error_code = "quilt-refresh-error"
-                    report_fatal(
-                        error_code, error_description, transient=False)
+                    report_fatal(error_code, error_description, transient=False)
                     return 1
                 except QuiltPatchPushFailure as e:
                     error_description = (
@@ -1636,25 +1674,26 @@ def main(argv=None):
                         % (e.patch_name, e.actual_error.extra)
                     )
                     error_code = "quilt-refresh-error"
-                    report_fatal(
-                        error_code, error_description, transient=False)
+                    report_fatal(error_code, error_description, transient=False)
                     return 1
 
-            logging.info(
-                'Merge new upstream version %s', result.new_upstream_version)
+            logging.info("Merge new upstream version %s", result.new_upstream_version)
             proposed_commit_message = (
                 "Merge new upstream release %s" % result.new_upstream_version
             )
-            if os.environ.get('SVP_API') == '1':
-                with open(os.environ['SVP_RESULT'], 'w') as f:
-                    json.dump({
-                        'value': VALUE_MERGE[version_kind],
-                        'description': "Merged new upstream version %s" % (
-                            result.new_upstream_version),
-                        'commit-message': proposed_commit_message,
-                        'context': svp_context,
-                        'versions': versions_dict(),
-                        }, f)
+            if os.environ.get("SVP_API") == "1":
+                with open(os.environ["SVP_RESULT"], "w") as f:
+                    json.dump(
+                        {
+                            "value": VALUE_MERGE[version_kind],
+                            "description": "Merged new upstream version %s"
+                            % (result.new_upstream_version),
+                            "commit-message": proposed_commit_message,
+                            "context": svp_context,
+                            "versions": versions_dict(),
+                        },
+                        f,
+                    )
 
 
 if __name__ == "__main__":

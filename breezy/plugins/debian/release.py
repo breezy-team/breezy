@@ -25,7 +25,7 @@ from breezy.mutabletree import MutableTree
 from debmutate.changelog import (
     release as mark_for_release,
     ChangelogEditor,
-    distribution_is_unreleased
+    distribution_is_unreleased,
 )
 
 from .changelog import debcommit_release
@@ -36,17 +36,17 @@ from .util import find_changelog
 def release(local_tree: MutableTree, subpath: str):
     """Release a tree."""
     (changelog, top_level) = find_changelog(
-        local_tree, subpath, merge=False, max_blocks=2)
+        local_tree, subpath, merge=False, max_blocks=2
+    )
 
     # TODO(jelmer): If this changelog is automatically updated,
     # insert missing entries now.
     if distribution_is_unreleased(changelog.distributions):
         if top_level:
-            changelog_path = 'changelog'
+            changelog_path = "changelog"
         else:
-            changelog_path = 'debian/changelog'
-        changelog_abspath = local_tree.abspath(
-            os.path.join(subpath, changelog_path))
+            changelog_path = "debian/changelog"
+        changelog_abspath = local_tree.abspath(os.path.join(subpath, changelog_path))
         with ChangelogEditor(changelog_abspath) as e:
             mark_for_release(e.changelog)
         return debcommit_release(local_tree, subpath=subpath)
@@ -54,7 +54,6 @@ def release(local_tree: MutableTree, subpath: str):
 
 
 class SuccessReleaseMarker(object):
-
     def __init__(self, local_tree, subpath):
         self.local_tree = local_tree
         self.subpath = subpath
@@ -62,21 +61,22 @@ class SuccessReleaseMarker(object):
     def __enter__(self):
         self.old_revid = self.local_tree.last_revision()
         (changelog, top_level) = find_changelog(
-            self.local_tree, self.subpath, merge=False, max_blocks=2)
+            self.local_tree, self.subpath, merge=False, max_blocks=2
+        )
 
         # TODO(jelmer): If this changelog is automatically updated,
         # insert missing entries now.
         if distribution_is_unreleased(changelog.distributions):
             if top_level:
-                self.changelog_path = 'changelog'
+                self.changelog_path = "changelog"
             else:
-                self.changelog_path = 'debian/changelog'
+                self.changelog_path = "debian/changelog"
             self.changelog_abspath = self.local_tree.abspath(
-                os.path.join(self.subpath, self.changelog_path))
+                os.path.join(self.subpath, self.changelog_path)
+            )
             with ChangelogEditor(self.changelog_abspath) as e:
                 mark_for_release(e.changelog)
-            self.new_revid = debcommit_release(
-                self.local_tree, subpath=self.subpath)
+            self.new_revid = debcommit_release(self.local_tree, subpath=self.subpath)
         else:
             self.new_revid = None
 
@@ -86,7 +86,6 @@ class SuccessReleaseMarker(object):
         if exc_type:
             if self.new_revid:
                 self.local_tree.set_last_revision(self.old_revid)
-                self.local_tree.branch.generate_revision_history(
-                    self.old_revid)
+                self.local_tree.branch.generate_revision_history(self.old_revid)
                 self.local_tree.revert([self.changelog_path])
         return False

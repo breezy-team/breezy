@@ -41,13 +41,12 @@ class AptSourceError(Exception):
 
 
 def _convert_apt_pkg_error(e):
-    if '28: No space left on device':
+    if "28: No space left on device":
         return IOError(errno.ENOSPC, str(e))
     return e
 
 
 class Apt:
-
     def __enter__(self):
         raise NotImplementedError(self.__enter__)
 
@@ -56,7 +55,7 @@ class Apt:
 
     def iter_source_by_name(self, source_name):
         for source in self.iter_sources():
-            if source['Package'] == source_name:
+            if source["Package"] == source_name:
                 yield source
 
     def iter_sources(self):
@@ -67,15 +66,13 @@ class Apt:
 
     def iter_binary_by_name(self, binary_name):
         for binary in self.iter_binaries():
-            if binary['Package'] == binary_name:
+            if binary["Package"] == binary_name:
                 yield binary
 
-    def retrieve_orig(self, source_name, target_directory,
-                      orig_version=None):
+    def retrieve_orig(self, source_name, target_directory, orig_version=None):
         raise NotImplementedError(self.retrieve_orig)
 
-    def retrieve_source(self, source_name, target_directory,
-                        source_version=None):
+    def retrieve_source(self, source_name, target_directory, source_version=None):
         raise NotImplementedError(self.retrieve_source)
 
 
@@ -83,7 +80,6 @@ _apt_semaphore = Semaphore()
 
 
 class LocalApt(Apt):
-
     def __init__(self, rootdir=None):
         self.apt_pkg = None
         self._rootdir = rootdir
@@ -95,8 +91,9 @@ class LocalApt(Apt):
         try:
             import apt_pkg
         except ImportError as e:
-            raise DependencyNotPresent('apt_pkg', e) from e
+            raise DependencyNotPresent("apt_pkg", e) from e
         import apt
+
         self.apt_pkg = apt_pkg
         self.apt_pkg.init()
         try:
@@ -109,7 +106,7 @@ class LocalApt(Apt):
         if self._rootdir is not None:
             self.apt_pkg.config.set("Dir", self._rootdir)
         else:
-            self.apt_pkg.config.set("Dir", '/')
+            self.apt_pkg.config.set("Dir", "/")
 
     def __exit__(self, exc_tp, exc_val, exc_tb):
         return False
@@ -158,32 +155,38 @@ class LocalApt(Apt):
                 for version in pkg.versions:
                     yield Deb822(version._records.record)
 
-    def retrieve_source(self, package_name, target, source_version=None,
-                        tar_only=False):
-        self._run_apt_source(package_name, target, source_version,
-                             tar_only=tar_only)
+    def retrieve_source(
+        self, package_name, target, source_version=None, tar_only=False
+    ):
+        self._run_apt_source(package_name, target, source_version, tar_only=tar_only)
 
     def _get_command(self, package, version_str=None, tar_only=False):
-        args = ['apt', 'source', '-d']
+        args = ["apt", "source", "-d"]
         if self._rootdir is not None:
-            args.append('-oDir=%s' % self._rootdir)
+            args.append("-oDir=%s" % self._rootdir)
         if tar_only:
-            args.append('--tar-only')
-        args.extend([
-            '-y', '--only-source',
-            ('{}={}'.format(package, version_str))
-            if version_str is not None else package])
+            args.append("--tar-only")
+        args.extend(
+            [
+                "-y",
+                "--only-source",
+                ("{}={}".format(package, version_str))
+                if version_str is not None
+                else package,
+            ]
+        )
         return args
 
-    def _run_apt_source(self, package: str, target_dir,
-                        version_str: Optional[str] = None,
-                        tar_only: bool = False):
+    def _run_apt_source(
+        self,
+        package: str,
+        target_dir,
+        version_str: Optional[str] = None,
+        tar_only: bool = False,
+    ):
         command = self._get_command(package, version_str, tar_only=tar_only)
         try:
-            subprocess.run(
-                command, cwd=target_dir,
-                capture_output=True,
-                check=True)
+            subprocess.run(command, cwd=target_dir, capture_output=True, check=True)
         except subprocess.CalledProcessError as e:
             stderr = e.stderr.splitlines()
             if stderr[-1] == (
@@ -193,24 +196,20 @@ class LocalApt(Apt):
             CS = b"\x1b[1;31mE: \x1b[0m"
             CE = b"\x1b[0m"
             if stderr[-1] == (
-                CS + b"You must put some 'deb-src' URIs in your sources.list" +
-                CE
+                CS + b"You must put some 'deb-src' URIs in your sources.list" + CE
             ):
                 raise NoAptSources() from e
             if stderr[-1].startswith(b"E: "):
                 raise AptSourceError(stderr[-1][3:].decode()) from e
             if stderr[-1].startswith(CS):
-                raise AptSourceError(
-                    stderr[-1][len(CS): -len(CE)].decode()) from e
+                raise AptSourceError(stderr[-1][len(CS) : -len(CE)].decode()) from e
             raise AptSourceError(
                 [line.decode("utf-8", "surrogateescape") for line in stderr]
             ) from e
 
 
 class RemoteApt(LocalApt):
-
-    def __init__(self, mirror_uri, distribution=None, components=None,
-                 key_path=None):
+    def __init__(self, mirror_uri, distribution=None, components=None, key_path=None):
         super().__init__()
         self.mirror_uri = mirror_uri
         self.distribution = distribution
@@ -219,35 +218,41 @@ class RemoteApt(LocalApt):
         self._rootdir = None
 
     def __repr__(self):
-        return (
-            "{}({!r}, distribution={!r}, components={!r}, key_path={!r})"
-            .format(
-                type(self).__name__, self.mirror_uri, self.distribution,
-                self.components, self.key_path))
+        return "{}({!r}, distribution={!r}, components={!r}, key_path={!r})".format(
+            type(self).__name__,
+            self.mirror_uri,
+            self.distribution,
+            self.components,
+            self.key_path,
+        )
 
     def __enter__(self):
         self._rootdir = tempfile.mkdtemp()
-        aptdir = os.path.join(self._rootdir, 'etc', 'apt')
+        aptdir = os.path.join(self._rootdir, "etc", "apt")
         os.makedirs(aptdir)
         if self.key_path:
             tag = "[signed-by=%s]" % self.key_path
         else:
             tag = "[trusted=yes]"
-        with open(os.path.join(aptdir, 'sources.list'), 'w') as f:
-            f.write('deb {} {} {} {}\n'.format(
-                tag, self.mirror_uri, self.distribution,
-                ' '.join(self.components)))
-            f.write('deb-src {} {} {} {}\n'.format(
-                tag, self.mirror_uri, self.distribution,
-                ' '.join(self.components)))
+        with open(os.path.join(aptdir, "sources.list"), "w") as f:
+            f.write(
+                "deb {} {} {} {}\n".format(
+                    tag, self.mirror_uri, self.distribution, " ".join(self.components)
+                )
+            )
+            f.write(
+                "deb-src {} {} {} {}\n".format(
+                    tag, self.mirror_uri, self.distribution, " ".join(self.components)
+                )
+            )
         try:
             import apt
         except ImportError as e:
-            raise DependencyNotPresent('apt', e) from e
+            raise DependencyNotPresent("apt", e) from e
         try:
             import apt_pkg
         except ImportError as e:
-            raise DependencyNotPresent('apt_pkg', e) from e
+            raise DependencyNotPresent("apt_pkg", e) from e
         self.apt_pkg = apt_pkg
         self.apt_pkg.init()
         try:
@@ -273,5 +278,5 @@ class RemoteApt(LocalApt):
 
     @classmethod
     def from_string(cls, text, key_path=None):
-        (mirror_uri, distribution, rest) = text.split(' ', 2)
+        (mirror_uri, distribution, rest) = text.split(" ", 2)
         return cls(mirror_uri, distribution, rest.split(), key_path=key_path)

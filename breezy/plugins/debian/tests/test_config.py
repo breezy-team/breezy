@@ -23,114 +23,117 @@ from ....branch import Branch
 from ..config import (
     BUILD_TYPE_MERGE,
     DebBuildConfig,
-    )
+)
 from . import TestCaseWithTransport
 
 
 class DebBuildConfigTests(TestCaseWithTransport):
-
     def setUp(self):
         super().setUp()
-        self.tree = self.make_branch_and_tree('.')
+        self.tree = self.make_branch_and_tree(".")
         self.branch = self.tree.branch
-        with open('default.conf', 'w') as f:
-            f.write('['+DebBuildConfig.section+']\n')
+        with open("default.conf", "w") as f:
+            f.write("[" + DebBuildConfig.section + "]\n")
             # shouldn't be read as it needs to be trusted
-            f.write('builder = invalid builder\n')
-            f.write('build-dir = default build dir\n')
-            f.write('orig-dir = default orig dir\n')
-            f.write('result-dir = default result dir\n')
-        with open('user.conf', 'w') as f:
-            f.write('['+DebBuildConfig.section+']\n')
-            f.write('builder = valid builder\n')
-            f.write('quick-builder = valid quick builder\n')
-            f.write('orig-dir = user orig dir\n')
-            f.write('result-dir = user result dir\n')
-        with open('.bzr/branch/branch.conf', 'w') as f:
-            f.write('['+DebBuildConfig.section+']\n')
-            f.write('quick-builder = invalid quick builder\n')
-            f.write('result-dir = branch result dir\n')
-        self.tree.add(['default.conf', 'user.conf'])
+            f.write("builder = invalid builder\n")
+            f.write("build-dir = default build dir\n")
+            f.write("orig-dir = default orig dir\n")
+            f.write("result-dir = default result dir\n")
+        with open("user.conf", "w") as f:
+            f.write("[" + DebBuildConfig.section + "]\n")
+            f.write("builder = valid builder\n")
+            f.write("quick-builder = valid quick builder\n")
+            f.write("orig-dir = user orig dir\n")
+            f.write("result-dir = user result dir\n")
+        with open(".bzr/branch/branch.conf", "w") as f:
+            f.write("[" + DebBuildConfig.section + "]\n")
+            f.write("quick-builder = invalid quick builder\n")
+            f.write("result-dir = branch result dir\n")
+        self.tree.add(["default.conf", "user.conf"])
         self.config = DebBuildConfig(
-            [('user.conf', True), ('default.conf', False)],
-            branch=self.branch)
+            [("user.conf", True), ("default.conf", False)], branch=self.branch
+        )
 
     def test_secure_not_from_untrusted(self):
-        self.assertEqual(self.config.builder, 'valid builder')
+        self.assertEqual(self.config.builder, "valid builder")
 
     def test_secure_not_from_branch(self):
-        self.assertEqual(self.config.quick_builder, 'valid quick builder')
+        self.assertEqual(self.config.quick_builder, "valid quick builder")
 
     def test_branch_over_all(self):
-        self.assertEqual(self.config.result_dir, 'branch result dir')
+        self.assertEqual(self.config.result_dir, "branch result dir")
 
     def test_hierarchy(self):
-        self.assertEqual(self.config.orig_dir, 'user orig dir')
-        self.assertEqual(self.config.build_dir, 'default build dir')
+        self.assertEqual(self.config.orig_dir, "user orig dir")
+        self.assertEqual(self.config.build_dir, "default build dir")
 
     def test_no_entry(self):
         self.assertEqual(self.config.merge, False)
         self.assertEqual(self.config.build_type, None)
 
     def test_parse_error(self):
-        with open('invalid.conf', 'w') as f:
-            f.write('['+DebBuildConfig.section+'\n')
-        DebBuildConfig([('invalid.conf', True, 'invalid.conf')])
+        with open("invalid.conf", "w") as f:
+            f.write("[" + DebBuildConfig.section + "\n")
+        DebBuildConfig([("invalid.conf", True, "invalid.conf")])
 
     def test_upstream_metadata(self):
         cfg = DebBuildConfig([], tree=self.branch.basis_tree())
         self.assertIs(None, cfg.upstream_branch)
 
-        self.build_tree_contents([
-          ('debian/',),
-          ('debian/upstream/',),
-          ('debian/upstream/metadata',
-           b'Name: example\n'
-           b'Repository: http://example.com/foo\n'
-           b'Repository-Tag-Prefix: exampl-\n'
-           )])
-        self.tree.add(
-            ['debian', 'debian/upstream', 'debian/upstream/metadata'])
+        self.build_tree_contents(
+            [
+                ("debian/",),
+                ("debian/upstream/",),
+                (
+                    "debian/upstream/metadata",
+                    b"Name: example\n"
+                    b"Repository: http://example.com/foo\n"
+                    b"Repository-Tag-Prefix: exampl-\n",
+                ),
+            ]
+        )
+        self.tree.add(["debian", "debian/upstream", "debian/upstream/metadata"])
 
         cfg = DebBuildConfig([], tree=self.tree)
         self.assertEqual("http://example.com/foo", cfg.upstream_branch)
-        self.assertEqual(
-            "tag:exampl-$UPSTREAM_VERSION", cfg.export_upstream_revision)
+        self.assertEqual("tag:exampl-$UPSTREAM_VERSION", cfg.export_upstream_revision)
 
     def test_upstream_metadata_multidoc(self):
         cfg = DebBuildConfig([], tree=self.branch.basis_tree())
         self.assertIs(None, cfg.upstream_branch)
 
-        self.build_tree_contents([
-          ('debian/',),
-          ('debian/upstream/',),
-          ('debian/upstream/metadata',
-           b'---\n'
-           b'---\n'
-           b'Name: example\n'
-           b'Repository: http://example.com/foo\n'
-           b'Repository-Tag-Prefix: exampl-\n'
-           )])
-        self.tree.add(
-            ['debian', 'debian/upstream', 'debian/upstream/metadata'])
+        self.build_tree_contents(
+            [
+                ("debian/",),
+                ("debian/upstream/",),
+                (
+                    "debian/upstream/metadata",
+                    b"---\n"
+                    b"---\n"
+                    b"Name: example\n"
+                    b"Repository: http://example.com/foo\n"
+                    b"Repository-Tag-Prefix: exampl-\n",
+                ),
+            ]
+        )
+        self.tree.add(["debian", "debian/upstream", "debian/upstream/metadata"])
 
         cfg = DebBuildConfig([], tree=self.tree)
         self.assertEqual("http://example.com/foo", cfg.upstream_branch)
-        self.assertEqual(
-            "tag:exampl-$UPSTREAM_VERSION", cfg.export_upstream_revision)
+        self.assertEqual("tag:exampl-$UPSTREAM_VERSION", cfg.export_upstream_revision)
 
     def test_invalid_upstream_metadata(self):
         cfg = DebBuildConfig([], tree=self.branch.basis_tree())
         self.assertIs(None, cfg.upstream_branch)
 
-        self.build_tree_contents([
-          ('debian/',),
-          ('debian/upstream/',),
-          ('debian/upstream/metadata',
-           b'debian/changelog.blah'
-           )])
-        self.tree.add(
-            ['debian', 'debian/upstream', 'debian/upstream/metadata'])
+        self.build_tree_contents(
+            [
+                ("debian/",),
+                ("debian/upstream/",),
+                ("debian/upstream/metadata", b"debian/changelog.blah"),
+            ]
+        )
+        self.tree.add(["debian", "debian/upstream", "debian/upstream/metadata"])
 
         # We just ignore the upstream metadata file in this case
         config = DebBuildConfig([], tree=self.tree)
@@ -145,8 +148,8 @@ else:
     from ...svn.tests import SubversionTestCase
 
     class DebuildSvnBpTests(SubversionTestCase):
-
         if not getattr(SubversionTestCase, "make_svn_branch", None):
+
             def make_svn_branch(self, relpath):
                 repos_url = self.make_repository(relpath)
                 return Branch.open(repos_url)

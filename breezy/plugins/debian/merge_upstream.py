@@ -56,8 +56,8 @@ TAG_PREFIX = "upstream-"
 
 # TODO(jelmer): Move into debmutate
 def changelog_add_new_version(
-        tree, subpath, upstream_version: str, distribution_name, changelog,
-        package):
+    tree, subpath, upstream_version: str, distribution_name, changelog, package
+):
     """Add an entry to the changelog for a new version.
 
     :param tree: WorkingTree in which the package lives
@@ -70,29 +70,39 @@ def changelog_add_new_version(
         epoch = None
     else:
         epoch = changelog.epoch
-    if not tree.has_filename(osutils.pathjoin(subpath, 'debian')):
-        tree.mkdir(osutils.pathjoin(subpath, 'debian'))
+    if not tree.has_filename(osutils.pathjoin(subpath, "debian")):
+        tree.mkdir(osutils.pathjoin(subpath, "debian"))
     cl_path = osutils.pathjoin(subpath, "debian/changelog")
-    create = (not tree.has_filename(cl_path))
+    create = not tree.has_filename(cl_path)
     if create:
         cl = ChangelogEditor.create(tree.abspath(cl_path))
     else:
         cl = ChangelogEditor(tree.abspath(cl_path))
     with cl:
         cl.auto_version(
-            version=new_package_version(
-                upstream_version, distribution_name, epoch),
-            package=package)
+            version=new_package_version(upstream_version, distribution_name, epoch),
+            package=package,
+        )
         cl.add_entry([upstream_merge_changelog_line(upstream_version)])
     if not tree.is_versioned(cl_path):
         tree.add([cl_path])
 
 
 def do_import(
-        tree, subpath, tarball_filenames, package, version,
-        current_version, upstream_branch, upstream_revisions, merge_type=None,
-        force=False, force_pristine_tar=False, committer=None,
-        files_excluded=None):
+    tree,
+    subpath,
+    tarball_filenames,
+    package,
+    version,
+    current_version,
+    upstream_branch,
+    upstream_revisions,
+    merge_type=None,
+    force=False,
+    force_pristine_tar=False,
+    committer=None,
+    files_excluded=None,
+):
     """Import new tarballs.
 
     Args:
@@ -114,18 +124,19 @@ def do_import(
     db = DistributionBranch(tree.branch, tree.branch, tree=tree)
     dbs = DistributionBranchSet()
     dbs.add_branch(db)
-    tarballs = [(p, component_from_orig_tarball(p, package, version), None)
-                for p in tarball_filenames]
+    tarballs = [
+        (p, component_from_orig_tarball(p, package, version), None)
+        for p in tarball_filenames
+    ]
 
     with tempfile.TemporaryDirectory(
-            dir=os.path.join(db.tree.basedir, '..')) as tempdir:
+        dir=os.path.join(db.tree.basedir, "..")
+    ) as tempdir:
         if current_version is not None:
-            db._export_previous_upstream_tree(
-                package, current_version, tempdir)
+            db._export_previous_upstream_tree(package, current_version, tempdir)
         else:
             db.create_empty_upstream_tree(tempdir)
-        if db.pristine_upstream_source.has_version(
-                package, version, try_hard=False):
+        if db.pristine_upstream_source.has_version(package, version, try_hard=False):
             raise UpstreamAlreadyImported(version)
 
         parents = {None: []}
@@ -133,19 +144,32 @@ def do_import(
             parents = {None: [db.pristine_upstream_branch.last_revision()]}
 
         return db.import_upstream_tarballs(
-            tarballs, package, version,
+            tarballs,
+            package,
+            version,
             parents,
             upstream_branch=upstream_branch,
             upstream_revisions=upstream_revisions,
             force_pristine_tar=force_pristine_tar,
-            committer=committer, files_excluded=files_excluded)
+            committer=committer,
+            files_excluded=files_excluded,
+        )
 
 
 def do_merge(
-        tree, tarball_filenames, package, version,
-        current_version, upstream_branch, upstream_revisions, merge_type=None,
-        force=False, force_pristine_tar=False, committer=None,
-        files_excluded=None):
+    tree,
+    tarball_filenames,
+    package,
+    version,
+    current_version,
+    upstream_branch,
+    upstream_revisions,
+    merge_type=None,
+    force=False,
+    force_pristine_tar=False,
+    committer=None,
+    files_excluded=None,
+):
     """Actually execute a merge.
 
     Args:
@@ -164,15 +188,22 @@ def do_merge(
     db = DistributionBranch(tree.branch, tree.branch, tree=tree)
     dbs = DistributionBranchSet()
     dbs.add_branch(db)
-    tarballs = [(p, component_from_orig_tarball(p, package, version))
-                for p in tarball_filenames]
+    tarballs = [
+        (p, component_from_orig_tarball(p, package, version)) for p in tarball_filenames
+    ]
     return db.merge_upstream(
-        tarballs, package, version, current_version,
+        tarballs,
+        package,
+        version,
+        current_version,
         upstream_branch=upstream_branch,
         upstream_revisions=upstream_revisions,
-        merge_type=merge_type, force=force,
+        merge_type=merge_type,
+        force=force,
         force_pristine_tar=force_pristine_tar,
-        committer=committer, files_excluded=files_excluded)
+        committer=committer,
+        files_excluded=files_excluded,
+    )
 
 
 def fetch_tarball(package, version, orig_dir, locations, v3):
@@ -194,7 +225,7 @@ def fetch_tarball(package, version, orig_dir, locations, v3):
 def get_tarballs(orig_dir, tree, package, version, locations):
     """Retrieve upstream tarballs."""
     source_format = tree_get_source_format(tree)
-    v3 = (source_format in [FORMAT_3_0_QUILT, FORMAT_3_0_NATIVE])
+    v3 = source_format in [FORMAT_3_0_QUILT, FORMAT_3_0_NATIVE]
     orig_dir = os.path.join(tree.basedir, orig_dir)
     if not os.path.exists(orig_dir):
         os.makedirs(orig_dir)
@@ -205,13 +236,10 @@ def get_upstream_branch_location(tree, subpath, config, trust_package=False):
     from lintian_brush.vcs import sanitize_url as sanitize_vcs_url
 
     if config.upstream_branch is not None:
-        note(
-            "Using upstream branch %s (from configuration)",
-            config.upstream_branch)
+        note("Using upstream branch %s (from configuration)", config.upstream_branch)
         # TODO(jelmer): Make brz-debian sanitize the URL?
         upstream_branch_location = sanitize_vcs_url(config.upstream_branch)
-        upstream_branch_browse = getattr(
-            config, "upstream_branch_browse", None)
+        upstream_branch_browse = getattr(config, "upstream_branch_browse", None)
     else:
         from upstream_ontologist.guess import guess_upstream_metadata
 
@@ -222,11 +250,9 @@ def get_upstream_branch_location(tree, subpath, config, trust_package=False):
             consult_external_directory=False,
         )
         upstream_branch_location = guessed_upstream_metadata.get("Repository")
-        upstream_branch_browse = guessed_upstream_metadata.get(
-            "Repository-Browse")
+        upstream_branch_browse = guessed_upstream_metadata.get("Repository-Browse")
         if upstream_branch_location:
-            note(
-                "Using upstream branch %s (guessed)", upstream_branch_location)
+            note("Using upstream branch %s (guessed)", upstream_branch_location)
     if upstream_branch_browse is None and upstream_branch_location is not None:
         try:
             from lintian_brush.vcs import determine_browser_url
@@ -240,14 +266,12 @@ def get_upstream_branch_location(tree, subpath, config, trust_package=False):
 
 
 def get_existing_imported_upstream_revids(
-        upstream_source, package, new_upstream_version):
+    upstream_source, package, new_upstream_version
+):
     imported_revids = []
-    for (component,
-         (revid, subpath)) in upstream_source.version_as_revisions(
-             package, new_upstream_version).items():
-        upstream_tag = upstream_source.tag_name(
-            new_upstream_version, component
-        )
-        imported_revids.append(
-            (component, upstream_tag, revid, None, subpath))
+    for component, (revid, subpath) in upstream_source.version_as_revisions(
+        package, new_upstream_version
+    ).items():
+        upstream_tag = upstream_source.tag_name(new_upstream_version, component)
+        imported_revids.append((component, upstream_tag, revid, None, subpath))
     return imported_revids

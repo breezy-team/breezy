@@ -26,7 +26,6 @@ from ..test_import_dsc import PristineTarFeature
 
 
 class TestImportUpstream(TestBaseImportDsc):
-
     def setUp(self):
         TestBaseImportDsc.setUp(self)
         self.requireFeature(PristineTarFeature)
@@ -47,36 +46,34 @@ class TestImportUpstream(TestBaseImportDsc):
     def assertUpstreamContentAndFileIdFromTree(self, revtree, fromtree):
         """Check what content and file ids revtree has."""
         # that does not have debian/
-        self.assertEqual(None, revtree.path2id('debian'))
+        self.assertEqual(None, revtree.path2id("debian"))
         # and does have the same fileid for README as in tree
-        self.assertNotEqual(None, revtree.path2id('README'))
-        self.assertEqual(fromtree.path2id('README'), revtree.path2id('README'))
+        self.assertNotEqual(None, revtree.path2id("README"))
+        self.assertEqual(fromtree.path2id("README"), revtree.path2id("README"))
 
     def make_upstream_tree(self):
         """Make an upstream tree with its own history."""
-        upstreamtree = self.make_branch_and_tree('upstream')
+        upstreamtree = self.make_branch_and_tree("upstream")
         self.make_unpacked_upstream_source(
-            transport=upstreamtree.controldir.root_transport)
-        upstreamtree.smart_add(['upstream'])
-        upstreamtree.commit('upstream release')
+            transport=upstreamtree.controldir.root_transport
+        )
+        upstreamtree.smart_add(["upstream"])
+        upstreamtree.commit("upstream release")
         return upstreamtree
 
     def make_upstream_change(self, upstreamtree):
         """Commit a change to upstreamtree."""
         # Currently an empty commit, but we may need file content changes to be
         # thorough?
-        return upstreamtree.commit('new commit')
+        return upstreamtree.commit("new commit")
 
     def make_workingdir(self):
-        """Make a working directory with upstream source and debian packaging.
-        """
-        tree = self.make_branch_and_tree('working')
-        self.make_unpacked_upstream_source(
-            transport=tree.controldir.root_transport)
-        self.make_debian_dir(
-            tree.controldir.root_transport.local_abspath('debian'))
-        tree.smart_add(['working'])
-        tree.commit('save changes')
+        """Make a working directory with upstream source and debian packaging."""
+        tree = self.make_branch_and_tree("working")
+        self.make_unpacked_upstream_source(transport=tree.controldir.root_transport)
+        self.make_debian_dir(tree.controldir.root_transport.local_abspath("debian"))
+        tree.smart_add(["working"])
+        tree.commit("save changes")
         return tree
 
     def upstream_tag(self, version):
@@ -85,20 +82,19 @@ class TestImportUpstream(TestBaseImportDsc):
     def test_import_upstream_no_branch_no_prior_tarball(self):
         self.make_upstream_tarball()
         self.make_real_source_package()
-        tree = self.make_branch_and_tree('working')
-        self.make_unpacked_upstream_source(
-            transport=tree.controldir.root_transport)
-        self.make_debian_dir(
-            tree.controldir.root_transport.local_abspath('debian'))
-        tree.smart_add(['working'])
-        tree.commit('save changes')
+        tree = self.make_branch_and_tree("working")
+        self.make_unpacked_upstream_source(transport=tree.controldir.root_transport)
+        self.make_debian_dir(tree.controldir.root_transport.local_abspath("debian"))
+        tree.smart_add(["working"])
+        tree.commit("save changes")
         tar_path = "../%s" % self.upstream_tarball_name
         out, err = self.run_bzr(
-            ['import-upstream', self.upstream_version,
-             tar_path], working_dir='working')
+            ["import-upstream", self.upstream_version, tar_path], working_dir="working"
+        )
         self.assertEqual(
-            'Imported {} as tag:upstream-{}.\n'.format(
-                tar_path, self.upstream_version), out)
+            "Imported {} as tag:upstream-{}.\n".format(tar_path, self.upstream_version),
+            out,
+        )
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertFalse(tree.has_changes())
@@ -112,9 +108,14 @@ class TestImportUpstream(TestBaseImportDsc):
         upstreamtree = self.make_upstream_tree()
         tree = self.make_workingdir()
         self.run_bzr(
-            ['import-upstream', self.upstream_version,
-             "../%s" % self.upstream_tarball_name, '../upstream'],
-            working_dir='working')
+            [
+                "import-upstream",
+                self.upstream_version,
+                "../%s" % self.upstream_tarball_name,
+                "../upstream",
+            ],
+            working_dir="working",
+        )
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertFalse(tree.has_changes())
@@ -128,23 +129,33 @@ class TestImportUpstream(TestBaseImportDsc):
         # XXX: refactor: make this an API call - running blackbox in test prep
         # is ugly.
         self.run_bzr(
-            ['import-upstream', self.upstream_version,
-             "../%s" % self.upstream_tarball_name, '../upstream'],
-            working_dir='working')
-        new_version = Version('0.2-1')
+            [
+                "import-upstream",
+                self.upstream_version,
+                "../%s" % self.upstream_tarball_name,
+                "../upstream",
+            ],
+            working_dir="working",
+        )
+        new_version = Version("0.2-1")
         self.make_upstream_tarball(new_version.upstream_version)
         self.make_upstream_change(upstreamtree)
         self.run_bzr(
-            ['import-upstream', new_version.upstream_version,
-             "../%s" % self._upstream_tarball_name(
-                 self.package_name, new_version.upstream_version),
-             '../upstream'],
-            working_dir='working')
+            [
+                "import-upstream",
+                new_version.upstream_version,
+                "../%s"
+                % self._upstream_tarball_name(
+                    self.package_name, new_version.upstream_version
+                ),
+                "../upstream",
+            ],
+            working_dir="working",
+        )
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertFalse(tree.has_changes())
-        revtree = self.assertHasImportArtifacts(
-            tree, new_version.upstream_version)
+        revtree = self.assertHasImportArtifacts(tree, new_version.upstream_version)
         self.assertUpstreamContentAndFileIdFromTree(revtree, upstreamtree)
         # Check parents: we want
         # [previous_import, upstream_parent] to reflect that the 'branch' is
@@ -152,6 +163,9 @@ class TestImportUpstream(TestBaseImportDsc):
         # from upstream so that cherrypicks do the right thing.
         tags = tree.branch.tags
         self.assertEqual(
-            [tags.lookup_tag(self.upstream_tag(self.upstream_version)),
-             upstreamtree.branch.last_revision()],
-            revtree.get_parent_ids())
+            [
+                tags.lookup_tag(self.upstream_tag(self.upstream_version)),
+                upstreamtree.branch.last_revision(),
+            ],
+            revtree.get_parent_ids(),
+        )

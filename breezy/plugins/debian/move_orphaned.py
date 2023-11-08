@@ -70,7 +70,8 @@ def push_to_salsa(local_tree, orig_branch, user, name, dry_run=False):
     else:
         if orig_forge == salsa:
             from_project = urlutils.URL.from_string(
-                orig_branch.controldir.user_url).path
+                orig_branch.controldir.user_url
+            ).path
         else:
             from_project = None
 
@@ -81,11 +82,12 @@ def push_to_salsa(local_tree, orig_branch, user, name, dry_run=False):
         try:
             salsa.create_project(to_project)
         except PermissionDenied as e:
-            logging.info('No permission to create new project %s under %s: %s',
-                         name, user, e)
+            logging.info(
+                "No permission to create new project %s under %s: %s", name, user, e
+            )
             return
         except AlreadyControlDirError:
-            logging.info('Project %s already exists, using..', to_project)
+            logging.info("Project %s already exists, using..", to_project)
     target_branch = Branch.open(
         "git+ssh://git@salsa.debian.org/{}/{}.git".format(user, name)
     )
@@ -102,7 +104,6 @@ def push_to_salsa(local_tree, orig_branch, user, name, dry_run=False):
 
 
 class OrphanResult:
-
     def __init__(
         self,
         package=None,
@@ -143,8 +144,7 @@ def connect_udd_mirror():
 def find_wnpp_bug(source):
     conn = connect_udd_mirror()
     cursor = conn.cursor()
-    cursor.execute(
-        "SELECT id FROM wnpp WHERE type = 'O' AND source = %s", (source,))
+    cursor.execute("SELECT id FROM wnpp WHERE type = 'O' AND source = %s", (source,))
     entry = cursor.fetchone()
     if entry is None:
         raise KeyError
@@ -154,20 +154,20 @@ def find_wnpp_bug(source):
 def set_vcs_fields_to_salsa_user(control, salsa_user):
     old_vcs_url = control.source.get("Vcs-Git")
     control.source["Vcs-Git"] = "https://salsa.debian.org/{}/{}.git".format(
-        salsa_user,
-        control.source['Source']
+        salsa_user, control.source["Source"]
     )
     new_vcs_url = control.source["Vcs-Git"]
     control.source["Vcs-Browser"] = "https://salsa.debian.org/{}/{}".format(
-        salsa_user,
-        control.source['Source']
+        salsa_user, control.source["Source"]
     )
     return (old_vcs_url, new_vcs_url)
 
 
 def set_maintainer_to_qa_team(control):
-    if (QA_MAINTAINER == control.source.get('Maintainer') and
-            'Uploaders' not in control.source):
+    if (
+        QA_MAINTAINER == control.source.get("Maintainer")
+        and "Uploaders" not in control.source
+    ):
         return False
     control.source["Maintainer"] = QA_MAINTAINER
     try:
@@ -193,11 +193,17 @@ class MissingControlFile(Exception):
 
 
 def orphan(
-        local_tree, subpath, update_changelog, committer, update_vcs=True,
-        salsa_push=True, salsa_user="debian", dry_run=False,
-        check_wnpp=True) -> OrphanResult:
-    control_path = local_tree.abspath(
-        osutils.pathjoin(subpath, "debian/control"))
+    local_tree,
+    subpath,
+    update_changelog,
+    committer,
+    update_vcs=True,
+    salsa_push=True,
+    salsa_user="debian",
+    dry_run=False,
+    check_wnpp=True,
+) -> OrphanResult:
+    control_path = local_tree.abspath(osutils.pathjoin(subpath, "debian/control"))
     changelog_entries = []
     with ExitStack() as es:
         try:
@@ -208,29 +214,25 @@ def orphan(
             try:
                 wnpp_bug = find_wnpp_bug(control.source["Source"])
             except KeyError:
-                raise NoWnppBug(control.source['Source'])
+                raise NoWnppBug(control.source["Source"])
         else:
             wnpp_bug = None
         if set_maintainer_to_qa_team(control):
             if wnpp_bug is not None:
-                changelog_entries.append(
-                    "Orphan package - see bug %d." % wnpp_bug)
+                changelog_entries.append("Orphan package - see bug %d." % wnpp_bug)
             else:
                 changelog_entries.append("Orphan package.")
-        result = OrphanResult(
-            wnpp_bug=wnpp_bug, package=control.source["Source"])
+        result = OrphanResult(wnpp_bug=wnpp_bug, package=control.source["Source"])
 
         if update_vcs:
-            (result.old_vcs_url,
-             result.new_vcs_url) = set_vcs_fields_to_salsa_user(
-                control, salsa_user)
+            (result.old_vcs_url, result.new_vcs_url) = set_vcs_fields_to_salsa_user(
+                control, salsa_user
+            )
             result.salsa_user = salsa_user
             if result.old_vcs_url == result.new_vcs_url:
                 result.old_vcs_url = result.new_vcs_url = None
             else:
-                changelog_entries.append(
-                    "Update VCS URLs to point to Debian group."
-                )
+                changelog_entries.append("Update VCS URLs to point to Debian group.")
     if not changelog_entries:
         raise AlreadyOrphaned()
     if update_changelog in (True, None):
@@ -262,8 +264,7 @@ def orphan(
 
 
 def move_instructions(package_name, salsa_user, old_vcs_url, new_vcs_url):
-    yield "Please move the repository from {} to {}.".format(
-        old_vcs_url, new_vcs_url)
+    yield "Please move the repository from {} to {}.".format(old_vcs_url, new_vcs_url)
     if urlparse(old_vcs_url).hostname == "salsa.debian.org":
         path = urlparse(old_vcs_url).path
         if path.endswith(".git"):
@@ -275,18 +276,21 @@ def move_instructions(package_name, salsa_user, old_vcs_url, new_vcs_url):
         yield "If you have the salsa(1) tool installed, run: "
         yield ""
         yield "    git clone {} {}".format(old_vcs_url, package_name)
-        yield "    salsa --group={} push_repo {}".format(
-            salsa_user, package_name)
+        yield "    salsa --group={} push_repo {}".format(salsa_user, package_name)
 
 
 def report_fatal(code, description):
-    if os.environ.get('SVP_API') == '1':
-        with open(os.environ['SVP_RESULT'], 'w') as f:
-            json.dump({
-                'versions': versions_dict(),
-                'result_code': code,
-                'description': description}, f)
-    logging.info('%s', description)
+    if os.environ.get("SVP_API") == "1":
+        with open(os.environ["SVP_RESULT"], "w") as f:
+            json.dump(
+                {
+                    "versions": versions_dict(),
+                    "result_code": code,
+                    "description": description,
+                },
+                f,
+            )
+    logging.info("%s", description)
 
 
 def main(argv=None):
@@ -329,20 +333,19 @@ def main(argv=None):
     parser.add_argument(
         "--just-update-headers",
         action="store_true",
-        help="Update the VCS-* headers, but don't actually "
-        "clone the repository.",
+        help="Update the VCS-* headers, but don't actually " "clone the repository.",
     )
     parser.add_argument(
-        "--no-check-wnpp", action="store_true",
-        help="Do not check for WNPP bug.")
+        "--no-check-wnpp", action="store_true", help="Do not check for WNPP bug."
+    )
     args = parser.parse_args(argv)
 
-    logging.basicConfig(format='%(message)s', level=logging.INFO)
+    logging.basicConfig(format="%(message)s", level=logging.INFO)
 
     update_changelog = args.update_changelog
-    if os.environ.get('DEB_UPDATE_CHANGELOG') == 'leave':
+    if os.environ.get("DEB_UPDATE_CHANGELOG") == "leave":
         update_changelog = False
-    elif os.environ.get('DEB_UPDATE_CHANGELOG') == 'update':
+    elif os.environ.get("DEB_UPDATE_CHANGELOG") == "update":
         update_changelog = True
 
     tree, subpath = WorkingTree.open_containing(args.directory)
@@ -372,14 +375,13 @@ def main(argv=None):
     except FormattingUnpreservable as e:
         report_fatal(
             "formatting-unpreservable",
-            "unable to preserve formatting while editing %s" % e.path)
-        if hasattr(e, 'diff'):
+            "unable to preserve formatting while editing %s" % e.path,
+        )
+        if hasattr(e, "diff"):
             sys.stderr.writelines(e.diff())
         return 1
     except (ChangeConflict, GeneratedFile) as e:
-        report_fatal(
-            "generated-file", "unable to edit generated file: %r" % e
-        )
+        report_fatal("generated-file", "unable to edit generated file: %r" % e)
         return 1
     except MissingControlFile as e:
         report_fatal("missing-control-file", "Missing control file: %r" % e)
@@ -390,14 +392,18 @@ def main(argv=None):
     else:
         target_branch_url = None
 
-    if os.environ.get('SVP_API') == '1':
-        with open(os.environ['SVP_RESULT'], 'w') as f:
-            json.dump({
-                'description': "Move package to QA team.",
-                'versions': versions_dict(),
-                'target-branch-url': target_branch_url,
-                'value': 60,
-                'context': result.json()}, f)
+    if os.environ.get("SVP_API") == "1":
+        with open(os.environ["SVP_RESULT"], "w") as f:
+            json.dump(
+                {
+                    "description": "Move package to QA team.",
+                    "versions": versions_dict(),
+                    "target-branch-url": target_branch_url,
+                    "value": 60,
+                    "context": result.json(),
+                },
+                f,
+            )
 
     if result.new_vcs_url:
         for line in move_instructions(
@@ -411,5 +417,5 @@ def main(argv=None):
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

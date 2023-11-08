@@ -33,12 +33,12 @@ from debmutate.versions import (
     get_snapshot_revision as _get_snapshot_revision,
     debianize_upstream_version,
     upstream_version_add_revision as _upstream_version_add_revision,
-    )
+)
 
 from .... import osutils
 from ....branch import (
     Branch,
-    )
+)
 from ....errors import (
     BzrError,
     GhostRevisionsHaveNoRevno,
@@ -48,7 +48,7 @@ from ....errors import (
     NotBranchError,
     RevisionNotPresent,
     UnsupportedOperation,
-    )
+)
 from ....memorybranch import MemoryBranch
 from ..repack_tarball import get_filetype, repack_tarball
 from ....revision import NULL_REVISION, RevisionID
@@ -60,63 +60,66 @@ from ....revisionspec import InvalidRevisionSpec
 
 from ..errors import (
     MultipleUpstreamTarballsNotSupported,
-    )
+)
 from .. import gettext
 from ..util import export_with_nested
 from . import (
     UpstreamSource,
     PackageVersionNotPresent,
     new_tarball_name,
-    )
+)
 from ....workingtree import (
     WorkingTree,
-    )
+)
 
 
 class PreviousVersionTagMissing(BzrError):
-
-    _fmt = ("Unable to find the tag for the "
-            "previous upstream version (%(version)s) in the upstream branch: "
-            "%(tag_name)s")
+    _fmt = (
+        "Unable to find the tag for the "
+        "previous upstream version (%(version)s) in the upstream branch: "
+        "%(tag_name)s"
+    )
 
     def __init__(self, version, tag_name):
-        super().__init__(
-            version=version, tag_name=tag_name)
+        super().__init__(version=version, tag_name=tag_name)
 
 
 def upstream_tag_to_version(tag_name, package=None):
     """Take a tag name and return the upstream version, or None."""
-    if tag_name.endswith('-release'):
-        tag_name = tag_name[:-len('-release')]
+    if tag_name.endswith("-release"):
+        tag_name = tag_name[: -len("-release")]
     if tag_name.startswith("release-"):
-        tag_name = tag_name[len("release-"):]
-    if tag_name.startswith('version-'):
-        tag_name = tag_name[len("version-"):]
-    if (package is not None and (
-          tag_name.startswith("%s-" % package) or
-          tag_name.startswith("%s_" % package))):
-        tag_name = tag_name[len(package)+1:]
-    if package is None and '-' in tag_name:
-        (before, version) = tag_name.split('-', 1)
+        tag_name = tag_name[len("release-") :]
+    if tag_name.startswith("version-"):
+        tag_name = tag_name[len("version-") :]
+    if package is not None and (
+        tag_name.startswith("%s-" % package) or tag_name.startswith("%s_" % package)
+    ):
+        tag_name = tag_name[len(package) + 1 :]
+    if package is None and "-" in tag_name:
+        (before, version) = tag_name.split("-", 1)
         if before.isalpha() and not version[0].isalpha():
             return version
     if len(tag_name) >= 2 and tag_name[0] == "v" and tag_name[1].isdigit():
         tag_name = tag_name[1:]
-    if (len(tag_name) >= 3 and tag_name[0] == "v" and tag_name[1] in ('/', '.')
-            and tag_name[2].isdigit()):
+    if (
+        len(tag_name) >= 3
+        and tag_name[0] == "v"
+        and tag_name[1] in ("/", ".")
+        and tag_name[2].isdigit()
+    ):
         tag_name = tag_name[2:]
     if all([c.isdigit() or c in (".", "~", "_") for c in tag_name]):
         return tag_name
-    parts = tag_name.split('.')
-    if (len(parts) > 1 and all(p.isdigit() for p in parts[:-1])
-            and parts[-1].isalnum()):
+    parts = tag_name.split(".")
+    if len(parts) > 1 and all(p.isdigit() for p in parts[:-1]) and parts[-1].isalnum():
         return tag_name
     return None
 
 
 def _upstream_branch_version(
-        revhistory, upstream_revision, reverse_tag_dict, package,
-        previous_version, add_rev):
+    revhistory, upstream_revision, reverse_tag_dict, package, previous_version, add_rev
+):
     """Determine the version string of an upstream branch.
 
     The upstream version is determined from the most recent tag
@@ -146,47 +149,52 @@ def _upstream_branch_version(
                 # convert to upstream version
                 # return <upstream_version>+bzr<revno>
                 for tag in reverse_tag_dict[r]:
-                    upstream_version = upstream_tag_to_version(
-                            tag, package=package)
+                    upstream_version = upstream_tag_to_version(tag, package=package)
                     if upstream_version is not None:
                         mangled_version = debianize_upstream_version(
-                            upstream_version, package)
+                            upstream_version, package
+                        )
                         if r == upstream_revision:
                             # Well, that's simple
                             return upstream_version, mangled_version
-                        if (last_upstream is None
+                        if (
+                            last_upstream is None
                             or Version(last_upstream[1])  # type: ignore
-                                < Version(mangled_version)):
-                            last_upstream = (
-                                upstream_version, mangled_version, '+')
+                            < Version(mangled_version)
+                        ):
+                            last_upstream = (upstream_version, mangled_version, "+")
             if r == upstream_revision and last_upstream:
                 # The last upstream release was after us
-                last_upstream = (last_upstream[0], last_upstream[1], '~')
+                last_upstream = (last_upstream[0], last_upstream[1], "~")
     except RevisionNotPresent:
         # Ghost revision somewhere on mainline.
         pass
     if last_upstream is None:
         # Well, we didn't find any releases
         if previous_version is None:
-            last_upstream = ('0', '0', '+')
+            last_upstream = ("0", "0", "+")
         else:
             # Assume we were just somewhere after the last release
-            last_upstream = (previous_version, previous_version, '+')
+            last_upstream = (previous_version, previous_version, "+")
     else:
-        if (previous_version is not None
-                and Version(last_upstream[1]) < Version(previous_version)):
-            if '~' not in previous_version:
+        if previous_version is not None and Version(last_upstream[1]) < Version(
+            previous_version
+        ):
+            if "~" not in previous_version:
                 warning(
-                    'last found upstream version %s (%s) is lower than '
-                    'previous packaged upstream version (%s)',
-                    last_upstream[1], last_upstream[0], previous_version)
-                last_upstream = (previous_version, previous_version, '+')
+                    "last found upstream version %s (%s) is lower than "
+                    "previous packaged upstream version (%s)",
+                    last_upstream[1],
+                    last_upstream[0],
+                    previous_version,
+                )
+                last_upstream = (previous_version, previous_version, "+")
             else:
-                last_upstream = (previous_version, previous_version, '~')
-    upstream_version = add_rev(
-        last_upstream[0], upstream_revision, last_upstream[2])
+                last_upstream = (previous_version, previous_version, "~")
+    upstream_version = add_rev(last_upstream[0], upstream_revision, last_upstream[2])
     mangled_upstream_version = add_rev(
-        last_upstream[1], upstream_revision, last_upstream[2])
+        last_upstream[1], upstream_revision, last_upstream[2]
+    )
     return upstream_version, mangled_upstream_version
 
 
@@ -232,8 +240,7 @@ def extract_svn_revno(rev):
             return svn_revno
 
 
-def upstream_version_add_revision(
-        upstream_branch, version_string, revid, sep='+'):
+def upstream_version_add_revision(upstream_branch, version_string, revid, sep="+"):
     """Update the revision in a upstream version string.
 
     :param branch: Branch in which the revision can be found
@@ -246,22 +253,28 @@ def upstream_version_add_revision(
     except GhostRevisionsHaveNoRevno:
         bzr_revno = None
     else:
-        bzr_revno = '.'.join(map(str, revno))
+        bzr_revno = ".".join(map(str, revno))
 
     rev = upstream_branch.repository.get_revision(revid)
     gitid = extract_gitid(rev)
     if gitid:
-        gitdate = date.fromisoformat(osutils.format_date(
-            rev.timestamp, rev.timezone, date_fmt='%Y-%m-%d',
-            show_offset=False))
+        gitdate = date.fromisoformat(
+            osutils.format_date(
+                rev.timestamp, rev.timezone, date_fmt="%Y-%m-%d", show_offset=False
+            )
+        )
     else:
         gitdate = None
 
     svn_revno = extract_svn_revno(rev)
 
     return _upstream_version_add_revision(
-        version_string, gitid=gitid, gitdate=gitdate, bzr_revno=bzr_revno,
-        svn_revno=svn_revno)
+        version_string,
+        gitid=gitid,
+        gitdate=gitdate,
+        bzr_revno=bzr_revno,
+        svn_revno=svn_revno,
+    )
 
 
 def get_snapshot_revision(upstream_version):
@@ -284,21 +297,22 @@ def get_snapshot_revision(upstream_version):
     if ret is None:
         return None
     (kind, rev) = ret
-    if kind == 'svn':
+    if kind == "svn":
         return "svn:%s" % rev
-    elif kind == 'git':
+    elif kind == "git":
         return "git:%s" % rev
-    elif kind == 'date':
-        return 'date:%s' % rev
-    elif kind == 'bzr':
+    elif kind == "date":
+        return "date:%s" % rev
+    elif kind == "bzr":
         return str(rev)
     else:
         raise ValueError(kind)
     return None
 
 
-def upstream_branch_version(upstream_branch, upstream_revision, package,
-                            previous_version=None):
+def upstream_branch_version(
+    upstream_branch, upstream_revision, package, previous_version=None
+):
     """Determine the version string for a revision in an upstream branch.
 
     :param upstream_branch: The upstream branch object
@@ -317,22 +331,31 @@ def upstream_branch_version(upstream_branch, upstream_revision, package,
         previous_revspec = RevisionSpec.from_string(previous_revision)
         try:
             previous_revno, previous_revid = previous_revspec.in_history(
-                upstream_branch)
+                upstream_branch
+            )
         except InvalidRevisionSpec as e:
             # Odd - the revision mentioned in the old version doesn't exist.
-            mutter('Unable to find old upstream version %s (%s): %s',
-                   previous_version, previous_revision, e)
+            mutter(
+                "Unable to find old upstream version %s (%s): %s",
+                previous_version,
+                previous_revision,
+                e,
+            )
         else:
             # Trim revision history - we don't care about any revisions
             # before the revision of the previous version
             stop_revids = [previous_revid]
     revhistory = graph.iter_lefthand_ancestry(upstream_revision, stop_revids)
     return _upstream_branch_version(
-            revhistory, upstream_revision,
-            upstream_branch.tags.get_reverse_tag_dict(), package,
-            previous_version,
-            lambda version, revision, sep: upstream_version_add_revision(
-                upstream_branch, version, revision, sep))
+        revhistory,
+        upstream_revision,
+        upstream_branch.tags.get_reverse_tag_dict(),
+        package,
+        previous_version,
+        lambda version, revision, sep: upstream_version_add_revision(
+            upstream_branch, version, revision, sep
+        ),
+    )
 
 
 def get_export_upstream_revision(config=None, version=None):
@@ -347,42 +370,41 @@ def get_export_upstream_revision(config=None, version=None):
     if version is not None:
         rev = get_snapshot_revision(version)
     if rev is None and config is not None:
-        rev = config._get_best_opt('export-upstream-revision')
+        rev = config._get_best_opt("export-upstream-revision")
         if rev is not None and version is not None:
-            rev = rev.replace('$UPSTREAM_VERSION', version)
+            rev = rev.replace("$UPSTREAM_VERSION", version)
     return rev
 
 
-def guess_upstream_tag(package, version,
-                       is_snapshot: bool = False) -> Iterable[str]:
+def guess_upstream_tag(package, version, is_snapshot: bool = False) -> Iterable[str]:
     yield version
     if package:
-        for prefix in ['rust-']:
+        for prefix in ["rust-"]:
             if package.startswith(prefix):
-                yield '{}-{}'.format(package[len(prefix):], version)
-        yield '{}-{}'.format(package, version)
+                yield "{}-{}".format(package[len(prefix) :], version)
+        yield "{}-{}".format(package, version)
     if not is_snapshot:
-        yield 'v%s' % version
-        yield 'v.%s' % version
-        yield 'release-%s' % version
-        yield '%s_release' % version.replace('.', '_')
-        yield '%s' % version.replace('.', '_')
-        yield 'version-%s' % version
+        yield "v%s" % version
+        yield "v.%s" % version
+        yield "release-%s" % version
+        yield "%s_release" % version.replace(".", "_")
+        yield "%s" % version.replace(".", "_")
+        yield "version-%s" % version
         if package:
-            yield '{}-{}-release'.format(package, version.replace('.', '_'))
-            yield '{}-v{}'.format(package, version)
+            yield "{}-{}-release".format(package, version.replace(".", "_"))
+            yield "{}-v{}".format(package, version)
 
 
 def guess_upstream_revspec(package, version):
     """Guess revspecs matching an upstream version string."""
-    if version.endswith('+ds'):
-        version = str(version)[:-len('+ds')]
-    if version.endswith('~ds'):
-        version = str(version)[:-len('~ds')]
-    if version.endswith('+dfsg'):
-        version = str(version)[:-len('+dfsg')]
-    if version.endswith('+repack'):
-        version = str(version)[:-len('+repack')]
+    if version.endswith("+ds"):
+        version = str(version)[: -len("+ds")]
+    if version.endswith("~ds"):
+        version = str(version)[: -len("~ds")]
+    if version.endswith("+dfsg"):
+        version = str(version)[: -len("+dfsg")]
+    if version.endswith("+repack"):
+        version = str(version)[: -len("+repack")]
     is_snapshot = False
     if "+bzr" in version or "~bzr" in version:
         is_snapshot = True
@@ -397,7 +419,7 @@ def guess_upstream_revspec(package, version):
         is_snapshot = True
         yield "date:%s" % git_date
     for tag in guess_upstream_tag(package, version, is_snapshot):
-        yield 'tag:%s' % tag
+        yield "tag:%s" % tag
 
 
 class UpstreamBranchSource(UpstreamSource):
@@ -407,9 +429,17 @@ class UpstreamBranchSource(UpstreamSource):
     :ivar upstream_version_map: Map from version strings to revspecs
     """
 
-    def __init__(self, upstream_branch, upstream_revision_map=None,
-                 config=None, actual_branch=None, create_dist=None,
-                 other_repository=None, version_kind="auto", subpath=None):
+    def __init__(
+        self,
+        upstream_branch,
+        upstream_revision_map=None,
+        config=None,
+        actual_branch=None,
+        create_dist=None,
+        other_repository=None,
+        version_kind="auto",
+        subpath=None,
+    ):
         self.upstream_branch = upstream_branch
         self._actual_branch = actual_branch or upstream_branch
         self.create_dist = create_dist
@@ -424,54 +454,73 @@ class UpstreamBranchSource(UpstreamSource):
             self.upstream_revision_map.update(upstream_revision_map.items())
 
     @classmethod
-    def from_branch(cls, upstream_branch, upstream_revision_map=None,
-                    config=None, local_dir=None, create_dist=None,
-                    version_kind="auto", subpath: Optional[str] = None):
+    def from_branch(
+        cls,
+        upstream_branch,
+        upstream_revision_map=None,
+        config=None,
+        local_dir=None,
+        create_dist=None,
+        version_kind="auto",
+        subpath: Optional[str] = None,
+    ):
         """Create a new upstream branch source from a branch.
 
         This will optionally fetch into a local directory.
         """
         actual_branch = upstream_branch
         if local_dir is not None and not getattr(
-                upstream_branch.repository, 'supports_random_access', True):
+            upstream_branch.repository, "supports_random_access", True
+        ):
             local_repository = local_dir.find_repository()
             try:
-                (last_revno,
-                 last_revision) = upstream_branch.last_revision_info()
+                (last_revno, last_revision) = upstream_branch.last_revision_info()
             except UnsupportedOperation:
                 last_revno = None
                 last_revision = upstream_branch.last_revision()
             local_repository.fetch(
-                upstream_branch.repository, revision_id=last_revision)
+                upstream_branch.repository, revision_id=last_revision
+            )
             upstream_branch = MemoryBranch(
-                local_repository, (last_revno, last_revision),
-                upstream_branch.tags.get_tag_dict())
+                local_repository,
+                (last_revno, last_revision),
+                upstream_branch.tags.get_tag_dict(),
+            )
         return cls(
             upstream_branch=upstream_branch,
-            upstream_revision_map=upstream_revision_map, config=config,
-            actual_branch=actual_branch, create_dist=create_dist,
-            version_kind=version_kind)
+            upstream_revision_map=upstream_revision_map,
+            config=config,
+            actual_branch=actual_branch,
+            create_dist=create_dist,
+            version_kind=version_kind,
+        )
 
     def version_as_revision(
-            self, package, version, tarballs=None) -> tuple[RevisionID, str]:
+        self, package, version, tarballs=None
+    ) -> tuple[RevisionID, str]:
         if version in self.upstream_revision_map:
             revspec = self.upstream_revision_map[version]
         else:
-            revspec = get_export_upstream_revision(
-                self.config, version=version)
+            revspec = get_export_upstream_revision(self.config, version=version)
         if revspec is not None:
             try:
-                return RevisionSpec.from_string(
-                    revspec).as_revision_id(self.upstream_branch), self.subpath
+                return RevisionSpec.from_string(revspec).as_revision_id(
+                    self.upstream_branch
+                ), self.subpath
             except (InvalidRevisionSpec, NoSuchTag) as e:
                 raise PackageVersionNotPresent(package, version, self) from e
         else:
             for revspec in guess_upstream_revspec(package, version):
-                note(gettext('No upstream upstream-revision format '
-                             'specified, trying %s') % revspec)
+                note(
+                    gettext(
+                        "No upstream upstream-revision format " "specified, trying %s"
+                    )
+                    % revspec
+                )
                 try:
-                    return RevisionSpec.from_string(revspec)\
-                        .as_revision_id(self.upstream_branch), self.subpath
+                    return RevisionSpec.from_string(revspec).as_revision_id(
+                        self.upstream_branch
+                    ), self.subpath
                 except (InvalidRevisionSpec, NoSuchTag):
                     pass
             raise PackageVersionNotPresent(package, version, self)
@@ -498,11 +547,11 @@ class UpstreamBranchSource(UpstreamSource):
 
     def get_latest_snapshot_version(self, package, current_version):
         revid = self.upstream_branch.last_revision()
-        version, mangled_version = self.get_version(
-            package, current_version, revid)
+        version, mangled_version = self.get_version(package, current_version, revid)
         if mangled_version is not None:
-            self.upstream_revision_map[mangled_version] = (
-                'revid:%s' % revid.decode('utf-8'))
+            self.upstream_revision_map[mangled_version] = "revid:%s" % revid.decode(
+                "utf-8"
+            )
         return version, mangled_version
 
     def get_latest_release_version(self, package, current_version):
@@ -524,27 +573,24 @@ class UpstreamBranchSource(UpstreamSource):
             if current_version is not None:
                 snapshot_data = get_snapshot_revision(current_version)
                 if snapshot_data is None:
-                    note(gettext(
-                        'Current version is release, merging new release.'))
+                    note(gettext("Current version is release, merging new release."))
                     version_kind = "release"
                 else:
-                    note(gettext(
-                        'Current version is snapshot, merging new snapshot.'))
+                    note(gettext("Current version is snapshot, merging new snapshot."))
                     version_kind = "snapshot"
             else:
                 version_kind = "release"
             if version_kind == "release":
-                version = self.get_latest_release_version(
-                    package, current_version)
+                version = self.get_latest_release_version(package, current_version)
                 if version is None:
-                    note(gettext(
-                        'No upstream releases found, '
-                        'falling back to snapshot.'))
-                    version = self.get_latest_snapshot_version(
-                        package, current_version)
+                    note(
+                        gettext(
+                            "No upstream releases found, " "falling back to snapshot."
+                        )
+                    )
+                    version = self.get_latest_snapshot_version(package, current_version)
             elif version_kind == "snapshot":
-                version = self.get_latest_snapshot_version(
-                    package, current_version)
+                version = self.get_latest_snapshot_version(package, current_version)
             else:
                 raise ValueError(version_kind)
             return version
@@ -552,7 +598,8 @@ class UpstreamBranchSource(UpstreamSource):
             raise ValueError(self.version_kind)
 
     def get_recent_versions(
-            self, package: str, since_version: Optional[Version] = None):
+        self, package: str, since_version: Optional[Version] = None
+    ):
         versions = []
         tags = self.upstream_branch.tags.get_tag_dict()
         with self.upstream_branch.repository.lock_read():
@@ -560,10 +607,10 @@ class UpstreamBranchSource(UpstreamSource):
             if since_version is not None:
                 try:
                     since_revision, _subpath = self.version_as_revision(
-                        package, since_version)
+                        package, since_version
+                    )
                 except PackageVersionNotPresent as e:
-                    raise PreviousVersionTagMissing(
-                        package, since_version) from e
+                    raise PreviousVersionTagMissing(package, since_version) from e
             else:
                 since_revision = None
             for tag, revision in tags.items():
@@ -571,12 +618,10 @@ class UpstreamBranchSource(UpstreamSource):
                 if version is None:
                     continue
                 mangled_version = debianize_upstream_version(version, package)
-                self.upstream_revision_map[mangled_version] = 'tag:%s' % tag
-                if (since_version is not None
-                        and mangled_version <= since_version):
+                self.upstream_revision_map[mangled_version] = "tag:%s" % tag
+                if since_version is not None and mangled_version <= since_version:
                     continue
-                if since_revision and not graph.is_ancestor(
-                        since_revision, revision):
+                if since_revision and not graph.is_ancestor(since_revision, revision):
                     continue
                 versions.append((version, mangled_version))
         return sorted(versions, key=lambda v: Version(v[1]))
@@ -584,17 +629,20 @@ class UpstreamBranchSource(UpstreamSource):
     def get_version(self, package, current_version, revision):
         with self.upstream_branch.lock_read():
             return upstream_branch_version(
-                self.upstream_branch, revision, package, current_version)
+                self.upstream_branch, revision, package, current_version
+            )
 
     def fetch_tarballs(
-            self, package: str, version,
-            target_dir, components=None, revisions=None):
+        self, package: str, version, target_dir, components=None, revisions=None
+    ):
         if components is not None and components != [None]:
             # Multiple components are not supported
             raise PackageVersionNotPresent(package, version, self)
-        note("Looking for upstream %s in upstream branch %s.",
-             version,
-             getattr(self, '_actual_branch', self.upstream_branch).user_url)
+        note(
+            "Looking for upstream %s in upstream branch %s.",
+            version,
+            getattr(self, "_actual_branch", self.upstream_branch).user_url,
+        )
         with self.upstream_branch.lock_read():
             if revisions is not None:
                 revid, subpath = revisions[None]
@@ -614,39 +662,49 @@ class UpstreamBranchSource(UpstreamSource):
             if self.create_dist is not None:
                 with tempfile.TemporaryDirectory() as td:
                     fn = self.create_dist(
-                        rev_tree, package, version, td, subpath=subpath)
+                        rev_tree, package, version, td, subpath=subpath
+                    )
                     if fn:
                         nfn = new_tarball_name(package, version, fn)
                         repack_tarball(os.path.join(td, fn), nfn, target_dir)
                         return [os.path.join(target_dir, nfn)]
             tarball_base = f"{package}-{version}"
-            target_filename = self._tarball_path(
-                package, version, None, target_dir)
+            target_filename = self._tarball_path(package, version, None, target_dir)
             try:
                 export_with_nested(
-                    rev_tree, target_filename, format='tgz', root=tarball_base,
-                    subdir=subpath)
+                    rev_tree,
+                    target_filename,
+                    format="tgz",
+                    root=tarball_base,
+                    subdir=subpath,
+                )
             except UnsupportedOperation as e:
-                note('Not exporting revision from upstream branch: %s', e)
+                note("Not exporting revision from upstream branch: %s", e)
                 raise PackageVersionNotPresent(package, version, self) from e
             else:
                 mutter(
-                    "Exporting upstream branch revision %s to create "
-                    "the tarball", revid)
+                    "Exporting upstream branch revision %s to create " "the tarball",
+                    revid,
+                )
         return [target_filename]
 
     def __repr__(self):
-        return "<{} for {!r}>".format(
-            self.__class__.__name__, self._actual_branch.base)
+        return "<{} for {!r}>".format(self.__class__.__name__, self._actual_branch.base)
 
 
 class LazyUpstreamBranchSource(UpstreamBranchSource):
-    """Upstream branch source that defers loading the branch until it is used.
-    """
+    """Upstream branch source that defers loading the branch until it is used."""
 
-    def __init__(self, upstream_branch_url, upstream_revision_map=None,
-                 config=None, create_dist=None, other_repository=None,
-                 version_kind="auto", subpath=None):
+    def __init__(
+        self,
+        upstream_branch_url,
+        upstream_revision_map=None,
+        config=None,
+        create_dist=None,
+        other_repository=None,
+        version_kind="auto",
+        subpath=None,
+    ):
         self.upstream_branch_url = upstream_branch_url
         self.version_kind = version_kind
         self._upstream_branch = None
@@ -670,12 +728,10 @@ class LazyUpstreamBranchSource(UpstreamBranchSource):
         return self._upstream_branch
 
     def __repr__(self):
-        return "<{} for {!r}>".format(
-            self.__class__.__name__, self.upstream_branch_url)
+        return "<{} for {!r}>".format(self.__class__.__name__, self.upstream_branch_url)
 
 
 class DistCommandFailed(BzrError):
-
     _fmt = "Dist command failed to produce a tarball: %(error)s"
 
     def __init__(self, error, kind=None):
@@ -687,8 +743,7 @@ def _dupe_vcs_tree(tree, directory):
         if isinstance(tree, WorkingTree):
             tree = tree.basis_tree()
     result = tree._repository.controldir.sprout(
-        directory, create_tree_if_local=True,
-        revision_id=tree.get_revision_id()
+        directory, create_tree_if_local=True, revision_id=tree.get_revision_id()
     )
     if not result.has_workingtree():
         raise AssertionError
@@ -705,11 +760,14 @@ def _dupe_vcs_tree(tree, directory):
 
 
 def run_dist_command(
-        rev_tree: Tree, package: Optional[str], version: Version,
-        target_dir: str, dist_command: str,
-        include_controldir: bool = False,
-        subpath='') -> bool:
-
+    rev_tree: Tree,
+    package: Optional[str],
+    version: Version,
+    target_dir: str,
+    dist_command: str,
+    include_controldir: bool = False,
+    subpath="",
+) -> bool:
     def _run_and_interpret(command, env, dir):
         try:
             subprocess.check_call(command, env=env, cwd=dir, shell=True)
@@ -720,10 +778,12 @@ def run_dist_command(
                 raise MemoryError(str(e)) from e
             try:
                 import json
-                with open(env['DIST_RESULT']) as f:
+
+                with open(env["DIST_RESULT"]) as f:
                     result = json.load(f)
                 raise DistCommandFailed(
-                    result['description'], result['result_code']) from e
+                    result["description"], result["result_code"]
+                ) from e
             except FileNotFoundError as ex:
                 raise DistCommandFailed(str(e)) from ex
 
@@ -732,19 +792,18 @@ def run_dist_command(
         if package:
             package_dir = os.path.join(td, package)
         else:
-            package_dir = os.path.join(td, 'package')
+            package_dir = os.path.join(td, "package")
         env = dict(os.environ.items())
         if package:
-            env['PACKAGE'] = package
-        env['VERSION'] = version
-        env['DIST_RESULT'] = os.path.join(td, 'dist.json')
-        note('Running dist command: %s', dist_command)
+            env["PACKAGE"] = package
+        env["VERSION"] = version
+        env["DIST_RESULT"] = os.path.join(td, "dist.json")
+        note("Running dist command: %s", dist_command)
         if include_controldir:
             _dupe_vcs_tree(rev_tree, package_dir)
             package_fullpath = os.path.join(package_dir, subpath)
         else:
-            export_with_nested(rev_tree, package_dir, format='dir',
-                               subdir=subpath)
+            export_with_nested(rev_tree, package_dir, format="dir", subdir=subpath)
             package_fullpath = package_dir
         existing_files = os.listdir(package_fullpath)
         try:
@@ -753,8 +812,7 @@ def run_dist_command(
             return None
         except DistCommandFailed as e:
             # Retry with the control directory
-            if (e.kind == 'vcs-control-directory-needed' and
-                    not include_controldir):
+            if e.kind == "vcs-control-directory-needed" and not include_controldir:
                 osutils.rmtree(package_dir)
                 _dupe_vcs_tree(rev_tree, package_dir)
                 package_fullpath = os.path.join(package_dir, subpath)
@@ -766,24 +824,23 @@ def run_dist_command(
         diff_files = set(new_files) - set(existing_files)
         diff = [n for n in diff_files if get_filetype(n) is not None]
         if len(diff) == 1:
-            note('Found tarball %s in package directory.', diff[0])
+            note("Found tarball %s in package directory.", diff[0])
             os.rename(
                 os.path.join(package_fullpath, diff[0]),
-                os.path.join(target_dir, diff[0]))
+                os.path.join(target_dir, diff[0]),
+            )
             return diff[0]
-        if 'dist' in diff_files:
-            for entry in os.scandir(os.path.join(package_fullpath, 'dist')):
+        if "dist" in diff_files:
+            for entry in os.scandir(os.path.join(package_fullpath, "dist")):
                 if get_filetype(entry.name) is not None:
-                    note('Found tarball %s in dist directory.', entry.name)
+                    note("Found tarball %s in dist directory.", entry.name)
                     os.rename(entry.path, os.path.join(target_dir, entry.name))
                     return entry.name
-            note('No tarballs found in dist directory.')
+            note("No tarballs found in dist directory.")
         diff = set(os.listdir(td)) - {os.path.basename(package_fullpath)}
         if len(diff) == 1:
             fn = diff.pop()
-            note('Found tarball %s in parent directory.', fn)
-            os.rename(
-                os.path.join(td, fn),
-                os.path.join(target_dir, fn))
+            note("Found tarball %s in parent directory.", fn)
+            os.rename(os.path.join(td, fn), os.path.join(target_dir, fn))
             return fn
-    raise DistCommandFailed('no tarball created')
+    raise DistCommandFailed("no tarball created")

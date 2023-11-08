@@ -48,14 +48,13 @@ def override_dh_autoreconf_add_arguments(basedir: str, args):
         rule.append_command(b" ".join(command))
 
     return update_rules(
-        makefile_cb=update_makefile,
-        path=os.path.join(basedir, "debian", "rules")
+        makefile_cb=update_makefile, path=os.path.join(basedir, "debian", "rules")
     )
 
 
 def update_packaging(
-        tree: Tree, old_tree: Tree, subpath: str = "",
-        committer: Optional[str] = None) -> list[str]:
+    tree: Tree, old_tree: Tree, subpath: str = "", committer: Optional[str] = None
+) -> list[str]:
     """Update packaging to take in changes between upstream trees.
 
     Args:
@@ -75,20 +74,18 @@ def update_packaging(
             continue
         if not path.startswith(subpath):
             continue
-        path = path[len(subpath):]
+        path = path[len(subpath) :]
         if path == "autogen.sh":
-            if override_dh_autoreconf_add_arguments(
-                    tree.basedir, [b"./autogen.sh"]):
+            if override_dh_autoreconf_add_arguments(tree.basedir, [b"./autogen.sh"]):
                 logging.info(
-                    "Modifying debian/rules: "
-                    "Invoke autogen.sh from dh_autoreconf."
+                    "Modifying debian/rules: " "Invoke autogen.sh from dh_autoreconf."
                 )
                 with ChangelogEditor(
-                        tree.abspath(
-                            os.path.join(subpath, 'debian/changelog'))) as cl:
+                    tree.abspath(os.path.join(subpath, "debian/changelog"))
+                ) as cl:
                     cl.add_entry(
-                        ["Invoke autogen.sh from dh_autoreconf."],
-                        maintainer=maintainer)
+                        ["Invoke autogen.sh from dh_autoreconf."], maintainer=maintainer
+                    )
                 debcommit(
                     tree,
                     committer=committer,
@@ -96,8 +93,7 @@ def update_packaging(
                     paths=["debian/changelog", "debian/rules"],
                 )
         elif path.startswith("LICENSE") or path.startswith("COPYING"):
-            notes.append(
-                "License file %s has changed." % os.path.join(subpath, path))
+            notes.append("License file %s has changed." % os.path.join(subpath, path))
 
     return notes
 
@@ -110,14 +106,13 @@ def main():
     import breezy.bzr  # noqa: F401
     import breezy.git  # noqa: F401
 
-    parser = argparse.ArgumentParser('deb-update-packaging')
-    parser.add_argument(
-        '--since', type=str, help='Revision since when to update')
+    parser = argparse.ArgumentParser("deb-update-packaging")
+    parser.add_argument("--since", type=str, help="Revision since when to update")
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.INFO, format='%(message)s')
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
 
-    wt, subpath = WorkingTree.open_containing('.')
+    wt, subpath = WorkingTree.open_containing(".")
     if args.since:
         old_tree = RevisionSpec.from_string(args.since).as_tree(args.since)
     else:
@@ -125,7 +120,7 @@ def main():
 
     notes = update_packaging(wt, old_tree, subpath)
     for note in notes:
-        logging.info('%s', note)
+        logging.info("%s", note)
 
 
 if __name__ == "__main__":

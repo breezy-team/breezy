@@ -27,7 +27,6 @@ from ..apt_repo import LocalApt, NoAptSources
 
 
 class MockSources:
-
     def __init__(self, versions, files):
         self.restart_called_times = 0
         self.step_called_times = 0
@@ -42,10 +41,11 @@ class MockSources:
     def record(self):
         if self.version is None:
             return None
-        dsc = Dsc({'Package': 'apackage', 'Version': self.version})
-        dsc['Files'] = [
-                {'md5sum': checksum, 'size': size, 'name': name}
-                for (checksum, size, name, kind) in self.files]
+        dsc = Dsc({"Package": "apackage", "Version": self.version})
+        dsc["Files"] = [
+            {"md5sum": checksum, "size": size, "name": name}
+            for (checksum, size, name, kind) in self.files
+        ]
         return str(dsc)
 
     def restart(self):
@@ -54,8 +54,8 @@ class MockSources:
     def step(self):
         self.step_called_times += 1
         if self.step_called_times <= len(self.versions):
-            self.version = self.versions[self.step_called_times-1]
-            self.files = self.filess[self.step_called_times-1]
+            self.version = self.versions[self.step_called_times - 1]
+            self.files = self.filess[self.step_called_times - 1]
             return True
         else:
             self.version = None
@@ -67,8 +67,8 @@ class MockSources:
         assert not self.lookup_package or self.lookup_package == package
         self.lookup_package = package
         if self.lookup_called_times <= len(self.versions):
-            self.version = self.versions[self.lookup_called_times-1]
-            self.files = self.filess[self.lookup_called_times-1]
+            self.version = self.versions[self.lookup_called_times - 1]
+            self.files = self.filess[self.lookup_called_times - 1]
             return True
         else:
             self.version = None
@@ -77,7 +77,6 @@ class MockSources:
 
 
 class MockAptConfig:
-
     def __init__(self):
         self._d = {}
 
@@ -86,7 +85,6 @@ class MockAptConfig:
 
 
 class MockAptPkg:
-
     def __init__(self, sources):
         self.init_called_times = 0
         self.get_pkg_source_records_called_times = 0
@@ -102,7 +100,6 @@ class MockAptPkg:
 
 
 class MockAptCaller:
-
     def __init__(self, work=False):
         self.work = work
         self.called = 0
@@ -119,24 +116,31 @@ class MockAptCaller:
 
 
 class LocalAptTests(TestCase):
-
     def test_get_apt_command_for_source(self):
         self.assertEqual(
-            ["apt", "source", "-d", "-y", "--only-source",
-             "apackage=someversion"],
-            LocalApt(rootdir=None)._get_command("apackage", "someversion"))
+            ["apt", "source", "-d", "-y", "--only-source", "apackage=someversion"],
+            LocalApt(rootdir=None)._get_command("apackage", "someversion"),
+        )
         self.assertEqual(
-            ["apt", "source", "-d", "-y", "--only-source",
-             "apackage"],
-            LocalApt()._get_command("apackage"))
+            ["apt", "source", "-d", "-y", "--only-source", "apackage"],
+            LocalApt()._get_command("apackage"),
+        )
         self.assertEqual(
-            ["apt", "source", "-d", "--tar-only", "-y",
-             "--only-source", "apackage"],
-            LocalApt()._get_command("apackage", tar_only=True))
+            ["apt", "source", "-d", "--tar-only", "-y", "--only-source", "apackage"],
+            LocalApt()._get_command("apackage", tar_only=True),
+        )
         self.assertEqual(
-            ["apt", "source", "-d", '-oDir=/tmp/lala',
-             "-y", "--only-source", "apackage"],
-            LocalApt('/tmp/lala')._get_command("apackage"))
+            [
+                "apt",
+                "source",
+                "-d",
+                "-oDir=/tmp/lala",
+                "-y",
+                "--only-source",
+                "apackage",
+            ],
+            LocalApt("/tmp/lala")._get_command("apackage"),
+        )
 
     def test_iter_sources_empty(self):
         caller = MockAptCaller()
@@ -152,31 +156,47 @@ class LocalAptTests(TestCase):
         sources = MockSources([], [])
 
         def raise_systemerror():
-            raise SystemError('no apt sources')
+            raise SystemError("no apt sources")
+
         src.apt_pkg = MockAptPkg(sources)
         src.apt_pkg.SourceRecords = raise_systemerror
-        self.assertRaises(
-            NoAptSources, list, src.iter_sources())
+        self.assertRaises(NoAptSources, list, src.iter_sources())
 
     def test_iter_sources(self):
         sources = MockSources(
-            ["0.1-1"],
-            [[("checksum", 0, "apackage_0.1.orig.tar.gz", "tar")]])
+            ["0.1-1"], [[("checksum", 0, "apackage_0.1.orig.tar.gz", "tar")]]
+        )
         src = LocalApt()
         src.apt_pkg = MockAptPkg(sources)
-        self.assertEqual([{
-                'Package': 'apackage',
-                'Version': '0.1-1',
-                'Files': [{
-                    'md5sum': 'checksum',
-                    'size': '0',
-                    'name': 'apackage_0.1.orig.tar.gz'}]}],
-            list(src.iter_sources()))
-        self.assertEqual([{
-                'Package': 'apackage',
-                'Version': '0.1-1',
-                'Files': [{
-                    'md5sum': 'checksum',
-                    'size': '0',
-                    'name': 'apackage_0.1.orig.tar.gz'}]}],
-            list(src.iter_source_by_name('apackage')))
+        self.assertEqual(
+            [
+                {
+                    "Package": "apackage",
+                    "Version": "0.1-1",
+                    "Files": [
+                        {
+                            "md5sum": "checksum",
+                            "size": "0",
+                            "name": "apackage_0.1.orig.tar.gz",
+                        }
+                    ],
+                }
+            ],
+            list(src.iter_sources()),
+        )
+        self.assertEqual(
+            [
+                {
+                    "Package": "apackage",
+                    "Version": "0.1-1",
+                    "Files": [
+                        {
+                            "md5sum": "checksum",
+                            "size": "0",
+                            "name": "apackage_0.1.orig.tar.gz",
+                        }
+                    ],
+                }
+            ],
+            list(src.iter_source_by_name("apackage")),
+        )

@@ -23,9 +23,9 @@ from ....tests.features import Feature
 
 
 class _LaunchpadConnectionFeature(Feature):
-
     def _probe(self):
         import ssl
+
         try:
             from httplib2 import Http, ServerNotFoundError
         except ImportError:
@@ -43,7 +43,6 @@ LaunchpadConnectionFeature = _LaunchpadConnectionFeature()
 
 
 class CommitMessageTests(TestCaseWithTransport):
-
     class _Commit:
         class _Builder:
             _revprops = {}
@@ -55,13 +54,13 @@ class CommitMessageTests(TestCaseWithTransport):
             self.builder = self._Builder()
 
     def set_changelog_content(self, content):
-        with open("debian/changelog", 'wb') as f:
+        with open("debian/changelog", "wb") as f:
             f.write(content)
 
     def test_leaves_existing_message(self):
         wt = self.make_branch_and_tree(".")
-        self.build_tree(['a', 'debian/'])
-        wt.add(['a', 'debian'])
+        self.build_tree(["a", "debian/"])
+        wt.add(["a", "debian"])
         wt.lock_read()
         self.addCleanup(wt.unlock)
         commit = self._Commit(wt)
@@ -69,8 +68,8 @@ class CommitMessageTests(TestCaseWithTransport):
 
     def test_ignores_commit_without_debian_changelog(self):
         wt = self.make_branch_and_tree(".")
-        self.build_tree(['a', 'debian/'])
-        wt.add(['a', 'debian'])
+        self.build_tree(["a", "debian/"])
+        wt.add(["a", "debian"])
         wt.lock_read()
         self.addCleanup(wt.unlock)
         commit = self._Commit(wt)
@@ -78,8 +77,8 @@ class CommitMessageTests(TestCaseWithTransport):
 
     def test_ignores_commit_excluding_debian_changelog(self):
         wt = self.make_branch_and_tree(".")
-        self.build_tree(['debian/', 'debian/changelog'])
-        wt.add(['debian/', 'debian/changelog'])
+        self.build_tree(["debian/", "debian/changelog"])
+        wt.add(["debian/", "debian/changelog"])
         wt.commit("one")
         self.set_changelog_content(b"  * new line")
         wt.lock_read()
@@ -89,11 +88,11 @@ class CommitMessageTests(TestCaseWithTransport):
 
     def test_ignores_commit_specific_files(self):
         wt = self.make_branch_and_tree(".")
-        self.build_tree(['a', 'debian/', 'debian/changelog'])
-        wt.add(['debian/', 'debian/changelog'])
+        self.build_tree(["a", "debian/", "debian/changelog"])
+        wt.add(["debian/", "debian/changelog"])
         wt.commit("one")
         self.set_changelog_content(b"  * new line\n")
-        wt.add(['a'])
+        wt.add(["a"])
         wt.lock_read()
         self.addCleanup(wt.unlock)
         commit = self._Commit(wt, specific_files=["a"])
@@ -101,61 +100,63 @@ class CommitMessageTests(TestCaseWithTransport):
 
     def test_provides_stripped_message(self):
         wt = self.make_branch_and_tree(".")
-        self.build_tree(['a', 'debian/', 'debian/changelog'])
-        wt.add(['debian/', 'debian/changelog'])
+        self.build_tree(["a", "debian/", "debian/changelog"])
+        wt.add(["debian/", "debian/changelog"])
         wt.commit("one")
         self.set_changelog_content(b"  * new line\n")
-        wt.add(['a'])
+        wt.add(["a"])
         wt.lock_read()
         self.addCleanup(wt.unlock)
         commit = self._Commit(wt)
-        self.assertEqual(
-            debian_changelog_commit_message(commit, None),
-            "new line\n")
+        self.assertEqual(debian_changelog_commit_message(commit, None), "new line\n")
 
     def test_provides_unstripped_message(self):
         wt = self.make_branch_and_tree(".")
-        self.build_tree(['a', 'debian/', 'debian/changelog'])
-        wt.add(['debian/', 'debian/changelog'])
+        self.build_tree(["a", "debian/", "debian/changelog"])
+        wt.add(["debian/", "debian/changelog"])
         wt.commit("one")
         self.set_changelog_content(b"  * two\n  * changes\n")
-        wt.add(['a'])
+        wt.add(["a"])
         wt.lock_read()
         self.addCleanup(wt.unlock)
         commit = self._Commit(wt)
         self.assertEqual(
-            debian_changelog_commit_message(commit, None),
-            "* two\n* changes\n")
+            debian_changelog_commit_message(commit, None), "* two\n* changes\n"
+        )
 
     def test_set_message_with_bugs(self):
         self.requireFeature(LaunchpadConnectionFeature)
         wt = self.make_branch_and_tree(".")
-        self.build_tree(['a', 'debian/', 'debian/changelog'])
-        wt.add(['debian/', 'debian/changelog'])
+        self.build_tree(["a", "debian/", "debian/changelog"])
+        wt.add(["debian/", "debian/changelog"])
         wt.commit("one")
         self.set_changelog_content(b"  * fix LP: #1234\n  * close LP: #4321\n")
-        wt.add(['a'])
+        wt.add(["a"])
         wt.lock_read()
         self.addCleanup(wt.unlock)
         commit = self._Commit(wt)
         self.assertEqual(
             debian_changelog_commit(commit, None),
-            "* fix LP: #1234\n* close LP: #4321\n")
+            "* fix LP: #1234\n* close LP: #4321\n",
+        )
         self.assertEqual(
             commit.builder._revprops,
-            {'bugs': 'https://launchpad.net/bugs/1234 fixed\n'
-                     'https://launchpad.net/bugs/4321 fixed'})
+            {
+                "bugs": "https://launchpad.net/bugs/1234 fixed\n"
+                "https://launchpad.net/bugs/4321 fixed"
+            },
+        )
 
     def test_set_message_returns_unicode(self):
         wt = self.make_branch_and_tree(".")
-        self.build_tree(['a', 'debian/', 'debian/changelog'])
-        wt.add(['debian/', 'debian/changelog'])
+        self.build_tree(["a", "debian/", "debian/changelog"])
+        wt.add(["debian/", "debian/changelog"])
         wt.commit("one")
         self.set_changelog_content(b"  * \xe2\x80\xa6real fix this time\n")
-        wt.add(['a'])
+        wt.add(["a"])
         wt.lock_read()
         self.addCleanup(wt.unlock)
         commit = self._Commit(wt)
         self.assertEqual(
-            debian_changelog_commit(commit, None),
-            "\u2026real fix this time\n")
+            debian_changelog_commit(commit, None), "\u2026real fix this time\n"
+        )

@@ -27,7 +27,6 @@ import os
 
 
 class TestDep3Patch(ExternalBase):
-
     def setUp(self):
         super().setUp()
         self.upstream_tree = self.make_branch_and_tree("upstream")
@@ -48,9 +47,12 @@ class TestDep3Patch(ExternalBase):
         self.build_tree_contents([("feature/foo", "bar\n")])
         self.feature_tree.add("foo")
         self.feature_tree.commit(
-            message="A message", timestamp=1304850124,
-            timezone=0, authors=["Jelmer <jelmer@debian.org>"],
-            rev_id=b"therevid")
+            message="A message",
+            timestamp=1304850124,
+            timezone=0,
+            authors=["Jelmer <jelmer@debian.org>"],
+            rev_id=b"therevid",
+        )
         (out, err) = self.run_bzr("dep3-patch -d packaging feature")
         self.assertEqualDiff(
             out,
@@ -65,14 +67,18 @@ class TestDep3Patch(ExternalBase):
             "+++ new/foo\t2011-05-08 10:22:04 +0000\n"
             "@@ -0,0 +1,1 @@\n"
             "+bar\n"
-            "\n")
+            "\n",
+        )
 
     def test_uses_single_revision_commit(self):
         # If there is a single revision the commit message from
         # that revision will be used.
         self.feature_tree.commit(
-            message="A message", timestamp=1304850124,
-            timezone=0, authors=["Jelmer <jelmer@debian.org>"])
+            message="A message",
+            timestamp=1304850124,
+            timezone=0,
+            authors=["Jelmer <jelmer@debian.org>"],
+        )
         (out, err) = self.run_bzr("dep3-patch -d packaging feature")
         self.assertContainsRe(out, "Description: A message\n")
 
@@ -84,22 +90,23 @@ class TestDep3Patch(ExternalBase):
         self.assertContainsRe(out, "Description: What this does\n")
 
     def test_upstream_branch(self):
-        os.mkdir('packaging/.bzr-builddeb/')
-        with open('packaging/.bzr-builddeb/local.conf', 'w') as f:
-            f.write('[BUILDDEB]\nupstream-branch = %s\n' %
-                    self.upstream_tree.branch.base)
+        os.mkdir("packaging/.bzr-builddeb/")
+        with open("packaging/.bzr-builddeb/local.conf", "w") as f:
+            f.write(
+                "[BUILDDEB]\nupstream-branch = %s\n" % self.upstream_tree.branch.base
+            )
         self.feature_tree.commit(message="a message")
         (out, err) = self.run_bzr("dep3-patch -d packaging feature")
         self.assertContainsRe(out, "Applied-Upstream: no\n")
 
     def test_upstream_branch_disabled(self):
-        os.mkdir('packaging/.bzr-builddeb/')
-        with open('packaging/.bzr-builddeb/local.conf', 'w') as f:
-            f.write('[BUILDDEB]\nupstream-branch = %s\n' %
-                    self.upstream_tree.branch.base)
+        os.mkdir("packaging/.bzr-builddeb/")
+        with open("packaging/.bzr-builddeb/local.conf", "w") as f:
+            f.write(
+                "[BUILDDEB]\nupstream-branch = %s\n" % self.upstream_tree.branch.base
+            )
         self.feature_tree.commit(message="a message")
-        (out, err) = self.run_bzr(
-            "dep3-patch --no-upstream-check -d packaging feature")
+        (out, err) = self.run_bzr("dep3-patch --no-upstream-check -d packaging feature")
         self.assertNotContainsRe(out, "Applied-Upstream")
 
     def test_range(self):
@@ -107,14 +114,20 @@ class TestDep3Patch(ExternalBase):
         self.build_tree_contents([("feature/foo", "bar\n")])
         self.feature_tree.add("foo")
         self.feature_tree.commit(
-            message="Another message", timestamp=1304850124,
-            timezone=0, authors=["Jelmer <jelmer@debian.org>"],
-            rev_id=b"baserevid")
+            message="Another message",
+            timestamp=1304850124,
+            timezone=0,
+            authors=["Jelmer <jelmer@debian.org>"],
+            rev_id=b"baserevid",
+        )
         self.build_tree_contents([("feature/foo", "bla\n")])
         self.feature_tree.commit(
-            message="A message", timestamp=1304850124,
-            timezone=0, authors=["Jelmer <jelmer@debian.org>"],
-            rev_id=b"therevid")
+            message="A message",
+            timestamp=1304850124,
+            timezone=0,
+            authors=["Jelmer <jelmer@debian.org>"],
+            rev_id=b"therevid",
+        )
         (out, err) = self.run_bzr("dep3-patch -c -1 -d packaging feature")
         self.assertEqualDiff(
             out,
@@ -130,13 +143,17 @@ class TestDep3Patch(ExternalBase):
             "@@ -1,1 +1,1 @@\n"
             "-bar\n"
             "+bla\n"
-            "\n")
+            "\n",
+        )
 
     def test_open_ended_range(self):
         # If there is a single revision the commit message from
         # that revision will be used.
         self.feature_tree.commit(
-            message="A message", timestamp=1304850124,
-            timezone=0, authors=["Jelmer <jelmer@debian.org>"])
+            message="A message",
+            timestamp=1304850124,
+            timezone=0,
+            authors=["Jelmer <jelmer@debian.org>"],
+        )
         (out, err) = self.run_bzr("dep3-patch -d packaging feature -r-2..")
         self.assertContainsRe(out, "Description: A message\n")

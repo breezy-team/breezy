@@ -25,6 +25,7 @@ from ...trace import (
 try:
     from launchpadlib.launchpad import Launchpad
     from launchpadlib.uris import LPNET_SERVICE_ROOT
+
     HAVE_LPLIB = True
 except ImportError:
     HAVE_LPLIB = False
@@ -33,8 +34,7 @@ except ImportError:
 def get_launchpad():
     if not HAVE_LPLIB:
         return None
-    return Launchpad.login_anonymously(
-        "breezy-debian", service_root=LPNET_SERVICE_ROOT)
+    return Launchpad.login_anonymously("breezy-debian", service_root=LPNET_SERVICE_ROOT)
 
 
 def ubuntu_bugs_for_debian_bug(bug_id):

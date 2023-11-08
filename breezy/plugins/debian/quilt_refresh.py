@@ -62,16 +62,13 @@ def refresh_quilt_patches(
             patches.push(name, refresh=True)
         except QuiltError as e:
             lines = e.stdout.splitlines()
-            m = re.match(
-                "Patch debian/patches/(.*) can be reverse-applied",
-                lines[-1])
+            m = re.match("Patch debian/patches/(.*) can be reverse-applied", lines[-1])
             if m:
                 assert m.group(1) == name
                 patches.delete(name, remove=True)
                 with ChangelogEditor(
-                        local_tree.abspath(
-                            os.path.join(subpath, 'debian/changelog'))
-                        ) as cl:
+                    local_tree.abspath(os.path.join(subpath, "debian/changelog"))
+                ) as cl:
                     cl.add_entry(["Drop patch %s, present upstream." % name])
                 debcommit(
                     local_tree,
@@ -85,8 +82,9 @@ def refresh_quilt_patches(
                 )
                 continue
             m = re.match(
-                r"Patch debian/patches/(.*) does not apply "
-                r"\(enforce with -f\)", lines[-1])
+                r"Patch debian/patches/(.*) does not apply " r"\(enforce with -f\)",
+                lines[-1],
+            )
             if m:
                 assert m.group(1) == name
                 raise QuiltPatchDoesNotApply(name, e) from e

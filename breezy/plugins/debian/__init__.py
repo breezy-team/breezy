@@ -37,7 +37,7 @@ from .info import (  # noqa: F401
 from ...directory_service import (
     AliasDirectory,
     directories,
-    )
+)
 
 from ...i18n import load_plugin_translations
 from ...tag import tag_sort_methods
@@ -59,46 +59,56 @@ commands = {
 }
 
 for command, aliases in commands.items():
-    plugin_cmds.register_lazy(
-        'cmd_' + command, aliases, __name__ + ".cmds")
+    plugin_cmds.register_lazy("cmd_" + command, aliases, __name__ + ".cmds")
 
 
 def global_conf():
     from ...bedding import config_dir
-    return os.path.join(config_dir(), 'builddeb.conf')
+
+    return os.path.join(config_dir(), "builddeb.conf")
 
 
-default_build_dir = '../build-area'
-default_orig_dir = '..'
-default_result_dir = '..'
+default_build_dir = "../build-area"
+default_orig_dir = ".."
+default_result_dir = ".."
 
 
 directories.register_lazy(
-    "apt:", __name__ + '.directory',
-    'AptDirectory',
-    "Directory that uses Vcs-* control fields in apt to look up branches")
+    "apt:",
+    __name__ + ".directory",
+    "AptDirectory",
+    "Directory that uses Vcs-* control fields in apt to look up branches",
+)
 directories.register_lazy(
-    "dgit:", __name__ + '.directory',
-    'DgitDirectory',
-    "Directory that uses Debian Dgit control fields to look up branches")
+    "dgit:",
+    __name__ + ".directory",
+    "DgitDirectory",
+    "Directory that uses Debian Dgit control fields to look up branches",
+)
 directories.register_lazy(
-    "vcs:", __name__ + '.directory',
-    'VcsDirectory',
-    "Directory that uses local Debian Vcs-* control fields to look up "
-    "branches")
+    "vcs:",
+    __name__ + ".directory",
+    "VcsDirectory",
+    "Directory that uses local Debian Vcs-* control fields to look up " "branches",
+)
 
 AliasDirectory.branch_aliases.register_lazy(
-    "upstream", __name__ + ".directory", "upstream_branch_alias",
-    help="upstream branch (for packaging branches)")
+    "upstream",
+    __name__ + ".directory",
+    "upstream_branch_alias",
+    help="upstream branch (for packaging branches)",
+)
 
 tag_sort_methods.register_lazy(
-    "debversion", __name__ + ".tagging", "sort_debversion",
-    "Sort like Debian versions.")
+    "debversion", __name__ + ".tagging", "sort_debversion", "Sort like Debian versions."
+)
 
 revspec_registry.register_lazy(
-    "package:", __name__ + ".revspec", "RevisionSpec_package")
+    "package:", __name__ + ".revspec", "RevisionSpec_package"
+)
 revspec_registry.register_lazy(
-    "upstream:", __name__ + ".revspec", "RevisionSpec_upstream")
+    "upstream:", __name__ + ".revspec", "RevisionSpec_upstream"
+)
 
 
 def debian_changelog_commit_message(commit, start_message):
@@ -114,21 +124,24 @@ def debian_changelog_commit_message(commit, start_message):
     if commit.specific_files and cl_path not in commit.specific_files:
         return start_message
     from .changelog import changelog_changes
+
     changes = changelog_changes(
-        commit.work_tree, commit.work_tree.basis_tree(), cl_path)
+        commit.work_tree, commit.work_tree.basis_tree(), cl_path
+    )
     if not changes:
         return start_message
 
     from .util import strip_changelog_message
+
     changes = strip_changelog_message(changes)
 
-    return ''.join(changes)
+    return "".join(changes)
 
 
 def debian_changelog_commit(commit, start_message):
     """hooked into breezy.msgeditor set_commit_message.
-     Set the commit message from debian/changelog and set any LP: #1234 to bug
-     fixed tags."""
+    Set the commit message from debian/changelog and set any LP: #1234 to bug
+    fixed tags."""
     from .util import find_bugs_fixed
 
     changes = debian_changelog_commit_message(commit, start_message)
@@ -143,25 +156,29 @@ def debian_changelog_commit(commit, start_message):
 
 def changelog_merge_hook_factory(merger):
     from . import merge_changelog
+
     return merge_changelog.ChangeLogFileMerge(merger)
 
 
-def tree_debian_tag_name(tree, branch, subpath='', vendor=None):
+def tree_debian_tag_name(tree, branch, subpath="", vendor=None):
     from .config import BUILD_TYPE_MERGE
-    from .import_dsc import (
-        DistributionBranch, DistributionBranchSet)
+    from .import_dsc import DistributionBranch, DistributionBranchSet
     from .util import (
-        debuild_config, find_changelog, MissingChangelogError,
-        suite_to_distribution)
+        debuild_config,
+        find_changelog,
+        MissingChangelogError,
+        suite_to_distribution,
+    )
+
     config = debuild_config(tree, subpath=subpath)
     try:
         (changelog, top_level) = find_changelog(
-            tree, subpath=subpath,
-            merge=(config.build_type == BUILD_TYPE_MERGE))
+            tree, subpath=subpath, merge=(config.build_type == BUILD_TYPE_MERGE)
+        )
     except MissingChangelogError:
         # Not a debian package
         return None
-    if changelog.distributions == 'UNRELEASED':
+    if changelog.distributions == "UNRELEASED":
         # The changelog still targets 'UNRELEASED', so apparently hasn't been
         # uploaded. XXX: Give a warning of some sort here?
         return None
@@ -175,7 +192,7 @@ def tree_debian_tag_name(tree, branch, subpath='', vendor=None):
 
 
 def debian_tag_name(branch, revid):
-    subpath = ''
+    subpath = ""
     t = branch.repository.revision_tree(revid)
     return tree_debian_tag_name(t, branch, subpath, vendor=None)
 
@@ -185,52 +202,71 @@ def pre_merge_fix_ancestry(merger):
     from .util import debuild_config
     from .merge_package import fix_ancestry_as_needed
     from ...workingtree import WorkingTree
+
     if not isinstance(merger.this_tree, WorkingTree):
         return
     if getattr(merger, "other_branch", None) is None:
         return
     # This only works for packages that live in the root. That seems fine,
     # though?
-    if (not merger.this_tree.is_versioned("debian/changelog") or
-            not merger.other_tree.is_versioned("debian/changelog")):
+    if not merger.this_tree.is_versioned(
+        "debian/changelog"
+    ) or not merger.other_tree.is_versioned("debian/changelog"):
         return
-    this_config = debuild_config(merger.this_tree, '')
-    other_config = debuild_config(merger.other_tree, '')
-    if not (this_config.build_type == BUILD_TYPE_NATIVE or
-            other_config.build_type == BUILD_TYPE_NATIVE):
+    this_config = debuild_config(merger.this_tree, "")
+    other_config = debuild_config(merger.other_tree, "")
+    if not (
+        this_config.build_type == BUILD_TYPE_NATIVE
+        or other_config.build_type == BUILD_TYPE_NATIVE
+    ):
         from .upstream import PackageVersionNotPresent
+
         try:
             fix_ancestry_as_needed(
-                merger.this_tree, merger.other_branch,
-                source_revid=merger.other_tree.get_revision_id())
+                merger.this_tree,
+                merger.other_branch,
+                source_revid=merger.other_tree.get_revision_id(),
+            )
         except PackageVersionNotPresent as e:
             trace.warning(
                 gettext(
                     "Not attempting to fix packaging branch ancestry, "
-                    "missing pristine tar data for version %s."),
-                e.version)
+                    "missing pristine tar data for version %s."
+                ),
+                e.version,
+            )
 
 
 install_lazy_named_hook(
-    "breezy.msgeditor", "hooks", "commit_message_template",
+    "breezy.msgeditor",
+    "hooks",
+    "commit_message_template",
     debian_changelog_commit_message,
-    "Use changes documented in debian/changelog to suggest "
-    "the commit message")
+    "Use changes documented in debian/changelog to suggest " "the commit message",
+)
 install_lazy_named_hook(
-    "breezy.merge", "Merger.hooks",
-    'merge_file_content', changelog_merge_hook_factory,
-    'Debian Changelog file merge')
+    "breezy.merge",
+    "Merger.hooks",
+    "merge_file_content",
+    changelog_merge_hook_factory,
+    "Debian Changelog file merge",
+)
 install_lazy_named_hook(
-    "breezy.branch", "Branch.hooks",
-    "automatic_tag_name", debian_tag_name,
-    "Automatically determine tag names from Debian version")
+    "breezy.branch",
+    "Branch.hooks",
+    "automatic_tag_name",
+    debian_tag_name,
+    "Automatically determine tag names from Debian version",
+)
 install_lazy_named_hook(
-    "breezy.merge", "Merger.hooks",
-    'pre_merge_fix_ancestry', pre_merge_fix_ancestry,
-    'Debian ancestry fixing')
+    "breezy.merge",
+    "Merger.hooks",
+    "pre_merge_fix_ancestry",
+    pre_merge_fix_ancestry,
+    "Debian ancestry fixing",
+)
 
 
 def load_tests(loader, basic_tests, pattern):
-    basic_tests.addTest(
-        loader.loadTestsFromModuleNames([__name__ + '.tests']))
+    basic_tests.addTest(loader.loadTestsFromModuleNames([__name__ + ".tests"]))
     return basic_tests

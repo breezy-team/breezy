@@ -25,42 +25,40 @@ from ....transport import NoSuchFile
 from ....tests import (
     TestCase,
     TestCaseWithTransport,
-    )
+)
 from ..upstream.uscan import (
     UScanSource,
     UScanError,
     _xml_report_extract_upstream_version,
     _xml_report_extract_warnings,
-    )
+)
 
 
 class UScanSourceTests(TestCaseWithTransport):
-
     def setUp(self):
         super().setUp()
-        self.tree = self.make_branch_and_tree('.')
+        self.tree = self.make_branch_and_tree(".")
 
     def test_export_watchfile_none(self):
-        src = UScanSource(self.tree, '', False)
-        self.assertRaises(NoSuchFile, src._export_file, 'watch', self.test_dir)
+        src = UScanSource(self.tree, "", False)
+        self.assertRaises(NoSuchFile, src._export_file, "watch", self.test_dir)
 
     def test_export_watchfile_top_level(self):
-        src = UScanSource(self.tree, '', True)
-        self.build_tree(['watch'])
-        self.tree.add(['watch'])
+        src = UScanSource(self.tree, "", True)
+        self.build_tree(["watch"])
+        self.tree.add(["watch"])
         with tempfile.TemporaryDirectory() as tmpdir:
-            self.assertIsNot(src._export_file('watch', tmpdir), None)
+            self.assertIsNot(src._export_file("watch", tmpdir), None)
 
     def test_export_watchfile(self):
-        src = UScanSource(self.tree, '', False)
-        self.build_tree(['debian/', 'debian/watch'])
-        self.tree.smart_add(['debian/watch'])
+        src = UScanSource(self.tree, "", False)
+        self.build_tree(["debian/", "debian/watch"])
+        self.tree.smart_add(["debian/watch"])
         with tempfile.TemporaryDirectory() as tmpdir:
-            self.assertIsNot(src._export_file('watch', tmpdir), None)
+            self.assertIsNot(src._export_file("watch", tmpdir), None)
 
 
 class UScanOutputParsingTests(TestCase):
-
     def test__xml_report_extract_upstream_version(self):
         text = b"""
 <dehs>
@@ -87,7 +85,8 @@ with a newline</warnings>
 </dehs>"""
         self.assertEqual(
             ["this is a warning\nwith a newline"],
-            list(_xml_report_extract_warnings(text)))
+            list(_xml_report_extract_warnings(text)),
+        )
 
     def test__xml_report_extract_upstream_version_warnings(self):
         text = b"""
@@ -98,9 +97,7 @@ in debian/watch, skipping:
 ftp://ftp.samba.org/pub/tdb/tdb-(.+).tar.gz</warnings>
 </dehs>
 """
-        self.assertIs(
-            None,
-            _xml_report_extract_upstream_version(text))
+        self.assertIs(None, _xml_report_extract_upstream_version(text))
 
     def test__xml_report_extract_upstream_version_noise(self):
         text = b"""
@@ -114,9 +111,7 @@ in debian/watch, skipping:
 ftp://ftp.samba.org/pub/tdb/tdb-(.+).tar.gz</warnings>
 </dehs>
 """
-        self.assertEqual(
-            "1.2.9",
-            _xml_report_extract_upstream_version(text))
+        self.assertEqual("1.2.9", _xml_report_extract_upstream_version(text))
 
     def test__xml_report_extract_upstream_version_errors(self):
         text = b"""
@@ -127,6 +122,4 @@ blahf =>
 <errors>something something signature</errors>
 </dehs>
 """
-        self.assertRaises(
-            UScanError,
-            _xml_report_extract_upstream_version, text)
+        self.assertRaises(UScanError, _xml_report_extract_upstream_version, text)

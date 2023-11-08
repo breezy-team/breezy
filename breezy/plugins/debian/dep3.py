@@ -25,7 +25,7 @@ from email.message import Message
 from ... import (
     diff,
     errors,
-    )
+)
 from breezy.foreign import foreign_vcs_registry
 
 from io import BytesIO
@@ -51,9 +51,16 @@ def write_dep3_bug_line(message, bug_url, status):
 
 
 def write_dep3_patch_header(
-        f, description=None, origin=None, forwarded=None,
-        bugs=None, authors=None, revision_id=None, last_update=None,
-        applied_upstream=None):
+    f,
+    description=None,
+    origin=None,
+    forwarded=None,
+    bugs=None,
+    authors=None,
+    revision_id=None,
+    last_update=None,
+    applied_upstream=None,
+):
     """Write a DEP3 patch header.
 
     :param f: File-like object to write to
@@ -86,20 +93,20 @@ def write_dep3_patch_header(
             write_dep3_bug_line(header, bug_url, status)
     if last_update is not None:
         header.add_header(
-            "Last-Update",
-            time.strftime("%Y-%m-%d", time.gmtime(last_update)))
+            "Last-Update", time.strftime("%Y-%m-%d", time.gmtime(last_update))
+        )
     if applied_upstream is not None:
         header.add_header("Applied-Upstream", applied_upstream)
     if revision_id is not None:
         try:
             (foreign_revid, mapping) = foreign_vcs_registry.parse_revision_id(
-                revision_id)
+                revision_id
+            )
         except errors.InvalidRevisionId:
-            header.add_header("X-Bzr-Revision-Id", revision_id.decode('utf-8'))
+            header.add_header("X-Bzr-Revision-Id", revision_id.decode("utf-8"))
         else:
             if mapping.vcs.abbreviation == "git":
-                header.add_header(
-                    "X-Git-Commit", foreign_revid.decode('utf-8'))
+                header.add_header("X-Git-Commit", foreign_revid.decode("utf-8"))
     f.write(str(header))
 
 
@@ -116,6 +123,7 @@ def gather_bugs_and_authors(repository, interesting_revision_ids):
         last_update = max(rev.timestamp, last_update)
         authors.update(rev.get_apparent_authors())
         from breezy.revision import iter_bugs
+
         extra_bugs = iter_bugs(rev)
         bugs.update(extra_bugs)
     if last_update == -0.0:
@@ -123,8 +131,7 @@ def gather_bugs_and_authors(repository, interesting_revision_ids):
     return (bugs, authors, last_update)
 
 
-def determine_applied_upstream(
-        upstream_branch, feature_branch, feature_revid=None):
+def determine_applied_upstream(upstream_branch, feature_branch, feature_revid=None):
     """Check if a particular revision has been merged upstream.
 
     :param upstream_branch: Upstream branch object
@@ -135,23 +142,23 @@ def determine_applied_upstream(
     """
     if feature_revid is None:
         feature_revid = feature_branch.last_revision()
-    upstream_graph = feature_branch.repository.get_graph(
-        upstream_branch.repository)
+    upstream_graph = feature_branch.repository.get_graph(upstream_branch.repository)
     merger = upstream_graph.find_lefthand_merger(
-        feature_revid, upstream_branch.last_revision())
+        feature_revid, upstream_branch.last_revision()
+    )
     if merger is not None:
         try:
-            (foreign_revid, mapping) = foreign_vcs_registry.parse_revision_id(
-                merger)
+            (foreign_revid, mapping) = foreign_vcs_registry.parse_revision_id(merger)
         except errors.InvalidRevisionId:
             pass
         else:
-            if mapping.vcs.abbreviation == 'git':
-                return "merged in commit {}".format(
-                    foreign_revid.decode('ascii')[:7])
-        return "merged in revision {}".format(".".join(
-            str(x)
-            for x in upstream_branch.revision_id_to_dotted_revno(merger)))
+            if mapping.vcs.abbreviation == "git":
+                return "merged in commit {}".format(foreign_revid.decode("ascii")[:7])
+        return "merged in revision {}".format(
+            ".".join(
+                str(x) for x in upstream_branch.revision_id_to_dotted_revno(merger)
+            )
+        )
     else:
         return "no"
 
@@ -180,32 +187,42 @@ def describe_origin(branch, revid):
     public_branch_url = branch.get_public_branch()
     if public_branch_url is not None:
         try:
-            (foreign_revid, mapping) = foreign_vcs_registry.parse_revision_id(
-                revid)
+            (foreign_revid, mapping) = foreign_vcs_registry.parse_revision_id(revid)
         except errors.InvalidRevisionId:
             pass
         else:
-            if mapping.vcs.abbreviation == 'git':
+            if mapping.vcs.abbreviation == "git":
                 return "commit, {}, commit: {}".format(
-                    public_branch_url, foreign_revid.decode('ascii')[:7])
+                    public_branch_url, foreign_revid.decode("ascii")[:7]
+                )
         return "commit, {}, revision: {}".format(
-            public_branch_url, ".".join(
-                str(x) for x in branch.revision_id_to_dotted_revno(revid)))
+            public_branch_url,
+            ".".join(str(x) for x in branch.revision_id_to_dotted_revno(revid)),
+        )
     else:
         try:
-            (foreign_revid, mapping) = foreign_vcs_registry.parse_revision_id(
-                revid)
+            (foreign_revid, mapping) = foreign_vcs_registry.parse_revision_id(revid)
         except errors.InvalidRevisionId:
             pass
         else:
-            if mapping.vcs.abbreviation == 'git':
-                return "commit: {}".format(foreign_revid.decode('ascii')[:7])
-        return "commit, revision id: %s" % revid.decode('utf-8')
+            if mapping.vcs.abbreviation == "git":
+                return "commit: {}".format(foreign_revid.decode("ascii")[:7])
+        return "commit, revision id: %s" % revid.decode("utf-8")
 
 
-def write_dep3_patch(f, branch, base_revid, target_revid, description=None,
-                     origin=None, forwarded=None, applied_upstream=None,
-                     bugs=None, authors=None, last_update=None):
+def write_dep3_patch(
+    f,
+    branch,
+    base_revid,
+    target_revid,
+    description=None,
+    origin=None,
+    forwarded=None,
+    applied_upstream=None,
+    bugs=None,
+    authors=None,
+    last_update=None,
+):
     """Write a DEP-3 compliant patch.
 
     :param f: File-like object to write to
@@ -221,14 +238,19 @@ def write_dep3_patch(f, branch, base_revid, target_revid, description=None,
     :param last_update: Timestamp for last time this patch was updated
     """
     write_dep3_patch_header(
-        f, bugs=bugs, authors=authors,
-        last_update=last_update, description=description,
-        revision_id=target_revid, origin=origin,
-        applied_upstream=applied_upstream, forwarded=forwarded)
+        f,
+        bugs=bugs,
+        authors=authors,
+        last_update=last_update,
+        description=description,
+        revision_id=target_revid,
+        origin=origin,
+        applied_upstream=applied_upstream,
+        forwarded=forwarded,
+    )
     old_tree = branch.repository.revision_tree(base_revid)
     new_tree = branch.repository.revision_tree(target_revid)
     bf = BytesIO()
-    diff.show_diff_trees(old_tree, new_tree, bf, old_label='old/',
-                         new_label='new/')
+    diff.show_diff_trees(old_tree, new_tree, bf, old_label="old/", new_label="new/")
     # TODO(jelmer)
-    f.write(bf.getvalue().decode('utf-8'))
+    f.write(bf.getvalue().decode("utf-8"))

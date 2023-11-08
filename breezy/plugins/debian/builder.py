@@ -32,18 +32,18 @@ from .util import (
     subprocess_setup,
     find_changes_files,
     dget_changes,
-    )
+)
 
 
 class ChangesFileMissing(BzrError):
-
     _fmt = "Missing changes file."
 
 
 class NoSourceDirError(BzrError):
-
-    _fmt = ("There is no existing source directory to use. Use "
-            "--export-only or --dont-purge to get one that can be used")
+    _fmt = (
+        "There is no existing source directory to use. Use "
+        "--export-only or --dont-purge to get one that can be used"
+    )
 
 
 class BuildFailedError(BzrError):
@@ -74,15 +74,14 @@ class DebBuild:
         created.
         """
         parent_dir = get_parent_dir(self.target_dir)
-        if parent_dir != '' and not os.path.exists(parent_dir):
+        if parent_dir != "" and not os.path.exists(parent_dir):
             os.makedirs(parent_dir)
         if os.path.exists(self.target_dir):
             if not self.use_existing:
                 note("Purging the build dir: %s", self.target_dir)
                 shutil.rmtree(self.target_dir)
             else:
-                note("Not purging build dir as requested: %s",
-                     self.target_dir)
+                note("Not purging build dir as requested: %s", self.target_dir)
         else:
             if self.use_existing:
                 raise NoSourceDirError
@@ -92,21 +91,22 @@ class DebBuild:
 
     def before_build(self):
         subprocess.check_call(
-            ['dpkg-source', '--before-build', self.target_dir],
-            preexec_fn=subprocess_setup)
+            ["dpkg-source", "--before-build", self.target_dir],
+            preexec_fn=subprocess_setup,
+        )
 
     def after_build(self):
         subprocess.check_call(
-            ['dpkg-source', '--after-build', self.target_dir],
-            preexec_fn=subprocess_setup, )
+            ["dpkg-source", "--after-build", self.target_dir],
+            preexec_fn=subprocess_setup,
+        )
 
     def build(self):
         """This builds the package using the supplied command."""
-        note("Building the package in %s, using %s", self.target_dir,
-             self.builder)
+        note("Building the package in %s, using %s", self.target_dir, self.builder)
         proc = subprocess.Popen(
-            self.builder, shell=True, cwd=self.target_dir,
-            preexec_fn=subprocess_setup)
+            self.builder, shell=True, cwd=self.target_dir, preexec_fn=subprocess_setup
+        )
         proc.wait()
         if proc.returncode != 0:
             raise BuildFailedError
@@ -117,22 +117,23 @@ class DebBuild:
         shutil.rmtree(self.target_dir)
 
 
-def do_build(package_name, version, distiller, local_tree, config,
-             build_command, target_dir=None):
+def do_build(
+    package_name, version, distiller, local_tree, config, build_command, target_dir=None
+):
     """Actually run a build."""
     with tempfile.TemporaryDirectory() as bd:
         build_source_dir = os.path.join(
-            bd, package_name + "-" + version.upstream_version)
+            bd, package_name + "-" + version.upstream_version
+        )
         builder = DebBuild(
-            distiller, build_source_dir,
-            build_command,
-            use_existing=False)
+            distiller, build_source_dir, build_command, use_existing=False
+        )
         builder.prepare()
-        run_hook(local_tree, 'pre-export', config)
+        run_hook(local_tree, "pre-export", config)
         builder.export()
-        run_hook(local_tree, 'pre-build', config, wd=build_source_dir)
+        run_hook(local_tree, "pre-build", config, wd=build_source_dir)
         builder.build()
-        run_hook(local_tree, 'post-build', config, wd=build_source_dir)
+        run_hook(local_tree, "post-build", config, wd=build_source_dir)
         if target_dir is not None:
             ret = {}
             for kind, entry in find_changes_files(bd, package_name, version):

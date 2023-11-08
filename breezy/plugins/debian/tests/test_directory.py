@@ -25,87 +25,91 @@ from ..directory import (
     vcs_git_url_to_bzr_url,
     vcs_hg_url_to_bzr_url,
     vcs_cvs_url_to_bzr_url,
-    )
+)
 
 
 class VcsGitUrlToBzrUrlTests(TestCase):
-
     def test_preserves(self):
         self.assertEqual(
-            'git://github.com/jelmer/dulwich',
-            vcs_git_url_to_bzr_url('git://github.com/jelmer/dulwich'))
+            "git://github.com/jelmer/dulwich",
+            vcs_git_url_to_bzr_url("git://github.com/jelmer/dulwich"),
+        )
         self.assertEqual(
-            'https://github.com/jelmer/dulwich',
-            vcs_git_url_to_bzr_url('https://github.com/jelmer/dulwich'))
+            "https://github.com/jelmer/dulwich",
+            vcs_git_url_to_bzr_url("https://github.com/jelmer/dulwich"),
+        )
 
     def test_with_branch(self):
         self.assertEqual(
-            'https://github.com/jelmer/dulwich,branch=foo',
-            vcs_git_url_to_bzr_url('https://github.com/jelmer/dulwich -b foo'))
+            "https://github.com/jelmer/dulwich,branch=foo",
+            vcs_git_url_to_bzr_url("https://github.com/jelmer/dulwich -b foo"),
+        )
 
     def test_with_subpath(self):
         self.assertEqual(
-            'https://github.com/jelmer/dulwich/path',
-            vcs_git_url_to_bzr_url(
-                'https://github.com/jelmer/dulwich [path]'))
+            "https://github.com/jelmer/dulwich/path",
+            vcs_git_url_to_bzr_url("https://github.com/jelmer/dulwich [path]"),
+        )
         self.assertEqual(
-            'https://github.com/jelmer/dulwich,branch=foo/path',
-            vcs_git_url_to_bzr_url(
-                'https://github.com/jelmer/dulwich -b foo [path]'))
+            "https://github.com/jelmer/dulwich,branch=foo/path",
+            vcs_git_url_to_bzr_url("https://github.com/jelmer/dulwich -b foo [path]"),
+        )
 
     def test_fixup(self):
         self.assertEqual(
-            'git://github.com/jelmer/dulwich',
-            vcs_git_url_to_bzr_url('git://github.com:jelmer/dulwich'))
+            "git://github.com/jelmer/dulwich",
+            vcs_git_url_to_bzr_url("git://github.com:jelmer/dulwich"),
+        )
 
 
 class FixUpGitUrlTests(TestCase):
-
     def test_salsa_not_https(self):
         self.assertEqual(
-            'https://salsa.debian.org/jelmer/dulwich',
-            fixup_broken_git_url(
-                'git://salsa.debian.org/jelmer/dulwich'))
+            "https://salsa.debian.org/jelmer/dulwich",
+            fixup_broken_git_url("git://salsa.debian.org/jelmer/dulwich"),
+        )
 
     def test_salsa_uses_cgit(self):
         self.assertEqual(
-            'https://salsa.debian.org/jelmer/dulwich',
-            fixup_broken_git_url(
-                'https://salsa.debian.org/cgit/jelmer/dulwich'))
+            "https://salsa.debian.org/jelmer/dulwich",
+            fixup_broken_git_url("https://salsa.debian.org/cgit/jelmer/dulwich"),
+        )
 
 
 class VcsHgUrlToBzrUrlTests(TestCase):
-
     def test_preserves(self):
         self.assertEqual(
-            'https://bitbucket.org/jelmer/dulwich',
-            vcs_hg_url_to_bzr_url('https://bitbucket.org/jelmer/dulwich'))
+            "https://bitbucket.org/jelmer/dulwich",
+            vcs_hg_url_to_bzr_url("https://bitbucket.org/jelmer/dulwich"),
+        )
 
     def test_with_branch(self):
         self.assertEqual(
-            'https://bitbucket.org/jelmer/dulwich,branch=foo',
-            vcs_hg_url_to_bzr_url(
-                'https://bitbucket.org/jelmer/dulwich -b foo'))
+            "https://bitbucket.org/jelmer/dulwich,branch=foo",
+            vcs_hg_url_to_bzr_url("https://bitbucket.org/jelmer/dulwich -b foo"),
+        )
 
 
 class VcsCvsUrlToBzrUrlTests(TestCase):
-
     def setUp(self):
         super().setUp()
         import breezy
+
         if breezy.version_info < (3, 1, 1):
-            self.skipTest('version of breezy too old')
+            self.skipTest("version of breezy too old")
 
     def test_pserver(self):
         self.assertEqual(
-            'cvs+pserver://anonymous@cvs.savannah.nongnu.org'
-            '/cvsroot/fkt?module=debian/unstable',
+            "cvs+pserver://anonymous@cvs.savannah.nongnu.org"
+            "/cvsroot/fkt?module=debian/unstable",
             vcs_cvs_url_to_bzr_url(
-                ':pserver:anonymous@cvs.savannah.nongnu.org:'
-                '/cvsroot/fkt debian/unstable'))
+                ":pserver:anonymous@cvs.savannah.nongnu.org:"
+                "/cvsroot/fkt debian/unstable"
+            ),
+        )
         self.assertEqual(
-            'cvs+pserver://anonymous@cvs.savannah.nongnu.org'
-            '/cvsroot/fkt',
+            "cvs+pserver://anonymous@cvs.savannah.nongnu.org" "/cvsroot/fkt",
             vcs_cvs_url_to_bzr_url(
-                ':pserver:anonymous@cvs.savannah.nongnu.org:'
-                '/cvsroot/fkt'))
+                ":pserver:anonymous@cvs.savannah.nongnu.org:" "/cvsroot/fkt"
+            ),
+        )

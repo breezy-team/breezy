@@ -18,18 +18,22 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+
 def load_tests(loader, basic_tests, pattern):
     testmod_names = [
-        'test_builddeb',
-        'test_debrelease',
-        'test_dep3',
-        'test_do',
-        'test_get_tar',
-        'test_import_dsc',
-        'test_import_upstream',
-        'test_merge_package',
-        'test_merge_upstream',
+        "test_builddeb",
+        "test_debrelease",
+        "test_dep3",
+        "test_do",
+        "test_get_tar",
+        "test_import_dsc",
+        "test_import_upstream",
+        "test_merge_package",
+        "test_merge_upstream",
     ]
-    basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["{}.{}".format(__name__, i) for i in testmod_names]))
+    basic_tests.addTest(
+        loader.loadTestsFromModuleNames(
+            ["{}.{}".format(__name__, i) for i in testmod_names]
+        )
+    )
     return basic_tests
