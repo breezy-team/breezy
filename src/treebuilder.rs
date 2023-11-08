@@ -68,7 +68,7 @@ impl<T: MutableTree> TreeBuilder<T> {
 }
 
 impl<T: MutableTree> Default for TreeBuilder<T> {
-     fn default() -> Self {
-         Self::new()
-     }
+    fn default() -> Self {
+        Self::new()
+    }
 }
