@@ -797,21 +797,23 @@ class TestUpstreamVersionAddRevision(TestCaseWithTransport):
         return (self.revnos[revid], )
 
     def get_revision(self, revid):
-        rev = Revision(revid, parent_ids=[], properties={}, committer='', timestamp=0, timezone=0, message='', inventory_sha1=b'')
+        from breezy.foreign import ForeignRevision
         if revid in self.svn_revnos:
             self.requireFeature(svn_plugin)
             # Fake a bzr-svn revision
-            rev.foreign_revid = ("uuid", "bp", self.svn_revnos[revid])
+            foreign_revid = ("uuid", "bp", self.svn_revnos[revid])
             from ...svn import mapping
-            rev.mapping = mapping.mapping_registry.get_default()()
-        if revid in self.git_shas:
+            mapping = mapping.mapping_registry.get_default()()
+            rev = ForeignRevision(foreign_revid, mapping, revision_id=revid, parent_ids=[], properties={}, committer='', timestamp=0, timezone=0, message='', inventory_sha1=b'')
+        elif revid in self.git_shas:
             self.requireFeature(dulwich)
             # Fake a bzr-svn revision
-            rev.foreign_revid = self.git_shas[revid]
+            foreign_revid = self.git_shas[revid]
             from ....git import mapping
-            rev.mapping = mapping.mapping_registry.get_default()()
-            rev.timestamp = 1514772000
-            rev.timezone = 0
+            mapping = mapping.mapping_registry.get_default()()
+            rev = ForeignRevision(foreign_revid, mapping, revision_id=revid, parent_ids=[], properties={}, committer='', timestamp=1514772000, timezone=0, message='', inventory_sha1=b'')
+        else:
+            rev = Revision(revid, parent_ids=[], properties={}, committer='', timestamp=0, timezone=0, message='', inventory_sha1=b'')
         return rev
 
     def test_update_plus_rev(self):
@@ -981,18 +983,15 @@ class TestUpstreamTagVersion(TestCase):
 class GenericPristineTarSourceTests(TestCase):
 
     def test_pristine_tar_format_gz(self):
-        rev = Revision(b"myrevid", parent_ids=[], properties={}, committer='', timestamp=0, timezone=0, message='', inventory_sha1=b'')
-        rev.properties["deb-pristine-delta"] = "1"
+        rev = Revision(b"myrevid", parent_ids=[], properties={"deb-pristine-delta": "1"}, committer='', timestamp=0, timezone=0, message='', inventory_sha1=b'')
         self.assertEqual("gz", revision_pristine_tar_format(rev))
 
     def test_pristine_tar_format_bz2(self):
-        rev = Revision(b"myrevid", parent_ids=[], properties={}, committer='', timestamp=0, timezone=0, message='', inventory_sha1=b'')
-        rev.properties["deb-pristine-delta-bz2"] = "1"
+        rev = Revision(b"myrevid", parent_ids=[], properties={"deb-pristine-delta-bz2": "1"}, committer='', timestamp=0, timezone=0, message='', inventory_sha1=b'')
         self.assertEqual("bz2", revision_pristine_tar_format(rev))
 
     def test_pristine_tar_format_xz(self):
-        rev = Revision(b"myrevid", parent_ids=[], properties={}, committer='', timestamp=0, timezone=0, message='', inventory_sha1=b'')
-        rev.properties["deb-pristine-delta-xz"] = "1"
+        rev = Revision(b"myrevid", parent_ids=[], properties={"deb-pristine-delta-xz": "1"}, committer='', timestamp=0, timezone=0, message='', inventory_sha1=b'')
         self.assertEqual("xz", revision_pristine_tar_format(rev))
 
     def test_pristine_tar_format_unknown(self):
@@ -1004,8 +1003,7 @@ class GenericPristineTarSourceTests(TestCase):
         self.assertRaises(AssertionError, revision_pristine_tar_delta, rev)
 
     def test_pristine_tar_delta_gz(self):
-        rev = Revision(b"myrevid", parent_ids=[], properties={}, committer='', timestamp=0, timezone=0, message='', inventory_sha1=b'')
-        rev.properties["deb-pristine-delta"] = standard_b64encode(b"bla")
+        rev = Revision(b"myrevid", parent_ids=[], properties={"deb-pristine-delta": standard_b64encode(b"bla")}, committer='', timestamp=0, timezone=0, message='', inventory_sha1=b'')
         self.assertEqual(b"bla", revision_pristine_tar_delta(rev))
 
 

@@ -91,19 +91,50 @@ class VcsMappingRegistry(registry.Registry):
         raise NotImplementedError(self.revision_id_bzr_to_foreign)
 
 
-class ForeignRevision(Revision):
+class ForeignRevision(object):
     """A Revision from a Foreign repository. Remembers
     information about foreign revision id and mapping.
 
     """
 
-    def __new__(cls, foreign_revid, mapping, *args, **kwargs):
+    def __init__(self, foreign_revid, mapping, **kwargs):
         if "inventory_sha1" not in kwargs:
             kwargs["inventory_sha1"] = None
-        self = Revision.__new__(cls, *args, **kwargs)
+        self._rev = Revision(**kwargs)
         self.foreign_revid = foreign_revid
         self.mapping = mapping
-        return self
+
+    @property
+    def revision_id(self):
+        return self._rev.revision_id
+
+    @property
+    def message(self):
+        return self._rev.message
+
+    @property
+    def timestamp(self):
+        return self._rev.timestamp
+
+    @property
+    def committer(self):
+        return self._rev.committer
+
+    @property
+    def properties(self):
+        return self._rev.properties
+
+    @property
+    def inventory_sha1(self):
+        return self._rev.inventory_sha1
+
+    @property
+    def parent_ids(self):
+        return self._rev.parents
+
+    @property
+    def timezone(self):
+        return self._rev.timezone
 
 
 class ForeignVcs:
