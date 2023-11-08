@@ -509,12 +509,51 @@ pub fn find_interesting_parents<'a>(
     parents
 }
 
+pub trait Inventory {
+    fn has_filename(&self, filename: &str) -> bool;
+
+    fn iter_all_ids<'a>(&'a self) -> Box<dyn Iterator<Item = &'a FileId> + 'a>;
+
+    fn id2path(&self, file_id: &FileId) -> Result<String, Error>;
+
+    fn get_entry(&self, id: &FileId) -> Option<&Entry>;
+
+    fn has_id(&self, id: &FileId) -> bool;
+}
+
 #[derive(Clone)]
 pub struct MutableInventory {
     by_id: HashMap<FileId, Entry>,
     root_id: Option<FileId>,
     pub revision_id: Option<RevisionId>,
     children: HashMap<FileId, HashMap<String, FileId>>,
+}
+
+impl Inventory for MutableInventory {
+    fn has_filename(&self, filename: &str) -> bool {
+        self.path2id(filename).is_some()
+    }
+
+    fn iter_all_ids<'a>(&'a self) -> Box<dyn Iterator<Item = &'a FileId> + 'a> {
+        Box::new(self.by_id.keys())
+    }
+
+    fn id2path(&self, file_id: &FileId) -> Result<String, Error> {
+        let mut segments = self
+            .iter_file_id_parents(file_id)?
+            .map(|p| p.name())
+            .collect::<Vec<_>>();
+        segments.pop();
+        segments.reverse();
+        Ok(segments.join("/"))
+    }
+
+    fn get_entry(&self, id: &FileId) -> Option<&Entry> {
+        self.by_id.get(id)
+    }
+    fn has_id(&self, id: &FileId) -> bool {
+        self.by_id.contains_key(id)
+    }
 }
 
 impl MutableInventory {
@@ -525,20 +564,6 @@ impl MutableInventory {
             revision_id: None,
             children: HashMap::new(),
         }
-    }
-
-    pub fn has_filename(&self, filename: &str) -> bool {
-        self.path2id(filename).is_some()
-    }
-
-    pub fn id2path(&self, file_id: &FileId) -> Result<String, Error> {
-        let mut segments = self
-            .iter_file_id_parents(file_id)?
-            .map(|p| p.name())
-            .collect::<Vec<_>>();
-        segments.pop();
-        segments.reverse();
-        Ok(segments.join("/"))
     }
 
     pub fn get_children(&self, file_id: &FileId) -> Option<HashMap<&str, &Entry>> {
@@ -578,14 +603,12 @@ impl MutableInventory {
     pub fn iter_sorted_children(
         &self,
         file_id: &FileId,
-    ) -> Option<impl Iterator<Item = (&str, &Entry)>> {
+    ) -> Option<impl DoubleEndedIterator<Item = (&str, &Entry)>> {
         let children = self.get_children(file_id)?;
-        let mut names = children.keys().cloned().collect::<Vec<_>>();
-        names.sort();
-        let mut it = names.into_iter();
-        Some(std::iter::from_fn(move || -> Option<(&str, &Entry)> {
-            it.next().map(|name| (name, *children.get(name).unwrap()))
-        }))
+        // Sort the children by name and then return them
+        let mut children = children.into_iter().collect::<Vec<_>>();
+        children.sort_by(|(a, _), (b, _)| a.cmp(b));
+        Some(children.into_iter())
     }
 
     pub fn entries(&self) -> Vec<(String, &Entry)> {
@@ -667,7 +690,15 @@ impl MutableInventory {
     pub fn filter(&self, specific_fileids: &HashSet<&FileId>) -> Result<Self, Error> {
         let mut interesting_parents = HashSet::new();
         for file_id in specific_fileids {
-            interesting_parents.extend(self.get_idpath(file_id)?);
+            match self.get_idpath(file_id) {
+                Ok(parents) => {
+                    interesting_parents.extend(parents);
+                }
+                Err(Error::NoSuchId(_)) => {}
+                Err(e) => {
+                    return Err(e);
+                }
+            }
         }
 
         let mut entries = self.iter_entries(None);
@@ -858,15 +889,15 @@ impl MutableInventory {
         }
 
         std::iter::from_fn(move || -> Option<(String, &'a Entry)> {
-            if let Some((relpath, ie)) = children.pop_front() {
-                return Some((relpath, ie));
-            }
-
             loop {
+                if let Some(e) = children.pop_front() {
+                    return Some(e);
+                }
+
                 if let Some((cur_relpath, cur_dir)) = stack.pop() {
+                    let mut child_dirs = Vec::new();
                     for (child_name, child_ie) in self.iter_sorted_children(cur_dir).unwrap() {
                         let child_relpath = cur_relpath.to_string() + child_name;
-                        let mut child_dirs = Vec::new();
 
                         if specific_file_ids.is_none()
                             || specific_file_ids.unwrap().contains(child_ie.file_id())
@@ -880,10 +911,8 @@ impl MutableInventory {
                         {
                             child_dirs.push((child_relpath + "/", child_ie.file_id()))
                         }
-
-                        child_dirs.reverse();
-                        stack.extend(child_dirs.into_iter());
                     }
+                    stack.extend(child_dirs.into_iter().rev());
                 } else {
                     return None;
                 }
@@ -1063,10 +1092,6 @@ impl MutableInventory {
             .insert(self.root_id.clone().unwrap(), HashMap::new());
     }
 
-    pub fn iter_all_ids(&self) -> impl Iterator<Item = FileId> + '_ {
-        self.by_id.keys().cloned()
-    }
-
     pub fn len(&self) -> usize {
         self.by_id.len()
     }
@@ -1075,16 +1100,8 @@ impl MutableInventory {
         self.by_id.is_empty()
     }
 
-    pub fn get_entry(&self, id: &FileId) -> Option<&Entry> {
-        self.by_id.get(id)
-    }
-
     pub fn get_file_kind(&self, id: &FileId) -> Option<Kind> {
         self.by_id.get(id).map(|e| e.kind())
-    }
-
-    pub fn has_id(&self, id: &FileId) -> bool {
-        self.by_id.contains_key(id)
     }
 
     /// Returns the entries leading up to the given file_id, including the entry
@@ -1248,7 +1265,7 @@ impl MutableInventory {
         Ok(())
     }
 
-    pub fn make_delta(&self, old: &MutableInventory) -> InventoryDelta {
+    pub fn make_delta(&self, old: &dyn Inventory) -> InventoryDelta {
         let old_ids = old.iter_all_ids().collect::<HashSet<_>>();
         let new_ids = self.iter_all_ids().collect::<HashSet<_>>();
         let adds = new_ids.difference(&old_ids).collect::<HashSet<_>>();
@@ -1266,7 +1283,7 @@ impl MutableInventory {
             delta.push(InventoryDeltaEntry {
                 old_path: Some(old.id2path(file_id).unwrap()),
                 new_path: None,
-                file_id: file_id.clone(),
+                file_id: (*file_id).clone(),
                 new_entry: None,
             });
         }
@@ -1274,7 +1291,7 @@ impl MutableInventory {
             delta.push(InventoryDeltaEntry {
                 old_path: None,
                 new_path: Some(self.id2path(file_id).unwrap()),
-                file_id: file_id.clone(),
+                file_id: (*file_id).clone(),
                 new_entry: self.get_entry(file_id).cloned(),
             });
         }
@@ -1345,7 +1362,13 @@ impl MutableInventory {
         new_name: &str,
     ) -> Result<(), Error> {
         let new_name = std::path::PathBuf::from(new_name);
-        let new_name = ensure_normalized_name(new_name.as_path()).unwrap();
+        let new_name = ensure_normalized_name(new_name.as_path()).map_err(|e| {
+            Error::InvalidEntryName(format!(
+                "Invalid name {:?}: {}",
+                new_name.to_str().unwrap(),
+                e
+            ))
+        })?;
         let new_name = new_name.to_str().unwrap();
         if !is_valid_name(new_name) {
             return Err(Error::InvalidEntryName(new_name.to_string()));

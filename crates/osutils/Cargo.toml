@@ -25,7 +25,11 @@ dirs = "5"
 encoding_rs = ">=0.8"
 whoami = "1"
 nix = { workspace = true, features = ["fs"] }
+pyo3 = { workspace = true, optional = true }
 
 [target.'cfg(unix)'.dependencies]
 nix = { workspace = true, features = ["user", "process", "signal"] }
 termios = "0.3"
+
+[features]
+pyo3 = ["dep:pyo3"]

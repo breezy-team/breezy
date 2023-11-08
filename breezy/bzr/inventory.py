@@ -23,6 +23,18 @@
 # But those depend on its position within a particular inventory, and
 # it would be nice not to need to hold the backpointer here.
 
+__all__ = [
+    'ROOT_ID',
+    'CHKInventory',
+    'FileID',
+    'Inventory',
+    'InventoryDirectory',
+    'InventoryEntry',
+    'InventoryFile',
+    'InventoryLink',
+    'TreeReference',
+]
+
 from collections import deque
 
 from ..lazy_import import lazy_import

@@ -116,7 +116,7 @@ pub fn get_umask() -> Mode {
     mask
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum Kind {
     File,
     Directory,
@@ -140,6 +140,35 @@ impl Kind {
             Kind::Directory => "directory",
             Kind::Symlink => "symlink",
             Kind::TreeReference => "tree-reference",
+        }
+    }
+}
+
+#[cfg(feature = "pyo3")]
+impl pyo3::ToPyObject for Kind {
+    fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
+        match self {
+            Kind::File => "file".to_object(py),
+            Kind::Directory => "directory".to_object(py),
+            Kind::Symlink => "symlink".to_object(py),
+            Kind::TreeReference => "tree-reference".to_object(py),
+        }
+    }
+}
+
+#[cfg(feature = "pyo3")]
+impl pyo3::FromPyObject<'_> for Kind {
+    fn extract(ob: &pyo3::PyAny) -> pyo3::PyResult<Self> {
+        let s: String = ob.extract()?;
+        match s.as_str() {
+            "file" => Ok(Kind::File),
+            "directory" => Ok(Kind::Directory),
+            "symlink" => Ok(Kind::Symlink),
+            "tree-reference" => Ok(Kind::TreeReference),
+            _ => Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "Invalid kind: {}",
+                s
+            ))),
         }
     }
 }

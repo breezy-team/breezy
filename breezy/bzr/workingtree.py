@@ -989,7 +989,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
         def add_children(inventory, other_inventory, entry):
             for child_entry in other_inventory.get_children(entry.file_id).values():
-                inventory._byid[child_entry.file_id] = child_entry
+                inventory.add(child_entry)
                 if child_entry.kind == "directory":
                     add_children(inventory, other_inventory, child_entry)
 

@@ -1,4 +1,4 @@
-use bazaar::inventory::{describe_change, detect_changes, Entry, Error};
+use bazaar::inventory::{describe_change, detect_changes, Entry, Error, Inventory as _};
 use bazaar::inventory_delta::{
     InventoryDeltaEntry, InventoryDeltaInconsistency, InventoryDeltaParseError,
     InventoryDeltaSerializeError,
@@ -111,17 +111,6 @@ impl InventoryEntry {
         file_id.to_object(py)
     }
 
-    #[setter]
-    fn set__file_id(&mut self, _py: Python, file_id: FileId) {
-        match &mut self.0 {
-            Entry::File { file_id: f, .. } => *f = file_id,
-            Entry::Directory { file_id: f, .. } => *f = file_id,
-            Entry::TreeReference { file_id: f, .. } => *f = file_id,
-            Entry::Link { file_id: f, .. } => *f = file_id,
-            Entry::Root { file_id: f, .. } => *f = file_id,
-        }
-    }
-
     #[getter]
     fn get_parent_id(&self, py: Python) -> Option<PyObject> {
         let parent_id = &self.0.parent_id();
@@ -129,37 +118,11 @@ impl InventoryEntry {
         parent_id.map(|parent_id| parent_id.to_object(py))
     }
 
-    #[setter]
-    fn set__parent_id(&mut self, parent_id: Option<FileId>) {
-        match &mut self.0 {
-            Entry::File { parent_id: p, .. } => *p = parent_id.unwrap(),
-            Entry::Directory { parent_id: p, .. } => *p = parent_id.unwrap(),
-            Entry::TreeReference { parent_id: p, .. } => *p = parent_id.unwrap(),
-            Entry::Link { parent_id: p, .. } => *p = parent_id.unwrap(),
-            Entry::Root { .. } => {
-                if parent_id.is_some() {
-                    panic!("Root entry cannot have a parent")
-                }
-            }
-        }
-    }
-
     #[getter]
     fn get_revision(&self, py: Python) -> Option<PyObject> {
         let revision = &self.0.revision();
 
         revision.as_ref().map(|revision| revision.to_object(py))
-    }
-
-    #[setter]
-    fn set__revision(&mut self, revision: Option<RevisionId>) {
-        match &mut self.0 {
-            Entry::File { revision: r, .. } => *r = revision,
-            Entry::Directory { revision: r, .. } => *r = revision,
-            Entry::TreeReference { revision: r, .. } => *r = revision,
-            Entry::Link { revision: r, .. } => *r = revision,
-            Entry::Root { revision: r, .. } => *r = revision,
-        }
     }
 
     #[staticmethod]
@@ -763,6 +726,54 @@ fn entry_to_py(py: Python, e: Entry) -> PyResult<PyObject> {
     }
 }
 
+fn entry_from_py(py: Python, obj: PyObject) -> PyResult<Entry> {
+    let kind = obj.getattr(py, "kind")?.extract::<String>(py)?;
+    let kind = match kind.as_str() {
+        "file" => Kind::File,
+        "directory" => Kind::Directory,
+        "tree-reference" => Kind::TreeReference,
+        "symlink" => Kind::Symlink,
+        _ => panic!("Unknown kind"),
+    };
+
+    let file_id = obj.getattr(py, "file_id")?.extract::<Option<FileId>>(py)?;
+    let name = obj.getattr(py, "name")?.extract::<String>(py)?;
+    let parent_id = obj
+        .getattr(py, "parent_id")?
+        .extract::<Option<FileId>>(py)?;
+    let revision = obj
+        .getattr(py, "revision")?
+        .extract::<Option<RevisionId>>(py)?;
+    let executable = obj.getattr(py, "executable")?.extract::<Option<bool>>(py)?;
+    let text_id = obj.getattr(py, "text_id")?.extract::<Option<Vec<u8>>>(py)?;
+    let text_sha1 = obj
+        .getattr(py, "text_sha1")?
+        .extract::<Option<Vec<u8>>>(py)?;
+    let text_size = obj.getattr(py, "text_size")?.extract::<Option<u64>>(py)?;
+    let symlink_target = obj
+        .getattr(py, "symlink_target")?
+        .extract::<Option<String>>(py)?;
+    let reference_revision = obj
+        .getattr(py, "reference_revision")?
+        .extract::<Option<RevisionId>>(py)?;
+
+    let entry = bazaar::inventory::make_entry(
+        kind,
+        name,
+        parent_id,
+        file_id,
+        revision,
+        text_sha1,
+        text_size,
+        executable,
+        text_id,
+        symlink_target,
+        reference_revision,
+    );
+
+    Ok(entry)
+}
+
 #[pyfunction]
 fn make_entry(
     py: Python,
@@ -1091,7 +1102,7 @@ impl Inventory {
         &mut self,
         py: Python,
         relpath: &str,
-        kind: &str,
+        kind: breezy_osutils::Kind,
         file_id: Option<FileId>,
         revision: Option<RevisionId>,
         text_sha1: Option<Vec<u8>>,
@@ -1101,13 +1112,6 @@ impl Inventory {
         symlink_target: Option<String>,
         reference_revision: Option<RevisionId>,
     ) -> PyResult<PyObject> {
-        let kind = match kind {
-            "file" => breezy_osutils::Kind::File,
-            "directory" => breezy_osutils::Kind::Directory,
-            "link" => breezy_osutils::Kind::Symlink,
-            "tree-reference" => breezy_osutils::Kind::TreeReference,
-            _ => return Err(PyValueError::new_err("invalid kind")),
-        };
         let file_id = self
             .0
             .add_path(
@@ -1127,7 +1131,7 @@ impl Inventory {
     }
 
     #[getter]
-    fn get_revision_id(&self, py: Python) -> Option<RevisionId> {
+    fn get_revision_id(&self) -> Option<RevisionId> {
         self.0.revision_id.as_ref().cloned()
     }
 
@@ -1198,23 +1202,24 @@ impl Inventory {
         &self,
         py: Python,
         relpath: PyObject,
-    ) -> PyResult<Option<(PyObject, Vec<String>, Vec<String>)>> {
-        if let Ok(relpath) = relpath.extract::<&str>(py) {
-            Ok(self
-                .0
-                .get_entry_by_path_partial(relpath)
-                .map(|(entry, segments, missing)| {
-                    (entry_to_py(py, entry.clone()).unwrap(), segments, missing)
-                }))
+    ) -> PyResult<(Option<PyObject>, Option<Vec<String>>, Option<Vec<String>>)> {
+        let ret = if let Ok(relpath) = relpath.extract::<&str>(py) {
+            self.0.get_entry_by_path_partial(relpath)
         } else if let Ok(segments) = relpath.extract::<Vec<&str>>(py) {
-            Ok(self
-                .0
+            self.0
                 .get_entry_by_path_segments_partial(segments.as_slice())
-                .map(|(entry, segments, missing)| {
-                    (entry_to_py(py, entry.clone()).unwrap(), segments, missing)
-                }))
         } else {
-            Err(PyTypeError::new_err("expected str or list of str"))
+            return Err(PyTypeError::new_err("expected str or list of str"));
+        };
+
+        if let Some((e, segments, missing)) = ret {
+            Ok((
+                Some(entry_to_py(py, e.clone())?),
+                Some(segments),
+                Some(missing),
+            ))
+        } else {
+            Ok((None, None, None))
         }
     }
 
@@ -1354,7 +1359,6 @@ impl Inventory {
     fn iter_all_ids(&self, py: Python) -> PyResult<PyObject> {
         let ids = self.0.iter_all_ids();
         ids.into_iter()
-            .map(|id| PyBytes::new(py, id.as_bytes()).to_object(py))
             .collect::<Vec<_>>()
             .to_object(py)
             .call_method0(py, "__iter__")
@@ -1429,6 +1433,21 @@ impl Inventory {
             reference_revision,
         );
         entry_to_py(py, entry)
+    }
+
+    pub fn __richcmp__(
+        &self,
+        py: Python,
+        other: PyRef<Inventory>,
+        op: CompareOp,
+    ) -> PyResult<PyObject> {
+        match op {
+            CompareOp::Eq => Ok((self.0 == other.0).to_object(py)),
+            CompareOp::Ne => Ok((self.0 != other.0).to_object(py)),
+            _ => Err(PyNotImplementedError::new_err(
+                "Only == and != are implemented",
+            )),
+        }
     }
 }
 
@@ -1517,15 +1536,13 @@ impl IterEntriesByDirIterator {
                 return Ok(Some((relpath, entry_to_py(py, ie)?)));
             }
             if let Some((cur_relpath, cur_dir)) = self.stack.pop() {
-                for (child_name, child_ie) in self
-                    .inv
-                    .borrow(py)
-                    .0
+                let mut child_dirs = Vec::new();
+                let inv = &self.inv.borrow(py).0;
+                for (child_name, child_ie) in inv
                     .iter_sorted_children(&cur_dir)
                     .expect("should be known directory")
                 {
                     let child_relpath = cur_relpath.to_string() + child_name;
-                    let mut child_dirs = Vec::new();
 
                     if self.specific_file_ids.is_none()
                         || self
@@ -1550,11 +1567,9 @@ impl IterEntriesByDirIterator {
                             .is_some());
                         child_dirs.push((child_relpath + "/", child_ie.file_id()))
                     }
-
-                    child_dirs.reverse();
-                    self.stack
-                        .extend(child_dirs.into_iter().map(|(n, f)| (n, f.clone())));
                 }
+                self.stack
+                    .extend(child_dirs.into_iter().rev().map(|(n, f)| (n, f.clone())));
             } else {
                 return Ok(None);
             }
