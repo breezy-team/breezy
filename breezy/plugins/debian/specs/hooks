@@ -1,0 +1,30 @@
+Hooks
+=====
+
+Status: Partial Implementation
+Version: 0.91
+
+Rationale
+---------
+
+Sometimes there may need to be operations done on the source tree to prepare
+for building that are not appropriate for debian/rules. For instance running
+autotools on the source in order to have the configure script available for
+use in the source package.
+
+To accomodate all requirements hooks can be supported to run a command at
+a predefined point.
+
+Design
+------
+
+The user speficies the hooks using a ``[HOOKS]`` section in the configuration
+files. The key is the name of the hook point, and the value is the command
+to run at that hook point.
+
+In order to protect new users from the surprise of code being run from an
+unexpected location hook support could be required to be enabled for hooks
+to be executed for that user. This would however cause unexpected build
+failures that could be hard to debug, and so in balance the safety may not
+be worth it.
+

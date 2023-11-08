@@ -1,0 +1,36 @@
+Building a remote branch
+========================
+
+Status: Implemented
+
+Aim
+---
+
+It would be really cool to be able to build a package from a remote branch,
+so that you could just point it at a URL and get a package out of it.
+
+It has benifits like easy one-off building of a package, and limiting the
+amount that has to be downloaded.
+
+Design
+------
+
+Bazaar transparently supports accessing a remote branch, so that part should
+be easy. However some of the current builddeb code and design assumes that the
+branch is local.
+
+For instance the build directory can be given relative to a branch. This loses
+it's meaning when the branch is remote. Either this could be ignored, it could
+be used, or everything could be done in the current directory.
+
+The first and second options might be unexpected, but it is not that different
+to a local branch. The last option might be best, but it makes the operation
+less transparent.
+
+Code Changes
+------------
+
+  * Open the branch at the given location rather than cding to it.
+  * Audit the code for it's use of directories.
+  * Audit the code for other assumptions that the branch is local
+
