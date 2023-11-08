@@ -47,11 +47,11 @@ impl Revision {
     }
 
     pub fn datetime(&self) -> NaiveDateTime {
-        NaiveDateTime::from_timestamp_opt(self.timestamp as i64, 0).unwrap()
+        NaiveDateTime::from_timestamp(self.timestamp as i64, 0)
     }
 
     pub fn timezone(&self) -> Option<chrono::FixedOffset> {
-        self.timezone.and_then(chrono::FixedOffset::east_opt)
+        self.timezone.map(chrono::FixedOffset::east)
     }
 
     pub fn check_properties(&self) -> bool {
