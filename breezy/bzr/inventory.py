@@ -24,15 +24,15 @@
 # it would be nice not to need to hold the backpointer here.
 
 __all__ = [
-    'ROOT_ID',
-    'CHKInventory',
-    'FileID',
-    'Inventory',
-    'InventoryDirectory',
-    'InventoryEntry',
-    'InventoryFile',
-    'InventoryLink',
-    'TreeReference',
+    "ROOT_ID",
+    "CHKInventory",
+    "FileID",
+    "Inventory",
+    "InventoryDirectory",
+    "InventoryEntry",
+    "InventoryFile",
+    "InventoryLink",
+    "TreeReference",
 ]
 
 from collections import deque
@@ -1111,47 +1111,6 @@ class CHKInventory:
         """Return the number of entries in the inventory."""
         return len(self.id_to_entry)
 
-    def _make_delta(self, old):
-        """Make an inventory delta from two inventories."""
-        from .inventory_delta import InventoryDelta
-        if not isinstance(old, CHKInventory):
-            old_ids = set(old.iter_all_ids())
-            new_ids = set(self.iter_all_ids())
-            adds = new_ids - old_ids
-            deletes = old_ids - new_ids
-            common = old_ids.intersection(new_ids)
-            delta = []
-            for file_id in deletes:
-                delta.append((old.id2path(file_id), None, file_id, None))
-            for file_id in adds:
-                delta.append((None, self.id2path(file_id),
-                              file_id, self.get_entry(file_id)))
-            for file_id in common:
-                if old.get_entry(file_id) != self.get_entry(file_id):
-                    delta.append((old.id2path(file_id), self.id2path(file_id),
-                                  file_id, self.get_entry(file_id)))
-            return InventoryDelta(delta)
-
-        delta = []
-        for key, old_value, self_value in self.id_to_entry.iter_changes(
-            old.id_to_entry
-        ):
-            file_id = key[0]
-            if old_value is not None:
-                old_path = old.id2path(file_id)
-            else:
-                old_path = None
-            if self_value is not None:
-                entry = self._bytes_to_entry(self_value)
-                self._fileid_to_entry_cache[file_id] = entry
-                new_path = self.id2path(file_id)
-            else:
-                entry = None
-                new_path = None
-            delta.append((old_path, new_path, file_id, entry))
-
-        return InventoryDelta(delta)
-
     def path2id(self, relpath):
         # TODO: perhaps support negative hits?
         if isinstance(relpath, str):
@@ -1270,3 +1229,50 @@ chk_inventory_bytes_to_utf8name_key = (
 )
 _chk_inventory_bytes_to_entry = _mod_inventory_rs.chk_inventory_bytes_to_entry
 _chk_inventory_entry_to_bytes = _mod_inventory_rs.chk_inventory_entry_to_bytes
+
+
+def _make_delta(new, old):
+    """Make an inventory delta from two inventories."""
+    from .inventory_delta import InventoryDelta
+
+    if isinstance(old, CHKInventory) and isinstance(new, CHKInventory):
+        delta = []
+        for key, old_value, self_value in new.id_to_entry.iter_changes(old.id_to_entry):
+            file_id = key[0]
+            if old_value is not None:
+                old_path = old.id2path(file_id)
+            else:
+                old_path = None
+            if self_value is not None:
+                entry = new._bytes_to_entry(self_value)
+                new._fileid_to_entry_cache[file_id] = entry
+                new_path = new.id2path(file_id)
+            else:
+                entry = None
+                new_path = None
+            delta.append((old_path, new_path, file_id, entry))
+        return InventoryDelta(delta)
+    elif isinstance(old, Inventory) and isinstance(new, Inventory):
+        return new._make_delta(old)
+    else:
+        old_ids = set(old.iter_all_ids())
+        new_ids = set(new.iter_all_ids())
+        adds = new_ids - old_ids
+        deletes = old_ids - new_ids
+        common = old_ids.intersection(new_ids)
+        delta = []
+        for file_id in deletes:
+            delta.append((old.id2path(file_id), None, file_id, None))
+        for file_id in adds:
+            delta.append((None, new.id2path(file_id), file_id, new.get_entry(file_id)))
+        for file_id in common:
+            if old.get_entry(file_id) != new.get_entry(file_id):
+                delta.append(
+                    (
+                        old.id2path(file_id),
+                        new.id2path(file_id),
+                        file_id,
+                        new.get_entry(file_id),
+                    )
+                )
+        return InventoryDelta(delta)

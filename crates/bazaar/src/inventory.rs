@@ -67,6 +67,7 @@ pub enum Error {
     ParentMissing(FileId),
     PathAlreadyVersioned(String, String),
     ParentNotVersioned(String),
+    InvalidNormalization(std::path::PathBuf, String),
 }
 
 /// Description of a versioned file.
@@ -639,6 +640,9 @@ impl MutableInventory {
     }
 
     pub fn rename_id(&mut self, old_file_id: &FileId, new_file_id: &FileId) -> Result<(), Error> {
+        if old_file_id == new_file_id {
+            return Ok(());
+        }
         if self.by_id.contains_key(new_file_id) {
             return Err(Error::DuplicateFileId(
                 new_file_id.clone(),
@@ -1046,6 +1050,7 @@ impl MutableInventory {
                 Error::ParentNotVersioned(_parent_path) => {
                     unreachable!();
                 }
+                Error::InvalidNormalization(_path, _msg) => unreachable!(),
             })?;
             if &self.id2path(new_entry.file_id()).unwrap() != new_path {
                 return Err(InventoryDeltaInconsistency::PathMismatch(
@@ -1057,11 +1062,11 @@ impl MutableInventory {
             if let Some(children) = children.remove(new_entry.file_id()) {
                 self.children.insert(new_entry.file_id().clone(), children);
             }
-            if !children.is_empty() {
-                // Get the parent id that was deleted
-                let (parent_id, _children) = children.drain().next().unwrap();
-                return Err(InventoryDeltaInconsistency::OrphanedChild(parent_id));
-            }
+        }
+        if !children.is_empty() {
+            // Get the parent id that was deleted
+            let (parent_id, _children) = children.drain().next().unwrap();
+            return Err(InventoryDeltaInconsistency::OrphanedChild(parent_id));
         }
         Ok(())
     }
@@ -1243,7 +1248,7 @@ impl MutableInventory {
                 text_id,
                 symlink_target,
                 reference_revision,
-            );
+            )?;
             let file_id = ie.file_id().clone();
             self.add(ie)?;
             Ok(file_id)
@@ -1296,8 +1301,8 @@ impl MutableInventory {
             });
         }
         for file_id in common {
-            let new_ie = self.get_entry(&file_id);
-            let old_ie = old.get_entry(&file_id);
+            let new_ie = self.get_entry(file_id);
+            let old_ie = old.get_entry(file_id);
 
             // If xml_serializer returns the cached InventoryEntries (rather
             // than always doing .copy()), inlining the 'is' check saves 2.7M
@@ -1307,8 +1312,8 @@ impl MutableInventory {
                 continue;
             }
             delta.push(InventoryDeltaEntry {
-                old_path: Some(old.id2path(&file_id).unwrap()),
-                new_path: Some(self.id2path(&file_id).unwrap()),
+                old_path: Some(old.id2path(file_id).unwrap()),
+                new_path: Some(self.id2path(file_id).unwrap()),
                 file_id: file_id.clone(),
                 new_entry: new_ie.cloned(),
             });
@@ -1352,6 +1357,7 @@ impl MutableInventory {
             }
         }
 
+        deleted.reverse();
         deleted
     }
 
@@ -1362,13 +1368,7 @@ impl MutableInventory {
         new_name: &str,
     ) -> Result<(), Error> {
         let new_name = std::path::PathBuf::from(new_name);
-        let new_name = ensure_normalized_name(new_name.as_path()).map_err(|e| {
-            Error::InvalidEntryName(format!(
-                "Invalid name {:?}: {}",
-                new_name.to_str().unwrap(),
-                e
-            ))
-        })?;
+        let new_name = ensure_normalized_name(new_name.as_path())?;
         let new_name = new_name.to_str().unwrap();
         if !is_valid_name(new_name) {
             return Err(Error::InvalidEntryName(new_name.to_string()));
@@ -1445,17 +1445,19 @@ impl PartialEq for MutableInventory {
 impl Eq for MutableInventory {}
 
 // Normalize name
-pub fn ensure_normalized_name(name: &std::path::Path) -> Result<std::path::PathBuf, String> {
-    let (norm_name, can_access) = breezy_osutils::path::normalized_filename(name)
-        .ok_or_else(|| format!("name '{}' is not normalized", name.display()))?;
+pub fn ensure_normalized_name(name: &std::path::Path) -> Result<std::path::PathBuf, Error> {
+    let (norm_name, can_access) =
+        breezy_osutils::path::normalized_filename(name).ok_or_else(|| {
+            Error::InvalidNormalization(name.to_path_buf(), "name is not normalized".to_string())
+        })?;
 
     if norm_name != name {
         if can_access {
             return Ok(norm_name);
         } else {
-            return Err(format!(
-                "name '{}' is not normalized and cannot be accessed",
-                name.display()
+            return Err(Error::InvalidNormalization(
+                name.to_path_buf(),
+                "name '{}' is not normalized and cannot be accessed".to_string(),
             ));
         }
     }
@@ -1475,12 +1477,16 @@ pub fn make_entry(
     text_id: Option<Vec<u8>>,
     symlink_target: Option<String>,
     reference_revision: Option<RevisionId>,
-) -> Entry {
+) -> Result<Entry, Error> {
     let file_id = file_id.unwrap_or_else(|| FileId::generate(name.as_str()));
     if !is_valid_name(&name) {
         panic!("Invalid name: {}", name);
     }
-    match kind {
+    let name = ensure_normalized_name(std::path::Path::new(&name))?
+        .to_str()
+        .unwrap()
+        .to_string();
+    Ok(match kind {
         Kind::File => Entry::file(
             file_id,
             name,
@@ -1506,5 +1512,5 @@ pub fn make_entry(
             revision,
             reference_revision,
         ),
-    }
+    })
 }

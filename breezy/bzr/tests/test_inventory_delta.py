@@ -24,7 +24,7 @@ from io import BytesIO
 from ... import osutils
 from ...revision import NULL_REVISION
 from .. import inventory, inventory_delta
-from ..inventory import Inventory
+from ..inventory import Inventory, _make_delta
 from ..inventory_delta import InventoryDelta, InventoryDeltaError
 from . import TestCase
 
@@ -358,7 +358,7 @@ class TestSerialization(TestCase):
     def test_empty_delta_to_lines(self):
         old_inv = Inventory(None)
         new_inv = Inventory(None)
-        delta = new_inv._make_delta(old_inv)
+        delta = _make_delta(new_inv, old_inv)
         serializer = inventory_delta.InventoryDeltaSerializer(
             versioned_root=True, tree_references=True
         )
@@ -374,7 +374,7 @@ class TestSerialization(TestCase):
             "directory", "", None, b"an-id", revision=b"a@e\xc3\xa5ample.com--2004"
         )
         new_inv.add(root)
-        delta = new_inv._make_delta(old_inv)
+        delta = _make_delta(new_inv, old_inv)
         serializer = inventory_delta.InventoryDeltaSerializer(
             versioned_root=True, tree_references=True
         )
@@ -391,7 +391,7 @@ class TestSerialization(TestCase):
             "directory", "", None, b"TREE_ROOT", revision=b"entry-version"
         )
         new_inv.add(root)
-        delta = new_inv._make_delta(old_inv)
+        delta = _make_delta(new_inv, old_inv)
         serializer = inventory_delta.InventoryDeltaSerializer(
             versioned_root=False, tree_references=False
         )
@@ -414,7 +414,7 @@ class TestSerialization(TestCase):
         new_inv.add(root)
         non_root = new_inv.make_entry("directory", "foo", root.file_id, b"id")
         new_inv.add(non_root)
-        delta = new_inv._make_delta(old_inv)
+        delta = _make_delta(new_inv, old_inv)
         serializer = inventory_delta.InventoryDeltaSerializer(
             versioned_root=True, tree_references=True
         )
@@ -432,7 +432,7 @@ class TestSerialization(TestCase):
         new_inv = Inventory(None)
         root = new_inv.make_entry("directory", "", None, b"TREE_ROOT")
         new_inv.add(root)
-        delta = new_inv._make_delta(old_inv)
+        delta = _make_delta(new_inv, old_inv)
         serializer = inventory_delta.InventoryDeltaSerializer(
             versioned_root=True, tree_references=True
         )
@@ -452,7 +452,7 @@ class TestSerialization(TestCase):
             "directory", "", None, b"TREE_ROOT", revision=b"a@e\xc3\xa5ample.com--2004"
         )
         new_inv.add(root)
-        delta = new_inv._make_delta(old_inv)
+        delta = _make_delta(new_inv, old_inv)
         serializer = inventory_delta.InventoryDeltaSerializer(
             versioned_root=False, tree_references=True
         )
@@ -481,7 +481,7 @@ class TestSerialization(TestCase):
             reference_revision=b"subtree-version",
         )
         new_inv.add(non_root)
-        delta = new_inv._make_delta(old_inv)
+        delta = _make_delta(new_inv, old_inv)
         serializer = inventory_delta.InventoryDeltaSerializer(
             versioned_root=True, tree_references=False
         )
@@ -508,7 +508,7 @@ class TestSerialization(TestCase):
             reference_revision=b"subtree-version",
         )
         new_inv.add(non_root)
-        delta = new_inv._make_delta(old_inv)
+        delta = _make_delta(new_inv, old_inv)
         serializer = inventory_delta.InventoryDeltaSerializer(
             versioned_root=True, tree_references=True
         )

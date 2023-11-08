@@ -73,7 +73,7 @@ class TestTreeWithCommits(TestCaseWithTransport):
         self.assertEqual(revid1, tree.get_file_revision("a"))
 
     def test_get_file_mtime_ghost(self):
-        if not hasattr(self.rev_tree.root_inventory, 'delete'):
+        if not hasattr(self.rev_tree.root_inventory, "delete"):
             self.skipTest("Inventory does not support delete")
         path = next(iter(self.rev_tree.all_versioned_paths()))
         new_ie = self.rev_tree.root_inventory.get_entry(

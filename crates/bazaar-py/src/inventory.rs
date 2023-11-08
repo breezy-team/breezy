@@ -17,7 +17,7 @@ use pyo3::{create_exception, import_exception};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::VecDeque;
-use std::fmt::Display;
+
 use std::iter::FromIterator;
 
 import_exception!(breezy.bzr.inventory, InvalidEntryName);
@@ -29,6 +29,7 @@ import_exception!(breezy.errors, InconsistentDelta);
 import_exception!(breezy.errors, AlreadyVersionedError);
 import_exception!(breezy.errors, BzrError);
 import_exception!(breezy.errors, NotADirectory);
+import_exception!(breezy.errors, NotVersionedError);
 create_exception!(breezy.inventory_delta, IncompatibleInventoryDelta, BzrError);
 create_exception!(breezy.inventory_delta, InventoryDeltaError, BzrError);
 
@@ -361,7 +362,7 @@ impl InventoryFile {
     }
 
     #[getter]
-    fn get_reference_revision(slf: PyRef<Self>, py: Python) -> PyObject {
+    fn get_reference_revision(_slf: PyRef<Self>, py: Python) -> PyObject {
         py.None()
     }
 
@@ -769,7 +770,8 @@ fn entry_from_py(py: Python, obj: PyObject) -> PyResult<Entry> {
         text_id,
         symlink_target,
         reference_revision,
-    );
+    )
+    .map_err(|e| inventory_err_to_py_err(e, py))?;
 
     Ok(entry)
 }
@@ -810,7 +812,8 @@ fn make_entry(
             text_id,
             symlink_target,
             reference_revision,
-        ),
+        )
+        .map_err(|e| inventory_err_to_py_err(e, py))?,
     )
 }
 
@@ -1035,6 +1038,7 @@ impl InventoryDelta {
 fn inventory_err_to_py_err(e: Error, py: Python) -> PyErr {
     match e {
         Error::InvalidEntryName(name) => InvalidEntryName::new_err((name,)),
+        Error::InvalidNormalization(n, _) => InvalidNormalization::new_err((n,)),
         Error::DuplicateFileId(fid, path) => DuplicateFileId::new_err((fid.to_object(py), path)),
         Error::NoSuchId(fid) => NoSuchId::new_err((py.None(), fid.to_object(py))),
         Error::ParentNotDirectory(path, fid) => {
@@ -1052,7 +1056,7 @@ fn inventory_err_to_py_err(e: Error, py: Python) -> PyErr {
             AlreadyVersionedError::new_err(format!("{}/{}", parent_path, name))
         }
         Error::ParentNotVersioned(path) => {
-            InconsistentDelta::new_err((path, py.None(), "parent not versioned"))
+            NotVersionedError::new_err(format!("parent not versioned: {}", path))
         }
     }
 }
@@ -1431,7 +1435,8 @@ impl Inventory {
             text_id,
             symlink_target,
             reference_revision,
-        );
+        )
+        .map_err(|e| inventory_err_to_py_err(e, py))?;
         entry_to_py(py, entry)
     }
 

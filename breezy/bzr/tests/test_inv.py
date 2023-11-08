@@ -30,6 +30,7 @@ from ..inventory import (
     TreeReference,
     _chk_inventory_bytes_to_entry,
     _chk_inventory_entry_to_bytes,
+    _make_delta,
     chk_inventory_bytes_to_utf8name_key,
     mutable_inventory_from_tree,
 )
@@ -337,7 +338,7 @@ class TestInventoryUpdates(TestCase):
         inv = inventory.Inventory(b"tree-root")
         inv.add(InventoryFile(b"a-id", "\u1234", b"tree-root"))
         e = self.assertRaises(
-            errors.InconsistentDelta,
+            errors.AlreadyVersionedError,
             inv.add,
             InventoryFile(b"b-id", "\u1234", b"tree-root"),
         )
@@ -385,7 +386,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         delta = InventoryDelta([])
         inv = self.apply_delta(self, inv, delta)
         inv2 = self.get_empty_inventory(inv)
-        self.assertEqual(0, len(inv2._make_delta(inv)))
+        self.assertEqual(0, len(_make_delta(inv2, inv)))
 
     def test_repeated_file_id(self):
         inv = self.get_empty_inventory()

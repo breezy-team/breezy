@@ -27,6 +27,7 @@ from ... import revision as _mod_revision
 from ...tests import features, test_osutils
 from ...tests.scenarios import load_tests_apply_scenarios
 from .. import dirstate, inventory, inventorytree, workingtree_4
+from ..inventory import _make_delta
 from ..inventory_delta import InventoryDelta
 
 # TODO:
@@ -3043,7 +3044,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
         state.set_state_from_scratch(
             active_tree.root_inventory, [(b"basis", basis_tree)], []
         )
-        delta = target_tree.root_inventory._make_delta(basis_tree.root_inventory)
+        delta = _make_delta(target_tree.root_inventory, basis_tree.root_inventory)
         state.update_basis_by_delta(delta, b"target")
         state._validate()
         dirstate_tree = workingtree_4.DirStateRevisionTree(

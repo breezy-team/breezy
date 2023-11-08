@@ -16,7 +16,7 @@
 
 from breezy._bzr_rs import revision_serializer_v5  # noqa: F401
 
-from .. import errors, osutils
+from .. import errors
 from . import inventory, xml6
 from .xml_serializer import encode_and_escape, get_utf8_or_ascii, unpack_inventory_entry
 
@@ -56,8 +56,12 @@ class InventorySerializer_v5(xml6.InventorySerializer_v6):
         #   last_parent cache       2.52s (worse, removed)
 
         for e in elt:
-            ie = unpack_inventory_entry(e, entry_cache=entry_cache,
-                                        return_from_cache=return_from_cache, root_id=root_id)
+            ie = unpack_inventory_entry(
+                e,
+                entry_cache=entry_cache,
+                return_from_cache=return_from_cache,
+                root_id=root_id,
+            )
             inv.add(ie)
         self._check_cache_size(len(inv), entry_cache)
         return inv

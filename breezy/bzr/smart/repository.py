@@ -1275,7 +1275,7 @@ class SmartServerRepositoryGetInventories(SmartServerRepositoryRequest):
             for inv, _revid in repository._iter_inventories(revids, ordering):
                 if inv is None:
                     continue
-                inv_delta = inv._make_delta(prev_inv)
+                inv_delta = _mod_inventory._make_delta(inv, prev_inv)
                 lines = serializer.delta_to_lines(
                     prev_inv.revision_id, inv.revision_id, inv_delta
                 )
