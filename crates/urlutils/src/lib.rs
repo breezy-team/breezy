@@ -708,14 +708,14 @@ pub mod posix {
     }
 
     const FILE_LOCALHOST_PREFIX: &str = "file://localhost";
-    const PLAIN_FILE_PREFIX: &str = "file:///";
+    const PLAIN_FILE_PREFIX: &str = "file://";
 
     pub fn local_path_from_url(url: &str) -> std::result::Result<PathBuf, super::Error> {
         let url = super::strip_segment_parameters(url);
-        let path = if url.starts_with(FILE_LOCALHOST_PREFIX) {
-            &url[FILE_LOCALHOST_PREFIX.len()..]
-        } else if url.starts_with(PLAIN_FILE_PREFIX) {
-            &url[7..]
+        let path = if let Some(suffix) = url.strip_prefix(FILE_LOCALHOST_PREFIX) {
+            suffix
+        } else if let Some(suffix) = url.strip_prefix(PLAIN_FILE_PREFIX) {
+            suffix
         } else {
             return Err(super::Error::NotLocalUrl(url.to_string()));
         };
