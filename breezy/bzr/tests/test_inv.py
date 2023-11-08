@@ -30,6 +30,7 @@ from ..inventory import (
     TreeReference,
     _chk_inventory_bytes_to_entry,
     _chk_inventory_entry_to_bytes,
+    _make_delta,
     chk_inventory_bytes_to_utf8name_key,
     mutable_inventory_from_tree,
 )
@@ -291,7 +292,7 @@ class TestInventoryUpdates(TestCase):
         # add a root entry by adding its path
         ie = inv.add_path("", "directory", b"my-root", revision=b"test-rev")
         self.assertEqual(b"my-root", ie.file_id)
-        self.assertIs(ie, inv.root)
+        self.assertEqual(ie, inv.root)
 
     def test_add_path(self):
         inv = inventory.Inventory(root_id=b"tree_root")
@@ -337,7 +338,7 @@ class TestInventoryUpdates(TestCase):
         inv = inventory.Inventory(b"tree-root")
         inv.add(InventoryFile(b"a-id", "\u1234", b"tree-root"))
         e = self.assertRaises(
-            errors.InconsistentDelta,
+            errors.AlreadyVersionedError,
             inv.add,
             InventoryFile(b"b-id", "\u1234", b"tree-root"),
         )
@@ -385,7 +386,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         delta = InventoryDelta([])
         inv = self.apply_delta(self, inv, delta)
         inv2 = self.get_empty_inventory(inv)
-        self.assertEqual(0, len(inv2._make_delta(inv)))
+        self.assertEqual(0, len(_make_delta(inv2, inv)))
 
     def test_repeated_file_id(self):
         inv = self.get_empty_inventory()
@@ -678,7 +679,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         self.assertFalse(inv.is_root(b"TREE_ROOT"))
         self.assertTrue(inv.is_root(b"booga"))
         # works properly even if no root is set
-        inv.root = None
+        inv.delete(inv.root.file_id)
         self.assertFalse(inv.is_root(b"TREE_ROOT"))
         self.assertFalse(inv.is_root(b"booga"))
 

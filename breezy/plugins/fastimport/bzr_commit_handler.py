@@ -749,8 +749,9 @@ class CommitHandler(processor.CommitHandler):
             # we can't assume there are none.
             (
                 per_file_parents,
-                ie._revision,
+                revision,
             ) = self.rev_store.get_parents_and_revision_for_entry(ie)
+            entry = (entry[0], entry[1], entry[2], ie.derive(revision=revision))
             self.per_file_parents_for_commit[file_id] = per_file_parents
         elif new_path is None:
             # delete
@@ -763,8 +764,9 @@ class CommitHandler(processor.CommitHandler):
             # modify
             (
                 per_file_parents,
-                ie._revision,
+                revision,
             ) = self.rev_store.get_parents_and_revision_for_entry(ie)
+            entry = (entry[0], entry[1], entry[2], ie.derive(revision=revision))
             self.per_file_parents_for_commit[file_id] = per_file_parents
 
     def record_new(self, path: str, ie: inventory.InventoryEntry) -> None:

@@ -545,7 +545,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         mt = self.make_branch_and_memory_tree("test", format="2a")
         mt.lock_write()
         self.addCleanup(mt.unlock)
-        mt.add([""], [b"root-id"])
+        mt.add([""], ids=[b"root-id"])
         mt.commit("first")
         index = mt.branch.repository.chk_bytes._index._graph_index._indices[0]
         self.assertEqual(btree_index._gcchk_factory, index._leaf_factory)

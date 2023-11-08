@@ -134,6 +134,12 @@ impl From<RevisionId> for Vec<u8> {
 impl FromPyObject<'_> for RevisionId {
     fn extract(ob: &PyAny) -> PyResult<Self> {
         let s: Vec<u8> = ob.extract()?;
+        if !is_valid(&s) {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "Invalid revision id: {:?}",
+                s
+            )));
+        }
         Ok(RevisionId::from(s))
     }
 }

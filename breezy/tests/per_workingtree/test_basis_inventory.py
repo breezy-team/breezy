@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import breezy.bzr.xml6
+from breezy.bzr.inventory import _make_delta
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
@@ -47,7 +48,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         self.assertEqual(r1, basis_inv.revision_id)
 
         store_inv = b.repository.get_inventory(r1)
-        self.assertEqual([], list(store_inv._make_delta(basis_inv)))
+        self.assertEqual([], list(_make_delta(store_inv, basis_inv)))
 
         with open("b", "wb") as f:
             f.write(b"b\n")
@@ -63,7 +64,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         self.assertEqual(r2, basis_inv.revision_id)
         store_inv = b.repository.get_inventory(r2)
 
-        self.assertEqual([], list(store_inv._make_delta(basis_inv)))
+        self.assertEqual([], list(_make_delta(store_inv, basis_inv)))
 
     def test_wrong_format(self):
         """WorkingTree.basis safely ignores junk basis inventories."""

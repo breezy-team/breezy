@@ -68,6 +68,7 @@ from .inventory import (
     InventoryFile,
     InventoryLink,
     TreeReference,
+    _make_delta,
 )
 from .inventory_delta import InventoryDelta
 from .inventorytree import InterInventoryTree, InventoryRevisionTree, InventoryTree
@@ -1242,8 +1243,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     # _make_delta if we can't get the RevisionTree
                     pass
                 else:
-                    delta = rev_tree.root_inventory._make_delta(
-                        basis_tree.root_inventory
+                    delta = _make_delta(
+                        rev_tree.root_inventory, basis_tree.root_inventory
                     )
                     dirstate.update_basis_by_delta(delta, rev_id)
                     updated = True
@@ -1435,7 +1436,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             # being created.
             self._inventory = None
             # generate a delta,
-            delta = inv._make_delta(self.root_inventory)
+            delta = _make_delta(inv, self.root_inventory)
             # and apply it.
             self.apply_inventory_delta(delta)
             if had_inventory:

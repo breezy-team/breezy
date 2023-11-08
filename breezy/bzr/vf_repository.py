@@ -69,6 +69,7 @@ from .inventory import (
     InventoryFile,
     InventoryLink,
     TreeReference,
+    _make_delta,
 )
 from .inventory_delta import InventoryDelta
 from .inventorytree import InventoryTreeChange
@@ -362,7 +363,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
             if basis_revision_id != self.parents[0] and not ghost_basis:
                 raise Exception("arbitrary basis parents not yet supported with merges")
             for revtree in revtrees[1:]:
-                for change in revtree.root_inventory._make_delta(basis_inv):
+                for change in _make_delta(revtree.root_inventory, basis_inv):
                     if change[1] is None:
                         # Not present in this parent.
                         continue
@@ -939,7 +940,7 @@ class VersionedFileRepository(Repository):
             rev_id = record.key[0]
             inv = self._deserialise_inventory(rev_id, record.get_bytes_as("lines"))
             if last_object is not None:
-                delta = inv._make_delta(last_object)
+                delta = _make_delta(inv, last_object)
                 for _old_path, _path, _file_id, ie in delta:
                     if ie is None:
                         continue
@@ -2317,7 +2318,7 @@ class StreamSource:
                         parent_inv = inventory_cache.get(parent_id, None)
                         if parent_inv is None:
                             parent_inv = from_repo.get_inventory(parent_id)
-                    candidate_delta = inv._make_delta(parent_inv)
+                    candidate_delta = _make_delta(inv, parent_inv)
                     if delta is None or len(delta) > len(candidate_delta):
                         delta = candidate_delta
                         basis_id = parent_id
@@ -2325,7 +2326,7 @@ class StreamSource:
                 # Either none of the parents ended up being suitable, or we
                 # were asked to delta against NULL
                 basis_id = _mod_revision.NULL_REVISION
-                delta = inv._make_delta(null_inventory)
+                delta = _make_delta(inv, null_inventory)
             invs_sent_so_far.add(inv.revision_id)
             inventory_cache[inv.revision_id] = inv
             delta_serialized = serializer.delta_to_lines(basis_id, key[-1], delta)
@@ -2645,7 +2646,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
         # FIXME: Support nested trees
         texts_possibly_new_in_tree = set()
         for basis_id, basis_tree in possible_trees:
-            delta = tree.root_inventory._make_delta(basis_tree.root_inventory)
+            delta = _make_delta(tree.root_inventory, basis_tree.root_inventory)
             for _old_path, new_path, file_id, new_entry in delta:
                 if new_path is None:
                     # This file_id isn't present in the new rev, so we don't
@@ -2686,7 +2687,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
             parents_parents = [key[-1] for key in parents_parents_keys]
             basis_id = _mod_revision.NULL_REVISION
             basis_tree = self.source.revision_tree(basis_id)
-            delta = parent_tree.root_inventory._make_delta(basis_tree.root_inventory)
+            delta = _make_delta(parent_tree.root_inventory, basis_tree.root_inventory)
             self.target.add_inventory_by_delta(
                 basis_id, delta, current_revision_id, parents_parents
             )
@@ -3039,7 +3040,7 @@ def _install_revision(repository, rev, revision_tree, signature, inventory_cache
             except KeyError:
                 repository.add_inventory(rev.revision_id, inv, present_parents)
             else:
-                delta = inv._make_delta(basis_inv)
+                delta = _make_delta(inv, basis_inv)
                 repository.add_inventory_by_delta(
                     rev.parent_ids[0], delta, rev.revision_id, present_parents
                 )

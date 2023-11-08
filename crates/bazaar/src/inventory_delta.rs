@@ -8,6 +8,7 @@
 use crate::inventory::Entry;
 use crate::{FileId, RevisionId, NULL_REVISION};
 use std::collections::HashSet;
+use std::iter::FromIterator;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct InventoryDeltaEntry {
@@ -18,7 +19,19 @@ pub struct InventoryDeltaEntry {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct InventoryDelta(Vec<InventoryDeltaEntry>);
+pub struct InventoryDelta(pub Vec<InventoryDeltaEntry>);
+
+impl InventoryDelta {
+    fn new() -> Self {
+        InventoryDelta(Vec::new())
+    }
+}
+
+impl FromIterator<InventoryDeltaEntry> for InventoryDelta {
+    fn from_iter<T: IntoIterator<Item = InventoryDeltaEntry>>(iter: T) -> Self {
+        InventoryDelta(iter.into_iter().collect())
+    }
+}
 
 impl From<Vec<InventoryDeltaEntry>> for InventoryDelta {
     fn from(v: Vec<InventoryDeltaEntry>) -> Self {
@@ -48,6 +61,14 @@ pub enum InventoryDeltaInconsistency {
     MismatchedId(String, FileId, FileId),
     EntryWithoutPath(String, FileId),
     PathWithoutEntry(String, FileId),
+    PathMismatch(FileId, String, String),
+    OrphanedChild(FileId),
+    ParentNotDirectory(String, FileId),
+    ParentMissing(FileId),
+    NoSuchId(FileId),
+    InvalidEntryName(String),
+    FileIdCycle(FileId, String, String),
+    PathAlreadyVersioned(String, String),
 }
 
 impl InventoryDelta {

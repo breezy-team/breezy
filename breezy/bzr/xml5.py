@@ -16,7 +16,7 @@
 
 from breezy._bzr_rs import revision_serializer_v5  # noqa: F401
 
-from .. import errors, osutils
+from .. import errors
 from . import inventory, xml6
 from .xml_serializer import encode_and_escape, get_utf8_or_ascii, unpack_inventory_entry
 
@@ -54,8 +54,7 @@ class InventorySerializer_v5(xml6.InventorySerializer_v6):
         #   avoiding attributes     2.46s
         #   adding assertions       2.50s
         #   last_parent cache       2.52s (worse, removed)
-        byid = inv._byid
-        children = inv._children
+
         for e in elt:
             ie = unpack_inventory_entry(
                 e,
@@ -63,27 +62,7 @@ class InventorySerializer_v5(xml6.InventorySerializer_v6):
                 return_from_cache=return_from_cache,
                 root_id=root_id,
             )
-            try:
-                parent = byid[ie.parent_id]
-            except KeyError as err:
-                raise errors.BzrError(
-                    f"parent_id {{{ie.parent_id}}} not in inventory"
-                ) from err
-            if ie.file_id in byid:
-                raise inventory.DuplicateFileId(ie.file_id, byid[ie.file_id])
-            siblings = children[parent.file_id]
-            if ie.name in siblings:
-                raise errors.BzrError(
-                    "{} is already versioned".format(
-                        osutils.pathjoin(inv.id2path(ie.parent_id), ie.name).encode(
-                            "utf-8"
-                        )
-                    )
-                )
-            siblings[ie.name] = ie
-            byid[ie.file_id] = ie
-            if ie.kind == "directory":
-                children[ie.file_id] = {}
+            inv.add(ie)
         self._check_cache_size(len(inv), entry_cache)
         return inv
 

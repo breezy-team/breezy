@@ -26,6 +26,7 @@ from .... import revision as _mod_revision
 from ....i18n import ngettext
 from ... import pack, serializer
 from ... import versionedfile as _mod_versionedfile
+from ...inventory import _make_delta
 from .. import bundle_data
 from .. import serializer as bundle_serializer
 
@@ -727,7 +728,7 @@ class RevisionInstaller:
                             revision_id, target_inv, parent_ids
                         )
                     else:
-                        delta = target_inv._make_delta(parent_inv)
+                        delta = _make_delta(target_inv, parent_inv)
                         self._repository.add_inventory_by_delta(
                             parent_ids[0], delta, revision_id, parent_ids
                         )

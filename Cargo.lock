@@ -202,6 +202,7 @@ dependencies = [
  "nix",
  "num_cpus",
  "path-clean",
+ "pyo3",
  "rand",
  "regex",
  "sha1",

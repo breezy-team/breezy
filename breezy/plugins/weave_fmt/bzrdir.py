@@ -465,7 +465,8 @@ class ConvertBzrDir4To5(Converter):
         entries = inv.iter_entries()
         next(entries)
         for _path, ie in entries:
-            self._convert_file_version(rev, ie, parent_invs)
+            inv.delete(ie.file_id)
+            inv.add(self._convert_file_version(rev, ie, parent_invs))
 
     def _convert_file_version(self, rev, ie, parent_invs):
         """Convert one version of one file.
@@ -484,7 +485,7 @@ class ConvertBzrDir4To5(Converter):
         # XXX: Note that this is unordered - and this is tolerable because
         # the previous code was also unordered.
         previous_entries = {head: parent_candiate_entries[head] for head in heads}
-        self.snapshot_ie(previous_entries, ie, w, rev_id)
+        return self.snapshot_ie(previous_entries, ie, w, rev_id)
 
     def get_parent_map(self, revision_ids):
         """See graph.StackedParentsProvider.get_parent_map."""
@@ -505,8 +506,7 @@ class ConvertBzrDir4To5(Converter):
         if len(previous_revisions) == 1:
             previous_ie = next(iter(previous_revisions.values()))
             if ie._unchanged(previous_ie):
-                ie.revision = previous_ie.revision
-                return
+                return ie.derive(revision=previous_ie.revision)
         if ie.has_text():
             with self.branch.repository._text_store.get(ie.text_id) as f:
                 file_lines = f.readlines()
@@ -514,7 +514,7 @@ class ConvertBzrDir4To5(Converter):
             self.text_count += 1
         else:
             w.add_lines(rev_id, previous_revisions, [])
-        ie._revision = rev_id
+        return ie.derive(revision=rev_id)
 
     def _make_order(self):
         """Return a suitable order for importing revisions.

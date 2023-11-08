@@ -47,7 +47,9 @@ class FileIdInvolvedWGhosts(TestCaseWithRepository):
         old_rt = b.repository.revision_tree(b"A-id")
         new_inv = inventory.mutable_inventory_from_tree(old_rt)
         new_inv.revision_id = b"B-id"
-        new_inv.get_entry(b"a-file-id")._revision = b"ghost-id"
+        new_ie = new_inv.get_entry(b"a-file-id").derive(revision=b"ghost-id")
+        new_inv.delete(b"a-file-id")
+        new_inv.add(new_ie)
         new_rev = _mod_revision.Revision(
             b"B-id",
             timestamp=time.time(),

@@ -176,7 +176,7 @@ class BTreeTester(tests.TestCase):
         mtree.add_dir(b"b", "grandparent/parent")
         mtree.add_file(b"c", "grandparent/parent/file", b"Hello\n")
         mtree.add_dir(b"d", "grandparent/alt_parent")
-        return BundleTree(mtree, b""), mtree
+        return BundleTree(mtree, b"revid"), mtree
 
     def test_renames(self):
         """Ensure that file renames have the proper effect on children."""

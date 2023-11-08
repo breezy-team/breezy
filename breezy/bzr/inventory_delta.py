@@ -25,6 +25,7 @@ In this module the interesting classes are:
 __all__ = ["InventoryDeltaSerializer"]
 
 from .._bzr_rs import inventory as _inventory_delta_rs
+from ..revision import RevisionID
 
 InventoryDeltaError = _inventory_delta_rs.InventoryDeltaError
 IncompatibleInventoryDelta = _inventory_delta_rs.IncompatibleInventoryDelta
@@ -46,7 +47,12 @@ class InventoryDeltaSerializer:
         self._versioned_root = versioned_root
         self._tree_references = tree_references
 
-    def delta_to_lines(self, old_name, new_name, delta_to_new):
+    def delta_to_lines(
+        self,
+        old_name: RevisionID,
+        new_name: RevisionID,
+        delta_to_new: _inventory_delta_rs.InventoryDelta,
+    ):
         """Return a line sequence for delta_to_new.
 
         Both the versioned_root and tree_references flags must be set via
