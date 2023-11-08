@@ -43,7 +43,6 @@ class DummyWeave:
 
 
 class TestSymbols(TestCase):
-
     def test_public_symbols(self):
         from ..transactions import (
             PassThroughTransaction,  # noqa: F401
@@ -52,7 +51,6 @@ class TestSymbols(TestCase):
 
 
 class TestReadOnlyTransaction(TestCase):
-
     def setUp(self):
         self.transaction = transactions.ReadOnlyTransaction()
         super().setUp()
@@ -61,8 +59,9 @@ class TestReadOnlyTransaction(TestCase):
         self.transaction.register_clean("anobject")
 
     def test_register_dirty_raises(self):
-        self.assertRaises(errors.ReadOnlyError,
-                          self.transaction.register_dirty, "anobject")
+        self.assertRaises(
+            errors.ReadOnlyError, self.transaction.register_dirty, "anobject"
+        )
 
     def test_map(self):
         self.assertNotEqual(None, getattr(self.transaction, "map", None))
@@ -78,13 +77,13 @@ class TestReadOnlyTransaction(TestCase):
     def test_finish_does_not_tell_versioned_file_finished(self):
         # read only transactions never write, so theres no
         # need to inform versioned files about finishing
-        weave = DummyWeave('a weave')
+        weave = DummyWeave("a weave")
         self.transaction.finish()
         self.assertFalse(weave.finished)
 
     def test_zero_size_cache(self):
         self.transaction.set_cache_size(0)
-        weave = DummyWeave('a weave')
+        weave = DummyWeave("a weave")
         self.transaction.map.add_weave("id", weave)
         self.assertEqual(weave, self.transaction.map.find_weave("id"))
         weave = None
@@ -98,8 +97,9 @@ class TestReadOnlyTransaction(TestCase):
         self.assertEqual(weave, self.transaction.map.find_weave("id"))
         del weave
         # its not a weakref system
-        self.assertEqual(DummyWeave("another weave"),
-                         self.transaction.map.find_weave("id"))
+        self.assertEqual(
+            DummyWeave("another weave"), self.transaction.map.find_weave("id")
+        )
 
     def test_small_cache(self):
         self.transaction.set_cache_size(1)
@@ -107,14 +107,14 @@ class TestReadOnlyTransaction(TestCase):
         # sys.getrefcounts(foo)
         self.transaction.map.add_weave("id", DummyWeave("a weave"))
         self.transaction.register_clean(self.transaction.map.find_weave("id"))
-        self.assertEqual(DummyWeave("a weave"),
-                         self.transaction.map.find_weave("id"))
+        self.assertEqual(DummyWeave("a weave"), self.transaction.map.find_weave("id"))
         self.transaction.map.add_weave("id2", DummyWeave("a weave also"))
         self.transaction.register_clean(self.transaction.map.find_weave("id2"))
         # currently a fifo
         self.assertEqual(None, self.transaction.map.find_weave("id"))
-        self.assertEqual(DummyWeave("a weave also"),
-                         self.transaction.map.find_weave("id2"))
+        self.assertEqual(
+            DummyWeave("a weave also"), self.transaction.map.find_weave("id2")
+        )
 
     def test_small_cache_with_references(self):
         # if we have a reference it should stick around
@@ -130,22 +130,21 @@ class TestReadOnlyTransaction(TestCase):
 
     def test_precious_with_zero_size_cache(self):
         self.transaction.set_cache_size(0)
-        weave = DummyWeave('a weave')
+        weave = DummyWeave("a weave")
         self.transaction.map.add_weave("id", weave)
         self.assertEqual(weave, self.transaction.map.find_weave("id"))
         weave = None
         # add an object, should not fall out even with no references.
-        self.transaction.register_clean(self.transaction.map.find_weave("id"),
-                                        precious=True)
-        self.assertEqual(DummyWeave('a weave'),
-                         self.transaction.map.find_weave("id"))
+        self.transaction.register_clean(
+            self.transaction.map.find_weave("id"), precious=True
+        )
+        self.assertEqual(DummyWeave("a weave"), self.transaction.map.find_weave("id"))
 
     def test_writable(self):
         self.assertFalse(self.transaction.writeable())
 
 
 class TestPassThroughTransaction(TestCase):
-
     def test_construct(self):
         transactions.PassThroughTransaction()
 
@@ -174,7 +173,7 @@ class TestPassThroughTransaction(TestCase):
     def test_finish_tells_versioned_file_finished(self):
         # pass through transactions allow writes so they
         # need to inform versioned files about finishing
-        weave = DummyWeave('a weave')
+        weave = DummyWeave("a weave")
         transaction = transactions.PassThroughTransaction()
         transaction.register_dirty(weave)
         transaction.finish()
@@ -193,7 +192,6 @@ class TestPassThroughTransaction(TestCase):
 
 
 class TestWriteTransaction(TestCase):
-
     def setUp(self):
         self.transaction = transactions.WriteTransaction()
         super().setUp()
@@ -218,7 +216,7 @@ class TestWriteTransaction(TestCase):
     def test_finish_tells_versioned_file_finished(self):
         # write transactions allow writes so they
         # need to inform versioned files about finishing
-        weave = DummyWeave('a weave')
+        weave = DummyWeave("a weave")
         self.transaction.register_dirty(weave)
         self.transaction.finish()
         self.assertTrue(weave.finished)
@@ -226,7 +224,7 @@ class TestWriteTransaction(TestCase):
     def test_zero_size_cache(self):
         self.transaction.set_cache_size(0)
         # add an object, should fall right out if there are no references
-        weave = DummyWeave('a weave')
+        weave = DummyWeave("a weave")
         self.transaction.map.add_weave("id", weave)
         self.assertEqual(weave, self.transaction.map.find_weave("id"))
         weave = None
@@ -239,13 +237,14 @@ class TestWriteTransaction(TestCase):
         self.assertEqual(weave, self.transaction.map.find_weave("id"))
         del weave
         # its not a weakref system
-        self.assertEqual(DummyWeave("another weave"),
-                         self.transaction.map.find_weave("id"))
+        self.assertEqual(
+            DummyWeave("another weave"), self.transaction.map.find_weave("id")
+        )
 
     def test_zero_size_cache_dirty_objects(self):
         self.transaction.set_cache_size(0)
         # add a dirty object, which should not fall right out.
-        weave = DummyWeave('a weave')
+        weave = DummyWeave("a weave")
         self.transaction.map.add_weave("id", weave)
         self.assertEqual(weave, self.transaction.map.find_weave("id"))
         weave = None
@@ -254,7 +253,7 @@ class TestWriteTransaction(TestCase):
 
     def test_clean_to_dirty(self):
         # a clean object may become dirty.
-        weave = DummyWeave('A weave')
+        weave = DummyWeave("A weave")
         self.transaction.map.add_weave("id", weave)
         self.transaction.register_clean(weave)
         self.transaction.register_dirty(weave)
@@ -267,14 +266,14 @@ class TestWriteTransaction(TestCase):
         # sys.getrefcounts(foo)
         self.transaction.map.add_weave("id", DummyWeave("a weave"))
         self.transaction.register_clean(self.transaction.map.find_weave("id"))
-        self.assertEqual(DummyWeave("a weave"),
-                         self.transaction.map.find_weave("id"))
+        self.assertEqual(DummyWeave("a weave"), self.transaction.map.find_weave("id"))
         self.transaction.map.add_weave("id2", DummyWeave("a weave also"))
         self.transaction.register_clean(self.transaction.map.find_weave("id2"))
         # currently a fifo
         self.assertEqual(None, self.transaction.map.find_weave("id"))
-        self.assertEqual(DummyWeave("a weave also"),
-                         self.transaction.map.find_weave("id2"))
+        self.assertEqual(
+            DummyWeave("a weave also"), self.transaction.map.find_weave("id2")
+        )
 
     def test_small_cache_with_references(self):
         # if we have a reference it should stick around
@@ -290,15 +289,15 @@ class TestWriteTransaction(TestCase):
 
     def test_precious_with_zero_size_cache(self):
         self.transaction.set_cache_size(0)
-        weave = DummyWeave('a weave')
+        weave = DummyWeave("a weave")
         self.transaction.map.add_weave("id", weave)
         self.assertEqual(weave, self.transaction.map.find_weave("id"))
         weave = None
         # add an object, should not fall out even with no references.
-        self.transaction.register_clean(self.transaction.map.find_weave("id"),
-                                        precious=True)
-        self.assertEqual(DummyWeave('a weave'),
-                         self.transaction.map.find_weave("id"))
+        self.transaction.register_clean(
+            self.transaction.map.find_weave("id"), precious=True
+        )
+        self.assertEqual(DummyWeave("a weave"), self.transaction.map.find_weave("id"))
 
     def test_writable(self):
         self.assertTrue(self.transaction.writeable())

@@ -32,12 +32,13 @@ from .. import (
 
 
 class TestErrors(tests.TestCase):
-
     def test_no_help_topic(self):
         error = help.NoHelpTopic("topic")
-        self.assertEqualDiff("No help could be found for 'topic'. "
-                             "Please use 'brz help topics' to obtain a list of topics.",
-                             str(error))
+        self.assertEqualDiff(
+            "No help could be found for 'topic'. "
+            "Please use 'brz help topics' to obtain a list of topics.",
+            str(error),
+        )
 
 
 class TestCommandHelp(tests.TestCase):
@@ -49,8 +50,10 @@ class TestCommandHelp(tests.TestCase):
     def test_command_help_includes_see_also(self):
         class cmd_WithSeeAlso(commands.Command):
             __doc__ = """A sample command."""
-            _see_also = ['foo', 'bar']
-        self.assertCmdHelp('''\
+            _see_also = ["foo", "bar"]
+
+        self.assertCmdHelp(
+            """\
 Purpose: A sample command.
 Usage:   brz WithSeeAlso
 
@@ -61,14 +64,18 @@ Options:
   -v, --verbose  Display more information.
 
 See also: bar, foo
-''',
-                           cmd_WithSeeAlso())
+""",
+            cmd_WithSeeAlso(),
+        )
 
     def test_get_help_text(self):
         """Commands have a get_help_text method which returns their help."""
+
         class cmd_Demo(commands.Command):
             __doc__ = """A sample command."""
-        self.assertCmdHelp('''\
+
+        self.assertCmdHelp(
+            """\
 Purpose: A sample command.
 Usage:   brz Demo
 
@@ -78,51 +85,56 @@ Options:
   --usage        Show usage message and options.
   -v, --verbose  Display more information.
 
-''',
-                           cmd_Demo())
+""",
+            cmd_Demo(),
+        )
         cmd = cmd_Demo()
         helptext = cmd.get_help_text()
-        self.assertStartsWith(helptext,
-                              'Purpose: A sample command.\n'
-                              'Usage:   brz Demo')
-        self.assertEndsWith(helptext,
-                            '  -v, --verbose  Display more information.\n\n')
+        self.assertStartsWith(
+            helptext, "Purpose: A sample command.\n" "Usage:   brz Demo"
+        )
+        self.assertEndsWith(helptext, "  -v, --verbose  Display more information.\n\n")
 
     def test_command_with_additional_see_also(self):
         class cmd_WithSeeAlso(commands.Command):
             __doc__ = """A sample command."""
-            _see_also = ['foo', 'bar']
+            _see_also = ["foo", "bar"]
+
         cmd = cmd_WithSeeAlso()
-        helptext = cmd.get_help_text(['gam'])
+        helptext = cmd.get_help_text(["gam"])
         self.assertEndsWith(
             helptext,
-            '  -h, --help     Show help message.\n'
-            '  -q, --quiet    Only display errors and warnings.\n'
-            '  --usage        Show usage message and options.\n'
-            '  -v, --verbose  Display more information.\n'
-            '\n'
-            'See also: bar, foo, gam\n')
+            "  -h, --help     Show help message.\n"
+            "  -q, --quiet    Only display errors and warnings.\n"
+            "  --usage        Show usage message and options.\n"
+            "  -v, --verbose  Display more information.\n"
+            "\n"
+            "See also: bar, foo, gam\n",
+        )
 
     def test_command_only_additional_see_also(self):
         class cmd_WithSeeAlso(commands.Command):
             __doc__ = """A sample command."""
+
         cmd = cmd_WithSeeAlso()
-        helptext = cmd.get_help_text(['gam'])
+        helptext = cmd.get_help_text(["gam"])
         self.assertEndsWith(
             helptext,
-            '  -v, --verbose  Display more information.\n'
-            '\n'
-            'See also: gam\n')
+            "  -v, --verbose  Display more information.\n" "\n" "See also: gam\n",
+        )
 
     def test_get_help_topic(self):
         """The help topic for a Command is its name()."""
+
         class cmd_foo_bar(commands.Command):
             __doc__ = """A sample command."""
+
         cmd = cmd_foo_bar()
         self.assertEqual(cmd.name(), cmd.get_help_topic())
 
     def test_formatted_help_text(self):
         """Help text should be plain text by default."""
+
         class cmd_Demo(commands.Command):
             __doc__ = """A sample command.
 
@@ -141,9 +153,11 @@ Options:
 
                     brz Demo something
             """
+
         cmd = cmd_Demo()
         helptext = cmd.get_help_text()
-        self.assertEqualDiff('''\
+        self.assertEqualDiff(
+            """\
 Purpose: A sample command.
 Usage:   brz Demo
 
@@ -166,10 +180,12 @@ Examples:
 
         brz Demo something
 
-''',
-                             helptext)
+""",
+            helptext,
+        )
         helptext = cmd.get_help_text(plain=False)
-        self.assertEqualDiff('''\
+        self.assertEqualDiff(
+            """\
 :Purpose: A sample command.
 :Usage:   brz Demo
 
@@ -194,11 +210,13 @@ Examples:
 
         brz Demo something
 
-''',
-                             helptext)
+""",
+            helptext,
+        )
 
     def test_concise_help_text(self):
         """Concise help text excludes the descriptive sections."""
+
         class cmd_Demo(commands.Command):
             __doc__ = """A sample command.
 
@@ -209,9 +227,11 @@ Examples:
 
                     cmd arg1
             """
+
         cmd = cmd_Demo()
         helptext = cmd.get_help_text()
-        self.assertEqualDiff('''\
+        self.assertEqualDiff(
+            """\
 Purpose: A sample command.
 Usage:   brz Demo
 
@@ -229,10 +249,12 @@ Examples:
 
         cmd arg1
 
-''',
-                             helptext)
+""",
+            helptext,
+        )
         helptext = cmd.get_help_text(verbose=False)
-        self.assertEqualDiff('''\
+        self.assertEqualDiff(
+            """\
 Purpose: A sample command.
 Usage:   brz Demo
 
@@ -244,11 +266,13 @@ Options:
 
 See brz help Demo for more details and examples.
 
-''',
-                             helptext)
+""",
+            helptext,
+        )
 
     def test_help_custom_section_ordering(self):
         """Custom descriptive sections should remain in the order given."""
+
         class cmd_Demo(commands.Command):
             __doc__ = """\
 A sample command.
@@ -266,9 +290,11 @@ Blah blah blah.
 :Tips:
   Clever things to keep in mind.
 """
+
         cmd = cmd_Demo()
         helptext = cmd.get_help_text()
-        self.assertEqualDiff('''\
+        self.assertEqualDiff(
+            """\
 Purpose: A sample command.
 Usage:   brz Demo
 
@@ -292,11 +318,13 @@ Examples:
 Tips:
   Clever things to keep in mind.
 
-''',
-                             helptext)
+""",
+            helptext,
+        )
 
     def test_help_text_custom_usage(self):
         """Help text may contain a custom usage section."""
+
         class cmd_Demo(commands.Command):
             __doc__ = """A sample command.
 
@@ -307,9 +335,11 @@ Tips:
 
             Blah blah blah.
             """
+
         cmd = cmd_Demo()
         helptext = cmd.get_help_text()
-        self.assertEqualDiff('''\
+        self.assertEqualDiff(
+            """\
 Purpose: A sample command.
 Usage:
     cmd Demo [opts] args
@@ -326,8 +356,9 @@ Options:
 Description:
   Blah blah blah.
 
-''',
-                             helptext)
+""",
+            helptext,
+        )
 
 
 class TestCommandHelpI18n(tests.TestCase):
@@ -344,8 +375,10 @@ class TestCommandHelpI18n(tests.TestCase):
     def test_command_help_includes_see_also(self):
         class cmd_WithSeeAlso(commands.Command):
             __doc__ = """A sample command."""
-            _see_also = ['foo', 'bar']
-        self.assertCmdHelp('''\
+            _see_also = ["foo", "bar"]
+
+        self.assertCmdHelp(
+            """\
 zz{{:Purpose: zz{{A sample command.}}
 }}zz{{:Usage:   brz WithSeeAlso
 }}
@@ -356,14 +389,18 @@ zz{{:Options:
   -v, --verbose  zz{{Display more information.}}
 }}
 zz{{:See also: bar, foo}}
-''',
-                           cmd_WithSeeAlso())
+""",
+            cmd_WithSeeAlso(),
+        )
 
     def test_get_help_text(self):
         """Commands have a get_help_text method which returns their help."""
+
         class cmd_Demo(commands.Command):
             __doc__ = """A sample command."""
-        self.assertCmdHelp('''\
+
+        self.assertCmdHelp(
+            """\
 zz{{:Purpose: zz{{A sample command.}}
 }}zz{{:Usage:   brz Demo
 }}
@@ -373,32 +410,38 @@ zz{{:Options:
   --usage        zz{{Show usage message and options.}}
   -v, --verbose  zz{{Display more information.}}
 }}
-''',
-                           cmd_Demo())
+""",
+            cmd_Demo(),
+        )
 
     def test_command_with_additional_see_also(self):
         class cmd_WithSeeAlso(commands.Command):
             __doc__ = """A sample command."""
-            _see_also = ['foo', 'bar']
+            _see_also = ["foo", "bar"]
+
         cmd = cmd_WithSeeAlso()
-        helptext = cmd.get_help_text(['gam'])
+        helptext = cmd.get_help_text(["gam"])
         self.assertEndsWith(
-            helptext, '''\
+            helptext,
+            """\
   -h, --help     zz{{Show help message.}}
   -q, --quiet    zz{{Only display errors and warnings.}}
   --usage        zz{{Show usage message and options.}}
   -v, --verbose  zz{{Display more information.}}
 }}
 zz{{:See also: bar, foo, gam}}
-''')
+""",
+        )
 
     def test_command_only_additional_see_also(self):
         class cmd_WithSeeAlso(commands.Command):
             __doc__ = """A sample command."""
+
         cmd = cmd_WithSeeAlso()
-        helptext = cmd.get_help_text(['gam'])
+        helptext = cmd.get_help_text(["gam"])
         self.assertEndsWith(
-            helptext, '''\
+            helptext,
+            """\
 zz{{:Options:
   -h, --help     zz{{Show help message.}}
   -q, --quiet    zz{{Only display errors and warnings.}}
@@ -406,10 +449,12 @@ zz{{:Options:
   -v, --verbose  zz{{Display more information.}}
 }}
 zz{{:See also: gam}}
-''')
+""",
+        )
 
     def test_help_custom_section_ordering(self):
         """Custom descriptive sections should remain in the order given."""
+
         # The help formatter expect the class name to start with 'cmd_'
         class cmd_Demo(commands.Command):
             __doc__ = """A sample command.
@@ -427,7 +472,9 @@ zz{{:See also: gam}}
             :Tips:
               Clever things to keep in mind.
             """
-        self.assertCmdHelp('''\
+
+        self.assertCmdHelp(
+            """\
 zz{{:Purpose: zz{{A sample command.}}
 }}zz{{:Usage:   brz Demo
 }}
@@ -451,11 +498,13 @@ Examples:
 Tips:
   zz{{Clever things to keep in mind.}}
 
-''',
-                           cmd_Demo())
+""",
+            cmd_Demo(),
+        )
 
     def test_help_text_custom_usage(self):
         """Help text may contain a custom usage section."""
+
         class cmd_Demo(commands.Command):
             __doc__ = """A sample command.
 
@@ -466,7 +515,9 @@ Tips:
 
             Blah blah blah.
             """
-        self.assertCmdHelp('''\
+
+        self.assertCmdHelp(
+            """\
 zz{{:Purpose: zz{{A sample command.}}
 }}zz{{:Usage:
     zz{{cmd Demo [opts] args}}
@@ -484,12 +535,12 @@ Description:
   zz{{zz{{Blah blah blah.}}
 
 }}
-''',
-                           cmd_Demo())
+""",
+            cmd_Demo(),
+        )
 
 
 class TestHelp(tests.TestCase):
-
     def setUp(self):
         super().setUp()
         commands.install_bzr_command_hooks()
@@ -501,30 +552,30 @@ class TestRegisteredTopic(TestHelp):
     def test_contruct(self):
         """Construction takes the help topic name for the registered item."""
         # validate our test
-        self.assertIn('basic', help_topics.topic_registry)
-        topic = help_topics.topic_registry.get('basic')
-        self.assertEqual('basic', topic.name)
+        self.assertIn("basic", help_topics.topic_registry)
+        topic = help_topics.topic_registry.get("basic")
+        self.assertEqual("basic", topic.name)
 
     def test_get_help_text(self):
         """RegisteredTopic returns the get_detail results for get_help_text."""
-        topic = help_topics.topic_registry.get('commands')
-        self.assertEqual(help_topics.topic_registry.get_detail('commands'),
-                         topic.get_help_text())
+        topic = help_topics.topic_registry.get("commands")
+        self.assertEqual(
+            help_topics.topic_registry.get_detail("commands"), topic.get_help_text()
+        )
 
     def test_get_help_text_with_additional_see_also(self):
-        topic = help_topics.topic_registry.get('commands')
+        topic = help_topics.topic_registry.get("commands")
         self.assertEndsWith(
-            topic.get_help_text(['foo', 'bar']),
-            '\n'
-            'See also: bar, foo\n')
+            topic.get_help_text(["foo", "bar"]), "\n" "See also: bar, foo\n"
+        )
 
     def test_get_help_text_loaded_from_file(self):
         # Pick a known topic stored in an external file
-        topic = help_topics.topic_registry.get('authentication')
-        self.assertStartsWith(topic.get_help_text(),
-                              'Authentication Settings\n'
-                              '=======================\n'
-                              '\n')
+        topic = help_topics.topic_registry.get("authentication")
+        self.assertStartsWith(
+            topic.get_help_text(),
+            "Authentication Settings\n" "=======================\n" "\n",
+        )
 
 
 class TestTopicIndex(TestHelp):
@@ -538,24 +589,24 @@ class TestTopicIndex(TestHelp):
         index = help_topics.HelpTopicIndex()
         topics = index.get_topics(None)
         self.assertEqual(1, len(topics))
-        self.assertEqual('basic', topics[0].name)
+        self.assertEqual("basic", topics[0].name)
 
     def test_get_topics_topics(self):
         """Searching for a string returns the matching string."""
         index = help_topics.HelpTopicIndex()
-        topics = index.get_topics('topics')
+        topics = index.get_topics("topics")
         self.assertEqual(1, len(topics))
-        self.assertEqual('topics', topics[0].name)
+        self.assertEqual("topics", topics[0].name)
 
     def test_get_topics_no_topic(self):
         """Searching for something not registered returns []."""
         index = help_topics.HelpTopicIndex()
-        self.assertEqual([], index.get_topics('nothing by this name'))
+        self.assertEqual([], index.get_topics("nothing by this name"))
 
     def test_prefix(self):
         """TopicIndex has a prefix of ''."""
         index = help_topics.HelpTopicIndex()
-        self.assertEqual('', index.prefix)
+        self.assertEqual("", index.prefix)
 
 
 class TestConfigOptionIndex(TestHelp):
@@ -570,17 +621,17 @@ class TestConfigOptionIndex(TestHelp):
         self.assertEqual([], self.index.get_topics(None))
 
     def test_get_topics_no_topic(self):
-        self.assertEqual([], self.index.get_topics('nothing by this name'))
+        self.assertEqual([], self.index.get_topics("nothing by this name"))
 
     def test_prefix(self):
-        self.assertEqual('configuration/', self.index.prefix)
+        self.assertEqual("configuration/", self.index.prefix)
 
     def test_get_topic_with_prefix(self):
-        topics = self.index.get_topics('configuration/default_format')
+        topics = self.index.get_topics("configuration/default_format")
         self.assertLength(1, topics)
         opt = topics[0]
         self.assertIsInstance(opt, config.Option)
-        self.assertEqual('default_format', opt.name)
+        self.assertEqual("default_format", opt.name)
 
 
 class TestCommandIndex(TestHelp):
@@ -597,24 +648,24 @@ class TestCommandIndex(TestHelp):
     def test_get_topics_rocks(self):
         """Searching for 'rocks' returns the cmd_rocks command instance."""
         index = commands.HelpCommandIndex()
-        topics = index.get_topics('rocks')
+        topics = index.get_topics("rocks")
         self.assertEqual(1, len(topics))
         self.assertIsInstance(topics[0], builtins.cmd_rocks)
 
     def test_get_topics_no_topic(self):
         """Searching for something that is not a command returns []."""
         index = commands.HelpCommandIndex()
-        self.assertEqual([], index.get_topics('nothing by this name'))
+        self.assertEqual([], index.get_topics("nothing by this name"))
 
     def test_prefix(self):
         """CommandIndex has a prefix of 'commands/'."""
         index = commands.HelpCommandIndex()
-        self.assertEqual('commands/', index.prefix)
+        self.assertEqual("commands/", index.prefix)
 
     def test_get_topic_with_prefix(self):
         """Searching for commands/rocks returns the rocks command object."""
         index = commands.HelpCommandIndex()
-        topics = index.get_topics('commands/rocks')
+        topics = index.get_topics("commands/rocks")
         self.assertEqual(1, len(topics))
         self.assertIsInstance(topics[0], builtins.cmd_rocks)
 
@@ -627,24 +678,20 @@ class TestHelpIndices(tests.TestCase):
         indices = help.HelpIndices()
         self.assertEqual(4, len(indices.search_path))
         # help topics should be searched in first.
-        self.assertIsInstance(indices.search_path[0],
-                              help_topics.HelpTopicIndex)
+        self.assertIsInstance(indices.search_path[0], help_topics.HelpTopicIndex)
         # with commands being search second.
-        self.assertIsInstance(indices.search_path[1],
-                              commands.HelpCommandIndex)
+        self.assertIsInstance(indices.search_path[1], commands.HelpCommandIndex)
         # plugins are a third index.
-        self.assertIsInstance(indices.search_path[2],
-                              plugin.PluginsHelpIndex)
+        self.assertIsInstance(indices.search_path[2], plugin.PluginsHelpIndex)
         # config options are a fourth index
-        self.assertIsInstance(indices.search_path[3],
-                              help_topics.ConfigOptionHelpIndex)
+        self.assertIsInstance(indices.search_path[3], help_topics.ConfigOptionHelpIndex)
 
     def test_search_for_unknown_topic_raises(self):
         """Searching for an unknown topic should raise NoHelpTopic."""
         indices = help.HelpIndices()
         indices.search_path = []
-        error = self.assertRaises(help.NoHelpTopic, indices.search, 'foo')
-        self.assertEqual('foo', error.topic)
+        error = self.assertRaises(help.NoHelpTopic, indices.search, "foo")
+        self.assertEqual("foo", error.topic)
 
     def test_search_calls_get_topic(self):
         """Searching should call get_topics in all indexes in order."""
@@ -655,28 +702,34 @@ class TestHelpIndices(tests.TestCase):
                 self.prefix = name
 
             def get_topics(self, topic):
-                calls.append(('get_topics', self.prefix, topic))
-                return ['something']
+                calls.append(("get_topics", self.prefix, topic))
+                return ["something"]
+
         index = help.HelpIndices()
-        index.search_path = [RecordingIndex('1'), RecordingIndex('2')]
+        index.search_path = [RecordingIndex("1"), RecordingIndex("2")]
         # try with None
         index.search(None)
-        self.assertEqual([
-            ('get_topics', '1', None),
-            ('get_topics', '2', None),
+        self.assertEqual(
+            [
+                ("get_topics", "1", None),
+                ("get_topics", "2", None),
             ],
-            calls)
+            calls,
+        )
         # and with a string
         del calls[:]
-        index.search('bar')
-        self.assertEqual([
-            ('get_topics', '1', 'bar'),
-            ('get_topics', '2', 'bar'),
+        index.search("bar")
+        self.assertEqual(
+            [
+                ("get_topics", "1", "bar"),
+                ("get_topics", "2", "bar"),
             ],
-            calls)
+            calls,
+        )
 
     def test_search_returns_index_and_results(self):
         """Searching should return help topics with their index."""
+
         class CannedIndex:
             def __init__(self, prefix, search_result):
                 self.prefix = prefix
@@ -684,16 +737,20 @@ class TestHelpIndices(tests.TestCase):
 
             def get_topics(self, topic):
                 return self.result
+
         index = help.HelpIndices()
-        index_one = CannedIndex('1', ['a'])
-        index_two = CannedIndex('2', ['b', 'c'])
+        index_one = CannedIndex("1", ["a"])
+        index_two = CannedIndex("2", ["b", "c"])
         index.search_path = [index_one, index_two]
-        self.assertEqual([(index_one, 'a'), (index_two, 'b'), (index_two, 'c')],
-                         index.search(None))
+        self.assertEqual(
+            [(index_one, "a"), (index_two, "b"), (index_two, "c")], index.search(None)
+        )
 
     def test_search_checks_for_duplicate_prefixes(self):
         """Its an error when there are multiple indices with the same prefix."""
         indices = help.HelpIndices()
-        indices.search_path = [help_topics.HelpTopicIndex(),
-                               help_topics.HelpTopicIndex()]
+        indices.search_path = [
+            help_topics.HelpTopicIndex(),
+            help_topics.HelpTopicIndex(),
+        ]
         self.assertRaises(errors.DuplicateHelpPrefix, indices.search, None)

@@ -1,59 +1,70 @@
 use log::{debug, warn};
 use memchr::memchr;
 use rand::Rng;
+use std::borrow::Cow;
 
-pub fn chunks_to_lines<'a, I, E>(mut chunks: I) -> impl Iterator<Item = Result<Vec<u8>, E>>
+fn is_well_formed_line(line: &[u8]) -> bool {
+    if line.is_empty() {
+        return false;
+    }
+    memchr(b'\n', line) == Some(line.len() - 1)
+}
+
+pub fn chunks_to_lines<'a, I, E>(chunks: I) -> impl Iterator<Item = Result<Cow<'a, [u8]>, E>>
 where
     I: Iterator<Item = Result<&'a [u8], E>> + 'a,
     E: std::fmt::Debug,
 {
-    let mut tail: Option<Vec<u8>> = None;
+    pub struct ChunksToLines<'a, E> {
+        chunks: Box<dyn Iterator<Item = Result<&'a [u8], E>> + 'a>,
+        tail: Vec<u8>,
+    }
 
-    std::iter::from_fn(move || -> Option<Result<Vec<u8>, E>> {
-        loop {
-            // See if we can find a line in tail
-            if let Some(mut chunk) = tail.take() {
-                if let Some(newline) = memchr(b'\n', &chunk) {
-                    if newline == chunk.len() - 1 {
-                        assert!(!chunk.is_empty());
-                        // The chunk ends with a newline, so it contains a single line
-                        return Some(Ok(chunk));
+    impl<'a, E: std::fmt::Debug> Iterator for ChunksToLines<'a, E> {
+        type Item = Result<Cow<'a, [u8]>, E>;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            loop {
+                // See if we can find a line in tail
+                if let Some(newline) = memchr(b'\n', &self.tail) {
+                    // The chunk contains multiple lines, so split it into lines
+                    let line = Cow::Owned(self.tail[..=newline].to_vec());
+                    self.tail.drain(..=newline);
+                    return Some(Ok(line));
+                } else {
+                    // We couldn't find a newline
+                    if let Some(next_chunk) = self.chunks.next() {
+                        match next_chunk {
+                            Err(e) => {
+                                return Some(Err(e));
+                            }
+                            Ok(next_chunk) => {
+                                // If the chunk is well-formed, return it
+                                if self.tail.is_empty() && is_well_formed_line(next_chunk) {
+                                    return Some(Ok(Cow::Borrowed(next_chunk)));
+                                } else {
+                                    self.tail.extend_from_slice(next_chunk);
+                                }
+                            }
+                        }
                     } else {
-                        // The chunk contains multiple lines, so split it into lines
-                        let line = chunk[..=newline].to_vec();
-                        assert!(!chunk.is_empty());
-                        tail = Some(chunk[newline + 1..].to_vec());
+                        // We've reached the end of the chunks, so return the last chunk
+                        if self.tail.is_empty() {
+                            return None;
+                        }
+                        let line = Cow::Owned(self.tail.to_vec());
+                        self.tail.clear();
                         return Some(Ok(line));
                     }
-                } else {
-                    if let Some(next_chunk) = chunks.next() {
-                        if let Err(e) = next_chunk {
-                            return Some(Err(e));
-                        }
-                        chunk.extend_from_slice(next_chunk.unwrap());
-                    } else {
-                        assert!(!chunk.is_empty());
-                        // We've reached the end of the chunks, so return the last chunk
-                        return Some(Ok(chunk));
-                    }
-                    if !chunk.is_empty() {
-                        tail = Some(chunk);
-                    }
                 }
-            } else if let Some(next_chunk) = chunks.next() {
-                if let Err(e) = next_chunk {
-                    return Some(Err(e));
-                }
-                let next_chunk = next_chunk.unwrap();
-                if !next_chunk.is_empty() {
-                    tail = Some(next_chunk.to_vec());
-                }
-            } else {
-                // We've reached the end of the chunks, so return None
-                return None;
             }
         }
-    })
+    }
+
+    ChunksToLines {
+        chunks: Box::new(chunks),
+        tail: Vec::new(),
+    }
 }
 
 pub fn set_or_unset_env(

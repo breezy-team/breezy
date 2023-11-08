@@ -20,13 +20,12 @@ from breezy import osutils, tests
 
 
 class TestMissing(tests.TestCaseWithTransport):
-
     def assertMessages(self, out, must_have=(), must_not_have=()):
         """Check if commit messages are in or not in the output."""
         for m in must_have:
-            self.assertContainsRe(out, r'\nmessage:\n  %s\n' % m)
+            self.assertContainsRe(out, r"\nmessage:\n  %s\n" % m)
         for m in must_not_have:
-            self.assertNotContainsRe(out, r'\nmessage:\n  %s\n' % m)
+            self.assertNotContainsRe(out, r"\nmessage:\n  %s\n" % m)
 
     def test_missing_quiet(self):
         # <https://bugs.launchpad.net/bzr/+bug/284748>
@@ -34,44 +33,43 @@ class TestMissing(tests.TestCaseWithTransport):
         #
         # XXX: This still needs a test that missing is quiet when there are
         # missing revisions.
-        a_tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([('a', b'initial\n')])
-        a_tree.add('a')
-        a_tree.commit(message='initial')
+        a_tree = self.make_branch_and_tree(".")
+        self.build_tree_contents([("a", b"initial\n")])
+        a_tree.add("a")
+        a_tree.commit(message="initial")
 
-        out, err = self.run_bzr('missing -q .')
-        self.assertEqual('', out)
-        self.assertEqual('', err)
+        out, err = self.run_bzr("missing -q .")
+        self.assertEqual("", out)
+        self.assertEqual("", err)
 
     def test_missing(self):
         missing_one = "You are missing 1 revision:"
         extra_one = "You have 1 extra revision:"
 
         # create a source branch
-        a_tree = self.make_branch_and_tree('a')
-        self.build_tree_contents([('a/a', b'initial\n')])
-        a_tree.add('a')
-        a_tree.commit(message='initial')
+        a_tree = self.make_branch_and_tree("a")
+        self.build_tree_contents([("a/a", b"initial\n")])
+        a_tree.add("a")
+        a_tree.commit(message="initial")
 
         # clone and add a differing revision
-        b_tree = a_tree.controldir.sprout('b').open_workingtree()
-        self.build_tree_contents([('b/a', b'initial\nmore\n')])
-        b_tree.commit(message='more')
+        b_tree = a_tree.controldir.sprout("b").open_workingtree()
+        self.build_tree_contents([("b/a", b"initial\nmore\n")])
+        b_tree.commit(message="more")
 
         def run_missing(args, retcode=1, working_dir=None):
-            out, err = self.run_bzr(['missing'] + args,
-                                    retcode=retcode, working_dir=working_dir)
+            out, err = self.run_bzr(
+                ["missing"] + args, retcode=retcode, working_dir=working_dir
+            )
             # we do not expect any error output.
-            self.assertEqual('', err)
+            self.assertEqual("", err)
             return out.splitlines()
 
         def run_missing_a(args, retcode=1):
-            return run_missing(['../a'] + args,
-                               retcode=retcode, working_dir='b')
+            return run_missing(["../a"] + args, retcode=retcode, working_dir="b")
 
         def run_missing_b(args, retcode=1):
-            return run_missing(['../b'] + args,
-                               retcode=retcode, working_dir='a')
+            return run_missing(["../b"] + args, retcode=retcode, working_dir="a")
 
         # run missing in a against b
         # this should not require missing to take out a write lock on a
@@ -96,162 +94,171 @@ class TestMissing(tests.TestCaseWithTransport):
 
         # get extra revision from b
         a_tree.merge_from_branch(b_branch)
-        a_tree.commit(message='merge')
+        a_tree.commit(message="merge")
 
         # compare again, but now we have the 'merge' commit extra
         lines = run_missing_b([])
         self.assertEqual(extra_one, lines[0])
         self.assertLength(8, lines)
 
-        lines2 = run_missing_b(['--mine-only'])
+        lines2 = run_missing_b(["--mine-only"])
         self.assertEqual(lines, lines2)
 
-        lines3 = run_missing_b(['--theirs-only'], retcode=0)
-        self.assertEqualDiff('Other branch has no new revisions.', lines3[0])
+        lines3 = run_missing_b(["--theirs-only"], retcode=0)
+        self.assertEqualDiff("Other branch has no new revisions.", lines3[0])
 
         # relative to a, missing the 'merge' commit
         lines = run_missing_a([])
         self.assertEqual(missing_one, lines[0])
         self.assertLength(8, lines)
 
-        lines2 = run_missing_a(['--theirs-only'])
+        lines2 = run_missing_a(["--theirs-only"])
         self.assertEqual(lines, lines2)
 
-        lines3 = run_missing_a(['--mine-only'], retcode=0)
-        self.assertEqualDiff('This branch has no new revisions.', lines3[0])
+        lines3 = run_missing_a(["--mine-only"], retcode=0)
+        self.assertEqualDiff("This branch has no new revisions.", lines3[0])
 
-        lines4 = run_missing_a(['--short'])
+        lines4 = run_missing_a(["--short"])
         self.assertLength(4, lines4)
 
-        lines4a = run_missing_a(['-S'])
+        lines4a = run_missing_a(["-S"])
         self.assertEqual(lines4, lines4a)
 
-        lines5 = run_missing_a(['--line'])
+        lines5 = run_missing_a(["--line"])
         self.assertLength(2, lines5)
 
-        lines6 = run_missing_a(['--reverse'])
+        lines6 = run_missing_a(["--reverse"])
         self.assertEqual(lines6, lines)
 
-        lines7 = run_missing_a(['--show-ids'])
+        lines7 = run_missing_a(["--show-ids"])
         self.assertLength(11, lines7)
 
-        lines8 = run_missing_a(['--verbose'])
+        lines8 = run_missing_a(["--verbose"])
         self.assertEqual("modified:", lines8[-2])
         self.assertEqual("  a", lines8[-1])
 
-        self.assertEqualDiff('Other branch has no new revisions.',
-                             run_missing_b(['--theirs-only'], retcode=0)[0])
+        self.assertEqualDiff(
+            "Other branch has no new revisions.",
+            run_missing_b(["--theirs-only"], retcode=0)[0],
+        )
 
         # after a pull we're back on track
         b_tree.pull(a_branch)
-        self.assertEqualDiff("Branches are up to date.",
-                             run_missing_b([], retcode=0)[0])
-        self.assertEqualDiff('Branches are up to date.',
-                             run_missing_a([], retcode=0)[0])
+        self.assertEqualDiff(
+            "Branches are up to date.", run_missing_b([], retcode=0)[0]
+        )
+        self.assertEqualDiff(
+            "Branches are up to date.", run_missing_a([], retcode=0)[0]
+        )
         # If you supply mine or theirs you only know one side is up to date
-        self.assertEqualDiff('This branch has no new revisions.',
-                             run_missing_a(['--mine-only'], retcode=0)[0])
-        self.assertEqualDiff('Other branch has no new revisions.',
-                             run_missing_a(['--theirs-only'], retcode=0)[0])
+        self.assertEqualDiff(
+            "This branch has no new revisions.",
+            run_missing_a(["--mine-only"], retcode=0)[0],
+        )
+        self.assertEqualDiff(
+            "Other branch has no new revisions.",
+            run_missing_a(["--theirs-only"], retcode=0)[0],
+        )
 
     def test_missing_filtered(self):
         # create a source branch
-        a_tree = self.make_branch_and_tree('a')
-        self.build_tree_contents([('a/a', b'initial\n')])
-        a_tree.add('a')
-        a_tree.commit(message='r1')
+        a_tree = self.make_branch_and_tree("a")
+        self.build_tree_contents([("a/a", b"initial\n")])
+        a_tree.add("a")
+        a_tree.commit(message="r1")
         # clone and add differing revisions
-        b_tree = a_tree.controldir.sprout('b').open_workingtree()
+        b_tree = a_tree.controldir.sprout("b").open_workingtree()
 
         for i in range(2, 6):
-            a_tree.commit(message='a%d' % i)
-            b_tree.commit(message='b%d' % i)
+            a_tree.commit(message="a%d" % i)
+            b_tree.commit(message="b%d" % i)
 
         # local
-        out, err = self.run_bzr('missing ../b --my-revision 3',
-                                retcode=1, working_dir='a')
-        self.assertMessages(out, ('a3', 'b2', 'b3', 'b4', 'b5'), ('a2', 'a4'))
+        out, err = self.run_bzr(
+            "missing ../b --my-revision 3", retcode=1, working_dir="a"
+        )
+        self.assertMessages(out, ("a3", "b2", "b3", "b4", "b5"), ("a2", "a4"))
 
-        out, err = self.run_bzr('missing ../b --my-revision 3..4',
-                                retcode=1, working_dir='a')
-        self.assertMessages(out, ('a3', 'a4'), ('a2', 'a5'))
+        out, err = self.run_bzr(
+            "missing ../b --my-revision 3..4", retcode=1, working_dir="a"
+        )
+        self.assertMessages(out, ("a3", "a4"), ("a2", "a5"))
 
         # remote
-        out, err = self.run_bzr('missing ../b -r 3',
-                                retcode=1, working_dir='a')
-        self.assertMessages(out, ('a2', 'a3', 'a4', 'a5', 'b3'), ('b2', 'b4'))
+        out, err = self.run_bzr("missing ../b -r 3", retcode=1, working_dir="a")
+        self.assertMessages(out, ("a2", "a3", "a4", "a5", "b3"), ("b2", "b4"))
 
-        out, err = self.run_bzr('missing ../b -r 3..4',
-                                retcode=1, working_dir='a')
-        self.assertMessages(out, ('b3', 'b4'), ('b2', 'b5'))
+        out, err = self.run_bzr("missing ../b -r 3..4", retcode=1, working_dir="a")
+        self.assertMessages(out, ("b3", "b4"), ("b2", "b5"))
 
         # both
-        out, err = self.run_bzr('missing ../b --my-revision 3..4 -r 3..4',
-                                retcode=1, working_dir='a')
-        self.assertMessages(out, ('a3', 'a4', 'b3', 'b4'),
-                            ('a2', 'a5', 'b2', 'b5'))
+        out, err = self.run_bzr(
+            "missing ../b --my-revision 3..4 -r 3..4", retcode=1, working_dir="a"
+        )
+        self.assertMessages(out, ("a3", "a4", "b3", "b4"), ("a2", "a5", "b2", "b5"))
 
     def test_missing_check_last_location(self):
         # check that last location shown as filepath not file URL
 
         # create a source branch
-        wt = self.make_branch_and_tree('a')
+        wt = self.make_branch_and_tree("a")
         b = wt.branch
-        self.build_tree(['a/foo'])
-        wt.add('foo')
-        wt.commit('initial')
+        self.build_tree(["a/foo"])
+        wt.add("foo")
+        wt.commit("initial")
 
-        location = osutils.getcwd() + '/a/'
+        location = osutils.getcwd() + "/a/"
 
         # clone
-        b.controldir.sprout('b')
+        b.controldir.sprout("b")
 
         # check last location
-        lines, err = self.run_bzr('missing', working_dir='b')
-        self.assertEqual('Using saved parent location: %s\n'
-                         'Branches are up to date.\n' % location,
-                         lines)
-        self.assertEqual('', err)
+        lines, err = self.run_bzr("missing", working_dir="b")
+        self.assertEqual(
+            "Using saved parent location: %s\n" "Branches are up to date.\n" % location,
+            lines,
+        )
+        self.assertEqual("", err)
 
     def test_missing_directory(self):
         """Test --directory option."""
         # create a source branch
-        a_tree = self.make_branch_and_tree('a')
-        self.build_tree_contents([('a/a', b'initial\n')])
-        a_tree.add('a')
-        a_tree.commit(message='initial')
+        a_tree = self.make_branch_and_tree("a")
+        self.build_tree_contents([("a/a", b"initial\n")])
+        a_tree.add("a")
+        a_tree.commit(message="initial")
 
         # clone and add a differing revision
-        b_tree = a_tree.controldir.sprout('b').open_workingtree()
-        self.build_tree_contents([('b/a', b'initial\nmore\n')])
-        b_tree.commit(message='more')
+        b_tree = a_tree.controldir.sprout("b").open_workingtree()
+        self.build_tree_contents([("b/a", b"initial\nmore\n")])
+        b_tree.commit(message="more")
 
-        out2, err2 = self.run_bzr('missing --directory a b', retcode=1)
-        out1, err1 = self.run_bzr('missing ../b', retcode=1, working_dir='a')
+        out2, err2 = self.run_bzr("missing --directory a b", retcode=1)
+        out1, err1 = self.run_bzr("missing ../b", retcode=1, working_dir="a")
         self.assertEqualDiff(out1, out2)
         self.assertEqualDiff(err1, err2)
 
     def test_missing_tags(self):
         """Test showing tags."""
         # create a source branch
-        a_tree = self.make_branch_and_tree('a')
-        self.build_tree_contents([('a/a', b'initial\n')])
-        a_tree.add('a')
-        a_tree.commit(message='initial')
+        a_tree = self.make_branch_and_tree("a")
+        self.build_tree_contents([("a/a", b"initial\n")])
+        a_tree.add("a")
+        a_tree.commit(message="initial")
 
         # clone and add a differing revision
-        b_tree = a_tree.controldir.sprout('b').open_workingtree()
-        self.build_tree_contents([('b/a', b'initial\nmore\n')])
-        b_tree.commit(message='more')
-        b_tree.branch.tags.set_tag('a-tag', b_tree.last_revision())
+        b_tree = a_tree.controldir.sprout("b").open_workingtree()
+        self.build_tree_contents([("b/a", b"initial\nmore\n")])
+        b_tree.commit(message="more")
+        b_tree.branch.tags.set_tag("a-tag", b_tree.last_revision())
 
-        for log_format in ['long', 'short', 'line']:
+        for log_format in ["long", "short", "line"]:
             out, err = self.run_bzr(
-                f'missing --log-format={log_format} ../a',
-                working_dir='b', retcode=1)
-            self.assertContainsString(out, 'a-tag')
+                f"missing --log-format={log_format} ../a", working_dir="b", retcode=1
+            )
+            self.assertContainsString(out, "a-tag")
 
             out, err = self.run_bzr(
-                f'missing --log-format={log_format} ../b',
-                working_dir='a', retcode=1)
-            self.assertContainsString(out, 'a-tag')
+                f"missing --log-format={log_format} ../b", working_dir="a", retcode=1
+            )
+            self.assertContainsString(out, "a-tag")

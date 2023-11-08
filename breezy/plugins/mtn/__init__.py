@@ -27,12 +27,13 @@ from ... import (
 
 
 class MonotoneUnsupportedError(errors.UnsupportedVcs):
-
     vcs = "mtn"
 
-    _fmt = ('Monotone branches are not yet supported. '
-            'To interoperate with Monotone branches, '
-            'use fastimport.')
+    _fmt = (
+        "Monotone branches are not yet supported. "
+        "To interoperate with Monotone branches, "
+        "use fastimport."
+    )
 
 
 class MonotoneDirFormat(controldir.ControlDirFormat):
@@ -53,8 +54,9 @@ class MonotoneDirFormat(controldir.ControlDirFormat):
     def supports_transport(self, transport):
         return False
 
-    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
-                             basedir=None):
+    def check_support_status(
+        self, allow_unsupported, recommend_upgrade=True, basedir=None
+    ):
         raise MonotoneUnsupportedError(format=self)
 
     def open(self, transport):
@@ -64,7 +66,6 @@ class MonotoneDirFormat(controldir.ControlDirFormat):
 
 
 class MonotoneProber(controldir.Prober):
-
     @classmethod
     def priority(klass, transport):
         return 100
@@ -72,7 +73,7 @@ class MonotoneProber(controldir.Prober):
     @classmethod
     def probe_transport(klass, transport):
         """Our format is present if the transport has a '_MTN/' subdir."""
-        if transport.has('_MTN'):
+        if transport.has("_MTN"):
             return MonotoneDirFormat()
         raise errors.NotBranchError(path=transport.base)
 

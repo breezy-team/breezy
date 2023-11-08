@@ -81,8 +81,9 @@ class Annotator:
                     parent_keys = ()
                     next_parent_map[key] = ()
                 self._update_needed_children(key, parent_keys)
-                needed_keys.update([key for key in parent_keys
-                                    if key not in parent_map])
+                needed_keys.update(
+                    [key for key in parent_keys if key not in parent_map]
+                )
             parent_map.update(next_parent_map)
             # _heads_provider does some graph caching, so it is only valid
             # while self._parent_map hasn't changed
@@ -100,15 +101,15 @@ class Annotator:
         """
         keys, ann_keys = self._get_needed_keys(key)
         if pb is not None:
-            pb.update('getting stream', 0, len(keys))
-        stream = self._vf.get_record_stream(keys, 'topological', True)
+            pb.update("getting stream", 0, len(keys))
+        stream = self._vf.get_record_stream(keys, "topological", True)
         for _idx, record in enumerate(stream):
             if pb is not None:
-                pb.update('extracting', 0, len(keys))
-            if record.storage_kind == 'absent':
+                pb.update("extracting", 0, len(keys))
+            if record.storage_kind == "absent":
                 raise errors.RevisionNotPresent(record.key, self._vf)
             this_key = record.key
-            lines = record.get_bytes_as('lines')
+            lines = record.get_bytes_as("lines")
             num_lines = len(lines)
             self._text_cache[this_key] = lines
             yield this_key, lines, num_lines
@@ -132,28 +133,32 @@ class Annotator:
         parent_annotations = self._annotations_cache[parent_key]
         # PatienceSequenceMatcher should probably be part of Policy
         from patiencediff import PatienceSequenceMatcher
-        matcher = PatienceSequenceMatcher(
-            None, parent_lines, text)
+
+        matcher = PatienceSequenceMatcher(None, parent_lines, text)
         matching_blocks = matcher.get_matching_blocks()
         return parent_annotations, matching_blocks
 
     def _update_from_first_parent(self, key, annotations, lines, parent_key):
         """Reannotate this text relative to its first parent."""
-        (parent_annotations,
-         matching_blocks) = self._get_parent_annotations_and_matches(
-             key, lines, parent_key)
+        (
+            parent_annotations,
+            matching_blocks,
+        ) = self._get_parent_annotations_and_matches(key, lines, parent_key)
 
         for parent_idx, lines_idx, match_len in matching_blocks:
             # For all matching regions we copy across the parent annotations
-            annotations[lines_idx:lines_idx + match_len] = \
-                parent_annotations[parent_idx:parent_idx + match_len]
+            annotations[lines_idx : lines_idx + match_len] = parent_annotations[
+                parent_idx : parent_idx + match_len
+            ]
 
-    def _update_from_other_parents(self, key, annotations, lines,
-                                   this_annotation, parent_key):
+    def _update_from_other_parents(
+        self, key, annotations, lines, this_annotation, parent_key
+    ):
         """Reannotate this text relative to a second (or more) parent."""
-        (parent_annotations,
-         matching_blocks) = self._get_parent_annotations_and_matches(
-             key, lines, parent_key)
+        (
+            parent_annotations,
+            matching_blocks,
+        ) = self._get_parent_annotations_and_matches(key, lines, parent_key)
 
         last_ann = None
         last_parent = None
@@ -167,8 +172,8 @@ class Annotator:
         for parent_idx, lines_idx, match_len in matching_blocks:
             # For lines which match this parent, we will now resolve whether
             # this parent wins over the current annotation
-            ann_sub = annotations[lines_idx:lines_idx + match_len]
-            par_sub = parent_annotations[parent_idx:parent_idx + match_len]
+            ann_sub = annotations[lines_idx : lines_idx + match_len]
+            par_sub = parent_annotations[parent_idx : parent_idx + match_len]
             if ann_sub == par_sub:
                 continue
             for idx in range(match_len):
@@ -214,11 +219,11 @@ class Annotator:
         annotations = [this_annotation] * num_lines
         parent_keys = self._parent_map[key]
         if parent_keys:
-            self._update_from_first_parent(key, annotations, text,
-                                           parent_keys[0])
+            self._update_from_first_parent(key, annotations, text, parent_keys[0])
             for parent in parent_keys[1:]:
-                self._update_from_other_parents(key, annotations, text,
-                                                this_annotation, parent)
+                self._update_from_other_parents(
+                    key, annotations, text, this_annotation, parent
+                )
         self._record_annotation(key, parent_keys, annotations)
 
     def add_special_text(self, key, parent_keys, text):
@@ -246,8 +251,7 @@ class Annotator:
             lines the text of "key" as a list of lines
         """
         with ui.ui_factory.nested_progress_bar() as pb:
-            for text_key, text, num_lines in self._get_needed_texts(
-                    key, pb=pb):
+            for text_key, text, num_lines in self._get_needed_texts(key, pb=pb):
                 self._annotate_one(text_key, text, num_lines)
         try:
             annotations = self._annotations_cache[key]
@@ -281,6 +285,7 @@ class Annotator:
             A list of tuples with a single annotation key for each line.
         """
         from .annotate import _break_annotation_tie
+
         custom_tiebreaker = _break_annotation_tie
         annotations, lines = self.annotate(key)
         out = []
@@ -295,7 +300,8 @@ class Annotator:
                     # get the item out of the set
                     head = next(iter(the_heads))
                 else:
-                    head = self._resolve_annotation_tie(the_heads, line,
-                                                        custom_tiebreaker)
+                    head = self._resolve_annotation_tie(
+                        the_heads, line, custom_tiebreaker
+                    )
             append((head, line))
         return out

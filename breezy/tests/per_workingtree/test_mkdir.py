@@ -21,23 +21,20 @@ from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 
 class TestMkdir(TestCaseWithWorkingTree):
-
     def test_mkdir_no_id(self):
-        t = self.make_branch_and_tree('t1')
+        t = self.make_branch_and_tree("t1")
         t.lock_write()
         self.addCleanup(t.unlock)
-        t.mkdir('path')
-        self.assertEqual('directory', t.kind('path'))
+        t.mkdir("path")
+        self.assertEqual("directory", t.kind("path"))
 
     def test_mkdir_with_id(self):
-        t = self.make_branch_and_tree('t1')
+        t = self.make_branch_and_tree("t1")
         t.lock_write()
         self.addCleanup(t.unlock)
         if not t.supports_setting_file_ids():
-            self.assertRaises(
-                TypeError,
-                t.mkdir, 'path', file_id=b'my-id')
+            self.assertRaises(TypeError, t.mkdir, "path", file_id=b"my-id")
         else:
-            file_id = t.mkdir('path', b'my-id')
-            self.assertEqual(b'my-id', file_id)
-            self.assertEqual('directory', t.kind('path'))
+            file_id = t.mkdir("path", b"my-id")
+            self.assertEqual(b"my-id", file_id)
+            self.assertEqual("directory", t.kind("path"))

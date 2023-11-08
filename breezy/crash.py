@@ -55,8 +55,9 @@ from . import bedding, debug, osutils, plugin, trace
 
 
 def report_bug(exc_info, stderr):
-    if (debug.debug_flag_enabled('no_apport')) or \
-            os.environ.get('APPORT_DISABLE', None):
+    if (debug.debug_flag_enabled("no_apport")) or os.environ.get(
+        "APPORT_DISABLE", None
+    ):
         return report_bug_legacy(exc_info, stderr)
     try:
         if report_bug_to_apport(exc_info, stderr):
@@ -75,25 +76,35 @@ def report_bug(exc_info, stderr):
 def report_bug_legacy(exc_info, err_file):
     """Report a bug by just printing a message to the user."""
     trace.print_exception(exc_info, err_file)
-    err_file.write('\n')
+    err_file.write("\n")
     import textwrap
 
     def print_wrapped(l):
-        err_file.write(textwrap.fill(
-            l, width=78, subsequent_indent='    ') + '\n')
-    print_wrapped('brz {} on python {} ({})\n'.format(breezy.__version__,
-                   breezy._format_version_tuple(sys.version_info),
-                   platform.platform(aliased=1)))
-    print_wrapped(f'arguments: {sys.argv!r}\n')
-    print_wrapped(textwrap.fill(
-        'plugins: ' + plugin.format_concise_plugin_list(),
-        width=78,
-        subsequent_indent='    ',
-        ) + '\n')
+        err_file.write(textwrap.fill(l, width=78, subsequent_indent="    ") + "\n")
+
     print_wrapped(
-        'encoding: {!r}, fsenc: {!r}, lang: {!r}\n'.format(
-            osutils.get_user_encoding(), sys.getfilesystemencoding(),
-            os.environ.get('LANG')))
+        "brz {} on python {} ({})\n".format(
+            breezy.__version__,
+            breezy._format_version_tuple(sys.version_info),
+            platform.platform(aliased=1),
+        )
+    )
+    print_wrapped(f"arguments: {sys.argv!r}\n")
+    print_wrapped(
+        textwrap.fill(
+            "plugins: " + plugin.format_concise_plugin_list(),
+            width=78,
+            subsequent_indent="    ",
+        )
+        + "\n"
+    )
+    print_wrapped(
+        "encoding: {!r}, fsenc: {!r}, lang: {!r}\n".format(
+            osutils.get_user_encoding(),
+            sys.getfilesystemencoding(),
+            os.environ.get("LANG"),
+        )
+    )
     # We used to show all the plugins here, but it's too verbose.
     err_file.write(
         "\n"
@@ -101,7 +112,7 @@ def report_bug_legacy(exc_info, err_file):
         "    bug in Breezy.  You can help us fix it by filing a bug report at\n"
         "        https://bugs.launchpad.net/brz/+filebug\n"
         "    including this traceback and a description of the problem.\n"
-        )
+    )
 
 
 def report_bug_to_apport(exc_info, stderr):
@@ -120,16 +131,16 @@ def report_bug_to_apport(exc_info, stderr):
     crash_filename = _write_apport_report_to_file(exc_info)
 
     if crash_filename is None:
-        stderr.write("\n"
-                     "apport is set to ignore crashes in this version of brz.\n"
-                     )
+        stderr.write("\n" "apport is set to ignore crashes in this version of brz.\n")
     else:
         trace.print_exception(exc_info, stderr)
-        stderr.write("\n"
-                     "You can report this problem to Breezy's developers by running\n"
-                     "    apport-bug %s\n"
-                     "if a bug-reporting window does not automatically appear.\n"
-                     % (crash_filename))
+        stderr.write(
+            "\n"
+            "You can report this problem to Breezy's developers by running\n"
+            "    apport-bug %s\n"
+            "if a bug-reporting window does not automatically appear.\n"
+            % (crash_filename)
+        )
         # XXX: on Windows, Mac, and other platforms where we might have the
         # apport libraries but not have an apport always running, we could
         # synchronously file now
@@ -149,42 +160,42 @@ def _write_apport_report_to_file(exc_info):
     pr.add_proc_info()
     # It also adds ProcMaps which for us is rarely useful and mostly noise, so
     # let's remove it.
-    del pr['ProcMaps']
+    del pr["ProcMaps"]
     pr.add_user_info()
 
     # Package and SourcePackage are needed so that apport will report about even
     # non-packaged versions of brz; also this reports on their packaged
     # dependencies which is useful.
-    pr['SourcePackage'] = 'brz'
-    pr['Package'] = 'brz'
+    pr["SourcePackage"] = "brz"
+    pr["Package"] = "brz"
 
-    pr['CommandLine'] = pprint.pformat(sys.argv)
-    pr['BrzVersion'] = breezy.__version__
-    pr['PythonVersion'] = breezy._format_version_tuple(sys.version_info)
-    pr['Platform'] = platform.platform(aliased=1)
-    pr['UserEncoding'] = osutils.get_user_encoding()
-    pr['FileSystemEncoding'] = sys.getfilesystemencoding()
-    pr['Locale'] = os.environ.get('LANG', 'C')
-    pr['BrzPlugins'] = _format_plugin_list()
-    pr['PythonLoadedModules'] = _format_module_list()
-    pr['BrzDebugFlags'] = pprint.pformat(debug.debug_flags)
+    pr["CommandLine"] = pprint.pformat(sys.argv)
+    pr["BrzVersion"] = breezy.__version__
+    pr["PythonVersion"] = breezy._format_version_tuple(sys.version_info)
+    pr["Platform"] = platform.platform(aliased=1)
+    pr["UserEncoding"] = osutils.get_user_encoding()
+    pr["FileSystemEncoding"] = sys.getfilesystemencoding()
+    pr["Locale"] = os.environ.get("LANG", "C")
+    pr["BrzPlugins"] = _format_plugin_list()
+    pr["PythonLoadedModules"] = _format_module_list()
+    pr["BrzDebugFlags"] = pprint.pformat(debug.debug_flags)
 
     # actually we'd rather file directly against the upstream product, but
     # apport does seem to count on there being one in there; we might need to
     # redirect it elsewhere anyhow
-    pr['SourcePackage'] = 'brz'
-    pr['Package'] = 'brz'
+    pr["SourcePackage"] = "brz"
+    pr["Package"] = "brz"
 
     # tell apport to file directly against the brz package using
     # <https://bugs.launchpad.net/bzr/+bug/391015>
     #
     # XXX: unfortunately apport may crash later if the crashdb definition
     # file isn't present
-    pr['CrashDb'] = 'brz'
+    pr["CrashDb"] = "brz"
 
     tb_file = StringIO()
     traceback.print_exception(exc_type, exc_object, exc_tb, file=tb_file)
-    pr['Traceback'] = tb_file.getvalue()
+    pr["Traceback"] = tb_file.getvalue()
 
     _attach_log_tail(pr)
 
@@ -220,11 +231,11 @@ def _attach_log_tail(pr):
     try:
         brz_log = open(trace.get_brz_log_filename())
     except OSError as e:
-        pr['BrzLogTail'] = repr(e)
+        pr["BrzLogTail"] = repr(e)
         return
     try:
         lines = brz_log.readlines()
-        pr['BrzLogTail'] = ''.join(lines[-40:])
+        pr["BrzLogTail"] = "".join(lines[-40:])
     finally:
         brz_log.close()
 
@@ -236,26 +247,22 @@ def _open_crash_file():
         # Windows or if it's manually configured it might need to be created,
         # and then it should be private
         os.makedirs(crash_dir, mode=0o600)
-    date_string = time.strftime('%Y-%m-%dT%H:%M', time.gmtime())
+    date_string = time.strftime("%Y-%m-%dT%H:%M", time.gmtime())
     # XXX: getuid doesn't work on win32, but the crash directory is per-user
-    if sys.platform == 'win32':
-        user_part = ''
+    if sys.platform == "win32":
+        user_part = ""
     else:
-        user_part = '.%d' % os.getuid()
-    filename = osutils.pathjoin(
-        crash_dir,
-        f'brz{user_part}.{date_string}.crash')
+        user_part = ".%d" % os.getuid()
+    filename = osutils.pathjoin(crash_dir, f"brz{user_part}.{date_string}.crash")
     # be careful here that people can't play tmp-type symlink mischief in the
     # world-writable directory
     return filename, os.fdopen(
-        os.open(filename,
-                os.O_WRONLY | os.O_CREAT | os.O_EXCL,
-                0o600),
-        'wb')
+        os.open(filename, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb"
+    )
 
 
 def _format_plugin_list():
-    return ''.join(plugin.describe_plugins(show_paths=True))
+    return "".join(plugin.describe_plugins(show_paths=True))
 
 
 def _format_module_list():

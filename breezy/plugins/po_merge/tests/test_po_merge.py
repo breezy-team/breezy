@@ -21,22 +21,23 @@ from breezy.tests import features, script
 
 
 class BlackboxTestPoMerger(script.TestCaseWithTransportAndScript):
-
     _test_needs_features = [features.msgmerge_feature]
 
     def setUp(self):
         super().setUp()
-        self.builder = make_adduser_branch(self, 'adduser')
+        self.builder = make_adduser_branch(self, "adduser")
         # We need to install our hook as the test framework cleared it as part
         # of the initialization
         merge.Merger.hooks.install_named_hook(
-            "merge_file_content", po_merge.po_merge_hook, ".po file merge")
+            "merge_file_content", po_merge.po_merge_hook, ".po file merge"
+        )
 
     def test_merge_with_hook_gives_unexpected_results(self):
         # Since the conflicts in .pot are not seen *during* the merge, the .po
         # merge triggers the hook and creates no conflicts for fr.po. But the
         # .pot used is the one present in the tree *before* the merge.
-        self.run_script("""\
+        self.run_script(
+            """\
 $ brz branch adduser -rrevid:this work
 2>Branched 2 revisions.
 $ cd work
@@ -45,11 +46,13 @@ $ brz merge ../adduser -rrevid:other
 2> M  po/fr.po
 2>Text conflict in po/adduser.pot
 2>1 conflicts encountered.
-""")
+"""
+        )
 
     def test_called_on_remerge(self):
         # Merge with no config for the hook to create the conflicts
-        self.run_script("""\
+        self.run_script(
+            """\
 $ brz branch adduser -rrevid:this work
 2>Branched 2 revisions.
 $ cd work
@@ -60,12 +63,14 @@ $ brz merge ../adduser -rrevid:other -Opo_merge.po_dirs=
 2>Text conflict in po/adduser.pot
 2>Text conflict in po/fr.po
 2>2 conflicts encountered.
-""")
+"""
+        )
         # Fix the conflicts in the .pot file
-        with open('po/adduser.pot', 'wb') as f:
-            f.write(_Adduser['resolved_pot'])
+        with open("po/adduser.pot", "wb") as f:
+            f.write(_Adduser["resolved_pot"])
         # Tell brz the conflict is resolved
-        self.run_script("""\
+        self.run_script(
+            """\
 $ brz resolve po/adduser.pot
 2>1 conflict resolved, 1 remaining
 # Use remerge to trigger the hook, we use the default config options here
@@ -73,7 +78,8 @@ $ brz remerge po/*.po
 2>All changes applied successfully.
 # There should be no conflicts anymore
 $ brz conflicts
-""")
+"""
+        )
 
 
 def make_adduser_branch(test, relpath):
@@ -84,27 +90,38 @@ def make_adduser_branch(test, relpath):
     """
     builder = test.make_branch_builder(relpath)
     builder.start_series()
-    builder.build_snapshot(None,
-                           [('add', ('', b'root-id', 'directory', '')),
-                            # Create empty files
-                            ('add', ('po', b'dir-id', 'directory', None),),
-                            ('add', ('po/adduser.pot', b'pot-id', 'file',
-                                     _Adduser['base_pot'])),
-                            ('add', ('po/fr.po', b'po-id', 'file',
-                                     _Adduser['base_po'])),
-                            ], revision_id=b'base')
+    builder.build_snapshot(
+        None,
+        [
+            ("add", ("", b"root-id", "directory", "")),
+            # Create empty files
+            (
+                "add",
+                ("po", b"dir-id", "directory", None),
+            ),
+            ("add", ("po/adduser.pot", b"pot-id", "file", _Adduser["base_pot"])),
+            ("add", ("po/fr.po", b"po-id", "file", _Adduser["base_po"])),
+        ],
+        revision_id=b"base",
+    )
     # The 'other' branch
-    builder.build_snapshot([b'base'],
-                           [('modify', ('po/adduser.pot',
-                                        _Adduser['other_pot'])),
-                            ('modify', ('po/fr.po',
-                                        _Adduser['other_po'])),
-                            ], revision_id=b'other')
+    builder.build_snapshot(
+        [b"base"],
+        [
+            ("modify", ("po/adduser.pot", _Adduser["other_pot"])),
+            ("modify", ("po/fr.po", _Adduser["other_po"])),
+        ],
+        revision_id=b"other",
+    )
     # The 'this' branch
-    builder.build_snapshot([b'base'],
-                           [('modify', ('po/adduser.pot', _Adduser['this_pot'])),
-                            ('modify', ('po/fr.po', _Adduser['this_po'])),
-                            ], revision_id=b'this')
+    builder.build_snapshot(
+        [b"base"],
+        [
+            ("modify", ("po/adduser.pot", _Adduser["this_pot"])),
+            ("modify", ("po/fr.po", _Adduser["this_po"])),
+        ],
+        revision_id=b"this",
+    )
     # builder.get_branch() tip is now 'this'
     builder.finish_series()
     return builder
@@ -115,26 +132,31 @@ class TestAdduserBranch(script.TestCaseWithTransportAndScript):
 
     def setUp(self):
         super().setUp()
-        self.builder = make_adduser_branch(self, 'adduser')
+        self.builder = make_adduser_branch(self, "adduser")
 
     def assertAdduserBranchContent(self, revid):
-        env = {'revid': revid, 'branch_name': revid}
-        self.run_script("""\
+        env = {"revid": revid, "branch_name": revid}
+        self.run_script(
+            """\
 $ brz branch adduser -rrevid:{revid} {branch_name}
-""".format(**env), null_output_matches_anything=True)
-        self.assertFileEqual(_Adduser[f"{env['revid']}_pot"],
-                             f"{env['branch_name']}/po/adduser.pot")
-        self.assertFileEqual(_Adduser[f"{env['revid']}_po"],
-                             f"{env['branch_name']}/po/fr.po")
+""".format(**env),
+            null_output_matches_anything=True,
+        )
+        self.assertFileEqual(
+            _Adduser[f"{env['revid']}_pot"], f"{env['branch_name']}/po/adduser.pot"
+        )
+        self.assertFileEqual(
+            _Adduser[f"{env['revid']}_po"], f"{env['branch_name']}/po/fr.po"
+        )
 
     def test_base(self):
-        self.assertAdduserBranchContent('base')
+        self.assertAdduserBranchContent("base")
 
     def test_this(self):
-        self.assertAdduserBranchContent('this')
+        self.assertAdduserBranchContent("this")
 
     def test_other(self):
-        self.assertAdduserBranchContent('other')
+        self.assertAdduserBranchContent("other")
 
 
 # Real content from the adduser package so we don't have to guess about format
@@ -142,7 +164,8 @@ $ brz branch adduser -rrevid:{revid} {branch_name}
 # beginning of the file.
 
 _Adduser = {
-    'base_pot': (br"""# SOME DESCRIPTIVE TITLE.
+    "base_pot": (
+        rb"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -169,8 +192,10 @@ msgstr ""
 msgid "Warning: The home dir you specified already exists.\n"
 msgstr ""
 
-"""),
-    'this_pot': (br"""# SOME DESCRIPTIVE TITLE.
+"""
+    ),
+    "this_pot": (
+        rb"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -204,8 +229,10 @@ msgstr ""
 msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 
-"""),
-    'other_pot': (br"""# SOME DESCRIPTIVE TITLE.
+"""
+    ),
+    "other_pot": (
+        rb"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -239,8 +266,10 @@ msgstr ""
 msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 
-"""),
-    'resolved_pot': (br"""# SOME DESCRIPTIVE TITLE.
+"""
+    ),
+    "resolved_pot": (
+        rb"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -274,8 +303,10 @@ msgstr ""
 msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 
-"""),
-    'base_po': (r"""# adduser's manpages translation to French
+"""
+    ),
+    "base_po": (
+        r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -310,8 +341,10 @@ msgid "Warning: The home dir you specified already exists.\n"
 msgstr ""
 "Attention ! Le répertoire personnel que vous avez indiqué existe déjà.\n"
 
-""").encode(),
-    'this_po': (r"""# adduser's manpages translation to French
+"""
+    ).encode(),
+    "this_po": (
+        r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -353,8 +386,10 @@ msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 "Attention ! Le répertoire personnel que vous avez indiqué existe déjà.\n"
 
-""").encode(),
-    'other_po': (r"""# adduser's manpages translation to French
+"""
+    ).encode(),
+    "other_po": (
+        r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -396,8 +431,10 @@ msgstr ""
 "Attention ! Impossible d'accéder au répertoire personnel que vous avez "
 "indiqué (%s) : %s.\n"
 
-""").encode(),
-    'resolved_po': (r"""# adduser's manpages translation to French
+"""
+    ).encode(),
+    "resolved_po": (
+        r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -439,5 +476,6 @@ msgstr ""
 "Attention ! Impossible d'accéder au répertoire personnel que vous avez "
 "indiqué (%s) : %s.\n"
 
-""").encode(),
+"""
+    ).encode(),
 }

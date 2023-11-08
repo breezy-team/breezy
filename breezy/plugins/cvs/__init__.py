@@ -28,12 +28,13 @@ from ...transport import register_transport_proto
 
 
 class CVSUnsupportedError(errors.UnsupportedVcs):
-
     vcs = "cvs"
 
-    _fmt = ("CVS working trees are not supported. To convert CVS projects to "
-            "bzr, please see http://bazaar-vcs.org/BzrMigration and/or "
-            "https://launchpad.net/launchpad-bazaar/+faq/26.")
+    _fmt = (
+        "CVS working trees are not supported. To convert CVS projects to "
+        "bzr, please see http://bazaar-vcs.org/BzrMigration and/or "
+        "https://launchpad.net/launchpad-bazaar/+faq/26."
+    )
 
 
 class CVSDirFormat(controldir.ControlDirFormat):
@@ -54,8 +55,9 @@ class CVSDirFormat(controldir.ControlDirFormat):
     def supports_transport(self, transport):
         return False
 
-    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
-                             basedir=None):
+    def check_support_status(
+        self, allow_unsupported, recommend_upgrade=True, basedir=None
+    ):
         raise CVSUnsupportedError(format=self)
 
     def open(self, transport):
@@ -65,7 +67,6 @@ class CVSDirFormat(controldir.ControlDirFormat):
 
 
 class CVSProber(controldir.Prober):
-
     @classmethod
     def priority(klass, transport):
         return 100
@@ -74,7 +75,7 @@ class CVSProber(controldir.Prober):
     def probe_transport(klass, transport):
         # little ugly, but works
         # try a manual probe first, its a little faster perhaps ?
-        if transport.has('CVS') and transport.has('CVS/Repository'):
+        if transport.has("CVS") and transport.has("CVS/Repository"):
             return CVSDirFormat()
         raise errors.NotBranchError(path=transport.base)
 
@@ -85,5 +86,4 @@ class CVSProber(controldir.Prober):
 
 controldir.ControlDirFormat.register_prober(CVSProber)
 
-register_transport_proto(
-    'cvs+pserver://', help="The pserver access protocol for CVS.")
+register_transport_proto("cvs+pserver://", help="The pserver access protocol for CVS.")

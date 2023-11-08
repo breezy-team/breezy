@@ -22,7 +22,6 @@ from . import http_server, ssl_certs, test_server
 
 
 class TestingHTTPSServerMixin:
-
     def __init__(self, key_file, cert_file):
         self.key_file = key_file
         self.cert_file = cert_file
@@ -33,8 +32,8 @@ class TestingHTTPSServerMixin:
         if self.cert_file:
             ssl_context.load_cert_chain(self.cert_file, self.key_file)
         ssl_sock = ssl_context.wrap_socket(
-            sock=sock, server_side=True,
-            do_handshake_on_connect=False)
+            sock=sock, server_side=True, do_handshake_on_connect=False
+        )
         return ssl_sock, addr
 
     def verify_request(self, request, client_address):
@@ -44,7 +43,8 @@ class TestingHTTPSServerMixin:
         not even touch a single byte in the socket !
         """
         serving = test_server.TestingTCPServerMixin.verify_request(
-            self, request, client_address)
+            self, request, client_address
+        )
         if serving:
             try:
                 request.do_handshake()
@@ -60,28 +60,40 @@ class TestingHTTPSServerMixin:
         return base.ignored_exceptions_during_shutdown(self, e)
 
 
-class TestingHTTPSServer(TestingHTTPSServerMixin,
-                         http_server.TestingHTTPServer):
-
-    def __init__(self, server_address, request_handler_class,
-                 test_case_server, key_file, cert_file):
+class TestingHTTPSServer(TestingHTTPSServerMixin, http_server.TestingHTTPServer):
+    def __init__(
+        self,
+        server_address,
+        request_handler_class,
+        test_case_server,
+        key_file,
+        cert_file,
+    ):
         TestingHTTPSServerMixin.__init__(self, key_file, cert_file)
         http_server.TestingHTTPServer.__init__(
-            self, server_address, request_handler_class, test_case_server)
+            self, server_address, request_handler_class, test_case_server
+        )
 
     def get_request(self):
         sock, addr = http_server.TestingHTTPServer.get_request(self)
         return self._get_ssl_request(sock, addr)
 
 
-class TestingThreadingHTTPSServer(TestingHTTPSServerMixin,
-                                  http_server.TestingThreadingHTTPServer):
-
-    def __init__(self, server_address, request_handler_class,
-                 test_case_server, key_file, cert_file):
+class TestingThreadingHTTPSServer(
+    TestingHTTPSServerMixin, http_server.TestingThreadingHTTPServer
+):
+    def __init__(
+        self,
+        server_address,
+        request_handler_class,
+        test_case_server,
+        key_file,
+        cert_file,
+    ):
         TestingHTTPSServerMixin.__init__(self, key_file, cert_file)
         http_server.TestingThreadingHTTPServer.__init__(
-            self, server_address, request_handler_class, test_case_server)
+            self, server_address, request_handler_class, test_case_server
+        )
 
     def get_request(self):
         sock, addr = http_server.TestingThreadingHTTPServer.get_request(self)
@@ -89,30 +101,38 @@ class TestingThreadingHTTPSServer(TestingHTTPSServerMixin,
 
 
 class HTTPSServer(http_server.HttpServer):
-
-    _url_protocol = 'https'
+    _url_protocol = "https"
 
     # The real servers depending on the protocol
-    http_server_class = {'HTTP/1.0': TestingHTTPSServer,  # type: ignore
-                         'HTTP/1.1': TestingThreadingHTTPSServer,  # type: ignore
-                         }
+    http_server_class = {
+        "HTTP/1.0": TestingHTTPSServer,  # type: ignore
+        "HTTP/1.1": TestingThreadingHTTPSServer,  # type: ignore
+    }
 
     # Provides usable defaults since an https server requires both a
     # private key and a certificate to work.
-    def __init__(self, request_handler=http_server.TestingHTTPRequestHandler,
-                 protocol_version=None,
-                 key_file=ssl_certs.build_path('server_without_pass.key'),  # noqa: B008
-                 cert_file=ssl_certs.build_path('server.crt')):  # noqa: B008
-        http_server.HttpServer.__init__(self, request_handler=request_handler,
-                                        protocol_version=protocol_version)
+    def __init__(
+        self,
+        request_handler=http_server.TestingHTTPRequestHandler,
+        protocol_version=None,
+        key_file=ssl_certs.build_path("server_without_pass.key"),  # noqa: B008
+        cert_file=ssl_certs.build_path("server.crt"),  # noqa: B008
+    ):  # noqa: B008
+        http_server.HttpServer.__init__(
+            self, request_handler=request_handler, protocol_version=protocol_version
+        )
         self.key_file = key_file
         self.cert_file = cert_file
         self.temp_files = []
 
     def create_server(self):
         return self.server_class(
-            (self.host, self.port), self.request_handler_class, self,
-            self.key_file, self.cert_file)
+            (self.host, self.port),
+            self.request_handler_class,
+            self,
+            self.key_file,
+            self.cert_file,
+        )
 
 
 class HTTPSServer_urllib(HTTPSServer):
@@ -123,4 +143,4 @@ class HTTPSServer_urllib(HTTPSServer):
     """
 
     # urls returned by this server should require the urllib client impl
-    _url_protocol = 'https+urllib'
+    _url_protocol = "https+urllib"

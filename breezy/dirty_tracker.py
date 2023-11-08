@@ -41,13 +41,11 @@ MASK = (
 )
 
 
-
 class TooManyOpenFiles(Exception):
     """Too many open files."""
 
 
 class _Process(ProcessEvent):  # type: ignore
-
     paths: Set[str]
     created: Set[str]
 

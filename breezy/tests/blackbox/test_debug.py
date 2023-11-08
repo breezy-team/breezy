@@ -21,11 +21,9 @@ from breezy import tests
 
 
 class TestDebugOption(tests.TestCaseInTempDir):
-
     def test_dash_derror(self):
         """With -Derror, tracebacks are shown even for user errors."""
-        out, err = self.run_bzr("-Derror branch nonexistent-location",
-                                retcode=3)
+        out, err = self.run_bzr("-Derror branch nonexistent-location", retcode=3)
         # error output should contain a traceback; we used to look for code in
         # here but it may be missing if the source is not in sync with the
         # pyc file.
@@ -38,17 +36,17 @@ class TestDebugOption(tests.TestCaseInTempDir):
 
 
 class TestDebugBytes(tests.TestCaseWithTransport):
-
     def test_bytes_reports_activity(self):
-        tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/one'])
-        tree.add('one')
-        tree.commit('first')
-        remote_trans = self.make_smart_server('.')
+        tree = self.make_branch_and_tree("tree")
+        self.build_tree(["tree/one"])
+        tree.add("one")
+        tree.commit("first")
+        remote_trans = self.make_smart_server(".")
         # I would like to avoid run_brz_subprocess here, but we need it to be
         # connected to a real TextUIFactory. The NullProgressView always
         # ignores transport activity.
         out, err = self.run_brz_subprocess(
-            f'branch -Dbytes -Oprogress_bar=text {remote_trans.base}/tree target')
-        self.assertContainsRe(err, b'Branched 1 revision')
-        self.assertContainsRe(err, b'Transferred:.*kB')
+            f"branch -Dbytes -Oprogress_bar=text {remote_trans.base}/tree target"
+        )
+        self.assertContainsRe(err, b"Branched 1 revision")
+        self.assertContainsRe(err, b"Transferred:.*kB")

@@ -30,49 +30,53 @@ class RioVersionInfoBuilder(VersionInfoBuilder):
         info = rio.Stanza()
         revision_id = self._get_revision_id()
         if revision_id != NULL_REVISION:
-            info.add('revision-id', revision_id.decode('utf-8'))
+            info.add("revision-id", revision_id.decode("utf-8"))
             rev = self._branch.repository.get_revision(revision_id)
-            info.add('date', create_date_str(rev.timestamp, rev.timezone))
+            info.add("date", create_date_str(rev.timestamp, rev.timezone))
             try:
                 revno = self._get_revno_str(revision_id)
             except errors.GhostRevisionsHaveNoRevno:
                 revno = None
-            for hook in RioVersionInfoBuilder.hooks['revision']:
+            for hook in RioVersionInfoBuilder.hooks["revision"]:
                 hook(rev, info)
         else:
-            revno = '0'
+            revno = "0"
 
-        info.add('build-date', create_date_str())
+        info.add("build-date", create_date_str())
         if revno is not None:
-            info.add('revno', revno)
+            info.add("revno", revno)
 
         if self._branch.nick is not None:
-            info.add('branch-nick', self._branch.nick)
+            info.add("branch-nick", self._branch.nick)
 
         if self._check or self._include_file_revs:
             self._extract_file_revisions()
 
         if self._check:
             if self._clean:
-                info.add('clean', 'True')
+                info.add("clean", "True")
             else:
-                info.add('clean', 'False')
+                info.add("clean", "False")
 
         if self._include_history:
             log = rio.Stanza()
-            for (revision_id, message,
-                 timestamp, timezone) in self._iter_revision_history():
-                log.add('id', revision_id.decode('utf-8'))
-                log.add('message', message)
-                log.add('date', create_date_str(timestamp, timezone))
-            info.add('revisions', log)
+            for (
+                revision_id,
+                message,
+                timestamp,
+                timezone,
+            ) in self._iter_revision_history():
+                log.add("id", revision_id.decode("utf-8"))
+                log.add("message", message)
+                log.add("date", create_date_str(timestamp, timezone))
+            info.add("revisions", log)
 
         if self._include_file_revs:
             files = rio.Stanza()
             for path in sorted(self._file_revisions.keys()):
-                files.add('path', path)
-                files.add('revision', self._file_revisions[path])
-            info.add('file-revisions', files)
+                files.add("path", path)
+                files.add("revision", self._file_revisions[path])
+            info.add("file-revisions", files)
 
         to_file.write(info.to_string())
 
@@ -82,11 +86,15 @@ class RioVersionInfoBuilderHooks(hooks.Hooks):
 
     def __init__(self):
         super().__init__(
-            "breezy.version_info_formats.format_rio", "RioVersionInfoBuilder.hooks")
-        self.add_hook('revision',
-                      "Invoked when adding information about a revision to the"
-                      " RIO stanza that is printed. revision is called with a"
-                      " revision object and a RIO stanza.", (1, 15))
+            "breezy.version_info_formats.format_rio", "RioVersionInfoBuilder.hooks"
+        )
+        self.add_hook(
+            "revision",
+            "Invoked when adding information about a revision to the"
+            " RIO stanza that is printed. revision is called with a"
+            " revision object and a RIO stanza.",
+            (1, 15),
+        )
 
 
 RioVersionInfoBuilder.hooks = RioVersionInfoBuilderHooks()  # type: ignore

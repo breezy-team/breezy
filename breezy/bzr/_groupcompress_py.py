@@ -50,8 +50,7 @@ class _OutputHandler:
         if not self.cur_insert_lines:
             return
         if self.cur_insert_len > 127:
-            raise AssertionError('We cannot insert more than 127 bytes'
-                                 ' at a time.')
+            raise AssertionError("We cannot insert more than 127 bytes" " at a time.")
         self.out_lines.append(bytes([self.cur_insert_len]))
         self.index_lines.append(False)
         self.out_lines.extend(self.cur_insert_lines)
@@ -70,15 +69,16 @@ class _OutputHandler:
             next_len = min(127, line_len - start_index)
             self.out_lines.append(bytes([next_len]))
             self.index_lines.append(False)
-            self.out_lines.append(line[start_index:start_index + next_len])
+            self.out_lines.append(line[start_index : start_index + next_len])
             # We don't index long lines, because we won't be able to match
             # a line split across multiple inserts anway
             self.index_lines.append(False)
 
     def add_insert(self, lines):
         if self.cur_insert_lines != []:
-            raise AssertionError('self.cur_insert_lines must be empty when'
-                                 ' adding a new insert')
+            raise AssertionError(
+                "self.cur_insert_lines must be empty when" " adding a new insert"
+            )
         for line in lines:
             if len(line) > 127:
                 self._insert_long_line(line)
@@ -119,9 +119,11 @@ class LinesDeltaIndex:
         matches = self._matching_lines
         start_idx = len(self.lines)
         if len(new_lines) != len(index):
-            raise AssertionError('The number of lines to be indexed does'
-                                 ' not match the index/don\'t index flags: %d != %d'
-                                 % (len(new_lines), len(index)))
+            raise AssertionError(
+                "The number of lines to be indexed does"
+                " not match the index/don't index flags: %d != %d"
+                % (len(new_lines), len(index))
+            )
         for idx, do_index in enumerate(index):
             if not do_index:
                 continue
@@ -173,8 +175,9 @@ class LinesDeltaIndex:
             else:
                 # We have a match started, compare to see if any of the
                 # current matches can be continued
-                next_locations = locations.intersection([loc + 1 for loc
-                                                         in prev_locations])
+                next_locations = locations.intersection(
+                    [loc + 1 for loc in prev_locations]
+                )
                 if next_locations:
                     # At least one of the regions continues to match
                     prev_locations = set(next_locations)
@@ -225,7 +228,9 @@ class LinesDeltaIndex:
                 if block[-1] < min_match_bytes:
                     # This block may be a 'short' block, check
                     old_start, new_start, range_len = block
-                    matched_bytes = sum(map(len, lines[new_start:new_start + range_len]))
+                    matched_bytes = sum(
+                        map(len, lines[new_start : new_start + range_len])
+                    )
                     if matched_bytes < min_match_bytes:
                         block = None
             if block is not None:
@@ -247,14 +252,17 @@ class LinesDeltaIndex:
             endpoint += len(line)
             self.line_offsets.append(endpoint)
         if len(self.line_offsets) != len(self.lines):
-            raise AssertionError('Somehow the line offset indicator'
-                                 ' got out of sync with the line counter.')
+            raise AssertionError(
+                "Somehow the line offset indicator"
+                " got out of sync with the line counter."
+            )
         self.endpoint = endpoint
 
-    def _flush_insert(self, start_linenum, end_linenum,
-                      new_lines, out_lines, index_lines):
+    def _flush_insert(
+        self, start_linenum, end_linenum, new_lines, out_lines, index_lines
+    ):
         """Add an 'insert' request to the data stream."""
-        bytes_to_insert = b''.join(new_lines[start_linenum:end_linenum])
+        bytes_to_insert = b"".join(new_lines[start_linenum:end_linenum])
         insert_length = len(bytes_to_insert)
         # Each insert instruction is at most 127 bytes long
         for start_byte in range(0, insert_length, 127):
@@ -262,13 +270,12 @@ class LinesDeltaIndex:
             out_lines.append(bytes([insert_count]))
             # Don't index the 'insert' instruction
             index_lines.append(False)
-            insert = bytes_to_insert[start_byte:start_byte + insert_count]
+            insert = bytes_to_insert[start_byte : start_byte + insert_count]
             as_lines = osutils.split_lines(insert)
             out_lines.extend(as_lines)
             index_lines.extend([True] * len(as_lines))
 
-    def _flush_copy(self, old_start_linenum, num_lines,
-                    out_lines, index_lines):
+    def _flush_copy(self, old_start_linenum, num_lines, out_lines, index_lines):
         if old_start_linenum == 0:
             first_byte = 0
         else:
@@ -286,10 +293,9 @@ class LinesDeltaIndex:
     def make_delta(self, new_lines, bytes_length, soft=False):
         """Compute the delta for this content versus the original content."""
         # reserved for content type, content length
-        out_lines = [b'', b'', encode_base128_int(bytes_length)]
+        out_lines = [b"", b"", encode_base128_int(bytes_length)]
         index_lines = [False, False, False]
-        output_handler = _OutputHandler(out_lines, index_lines,
-                                        self._MIN_MATCH_BYTES)
+        output_handler = _OutputHandler(out_lines, index_lines, self._MIN_MATCH_BYTES)
         blocks = self.get_matching_blocks(new_lines, soft=soft)
         current_line_num = 0
         # We either copy a range (while there are reusable lines) or we
@@ -297,8 +303,7 @@ class LinesDeltaIndex:
         for old_start, new_start, range_len in blocks:
             if new_start != current_line_num:
                 # non-matching region, insert the content
-                output_handler.add_insert(
-                    new_lines[current_line_num:new_start])
+                output_handler.add_insert(new_lines[current_line_num:new_start])
             current_line_num = new_start + range_len
             if range_len:
                 # Convert the line based offsets into byte based offsets
@@ -314,10 +319,11 @@ class LinesDeltaIndex:
 def make_delta(source_bytes, target_bytes):
     """Create a delta from source to target."""
     if not isinstance(source_bytes, bytes):
-        raise TypeError('source is not bytes')
+        raise TypeError("source is not bytes")
     if not isinstance(target_bytes, bytes):
-        raise TypeError('target is not bytes')
+        raise TypeError("target is not bytes")
     line_locations = LinesDeltaIndex(osutils.split_lines(source_bytes))
-    delta, _ = line_locations.make_delta(osutils.split_lines(target_bytes),
-                                         bytes_length=len(target_bytes))
-    return b''.join(delta)
+    delta, _ = line_locations.make_delta(
+        osutils.split_lines(target_bytes), bytes_length=len(target_bytes)
+    )
+    return b"".join(delta)

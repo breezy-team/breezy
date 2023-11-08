@@ -29,7 +29,7 @@ class StubTree:
         self._is_locked = lock_status
 
     def __str__(self):
-        return 'I am da tree'
+        return "I am da tree"
 
     def is_locked(self):
         return self._is_locked
@@ -43,12 +43,9 @@ class FakeUnlockable:
 
 
 class TestReturnsUnlockable(TestCase):
-
     def test___str__(self):
         matcher = ReturnsUnlockable(StubTree(True))
-        self.assertEqual(
-            'ReturnsUnlockable(lockable_thing=I am da tree)',
-            str(matcher))
+        self.assertEqual("ReturnsUnlockable(lockable_thing=I am da tree)", str(matcher))
 
     def test_match(self):
         stub_tree = StubTree(False)
@@ -64,15 +61,15 @@ class TestReturnsUnlockable(TestCase):
 
 
 class TestMatchesAncestry(TestCaseWithTransport):
-
     def test__str__(self):
         matcher = MatchesAncestry("A repository", b"arevid")
         self.assertEqual(
             f"MatchesAncestry(repository='A repository', revision_id={b'arevid'!r})",
-            str(matcher))
+            str(matcher),
+        )
 
     def test_match(self):
-        b = self.make_branch_builder('.')
+        b = self.make_branch_builder(".")
         b.start_series()
         revid1 = b.build_commit()
         revid2 = b.build_commit()
@@ -87,7 +84,7 @@ class TestMatchesAncestry(TestCaseWithTransport):
         self.assertThat([b"unknown"], m)
 
     def test_mismatch(self):
-        b = self.make_branch_builder('.')
+        b = self.make_branch_builder(".")
         b.start_series()
         revid1 = b.build_commit()
         b.build_commit()
@@ -98,95 +95,94 @@ class TestMatchesAncestry(TestCaseWithTransport):
         self.assertIsNot(None, mismatch)
         self.assertEqual(
             f"mismatched ancestry for revision {revid1!r} was [{revid1!r}], expected []",
-            mismatch.describe())
+            mismatch.describe(),
+        )
 
 
 class TestHasLayout(TestCaseWithTransport):
-
     def test__str__(self):
         matcher = HasLayout([(b"a", b"a-id")])
         self.assertEqual(f"HasLayout({[(b'a', b'a-id')]!r})", str(matcher))
 
     def test_match(self):
-        t = self.make_branch_and_tree('.')
-        self.build_tree(['a', 'b/', 'b/c'])
-        t.add(['a', 'b', 'b/c'], ids=[b'a-id', b'b-id', b'c-id'])
-        self.assertThat(t, HasLayout(['', 'a', 'b/', 'b/c']))
-        self.assertThat(t, HasLayout(
-            [('', t.path2id('')),
-             ('a', b'a-id'),
-             ('b/', b'b-id'),
-             ('b/c', b'c-id')]))
+        t = self.make_branch_and_tree(".")
+        self.build_tree(["a", "b/", "b/c"])
+        t.add(["a", "b", "b/c"], ids=[b"a-id", b"b-id", b"c-id"])
+        self.assertThat(t, HasLayout(["", "a", "b/", "b/c"]))
+        self.assertThat(
+            t,
+            HasLayout(
+                [("", t.path2id("")), ("a", b"a-id"), ("b/", b"b-id"), ("b/c", b"c-id")]
+            ),
+        )
 
     def test_mismatch(self):
-        t = self.make_branch_and_tree('.')
-        self.build_tree(['a', 'b/', 'b/c'])
-        t.add(['a', 'b', 'b/c'], ids=[b'a-id', b'b-id', b'c-id'])
-        mismatch = HasLayout(['a']).match(t)
+        t = self.make_branch_and_tree(".")
+        self.build_tree(["a", "b/", "b/c"])
+        t.add(["a", "b", "b/c"], ids=[b"a-id", b"b-id", b"c-id"])
+        mismatch = HasLayout(["a"]).match(t)
         self.assertIsNot(None, mismatch)
         self.assertEqual(
-            {"['', 'a', 'b/', 'b/c']", "['a']"},
-            set(mismatch.describe().split(" != ")))
+            {"['', 'a', 'b/', 'b/c']", "['a']"}, set(mismatch.describe().split(" != "))
+        )
 
     def test_no_dirs(self):
         # Some tree/repository formats do not support versioned directories
-        t = self.make_branch_and_tree('.')
+        t = self.make_branch_and_tree(".")
         t.has_versioned_directories = lambda: False
-        self.build_tree(['a', 'b/', 'b/c'])
-        t.add(['a', 'b', 'b/c'], ids=[b'a-id', b'b-id', b'c-id'])
-        self.assertIs(None, HasLayout(['', 'a', 'b/', 'b/c']).match(t))
-        self.assertIs(None, HasLayout(['', 'a', 'b/', 'b/c', 'd/']).match(t))
-        mismatch = HasLayout(['', 'a', 'd/']).match(t)
+        self.build_tree(["a", "b/", "b/c"])
+        t.add(["a", "b", "b/c"], ids=[b"a-id", b"b-id", b"c-id"])
+        self.assertIs(None, HasLayout(["", "a", "b/", "b/c"]).match(t))
+        self.assertIs(None, HasLayout(["", "a", "b/", "b/c", "d/"]).match(t))
+        mismatch = HasLayout(["", "a", "d/"]).match(t)
         self.assertIsNot(None, mismatch)
         self.assertEqual(
             {"['', 'a', 'b/', 'b/c']", "['', 'a']"},
-            set(mismatch.describe().split(" != ")))
+            set(mismatch.describe().split(" != ")),
+        )
 
 
 class TestHasPathRelations(TestCaseWithTransport):
-
     def test__str__(self):
-        t = self.make_branch_and_tree('.')
+        t = self.make_branch_and_tree(".")
         matcher = HasPathRelations(t, [("a", "b")])
         self.assertEqual(f"HasPathRelations({t!r}, {[('a', 'b')]!r})", str(matcher))
 
     def test_match(self):
-        t = self.make_branch_and_tree('.')
-        self.build_tree(['a', 'b/', 'b/c'])
-        t.add(['a', 'b', 'b/c'])
-        self.assertThat(t, HasPathRelations(t,
-                                            [('', ''),
-                                             ('a', 'a'),
-                                                ('b/', 'b/'),
-                                                ('b/c', 'b/c')]))
+        t = self.make_branch_and_tree(".")
+        self.build_tree(["a", "b/", "b/c"])
+        t.add(["a", "b", "b/c"])
+        self.assertThat(
+            t, HasPathRelations(t, [("", ""), ("a", "a"), ("b/", "b/"), ("b/c", "b/c")])
+        )
 
     def test_mismatch(self):
-        t = self.make_branch_and_tree('.')
-        self.build_tree(['a', 'b/', 'b/c'])
-        t.add(['a', 'b', 'b/c'])
-        mismatch = HasPathRelations(t, [('a', 'a')]).match(t)
+        t = self.make_branch_and_tree(".")
+        self.build_tree(["a", "b/", "b/c"])
+        t.add(["a", "b", "b/c"])
+        mismatch = HasPathRelations(t, [("a", "a")]).match(t)
         self.assertIsNot(None, mismatch)
 
 
 class TestRevisionHistoryMatches(TestCaseWithTransport):
-
     def test_empty(self):
-        tree = self.make_branch_and_tree('.')
+        tree = self.make_branch_and_tree(".")
         matcher = RevisionHistoryMatches([])
         self.assertIs(None, matcher.match(tree.branch))
 
     def test_matches(self):
-        tree = self.make_branch_and_tree('.')
-        tree.commit('msg1', rev_id=b'a')
-        tree.commit('msg2', rev_id=b'b')
-        matcher = RevisionHistoryMatches([b'a', b'b'])
+        tree = self.make_branch_and_tree(".")
+        tree.commit("msg1", rev_id=b"a")
+        tree.commit("msg2", rev_id=b"b")
+        matcher = RevisionHistoryMatches([b"a", b"b"])
         self.assertIs(None, matcher.match(tree.branch))
 
     def test_mismatch(self):
-        tree = self.make_branch_and_tree('.')
-        tree.commit('msg1', rev_id=b'a')
-        tree.commit('msg2', rev_id=b'b')
-        matcher = RevisionHistoryMatches([b'a', b'b', b'c'])
+        tree = self.make_branch_and_tree(".")
+        tree.commit("msg1", rev_id=b"a")
+        tree.commit("msg2", rev_id=b"b")
+        matcher = RevisionHistoryMatches([b"a", b"b", b"c"])
         self.assertEqual(
             {"[b'a', b'b']", "[b'a', b'b', b'c']"},
-            set(matcher.match(tree.branch).describe().split(" != ")))
+            set(matcher.match(tree.branch).describe().split(" != ")),
+        )

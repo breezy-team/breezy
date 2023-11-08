@@ -17,11 +17,11 @@
 """Reconcilers are able to fix some potential data errors in a branch."""
 
 __all__ = [
-    'BranchReconciler',
-    'KnitReconciler',
-    'PackReconciler',
-    'VersionedFileRepoReconciler',
-    ]
+    "BranchReconciler",
+    "KnitReconciler",
+    "PackReconciler",
+    "VersionedFileRepoReconciler",
+]
 
 from .. import errors, ui
 from .. import revision as _mod_revision
@@ -66,8 +66,7 @@ class VersionedFileRepoReconciler:
         * `garbage_inventories`: The number of inventory objects without
           revisions that were garbage collected.
         """
-        with self.repo.lock_write(), \
-                ui.ui_factory.nested_progress_bar() as self.pb:
+        with self.repo.lock_write(), ui.ui_factory.nested_progress_bar() as self.pb:
             self._reconcile_steps()
             ret = ReconcileResult()
             ret.aborted = self.aborted
@@ -88,7 +87,7 @@ class VersionedFileRepoReconciler:
         (self.thorough) are treated as requiring the reweave.
         """
         self.repo.get_transaction()
-        self.pb.update(gettext('Reading inventory data'))
+        self.pb.update(gettext("Reading inventory data"))
         self.inventory = self.repo.inventories
         self.revisions = self.repo.revisions
         # the total set of revisions to process
@@ -106,32 +105,33 @@ class VersionedFileRepoReconciler:
         self._check_garbage_inventories()
         # if there are no inconsistent_parents and
         # (no garbage inventories or we are not doing a thorough check)
-        if (not self.inconsistent_parents
-                and (not self.garbage_inventories or not self.thorough)):
-            ui.ui_factory.note(gettext('Inventory ok.'))
+        if not self.inconsistent_parents and (
+            not self.garbage_inventories or not self.thorough
+        ):
+            ui.ui_factory.note(gettext("Inventory ok."))
             return
-        self.pb.update(gettext('Backing up inventory'), 0, 0)
+        self.pb.update(gettext("Backing up inventory"), 0, 0)
         self.repo._backup_inventory()
-        ui.ui_factory.note(gettext('Backup inventory created.'))
+        ui.ui_factory.note(gettext("Backup inventory created."))
         new_inventories = self.repo._temp_inventories()
 
         # we have topological order of revisions and non ghost parents ready.
         self._setup_steps(len(self._rev_graph))
         revision_keys = [(rev_id,) for rev_id in topo_sort(self._rev_graph)]
         stream = self._change_inv_parents(
-            self.inventory.get_record_stream(revision_keys, 'unordered', True),
+            self.inventory.get_record_stream(revision_keys, "unordered", True),
             self._new_inv_parents,
-            set(revision_keys))
+            set(revision_keys),
+        )
         new_inventories.insert_record_stream(stream)
         # if this worked, the set of new_inventories.keys should equal
         # self.pending
-        if not (set(new_inventories.keys())
-                == {(revid,) for revid in self.pending}):
+        if not (set(new_inventories.keys()) == {(revid,) for revid in self.pending}):
             raise AssertionError()
-        self.pb.update(gettext('Writing weave'))
+        self.pb.update(gettext("Writing weave"))
         self.repo._activate_new_inventory()
         self.inventory = None
-        ui.ui_factory.note(gettext('Inventory regenerated.'))
+        ui.ui_factory.note(gettext("Inventory regenerated."))
 
     def _new_inv_parents(self, revision_key):
         """Lookup ghost-filtered parents for revision_key."""
@@ -146,13 +146,14 @@ class VersionedFileRepoReconciler:
                 # The check for the left most parent only handles knit
                 # compressors, but this code only applies to knit and weave
                 # repositories anyway.
-                chunks = record.get_bytes_as('chunked')
-                yield ChunkedContentFactory(record.key, wanted_parents, record.sha1, chunks)
+                chunks = record.get_bytes_as("chunked")
+                yield ChunkedContentFactory(
+                    record.key, wanted_parents, record.sha1, chunks
+                )
             else:
-                adapted_record = AdapterFactory(
-                    record.key, wanted_parents, record)
+                adapted_record = AdapterFactory(record.key, wanted_parents, record)
                 yield adapted_record
-            self._reweave_step('adding inventories')
+            self._reweave_step("adding inventories")
 
     def _setup_steps(self, new_total):
         """Setup the markers we need to control the progress bar."""
@@ -163,14 +164,14 @@ class VersionedFileRepoReconciler:
         """Load a revision into the revision graph."""
         # pick a random revision
         # analyse revision id rev_id and put it in the stack.
-        self._reweave_step('loading revisions')
+        self._reweave_step("loading revisions")
         rev = self.repo.get_revision_reconcile(rev_id)
         parents = []
         for parent in rev.parent_ids:
             if self._parent_is_available(parent):
                 parents.append(parent)
             else:
-                mutter('found ghost %s', parent)
+                mutter("found ghost %s", parent)
         self._rev_graph[rev_id] = parents
 
     def _check_garbage_inventories(self):
@@ -186,7 +187,7 @@ class VersionedFileRepoReconciler:
         garbage = inventories.difference(revisions)
         self.garbage_inventories = len(garbage)
         for revision_key in garbage:
-            mutter('Garbage inventory {%s} found.', revision_key[-1])
+            mutter("Garbage inventory {%s} found.", revision_key[-1])
 
     def _parent_is_available(self, parent):
         """True if parent is a fully available revision.
@@ -196,8 +197,8 @@ class VersionedFileRepoReconciler:
         """
         if parent in self._rev_graph:
             return True
-        inv_present = (1 == len(self.inventory.get_parent_map([(parent,)])))
-        return (inv_present and self.repo.has_revision(parent))
+        inv_present = 1 == len(self.inventory.get_parent_map([(parent,)]))
+        return inv_present and self.repo.has_revision(parent)
 
     def _reweave_step(self, message):
         """Mark a single step of regeneration complete."""
@@ -226,24 +227,24 @@ class KnitReconciler(VersionedFileRepoReconciler):
     def _load_indexes(self):
         """Load indexes for the reconciliation."""
         self.transaction = self.repo.get_transaction()
-        self.pb.update(gettext('Reading indexes'), 0, 2)
+        self.pb.update(gettext("Reading indexes"), 0, 2)
         self.inventory = self.repo.inventories
-        self.pb.update(gettext('Reading indexes'), 1, 2)
+        self.pb.update(gettext("Reading indexes"), 1, 2)
         self.repo._check_for_inconsistent_revision_parents()
         self.revisions = self.repo.revisions
-        self.pb.update(gettext('Reading indexes'), 2, 2)
+        self.pb.update(gettext("Reading indexes"), 2, 2)
 
     def _gc_inventory(self):
         """Remove inventories that are not referenced from the revision store."""
-        self.pb.update(gettext('Checking unused inventories'), 0, 1)
+        self.pb.update(gettext("Checking unused inventories"), 0, 1)
         self._check_garbage_inventories()
-        self.pb.update(gettext('Checking unused inventories'), 1, 3)
+        self.pb.update(gettext("Checking unused inventories"), 1, 3)
         if not self.garbage_inventories:
-            ui.ui_factory.note(gettext('Inventory ok.'))
+            ui.ui_factory.note(gettext("Inventory ok."))
             return
-        self.pb.update(gettext('Backing up inventory'), 0, 0)
+        self.pb.update(gettext("Backing up inventory"), 0, 0)
         self.repo._backup_inventory()
-        ui.ui_factory.note(gettext('Backup Inventory created'))
+        ui.ui_factory.note(gettext("Backup Inventory created"))
         # asking for '' should never return a non-empty weave
         new_inventories = self.repo._temp_inventories()
         # we have topological order of revisions and non ghost parents ready.
@@ -252,18 +253,19 @@ class KnitReconciler(VersionedFileRepoReconciler):
         [key[-1] for key in revision_keys]
         self._setup_steps(len(revision_keys))
         stream = self._change_inv_parents(
-            self.inventory.get_record_stream(revision_keys, 'unordered', True),
+            self.inventory.get_record_stream(revision_keys, "unordered", True),
             graph.__getitem__,
-            set(revision_keys))
+            set(revision_keys),
+        )
         new_inventories.insert_record_stream(stream)
         # if this worked, the set of new_inventory_vf.names should equal
         # the revisionds list
         if set(new_inventories.keys()) != set(revision_keys):
             raise AssertionError()
-        self.pb.update(gettext('Writing weave'))
+        self.pb.update(gettext("Writing weave"))
         self.repo._activate_new_inventory()
         self.inventory = None
-        ui.ui_factory.note(gettext('Inventory regenerated.'))
+        ui.ui_factory.note(gettext("Inventory regenerated."))
 
     def _fix_text_parents(self):
         """Fix bad versionedfile parent entries.
@@ -276,11 +278,11 @@ class KnitReconciler(VersionedFileRepoReconciler):
         """
         self.repo.get_transaction()
         versions = [key[-1] for key in self.revisions.keys()]
-        mutter('Prepopulating revision text cache with %d revisions',
-               len(versions))
+        mutter("Prepopulating revision text cache with %d revisions", len(versions))
         vf_checker = self.repo._get_versioned_file_checker()
         bad_parents, unused_versions = vf_checker.check_file_version_parents(
-            self.repo.texts, self.pb)
+            self.repo.texts, self.pb
+        )
         text_index = vf_checker.text_index
         per_id_bad_parents = {}
         for key in unused_versions:
@@ -301,27 +303,32 @@ class KnitReconciler(VersionedFileRepoReconciler):
             versions_list.append(text_key[1])
         # Do the reconcile of individual weaves.
         for num, file_id in enumerate(per_id_bad_parents):
-            self.pb.update(gettext('Fixing text parents'), num,
-                           len(per_id_bad_parents))
+            self.pb.update(gettext("Fixing text parents"), num, len(per_id_bad_parents))
             versions_with_bad_parents = per_id_bad_parents[file_id]
-            id_unused_versions = {key[-1] for key in unused_versions
-                                     if key[0] == file_id}
+            id_unused_versions = {
+                key[-1] for key in unused_versions if key[0] == file_id
+            }
             if file_id in file_id_versions:
                 file_versions = file_id_versions[file_id]
             else:
                 # This id was present in the disk store but is not referenced
                 # by any revision at all.
                 file_versions = []
-            self._fix_text_parent(file_id, versions_with_bad_parents,
-                                  id_unused_versions, file_versions)
+            self._fix_text_parent(
+                file_id, versions_with_bad_parents, id_unused_versions, file_versions
+            )
 
-    def _fix_text_parent(self, file_id, versions_with_bad_parents,
-                         unused_versions, all_versions):
+    def _fix_text_parent(
+        self, file_id, versions_with_bad_parents, unused_versions, all_versions
+    ):
         """Fix bad versionedfile entries in a single versioned file."""
-        mutter('fixing text parent: %r (%d versions)', file_id,
-               len(versions_with_bad_parents))
-        mutter('(%d are unused)', len(unused_versions))
-        new_file_id = b'temp:%s' % file_id
+        mutter(
+            "fixing text parent: %r (%d versions)",
+            file_id,
+            len(versions_with_bad_parents),
+        )
+        mutter("(%d are unused)", len(unused_versions))
+        new_file_id = b"temp:%s" % file_id
         new_parents = {}
         needed_keys = set()
         for version in all_versions:
@@ -333,17 +340,18 @@ class KnitReconciler(VersionedFileRepoReconciler):
                 pmap = self.repo.texts.get_parent_map([(file_id, version)])
                 parents = [key[-1] for key in pmap[(file_id, version)]]
             new_parents[(new_file_id, version)] = [
-                (new_file_id, parent) for parent in parents]
+                (new_file_id, parent) for parent in parents
+            ]
             needed_keys.add((file_id, version))
 
         def fix_parents(stream):
             for record in stream:
-                chunks = record.get_bytes_as('chunked')
+                chunks = record.get_bytes_as("chunked")
                 new_key = (new_file_id, record.key[-1])
                 parents = new_parents[new_key]
                 yield ChunkedContentFactory(new_key, parents, record.sha1, chunks)
-        stream = self.repo.texts.get_record_stream(
-            needed_keys, 'topological', True)
+
+        stream = self.repo.texts.get_record_stream(needed_keys, "topological", True)
         self.repo._remove_file_id(new_file_id)
         self.repo.texts.insert_record_stream(fix_parents(stream))
         self.repo._remove_file_id(file_id)
@@ -369,10 +377,8 @@ class PackReconciler(VersionedFileRepoReconciler):
     #  - unlock the names list
     # https://bugs.launchpad.net/bzr/+bug/154173
 
-    def __init__(self, repo, other=None, thorough=False,
-                 canonicalize_chks=False):
-        super().__init__(repo, other=other,
-                                             thorough=thorough)
+    def __init__(self, repo, other=None, thorough=False, canonicalize_chks=False):
+        super().__init__(repo, other=other, thorough=thorough)
         self.canonicalize_chks = canonicalize_chks
 
     def _reconcile_steps(self):
@@ -385,22 +391,25 @@ class PackReconciler(VersionedFileRepoReconciler):
         try:
             packs = collection.all_packs()
             all_revisions = self.repo.all_revision_ids()
-            total_inventories = len(list(
-                collection.inventory_index.combined_index.iter_all_entries()))
+            total_inventories = len(
+                list(collection.inventory_index.combined_index.iter_all_entries())
+            )
             if len(all_revisions):
                 if self.canonicalize_chks:
                     reconcile_meth = self.repo._canonicalize_chks_pack
                 else:
                     reconcile_meth = self.repo._reconcile_pack
-                new_pack = reconcile_meth(collection, packs, ".reconcile",
-                                          all_revisions, self.pb)
+                new_pack = reconcile_meth(
+                    collection, packs, ".reconcile", all_revisions, self.pb
+                )
                 if new_pack is not None:
                     self._discard_and_save(packs)
             else:
                 # only make a new pack when there is data to copy.
                 self._discard_and_save(packs)
-            self.garbage_inventories = total_inventories - len(list(
-                collection.inventory_index.combined_index.iter_all_entries()))
+            self.garbage_inventories = total_inventories - len(
+                list(collection.inventory_index.combined_index.iter_all_entries())
+            )
         finally:
             collection._unlock_names()
 
@@ -429,8 +438,7 @@ class BranchReconciler:
         self.branch = a_branch
 
     def reconcile(self):
-        with self.branch.lock_write(), \
-                ui.ui_factory.nested_progress_bar() as self.pb:
+        with self.branch.lock_write(), ui.ui_factory.nested_progress_bar() as self.pb:
             ret = ReconcileResult()
             ret.fixed_history = self._reconcile_steps()
             return ret
@@ -444,7 +452,8 @@ class BranchReconciler:
         graph = self.branch.repository.get_graph()
         try:
             for revid in graph.iter_lefthand_ancestry(
-                    last_revision_id, (_mod_revision.NULL_REVISION,)):
+                last_revision_id, (_mod_revision.NULL_REVISION,)
+            ):
                 real_history.append(revid)
         except errors.RevisionNotPresent:
             pass  # Hit a ghost left hand parent
@@ -454,12 +463,13 @@ class BranchReconciler:
             # set_revision_history, as this will regenerate it again.
             # Not really worth a whole BranchReconciler class just for this,
             # though.
-            ui.ui_factory.note(gettext('Fixing last revision info {0} '
-                                       ' => {1}').format(
-                last_revno, len(real_history)))
-            self.branch.set_last_revision_info(len(real_history),
-                                               last_revision_id)
+            ui.ui_factory.note(
+                gettext("Fixing last revision info {0} " " => {1}").format(
+                    last_revno, len(real_history)
+                )
+            )
+            self.branch.set_last_revision_info(len(real_history), last_revision_id)
             return True
         else:
-            ui.ui_factory.note(gettext('revision_history ok.'))
+            ui.ui_factory.note(gettext("revision_history ok."))
             return False

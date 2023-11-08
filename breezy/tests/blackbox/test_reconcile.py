@@ -24,43 +24,44 @@ from ...repository import WriteGroup
 
 
 class TrivialTest(tests.TestCaseWithTransport):
-
     def test_trivial_reconcile(self):
-        t = controldir.ControlDir.create_standalone_workingtree('.')
-        (out, err) = self.run_bzr('reconcile')
+        t = controldir.ControlDir.create_standalone_workingtree(".")
+        (out, err) = self.run_bzr("reconcile")
         if t.branch.repository._reconcile_backsup_inventory:
             does_backup_text = "Inventory ok.\n"
         else:
             does_backup_text = ""
-        self.assertEqualDiff(out, "Reconciling branch {}\n"
-                                  "revision_history ok.\n"
-                                  "Reconciling repository {}\n"
-                                  "{}"
-                                  "Reconciliation complete.\n".format(t.branch.base,
-                                   t.controldir.root_transport.base,
-                                   does_backup_text))
+        self.assertEqualDiff(
+            out,
+            f"Reconciling branch {t.branch.base}\n"
+            "revision_history ok.\n"
+            f"Reconciling repository {t.controldir.root_transport.base}\n"
+            f"{does_backup_text}"
+            "Reconciliation complete.\n",
+        )
         self.assertEqualDiff(err, "")
 
     def test_does_something_reconcile(self):
-        t = controldir.ControlDir.create_standalone_workingtree('.')
+        t = controldir.ControlDir.create_standalone_workingtree(".")
         # an empty inventory with no revision will trigger reconciliation.
         repo = t.branch.repository
-        inv = inventory.Inventory(revision_id=b'missing')
-        inv.root.revision = b'missing'
+        inv = inventory.Inventory(revision_id=b"missing", root_id=None)
+        root = inventory.InventoryDirectory(inventory.ROOT_ID, "", None, b"missing")
+        inv.add(root)
         repo.lock_write()
         with repo.lock_write(), WriteGroup(repo):
-            repo.add_inventory(b'missing', inv, [])
-        (out, err) = self.run_bzr('reconcile')
+            repo.add_inventory(b"missing", inv, [])
+        (out, err) = self.run_bzr("reconcile")
         if repo._reconcile_backsup_inventory:
-            does_backup_text = (
-                "Backup Inventory created.\n"
-                "Inventory regenerated.\n")
+            does_backup_text = "Backup Inventory created.\n" "Inventory regenerated.\n"
         else:
             does_backup_text = ""
-        expected = (f"Reconciling branch {t.branch.base}\n"
-                    "revision_history ok.\n"
-                    f"Reconciling repository {t.controldir.root_transport.base}\n"
-                    f"{does_backup_text}"
-                    "Reconciliation complete.\n")
+        expected = (
+            f"Reconciling branch {t.branch.base}\n"
+            "revision_history ok.\n"
+            f"Reconciling repository {t.controldir.root_transport.base}\n"
+            f"{does_backup_text}"
+            "Reconciliation complete.\n"
+        )
         self.assertEqualDiff(expected, out)
         self.assertEqualDiff(err, "")
