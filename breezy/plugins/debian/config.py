@@ -340,12 +340,14 @@ class DebBuildConfig:
                     return value
         return default
 
-    def _opt_property(name, help=None, trusted=False):  # noqa: N805
+    @staticmethod
+    def _opt_property(name: str, help=None, trusted=False) -> property:
         return property(
             lambda self: self._get_best_opt(name, trusted), None, None, help
         )
 
-    def _bool_property(name, help=None, trusted=False, default=False):  # noqa: N805
+    @staticmethod
+    def _bool_property(name, help=None, trusted=False, default=False) -> property:
         return property(
             lambda self: self._get_best_bool(name, trusted, default), None, None, help
         )

@@ -40,7 +40,7 @@ class UnreleasedChanges(BzrError):
 
 def changelog_changes(
     tree: Tree, basis_tree: Tree, cl_path: str = "debian/changelog"
-) -> list[str]:
+) -> Optional[list[str]]:
     changes = []
     for change in tree.iter_changes(basis_tree, specific_files=[cl_path]):
         paths = change.path

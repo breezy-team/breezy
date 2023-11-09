@@ -20,6 +20,7 @@
 
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 from collections.abc import Iterable
@@ -598,9 +599,7 @@ class UpstreamBranchSource(UpstreamSource):
         else:
             raise ValueError(self.version_kind)
 
-    def get_recent_versions(
-        self, package: str, since_version: Optional[Version] = None
-    ):
+    def get_recent_versions(self, package: str, since_version: Optional[str] = None):
         versions = []
         tags = self.upstream_branch.tags.get_tag_dict()
         with self.upstream_branch.repository.lock_read():
@@ -768,8 +767,8 @@ def run_dist_command(
     dist_command: str,
     include_controldir: bool = False,
     subpath="",
-) -> bool:
-    def _run_and_interpret(command, env, dir):
+) -> Optional[str]:
+    def _run_and_interpret(command, env, dir) -> None:
         try:
             subprocess.check_call(command, env=env, cwd=dir, shell=True)
         except subprocess.CalledProcessError as e:
@@ -797,7 +796,7 @@ def run_dist_command(
         env = dict(os.environ.items())
         if package:
             env["PACKAGE"] = package
-        env["VERSION"] = version
+        env["VERSION"] = str(version)
         env["DIST_RESULT"] = os.path.join(td, "dist.json")
         note("Running dist command: %s", dist_command)
         if include_controldir:
@@ -813,8 +812,8 @@ def run_dist_command(
             return None
         except DistCommandFailed as e:
             # Retry with the control directory
-            if e.kind == "vcs-control-directory-needed" and not include_controldir:
-                osutils.rmtree(package_dir)
+            if e.kind == "vcs-control-directory-needed" and not include_controldir:  # type: ignore
+                shutil.rmtree(package_dir)
                 _dupe_vcs_tree(rev_tree, package_dir)
                 package_fullpath = os.path.join(package_dir, subpath)
                 existing_files = os.listdir(package_fullpath)
@@ -838,9 +837,9 @@ def run_dist_command(
                     os.rename(entry.path, os.path.join(target_dir, entry.name))
                     return entry.name
             note("No tarballs found in dist directory.")
-        diff = set(os.listdir(td)) - {os.path.basename(package_fullpath)}
-        if len(diff) == 1:
-            fn = diff.pop()
+        diff_set = set(os.listdir(td)) - {os.path.basename(package_fullpath)}
+        if len(diff_set) == 1:
+            fn = diff_set.pop()
             note("Found tarball %s in parent directory.", fn)
             os.rename(os.path.join(td, fn), os.path.join(target_dir, fn))
             return fn

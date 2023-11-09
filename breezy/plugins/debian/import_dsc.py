@@ -412,11 +412,11 @@ class DistributionBranch:
             else:
                 yield str(version)
         else:
-            version = mangle_version(self.branch, version)
-            yield str(version)
-            yield from ["debian-%s" % version, "debian/%s" % version]
-            yield from ["ubuntu-%s" % version, "ubuntu/%s" % version]
-            yield from ["v%s" % version]
+            version_str = mangle_version(self.branch, version)
+            yield version_str
+            yield from ["debian-%s" % version_str, "debian/%s" % version_str]
+            yield from ["ubuntu-%s" % version_str, "ubuntu/%s" % version_str]
+            yield from ["v%s" % version_str]
 
     def revid_of_version(self, version: Version) -> RevisionID:
         """Returns the revision id corresponding to that version.
@@ -432,7 +432,7 @@ class DistributionBranch:
 
     def tag_of_version(
         self, version: Version, vendor: Optional[str] = None
-    ) -> RevisionID:
+    ) -> Optional[str]:
         """Returns the revision id corresponding to that version.
 
         :param version: the Version object that you wish to retrieve the
@@ -691,7 +691,9 @@ class DistributionBranch:
             self.pristine_upstream_tree, package, version, pull_revisions
         )
 
-    def pull_version_from_branch(self, pull_branch, package, version, native=False):
+    def pull_version_from_branch(
+        self, pull_branch, package, version, native=False
+    ) -> str:
         """Pull a version from a particular branch.
 
         Given a DistributionBranch and a version number this method
@@ -1012,7 +1014,7 @@ class DistributionBranch:
         *,
         native: bool = False,
         timestamp=None,
-        file_ids_from: Optional[Tree] = None,
+        file_ids_from: Optional[list[Tree]] = None,
     ):
         """Import the debian part of a source package.
 
@@ -1219,7 +1221,7 @@ class DistributionBranch:
             ):
                 pull_branch = None
         if pull_branch is not None:
-            self.pull_version_from_branch(pull_branch, package, version)
+            return self.pull_version_from_branch(pull_branch, package, version)
         else:
             # We need to import at least the diff, possibly upstream.
             # Work out if we need the upstream part first.
@@ -1273,8 +1275,8 @@ class DistributionBranch:
             )
 
     def get_native_parents(
-        self, version: Version, versions: list[Version]
-    ) -> list[RevisionID]:
+        self, versions: list[Version]
+    ) -> list[tuple[RevisionID, str]]:
         last_contained_version = self.last_contained_version(versions)
         if last_contained_version is None:
             parents = []
@@ -1316,7 +1318,7 @@ class DistributionBranch:
                 pull_branch, package, version, native=True
             )
         else:
-            parents = self.get_native_parents(version, versions)
+            parents = self.get_native_parents(versions)
             return self.import_debian(
                 debian_part,
                 version,

@@ -47,7 +47,7 @@ class SourceExtractor:
         self.extracted_debianised = None
         self.unextracted_debian_md5 = None
         self.apply_patches = apply_patches
-        self.upstream_tarballs = []
+        self.upstream_tarballs = []  # type: ignore
         self.exit_stack = ExitStack()
 
     def extract(self):
@@ -240,13 +240,13 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
         ), "Can't handle non gz|bz2|xz tarballs yet"
 
 
-SOURCE_EXTRACTORS = {}
+SOURCE_EXTRACTORS: dict[str, type[SourceExtractor]] = {}
 SOURCE_EXTRACTORS[FORMAT_1_0] = OneZeroSourceExtractor
 SOURCE_EXTRACTORS[FORMAT_3_0_NATIVE] = ThreeDotZeroNativeSourceExtractor
 SOURCE_EXTRACTORS[FORMAT_3_0_QUILT] = ThreeDotZeroQuiltSourceExtractor
 
 
-def extract(dsc_filename: str, dsc: str, *, apply_patches: bool = False) -> None:
+def extract(dsc_filename: str, dsc, *, apply_patches: bool = False) -> SourceExtractor:
     format = dsc.get("Format", FORMAT_1_0).strip()
     extractor_cls = SOURCE_EXTRACTORS.get(format)
     if extractor_cls is None:

@@ -24,7 +24,7 @@
 import os
 import shutil
 import tempfile
-from typing import Optional
+from typing import Callable, Optional
 
 from ... import (
     urlutils,
@@ -464,7 +464,7 @@ class cmd_builddeb(Command):
     )
     takes_args = ["branch_or_build_options*"]
     aliases = ["bd", "debuild"]
-    takes_options = [
+    takes_options = [  # type: ignore
         export_only_opt,
         dont_purge_opt,
         use_existing_opt,
@@ -761,7 +761,7 @@ class cmd_get_orig_source(Command):
         type=str,
     )
 
-    takes_options = [directory_opt] + apt_repository_opts
+    takes_options = [directory_opt] + apt_repository_opts  # type: ignore
     takes_args = ["version?"]
 
     def run(
@@ -1082,6 +1082,7 @@ class cmd_merge_upstream(Command):
                     else:
                         upstream_branch = None
 
+            create_dist: Optional[Callable[[str, str, str, str, str], str]]
             if dist_command:
 
                 def create_dist(tree, package, version, target_dir, subpath=""):
@@ -1595,7 +1596,7 @@ class cmd_builddeb_do(Command):
     """
 
     takes_args = ["command*"]
-    takes_options = [
+    takes_options = [  # type: ignore
         Option("no-preparation", help="Don't apply/unapply patches."),
     ] + apt_repository_opts
     aliases = ["bd-do"]
@@ -1965,7 +1966,7 @@ class cmd_debrelease(Command):
     )
 
     takes_args = ["location?"]
-    takes_options = [
+    takes_options = [  # type: ignore
         strict_opt,
         Option("skip-upload", help="Skip upload."),
         builder_opt,

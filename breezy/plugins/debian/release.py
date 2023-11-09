@@ -28,13 +28,13 @@ from debmutate.changelog import (
     release as mark_for_release,
 )
 
-from breezy.mutabletree import MutableTree
+from breezy.workingtree import WorkingTree
 
 from .changelog import debcommit_release
 from .util import find_changelog
 
 
-def release(local_tree: MutableTree, subpath: str):
+def release(local_tree: WorkingTree, subpath: str):
     """Release a tree."""
     (changelog, top_level) = find_changelog(
         local_tree, subpath, merge=False, max_blocks=2

@@ -3,6 +3,7 @@
 
 """Import upstream source into a branch."""
 
+import tarfile
 from contextlib import ExitStack
 from io import BytesIO
 
@@ -25,6 +26,7 @@ from ...upstream_import import (
     do_directory,
     names_of_files,
 )
+from ...workingtree import WorkingTree
 
 
 class UnknownType(BzrError):
@@ -46,6 +48,7 @@ def should_ignore(relative_path: str) -> bool:
             return True
         if part.endswith(",v"):
             return True
+    return False
 
 
 def import_dir(
@@ -60,13 +63,19 @@ def import_dir(
         for other_tree in file_ids_from:
             es.enter_context(other_tree.lock_read())
         return _import_archive(
-            tree, dir_file, file_ids_from, target_tree=target_tree, exclude=exclude
+            tree,
+            dir_file,
+            file_ids_from,
+            target_tree=target_tree,
+            exclude=exclude,  # type: ignore
         )
 
 
-def _get_paths_to_process(archive_file: str, prefix, implied_parents, exclude=None):
+def _get_paths_to_process(
+    archive_file: tarfile.TarFile, prefix, implied_parents, exclude=None
+):
     to_process = set()
-    for member in archive_file.getmembers():
+    for member in archive_file.getmembers():  # type: ignore
         if member.type == "g":
             # type 'g' is a header
             continue
@@ -88,7 +97,11 @@ def _get_paths_to_process(archive_file: str, prefix, implied_parents, exclude=No
 
 
 def _import_archive(
-    tree: Tree, archive_file: str, file_ids_from, target_tree=None, exclude=None
+    tree: WorkingTree,
+    archive_file: tarfile.TarFile,
+    file_ids_from,
+    target_tree=None,
+    exclude=None,
 ):
     prefix = common_directory(names_of_files(archive_file))
     with tree.transform() as tt:
@@ -101,7 +114,7 @@ def _import_archive(
             removed.add(path)
 
         added = set()
-        implied_parents = set()
+        implied_parents: set[str] = set()
         seen = set()
         to_process = _get_paths_to_process(
             archive_file, prefix, implied_parents, exclude=exclude

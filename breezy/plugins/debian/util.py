@@ -778,9 +778,11 @@ def extract_orig_tarball(
     try:
         if strip_components is None:
             if needs_strip_components(tf):
-                strip_components = 1
+                strip_components_no = 1
             else:
-                strip_components = 0
+                strip_components_no = 0
+        else:
+            strip_components_no = None
     finally:
         tf.close()
     if component is not None:
@@ -789,8 +791,8 @@ def extract_orig_tarball(
     else:
         target_path = target
     tar_args.extend([tarball_filename, "-C", target_path])
-    if strip_components is not None:
-        tar_args.extend(["--strip-components", str(strip_components)])
+    if strip_components_no is not None:
+        tar_args.extend(["--strip-components", str(strip_components_no)])
     proc = subprocess.Popen(
         tar_args, preexec_fn=subprocess_setup, stderr=subprocess.PIPE
     )
@@ -821,6 +823,7 @@ def find_changes_files(
     path: str, package: str, version: Version
 ) -> Iterator[Tuple[str, os.DirEntry]]:
     non_epoch_version = version.upstream_version
+    assert non_epoch_version is not None  # noqa: S101
     if version.debian_version is not None:
         non_epoch_version += "-%s" % version.debian_version
     c = re.compile(f"{re.escape(package)}_{re.escape(non_epoch_version)}_(.*).changes")

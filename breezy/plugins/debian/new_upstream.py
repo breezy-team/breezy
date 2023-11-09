@@ -352,7 +352,7 @@ def _convert_exception(url: str, e: Exception) -> Optional[BranchOpenError]:
         return BranchOpenError(url, "Branch does not exist: %s" % e)
     if isinstance(e, UnsupportedProtocol):
         return BranchOpenError(url, str(e))
-    if isinstance(e, errors.ConnectionError):
+    if isinstance(e, ConnectionError):
         return BranchOpenError(url, str(e))
     if isinstance(e, errors.PermissionDenied):
         return BranchOpenError(url, str(e))
@@ -378,7 +378,7 @@ def _convert_exception(url: str, e: Exception) -> Optional[BranchOpenError]:
 def open_branch(
     url: str,
     possible_transports: Optional[list[Transport]] = None,
-    name: str = None,
+    name: Optional[str] = None,
 ) -> Branch:
     """Open a branch by URL."""
     from breezy.directory_service import directories
@@ -813,7 +813,7 @@ class MergeUpstreamResult:
 
 
 def merge_upstream(  # noqa: C901
-    tree: Tree,
+    tree: WorkingTree,
     version_kind: str = "release",
     location: Optional[str] = None,
     new_upstream_version: Optional[str] = None,
@@ -932,7 +932,9 @@ def merge_upstream(  # noqa: C901
                     )
                 else:
                     raise NewUpstreamTarballMissing(
-                        e.package, e.version, e.upstream
+                        e.package,
+                        e.version,
+                        e.upstream,  # type: ignore
                     ) from e
 
             orig_path = os.path.join(target_dir, "orig")
@@ -1043,6 +1045,7 @@ def merge_upstream(  # noqa: C901
                 gbp_dch(tree.basedir)
             cl.auto_version(new_version)
 
+            assert new_upstream_version is not None  # noqa: S101
             cl.add_entry([upstream_merge_changelog_line(new_upstream_version)])
     except GeneratedFile as e:
         raise ChangelogGeneratedFile(e.path, e.template_path, e.template_type) from e

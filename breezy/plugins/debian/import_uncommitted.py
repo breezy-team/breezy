@@ -44,7 +44,6 @@ from breezy.revision import NULL_REVISION, RevisionID
 from breezy.trace import note, warning
 from breezy.transform import MalformedTransform
 from breezy.transport import NoSuchFile
-from breezy.tree import Tree
 from breezy.workingtree import WorkingTree
 
 from .apt_repo import (
@@ -128,6 +127,7 @@ def download_snapshot(package: str, version: Version, output_dir: str) -> str:
     except HTTPError as e:
         if e.status == 404:
             raise SnapshotMissing(package, version) from e
+        assert e.status is not None  # noqa: S101
         if e.status // 100 == 5:
             transient = True
         else:
@@ -158,6 +158,7 @@ def download_snapshot(package: str, version: Version, output_dir: str) -> str:
                     with urlopen(url) as g:  # noqa: S310
                         f.write(g.read())
                 except HTTPError as e:
+                    assert e.status is not None  # noqa: S101
                     if e.status // 100 == 5:
                         transient = True
                     else:
@@ -223,7 +224,9 @@ class UnreleasedChangesSinceTreeVersion(Exception):
         super().__init__("there are unreleased changes since %s" % tree_version)
 
 
-def find_missing_versions(archive_cl: Version, tree_version: Version) -> list[Version]:
+def find_missing_versions(
+    archive_cl: Changelog, tree_version: Version
+) -> list[Version]:
     missing_versions: list[Version] = []
     for block in archive_cl:
         if tree_version is not None and block.version == tree_version:
@@ -272,7 +275,7 @@ def is_noop_upload(tree, basis_tree=None, subpath=""):
 
 
 def import_uncommitted(
-    tree: Tree,
+    tree: WorkingTree,
     subpath: str,
     apt: Apt,
     source_name: str,
@@ -291,6 +294,7 @@ def import_uncommitted(
         [subdir] = [e.path for e in os.scandir(archive_source) if e.is_dir()]
         with open(os.path.join(subdir, "debian", "changelog")) as f:
             archive_cl = Changelog(f)
+        assert tree_version is not None  # noqa: S101
         missing_versions = find_missing_versions(archive_cl, tree_version)
         if len(missing_versions) == 0:
             raise NoMissingVersions(tree_version, archive_cl.version)
@@ -353,11 +357,11 @@ def import_uncommitted(
                 note(
                     "%s was already imported (tag: %s), just not on the "
                     "branch. Updating tree.",
-                    e.version,
-                    e.tag_name,
+                    e.version,  # type: ignore
+                    e.tag_name,  # type: ignore
                 )
-                tag_name = e.tag_name
-                db.tree.update(revision=db.branch.tags.lookup_tag(e.tag_name))
+                tag_name = e.tag_name  # type: ignore
+                db.tree.update(revision=db.branch.tags.lookup_tag(e.tag_name))  # type: ignore
             revid = db.branch.tags.lookup_tag(tag_name)
             if skip_noop and last_revid != NULL_REVISION:
                 try:
