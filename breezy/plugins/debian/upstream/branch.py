@@ -18,20 +18,24 @@
 #    along with bzr-builddeb; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-from contextlib import ExitStack
-from datetime import date
 import os
 import re
 import subprocess
 import tempfile
-from typing import Optional
 from collections.abc import Iterable
+from contextlib import ExitStack
+from datetime import date
+from typing import Optional
 
 from debian.changelog import Version
 from debmutate.versions import (
-    git_snapshot_data_from_version,
-    get_snapshot_revision as _get_snapshot_revision,
     debianize_upstream_version,
+    git_snapshot_data_from_version,
+)
+from debmutate.versions import (
+    get_snapshot_revision as _get_snapshot_revision,
+)
+from debmutate.versions import (
     upstream_version_add_revision as _upstream_version_add_revision,
 )
 
@@ -50,26 +54,23 @@ from ....errors import (
     UnsupportedOperation,
 )
 from ....memorybranch import MemoryBranch
-from ..repack_tarball import get_filetype, repack_tarball
 from ....revision import NULL_REVISION, RevisionID
-from ....revisionspec import RevisionSpec
-from ....trace import note, mutter, warning
+from ....revisionspec import InvalidRevisionSpec, RevisionSpec
+from ....trace import mutter, note, warning
 from ....tree import Tree
-
-from ....revisionspec import InvalidRevisionSpec
-
+from ....workingtree import (
+    WorkingTree,
+)
+from .. import gettext
 from ..errors import (
     MultipleUpstreamTarballsNotSupported,
 )
-from .. import gettext
+from ..repack_tarball import get_filetype, repack_tarball
 from ..util import export_with_nested
 from . import (
-    UpstreamSource,
     PackageVersionNotPresent,
+    UpstreamSource,
     new_tarball_name,
-)
-from ....workingtree import (
-    WorkingTree,
 )
 
 
@@ -109,7 +110,7 @@ def upstream_tag_to_version(tag_name, package=None):
         and tag_name[2].isdigit()
     ):
         tag_name = tag_name[2:]
-    if all([c.isdigit() or c in (".", "~", "_") for c in tag_name]):
+    if all(c.isdigit() or c in (".", "~", "_") for c in tag_name):
         return tag_name
     parts = tag_name.split(".")
     if len(parts) > 1 and all(p.isdigit() for p in parts[:-1]) and parts[-1].isalnum():
@@ -381,8 +382,8 @@ def guess_upstream_tag(package, version, is_snapshot: bool = False) -> Iterable[
     if package:
         for prefix in ["rust-"]:
             if package.startswith(prefix):
-                yield "{}-{}".format(package[len(prefix) :], version)
-        yield "{}-{}".format(package, version)
+                yield f"{package[len(prefix) :]}-{version}"
+        yield f"{package}-{version}"
     if not is_snapshot:
         yield "v%s" % version
         yield "v.%s" % version
@@ -392,7 +393,7 @@ def guess_upstream_tag(package, version, is_snapshot: bool = False) -> Iterable[
         yield "version-%s" % version
         if package:
             yield "{}-{}-release".format(package, version.replace(".", "_"))
-            yield "{}-v{}".format(package, version)
+            yield f"{package}-v{version}"
 
 
 def guess_upstream_revspec(package, version):
@@ -689,7 +690,7 @@ class UpstreamBranchSource(UpstreamSource):
         return [target_filename]
 
     def __repr__(self):
-        return "<{} for {!r}>".format(self.__class__.__name__, self._actual_branch.base)
+        return f"<{self.__class__.__name__} for {self._actual_branch.base!r}>"
 
 
 class LazyUpstreamBranchSource(UpstreamBranchSource):
@@ -728,7 +729,7 @@ class LazyUpstreamBranchSource(UpstreamBranchSource):
         return self._upstream_branch
 
     def __repr__(self):
-        return "<{} for {!r}>".format(self.__class__.__name__, self.upstream_branch_url)
+        return f"<{self.__class__.__name__} for {self.upstream_branch_url!r}>"
 
 
 class DistCommandFailed(BzrError):

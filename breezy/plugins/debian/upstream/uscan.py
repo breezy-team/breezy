@@ -20,19 +20,19 @@
 
 import os
 import re
-import subprocess
 import shutil
+import subprocess
 import sys
 import tempfile
 
 from debmutate.watch import parse_watch_file
 
-from ....errors import BzrError
-from ....transport import NoSuchFile
 from .... import osutils
+from ....errors import BzrError
 from ....trace import note, warning
-from . import UpstreamSource, PackageVersionNotPresent
+from ....transport import NoSuchFile
 from ..util import export_with_nested
+from . import PackageVersionNotPresent, UpstreamSource
 
 
 class UScanError(BzrError):
@@ -92,8 +92,8 @@ class UScanSource(UpstreamSource):
 
     def __repr__(self):
         return (
-            "<%s(%r, subpath=%r, top_level=%r, auto_fix=%r," "skip_signatures=%r)>"
-        ) % (
+            "<{}({!r}, subpath={!r}, top_level={!r}, auto_fix={!r}," "skip_signatures={!r})>"
+        ).format(
             type(self).__name__,
             self.tree,
             self.subpath,
@@ -254,7 +254,7 @@ class UScanSource(UpstreamSource):
                     raise UScanError(w)
                 raise PackageVersionNotPresent(package, version, self)
             _xml_report_print_warnings(text)
-            if all([os.path.exists(p) for p in orig_files]):
+            if all(os.path.exists(p) for p in orig_files):
                 pass
             else:
                 orig_files = [

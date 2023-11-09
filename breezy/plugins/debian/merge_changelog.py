@@ -27,7 +27,6 @@ from ... import (
     osutils,
 )
 
-
 # A logger in the 'bzr' hierarchy.  By default messages will be propagated to
 # the standard bzr logger, but tests can easily intercept just this logger if
 # they wish.
@@ -42,10 +41,12 @@ class ChangeLogFileMerge(merge.ConfigurableFileMerger):
         return merge_changelog(params.this_lines, params.other_lines, params.base_lines)
 
 
-def merge_changelog(this_lines, other_lines, base_lines=[]):
+def merge_changelog(this_lines, other_lines, base_lines=None):
     """Merge a changelog file."""
     # Write the BASE, THIS and OTHER versions to files in a temporary
     # directory, and use dpkg-mergechangelogs to merge them.
+    if base_lines is None:
+        base_lines = []
     with tempfile.TemporaryDirectory("deb_changelog_merge") as tmpdir:
 
         def writelines(filename, lines):

@@ -21,10 +21,11 @@
 import posixpath
 from typing import Optional
 
-from breezy.errors import BzrError
-from breezy.tree import Tree
 from debian.changelog import Changelog
 from debmutate.changelog import new_changelog_entries, strip_changelog_message
+
+from breezy.errors import BzrError
+from breezy.tree import Tree
 
 from . import tree_debian_tag_name
 
@@ -110,9 +111,7 @@ def debcommit_release(tree, committer=None, subpath="", message=None, vendor=Non
     if message is None or vendor is None:
         cl = Changelog(tree.get_file(cl_path), max_blocks=1)
         if message is None:
-            message = "releasing package {} version {}".format(
-                cl[0].package, cl[0].version
-            )
+            message = f"releasing package {cl[0].package} version {cl[0].version}"
         if vendor is None:
             from .util import suite_to_distribution
 

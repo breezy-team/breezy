@@ -18,35 +18,32 @@
 #    along with bzr-builddeb; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-from typing import Optional
-
+import configparser
+import errno
+import os
+import re
+import subprocess
+import tempfile
 from base64 import (
     standard_b64decode,
     standard_b64encode,
 )
-import configparser
-from debian.copyright import globs_to_re
-import errno
 from io import BytesIO
-import os
-import re
-import subprocess
 from tarfile import TarFile
-import tempfile
+from typing import Optional
 
-from .... import debug
-from . import (
-    PackageVersionNotPresent,
-    UpstreamSource,
-)
-from ..util import (
-    export_with_nested,
-    subprocess_setup,
-)
+from debian.copyright import globs_to_re
+from debmutate.vcs import gbp_expand_tag_name
+from debmutate.versions import mangle_version_for_git
 
 from .... import (
     config as _mod_config,
+)
+from .... import (
+    debug,
     osutils,
+)
+from .... import (
     revision as _mod_revision,
 )
 from ....branch import Branch
@@ -65,21 +62,26 @@ from ....trace import (
     warning,
 )
 from ....transport import NoSuchFile
-
+from ..util import (
+    export_with_nested,
+    subprocess_setup,
+)
+from . import (
+    PackageVersionNotPresent,
+    UpstreamSource,
+)
 from .branch import (
-    git_snapshot_data_from_version,
     InvalidRevisionSpec,
     RevisionSpec,
+    git_snapshot_data_from_version,
 )
 from .tags import (
     is_upstream_tag,
     possible_upstream_tag_names,
     search_for_upstream_version,
-    upstream_version_tag_start_revids,
     upstream_tag_version,
+    upstream_version_tag_start_revids,
 )
-from debmutate.vcs import gbp_expand_tag_name
-from debmutate.versions import mangle_version_for_git
 
 
 class PristineTarError(BzrError):
@@ -244,17 +246,17 @@ def make_pristine_tar_delta_from_tree(tree, tarball_path, subdir=None, exclude=N
             if "pristine-tar" in debug.debug_flags:
                 revno, revid = tree.branch.last_revision_info()
                 preserved = osutils.pathjoin(
-                    osutils.dirname(tarball_path), "orig-{}".format(revno)
+                    osutils.dirname(tarball_path), f"orig-{revno}"
                 )
                 mutter(
-                    "pristine-tar failed for delta between %s rev: %s"
-                    " and tarball %s" % (tree.basedir, (revno, revid), tarball_path)
+                    "pristine-tar failed for delta between {} rev: {}"
+                    " and tarball {}".format(tree.basedir, (revno, revid), tarball_path)
                 )
                 osutils.copy_tree(dest, preserved)
                 mutter(
                     "The failure can be reproduced with:\n"
-                    "  cd %s\n"
-                    "  pristine-tar -vdk gendelta %s -" % (preserved, tarball_path)
+                    f"  cd {preserved}\n"
+                    f"  pristine-tar -vdk gendelta {tarball_path} -"
                 )
             raise
 
@@ -345,7 +347,7 @@ class BasePristineTarSource(UpstreamSource):
                 )
             }
         ret = {}
-        for tarball, component, md5 in tarballs:
+        for _tarball, component, md5 in tarballs:
             ret[component] = self.version_component_as_revision(
                 package, version, component, md5
             )
@@ -359,7 +361,7 @@ class BasePristineTarSource(UpstreamSource):
                 package, version, component=None, try_hard=try_hard
             )
         else:
-            for tarball, component, md5 in tarballs:
+            for _tarball, component, md5 in tarballs:
                 if not self.has_version_component(
                     package, version, component, md5, try_hard=try_hard
                 ):
@@ -444,7 +446,7 @@ class BzrPristineTarSource(BasePristineTarSource):
         self.branch = branch
 
     def __repr__(self):
-        return "<{} at {}>".format(self.__class__.__name__, self.branch.base)
+        return f"<{self.__class__.__name__} at {self.branch.base}>"
 
     def tag_name(self, version, component=None, distro=None):
         """Gets the tag name for the upstream part of version.
@@ -458,7 +460,7 @@ class BzrPristineTarSource(BasePristineTarSource):
         if distro is None:
             name = "upstream-" + version
         else:
-            name = "upstream-{}-{}".format(distro, version)
+            name = f"upstream-{distro}-{version}"
         if component is not None:
             name += "/%s" % component
         return name
@@ -511,7 +513,7 @@ class BzrPristineTarSource(BasePristineTarSource):
                 return False
             return True
 
-        message = "Import upstream version {}".format(version)
+        message = f"Import upstream version {version}"
         revprops = {}
         supports_custom_revprops = (
             tree.branch.repository._format.supports_custom_revision_properties
@@ -750,7 +752,7 @@ class GitPristineTarSource(BasePristineTarSource):
         self.packaging_branch = packaging_branch
 
     def __repr__(self):
-        return "<{} at {}>".format(self.__class__.__name__, self.branch.base)
+        return f"<{self.__class__.__name__} at {self.branch.base}>"
 
     @classmethod
     def from_tree(cls, tree, packaging_branch=None):
@@ -810,7 +812,7 @@ class GitPristineTarSource(BasePristineTarSource):
         if distro is None:
             name = "upstream/" + mangle_version_for_git(version)
         else:
-            name = "upstream-{}/{}".format(distro, mangle_version_for_git(version))
+            name = f"upstream-{distro}/{mangle_version_for_git(version)}"
         if component is not None:
             name += "/%s" % component
         return name
@@ -863,7 +865,7 @@ class GitPristineTarSource(BasePristineTarSource):
                 return False
             return True
 
-        message = "Import upstream version {}".format(version)
+        message = f"Import upstream version {version}"
         revprops = {}
         if component is not None:
             message += ", component %s" % component
@@ -1024,7 +1026,7 @@ class GitPristineTarSource(BasePristineTarSource):
                 pristine_tar_branch.last_revision()
             )
             for suffix in self.SUFFIXES:
-                basename = "{}_{}.orig.{}".format(package, version, suffix)
+                basename = f"{package}_{version}.orig.{suffix}"
                 try:
                     delta_bytes = revtree.get_file_text(basename + ".delta")
                 except NoSuchFile:

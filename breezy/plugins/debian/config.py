@@ -20,16 +20,15 @@
 
 import yaml
 
+from breezy.transport import NoSuchFile
+
 from ...config import (
-    configobj,
     ConfigObj,
     TreeConfig,
+    configobj,
 )
 from ...errors import BzrError
 from ...trace import mutter, warning
-
-from breezy.transport import NoSuchFile
-
 
 BUILD_TYPE_NORMAL = "normal"
 BUILD_TYPE_NATIVE = "native"
@@ -47,7 +46,8 @@ class SvnBuildPackageMappedConfig:
 
     def get_option(self, option, section=None):
         """Retrieve the contents of an option, mapped from the equivalent
-        svn-buildpackage option."""
+        svn-buildpackage option.
+        """
         if section == "BUILDDEB":
             if option == "merge":
                 return self.bp_config.get_merge_with_upstream()
@@ -125,13 +125,13 @@ class DebBuildConfig:
     debian/bzr-builddeb.conf.local,
     ~/.bazaar/builddeb.conf, debian/bzr-builddeb.conf,
     finally .bzr-builddeb/default.conf. The value is
-    taken from the first file in which it is specified."""
+    taken from the first file in which it is specified.
+    """
 
     section = "BUILDDEB"
 
     def __init__(self, files, branch=None, tree=None):
-        """
-        Creates a config to read from config files in a hierarchy.
+        """Creates a config to read from config files in a hierarchy.
 
         Pass it a list of tuples (file, secure) where file is the location of a
         config file (that doesn't have to exist, and trusted is True or false,
@@ -189,8 +189,8 @@ class DebBuildConfig:
                 # Imported here, since not everybody will have bzr-svn
                 # installed
                 from ..svn.config import (
-                    SubversionBuildPackageConfig,
                     NoSubversionBuildPackageConfig,
+                    SubversionBuildPackageConfig,
                 )
 
                 try:
@@ -233,7 +233,8 @@ class DebBuildConfig:
 
     def _get_opt(self, config, key, section=None):
         """Returns the value for key from config, of None if it is not defined
-        in the file"""
+        in the file.
+        """
         if section is None:
             section = self.section
         try:
@@ -244,8 +245,8 @@ class DebBuildConfig:
             try:
                 config[key]
                 warning(
-                    "'%s' defines a value for '%s', but it is not in a '%s' "
-                    "section, so it is ignored" % (config.filename, key, section)
+                    "'{}' defines a value for '{}', but it is not in a '{}' "
+                    "section, so it is ignored".format(config.filename, key, section)
                 )
             except KeyError:
                 pass
@@ -299,8 +300,8 @@ class DebBuildConfig:
             try:
                 config.as_bool(key)
                 warning(
-                    "'%s' defines a value for '%s', but it is not in a "
-                    "'BUILDDEB' section, so it is ignored" % (config.filename, key)
+                    "'{}' defines a value for '{}', but it is not in a "
+                    "'BUILDDEB' section, so it is ignored".format(config.filename, key)
                 )
             except KeyError:
                 pass

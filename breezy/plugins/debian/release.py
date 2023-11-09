@@ -20,16 +20,17 @@
 
 import os
 
-from breezy.mutabletree import MutableTree
-
 from debmutate.changelog import (
-    release as mark_for_release,
     ChangelogEditor,
     distribution_is_unreleased,
 )
+from debmutate.changelog import (
+    release as mark_for_release,
+)
+
+from breezy.mutabletree import MutableTree
 
 from .changelog import debcommit_release
-
 from .util import find_changelog
 
 
@@ -53,7 +54,7 @@ def release(local_tree: MutableTree, subpath: str):
     return None
 
 
-class SuccessReleaseMarker(object):
+class SuccessReleaseMarker:
     def __init__(self, local_tree, subpath):
         self.local_tree = local_tree
         self.subpath = subpath

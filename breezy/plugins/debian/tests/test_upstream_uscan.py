@@ -21,14 +21,14 @@
 
 import tempfile
 
-from ....transport import NoSuchFile
 from ....tests import (
     TestCase,
     TestCaseWithTransport,
 )
+from ....transport import NoSuchFile
 from ..upstream.uscan import (
-    UScanSource,
     UScanError,
+    UScanSource,
     _xml_report_extract_upstream_version,
     _xml_report_extract_warnings,
 )

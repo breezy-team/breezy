@@ -20,23 +20,22 @@
 
 import errno
 import hashlib
-import signal
-import shutil
-import subprocess
-import tempfile
 import os
 import re
-from typing import Optional, Tuple, Iterator
+import shutil
+import signal
+import subprocess
+import tempfile
+from typing import Iterator, Optional, Tuple
 
 from debian import deb822
 from debian.changelog import Changelog, ChangelogParseError, Version
 from debian.copyright import Copyright, NotMachineReadableError
-
 from debmutate.changelog import (
     changes_by_author,
-    find_thanks,
     find_extra_authors,
     find_last_distribution,
+    find_thanks,
     strip_changelog_message,
 )
 from debmutate.versions import get_snapshot_revision
@@ -47,7 +46,6 @@ from ... import (
     osutils,
     urlutils,
 )
-from ...transport import NoSuchFile
 from ...export import export
 from ...trace import (
     mutter,
@@ -55,6 +53,7 @@ from ...trace import (
     warning,
 )
 from ...transport import (
+    NoSuchFile,
     do_catching_redirections,
     get_transport,
 )
@@ -63,10 +62,10 @@ from . import (
     global_conf,
 )
 from .config import (
-    DebBuildConfig,
     BUILD_TYPE_MERGE,
     BUILD_TYPE_NATIVE,
     BUILD_TYPE_NORMAL,
+    DebBuildConfig,
 )
 from .errors import (
     BzrError,
@@ -232,10 +231,10 @@ def tarball_name(package, version, component=None, format=None):
     """
     if format is None:
         format = "gz"
-    name = "{}_{}.orig".format(package, str(version))
+    name = f"{package}_{str(version)}.orig"
     if component is not None:
         name += "-" + component
-    return "{}.tar.{}".format(name, format)
+    return f"{name}.tar.{format}"
 
 
 def suite_to_distribution(suite):
@@ -426,7 +425,7 @@ def find_bugs_fixed(changes, branch, _lplib=None):
     if _lplib is None:
         from . import launchpad as _lplib
     bugs = []
-    for new_author, linenos, lines in changes_by_author(changes):
+    for _new_author, _linenos, lines in changes_by_author(changes):
         for match in re.finditer(
             "closes:\\s*(?:bug)?\\#?\\s?\\d+" "(?:,\\s*(?:bug)?\\#?\\s?\\d+)*",
             "".join(lines),
@@ -825,7 +824,7 @@ def find_changes_files(
     if version.debian_version is not None:
         non_epoch_version += "-%s" % version.debian_version
     c = re.compile(
-        "{}_{}_(.*).changes".format(re.escape(package), re.escape(non_epoch_version))
+        f"{re.escape(package)}_{re.escape(non_epoch_version)}_(.*).changes"
     )
     for entry in os.scandir(path):
         m = c.match(entry.name)

@@ -24,7 +24,6 @@ import subprocess
 import tarfile
 
 from .....transport import get_transport
-
 from .. import BuilddebTestCase, Version
 from ..test_import_dsc import PristineTarFeature
 
@@ -94,7 +93,7 @@ class TestBaseImportDsc(BuilddebTestCase):
         proc.wait()
         self.assertEqual(proc.returncode, 0)
         shutil.rmtree(upstream_dir)
-        dsc_name = "{}_{}.dsc".format(self.package_name, version)
+        dsc_name = f"{self.package_name}_{version}.dsc"
         return dsc_name
 
 

@@ -30,26 +30,25 @@ from ... import (
     urlutils,
 )
 from ...branch import Branch
+from ...commands import Command
 from ...controldir import (
     ControlDir,
     NoColocatedBranchSupport,
 )
-from ...commands import Command
 from ...errors import (
     BzrCommandError,
     NotBranchError,
     NotLocalUrl,
     NoWorkingTree,
 )
+from ...option import Option
+from ...trace import mutter, note, warning
 from ...transport import (
     FileExists,
     NoSuchFile,
+    get_transport,
 )
-from ...option import Option
-from ...trace import mutter, note, warning
-from ...transport import get_transport
 from ...workingtree import WorkingTree
-
 from . import (
     default_build_dir,
     default_orig_dir,
@@ -121,7 +120,7 @@ class StrictBuildFailed(BzrCommandError):
 
 def _check_tree(tree, subpath, strict=False):
     if strict:
-        for unknown in tree.unknowns():
+        for _unknown in tree.unknowns():
             raise StrictBuildFailed()
 
     if len(tree.conflicts()) > 0:
@@ -146,10 +145,10 @@ def _get_changelog_info(
     tree, subpath, last_version=None, package=None, distribution=None
 ):
     from .util import (
+        MissingChangelogError,
         find_changelog,
         find_last_distribution,
         lookup_distribution,
-        MissingChangelogError,
     )
 
     DEFAULT_FALLBACK_DISTRIBUTION = "debian"
@@ -247,15 +246,15 @@ def _get_upstream_sources(
 ):
     from .upstream import (
         AptSource,
-        SelfSplitSource,
         DirectoryScanSource,
-    )
-    from .upstream.uscan import (
-        UScanSource,
-        NoWatchFile,
+        SelfSplitSource,
     )
     from .upstream.pristinetar import (
         get_pristine_tar_source,
+    )
+    from .upstream.uscan import (
+        NoWatchFile,
+        UScanSource,
     )
 
     yield AptSource(apt=apt)
@@ -321,17 +320,17 @@ def _get_distiller(
     apt=None,
     skip_signatures=False,
 ):
-    from .util import (
-        guess_build_type,
+    from .source_distiller import (
+        DebcargoDistiller,
+        FullSourceDistiller,
+        MergeModeDistiller,
+        NativeSourceDistiller,
     )
     from .upstream import (
         UpstreamProvider,
     )
-    from .source_distiller import (
-        FullSourceDistiller,
-        MergeModeDistiller,
-        NativeSourceDistiller,
-        DebcargoDistiller,
+    from .util import (
+        guess_build_type,
     )
 
     if build_type is None:
@@ -616,6 +615,7 @@ class cmd_builddeb(Command):
         apt_repository_key=None,
     ):
         from debian.changelog import ChangelogParseError
+
         from .builder import DebBuild
         from .config import UpstreamMetadataSyntaxError
         from .hooks import run_hook
@@ -624,9 +624,9 @@ class cmd_builddeb(Command):
             NoPreviousUpload,
             dget_changes,
             find_changelog,
+            find_changes_files,
             find_previous_upload,
             tree_contains_upstream_source,
-            find_changes_files,
         )
 
         location, build_options, source = self._branch_and_build_options(
@@ -708,7 +708,7 @@ class cmd_builddeb(Command):
 
             build_source_dir = os.path.join(
                 build_dir,
-                "{}-{}".format(changelog.package, changelog.version.upstream_version),
+                f"{changelog.package}-{changelog.version.upstream_version}",
             )
 
             builder = DebBuild(
@@ -727,7 +727,7 @@ class cmd_builddeb(Command):
                 if not dont_purge:
                     builder.clean()
                 changes_paths = []
-                for kind, entry in find_changes_files(
+                for _kind, entry in find_changes_files(
                     build_dir, changelog.package, changelog.version
                 ):
                     changes_paths.append(entry.path)
@@ -771,12 +771,12 @@ class cmd_get_orig_source(Command):
             AptSource,
             UpstreamProvider,
         )
-        from .upstream.uscan import (
-            UScanSource,
-            NoWatchFile,
-        )
         from .upstream.pristinetar import (
             get_pristine_tar_source,
+        )
+        from .upstream.uscan import (
+            NoWatchFile,
+            UScanSource,
         )
         from .util import (
             find_changelog,
@@ -813,7 +813,7 @@ class cmd_get_orig_source(Command):
         )
 
         result = upstream_provider.provide(orig_dir)
-        for tar, component in result:
+        for tar, _component in result:
             note(gettext("Tar now in %s") % tar)
 
 
@@ -975,13 +975,13 @@ class cmd_merge_upstream(Command):
             run_dist_command,
         )
         from .upstream.uscan import (
-            UScanSource,
             NoWatchFile,
+            UScanSource,
         )
         from .util import (
             detect_version_kind,
-            guess_build_type,
             get_files_excluded,
+            guess_build_type,
             tree_contains_upstream_source,
         )
 
@@ -1194,10 +1194,10 @@ class cmd_merge_upstream(Command):
                     )
                 except PackageVersionNotPresent as e:
                     raise BzrCommandError(
-                        "Version %s can not be found in upstream branch %r. "
+                        "Version {} can not be found in upstream branch {!r}. "
                         "Specify the revision manually using --revision or "
                         "adjust 'export-upstream-revision' in the "
-                        "configuration." % (version, upstream_branch_source)
+                        "configuration.".format(version, upstream_branch_source)
                     ) from e
             if need_upstream_tarball:
                 target_dir = self.enter_context(tempfile.TemporaryDirectory())
@@ -1344,9 +1344,9 @@ class cmd_import_dsc(Command):
             DistributionBranchSet,
         )
         from .util import (
+            MissingChangelogError,
             find_changelog,
             open_file,
-            MissingChangelogError,
         )
 
         try:
@@ -1478,6 +1478,7 @@ class cmd_import_upstream(Command):
         force_pristine_tar=False,
     ):
         from debian.changelog import Version
+
         from .import_dsc import (
             DistributionBranch,
             DistributionBranchSet,
@@ -1544,8 +1545,8 @@ class cmd_import_upstream(Command):
         for (
             component,
             tag_name,
-            revid,
-            pristine_tar_imported,
+            _revid,
+            _pristine_tar_imported,
             subpath,
         ) in db.import_upstream_tarballs(
             tarballs,
@@ -1607,24 +1608,25 @@ class cmd_builddeb_do(Command):
         apt_repository_key=None,
     ):
         import subprocess
-        from .source_distiller import (
-            MergeModeDistiller,
-        )
+
         from .builder import (
             BuildFailedError,
             DebBuild,
+        )
+        from .hooks import run_hook
+        from .source_distiller import (
+            MergeModeDistiller,
         )
         from .upstream import (
             AptSource,
             UpstreamProvider,
         )
-        from .upstream.uscan import (
-            UScanSource,
-        )
         from .upstream.pristinetar import (
             get_pristine_tar_source,
         )
-        from .hooks import run_hook
+        from .upstream.uscan import (
+            UScanSource,
+        )
         from .util import (
             find_changelog,
             guess_build_type,
@@ -1735,9 +1737,7 @@ class cmd_builddeb_do(Command):
         source_debian = os.path.join(build_source_dir, "debian")
         for filename in os.listdir(source_debian):
             proc = subprocess.Popen(
-                'cp -apf "{}" "{}"'.format(
-                    os.path.join(source_debian, filename), destination
-                ),
+                f'cp -apf "{os.path.join(source_debian, filename)}" "{destination}"',
                 shell=True,
             )
             proc.wait()
@@ -1753,7 +1753,7 @@ class cmd_builddeb_do(Command):
 
 
 class cmd_dep3_patch(Command):
-    """Format the changes in a branch as a DEP-3 patch.
+    r"""Format the changes in a branch as a DEP-3 patch.
 
     This will generate a patch file containing as much information
     specified by DEP-3 (http://dep.debian.net/deps/dep3/) as possible.
@@ -1790,9 +1790,9 @@ class cmd_dep3_patch(Command):
 
     def run(self, location=".", directory=".", revision=None, no_upstream_check=False):
         from .dep3 import (
+            describe_origin,
             determine_applied_upstream,
             determine_forwarded,
-            describe_origin,
             gather_bugs_and_authors,
             write_dep3_patch,
         )

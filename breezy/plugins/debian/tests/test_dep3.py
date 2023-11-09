@@ -20,16 +20,14 @@
 
 from email.message import Message
 from email.parser import Parser
+from io import StringIO
 
 from ....revision import (
     NULL_REVISION,
 )
-from io import StringIO
-
 from ....tests import (
     TestCase,
 )
-
 from ..dep3 import (
     describe_origin,
     determine_applied_upstream,
@@ -38,7 +36,6 @@ from ..dep3 import (
     write_dep3_patch,
     write_dep3_patch_header,
 )
-
 from . import (
     TestCaseWithTransport,
 )

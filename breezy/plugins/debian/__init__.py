@@ -26,22 +26,20 @@
 import os
 
 import breezy  # noqa: F401
-from ...commands import plugin_cmds
-from ...hooks import install_lazy_named_hook
+
 from ... import trace
-
-from .info import (  # noqa: F401
-    brz_plugin_version as version_info,
-)
-
+from ...commands import plugin_cmds
 from ...directory_service import (
     AliasDirectory,
     directories,
 )
-
+from ...hooks import install_lazy_named_hook
 from ...i18n import load_plugin_translations
-from ...tag import tag_sort_methods
 from ...revisionspec import revspec_registry
+from ...tag import tag_sort_methods
+from .info import (  # noqa: F401
+    brz_plugin_version as version_info,
+)
 
 translation = load_plugin_translations("brz-debian")
 gettext = translation.gettext
@@ -139,9 +137,10 @@ def debian_changelog_commit_message(commit, start_message):
 
 
 def debian_changelog_commit(commit, start_message):
-    """hooked into breezy.msgeditor set_commit_message.
+    """Hooked into breezy.msgeditor set_commit_message.
     Set the commit message from debian/changelog and set any LP: #1234 to bug
-    fixed tags."""
+    fixed tags.
+    """
     from .util import find_bugs_fixed
 
     changes = debian_changelog_commit_message(commit, start_message)
@@ -164,9 +163,9 @@ def tree_debian_tag_name(tree, branch, subpath="", vendor=None):
     from .config import BUILD_TYPE_MERGE
     from .import_dsc import DistributionBranch, DistributionBranchSet
     from .util import (
+        MissingChangelogError,
         debuild_config,
         find_changelog,
-        MissingChangelogError,
         suite_to_distribution,
     )
 
@@ -198,10 +197,10 @@ def debian_tag_name(branch, revid):
 
 
 def pre_merge_fix_ancestry(merger):
-    from .config import BUILD_TYPE_NATIVE
-    from .util import debuild_config
-    from .merge_package import fix_ancestry_as_needed
     from ...workingtree import WorkingTree
+    from .config import BUILD_TYPE_NATIVE
+    from .merge_package import fix_ancestry_as_needed
+    from .util import debuild_config
 
     if not isinstance(merger.this_tree, WorkingTree):
         return

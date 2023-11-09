@@ -21,16 +21,14 @@
 import os
 
 from ....revisionspec import InvalidRevisionSpec, RevisionSpec
-
 from ....tests.test_revisionspec import TestRevisionSpec
-
-from . import Version, Changelog
 from ..revspec import (
-    UnknownVersion,
-    VersionNotSpecified,
     RevisionSpec_package,
     RevisionSpec_upstream,
+    UnknownVersion,
+    VersionNotSpecified,
 )
+from . import Changelog, Version
 
 
 class TestRevisionSpec_package(TestRevisionSpec):

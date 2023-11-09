@@ -24,7 +24,6 @@ from debian.changelog import Version
 
 from .. import merge_package as MP
 from ..import_dsc import DistributionBranch
-
 from . import TestCaseWithTransport
 
 _Debian_changelog = """\
@@ -283,8 +282,7 @@ class MergePackageTests(TestCaseWithTransport):
         self.assertEqual(conflict_paths, ["debian/changelog"])
 
     def _setup_debian_upstream_newer(self):
-        r"""
-        Set up the following test configuration (debian upstream newer).
+        r"""Set up the following test configuration (debian upstream newer).
 
         debian-upstream                 ,------------------H
                            A-----------B                    \
@@ -359,8 +357,7 @@ class MergePackageTests(TestCaseWithTransport):
         return (ubup_o, debp_n, ubuu_o, debu_n)
 
     def _setup_debian_upstream_conflicts(self):
-        r"""
-        Set up the following test configuration (debian upstream newer).
+        r"""Set up the following test configuration (debian upstream newer).
 
         debian-upstream                 ,------------------H
                            A-----------B                    \
@@ -435,8 +432,7 @@ class MergePackageTests(TestCaseWithTransport):
         return (ubup_o, debp_n, ubuu_o, debu_n)
 
     def _setup_debian_upstream_older(self):
-        r"""
-        Set up the following test configuration (debian upstream older).
+        r"""Set up the following test configuration (debian upstream older).
 
         debian-upstream                 ,----H-------------.
                            A-----------B                    \
@@ -511,8 +507,7 @@ class MergePackageTests(TestCaseWithTransport):
         return (ubup_n, debp_o, ubuu_n, debu_o)
 
     def _setup_upstreams_not_diverged(self):
-        r"""
-        Set up a test configuration where the usptreams have not diverged.
+        r"""Set up a test configuration where the usptreams have not diverged.
 
         debian-upstream                       .-----G
                            A-----------B-----H       \
@@ -596,7 +591,7 @@ class MergePackageTests(TestCaseWithTransport):
             return "revid_{}_{}".format(name.replace("-", "_"), vid)
 
         def add_paths(paths):
-            qpaths = ["{}/{}".format(name, path) for path in paths]
+            qpaths = [f"{name}/{path}" for path in paths]
             self.build_tree(qpaths)
             tree.add(paths)
 
@@ -620,9 +615,9 @@ class MergePackageTests(TestCaseWithTransport):
             vid = vids.pop(0)
             if log_format is not None:
                 cle = changelog(version, vid)
-                p = "{}/work/{}/debian/changelog".format(self.test_base_dir, name)
+                p = f"{self.test_base_dir}/work/{name}/debian/changelog"
                 _prepend_log(cle, p)
-            revid = tree.commit("{}: {}".format(vid, msg))
+            revid = tree.commit(f"{vid}: {msg}")
             setattr(self, revid_name(vid), revid)
             tree.branch.tags.set_tag(version, revid)
 
@@ -635,7 +630,7 @@ class MergePackageTests(TestCaseWithTransport):
                 tree.merge_from_branch(utree.branch, to_revision=urevid)
                 utree.branch.tags.merge_to(tree.branch.tags)
                 if urevid is not None:
-                    msg += "Merged tree {}|{}. ".format(tree_nick(utree), urevid)
+                    msg += f"Merged tree {tree_nick(utree)}|{urevid}. "
                 else:
                     msg += "Merged tree %s. " % utree
             if paths is not None:

@@ -18,15 +18,14 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+from debian.changelog import Version
+from debian.deb822 import Deb822
+from debmutate.vcs import source_package_vcs, split_vcs_url
+
 from ... import urlutils
 from ...directory_service import directories
 from ...errors import DependencyNotPresent
 from ...trace import note, warning
-
-from debian.deb822 import Deb822
-from debian.changelog import Version
-
-from debmutate.vcs import source_package_vcs, split_vcs_url
 
 
 def fixup_broken_git_url(url):
@@ -60,7 +59,7 @@ def fixup_broken_git_url(url):
         if credentials is not None and not (
             credentials == "git" and scheme not in ("git", "http", "https")
         ):
-            netloc = "{}@{}".format(credentials, netloc)
+            netloc = f"{credentials}@{netloc}"
         if host == "salsa.debian.org":
             scheme = "https"
         if host == "salsa.debian.org" and path.startswith("/cgit/"):

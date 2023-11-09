@@ -17,18 +17,16 @@
 #    along with bzr-builddeb; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-from debian.changelog import Changelog
-
 import os
 import shutil
 import subprocess
 import tempfile
 
+from debian.changelog import Changelog
+
 from ... import errors as bzr_errors
 from ...trace import note
-
-from ...transport import NoSuchFile, FileExists
-
+from ...transport import FileExists, NoSuchFile
 from .util import (
     export_with_nested,
     extract_orig_tarballs,
@@ -92,7 +90,7 @@ class NativeSourceDistiller(SourceDistiller):
 
 
 class FullSourceDistiller(SourceDistiller):
-    """A SourceDistiller for full-source branches, a.k.a. normal mode"""
+    """A SourceDistiller for full-source branches, a.k.a. normal mode."""
 
     def __init__(self, tree, subpath, upstream_provider, use_existing=False):
         """Create a SourceDistiller to distill from the specified tree.

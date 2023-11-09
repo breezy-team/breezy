@@ -15,42 +15,39 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from contextlib import ExitStack
 import json
 import logging
 import os
 import sys
+from contextlib import ExitStack
 from urllib.parse import urlparse
-
-import breezy.bzr  # noqa: F401
-import breezy.git  # noqa: F401
-
-from breezy import osutils
-from breezy.branch import Branch
-from breezy.workingtree import WorkingTree
 
 from debmutate.changelog import ChangelogEditor
 from debmutate.control import ControlEditor
 from debmutate.deb822 import ChangeConflict
-from debmutate.reformatting import GeneratedFile, FormattingUnpreservable
+from debmutate.reformatting import FormattingUnpreservable, GeneratedFile
 
-from breezy.plugins.debian.info import versions_dict
+import breezy.bzr  # noqa: F401
+import breezy.git  # noqa: F401
+from breezy import osutils
+from breezy.branch import Branch
 from breezy.plugins.debian.directory import vcs_git_url_to_bzr_url
-
+from breezy.plugins.debian.info import versions_dict
+from breezy.workingtree import WorkingTree
 
 BRANCH_NAME = "orphan"
 QA_MAINTAINER = "Debian QA Group <packages@qa.debian.org>"
 
 
 def push_to_salsa(local_tree, orig_branch, user, name, dry_run=False):
-    from breezy import urlutils
-    from breezy.branch import Branch
-    from breezy.errors import PermissionDenied, AlreadyControlDirError
-    from breezy.plugins.gitlab.forge import GitLab
-    from breezy.forge import UnsupportedForge, get_forge, ForgeLoginRequired
-
     from silver_platter import pick_additional_colocated_branches
     from silver_platter.proposal import push_changes
+
+    from breezy import urlutils
+    from breezy.branch import Branch
+    from breezy.errors import AlreadyControlDirError, PermissionDenied
+    from breezy.forge import ForgeLoginRequired, UnsupportedForge, get_forge
+    from breezy.plugins.gitlab.forge import GitLab
 
     if dry_run:
         logging.info("Creating and pushing to salsa project %s/%s", user, name)
@@ -78,7 +75,7 @@ def push_to_salsa(local_tree, orig_branch, user, name, dry_run=False):
     if from_project is not None:
         salsa.fork_project(from_project, owner=user)
     else:
-        to_project = "{}/{}".format(user, name)
+        to_project = f"{user}/{name}"
         try:
             salsa.create_project(to_project)
         except PermissionDenied as e:
@@ -89,7 +86,7 @@ def push_to_salsa(local_tree, orig_branch, user, name, dry_run=False):
         except AlreadyControlDirError:
             logging.info("Project %s already exists, using..", to_project)
     target_branch = Branch.open(
-        "git+ssh://git@salsa.debian.org/{}/{}.git".format(user, name)
+        f"git+ssh://git@salsa.debian.org/{user}/{name}.git"
     )
     additional_colocated_branches = pick_additional_colocated_branches(
         local_tree.branch
@@ -264,19 +261,19 @@ def orphan(
 
 
 def move_instructions(package_name, salsa_user, old_vcs_url, new_vcs_url):
-    yield "Please move the repository from {} to {}.".format(old_vcs_url, new_vcs_url)
+    yield f"Please move the repository from {old_vcs_url} to {new_vcs_url}."
     if urlparse(old_vcs_url).hostname == "salsa.debian.org":
         path = urlparse(old_vcs_url).path
         if path.endswith(".git"):
             path = path[:-4]
         yield "If you have the salsa(1) tool installed, run: "
         yield ""
-        yield "    salsa fork --group={} {}".format(salsa_user, path)
+        yield f"    salsa fork --group={salsa_user} {path}"
     else:
         yield "If you have the salsa(1) tool installed, run: "
         yield ""
-        yield "    git clone {} {}".format(old_vcs_url, package_name)
-        yield "    salsa --group={} push_repo {}".format(salsa_user, package_name)
+        yield f"    git clone {old_vcs_url} {package_name}"
+        yield f"    salsa --group={salsa_user} push_repo {package_name}"
 
 
 def report_fatal(code, description):

@@ -18,20 +18,19 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+import os
 import shutil
 import subprocess
-import os
 import tempfile
 
 from ...errors import BzrError
 from ...trace import note
-
 from .hooks import run_hook
 from .util import (
+    dget_changes,
+    find_changes_files,
     get_parent_dir,
     subprocess_setup,
-    find_changes_files,
-    dget_changes,
 )
 
 

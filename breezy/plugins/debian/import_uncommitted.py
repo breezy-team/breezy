@@ -18,54 +18,51 @@
 import contextlib
 import errno
 import json
-from hashlib import sha1
 import logging
 import os
 import subprocess
 import tempfile
+from hashlib import sha1
 from typing import Optional
-
-from urllib.request import urlopen
 from urllib.error import HTTPError, URLError
+from urllib.request import urlopen
 
-from debmutate.control import ControlEditor
+from debian.changelog import Changelog, Version
 from debmutate.changelog import ChangelogEditor, distribution_is_unreleased
+from debmutate.control import ControlEditor
 
 import breezy.bzr  # noqa: F401
 import breezy.git  # noqa: F401
 from breezy import urlutils
 from breezy.errors import (
-    NotBranchError,
-    NoSuchTag,
     ConflictsInTree,
     NoSuchRevisionInTree,
+    NoSuchTag,
+    NotBranchError,
 )
-from breezy.revision import RevisionID, NULL_REVISION
+from breezy.revision import NULL_REVISION, RevisionID
 from breezy.trace import note, warning
 from breezy.transform import MalformedTransform
-from breezy.tree import Tree
-
 from breezy.transport import NoSuchFile
+from breezy.tree import Tree
 from breezy.workingtree import WorkingTree
 
-from debian.changelog import Changelog, Version
-
+from .apt_repo import (
+    Apt,
+    AptSourceError,
+    LocalApt,
+    NoAptSources,
+    RemoteApt,
+)
 from .changelog import debcommit
 from .directory import vcs_git_url_to_bzr_url
-from .info import versions_dict
-from .upstream import PackageVersionNotPresent
 from .import_dsc import (
     DistributionBranch,
     DistributionBranchSet,
     VersionAlreadyImported,
 )
-from .apt_repo import (
-    Apt,
-    LocalApt,
-    RemoteApt,
-    NoAptSources,
-    AptSourceError,
-)
+from .info import versions_dict
+from .upstream import PackageVersionNotPresent
 
 BRANCH_NAME = "missing-commits"
 
@@ -94,7 +91,7 @@ def select_vcswatch_packages():
 """
     cursor.execute(query, tuple(args))
     packages = []
-    for package, vcs_url in cursor.fetchall():
+    for package, _vcs_url in cursor.fetchall():
         packages.append(package)
     return packages
 
@@ -122,8 +119,8 @@ class SnapshotHashMismatch(Exception):
 def download_snapshot(package: str, version: Version, output_dir: str) -> str:
     note("Downloading %s %s", package, version)
     srcfiles_url = (
-        "https://snapshot.debian.org/mr/package/%s/%s/"
-        "srcfiles?fileinfo=1" % (package, version)
+        f"https://snapshot.debian.org/mr/package/{package}/{version}/"
+        "srcfiles?fileinfo=1"
     )
     files = {}
     try:
@@ -174,7 +171,7 @@ def download_snapshot(package: str, version: Version, output_dir: str) -> str:
                     raise SnapshotDownloadError(url, e, transient=None) from e
     file_version = Version(version)
     file_version.epoch = None
-    dsc_filename = "{}_{}.dsc".format(package, file_version)
+    dsc_filename = f"{package}_{file_version}.dsc"
     return os.path.join(output_dir, dsc_filename)
 
 
@@ -182,9 +179,9 @@ class NoopChangesOnly(Exception):
     def __init__(self, vcs_version, archive_version):
         self.vcs_version = vcs_version
         self.archive_version = archive_version
-        super(NoopChangesOnly, self).__init__(
+        super().__init__(
             "No missing versions with effective changes. "
-            "Archive has %s, VCS has %s" % (archive_version, vcs_version)
+            f"Archive has {archive_version}, VCS has {vcs_version}"
         )
 
 
@@ -193,8 +190,7 @@ class NoMissingVersions(Exception):
         self.vcs_version = vcs_version
         self.archive_version = archive_version
         super().__init__(
-            "No missing versions after all. Archive has %s, VCS has %s"
-            % (archive_version, vcs_version)
+            f"No missing versions after all. Archive has {archive_version}, VCS has {vcs_version}"
         )
 
 
@@ -392,9 +388,7 @@ def import_uncommitted(
         assert parent_ids == [
             merge_into,
             to_merge,
-        ], "Expected parents to be {!r}, was {!r}".format(
-            [merge_into, to_merge], parent_ids
-        )
+        ], f"Expected parents to be {[merge_into, to_merge]!r}, was {parent_ids!r}"
     return ret
 
 
@@ -432,7 +426,7 @@ def set_vcs_git_url(
 
 
 def contains_git_attributes(tree, subpath):
-    for path, versioned, kind, ie in tree.list_files(
+    for path, _versioned, _kind, _ie in tree.list_files(
         recursive=True, recurse_nested=True, from_dir=subpath
     ):
         if os.path.basename(path) == ".gitattributes":
@@ -591,7 +585,7 @@ def main(argv=None):
     except SnapshotDownloadError as e:
         report_fatal(
             "snapshot-download-failed",
-            "Downloading {} failed: {}".format(e.url, e.inner),
+            f"Downloading {e.url} failed: {e.inner}",
             transient=e.transient,
         )
         return 1

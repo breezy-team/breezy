@@ -21,17 +21,16 @@
 
 import logging
 
-from testtools.content_type import ContentType
 from testtools.content import Content
+from testtools.content_type import ContentType
 
 from .... import (
     merge,
     tests,
 )
+from ....tests.features import ExecutableFeature
 from ... import debian
 from .. import merge_changelog
-from ....tests.features import ExecutableFeature
-
 
 dpkg_mergechangelogs_feature = ExecutableFeature("dpkg-mergechangelogs")
 
@@ -156,10 +155,12 @@ class TestMergeChangelog(tests.TestCase):
         expected_lines,
         this_lines,
         other_lines,
-        base_lines=[],
+        base_lines=None,
         conflicted=False,
         possible_error=False,
     ):
+        if base_lines is None:
+            base_lines = []
         status, merged_lines = merge_changelog.merge_changelog(
             this_lines, other_lines, base_lines
         )
@@ -283,7 +284,7 @@ pseudo-prog (1.1.1-2) unstable; urgency=low
         )
 
     def test_invalid_version_starting_non_digit(self):
-        """Invalid version without digit first is rejected or correctly merged
+        """Invalid version without digit first is rejected or correctly merged.
 
         Versions of dpkg prior to 1.16.0.1 merge such changelogs correctly,
         however then a stricter check was introduced that aborts the script.
@@ -313,7 +314,7 @@ pseudo-prog (ss-0) unstable; urgency=low
             )
 
     def test_invalid_version_non_ascii(self):
-        """Invalid version with non-ascii data is rejected or correctly merged
+        """Invalid version with non-ascii data is rejected or correctly merged.
 
         Such a version has always been treated as invalid so fails
         consistently across dpkg versions currently.

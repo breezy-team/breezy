@@ -27,8 +27,8 @@ from typing import Optional
 
 from debmutate.versions import debianize_upstream_version
 
-from ....errors import BzrError, DependencyNotPresent
 from .... import osutils
+from ....errors import BzrError, DependencyNotPresent
 from ....revision import RevisionID
 from ....trace import (
     note,
@@ -87,6 +87,7 @@ class UpstreamSource:
         Args:
           package: Name of the package
           version: The current upstream version of the package.
+
         Returns:
           Tuple with the version string of the latest available upstream
           version, and mangled Debian version.
@@ -156,7 +157,7 @@ class AptSource(UpstreamSource):
 
     def fetch_tarballs(self, package, upstream_version, target_dir, components=None):
         with self.apt:
-            from ..apt_repo import NoAptSources, AptSourceError
+            from ..apt_repo import AptSourceError, NoAptSources
 
             source_name = package
             try:
@@ -165,7 +166,7 @@ class AptSource(UpstreamSource):
                     for entry in source["Files"]:
                         filename = os.path.basename(entry["name"])
                         if filename.startswith(
-                            "{}_{}.orig".format(package, upstream_version)
+                            f"{package}_{upstream_version}.orig"
                         ):
                             filenames.append(filename)
                     if filenames:
@@ -198,11 +199,11 @@ class SelfSplitSource(UpstreamSource):
 
     def _split(self, package, upstream_version, target_filename):
         with tempfile.TemporaryDirectory(prefix="builddeb-get-orig-source-") as tmpdir:
-            export_dir = os.path.join(tmpdir, "{}-{}".format(package, upstream_version))
+            export_dir = os.path.join(tmpdir, f"{package}-{upstream_version}")
             export_with_nested(self.tree, export_dir, format="dir")
             shutil.rmtree(os.path.join(export_dir, "debian"))
             with tarfile.open(target_filename, "w:gz") as tar:
-                tar.add(export_dir, "{}-{}".format(package, upstream_version))
+                tar.add(export_dir, f"{package}-{upstream_version}")
 
     def fetch_tarballs(self, package, version, target_dir, components=None):
         note(
@@ -224,7 +225,7 @@ class StackedUpstreamSource(UpstreamSource):
         self._sources = sources
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self._sources)
+        return f"{self.__class__.__name__}({self._sources!r})"
 
     def fetch_tarballs(self, package, version, target_dir, components=None):
         for source in self._sources:
@@ -287,7 +288,7 @@ def gather_orig_files(package, version, path):
     :param version: package upstream version string
     :return: List of orig tarfile paths, or None if none were found
     """
-    prefix = "{}_{}.orig".format(package, version)
+    prefix = f"{package}_{version}.orig"
     ret = []
     path = os.path.abspath(path)
     if not os.path.isdir(path):
@@ -538,7 +539,7 @@ class DirectoryScanSource(UpstreamSource):
         self.path = os.path.abspath(path)
 
     def fetch_tarballs(self, package: str, version: str, target_dir, components=None):
-        prefix = "{}_{}.orig".format(package, version)
+        prefix = f"{package}_{version}.orig"
         ret = []
         for entry in os.scandir(self.path):
             if entry.name.startswith(prefix):

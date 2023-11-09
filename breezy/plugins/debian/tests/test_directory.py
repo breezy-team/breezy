@@ -19,12 +19,11 @@
 #
 
 from ....tests import TestCase
-
 from ..directory import (
     fixup_broken_git_url,
+    vcs_cvs_url_to_bzr_url,
     vcs_git_url_to_bzr_url,
     vcs_hg_url_to_bzr_url,
-    vcs_cvs_url_to_bzr_url,
 )
 
 

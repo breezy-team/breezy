@@ -35,7 +35,6 @@ from debmutate.versions import new_package_version
 from ... import osutils
 from ...revision import NULL_REVISION
 from ...trace import note
-
 from .import_dsc import (
     DistributionBranch,
     DistributionBranchSet,
@@ -43,13 +42,12 @@ from .import_dsc import (
 )
 from .repack_tarball import repack_tarball
 from .util import (
+    FORMAT_3_0_NATIVE,
+    FORMAT_3_0_QUILT,
     component_from_orig_tarball,
     tarball_name,
-    FORMAT_3_0_QUILT,
-    FORMAT_3_0_NATIVE,
     tree_get_source_format,
 )
-
 
 TAG_PREFIX = "upstream-"
 

@@ -21,17 +21,16 @@
 import os.path
 
 from ..... import export
-
-from .. import (
-    BuilddebTestCase,
-    SourcePackageBuilder,
-)
 from ...import_dsc import (
     DistributionBranch,
     DistributionBranchSet,
 )
 from ...util import (
     md5sum_filename,
+)
+from .. import (
+    BuilddebTestCase,
+    SourcePackageBuilder,
 )
 
 
@@ -59,7 +58,7 @@ class Upstream(Fixture):
         treename = test_case.getUniqueString()
         tree = test_case.make_branch_and_tree(treename)
         filename = test_case.getUniqueString()
-        test_case.build_tree(["{}/{}".format(treename, filename)])
+        test_case.build_tree([f"{treename}/{filename}"])
         tree.add([filename])
         tree.commit(test_case.getUniqueString())
         self.tree = tree
@@ -127,7 +126,7 @@ class FileMovedReplacedUpstream(Fixture):
                     oldpath = child.name
             tree.rename_one(oldpath, newpath)
             test_case.build_tree(
-                ["{}/{}".format(os.path.basename(tree.basedir), oldpath)]
+                [f"{os.path.basename(tree.basedir)}/{oldpath}"]
             )
             tree.add([oldpath])
             tree.commit("yo, renaming and replacing")

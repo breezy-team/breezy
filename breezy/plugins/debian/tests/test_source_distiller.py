@@ -22,13 +22,12 @@ import os
 from debian.changelog import Version
 
 from ....transport import FileExists
-
-from ..upstream import MissingUpstreamTarball
 from ..source_distiller import (
     FullSourceDistiller,
     MergeModeDistiller,
     NativeSourceDistiller,
 )
+from ..upstream import MissingUpstreamTarball
 from . import (
     SourcePackageBuilder,
     TestCaseWithTransport,
@@ -177,7 +176,7 @@ class MergeModeDistillerTests(TestCaseWithTransport):
         )
         sd.distill("target/foo")
         self.assertPathExists(
-            "target/{}_{}.orig.tar.gz".format(name, version.upstream_version)
+            f"target/{name}_{version.upstream_version}.orig.tar.gz"
         )
         self.assertPathExists("target/foo/a")
 

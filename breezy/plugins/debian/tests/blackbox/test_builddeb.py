@@ -31,7 +31,8 @@ class TestBuilddeb(BuilddebTestCase):
     def make_unpacked_source(self):
         """Create an unpacked source tree in a branch.
 
-        Return the working tree"""
+        Return the working tree
+        """
         tree = self.make_branch_and_tree(".")
         cl_file = "debian/changelog"
         source_files = ["README", "debian/"] + [cl_file]
@@ -86,7 +87,7 @@ class TestBuilddeb(BuilddebTestCase):
         tree.add([self.uncommited_file])
         tree.commit("two", rev_id=b"revid2")
 
-        p = "{}/work/newtree/{}".format(self.test_base_dir, self.uncommited_file)
+        p = f"{self.test_base_dir}/work/newtree/{self.uncommited_file}"
         with open(p, "w") as fh:
             fh.write("** This is the conflicting line.")
         newtree.add([self.uncommited_file])
@@ -184,8 +185,8 @@ class TestBuilddeb(BuilddebTestCase):
         self.assertInBuildDir(["pre-build", "post-build"])
 
     def test_utf8_changelog(self):
-        from ... import debian_changelog_commit
         from .....msgeditor import hooks
+        from ... import debian_changelog_commit
 
         hooks.install_named_hook(
             "set_commit_message",

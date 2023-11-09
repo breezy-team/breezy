@@ -28,20 +28,23 @@ import tarfile
 from debian.changelog import Changelog, Version
 from debmutate.changelog import strip_changelog_message
 
+from .... import errors as bzr_errors
+from ....tests import (
+    TestCase,
+)
+from ....tests.features import (
+    ModuleAvailableFeature,
+    SymlinkFeature,
+)
 from ..config import (
     BUILD_TYPE_MERGE,
     BUILD_TYPE_NATIVE,
     BUILD_TYPE_NORMAL,
 )
-from . import (
-    LzmaFeature,
-    SourcePackageBuilder,
-    TestCaseInTempDir,
-    TestCaseWithTransport,
-)
 from ..util import (
     AddChangelogError,
     InconsistentSourceFormatError,
+    MissingChangelogError,
     NoPreviousUpload,
     NoSuchFile,
     changelog_find_previous_upload,
@@ -53,28 +56,24 @@ from ..util import (
     find_changelog,
     find_extra_authors,
     find_thanks,
-    get_files_excluded,
     get_commit_info_from_changelog,
+    get_files_excluded,
+    get_parent_dir,
     guess_build_type,
     lookup_distribution,
     move_file_if_different,
-    get_parent_dir,
     recursive_copy,
     suite_to_distribution,
     tarball_name,
     tree_contains_upstream_source,
     tree_get_source_format,
     write_if_different,
-    MissingChangelogError,
 )
-
-from .... import errors as bzr_errors
-from ....tests import (
-    TestCase,
-)
-from ....tests.features import (
-    SymlinkFeature,
-    ModuleAvailableFeature,
+from . import (
+    LzmaFeature,
+    SourcePackageBuilder,
+    TestCaseInTempDir,
+    TestCaseWithTransport,
 )
 
 
@@ -194,7 +193,7 @@ bzr-builddeb (0.16.2) unstable; urgency=low
         self.assertRaises(MissingChangelogError, find_changelog, tree, merge=True)
 
     def test_find_changelog_symlink(self):
-        """When there was a symlink debian -> . then the code used to break"""
+        """When there was a symlink debian -> . then the code used to break."""
         try:
             self.requireFeature(SymlinkFeature(self.test_dir))
         except TypeError:  # brz < 3.2
@@ -669,7 +668,11 @@ class ChangelogInfoTests(TestCaseWithTransport):
 
 
 class MockLaunchpad:
-    def __init__(self, debian_bug_to_ubuntu_bugs={}, ubuntu_bug_to_debian_bugs={}):
+    def __init__(self, debian_bug_to_ubuntu_bugs=None, ubuntu_bug_to_debian_bugs=None):
+        if ubuntu_bug_to_debian_bugs is None:
+            ubuntu_bug_to_debian_bugs = {}
+        if debian_bug_to_ubuntu_bugs is None:
+            debian_bug_to_ubuntu_bugs = {}
         self.debian_bug_to_ubuntu_bugs = debian_bug_to_ubuntu_bugs
         self.ubuntu_bug_to_debian_bugs = ubuntu_bug_to_debian_bugs
         self.debian_bug_lookups = []
@@ -871,7 +874,7 @@ class GuessBuildTypeTests(TestCaseWithTransport):
 
 class TestExtractOrigTarballs(TestCaseInTempDir):
     def create_tarball(self, package, version, compression, part=None):
-        basedir = "{}-{}".format(package, version)
+        basedir = f"{package}-{version}"
         os.mkdir(basedir)
         try:
             f = open(os.path.join(basedir, "README"), "w")
@@ -879,7 +882,7 @@ class TestExtractOrigTarballs(TestCaseInTempDir):
                 f.write("Hi\n")
             finally:
                 f.close()
-            prefix = "{}_{}.orig".format(package, version)
+            prefix = f"{package}_{version}.orig"
             if part is not None:
                 prefix += "-%s" % part
             tar_path = os.path.abspath(prefix + ".tar." + compression)

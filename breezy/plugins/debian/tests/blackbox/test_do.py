@@ -27,9 +27,7 @@ from debian.changelog import (
 )
 from debian.deb822 import Deb822
 
-
 from .....tests.blackbox import ExternalBase
-
 
 TRIVIAL_PATCH = """--- /dev/null	2012-01-02 01:09:10.986490031 +0100
 +++ base/afile	2012-01-02 20:03:59.710666215 +0100

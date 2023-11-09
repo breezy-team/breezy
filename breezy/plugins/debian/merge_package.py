@@ -28,8 +28,10 @@ import re
 import sys
 import tempfile
 
-from debian.changelog import Version, Changelog
+from debian.changelog import Changelog, Version, format_date, get_maintainer
 from debian.deb822 import Deb822
+from debmutate.changelog import ChangelogEditor, changeblock_add_line, increment_version
+from debmutate.reformatting import GeneratedFile
 
 from breezy.errors import (
     BzrError,
@@ -43,10 +45,6 @@ from breezy.workingtree import (
     PointlessMerge,
 )
 
-from debian.changelog import format_date, get_maintainer
-from debmutate.changelog import ChangelogEditor, changeblock_add_line, increment_version
-from debmutate.reformatting import GeneratedFile
-
 from .changelog import debcommit
 from .cmds import _build_helper
 from .directory import vcs_field_to_bzr_url_converters
@@ -55,10 +53,10 @@ from .errors import (
 )
 from .import_dsc import DistributionBranch
 from .util import (
-    dput_changes,
-    debsign,
-    find_changelog,
     MissingChangelogError,
+    debsign,
+    dput_changes,
+    find_changelog,
 )
 
 
@@ -257,7 +255,7 @@ def update_changelog(
     clp = wt.abspath(os.path.join(subpath, "debian/changelog"))
 
     if author is None:
-        author = "%s <%s>" % get_maintainer()
+        author = "{} <{}>".format(*get_maintainer())
 
     try:
         with ChangelogEditor(clp) as cl:
@@ -329,13 +327,14 @@ def auto_backport(argv=None):
 def main(argv=None):
     DEFAULT_BUILDER = "sbuild --no-clean-source"
     import argparse
+
     import breezy.bzr  # noqa: F401
     import breezy.git  # noqa: F401
+    from breezy.branch import Branch
     from breezy.workingtree import WorkingTree
     from breezy.workspace import check_clean_tree
-    from breezy.branch import Branch
 
-    from .apt_repo import RemoteApt, LocalApt, NoAptSources
+    from .apt_repo import LocalApt, NoAptSources, RemoteApt
     from .directory import source_package_vcs_url
 
     parser = argparse.ArgumentParser()
@@ -510,9 +509,7 @@ def main(argv=None):
         else:
             report_fatal(
                 "missing-remote-tag",
-                "Unable to find tag for version {} in branch {}".format(
-                    version, remote_db.branch
-                ),
+                f"Unable to find tag for version {version} in branch {remote_db.branch}",
             )
             return 1
         logging.info("Merging tag %s", tag_name)

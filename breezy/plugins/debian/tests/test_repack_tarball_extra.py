@@ -22,13 +22,12 @@ import os
 import shutil
 import tarfile
 
-from ..repack_tarball import (
-    repack_tarball,
-    UnsupportedRepackFormat,
-)
-
-from ....transport import FileExists
 from ....tests import TestCaseInTempDir
+from ....transport import FileExists
+from ..repack_tarball import (
+    UnsupportedRepackFormat,
+    repack_tarball,
+)
 
 
 def touch(filename):
@@ -37,7 +36,7 @@ def touch(filename):
 
 
 def create_basedir(basedir, files):
-    """Create the basedir that the source can be built from"""
+    """Create the basedir that the source can be built from."""
     os.mkdir(basedir)
     for filename in [os.path.join(basedir, file) for file in files]:
         if filename.endswith("/"):

@@ -21,9 +21,9 @@
 
 """Blackbox tests for "bzr dep3-patch"."""
 
-from .....tests.blackbox import ExternalBase
-
 import os
+
+from .....tests.blackbox import ExternalBase
 
 
 class TestDep3Patch(ExternalBase):

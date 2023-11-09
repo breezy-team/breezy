@@ -25,7 +25,6 @@ from debian.changelog import (
     Version,
 )
 
-
 from .. import BuilddebTestCase
 
 
@@ -47,9 +46,8 @@ class TestGetOrigSource(BuilddebTestCase):
         return c
 
     def make_unpacked_source(self):
-        """
-        Create an unpacked source tree in a branch. Return the working
-        tree
+        """Create an unpacked source tree in a branch. Return the working
+        tree.
         """
         tree = self.make_branch_and_tree(".")
         cl_file = "debian/changelog"

@@ -29,9 +29,10 @@ brz_commands = [
 
 
 def versions_dict():
-    import breezy
     import debian
     import debmutate
+
+    import breezy
 
     return {
         "python-debian": debian.__version__,

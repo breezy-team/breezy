@@ -21,9 +21,9 @@
 
 """Blackbox tests for "bzr debrelease"."""
 
-from .....tests.blackbox import ExternalBase
-
 import os
+
+from .....tests.blackbox import ExternalBase
 
 
 class TestDebrelease(ExternalBase):

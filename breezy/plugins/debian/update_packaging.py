@@ -17,13 +17,14 @@
 
 """Refresh packaging."""
 
-from email.utils import parseaddr
 import logging
 import os
+from email.utils import parseaddr
 from typing import Optional
 
 from debian.changelog import get_maintainer
 from debmutate.changelog import ChangelogEditor
+
 from breezy.plugins.debian.changelog import debcommit
 from breezy.tree import Tree
 
@@ -100,11 +101,11 @@ def update_packaging(
 
 def main():
     import argparse
-    from breezy.workingtree import WorkingTree
-    from breezy.revisionspec import RevisionSpec
 
     import breezy.bzr  # noqa: F401
     import breezy.git  # noqa: F401
+    from breezy.revisionspec import RevisionSpec
+    from breezy.workingtree import WorkingTree
 
     parser = argparse.ArgumentParser("deb-update-packaging")
     parser.add_argument("--since", type=str, help="Revision since when to update")

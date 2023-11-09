@@ -20,11 +20,10 @@
 from itertools import islice
 from typing import Optional
 
+from debmutate.versions import mangle_version_for_git
+
 from ....repository import Repository
 from ....revision import Revision
-
-
-from debmutate.versions import mangle_version_for_git
 
 
 def possible_upstream_tag_names(
@@ -49,12 +48,12 @@ def possible_upstream_tag_names(
                 tags.append("release-%s" % version)
                 tags.append("v%s-release" % version)
             if package:
-                tags.append("{}-{}".format(package, version))
+                tags.append(f"{package}-{version}")
             tags.append("v/%s" % version)
             tags.append("v.%s" % version)
     else:
-        tags.append("upstream-{}/{}".format(version, component))
-        tags.append("upstream/{}/{}".format(mangle_version_for_git(version), component))
+        tags.append(f"upstream-{version}/{component}")
+        tags.append(f"upstream/{mangle_version_for_git(version)}/{component}")
     return tags
 
 
@@ -102,10 +101,10 @@ def _rev_is_upstream_import(revision: Revision, package: Optional[str], version:
     if package is not None:
         possible_messages.extend(
             [
-                "Import {}_{}".format(package, version),
-                "import {}_{}".format(package, version),
+                f"Import {package}_{version}",
+                f"import {package}_{version}",
                 "import {}-{}".format(package.replace("-", "_"), version),
-                "{}-{}".format(package, version),
+                f"{package}-{version}",
             ]
         )
     possible_messages.extend(
@@ -130,7 +129,7 @@ def _rev_is_upstream_merge(
     ):
         return True
     if package is not None and revision.message.lower().startswith(
-        ("Merge tag '{}-{}' into ".format(package, version)).lower()
+        (f"Merge tag '{package}-{version}' into ").lower()
     ):
         return True
     return False
@@ -148,12 +147,12 @@ def upstream_version_tag_start_revids(tag_dict, package: Optional[str], version:
         # as DEP-14 suggests.
         "debian/%s-" % mangle_version_for_git(version.replace(":", "_")),
         # Haskell repo style
-        "{}_v{}".format(package, version),
+        f"{package}_v{version}",
     ]
     if package:
-        candidate_tag_start.append("debian-{}-{}".format(package, version))
+        candidate_tag_start.append(f"debian-{package}-{version}")
     for tag_name, revid in tag_dict.items():
-        if any([tag_name.startswith(tag_start) for tag_start in candidate_tag_start]):
+        if any(tag_name.startswith(tag_start) for tag_start in candidate_tag_start):
             yield (tag_name, revid)
 
 
@@ -169,7 +168,7 @@ def search_for_upstream_version(
     """Find possible upstream revisions that don't have appropriate tags."""
     todo = []
     graph = repository.get_graph()
-    for revid, parents in islice(graph.iter_ancestry(start_revids), scan_depth):
+    for revid, _parents in islice(graph.iter_ancestry(start_revids), scan_depth):
         todo.append(revid)
     for revid, rev in repository.iter_revisions(todo):
         if rev is None:

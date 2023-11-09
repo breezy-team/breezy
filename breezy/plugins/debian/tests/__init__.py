@@ -18,22 +18,20 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+import doctest
+import os
 import shutil
 import subprocess
 import tarfile
 import zipfile
 
-import doctest
-import os
+from debian.changelog import Changelog, Version
 
 from .... import tests
-
-from debian.changelog import Version, Changelog
-
 from ....tests import (  # noqa: F401
-    multiply_tests,
-    TestCaseWithTransport,
     TestCaseInTempDir,
+    TestCaseWithTransport,
+    multiply_tests,
 )
 from ....tests.features import (  # noqa: F401
     ExecutableFeature,
@@ -134,7 +132,7 @@ def load_tests(loader, basic_tests, pattern):
     ]
     basic_tests.addTest(
         loader.loadTestsFromModuleNames(
-            ["{}.{}".format(__name__, i) for i in testmod_names]
+            [f"{__name__}.{i}" for i in testmod_names]
         )
     )
 
@@ -147,51 +145,51 @@ def load_tests(loader, basic_tests, pattern):
     scenarios = [
         (
             "dir",
-            dict(build_tarball=make_new_upstream_dir, old_tarball="../package-0.2"),
+            {"build_tarball": make_new_upstream_dir, "old_tarball": "../package-0.2"},
         ),
         (
             ".tar.gz",
-            dict(
-                build_tarball=make_new_upstream_tarball,
-                old_tarball="../package-0.2.tar.gz",
-            ),
+            {
+                "build_tarball": make_new_upstream_tarball,
+                "old_tarball": "../package-0.2.tar.gz",
+            },
         ),
         (
             ".tar.bz2",
-            dict(
-                build_tarball=make_new_upstream_tarball_bz2,
-                old_tarball="../package-0.2.tar.bz2",
-            ),
+            {
+                "build_tarball": make_new_upstream_tarball_bz2,
+                "old_tarball": "../package-0.2.tar.bz2",
+            },
         ),
         (
             ".tar.xz",
-            dict(
-                build_tarball=make_new_upstream_tarball_xz,
-                old_tarball="../package-0.2.tar.xz",
-                _test_needs_features=[XzFeature],
-            ),
+            {
+                "build_tarball": make_new_upstream_tarball_xz,
+                "old_tarball": "../package-0.2.tar.xz",
+                "_test_needs_features": [XzFeature],
+            },
         ),
         (
             ".tar.lzma",
-            dict(
-                build_tarball=make_new_upstream_tarball_lzma,
-                old_tarball="../package-0.2.tar.lzma",
-                _test_needs_features=[LzmaFeature],
-            ),
+            {
+                "build_tarball": make_new_upstream_tarball_lzma,
+                "old_tarball": "../package-0.2.tar.lzma",
+                "_test_needs_features": [LzmaFeature],
+            },
         ),
         (
             ".zip",
-            dict(
-                build_tarball=make_new_upstream_tarball_zip,
-                old_tarball="../package-0.2.zip",
-            ),
+            {
+                "build_tarball": make_new_upstream_tarball_zip,
+                "old_tarball": "../package-0.2.zip",
+            },
         ),
         (
             ".tar",
-            dict(
-                build_tarball=make_new_upstream_tarball_bare,
-                old_tarball="../package-0.2.tar",
-            ),
+            {
+                "build_tarball": make_new_upstream_tarball_bare,
+                "old_tarball": "../package-0.2.tar",
+            },
         ),
     ]
     basic_tests = multiply_tests(repack_tarball_tests, scenarios, basic_tests)
@@ -254,12 +252,11 @@ class BuilddebTestCase(tests.TestCaseWithTransport):
 
             if len(real_expected) > 0:
                 self.fail(
-                    "Files not found in %s: %s" % (tarball, ", ".join(real_expected))
+                    "Files not found in {}: {}".format(tarball, ", ".join(real_expected))
                 )
             if len(extras) > 0:
                 self.fail(
-                    "Files not expected to be found in %s: %s"
-                    % (tarball, ", ".join(extras))
+                    "Files not expected to be found in {}: {}".format(tarball, ", ".join(extras))
                 )
         finally:
             tar.close()
@@ -288,8 +285,7 @@ class SourcePackageBuilder:
         version3=False,
         multiple_upstream_tarballs=None,
     ):
-        """
-        :param name: Package name
+        """:param name: Package name
         :param version: Package version
         :param native: Whether to build a native source package
         :param version3: Whether to build a version 3.0 source package
@@ -359,21 +355,19 @@ class SourcePackageBuilder:
             self._cl.add_change(change_text)
 
     def dsc_name(self):
-        return "{}_{}.dsc".format(self.name, str(self._cl.version))
+        return f"{self.name}_{str(self._cl.version)}.dsc"
 
     def tar_name(self):
         if self.native:
-            return "{}_{}.tar.gz".format(self.name, str(self._cl.version))
-        return "{}_{}.orig.tar.gz".format(
-            self.name, str(self._cl.version.upstream_version)
-        )
+            return f"{self.name}_{str(self._cl.version)}.tar.gz"
+        return f"{self.name}_{str(self._cl.version.upstream_version)}.orig.tar.gz"
 
     def diff_name(self):
         assert not self.native, "Can't have a diff with a native package"
-        return "{}_{}.diff.gz".format(self.name, str(self._cl.version))
+        return f"{self.name}_{str(self._cl.version)}.diff.gz"
 
     def changes_name(self):
-        return "{}_{}_source.changes".format(self.name, str(self._cl.version))
+        return f"{self.name}_{str(self._cl.version)}_source.changes"
 
     def _make_files(self, files_list, basedir):
         for path, content in files_list.items():
@@ -418,9 +412,7 @@ class SourcePackageBuilder:
                 shutil.copytree(basedir, orig_basedir, symlinks=True)
                 cmd = ["dpkg-source", "-sa", "-b", basedir]
                 if os.path.exists(
-                    "{}_{}.orig.tar.gz".format(
-                        self.name, self._cl.version.upstream_version
-                    )
+                    f"{self.name}_{self._cl.version.upstream_version}.orig.tar.gz"
                 ):
                     cmd = ["dpkg-source", "-ss", "-b", basedir]
             else:
@@ -460,7 +452,7 @@ class SourcePackageBuilder:
         self.write_debian_files(basedir)
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         ret = proc.wait()
-        assert ret == 0, "dpkg-source failed, output:\n%s" % (proc.stdout.read(),)
+        assert ret == 0, f"dpkg-source failed, output:\n{proc.stdout.read()}"
         cmd = "dpkg-genchanges -S > ../%s" % self.changes_name()
         proc = subprocess.Popen(
             cmd,
@@ -470,7 +462,7 @@ class SourcePackageBuilder:
             cwd=basedir,
         )
         ret = proc.wait()
-        assert ret == 0, "dpkg-genchanges failed, output:\n%s" % (proc.stdout.read(),)
+        assert ret == 0, f"dpkg-genchanges failed, output:\n{proc.stdout.read()}"
         shutil.rmtree(basedir)
 
 

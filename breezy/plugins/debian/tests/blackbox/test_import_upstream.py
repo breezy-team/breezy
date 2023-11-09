@@ -21,8 +21,8 @@
 
 from debian.changelog import Version
 
-from .test_import_dsc import TestBaseImportDsc
 from ..test_import_dsc import PristineTarFeature
+from .test_import_dsc import TestBaseImportDsc
 
 
 class TestImportUpstream(TestBaseImportDsc):
@@ -92,7 +92,7 @@ class TestImportUpstream(TestBaseImportDsc):
             ["import-upstream", self.upstream_version, tar_path], working_dir="working"
         )
         self.assertEqual(
-            "Imported {} as tag:upstream-{}.\n".format(tar_path, self.upstream_version),
+            f"Imported {tar_path} as tag:upstream-{self.upstream_version}.\n",
             out,
         )
         tree.lock_read()

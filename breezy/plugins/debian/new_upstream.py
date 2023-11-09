@@ -25,115 +25,100 @@ import socket
 import ssl
 import tempfile
 import traceback
-from typing import Optional, Callable, Union
+from typing import Callable, Optional, Union
 
-from breezy.bzr import LineEndingError
-from breezy.git.remote import RemoteGitError
+from debian.changelog import ChangelogParseError, Version
+from debmutate.changelog import ChangelogEditor, upstream_merge_changelog_line
+from debmutate.reformatting import GeneratedFile
+from debmutate.vcs import split_vcs_url
+from debmutate.versions import (
+    add_dfsg_suffix,
+    debianize_upstream_version,
+    initial_debian_revision,
+    matches_release,
+    new_upstream_package_version,
+    strip_dfsg_suffix,
+)
+from debmutate.watch import WatchSyntaxError
+
 import breezy.plugins.launchpad  # noqa: F401
-from breezy.workingtree import WorkingTree
-
-from debian.changelog import Version, ChangelogParseError
-
 from breezy import errors, urlutils
-
 from breezy.branch import Branch
+from breezy.bzr import LineEndingError
 from breezy.controldir import ControlDir
 from breezy.errors import (
+    InvalidHttpResponse,
     InvalidNormalization,
     NoCommits,
-    InvalidHttpResponse,
     NoRoundtrippingSupport,
     UncommittedChanges,
 )
+from breezy.git.remote import RemoteGitError
+from breezy.transform import MalformedTransform
 from breezy.transport import (
     FileExists,
     NoSuchFile,
-    UnsupportedProtocol,
-)
-
-from breezy.workingtree import PointlessMerge
-from breezy.transport import (
     Transport,
+    UnsupportedProtocol,
     UnusableRedirect,
     get_transport,
 )
+from breezy.tree import MissingNestedTree, Tree
+from breezy.workingtree import PointlessMerge, WorkingTree
+
+from .changelog import debcommit
 from .config import UpstreamMetadataSyntaxError
-from .info import versions_dict
-from .util import (
-    InconsistentSourceFormatError,
-)
 from .import_dsc import (
+    CorruptUpstreamSourceFile,
     UpstreamAlreadyImported,
     UpstreamBranchAlreadyMerged,
-    CorruptUpstreamSourceFile,
 )
-from .changelog import debcommit
-
-from breezy.transform import MalformedTransform
-
+from .info import versions_dict
 from .merge_upstream import (
-    get_upstream_branch_location,
     do_import,
     do_merge,
     get_existing_imported_upstream_revids,
     get_tarballs,
+    get_upstream_branch_location,
 )
 from .repack_tarball import (
     UnsupportedRepackFormat,
 )
-
+from .upstream import (
+    MissingUpstreamTarball,
+    PackageVersionNotPresent,
+    TarfileSource,
+)
+from .upstream.branch import (
+    DistCommandFailed,
+    PreviousVersionTagMissing,
+    UpstreamBranchSource,
+    run_dist_command,
+)
 from .upstream.pristinetar import (
     PristineTarError,
     get_pristine_tar_source,
 )
-
-from .util import (
-    debuild_config,
-    guess_build_type,
-    get_files_excluded,
-    tree_contains_upstream_source,
-    BUILD_TYPE_MERGE,
-    BUILD_TYPE_NATIVE,
-    find_changelog,
-    MissingChangelogError,
-    control_files_in_root,
-    full_branch_url,
-)
-
-from .upstream import (
-    TarfileSource,
-    MissingUpstreamTarball,
-    PackageVersionNotPresent,
-)
 from .upstream.uscan import (
-    UScanSource,
-    UScanError,
     NoWatchFile,
+    UScanError,
+    UScanSource,
     WatchLineWithoutMatches,
     WatchLineWithoutMatchingHrefs,
 )
-from .upstream.branch import (
-    UpstreamBranchSource,
-    DistCommandFailed,
-    run_dist_command,
-    PreviousVersionTagMissing,
+from .util import (
+    BUILD_TYPE_MERGE,
+    BUILD_TYPE_NATIVE,
+    InconsistentSourceFormatError,
+    MissingChangelogError,
+    control_files_in_root,
+    debuild_config,
+    find_changelog,
+    full_branch_url,
+    get_files_excluded,
+    guess_build_type,
+    tree_contains_upstream_source,
 )
-
-from debmutate.changelog import ChangelogEditor, upstream_merge_changelog_line
-from debmutate.reformatting import GeneratedFile
-from debmutate.versions import (
-    add_dfsg_suffix,
-    strip_dfsg_suffix,
-    matches_release,
-    new_upstream_package_version,
-    initial_debian_revision,
-    debianize_upstream_version,
-)
-
-from debmutate.vcs import split_vcs_url
-from debmutate.watch import WatchSyntaxError
-
-from breezy.tree import Tree, MissingNestedTree
 
 
 class BigVersionJump(Exception):
@@ -1333,9 +1318,7 @@ def main(argv=None):
         except UpstreamBranchLocationInvalid as e:
             report_fatal(
                 "upstream-branch-invalid",
-                "The upstream branch location ({}) is invalid: {}".format(
-                    e.url, e.extra
-                ),
+                f"The upstream branch location ({e.url}) is invalid: {e.extra}",
                 transient=False,
             )
             return 1
@@ -1343,7 +1326,7 @@ def main(argv=None):
             report_fatal(
                 "changelog-generated-file",
                 "changelog file can't be updated because it is generated. "
-                "(template type: %s, path: %s)" % (e.template_type, e.template_path),
+                f"(template type: {e.template_type}, path: {e.template_path})",
             )
             return 1
         except UnsupportedRepackFormat as e:
@@ -1376,17 +1359,14 @@ def main(argv=None):
         except PreviousVersionTagMissing as e:
             report_fatal(
                 "previous-upstream-missing",
-                "Previous upstream version %s missing (tag: %s)."
-                % (e.version, e.tag_name),
+                f"Previous upstream version {e.version} missing (tag: {e.tag_name}).",
                 transient=False,
             )
             return 1
         except InvalidFormatUpstreamVersion as e:
             report_fatal(
                 "invalid-upstream-version-format",
-                "{!r} reported invalid format version string {}.".format(
-                    e.source, e.version
-                ),
+                f"{e.source!r} reported invalid format version string {e.version}.",
                 transient=False,
             )
             return 1
@@ -1445,7 +1425,7 @@ def main(argv=None):
         except PackageIsNative as e:
             report_fatal(
                 "native-package",
-                "Package {} is native; unable to merge new upstream.".format(e.package),
+                f"Package {e.package} is native; unable to merge new upstream.",
                 transient=False,
             )
             return 1
@@ -1456,9 +1436,7 @@ def main(argv=None):
             return 1
         except UpstreamVersionMissingInUpstreamBranch as e:
             error_description = (
-                "Upstream version {} not in upstream branch {!r}".format(
-                    e.version, e.branch
-                )
+                f"Upstream version {e.version} not in upstream branch {e.branch!r}"
             )
             error_code = "upstream-version-missing-in-upstream-branch"
             report_fatal(error_code, error_description, transient=False)
@@ -1495,7 +1473,7 @@ def main(argv=None):
         except UpstreamMetadataSyntaxError as e:
             report_fatal(
                 "upstream-metadata-syntax-error",
-                "Unable to parse {}: {}".format(e.path, e.error),
+                f"Unable to parse {e.path}: {e.error}",
                 transient=False,
             )
             return 1
@@ -1523,9 +1501,8 @@ def main(argv=None):
         except NewUpstreamTarballMissing as e:
             report_fatal(
                 "new-upstream-tarball-missing",
-                "New upstream version (%s/%s) found, but was missing "
-                "when retrieved as tarball from %r."
-                % (e.package, e.version, e.upstream),
+                f"New upstream version ({e.package}/{e.version}) found, but was missing "
+                f"when retrieved as tarball from {e.upstream!r}.",
                 upstream_version=e.version,
             )
             return 1
@@ -1540,8 +1517,8 @@ def main(argv=None):
         except NewerUpstreamAlreadyImported as e:
             report_fatal(
                 "newer-upstream-version-already-imported",
-                "A newer upstream release (%s) has already been imported. "
-                "Found: %s" % (e.old_upstream_version, e.new_upstream_version),
+                "A newer upstream release ({}) has already been imported. "
+                "Found: {}".format(e.old_upstream_version, e.new_upstream_version),
                 upstream_version=e.new_upstream_version,
                 transient=False,
             )
@@ -1634,8 +1611,8 @@ def main(argv=None):
             if args.refresh_patches and local_tree.has_filename(patch_series_path):
                 from .quilt_refresh import (
                     QuiltError,
-                    QuiltPatchPushFailure,
                     QuiltPatchDoesNotApply,
+                    QuiltPatchPushFailure,
                     refresh_quilt_patches,
                 )
 
@@ -1655,7 +1632,7 @@ def main(argv=None):
                     return 1
                 except QuiltPatchPushFailure as e:
                     error_description = (
-                        "An error occurred refreshing quilt patch %s" % (e.patch_name,)
+                        f"An error occurred refreshing quilt patch {e.patch_name}"
                     )
                     error_code = "quilt-refresh-error"
                     report_fatal(error_code, error_description)
@@ -1670,8 +1647,7 @@ def main(argv=None):
                     return 1
                 except QuiltPatchPushFailure as e:
                     error_description = (
-                        "An error occurred refreshing quilt patch %s: %s"
-                        % (e.patch_name, e.actual_error.extra)
+                        f"An error occurred refreshing quilt patch {e.patch_name}: {e.actual_error.extra}"
                     )
                     error_code = "quilt-refresh-error"
                     report_fatal(error_code, error_description, transient=False)

@@ -27,15 +27,14 @@ from debian.changelog import Version
 
 from .... import (
     revision as _mod_revision,
+)
+from .... import (
     tests,
 )
 from ....tests.features import (
     Feature,
     SymlinkFeature,
 )
-
-from . import make_new_upstream_tarball_xz
-
 from ..import_dsc import (
     DistributionBranch,
     DistributionBranchSet,
@@ -48,6 +47,7 @@ from . import (
     BuilddebTestCase,
     LzmaFeature,
     SourcePackageBuilder,
+    make_new_upstream_tarball_xz,
 )
 
 
@@ -869,7 +869,15 @@ class DistributionBranchTests(BuilddebTestCase):
             {None: (up_revid, "")},
         )
 
-    def check_changes(self, changes, added=[], removed=[], modified=[], renamed=[]):
+    def check_changes(self, changes, added=None, removed=None, modified=None, renamed=None):
+        if renamed is None:
+            renamed = []
+        if modified is None:
+            modified = []
+        if removed is None:
+            removed = []
+        if added is None:
+            added = []
         def check_one_type(type, expected, actual):
             def make_set(list):
                 output = set()
@@ -896,15 +904,13 @@ class DistributionBranchTests(BuilddebTestCase):
             extra = real.difference(exp)
             if len(missing) > 0:
                 self.fail(
-                    "Some expected paths not found %s in the changes: "
-                    "%s, expected %s, got %s."
-                    % (type, str(missing), str(expected), str(actual))
+                    f"Some expected paths not found {type} in the changes: "
+                    f"{str(missing)}, expected {str(expected)}, got {str(actual)}."
                 )
             if len(extra) > 0:
                 self.fail(
-                    "Some extra paths found %s in the changes: "
-                    "%s, expected %s, got %s."
-                    % (type, str(extra), str(expected), str(actual))
+                    f"Some extra paths found {type} in the changes: "
+                    f"{str(extra)}, expected {str(expected)}, got {str(actual)}."
                 )
 
         check_one_type("added", added, changes.added)

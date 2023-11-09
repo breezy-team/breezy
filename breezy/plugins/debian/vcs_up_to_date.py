@@ -31,14 +31,14 @@ from typing import List
 from debian.changelog import Version
 from debmutate.changelog import distribution_is_unreleased
 
-from breezy.tree import Tree
-from breezy.workingtree import WorkingTree
-from breezy.plugins.debian.util import find_changelog, MissingChangelogError
 from breezy.plugins.debian.apt_repo import (
     Apt,
     LocalApt,
     RemoteApt,
 )
+from breezy.plugins.debian.util import MissingChangelogError, find_changelog
+from breezy.tree import Tree
+from breezy.workingtree import WorkingTree
 
 
 class PackageMissingInArchive(Exception):

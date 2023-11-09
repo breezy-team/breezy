@@ -26,51 +26,42 @@
 #
 
 import calendar
-from contextlib import contextmanager, ExitStack
 import os
 import stat
-import tempfile
 import tarfile
+import tempfile
+from contextlib import ExitStack, contextmanager
 from typing import Optional
 
 from debian import deb822
-from debian.changelog import Version, Changelog, VersionError
+from debian.changelog import Changelog, Version, VersionError
 from debmutate.versions import mangle_version_for_git
 
-from ...branch import Branch
 from ... import (
     controldir,
 )
+from ...branch import Branch
 from ...config import ConfigObj
 from ...errors import (
-    BzrError,
     AlreadyBranchError,
-    NotBranchError,
+    BzrError,
     NoRoundtrippingSupport,
     NoSuchTag,
+    NotBranchError,
     NoWorkingTree,
     UnrelatedBranches,
 )
 from ...revision import NULL_REVISION, RevisionID
-from ...trace import warning, mutter
+from ...trace import mutter, warning
 from ...transport import (
     get_transport,
 )
 from ...tree import Tree
-
 from .bzrtools_import import import_dir
 from .errors import (
     MultipleUpstreamTarballsNotSupported,
 )
 from .extract import extract
-from .util import (
-    export_with_nested,
-    extract_orig_tarball,
-    get_commit_info_from_changelog,
-    md5sum_filename,
-    open_file_via_transport,
-    open_transport,
-)
 from .upstream import (
     PackageVersionNotPresent,
 )
@@ -79,6 +70,14 @@ from .upstream.branch import (
 )
 from .upstream.pristinetar import (
     get_pristine_tar_source,
+)
+from .util import (
+    export_with_nested,
+    extract_orig_tarball,
+    get_commit_info_from_changelog,
+    md5sum_filename,
+    open_file_via_transport,
+    open_transport,
 )
 
 
@@ -308,7 +307,7 @@ class DistributionBranch:
         :return: a String with the name of the tag.
         """
         if vendor is not None and version.debian_revision:
-            return "{}/{}".format(vendor, mangle_version(self.branch, version))
+            return f"{vendor}/{mangle_version(self.branch, version)}"
         else:
             return mangle_version(self.branch, version)
 
@@ -407,8 +406,8 @@ class DistributionBranch:
         if vendor:
             if version.debian_revision:
                 yield from [
-                    "{}-{}".format(vendor, version),
-                    "{}/{}".format(vendor, version),
+                    f"{vendor}-{version}",
+                    f"{vendor}/{version}",
                 ]
             else:
                 yield str(version)
@@ -558,7 +557,7 @@ class DistributionBranch:
                 )
                 for (
                     pristine_upstream_revid,
-                    pristine_upstream_subpath,
+                    _pristine_upstream_subpath,
                 ) in pristine_upstream_revids.values():
                     if not graph.is_ancestor(
                         up_branch.last_revision(), pristine_upstream_revid
@@ -813,7 +812,7 @@ class DistributionBranch:
         # Make sure we see any revisions added by the upstream branch
         # since self.tree was locked.
         self.branch.repository.refresh_data()
-        for component, tag, revid, pristine_tar_imported, subpath in imported_revids:
+        for _component, _tag, revid, _pristine_tar_imported, _subpath in imported_revids:
             self.branch.fetch(self.pristine_upstream_branch, revid)
         self.pristine_upstream_branch.tags.merge_to(self.branch.tags)
 
@@ -979,6 +978,7 @@ class DistributionBranch:
             tarball.
           upstream_revisions: Upstream revision ids dictionary
           md5sum: hex digest of the md5sum of the tarball, if known.
+
         Returns:
           list with (component, tag, revid, pristine_tar_imported, subpath)
           tuples
@@ -1079,7 +1079,7 @@ class DistributionBranch:
             changelog, self.branch
         )
         if message is None:
-            message = "Import packaging changes for version %s" % (str(version),)
+            message = f"Import packaging changes for version {str(version)}"
         supports_revprops = (
             self.tree.branch.repository._format.supports_custom_revision_properties
         )
@@ -1285,7 +1285,7 @@ class DistributionBranch:
                 self._fetch_from_branch(branch, revid)
         if (
             self.branch.last_revision() != NULL_REVISION
-            and not self.branch.last_revision() in parents
+            and self.branch.last_revision() not in parents
         ):
             parents.insert(0, (self.branch.last_revision(), ""))
         return parents
@@ -1565,7 +1565,7 @@ class DistributionBranch:
 @contextmanager
 def _extract_tarballs_to_tempdir(tarballs):
     with tempfile.TemporaryDirectory() as tempdir:
-        for tarball_filename, component, md5 in tarballs:
+        for tarball_filename, component, _md5 in tarballs:
             try:
                 extract_orig_tarball(tarball_filename, component, tempdir)
             except tarfile.ReadError as e:

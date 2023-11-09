@@ -18,17 +18,16 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from .....merge import Merger
 import os
 import string
 
 from ..... import (
     errors,
 )
+from .....merge import Merger
 from .....tests import TestNotApplicable
 from ... import pre_merge_fix_ancestry
 from .. import BuilddebTestCase
-
 
 _Debian_changelog = """\
 ipsec-tools (%s) unstable; urgency=high
@@ -99,8 +98,7 @@ class TestMergePackageBB(BuilddebTestCase):
         )
 
     def make_conflicting_branches_setup(self):
-        r"""
-        Set up the following test configuration (debian upstream newer).
+        r"""Set up the following test configuration (debian upstream newer).
 
         debian-upstream                 ,------------------H
                            A-----------B                    \
@@ -183,7 +181,7 @@ class TestMergePackageBB(BuilddebTestCase):
             return "revid_{}_{}".format(name.replace("-", "_"), vid)
 
         def add_paths(paths):
-            qpaths = ["{}/{}".format(name, path) for path in paths]
+            qpaths = [f"{name}/{path}" for path in paths]
             self.build_tree(qpaths)
             tree.add(paths)
 
@@ -207,9 +205,9 @@ class TestMergePackageBB(BuilddebTestCase):
             vid = vids.pop(0)
             if log_format is not None:
                 cle = changelog(version, vid)
-                p = "{}/work/{}/debian/changelog".format(self.test_base_dir, name)
+                p = f"{self.test_base_dir}/work/{name}/debian/changelog"
                 _prepend_log(cle, p)
-            revid = tree.commit("{}: {}".format(vid, msg))
+            revid = tree.commit(f"{vid}: {msg}")
             setattr(self, revid_name(vid), revid)
             tree.branch.tags.set_tag(version, revid)
 
@@ -223,7 +221,7 @@ class TestMergePackageBB(BuilddebTestCase):
                     tree.merge_from_branch(utree.branch, to_revision=urevid)
                     utree.branch.tags.merge_to(tree.branch.tags)
                     if urevid is not None:
-                        msg += "Merged tree {}|{}. ".format(tree_nick(utree), urevid)
+                        msg += f"Merged tree {tree_nick(utree)}|{urevid}. "
                     else:
                         msg += "Merged tree %s. " % utree
                 if paths is not None:

@@ -18,10 +18,9 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from breezy.tests import TestCase
-
 from debian.deb822 import Dsc
 
+from breezy.tests import TestCase
 
 from ..apt_repo import LocalApt, NoAptSources
 

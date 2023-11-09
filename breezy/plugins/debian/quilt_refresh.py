@@ -22,14 +22,14 @@ import re
 from typing import Optional
 
 from debmutate.changelog import ChangelogEditor
-from breezy.plugins.debian.changelog import debcommit
-from breezy.commit import PointlessCommit
-from breezy.tree import Tree
 
+from breezy.commit import PointlessCommit
+from breezy.plugins.debian.changelog import debcommit
 from breezy.plugins.quilt.quilt import (
     QuiltError,
     QuiltPatches,
 )
+from breezy.tree import Tree
 
 
 class QuiltPatchPushFailure(Exception):

@@ -1,32 +1,30 @@
 # This file is a modified copy of bzrtools' upstream_import.py, last changed in
 # bzrtools 1.14.0.
 
-"""Import upstream source into a branch"""
+"""Import upstream source into a branch."""
 
 from contextlib import ExitStack
-
 from io import BytesIO
 
+from ...bzr import generate_ids
+from ...errors import BzrError
+from ...osutils import (
+    basename,
+    file_iterator,
+    is_inside_any,
+    normpath,
+    splitpath,
+)
+from ...trace import warning
+from ...transform import resolve_conflicts
+from ...tree import Tree
 from ...upstream_import import (
+    DirWrapper,
     add_implied_parents,
     common_directory,
     do_directory,
     names_of_files,
-    DirWrapper,
 )
-from ...bzr import generate_ids
-
-from ...errors import BzrError
-from ...osutils import (
-    file_iterator,
-    basename,
-    splitpath,
-    normpath,
-    is_inside_any,
-)
-from ...trace import warning
-from ...tree import Tree
-from ...transform import resolve_conflicts
 
 
 class UnknownType(BzrError):

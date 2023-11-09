@@ -18,23 +18,21 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-import gzip
-import os
-from io import BytesIO
-import tarfile
 import bz2
+import gzip
 import hashlib
-
+import os
 import shutil
+import tarfile
 import time
 import zipfile
+from io import BytesIO
 
 from ...errors import (
     BzrError,
     DependencyNotPresent,
 )
-from ...transport import get_transport, FileExists
-
+from ...transport import FileExists, get_transport
 from .util import open_file, open_file_via_transport
 
 
@@ -50,7 +48,7 @@ class UnsupportedRepackFormat(BzrError):
 
 
 class TgzRepacker:
-    """Repacks something to be a .tar.gz"""
+    """Repacks something to be a .tar.gz."""
 
     def __init__(self, source_f):
         """Create a repacker that repacks what is in source_f.

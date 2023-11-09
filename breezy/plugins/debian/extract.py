@@ -19,27 +19,26 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from contextlib import ExitStack
 import os
 import subprocess
 import tempfile
+from contextlib import ExitStack
 
 from debian.changelog import Version
 
 from ... import osutils
 from ...trace import mutter
-
 from .util import (
     FORMAT_1_0,
-    FORMAT_3_0_QUILT,
     FORMAT_3_0_NATIVE,
+    FORMAT_3_0_QUILT,
     component_from_orig_tarball,
     subprocess_setup,
 )
 
 
 class SourceExtractor:
-    """A class to extract a source package to its constituent parts"""
+    """A class to extract a source package to its constituent parts."""
 
     def __init__(self, dsc_path, dsc, apply_patches: bool = False):
         self.dsc_path = dsc_path
@@ -80,14 +79,14 @@ class OneZeroSourceExtractor(SourceExtractor):
             preexec_fn=subprocess_setup,
         )
         (stdout, _) = proc.communicate()
-        assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % (stdout,)
+        assert proc.returncode == 0, f"dpkg-source -x failed, output:\n{stdout}"
         name = self.dsc["Source"]
         version = Version(self.dsc["Version"])
         self.extracted_upstream = os.path.join(
-            tempdir, "{}-{}.orig".format(name, str(version.upstream_version))
+            tempdir, f"{name}-{str(version.upstream_version)}.orig"
         )
         self.extracted_debianised = os.path.join(
-            tempdir, "{}-{}".format(name, str(version.upstream_version))
+            tempdir, f"{name}-{str(version.upstream_version)}"
         )
         if not os.path.exists(self.extracted_upstream):
             mutter("It's a native package")
@@ -129,11 +128,11 @@ class ThreeDotZeroNativeSourceExtractor(SourceExtractor):
             preexec_fn=subprocess_setup,
         )
         (stdout, _) = proc.communicate()
-        assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % (stdout,)
+        assert proc.returncode == 0, f"dpkg-source -x failed, output:\n{stdout}"
         name = self.dsc["Source"]
         version = Version(self.dsc["Version"])
         self.extracted_debianised = os.path.join(
-            tempdir, "{}-{}".format(name, str(version.upstream_version))
+            tempdir, f"{name}-{str(version.upstream_version)}"
         )
         self.extracted_upstream = None
         for part in self.dsc["files"]:
@@ -164,11 +163,11 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
             preexec_fn=subprocess_setup,
         )
         (stdout, _) = proc.communicate()
-        assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % (stdout,)
+        assert proc.returncode == 0, f"dpkg-source -x failed, output:\n{stdout}"
         name = self.dsc["Source"]
         version = Version(self.dsc["Version"])
         self.extracted_debianised = os.path.join(
-            tempdir, "{}-{}".format(name, str(version.upstream_version))
+            tempdir, f"{name}-{str(version.upstream_version)}"
         )
         self.extracted_upstream = self.extracted_debianised + ".orig"
         os.rename(self.extracted_debianised, self.extracted_upstream)
@@ -180,7 +179,7 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
             preexec_fn=subprocess_setup,
         )
         (stdout, _) = proc.communicate()
-        assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % (stdout,)
+        assert proc.returncode == 0, f"dpkg-source -x failed, output:\n{stdout}"
         # Check that there are no unreadable files extracted.
         subprocess.call(
             [
@@ -210,7 +209,7 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
         )
         for part in self.dsc["files"]:
             if part["name"].startswith(
-                "{}_{}.orig".format(name, str(version.upstream_version))
+                f"{name}_{str(version.upstream_version)}.orig"
             ) and not part["name"].endswith(".asc"):
                 self.upstream_tarballs.append(
                     (

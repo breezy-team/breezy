@@ -22,15 +22,14 @@
 
 """Tests for the upstream module."""
 
-from base64 import standard_b64encode
-
 import bz2
 import os
 import tarfile
 import zipfile
+from base64 import standard_b64encode
+from unittest import expectedFailure
 
 from debian.deb822 import Dsc
-from unittest import expectedFailure
 
 from ....revision import (
     NULL_REVISION,
@@ -42,21 +41,14 @@ from ....tests import (
 from ....tests.features import (
     ModuleAvailableFeature,
 )
+from ..apt_repo import Apt, AptSourceError
 from ..config import (
     DebBuildConfig,
 )
-
-from . import (
-    LzmaFeature,
-    XzFeature,
-    make_new_upstream_tarball_xz,
-    TestCaseWithTransport,
-)
-from ..apt_repo import Apt, AptSourceError
 from ..upstream import (
+    AptSource,
     MissingUpstreamTarball,
     PackageVersionNotPresent,
-    AptSource,
     StackedUpstreamSource,
     TarfileSource,
     UpstreamProvider,
@@ -65,29 +57,34 @@ from ..upstream import (
     gather_orig_files,
     new_tarball_name,
 )
+from ..upstream.branch import (
+    LazyUpstreamBranchSource,
+    PreviousVersionTagMissing,
+    UpstreamBranchSource,
+    _upstream_branch_version,
+    get_export_upstream_revision,
+    get_snapshot_revision,
+    guess_upstream_revspec,
+    upstream_tag_to_version,
+    upstream_version_add_revision,
+)
+from ..upstream.pristinetar import (
+    BzrPristineTarSource,
+    GitPristineTarSource,
+    is_upstream_tag,
+    revision_pristine_tar_delta,
+    revision_pristine_tar_format,
+    upstream_tag_version,
+)
 from ..util import (
     component_from_orig_tarball,
 )
-from ..upstream.branch import (
-    guess_upstream_revspec,
-    get_export_upstream_revision,
-    get_snapshot_revision,
-    LazyUpstreamBranchSource,
-    UpstreamBranchSource,
-    _upstream_branch_version,
-    upstream_tag_to_version,
-    upstream_version_add_revision,
-    PreviousVersionTagMissing,
+from . import (
+    LzmaFeature,
+    TestCaseWithTransport,
+    XzFeature,
+    make_new_upstream_tarball_xz,
 )
-from ..upstream.pristinetar import (
-    is_upstream_tag,
-    revision_pristine_tar_format,
-    revision_pristine_tar_delta,
-    upstream_tag_version,
-    GitPristineTarSource,
-    BzrPristineTarSource,
-)
-
 
 svn_plugin = ModuleAvailableFeature("breezy.plugins.svn.mapping")
 dulwich = ModuleAvailableFeature("dulwich")
@@ -1543,7 +1540,7 @@ class TarfileSourceTests(TestCaseWithTransport):
 
 
 class _MissingUpstreamProvider(UpstreamProvider):
-    """For tests"""
+    """For tests."""
 
     def __init__(self):
         pass
@@ -1553,7 +1550,7 @@ class _MissingUpstreamProvider(UpstreamProvider):
 
 
 class _TouchUpstreamProvider(UpstreamProvider):
-    """For tests"""
+    """For tests."""
 
     def __init__(self, desired_tarball_name):
         self.desired_tarball_name = desired_tarball_name
@@ -1566,7 +1563,7 @@ class _TouchUpstreamProvider(UpstreamProvider):
 
 
 class _SimpleUpstreamProvider(UpstreamProvider):
-    """For tests"""
+    """For tests."""
 
     def __init__(self, package, version, store_dir):
         self.package = package

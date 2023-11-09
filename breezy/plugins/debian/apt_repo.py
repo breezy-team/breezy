@@ -24,7 +24,7 @@ import tempfile
 from threading import Semaphore
 from typing import Optional
 
-from debian.deb822 import Dsc, Deb822
+from debian.deb822 import Deb822, Dsc
 
 from breezy.errors import DependencyNotPresent
 
@@ -42,7 +42,7 @@ class AptSourceError(Exception):
 
 def _convert_apt_pkg_error(e):
     if "28: No space left on device":
-        return IOError(errno.ENOSPC, str(e))
+        return OSError(errno.ENOSPC, str(e))
     return e
 
 
@@ -85,7 +85,7 @@ class LocalApt(Apt):
         self._rootdir = rootdir
 
     def __repr__(self):
-        return "{}({!r})".format(type(self).__name__, self._rootdir)
+        return f"{type(self).__name__}({self._rootdir!r})"
 
     def __enter__(self):
         try:
@@ -170,7 +170,7 @@ class LocalApt(Apt):
             [
                 "-y",
                 "--only-source",
-                ("{}={}".format(package, version_str))
+                (f"{package}={version_str}")
                 if version_str is not None
                 else package,
             ]

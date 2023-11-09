@@ -19,10 +19,10 @@
 #
 
 from ...errors import (
-    NoSuchTag,
     BzrError,
+    NoSuchTag,
 )
-from ...revisionspec import RevisionSpec, RevisionInfo, InvalidRevisionSpec
+from ...revisionspec import InvalidRevisionSpec, RevisionInfo, RevisionSpec
 
 
 class UnknownVersion(BzrError):
@@ -78,14 +78,15 @@ class RevisionSpec_upstream(RevisionSpec):
     prefix = "upstream:"
 
     def _match_on(self, branch, revs=None):
-        from ...workingtree import WorkingTree
-        from .util import (
-            find_changelog,
-            MissingChangelogError,
-        )
-        from .upstream.pristinetar import get_pristine_tar_source
-        from .upstream import StackedUpstreamSource
         from debian.changelog import Version
+
+        from ...workingtree import WorkingTree
+        from .upstream import StackedUpstreamSource
+        from .upstream.pristinetar import get_pristine_tar_source
+        from .util import (
+            MissingChangelogError,
+            find_changelog,
+        )
 
         tree, subpath = WorkingTree.open_containing(".")
         try:
