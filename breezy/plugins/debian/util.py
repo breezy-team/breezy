@@ -747,7 +747,7 @@ def needs_strip_components(tf):
 
 
 def extract_orig_tarball(
-    tarball_filename, component, target, strip_components: Optional[bool] = None
+    tarball_filename, component, target, strip_components: Optional[int] = None
 ) -> None:
     """Extract an orig tarball.
 
@@ -778,11 +778,9 @@ def extract_orig_tarball(
     try:
         if strip_components is None:
             if needs_strip_components(tf):
-                strip_components_no = 1
+                strip_components = 1
             else:
-                strip_components_no = 0
-        else:
-            strip_components_no = None
+                strip_components = 0
     finally:
         tf.close()
     if component is not None:
@@ -791,8 +789,8 @@ def extract_orig_tarball(
     else:
         target_path = target
     tar_args.extend([tarball_filename, "-C", target_path])
-    if strip_components_no is not None:
-        tar_args.extend(["--strip-components", str(strip_components_no)])
+    if strip_components is not None:
+        tar_args.extend(["--strip-components", str(strip_components)])
     proc = subprocess.Popen(
         tar_args, preexec_fn=subprocess_setup, stderr=subprocess.PIPE
     )
