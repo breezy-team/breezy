@@ -932,8 +932,8 @@ def merge_upstream(  # noqa: C901
                     )
                 else:
                     raise NewUpstreamTarballMissing(
-                        e.package,
-                        e.version,
+                        e.package,  # type: ignore
+                        e.version,  # type: ignore
                         e.upstream,  # type: ignore
                     ) from e
 

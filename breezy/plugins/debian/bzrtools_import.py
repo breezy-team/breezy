@@ -18,7 +18,6 @@ from ...osutils import (
 )
 from ...trace import warning
 from ...transform import resolve_conflicts
-from ...tree import Tree
 from ...upstream_import import (
     DirWrapper,
     add_implied_parents,
@@ -52,7 +51,7 @@ def should_ignore(relative_path: str) -> bool:
 
 
 def import_dir(
-    tree: Tree, dir: str, file_ids_from=None, target_tree=None, exclude=None
+    tree: WorkingTree, dir: str, file_ids_from=None, target_tree=None, exclude=None
 ):
     dir_input = BytesIO(dir.encode("utf-8"))
     dir_input.seek(0)
@@ -64,7 +63,7 @@ def import_dir(
             es.enter_context(other_tree.lock_read())
         return _import_archive(
             tree,
-            dir_file,
+            dir_file,  # type: ignore
             file_ids_from,
             target_tree=target_tree,
             exclude=exclude,  # type: ignore
