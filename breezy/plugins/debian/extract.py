@@ -72,14 +72,15 @@ class OneZeroSourceExtractor(SourceExtractor):
         tempdir = self.exit_stack.enter_context(tempfile.TemporaryDirectory())
         dsc_filename = os.path.abspath(self.dsc_path)
         proc = subprocess.Popen(
-            ["dpkg-source", "-su", "-x", dsc_filename],
+            ["dpkg-source", "-su", "-x", dsc_filename],  # noqa: S607
             cwd=tempdir,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             preexec_fn=subprocess_setup,
         )
         (stdout, _) = proc.communicate()
-        assert proc.returncode == 0, f"dpkg-source -x failed, output:\n{stdout}"
+        if proc.returncode != 0:
+            raise AssertionError(f"dpkg-source -x failed, output:\n{stdout}")
         name = self.dsc["Source"]
         version = Version(self.dsc["Version"])
         self.extracted_upstream = os.path.join(
@@ -121,14 +122,15 @@ class ThreeDotZeroNativeSourceExtractor(SourceExtractor):
         tempdir = self.exit_stack.enter_context(tempfile.TemporaryDirectory())
         dsc_filename = os.path.abspath(self.dsc_path)
         proc = subprocess.Popen(
-            ["dpkg-source", "-x", dsc_filename],
+            ["dpkg-source", "-x", dsc_filename],  # noqa: S607
             cwd=tempdir,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             preexec_fn=subprocess_setup,
         )
         (stdout, _) = proc.communicate()
-        assert proc.returncode == 0, f"dpkg-source -x failed, output:\n{stdout}"
+        if proc.returncode != 0:
+            raise AssertionError(f"dpkg-source -x failed, output:\n{stdout}")
         name = self.dsc["Source"]
         version = Version(self.dsc["Version"])
         self.extracted_debianised = os.path.join(
@@ -163,7 +165,8 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
             preexec_fn=subprocess_setup,
         )
         (stdout, _) = proc.communicate()
-        assert proc.returncode == 0, f"dpkg-source -x failed, output:\n{stdout}"
+        if proc.returncode != 0:
+            raise AssertionError(f"dpkg-source -x failed, output:\n{stdout}")
         name = self.dsc["Source"]
         version = Version(self.dsc["Version"])
         self.extracted_debianised = os.path.join(
@@ -179,10 +182,11 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
             preexec_fn=subprocess_setup,
         )
         (stdout, _) = proc.communicate()
-        assert proc.returncode == 0, f"dpkg-source -x failed, output:\n{stdout}"
+        if proc.returncode != 0:
+            raise AssertionError(f"dpkg-source -x failed, output:\n{stdout}")
         # Check that there are no unreadable files extracted.
         subprocess.call(
-            [
+            [  # noqa: S607
                 "find",
                 self.extracted_upstream,
                 "-perm",
@@ -195,7 +199,7 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
             ]
         )
         subprocess.call(
-            [
+            [  # noqa: S607
                 "find",
                 self.extracted_debianised,
                 "-perm",
@@ -228,10 +232,10 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
                 or part["name"].endswith(".debian.tar.xz")
             ):
                 self.unextracted_debian_md5 = str(part["md5sum"])
-        assert (
+        assert (  # noqa: S101
             self.upstream_tarballs is not None
         ), "Can't handle non gz|bz2|xz tarballs yet"
-        assert (
+        assert (  # noqa: S101
             self.unextracted_debian_md5 is not None
         ), "Can't handle non gz|bz2|xz tarballs yet"
 

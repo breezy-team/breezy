@@ -22,7 +22,7 @@ import string
 
 from debian.changelog import Version
 
-from .. import merge_package as MP
+from .. import merge_package as _mod_merge_package
 from ..import_dsc import DistributionBranch
 from . import TestCaseWithTransport
 
@@ -54,10 +54,14 @@ def _prepend_log(text, path):
 class MergePackageTests(TestCaseWithTransport):
     def test__upstream_version_data(self):
         ubup_o, debp_n, _ubuu, _debu = self._setup_debian_upstream_newer()
-        vdata = MP._upstream_version_data(debp_n.branch, debp_n.last_revision())
+        vdata = _mod_merge_package._upstream_version_data(
+            debp_n.branch, debp_n.last_revision()
+        )
         self.assertEqual(vdata[0], Version("1.10"))
 
-        vdata = MP._upstream_version_data(ubup_o.branch, ubup_o.last_revision())
+        vdata = _mod_merge_package._upstream_version_data(
+            ubup_o.branch, ubup_o.last_revision()
+        )
         self.assertEqual(vdata[0], Version("1.2"))
 
     def test_debian_upstream_newer(self):
@@ -106,9 +110,10 @@ class MergePackageTests(TestCaseWithTransport):
         ubup_tip_pre_fix = ubup.branch.last_revision()
 
         # The first conflict is resolved by calling fix_ancestry_as_needed().
-        upstreams_diverged, t_upstream_reverted = MP.fix_ancestry_as_needed(
-            ubup, debp.branch
-        )
+        (
+            upstreams_diverged,
+            t_upstream_reverted,
+        ) = _mod_merge_package.fix_ancestry_as_needed(ubup, debp.branch)
 
         # The ancestry did diverge and needed to be fixed.
         self.assertEqual(upstreams_diverged, True)
@@ -165,8 +170,8 @@ class MergePackageTests(TestCaseWithTransport):
         ubup, debp, ubuu, debu = self._setup_debian_upstream_conflicts()
 
         self.assertRaises(
-            MP.SharedUpstreamConflictsWithTargetPackaging,
-            MP.fix_ancestry_as_needed,
+            _mod_merge_package.SharedUpstreamConflictsWithTargetPackaging,
+            _mod_merge_package.fix_ancestry_as_needed,
             ubup,
             debp.branch,
         )
@@ -211,9 +216,10 @@ class MergePackageTests(TestCaseWithTransport):
         ubup.revert()
 
         # The first conflict is resolved by calling fix_ancestry_as_needed().
-        upstreams_diverged, t_upstream_reverted = MP.fix_ancestry_as_needed(
-            ubup, debp.branch
-        )
+        (
+            upstreams_diverged,
+            t_upstream_reverted,
+        ) = _mod_merge_package.fix_ancestry_as_needed(ubup, debp.branch)
 
         # The ancestry did diverge and needed to be fixed.
         self.assertEqual(upstreams_diverged, True)
@@ -259,9 +265,10 @@ class MergePackageTests(TestCaseWithTransport):
         ubuntup.revert()
 
         # The conflict is *not* resolved by calling fix_ancestry_as_needed().
-        upstreams_diverged, t_upstream_reverted = MP.fix_ancestry_as_needed(
-            ubuntup, debianp.branch
-        )
+        (
+            upstreams_diverged,
+            t_upstream_reverted,
+        ) = _mod_merge_package.fix_ancestry_as_needed(ubuntup, debianp.branch)
 
         # The ancestry did *not* diverge.
         self.assertEqual(upstreams_diverged, False)

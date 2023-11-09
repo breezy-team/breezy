@@ -869,7 +869,9 @@ class DistributionBranchTests(BuilddebTestCase):
             {None: (up_revid, "")},
         )
 
-    def check_changes(self, changes, added=None, removed=None, modified=None, renamed=None):
+    def check_changes(
+        self, changes, added=None, removed=None, modified=None, renamed=None
+    ):
         if renamed is None:
             renamed = []
         if modified is None:
@@ -878,6 +880,7 @@ class DistributionBranchTests(BuilddebTestCase):
             removed = []
         if added is None:
             added = []
+
         def check_one_type(type, expected, actual):
             def make_set(list):
                 output = set()

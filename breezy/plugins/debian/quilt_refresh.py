@@ -64,7 +64,8 @@ def refresh_quilt_patches(
             lines = e.stdout.splitlines()
             m = re.match("Patch debian/patches/(.*) can be reverse-applied", lines[-1])
             if m:
-                assert m.group(1) == name
+                if m.group(1) != name:
+                    raise AssertionError("Unexpected patch name") from e
                 patches.delete(name, remove=True)
                 with ChangelogEditor(
                     local_tree.abspath(os.path.join(subpath, "debian/changelog"))
@@ -86,7 +87,8 @@ def refresh_quilt_patches(
                 lines[-1],
             )
             if m:
-                assert m.group(1) == name
+                if m.group(1) != name:
+                    raise AssertionError("Unexpected patch name") from e
                 raise QuiltPatchDoesNotApply(name, e) from e
             raise QuiltPatchPushFailure(name, e) from e
     patches.pop_all()

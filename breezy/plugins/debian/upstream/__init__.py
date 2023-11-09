@@ -165,9 +165,7 @@ class AptSource(UpstreamSource):
                     filenames = []
                     for entry in source["Files"]:
                         filename = os.path.basename(entry["name"])
-                        if filename.startswith(
-                            f"{package}_{upstream_version}.orig"
-                        ):
+                        if filename.startswith(f"{package}_{upstream_version}.orig"):
                             filenames.append(filename)
                     if filenames:
                         source_version = source["Version"]
@@ -364,11 +362,9 @@ class UpstreamProvider:
                 )
             except PackageVersionNotPresent as e:
                 raise MissingUpstreamTarball(self.package, self.version) from e
-            assert isinstance(paths, list)
         else:
             note("Using the upstream tarball that is present in %s" % self.store_dir)
         paths = self.provide_from_store_dir(target_dir)
-        assert paths is not None
         return [
             (p, component_from_orig_tarball(p, self.package, self.version))
             for p in paths

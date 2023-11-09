@@ -170,9 +170,7 @@ class LocalApt(Apt):
             [
                 "-y",
                 "--only-source",
-                (f"{package}={version_str}")
-                if version_str is not None
-                else package,
+                (f"{package}={version_str}") if version_str is not None else package,
             ]
         )
         return args

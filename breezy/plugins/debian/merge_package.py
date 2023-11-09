@@ -273,10 +273,10 @@ def update_changelog(
                 cl[0],
                 [summary] + [" +" + line for line in changes],
             )
-    except FileNotFoundError:
-        raise MissingChangelogError([clp])
+    except FileNotFoundError as e:
+        raise MissingChangelogError([clp]) from e
     except GeneratedFile as e:
-        raise ChangelogGeneratedFile(e.path, e.template_path, e.template_type)
+        raise ChangelogGeneratedFile(e.path, e.template_path, e.template_type) from e
 
     debcommit(wt, subpath=subpath)
 
@@ -288,7 +288,8 @@ def backport_suffix(release):
     if release in ("stable", "oldstable"):
         release = distro_info.codename(release)
     version = distro_info.version(release)
-    assert version is not None
+    if version is None:
+        raise AssertionError("Unknown release %r" % release)
     return "bpo%s" % version
 
 
@@ -459,7 +460,8 @@ def main(argv=None):
             if not args.version:
                 args.version = source["Version"]
 
-    assert branch_url
+    if branch_url is None:
+        raise AssertionError("branch_url is None")
 
     branch = Branch.open(branch_url)
 

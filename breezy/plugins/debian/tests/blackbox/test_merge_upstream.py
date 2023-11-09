@@ -125,9 +125,7 @@ class FileMovedReplacedUpstream(Fixture):
                 if child.kind == "file":
                     oldpath = child.name
             tree.rename_one(oldpath, newpath)
-            test_case.build_tree(
-                [f"{os.path.basename(tree.basedir)}/{oldpath}"]
-            )
+            test_case.build_tree([f"{os.path.basename(tree.basedir)}/{oldpath}"])
             tree.add([oldpath])
             tree.commit("yo, renaming and replacing")
 

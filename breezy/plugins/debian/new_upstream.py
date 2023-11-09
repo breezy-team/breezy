@@ -398,7 +398,7 @@ def open_branch(
     except Exception as e:
         converted = _convert_exception(url, e)
         if converted is not None:
-            raise converted
+            raise converted from e
         raise e
 
 
@@ -445,7 +445,7 @@ def find_new_upstream(  # noqa: C901
                     e,
                 )
             else:
-                raise UpstreamBranchUnavailable(upstream_branch_location, e)
+                raise UpstreamBranchUnavailable(upstream_branch_location, e) from e
             upstream_branch = None
             upstream_branch_browse = None
         except urlutils.InvalidURL as e:
@@ -454,7 +454,7 @@ def find_new_upstream(  # noqa: C901
                     "Upstream branch location %s invalid; ignoring. %s", e.path, e
                 )
             else:
-                raise UpstreamBranchLocationInvalid(e.path, e.extra)
+                raise UpstreamBranchLocationInvalid(e.path, e.extra) from e
             upstream_branch = None
             upstream_branch_browse = None
     else:
@@ -472,9 +472,9 @@ def find_new_upstream(  # noqa: C901
                 subpath=upstream_subpath,
             )
         except InvalidHttpResponse as e:
-            raise UpstreamBranchUnavailable(upstream_branch_location, str(e))
+            raise UpstreamBranchUnavailable(upstream_branch_location, str(e)) from e
         except ssl.SSLError as e:
-            raise UpstreamBranchUnavailable(upstream_branch_location, str(e))
+            raise UpstreamBranchUnavailable(upstream_branch_location, str(e)) from e
     else:
         upstream_branch_source = None
 
@@ -505,11 +505,11 @@ def find_new_upstream(  # noqa: C901
                     auto_fix=True,
                     skip_signatures=skip_signatures,
                 )
-            except NoWatchFile:
+            except NoWatchFile as e:
                 # TODO(jelmer): Call out to lintian_brush.watch to generate a
                 # watch file.
                 if upstream_branch_source is None:
-                    raise NoUpstreamLocationsKnown(package)
+                    raise NoUpstreamLocationsKnown(package) from e
                 if require_uscan:
                     raise
                 primary_upstream_source = upstream_branch_source
@@ -533,10 +533,10 @@ def find_new_upstream(  # noqa: C901
 
     try:
         new_upstream_version = Version(new_upstream_version)
-    except ValueError:
+    except ValueError as e:
         raise InvalidFormatUpstreamVersion(
             new_upstream_version, primary_upstream_source
-        )
+        ) from e
 
     if old_upstream_version:
         if strip_dfsg_suffix(str(old_upstream_version)) == strip_dfsg_suffix(
@@ -575,17 +575,17 @@ def find_new_upstream(  # noqa: C901
             upstream_revisions = upstream_branch_source.version_as_revisions(
                 package, str(new_upstream_version)
             )
-        except PackageVersionNotPresent:
+        except PackageVersionNotPresent as e:
             if upstream_branch_source is primary_upstream_source:
                 # The branch is our primary upstream source, so if it can't
                 # find the version then there's nothing we can do.
                 raise UpstreamVersionMissingInUpstreamBranch(
                     upstream_branch_source.upstream_branch, str(new_upstream_version)
-                )
+                ) from e
             elif not allow_ignore_upstream_branch:
                 raise UpstreamVersionMissingInUpstreamBranch(
                     upstream_branch_source.upstream_branch, str(new_upstream_version)
-                )
+                ) from e
             else:
                 logging.warning(
                     "Upstream version %s is not in upstream branch %s. "
@@ -743,7 +743,7 @@ def import_upstream(
                 "different to the new upstream tarball, or they "
                 "are of different formats. Either delete the target "
                 "file, or use it as the argument to import." % e.path
-            )
+            ) from e
         imported_revisions = do_import(
             tree,
             subpath,
@@ -931,7 +931,9 @@ def merge_upstream(  # noqa: C901
                         revisions=upstream_revisions,
                     )
                 else:
-                    raise NewUpstreamTarballMissing(e.package, e.version, e.upstream)
+                    raise NewUpstreamTarballMissing(
+                        e.package, e.version, e.upstream
+                    ) from e
 
             orig_path = os.path.join(target_dir, "orig")
             os.mkdir(orig_path)
@@ -945,7 +947,7 @@ def merge_upstream(  # noqa: C901
                     "different to the new upstream tarball, or they "
                     "are of different formats. Either delete the target "
                     "file, or use it as the argument to import." % e.path
-                )
+                ) from e
             try:
                 conflicts, imported_revids = do_merge(
                     tree,
@@ -962,9 +964,9 @@ def merge_upstream(  # noqa: C901
                     committer=committer,
                     files_excluded=files_excluded,
                 )
-            except UpstreamBranchAlreadyMerged:
+            except UpstreamBranchAlreadyMerged as e:
                 # TODO(jelmer): Perhaps reconcile these two exceptions?
-                raise UpstreamAlreadyMerged(new_upstream_version)
+                raise UpstreamAlreadyMerged(new_upstream_version) from e
             except UpstreamAlreadyImported:
                 pristine_tar_source = get_pristine_tar_source(tree, tree.branch)
                 imported_revids = get_existing_imported_upstream_revids(
@@ -987,8 +989,8 @@ def merge_upstream(  # noqa: C901
                         conflicts = tree.merge_from_branch(
                             tree.branch, to_revision=upstream_revid
                         )
-                except PointlessMerge:
-                    raise UpstreamAlreadyMerged(new_upstream_version)
+                except PointlessMerge as e:
+                    raise UpstreamAlreadyMerged(new_upstream_version) from e
     else:
         conflicts = 0
         imported_revids = []
@@ -997,19 +999,19 @@ def merge_upstream(  # noqa: C901
         changes = tree.iter_changes(tree.basis_tree())
         try:
             next(changes)
-        except StopIteration:
+        except StopIteration as e:
             tree.set_pending_merges([])
-            raise ReleaseWithoutChanges(new_upstream_version)
+            raise ReleaseWithoutChanges(new_upstream_version) from e
 
     # Re-read changelog, since it may have been changed by the merge
     # from upstream.
     try:
         (changelog, top_level) = find_changelog(tree, subpath, False, max_blocks=2)
-    except (ChangelogParseError, MissingChangelogError):
+    except (ChangelogParseError, MissingChangelogError) as e:
         # If there was a conflict that affected debian/changelog, then that
         # might be to blame.
         if conflicts:
-            raise UpstreamMergeConflicted(old_upstream_version, conflicts)
+            raise UpstreamMergeConflicted(old_upstream_version, conflicts) from e
         raise
     if top_level:
         debian_path = subpath
@@ -1043,7 +1045,7 @@ def merge_upstream(  # noqa: C901
 
             cl.add_entry([upstream_merge_changelog_line(new_upstream_version)])
     except GeneratedFile as e:
-        raise ChangelogGeneratedFile(e.path, e.template_path, e.template_type)
+        raise ChangelogGeneratedFile(e.path, e.template_path, e.template_type) from e
 
     if not need_upstream_tarball:
         logging.info("The changelog has been updated for the new version.")
@@ -1641,13 +1643,6 @@ def main(argv=None):
                     error_description = (
                         "An error (%d) occurred refreshing quilt patches: "
                         "%s%s" % (e.retcode, e.stderr, e.extra)
-                    )
-                    error_code = "quilt-refresh-error"
-                    report_fatal(error_code, error_description, transient=False)
-                    return 1
-                except QuiltPatchPushFailure as e:
-                    error_description = (
-                        f"An error occurred refreshing quilt patch {e.patch_name}: {e.actual_error.extra}"
                     )
                     error_code = "quilt-refresh-error"
                     report_fatal(error_code, error_description, transient=False)

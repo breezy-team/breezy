@@ -190,7 +190,7 @@ class DebcargoError(bzr_errors.BzrError):
 
 
 def cargo_translate_dashes(crate):
-    output = subprocess.check_output(["cargo", "search", crate])
+    output = subprocess.check_output(["cargo", "search", crate])  # noqa: S607
     for line in output.splitlines(False):
         name = line.split(b" = ")[0].decode()
         return name

@@ -159,9 +159,9 @@ def get_repacker_class(source_format, target_format):
 
 def _error_if_exists(target_transport, new_name, source_name):
     with open_file(source_name) as source_f:
-        source_sha = hashlib.sha1(source_f.read()).hexdigest()
+        source_sha = hashlib.sha256(source_f.read()).hexdigest()
     with open_file_via_transport(new_name, target_transport) as target_f:
-        target_sha = hashlib.sha1(target_f.read()).hexdigest()
+        target_sha = hashlib.sha256(target_f.read()).hexdigest()
     if source_sha != target_sha:
         raise FileExists(new_name)
 

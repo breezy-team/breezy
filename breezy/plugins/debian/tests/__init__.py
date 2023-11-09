@@ -88,7 +88,7 @@ def make_new_upstream_tarball_xz(source, dest):
         tar.add(source)
     finally:
         tar.close()
-    subprocess.check_call(["xz", "-z", uncompressed])
+    subprocess.check_call(["xz", "-z", uncompressed])  # noqa: S607
     os.rename(uncompressed + ".xz", dest)
 
 
@@ -131,9 +131,7 @@ def load_tests(loader, basic_tests, pattern):
         "test_tagging",
     ]
     basic_tests.addTest(
-        loader.loadTestsFromModuleNames(
-            [f"{__name__}.{i}" for i in testmod_names]
-        )
+        loader.loadTestsFromModuleNames([f"{__name__}.{i}" for i in testmod_names])
     )
 
     doctest_mod_names = ["config"]
@@ -252,11 +250,15 @@ class BuilddebTestCase(tests.TestCaseWithTransport):
 
             if len(real_expected) > 0:
                 self.fail(
-                    "Files not found in {}: {}".format(tarball, ", ".join(real_expected))
+                    "Files not found in {}: {}".format(
+                        tarball, ", ".join(real_expected)
+                    )
                 )
             if len(extras) > 0:
                 self.fail(
-                    "Files not expected to be found in {}: {}".format(tarball, ", ".join(extras))
+                    "Files not expected to be found in {}: {}".format(
+                        tarball, ", ".join(extras)
+                    )
                 )
         finally:
             tar.close()
@@ -363,7 +365,8 @@ class SourcePackageBuilder:
         return f"{self.name}_{str(self._cl.version.upstream_version)}.orig.tar.gz"
 
     def diff_name(self):
-        assert not self.native, "Can't have a diff with a native package"
+        if self.native:
+            raise AssertionError("Can't have a diff with a native package")
         return f"{self.name}_{str(self._cl.version)}.diff.gz"
 
     def changes_name(self):
@@ -452,7 +455,8 @@ class SourcePackageBuilder:
         self.write_debian_files(basedir)
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         ret = proc.wait()
-        assert ret == 0, f"dpkg-source failed, output:\n{proc.stdout.read()}"
+        if ret != 0:
+            raise AssertionError(f"dpkg-source failed, output:\n{proc.stdout.read()}")
         cmd = "dpkg-genchanges -S > ../%s" % self.changes_name()
         proc = subprocess.Popen(
             cmd,
@@ -462,7 +466,10 @@ class SourcePackageBuilder:
             cwd=basedir,
         )
         ret = proc.wait()
-        assert ret == 0, f"dpkg-genchanges failed, output:\n{proc.stdout.read()}"
+        if ret != 0:
+            raise AssertionError(
+                f"dpkg-genchanges failed, output:\n{proc.stdout.read()}"
+            )
         shutil.rmtree(basedir)
 
 

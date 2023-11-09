@@ -62,7 +62,7 @@ def merge_changelog(this_lines, other_lines, base_lines=None):
         writelines(other_filename, other_lines)
         try:
             proc = subprocess.Popen(
-                ["dpkg-mergechangelogs", base_filename, this_filename, other_filename],
+                ["dpkg-mergechangelogs", base_filename, this_filename, other_filename],  # noqa: S607
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
             )

@@ -516,7 +516,7 @@ class DistributionBranch:
         :return: a DistributionBranch object to pull from if that is
             what should be done, otherwise None.
         """
-        assert md5 is not None, (
+        assert md5 is not None, (  # noqa: S101
             "It's not a good idea to use branch_to_pull_version_from with "
             "md5 == None, as you may pull the wrong revision."
         )
@@ -581,7 +581,6 @@ class DistributionBranch:
         :return: a DistributionBranch object to pull the upstream from
             if that is what should be done, otherwise None.
         """
-        assert isinstance(version, str)
         for branch in reversed(self.get_lesser_branches()):
             if self.can_pull_upstream_from_branch(
                 branch, package, version, upstream_tarballs
@@ -618,14 +617,16 @@ class DistributionBranch:
             id. The DistributionBranch is the branch that contains that
             version.
         """
-        assert len(versions) > 0, "Need a version to import"
+        if len(versions) == 0:
+            raise AssertionError("Need a version to import")
         mutter("Getting parents of %s", versions)
         missing_versions = self.missing_versions(versions)
         mutter("Versions we don't have are %s", missing_versions)
         last_contained_version = self.last_contained_version(versions)
         parents = []
         if last_contained_version is not None:
-            assert last_contained_version != versions[0], "Reupload of a version?"
+            if last_contained_version == versions[0]:
+                raise AssertionError("Reupload of a version?")
             mutter("The last versions we do have is %s", str(last_contained_version))
             parents = [
                 (
@@ -668,7 +669,6 @@ class DistributionBranch:
         :param pull_branch: the DistributionBranch to pull from.
         :param version: the upstream version string
         """
-        assert isinstance(version, str)
         pull_revisions = pull_branch.pristine_upstream_source.version_as_revisions(
             package, version
         )
@@ -679,9 +679,8 @@ class DistributionBranch:
                 version,
                 pull_revision,
             )
-            assert (
-                self.pristine_upstream_tree is not None
-            ), "Can't pull upstream with no tree"
+            if self.pristine_upstream_tree is None:
+                raise AssertionError("Can't pull upstream with no tree")
             self.pristine_upstream_branch.pull(
                 pull_branch.pristine_upstream_branch, stop_revision=pull_revision
             )
@@ -719,7 +718,8 @@ class DistributionBranch:
             str(version),
             pull_revision,
         )
-        assert self.tree is not None, "Can't pull branch with no tree"
+        if self.tree is None:
+            raise AssertionError("Can't pull branch with no tree")
         self.tree.pull(pull_branch.branch, stop_revision=pull_revision)
         tag_name = self.tag_version(version, revid=pull_revision)
         if not native and not self.pristine_upstream_source.has_version(
@@ -781,7 +781,8 @@ class DistributionBranch:
         :return: a list of revision ids that should be the parents when
             importing the specified revision.
         """
-        assert version == versions[0], "version is not the first entry of versions"
+        if version != versions[0]:
+            raise AssertionError("version is not the first entry of versions")
         parents = self.get_parents(versions)
         need_upstream_parent = True
         if not force_upstream_parent:
@@ -812,7 +813,13 @@ class DistributionBranch:
         # Make sure we see any revisions added by the upstream branch
         # since self.tree was locked.
         self.branch.repository.refresh_data()
-        for _component, _tag, revid, _pristine_tar_imported, _subpath in imported_revids:
+        for (
+            _component,
+            _tag,
+            revid,
+            _pristine_tar_imported,
+            _subpath,
+        ) in imported_revids:
             self.branch.fetch(self.pristine_upstream_branch, revid)
         self.pristine_upstream_branch.tags.merge_to(self.branch.tags)
 
@@ -857,9 +864,8 @@ class DistributionBranch:
             upstream_part,
             upstream_parents,
         )
-        assert (
-            self.pristine_upstream_tree is not None
-        ), "Can't import upstream with no tree"
+        if self.pristine_upstream_tree is None:
+            raise AssertionError("Can't import upstream with no tree")
         other_branches = self.get_other_branches()
         ret = []
         for tarball, component, md5 in upstream_tarballs:
@@ -1027,7 +1033,8 @@ class DistributionBranch:
             debian_part,
             str(parents),
         )
-        assert self.tree is not None, "Can't import with no tree"
+        if self.tree is None:
+            raise AssertionError("Can't import with no tree")
         # First we move the branch to the first parent
         if parents:
             if self.branch.last_revision() == NULL_REVISION:
@@ -1054,7 +1061,7 @@ class DistributionBranch:
         parent_trees = []
         if file_ids_from is not None:
             parent_trees = file_ids_from[:]
-        for parent_revid, parent_subpath in parents:
+        for parent_revid, _parent_subpath in parents:
             parent_trees.append(self.branch.repository.revision_tree(parent_revid))
         import_dir(self.tree, debian_part, file_ids_from=parent_trees + debian_trees)
         rules_path = os.path.join(self.tree.basedir, "debian", "rules")
@@ -1062,7 +1069,7 @@ class DistributionBranch:
             os.chmod(
                 rules_path,
                 (
-                    stat.S_IRWXU
+                    stat.S_IRWXU  # noqa: S103
                     | stat.S_IRGRP
                     | stat.S_IXGRP
                     | stat.S_IROTH
@@ -1398,9 +1405,8 @@ class DistributionBranch:
         to_location = os.path.join(basedir, "upstream")
         # Use upstream_branch if it has been set, otherwise self.branch.
         source_branch = self.pristine_upstream_branch or self.branch
-        assert list(upstream_tips.keys()) == [None], "Upstream tips: %r" % list(
-            upstream_tips.keys()
-        )
+        if list(upstream_tips.keys()) != [None]:
+            raise AssertionError("Upstream tips: %r" % list(upstream_tips.keys()))
         # TODO(jelmer): Use colocated branches rather than creating a copy.
         if upstream_tips[None][1]:
             raise Exception("subpaths are not yet supported")
@@ -1534,7 +1540,7 @@ class DistributionBranch:
                     conflicts = self.tree.merge_from_branch(
                         self.pristine_upstream_branch, merge_type=merge_type
                     )
-                except UnrelatedBranches:
+                except UnrelatedBranches as e:
                     # Bug lp:515367 where the first upstream tarball is
                     # missing a proper history link and a criss-cross merge
                     # then recurses and finds no deeper ancestor.
@@ -1545,7 +1551,7 @@ class DistributionBranch:
                     else:
                         from_revision, from_subpath = parents[None][0]
                     if from_subpath:
-                        raise Exception("subpath not yet supported")
+                        raise Exception("subpath not yet supported") from e
                     conflicts = self.tree.merge_from_branch(
                         self.pristine_upstream_branch,
                         merge_type=merge_type,

@@ -277,7 +277,7 @@ def md5sum_filename(filename):
     :param filename: Path of the file to checksum
     :return: MD5 Checksum as hex digest
     """
-    m = hashlib.md5()
+    m = hashlib.md5()  # noqa: S324
     with open(filename, "rb") as f:
         for line in f:
             m.update(line)
@@ -308,7 +308,7 @@ def write_if_different(contents, target):
     :param contents: The contents to write, as a string
     :param target: Path of the target file
     """
-    md5sum = hashlib.md5()
+    md5sum = hashlib.md5()  # noqa: S324
     md5sum.update(contents)
     fd, temp_path = tempfile.mkstemp("builddeb-rename-")
     fobj = os.fdopen(fd, "wb")
@@ -682,7 +682,7 @@ def guess_build_type(tree, version, subpath="", contains_upstream_source=True):
 
     # If the package doesn't have a debian revision then it is very probably
     # native, but it *could* be native.
-    if type(version_native) is bool and type(format_native) is bool:
+    if isinstance(version_native, bool) and isinstance(format_native, bool):
         if version_native is True and format_native is False:
             raise InconsistentSourceFormatError(
                 version_native, format_native, version, source_format
@@ -814,7 +814,7 @@ def extract_orig_tarballs(tarballs, target, strip_components=None):
 def dput_changes(path: str) -> None:
     """Upload a package."""
     (bd, changes_file) = os.path.split(path)
-    subprocess.check_call(["dput", changes_file], cwd=bd)
+    subprocess.check_call(["dput", changes_file], cwd=bd)  # noqa: S607
 
 
 def find_changes_files(
@@ -823,9 +823,7 @@ def find_changes_files(
     non_epoch_version = version.upstream_version
     if version.debian_version is not None:
         non_epoch_version += "-%s" % version.debian_version
-    c = re.compile(
-        f"{re.escape(package)}_{re.escape(non_epoch_version)}_(.*).changes"
-    )
+    c = re.compile(f"{re.escape(package)}_{re.escape(non_epoch_version)}_(.*).changes")
     for entry in os.scandir(path):
         m = c.match(entry.name)
         if m:

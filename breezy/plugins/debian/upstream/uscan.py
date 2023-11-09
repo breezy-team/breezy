@@ -92,7 +92,8 @@ class UScanSource(UpstreamSource):
 
     def __repr__(self):
         return (
-            "<{}({!r}, subpath={!r}, top_level={!r}, auto_fix={!r}," "skip_signatures={!r})>"
+            "<{}({!r}, subpath={!r}, top_level={!r}, auto_fix={!r},"
+            "skip_signatures={!r})>"
         ).format(
             type(self).__name__,
             self.tree,

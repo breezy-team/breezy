@@ -90,13 +90,13 @@ class DebBuild:
 
     def before_build(self):
         subprocess.check_call(
-            ["dpkg-source", "--before-build", self.target_dir],
+            ["dpkg-source", "--before-build", self.target_dir],  # noqa: S607
             preexec_fn=subprocess_setup,
         )
 
     def after_build(self):
         subprocess.check_call(
-            ["dpkg-source", "--after-build", self.target_dir],
+            ["dpkg-source", "--after-build", self.target_dir],  # noqa: S607
             preexec_fn=subprocess_setup,
         )
 

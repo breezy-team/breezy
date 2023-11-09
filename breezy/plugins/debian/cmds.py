@@ -1547,7 +1547,7 @@ class cmd_import_upstream(Command):
             tag_name,
             _revid,
             _pristine_tar_imported,
-            subpath,
+            _subpath,
         ) in db.import_upstream_tarballs(
             tarballs,
             None,

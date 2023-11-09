@@ -124,7 +124,7 @@ def download_snapshot(package: str, version: Version, output_dir: str) -> str:
     )
     files = {}
     try:
-        srcfiles = json.load(urlopen(srcfiles_url))
+        srcfiles = json.load(urlopen(srcfiles_url))  # noqa: S310
     except HTTPError as e:
         if e.status == 404:
             raise SnapshotMissing(package, version) from e
@@ -147,7 +147,7 @@ def download_snapshot(package: str, version: Version, output_dir: str) -> str:
         local_path = os.path.join(output_dir, os.path.basename(filename))
         try:
             with open(local_path, "rb") as f:
-                actual_hsh = sha1(f.read()).hexdigest()
+                actual_hsh = sha1(f.read()).hexdigest()  # noqa: S324
             if actual_hsh != hsh:
                 raise SnapshotHashMismatch(filename, actual_hsh, hsh)
         except FileNotFoundError:
@@ -155,7 +155,7 @@ def download_snapshot(package: str, version: Version, output_dir: str) -> str:
                 url = "https://snapshot.debian.org/file/%s" % hsh
                 note(".. Downloading %s -> %s", url, filename)
                 try:
-                    with urlopen(url) as g:
+                    with urlopen(url) as g:  # noqa: S310
                         f.write(g.read())
                 except HTTPError as e:
                     if e.status // 100 == 5:
@@ -287,7 +287,7 @@ def import_uncommitted(
         apt.retrieve_source(source_name, archive_source, source_version=archive_version)
         [dsc] = [e.name for e in os.scandir(archive_source) if e.name.endswith(".dsc")]
         note("Unpacking source %s", dsc)
-        subprocess.check_output(["dpkg-source", "-x", dsc], cwd=archive_source)
+        subprocess.check_output(["dpkg-source", "-x", dsc], cwd=archive_source)  # noqa: S607
         [subdir] = [e.path for e in os.scandir(archive_source) if e.is_dir()]
         with open(os.path.join(subdir, "debian", "changelog")) as f:
             archive_cl = Changelog(f)
@@ -385,10 +385,10 @@ def import_uncommitted(
             % ", ".join([str(v) for (t, v, r) in ret]),
         )
         parent_ids = tree.branch.repository.get_revision(revid).parent_ids
-        assert parent_ids == [
-            merge_into,
-            to_merge,
-        ], f"Expected parents to be {[merge_into, to_merge]!r}, was {parent_ids!r}"
+        if parent_ids != [merge_into, to_merge]:
+            raise AssertionError(
+                f"Expected parents to be {[merge_into, to_merge]!r}, was {parent_ids!r}"
+            )
     return ret
 
 

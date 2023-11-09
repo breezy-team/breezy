@@ -277,7 +277,8 @@ def revision_pristine_tar_delta(rev):
     elif "deb-pristine-delta-xz" in rev.properties:
         uuencoded = rev.properties["deb-pristine-delta-xz"]
     else:
-        assert revision_has_pristine_tar_delta(rev)
+        if not revision_has_pristine_tar_delta(rev):
+            raise AssertionError("Revision has no pristine tar delta")
         raise AssertionError("Not handled new delta type in pristine_tar_delta")
     return standard_b64decode(uuencoded)
 
@@ -289,7 +290,8 @@ def revision_pristine_tar_format(rev):
         return "bz2"
     elif "deb-pristine-delta-xz" in rev.properties:
         return "xz"
-    assert revision_has_pristine_tar_delta(rev)
+    if not revision_has_pristine_tar_delta(rev):
+        raise AssertionError("Revision has no pristine tar delta")
     raise AssertionError("Not handled new delta type in pristine_tar_format")
 
 
@@ -591,7 +593,8 @@ class BzrPristineTarSource(BasePristineTarSource):
 
     def fetch_component_tarball(self, package, version, component, target_dir):
         revid, subpath = self.version_component_as_revision(package, version, component)
-        assert subpath == ""
+        if subpath != "":
+            raise AssertionError("subpaths are not yet supported")
         try:
             rev = self.branch.repository.get_revision(revid)
         except NoSuchRevision as e:
@@ -1064,7 +1067,7 @@ class GitPristineTarSource(BasePristineTarSource):
             dest_filename = os.path.join(target_dir, dest_filename)
             try:
                 subprocess.check_call(
-                    ["pristine-tar", "checkout", dest_filename],
+                    ["pristine-tar", "checkout", dest_filename],  # noqa: S607
                     cwd=self.branch.repository.user_transport.local_abspath("."),
                 )
             except subprocess.CalledProcessError as e:

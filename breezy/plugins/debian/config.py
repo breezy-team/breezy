@@ -86,7 +86,6 @@ class UpstreamMetadataConfig:
             self.metadata = all_metadata[0]
         except (
             yaml.scanner.ScannerError,
-            yaml.composer.ComposerError,
             yaml.parser.ParserError,
         ) as e:
             raise UpstreamMetadataSyntaxError("debian/upstream/metadata", e) from e
@@ -341,12 +340,12 @@ class DebBuildConfig:
                     return value
         return default
 
-    def _opt_property(name, help=None, trusted=False):
+    def _opt_property(name, help=None, trusted=False):  # noqa: N805
         return property(
             lambda self: self._get_best_opt(name, trusted), None, None, help
         )
 
-    def _bool_property(name, help=None, trusted=False, default=False):
+    def _bool_property(name, help=None, trusted=False, default=False):  # noqa: N805
         return property(
             lambda self: self._get_best_bool(name, trusted, default), None, None, help
         )

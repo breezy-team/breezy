@@ -1584,16 +1584,16 @@ class _SimpleUpstreamProvider(UpstreamProvider):
 
 class ExtractTarballVersionTests(TestCase):
     def test_unknown_extension(self):
-        self.assertEqual(None, extract_tarball_version("/tmp/foo-1.2.tar.bla", "foo"))
+        self.assertEqual(None, extract_tarball_version("/tmp/foo-1.2.tar.bla", "foo"))  # noqa: S108
 
     def test_debian_style(self):
         self.assertEqual(
             "1.2+testfix",
-            extract_tarball_version("/tmp/foo_1.2+testfix.orig.tar.gz", "foo"),
+            extract_tarball_version("/tmp/foo_1.2+testfix.orig.tar.gz", "foo"),  # noqa: S108
         )
 
     def test_traditional_style(self):
-        self.assertEqual("1.2b2", extract_tarball_version("/tmp/foo-1.2b2.zip", "foo"))
+        self.assertEqual("1.2b2", extract_tarball_version("/tmp/foo-1.2b2.zip", "foo"))  # noqa: S108
 
 
 class NewTarballNameTests(TestCase):

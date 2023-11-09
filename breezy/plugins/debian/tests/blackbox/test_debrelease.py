@@ -66,7 +66,7 @@ Architecture: all
                 ("package/debian/compat", b"9\n"),
             ]
         )
-        os.chmod("package/debian/rules", 0o755)
+        os.chmod("package/debian/rules", 0o755)  # noqa: S103
         wt.add(
             [
                 "debian",

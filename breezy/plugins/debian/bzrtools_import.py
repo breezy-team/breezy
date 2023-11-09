@@ -116,7 +116,7 @@ def _import_archive(
         if target_tree is not None and tree.supports_setting_file_ids():
             other_trees.insert(0, target_tree)
         for other_tree in other_trees:
-            for relative_path, member in to_process:
+            for relative_path, _member in to_process:
                 trans_id = tt.trans_id_tree_path(relative_path)
                 existing_file_id = tt.tree_file_id(trans_id)
                 target_id = other_tree.path2id(relative_path)

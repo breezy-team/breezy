@@ -85,9 +85,7 @@ def push_to_salsa(local_tree, orig_branch, user, name, dry_run=False):
             return
         except AlreadyControlDirError:
             logging.info("Project %s already exists, using..", to_project)
-    target_branch = Branch.open(
-        f"git+ssh://git@salsa.debian.org/{user}/{name}.git"
-    )
+    target_branch = Branch.open(f"git+ssh://git@salsa.debian.org/{user}/{name}.git")
     additional_colocated_branches = pick_additional_colocated_branches(
         local_tree.branch
     )
@@ -206,12 +204,12 @@ def orphan(
         try:
             control = es.enter_context(ControlEditor(path=control_path))
         except FileNotFoundError as e:
-            raise MissingControlFile(e.filename)
+            raise MissingControlFile(e.filename) from e
         if check_wnpp:
             try:
                 wnpp_bug = find_wnpp_bug(control.source["Source"])
-            except KeyError:
-                raise NoWnppBug(control.source["Source"])
+            except KeyError as e:
+                raise NoWnppBug(control.source["Source"]) from e
         else:
             wnpp_bug = None
         if set_maintainer_to_qa_team(control):

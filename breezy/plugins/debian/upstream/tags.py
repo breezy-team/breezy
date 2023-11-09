@@ -76,7 +76,8 @@ def upstream_tag_version(tag):
     :param tag: The string name of the tag.
     :return: tuple with version portion of the tag and component name
     """
-    assert is_upstream_tag(tag), "Not an upstream tag: %s" % tag
+    if not is_upstream_tag(tag):
+        raise AssertionError("Not an upstream tag: %s" % tag)
     if tag.startswith("upstream/"):
         tag = tag[len("upstream/") :]
     elif tag.startswith("upstream_"):
@@ -177,7 +178,7 @@ def search_for_upstream_version(
             return revid
 
     # Try again, but this time search for merge revisions
-    for revid, rev in repository.iter_revisions(todo):
+    for _revid, rev in repository.iter_revisions(todo):
         if rev is None:
             continue
         if _rev_is_upstream_merge(rev, package, version):

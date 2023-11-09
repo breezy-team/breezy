@@ -63,7 +63,8 @@ class MockSources:
 
     def lookup(self, package):
         self.lookup_called_times += 1
-        assert not self.lookup_package or self.lookup_package == package
+        if self.lookup_package and self.lookup_package != package:
+            raise AssertionError("lookup called for wrong package")
         self.lookup_package = package
         if self.lookup_called_times <= len(self.versions):
             self.version = self.versions[self.lookup_called_times - 1]
@@ -138,7 +139,7 @@ class LocalAptTests(TestCase):
                 "--only-source",
                 "apackage",
             ],
-            LocalApt("/tmp/lala")._get_command("apackage"),
+            LocalApt("/tmp/lala")._get_command("apackage"),  # noqa: S108
         )
 
     def test_iter_sources_empty(self):
