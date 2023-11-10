@@ -1279,9 +1279,7 @@ class SmartServerRepositoryGetInventories(SmartServerRepositoryRequest):
                 lines = serializer.delta_to_lines(
                     prev_inv.revision_id, inv.revision_id, inv_delta
                 )
-                yield ChunkedContentFactory(
-                    inv.revision_id, None, None, lines, chunks_are_lines=True
-                )
+                yield ChunkedContentFactory((inv.revision_id,), None, None, lines)
                 prev_inv = inv
 
     def body_stream(self, repository, ordering, revids):

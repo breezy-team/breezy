@@ -2,6 +2,8 @@
 use pyo3::{prelude::*, types::PyBytes, ToPyObject};
 use std::fmt::{Debug, Error, Formatter};
 
+pub const DEFAULT_CHUNK_SIZE: usize = 4096;
+
 pub mod bencode_serializer;
 pub mod chk_inventory;
 pub mod chk_map;
@@ -16,7 +18,11 @@ pub mod inventory_delta;
 pub mod revision;
 pub mod rio;
 pub mod serializer;
+pub mod versionedfile;
 pub mod xml_serializer;
+
+#[cfg(feature = "pyo3")]
+pub mod pyversionedfile;
 
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct FileId(Vec<u8>);

@@ -2331,7 +2331,7 @@ class StreamSource:
             inventory_cache[inv.revision_id] = inv
             delta_serialized = serializer.delta_to_lines(basis_id, key[-1], delta)
             yield versionedfile.ChunkedContentFactory(
-                key, parent_keys, None, delta_serialized, chunks_are_lines=True
+                key, parent_keys, None, delta_serialized
             )
 
 
