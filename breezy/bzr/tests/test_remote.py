@@ -4044,9 +4044,7 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
         def inventories_substream():
             # An empty inventory fulltext.  This will be streamed normally.
             chunks = fmt._inventory_serializer.write_inventory_to_lines(inv)
-            yield versionedfile.ChunkedContentFactory(
-                (b"rev1",), (), None, chunks, chunks_are_lines=True
-            )
+            yield versionedfile.ChunkedContentFactory((b"rev1",), (), None, chunks)
 
         def inventory_delta_substream():
             # An inventory delta.  This can't be streamed via this verb, so it
@@ -4062,12 +4060,12 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
             )
             lines = serializer.delta_to_lines(b"rev1", b"rev2", delta)
             yield versionedfile.ChunkedContentFactory(
-                (b"rev2",), ((b"rev1",)), None, lines
+                (b"rev2",), ((b"rev1",),), None, lines
             )
             # Another delta.
             lines = serializer.delta_to_lines(b"rev1", b"rev3", delta)
             yield versionedfile.ChunkedContentFactory(
-                (b"rev3",), ((b"rev1",)), None, lines
+                (b"rev3",), ((b"rev1",),), None, lines
             )
 
         return stream_with_inv_delta()
@@ -4983,7 +4981,7 @@ class TestRepositoryIterInventories(TestRemoteRepository):
                 "inventory-deltas",
                 [
                     versionedfile.FulltextContentFactory(
-                        b"somerevid",
+                        (b"somerevid",),
                         None,
                         None,
                         self._serialize_inv_delta(
@@ -5043,7 +5041,7 @@ class TestRepositoryRevisionTreeArchive(TestRemoteRepository):
                 "inventory-deltas",
                 [
                     versionedfile.FulltextContentFactory(
-                        b"somerevid",
+                        (b"somerevid",),
                         None,
                         None,
                         self._serialize_inv_delta(
@@ -5097,7 +5095,7 @@ class TestRepositoryAnnotate(TestRemoteRepository):
                 "inventory-deltas",
                 [
                     versionedfile.FulltextContentFactory(
-                        b"somerevid",
+                        (b"somerevid",),
                         None,
                         None,
                         self._serialize_inv_delta(

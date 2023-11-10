@@ -1347,9 +1347,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             self._check_lines_not_unicode(lines)
             self._check_lines_are_lines(lines)
         return self.add_content(
-            ChunkedContentFactory(
-                key, parents, osutils.sha_strings(lines), lines, chunks_are_lines=True
-            ),
+            ChunkedContentFactory(key, parents, osutils.sha_strings(lines), lines),
             parent_texts,
             left_matching_blocks,
             nostore_sha,

@@ -2905,7 +2905,7 @@ class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
                 "inventory-deltas",
                 [
                     versionedfile.FulltextContentFactory(
-                        b"somerev",
+                        (b"somerev",),
                         None,
                         None,
                         self._get_serialized_inventory_delta(

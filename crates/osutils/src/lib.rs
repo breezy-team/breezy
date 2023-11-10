@@ -3,24 +3,60 @@ use memchr::memchr;
 use rand::Rng;
 use std::borrow::Cow;
 
-fn is_well_formed_line(line: &[u8]) -> bool {
+pub fn is_well_formed_line(line: &[u8]) -> bool {
     if line.is_empty() {
         return false;
     }
     memchr(b'\n', line) == Some(line.len() - 1)
 }
 
-pub fn chunks_to_lines<'a, I, E>(chunks: I) -> impl Iterator<Item = Result<Cow<'a, [u8]>, E>>
+pub trait AsCow<'a, T: ToOwned + ?Sized> {
+    fn as_cow(self) -> Cow<'a, T>;
+}
+
+impl<'a> AsCow<'a, [u8]> for &'a [u8] {
+    fn as_cow(self) -> Cow<'a, [u8]> {
+        Cow::Borrowed(self)
+    }
+}
+
+impl<'a> AsCow<'a, [u8]> for Cow<'a, [u8]> {
+    fn as_cow(self) -> Cow<'a, [u8]> {
+        self
+    }
+}
+
+impl<'a> AsCow<'a, [u8]> for Vec<u8> {
+    fn as_cow(self) -> Cow<'a, [u8]> {
+        Cow::Owned(self)
+    }
+}
+
+impl<'a> AsCow<'a, [u8]> for &'a Vec<u8> {
+    fn as_cow(self) -> Cow<'a, [u8]> {
+        Cow::Borrowed(self.as_slice())
+    }
+}
+
+pub fn chunks_to_lines<'a, C, I, E>(chunks: I) -> impl Iterator<Item = Result<Cow<'a, [u8]>, E>>
 where
-    I: Iterator<Item = Result<&'a [u8], E>> + 'a,
+    I: Iterator<Item = Result<C, E>> + 'a,
+    C: AsCow<'a, [u8]> + 'a,
     E: std::fmt::Debug,
 {
-    pub struct ChunksToLines<'a, E> {
-        chunks: Box<dyn Iterator<Item = Result<&'a [u8], E>> + 'a>,
+    pub struct ChunksToLines<'a, C, E>
+    where
+        C: AsCow<'a, [u8]>,
+        E: std::fmt::Debug,
+    {
+        chunks: Box<dyn Iterator<Item = Result<C, E>> + 'a>,
         tail: Vec<u8>,
     }
 
-    impl<'a, E: std::fmt::Debug> Iterator for ChunksToLines<'a, E> {
+    impl<'a, C, E: std::fmt::Debug> Iterator for ChunksToLines<'a, C, E>
+    where
+        C: AsCow<'a, [u8]>,
+    {
         type Item = Result<Cow<'a, [u8]>, E>;
 
         fn next(&mut self) -> Option<Self::Item> {
@@ -39,11 +75,13 @@ where
                                 return Some(Err(e));
                             }
                             Ok(next_chunk) => {
+                                let next_chunk = next_chunk.as_cow();
                                 // If the chunk is well-formed, return it
-                                if self.tail.is_empty() && is_well_formed_line(next_chunk) {
-                                    return Some(Ok(Cow::Borrowed(next_chunk)));
+                                if self.tail.is_empty() && is_well_formed_line(next_chunk.as_ref())
+                                {
+                                    return Some(Ok(next_chunk));
                                 } else {
-                                    self.tail.extend_from_slice(next_chunk);
+                                    self.tail.extend_from_slice(next_chunk.as_ref());
                                 }
                             }
                         }
@@ -65,6 +103,16 @@ where
         chunks: Box::new(chunks),
         tail: Vec::new(),
     }
+}
+
+#[test]
+fn test_chunks_to_lines() {
+    assert_eq!(
+        chunks_to_lines(vec![Ok::<_, std::io::Error>("foo\nbar".as_bytes().as_cow())].into_iter())
+            .map(|x| x.unwrap())
+            .collect::<Vec<_>>(),
+        vec!["foo\n".as_bytes().as_cow(), "bar".as_bytes().as_cow()]
+    );
 }
 
 pub fn set_or_unset_env(
