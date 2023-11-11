@@ -118,7 +118,7 @@ impl ContentFactory for PyContentFactory {
         })
     }
 
-    fn map_key(&mut self, f: &dyn Fn(Key) -> Key) {
+    fn map_key(&mut self, _f: &dyn Fn(Key) -> Key) {
         todo!();
     }
 }
