@@ -932,8 +932,8 @@ impl MutableInventory {
     /// If delta application fails the inventory is left in an indeterminate
     /// state and must not be used.
     ///
-    /// Args:
-    ///   delta: A list of changes to apply. After all the changes are
+    /// # Arguments
+    ///  * `delta`: A list of changes to apply. After all the changes are
     ///      applied the final inventory must be internally consistent, but it
     ///      is ok to supply changes which, if only half-applied would have an
     ///      invalid result - such as supplying two changes which rename two

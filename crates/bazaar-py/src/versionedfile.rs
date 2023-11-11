@@ -113,6 +113,17 @@ impl ChunkedContentFactory {
     }
 }
 
+#[pyfunction]
+pub fn record_to_fulltext_bytes(py: Python, record: PyObject) -> PyResult<PyObject> {
+    let record = record.extract::<bazaar::pyversionedfile::PyContentFactory>(py)?;
+
+    let mut s = Vec::new();
+
+    bazaar::versionedfile::record_to_fulltext_bytes(record, &mut s)?;
+
+    Ok(PyBytes::new(py, &s).into())
+}
+
 #[pyclass(extends=AbstractContentFactory)]
 struct AbsentContentFactory;
 
@@ -132,5 +143,6 @@ pub(crate) fn _versionedfile_rs(py: Python) -> PyResult<&PyModule> {
     m.add_class::<FulltextContentFactory>()?;
     m.add_class::<ChunkedContentFactory>()?;
     m.add_class::<AbsentContentFactory>()?;
+    m.add_function(wrap_pyfunction!(record_to_fulltext_bytes, m)?)?;
     Ok(m)
 }
