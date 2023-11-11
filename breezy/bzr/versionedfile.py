@@ -123,12 +123,13 @@ class ContentFactory:
         self.key: Optional[Tuple[bytes, ...]] = None
         self.parents = None
 
-    def add_key_prefix(self, prefix: tuple[bytes, ...]) -> None:
+    def map_key(self, cb):
         """Add prefix to all keys."""
         if self.key is not None:
-            self.key = prefix + self.key
+            self.key = cb(self.key)
         if self.parents is not None:
-            self.parents = tuple([prefix + parent for parent in self.parents])
+            self.parents = tuple([cb(parent) for parent in self.parents])
+        return self
 
 
 class FileContentFactory(ContentFactory):
@@ -1525,7 +1526,7 @@ class ThunkedVersionedFiles(VersionedFiles):
             for record in vf.get_record_stream(
                 suffixes, ordering, include_delta_closure
             ):
-                record.add_key_prefix(prefix)
+                record.map_key(lambda k: prefix + k)
                 yield record
 
     def _iter_keys_vf(self, keys):

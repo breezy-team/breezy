@@ -1,4 +1,5 @@
 use byteorder::{BigEndian, WriteBytesExt};
+
 use pyo3::types::{PyBytes, PyTuple};
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -274,7 +275,7 @@ pub trait ContentFactory {
 
     fn storage_kind(&self) -> String;
 
-    fn add_key_prefix(&mut self, prefix: &[&[u8]]);
+    fn map_key(&mut self, f: &dyn Fn(Key) -> Key);
 }
 
 pub struct FulltextContentFactory {
@@ -355,13 +356,9 @@ impl ContentFactory for FulltextContentFactory {
         "fulltext".into()
     }
 
-    fn add_key_prefix(&mut self, prefix: &[&[u8]]) {
-        self.key.add_prefix(prefix);
-        if let Some(parents) = self.parents.as_mut() {
-            for parent in parents {
-                parent.add_prefix(prefix);
-            }
-        }
+    fn map_key(&mut self, f: &dyn Fn(Key) -> Key) {
+        self.key = f(self.key.clone());
+        self.parents = self.parents.take().map(|v| v.into_iter().map(f).collect());
     }
 }
 
@@ -460,13 +457,9 @@ impl ContentFactory for ChunkedContentFactory {
         "chunked".into()
     }
 
-    fn add_key_prefix(&mut self, prefix: &[&[u8]]) {
-        self.key.add_prefix(prefix);
-        if let Some(parents) = self.parents.as_mut() {
-            for parent in parents {
-                parent.add_prefix(prefix);
-            }
-        }
+    fn map_key(&mut self, f: &dyn Fn(Key) -> Key) {
+        self.key = f(self.key.clone());
+        self.parents = self.parents.take().map(|v| v.into_iter().map(f).collect());
     }
 }
 
@@ -530,8 +523,8 @@ impl ContentFactory for AbsentContentFactory {
         "absent".into()
     }
 
-    fn add_key_prefix(&mut self, prefix: &[&[u8]]) {
-        self.key.add_prefix(prefix);
+    fn map_key(&mut self, f: &dyn Fn(Key) -> Key) {
+        self.key = f(self.key.clone());
     }
 }
 
