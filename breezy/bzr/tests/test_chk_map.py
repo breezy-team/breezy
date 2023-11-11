@@ -22,10 +22,10 @@ from ..chk_map import (
     CHKMap,
     InternalNode,
     LeafNode,
-    Node,
     _bytes_to_text_key,
     _search_key_16,
     _search_key_255,
+    common_prefix_pair,
 )
 from ..static_tuple import StaticTuple
 
@@ -34,7 +34,7 @@ stuple = StaticTuple
 
 class TestNode(tests.TestCase):
     def assertCommonPrefix(self, expected_common, prefix, key):
-        common = Node.common_prefix(prefix, key)
+        common = common_prefix_pair(prefix, key)
         self.assertLessEqual(len(common), len(prefix))
         self.assertLessEqual(len(common), len(key))
         self.assertStartsWith(prefix, common)
@@ -1506,7 +1506,7 @@ class TestMap(TestCaseWithStore):
 
 def _search_key_single(key):
     """A search key function that maps all nodes to the same value."""
-    return "value"
+    return b"value"
 
 
 def _test_search_key(key):

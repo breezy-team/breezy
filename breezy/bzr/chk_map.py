@@ -41,7 +41,11 @@ import threading
 from typing import Callable
 
 from .. import errors, lru_cache, osutils, registry, trace
+from .._bzr_rs import chk_map as _chk_map_rs
 from .static_tuple import StaticTuple, expect_static_tuple
+
+common_prefix_many = _chk_map_rs.common_prefix_many
+common_prefix_pair = _chk_map_rs.common_prefix_pair
 
 # approx 4MB
 # If each line is 50 bytes, and you have 255 internal pages, with 255-way fan
@@ -666,44 +670,6 @@ class Node:
         """
         self._maximum_size = new_size
 
-    @classmethod
-    def common_prefix(cls, prefix, key):
-        """Given 2 strings, return the longest prefix common to both.
-
-        :param prefix: This has been the common prefix for other keys, so it is
-            more likely to be the common prefix in this case as well.
-        :param key: Another string to compare to
-        """
-        if key.startswith(prefix):
-            return prefix
-        pos = -1
-        # Is there a better way to do this?
-        for pos, (left, right) in enumerate(zip(prefix, key)):
-            if left != right:
-                pos -= 1
-                break
-        common = prefix[: pos + 1]
-        return common
-
-    @classmethod
-    def common_prefix_for_keys(cls, keys):
-        """Given a list of keys, find their common prefix.
-
-        :param keys: An iterable of strings.
-        :return: The longest common prefix of all keys.
-        """
-        common_prefix = None
-        for key in keys:
-            if common_prefix is None:
-                common_prefix = key
-                continue
-            common_prefix = cls.common_prefix(common_prefix, key)
-            if not common_prefix:
-                # if common_prefix is the empty string, then we know it won't
-                # change further
-                return b""
-        return common_prefix
-
 
 # Singleton indicating we have not computed _search_prefix yet
 _unknown = object()
@@ -844,7 +810,7 @@ class LeafNode(Node):
         if self._common_serialised_prefix is None:
             self._common_serialised_prefix = serialised_key
         else:
-            self._common_serialised_prefix = self.common_prefix(
+            self._common_serialised_prefix = common_prefix_pair(
                 self._common_serialised_prefix, serialised_key
             )
         search_key = self._search_key(key)
@@ -853,7 +819,7 @@ class LeafNode(Node):
         if self._search_prefix is None:
             self._search_prefix = search_key
         else:
-            self._search_prefix = self.common_prefix(self._search_prefix, search_key)
+            self._search_prefix = common_prefix_pair(self._search_prefix, search_key)
         if (
             self._len > 1
             and self._maximum_size
@@ -984,7 +950,7 @@ class LeafNode(Node):
             unique within this node.
         """
         search_keys = [self._search_key_func(key) for key in self._items]
-        self._search_prefix = self.common_prefix_for_keys(search_keys)
+        self._search_prefix = common_prefix_many(search_keys)
         return self._search_prefix
 
     def _are_search_keys_identical(self):
@@ -1010,7 +976,7 @@ class LeafNode(Node):
             unique within this node.
         """
         serialised_keys = [self._serialise_key(key) for key in self._items]
-        self._common_serialised_prefix = self.common_prefix_for_keys(serialised_keys)
+        self._common_serialised_prefix = common_prefix_many(serialised_keys)
         return self._common_serialised_prefix
 
     def unmap(self, store, key):
@@ -1266,7 +1232,7 @@ class InternalNode(Node):
             # This key doesn't fit in this index, so we need to split at the
             # point where it would fit, insert self into that internal node,
             # and then map this key into that node.
-            new_prefix = self.common_prefix(self._search_prefix, search_key)
+            new_prefix = common_prefix_pair(self._search_prefix, search_key)
             new_parent = InternalNode(new_prefix, search_key_func=self._search_key_func)
             new_parent.set_maximum_size(self._maximum_size)
             new_parent._key_width = self._key_width
@@ -1424,7 +1390,7 @@ class InternalNode(Node):
         :return: A bytestring of the longest search key prefix that is
             unique within this node.
         """
-        self._search_prefix = self.common_prefix_for_keys(self._items)
+        self._search_prefix = common_prefix_many(list(self._items.keys()))
         return self._search_prefix
 
     def unmap(self, store, key, check_remap=True):
