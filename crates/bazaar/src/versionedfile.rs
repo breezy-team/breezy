@@ -218,7 +218,7 @@ impl bendy::encoding::ToBencode for Key {
                 }
                 Ok(())
             }),
-            Key::ContentAddressed(v) => {
+            Key::ContentAddressed(_v) => {
                 panic!("ContentAddressed keys are not supported in bencode")
             }
         }
