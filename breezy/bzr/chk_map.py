@@ -41,9 +41,8 @@ import threading
 from typing import Callable
 
 from .. import errors, lru_cache, osutils, registry, trace
-from .static_tuple import StaticTuple, expect_static_tuple
-
 from .._bzr_rs import chk_map as _chk_map_rs
+from .static_tuple import StaticTuple, expect_static_tuple
 
 common_prefix_many = _chk_map_rs.common_prefix_many
 common_prefix_pair = _chk_map_rs.common_prefix_pair

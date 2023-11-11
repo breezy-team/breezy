@@ -19,7 +19,7 @@
 //! Densely packed upper nodes.
 
 use crc32fast::Hasher;
-use std::borrow::Cow;
+
 use std::fmt::Write;
 use std::hash::Hash;
 use std::iter::zip;
@@ -137,7 +137,7 @@ impl From<std::num::ParseIntError> for Error {
 /// # Arguments
 /// * `prefix` - This has been the common prefix for other keys, so it is more likely to be the common prefix in this case as well.
 /// * `key` - Another string to compare to.
-pub fn common_prefix_pair<'a, 'b>(prefix: &'a [u8], key: &'b [u8]) -> &'b [u8] {
+pub fn common_prefix_pair<'b>(prefix: &[u8], key: &'b [u8]) -> &'b [u8] {
     if key.starts_with(prefix) {
         return &key[..prefix.len()];
     }
