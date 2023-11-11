@@ -96,7 +96,9 @@ class LRUTreeCacheTests(TestCaseWithTransport):
         self.assertRaises(NoSuchRevision, self.cache.revision_tree, b"unknown")
 
     def test_revision_trees(self):
-        self.assertRaises(NoSuchRevision, self.cache.revision_trees, [b"unknown", b"la"])
+        self.assertRaises(
+            NoSuchRevision, self.cache.revision_trees, [b"unknown", b"la"]
+        )
 
     def test_iter_revision_trees(self):
         self.assertRaises(

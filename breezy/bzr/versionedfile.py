@@ -127,8 +127,7 @@ class ContentFactory:
         if self.key is not None:
             self.key = prefix + self.key
         if self.parents is not None:
-            self.parents = tuple([
-                prefix + parent for parent in self.parents])
+            self.parents = tuple([prefix + parent for parent in self.parents])
 
 
 class FileContentFactory(ContentFactory):

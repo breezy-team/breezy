@@ -1730,7 +1730,9 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 ],
                 origins,
             )
-        self.assertRaises(RevisionNotPresent, files.annotate, prefix + (b"missing-key",))
+        self.assertRaises(
+            RevisionNotPresent, files.annotate, prefix + (b"missing-key",)
+        )
 
     def test_check_no_parameters(self):
         self.get_versionedfiles()
