@@ -1,3 +1,4 @@
+use byteorder::{BigEndian, WriteBytesExt};
 use pyo3::types::{PyBytes, PyTuple};
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -201,6 +202,34 @@ impl pyo3::IntoPy<pyo3::PyObject> for Key {
             }
         }
     }
+}
+
+impl bendy::encoding::ToBencode for Key {
+    const MAX_DEPTH: usize = 10;
+
+    fn encode(
+        &self,
+        encoder: bendy::encoding::SingleItemEncoder<'_>,
+    ) -> Result<(), bendy::encoding::Error> {
+        match self {
+            Key::Fixed(v) => encoder.emit_list(|e| {
+                for v in v.iter() {
+                    e.emit_bytes(v)?;
+                }
+                Ok(())
+            }),
+            Key::ContentAddressed(_v) => {
+                panic!("ContentAddressed keys are not supported in bencode")
+            }
+        }
+    }
+}
+
+#[test]
+fn test_key_bencode() {
+    let x = Key::Fixed(vec![b"foo".to_vec(), b"bar".to_vec()]);
+    let z = bendy::encoding::ToBencode::to_bencode(&x).unwrap();
+    assert_eq!(z, b"l3:foo3:bare".to_vec());
 }
 
 pub trait ContentFactory {
@@ -558,4 +587,49 @@ pub trait VersionedFile<CF: ContentFactory, I> {
             Err(Error::VersionNotPresent(version_id.clone()))
         }
     }
+}
+
+pub fn record_to_fulltext_bytes<R: ContentFactory, W: std::io::Write>(
+    record: R,
+    w: &mut W,
+) -> std::io::Result<()> {
+    let mut record_meta = bendy::encoding::Encoder::new();
+
+    record_meta
+        .emit_list(|e| {
+            e.emit(record.key())?;
+            if let Some(parents) = record.parents() {
+                e.emit_list(|e| {
+                    for parent in parents {
+                        e.emit(parent)?;
+                    }
+                    Ok(())
+                })?;
+            } else {
+                e.emit_bytes(&b"nil"[..])?; // default to a single byte vector containing "nil"
+            }
+            Ok(())
+        })
+        .unwrap();
+
+    let record_meta = record_meta.get_output().unwrap();
+
+    w.write_all(b"fulltext\n")?;
+    w.write_all(&length_prefix(&record_meta))?;
+    w.write_all(&record_meta)?;
+    w.write_all(&record.into_fulltext())?;
+
+    Ok(())
+}
+
+fn length_prefix(data: &[u8]) -> Vec<u8> {
+    let length = data.len() as u32;
+    let mut length_bytes = vec![];
+
+    // Write the length as a 4-byte big-endian representation
+    length_bytes
+        .write_u32::<BigEndian>(length)
+        .expect("Failed to write length bytes");
+
+    length_bytes
 }

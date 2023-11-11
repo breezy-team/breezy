@@ -26,6 +26,7 @@ crc32fast = "1.2.0"
 base64 = "0.21.0"
 maplit = "1.0.2"
 lazy-regex = "3.0.0"
+byteorder = "1.5.0"
 
 [target.'cfg(unix)'.dependencies]
 nix = { workspace = true }

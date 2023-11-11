@@ -47,6 +47,7 @@ from . import index
 FulltextContentFactory = _versionedfile_rs.FulltextContentFactory
 ChunkedContentFactory = _versionedfile_rs.ChunkedContentFactory
 AbsentContentFactory = _versionedfile_rs.AbsentContentFactory
+record_to_fulltext_bytes = _versionedfile_rs.record_to_fulltext_bytes
 
 
 adapter_registry = Registry[Tuple[str, str], Any, None]()
@@ -2070,24 +2071,6 @@ def fulltext_network_to_record(kind, bytes, line_end):
         parents = None
     fulltext = bytes[line_end + 4 + meta_len :]
     return [FulltextContentFactory(key, parents, None, fulltext)]
-
-
-def _length_prefix(bytes):
-    return struct.pack("!L", len(bytes))
-
-
-def record_to_fulltext_bytes(record):
-    if record.parents is None:
-        parents = b"nil"
-    else:
-        parents = tuple([tuple(p) for p in record.parents])
-    record_meta = bencode.bencode((record.key, parents))
-    record_content = record.get_bytes_as("fulltext")
-    return b"fulltext\n%s%s%s" % (
-        _length_prefix(record_meta),
-        record_meta,
-        record_content,
-    )
 
 
 def sort_groupcompress(parent_map):

@@ -11,6 +11,12 @@ impl ToPyObject for PyContentFactory {
     }
 }
 
+impl FromPyObject<'_> for PyContentFactory {
+    fn extract(ob: &PyAny) -> PyResult<Self> {
+        Python::with_gil(|py| Ok(PyContentFactory(ob.to_object(py))))
+    }
+}
+
 impl ContentFactory for PyContentFactory {
     fn size(&self) -> Option<usize> {
         Python::with_gil(|py| self.0.getattr(py, "size").unwrap().extract(py).unwrap())

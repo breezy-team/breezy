@@ -75,6 +75,7 @@ dependencies = [
  "base64",
  "bendy",
  "breezy-osutils",
+ "byteorder",
  "chrono",
  "crc32fast",
  "fancy-regex",
