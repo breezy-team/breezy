@@ -48,13 +48,13 @@ from .versionedfile import (
     _KeyRefs,
     adapter_registry,
 )
+from .._bzr_rs import groupcompress as _groupcompress_rs
+
+_null_sha1 = _groupcompress_rs.NULL_SHA1
 
 # Minimum number of uncompressed bytes to try fetch at once when retrieving
 # groupcompress blocks.
 BATCH_SIZE = 2**16
-
-# osutils.sha_string(b'')
-_null_sha1 = b"da39a3ee5e6b4b0d3255bfef95601890afd80709"
 
 
 def sort_gc_optimal(parent_map):

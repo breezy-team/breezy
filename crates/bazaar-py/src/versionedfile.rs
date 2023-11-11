@@ -55,6 +55,26 @@ impl AbstractContentFactory {
             ))),
         }
     }
+
+    fn add_key_prefix(&mut self, py: Python, prefix: PyObject) -> PyResult<()> {
+        match prefix.as_ref(py).get_type().name().unwrap() {
+            "tuple" | "StaticTuple" => {}
+            _ => {
+                return Err(pyo3::exceptions::PyTypeError::new_err("Expected tuple"));
+            }
+        }
+
+        let mut lprefix = Vec::new();
+
+        for i in 0..prefix.as_ref(py).len()? {
+            lprefix.push(prefix.as_ref(py).get_item(i)?.extract::<Vec<u8>>()?);
+        }
+
+        let prefix = lprefix.iter().map(|x| x.as_slice()).collect::<Vec<_>>();
+
+        self.0.add_key_prefix(prefix.as_slice());
+        Ok(())
+    }
 }
 
 #[pyclass(extends=AbstractContentFactory)]
@@ -93,10 +113,24 @@ impl ChunkedContentFactory {
     }
 }
 
+#[pyclass(extends=AbstractContentFactory)]
+struct AbsentContentFactory;
+
+#[pymethods]
+impl AbsentContentFactory {
+    #[new]
+    fn new(key: Key) -> PyResult<(Self, AbstractContentFactory)> {
+        let of = bazaar::versionedfile::AbsentContentFactory::new(key);
+
+        Ok((AbsentContentFactory, AbstractContentFactory(Box::new(of))))
+    }
+}
+
 pub(crate) fn _versionedfile_rs(py: Python) -> PyResult<&PyModule> {
     let m = PyModule::new(py, "versionedfile")?;
     m.add_class::<AbstractContentFactory>()?;
     m.add_class::<FulltextContentFactory>()?;
     m.add_class::<ChunkedContentFactory>()?;
+    m.add_class::<AbsentContentFactory>()?;
     Ok(m)
 }

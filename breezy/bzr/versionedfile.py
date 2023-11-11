@@ -46,6 +46,7 @@ from . import index
 
 FulltextContentFactory = _versionedfile_rs.FulltextContentFactory
 ChunkedContentFactory = _versionedfile_rs.ChunkedContentFactory
+AbsentContentFactory = _versionedfile_rs.AbsentContentFactory
 
 
 adapter_registry = Registry[Tuple[str, str], Any, None]()
@@ -118,8 +119,16 @@ class ContentFactory:
         self.sha1: Optional[bytes] = None
         self.size: Optional[int] = None
         self.storage_kind: Optional[str] = None
-        self.key: Optional[Tuple[bytes]] = None
+        self.key: Optional[Tuple[bytes, ...]] = None
         self.parents = None
+
+    def add_key_prefix(self, prefix: tuple[bytes, ...]) -> None:
+        """Add prefix to all keys."""
+        if self.key is not None:
+            self.key = prefix + self.key
+        if self.parents is not None:
+            self.parents = tuple([
+                prefix + parent for parent in self.parents])
 
 
 class FileContentFactory(ContentFactory):
@@ -155,39 +164,6 @@ class FileContentFactory(ContentFactory):
         elif storage_kind == "lines":
             return self.file
         raise UnavailableRepresentation(self.key, storage_kind, self.storage_kind)
-
-
-class AbsentContentFactory(ContentFactory):
-    """A placeholder content factory for unavailable texts.
-
-    :ivar sha1: None.
-    :ivar storage_kind: 'absent'.
-    :ivar key: The key of this content. Each key is a tuple with a single
-        string in it.
-    :ivar parents: None.
-    """
-
-    def __init__(self, key):
-        """Create a ContentFactory."""
-        self.sha1 = None
-        self.size = None
-        self.storage_kind = "absent"
-        self.key = key
-        self.parents = None
-
-    def get_bytes_as(self, storage_kind):
-        raise ValueError(
-            f"A request was made for key: {self.key}, but that"
-            " content is not available, and the calling"
-            " code does not handle if it is missing."
-        )
-
-    def iter_bytes_as(self, storage_kind):
-        raise ValueError(
-            f"A request was made for key: {self.key}, but that"
-            " content is not available, and the calling"
-            " code does not handle if it is missing."
-        )
 
 
 class AdapterFactory(ContentFactory):
@@ -1549,9 +1525,7 @@ class ThunkedVersionedFiles(VersionedFiles):
             for record in vf.get_record_stream(
                 suffixes, ordering, include_delta_closure
             ):
-                if record.parents is not None:
-                    record.parents = tuple(prefix + parent for parent in record.parents)
-                record.key = prefix + record.key
+                record.add_key_prefix(prefix)
                 yield record
 
     def _iter_keys_vf(self, keys):

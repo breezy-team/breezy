@@ -111,6 +111,14 @@ impl ContentFactory for PyContentFactory {
                 .unwrap()
         })
     }
+
+    fn add_key_prefix(&mut self, prefix: &[&[u8]]) {
+        Python::with_gil(|py| {
+            self.0
+                .call_method1(py, "add_key_prefix", (prefix.to_vec(),))
+                .unwrap()
+        });
+    }
 }
 
 pub struct PyVersionedFile(PyObject);

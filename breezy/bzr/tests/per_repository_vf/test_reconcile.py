@@ -228,7 +228,7 @@ class TestsNeedingReweave(TestReconcile):
             self.assertTrue(backed_up)
             # Not clear how to do this at an interface level:
             # self.assertTrue('missing' in backup.versions())
-        self.assertRaises(errors.NoSuchRevision, repo.get_inventory, "missing")
+        self.assertRaises(errors.NoSuchRevision, repo.get_inventory, b"missing")
 
     def test_reweave_inventory_without_revision_reconciler(self):
         # smoke test for the all in one Reconciler class,
