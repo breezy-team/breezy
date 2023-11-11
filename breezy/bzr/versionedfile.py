@@ -16,6 +16,7 @@
 
 """Versioned text file storage api."""
 
+import functools
 import itertools
 import os
 import struct
@@ -123,12 +124,13 @@ class ContentFactory:
         self.key: Optional[Tuple[bytes, ...]] = None
         self.parents = None
 
-    def add_key_prefix(self, prefix: tuple[bytes, ...]) -> None:
+    def map_key(self, cb):
         """Add prefix to all keys."""
         if self.key is not None:
-            self.key = prefix + self.key
+            self.key = cb(self.key)
         if self.parents is not None:
-            self.parents = tuple([prefix + parent for parent in self.parents])
+            self.parents = tuple([cb(parent) for parent in self.parents])
+        return self
 
 
 class FileContentFactory(ContentFactory):
@@ -1519,13 +1521,15 @@ class ThunkedVersionedFiles(VersionedFiles):
         """See VersionedFiles.get_record_stream()."""
         # Ordering will be taken care of by each partitioned store; group keys
         # by partition.
+        def add_prefix(p, k):
+            return p + k
         keys = sorted(keys)
         for prefix, suffixes, vf in self._iter_keys_vf(keys):
             suffixes = [(suffix,) for suffix in suffixes]
             for record in vf.get_record_stream(
                 suffixes, ordering, include_delta_closure
             ):
-                record.add_key_prefix(prefix)
+                record.map_key(functools.partial(add_prefix, prefix))
                 yield record
 
     def _iter_keys_vf(self, keys):

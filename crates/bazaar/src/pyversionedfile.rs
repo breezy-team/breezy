@@ -118,12 +118,8 @@ impl ContentFactory for PyContentFactory {
         })
     }
 
-    fn add_key_prefix(&mut self, prefix: &[&[u8]]) {
-        Python::with_gil(|py| {
-            self.0
-                .call_method1(py, "add_key_prefix", (prefix.to_vec(),))
-                .unwrap()
-        });
+    fn map_key(&mut self, _f: &dyn Fn(Key) -> Key) {
+        todo!();
     }
 }
 
