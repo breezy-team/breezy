@@ -978,7 +978,7 @@ class TestPlanMergeVersionedFile(TestCaseWithMemoryTransport):
         self.assertEqual(b"a", b"".join(get_record(b"A").iter_bytes_as("chunked")))
         self.assertEqual(b"c", get_record(b"C").get_bytes_as("fulltext"))
         self.assertEqual(b"e", get_record(b"E:").get_bytes_as("fulltext"))
-        self.assertEqual("absent", get_record("F").storage_kind)
+        self.assertEqual("absent", get_record(b"F").storage_kind)
 
 
 class TestReadonlyHttpMixin:
@@ -1730,7 +1730,9 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 ],
                 origins,
             )
-        self.assertRaises(RevisionNotPresent, files.annotate, prefix + ("missing-key",))
+        self.assertRaises(
+            RevisionNotPresent, files.annotate, prefix + (b"missing-key",)
+        )
 
     def test_check_no_parameters(self):
         self.get_versionedfiles()

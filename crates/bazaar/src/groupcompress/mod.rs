@@ -1,4 +1,9 @@
 pub mod delta;
+use sha1::{Digest as _, Sha1};
+
+lazy_static::lazy_static! {
+    pub static ref NULL_SHA1: Vec<u8> = format!("{:x}", Sha1::new().finalize()).as_bytes().to_vec();
+}
 
 pub fn encode_base128_int(mut val: u128) -> Vec<u8> {
     let mut data = Vec::new();

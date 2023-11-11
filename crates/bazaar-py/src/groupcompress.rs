@@ -99,5 +99,9 @@ pub(crate) fn _groupcompress_rs(py: Python) -> PyResult<&PyModule> {
     m.add_wrapped(wrap_pyfunction!(decode_copy_instruction))?;
     m.add_wrapped(wrap_pyfunction!(encode_copy_instruction))?;
     m.add_wrapped(wrap_pyfunction!(apply_delta_to_source))?;
+    m.add(
+        "NULL_SHA1",
+        pyo3::types::PyBytes::new(py, &bazaar::groupcompress::NULL_SHA1),
+    )?;
     Ok(m)
 }

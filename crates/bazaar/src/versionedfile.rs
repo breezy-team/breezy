@@ -92,6 +92,44 @@ pub enum Key {
     ContentAddressed(Vec<Vec<u8>>),
 }
 
+impl Key {
+    pub fn add_prefix(&mut self, prefix: &[&[u8]]) {
+        let v = match self {
+            Key::Fixed(ref mut v) => v,
+            Key::ContentAddressed(ref mut v) => v,
+        };
+        for p in prefix.iter().rev() {
+            v.insert(0, p.to_vec());
+        }
+    }
+}
+
+impl std::fmt::Display for Key {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Key::Fixed(v) => {
+                write!(f, "(")?;
+                for (i, v) in v.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{:?}", v)?;
+                }
+                write!(f, ")")
+            }
+            Key::ContentAddressed(v) => {
+                write!(f, "(")?;
+                for v in v.iter() {
+                    write!(f, "{:?}", v)?;
+                    write!(f, ", ")?;
+                }
+                write!(f, "<ContentAddressed>")?;
+                write!(f, ")")
+            }
+        }
+    }
+}
+
 #[cfg(feature = "pyo3")]
 impl pyo3::ToPyObject for Key {
     fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
@@ -206,6 +244,8 @@ pub trait ContentFactory {
     }
 
     fn storage_kind(&self) -> String;
+
+    fn add_key_prefix(&mut self, prefix: &[&[u8]]);
 }
 
 pub struct FulltextContentFactory {
@@ -284,6 +324,15 @@ impl ContentFactory for FulltextContentFactory {
 
     fn storage_kind(&self) -> String {
         "fulltext".into()
+    }
+
+    fn add_key_prefix(&mut self, prefix: &[&[u8]]) {
+        self.key.add_prefix(prefix);
+        if let Some(parents) = self.parents.as_mut() {
+            for parent in parents {
+                parent.add_prefix(prefix);
+            }
+        }
     }
 }
 
@@ -380,6 +429,80 @@ impl ContentFactory for ChunkedContentFactory {
 
     fn storage_kind(&self) -> String {
         "chunked".into()
+    }
+
+    fn add_key_prefix(&mut self, prefix: &[&[u8]]) {
+        self.key.add_prefix(prefix);
+        if let Some(parents) = self.parents.as_mut() {
+            for parent in parents {
+                parent.add_prefix(prefix);
+            }
+        }
+    }
+}
+
+pub struct AbsentContentFactory {
+    key: Key,
+}
+
+impl AbsentContentFactory {
+    pub fn new(key: Key) -> Self {
+        Self { key }
+    }
+}
+
+impl ContentFactory for AbsentContentFactory {
+    fn sha1(&self) -> Option<Vec<u8>> {
+        None
+    }
+
+    fn size(&self) -> Option<usize> {
+        None
+    }
+
+    fn key(&self) -> Key {
+        self.key.clone()
+    }
+
+    fn parents(&self) -> Option<Vec<Key>> {
+        None
+    }
+
+    fn to_fulltext<'a, 'b>(&'a self) -> Cow<'b, [u8]>
+    where
+        'a: 'b,
+    {
+        panic!("A request was made for key: {}, but that content is not available, and the calling code does not handle if it is missing.", self.key);
+    }
+
+    fn to_chunks<'a, 'b>(&'a self) -> Box<dyn Iterator<Item = Cow<'b, [u8]>> + 'b>
+    where
+        'a: 'b,
+    {
+        panic!("A request was made for key: {}, but that content is not available, and the calling code does not handle if it is missing.", self.key);
+    }
+
+    fn to_lines<'a, 'b>(&'a self) -> Box<dyn Iterator<Item = Cow<'b, [u8]>> + 'b>
+    where
+        'a: 'b,
+    {
+        panic!("A request was made for key: {}, but that content is not available, and the calling code does not handle if it is missing.", self.key);
+    }
+
+    fn into_fulltext(self) -> Vec<u8> {
+        panic!("A request was made for key: {}, but that content is not available, and the calling code does not handle if it is missing.", self.key);
+    }
+
+    fn into_chunks(self) -> Box<dyn Iterator<Item = Vec<u8>>> {
+        panic!("A request was made for key: {}, but that content is not available, and the calling code does not handle if it is missing.", self.key);
+    }
+
+    fn storage_kind(&self) -> String {
+        "absent".into()
+    }
+
+    fn add_key_prefix(&mut self, prefix: &[&[u8]]) {
+        self.key.add_prefix(prefix);
     }
 }
 
