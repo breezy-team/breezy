@@ -1,4 +1,5 @@
 pub mod delta;
+pub mod line_delta;
 use sha1::{Digest as _, Sha1};
 
 lazy_static::lazy_static! {
@@ -136,7 +137,7 @@ pub fn apply_delta_to_source(
     apply_delta(source, delta_bytes)
 }
 
-pub fn encode_copy_instruction(mut offset: usize, mut length: usize) -> Result<Vec<u8>, String> {
+pub fn encode_copy_instruction(mut offset: usize, mut length: usize) -> Vec<u8> {
     // Convert this offset into a control code and bytes.
     let mut copy_command: u8 = 0x80;
     let mut copy_bytes: Vec<u8> = vec![];
@@ -150,10 +151,10 @@ pub fn encode_copy_instruction(mut offset: usize, mut length: usize) -> Result<V
         offset >>= 8;
     }
     if length > 0x10000 {
-        return Err("we don't emit copy records for lengths > 64KiB".to_string());
+        panic!("we don't emit copy records for lengths > 64KiB");
     }
     if length == 0 {
-        return Err("We cannot emit a copy of length 0".to_string());
+        panic!("We cannot emit a copy of length 0");
     }
     if length != 0x10000 {
         // A copy of length exactly 64*1024 == 0x10000 is sent as a length of 0,
@@ -168,5 +169,119 @@ pub fn encode_copy_instruction(mut offset: usize, mut length: usize) -> Result<V
         }
     }
     copy_bytes.insert(0, copy_command);
-    Ok(copy_bytes)
+    copy_bytes
+}
+
+#[cfg(test)]
+mod test_copy_instruction {
+    fn assert_encode(expected: &[u8], offset: usize, length: usize) {
+        let data = super::encode_copy_instruction(offset, length);
+        assert_eq!(expected, data);
+    }
+
+    fn assert_decode(
+        exp_offset: usize,
+        exp_length: usize,
+        exp_newpos: usize,
+        data: &[u8],
+        mut pos: usize,
+    ) {
+        let cmd = data[pos];
+        pos += 1;
+        let out = super::decode_copy_instruction(data, cmd, pos).unwrap();
+        assert_eq!((exp_offset, exp_length, exp_newpos), out);
+    }
+
+    #[test]
+    fn test_encode_no_length() {
+        assert_encode(b"\x80", 0, 64 * 1024);
+        assert_encode(b"\x81\x01", 1, 64 * 1024);
+        assert_encode(b"\x81\x0a", 10, 64 * 1024);
+        assert_encode(b"\x81\xff", 255, 64 * 1024);
+        assert_encode(b"\x82\x01", 256, 64 * 1024);
+        assert_encode(b"\x83\x01\x01", 257, 64 * 1024);
+        assert_encode(b"\x8F\xff\xff\xff\xff", 0xFFFFFFFF, 64 * 1024);
+        assert_encode(b"\x8E\xff\xff\xff", 0xFFFFFF00, 64 * 1024);
+        assert_encode(b"\x8D\xff\xff\xff", 0xFFFF00FF, 64 * 1024);
+        assert_encode(b"\x8B\xff\xff\xff", 0xFF00FFFF, 64 * 1024);
+        assert_encode(b"\x87\xff\xff\xff", 0x00FFFFFF, 64 * 1024);
+        assert_encode(b"\x8F\x04\x03\x02\x01", 0x01020304, 64 * 1024);
+    }
+
+    #[test]
+    fn test_encode_no_offset() {
+        assert_encode(b"\x90\x01", 0, 1);
+        assert_encode(b"\x90\x0a", 0, 10);
+        assert_encode(b"\x90\xff", 0, 255);
+        assert_encode(b"\xA0\x01", 0, 256);
+        assert_encode(b"\xB0\x01\x01", 0, 257);
+        assert_encode(b"\xB0\xff\xff", 0, 0xFFFF);
+        // Special case, if copy == 64KiB, then we store exactly 0
+        // Note that this puns with a copy of exactly 0 bytes, but we don't care
+        // about that, as we would never actually copy 0 bytes
+        assert_encode(b"\x80", 0, 64 * 1024)
+    }
+
+    #[test]
+    fn test_encode() {
+        assert_encode(b"\x91\x01\x01", 1, 1);
+        assert_encode(b"\x91\x09\x0a", 9, 10);
+        assert_encode(b"\x91\xfe\xff", 254, 255);
+        assert_encode(b"\xA2\x02\x01", 512, 256);
+        assert_encode(b"\xB3\x02\x01\x01\x01", 258, 257);
+        assert_encode(b"\xB0\x01\x01", 0, 257);
+        // Special case, if copy == 64KiB, then we store exactly 0
+        // Note that this puns with a copy of exactly 0 bytes, but we don't care
+        // about that, as we would never actually copy 0 bytes
+        assert_encode(b"\x81\x0a", 10, 64 * 1024);
+    }
+
+    #[test]
+    fn test_decode_no_length() {
+        // If length is 0, it is interpreted as 64KiB
+        // The shortest possible instruction is a copy of 64KiB from offset 0
+        assert_decode(0, 65536, 1, b"\x80", 0);
+        assert_decode(1, 65536, 2, b"\x81\x01", 0);
+        assert_decode(10, 65536, 2, b"\x81\x0a", 0);
+        assert_decode(255, 65536, 2, b"\x81\xff", 0);
+        assert_decode(256, 65536, 2, b"\x82\x01", 0);
+        assert_decode(257, 65536, 3, b"\x83\x01\x01", 0);
+        assert_decode(0xFFFFFFFF, 65536, 5, b"\x8F\xff\xff\xff\xff", 0);
+        assert_decode(0xFFFFFF00, 65536, 4, b"\x8E\xff\xff\xff", 0);
+        assert_decode(0xFFFF00FF, 65536, 4, b"\x8D\xff\xff\xff", 0);
+        assert_decode(0xFF00FFFF, 65536, 4, b"\x8B\xff\xff\xff", 0);
+        assert_decode(0x00FFFFFF, 65536, 4, b"\x87\xff\xff\xff", 0);
+        assert_decode(0x01020304, 65536, 5, b"\x8F\x04\x03\x02\x01", 0);
+    }
+
+    #[test]
+    fn test_decode_no_offset() {
+        assert_decode(0, 1, 2, b"\x90\x01", 0);
+        assert_decode(0, 10, 2, b"\x90\x0a", 0);
+        assert_decode(0, 255, 2, b"\x90\xff", 0);
+        assert_decode(0, 256, 2, b"\xA0\x01", 0);
+        assert_decode(0, 257, 3, b"\xB0\x01\x01", 0);
+        assert_decode(0, 65535, 3, b"\xB0\xff\xff", 0);
+        // Special case, if copy == 64KiB, then we store exactly 0
+        // Note that this puns with a copy of exactly 0 bytes, but we don't care
+        // about that, as we would never actually copy 0 bytes
+        assert_decode(0, 65536, 1, b"\x80", 0);
+    }
+
+    #[test]
+    fn test_decode() {
+        assert_decode(1, 1, 3, b"\x91\x01\x01", 0);
+        assert_decode(9, 10, 3, b"\x91\x09\x0a", 0);
+        assert_decode(254, 255, 3, b"\x91\xfe\xff", 0);
+        assert_decode(512, 256, 3, b"\xA2\x02\x01", 0);
+        assert_decode(258, 257, 5, b"\xB3\x02\x01\x01\x01", 0);
+        assert_decode(0, 257, 3, b"\xB0\x01\x01", 0);
+    }
+
+    #[test]
+    fn test_decode_not_start() {
+        assert_decode(1, 1, 6, b"abc\x91\x01\x01def", 3);
+        assert_decode(9, 10, 5, b"ab\x91\x09\x0ade", 2);
+        assert_decode(254, 255, 6, b"not\x91\xfe\xffcopy", 3);
+    }
 }
