@@ -19,19 +19,24 @@
 import sys
 
 from ... import tests
-from .. import groupcompress
 from ..._bzr_rs import groupcompress as _groupcompress_rs
 from ...tests import features
 from ...tests.scenarios import load_tests_apply_scenarios
+from .. import groupcompress
 
 
 def module_scenarios():
     scenarios = [
-            ("python", {"_gc_module": groupcompress, 'make_delta': groupcompress.make_line_delta}),
+        (
+            "python",
+            {"_gc_module": groupcompress, "make_delta": groupcompress.make_line_delta},
+        ),
     ]
     if compiled_groupcompress_feature.available():
         gc_module = compiled_groupcompress_feature.module
-        scenarios.append(("C", {"_gc_module": gc_module, 'make_delta': gc_module.make_delta}))
+        scenarios.append(
+            ("C", {"_gc_module": gc_module, "make_delta": gc_module.make_delta})
+        )
     return scenarios
 
 
@@ -473,6 +478,3 @@ class TestDeltaIndex(tests.TestCase):
             _fourth_text, _groupcompress_rs.apply_delta(source, fifth_delta)
         )
         self.assertEqual(b"\x80\x01\x91\xa7\x7f\x01\n", fifth_delta)
-
-
-

@@ -2350,6 +2350,7 @@ GroupCompressor: Type[_CommonGroupCompressor]
 
 
 from .._bzr_rs import groupcompress
+
 encode_base128_int = groupcompress.encode_base128_int
 encode_copy_instruction = groupcompress.encode_copy_instruction
 LinesDeltaIndex = groupcompress.LinesDeltaIndex
