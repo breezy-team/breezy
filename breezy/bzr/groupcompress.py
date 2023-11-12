@@ -839,9 +839,10 @@ def network_block_to_records(storage_kind, bytes, line_end):
 
 
 class _CommonGroupCompressor:
+    chunks: list[bytes]
+
     def __init__(self, settings=None):
         """Create a GroupCompressor."""
-        self.chunks = []
         self._last = None
         self.endpoint = 0
         self.input_bytes = 0
@@ -955,20 +956,8 @@ class _CommonGroupCompressor:
         After calling this, the compressor should no longer be used
         """
         self._block.set_chunked_content(self.chunks, self.endpoint)
-        self.chunks = None
         self._delta_index = None
         return self._block
-
-    def pop_last(self):
-        """Call this if you want to 'revoke' the last compression.
-
-        After this, the data structures will be rolled back, but you cannot do
-        more compression.
-        """
-        self._delta_index = None
-        del self.chunks[self._last[0] :]
-        self.endpoint = self._last[1]
-        self._last = None
 
     def ratio(self):
         """Return the overall compression ratio."""
@@ -984,7 +973,13 @@ class PythonGroupCompressor(_CommonGroupCompressor):
         super().__init__(settings)
         self._delta_index = LinesDeltaIndex([])
         # The actual content is managed by LinesDeltaIndex
-        self.chunks = self._delta_index.lines
+
+    @property
+    def chunks(self):
+        if self._delta_index is not None:
+            return self._delta_index.lines
+        else:
+            return None
 
     def _compress(self, key, chunks, input_len, max_delta_size, soft=False):
         """See _CommonGroupCompressor._compress."""
@@ -1037,6 +1032,7 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
 
     def __init__(self, settings=None):
         super().__init__(settings)
+        self.chunks = []
         max_bytes_to_index = self._settings.get("max_bytes_to_index", 0)
         self._delta_index = DeltaIndex(max_bytes_to_index=max_bytes_to_index)
 
@@ -1096,6 +1092,11 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
         self.chunks.extend(new_chunks)
         endpoint += sum(map(len, new_chunks))
         self.endpoint = endpoint
+
+    def flush(self):
+        ret = super().flush()
+        self.chunks = None
+        return ret
 
 
 def make_pack_factory(graph, delta, keylength, inconsistency_fatal=True):
@@ -2349,7 +2350,10 @@ GroupCompressor: Type[_CommonGroupCompressor]
 
 
 from .._bzr_rs import groupcompress
-from ._groupcompress_py import LinesDeltaIndex
+encode_base128_int = groupcompress.encode_base128_int
+encode_copy_instruction = groupcompress.encode_copy_instruction
+LinesDeltaIndex = groupcompress.LinesDeltaIndex
+make_line_delta = groupcompress.make_line_delta
 
 apply_delta = groupcompress.apply_delta
 apply_delta_to_source = groupcompress.apply_delta_to_source

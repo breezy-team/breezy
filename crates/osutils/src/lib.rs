@@ -115,6 +115,44 @@ fn test_chunks_to_lines() {
     );
 }
 
+pub fn split_lines(text: &[u8]) -> impl Iterator<Item = Cow<'_, [u8]>> {
+    pub struct SplitLines<'a> {
+        text: &'a [u8],
+    }
+
+    impl<'a> Iterator for SplitLines<'a> {
+        type Item = Cow<'a, [u8]>;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            if self.text.is_empty() {
+                return None;
+            }
+            if let Some(newline) = memchr(b'\n', self.text) {
+                let line = Cow::Borrowed(&self.text[..=newline]);
+                self.text = &self.text[newline + 1..];
+                Some(line)
+            } else {
+                // No newline found, so return the rest of the text
+                let line = Cow::Borrowed(self.text);
+                self.text = &self.text[self.text.len()..];
+                Some(line)
+            }
+        }
+    }
+
+    SplitLines { text }
+}
+
+#[test]
+fn test_split_lines() {
+    assert_eq!(
+        split_lines("foo\nbar".as_bytes())
+            .map(|x| x.to_vec())
+            .collect::<Vec<_>>(),
+        vec!["foo\n".as_bytes().to_vec(), "bar".as_bytes().to_vec()]
+    );
+}
+
 pub fn set_or_unset_env(
     env_variable: &str,
     value: Option<&str>,
