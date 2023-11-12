@@ -1,23 +1,23 @@
 use std::borrow::Borrow;
 use std::io::Read;
 
-pub struct ChunksReader<'a, T: Borrow<[u8]>> {
-    chunks: Box<dyn Iterator<Item = T> + 'a>,
+pub struct ChunksReader<T: Borrow<[u8]>> {
+    chunks: Box<dyn Iterator<Item = T>>,
     current_chunk: Option<T>,
     position: usize,
 }
 
-impl<'a, T: Borrow<[u8]>> ChunksReader<'a, T> {
-    pub fn new(chunks: impl Iterator<Item = T> + 'a) -> Self {
+impl<T: Borrow<[u8]>> ChunksReader<T> {
+    pub fn new(chunks: Box<dyn Iterator<Item = T>>) -> Self {
         ChunksReader {
-            chunks: Box::new(chunks),
+            chunks,
             position: 0,
             current_chunk: None,
         }
     }
 }
 
-impl<'a, T: Borrow<[u8]>> Read for ChunksReader<'a, T> {
+impl<T: Borrow<[u8]>> Read for ChunksReader<T> {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         let mut bytes_read = 0;
 
@@ -47,7 +47,7 @@ impl<'a, T: Borrow<[u8]>> Read for ChunksReader<'a, T> {
 #[test]
 fn test_chunks_reader_vec() {
     let chunks = vec![vec![1, 2, 3], vec![4, 5, 6], vec![7, 8, 9]];
-    let mut reader = ChunksReader::new(Box::new(chunks.iter().map(|v| v.as_slice())));
+    let mut reader = ChunksReader::new(Box::new(chunks.into_iter()));
 
     let mut buf = [0; 4];
     assert_eq!(reader.read(&mut buf).unwrap(), 4);
@@ -65,7 +65,7 @@ fn test_chunks_reader_vec() {
 #[test]
 fn test_chunks_reader_slice() {
     let chunks = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
-    let mut reader = ChunksReader::new(Box::new(chunks.iter().map(|v| v.as_slice())));
+    let mut reader = ChunksReader::new(Box::new(chunks.into_iter()));
 
     let mut buf = [0; 4];
     assert_eq!(reader.read(&mut buf).unwrap(), 4);
