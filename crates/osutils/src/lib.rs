@@ -336,6 +336,7 @@ pub fn get_user_encoding() -> Option<String> {
     }
 }
 
+pub mod chunkreader;
 pub mod file;
 pub mod iterablefile;
 pub mod path;
