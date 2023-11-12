@@ -32,6 +32,84 @@ pub fn decode_base128_int(data: &[u8]) -> (u128, usize) {
     (val, offset)
 }
 
+#[cfg(test)]
+mod test_base128_int {
+    #[test]
+    fn test_decode_base128_int() {
+        assert_eq!(super::decode_base128_int(&[0x00]), (0, 1));
+        assert_eq!(super::decode_base128_int(&[0x01]), (1, 1));
+        assert_eq!(super::decode_base128_int(&[0x7F]), (127, 1));
+        assert_eq!(super::decode_base128_int(&[0x80, 0x01]), (128, 2));
+        assert_eq!(super::decode_base128_int(&[0xFF, 0x01]), (255, 2));
+        assert_eq!(super::decode_base128_int(&[0x80, 0x02]), (256, 2));
+        assert_eq!(super::decode_base128_int(&[0x81, 0x02]), (257, 2));
+        assert_eq!(super::decode_base128_int(&[0x82, 0x02]), (258, 2));
+        assert_eq!(super::decode_base128_int(&[0xFF, 0x7F]), (16383, 2));
+        assert_eq!(super::decode_base128_int(&[0x80, 0x80, 0x01]), (16384, 3));
+        assert_eq!(super::decode_base128_int(&[0xFF, 0xFF, 0x7F]), (2097151, 3));
+        assert_eq!(
+            super::decode_base128_int(&[0x80, 0x80, 0x80, 0x01]),
+            (2097152, 4)
+        );
+        assert_eq!(
+            super::decode_base128_int(&[0xFF, 0xFF, 0xFF, 0x7F]),
+            (268435455, 4)
+        );
+        assert_eq!(
+            super::decode_base128_int(&[0x80, 0x80, 0x80, 0x80, 0x01]),
+            (268435456, 5)
+        );
+        assert_eq!(
+            super::decode_base128_int(&[0xFF, 0xFF, 0xFF, 0xFF, 0x7F]),
+            (34359738367, 5)
+        );
+        assert_eq!(
+            super::decode_base128_int(&[0x80, 0x80, 0x80, 0x80, 0x80, 0x01]),
+            (34359738368, 6)
+        );
+    }
+
+    #[test]
+    fn test_encode_base128_int() {
+        assert_eq!(super::encode_base128_int(0), [0x00]);
+        assert_eq!(super::encode_base128_int(1), [0x01]);
+        assert_eq!(super::encode_base128_int(127), [0x7F]);
+        assert_eq!(super::encode_base128_int(128), [0x80, 0x01]);
+        assert_eq!(super::encode_base128_int(255), [0xFF, 0x01]);
+        assert_eq!(super::encode_base128_int(256), [0x80, 0x02]);
+        assert_eq!(super::encode_base128_int(257), [0x81, 0x02]);
+        assert_eq!(super::encode_base128_int(258), [0x82, 0x02]);
+        assert_eq!(super::encode_base128_int(16383), [0xFF, 0x7F]);
+        assert_eq!(super::encode_base128_int(16384), [0x80, 0x80, 0x01]);
+        assert_eq!(super::encode_base128_int(2097151), [0xFF, 0xFF, 0x7F]);
+        assert_eq!(super::encode_base128_int(2097152), [0x80, 0x80, 0x80, 0x01]);
+        assert_eq!(
+            super::encode_base128_int(268435455),
+            [0xFF, 0xFF, 0xFF, 0x7F]
+        );
+        assert_eq!(
+            super::encode_base128_int(268435456),
+            [0x80, 0x80, 0x80, 0x80, 0x01]
+        );
+        assert_eq!(
+            super::encode_base128_int(34359738367),
+            [0xFF, 0xFF, 0xFF, 0xFF, 0x7F]
+        );
+        assert_eq!(
+            super::encode_base128_int(34359738368),
+            [0x80, 0x80, 0x80, 0x80, 0x80, 0x01]
+        );
+        assert_eq!(
+            super::encode_base128_int(4398046511103),
+            [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F]
+        );
+        assert_eq!(
+            super::encode_base128_int(4398046511104),
+            [0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x01]
+        );
+    }
+}
+
 pub type CopyInstruction = (usize, usize, usize);
 
 pub fn decode_copy_instruction(
