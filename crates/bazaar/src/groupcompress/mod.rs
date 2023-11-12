@@ -1,4 +1,3 @@
-pub mod block;
 pub mod delta;
 pub mod line_delta;
 use byteorder::ReadBytesExt;
@@ -22,14 +21,94 @@ pub fn encode_base128_int(mut val: u128) -> Vec<u8> {
 pub fn read_base128_int<R: Read>(reader: &mut R) -> Result<u128, std::io::Error> {
     let mut val: u128 = 0;
     let mut shift = 0;
-    let mut bval = [0u8];
+    let mut bval = [0];
+    reader.read_exact(&mut bval)?;
     while bval[0] >= 0x80 {
-        reader.read_exact(&mut bval)?;
         val |= ((bval[0] & 0x7F) as u128) << shift;
+        reader.read_exact(&mut bval)?;
         shift += 7;
     }
+
     val |= (bval[0] as u128) << shift;
     Ok(val)
+}
+
+#[cfg(test)]
+mod test_base128_int {
+    #[test]
+    fn test_decode_base128_int() {
+        assert_eq!(super::decode_base128_int(&[0x00]), (0, 1));
+        assert_eq!(super::decode_base128_int(&[0x01]), (1, 1));
+        assert_eq!(super::decode_base128_int(&[0x7F]), (127, 1));
+        assert_eq!(super::decode_base128_int(&[0x80, 0x01]), (128, 2));
+        assert_eq!(super::decode_base128_int(&[0xFF, 0x01]), (255, 2));
+        assert_eq!(super::decode_base128_int(&[0x80, 0x02]), (256, 2));
+        assert_eq!(super::decode_base128_int(&[0x81, 0x02]), (257, 2));
+        assert_eq!(super::decode_base128_int(&[0x82, 0x02]), (258, 2));
+        assert_eq!(super::decode_base128_int(&[0xFF, 0x7F]), (16383, 2));
+        assert_eq!(super::decode_base128_int(&[0x80, 0x80, 0x01]), (16384, 3));
+        assert_eq!(super::decode_base128_int(&[0xFF, 0xFF, 0x7F]), (2097151, 3));
+        assert_eq!(
+            super::decode_base128_int(&[0x80, 0x80, 0x80, 0x01]),
+            (2097152, 4)
+        );
+        assert_eq!(
+            super::decode_base128_int(&[0xFF, 0xFF, 0xFF, 0x7F]),
+            (268435455, 4)
+        );
+        assert_eq!(
+            super::decode_base128_int(&[0x80, 0x80, 0x80, 0x80, 0x01]),
+            (268435456, 5)
+        );
+        assert_eq!(
+            super::decode_base128_int(&[0xFF, 0xFF, 0xFF, 0xFF, 0x7F]),
+            (34359738367, 5)
+        );
+        assert_eq!(
+            super::decode_base128_int(&[0x80, 0x80, 0x80, 0x80, 0x80, 0x01]),
+            (34359738368, 6)
+        );
+    }
+
+    #[test]
+    fn test_encode_base128_int() {
+        assert_eq!(super::encode_base128_int(0), [0x00]);
+        assert_eq!(super::encode_base128_int(1), [0x01]);
+        assert_eq!(super::encode_base128_int(127), [0x7F]);
+        assert_eq!(super::encode_base128_int(128), [0x80, 0x01]);
+        assert_eq!(super::encode_base128_int(255), [0xFF, 0x01]);
+        assert_eq!(super::encode_base128_int(256), [0x80, 0x02]);
+        assert_eq!(super::encode_base128_int(257), [0x81, 0x02]);
+        assert_eq!(super::encode_base128_int(258), [0x82, 0x02]);
+        assert_eq!(super::encode_base128_int(16383), [0xFF, 0x7F]);
+        assert_eq!(super::encode_base128_int(16384), [0x80, 0x80, 0x01]);
+        assert_eq!(super::encode_base128_int(2097151), [0xFF, 0xFF, 0x7F]);
+        assert_eq!(super::encode_base128_int(2097152), [0x80, 0x80, 0x80, 0x01]);
+        assert_eq!(
+            super::encode_base128_int(268435455),
+            [0xFF, 0xFF, 0xFF, 0x7F]
+        );
+        assert_eq!(
+            super::encode_base128_int(268435456),
+            [0x80, 0x80, 0x80, 0x80, 0x01]
+        );
+        assert_eq!(
+            super::encode_base128_int(34359738367),
+            [0xFF, 0xFF, 0xFF, 0xFF, 0x7F]
+        );
+        assert_eq!(
+            super::encode_base128_int(34359738368),
+            [0x80, 0x80, 0x80, 0x80, 0x80, 0x01]
+        );
+        assert_eq!(
+            super::encode_base128_int(4398046511103),
+            [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F]
+        );
+        assert_eq!(
+            super::encode_base128_int(4398046511104),
+            [0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x01]
+        );
+    }
 }
 
 #[deprecated]
@@ -95,7 +174,8 @@ pub fn read_copy_instruction<R: Read>(
     Ok((offset, length))
 }
 
-pub fn apply_delta(basis: &[u8], mut delta: &[u8]) -> Result<Vec<u8>, String> {
+pub fn apply_delta(basis: &[u8], delta: &[u8]) -> Result<Vec<u8>, String> {
+    let mut delta = &delta[..];
     let target_length = read_base128_int(&mut delta).map_err(|e| e.to_string())?;
     let mut lines = Vec::new();
 
@@ -114,11 +194,8 @@ pub fn apply_delta(basis: &[u8], mut delta: &[u8]) -> Result<Vec<u8>, String> {
             if cmd == 0 {
                 return Err("Command == 0 not supported yet".to_string());
             }
-            // read the next cmd bytes into lines
-            let len_offset = lines.len();
-            delta
-                .read_exact(&mut lines[len_offset..len_offset + cmd as usize])
-                .map_err(|e| format!("Failed to read {} bytes from delta: {}", cmd, e))?;
+            lines.extend_from_slice(&delta[..cmd as usize]);
+            delta = &delta[cmd as usize..];
         }
     }
 
@@ -133,6 +210,32 @@ pub fn apply_delta(basis: &[u8], mut delta: &[u8]) -> Result<Vec<u8>, String> {
     Ok(lines)
 }
 
+#[cfg(test)]
+mod test_apply_delta {
+    const TEXT1: &[u8] = b"This is a bit
+of source text
+which is meant to be matched
+against other text
+";
+
+    const TEXT2: &[u8] = b"This is a bit
+of source text
+which is meant to differ from
+against other text
+";
+
+    #[test]
+    fn test_apply_delta() {
+        let target =
+            super::apply_delta(TEXT1, b"N\x90/\x1fdiffer from\nagainst other text\n").unwrap();
+        assert_eq!(target, TEXT2);
+        let target =
+            super::apply_delta(TEXT2, b"M\x90/\x1ebe matched\nagainst other text\n").unwrap();
+        assert_eq!(target, TEXT1);
+    }
+}
+
+#[deprecated]
 pub fn apply_delta_to_source(
     source: &[u8],
     delta_start: usize,

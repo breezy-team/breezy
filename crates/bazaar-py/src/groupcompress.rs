@@ -1,4 +1,3 @@
-use bazaar::groupcompress::block::CompressorKind;
 use bazaar::groupcompress::delta::DeltaError;
 use pyo3::exceptions::{PyMemoryError, PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
@@ -146,130 +145,6 @@ impl LinesDeltaIndex {
     }
 }
 
-#[pyclass(unsendable)]
-struct GroupCompressBlock(bazaar::groupcompress::block::GroupCompressBlock);
-
-#[pymethods]
-impl GroupCompressBlock {
-    #[new]
-    fn new() -> Self {
-        Self(bazaar::groupcompress::block::GroupCompressBlock::new())
-    }
-
-    fn __len__(&self) -> usize {
-        self.0.len()
-    }
-
-    #[getter]
-    fn _z_content(&mut self, py: Python) -> PyResult<PyObject> {
-        let ret = self.0.z_content();
-        Ok(PyBytes::new(py, &ret).to_object(py))
-    }
-
-    #[getter]
-    fn _content(&mut self, py: Python) -> PyResult<Option<PyObject>> {
-        let ret = self.0.content();
-        Ok(ret.map(|x| PyBytes::new(py, x).to_object(py)))
-    }
-
-    #[getter]
-    fn _content_length(&self) -> Option<usize> {
-        self.0.content_length()
-    }
-
-    #[classmethod]
-    fn from_bytes(_type: &pyo3::types::PyType, data: &[u8]) -> PyResult<Self> {
-        let ret = bazaar::groupcompress::block::GroupCompressBlock::from_bytes(data);
-        if ret.is_err() {
-            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                "Invalid block",
-            ));
-        }
-        Ok(Self(ret.unwrap()))
-    }
-
-    fn extract(
-        &mut self,
-        py: Python,
-        key: PyObject,
-        offset: usize,
-        length: usize,
-    ) -> PyResult<Vec<PyObject>> {
-        let chunks = self
-            .0
-            .extract(offset, length)
-            .map_err(|e| PyValueError::new_err(format!("Error during extract: {:?}", e)))?;
-        Ok(chunks
-            .into_iter()
-            .map(|x| PyBytes::new(py, x.as_ref()).to_object(py))
-            .collect())
-    }
-
-    fn set_chunked_content(&mut self, data: Vec<Vec<u8>>, length: usize) -> PyResult<()> {
-        self.0.set_chunked_content(data.as_slice(), length);
-        Ok(())
-    }
-
-    fn to_chunks(&mut self, py: Python, kind: Option<CompressorKind>) -> (usize, Vec<PyObject>) {
-        let (size, chunks) = self.0.to_chunks(kind);
-
-        let chunks = chunks
-            .into_iter()
-            .map(|x| PyBytes::new(py, x.as_ref()).to_object(py))
-            .collect();
-
-        (size, chunks)
-    }
-
-    fn to_bytes(&mut self, py: Python) -> PyResult<PyObject> {
-        let ret = self.0.to_bytes();
-        Ok(PyBytes::new(py, &ret).to_object(py))
-    }
-
-    fn _ensure_content(&mut self, size: Option<usize>) -> PyResult<()> {
-        self.0.ensure_content(size);
-        Ok(())
-    }
-
-    fn _dump(&mut self, py: Python, include_text: Option<bool>) -> PyResult<PyObject> {
-        let ret = self
-            .0
-            .dump(include_text)
-            .map_err(|e| PyValueError::new_err(format!("Error during dump: {:?}", e)))?;
-
-        Ok(ret
-            .into_iter()
-            .map(|x| match x {
-                bazaar::groupcompress::block::DumpInfo::Fulltext(len, text) => (
-                    len,
-                    text.map(|x| PyBytes::new(py, x.as_ref()).to_object(py)),
-                )
-                    .to_object(py),
-                bazaar::groupcompress::block::DumpInfo::Delta(offset, len, info) => (
-                    offset,
-                    len,
-                    info.into_iter()
-                        .map(|x| match x {
-                            bazaar::groupcompress::block::DeltaInfo::Copy(offset, len, text) => (
-                                offset,
-                                len,
-                                text.map(|x| PyBytes::new(py, x.as_ref()).to_object(py)),
-                            )
-                                .into_py(py),
-                            bazaar::groupcompress::block::DeltaInfo::Insert(len, data) => {
-                                (len, PyBytes::new(py, data.as_slice()).to_object(py)).to_object(py)
-                            }
-                        })
-                        .collect::<Vec<_>>()
-                        .into_py(py),
-                )
-                    .into_py(py),
-            })
-            .collect::<Vec<_>>()
-            .into_py(py))
-    }
-}
-
 pub(crate) fn _groupcompress_rs(py: Python) -> PyResult<&PyModule> {
     let m = PyModule::new(py, "groupcompress")?;
     m.add_wrapped(wrap_pyfunction!(encode_base128_int))?;
@@ -284,6 +159,5 @@ pub(crate) fn _groupcompress_rs(py: Python) -> PyResult<&PyModule> {
         "NULL_SHA1",
         pyo3::types::PyBytes::new(py, &bazaar::groupcompress::NULL_SHA1),
     )?;
-    m.add_class::<GroupCompressBlock>()?;
     Ok(m)
 }
