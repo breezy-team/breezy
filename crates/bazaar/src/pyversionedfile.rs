@@ -1,4 +1,4 @@
-use crate::versionedfile::{ContentFactory, Error, Key, Ordering, VersionedFile};
+use crate::versionedfile::{ContentFactory, Error, Key, Ordering, VersionId, VersionedFile};
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use std::borrow::Cow;
@@ -141,11 +141,22 @@ impl Iterator for PyRecordStreamIter {
 }
 
 impl VersionedFile<PyContentFactory, PyObject> for PyVersionedFile {
-    fn has_version(&self, key: &Key) -> bool {
+    fn check_not_reserved_id(version_id: &VersionId) -> bool {
+        Python::with_gil(|py| {
+            let m = py.import("breezy.bzr.versionedfile").unwrap();
+            let c = m.getattr("VersionedFile").unwrap();
+            c.call_method1("check_not_reserved_id", (version_id.to_object(py),))
+                .unwrap()
+                .extract()
+                .unwrap()
+        })
+    }
+
+    fn has_version(&self, version_id: &VersionId) -> bool {
         Python::with_gil(|py| {
             let py_versioned_file = self.0.as_ref(py);
             py_versioned_file
-                .call_method1("has_version", (key.to_object(py),))
+                .call_method1("has_version", (version_id.to_object(py),))
                 .unwrap()
                 .extract()
                 .unwrap()
@@ -164,15 +175,21 @@ impl VersionedFile<PyContentFactory, PyObject> for PyVersionedFile {
 
     fn get_record_stream(
         &self,
-        keys: &[&Key],
+        version_ids: &[&VersionId],
         ordering: Ordering,
         include_delta_closure: bool,
     ) -> Box<dyn Iterator<Item = PyContentFactory>> {
         Box::new(Python::with_gil(|py| {
             let py_versioned_file = self.0.as_ref(py);
-            let keys = keys.iter().map(|k| k.to_object(py)).collect::<Vec<_>>();
+            let version_ids = version_ids
+                .iter()
+                .map(|k| k.to_object(py))
+                .collect::<Vec<_>>();
             let py_record_stream = py_versioned_file
-                .call_method1("get_record_stream", (keys, ordering, include_delta_closure))
+                .call_method1(
+                    "get_record_stream",
+                    (version_ids, ordering, include_delta_closure),
+                )
                 .unwrap();
             Box::new(PyRecordStreamIter(py_record_stream.to_object(py)))
         }))
@@ -180,8 +197,8 @@ impl VersionedFile<PyContentFactory, PyObject> for PyVersionedFile {
 
     fn add_lines<'a>(
         &mut self,
-        version_id: &Key,
-        parent_texts: Option<std::collections::HashMap<Key, PyObject>>,
+        version_id: &VersionId,
+        parent_texts: Option<std::collections::HashMap<VersionId, PyObject>>,
         lines: impl Iterator<Item = &'a [u8]>,
         nostore_sha: Option<bool>,
         random_id: bool,
