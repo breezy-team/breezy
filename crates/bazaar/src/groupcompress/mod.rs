@@ -175,17 +175,16 @@ pub fn read_copy_instruction<R: Read>(
 }
 
 pub fn apply_delta(basis: &[u8], delta: &[u8]) -> Result<Vec<u8>, String> {
-    let (target_length, mut pos) = decode_base128_int(delta);
+    let mut delta = &delta[..];
+    let target_length = read_base128_int(&mut delta).map_err(|e| e.to_string())?;
     let mut lines = Vec::new();
-    let len_delta = delta.len();
 
-    while pos < len_delta {
-        let cmd = delta[pos];
-        pos += 1;
+    while !delta.is_empty() {
+        let cmd = delta.read_u8().map_err(|e| e.to_string())?;
 
         if cmd & 0x80 != 0 {
-            let (offset, length, new_pos) = decode_copy_instruction(delta, cmd, pos)?;
-            pos = new_pos;
+            let (offset, length) =
+                read_copy_instruction(&mut delta, cmd).map_err(|e| e.to_string())?;
             let last = offset + length;
             if last > basis.len() {
                 return Err("data would copy bytes past the end of source".to_string());
@@ -195,8 +194,8 @@ pub fn apply_delta(basis: &[u8], delta: &[u8]) -> Result<Vec<u8>, String> {
             if cmd == 0 {
                 return Err("Command == 0 not supported yet".to_string());
             }
-            lines.extend_from_slice(&delta[pos..pos + cmd as usize]);
-            pos += cmd as usize;
+            lines.extend_from_slice(&delta[..cmd as usize]);
+            delta = &delta[cmd as usize..];
         }
     }
 
@@ -237,7 +236,7 @@ against other text
 }
 
 #[deprecated]
-pub fn create_apply_delta(
+pub fn apply_delta_to_source(
     source: &[u8],
     delta_start: usize,
     delta_end: usize,
