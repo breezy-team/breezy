@@ -243,14 +243,14 @@ impl GroupCompressBlock {
         Ok(ret
             .into_iter()
             .map(|x| match x {
-                bazaar::groupcompress::block::DumpInfo::Fulltext(len, text) => (
-                    len,
+                bazaar::groupcompress::block::DumpInfo::Fulltext(text) => (
+                    PyBytes::new(py, b"f"),
                     text.map(|x| PyBytes::new(py, x.as_ref()).to_object(py)),
                 )
                     .to_object(py),
-                bazaar::groupcompress::block::DumpInfo::Delta(offset, len, info) => (
-                    offset,
-                    len,
+                bazaar::groupcompress::block::DumpInfo::Delta(decomp_len, info) => (
+                    PyBytes::new(py, b"d"),
+                    decomp_len,
                     info.into_iter()
                         .map(|x| match x {
                             bazaar::groupcompress::block::DeltaInfo::Copy(offset, len, text) => (
