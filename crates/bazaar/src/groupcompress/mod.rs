@@ -1,4 +1,5 @@
 pub mod block;
+pub mod compressor;
 pub mod delta;
 pub mod line_delta;
 use byteorder::ReadBytesExt;

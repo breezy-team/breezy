@@ -1,4 +1,6 @@
+use bazaar::groupcompress::compressor::GroupCompressor;
 use bazaar::groupcompress::delta::DeltaError;
+use bazaar::versionedfile::Key;
 use pyo3::exceptions::{PyMemoryError, PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
@@ -275,6 +277,79 @@ impl GroupCompressBlock {
     }
 }
 
+#[pyclass]
+struct TraditionalGroupCompressor(bazaar::groupcompress::compressor::TraditionalGroupCompressor);
+
+#[pymethods]
+impl TraditionalGroupCompressor {
+    #[new]
+    fn new() -> Self {
+        Self(bazaar::groupcompress::compressor::TraditionalGroupCompressor::new())
+    }
+
+    #[getter]
+    fn chunks(&self, py: Python) -> Vec<PyObject> {
+        self.0
+            .chunks()
+            .iter()
+            .map(|x| PyBytes::new(py, x.as_ref()).to_object(py))
+            .collect()
+    }
+
+    #[getter]
+    fn endpoint(&self) -> usize {
+        self.0.endpoint()
+    }
+
+    fn ratio(&self) -> f32 {
+        self.0.ratio()
+    }
+
+    fn extract(&self, py: Python, key: Vec<Vec<u8>>) -> PyResult<(Vec<PyObject>, PyObject)> {
+        let (data, hash) = self
+            .0
+            .extract(&key)
+            .map_err(|e| PyValueError::new_err(format!("Error during extract: {:?}", e)))?;
+        Ok((
+            data.iter()
+                .map(|x| PyBytes::new(py, x.as_ref()).to_object(py))
+                .collect(),
+            PyBytes::new(py, hash.as_bytes()).to_object(py),
+        ))
+    }
+
+    fn compress(
+        &mut self,
+        py: Python,
+        key: Key,
+        chunks: Vec<Vec<u8>>,
+        length: usize,
+        expected_sha: Option<String>,
+        nostore_sha: Option<String>,
+        soft: Option<bool>,
+    ) -> PyResult<(PyObject, usize, usize, &str)> {
+        let chunks_l = chunks.iter().map(|x| x.as_slice()).collect::<Vec<_>>();
+        self.0
+            .compress(
+                &key,
+                chunks_l.as_slice(),
+                length,
+                expected_sha,
+                nostore_sha,
+                soft,
+            )
+            .map_err(|e| PyValueError::new_err(format!("Error during compress: {:?}", e)))
+            .map(|(hash, size, chunks, kind)| {
+                (
+                    PyBytes::new(py, hash.as_ref()).to_object(py),
+                    size,
+                    chunks,
+                    kind,
+                )
+            })
+    }
+}
+
 pub(crate) fn _groupcompress_rs(py: Python) -> PyResult<&PyModule> {
     let m = PyModule::new(py, "groupcompress")?;
     m.add_wrapped(wrap_pyfunction!(encode_base128_int))?;
@@ -285,6 +360,7 @@ pub(crate) fn _groupcompress_rs(py: Python) -> PyResult<&PyModule> {
     m.add_wrapped(wrap_pyfunction!(apply_delta_to_source))?;
     m.add_wrapped(wrap_pyfunction!(make_line_delta))?;
     m.add_class::<LinesDeltaIndex>()?;
+    m.add_class::<TraditionalGroupCompressor>()?;
     m.add(
         "NULL_SHA1",
         pyo3::types::PyBytes::new(py, &bazaar::groupcompress::NULL_SHA1),

@@ -7,15 +7,20 @@ use std::collections::HashMap;
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Error {
     VersionNotPresent(Key),
+    ExistingContent(Key),
 }
 
 #[cfg(feature = "pyo3")]
 impl From<Error> for pyo3::PyErr {
     fn from(e: Error) -> pyo3::PyErr {
         pyo3::import_exception!(breezy.errors, RevisionNotPresent);
+        pyo3::import_exception!(breezy.errors, ExistingContent);
         match e {
             Error::VersionNotPresent(key) => {
                 RevisionNotPresent::new_err(format!("Version not present: {:?}", key))
+            }
+            Error::ExistingContent(key) => {
+                ExistingContent::new_err(format!("Existing content: {:?}", key))
             }
         }
     }
@@ -25,9 +30,20 @@ impl From<Error> for pyo3::PyErr {
 impl From<pyo3::PyErr> for Error {
     fn from(e: pyo3::PyErr) -> Error {
         pyo3::import_exception!(breezy.errors, RevisionNotPresent);
+        pyo3::import_exception!(breezy.errors, ExistingContent);
         pyo3::Python::with_gil(|py| {
             if e.is_instance_of::<RevisionNotPresent>(py) {
                 Error::VersionNotPresent(
+                    e.value(py)
+                        .getattr("args")
+                        .unwrap()
+                        .get_item(0)
+                        .unwrap()
+                        .extract()
+                        .unwrap(),
+                )
+            } else if e.is_instance_of::<ExistingContent>(py) {
+                Error::ExistingContent(
                     e.value(py)
                         .getattr("args")
                         .unwrap()
@@ -47,6 +63,7 @@ impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Error::VersionNotPresent(key) => write!(f, "Version not present: {:?}", key),
+            Error::ExistingContent(key) => write!(f, "Existing content: {:?}", key),
         }
     }
 }
