@@ -6,8 +6,8 @@ use std::collections::HashMap;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Error {
-    VersionNotPresent(Key),
     ExistingContent(Key),
+    VersionNotPresent(VersionId),
 }
 
 #[cfg(feature = "pyo3")]
@@ -62,8 +62,8 @@ impl From<pyo3::PyErr> for Error {
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Error::VersionNotPresent(key) => write!(f, "Version not present: {:?}", key),
             Error::ExistingContent(key) => write!(f, "Existing content: {:?}", key),
+            Error::VersionNotPresent(version) => write!(f, "Version not present: {:?}", version),
         }
     }
 }
@@ -102,6 +102,31 @@ impl pyo3::FromPyObject<'_> for Ordering {
                 "Expected 'unordered' or 'topological'".to_string(),
             )),
         }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct VersionId(Vec<u8>);
+
+#[cfg(feature = "pyo3")]
+impl pyo3::ToPyObject for VersionId {
+    fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
+        PyBytes::new(py, &self.0).to_object(py)
+    }
+}
+
+#[cfg(feature = "pyo3")]
+impl pyo3::FromPyObject<'_> for VersionId {
+    fn extract(ob: &pyo3::PyAny) -> pyo3::PyResult<Self> {
+        let bytes = ob.extract::<Vec<u8>>()?;
+        Ok(VersionId(bytes))
+    }
+}
+
+impl std::fmt::Display for VersionId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "VersionId({:?})", self.0)?;
+        Ok(())
     }
 }
 
@@ -546,23 +571,25 @@ impl ContentFactory for AbsentContentFactory {
 }
 
 pub trait VersionedFile<CF: ContentFactory, I> {
+    fn check_not_reserved_id(id: &VersionId) -> bool;
+
     fn get_record_stream(
         &self,
-        keys: &[&Key],
+        keys: &[&VersionId],
         ordering: Ordering,
         include_delta_closure: bool,
     ) -> Box<dyn Iterator<Item = CF>>;
 
     fn add_lines<'a>(
         &mut self,
-        version_id: &Key,
-        parent_texts: Option<HashMap<Key, I>>,
+        version_id: &VersionId,
+        parent_texts: Option<HashMap<VersionId, I>>,
         lines: impl Iterator<Item = &'a [u8]>,
         nostore_sha: Option<bool>,
         random_id: bool,
     ) -> Result<(Vec<u8>, usize, I), Error>;
 
-    fn has_version(&self, version_id: &Key) -> bool;
+    fn has_version(&self, version_id: &VersionId) -> bool;
 
     fn insert_record_stream(
         &mut self,
@@ -571,7 +598,10 @@ pub trait VersionedFile<CF: ContentFactory, I> {
 
     fn get_format_signature(&self) -> String;
 
-    fn get_lines(&self, version_id: &Key) -> Result<Box<dyn Iterator<Item = Vec<u8>>>, Error> {
+    fn get_lines(
+        &self,
+        version_id: &VersionId,
+    ) -> Result<Box<dyn Iterator<Item = Vec<u8>>>, Error> {
         let record_stream = self.get_record_stream(&[version_id], Ordering::Unordered, false);
         if let Some(record) = record_stream.into_iter().next() {
             Ok(record.into_lines())
@@ -580,7 +610,7 @@ pub trait VersionedFile<CF: ContentFactory, I> {
         }
     }
 
-    fn get_text(&self, version_id: &Key) -> Result<Vec<u8>, Error> {
+    fn get_text(&self, version_id: &VersionId) -> Result<Vec<u8>, Error> {
         let record_stream = self.get_record_stream(&[version_id], Ordering::Unordered, false);
         if let Some(record) = record_stream.into_iter().next() {
             Ok(record.into_fulltext())
@@ -589,7 +619,10 @@ pub trait VersionedFile<CF: ContentFactory, I> {
         }
     }
 
-    fn get_chunks(&self, version_id: &Key) -> Result<Box<dyn Iterator<Item = Vec<u8>>>, Error> {
+    fn get_chunks(
+        &self,
+        version_id: &VersionId,
+    ) -> Result<Box<dyn Iterator<Item = Vec<u8>>>, Error> {
         let record_stream = self.get_record_stream(&[version_id], Ordering::Unordered, false);
         if let Some(record) = record_stream.into_iter().next() {
             Ok(record.into_chunks())
@@ -597,6 +630,37 @@ pub trait VersionedFile<CF: ContentFactory, I> {
             Err(Error::VersionNotPresent(version_id.clone()))
         }
     }
+}
+
+/// Storage for many versioned files.
+///
+/// This object allows a single keyspace for accessing the history graph and
+/// contents of named bytestrings.
+///
+/// Currently no implementation allows the graph of different key prefixes to
+/// intersect, but the API does allow such implementations in the future.
+///
+/// The keyspace is expressed via simple tuples. Any instance of VersionedFiles
+/// may have a different length key-size, but that size will be constant for
+/// all texts added to or retrieved from it. For instance, breezy uses
+/// instances with a key-size of 2 for storing user files in a repository, with
+/// the first element the fileid, and the second the version of that file.
+///
+/// The use of tuples allows a single code base to support several different
+/// uses with only the mapping logic changing from instance to instance.
+///
+/// :ivar _immediate_fallback_vfs: For subclasses that support stacking,
+///     this is a list of other VersionedFiles immediately underneath this
+///     one.  They may in turn each have further fallbacks.
+pub trait VersionedFiles<CF: ContentFactory, I> {
+    fn check_not_reserved_id(id: &VersionId) -> bool;
+
+    fn get_record_stream(
+        &self,
+        keys: &[&Key],
+        ordering: Ordering,
+        include_delta_closure: bool,
+    ) -> Box<dyn Iterator<Item = CF>>;
 }
 
 pub fn record_to_fulltext_bytes<R: ContentFactory, W: std::io::Write>(
