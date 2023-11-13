@@ -51,6 +51,7 @@ from .versionedfile import (
 )
 
 _null_sha1 = _groupcompress_rs.NULL_SHA1
+PythonGroupCompressor = _groupcompress_rs.TraditionalGroupCompressor
 
 # Minimum number of uncompressed bytes to try fetch at once when retrieving
 # groupcompress blocks.
@@ -962,55 +963,6 @@ class _CommonGroupCompressor:
     def ratio(self):
         """Return the overall compression ratio."""
         return float(self.input_bytes) / float(self.endpoint)
-
-
-class PythonGroupCompressor(_CommonGroupCompressor):
-    def __init__(self, settings=None):
-        """Create a GroupCompressor.
-
-        Used only if the pyrex version is not available.
-        """
-        super().__init__(settings)
-        self._delta_index = LinesDeltaIndex([])
-        # The actual content is managed by LinesDeltaIndex
-
-    @property
-    def chunks(self):
-        if self._delta_index is not None:
-            return self._delta_index.lines
-        else:
-            return None
-
-    def _compress(self, key, chunks, input_len, max_delta_size, soft=False):
-        """See _CommonGroupCompressor._compress."""
-        new_lines = osutils.chunks_to_lines(chunks)
-        out_lines, index_lines = self._delta_index.make_delta(
-            new_lines, bytes_length=input_len, soft=soft
-        )
-        delta_length = sum(map(len, out_lines))
-        if delta_length > max_delta_size:
-            # The delta is longer than the fulltext, insert a fulltext
-            type = "fulltext"
-            out_lines = [b"f", encode_base128_int(input_len)]
-            out_lines.extend(new_lines)
-            index_lines = [False, False]
-            index_lines.extend([True] * len(new_lines))
-        else:
-            # this is a worthy delta, output it
-            type = "delta"
-            out_lines[0] = b"d"
-            # Update the delta_length to include those two encoded integers
-            out_lines[1] = encode_base128_int(delta_length)
-        # Before insertion
-        start = self.endpoint
-        chunk_start = len(self.chunks)
-        self._last = (chunk_start, self.endpoint)
-        self._delta_index.extend_lines(out_lines, index_lines)
-        self.endpoint = self._delta_index.endpoint
-        self.input_bytes += input_len
-        chunk_end = len(self.chunks)
-        self.labels_deltas[key] = (start, chunk_start, self.endpoint, chunk_end)
-        return start, self.endpoint, type
 
 
 class PyrexGroupCompressor(_CommonGroupCompressor):
