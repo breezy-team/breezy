@@ -74,6 +74,37 @@ impl std::fmt::Display for Error {
 
 impl std::error::Error for Error {}
 
+pub enum GroupCompressItem {
+    Fulltext(Vec<u8>),
+    Delta(Vec<u8>),
+}
+
+pub fn read_item<R: Read>(r: &mut R) -> Result<GroupCompressItem, Error> {
+    // The bytes are 'f' or 'd' for the type, then a variable-length
+    // base128 integer for the content size, then the actual content
+    // We know that the variable-length integer won't be longer than 5
+    // bytes (it takes 5 bytes to encode 2^32)
+    let c = r.read_u8()?;
+    let content_len = read_base128_int(r).map_err(|e| Error::InvalidData(e.to_string()))?;
+
+    let mut text = vec![0; content_len as usize];
+    r.read_exact(&mut text)?;
+    match c {
+        b'f' => {
+            // Fulltext
+            Ok(GroupCompressItem::Fulltext(text))
+        }
+        b'd' => {
+            // Must be type delta as checked above
+            Ok(GroupCompressItem::Delta(text))
+        }
+        c => Err(Error::InvalidData(format!(
+            "Unknown content control code: {:?}",
+            c
+        ))),
+    }
+}
+
 /// An object which maintains the internal structure of the compressed data.
 ///
 /// This tracks the meta info (start of text, length, type, etc.)
@@ -299,33 +330,13 @@ impl GroupCompressBlock {
 
         let mut content = self.content.as_ref().unwrap().as_slice();
 
-        // The bytes are 'f' or 'd' for the type, then a variable-length
-        // base128 integer for the content size, then the actual content
-        // We know that the variable-length integer won't be longer than 5
-        // bytes (it takes 5 bytes to encode 2^32)
-        let c = (&mut content).read_u8()?;
-        let content_len =
-            read_base128_int(&mut content).map_err(|e| Error::InvalidData(e.to_string()))?;
-
-        let mut text = vec![0; content_len as usize];
-        (&mut content).read_exact(&mut text)?;
-        match c {
-            b'f' => {
-                // Fulltext
-                Ok(vec![text])
-            }
-            b'd' => {
-                // Must be type delta as checked above
-                Ok(vec![apply_delta(
-                    self.content.as_ref().unwrap(),
-                    text.as_slice(),
-                )
-                .unwrap()])
-            }
-            c => Err(Error::InvalidData(format!(
-                "Unknown content control code: {:?}",
-                c
-            ))),
+        match read_item(&mut content)? {
+            GroupCompressItem::Fulltext(data) => Ok(vec![data]),
+            GroupCompressItem::Delta(text) => Ok(vec![apply_delta(
+                self.content.as_ref().unwrap(),
+                text.as_slice(),
+            )
+            .unwrap()]),
         }
     }
 
@@ -438,35 +449,16 @@ impl GroupCompressBlock {
         let mut result = vec![];
         let mut content = self.content.as_ref().unwrap().as_slice();
         while !content.is_empty() {
-            let kind = (&mut content).read_u8()?;
-
-            let content_len =
-                read_base128_int(&mut content).map_err(|e| Error::InvalidData(e.to_string()))?;
-
-            match kind {
-                b'f' | b'd' => {}
-                _ => {
-                    return Err(Error::InvalidData(format!(
-                        "Unknown content control code: {:?}",
-                        kind
-                    )));
-                }
-            }
-            match kind {
-                b'f' => {
+            match read_item(&mut content)? {
+                GroupCompressItem::Fulltext(text) => {
                     // Fulltext
-                    let mut text = vec![0; content_len as usize];
-                    (&mut content).read_exact(&mut text)?;
                     if include_text {
-                        result.push(DumpInfo::Fulltext(content_len as usize, Some(text)));
+                        result.push(DumpInfo::Fulltext(Some(text)));
                     } else {
-                        result.push(DumpInfo::Fulltext(content_len as usize, None));
+                        result.push(DumpInfo::Fulltext(None));
                     }
                 }
-                b'd' => {
-                    // Delta
-                    let mut delta_content = vec![0; content_len as usize];
-                    (&mut content).read_exact(&mut delta_content)?;
+                GroupCompressItem::Delta(delta_content) => {
                     let mut delta_info = vec![];
                     // The first entry in a delta is the decompressed length
                     let mut delta_slice = delta_content.as_slice();
@@ -503,13 +495,8 @@ impl GroupCompressBlock {
                             decomp_len, measured_len
                         )));
                     }
-                    result.push(DumpInfo::Delta(
-                        content_len as usize,
-                        decomp_len as usize,
-                        delta_info,
-                    ));
+                    result.push(DumpInfo::Delta(decomp_len as usize, delta_info));
                 }
-                _ => unreachable!(),
             }
         }
 
@@ -523,6 +510,6 @@ pub enum DeltaInfo {
 }
 
 pub enum DumpInfo {
-    Fulltext(usize, Option<Vec<u8>>),
-    Delta(usize, usize, Vec<DeltaInfo>),
+    Fulltext(Option<Vec<u8>>),
+    Delta(usize, Vec<DeltaInfo>),
 }
