@@ -1,4 +1,4 @@
-use crate::groupcompress::{apply_delta, read_base128_int, read_copy_instruction};
+use crate::groupcompress::{apply_delta, read_base128_int, read_instruction, Instruction};
 use byteorder::ReadBytesExt;
 use std::borrow::Cow;
 use std::io::BufRead;
@@ -465,28 +465,29 @@ impl GroupCompressBlock {
                     let decomp_len = read_base128_int(&mut delta_slice).unwrap();
                     let mut measured_len = 0;
                     while !delta_slice.is_empty() {
-                        let c = (&mut delta_slice).read_u8()?;
-                        if c & 0x80 > 0 {
-                            // Copy
-                            let (offset, length) =
-                                read_copy_instruction(&mut delta_slice, c).unwrap();
-                            let mut text = vec![0; length];
-                            (&mut delta_slice).read_exact(&mut text).unwrap();
-                            delta_info.push(DeltaInfo::Copy(
-                                offset,
-                                length,
-                                if include_text { Some(text) } else { None },
-                            ));
-                            measured_len += length;
-                        } else {
-                            // Insert
-                            let mut text = vec![0; c as usize];
-                            (&mut delta_slice).read_exact(&mut text).unwrap();
-                            delta_info.push(DeltaInfo::Insert(
-                                c as usize,
-                                if include_text { Some(text) } else { None },
-                            ));
-                            measured_len += c as usize;
+                        match read_instruction(&mut delta_slice)? {
+                            Instruction::Insert(text) => {
+                                measured_len += text.len();
+                                delta_info.push(DeltaInfo::Insert(
+                                    text.len(),
+                                    if include_text { Some(text) } else { None },
+                                ));
+                            }
+                            Instruction::r#Copy { offset, length } => {
+                                delta_info.push(DeltaInfo::Copy(
+                                    offset,
+                                    length,
+                                    if include_text {
+                                        Some(
+                                            self.content.as_ref().unwrap()[offset..offset + length]
+                                                .to_vec(),
+                                        )
+                                    } else {
+                                        None
+                                    },
+                                ));
+                                measured_len += length;
+                            }
                         }
                     }
                     if measured_len != decomp_len as usize {

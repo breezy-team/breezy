@@ -2,9 +2,9 @@ pub mod block;
 pub mod compressor;
 pub mod delta;
 pub mod line_delta;
-use byteorder::ReadBytesExt;
+use byteorder::{ReadBytesExt, WriteBytesExt};
 use sha1::{Digest as _, Sha1};
-use std::io::Read;
+use std::io::{Read, Write};
 
 lazy_static::lazy_static! {
     pub static ref NULL_SHA1: Vec<u8> = format!("{:x}", Sha1::new().finalize()).as_bytes().to_vec();
@@ -17,7 +17,7 @@ pub fn encode_base128_int(mut val: u128) -> Vec<u8> {
     data
 }
 
-pub fn write_base128_int<W: std::io::Write>(writer: &mut W, val: u128) -> std::io::Result<()> {
+pub fn write_base128_int<W: std::io::Write>(mut writer: W, val: u128) -> std::io::Result<()> {
     let mut val = val;
     while val >= 0x80 {
         writer.write_all(&[((val | 0x80) & 0xFF) as u8])?;
@@ -182,8 +182,7 @@ pub fn read_copy_instruction<R: Read>(
     Ok((offset, length))
 }
 
-pub fn apply_delta(basis: &[u8], delta: &[u8]) -> Result<Vec<u8>, String> {
-    let mut delta = &delta[..];
+pub fn apply_delta(basis: &[u8], mut delta: &[u8]) -> Result<Vec<u8>, String> {
     let target_length = read_base128_int(&mut delta).map_err(|e| e.to_string())?;
     let mut lines = Vec::new();
 
@@ -264,9 +263,9 @@ pub fn apply_delta_to_source(
 }
 
 pub fn encode_copy_instruction(mut offset: usize, mut length: usize) -> Vec<u8> {
+    let mut copy_bytes = vec![];
     // Convert this offset into a control code and bytes.
     let mut copy_command: u8 = 0x80;
-    let mut copy_bytes: Vec<u8> = vec![];
 
     for copy_bit in [0x01, 0x02, 0x04, 0x08].iter() {
         let base_byte = (offset & 0xff) as u8;
@@ -296,6 +295,72 @@ pub fn encode_copy_instruction(mut offset: usize, mut length: usize) -> Vec<u8> 
     }
     copy_bytes.insert(0, copy_command);
     copy_bytes
+}
+
+pub fn write_copy_instruction<W: Write>(
+    mut writer: W,
+    offset: usize,
+    length: usize,
+) -> Result<(), std::io::Error> {
+    writer.write_all(encode_copy_instruction(offset, length).as_slice())
+}
+
+pub fn write_insert_instruction<W: Write>(
+    mut writer: W,
+    data: &[u8],
+) -> Result<(), std::io::Error> {
+    assert!(data.len() <= 0x7F);
+    writer.write_u8(data.len() as u8)?;
+    writer.write_all(data)?;
+    Ok(())
+}
+
+#[derive(Debug)]
+pub enum Instruction<T: std::borrow::Borrow<[u8]>> {
+    r#Copy { offset: usize, length: usize },
+    Insert(T),
+}
+
+pub fn write_instruction<W: Write>(writer: W, instruction: &Instruction<&[u8]>) {
+    match instruction {
+        Instruction::Copy { offset, length } => {
+            write_copy_instruction(writer, *offset, *length).unwrap();
+        }
+        Instruction::Insert(data) => {
+            write_insert_instruction(writer, data).unwrap();
+        }
+    }
+}
+
+pub fn read_instruction<R: Read>(mut reader: R) -> Result<Instruction<Vec<u8>>, std::io::Error> {
+    let cmd = reader.read_u8()?;
+    if cmd & 0x80 != 0 {
+        let (offset, length) = read_copy_instruction(&mut reader, cmd)?;
+        Ok(Instruction::Copy { offset, length })
+    } else {
+        let length = cmd as usize;
+        let mut data = vec![0; length];
+        reader.read_exact(&mut data)?;
+        Ok(Instruction::Insert(data))
+    }
+}
+
+pub fn decode_instruction(data: &[u8], pos: usize) -> Result<(Instruction<&[u8]>, usize), String> {
+    let cmd = data[pos];
+    if cmd & 0x80 != 0 {
+        let (offset, length, newpos) = decode_copy_instruction(data, cmd, pos)?;
+        Ok((Instruction::Copy { offset, length }, newpos))
+    } else {
+        let length = cmd as usize;
+        let newpos = pos + 1 + length;
+        if newpos > data.len() {
+            return Err(format!(
+                "Instruction length {} at position {} extends past end of data",
+                length, pos
+            ));
+        }
+        Ok((Instruction::Insert(&data[pos + 1..newpos]), newpos))
+    }
 }
 
 #[cfg(test)]
