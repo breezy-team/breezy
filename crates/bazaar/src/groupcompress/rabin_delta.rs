@@ -103,12 +103,14 @@ const U: &[u32; 256] = &[
 #[derive(Debug)]
 pub enum DeltaError {
     Io(std::io::Error), // An IO error occurred
+    DeltaTooLarge,      // The delta is too large to be encoded
 }
 
 impl std::fmt::Display for DeltaError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             DeltaError::Io(err) => write!(f, "IO error: {}", err),
+            DeltaError::DeltaTooLarge => write!(f, "Delta too large"),
         }
     }
 }
@@ -398,17 +400,24 @@ pub fn create_delta<'a, W: Write>(
     mut writer: W,
     index: &DeltaIndex<'a>,
     target: &'a [u8],
+    max_delta_size: Option<usize>,
 ) -> Result<(), DeltaError> {
+    let mut size = 0;
     // store target buffer size
-    write_base128_int(&mut writer, target.len() as u128)?;
+    size += write_base128_int(&mut writer, target.len() as u128)?;
 
     if target.len() < RABIN_WINDOW {
         // If the target is smaller than the Rabin window, we can't do any
         // matching, so just write out the whole target as an insert instruction.
-        write_instruction(&mut writer, &Instruction::Insert(target))?;
+        size += write_instruction(&mut writer, &Instruction::Insert(target))?;
     } else {
         for instruction in iter_delta_instructions(index, target) {
-            write_instruction(&mut writer, &instruction)?;
+            size += write_instruction(&mut writer, &instruction)?;
+            if let Some(max_delta_size) = max_delta_size {
+                if size > max_delta_size {
+                    return Err(DeltaError::DeltaTooLarge);
+                }
+            }
         }
     }
 
@@ -420,7 +429,7 @@ pub fn make_delta(source_bytes: &[u8], target_bytes: &[u8]) -> Vec<u8> {
     let mut out = Vec::new();
     let mut di = DeltaIndex::new();
     di.add_fulltext(source_bytes, 0, None);
-    create_delta(&mut out, &di, target_bytes).unwrap();
+    create_delta(&mut out, &di, target_bytes, None).unwrap();
     out
 }
 

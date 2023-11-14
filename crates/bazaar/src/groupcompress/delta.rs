@@ -11,13 +11,16 @@ pub fn encode_base128_int(val: u128) -> Vec<u8> {
     data
 }
 
-pub fn write_base128_int<W: std::io::Write>(mut writer: W, val: u128) -> std::io::Result<()> {
+pub fn write_base128_int<W: std::io::Write>(mut writer: W, val: u128) -> std::io::Result<usize> {
     let mut val = val;
+    let mut length = 0;
     while val >= 0x80 {
         writer.write_all(&[((val | 0x80) & 0xFF) as u8])?;
+        length += 1;
         val >>= 7;
     }
-    writer.write_all(&[val as u8])
+    writer.write_all(&[val as u8])?;
+    Ok(length + 1)
 }
 
 pub fn read_base128_int<R: Read>(reader: &mut R) -> Result<u128, std::io::Error> {
