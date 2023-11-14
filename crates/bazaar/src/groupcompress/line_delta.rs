@@ -1,4 +1,4 @@
-use crate::groupcompress::{encode_base128_int, encode_copy_instruction};
+use crate::groupcompress::delta::{encode_base128_int, encode_copy_instruction};
 use std::borrow::Cow;
 pub struct OutputHandler<'a> {
     out_lines: Vec<Cow<'a, [u8]>>,

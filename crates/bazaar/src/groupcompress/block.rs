@@ -1,4 +1,4 @@
-use crate::groupcompress::{apply_delta, read_base128_int, read_instruction, Instruction};
+use crate::groupcompress::delta::{apply_delta, read_base128_int, read_instruction, Instruction};
 use byteorder::ReadBytesExt;
 use std::borrow::Cow;
 use std::io::BufRead;
