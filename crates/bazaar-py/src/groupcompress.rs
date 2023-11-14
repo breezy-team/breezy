@@ -4,6 +4,7 @@ use pyo3::exceptions::{PyMemoryError, PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use pyo3::wrap_pyfunction;
+use std::convert::TryInto;
 
 #[pyfunction]
 fn encode_base128_int(py: Python, value: u128) -> PyResult<&PyBytes> {
@@ -18,13 +19,9 @@ fn decode_base128_int(value: Vec<u8>) -> PyResult<(u128, usize)> {
 
 #[pyfunction]
 fn apply_delta(py: Python, basis: Vec<u8>, delta: Vec<u8>) -> PyResult<&PyBytes> {
-    let ret = bazaar::groupcompress::delta::apply_delta(&basis, &delta);
-    if ret.is_err() {
-        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-            "Invalid delta",
-        ));
-    }
-    Ok(PyBytes::new(py, &ret.unwrap()))
+    bazaar::groupcompress::delta::apply_delta(&basis, &delta)
+        .map_err(|e| PyErr::new::<PyValueError, _>(format!("Invalid delta: {}", e)))
+        .map(|x| PyBytes::new(py, &x))
 }
 
 #[pyfunction]
@@ -47,14 +44,9 @@ fn apply_delta_to_source(
     delta_start: usize,
     delta_end: usize,
 ) -> PyResult<PyObject> {
-    let ret = bazaar::groupcompress::delta::apply_delta_to_source(source, delta_start, delta_end);
-    if ret.is_err() {
-        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-            "Invalid delta",
-        ));
-    }
-    let ret = ret.unwrap();
-    Ok(PyBytes::new(py, &ret).to_object(py))
+    bazaar::groupcompress::delta::apply_delta_to_source(source, delta_start, delta_end)
+        .map_err(|e| PyErr::new::<PyValueError, _>(format!("Invalid delta: {}", e)))
+        .map(|x| PyBytes::new(py, &x).to_object(py))
 }
 
 #[pyfunction]
@@ -335,6 +327,15 @@ impl TraditionalGroupCompressor {
     }
 }
 
+#[pyfunction]
+fn rabin_hash(data: Vec<u8>) -> PyResult<u32> {
+    Ok(bazaar::groupcompress::rabin_delta::rabin_hash(
+        data.try_into()
+            .map_err(|e| PyValueError::new_err(format!("Error during rabin_hash: {:?}", e)))?,
+    )
+    .into())
+}
+
 pub(crate) fn _groupcompress_rs(py: Python) -> PyResult<&PyModule> {
     let m = PyModule::new(py, "groupcompress")?;
     m.add_wrapped(wrap_pyfunction!(encode_base128_int))?;
@@ -345,6 +346,7 @@ pub(crate) fn _groupcompress_rs(py: Python) -> PyResult<&PyModule> {
     m.add_wrapped(wrap_pyfunction!(apply_delta_to_source))?;
     m.add_wrapped(wrap_pyfunction!(make_line_delta))?;
     m.add_wrapped(wrap_pyfunction!(make_rabin_delta))?;
+    m.add_wrapped(wrap_pyfunction!(rabin_hash))?;
     m.add_class::<LinesDeltaIndex>()?;
     m.add_class::<TraditionalGroupCompressor>()?;
     m.add(

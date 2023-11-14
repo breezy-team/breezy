@@ -52,6 +52,7 @@ from .versionedfile import (
 
 _null_sha1 = _groupcompress_rs.NULL_SHA1
 PythonGroupCompressor = _groupcompress_rs.TraditionalGroupCompressor
+rabin_hash = _groupcompress_rs.rabin_hash
 
 # Minimum number of uncompressed bytes to try fetch at once when retrieving
 # groupcompress blocks.
@@ -2307,6 +2308,7 @@ encode_base128_int = groupcompress.encode_base128_int
 encode_copy_instruction = groupcompress.encode_copy_instruction
 LinesDeltaIndex = groupcompress.LinesDeltaIndex
 make_line_delta = groupcompress.make_line_delta
+make_rabin_delta = groupcompress.make_rabin_delta
 
 apply_delta = groupcompress.apply_delta
 apply_delta_to_source = groupcompress.apply_delta_to_source

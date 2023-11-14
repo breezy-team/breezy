@@ -27,24 +27,16 @@ from .. import groupcompress
 
 def module_scenarios():
     scenarios = [
-        (
-            "python",
-            {"_gc_module": groupcompress, "make_delta": groupcompress.make_line_delta},
-        ),
+        ("line", {"make_delta": groupcompress.make_line_delta},),
+        ("rabin", {"make_delta": groupcompress.make_rabin_delta})
     ]
-    if compiled_groupcompress_feature.available():
-        gc_module = compiled_groupcompress_feature.module
-        scenarios.append(
-            ("C", {"_gc_module": gc_module, "make_delta": gc_module.make_delta})
-        )
     return scenarios
 
 
 def two_way_scenarios():
-    scenarios = [("PR", {"make_delta": groupcompress.make_line_delta})]
-    if compiled_groupcompress_feature.available():
-        gc_module = compiled_groupcompress_feature.module
-        scenarios.extend([("CR", {"make_delta": gc_module.make_delta})])
+    scenarios = [
+        ("LR", {"make_delta": groupcompress.make_line_delta}),
+        ("RR", {"make_delta": groupcompress.make_rabin_delta})]
     return scenarios
 
 
@@ -289,7 +281,7 @@ class TestDeltaIndex(tests.TestCase):
             for idx, (text_offset, hash_val) in enumerate(entry_list)
             if text_offset != 0 or hash_val != 0
         ]
-        rabin_hash = self._gc_module._rabin_hash
+        rabin_hash = groupcompress.rabin_hash
         self.assertEqual(
             [
                 (8, 16, rabin_hash(_text1[1:17])),
@@ -317,7 +309,7 @@ class TestDeltaIndex(tests.TestCase):
             for idx, (text_offset, hash_val) in enumerate(entry_list)
             if text_offset != 0 or hash_val != 0
         ]
-        rabin_hash = self._gc_module._rabin_hash
+        rabin_hash = groupcompress.rabin_hash
         self.assertEqual(
             [
                 (8, 16, rabin_hash(_text1[1:17])),
@@ -363,7 +355,7 @@ class TestDeltaIndex(tests.TestCase):
                 if text_offset != 0 or hash_val != 0
             ]
         )
-        rabin_hash = self._gc_module._rabin_hash
+        rabin_hash = groupcompress.rabin_hash
         self.assertEqual(
             [
                 (25, rabin_hash(_text1[10:26])),

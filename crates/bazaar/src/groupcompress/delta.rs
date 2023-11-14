@@ -294,18 +294,20 @@ pub fn write_copy_instruction<W: Write>(
     mut writer: W,
     offset: usize,
     length: usize,
-) -> Result<(), std::io::Error> {
-    writer.write_all(encode_copy_instruction(offset, length).as_slice())
+) -> Result<usize, std::io::Error> {
+    let data = encode_copy_instruction(offset, length);
+    writer.write_all(data.as_slice())?;
+    Ok(data.len())
 }
 
 pub fn write_insert_instruction<W: Write>(
     mut writer: W,
     data: &[u8],
-) -> Result<(), std::io::Error> {
+) -> Result<usize, std::io::Error> {
     assert!(data.len() <= 0x7F);
     writer.write_u8(data.len() as u8)?;
     writer.write_all(data)?;
-    Ok(())
+    Ok(data.len() + 1)
 }
 
 #[derive(Debug)]
@@ -314,14 +316,13 @@ pub enum Instruction<T: std::borrow::Borrow<[u8]>> {
     Insert(T),
 }
 
-pub fn write_instruction<W: Write>(writer: W, instruction: &Instruction<&[u8]>) {
+pub fn write_instruction<W: Write>(
+    writer: W,
+    instruction: &Instruction<&[u8]>,
+) -> std::io::Result<usize> {
     match instruction {
-        Instruction::Copy { offset, length } => {
-            write_copy_instruction(writer, *offset, *length).unwrap();
-        }
-        Instruction::Insert(data) => {
-            write_insert_instruction(writer, data).unwrap();
-        }
+        Instruction::Copy { offset, length } => write_copy_instruction(writer, *offset, *length),
+        Instruction::Insert(data) => write_insert_instruction(writer, data),
     }
 }
 

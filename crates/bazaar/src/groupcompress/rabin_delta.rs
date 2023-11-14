@@ -1,6 +1,6 @@
 use crate::groupcompress::delta::{
     decode_instruction, read_base128_int, write_base128_int, write_copy_instruction,
-    write_insert_instruction, Instruction, MAX_COPY_SIZE, MAX_INSERT_SIZE,
+    write_insert_instruction, write_instruction, Instruction, MAX_COPY_SIZE, MAX_INSERT_SIZE,
 };
 use std::collections::HashMap;
 use std::convert::TryInto;
@@ -142,7 +142,7 @@ impl From<RabinHash> for u32 {
     }
 }
 
-fn rabin_hash(data: [u8; RABIN_WINDOW]) -> RabinHash {
+pub fn rabin_hash(data: [u8; RABIN_WINDOW]) -> RabinHash {
     assert_eq!(data.len(), RABIN_WINDOW);
     let mut val = RabinHash(0);
     for c in data.iter().take(RABIN_WINDOW) {
@@ -175,12 +175,13 @@ impl RabinWindow {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct DeltaIndex<'a> {
     entries: HashMap<u32, Vec<IndexEntry<'a>>>,
     last_offset: usize,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct IndexEntry<'a> {
     /// Absolute offset
     pub offset: usize,
@@ -203,6 +204,42 @@ impl<'a> DeltaIndex<'a> {
             .get(&val.finish())
             .into_iter()
             .flat_map(|v| v.iter())
+    }
+
+    fn find_match(
+        &self,
+        hash: RabinHash,
+        data: &[u8],
+        mut min_size: usize,
+        good_enough_size: Option<usize>,
+    ) -> Option<(IndexEntry<'a>, usize)> {
+        let mut msource = None;
+
+        for entry in self.iter_matches(&hash) {
+            if entry.data.len() <= min_size {
+                // no point in checking this one
+                continue;
+            }
+            let overlap = entry
+                .data
+                .iter()
+                .zip(data.iter())
+                .take_while(|(x, y)| x == y)
+                .count();
+            if overlap > min_size {
+                /* this is our best match so far */
+                min_size = overlap;
+                msource = Some(*entry);
+                if let Some(good_enough_size) = good_enough_size {
+                    if min_size >= good_enough_size {
+                        /* good enough */
+                        return Some((msource.unwrap(), min_size));
+                    }
+                }
+            }
+        }
+
+        msource.map(|s| (s, min_size))
     }
 
     pub fn new() -> Self {
@@ -265,7 +302,7 @@ impl<'a> DeltaIndex<'a> {
         };
 
         let mut prev_val = None;
-        for i in (0..src.len()).step_by(stride) {
+        for i in (0..(src.len().max(RABIN_WINDOW) - RABIN_WINDOW)).step_by(stride) {
             let val = rabin_hash(src[i..i + RABIN_WINDOW].try_into().unwrap());
             if Some(val) == prev_val {
                 // keep the lowest of consecutive identical hashes
@@ -285,88 +322,94 @@ impl<'a> DeltaIndex<'a> {
     }
 }
 
-pub fn create_delta<'a, W: Write>(
-    mut writer: W,
-    index: &DeltaIndex<'a>,
+pub fn iter_delta_instructions<'a>(
+    index: &'a DeltaIndex<'a>,
     mut target: &'a [u8],
-) -> Result<(), DeltaError> {
-    // store target buffer size
-    write_base128_int(&mut writer, target.len() as u128)?;
-
+) -> impl Iterator<Item = Instruction<&'a [u8]>> + 'a {
+    assert!(target.len() >= RABIN_WINDOW);
     // Start the matching by filling out with a simple 'insert' instruction, of
     // the first RABIN_WINDOW bytes of the input.
-    let mut block: &[u8];
-    (block, target) = target.split_at(RABIN_WINDOW);
+    let mut block = &target[..RABIN_WINDOW];
     let mut window = RabinWindow::new(block.try_into().unwrap());
 
     let mut msize = 0;
     let mut msource: Option<IndexEntry<'a>> = None;
-    while !target.is_empty() {
-        if msize < 4096 {
-            // we don't have a 'worthy enough' match yet, so let's look for
-            // one.
-            // Shift the window by one byte.
-            window.push(block[block.len() - 1]);
-            for entry in index.iter_matches(&window.hash()) {
-                // entry.data.len() is the longest possible match that we could make
-                // here. If entry.data.len() <= msize, then we know that we cannot
-                // match more bytes with this location that we have already
-                // matched.
-                if entry.data.len() <= msize {
-                    break;
+
+    std::iter::from_fn(move || -> Option<Instruction<&'a [u8]>> {
+        while target.len() > block.len() {
+            if msize < 4096 {
+                // we don't have a 'worthy enough' match yet, so let's look for
+                // one.
+                // Shift the window by one byte.
+                (msource, msize) = index
+                    .find_match(window.hash(), target, msize, Some(4096))
+                    .map_or((msource, msize), |(source, msize)| (Some(source), msize));
+            }
+
+            if msize < 4 {
+                // The best match right now is less than 4 bytes long. So just add
+                // the current byte to the insert instruction. Increment the insert
+                // counter, and copy the byte of data into the output buffer.
+                block = &target[..block.len() + 1];
+                window.push(block[block.len() - 1]);
+                msize = 0;
+                if block.len() == MAX_INSERT_SIZE {
+                    // We have a max length insert instruction, finalize it in the
+                    // output.
+                    target = &target[block.len()..];
+                    let old_block = block;
+                    block = &[];
+                    return Some(Instruction::Insert(old_block));
                 }
-                let overlap = entry
-                    .data
-                    .iter()
-                    .zip(block.iter())
-                    .take_while(|(x, y)| x == y)
-                    .count();
-                if msize < overlap {
-                    /* this is our best match so far */
-                    msize = overlap;
-                    msource = Some(*entry);
-                    if msize >= 4096 {
-                        /* good enough */
-                        break;
+            } else {
+                let region = msource.unwrap();
+                assert!(msize <= region.data.len());
+                let copy_len = msize.min(MAX_COPY_SIZE);
+
+                msize -= copy_len;
+                msource = Some(region.add(copy_len));
+                target = &target[copy_len..];
+                block = &[];
+
+                if msize < 4096 {
+                    // Keep the window in sync with the target buffer.
+                    for c in &region.data[(copy_len - RABIN_WINDOW).min(0)..] {
+                        window.push(*c);
                     }
                 }
+                return Some(Instruction::Copy {
+                    offset: region.offset,
+                    length: copy_len,
+                });
             }
         }
-
-        if msize < 4 {
-            // The best match right now is less than 4 bytes long. So just add
-            // the current byte to the insert instruction. Increment the insert
-            // counter, and copy the byte of data into the output buffer.
-            block = &target[..block.len() + 1];
-            if block.len() == MAX_INSERT_SIZE {
-                // We have a max length insert instruction, finalize it in the
-                // output.
-                write_insert_instruction(&mut writer, block)?;
-                target = &target[block.len()..];
-                block = &[];
-            }
-            msize = 0;
-        } else {
-            let region = msource.unwrap();
-            let copy_len = msize.min(MAX_COPY_SIZE);
-            write_copy_instruction(&mut writer, region.offset, copy_len)?;
-
-            msize -= copy_len;
-            msource = Some(region.add(copy_len));
-            target = &target[copy_len..];
+        if !block.is_empty() {
+            let old_block = block;
             block = &[];
-
-            if msize < 4096 {
-                // Keep the window in sync with the target buffer.
-                for c in &region.data[(copy_len - RABIN_WINDOW).min(0)..] {
-                    window.push(*c);
-                }
-            }
+            target = &[];
+            return Some(Instruction::Insert(old_block));
         }
-    }
 
-    if !block.is_empty() {
-        write_insert_instruction(writer, block)?;
+        None
+    })
+}
+
+pub fn create_delta<'a, W: Write>(
+    mut writer: W,
+    index: &DeltaIndex<'a>,
+    target: &'a [u8],
+) -> Result<(), DeltaError> {
+    // store target buffer size
+    write_base128_int(&mut writer, target.len() as u128)?;
+
+    if target.len() < RABIN_WINDOW {
+        // If the target is smaller than the Rabin window, we can't do any
+        // matching, so just write out the whole target as an insert instruction.
+        write_instruction(&mut writer, &Instruction::Insert(target))?;
+    } else {
+        for instruction in iter_delta_instructions(index, target) {
+            write_instruction(&mut writer, &instruction)?;
+        }
     }
 
     Ok(())
@@ -379,4 +422,109 @@ pub fn make_delta(source_bytes: &[u8], target_bytes: &[u8]) -> Vec<u8> {
     di.add_fulltext(source_bytes, 0, None);
     create_delta(&mut out, &di, target_bytes).unwrap();
     out
+}
+
+#[cfg(test)]
+mod tests {
+    const TEXT1: &[u8] = b"This is a bit
+of source text
+which is meant to be matched
+against other text
+";
+
+    const TEXT2: &[u8] = b"This is a bit
+of source text
+which is meant to differ from
+against other text
+";
+
+    const TEXT3: &[u8] = b"This is a bit
+of source text
+which is meant to be matched
+against other text
+except it also
+has a lot more data
+at the end of the file
+";
+
+    const FIRST_TEXT: &[u8] = b"a bit of text, that
+does not have much in
+common with the next text
+";
+
+    const SECOND_TEXT: &[u8] = b"some more bit of text, that
+does not have much in
+common with the previous text
+and has some extra text
+";
+
+    const THIRD_TEXT: &[u8] = b"a bit of text, that
+has some in common with the previous text
+and has some extra text
+and not have much in
+common with the next text
+";
+
+    const FOURTH_TEXT: &[u8] = b"123456789012345
+same rabin hash
+123456789012345
+same rabin hash
+123456789012345
+same rabin hash
+123456789012345
+same rabin hash
+";
+
+    fn assert_delta(source: &[u8], target: &[u8], delta: &[u8]) {
+        let mut di = super::DeltaIndex::new();
+        di.add_fulltext(source, 0, None);
+        let mut out = Vec::new();
+        super::create_delta(&mut out, &di, target).unwrap();
+        assert_eq!(
+            delta,
+            &out[..],
+            "delta: {:?}",
+            super::iter_delta_instructions(&di, &target).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_make_noop_delta() {
+        assert_delta(TEXT1, TEXT1, &b"M\x90M"[..]);
+        assert_delta(TEXT2, TEXT2, &b"N\x90N"[..]);
+        assert_delta(TEXT3, TEXT3, &b"\x87\x01\x90\x87"[..]);
+    }
+
+    #[test]
+    fn test_make_delta() {
+        let delta = super::make_delta(TEXT1, TEXT2);
+        assert_eq!(delta, b"N\x90/\x1fdiffer from\nagainst other text\n");
+        // b"N\x90\x1d\x1ewhich is meant to differ from\n\x91:\x13",
+        let delta = super::make_delta(TEXT2, TEXT1);
+        assert_eq!(&b"M\x90/\x1ebe matched\nagainst other text\n"[..], delta);
+        //b"M\x90\x1d\x1dwhich is meant to be matched\n\x91;\x13",
+        let delta = super::make_delta(TEXT3, TEXT1);
+        assert_eq!(&b"M\x90M"[..], delta.as_slice());
+        let delta = super::make_delta(TEXT3, TEXT2);
+        assert_eq!(&b"N\x90/\x1fdiffer from\nagainst other text\n"[..], delta,);
+        //    b"N\x90\x1d\x1ewhich is meant to differ from\n\x91:\x13",
+    }
+
+    #[test]
+    fn test_make_delta_with_large_copies() {
+        // We want to have a copy that is larger than 64kB, which forces us to
+        // issue multiple copy instructions.
+        let big_text = TEXT3.repeat(1220);
+        let delta = super::make_delta(big_text.as_slice(), big_text.as_slice());
+        assert_eq!(
+            vec![
+                &b"\xdc\x86\x0a"[..],     // Encoding the length of the uncompressed text
+                &b"\x80"[..],             // Copy 64kB, starting at byte 0
+                &b"\x84\x01"[..],         // and another 64kB starting at 64kB
+                &b"\xb4\x02\x5c\x83"[..], // And the bit of tail.
+            ]
+            .concat(),
+            delta,
+        )
+    }
 }
