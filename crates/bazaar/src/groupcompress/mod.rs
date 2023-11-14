@@ -10,14 +10,20 @@ lazy_static::lazy_static! {
     pub static ref NULL_SHA1: Vec<u8> = format!("{:x}", Sha1::new().finalize()).as_bytes().to_vec();
 }
 
+#[deprecated]
 pub fn encode_base128_int(mut val: u128) -> Vec<u8> {
     let mut data = Vec::new();
+    write_base128_int(&mut data, val).unwrap();
+    data
+}
+
+pub fn write_base128_int<W: std::io::Write>(writer: &mut W, val: u128) -> std::io::Result<()> {
+    let mut val = val;
     while val >= 0x80 {
-        data.push(((val | 0x80) & 0xFF) as u8);
+        writer.write_all(&[((val | 0x80) & 0xFF) as u8])?;
         val >>= 7;
     }
-    data.push(val as u8);
-    data
+    writer.write_all(&[val as u8])
 }
 
 pub fn read_base128_int<R: Read>(reader: &mut R) -> Result<u128, std::io::Error> {
