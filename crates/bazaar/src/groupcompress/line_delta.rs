@@ -1,4 +1,4 @@
-use crate::groupcompress::{encode_base128_int, encode_copy_instruction};
+use crate::groupcompress::delta::{encode_base128_int, encode_copy_instruction};
 use std::borrow::Cow;
 pub struct OutputHandler<'a> {
     out_lines: Vec<Cow<'a, [u8]>>,
@@ -38,7 +38,7 @@ impl<'a> OutputHandler<'a> {
         if self.cur_insert_lines.is_empty() {
             return;
         }
-        if self.cur_insert_len > 127 {
+        if self.cur_insert_len > 0x7f {
             panic!("We cannot insert more than 127 bytes at a time.");
         }
         self.out_lines
@@ -58,8 +58,8 @@ impl<'a> OutputHandler<'a> {
         // Flush out anything pending
         self.flush_insert();
         let line_len = line.len();
-        for start_index in (0..line_len).step_by(127) {
-            let next_len = (line_len - start_index).min(127);
+        for start_index in (0..line_len).step_by(0x7f) {
+            let next_len = (line_len - start_index).min(0x7f);
             self.out_lines.push(Cow::Owned(vec![next_len as u8]));
             self.index_lines.push(false);
             // TODO(mem): This should ideally be Cow::Borrowed:
@@ -78,11 +78,11 @@ impl<'a> OutputHandler<'a> {
         }
 
         for line in lines {
-            if line.len() > 127 {
+            if line.len() > 0x7f {
                 self.insert_long_line(line);
             } else {
                 let next_len = line.len() + self.cur_insert_len;
-                if next_len > 127 {
+                if next_len > 0x7f {
                     // Adding this line would overflow, so flush, and start over
                     self.flush_insert();
                     self.cur_insert_len = line.len();

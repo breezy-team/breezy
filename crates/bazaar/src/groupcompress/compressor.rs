@@ -1,9 +1,9 @@
-use crate::groupcompress::block::{read_item, GroupCompressBlock, GroupCompressItem};
-use crate::groupcompress::{apply_delta, encode_base128_int, NULL_SHA1};
+use crate::groupcompress::block::{read_item, GroupCompressItem};
+use crate::groupcompress::delta::{apply_delta, encode_base128_int};
+use crate::groupcompress::NULL_SHA1;
 use crate::versionedfile::{Error, Key};
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::io::Read;
 
 pub trait GroupCompressor {
     /// Compress lines with label key.

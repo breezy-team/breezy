@@ -1,36 +1,32 @@
 use bazaar::groupcompress::compressor::GroupCompressor;
-use bazaar::groupcompress::delta::DeltaError;
 use bazaar::versionedfile::Key;
-use pyo3::exceptions::{PyMemoryError, PyRuntimeError, PyValueError};
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use pyo3::wrap_pyfunction;
+use std::convert::TryInto;
 
 #[pyfunction]
 fn encode_base128_int(py: Python, value: u128) -> PyResult<&PyBytes> {
-    let ret = bazaar::groupcompress::encode_base128_int(value);
+    let ret = bazaar::groupcompress::delta::encode_base128_int(value);
     Ok(PyBytes::new(py, &ret))
 }
 
 #[pyfunction]
 fn decode_base128_int(value: Vec<u8>) -> PyResult<(u128, usize)> {
-    Ok(bazaar::groupcompress::decode_base128_int(&value))
+    Ok(bazaar::groupcompress::delta::decode_base128_int(&value))
 }
 
 #[pyfunction]
 fn apply_delta(py: Python, basis: Vec<u8>, delta: Vec<u8>) -> PyResult<&PyBytes> {
-    let ret = bazaar::groupcompress::apply_delta(&basis, &delta);
-    if ret.is_err() {
-        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-            "Invalid delta",
-        ));
-    }
-    Ok(PyBytes::new(py, &ret.unwrap()))
+    bazaar::groupcompress::delta::apply_delta(&basis, &delta)
+        .map_err(|e| PyErr::new::<PyValueError, _>(format!("Invalid delta: {}", e)))
+        .map(|x| PyBytes::new(py, &x))
 }
 
 #[pyfunction]
 fn decode_copy_instruction(data: Vec<u8>, cmd: u8, pos: usize) -> PyResult<(usize, usize, usize)> {
-    let ret = bazaar::groupcompress::decode_copy_instruction(&data, cmd, pos);
+    let ret = bazaar::groupcompress::delta::decode_copy_instruction(&data, cmd, pos);
     if ret.is_err() {
         return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
             "Invalid copy instruction",
@@ -48,19 +44,14 @@ fn apply_delta_to_source(
     delta_start: usize,
     delta_end: usize,
 ) -> PyResult<PyObject> {
-    let ret = bazaar::groupcompress::apply_delta_to_source(source, delta_start, delta_end);
-    if ret.is_err() {
-        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-            "Invalid delta",
-        ));
-    }
-    let ret = ret.unwrap();
-    Ok(PyBytes::new(py, &ret).to_object(py))
+    bazaar::groupcompress::delta::apply_delta_to_source(source, delta_start, delta_end)
+        .map_err(|e| PyErr::new::<PyValueError, _>(format!("Invalid delta: {}", e)))
+        .map(|x| PyBytes::new(py, &x).to_object(py))
 }
 
 #[pyfunction]
 fn encode_copy_instruction(py: Python, offset: usize, length: usize) -> PyResult<PyObject> {
-    let ret = bazaar::groupcompress::encode_copy_instruction(offset, length);
+    let ret = bazaar::groupcompress::delta::encode_copy_instruction(offset, length);
     Ok(PyBytes::new(py, &ret).to_object(py))
 }
 
@@ -76,27 +67,13 @@ fn make_line_delta(py: Python, source_bytes: &[u8], target_bytes: &[u8]) -> Py<P
     .into_py(py)
 }
 
-fn translate_delta_failure(result: DeltaError) -> PyErr {
-    match result {
-        DeltaError::OutOfMemory => {
-            PyMemoryError::new_err("Delta function failed to allocate memory")
-        }
-        DeltaError::IndexNeeded => {
-            PyValueError::new_err("Delta function requires delta_index param")
-        }
-        DeltaError::SourceEmpty => {
-            PyValueError::new_err("Delta function given empty source_info param")
-        }
-        DeltaError::BufferEmpty => {
-            PyValueError::new_err("Delta function given empty buffer params")
-        }
-        DeltaError::SourceBad => {
-            PyRuntimeError::new_err("A source info had invalid or corrupt content")
-        }
-        DeltaError::SizeTooBig => {
-            PyValueError::new_err("Delta data is larger than the max requested")
-        }
-    }
+#[pyfunction]
+fn make_rabin_delta(py: Python, source_bytes: &[u8], target_bytes: &[u8]) -> Py<PyBytes> {
+    PyBytes::new(
+        py,
+        bazaar::groupcompress::rabin_delta::make_delta(source_bytes, target_bytes).as_slice(),
+    )
+    .into_py(py)
 }
 
 #[pyclass]
@@ -192,7 +169,7 @@ impl GroupCompressBlock {
     fn extract(
         &mut self,
         py: Python,
-        key: PyObject,
+        _key: PyObject,
         offset: usize,
         length: usize,
     ) -> PyResult<Vec<PyObject>> {
@@ -350,6 +327,15 @@ impl TraditionalGroupCompressor {
     }
 }
 
+#[pyfunction]
+fn rabin_hash(data: Vec<u8>) -> PyResult<u32> {
+    Ok(bazaar::groupcompress::rabin_delta::rabin_hash(
+        data.try_into()
+            .map_err(|e| PyValueError::new_err(format!("Error during rabin_hash: {:?}", e)))?,
+    )
+    .into())
+}
+
 pub(crate) fn _groupcompress_rs(py: Python) -> PyResult<&PyModule> {
     let m = PyModule::new(py, "groupcompress")?;
     m.add_wrapped(wrap_pyfunction!(encode_base128_int))?;
@@ -359,6 +345,8 @@ pub(crate) fn _groupcompress_rs(py: Python) -> PyResult<&PyModule> {
     m.add_wrapped(wrap_pyfunction!(encode_copy_instruction))?;
     m.add_wrapped(wrap_pyfunction!(apply_delta_to_source))?;
     m.add_wrapped(wrap_pyfunction!(make_line_delta))?;
+    m.add_wrapped(wrap_pyfunction!(make_rabin_delta))?;
+    m.add_wrapped(wrap_pyfunction!(rabin_hash))?;
     m.add_class::<LinesDeltaIndex>()?;
     m.add_class::<TraditionalGroupCompressor>()?;
     m.add(

@@ -1519,10 +1519,12 @@ class ThunkedVersionedFiles(VersionedFiles):
 
     def get_record_stream(self, keys, ordering, include_delta_closure):
         """See VersionedFiles.get_record_stream()."""
+
         # Ordering will be taken care of by each partitioned store; group keys
         # by partition.
         def add_prefix(p, k):
             return p + k
+
         keys = sorted(keys)
         for prefix, suffixes, vf in self._iter_keys_vf(keys):
             suffixes = [(suffix,) for suffix in suffixes]

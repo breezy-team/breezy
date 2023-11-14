@@ -412,39 +412,34 @@ impl SFTPClient {
         create_mode: Option<u32>,
     ) -> PyResult<SFTPFile> {
         let path = self._adjust_cwd(path);
-        let flags;
         let offset = 0;
         let mode = mode.unwrap_or("rt");
-        match mode {
-            "rt" => {
-                flags = sftp::SFTP_FLAG_READ;
-            }
-            "ab" => {
-                flags = sftp::SFTP_FLAG_WRITE | sftp::SFTP_FLAG_CREAT | sftp::SFTP_FLAG_APPEND;
-            }
+        let flags = match mode {
+            "rt" => sftp::SFTP_FLAG_READ,
+            "ab" => sftp::SFTP_FLAG_WRITE | sftp::SFTP_FLAG_CREAT | sftp::SFTP_FLAG_APPEND,
             "wb" => {
-                flags = sftp::SFTP_FLAG_WRITE
+                sftp::SFTP_FLAG_WRITE
                     | sftp::SFTP_FLAG_CREAT
                     | sftp::SFTP_FLAG_TRUNC
-                    | sftp::SFTP_FLAG_READ;
+                    | sftp::SFTP_FLAG_READ
             }
-            "rb" => {
-                flags = sftp::SFTP_FLAG_READ;
-            }
+            "rb" => sftp::SFTP_FLAG_READ,
             "r+" | "rb+" | "b+" => {
-                flags = sftp::SFTP_FLAG_READ | sftp::SFTP_FLAG_WRITE | sftp::SFTP_FLAG_CREAT;
+                sftp::SFTP_FLAG_READ | sftp::SFTP_FLAG_WRITE | sftp::SFTP_FLAG_CREAT
             }
             "a+" | "ab+" => {
-                flags = sftp::SFTP_FLAG_READ
+                sftp::SFTP_FLAG_READ
                     | sftp::SFTP_FLAG_WRITE
                     | sftp::SFTP_FLAG_APPEND
-                    | sftp::SFTP_FLAG_CREAT;
+                    | sftp::SFTP_FLAG_CREAT
             }
             mode => panic!("Unsupported mode: {}", mode),
-        }
+        };
 
-        let mut attr = sftp::Attributes::default();
-        attr.permissions = create_mode;
+        let attr = sftp::Attributes {
+            permissions: create_mode,
+            ..Default::default()
+        };
 
         let h = py
             .allow_threads(|| self.sftp.open(path.as_str(), flags, &attr))
