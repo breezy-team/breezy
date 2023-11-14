@@ -1,6 +1,6 @@
 use crate::groupcompress::delta::{
-    decode_instruction, read_base128_int, write_base128_int, write_copy_instruction,
-    write_insert_instruction, write_instruction, Instruction, MAX_COPY_SIZE, MAX_INSERT_SIZE,
+    decode_instruction, read_base128_int, write_base128_int, write_instruction, Instruction,
+    MAX_COPY_SIZE, MAX_INSERT_SIZE,
 };
 use std::collections::HashMap;
 use std::convert::TryInto;
@@ -410,6 +410,11 @@ pub fn create_delta<'a, W: Write>(
         // If the target is smaller than the Rabin window, we can't do any
         // matching, so just write out the whole target as an insert instruction.
         size += write_instruction(&mut writer, &Instruction::Insert(target))?;
+        if let Some(max_delta_size) = max_delta_size {
+            if size > max_delta_size {
+                return Err(DeltaError::DeltaTooLarge);
+            }
+        }
     } else {
         for instruction in iter_delta_instructions(index, target) {
             size += write_instruction(&mut writer, &instruction)?;
@@ -488,35 +493,28 @@ same rabin hash
         let mut di = super::DeltaIndex::new();
         di.add_fulltext(source, 0, None);
         let mut out = Vec::new();
-        super::create_delta(&mut out, &di, target).unwrap();
+        super::create_delta(&mut out, &di, target, None).unwrap();
         assert_eq!(
             delta,
             &out[..],
             "delta: {:?}",
-            super::iter_delta_instructions(&di, &target).collect::<Vec<_>>()
+            super::iter_delta_instructions(&di, target).collect::<Vec<_>>()
         );
     }
 
     #[test]
     fn test_make_noop_delta() {
-        assert_delta(TEXT1, TEXT1, &b"M\x90M"[..]);
-        assert_delta(TEXT2, TEXT2, &b"N\x90N"[..]);
-        assert_delta(TEXT3, TEXT3, &b"\x87\x01\x90\x87"[..]);
+        assert_delta(TEXT1, TEXT1, b"M\x90M");
+        assert_delta(TEXT2, TEXT2, b"N\x90N");
+        assert_delta(TEXT3, TEXT3, b"\x87\x01\x90\x87");
     }
 
     #[test]
     fn test_make_delta() {
-        let delta = super::make_delta(TEXT1, TEXT2);
-        assert_eq!(delta, b"N\x90/\x1fdiffer from\nagainst other text\n");
-        // b"N\x90\x1d\x1ewhich is meant to differ from\n\x91:\x13",
-        let delta = super::make_delta(TEXT2, TEXT1);
-        assert_eq!(&b"M\x90/\x1ebe matched\nagainst other text\n"[..], delta);
-        //b"M\x90\x1d\x1dwhich is meant to be matched\n\x91;\x13",
-        let delta = super::make_delta(TEXT3, TEXT1);
-        assert_eq!(&b"M\x90M"[..], delta.as_slice());
-        let delta = super::make_delta(TEXT3, TEXT2);
-        assert_eq!(&b"N\x90/\x1fdiffer from\nagainst other text\n"[..], delta,);
-        //    b"N\x90\x1d\x1ewhich is meant to differ from\n\x91:\x13",
+        assert_delta(TEXT1, TEXT2, b"N\x90/\x1fdiffer from\nagainst other text\n");
+        assert_delta(TEXT2, TEXT1, b"M\x90/\x1ebe matched\nagainst other text\n");
+        assert_delta(TEXT3, TEXT1, b"M\x90M");
+        assert_delta(TEXT3, TEXT2, b"N\x90/\x1fdiffer from\nagainst other text\n");
     }
 
     #[test]
@@ -524,16 +522,17 @@ same rabin hash
         // We want to have a copy that is larger than 64kB, which forces us to
         // issue multiple copy instructions.
         let big_text = TEXT3.repeat(1220);
-        let delta = super::make_delta(big_text.as_slice(), big_text.as_slice());
-        assert_eq!(
+        assert_delta(
+            big_text.as_slice(),
+            big_text.as_slice(),
             vec![
                 &b"\xdc\x86\x0a"[..],     // Encoding the length of the uncompressed text
                 &b"\x80"[..],             // Copy 64kB, starting at byte 0
                 &b"\x84\x01"[..],         // and another 64kB starting at 64kB
                 &b"\xb4\x02\x5c\x83"[..], // And the bit of tail.
             ]
-            .concat(),
-            delta,
+            .concat()
+            .as_slice(),
         )
     }
 }

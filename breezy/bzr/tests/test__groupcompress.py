@@ -27,8 +27,11 @@ from .. import groupcompress
 
 def module_scenarios():
     scenarios = [
-        ("line", {"make_delta": groupcompress.make_line_delta},),
-        ("rabin", {"make_delta": groupcompress.make_rabin_delta})
+        (
+            "line",
+            {"make_delta": groupcompress.make_line_delta},
+        ),
+        ("rabin", {"make_delta": groupcompress.make_rabin_delta}),
     ]
     return scenarios
 
@@ -36,7 +39,8 @@ def module_scenarios():
 def two_way_scenarios():
     scenarios = [
         ("LR", {"make_delta": groupcompress.make_line_delta}),
-        ("RR", {"make_delta": groupcompress.make_rabin_delta})]
+        ("RR", {"make_delta": groupcompress.make_rabin_delta}),
+    ]
     return scenarios
 
 

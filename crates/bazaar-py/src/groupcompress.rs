@@ -1,6 +1,6 @@
 use bazaar::groupcompress::compressor::GroupCompressor;
 use bazaar::versionedfile::Key;
-use pyo3::exceptions::{PyMemoryError, PyRuntimeError, PyValueError};
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use pyo3::wrap_pyfunction;
@@ -169,7 +169,7 @@ impl GroupCompressBlock {
     fn extract(
         &mut self,
         py: Python,
-        key: PyObject,
+        _key: PyObject,
         offset: usize,
         length: usize,
     ) -> PyResult<Vec<PyObject>> {
