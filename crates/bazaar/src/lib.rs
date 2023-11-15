@@ -13,9 +13,11 @@ pub mod groupcompress;
 pub mod hashcache;
 pub mod inventory;
 pub mod inventory_delta;
+pub mod repository;
 pub mod revision;
 pub mod rio;
 pub mod serializer;
+pub mod smart;
 pub mod xml_serializer;
 
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
