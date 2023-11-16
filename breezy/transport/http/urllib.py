@@ -53,7 +53,6 @@ from .response import handle_response
 # actual code more or less do that, tests should be written to
 # ensure that.
 
-
 checked_kerberos = False
 kerberos = None
 

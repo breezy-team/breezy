@@ -265,9 +265,11 @@ class Reconfigure:
             if not want_reference:
                 self._create_repository = True
         else:
-            if want_reference and (
-                self.repository.user_url == self.controldir.user_url
-            ) and not self.repository.is_shared():
+            if (
+                want_reference
+                and (self.repository.user_url == self.controldir.user_url)
+                and not self.repository.is_shared()
+            ):
                 self._destroy_repository = True
         if self.referenced_branch is None:
             if want_reference:

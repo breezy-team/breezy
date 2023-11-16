@@ -648,9 +648,10 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
                         hexsha = substore[hexsha].tree
                 else:
                     substore = store
-                if stat.S_ISDIR(mode) and (specific_files is None or any(
-                    p for p in specific_files if p.startswith(child_path)
-                )):
+                if stat.S_ISDIR(mode) and (
+                    specific_files is None
+                    or any(p for p in specific_files if p.startswith(child_path))
+                ):
                     extradirs.append(
                         (
                             substore,

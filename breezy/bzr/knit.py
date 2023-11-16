@@ -3055,9 +3055,7 @@ class _KnitGraphIndex:
             value = b"N" if b"no-eol" in options else b" "
             value += b"%d %d" % (pos, size)
             if not self._deltas and b"line-delta" in options:
-                raise KnitCorrupt(
-                    self, "attempt to add line-delta in non-delta knit"
-                )
+                raise KnitCorrupt(self, "attempt to add line-delta in non-delta knit")
             if self._parents:
                 if self._deltas:
                     if b"line-delta" in options:

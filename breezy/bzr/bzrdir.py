@@ -179,7 +179,11 @@ class BzrDir(controldir.ControlDir):
             if local_active_branch.repository.has_same_location(local_repo):
                 local_repo = local_active_branch.repository
             if preserve_stacking:
-                with contextlib.suppress(_mod_branch.UnstackableBranchFormat, errors.UnstackableRepositoryFormat, errors.NotStacked):
+                with contextlib.suppress(
+                    _mod_branch.UnstackableBranchFormat,
+                    errors.UnstackableRepositoryFormat,
+                    errors.NotStacked,
+                ):
                     stacked_on = local_active_branch.get_stacked_on_url()
         # Bug: We create a metadir without knowing if it can support stacking,
         # we should look up the policy needs first, or just use it as a hint,

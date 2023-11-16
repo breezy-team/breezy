@@ -2097,8 +2097,7 @@ class _GCGraphIndex:
                     if ref:
                         raise knit.KnitCorrupt(
                             self,
-                            "attempt to add node with parents "
-                            "in parentless index.",
+                            "attempt to add node with parents " "in parentless index.",
                         )
                 refs = ()
                 changed = True

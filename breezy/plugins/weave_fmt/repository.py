@@ -898,7 +898,9 @@ class InterWeaveRepo(InterSameDataRepository):
         """See InterRepository.copy_content()."""
         with self.lock_write():
             # weave specific optimised path:
-            with contextlib.suppress(errors.RepositoryUpgradeRequired, NotImplementedError):
+            with contextlib.suppress(
+                errors.RepositoryUpgradeRequired, NotImplementedError
+            ):
                 self.target.set_make_working_trees(self.source.make_working_trees())
             # FIXME do not peek!
             if self.source._transport.listable():

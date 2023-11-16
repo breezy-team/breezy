@@ -1543,7 +1543,9 @@ class InterRepository(InterObject[Repository]):
                             revision_id and its parents.
         """
         with self.lock_write():
-            with contextlib.suppress(NotImplementedError, errors.RepositoryUpgradeRequired):
+            with contextlib.suppress(
+                NotImplementedError, errors.RepositoryUpgradeRequired
+            ):
                 self.target.set_make_working_trees(self.source.make_working_trees())
             self.target.fetch(self.source, revision_id=revision_id)
 

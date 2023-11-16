@@ -143,7 +143,6 @@ from .transport import FileExists, NoSuchFile
 # TODO: Make sure to pass the right file and directory mode bits to all
 # files/dirs created.
 
-
 _DEFAULT_TIMEOUT_SECONDS = 30
 _DEFAULT_POLL_SECONDS = 1.0
 

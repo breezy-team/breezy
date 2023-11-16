@@ -872,7 +872,7 @@ class SFTPTransport(ConnectedTransport):
             )
 
     def _can_roundtrip_unix_modebits(self):
-        return (sys.platform != "win32")
+        return sys.platform != "win32"
 
 
 def get_test_permutations():

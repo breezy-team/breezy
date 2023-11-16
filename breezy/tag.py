@@ -38,7 +38,6 @@ from .revision import RevisionID
 # NOTE: I was going to call this tags.py, but vim seems to think all files
 # called tags* are ctags files... mbp 20070220.
 
-
 TagSelector = Callable[[str], bool]
 TagUpdates = Dict[str, RevisionID]
 TagConflict = Tuple[str, bytes, bytes]

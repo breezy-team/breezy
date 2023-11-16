@@ -667,9 +667,7 @@ class RemoteGitDir(GitDir):
                     ) from err
             old_sha = remote_refs.get(actual_refname)
             if not overwrite and remote_divergence(old_sha, new_sha, source_store):
-                raise DivergedBranches(
-                    source, self.open_branch(name, nascent_ok=True)
-                )
+                raise DivergedBranches(source, self.open_branch(name, nascent_ok=True))
             ret[actual_refname] = new_sha
             if fetch_tags:
                 for tagname, revid in source.tags.get_tag_dict().items():

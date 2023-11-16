@@ -2195,8 +2195,7 @@ class DirState:
             if fileid_utf8 and entry[0][2] != fileid_utf8:
                 self._changes_aborted = True
                 raise errors.BzrError(
-                    "integrity error ? : mismatching"
-                    " tree_index, file_id and path"
+                    "integrity error ? : mismatching" " tree_index, file_id and path"
                 )
             return entry
         else:
@@ -3246,8 +3245,7 @@ class DirState:
         self._read_dirblocks_if_needed()
         if len(self._dirblocks) > 0 and not self._dirblocks[0][0] == b"":
             raise AssertionError(
-                "dirblocks don't start with root block:\n"
-                + pformat(self._dirblocks)
+                "dirblocks don't start with root block:\n" + pformat(self._dirblocks)
             )
         if len(self._dirblocks) > 1 and not self._dirblocks[1][0] == b"":
             raise AssertionError(
