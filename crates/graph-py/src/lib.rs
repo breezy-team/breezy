@@ -174,7 +174,9 @@ impl PyParentsProvider {
         for key in keys.as_ref(py).iter()? {
             hash_key.insert(key?.into());
         }
-        let result = self.provider.get_parent_map(&hash_key.iter().collect());
+        let result = self
+            .provider
+            .get_parent_map(&hash_key.into_iter().collect());
         let ret = PyDict::new(py);
         for (k, vs) in result {
             ret.set_item::<PyObject, &PyTuple>(

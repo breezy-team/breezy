@@ -27,7 +27,7 @@ class BrokenRenameTransportDecorator(decorator.TransportDecorator):
     @classmethod
     def _get_url_prefix(self):
         """FakeNFS transports are identified by 'brokenrename+'."""
-        return 'brokenrename+'
+        return "brokenrename+"
 
     def rename(self, rel_from, rel_to):
         """See Transport.rename()."""

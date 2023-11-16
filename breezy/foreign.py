@@ -24,6 +24,7 @@ from .revision import Revision
 
 class VcsMapping:
     """Describes the mapping between the semantics of Bazaar and a foreign VCS."""
+
     # Whether this is an experimental mapping that is still open to changes.
     experimental = False
 
@@ -168,7 +169,7 @@ class ForeignVcsRegistry(registry.Registry):
         if b":" not in revid or b"-" not in revid:
             raise errors.InvalidRevisionId(revid, None)
         try:
-            foreign_vcs = self.get(revid.split(b"-")[0].decode('ascii'))
+            foreign_vcs = self.get(revid.split(b"-")[0].decode("ascii"))
         except KeyError as e:
             raise errors.InvalidRevisionId(revid, None) from e
         return foreign_vcs.mapping_registry.revision_id_bzr_to_foreign(revid)

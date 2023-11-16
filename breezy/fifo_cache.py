@@ -29,9 +29,10 @@ class FIFOCache(dict):
         if after_cleanup_count is None:
             self._after_cleanup_count = self._max_cache * 8 // 10
         else:
-            self._after_cleanup_count = min(after_cleanup_count,
-                                            self._max_cache)
-        self._cleanup: Dict[Any, Callable[[], None]] = {}  # map to cleanup functions when items are removed
+            self._after_cleanup_count = min(after_cleanup_count, self._max_cache)
+        self._cleanup: Dict[
+            Any, Callable[[], None]
+        ] = {}  # map to cleanup functions when items are removed
         self._queue: Deque[Any] = deque()  # Track when things are accessed
 
     def __setitem__(self, key, value):
@@ -79,8 +80,10 @@ class FIFOCache(dict):
         while len(self) > self._after_cleanup_count:
             self._remove_oldest()
         if len(self._queue) != len(self):
-            raise AssertionError('The length of the queue should always equal'
-                                 f' the length of the dict. {len(self._queue)} != {len(self)}')
+            raise AssertionError(
+                "The length of the queue should always equal"
+                f" the length of the dict. {len(self._queue)} != {len(self)}"
+            )
 
     def clear(self):
         """Clear out all of the cache."""
@@ -153,7 +156,7 @@ class FIFOCache(dict):
                 for key, val in args[0]:
                     self.add(key, val)
         elif len(args) > 1:
-            raise TypeError(f'update expected at most 1 argument, got {len(args)}')
+            raise TypeError(f"update expected at most 1 argument, got {len(args)}")
         if kwargs:
             for key in kwargs:
                 self.add(key, kwargs[key])
@@ -166,8 +169,9 @@ class FIFOSizeCache(FIFOCache):
     it restricts the cache to be cleaned based on the size of the data.
     """
 
-    def __init__(self, max_size=1024 * 1024, after_cleanup_size=None,
-                 compute_size=None):
+    def __init__(
+        self, max_size=1024 * 1024, after_cleanup_size=None, compute_size=None
+    ):
         """Create a new FIFOSizeCache.
 
         :param max_size: The max number of bytes to store before we start

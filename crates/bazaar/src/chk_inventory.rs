@@ -113,9 +113,8 @@ pub fn chk_inventory_bytes_to_entry(data: &[u8]) -> Entry {
     assert!(&sp[1][..1] == b" ");
 
     let kind = sp[0];
-    let file_id = &sp[1][1..];
+    let file_id = crate::FileId::from(&sp[1][1..]);
 
-    let file_id = crate::FileId::from(file_id);
     let name = String::from_utf8(sections[2].to_vec()).unwrap();
     let parent_id = if sections[1].is_empty() {
         None
@@ -179,8 +178,7 @@ pub fn chk_inventory_bytes_to_utf8_name_key(
     let sp: Vec<&[u8]> = sections[0].splitn(2, |&c| c == b':').collect();
     assert!(&sp[1][..1] == b" ");
 
-    let file_id = &sp[1][1..];
-    let file_id = crate::FileId::from(file_id);
+    let file_id = crate::FileId::from(&sp[1][1..]);
     let revision = crate::RevisionId::from(sections[3]);
     (sections[2], file_id, revision)
 }

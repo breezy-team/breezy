@@ -21,19 +21,23 @@ __version__ = _format_version_tuple(version_info)
 
 from ...commands import plugin_cmds
 
-plugin_cmds.register_lazy("cmd_credits", [],
-                          "breezy.plugins.stats.cmds")
-plugin_cmds.register_lazy("cmd_committer_statistics",
-                          ['stats', 'committer-stats'], "breezy.plugins.stats.cmds")
-plugin_cmds.register_lazy("cmd_ancestor_growth", [],
-                          "breezy.plugins.stats.cmds")
+plugin_cmds.register_lazy("cmd_credits", [], "breezy.plugins.stats.cmds")
+plugin_cmds.register_lazy(
+    "cmd_committer_statistics",
+    ["stats", "committer-stats"],
+    "breezy.plugins.stats.cmds",
+)
+plugin_cmds.register_lazy("cmd_ancestor_growth", [], "breezy.plugins.stats.cmds")
 
 
 def load_tests(loader, basic_tests, pattern):
-    testmod_names = [__name__ + '.' + x for x in [
-        'test_blackbox',
-        'test_classify',
-        'test_stats',
-        ]]
+    testmod_names = [
+        __name__ + "." + x
+        for x in [
+            "test_blackbox",
+            "test_classify",
+            "test_stats",
+        ]
+    ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(testmod_names))
     return basic_tests

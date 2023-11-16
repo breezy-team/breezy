@@ -21,7 +21,6 @@ from ..ui import text as ui_text
 
 
 class StringIOWithEncoding(io.StringIO):
-
     encoding = "ascii"
 
     def write(self, string):
@@ -31,7 +30,6 @@ class StringIOWithEncoding(io.StringIO):
 
 
 class BytesIOWithEncoding(io.BytesIO):
-
     encoding = "ascii"
 
 
@@ -43,7 +41,6 @@ class StringIOAsTTY(StringIOWithEncoding):
 
 
 class TextUIFactory(ui_text.TextUIFactory):
-
     def __init__(self, stdin=None, stdout=None, stderr=None):
         if isinstance(stdin, bytes):
             stdin = stdin.decode()
@@ -84,7 +81,7 @@ class TestUIFactory(TextUIFactory):
         password = self.stdin.readline()
         if not password:
             raise EOFError
-        if password[-1] == '\n':
+        if password[-1] == "\n":
             password = password[:-1]
         return password
 

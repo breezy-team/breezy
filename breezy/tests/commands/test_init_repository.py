@@ -19,7 +19,6 @@ from .. import transport_util, ui_testing
 
 
 class TestInitRepository(transport_util.TestCaseWithConnectionHookedTransport):
-
     def setUp(self):
         super().setUp()
         self.start_logging_connections()

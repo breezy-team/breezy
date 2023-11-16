@@ -25,7 +25,6 @@ from ..osutils import IterableFile
 
 
 class TestIterableFile(tests.TestCase):
-
     def test_type(self):
         self.assertRaises((TypeError, AttributeError), IterableFile, None)
         self.assertRaises((TypeError, AttributeError), IterableFile, 1)
@@ -37,49 +36,50 @@ class TestIterableFile(tests.TestCase):
         self.assertEqual(b"This is a test", f.read())
 
     def test_readlines(self):
-        f = IterableFile([b'Th\nis ', b'is \n', b'a ', b'te\nst.'])
-        self.assertEqual(f.readlines(), [b'Th\n', b'is is \n', b'a te\n', b'st.'])
-        f = IterableFile([b'Th\nis ', b'is \n', b'a ', b'te\nst.'])
+        f = IterableFile([b"Th\nis ", b"is \n", b"a ", b"te\nst."])
+        self.assertEqual(f.readlines(), [b"Th\n", b"is is \n", b"a te\n", b"st."])
+        f = IterableFile([b"Th\nis ", b"is \n", b"a ", b"te\nst."])
         f.close()
         self.assertRaises(IOError, f.readlines)
 
     def test_readline(self):
-        f = IterableFile([b'Th\nis ', b'is \n', b'a ', b'te\nst.'])
-        self.assertEqual(f.readline(), b'Th\n')
-        self.assertEqual(f.readline(4), b'is is \n')
+        f = IterableFile([b"Th\nis ", b"is \n", b"a ", b"te\nst."])
+        self.assertEqual(f.readline(), b"Th\n")
+        self.assertEqual(f.readline(4), b"is is \n")
         f.close()
         self.assertRaises(IOError, f.readline)
-        f = IterableFile(iter([b'Th\nis ', b'', b'is \n', b'a ', b'te\nst.']))
-        self.assertEqual(f.readline(), b'Th\n')
-        self.assertEqual(f.readline(4), b'is is \n')
+        f = IterableFile(iter([b"Th\nis ", b"", b"is \n", b"a ", b"te\nst."]))
+        self.assertEqual(f.readline(), b"Th\n")
+        self.assertEqual(f.readline(4), b"is is \n")
         f.close()
 
     def test_read(self):
-        f = IterableFile([b'This ', b'is ', b'', b'a ', b'test.'])
-        self.assertEqual(b'This is a test.', f.read())
-        f = IterableFile([b'This ', b'is ', b'a ', b'test.'])
-        self.assertEqual(f.read(10), b'This is a ')
-        self.assertEqual(f.read(10), b'test.')
-        f = IterableFile([b'This ', b'is ', b'a ', b'test.'])
+        f = IterableFile([b"This ", b"is ", b"", b"a ", b"test."])
+        self.assertEqual(b"This is a test.", f.read())
+        f = IterableFile([b"This ", b"is ", b"a ", b"test."])
+        self.assertEqual(f.read(10), b"This is a ")
+        self.assertEqual(f.read(10), b"test.")
+        f = IterableFile([b"This ", b"is ", b"a ", b"test."])
         f.close()
         self.assertRaises(IOError, f.read, 10)
-        f = IterableFile([b'This ', b'is ', b'a ', b'test.'])
-        self.assertEqual(b'This is a test.', f.read(100))
+        f = IterableFile([b"This ", b"is ", b"a ", b"test."])
+        self.assertEqual(b"This is a test.", f.read(100))
 
     def test_iter(self):
         self.assertEqual(
-            list(IterableFile([b'Th\nis ', b'is \n', b'a ', b'te\nst.'])),
-            [b'Th\n', b'is is \n', b'a te\n', b'st.'])
-        f = IterableFile([b'Th\nis ', b'is \n', b'a ', b'te\nst.'])
+            list(IterableFile([b"Th\nis ", b"is \n", b"a ", b"te\nst."])),
+            [b"Th\n", b"is is \n", b"a te\n", b"st."],
+        )
+        f = IterableFile([b"Th\nis ", b"is \n", b"a ", b"te\nst."])
         f.close()
         self.assertRaises(IOError, list, f)
 
     def test_next(self):
-        f = IterableFile([b'This \n', b'is ', b'a ', b'test.'])
-        self.assertEqual(next(f), b'This \n')
+        f = IterableFile([b"This \n", b"is ", b"a ", b"test."])
+        self.assertEqual(next(f), b"This \n")
         f.close()
         self.assertRaises(IOError, next, f)
-        f = IterableFile([b'This \n', b'is ', b'a ', b'test.\n'])
-        self.assertEqual(next(f), b'This \n')
-        self.assertEqual(next(f), b'is a test.\n')
+        f = IterableFile([b"This \n", b"is ", b"a ", b"test.\n"])
+        self.assertEqual(next(f), b"This \n")
+        self.assertEqual(next(f), b"is a test.\n")
         self.assertRaises(StopIteration, next, f)

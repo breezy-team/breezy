@@ -11,4 +11,4 @@ bazaar = { path = "../bazaar", features=["pyo3"] }
 pyo3 = { workspace = true, features = ["extension-module", "chrono"]}
 pyo3-file = { workspace = true }
 chrono = { workspace = true }
-breezy-osutils = { path = "../osutils" }
+breezy-osutils = { path = "../osutils", features = ["pyo3"] }

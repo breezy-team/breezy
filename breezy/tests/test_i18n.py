@@ -22,7 +22,6 @@ from .. import errors, i18n, tests, workingtree
 
 
 class TestZzzTranslation(tests.TestCase):
-
     def _check_exact(self, expected, source):
         self.assertEqual(expected, source)
         self.assertEqual(type(expected), type(source))
@@ -31,55 +30,55 @@ class TestZzzTranslation(tests.TestCase):
         self.addCleanup(i18n.install)
         i18n.install_zzz()
 
-        t = i18n.zzz('msg')
-        self._check_exact('zz\xe5{{msg}}', t)
+        t = i18n.zzz("msg")
+        self._check_exact("zz\xe5{{msg}}", t)
 
-        t = i18n.gettext('msg')
-        self._check_exact('zz\xe5{{msg}}', t)
+        t = i18n.gettext("msg")
+        self._check_exact("zz\xe5{{msg}}", t)
 
-        t = i18n.ngettext('msg1', 'msg2', 0)
-        self._check_exact('zz\xe5{{msg2}}', t)
-        t = i18n.ngettext('msg1', 'msg2', 2)
-        self._check_exact('zz\xe5{{msg2}}', t)
+        t = i18n.ngettext("msg1", "msg2", 0)
+        self._check_exact("zz\xe5{{msg2}}", t)
+        t = i18n.ngettext("msg1", "msg2", 2)
+        self._check_exact("zz\xe5{{msg2}}", t)
 
-        t = i18n.ngettext('msg1', 'msg2', 1)
-        self._check_exact('zz\xe5{{msg1}}', t)
+        t = i18n.ngettext("msg1", "msg2", 1)
+        self._check_exact("zz\xe5{{msg1}}", t)
 
 
 class TestGetText(tests.TestCase):
-
     def setUp(self):
         super().setUp()
         self.addCleanup(i18n.install)
         i18n.install_zzz()
 
     def test_oneline(self):
-        self.assertEqual("zz\xe5{{spam ham eggs}}",
-                         i18n.gettext("spam ham eggs"))
+        self.assertEqual("zz\xe5{{spam ham eggs}}", i18n.gettext("spam ham eggs"))
 
     def test_multiline(self):
-        self.assertEqual("zz\xe5{{spam\nham\n\neggs\n}}",
-                         i18n.gettext("spam\nham\n\neggs\n"))
+        self.assertEqual(
+            "zz\xe5{{spam\nham\n\neggs\n}}", i18n.gettext("spam\nham\n\neggs\n")
+        )
 
 
 class TestGetTextPerParagraph(tests.TestCase):
-
     def setUp(self):
         super().setUp()
         self.addCleanup(i18n.install)
         i18n.install_zzz()
 
     def test_oneline(self):
-        self.assertEqual("zz\xe5{{spam ham eggs}}",
-                         i18n.gettext_per_paragraph("spam ham eggs"))
+        self.assertEqual(
+            "zz\xe5{{spam ham eggs}}", i18n.gettext_per_paragraph("spam ham eggs")
+        )
 
     def test_multiline(self):
-        self.assertEqual("zz\xe5{{spam\nham}}\n\nzz\xe5{{eggs\n}}",
-                         i18n.gettext_per_paragraph("spam\nham\n\neggs\n"))
+        self.assertEqual(
+            "zz\xe5{{spam\nham}}\n\nzz\xe5{{eggs\n}}",
+            i18n.gettext_per_paragraph("spam\nham\n\neggs\n"),
+        )
 
 
 class TestTranslate(tests.TestCaseWithTransport):
-
     def setUp(self):
         super().setUp()
         self.addCleanup(i18n.install)
@@ -88,9 +87,9 @@ class TestTranslate(tests.TestCaseWithTransport):
     def test_error_message_translation(self):
         """Do errors get translated?"""
         err = None
-        self.make_branch_and_tree('.')
+        self.make_branch_and_tree(".")
         try:
-            workingtree.WorkingTree.open('./foo')
+            workingtree.WorkingTree.open("./foo")
         except errors.NotBranchError as e:
             err = str(e)
         self.assertContainsRe(err, "zz\xe5{{Not a branch: .*}}")
@@ -98,14 +97,13 @@ class TestTranslate(tests.TestCaseWithTransport):
     def test_topic_help_translation(self):
         """Does topic help get translated?"""
         from .. import help
+
         out = io.StringIO()
         help.help("authentication", out)
-        self.assertContainsRe(
-            out.getvalue(), "zz\xe5{{Authentication Settings")
+        self.assertContainsRe(out.getvalue(), "zz\xe5{{Authentication Settings")
 
 
 class LoadPluginTranslations(tests.TestCase):
-
     def test_does_not_exist(self):
         translation = i18n.load_plugin_translations("doesnotexist")
         self.assertEqual("foo", translation.gettext("foo"))

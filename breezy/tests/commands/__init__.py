@@ -31,19 +31,19 @@ def load_tests(loader, basic_tests, pattern):
     suite.addTests(basic_tests)
 
     testmod_names = [
-        'breezy.tests.commands.test_branch',
-        'breezy.tests.commands.test_cat',
-        'breezy.tests.commands.test_checkout',
-        'breezy.tests.commands.test_commit',
-        'breezy.tests.commands.test_init',
-        'breezy.tests.commands.test_init_repository',
-        'breezy.tests.commands.test_merge',
-        'breezy.tests.commands.test_missing',
-        'breezy.tests.commands.test_pull',
-        'breezy.tests.commands.test_push',
-        'breezy.tests.commands.test_update',
-        'breezy.tests.commands.test_revert',
-        ]
+        "breezy.tests.commands.test_branch",
+        "breezy.tests.commands.test_cat",
+        "breezy.tests.commands.test_checkout",
+        "breezy.tests.commands.test_commit",
+        "breezy.tests.commands.test_init",
+        "breezy.tests.commands.test_init_repository",
+        "breezy.tests.commands.test_merge",
+        "breezy.tests.commands.test_missing",
+        "breezy.tests.commands.test_pull",
+        "breezy.tests.commands.test_push",
+        "breezy.tests.commands.test_update",
+        "breezy.tests.commands.test_revert",
+    ]
     # add the tests for the sub modules
     suite.addTests(loader.loadTestsFromModuleNames(testmod_names))
 

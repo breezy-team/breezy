@@ -27,7 +27,7 @@ from ..vf_repository import install_revision
 
 
 def install_bundle(repository, bundle_reader):
-    custom_install = getattr(bundle_reader, 'install', None)
+    custom_install = getattr(bundle_reader, "install", None)
     if custom_install is not None:
         return custom_install(repository)
     with repository.lock_write(), ui.ui_factory.nested_progress_bar() as pb:
@@ -36,20 +36,19 @@ def install_bundle(repository, bundle_reader):
             pb.update(gettext("Install revisions"), i, len(real_revisions))
             if repository.has_revision(revision.revision_id):
                 continue
-            cset_tree = bundle_reader.revision_tree(repository,
-                                                    revision.revision_id)
+            cset_tree = bundle_reader.revision_tree(repository, revision.revision_id)
             install_revision(repository, revision, cset_tree)
 
 
-def merge_bundle(reader, tree, check_clean, merge_type,
-                 reprocess, show_base, change_reporter=None):
+def merge_bundle(
+    reader, tree, check_clean, merge_type, reprocess, show_base, change_reporter=None
+):
     """Merge a revision bundle into the current tree."""
     with ui.ui_factory.nested_progress_bar() as pb:
         pp = ProgressPhase("Merge phase", 6, pb)
         pp.next_phase()
         install_bundle(tree.branch.repository, reader)
-        merger = Merger(tree.branch, this_tree=tree,
-                        change_reporter=change_reporter)
+        merger = Merger(tree.branch, this_tree=tree, change_reporter=change_reporter)
         merger.pp = pp
         merger.pp.next_phase()
         if check_clean and tree.has_changes():

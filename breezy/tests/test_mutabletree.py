@@ -23,44 +23,36 @@ from .. import mutabletree, tests
 
 
 class TestHooks(tests.TestCase):
-
     def test_constructor(self):
         """Check that creating a MutableTreeHooks instance has the right
         defaults.
         """
         hooks = mutabletree.MutableTreeHooks()
-        self.assertIn(
-            "start_commit",
-            hooks,
-            f"start_commit not in {hooks}"
-        )
-        self.assertIn(
-            "post_commit",
-            hooks,
-            f"post_commit not in {hooks}"
-        )
+        self.assertIn("start_commit", hooks, f"start_commit not in {hooks}")
+        self.assertIn("post_commit", hooks, f"post_commit not in {hooks}")
 
     def test_installed_hooks_are_MutableTreeHooks(self):
         """The installed hooks object should be a MutableTreeHooks."""
         # the installed hooks are saved in self._preserved_hooks.
-        self.assertIsInstance(self._preserved_hooks[mutabletree.MutableTree][1],
-                              mutabletree.MutableTreeHooks)
+        self.assertIsInstance(
+            self._preserved_hooks[mutabletree.MutableTree][1],
+            mutabletree.MutableTreeHooks,
+        )
 
 
 class TestHasChanges(tests.TestCaseWithTransport):
-
     def setUp(self):
         super().setUp()
-        self.tree = self.make_branch_and_tree('tree')
+        self.tree = self.make_branch_and_tree("tree")
 
     def test_with_uncommitted_changes(self):
-        self.build_tree(['tree/file'])
-        self.tree.add('file')
+        self.build_tree(["tree/file"])
+        self.tree.add("file")
         self.assertTrue(self.tree.has_changes())
 
     def test_with_pending_merges(self):
-        self.tree.commit('first commit')
-        other_tree = self.tree.controldir.sprout('other').open_workingtree()
-        other_tree.commit('mergeable commit')
+        self.tree.commit("first commit")
+        other_tree = self.tree.controldir.sprout("other").open_workingtree()
+        other_tree.commit("mergeable commit")
         self.tree.merge_from_branch(other_tree.branch)
         self.assertTrue(self.tree.has_changes())

@@ -30,12 +30,12 @@ class cmd_fix_missing_keys_for_stacking(Command):
     """
 
     hidden = True
-    takes_args = ['branch_url']
+    takes_args = ["branch_url"]
     takes_options = [
         Option(
-            'dry-run',
-            help="Show what would be done, but don't actually do anything."),
-        ]
+            "dry-run", help="Show what would be done, but don't actually do anything."
+        ),
+    ]
 
     def run(self, branch_url, dry_run=False):
         try:
@@ -43,12 +43,16 @@ class cmd_fix_missing_keys_for_stacking(Command):
             b = bd.open_branch(ignore_fallbacks=True)
         except (errors.NotBranchError, errors.InvalidURL) as e:
             raise errors.CommandError(
-                f"Not a branch or invalid URL: {branch_url}") from e
+                f"Not a branch or invalid URL: {branch_url}"
+            ) from e
         b.lock_read()
         try:
             b.get_stacked_on_url()
-        except (errors.UnstackableRepositoryFormat, errors.NotStacked,
-                errors.UnstackableBranchFormat) as e:
+        except (
+            errors.UnstackableRepositoryFormat,
+            errors.NotStacked,
+            errors.UnstackableBranchFormat,
+        ) as e:
             b.unlock()
             raise errors.CommandError(f"Not stacked: {branch_url}") from e
         raw_r = b.repository.controldir.open_repository()
@@ -74,9 +78,12 @@ class cmd_fix_missing_keys_for_stacking(Command):
             if dry_run:
                 return
             if raw_r._format.network_name() != b.repository._format.network_name():
-                raise AssertionError(f"Network names don't match: {raw_r._format.network_name()!r} != {b.repository._format.network_name()!r}")
+                raise AssertionError(
+                    f"Network names don't match: {raw_r._format.network_name()!r} != {b.repository._format.network_name()!r}"
+                )
             stream = b.repository.inventories.get_record_stream(
-                needed, 'topological', True)
+                needed, "topological", True
+            )
             with WriteGroup(raw_r):
                 raw_r.inventories.insert_record_stream(stream)
         finally:
@@ -89,9 +96,9 @@ class cmd_mirror_revs_into(Command):
     """Mirror all revs from one repo into another."""
 
     hidden = True
-    takes_args = ['source', 'destination']
+    takes_args = ["source", "destination"]
 
-    _see_also = ['fetch-all-records']
+    _see_also = ["fetch-all-records"]
 
     def run(self, source, destination):
         bd = ControlDir.open(source)
@@ -100,5 +107,4 @@ class cmd_mirror_revs_into(Command):
         target_r = bd.open_branch().repository
         with source_r.lock_read(), target_r.lock_write():
             revs = [k[-1] for k in source_r.revisions.keys()]
-            target_r.fetch(
-                source_r, fetch_spec=PendingAncestryResult(revs, source_r))
+            target_r.fetch(source_r, fetch_spec=PendingAncestryResult(revs, source_r))

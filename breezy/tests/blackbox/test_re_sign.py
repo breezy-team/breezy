@@ -24,7 +24,6 @@ from ...controldir import ControlDir
 
 
 class ReSign(tests.TestCaseInTempDir):
-
     def monkey_patch_gpg(self):
         """Monkey patch the gpg signing strategy to be a loopback.
 
@@ -32,10 +31,10 @@ class ReSign(tests.TestCaseInTempDir):
         the original gpg strategy when done.
         """
         # monkey patch gpg signing mechanism
-        self.overrideAttr(gpg, 'GPGStrategy', gpg.LoopbackGPGStrategy)
+        self.overrideAttr(gpg, "GPGStrategy", gpg.LoopbackGPGStrategy)
 
     def setup_tree(self):
-        wt = ControlDir.create_standalone_workingtree('.')
+        wt = ControlDir.create_standalone_workingtree(".")
         a = wt.commit("base A", allow_pointless=True)
         b = wt.commit("base B", allow_pointless=True)
         c = wt.commit("base C", allow_pointless=True)
@@ -45,10 +44,11 @@ class ReSign(tests.TestCaseInTempDir):
     def assertEqualSignature(self, repo, revision_id):
         """Assert a signature is stored correctly in repository."""
         self.assertEqual(
-            b'-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
-            Testament.from_revision(repo, revision_id).as_short_text() +
-            b'-----END PSEUDO-SIGNED CONTENT-----\n',
-            repo.get_signature_text(revision_id))
+            b"-----BEGIN PSEUDO-SIGNED CONTENT-----\n"
+            + Testament.from_revision(repo, revision_id).as_short_text()
+            + b"-----END PSEUDO-SIGNED CONTENT-----\n",
+            repo.get_signature_text(revision_id),
+        )
 
     def test_resign(self):
         # Test re signing of data.
@@ -68,7 +68,7 @@ class ReSign(tests.TestCaseInTempDir):
         repo = wt.branch.repository
 
         self.monkey_patch_gpg()
-        self.run_bzr('re-sign -r 1..')
+        self.run_bzr("re-sign -r 1..")
         self.assertEqualSignature(repo, a)
         self.assertEqualSignature(repo, b)
         self.assertEqualSignature(repo, c)
@@ -78,20 +78,19 @@ class ReSign(tests.TestCaseInTempDir):
         repo = wt.branch.repository
 
         self.monkey_patch_gpg()
-        self.run_bzr('re-sign ' + ' '.join(
-            r.decode('utf-8') for r in rs))
+        self.run_bzr("re-sign " + " ".join(r.decode("utf-8") for r in rs))
         for r in rs:
             self.assertEqualSignature(repo, r)
 
     def test_resign_directory(self):
         """Test --directory option."""
-        wt = ControlDir.create_standalone_workingtree('a')
+        wt = ControlDir.create_standalone_workingtree("a")
         a = wt.commit("base A", allow_pointless=True)
         b = wt.commit("base B", allow_pointless=True)
         wt.commit("base C", allow_pointless=True)
         repo = wt.branch.repository
         self.monkey_patch_gpg()
-        self.run_bzr('re-sign --directory=a -r revid:' + a.decode('utf-8'))
+        self.run_bzr("re-sign --directory=a -r revid:" + a.decode("utf-8"))
         self.assertEqualSignature(repo, a)
         self.run_bzr(f"re-sign -d a {b.decode('utf-8')}")
         self.assertEqualSignature(repo, b)

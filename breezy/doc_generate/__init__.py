@@ -23,7 +23,7 @@ import os
 def get_module(target):
     mod_name = f"breezy.doc_generate.autodoc_{target}"
     mod = __import__(mod_name)
-    components = mod_name.split('.')
+    components = mod_name.split(".")
     for comp in components[1:]:
         mod = getattr(mod, comp)
     return mod
@@ -35,7 +35,6 @@ def get_autodoc_datetime():
     :return: A `datetime` object
     """
     try:
-        return datetime.datetime.utcfromtimestamp(
-            int(os.environ['SOURCE_DATE_EPOCH']))
+        return datetime.datetime.utcfromtimestamp(int(os.environ["SOURCE_DATE_EPOCH"]))
     except (KeyError, ValueError):
         return datetime.datetime.utcnow()

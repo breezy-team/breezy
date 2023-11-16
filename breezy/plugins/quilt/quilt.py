@@ -31,14 +31,18 @@ class QuiltPatches:
     def __init__(self, tree, patches_dir=None, series_file=None):
         self.tree = tree
         if patches_dir is None:
-            if tree.has_filename('.pc/.quilt_patches'):
-                patches_dir = os.fsdecode(tree.get_file_text('.pc/.quilt_patches')).rstrip('\n')
+            if tree.has_filename(".pc/.quilt_patches"):
+                patches_dir = os.fsdecode(
+                    tree.get_file_text(".pc/.quilt_patches")
+                ).rstrip("\n")
             else:
                 patches_dir = wrapper.DEFAULT_PATCHES_DIR
         self.patches_dir = patches_dir
         if series_file is None:
-            if tree.has_filename('.pc/.quilt_series'):
-                series_file = os.fsdecode(tree.get_file_text('.pc/.quilt_series')).rstrip('\n')
+            if tree.has_filename(".pc/.quilt_series"):
+                series_file = os.fsdecode(
+                    tree.get_file_text(".pc/.quilt_series")
+                ).rstrip("\n")
             else:
                 series_file = wrapper.DEFAULT_SERIES_FILE
         self.series_file = series_file
@@ -46,9 +50,9 @@ class QuiltPatches:
 
     @classmethod
     def find(cls, tree):
-        if tree.has_filename('.pc/.quilt_patches'):
+        if tree.has_filename(".pc/.quilt_patches"):
             return cls(tree)
-        for name in ['patches', 'debian/patches']:
+        for name in ["patches", "debian/patches"]:
             if tree.has_filename(name):
                 return cls(tree, name)
         return None
@@ -64,32 +68,54 @@ class QuiltPatches:
 
     def unapplied(self):
         return wrapper.quilt_unapplied(
-            self.tree.basedir, self.patches_dir, self.series_file)
+            self.tree.basedir, self.patches_dir, self.series_file
+        )
 
     def pop_all(self, quiet=None, force=False, refresh=False):
         return wrapper.quilt_pop_all(
-            self.tree.basedir, patches_dir=self.patches_dir,
-            series_file=self.series_file, quiet=quiet, force=force,
-            refresh=refresh)
+            self.tree.basedir,
+            patches_dir=self.patches_dir,
+            series_file=self.series_file,
+            quiet=quiet,
+            force=force,
+            refresh=refresh,
+        )
 
     def push_all(self, quiet=None, force=None, refresh=None):
         return wrapper.quilt_push_all(
-            self.tree.basedir, patches_dir=self.patches_dir,
-            series_file=self.series_file, quiet=quiet, force=force,
-            refresh=refresh)
+            self.tree.basedir,
+            patches_dir=self.patches_dir,
+            series_file=self.series_file,
+            quiet=quiet,
+            force=force,
+            refresh=refresh,
+        )
 
     def push(self, patch, quiet=None, force=None, refresh=None):
         return wrapper.quilt_push(
-            self.tree.basedir, patch, patches_dir=self.patches_dir,
-            series_file=self.series_file, quiet=quiet, force=force,
-            refresh=refresh)
+            self.tree.basedir,
+            patch,
+            patches_dir=self.patches_dir,
+            series_file=self.series_file,
+            quiet=quiet,
+            force=force,
+            refresh=refresh,
+        )
 
     def pop(self, patch, quiet=None):
         return wrapper.quilt_pop(
-            self.tree.basedir, patch, patches_dir=self.patches_dir,
-            series_file=self.series_file, quiet=quiet)
+            self.tree.basedir,
+            patch,
+            patches_dir=self.patches_dir,
+            series_file=self.series_file,
+            quiet=quiet,
+        )
 
     def delete(self, patch, remove=False):
         return wrapper.quilt_delete(
-            self.tree.basedir, patch, patches_dir=self.patches_dir,
-            series_file=self.series_file, remove=remove)
+            self.tree.basedir,
+            patch,
+            patches_dir=self.patches_dir,
+            series_file=self.series_file,
+            remove=remove,
+        )

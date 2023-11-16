@@ -25,7 +25,7 @@ class InventorySerializer_v6(xml8.InventorySerializer_v8):
     converted from format 5 or 7 without updating the sha1.
     """
 
-    format_num = b'6'
+    format_num = b"6"
 
 
 inventory_serializer_v6 = InventorySerializer_v6()

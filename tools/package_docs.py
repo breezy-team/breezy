@@ -35,7 +35,7 @@ def package_docs(section, src_build, dest_html, dest_downloads):
     """
     # Copy across the HTML. Explicitly delete the html destination
     # directory first though because copytree insists on it not existing.
-    src_html = os.path.join(src_build, 'html')
+    src_html = os.path.join(src_build, "html")
     if os.path.exists(dest_html):
         rmtree(dest_html)
     copytree(src_html, dest_html)
@@ -44,21 +44,22 @@ def package_docs(section, src_build, dest_html, dest_downloads):
     archive_root = f"brz-{section}-html"
     archive_basename = f"{archive_root}.tar.bz2"
     archive_name = os.path.join(dest_downloads, archive_basename)
-    build_archive(src_html, archive_name, archive_root, 'bz2')
+    build_archive(src_html, archive_name, archive_root, "bz2")
 
     # Copy across the PDF docs, if any, including the quick ref card
     pdf_files = []
     quick_ref = os.path.join(
-        src_html, f'_static/{section}/brz-{section}-quick-reference.pdf')
+        src_html, f"_static/{section}/brz-{section}-quick-reference.pdf"
+    )
     if os.path.exists(quick_ref):
         pdf_files.append(quick_ref)
-    src_pdf = os.path.join(src_build, 'latex')
+    src_pdf = os.path.join(src_build, "latex")
     if os.path.exists(src_pdf):
         for name in os.listdir(src_pdf):
-            if name.endswith('.pdf'):
+            if name.endswith(".pdf"):
                 pdf_files.append(os.path.join(src_pdf, name))
     if pdf_files:
-        dest_pdf = os.path.join(dest_downloads, f'pdf-{section}')
+        dest_pdf = os.path.join(dest_downloads, f"pdf-{section}")
         if not os.path.exists(dest_pdf):
             os.mkdir(dest_pdf)
         for pdf in pdf_files:
@@ -90,12 +91,12 @@ def main(argv):
     # Get the section - locale code or 'developers'
     src_dir = args[0]
     section = os.path.basename(src_dir)
-    src_build = os.path.join(src_dir, '_build')
+    src_build = os.path.join(src_dir, "_build")
 
     # Create the destination directories if they doesn't exist.
     dest_dir = args[1]
     dest_html = os.path.join(dest_dir, section)
-    dest_downloads = os.path.join(dest_dir, 'downloads')
+    dest_downloads = os.path.join(dest_dir, "downloads")
     for d in [dest_dir, dest_downloads]:
         if not os.path.exists(d):
             print(f"creating directory {d} ...")
@@ -105,5 +106,5 @@ def main(argv):
     package_docs(section, src_build, dest_html, dest_downloads)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(sys.argv[1:])

@@ -26,7 +26,6 @@ from . import TestCase, TestCaseWithTransport, TestSkipped
 
 
 class NonAsciiTest(TestCaseWithTransport):
-
     def test_add_in_nonascii_branch(self):
         """Test adding in a non-ASCII branch."""
         br_dir = "\u1234"
@@ -39,35 +38,35 @@ class NonAsciiTest(TestCaseWithTransport):
         wt.add(["a"], ids=[b"a-id"])
 
 
-a_circle_c = '\xe5'
-a_circle_d = 'a\u030a'
-a_dots_c = '\xe4'
-a_dots_d = 'a\u0308'
-z_umlat_c = '\u017d'
-z_umlat_d = 'Z\u030c'
-squared_c = '\xbc'  # This gets mapped to '2' if we use NFK[CD]
-squared_d = '\xbc'
-quarter_c = '\xb2'  # Gets mapped to u'1\u20444' (1/4) if we use NFK[CD]
-quarter_d = '\xb2'
-surrogate = '\udcb5'
+a_circle_c = "\xe5"
+a_circle_d = "a\u030a"
+a_dots_c = "\xe4"
+a_dots_d = "a\u0308"
+z_umlat_c = "\u017d"
+z_umlat_d = "Z\u030c"
+squared_c = "\xbc"  # This gets mapped to '2' if we use NFK[CD]
+squared_d = "\xbc"
+quarter_c = "\xb2"  # Gets mapped to u'1\u20444' (1/4) if we use NFK[CD]
+quarter_d = "\xb2"
+surrogate = "\udcb5"
 
 
 class TestNormalization(TestCase):
     """Verify that we have our normalizations correct."""
 
     def test_normalize(self):
-        self.assertEqual(a_circle_d, normalize('NFD', a_circle_c))
-        self.assertEqual(a_circle_c, normalize('NFC', a_circle_d))
-        self.assertEqual(a_dots_d, normalize('NFD', a_dots_c))
-        self.assertEqual(a_dots_c, normalize('NFC', a_dots_d))
-        self.assertEqual(z_umlat_d, normalize('NFD', z_umlat_c))
-        self.assertEqual(z_umlat_c, normalize('NFC', z_umlat_d))
-        self.assertEqual(squared_d, normalize('NFC', squared_c))
-        self.assertEqual(squared_c, normalize('NFD', squared_d))
-        self.assertEqual(quarter_d, normalize('NFC', quarter_c))
-        self.assertEqual(quarter_c, normalize('NFD', quarter_d))
-        self.assertEqual(surrogate, normalize('NFC', surrogate))
-        self.assertEqual(surrogate, normalize('NFD', surrogate))
+        self.assertEqual(a_circle_d, normalize("NFD", a_circle_c))
+        self.assertEqual(a_circle_c, normalize("NFC", a_circle_d))
+        self.assertEqual(a_dots_d, normalize("NFD", a_dots_c))
+        self.assertEqual(a_dots_c, normalize("NFC", a_dots_d))
+        self.assertEqual(z_umlat_d, normalize("NFD", z_umlat_c))
+        self.assertEqual(z_umlat_c, normalize("NFC", z_umlat_d))
+        self.assertEqual(squared_d, normalize("NFC", squared_c))
+        self.assertEqual(squared_c, normalize("NFD", squared_d))
+        self.assertEqual(quarter_d, normalize("NFC", quarter_c))
+        self.assertEqual(quarter_c, normalize("NFD", quarter_d))
+        self.assertEqual(surrogate, normalize("NFC", surrogate))
+        self.assertEqual(surrogate, normalize("NFD", surrogate))
 
 
 class NormalizedFilename(TestCaseWithTransport):
@@ -77,7 +76,7 @@ class NormalizedFilename(TestCaseWithTransport):
         anf = osutils._accessible_normalized_filename
         # normalized_filename should allow plain ascii strings
         # not just unicode strings
-        self.assertEqual(('ascii', True), anf('ascii'))
+        self.assertEqual(("ascii", True), anf("ascii"))
         self.assertEqual((a_circle_c, True), anf(a_circle_c))
         self.assertEqual((a_circle_c, True), anf(a_circle_d))
         self.assertEqual((a_dots_c, True), anf(a_dots_c))
@@ -94,7 +93,7 @@ class NormalizedFilename(TestCaseWithTransport):
         inf = osutils._inaccessible_normalized_filename
         # normalized_filename should allow plain ascii strings
         # not just unicode strings
-        self.assertEqual(('ascii', True), inf('ascii'))
+        self.assertEqual(("ascii", True), inf("ascii"))
         self.assertEqual((a_circle_c, True), inf(a_circle_c))
         self.assertEqual((a_circle_c, False), inf(a_circle_d))
         self.assertEqual((a_dots_c, True), inf(a_dots_c))
@@ -112,19 +111,18 @@ class NormalizedFilename(TestCaseWithTransport):
         # a_circle_c and a_dots_c actually map to the same file
         # adding a suffix kicks in the 'preserving but insensitive'
         # route, and maintains the right files
-        files = [a_circle_c + '.1', a_dots_c + '.2', z_umlat_c + '.3']
+        files = [a_circle_c + ".1", a_dots_c + ".2", z_umlat_c + ".3"]
         try:
             self.build_tree(files)
         except UnicodeError as err:
             raise TestSkipped("filesystem cannot create unicode files") from err
 
-        if sys.platform == 'darwin':
-            expected = sorted(
-                [a_circle_d + '.1', a_dots_d + '.2', z_umlat_d + '.3'])
+        if sys.platform == "darwin":
+            expected = sorted([a_circle_d + ".1", a_dots_d + ".2", z_umlat_d + ".3"])
         else:
             expected = sorted(files)
 
-        present = sorted(os.listdir('.'))
+        present = sorted(os.listdir("."))
         self.assertEqual(expected, present)
 
     def test_access_normalized(self):
@@ -134,10 +132,15 @@ class NormalizedFilename(TestCaseWithTransport):
         # a_circle_c and a_dots_c actually map to the same file
         # adding a suffix kicks in the 'preserving but insensitive'
         # route, and maintains the right files
-        files = [a_circle_c + '.1', a_dots_c + '.2', z_umlat_c + '.3',
-                 squared_c + '.4', quarter_c + '.5']
+        files = [
+            a_circle_c + ".1",
+            a_dots_c + ".2",
+            z_umlat_c + ".3",
+            squared_c + ".4",
+            quarter_c + ".5",
+        ]
         try:
-            self.build_tree(files, line_endings='native')
+            self.build_tree(files, line_endings="native")
         except UnicodeError as err:
             raise TestSkipped("filesystem cannot create unicode files") from err
 
@@ -149,18 +152,23 @@ class NormalizedFilename(TestCaseWithTransport):
             self.assertEqual(path, fname)
             self.assertTrue(can_access)
 
-            with open(path, 'rb') as f:
+            with open(path, "rb") as f:
                 # Check the contents
-                shouldbe = b'contents of %s%s' % (path.encode('utf8'),
-                                                  os.linesep.encode('utf-8'))
+                shouldbe = b"contents of %s%s" % (
+                    path.encode("utf8"),
+                    os.linesep.encode("utf-8"),
+                )
                 actual = f.read()
-            self.assertEqual(shouldbe, actual,
-                             f'contents of {path!r} is incorrect: {shouldbe!r} != {actual!r}')
+            self.assertEqual(
+                shouldbe,
+                actual,
+                f"contents of {path!r} is incorrect: {shouldbe!r} != {actual!r}",
+            )
 
     def test_access_non_normalized(self):
         # Sometimes we can access non-normalized files by their normalized
         # path, verify that normalized_filename returns the right info
-        files = [a_circle_d + '.1', a_dots_d + '.2', z_umlat_d + '.3']
+        files = [a_circle_d + ".1", a_dots_d + ".2", z_umlat_d + ".3"]
 
         try:
             self.build_tree(files)
@@ -176,13 +184,13 @@ class NormalizedFilename(TestCaseWithTransport):
 
             # We should always be able to access them from the name
             # they were created with
-            f = open(fname, 'rb')
+            f = open(fname, "rb")
             f.close()
 
             # And normalized_filename sholud tell us correctly if we can
             # access them by an alternate name
             if can_access:
-                f = open(path, 'rb')
+                f = open(path, "rb")
                 f.close()
             else:
-                self.assertRaises(IOError, open, path, 'rb')
+                self.assertRaises(IOError, open, path, "rb")

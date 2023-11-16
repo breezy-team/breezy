@@ -26,7 +26,6 @@ from .inter import InterObject
 
 
 class FileTimestampUnavailable(errors.BzrError):
-
     _fmt = "The filestamp for %(path)s is not available."
 
     internal_error = True
@@ -36,8 +35,7 @@ class FileTimestampUnavailable(errors.BzrError):
 
 
 class MissingNestedTree(errors.BzrError):
-
-    _fmt = "The nested tree for %(path)s can not be resolved."""
+    _fmt = "The nested tree for %(path)s can not be resolved." ""
 
     def __init__(self, path):
         self.path = path
@@ -50,8 +48,7 @@ class TreeEntry:
 
     def __eq__(self, other):
         # yes, this is ugly, TODO: best practice __eq__ style.
-        return (isinstance(other, TreeEntry)
-                and other.__class__ == self.__class__)
+        return isinstance(other, TreeEntry) and other.__class__ == self.__class__
 
     kind: str
 
@@ -72,7 +69,7 @@ class TreeDirectory(TreeEntry):
 
     __slots__: List[str] = []
 
-    kind = 'directory'
+    kind = "directory"
 
     def kind_character(self):
         return "/"
@@ -83,10 +80,10 @@ class TreeFile(TreeEntry):
 
     __slots__: List[str] = []
 
-    kind = 'file'
+    kind = "file"
 
     def kind_character(self):
-        return ''
+        return ""
 
 
 class TreeLink(TreeEntry):
@@ -94,10 +91,10 @@ class TreeLink(TreeEntry):
 
     __slots__: List[str] = []
 
-    kind = 'symlink'
+    kind = "symlink"
 
     def kind_character(self):
-        return ''
+        return ""
 
 
 class TreeReference(TreeEntry):
@@ -105,20 +102,28 @@ class TreeReference(TreeEntry):
 
     __slots__: List[str] = []
 
-    kind = 'tree-reference'
+    kind = "tree-reference"
 
     def kind_character(self):
-        return '+'
+        return "+"
 
 
 class TreeChange:
     """Describes the changes between the same item in two different trees."""
 
-    __slots__ = ['path', 'changed_content', 'versioned',
-                 'name', 'kind', 'executable', 'copied']
+    __slots__ = [
+        "path",
+        "changed_content",
+        "versioned",
+        "name",
+        "kind",
+        "executable",
+        "copied",
+    ]
 
-    def __init__(self, path, changed_content, versioned,
-                 name, kind, executable, copied=False):
+    def __init__(
+        self, path, changed_content, versioned, name, kind, executable, copied=False
+    ):
         self.path = path
         self.changed_content = changed_content
         self.versioned = versioned
@@ -131,8 +136,15 @@ class TreeChange:
         return f"{self.__class__.__name__}{self._as_tuple()!r}"
 
     def _as_tuple(self):
-        return (self.path, self.changed_content, self.versioned,
-                self.name, self.kind, self.executable, self.copied)
+        return (
+            self.path,
+            self.changed_content,
+            self.versioned,
+            self.name,
+            self.kind,
+            self.executable,
+            self.copied,
+        )
 
     def __eq__(self, other):
         if isinstance(other, TreeChange):
@@ -146,26 +158,28 @@ class TreeChange:
 
     def meta_modified(self):
         if self.versioned == (True, True):
-            return (self.executable[0] != self.executable[1])
+            return self.executable[0] != self.executable[1]
         return False
 
     @property
     def renamed(self):
         return (
-            not self.copied and
-            None not in self.name and
-            self.path[0] != self.path[1])
+            not self.copied and None not in self.name and self.path[0] != self.path[1]
+        )
 
     def is_reparented(self):
         return osutils.dirname(self.path[0]) != osutils.dirname(self.path[1])
 
     def discard_new(self):
         return self.__class__(
-            (self.path[0], None), self.changed_content,
+            (self.path[0], None),
+            self.changed_content,
             (self.versioned[0], None),
-            (self.name[0], None), (self.kind[0], None),
+            (self.name[0], None),
+            (self.kind[0], None),
             (self.executable[0], None),
-            copied=False)
+            copied=False,
+        )
 
 
 class Tree:
@@ -213,9 +227,16 @@ class Tree:
         """Does this tree support file ids?"""
         raise NotImplementedError(self.supports_file_ids)
 
-    def changes_from(self, other, want_unchanged=False, specific_files=None,
-                     extra_trees=None, require_versioned=False, include_root=False,
-                     want_unversioned=False):
+    def changes_from(
+        self,
+        other,
+        want_unchanged=False,
+        specific_files=None,
+        extra_trees=None,
+        require_versioned=False,
+        include_root=False,
+        want_unversioned=False,
+    ):
         """Return a TreeDelta of the changes from other to this tree.
 
         Args:
@@ -246,16 +267,28 @@ class Tree:
             require_versioned=require_versioned,
             include_root=include_root,
             want_unversioned=want_unversioned,
-            )
+        )
 
-    def iter_changes(self, from_tree, include_unchanged=False,
-                     specific_files=None, pb=None, extra_trees=None,
-                     require_versioned=True, want_unversioned=False):
+    def iter_changes(
+        self,
+        from_tree,
+        include_unchanged=False,
+        specific_files=None,
+        pb=None,
+        extra_trees=None,
+        require_versioned=True,
+        want_unversioned=False,
+    ):
         """See InterTree.iter_changes."""
         intertree = InterTree.get(from_tree, self)
-        return intertree.iter_changes(include_unchanged, specific_files, pb,
-                                      extra_trees, require_versioned,
-                                      want_unversioned=want_unversioned)
+        return intertree.iter_changes(
+            include_unchanged,
+            specific_files,
+            pb,
+            extra_trees,
+            require_versioned,
+            want_unversioned=want_unversioned,
+        )
 
     def conflicts(self):
         """Get a list of the conflicts in the tree.
@@ -263,6 +296,7 @@ class Tree:
         Each conflict is an instance of breezy.conflicts.Conflict.
         """
         from . import conflicts as _mod_conflicts
+
         return _mod_conflicts.ConflictList()
 
     def extras(self):
@@ -297,8 +331,9 @@ class Tree:
         """Iterate through all paths, including paths for missing files."""
         raise NotImplementedError(self.all_versioned_paths)
 
-    def iter_entries_by_dir(self, specific_files: Optional[List[str]] = None,
-                            recurse_nested: bool = False):
+    def iter_entries_by_dir(
+        self, specific_files: Optional[List[str]] = None, recurse_nested: bool = False
+    ):
         """Walk the tree in 'by_dir' order.
 
         This will yield each entry in the tree as a (path, entry) tuple.
@@ -340,8 +375,9 @@ class Tree:
         """
         raise NotImplementedError(self.iter_child_entries)
 
-    def list_files(self, include_root=False, from_dir=None, recursive=True,
-                   recurse_nested=False):
+    def list_files(
+        self, include_root=False, from_dir=None, recursive=True, recurse_nested=False
+    ):
         """List all files in this tree.
 
         Args:
@@ -357,7 +393,7 @@ class Tree:
     def iter_references(self):
         if self.supports_tree_reference():
             for path, entry in self.iter_entries_by_dir():
-                if entry.kind == 'tree-reference':
+                if entry.kind == "tree-reference":
                     yield path
 
     def get_containing_nested_tree(self, path):
@@ -366,10 +402,10 @@ class Tree:
         Returns: tuple with (nested tree and path inside the nested tree)
         """
         for nested_path in self.iter_references():
-            nested_path += '/'
+            nested_path += "/"
             if path.startswith(nested_path):
                 nested_tree = self.get_nested_tree(nested_path)
-                return nested_tree, path[len(nested_path):]
+                return nested_tree, path[len(nested_path) :]
         else:
             return None, None
 
@@ -385,8 +421,9 @@ class Tree:
         raise NotImplementedError(self.get_nested_tree)
 
     def kind(self, path):
-        raise NotImplementedError("Tree subclass %s must implement kind"
-                                  % self.__class__.__name__)
+        raise NotImplementedError(
+            "Tree subclass %s must implement kind" % self.__class__.__name__
+        )
 
     def stored_kind(self, path):
         """File kind stored for this path.
@@ -416,9 +453,10 @@ class Tree:
         raise NotImplementedError(self.path_content_summary)
 
     def get_reference_revision(self, path):
-        raise NotImplementedError("Tree subclass %s must implement "
-                                  "get_reference_revision"
-                                  % self.__class__.__name__)
+        raise NotImplementedError(
+            "Tree subclass %s must implement "
+            "get_reference_revision" % self.__class__.__name__
+        )
 
     def _comparison_data(self, entry, path):
         """Return a tuple of kind, executable, stat_value for a file.
@@ -557,8 +595,7 @@ class Tree:
         """
         raise NotImplementedError(self.get_symlink_target)
 
-    def annotate_iter(self, path,
-                      default_revision=_mod_revision.CURRENT_REVISION):
+    def annotate_iter(self, path, default_revision=_mod_revision.CURRENT_REVISION):
         """Return an iterator of revision_id, line tuples.
 
         For working trees (and mutable trees in general), the special
@@ -582,8 +619,9 @@ class Tree:
         """
         raise NotImplementedError(self.is_versioned)
 
-    def find_related_paths_across_trees(self, paths, trees=None,
-                                        require_versioned=True):
+    def find_related_paths_across_trees(
+        self, paths, trees=None, require_versioned=True
+    ):
         """Find related paths in tree corresponding to specified filenames in any
         of `lookup_trees`.
 
@@ -693,12 +731,13 @@ class Tree:
         Returns: the list of filters - [] if there are none
         """
         from . import debug, filters
+
         filter_pref_names = filters._get_registered_names()
         if len(filter_pref_names) == 0:
             return []
         prefs = next(self.iter_search_rules([path], filter_pref_names))
         stk = filters._get_filter_stack_for(prefs)
-        if debug.debug_flag_enabled('filters'):
+        if debug.debug_flag_enabled("filters"):
             trace.note("*** {0} content-filter: {1} => {2!r}").format(path, prefs, stk)
         return stk
 
@@ -715,8 +754,7 @@ class Tree:
         else:
             return None
 
-    def iter_search_rules(self, path_names, pref_names=None,
-                          _default_searcher=None):
+    def iter_search_rules(self, path_names, pref_names=None, _default_searcher=None):
         """Find the preferences for filenames in a tree.
 
         Args:
@@ -728,6 +766,7 @@ class Tree:
           See _RulesSearcher.get_items for details on the tuple sequence.
         """
         from . import rules
+
         if _default_searcher is None:
             _default_searcher = rules._per_user_searcher
         searcher = self._get_rules_searcher(_default_searcher)
@@ -744,10 +783,15 @@ class Tree:
         searcher = default_searcher
         return searcher
 
-    def archive(self, format: str, name: str, root: str = '',
-                subdir: Optional[str] = None,
-                force_mtime: Optional[Union[int, float]] = None,
-                recurse_nested: bool = False) -> Iterator[bytes]:
+    def archive(
+        self,
+        format: str,
+        name: str,
+        root: str = "",
+        subdir: Optional[str] = None,
+        force_mtime: Optional[Union[int, float]] = None,
+        recurse_nested: bool = False,
+    ) -> Iterator[bytes]:
         """Create an archive of this tree.
 
         Args:
@@ -758,15 +802,22 @@ class Tree:
         Returns: Iterator over archive chunks
         """
         from .archive import create_archive
+
         with self.lock_read():
-            return create_archive(format, self, name, root,
-                                  subdir, force_mtime=force_mtime,
-                                  recurse_nested=recurse_nested)
+            return create_archive(
+                format,
+                self,
+                name,
+                root,
+                subdir,
+                force_mtime=force_mtime,
+                recurse_nested=recurse_nested,
+            )
 
     @classmethod
     def versionable_kind(cls, kind):
         """Check if this tree support versioning a specific file kind."""
-        return (kind in ('file', 'directory', 'symlink', 'tree-reference'))
+        return kind in ("file", "directory", "symlink", "tree-reference")
 
     def preview_transform(self, pb=None):
         """Obtain a transform object."""
@@ -804,12 +855,15 @@ class InterTree(InterObject[Tree]):
     def get(cls, source: Tree, target: Tree) -> "InterTree":
         return cast(InterTree, super().get(source, target))
 
-    def compare(self, want_unchanged: bool = False,
-                specific_files: Optional[List[str]] = None,
-                extra_trees: Optional[List[Tree]] = None,
-                require_versioned: bool = False,
-                include_root: bool = False,
-                want_unversioned: bool = False):
+    def compare(
+        self,
+        want_unchanged: bool = False,
+        specific_files: Optional[List[str]] = None,
+        extra_trees: Optional[List[Tree]] = None,
+        require_versioned: bool = False,
+        include_root: bool = False,
+        want_unversioned: bool = False,
+    ):
         """Return the changes from source to target.
 
         Returns: A TreeDelta.
@@ -829,20 +883,31 @@ class InterTree(InterObject[Tree]):
           want_unversioned: Scan for unversioned paths.
         """
         from . import delta
+
         trees = [self.source]
         if extra_trees is not None:
             trees = trees + extra_trees
         with self.lock_read():
-            return delta._compare_trees(self.source, self.target, want_unchanged,
-                                        specific_files, include_root, extra_trees=extra_trees,
-                                        require_versioned=require_versioned,
-                                        want_unversioned=want_unversioned)
+            return delta._compare_trees(
+                self.source,
+                self.target,
+                want_unchanged,
+                specific_files,
+                include_root,
+                extra_trees=extra_trees,
+                require_versioned=require_versioned,
+                want_unversioned=want_unversioned,
+            )
 
-    def iter_changes(self, include_unchanged: bool = False,
-                     specific_files: Optional[List[str]] = None,
-                     pb=None, extra_trees: Optional[List[Tree]] = None,
-                     require_versioned: bool = True,
-                     want_unversioned: bool = False):
+    def iter_changes(
+        self,
+        include_unchanged: bool = False,
+        specific_files: Optional[List[str]] = None,
+        pb=None,
+        extra_trees: Optional[List[Tree]] = None,
+        require_versioned: bool = True,
+        want_unversioned: bool = False,
+    ):
         """Generate an iterator of changes between trees.
 
         A TreeChange object is returned.
@@ -878,8 +943,8 @@ class InterTree(InterObject[Tree]):
         raise NotImplementedError(self.iter_changes)
 
     def file_content_matches(
-            self, source_path: str, target_path: str,
-            source_stat=None, target_stat=None):
+        self, source_path: str, target_path: str, source_stat=None, target_stat=None
+    ):
         """Check if two files are the same in the source and target trees.
 
         This only checks that the contents of the files are the same,
@@ -893,28 +958,26 @@ class InterTree(InterObject[Tree]):
         Returns: Boolean indicating whether the files have the same contents
         """
         with self.lock_read():
-            source_verifier_kind, source_verifier_data = (
-                self.source.get_file_verifier(source_path, source_stat))
-            target_verifier_kind, target_verifier_data = (
-                self.target.get_file_verifier(
-                    target_path, target_stat))
+            source_verifier_kind, source_verifier_data = self.source.get_file_verifier(
+                source_path, source_stat
+            )
+            target_verifier_kind, target_verifier_data = self.target.get_file_verifier(
+                target_path, target_stat
+            )
             if source_verifier_kind == target_verifier_kind:
-                return (source_verifier_data == target_verifier_data)
+                return source_verifier_data == target_verifier_data
             # Fall back to SHA1 for now
             if source_verifier_kind != "SHA1":
-                source_sha1 = self.source.get_file_sha1(
-                    source_path, source_stat)
+                source_sha1 = self.source.get_file_sha1(source_path, source_stat)
             else:
                 source_sha1 = source_verifier_data
             if target_verifier_kind != "SHA1":
-                target_sha1 = self.target.get_file_sha1(
-                    target_path, target_stat)
+                target_sha1 = self.target.get_file_sha1(target_path, target_stat)
             else:
                 target_sha1 = target_verifier_data
-            return (source_sha1 == target_sha1)
+            return source_sha1 == target_sha1
 
-    def find_target_path(self, path: str,
-                         recurse: str = 'none') -> Optional[str]:
+    def find_target_path(self, path: str, recurse: str = "none") -> Optional[str]:
         """Find target tree path.
 
         Args:
@@ -926,8 +989,7 @@ class InterTree(InterObject[Tree]):
         """
         raise NotImplementedError(self.find_target_path)
 
-    def find_source_path(self, path: str,
-                         recurse: str = 'none') -> Optional[str]:
+    def find_source_path(self, path: str, recurse: str = "none") -> Optional[str]:
         """Find the source tree path.
 
         Args:
@@ -939,8 +1001,9 @@ class InterTree(InterObject[Tree]):
         """
         raise NotImplementedError(self.find_source_path)
 
-    def find_target_paths(self, paths: List[str],
-                          recurse='none') -> Dict[str, Optional[str]]:
+    def find_target_paths(
+        self, paths: List[str], recurse="none"
+    ) -> Dict[str, Optional[str]]:
         """Find target tree paths.
 
         Args:
@@ -953,8 +1016,9 @@ class InterTree(InterObject[Tree]):
             ret[path] = self.find_target_path(path, recurse=recurse)
         return ret
 
-    def find_source_paths(self, paths: List[str],
-                          recurse: str = 'none') -> Dict[str, Optional[str]]:
+    def find_source_paths(
+        self, paths: List[str], recurse: str = "none"
+    ) -> Dict[str, Optional[str]]:
         """Find source tree paths.
 
         Args:
@@ -968,9 +1032,9 @@ class InterTree(InterObject[Tree]):
         return ret
 
 
-def find_previous_paths(from_tree: Tree, to_tree: Tree,
-                        paths: List[str],
-                        recurse: str = 'none') -> Dict[str, Optional[str]]:
+def find_previous_paths(
+    from_tree: Tree, to_tree: Tree, paths: List[str], recurse: str = "none"
+) -> Dict[str, Optional[str]]:
     """Find previous tree paths.
 
     Args:
@@ -983,7 +1047,7 @@ def find_previous_paths(from_tree: Tree, to_tree: Tree,
     return InterTree.get(to_tree, from_tree).find_source_paths(paths, recurse=recurse)
 
 
-def find_previous_path(from_tree, to_tree, path, recurse='none'):
+def find_previous_path(from_tree, to_tree, path, recurse="none"):
     """Find previous tree path.
 
     Args:
@@ -995,8 +1059,7 @@ def find_previous_path(from_tree, to_tree, path, recurse='none'):
     Raises:
       NoSuchFile: If the path doesn't exist in from_tree
     """
-    return InterTree.get(to_tree, from_tree).find_source_path(
-        path, recurse=recurse)
+    return InterTree.get(to_tree, from_tree).find_source_path(path, recurse=recurse)
 
 
 def get_canonical_path(tree, path, normalize):
@@ -1009,7 +1072,7 @@ def get_canonical_path(tree, path, normalize):
     Returns: The canonical path
     """
     # go walkin...
-    cur_path = ''
+    cur_path = ""
     bit_iter = iter(path.split("/"))
     for elt in bit_iter:
         if not elt:

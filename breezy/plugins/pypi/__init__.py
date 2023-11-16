@@ -19,6 +19,9 @@
 from ... import version_info  # noqa: F401
 from ...directory_service import directories
 
-directories.register_lazy('pypi:', __name__ + '.directory',
-                          'PypiDirectory',
-                          'Pypi-based directory service',)
+directories.register_lazy(
+    "pypi:",
+    __name__ + ".directory",
+    "PypiDirectory",
+    "Pypi-based directory service",
+)

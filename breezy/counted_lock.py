@@ -69,7 +69,7 @@ class CountedLock:
         else:
             self._real_lock.lock_read()
             self._lock_count = 1
-            self._lock_mode = 'r'
+            self._lock_mode = "r"
 
     def lock_write(self, token=None):
         """Acquire the lock in write mode.
@@ -84,10 +84,10 @@ class CountedLock:
         """
         if self._lock_count == 0:
             self._token = self._real_lock.lock_write(token=token)
-            self._lock_mode = 'w'
+            self._lock_mode = "w"
             self._lock_count += 1
             return self._token
-        elif self._lock_mode != 'w':
+        elif self._lock_mode != "w":
             raise errors.ReadOnlyError(self)
         else:
             self._real_lock.validate_token(token)

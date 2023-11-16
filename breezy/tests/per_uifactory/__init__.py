@@ -33,7 +33,6 @@
 # Plugins that add new UIFactorys can create their own subclasses.
 
 
-
 from ... import tests, transport, ui
 from ..ui_testing import StringIOAsTTY, TextUIFactory
 
@@ -60,9 +59,9 @@ class UIFactoryTestMixin:
         # confirm_action should be answered by every ui factory; even
         # noninteractive ones should have a reasonable default
         self._load_responses([True])
-        result = self.factory.confirm_action('Break a lock?',
-                                             'bzr.lock.break.confirm',
-                                             {})
+        result = self.factory.confirm_action(
+            "Break a lock?", "bzr.lock.break.confirm", {}
+        )
         # will be true either because we read it from the input or because
         # that's the default
         self.assertEqual(result, True)
@@ -72,17 +71,17 @@ class UIFactoryTestMixin:
         self._check_note("a note to the user")
 
     def test_show_error(self):
-        msg = 'an error occurred'
+        msg = "an error occurred"
         self.factory.show_error(msg)
         self._check_show_error(msg)
 
     def test_show_message(self):
-        msg = 'a message'
+        msg = "a message"
         self.factory.show_message(msg)
         self._check_show_message(msg)
 
     def test_show_warning(self):
-        msg = 'a warning'
+        msg = "a warning"
         self.factory.show_warning(msg)
         self._check_show_warning(msg)
 
@@ -90,14 +89,14 @@ class UIFactoryTestMixin:
         # All UIs must now be able to at least accept output, even if they
         # just discard it.
         output_stream = self.factory.make_output_stream()
-        output_stream.write('hello!')
+        output_stream.write("hello!")
 
     def test_transport_activity(self):
         # It doesn't matter what the implementation does, we just want to make
         # sure the interface is there
-        t = transport.get_transport_from_url('memory:///')
-        self.factory.report_transport_activity(t, 1000, 'write')
-        self.factory.report_transport_activity(t, 2000, 'read')
+        t = transport.get_transport_from_url("memory:///")
+        self.factory.report_transport_activity(t, 1000, "write")
+        self.factory.report_transport_activity(t, 2000, "read")
         self.factory.report_transport_activity(t, 4000, None)
         self.factory.log_transport_activity()
         self._check_log_transport_activity_noarg()
@@ -106,13 +105,12 @@ class UIFactoryTestMixin:
 
     def test_no_transport_activity(self):
         # No activity to report
-        transport.get_transport_from_url('memory:///')
+        transport.get_transport_from_url("memory:///")
         self.factory.log_transport_activity(display=True)
         self._check_log_transport_activity_display_no_bytes()
 
 
 class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
-
     def setUp(self):
         super().setUp()
         self.factory = self._create_ui_factory()
@@ -123,69 +121,64 @@ class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
         self.stderr = self.factory.stderr
 
     def _create_ui_factory(self):
-        return TextUIFactory('')
+        return TextUIFactory("")
 
     def _check_note(self, note_text):
-        self.assertEqual(f"{note_text}\n",
-                         self.stdout.getvalue())
+        self.assertEqual(f"{note_text}\n", self.stdout.getvalue())
 
     def _check_show_error(self, msg):
-        self.assertEqual(f"bzr: error: {msg}\n",
-                         self.stderr.getvalue())
+        self.assertEqual(f"bzr: error: {msg}\n", self.stderr.getvalue())
         self.assertEqual("", self.stdout.getvalue())
 
     def _check_show_message(self, msg):
-        self.assertEqual(f"{msg}\n",
-                         self.stdout.getvalue())
+        self.assertEqual(f"{msg}\n", self.stdout.getvalue())
         self.assertEqual("", self.stderr.getvalue())
 
     def _check_show_warning(self, msg):
-        self.assertEqual(f"bzr: warning: {msg}\n",
-                         self.stderr.getvalue())
+        self.assertEqual(f"bzr: warning: {msg}\n", self.stderr.getvalue())
         self.assertEqual("", self.stdout.getvalue())
 
     def _check_log_transport_activity_noarg(self):
-        self.assertEqual('', self.stdout.getvalue())
-        self.assertContainsRe(self.stderr.getvalue(), r'\d+kB\s+\dkB/s |')
-        self.assertNotContainsRe(self.stderr.getvalue(), r'Transferred:')
+        self.assertEqual("", self.stdout.getvalue())
+        self.assertContainsRe(self.stderr.getvalue(), r"\d+kB\s+\dkB/s |")
+        self.assertNotContainsRe(self.stderr.getvalue(), r"Transferred:")
 
     def _check_log_transport_activity_display(self):
-        self.assertEqual('', self.stdout.getvalue())
+        self.assertEqual("", self.stdout.getvalue())
         # Without a TTY, we shouldn't display anything
-        self.assertEqual('', self.stderr.getvalue())
+        self.assertEqual("", self.stderr.getvalue())
 
     def _check_log_transport_activity_display_no_bytes(self):
-        self.assertEqual('', self.stdout.getvalue())
+        self.assertEqual("", self.stdout.getvalue())
         # Without a TTY, we shouldn't display anything
-        self.assertEqual('', self.stderr.getvalue())
+        self.assertEqual("", self.stderr.getvalue())
 
     def _load_responses(self, responses):
         self.factory.stdin.seek(0)
-        self.factory.stdin.writelines(
-            [(r and "y\n" or "n\n") for r in responses])
+        self.factory.stdin.writelines([(r and "y\n" or "n\n") for r in responses])
         self.factory.stdin.seek(0)
 
 
 class TestTTYTextUIFactory(TestTextUIFactory):
-
     def _create_ui_factory(self):
         # Remove 'TERM' == 'dumb' which causes us to *not* treat output as a
         # real terminal, even though isatty returns True
-        self.overrideEnv('TERM', None)
-        return TextUIFactory('', StringIOAsTTY(), StringIOAsTTY())
+        self.overrideEnv("TERM", None)
+        return TextUIFactory("", StringIOAsTTY(), StringIOAsTTY())
 
     def _check_log_transport_activity_display(self):
-        self.assertEqual('', self.stdout.getvalue())
+        self.assertEqual("", self.stdout.getvalue())
         # Displaying the result should write to the progress stream using
         # base-10 units (see HACKING.txt).
-        self.assertContainsRe(self.stderr.getvalue(),
-                              r'Transferred: 7kB'
-                              r' \(\d+\.\dkB/s r:2kB w:1kB u:4kB\)')
+        self.assertContainsRe(
+            self.stderr.getvalue(),
+            r"Transferred: 7kB" r" \(\d+\.\dkB/s r:2kB w:1kB u:4kB\)",
+        )
 
     def _check_log_transport_activity_display_no_bytes(self):
-        self.assertEqual('', self.stdout.getvalue())
+        self.assertEqual("", self.stdout.getvalue())
         # Without actual bytes transferred, we should report nothing
-        self.assertEqual('', self.stderr.getvalue())
+        self.assertEqual("", self.stderr.getvalue())
 
 
 class TestSilentUIFactory(tests.TestCase, UIFactoryTestMixin):

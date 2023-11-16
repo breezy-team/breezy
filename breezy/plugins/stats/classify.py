@@ -32,8 +32,21 @@ def classify_filename(name):
     # TODO: It will be better move those filters to properties file
     # and have possibility to determining own types !?
     extension = os.path.splitext(name)[1]
-    if extension in (".c", ".h", ".py", ".cpp", ".rb", ".pm", ".pl", ".ac",
-                     ".java", ".cc", ".proto", ".yy", ".l"):
+    if extension in (
+        ".c",
+        ".h",
+        ".py",
+        ".cpp",
+        ".rb",
+        ".pm",
+        ".pl",
+        ".ac",
+        ".java",
+        ".cc",
+        ".proto",
+        ".yy",
+        ".l",
+    ):
         return "code"
     if extension in (".html", ".xml", ".txt", ".rst", ".TODO"):
         return "documentation"
@@ -43,8 +56,7 @@ def classify_filename(name):
         return "art"
     if not extension:
         basename = urlutils.basename(name)
-        if basename in ("README", "NEWS", "TODO",
-                        "AUTHORS", "COPYING"):
+        if basename in ("README", "NEWS", "TODO", "AUTHORS", "COPYING"):
             return "documentation"
         if basename in ("Makefile",):
             return "code"

@@ -39,11 +39,11 @@ from . import ConnectedTransport, FileExists, FileStream, NoSuchFile, _file_stre
 try:
     import glib
 except ModuleNotFoundError as e:
-    raise errors.DependencyNotPresent('glib', e) from e
+    raise errors.DependencyNotPresent("glib", e) from e
 try:
     import gio
 except ModuleNotFoundError as e:
-    raise errors.DependencyNotPresent('gio', e) from e
+    raise errors.DependencyNotPresent("gio", e) from e
 
 
 class GioLocalURLServer(TestServer):
@@ -58,7 +58,7 @@ class GioLocalURLServer(TestServer):
 
     def get_url(self):
         """See Transport.Server.get_url."""
-        return "gio+" + urlutils.local_path_to_url('')
+        return "gio+" + urlutils.local_path_to_url("")
 
 
 class GioFileStream(FileStream):
@@ -85,12 +85,11 @@ class GioFileStream(FileStream):
 
 
 class GioStatResult:
-
     def __init__(self, f):
-        info = f.query_info('standard::size,standard::type')
+        info = f.query_info("standard::size,standard::type")
         self.st_size = info.get_size()
         type = info.get_file_type()
-        if (type == gio.FILE_TYPE_REGULAR):
+        if type == gio.FILE_TYPE_REGULAR:
             self.st_mode = stat.S_IFREG
         elif type == gio.FILE_TYPE_DIRECTORY:
             self.st_mode = stat.S_IFDIR
@@ -101,29 +100,30 @@ class GioTransport(ConnectedTransport):
 
     def __init__(self, base, _from_transport=None):
         """Initialize the GIO transport and make sure the url is correct."""
-        if not base.startswith('gio+'):
+        if not base.startswith("gio+"):
             raise ValueError(base)
 
-        (scheme, netloc, path, params, query, fragment) = \
-            urlparse(base[len('gio+'):], allow_fragments=False)
-        if '@' in netloc:
-            user, netloc = netloc.rsplit('@', 1)
+        (scheme, netloc, path, params, query, fragment) = urlparse(
+            base[len("gio+") :], allow_fragments=False
+        )
+        if "@" in netloc:
+            user, netloc = netloc.rsplit("@", 1)
         # Seems it is not possible to list supported backends for GIO
         # so a hardcoded list it is then.
-        gio_backends = ['dav', 'file', 'ftp', 'obex', 'sftp', 'ssh', 'smb']
+        gio_backends = ["dav", "file", "ftp", "obex", "sftp", "ssh", "smb"]
         if scheme not in gio_backends:
-            raise urlutils.InvalidURL(base,
-                                      extra="GIO support is only available for " +
-                                      ', '.join(gio_backends))
+            raise urlutils.InvalidURL(
+                base,
+                extra="GIO support is only available for " + ", ".join(gio_backends),
+            )
 
         # Remove the username and password from the url we send to GIO
         # by rebuilding the url again.
-        u = (scheme, netloc, path, '', '', '')
+        u = (scheme, netloc, path, "", "", "")
         self.url = urlunparse(u)
 
         # And finally initialize super
-        super().__init__(base,
-                                           _from_transport=_from_transport)
+        super().__init__(base, _from_transport=_from_transport)
 
     def _relpath_to_url(self, relpath):
         full_url = urlutils.join(self.url, relpath)
@@ -149,35 +149,41 @@ class GioTransport(ConnectedTransport):
         auth = config.AuthenticationConfig()
         parsed_url = urlutils.URL.from_string(self.url)
         user = None
-        if (flags & gio.ASK_PASSWORD_NEED_USERNAME and
-                flags & gio.ASK_PASSWORD_NEED_DOMAIN):
-            prompt = (f'{parsed_url.scheme.upper()}' +
-                      ' %(host)s DOMAIN\\username')
-            user_and_domain = auth.get_user(parsed_url.scheme,
-                                            parsed_url.host, port=parsed_url.port, ask=True,
-                                            prompt=prompt)
-            (domain, user) = user_and_domain.split('\\', 1)
+        if (
+            flags & gio.ASK_PASSWORD_NEED_USERNAME
+            and flags & gio.ASK_PASSWORD_NEED_DOMAIN
+        ):
+            prompt = f"{parsed_url.scheme.upper()}" + " %(host)s DOMAIN\\username"
+            user_and_domain = auth.get_user(
+                parsed_url.scheme,
+                parsed_url.host,
+                port=parsed_url.port,
+                ask=True,
+                prompt=prompt,
+            )
+            (domain, user) = user_and_domain.split("\\", 1)
             op.set_username(user)
             op.set_domain(domain)
         elif flags & gio.ASK_PASSWORD_NEED_USERNAME:
-            user = auth.get_user(parsed_url.scheme, parsed_url.host,
-                                 port=parsed_url.port, ask=True)
+            user = auth.get_user(
+                parsed_url.scheme, parsed_url.host, port=parsed_url.port, ask=True
+            )
             op.set_username(user)
         elif flags & gio.ASK_PASSWORD_NEED_DOMAIN:
             # Don't know how common this case is, but anyway
             # a DOMAIN and a username prompt should be the
             # same so I will missuse the ui_factory get_username
             # a little bit here.
-            prompt = (f'{parsed_url.scheme.upper()}' +
-                      ' %(host)s DOMAIN')
+            prompt = f"{parsed_url.scheme.upper()}" + " %(host)s DOMAIN"
             domain = ui.ui_factory.get_username(prompt=prompt)
             op.set_domain(domain)
 
         if flags & gio.ASK_PASSWORD_NEED_PASSWORD:
             if user is None:
                 user = op.get_username()
-            password = auth.get_password(parsed_url.scheme, parsed_url.host,
-                                         user, port=parsed_url.port)
+            password = auth.get_password(
+                parsed_url.scheme, parsed_url.host, user, port=parsed_url.port
+            )
             op.set_password(password)
         op.reply(gio.MOUNT_OPERATION_HANDLED)
 
@@ -188,7 +194,8 @@ class GioTransport(ConnectedTransport):
         except gio.Error as e:
             self.loop.quit()
             raise errors.BzrError(
-                "Failed to mount the given location: " + str(e)) from e
+                "Failed to mount the given location: " + str(e)
+            ) from e
 
     def _create_connection(self, credentials=None):
         if credentials is None:
@@ -201,21 +208,21 @@ class GioTransport(ConnectedTransport):
             try:
                 connection.find_enclosing_mount()
             except gio.Error as e:
-                if (e.code == gio.ERROR_NOT_MOUNTED):
+                if e.code == gio.ERROR_NOT_MOUNTED:
                     self.loop = glib.MainLoop()
-                    ui.ui_factory.show_message(f'Mounting {self.url} using GIO')
+                    ui.ui_factory.show_message(f"Mounting {self.url} using GIO")
                     op = gio.MountOperation()
                     if user:
                         op.set_username(user)
                     if password:
                         op.set_password(password)
-                    op.connect('ask-password', self._auth_cb)
-                    connection.mount_enclosing_volume(op,
-                                                          self._mount_done_cb)
+                    op.connect("ask-password", self._auth_cb)
+                    connection.mount_enclosing_volume(op, self._mount_done_cb)
                     self.loop.run()
         except gio.Error as e:
-            raise errors.TransportError(msg="Error setting up connection:"
-                                        " %s" % str(e), orig_error=e) from e
+            raise errors.TransportError(
+                msg="Error setting up connection:" " %s" % str(e), orig_error=e
+            ) from e
         return connection, (user, password)
 
     def disconnect(self):
@@ -236,8 +243,8 @@ class GioTransport(ConnectedTransport):
     def has(self, relpath):
         """Does the target location exist?"""
         try:
-            if debug.debug_flag_enabled('gio'):
-                mutter('GIO has check: %s', relpath)
+            if debug.debug_flag_enabled("gio"):
+                mutter("GIO has check: %s", relpath)
             f = self._get_GIO(relpath)
             st = GioStatResult(f)
             if stat.S_ISREG(st.st_mode) or stat.S_ISDIR(st.st_mode):
@@ -260,7 +267,7 @@ class GioTransport(ConnectedTransport):
         then read from. For now we do this via the magic of BytesIO
         """
         try:
-            if debug.debug_flag_enabled('gio'):
+            if debug.debug_flag_enabled("gio"):
                 mutter("GIO get: %s", relpath)
             f = self._get_GIO(relpath)
             fin = f.read()
@@ -270,10 +277,12 @@ class GioTransport(ConnectedTransport):
         except gio.Error as e:
             # If we get a not mounted here it might mean
             # that a bad path has been entered (or that mount failed)
-            if (e.code == gio.ERROR_NOT_MOUNTED):
-                raise errors.PathError(relpath,
-                                       extra='Failed to get file, make sure the path is correct. '
-                                       + str(e)) from e
+            if e.code == gio.ERROR_NOT_MOUNTED:
+                raise errors.PathError(
+                    relpath,
+                    extra="Failed to get file, make sure the path is correct. "
+                    + str(e),
+                ) from e
             else:
                 self._translate_gio_error(e, relpath)
 
@@ -283,10 +292,14 @@ class GioTransport(ConnectedTransport):
         :param relpath: Location to put the contents, relative to base.
         :param fp:       File-like or string object.
         """
-        if debug.debug_flag_enabled('gio'):
+        if debug.debug_flag_enabled("gio"):
             mutter("GIO put_file %s" % relpath)
-        tmppath = '%s.tmp.%.9f.%d.%d' % (relpath, time.time(),
-                                         os.getpid(), random.randint(0, 0x7FFFFFFF))  # noqa: S311
+        tmppath = "%s.tmp.%.9f.%d.%d" % (
+            relpath,
+            time.time(),
+            os.getpid(),
+            random.randint(0, 0x7FFFFFFF),  # noqa: S311
+        )
         f = None
         fout = None
         try:
@@ -316,7 +329,7 @@ class GioTransport(ConnectedTransport):
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
         try:
-            if debug.debug_flag_enabled('gio'):
+            if debug.debug_flag_enabled("gio"):
                 mutter("GIO mkdir: %s" % relpath)
             f = self._get_GIO(relpath)
             f.make_directory()
@@ -326,7 +339,7 @@ class GioTransport(ConnectedTransport):
 
     def open_write_stream(self, relpath, mode=None):
         """See Transport.open_write_stream."""
-        if debug.debug_flag_enabled('gio'):
+        if debug.debug_flag_enabled("gio"):
             mutter("GIO open_write_stream %s" % relpath)
         if mode is not None:
             self._setmode(relpath, mode)
@@ -340,14 +353,14 @@ class GioTransport(ConnectedTransport):
         For FTP we suggest a large page size to reduce the overhead
         introduced by latency.
         """
-        if debug.debug_flag_enabled('gio'):
+        if debug.debug_flag_enabled("gio"):
             mutter("GIO recommended_page")
         return 64 * 1024
 
     def rmdir(self, relpath):
         """Delete the directory at rel_path."""
         try:
-            if debug.debug_flag_enabled('gio'):
+            if debug.debug_flag_enabled("gio"):
                 mutter("GIO rmdir %s" % relpath)
             st = self.stat(relpath)
             if stat.S_ISDIR(st.st_mode):
@@ -361,7 +374,7 @@ class GioTransport(ConnectedTransport):
             # just pass it forward
             raise e
         except Exception as e:
-            mutter(f'failed to rmdir {relpath}: {e}')
+            mutter(f"failed to rmdir {relpath}: {e}")
             raise errors.PathError(relpath) from e
 
     def append_file(self, relpath, file, mode=None):
@@ -370,10 +383,14 @@ class GioTransport(ConnectedTransport):
         """
         # GIO append_to seems not to append but to truncate
         # Work around this.
-        if debug.debug_flag_enabled('gio'):
+        if debug.debug_flag_enabled("gio"):
             mutter("GIO append_file: %s" % relpath)
-        tmppath = '%s.tmp.%.9f.%d.%d' % (relpath, time.time(),
-                                              os.getpid(), random.randint(0, 0x7FFFFFFF))  # noqa: S311
+        tmppath = "%s.tmp.%.9f.%d.%d" % (
+            relpath,
+            time.time(),
+            os.getpid(),
+            random.randint(0, 0x7FFFFFFF),  # noqa: S311
+        )
         try:
             result = 0
             fo = self._get_GIO(tmppath)
@@ -396,9 +413,11 @@ class GioTransport(ConnectedTransport):
             fout.close()
             info = GioStatResult(fo)
             if info.st_size != result + length:
-                raise errors.BzrError("Failed to append size after "
-                                      "(%d) is not original (%d) + written (%d) total (%d)" %
-                                      (info.st_size, result, length, result + length))
+                raise errors.BzrError(
+                    "Failed to append size after "
+                    "(%d) is not original (%d) + written (%d) total (%d)"
+                    % (info.st_size, result, length, result + length)
+                )
             fo.move(fi, flags=gio.FILE_COPY_OVERWRITE)
             return result
         except gio.Error as e:
@@ -409,7 +428,7 @@ class GioTransport(ConnectedTransport):
 
         Only set permissions on Unix systems
         """
-        if debug.debug_flag_enabled('gio'):
+        if debug.debug_flag_enabled("gio"):
             mutter("GIO _setmode %s" % relpath)
         if mode:
             try:
@@ -418,15 +437,19 @@ class GioTransport(ConnectedTransport):
             except gio.Error as e:
                 if e.code == gio.ERROR_NOT_SUPPORTED:
                     # Command probably not available on this server
-                    mutter("GIO Could not set permissions to %s on %s. %s",
-                           oct(mode), self._remote_path(relpath), str(e))
+                    mutter(
+                        "GIO Could not set permissions to %s on %s. %s",
+                        oct(mode),
+                        self._remote_path(relpath),
+                        str(e),
+                    )
                 else:
                     self._translate_gio_error(e, relpath)
 
     def rename(self, rel_from, rel_to):
         """Rename without special overwriting."""
         try:
-            if debug.debug_flag_enabled('gio'):
+            if debug.debug_flag_enabled("gio"):
                 mutter("GIO move (rename): %s => %s", rel_from, rel_to)
             f = self._get_GIO(rel_from)
             t = self._get_GIO(rel_to)
@@ -437,7 +460,7 @@ class GioTransport(ConnectedTransport):
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to."""
         try:
-            if debug.debug_flag_enabled('gio'):
+            if debug.debug_flag_enabled("gio"):
                 mutter("GIO move: %s => %s", rel_from, rel_to)
             f = self._get_GIO(rel_from)
             t = self._get_GIO(rel_to)
@@ -448,7 +471,7 @@ class GioTransport(ConnectedTransport):
     def delete(self, relpath):
         """Delete the item at relpath."""
         try:
-            if debug.debug_flag_enabled('gio'):
+            if debug.debug_flag_enabled("gio"):
                 mutter("GIO delete: %s", relpath)
             f = self._get_GIO(relpath)
             f.delete()
@@ -457,20 +480,20 @@ class GioTransport(ConnectedTransport):
 
     def external_url(self):
         """See breezy.transport.Transport.external_url."""
-        if debug.debug_flag_enabled('gio'):
+        if debug.debug_flag_enabled("gio"):
             mutter("GIO external_url", self.base)
         # GIO external url
         return self.base
 
     def listable(self):
         """See Transport.listable."""
-        if debug.debug_flag_enabled('gio'):
+        if debug.debug_flag_enabled("gio"):
             mutter("GIO listable")
         return True
 
     def list_dir(self, relpath):
         """See Transport.list_dir."""
-        if debug.debug_flag_enabled('gio'):
+        if debug.debug_flag_enabled("gio"):
             mutter("GIO list_dir")
         try:
             entries = []
@@ -487,7 +510,7 @@ class GioTransport(ConnectedTransport):
 
         This is cargo-culted from the SFTP transport
         """
-        if debug.debug_flag_enabled('gio'):
+        if debug.debug_flag_enabled("gio"):
             mutter("GIO iter_files_recursive")
         queue = list(self.list_dir("."))
         while queue:
@@ -502,18 +525,18 @@ class GioTransport(ConnectedTransport):
     def stat(self, relpath):
         """Return the stat information for a file."""
         try:
-            if debug.debug_flag_enabled('gio'):
+            if debug.debug_flag_enabled("gio"):
                 mutter("GIO stat: %s", relpath)
             f = self._get_GIO(relpath)
             return GioStatResult(f)
         except gio.Error as e:
-            self._translate_gio_error(e, relpath, extra='error w/ stat')
+            self._translate_gio_error(e, relpath, extra="error w/ stat")
 
     def lock_read(self, relpath):
         """Lock the given file for shared (read) access.
         :return: A lock object, which should be passed to Transport.unlock().
         """
-        if debug.debug_flag_enabled('gio'):
+        if debug.debug_flag_enabled("gio"):
             mutter("GIO lock_read", relpath)
 
         class BogusLock:
@@ -534,12 +557,12 @@ class GioTransport(ConnectedTransport):
 
         :return: A lock object, whichshould be passed to Transport.unlock()
         """
-        if debug.debug_flag_enabled('gio'):
+        if debug.debug_flag_enabled("gio"):
             mutter("GIO lock_write", relpath)
         return self.lock_read(relpath)
 
     def _translate_gio_error(self, err, path, extra=None):
-        if debug.debug_flag_enabled('gio'):
+        if debug.debug_flag_enabled("gio"):
             mutter("GIO Error: %s %s", err, path)
         if extra is None:
             extra = str(err)
@@ -560,9 +583,8 @@ class GioTransport(ConnectedTransport):
         elif err.code == gio.ERROR_IS_DIRECTORY:
             raise errors.PathError(path, extra=extra)
         else:
-            mutter('unable to understand error for path: %s: %s', path, err)
-            raise errors.PathError(path,
-                                   extra="Unhandled gio error: " + str(err))
+            mutter("unable to understand error for path: %s: %s", path, err)
+            raise errors.PathError(path, extra="Unhandled gio error: " + str(err))
 
 
 def get_test_permutations():

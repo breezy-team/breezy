@@ -3,7 +3,7 @@ use std::env;
 
 use std::fs::create_dir;
 
-use std::io::{BufRead};
+use std::io::BufRead;
 
 use std::path::{Path, PathBuf};
 
@@ -210,11 +210,11 @@ pub fn crash_dir() -> PathBuf {
 }
 
 pub fn cache_dir() -> std::io::Result<PathBuf> {
-    // Return the cache directory to use.
-    let mut base: Option<PathBuf> = env::var("BRZ_HOME").ok().map(PathBuf::from);
+    let mut base: Option<PathBuf>;
 
     #[cfg(windows)]
     {
+        let mut base: Option<PathBuf> = env::var("BRZ_HOME").ok().map(PathBuf::from);
         if base.is_none() {
             base = win32utils::get_local_appdata_location();
         }
@@ -225,11 +225,11 @@ pub fn cache_dir() -> std::io::Result<PathBuf> {
 
     #[cfg(not(windows))]
     {
-        if let Ok(xdg_cache_home) = env::var("XDG_CACHE_HOME") {
-            base = Some(PathBuf::from(xdg_cache_home));
+        base = if let Ok(xdg_cache_home) = env::var("XDG_CACHE_HOME") {
+            Some(PathBuf::from(xdg_cache_home))
         } else {
-            base = None;
-        }
+            None
+        };
         if base.is_none() {
             base = Some(
                 breezy_osutils::get_home_dir()

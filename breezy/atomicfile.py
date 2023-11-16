@@ -25,9 +25,7 @@ _hostname = None
 
 
 class AtomicFileAlreadyClosed(errors.PathError):
-
-    _fmt = ('"%(function)s" called on an AtomicFile after it was closed:'
-            ' "%(path)s"')
+    _fmt = '"%(function)s" called on an AtomicFile after it was closed:' ' "%(path)s"'
 
     def __init__(self, path, function):
         errors.PathError.__init__(self, path=path, extra=None)
@@ -43,9 +41,9 @@ class AtomicFile:
     place or abort() to cancel.
     """
 
-    __slots__ = ['tmpfilename', 'realfilename', '_fd']
+    __slots__ = ["tmpfilename", "realfilename", "_fd"]
 
-    def __init__(self, filename, mode='wb', new_mode=None):
+    def __init__(self, filename, mode="wb", new_mode=None):
         global _hostname
 
         self._fd = None
@@ -53,15 +51,19 @@ class AtomicFile:
         if _hostname is None:
             _hostname = osutils.get_host_name()
 
-        self.tmpfilename = '%s.%d.%s.%s.tmp' % (filename, _pid, _hostname,
-                                                osutils.rand_chars(10))
+        self.tmpfilename = "%s.%d.%s.%s.tmp" % (
+            filename,
+            _pid,
+            _hostname,
+            osutils.rand_chars(10),
+        )
 
         self.realfilename = filename
 
         flags = os.O_EXCL | os.O_CREAT | os.O_WRONLY | osutils.O_NOINHERIT
-        if mode == 'wb':
+        if mode == "wb":
             flags |= osutils.O_BINARY
-        elif mode != 'wt':
+        elif mode != "wt":
             raise ValueError(f"invalid AtomicFile mode {mode!r}")
 
         if new_mode is not None:
@@ -81,7 +83,7 @@ class AtomicFile:
                 osutils.chmod_if_possible(self.tmpfilename, new_mode)
 
     def __repr__(self):
-        return f'{self.__class__.__name__}({self.realfilename!r})'
+        return f"{self.__class__.__name__}({self.realfilename!r})"
 
     def write(self, data):
         """Write some data to the file. Like file.write()."""
@@ -90,20 +92,19 @@ class AtomicFile:
     def _close_tmpfile(self, func_name):
         """Close the local temp file in preparation for commit or abort."""
         if self._fd is None:
-            raise AtomicFileAlreadyClosed(path=self.realfilename,
-                                          function=func_name)
+            raise AtomicFileAlreadyClosed(path=self.realfilename, function=func_name)
         fd = self._fd
         self._fd = None
         os.close(fd)
 
     def commit(self):
         """Close the file and move to final name."""
-        self._close_tmpfile('commit')
+        self._close_tmpfile("commit")
         osutils.rename(self.tmpfilename, self.realfilename)
 
     def abort(self):
         """Discard temporary file without committing changes."""
-        self._close_tmpfile('abort')
+        self._close_tmpfile("abort")
         os.remove(self.tmpfilename)
 
     def close(self):
