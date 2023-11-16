@@ -332,7 +332,7 @@ class TestCmdServeChrooting(TestBzrServeBase):
         So requests that search up through the parent directories (like
         find_repositoryV3) will give "not found" responses, rather than
         InvalidURLJoin or jail break errors.
-        """  # noqa: D403
+        """
         t = self.get_transport()
         t.mkdir("server-root")
         self.run_bzr_serve_then_func(

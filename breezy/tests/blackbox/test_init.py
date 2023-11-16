@@ -173,7 +173,7 @@ Using shared repository: {}
         return tree
 
     def test_init_create_prefix(self):
-        """'brz init --create-prefix; will create leading directories."""  # noqa: D403
+        """'brz init --create-prefix; will create leading directories."""
         self.create_simple_tree()
 
         self.run_bzr_error(
@@ -198,7 +198,7 @@ default_format = 1.9
         self.assertContainsRe(out, b"1.9")
 
     def test_init_no_tree(self):
-        """'brz init --no-tree' creates a branch with no working tree."""  # noqa: D403
+        """'brz init --no-tree' creates a branch with no working tree."""
         out, err = self.run_bzr("init --no-tree")
         self.assertStartsWith(out, "Created a standalone branch")
 

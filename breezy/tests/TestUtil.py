@@ -1,4 +1,3 @@
-# noqa: N999
 # Copyright (C) 2005-2011 Canonical Ltd
 #       Author: Robert Collins <robert.collins@canonical.com>
 #
@@ -195,8 +194,8 @@ class FilteredByModuleTestLoader(TestLoader):
 class TestVisitor:
     """A visitor for Tests."""
 
-    def visitSuite(self, a_test_suite):  # noqa: N802
+    def visitSuite(self, a_test_suite):
         pass
 
-    def visitCase(self, a_test_case):  # noqa: N802
+    def visitCase(self, a_test_case):
         pass

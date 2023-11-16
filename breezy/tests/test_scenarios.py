@@ -20,7 +20,7 @@
 from breezy.tests import TestCase, TestLoader, iter_suite_tests, multiply_tests
 
 from .scenarios import (
-    load_tests_apply_scenarios,  # noqa: F401
+    load_tests_apply_scenarios,
     multiply_scenarios,
     multiply_tests_by_their_scenarios,
 )

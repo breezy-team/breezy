@@ -719,7 +719,7 @@ class LocalGitDir(GitDir):
         possible_transports=None,
         nascent_ok=False,
     ):
-        """'create' a branch for this dir."""  # noqa: D403
+        """'create' a branch for this dir."""
         repo = self.find_repository()
         from .branch import LocalGitBranch
 
@@ -761,7 +761,7 @@ class LocalGitDir(GitDir):
         return not isinstance(self._format, format.__class__)
 
     def open_repository(self):
-        """'open' a repository for this dir."""  # noqa: D403
+        """'open' a repository for this dir."""
         if self.control_transport.has("commondir"):
             raise brz_errors.NoRepositoryPresent(self)
         return self._gitrepository_class(self)

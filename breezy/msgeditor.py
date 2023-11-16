@@ -69,7 +69,7 @@ def _run_editor(filename):
                 # environment variable or config file) said to try it.  Let
                 # the user know their configuration is broken.
                 trace.warning(
-                    f'Could not start editor "{candidate}" (specified by {candidate_source}): {str(e)}\n'
+                    f'Could not start editor "{candidate}" (specified by {candidate_source}): {e!s}\n'
                 )
             continue
             raise

@@ -891,7 +891,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         against the revision one as get_revision does: but it should only
         be used by reconcile, or reconcile-alike commands that are correcting
         or testing the revision graph.
-        """  # noqa: D403
+        """
         raise NotImplementedError(self.get_revision_reconcile)
 
     def get_revisions(self, revision_ids):

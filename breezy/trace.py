@@ -402,7 +402,7 @@ def report_user_error(exc_info, err_file, advice=None):
     :param advice: Extra advice to the user to be printed following the
         exception.
     """
-    err_file.write(f"brz: ERROR: {str(exc_info[1])}\n")
+    err_file.write(f"brz: ERROR: {exc_info[1]!s}\n")
     if advice:
         err_file.write(f"{advice}\n")
 

@@ -386,18 +386,18 @@ def report_extension_load_failures():
 
 
 from ._osutils_rs import (  # noqa: F401
-    _accessible_normalized_filename,  # noqa: F401
+    _accessible_normalized_filename,
     _inaccessible_normalized_filename,
     check_legal_path,
-    chunks_to_lines,  # noqa: F401
+    chunks_to_lines,
     chunks_to_lines_iter,
     delete_any,
-    get_host_name,  # noqa: F401
+    get_host_name,
     link_or_copy,
     local_concurrency,
-    normalized_filename,  # noqa: F401
+    normalized_filename,
     normalizes_filenames,
-    split_lines,  # noqa: F401
+    split_lines,
 )
 
 readlink = _osutils_rs.readlink
