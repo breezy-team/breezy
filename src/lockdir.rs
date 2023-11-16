@@ -4,12 +4,11 @@
 /// read back by any process with access to the lockdir.  It can be used, for
 /// example, to tell the user who holds the lock, or to try to detect whether
 /// the lock holder is still alive.
-
 use std::collections::HashMap;
 
-use std::time::SystemTime;
 use log::debug;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
+use std::time::SystemTime;
 
 #[derive(PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct LockHeldInfo {
@@ -20,7 +19,7 @@ pub struct LockHeldInfo {
     pub start_time: Option<SystemTime>,
 
     #[serde(flatten)]
-    pub extra_holder_info: HashMap<String, String>
+    pub extra_holder_info: HashMap<String, String>,
 }
 
 pub enum Error {
@@ -44,15 +43,29 @@ impl LockHeldInfo {
     pub fn to_readable_dict(&self) -> HashMap<String, String> {
         let mut ret: HashMap<String, String> = HashMap::new();
         let time_ago = if let Some(start_time) = self.start_time {
-            let delta = std::time::SystemTime::now().duration_since(start_time).unwrap();
+            let delta = std::time::SystemTime::now()
+                .duration_since(start_time)
+                .unwrap();
             breezy_osutils::time::format_delta(delta.as_secs() as i64)
         } else {
             "(unknown)".to_string()
         };
         ret.insert("time_ago".to_string(), time_ago);
-        ret.insert("user".to_string(), self.user.as_deref().unwrap_or("<unknown>").to_string());
-        ret.insert("hostname".to_string(), self.hostname.as_deref().unwrap_or("<unknown>").to_string());
-        ret.insert("pid".to_string(), self.pid.as_ref().map(|x| x.to_string()).unwrap_or("<unknown>".to_string()));
+        ret.insert(
+            "user".to_string(),
+            self.user.as_deref().unwrap_or("<unknown>").to_string(),
+        );
+        ret.insert(
+            "hostname".to_string(),
+            self.hostname.as_deref().unwrap_or("<unknown>").to_string(),
+        );
+        ret.insert(
+            "pid".to_string(),
+            self.pid
+                .as_ref()
+                .map(|x| x.to_string())
+                .unwrap_or("<unknown>".to_string()),
+        );
         ret
     }
 
@@ -79,7 +92,10 @@ impl LockHeldInfo {
             Ok(v) => v,
             Err(e) => {
                 debug!("Corrupt lock info file: {:?}", info_file_bytes);
-                return Err(Error::LockCorrupt(format!("could not parse lock info file: {:?}", e)));
+                return Err(Error::LockCorrupt(format!(
+                    "could not parse lock info file: {:?}",
+                    e
+                )));
             }
         };
         if ret.is_null() {
@@ -88,8 +104,8 @@ impl LockHeldInfo {
             // there may not be much we can say
             Ok(Self::default())
         } else {
-            serde_yaml::from_value(ret).map_err(
-                |e| Error::LockCorrupt(format!("could not parse lock info file: {:?}", e)))
+            serde_yaml::from_value(ret)
+                .map_err(|e| Error::LockCorrupt(format!("could not parse lock info file: {:?}", e)))
         }
     }
 
@@ -137,9 +153,14 @@ impl std::fmt::Display for LockHeldInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         let d = self.to_readable_dict();
 
-        write!(f, "held by {} on {} (process #{}), acquired {}",
-                d.get("user").unwrap(), d.get("hostname").unwrap(),
-                d.get("pid").unwrap(), d.get("time_ago").unwrap())?;
+        write!(
+            f,
+            "held by {} on {} (process #{}), acquired {}",
+            d.get("user").unwrap(),
+            d.get("hostname").unwrap(),
+            d.get("pid").unwrap(),
+            d.get("time_ago").unwrap()
+        )?;
 
         Ok(())
     }

@@ -20,7 +20,7 @@
 from breezy.tests import TestCase, TestLoader, iter_suite_tests, multiply_tests
 
 from .scenarios import (
-    load_tests_apply_scenarios,  # noqa: F401
+    load_tests_apply_scenarios,
     multiply_scenarios,
     multiply_tests_by_their_scenarios,
 )
@@ -33,71 +33,59 @@ load_tests = load_tests_apply_scenarios
 
 def vary_by_color():
     """Very simple static variation example."""
-    for color in ['red', 'green', 'blue']:
-        yield (color, {'color': color})
+    for color in ["red", "green", "blue"]:
+        yield (color, {"color": color})
 
 
 def vary_named_attribute(attr_name):
     """More sophisticated: vary a named parameter."""
-    yield ('a', {attr_name: 'a'})
-    yield ('b', {attr_name: 'b'})
+    yield ("a", {attr_name: "a"})
+    yield ("b", {attr_name: "b"})
 
 
 def get_generated_test_attributes(suite, attr_name):
     """Return the `attr_name` attribute from all tests in the suite."""
-    return sorted([
-        getattr(t, attr_name) for t in iter_suite_tests(suite)])
+    return sorted([getattr(t, attr_name) for t in iter_suite_tests(suite)])
 
 
 class TestTestScenarios(TestCase):
-
     def test_multiply_tests(self):
         loader = TestLoader()
         suite = loader.suiteClass()
-        multiply_tests(
-            self,
-            vary_by_color(),
-            suite)
+        multiply_tests(self, vary_by_color(), suite)
         self.assertEqual(
-            ['blue', 'green', 'red'],
-            get_generated_test_attributes(suite, 'color'))
+            ["blue", "green", "red"], get_generated_test_attributes(suite, "color")
+        )
 
     def test_multiply_scenarios_from_generators(self):
         """It's safe to multiply scenarios that come from generators."""
         s = multiply_scenarios(
-            vary_named_attribute('one'),
-            vary_named_attribute('two'),
-            )
-        self.assertEqual(
-            2 * 2,
-            len(s),
-            s)
+            vary_named_attribute("one"),
+            vary_named_attribute("two"),
+        )
+        self.assertEqual(2 * 2, len(s), s)
 
     def test_multiply_tests_by_their_scenarios(self):
         loader = TestLoader()
         suite = loader.suiteClass()
-        test_instance = PretendVaryingTest('test_nothing')
-        multiply_tests_by_their_scenarios(
-            test_instance,
-            suite)
+        test_instance = PretendVaryingTest("test_nothing")
+        multiply_tests_by_their_scenarios(test_instance, suite)
         self.assertEqual(
-            ['a', 'a', 'b', 'b'],
-            get_generated_test_attributes(suite, 'value'))
+            ["a", "a", "b", "b"], get_generated_test_attributes(suite, "value")
+        )
 
     def test_multiply_tests_no_scenarios(self):
         """Tests with no scenarios attribute aren't multiplied."""
         suite = TestLoader().suiteClass()
-        multiply_tests_by_their_scenarios(self,
-                                          suite)
+        multiply_tests_by_their_scenarios(self, suite)
         self.assertLength(1, list(iter_suite_tests(suite)))
 
 
 class PretendVaryingTest(TestCase):
-
     scenarios = multiply_scenarios(
-        vary_named_attribute('value'),
-        vary_named_attribute('other'),
-        )
+        vary_named_attribute("value"),
+        vary_named_attribute("other"),
+    )
 
     def test_nothing(self):
         """This test exists just so it can be multiplied."""

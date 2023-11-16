@@ -33,7 +33,7 @@ be used in the help text, producing sensible input to a manual while
 rendering on the screen naturally.
 """
 
-__all__ = ['help_as_plain_text', '_format_see_also']
+__all__ = ["help_as_plain_text", "_format_see_also"]
 
 from breezy import config
 from breezy._cmd_rs import format_see_also as _format_see_also
@@ -56,6 +56,7 @@ topic_registry = HelpTopicRegistry()
 
 # ----------------------------------------------------
 
+
 def _help_on_topics(dummy):
     """Write out the help for topics to outfile."""
     topics = topic_registry.keys()
@@ -65,7 +66,7 @@ def _help_on_topics(dummy):
     for topic in topics:
         summary = topic_registry.get_summary(topic)
         out.append("%-*s %s\n" % (lmax, topic, summary))
-    return ''.join(out)
+    return "".join(out)
 
 
 def _help_on_revisionspec(name):
@@ -104,14 +105,14 @@ while "brz diff -r 3647..3649" includes the changes done in revisions 3648 and
 3649, but not 3647.
 
 The keywords used as revision selection methods are the following:
-""")
+"""
+    )
     details = []
     details.append("\nIn addition, plugins can provide other keywords.")
-    details.append(
-        "\nA detailed description of each keyword is given below.\n")
+    details.append("\nA detailed description of each keyword is given below.\n")
 
     # The help text is indented 4 spaces - this re cleans that up below
-    re.compile(r'^    ', re.MULTILINE)
+    re.compile(r"^    ", re.MULTILINE)
     for _prefix, i in breezy.revisionspec.revspec_registry.iteritems():
         doc = i.help_txt
         if doc == breezy.revisionspec.RevisionSpec.help_txt:
@@ -121,8 +122,8 @@ The keywords used as revision selection methods are the following:
             # Extract out the top line summary from the body and
             # clean-up the unwanted whitespace
             summary, doc = doc.split("\n", 1)
-            #doc = indent_re.sub('', doc)
-            while (doc[-2:] == '\n\n' or doc[-1:] == ' '):
+            # doc = indent_re.sub('', doc)
+            while doc[-2:] == "\n\n" or doc[-1:] == " ":
                 doc = doc[:-1]
 
         # Note: The leading : here are HACKs to get reStructuredText
@@ -130,7 +131,7 @@ The keywords used as revision selection methods are the following:
         out.append(f":{i.prefix}\n\t{summary}")
         details.append(f":{i.prefix}\n{doc}")
 
-    return '\n'.join(out + details)
+    return "\n".join(out + details)
 
 
 def _help_on_transport(name):
@@ -139,14 +140,13 @@ def _help_on_transport(name):
     from breezy.transport import transport_list_registry
 
     def add_string(proto, help, maxl, prefix_width=20):
-        help_lines = textwrap.wrap(help, maxl - prefix_width,
-                                   break_long_words=False)
-        line_with_indent = '\n' + ' ' * prefix_width
+        help_lines = textwrap.wrap(help, maxl - prefix_width, break_long_words=False)
+        line_with_indent = "\n" + " " * prefix_width
         help_text = line_with_indent.join(help_lines)
         return "%-20s%s\n" % (proto, help_text)
 
     def key_func(a):
-        return a[:a.rfind("://")]
+        return a[: a.rfind("://")]
 
     protl = []
     decl = []
@@ -161,13 +161,10 @@ def _help_on_transport(name):
         else:
             decl.append(add_string(proto, shorthelp, 79))
 
-    out = "URL Identifiers\n\n" + \
-        "Supported URL prefixes::\n\n  " + \
-        '  '.join(protl)
+    out = "URL Identifiers\n\n" + "Supported URL prefixes::\n\n  " + "  ".join(protl)
 
     if len(decl):
-        out += "\nSupported modifiers::\n\n  " + \
-            '  '.join(decl)
+        out += "\nSupported modifiers::\n\n  " + "  ".join(decl)
 
     out += """\
 \nBreezy supports all of the standard parts within the URL::
@@ -196,35 +193,46 @@ See :doc:`location-alias-help` and :doc:`url-special-chars-help`.
 
 
 # Register help topics
-topic_registry.register("revisionspec", _help_on_revisionspec,
-                        "Explain how to use --revision")
-topic_registry.register('topics', _help_on_topics, "Topics list", SECT_HIDDEN)
+topic_registry.register(
+    "revisionspec", _help_on_revisionspec, "Explain how to use --revision"
+)
+topic_registry.register("topics", _help_on_topics, "Topics list", SECT_HIDDEN)
 
 
 def get_current_formats_topic(topic):
     from breezy import controldir
-    return "Current Storage Formats\n\n" + \
-        controldir.format_registry.help_topic(topic)
+
+    return "Current Storage Formats\n\n" + controldir.format_registry.help_topic(topic)
 
 
 def get_other_formats_topic(topic):
     from breezy import controldir
-    return "Other Storage Formats\n\n" + \
-        controldir.format_registry.help_topic(topic)
+
+    return "Other Storage Formats\n\n" + controldir.format_registry.help_topic(topic)
 
 
-topic_registry.register('current-formats', get_current_formats_topic,
-                        'Current storage formats')
-topic_registry.register('other-formats', get_other_formats_topic,
-                        'Experimental and deprecated storage formats')
-topic_registry.register('urlspec', _help_on_transport,
-                        "Supported transport protocols")
+topic_registry.register(
+    "current-formats", get_current_formats_topic, "Current storage formats"
+)
+topic_registry.register(
+    "other-formats",
+    get_other_formats_topic,
+    "Experimental and deprecated storage formats",
+)
+topic_registry.register("urlspec", _help_on_transport, "Supported transport protocols")
 
-topic_registry.register_lazy('hooks', 'breezy.hooks', 'hooks_help_text',
-                             'Points at which custom processing can be added')
-topic_registry.register_lazy('location-alias', 'breezy.directory_service',
-                             'AliasDirectory.help_text',
-                             'Aliases for remembered locations')
+topic_registry.register_lazy(
+    "hooks",
+    "breezy.hooks",
+    "hooks_help_text",
+    "Points at which custom processing can be added",
+)
+topic_registry.register_lazy(
+    "location-alias",
+    "breezy.directory_service",
+    "AliasDirectory.help_text",
+    "Aliases for remembered locations",
+)
 
 
 # Register concept topics.
@@ -232,11 +240,12 @@ topic_registry.register_lazy('location-alias', 'breezy.directory_service',
 # future or implement them via loading content from files. In the meantime,
 # please keep them concise.
 
+
 class HelpTopicIndex:
     """A index for brz help that returns topics."""
 
     def __init__(self):
-        self.prefix = ''
+        self.prefix = ""
 
     def get_topics(self, topic):
         """Search for topic in the HelpTopicRegistry.
@@ -246,7 +255,7 @@ class HelpTopicIndex:
             RegisteredTopic entry.
         """
         if topic is None:
-            topic = 'basic'
+            topic = "basic"
         topic = topic_registry.get(topic)
         if topic:
             return [topic]
@@ -258,7 +267,7 @@ class ConfigOptionHelpIndex:
     """A help index that returns help topics for config options."""
 
     def __init__(self):
-        self.prefix = 'configuration/'
+        self.prefix = "configuration/"
 
     def get_topics(self, topic):
         """Search for topic in the registered config options.
@@ -270,7 +279,7 @@ class ConfigOptionHelpIndex:
         if topic is None:
             return []
         elif topic.startswith(self.prefix):
-            topic = topic[len(self.prefix):]
+            topic = topic[len(self.prefix) :]
         if topic in config.option_registry:
             return [config.option_registry.get(topic)]
         else:

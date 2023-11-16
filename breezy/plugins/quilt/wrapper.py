@@ -26,12 +26,11 @@ import subprocess
 from ... import errors, osutils, trace
 from ... import transport as _mod_transport
 
-DEFAULT_PATCHES_DIR = 'patches'
-DEFAULT_SERIES_FILE = 'series'
+DEFAULT_PATCHES_DIR = "patches"
+DEFAULT_SERIES_FILE = "series"
 
 
 class QuiltError(errors.BzrError):
-
     _fmt = "An error (%(retcode)d) occurred running quilt: %(stderr)s%(extra)s"
 
     def __init__(self, retcode, stdout, stderr):
@@ -45,12 +44,10 @@ class QuiltError(errors.BzrError):
 
 
 class QuiltNotInstalled(errors.BzrError):
-
     _fmt = "Quilt is not installed."
 
 
-def run_quilt(
-        args, working_dir, series_file=None, patches_dir=None, quiet=None):
+def run_quilt(args, working_dir, series_file=None, patches_dir=None, quiet=None):
     """Run quilt.
 
     :param args: Arguments to quilt
@@ -60,8 +57,10 @@ def run_quilt(
     :param quilt: Whether to be quiet (quilt stderr not to terminal)
     :raise QuiltError: When running quilt fails
     """
+
     def subprocess_setup():
         signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+
     env = {}
     if patches_dir is not None:
         env["QUILT_PATCHES"] = patches_dir
@@ -74,10 +73,7 @@ def run_quilt(
     # Hide output if -q is in use.
     if quiet is None:
         quiet = trace.is_quiet()
-    if not quiet:
-        stderr = subprocess.STDOUT
-    else:
-        stderr = subprocess.PIPE
+    stderr = subprocess.STDOUT if not quiet else subprocess.PIPE
     quilt_path = osutils.find_executable_on_path("quilt")
     if quilt_path is None:
         raise QuiltNotInstalled()
@@ -87,9 +83,14 @@ def run_quilt(
         raise AssertionError(f"{working_dir} is not a valid directory")
     try:
         proc = subprocess.Popen(
-            command, cwd=working_dir, env=env,
-            stdin=subprocess.PIPE, preexec_fn=subprocess_setup,
-            stdout=subprocess.PIPE, stderr=stderr)
+            command,
+            cwd=working_dir,
+            env=env,
+            stdin=subprocess.PIPE,
+            preexec_fn=subprocess_setup,
+            stdout=subprocess.PIPE,
+            stderr=stderr,
+        )
     except FileNotFoundError as e:
         raise QuiltNotInstalled() from e
     (stdout, stderr) = proc.communicate()
@@ -105,8 +106,13 @@ def run_quilt(
 
 
 def quilt_pop_all(
-        working_dir, patches_dir=None, series_file=None, quiet=None,
-        force=False, refresh=False):
+    working_dir,
+    patches_dir=None,
+    series_file=None,
+    quiet=None,
+    force=False,
+    refresh=False,
+):
     """Pop all patches.
 
     :param working_dir: Directory to work in
@@ -119,8 +125,12 @@ def quilt_pop_all(
     if refresh:
         args.append("--refresh")
     return run_quilt(
-        args, working_dir=working_dir,
-        patches_dir=patches_dir, series_file=series_file, quiet=quiet)
+        args,
+        working_dir=working_dir,
+        patches_dir=patches_dir,
+        series_file=series_file,
+        quiet=quiet,
+    )
 
 
 def quilt_pop(working_dir, patch, patches_dir=None, series_file=None, quiet=None):
@@ -132,12 +142,22 @@ def quilt_pop(working_dir, patch, patches_dir=None, series_file=None, quiet=None
     :param series_file: Optional series file
     """
     return run_quilt(
-        ["pop", patch], working_dir=working_dir,
-        patches_dir=patches_dir, series_file=series_file, quiet=quiet)
+        ["pop", patch],
+        working_dir=working_dir,
+        patches_dir=patches_dir,
+        series_file=series_file,
+        quiet=quiet,
+    )
 
 
-def quilt_push_all(working_dir, patches_dir=None, series_file=None, quiet=None,
-                   force=False, refresh=False):
+def quilt_push_all(
+    working_dir,
+    patches_dir=None,
+    series_file=None,
+    quiet=None,
+    force=False,
+    refresh=False,
+):
     """Push all patches.
 
     :param working_dir: Directory to work in
@@ -150,12 +170,23 @@ def quilt_push_all(working_dir, patches_dir=None, series_file=None, quiet=None,
     if refresh:
         args.append("--refresh")
     return run_quilt(
-        args, working_dir=working_dir,
-        patches_dir=patches_dir, series_file=series_file, quiet=quiet)
+        args,
+        working_dir=working_dir,
+        patches_dir=patches_dir,
+        series_file=series_file,
+        quiet=quiet,
+    )
 
 
-def quilt_push(working_dir, patch, patches_dir=None, series_file=None,
-               quiet=None, force=False, refresh=False):
+def quilt_push(
+    working_dir,
+    patch,
+    patches_dir=None,
+    series_file=None,
+    quiet=None,
+    force=False,
+    refresh=False,
+):
     """Push a patch.
 
     :param working_dir: Directory to work in
@@ -171,12 +202,15 @@ def quilt_push(working_dir, patch, patches_dir=None, series_file=None,
     if refresh:
         args.append("--refresh")
     return run_quilt(
-        ["push", patch] + args, working_dir=working_dir,
-        patches_dir=patches_dir, series_file=series_file, quiet=quiet)
+        ["push", patch] + args,
+        working_dir=working_dir,
+        patches_dir=patches_dir,
+        series_file=series_file,
+        quiet=quiet,
+    )
 
 
-def quilt_delete(working_dir, patch, patches_dir=None, series_file=None,
-                 remove=False):
+def quilt_delete(working_dir, patch, patches_dir=None, series_file=None, remove=False):
     """Delete a patch.
 
     :param working_dir: Directory to work in
@@ -189,8 +223,11 @@ def quilt_delete(working_dir, patch, patches_dir=None, series_file=None,
     if remove:
         args.append("-r")
     return run_quilt(
-        ["delete", patch] + args, working_dir=working_dir,
-        patches_dir=patches_dir, series_file=series_file)
+        ["delete", patch] + args,
+        working_dir=working_dir,
+        patches_dir=patches_dir,
+        series_file=series_file,
+    )
 
 
 def quilt_upgrade(working_dir):
@@ -200,9 +237,11 @@ def quilt_upgrade(working_dir):
 def quilt_applied(tree):
     """Find the list of applied quilt patches."""
     try:
-        return [os.fsdecode(patch.rstrip(b"\n"))
-                for patch in tree.get_file_lines(".pc/applied-patches")
-                if patch.strip() != b""]
+        return [
+            os.fsdecode(patch.rstrip(b"\n"))
+            for patch in tree.get_file_lines(".pc/applied-patches")
+            if patch.strip() != b""
+        ]
     except _mod_transport.NoSuchFile:
         return []
     except FileNotFoundError:
@@ -223,8 +262,10 @@ def quilt_unapplied(working_dir, patches_dir=None, series_file=None):
     try:
         unapplied_patches = run_quilt(
             ["unapplied"],
-            working_dir=working_dir, patches_dir=patches_dir,
-            series_file=series_file).splitlines()
+            working_dir=working_dir,
+            patches_dir=patches_dir,
+            series_file=series_file,
+        ).splitlines()
         patch_names = []
         for patch in unapplied_patches:
             patch = os.fsdecode(patch)
@@ -242,9 +283,11 @@ def quilt_series(tree, series_path):
     :param tree: Tree to read from
     """
     try:
-        return [os.fsdecode(patch.rstrip(b"\n")) for patch in
-                tree.get_file_lines(series_path)
-                if patch.strip() != b""]
+        return [
+            os.fsdecode(patch.rstrip(b"\n"))
+            for patch in tree.get_file_lines(series_path)
+            if patch.strip() != b""
+        ]
     except FileNotFoundError:
         # File has already been removed
         return []

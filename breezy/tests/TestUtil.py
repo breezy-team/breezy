@@ -1,4 +1,3 @@
-# noqa: N999
 # Copyright (C) 2005-2011 Canonical Ltd
 #       Author: Robert Collins <robert.collins@canonical.com>
 #
@@ -31,7 +30,6 @@ __unittest = 1
 
 
 class LogCollector(logging.Handler):
-
     def __init__(self) -> None:
         logging.Handler.__init__(self)
         self.records: List[str] = []
@@ -65,8 +63,11 @@ def visitTests(suite, visitor):
                 visitor.visitSuite(test)
                 visitTests(test, visitor)
             else:
-                print("unvisitable non-unittest.TestCase element {!r} ({!r})".format(
-                    test, test.__class__))
+                print(
+                    "unvisitable non-unittest.TestCase element {!r} ({!r})".format(
+                        test, test.__class__
+                    )
+                )
 
 
 class FailedCollectionCase(unittest.TestCase):
@@ -108,6 +109,7 @@ class TestSuite(unittest.TestSuite):
         stored_count = 0
         count_stored_tests = getattr(result, "_count_stored_tests", int)
         from breezy.tests import selftest_debug_flags
+
         notify = "uncollected_cases" in selftest_debug_flags
         while tests:
             if result.shouldStop:
@@ -165,8 +167,7 @@ class TestLoader(unittest.TestLoader):
             # We already know them
             return test_fn_names
 
-        test_fn_names = unittest.TestLoader.getTestCaseNames(self,
-                                                             test_case_class)
+        test_fn_names = unittest.TestLoader.getTestCaseNames(self, test_case_class)
         self.test_func_names[test_case_class] = test_fn_names
         return test_fn_names
 
@@ -193,8 +194,8 @@ class FilteredByModuleTestLoader(TestLoader):
 class TestVisitor:
     """A visitor for Tests."""
 
-    def visitSuite(self, a_test_suite):  # noqa: N802
+    def visitSuite(self, a_test_suite):
         pass
 
-    def visitCase(self, a_test_case):  # noqa: N802
+    def visitCase(self, a_test_case):
         pass

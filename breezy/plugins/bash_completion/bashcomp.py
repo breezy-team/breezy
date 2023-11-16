@@ -27,13 +27,13 @@ from ... import plugin as _mod_plugin
 class BashCodeGen:
     """Generate a bash script for given completion data."""
 
-    def __init__(self, data, function_name='_brz', debug=False):
+    def __init__(self, data, function_name="_brz", debug=False):
         self.data = data
         self.function_name = function_name
         self.debug = debug
 
     def script(self):
-        return (f"""# Programmable completion for the Breezy brz command under bash.
+        return f"""# Programmable completion for the Breezy brz command under bash.
 # Known to work with bash 2.05a as well as bash 4.1.2, and probably
 # all versions in between as well.
 
@@ -49,10 +49,10 @@ class BashCodeGen:
 shopt -s progcomp
 {self.function()}
 complete -F {self.function_name} -o default brz
-""")
+"""
 
     def function(self):
-        return (f"""\
+        return f"""\
 {self.function_name} ()
 {{
     local cur cmds cmdIdx cmd cmdOpts fixedWords i globalOpts
@@ -142,7 +142,7 @@ complete -F {self.function_name} -o default brz
 
     return 0
 }}
-""")
+"""
         # Help Emacs terminate strings: "
 
     def command_names(self):
@@ -150,9 +150,9 @@ complete -F {self.function_name} -o default brz
 
     def debug_output(self):
         if not self.debug:
-            return ''
+            return ""
         else:
-            return (r"""
+            return r"""
     # Debugging code enabled using the --debug command line switch.
     # Will dump some variables to the top portion of the terminal.
     echo -ne '\e[s\e[H'
@@ -163,7 +163,7 @@ complete -F {self.function_name} -o default brz
         echo "\$${i}=\"${!i}\""$'\e[K'
     done
     echo -ne '---\e[K\e[u'
-""")
+"""
 
     def brz_version(self):
         brz_version = breezy.version_string
@@ -187,7 +187,7 @@ complete -F {self.function_name} -o default brz
     def command_case(self, command):
         case = f"\t{'|'.join(command.aliases)})\n"
         if command.plugin:
-            case += f"\t\t# plugin \"{command.plugin}\"\n"
+            case += f'\t\t# plugin "{command.plugin}"\n'
         options = []
         enums = []
         for option in command.options:
@@ -196,14 +196,18 @@ complete -F {self.function_name} -o default brz
             if option.registry_keys:
                 for key in option.registry_keys:
                     options.append(f"{option}={key}")
-                enums.append("{}) optEnums=( {} ) ;;".format(option, ' '.join(option.registry_keys)))
+                enums.append(
+                    "{}) optEnums=( {} ) ;;".format(
+                        option, " ".join(option.registry_keys)
+                    )
+                )
             else:
                 options.append(str(option))
         case += f"\t\tcmdOpts=( {' '.join(options)} )\n"
         if command.fixed_words:
             fixed_words = command.fixed_words
             if isinstance(fixed_words, list):
-                fixed_words = "( %s )" + ' '.join(fixed_words)
+                fixed_words = "( %s )" + " ".join(fixed_words)
             case += f"\t\tfixedWords={fixed_words}\n"
         if enums:
             case += "\t\tcase $curOpt in\n\t\t\t"
@@ -214,7 +218,6 @@ complete -F {self.function_name} -o default brz
 
 
 class CompletionData:
-
     def __init__(self):
         self.plugins = {}
         self.global_options = set()
@@ -226,7 +229,6 @@ class CompletionData:
 
 
 class CommandData:
-
     def __init__(self, name):
         self.name = name
         self.aliases = [name]
@@ -236,24 +238,22 @@ class CommandData:
 
 
 class PluginData:
-
     def __init__(self, name, version=None):
         if version is None:
             try:
                 version = breezy.plugin.plugins()[name].__version__
             except BaseException:
-                version = 'unknown'
+                version = "unknown"
         self.name = name
         self.version = version
 
     def __str__(self):
-        if self.version == 'unknown':
+        if self.version == "unknown":
             return self.name
-        return f'{self.name} {self.version}'
+        return f"{self.name} {self.version}"
 
 
 class OptionData:
-
     def __init__(self, name):
         self.name = name
         self.registry_keys = None
@@ -267,7 +267,6 @@ class OptionData:
 
 
 class DataCollector:
-
     def __init__(self, no_plugins=False, selected_plugins=None):
         self.data = CompletionData()
         self.user_aliases = {}
@@ -276,8 +275,7 @@ class DataCollector:
         elif selected_plugins is None:
             self.selected_plugins = None
         else:
-            self.selected_plugins = {x.replace('-', '_')
-                                     for x in selected_plugins}
+            self.selected_plugins = {x.replace("-", "_") for x in selected_plugins}
 
     def collect(self):
         self.global_options()
@@ -286,8 +284,8 @@ class DataCollector:
         return self.data
 
     def global_options(self):
-        re_switch = re.compile(r'\n(--[A-Za-z0-9-_]+)(?:, (-\S))?\s')
-        help_text = help_topics.topic_registry.get_detail('global-options')
+        re_switch = re.compile(r"\n(--[A-Za-z0-9-_]+)(?:, (-\S))?\s")
+        help_text = help_topics.topic_registry.get_detail("global-options")
         for long, short in re_switch.findall(help_text):
             self.data.global_options.add(long)
             if short:
@@ -310,8 +308,10 @@ class DataCollector:
 
         plugin_name = cmd.plugin_name()
         if plugin_name is not None:
-            if (self.selected_plugins is not None and
-                    plugin not in self.selected_plugins):
+            if (
+                self.selected_plugins is not None
+                and plugin not in self.selected_plugins
+            ):
                 return None
             plugin_data = self.data.plugins.get(plugin_name)
             if plugin_data is None:
@@ -325,19 +325,26 @@ class DataCollector:
         # but will choose completely new names or add options to existing
         # ones while maintaining the actual command name unchanged.
         cmd_data.aliases.extend(cmd.aliases)
-        cmd_data.aliases.extend(sorted([useralias
-                                        for cmdalias in cmd_data.aliases
-                                        if cmdalias in self.user_aliases
-                                        for useralias in self.user_aliases[cmdalias]
-                                        if useralias not in cmd_data.aliases]))
+        cmd_data.aliases.extend(
+            sorted(
+                [
+                    useralias
+                    for cmdalias in cmd_data.aliases
+                    if cmdalias in self.user_aliases
+                    for useralias in self.user_aliases[cmdalias]
+                    if useralias not in cmd_data.aliases
+                ]
+            )
+        )
 
         opts = cmd.options()
         for _optname, opt in sorted(opts.items()):
             cmd_data.options.extend(self.option(opt))
 
-        if 'help' == name or 'help' in cmd.aliases:
-            cmd_data.fixed_words = ('($cmds %s)' %
-                                    " ".join(sorted(help_topics.topic_registry.keys())))
+        if name == "help" or "help" in cmd.aliases:
+            cmd_data.fixed_words = "($cmds %s)" % " ".join(
+                sorted(help_topics.topic_registry.keys())
+            )
 
         return cmd_data
 
@@ -348,20 +355,24 @@ class DataCollector:
         optswitches.clear()
         opt.add_option(parser, opt.short_name())
         if isinstance(opt, _mod_option.RegistryOption) and opt.enum_switch:
-            enum_switch = f'--{opt.name}'
+            enum_switch = f"--{opt.name}"
             enum_data = optswitches.get(enum_switch)
             if enum_data:
                 try:
                     enum_data.registry_keys = opt.registry.keys()
                 except ImportError as e:
                     enum_data.error_messages.append(
-                        "ERROR getting registry keys for '--{}': {}".format(opt.name, str(e).split('\n')[0]))
+                        "ERROR getting registry keys for '--{}': {}".format(
+                            opt.name, str(e).split("\n")[0]
+                        )
+                    )
         return sorted(optswitches.values())
 
     def wrap_container(self, optswitches, parser):
         def tweaked_add_option(*opts, **attrs):
             for name in opts:
                 optswitches[name] = OptionData(name)
+
         parser.add_option = tweaked_add_option
         return parser
 
@@ -369,23 +380,26 @@ class DataCollector:
         orig_add_option_group = parser.add_option_group
 
         def tweaked_add_option_group(*opts, **attrs):
-            return self.wrap_container(optswitches,
-                                       orig_add_option_group(*opts, **attrs))
+            return self.wrap_container(
+                optswitches, orig_add_option_group(*opts, **attrs)
+            )
+
         parser.add_option_group = tweaked_add_option_group
         return self.wrap_container(optswitches, parser)
 
 
-def bash_completion_function(out, function_name="_brz", function_only=False,
-                             debug=False,
-                             no_plugins=False, selected_plugins=None):
-    dc = DataCollector(no_plugins=no_plugins,
-                       selected_plugins=selected_plugins)
+def bash_completion_function(
+    out,
+    function_name="_brz",
+    function_only=False,
+    debug=False,
+    no_plugins=False,
+    selected_plugins=None,
+):
+    dc = DataCollector(no_plugins=no_plugins, selected_plugins=selected_plugins)
     data = dc.collect()
     cg = BashCodeGen(data, function_name=function_name, debug=debug)
-    if function_only:
-        res = cg.function()
-    else:
-        res = cg.script()
+    res = cg.function() if function_only else cg.script()
     out.write(res)
 
 
@@ -401,53 +415,82 @@ class cmd_bash_completion(commands.Command):
     """
 
     takes_options = [
-        _mod_option.Option("function-name", short_name="f", type=str, argname="name",
-                      help="Name of the generated function (default: _brz)"),
-        _mod_option.Option("function-only", short_name="o", type=None,
-                      help="Generate only the shell function, don't enable it"),
-        _mod_option.Option("debug", type=None, hidden=True,
-                      help="Enable shell code useful for debugging"),
-        _mod_option.ListOption("plugin", type=str, argname="name",
-                          # param_name="selected_plugins", # doesn't work, bug #387117
-                          help="Enable completions for the selected plugin"
-                          + " (default: all plugins)"),
-        ]
+        _mod_option.Option(
+            "function-name",
+            short_name="f",
+            type=str,
+            argname="name",
+            help="Name of the generated function (default: _brz)",
+        ),
+        _mod_option.Option(
+            "function-only",
+            short_name="o",
+            type=None,
+            help="Generate only the shell function, don't enable it",
+        ),
+        _mod_option.Option(
+            "debug",
+            type=None,
+            hidden=True,
+            help="Enable shell code useful for debugging",
+        ),
+        _mod_option.ListOption(
+            "plugin",
+            type=str,
+            argname="name",
+            # param_name="selected_plugins", # doesn't work, bug #387117
+            help="Enable completions for the selected plugin"
+            + " (default: all plugins)",
+        ),
+    ]
 
     def run(self, **kwargs):
-        if 'plugin' in kwargs:
+        if "plugin" in kwargs:
             # work around bug #387117 which prevents us from using param_name
-            if len(kwargs['plugin']) > 0:
-                kwargs['selected_plugins'] = kwargs['plugin']
-            del kwargs['plugin']
+            if len(kwargs["plugin"]) > 0:
+                kwargs["selected_plugins"] = kwargs["plugin"]
+            del kwargs["plugin"]
         bash_completion_function(sys.stdout, **kwargs)
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     import locale
     import optparse
 
     def plugin_callback(option, opt, value, parser):
         values = parser.values.selected_plugins
-        if value == '-':
+        if value == "-":
             del values[:]
         else:
             values.append(value)
 
     parser = optparse.OptionParser(usage="%prog [-f NAME] [-o]")
-    parser.add_option("--function-name", "-f", metavar="NAME",
-                      help="Name of the generated function (default: _brz)")
-    parser.add_option("--function-only", "-o", action="store_true",
-                      help="Generate only the shell function, don't enable it")
-    parser.add_option("--debug", action="store_true",
-                      help=optparse.SUPPRESS_HELP)
-    parser.add_option("--no-plugins", action="store_true",
-                      help="Don't load any brz plugins")
-    parser.add_option("--plugin", metavar="NAME", type="string",
-                      dest="selected_plugins", default=[],
-                      action="callback", callback=plugin_callback,
-                      help="Enable completions for the selected plugin"
-                      + " (default: all plugins)")
+    parser.add_option(
+        "--function-name",
+        "-f",
+        metavar="NAME",
+        help="Name of the generated function (default: _brz)",
+    )
+    parser.add_option(
+        "--function-only",
+        "-o",
+        action="store_true",
+        help="Generate only the shell function, don't enable it",
+    )
+    parser.add_option("--debug", action="store_true", help=optparse.SUPPRESS_HELP)
+    parser.add_option(
+        "--no-plugins", action="store_true", help="Don't load any brz plugins"
+    )
+    parser.add_option(
+        "--plugin",
+        metavar="NAME",
+        type="string",
+        dest="selected_plugins",
+        default=[],
+        action="callback",
+        callback=plugin_callback,
+        help="Enable completions for the selected plugin" + " (default: all plugins)",
+    )
     (opts, args) = parser.parse_args()
     if args:
         parser.error("script does not take positional arguments")
@@ -456,8 +499,8 @@ if __name__ == '__main__':
         if value is not None:
             kwargs[name] = value
 
-    locale.setlocale(locale.LC_ALL, '')
-    if not kwargs.get('no_plugins', False):
+    locale.setlocale(locale.LC_ALL, "")
+    if not kwargs.get("no_plugins", False):
         _mod_plugin.load_plugins()
     commands.install_bzr_command_hooks()
     bash_completion_function(sys.stdout, **kwargs)

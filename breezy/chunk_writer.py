@@ -45,6 +45,7 @@ class ChunkWriter:
         node. This allows us to do a single compression pass, rather than
         trying until we overflow, and then recompressing again.
     """
+
     #    In testing, some values for bzr.dev::
     #        repack  time  MB   max   full
     #         1       7.5  4.6  1140  0
@@ -94,7 +95,9 @@ class ChunkWriter:
     _repack_opts_for_speed = (0, 8)
     _repack_opts_for_size = (20, 0)
 
-    def __init__(self, chunk_size: int, reserved: int = 0, optimize_for_size: bool = False) -> None:
+    def __init__(
+        self, chunk_size: int, reserved: int = 0, optimize_for_size: bool = False
+    ) -> None:
         """Create a ChunkWriter to write chunk_size chunks.
 
         :param chunk_size: The total byte count to emit at the end of the
@@ -139,9 +142,10 @@ class ChunkWriter:
         self.bytes_out_len += len(out)
 
         if self.bytes_out_len > self.chunk_size:
-            raise AssertionError('Somehow we ended up with too much'
-                                 ' compressed data, %d > %d'
-                                 % (self.bytes_out_len, self.chunk_size))
+            raise AssertionError(
+                "Somehow we ended up with too much"
+                " compressed data, %d > %d" % (self.bytes_out_len, self.chunk_size)
+            )
         nulls_needed = self.chunk_size - self.bytes_out_len
         if nulls_needed:
             self.bytes_list.append(b"\x00" * nulls_needed)
@@ -160,7 +164,9 @@ class ChunkWriter:
             opts = ChunkWriter._repack_opts_for_speed
         self._max_repack, self._max_zsync = opts
 
-    def _recompress_all_bytes_in(self, extra_bytes: Optional[bytes] = None) -> Tuple[List[bytes], int, "zlib._Compress"]:
+    def _recompress_all_bytes_in(
+        self, extra_bytes: Optional[bytes] = None
+    ) -> Tuple[List[bytes], int, "zlib._Compress"]:
         """Recompress the current bytes_in, and optionally more.
 
         :param extra_bytes: Optional, if supplied we will add it with
@@ -200,17 +206,14 @@ class ChunkWriter:
         if self.num_repack > self._max_repack and not reserved:
             self.unused_bytes = bytes
             return True
-        if reserved:
-            capacity = self.chunk_size
-        else:
-            capacity = self.chunk_size - self.reserved_size
+        capacity = self.chunk_size if reserved else self.chunk_size - self.reserved_size
         comp = self.compressor
 
         # Check to see if the currently unflushed bytes would fit with a bit of
         # room to spare, assuming no compression.
         next_unflushed = self.unflushed_in_bytes + len(bytes)
         remaining_capacity = capacity - self.bytes_out_len - 10
-        if (next_unflushed < remaining_capacity):
+        if next_unflushed < remaining_capacity:
             # looks like it will fit
             out = comp.compress(bytes)
             if out:
@@ -241,10 +244,7 @@ class ChunkWriter:
             # We are a bit extra conservative, because it seems that you *can*
             # get better compression with Z_SYNC_FLUSH than a full compress. It
             # is probably very rare, but we were able to trigger it.
-            if self.num_repack == 0:
-                safety_margin = 100
-            else:
-                safety_margin = 10
+            safety_margin = 100 if self.num_repack == 0 else 10
             if self.bytes_out_len + safety_margin <= capacity:
                 # It fit, so mark it added
                 self.bytes_in.append(bytes)
@@ -252,15 +252,13 @@ class ChunkWriter:
                 # We are over budget, try to squeeze this in without any
                 # Z_SYNC_FLUSH calls
                 self.num_repack += 1
-                (bytes_out, this_len,
-                 compressor) = self._recompress_all_bytes_in(bytes)
+                (bytes_out, this_len, compressor) = self._recompress_all_bytes_in(bytes)
                 if self.num_repack >= self._max_repack:
                     # When we get *to* _max_repack, bump over so that the
                     # earlier > _max_repack will be triggered.
                     self.num_repack += 1
                 if this_len + 10 > capacity:
-                    (bytes_out, this_len,
-                     compressor) = self._recompress_all_bytes_in()
+                    (bytes_out, this_len, compressor) = self._recompress_all_bytes_in()
                     self.compressor = compressor
                     # Force us to not allow more data
                     self.num_repack = self._max_repack + 1

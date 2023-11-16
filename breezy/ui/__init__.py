@@ -47,6 +47,7 @@ breezy.ui.text.TextUIFactory
     back to working through the terminal.
 """
 
+import contextlib
 import warnings
 from typing import TYPE_CHECKING, List, Set
 
@@ -54,12 +55,18 @@ if TYPE_CHECKING:
     from ..progress import ProgressTask
 
 
-_valid_boolean_strings = {"yes": True, "no": False,
-                              "y": True, "n": False,
-                              "on": True, "off": False,
-                              "true": True, "false": False}
-_valid_boolean_strings['1'] = True
-_valid_boolean_strings['0'] = False
+_valid_boolean_strings = {
+    "yes": True,
+    "no": False,
+    "y": True,
+    "n": False,
+    "on": True,
+    "off": False,
+    "true": True,
+    "false": False,
+}
+_valid_boolean_strings["1"] = True
+_valid_boolean_strings["0"] = False
 
 
 def bool_from_string(s, accepted_values=None):
@@ -85,10 +92,8 @@ def bool_from_string(s, accepted_values=None):
         accepted_values = _valid_boolean_strings
     val = None
     if isinstance(s, str):
-        try:
+        with contextlib.suppress(KeyError):
             val = accepted_values[s.lower()]
-        except KeyError:
-            pass
     return val
 
 
@@ -113,11 +118,12 @@ class ConfirmationUserInterfacePolicy:
         return getattr(self.wrapped_ui, name)
 
     def __repr__(self):
-        return '{}({!r}, {!r}, {!r})'.format(
+        return "{}({!r}, {!r}, {!r})".format(
             self.__class__.__name__,
             self.wrapped_ui,
             self.default_answer,
-            self.specific_answers)
+            self.specific_answers,
+        )
 
     def confirm_action(self, prompt, confirmation_id, prompt_kwargs):
         if confirmation_id in self.specific_answers:
@@ -126,7 +132,8 @@ class ConfirmationUserInterfacePolicy:
             return self.default_answer
         else:
             return self.wrapped_ui.confirm_action(
-                prompt, confirmation_id, prompt_kwargs)
+                prompt, confirmation_id, prompt_kwargs
+            )
 
 
 class UIFactory:
@@ -144,33 +151,38 @@ class UIFactory:
     """
 
     _user_warning_templates = {
-        "cross_format_fetch": ("Doing on-the-fly conversion from "
-                            "%(from_format)s to %(to_format)s.\n"
-                            "This may take some time. Upgrade the repositories to the "
-                            "same format for better performance."
-                            ),
-        "experimental_format_fetch": ("Fetching into experimental format "
-                                   "%(to_format)s.\n"
-                                   "This format may be unreliable or change in the future "
-                                   "without an upgrade path.\n"),
+        "cross_format_fetch": (
+            "Doing on-the-fly conversion from "
+            "%(from_format)s to %(to_format)s.\n"
+            "This may take some time. Upgrade the repositories to the "
+            "same format for better performance."
+        ),
+        "experimental_format_fetch": (
+            "Fetching into experimental format "
+            "%(to_format)s.\n"
+            "This format may be unreliable or change in the future "
+            "without an upgrade path.\n"
+        ),
         "deprecated_command": (
             "The command 'brz %(deprecated_name)s' "
             "has been deprecated in brz %(deprecated_in_version)s. "
-            "Please use 'brz %(recommended_name)s' instead."),
+            "Please use 'brz %(recommended_name)s' instead."
+        ),
         "deprecated_command_option": (
             "The option '%(deprecated_name)s' to 'brz %(command)s' "
             "has been deprecated in brz %(deprecated_in_version)s. "
-            "Please use '%(recommended_name)s' instead."),
-        "recommend_upgrade": ("%(current_format_name)s is deprecated "
-                           "and a better format is available.\n"
-                           "It is recommended that you upgrade by "
-                           "running the command\n"
-                           "  brz upgrade %(basedir)s"),
-        "locks_steal_dead": (
-            "Stole dead lock %(lock_url)s %(other_holder_info)s."),
-        "not_checking_ssl_cert": (
-            "Not checking SSL certificate for %(host)s."),
-        }
+            "Please use '%(recommended_name)s' instead."
+        ),
+        "recommend_upgrade": (
+            "%(current_format_name)s is deprecated "
+            "and a better format is available.\n"
+            "It is recommended that you upgrade by "
+            "running the command\n"
+            "  brz upgrade %(basedir)s"
+        ),
+        "locks_steal_dead": ("Stole dead lock %(lock_url)s %(other_holder_info)s."),
+        "not_checking_ssl_cert": ("Not checking SSL certificate for %(host)s."),
+    }
 
     def __init__(self) -> None:
         self._task_stack: List["ProgressTask"] = []
@@ -221,7 +233,7 @@ class UIFactory:
         """
         return self.get_boolean(prompt % prompt_kwargs)
 
-    def get_password(self, prompt='', **kwargs):
+    def get_password(self, prompt="", **kwargs):
         """Prompt the user for a password.
 
         Args:
@@ -240,7 +252,7 @@ class UIFactory:
     def is_quiet(self):
         return self._quiet
 
-    def make_output_stream(self, encoding=None, encoding_type='replace'):
+    def make_output_stream(self, encoding=None, encoding_type="replace"):
         """Get a stream for sending out bulk text data.
 
         This is used for commands that produce bulk text, such as log or diff
@@ -264,8 +276,9 @@ class UIFactory:
         return out_stream
 
     def _make_output_stream_explicit(self, encoding, encoding_type):
-        raise NotImplementedError("%s doesn't support make_output_stream"
-                                  % (self.__class__.__name__))
+        raise NotImplementedError(
+            "%s doesn't support make_output_stream" % (self.__class__.__name__)
+        )
 
     def nested_progress_bar(self):
         """Return a nested progress bar.
@@ -274,6 +287,7 @@ class UIFactory:
         bar.finished().
         """
         from ..progress import ProgressTask
+
         if self._task_stack:
             t = ProgressTask(self._task_stack[-1], self)
         else:
@@ -288,7 +302,9 @@ class UIFactory:
         if task in self._task_stack:
             self._task_stack.remove(task)
         else:
-            warnings.warn(f"{task!r} is not in active stack {self._task_stack!r}", stacklevel=1)
+            warnings.warn(
+                f"{task!r} is not in active stack {self._task_stack!r}", stacklevel=1
+            )
         if not self._task_stack:
             self._progress_all_finished()
 
@@ -316,14 +332,15 @@ class UIFactory:
             template = self._user_warning_templates[warning_id]
         except KeyError:
             fail = f"brz warning: {warning_id!r}, {message_args!r}"
-            warnings.warn("no template for warning: "
-                          + fail, stacklevel=1)   # so tests will fail etc
+            warnings.warn(
+                "no template for warning: " + fail, stacklevel=1
+            )  # so tests will fail etc
             return str(fail)
         try:
             return str(template) % message_args
         except ValueError as e:
             fail = f"brz unprintable warning: {warning_id!r}, {message_args!r}, {e}"
-            warnings.warn(fail, stacklevel=1)   # so tests will fail etc
+            warnings.warn(fail, stacklevel=1)  # so tests will fail etc
             return str(fail)
 
     def choose(self, msg, choices, default=None):
@@ -358,8 +375,8 @@ class UIFactory:
         Returns:
           True or False for y/yes or n/no.
         """
-        choice = self.choose(prompt + '?', '&yes\n&no', default=None)
-        return 0 == choice
+        choice = self.choose(prompt + "?", "&yes\n&no", default=None)
+        return choice == 0
 
     def get_integer(self, prompt):
         r"""Get an integer from the user.
@@ -388,8 +405,11 @@ class UIFactory:
           current_format_name: Description of the current format
           basedir: Location of the control dir
         """
-        self.show_user_warning('recommend_upgrade',
-                               current_format_name=current_format_name, basedir=basedir)
+        self.show_user_warning(
+            "recommend_upgrade",
+            current_format_name=current_format_name,
+            basedir=basedir,
+        )
 
     def report_transport_activity(self, transport, byte_count, direction):
         """Called by transports as they do IO.
@@ -458,7 +478,7 @@ class NoninteractiveUIFactory(UIFactory):
         return True
 
     def __repr__(self):
-        return f'{self.__class__.__name__}()'
+        return f"{self.__class__.__name__}()"
 
 
 class SilentUIFactory(NoninteractiveUIFactory):
@@ -511,7 +531,7 @@ class CannedInputUIFactory(SilentUIFactory):
     def get_integer(self, prompt):
         return self.responses.pop(0)
 
-    def get_password(self, prompt='', **kwargs):
+    def get_password(self, prompt="", **kwargs):
         return self.responses.pop(0)
 
     def get_username(self, prompt, **kwargs):
@@ -532,6 +552,7 @@ def make_ui_for_terminal(stdin, stdout, stderr):
     # this is now always TextUIFactory, which in turn decides whether it
     # should display progress bars etc
     from .text import TextUIFactory
+
     return TextUIFactory(stdin, stdout, stderr)
 
 

@@ -16,30 +16,31 @@
 
 """Tests for repository break-lock."""
 
+import contextlib
+
 from breezy import errors, ui
 from breezy.tests import per_repository
 
 
 class TestBreakLock(per_repository.TestCaseWithRepository):
-
     def setUp(self):
         super().setUp()
-        self.unused_repo = self.make_repository('.')
+        self.unused_repo = self.make_repository(".")
         self.repo = self.unused_repo.controldir.open_repository()
         ui.ui_factory = ui.CannedInputUIFactory([True])
 
     def test_unlocked(self):
         # break lock when nothing is locked should just return
-        try:
+        with contextlib.suppress(NotImplementedError):
             self.repo.break_lock()
-        except NotImplementedError:
-            pass
 
     def test_locked(self):
         # break_lock when locked should
         self.repo.lock_write()
-        self.assertEqual(self.repo.get_physical_lock_status(),
-                         self.unused_repo.get_physical_lock_status())
+        self.assertEqual(
+            self.repo.get_physical_lock_status(),
+            self.unused_repo.get_physical_lock_status(),
+        )
         if not self.unused_repo.get_physical_lock_status():
             # 'lock_write' has not taken a physical mutex out.
             self.repo.unlock()

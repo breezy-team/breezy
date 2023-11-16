@@ -15,6 +15,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import contextlib
+
 import fastbencode as bencode
 
 from .. import errors, trace
@@ -53,9 +55,11 @@ class BasicTags(Tags):
                 tag_content = self.branch._get_tags_bytes()
             except _mod_transport.NoSuchFile:
                 # ugly, but only abentley should see this :)
-                trace.warning(f'No branch/tags file in {self.branch}.  '
-                              'This branch was probably created by bzr 0.15pre.  '
-                              'Create an empty file to silence this message.')
+                trace.warning(
+                    f"No branch/tags file in {self.branch}.  "
+                    "This branch was probably created by bzr 0.15pre.  "
+                    "Create an empty file to silence this message."
+                )
                 return {}
             return self._deserialize_tag_dict(tag_content)
 
@@ -69,10 +73,8 @@ class BasicTags(Tags):
                 raise errors.NoSuchTag(tag_name) from e
             master = self.branch.get_master_branch()
             if master is not None:
-                try:
+                with contextlib.suppress(errors.NoSuchTag):
                     master.tags.delete_tag(tag_name)
-                except errors.NoSuchTag:
-                    pass
             self._set_tag_dict(d)
 
     def _set_tag_dict(self, new_dict):
@@ -86,20 +88,21 @@ class BasicTags(Tags):
         return self.branch._set_tags_bytes(self._serialize_tag_dict(new_dict))
 
     def _serialize_tag_dict(self, tag_dict):
-        td = {k.encode('utf-8'): v
-                  for k, v in tag_dict.items()}
+        td = {k.encode("utf-8"): v for k, v in tag_dict.items()}
         return bencode.bencode(td)
 
     def _deserialize_tag_dict(self, tag_content):
         """Convert the tag file into a dictionary of tags."""
         # was a special case to make initialization easy, an empty definition
         # is an empty dictionary
-        if tag_content == b'':
+        if tag_content == b"":
             return {}
         try:
             r = {}
             for k, v in bencode.bdecode(tag_content).items():
-                r[k.decode('utf-8')] = v
+                r[k.decode("utf-8")] = v
             return r
         except ValueError as e:
-            raise ValueError(f"failed to deserialize tag dictionary {tag_content!r}: {e}") from e
+            raise ValueError(
+                f"failed to deserialize tag dictionary {tag_content!r}: {e}"
+            ) from e

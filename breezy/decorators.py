@@ -27,6 +27,7 @@ def only_raises(*errors):
         def unlock(self):
             # etc
     """
+
     def decorator(unbound):
         def wrapped(*args, **kwargs):
             try:
@@ -34,11 +35,13 @@ def only_raises(*errors):
             except errors:
                 raise
             except BaseException:
-                trace.mutter('Error suppressed by only_raises:')
+                trace.mutter("Error suppressed by only_raises:")
                 trace.log_exception_quietly()
+
         wrapped.__doc__ = unbound.__doc__
         wrapped.__name__ = unbound.__name__
         return wrapped
+
     return decorator
 
 
@@ -87,12 +90,11 @@ def cachedproperty(attrname_or_fn):
         return _CachedPropertyForAttr(attrname)
     else:
         fn = attrname_or_fn
-        attrname = f'_{fn.__name__}_cached_value'
+        attrname = f"_{fn.__name__}_cached_value"
         return _CachedProperty(attrname, fn)
 
 
 class _CachedPropertyForAttr:
-
     def __init__(self, attrname):
         self.attrname = attrname
 
@@ -101,7 +103,6 @@ class _CachedPropertyForAttr:
 
 
 class _CachedProperty:
-
     def __init__(self, attrname, fn):
         self.fn = fn
         self.attrname = attrname

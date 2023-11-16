@@ -62,11 +62,14 @@ from io import StringIO
 
 from .lazy_import import lazy_import
 
-lazy_import(globals(), """
+lazy_import(
+    globals(),
+    """
 from breezy import (
     ui,
     )
-""")
+""",
+)
 from . import _cmd_rs, debug, errors
 
 # global verbosity for breezy; controls the log level for stderr; 0=normal; <0
@@ -74,7 +77,7 @@ from . import _cmd_rs, debug, errors
 _verbosity_level = 0
 
 # held in a global for quick reference
-_brz_logger = logging.getLogger('brz')
+_brz_logger = logging.getLogger("brz")
 
 _trace_handler = None
 
@@ -113,12 +116,9 @@ def mutter(fmt, *args):
 
     # Let format strings be specified as ascii bytes to help Python 2
     if isinstance(fmt, bytes):
-        fmt = fmt.decode('ascii', 'replace')
+        fmt = fmt.decode("ascii", "replace")
 
-    if args:
-        out = fmt % args
-    else:
-        out = fmt
+    out = fmt % args if args else fmt
 
     _trace_handler.mutter(out)
 
@@ -132,14 +132,12 @@ def mutter_callsite(stacklevel, fmt, *args):
     :param args: A list of substitution variables.
     """
     import traceback
+
     outf = StringIO()
-    if stacklevel is None:
-        limit = None
-    else:
-        limit = stacklevel + 1
+    limit = None if stacklevel is None else stacklevel + 1
     traceback.print_stack(limit=limit, file=outf)
     formatted_lines = outf.getvalue().splitlines()
-    formatted_stack = '\n'.join(formatted_lines[:-2])
+    formatted_stack = "\n".join(formatted_lines[:-2])
     mutter(fmt + "\nCalled from:\n%s", *(args + (formatted_stack,)))
 
 
@@ -173,7 +171,7 @@ def enable_default_logging():
     # after hooking output into brz_log, we also need to attach a stderr
     # handler, writing only at level info and with encoding
     stderr_handler = logging.StreamHandler(stream=sys.stderr)
-    logging.getLogger('brz').addHandler(stderr_handler)
+    logging.getLogger("brz").addHandler(stderr_handler)
     return memento
 
 
@@ -190,7 +188,7 @@ def push_log_file(to_file, short=True):
     old_trace_handler = _trace_handler
     _trace_handler = new_handler = _cmd_rs.BreezyTraceHandler(to_file, short=short)
     # save and remove any existing log handlers
-    brz_logger = logging.getLogger('brz')
+    brz_logger = logging.getLogger("brz")
     old_handlers = brz_logger.handlers[:]
     del brz_logger.handlers[:]
     # set that as the default logger
@@ -201,7 +199,7 @@ def push_log_file(to_file, short=True):
     # TODO: also probably need to save and restore the level on brz_logger.
     # but maybe we can avoid setting the logger level altogether, and just set
     # the level on the handler?
-    return ('log_memento', old_handlers, new_handler, old_trace_handler)
+    return ("log_memento", old_handlers, new_handler, old_trace_handler)
 
 
 def pop_log_file(entry):
@@ -215,7 +213,7 @@ def pop_log_file(entry):
     (magic, old_handlers, new_handler, old_trace_handler) = entry
     global _trace_handler
     _trace_handler = old_trace_handler
-    brz_logger = logging.getLogger('brz')
+    brz_logger = logging.getLogger("brz")
     brz_logger.removeHandler(new_handler)
     # must be closed, otherwise logging will try to close it at exit, and the
     # file will likely already be closed underneath.
@@ -231,6 +229,7 @@ def log_exception_quietly():
     errors loading plugins.
     """
     import traceback
+
     mutter(traceback.format_exc())
 
 
@@ -278,10 +277,11 @@ def is_verbose():
     return _verbosity_level > 0
 
 
-def debug_memory(message='', short=True):
+def debug_memory(message="", short=True):
     """Write out a memory dump."""
-    if sys.platform == 'win32':
+    if sys.platform == "win32":
         from breezy import win32utils
+
         win32utils.debug_memory_win32api(message=message, short=short)
     else:
         _debug_memory_proc(message=message, short=short)
@@ -292,11 +292,13 @@ _debug_memory_proc = _cmd_rs.debug_memory_proc
 
 def _dump_memory_usage(err_file):
     import tempfile
+
     try:
         try:
             fd, name = tempfile.mkstemp(prefix="brz_memdump", suffix=".json")
-            dump_file = os.fdopen(fd, 'w')
+            dump_file = os.fdopen(fd, "w")
             from meliae import scanner
+
             scanner.dump_gc_objects(dump_file)
             err_file.write(f"Memory dumped to {name}\n")
         except ImportError:
@@ -321,7 +323,8 @@ def _qualified_exception_name(eclass, unqualified_breezy_errors=False):
     class_name = eclass.__name__
     module_name = eclass.__module__
     if module_name in ("builtins", "exceptions", "__main__") or (
-            unqualified_breezy_errors and module_name == "breezy.errors"):
+        unqualified_breezy_errors and module_name == "breezy.errors"
+    ):
         return class_name
     return f"{module_name}.{class_name}"
 
@@ -335,7 +338,7 @@ def report_exception(exc_info, err_file):
     """
     # Log the full traceback to brz.log
     log_exception_quietly()
-    if debug.debug_flag_enabled('error'):
+    if debug.debug_flag_enabled("error"):
         print_exception(exc_info, err_file)
         return errors.EXIT_ERROR
     exc_type, exc_object, exc_tb = exc_info
@@ -344,22 +347,25 @@ def report_exception(exc_info, err_file):
         return errors.EXIT_ERROR
     elif isinstance(exc_object, MemoryError):
         err_file.write("brz: out of memory\n")
-        if debug.debug_flag_enabled('mem_dump'):
+        if debug.debug_flag_enabled("mem_dump"):
             _dump_memory_usage(err_file)
         else:
             err_file.write("Use -Dmem_dump to dump memory to a file.\n")
         return errors.EXIT_ERROR
-    elif isinstance(exc_object, ImportError) \
-            and str(exc_object).startswith("No module named "):
+    elif isinstance(exc_object, ImportError) and str(exc_object).startswith(
+        "No module named "
+    ):
         report_user_error(
-            exc_info, err_file,
-            'You may need to install this Python library separately.')
+            exc_info,
+            err_file,
+            "You may need to install this Python library separately.",
+        )
         return errors.EXIT_ERROR
-    elif not getattr(exc_object, 'internal_error', True):
+    elif not getattr(exc_object, "internal_error", True):
         report_user_error(exc_info, err_file)
         return errors.EXIT_ERROR
     elif isinstance(exc_object, EnvironmentError):
-        if getattr(exc_object, 'errno', None) == errno.EPIPE:
+        if getattr(exc_object, "errno", None) == errno.EPIPE:
             err_file.write("brz: broken pipe\n")
             return errors.EXIT_ERROR
         # Might be nice to catch all of these and show them as something more
@@ -373,9 +379,10 @@ def report_exception(exc_info, err_file):
 
 def print_exception(exc_info, err_file):
     import traceback
+
     exc_type, exc_object, exc_tb = exc_info
     err_file.write(f"brz: ERROR: {_qualified_exception_name(exc_type)}: {exc_object}\n")
-    err_file.write('\n')
+    err_file.write("\n")
     traceback.print_exception(exc_type, exc_object, exc_tb, file=err_file)
 
 
@@ -389,7 +396,7 @@ def report_user_error(exc_info, err_file, advice=None):
     :param advice: Extra advice to the user to be printed following the
         exception.
     """
-    err_file.write(f"brz: ERROR: {str(exc_info[1])}\n")
+    err_file.write(f"brz: ERROR: {exc_info[1]!s}\n")
     if advice:
         err_file.write(f"{advice}\n")
 
@@ -397,6 +404,7 @@ def report_user_error(exc_info, err_file, advice=None):
 def report_bug(exc_info, err_file):
     """Report an exception that probably indicates a bug in brz."""
     from .crash import report_bug
+
     report_bug(exc_info, err_file)
 
 
@@ -411,6 +419,7 @@ def _flush_stdout_stderr():
         pass
     except OSError as e:
         import errno
+
         if e.errno in [errno.EINVAL, errno.EPIPE]:
             pass
         else:

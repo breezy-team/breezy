@@ -1,5 +1,6 @@
 use crate::inventory::Entry as InventoryEntry;
 use crate::FileId;
+use base64::engine::Engine;
 use breezy_osutils::sha::{sha_file, sha_file_by_name};
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -158,7 +159,7 @@ pub fn pack_stat(size: u64, mtime: u64, ctime: u64, dev: u64, ino: u64, mode: u3
         mode as u8,
     ];
 
-    base64::encode(packed_data)
+    base64::engine::general_purpose::STANDARD_NO_PAD.encode(packed_data)
 }
 
 pub fn stat_to_minikind(metadata: &Metadata) -> char {

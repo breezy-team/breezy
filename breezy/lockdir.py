@@ -143,7 +143,6 @@ from .transport import FileExists, NoSuchFile
 # TODO: Make sure to pass the right file and directory mode bits to all
 # files/dirs created.
 
-
 _DEFAULT_TIMEOUT_SECONDS = 30
 _DEFAULT_POLL_SECONDS = 1.0
 
@@ -151,10 +150,16 @@ _DEFAULT_POLL_SECONDS = 1.0
 class LockDir(lock.Lock):
     """Write-lock guarding access to data."""
 
-    __INFO_NAME = '/info'
+    __INFO_NAME = "/info"
 
-    def __init__(self, transport, path, file_modebits=0o644,
-                 dir_modebits=0o755, extra_holder_info=None):
+    def __init__(
+        self,
+        transport,
+        path,
+        file_modebits=0o644,
+        dir_modebits=0o755,
+        extra_holder_info=None,
+    ):
         """Create a new LockDir object.
 
         The LockDir is initially unlocked - this just creates the object.
@@ -173,7 +178,7 @@ class LockDir(lock.Lock):
         self._lock_held = False
         self._locked_via_token = False
         self._fake_read_lock = False
-        self._held_dir = path + '/held'
+        self._held_dir = path + "/held"
         self._held_info_path = self._held_dir + self.__INFO_NAME
         self._file_modebits = file_modebits
         self._dir_modebits = dir_modebits
@@ -182,7 +187,7 @@ class LockDir(lock.Lock):
         self._warned_about_lock_holder = None
 
     def __repr__(self):
-        return f'{self.__class__.__name__}({self.transport.base}{self.path})'
+        return f"{self.__class__.__name__}({self.transport.base}{self.path})"
 
     is_held = property(lambda self: self._lock_held)
 
@@ -224,8 +229,13 @@ class LockDir(lock.Lock):
             try:
                 self.transport.rename(tmpname, self._held_dir)
                 break
-            except (errors.TransportError, PathError, DirectoryNotEmpty,
-                    FileExists, ResourceBusy) as e:
+            except (
+                errors.TransportError,
+                PathError,
+                DirectoryNotEmpty,
+                FileExists,
+                ResourceBusy,
+            ) as e:
                 self._trace("... contention, %s", e)
                 other_holder = self.peek()
                 self._trace(f"other holder is {other_holder!r}")
@@ -252,15 +262,14 @@ class LockDir(lock.Lock):
         info = self.peek()
         self._trace("after locking, info=%r", info)
         if info is None:
-            raise LockFailed(self, "lock was renamed into place, but "
-                             "now is missing!")
+            raise LockFailed(
+                self, "lock was renamed into place, but " "now is missing!"
+            )
         if info.nonce != self.nonce:
-            self._trace("rename succeeded, "
-                        "but lock is still held by someone else")
+            self._trace("rename succeeded, " "but lock is still held by someone else")
             raise LockContention(self)
         self._lock_held = True
-        self._trace("... lock succeeded after %dms",
-                    (time.time() - start_time) * 1000)
+        self._trace("... lock succeeded after %dms", (time.time() - start_time) * 1000)
         return self.nonce
 
     def _handle_lock_contention(self, other_holder):
@@ -276,16 +285,16 @@ class LockDir(lock.Lock):
             it might be None if the lock can be seen to be held but the info
             can't be read.
         """
-        if (other_holder is not None):
-            if other_holder.is_lock_holder_known_dead():
-                if self.get_config().get('locks.steal_dead'):
-                    ui.ui_factory.show_user_warning(
-                        'locks_steal_dead',
-                        lock_url=urlutils.join(self.transport.base, self.path),
-                        other_holder_info=str(other_holder))
-                    self.force_break(other_holder)
-                    self._trace("stole lock from dead holder")
-                    return
+        if other_holder is not None and other_holder.is_lock_holder_known_dead():
+            if self.get_config().get("locks.steal_dead"):
+                ui.ui_factory.show_user_warning(
+                    "locks_steal_dead",
+                    lock_url=urlutils.join(self.transport.base, self.path),
+                    other_holder_info=str(other_holder),
+                )
+                self.force_break(other_holder)
+                self._trace("stole lock from dead holder")
+                return
         raise LockContention(self)
 
     def _remove_pending_dir(self, tmpname):
@@ -302,7 +311,7 @@ class LockDir(lock.Lock):
             note(gettext("error removing pending lock: %s"), e)
 
     def _create_pending_dir(self):
-        tmpname = f'{self.path}/{rand_chars(10)}.tmp'
+        tmpname = f"{self.path}/{rand_chars(10)}.tmp"
         try:
             self.transport.mkdir(tmpname)
         except NoSuchFile:
@@ -319,8 +328,7 @@ class LockDir(lock.Lock):
         # directory so we don't have to worry about files existing there.
         # We'll rename the whole directory into place to get atomic
         # properties
-        self.transport.put_bytes_non_atomic(tmpname + self.__INFO_NAME,
-                                            info.to_bytes())
+        self.transport.put_bytes_non_atomic(tmpname + self.__INFO_NAME, info.to_bytes())
         return tmpname
 
     @only_raises(LockNotHeld, LockBroken)
@@ -340,7 +348,7 @@ class LockDir(lock.Lock):
             # whole tree
             start_time = time.time()
             self._trace("unlocking")
-            tmpname = f'{self.path}/releasing.{rand_chars(20)}.tmp'
+            tmpname = f"{self.path}/releasing.{rand_chars(20)}.tmp"
             # gotta own it to unlock
             self.confirm()
             self.transport.rename(self._held_dir, tmpname)
@@ -353,14 +361,15 @@ class LockDir(lock.Lock):
                 # another locker within the 'held' directory.  do a slower
                 # deletion where we list the directory and remove everything
                 # within it.
-                self._trace("doing recursive deletion of non-empty directory "
-                            "%s", tmpname)
+                self._trace(
+                    "doing recursive deletion of non-empty directory " "%s", tmpname
+                )
                 self.transport.delete_tree(tmpname)
-            self._trace("... unlock succeeded after %dms",
-                        (time.time() - start_time) * 1000)
-            result = lock.LockResult(self.transport.abspath(self.path),
-                                     old_nonce)
-            for hook in self.hooks['lock_released']:
+            self._trace(
+                "... unlock succeeded after %dms", (time.time() - start_time) * 1000
+            )
+            result = lock.LockResult(self.transport.abspath(self.path), old_nonce)
+            for hook in self.hooks["lock_released"]:
                 hook(result)
 
     def break_lock(self):
@@ -381,14 +390,13 @@ class LockDir(lock.Lock):
             if ui.ui_factory.get_boolean(f"Break (corrupt {self!r})"):
                 self.force_break_corrupt(e.file_data)
             return
-        if holder_info is not None:
-            if ui.ui_factory.confirm_action(
-                "Break %(lock_info)s",
-                'breezy.lockdir.break',
-                    {'lock_info': str(holder_info)}):
-                result = self.force_break(holder_info)
-                ui.ui_factory.show_message(
-                    f"Broke lock {result.lock_url}")
+        if holder_info is not None and ui.ui_factory.confirm_action(
+            "Break %(lock_info)s",
+            "breezy.lockdir.break",
+            {"lock_info": str(holder_info)},
+        ):
+            result = self.force_break(holder_info)
+            ui.ui_factory.show_message(f"Broke lock {result.lock_url}")
 
     def force_break(self, dead_holder_info):
         """Release a lock held by another process.
@@ -418,7 +426,7 @@ class LockDir(lock.Lock):
             return
         if current_info != dead_holder_info:
             raise LockBreakMismatch(self, current_info, dead_holder_info)
-        tmpname = f'{self.path}/broken.{rand_chars(20)}.tmp'
+        tmpname = f"{self.path}/broken.{rand_chars(20)}.tmp"
         self.transport.rename(self._held_dir, tmpname)
         # check that we actually broke the right lock, not someone else;
         # there's a small race window between checking it and doing the
@@ -429,9 +437,8 @@ class LockDir(lock.Lock):
             raise LockBreakMismatch(self, broken_info, dead_holder_info)
         self.transport.delete(broken_info_path)
         self.transport.rmdir(tmpname)
-        result = lock.LockResult(self.transport.abspath(self.path),
-                                 current_info.nonce)
-        for hook in self.hooks['lock_broken']:
+        result = lock.LockResult(self.transport.abspath(self.path), current_info.nonce)
+        for hook in self.hooks["lock_broken"]:
             hook(result)
         return result
 
@@ -448,7 +455,7 @@ class LockDir(lock.Lock):
         # XXX: this copes with unparseable info files, but what about missing
         # info files?  Or missing lock dirs?
         self._check_not_locked()
-        tmpname = f'{self.path}/broken.{rand_chars(20)}.tmp'
+        tmpname = f"{self.path}/broken.{rand_chars(20)}.tmp"
         self.transport.rename(self._held_dir, tmpname)
         # check that we actually broke the right lock, not someone else;
         # there's a small race window between checking it and doing the
@@ -460,7 +467,7 @@ class LockDir(lock.Lock):
         self.transport.delete(broken_info_path)
         self.transport.rmdir(tmpname)
         result = lock.LockResult(self.transport.abspath(self.path))
-        for hook in self.hooks['lock_broken']:
+        for hook in self.hooks["lock_broken"]:
             hook(result)
 
     def _check_not_locked(self):
@@ -493,8 +500,7 @@ class LockDir(lock.Lock):
 
         peek() reads the info file of the lock holder, if any.
         """
-        return LockHeldInfo.from_info_file_bytes(
-            self.transport.get_bytes(path))
+        return LockHeldInfo.from_info_file_bytes(self.transport.get_bytes(path))
 
     def peek(self):
         """Check if the lock is held by anyone.
@@ -525,9 +531,8 @@ class LockDir(lock.Lock):
         if self._fake_read_lock:
             raise LockContention(self)
         result = self._attempt_lock()
-        hook_result = lock.LockResult(self.transport.abspath(self.path),
-                                      self.nonce)
-        for hook in self.hooks['lock_acquired']:
+        hook_result = lock.LockResult(self.transport.abspath(self.path), self.nonce)
+        for hook in self.hooks["lock_acquired"]:
             hook(hook_result)
         return result
 
@@ -536,10 +541,7 @@ class LockDir(lock.Lock):
         # As local lock urls are correct we display them.
         # We avoid displaying remote lock urls.
         lock_url = self.transport.abspath(self.path)
-        if lock_url.startswith('file://'):
-            lock_url = lock_url.split('.bzr/')[0]
-        else:
-            lock_url = ''
+        lock_url = lock_url.split(".bzr/")[0] if lock_url.startswith("file://") else ""
         return lock_url
 
     def wait_lock(self, timeout=None, poll=None, max_attempts=None):
@@ -588,20 +590,22 @@ class LockDir(lock.Lock):
             new_info = self.peek()
             if new_info is not None and new_info != last_info:
                 if last_info is None:
-                    start = gettext('Unable to obtain')
+                    start = gettext("Unable to obtain")
                 else:
-                    start = gettext('Lock owner changed for')
+                    start = gettext("Lock owner changed for")
                 last_info = new_info
-                msg = gettext('{0} lock {1} {2}.').format(start, lock_url,
-                                                          new_info)
+                msg = gettext("{0} lock {1} {2}.").format(start, lock_url, new_info)
                 if deadline_str is None:
-                    deadline_str = time.strftime('%H:%M:%S',
-                                                 time.localtime(deadline))
+                    deadline_str = time.strftime("%H:%M:%S", time.localtime(deadline))
                 if timeout > 0:
-                    msg += '\n' + gettext(
-                        'Will continue to try until %s, unless '
-                        'you press Ctrl-C.') % deadline_str
-                msg += '\n' + gettext('See "brz help break-lock" for more.')
+                    msg += (
+                        "\n"
+                        + gettext(
+                            "Will continue to try until %s, unless " "you press Ctrl-C."
+                        )
+                        % deadline_str
+                    )
+                msg += "\n" + gettext('See "brz help break-lock" for more.')
                 self._report_function(msg)
             if (max_attempts is not None) and (attempt_count >= max_attempts):
                 self._trace("exceeded %d attempts")
@@ -614,7 +618,7 @@ class LockDir(lock.Lock):
                 # this block is applicable only for local
                 # lock contention
                 self._trace("timeout after waiting %ss", timeout)
-                raise LockContention('(local)', lock_url)
+                raise LockContention("(local)", lock_url)
 
     def leave_in_place(self):
         self._locked_via_token = True
@@ -677,7 +681,7 @@ class LockDir(lock.Lock):
                 self._trace("revalidated by token %r", token)
 
     def _trace(self, format, *args):
-        if not debug.debug_flag_enabled('lock'):
+        if not debug.debug_flag_enabled("lock"):
             return
         mutter(str(self) + ": " + (format % args))
 

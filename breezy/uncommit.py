@@ -27,8 +27,15 @@ from .errors import BoundBranchOutOfDate
 remove_tags = _uncommit_rs.remove_tags
 
 
-def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None,
-             local=False, keep_tags=False):
+def uncommit(
+    branch,
+    dry_run=False,
+    verbose=False,
+    revno=None,
+    tree=None,
+    local=False,
+    keep_tags=False,
+):
     """Remove the last revision from the supplied branch.
 
     :param dry_run: Don't actually change anything
@@ -77,7 +84,7 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None,
                 new_revision_id = rev_id
                 break
             if verbose:
-                print('Removing revno %d: %s' % (cur_revno, rev_id))
+                print("Removing revno %d: %s" % (cur_revno, rev_id))
             cur_revno -= 1
             parents = graph.get_parent_map([rev_id]).get(rev_id, None)
             if not parents:
@@ -102,12 +109,13 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None,
             else:
                 hook_local = branch
                 hook_master = master
-            for hook in Branch.hooks['post_uncommit']:
+            for hook in Branch.hooks["post_uncommit"]:
                 hook_new_tip = new_revision_id
                 if hook_new_tip == _mod_revision.NULL_REVISION:
                     hook_new_tip = None
-                hook(hook_local, hook_master, old_revno, old_tip, new_revno,
-                     hook_new_tip)
+                hook(
+                    hook_local, hook_master, old_revno, old_tip, new_revno, hook_new_tip
+                )
             if not _mod_revision.is_null(new_revision_id):
                 parents = [new_revision_id]
             else:

@@ -20,14 +20,19 @@ from typing import TYPE_CHECKING, Iterable, Optional
 
 from .lazy_import import lazy_import
 
-lazy_import(globals(), """
+lazy_import(
+    globals(),
+    """
 import time
 
 from breezy import (
     config,
     )
 from breezy.i18n import gettext
-""")
+""",
+)
+
+import contextlib
 
 from . import controldir, debug, errors, graph, osutils, registry, ui
 from . import revision as _mod_revision
@@ -44,7 +49,6 @@ _deprecation_warning_done = False
 
 
 class IsInWriteGroupError(errors.InternalBzrError):
-
     _fmt = "May not refresh_data of repo %(repo)s while in a write group."
 
     def __init__(self, repo):
@@ -52,7 +56,6 @@ class IsInWriteGroupError(errors.InternalBzrError):
 
 
 class CannotSetRevisionId(errors.BzrError):
-
     _fmt = "Repository format does not support setting revision ids."
 
 
@@ -82,9 +85,18 @@ class CommitBuilder:
     # being committed to
     updates_branch = False
 
-    def __init__(self, repository, parents, config_stack, timestamp=None,
-                 timezone=None, committer=None, revprops=None,
-                 revision_id=None, lossy=False):
+    def __init__(
+        self,
+        repository,
+        parents,
+        config_stack,
+        timestamp=None,
+        timezone=None,
+        committer=None,
+        revprops=None,
+        revision_id=None,
+        lossy=False,
+    ):
         """Initiate a CommitBuilder.
 
         Args:
@@ -102,7 +114,7 @@ class CommitBuilder:
         self._lossy = lossy
 
         if committer is None:
-            self._committer = self._config_stack.get('email')
+            self._committer = self._config_stack.get("email")
         elif not isinstance(committer, str):
             self._committer = committer.decode()  # throw if non-ascii
         else:
@@ -141,19 +153,20 @@ class CommitBuilder:
     def _validate_unicode_text(self, text, context):
         """Verify things like commit messages don't have bogus characters."""
         # TODO(jelmer): Make this repository-format specific
-        if '\r' in text:
-            raise ValueError(f'Invalid value for {context}: {text!r}')
+        if "\r" in text:
+            raise ValueError(f"Invalid value for {context}: {text!r}")
 
     def _validate_revprops(self, revprops):
         for key, value in revprops.items():
             # We know that the XML serializers do not round trip '\r'
             # correctly, so refuse to accept them
             if not isinstance(value, str):
-                raise ValueError(f'revision property ({key}) is not a valid'
-                                 f' (unicode) string: {value!r}')
+                raise ValueError(
+                    f"revision property ({key}) is not a valid"
+                    f" (unicode) string: {value!r}"
+                )
             # TODO(jelmer): Make this repository-format specific
-            self._validate_unicode_text(value,
-                                        f'revision property ({key})')
+            self._validate_unicode_text(value, f"revision property ({key})")
 
     def commit(self, message):
         """Make the actual commit.
@@ -294,20 +307,23 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             # has an unlock or relock occured ?
             if suppress_errors:
                 mutter(
-                    '(suppressed) mismatched lock context and write group. %r, %r',
-                    self._write_group, self.get_transaction())
+                    "(suppressed) mismatched lock context and write group. %r, %r",
+                    self._write_group,
+                    self.get_transaction(),
+                )
                 return
             raise errors.BzrError(
-                f'mismatched lock context and write group. {self._write_group!r}, {self.get_transaction()!r}')
+                f"mismatched lock context and write group. {self._write_group!r}, {self.get_transaction()!r}"
+            )
         try:
             self._abort_write_group()
         except Exception as exc:
             self._write_group = None
             if not suppress_errors:
                 raise
-            mutter('abort_write_group failed')
+            mutter("abort_write_group failed")
             log_exception_quietly()
-            note(gettext('brz: ERROR (ignored): %s'), exc)
+            note(gettext("brz: ERROR (ignored): %s"), exc)
         self._write_group = None
 
     def _abort_write_group(self):
@@ -349,7 +365,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         revisions that might be present.  There is no direct replacement
         method.
         """
-        if debug.debug_flag_enabled('evil'):
+        if debug.debug_flag_enabled("evil"):
             mutter_callsite(2, "all_revision_ids is linear with history.")
         return self._all_revision_ids()
 
@@ -405,12 +421,11 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
     def __repr__(self):
         if self._fallback_repositories:
-            return '{}({!r}, fallback_repositories={!r})'.format(
-                self.__class__.__name__,
-                self.base,
-                self._fallback_repositories)
+            return "{}({!r}, fallback_repositories={!r})".format(
+                self.__class__.__name__, self.base, self._fallback_repositories
+            )
         else:
-            return f'{self.__class__.__name__}({self.base!r})'
+            return f"{self.__class__.__name__}({self.base!r})"
 
     def _has_same_fallbacks(self, other_repo):
         """Returns true if the repositories have the same fallbacks."""
@@ -418,10 +433,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         other_fb = other_repo._fallback_repositories
         if len(my_fb) != len(other_fb):
             return False
-        for f, g in zip(my_fb, other_fb):
-            if not f.has_same_location(g):
-                return False
-        return True
+        return all(f.has_same_location(g) for f, g in zip(my_fb, other_fb))
 
     def has_same_location(self, other):
         """Returns a boolean indicating if this repository is at the same
@@ -432,7 +444,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """
         if self.__class__ is not other.__class__:
             return False
-        return (self.control_url == other.control_url)
+        return self.control_url == other.control_url
 
     def is_in_write_group(self):
         """Return True if there is an open write group.
@@ -446,7 +458,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
     def is_write_locked(self):
         """Return True if this object is write locked."""
-        return self.is_locked() and self.control_files._lock_mode == 'w'
+        return self.is_locked() and self.control_files._lock_mode == "w"
 
     def lock_write(self, token=None):
         """Lock this repository for writing.
@@ -479,7 +491,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         token = self.control_files.lock_write(token=token)
         if not locked:
             self._warn_if_deprecated()
-            self._note_lock('w')
+            self._note_lock("w")
             for repo in self._fallback_repositories:
                 # Writes don't affect fallback repos
                 repo.lock_read()
@@ -496,7 +508,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         self.control_files.lock_read()
         if not locked:
             self._warn_if_deprecated()
-            self._note_lock('r')
+            self._note_lock("r")
             for repo in self._fallback_repositories:
                 repo.lock_read()
             self._refresh_data()
@@ -541,13 +553,16 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         with self.lock_read():
             result = {}
             if revid and committers:
-                result['committers'] = 0
+                result["committers"] = 0
             if revid and revid != _mod_revision.NULL_REVISION:
                 graph = self.get_graph()
                 if committers:
                     all_committers = set()
-                revisions = [r for (r, p) in graph.iter_ancestry([revid])
-                             if r != _mod_revision.NULL_REVISION]
+                revisions = [
+                    r
+                    for (r, p) in graph.iter_ancestry([revid])
+                    if r != _mod_revision.NULL_REVISION
+                ]
                 last_revision = None
                 if not committers:
                     # ignore the revisions in the middle - just grab first and last
@@ -559,11 +574,9 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                         all_committers.add(revision.committer)
                 first_revision = revision
                 if committers:
-                    result['committers'] = len(all_committers)
-                result['firstrev'] = (first_revision.timestamp,
-                                      first_revision.timezone)
-                result['latestrev'] = (last_revision.timestamp,
-                                       last_revision.timezone)
+                    result["committers"] = len(all_committers)
+                result["firstrev"] = (first_revision.timestamp, first_revision.timezone)
+                result["latestrev"] = (last_revision.timestamp, last_revision.timezone)
             return result
 
     def find_branches(self, using=False):
@@ -579,7 +592,6 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             return
 
         class Evaluator:
-
             def __init__(self):
                 self.first_call = True
 
@@ -598,15 +610,21 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 return True, value
 
         for branches, repository in controldir.ControlDir.find_controldirs(
-                self.user_transport, evaluate=Evaluator()):
+            self.user_transport, evaluate=Evaluator()
+        ):
             if branches is not None:
                 yield from branches
             if not using and repository is not None:
                 yield from repository.find_branches()
 
-    def search_missing_revision_ids(self, other,
-                                    find_ghosts=True, revision_ids=None, if_present_ids=None,
-                                    limit=None):
+    def search_missing_revision_ids(
+        self,
+        other,
+        find_ghosts=True,
+        revision_ids=None,
+        if_present_ids=None,
+        limit=None,
+    ):
         """Return the revision ids that other has that this does not.
 
         These are returned in topological order.
@@ -615,8 +633,11 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """
         with self.lock_read():
             return InterRepository.get(other, self).search_missing_revision_ids(
-                find_ghosts=find_ghosts, revision_ids=revision_ids,
-                if_present_ids=if_present_ids, limit=limit)
+                find_ghosts=find_ghosts,
+                revision_ids=revision_ids,
+                if_present_ids=if_present_ids,
+                limit=limit,
+            )
 
     @staticmethod
     def open(base):
@@ -645,8 +666,10 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """
         if self._write_group is not self.get_transaction():
             # has an unlock or relock occured ?
-            raise errors.BzrError(f'mismatched lock context {self.get_transaction()!r} and '
-                                  f'write group {self._write_group!r}.')
+            raise errors.BzrError(
+                f"mismatched lock context {self.get_transaction()!r} and "
+                f"write group {self._write_group!r}."
+            )
         result = self._commit_write_group()
         self._write_group = None
         return result
@@ -689,7 +712,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         if not self.is_write_locked():
             raise errors.NotWriteLocked(self)
         if self._write_group:
-            raise errors.BzrError('already in a write group')
+            raise errors.BzrError("already in a write group")
         self._resume_write_group(tokens)
         # so we can detect unlock/relock - the write group is now entered.
         self._write_group = self.get_transaction()
@@ -716,26 +739,33 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         Returns: A FetchResult object
         """
         if self.is_in_write_group():
-            raise errors.InternalBzrError(
-                "May not fetch while in a write group.")
+            raise errors.InternalBzrError("May not fetch while in a write group.")
         # fast path same-url fetch operations
         # TODO: lift out to somewhere common with RemoteRepository
         # <https://bugs.launchpad.net/bzr/+bug/401646>
-        if (self.has_same_location(source)
-                and self._has_same_fallbacks(source)):
+        if self.has_same_location(source) and self._has_same_fallbacks(source):
             # check that last_revision is in 'from' and then return a
             # no-operation.
-            if (revision_id is not None and
-                    not _mod_revision.is_null(revision_id)):
+            if revision_id is not None and not _mod_revision.is_null(revision_id):
                 self.get_revision(revision_id)
             return 0, []
         inter = InterRepository.get(source, self)
         return inter.fetch(
-            revision_id=revision_id, find_ghosts=find_ghosts, lossy=lossy)
+            revision_id=revision_id, find_ghosts=find_ghosts, lossy=lossy
+        )
 
-    def get_commit_builder(self, branch, parents, config_stack, timestamp=None,
-                           timezone=None, committer=None, revprops=None,
-                           revision_id=None, lossy=False):
+    def get_commit_builder(
+        self,
+        branch,
+        parents,
+        config_stack,
+        timestamp=None,
+        timezone=None,
+        committer=None,
+        revprops=None,
+        revision_id=None,
+        lossy=False,
+    ):
         """Obtain a CommitBuilder for this repository.
 
         Args:
@@ -754,13 +784,13 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
     @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
-        if (self.control_files._lock_count == 1 and
-                self.control_files._lock_mode == 'w'):
+        if self.control_files._lock_count == 1 and self.control_files._lock_mode == "w":
             if self._write_group is not None:
                 self.abort_write_group()
                 self.control_files.unlock()
                 raise errors.BzrError(
-                    'Must end write groups before releasing write locks.')
+                    "Must end write groups before releasing write locks."
+                )
         self.control_files.unlock()
         if self.control_files._lock_count == 0:
             for repo in self._fallback_repositories:
@@ -777,8 +807,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         with self.lock_read():
             # TODO: deprecate after 0.16; cloning this with all its settings is
             # probably not very useful -- mbp 20070423
-            dest_repo = self._create_sprouting_repo(
-                controldir, shared=self.is_shared())
+            dest_repo = self._create_sprouting_repo(controldir, shared=self.is_shared())
             self.copy_content_into(dest_repo, revision_id)
             return dest_repo
 
@@ -800,7 +829,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         if not self.is_write_locked():
             raise errors.NotWriteLocked(self)
         if self._write_group:
-            raise errors.BzrError('already in a write group')
+            raise errors.BzrError("already in a write group")
         self._start_write_group()
         # so we can detect unlock/relock - the write group is now entered.
         self._write_group = self.get_transaction()
@@ -823,16 +852,14 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             return dest_repo
 
     def _create_sprouting_repo(self, a_controldir, shared):
-        if not isinstance(
-                a_controldir._format, self.controldir._format.__class__):
+        if not isinstance(a_controldir._format, self.controldir._format.__class__):
             # use target default format.
             dest_repo = a_controldir.create_repository()
         else:
             # Most control formats need the repository to be specifically
             # created, but on some old all-in-one formats it's not needed
             try:
-                dest_repo = self._format.initialize(
-                    a_controldir, shared=shared)
+                dest_repo = self._format.initialize(a_controldir, shared=shared)
             except errors.UninitializableFormat:
                 dest_repo = a_controldir.open_repository()
         return dest_repo
@@ -863,7 +890,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         against the revision one as get_revision does: but it should only
         be used by reconcile, or reconcile-alike commands that are correcting
         or testing the revision graph.
-        """  # noqa: D403
+        """
         raise NotImplementedError(self.get_revision_reconcile)
 
     def get_revisions(self, revision_ids):
@@ -925,9 +952,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             required_trees.add(revision.revision_id)
             required_trees.update(revision.parent_ids[:1])
 
-        trees = {
-            t.get_revision_id(): t
-            for t in self.revision_trees(required_trees)}
+        trees = {t.get_revision_id(): t for t in self.revision_trees(required_trees)}
 
         # Calculate the deltas
         for revision in revisions:
@@ -939,9 +964,10 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             yield intertree.compare(specific_files=specific_files)
             if specific_files is not None:
                 specific_files = [
-                    p for p in intertree.find_source_paths(
-                        specific_files).values()
-                    if p is not None]
+                    p
+                    for p in intertree.find_source_paths(specific_files).values()
+                    if p is not None
+                ]
 
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
         raise NotImplementedError(self.store_revision_signature)
@@ -986,8 +1012,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         if distance_from_known < 0:
             raise errors.RevnoOutOfBounds(revno, (0, known_revno))
         try:
-            _iter_for_revno(
-                self, partial_history, stop_index=distance_from_known)
+            _iter_for_revno(self, partial_history, stop_index=distance_from_known)
         except errors.RevisionNotPresent as err:
             if err.revision_id == known_revid:
                 # The start revision (known_revid) wasn't found.
@@ -1002,7 +1027,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             earliest_revno = known_revno - len(partial_history) + 1
             return (False, (earliest_revno, partial_history[-1]))
         if len(partial_history) - 1 > distance_from_known:
-            raise AssertionError('_iter_for_revno returned too much history')
+            raise AssertionError("_iter_for_revno returned too much history")
         return (True, partial_history[-1])
 
     def is_shared(self):
@@ -1082,15 +1107,15 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             if revision_id == _mod_revision.NULL_REVISION:
                 result[revision_id] = ()
             elif revision_id is None:
-                raise ValueError('get_parent_map(None) is not valid')
+                raise ValueError("get_parent_map(None) is not valid")
             else:
                 query_keys.append((revision_id,))
         vf = self.revisions.without_fallbacks()
-        for (revision_id,), parent_keys in (
-                vf.get_parent_map(query_keys).items()):
+        for (revision_id,), parent_keys in vf.get_parent_map(query_keys).items():
             if parent_keys:
-                result[revision_id] = tuple([parent_revid
-                                             for (parent_revid,) in parent_keys])
+                result[revision_id] = tuple(
+                    [parent_revid for (parent_revid,) in parent_keys]
+                )
             else:
                 result[revision_id] = (_mod_revision.NULL_REVISION,)
         return result
@@ -1098,13 +1123,14 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
     def _make_parents_provider(self):
         if not self._format.supports_external_lookups:
             return self
-        return graph.StackedParentsProvider(_LazyListJoin(
-            [self._make_parents_provider_unstacked()],
-            self._fallback_repositories))
+        return graph.StackedParentsProvider(
+            _LazyListJoin(
+                [self._make_parents_provider_unstacked()], self._fallback_repositories
+            )
+        )
 
     def _make_parents_provider_unstacked(self):
-        return graph.CallableToParentsProviderAdapter(
-            self._get_parent_map_no_fallbacks)
+        return graph.CallableToParentsProviderAdapter(self._get_parent_map_no_fallbacks)
 
     def get_known_graph_ancestry(self, revision_ids):
         """Return the known graph for a set of revision ids and their ancestors."""
@@ -1117,10 +1143,12 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
     def get_graph(self, other_repository=None):
         """Return the graph walker for this repository format."""
         parents_provider = self._make_parents_provider()
-        if (other_repository is not None and
-                not self.has_same_location(other_repository)):
+        if other_repository is not None and not self.has_same_location(
+            other_repository
+        ):
             parents_provider = graph.StackedParentsProvider(
-                [parents_provider, other_repository._make_parents_provider()])
+                [parents_provider, other_repository._make_parents_provider()]
+            )
         return graph.Graph(parents_provider)
 
     def set_make_working_trees(self, new_value):
@@ -1191,8 +1219,11 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
           check_repo: If False do not check the repository contents, just
             calculate the data callback_refs requires and call them back.
         """
-        return self._check(revision_ids=revision_ids, callback_refs=callback_refs,
-                           check_repo=check_repo)
+        return self._check(
+            revision_ids=revision_ids,
+            callback_refs=callback_refs,
+            check_repo=check_repo,
+        )
 
     def _check(self, revision_ids=None, callback_refs=None, check_repo=True):
         raise NotImplementedError(self.check)
@@ -1204,14 +1235,13 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         if _deprecation_warning_done:
             return
         try:
-            if branch is None:
-                conf = config.GlobalStack()
-            else:
-                conf = branch.get_config_stack()
-            if 'format_deprecation' in conf.get('suppress_warnings'):
+            conf = config.GlobalStack() if branch is None else branch.get_config_stack()
+            if "format_deprecation" in conf.get("suppress_warnings"):
                 return
-            warning(f"Format {self._format} for {self.controldir.transport.base} is deprecated -"
-                    " please use 'brz upgrade' to get better performance")
+            warning(
+                f"Format {self._format} for {self.controldir.transport.base} is deprecated -"
+                " please use 'brz upgrade' to get better performance"
+            )
         finally:
             _deprecation_warning_done = True
 
@@ -1225,12 +1255,12 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             # weaves require ascii revision ids.
             if isinstance(revision_id, str):
                 try:
-                    revision_id.encode('ascii')
+                    revision_id.encode("ascii")
                 except UnicodeEncodeError as err:
                     raise errors.NonAsciiRevisionId(method, self) from err
             else:
                 try:
-                    revision_id.decode('ascii')
+                    revision_id.decode("ascii")
                 except UnicodeDecodeError as err:
                     raise errors.NonAsciiRevisionId(method, self) from err
 
@@ -1240,7 +1270,7 @@ class RepositoryFormatRegistry(controldir.ControlComponentFormatRegistry):
 
     def get_default(self):
         """Return the current default format."""
-        return controldir.format_registry.make_controldir('default').repository_format
+        return controldir.format_registry.make_controldir("default").repository_format
 
 
 network_format_registry = registry.FormatRegistry["RepositoryFormat", None]()
@@ -1262,6 +1292,7 @@ can be called to obtain one.
 
 #####################################################################
 # Repository Formats
+
 
 class RepositoryFormat(controldir.ControlComponentFormat):
     """A repository format.
@@ -1412,13 +1443,14 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     def check_conversion_target(self, target_format):
         if self.rich_root_data and not target_format.rich_root_data:
             raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format,
-                from_format=self)
-        if (self.supports_tree_reference
-                and not getattr(target_format, 'supports_tree_reference', False)):
+                "Does not support rich root data.", target_format, from_format=self
+            )
+        if self.supports_tree_reference and not getattr(
+            target_format, "supports_tree_reference", False
+        ):
             raise errors.BadConversionTarget(
-                'Does not support nested trees', target_format,
-                from_format=self)
+                "Does not support nested trees", target_format, from_format=self
+            )
 
     def open(self, controldir, _found=False):
         """Return an instance of this format for a controldir.
@@ -1429,7 +1461,8 @@ class RepositoryFormat(controldir.ControlComponentFormat):
 
     def _run_post_repo_init_hooks(self, repository, controldir, shared):
         from .controldir import ControlDir, RepoInitHookParams
-        hooks = ControlDir.hooks['post_repo_init']
+
+        hooks = ControlDir.hooks["post_repo_init"]
         if not hooks:
             return
         params = RepoInitHookParams(repository, self, controldir, shared)
@@ -1497,7 +1530,9 @@ class InterRepository(InterObject[Repository]):
     _optimisers = []
     """The available optimised InterRepository types."""
 
-    def copy_content(self, revision_id: Optional[_mod_revision.RevisionID] = None) -> None:
+    def copy_content(
+        self, revision_id: Optional[_mod_revision.RevisionID] = None
+    ) -> None:
         """Make a complete copy of the content in self into destination.
 
         This is a destructive operation! Do not use it on existing
@@ -1508,14 +1543,18 @@ class InterRepository(InterObject[Repository]):
                             revision_id and its parents.
         """
         with self.lock_write():
-            try:
-                self.target.set_make_working_trees(
-                    self.source.make_working_trees())
-            except (NotImplementedError, errors.RepositoryUpgradeRequired):
-                pass
+            with contextlib.suppress(
+                NotImplementedError, errors.RepositoryUpgradeRequired
+            ):
+                self.target.set_make_working_trees(self.source.make_working_trees())
             self.target.fetch(self.source, revision_id=revision_id)
 
-    def fetch(self, revision_id: Optional[_mod_revision.RevisionID] = None, find_ghosts: bool = False, lossy: bool = False) -> FetchResult:
+    def fetch(
+        self,
+        revision_id: Optional[_mod_revision.RevisionID] = None,
+        find_ghosts: bool = False,
+        lossy: bool = False,
+    ) -> FetchResult:
         """Fetch the content required to construct revision_id.
 
         The content is copied from self.source to self.target.
@@ -1528,9 +1567,12 @@ class InterRepository(InterObject[Repository]):
         raise NotImplementedError(self.fetch)
 
     def search_missing_revision_ids(
-            self, find_ghosts: bool = True, revision_ids: Optional[Iterable[_mod_revision.RevisionID]] = None,
-            if_present_ids: Optional[Iterable[_mod_revision.RevisionID]] = None,
-            limit: Optional[int] = None) -> AbstractSearchResult:
+        self,
+        find_ghosts: bool = True,
+        revision_ids: Optional[Iterable[_mod_revision.RevisionID]] = None,
+        if_present_ids: Optional[Iterable[_mod_revision.RevisionID]] = None,
+        limit: Optional[int] = None,
+    ) -> AbstractSearchResult:
         """Return the revision ids that source has that target does not.
 
         Args:
@@ -1566,20 +1608,27 @@ class InterRepository(InterObject[Repository]):
     def _assert_same_model(source, target):
         """Raise an exception if two repositories do not use the same model."""
         if source.supports_rich_root() != target.supports_rich_root():
-            raise errors.IncompatibleRepositories(source, target,
-                                                  "different rich-root support")
-        if not hasattr(source, '_revision_serializer') or not hasattr(target, '_revision_serializer'):
+            raise errors.IncompatibleRepositories(
+                source, target, "different rich-root support"
+            )
+        if not hasattr(source, "_revision_serializer") or not hasattr(
+            target, "_revision_serializer"
+        ):
             if source != target:
-                raise errors.IncompatibleRepositories(source, target, "different formats")
+                raise errors.IncompatibleRepositories(
+                    source, target, "different formats"
+                )
             return
 
         if source._inventory_serializer != target._inventory_serializer:
-            raise errors.IncompatibleRepositories(source, target,
-                                                  "different inventory serializers")
+            raise errors.IncompatibleRepositories(
+                source, target, "different inventory serializers"
+            )
 
         if source._revision_serializer != target._revision_serializer:
-            raise errors.IncompatibleRepositories(source, target,
-                                                  "different revision serializers")
+            raise errors.IncompatibleRepositories(
+                source, target, "different revision serializers"
+            )
 
 
 class CopyConverter:
@@ -1610,23 +1659,23 @@ class CopyConverter:
             # trigger an assertion if not such
             repo._format.get_format_string()
             self.repo_dir = repo.controldir
-            pb.update(gettext('Moving repository to repository.backup'))
-            self.repo_dir.transport.move('repository', 'repository.backup')
-            backup_transport = self.repo_dir.transport.clone(
-                'repository.backup')
+            pb.update(gettext("Moving repository to repository.backup"))
+            self.repo_dir.transport.move("repository", "repository.backup")
+            backup_transport = self.repo_dir.transport.clone("repository.backup")
             repo._format.check_conversion_target(self.target_format)
-            self.source_repo = repo._format.open(self.repo_dir,
-                                                 _found=True,
-                                                 _override_transport=backup_transport)
-            pb.update(gettext('Creating new repository'))
-            converted = self.target_format.initialize(self.repo_dir,
-                                                      self.source_repo.is_shared())
+            self.source_repo = repo._format.open(
+                self.repo_dir, _found=True, _override_transport=backup_transport
+            )
+            pb.update(gettext("Creating new repository"))
+            converted = self.target_format.initialize(
+                self.repo_dir, self.source_repo.is_shared()
+            )
             with converted.lock_write():
-                pb.update(gettext('Copying content'))
+                pb.update(gettext("Copying content"))
                 self.source_repo.copy_content_into(converted)
-            pb.update(gettext('Deleting old repository content'))
-            self.repo_dir.transport.delete_tree('repository.backup')
-            ui.ui_factory.note(gettext('repository converted'))
+            pb.update(gettext("Deleting old repository content"))
+            self.repo_dir.transport.delete_tree("repository.backup")
+            ui.ui_factory.note(gettext("repository converted"))
 
 
 def _strip_NULL_ghosts(revision_graph):
@@ -1635,13 +1684,13 @@ def _strip_NULL_ghosts(revision_graph):
     if _mod_revision.NULL_REVISION in revision_graph:
         del revision_graph[_mod_revision.NULL_REVISION]
     for key, parents in revision_graph.items():
-        revision_graph[key] = tuple(parent for parent in parents if parent
-                                    in revision_graph)
+        revision_graph[key] = tuple(
+            parent for parent in parents if parent in revision_graph
+        )
     return revision_graph
 
 
-def _iter_for_revno(repo, partial_history_cache, stop_index=None,
-                    stop_revision=None):
+def _iter_for_revno(repo, partial_history_cache, stop_index=None, stop_revision=None):
     """Extend the partial history to include a given index.
 
     If a stop_index is supplied, stop when that index has been reached.
@@ -1657,14 +1706,14 @@ def _iter_for_revno(repo, partial_history_cache, stop_index=None,
     """
     start_revision = partial_history_cache[-1]
     graph = repo.get_graph()
-    iterator = graph.iter_lefthand_ancestry(start_revision,
-                                            (_mod_revision.NULL_REVISION,))
+    iterator = graph.iter_lefthand_ancestry(
+        start_revision, (_mod_revision.NULL_REVISION,)
+    )
     try:
         # skip the last revision in the list
         next(iterator)
         while True:
-            if (stop_index is not None and
-                    len(partial_history_cache) > stop_index):
+            if stop_index is not None and len(partial_history_cache) > stop_index:
                 break
             if partial_history_cache[-1] == stop_revision:
                 break

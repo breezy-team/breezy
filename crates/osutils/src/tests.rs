@@ -6,9 +6,8 @@ fn assert_chunks_to_lines(input: Vec<&str>, expected: Vec<&str>) {
     let iter = input.iter().map(|l| Ok::<&[u8], String>(l.as_bytes()));
     let got = chunks_to_lines(iter);
     let got = got
-        .map(|l| String::from_utf8(l.unwrap()))
-        .collect::<Result<Vec<_>, _>>()
-        .unwrap();
+        .map(|l| String::from_utf8_lossy(l.unwrap().as_ref()).to_string())
+        .collect::<Vec<_>>();
     assert_eq!(got, expected);
 }
 

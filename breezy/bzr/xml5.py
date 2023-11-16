@@ -16,7 +16,7 @@
 
 from breezy._bzr_rs import revision_serializer_v5  # noqa: F401
 
-from .. import errors, osutils
+from .. import errors
 from . import inventory, xml6
 from .xml_serializer import encode_and_escape, get_utf8_or_ascii, unpack_inventory_entry
 
@@ -26,72 +26,57 @@ class InventorySerializer_v5(xml6.InventorySerializer_v6):
 
     Packs objects into XML and vice versa.
     """
-    format_num = b'5'
+
+    format_num = b"5"
     root_id = inventory.ROOT_ID
 
-    def _unpack_inventory(self, elt, revision_id, entry_cache=None,
-                          return_from_cache=False):
+    def _unpack_inventory(
+        self, elt, revision_id, entry_cache=None, return_from_cache=False
+    ):
         """Construct from XML Element."""
-        root_id = elt.get('file_id') or inventory.ROOT_ID
+        root_id = elt.get("file_id") or inventory.ROOT_ID
         root_id = get_utf8_or_ascii(root_id)
 
-        format = elt.get('format')
-        if format is not None:
-            if format != '5':
-                raise errors.BzrError(f"invalid format version {format!r} on inventory")
-        data_revision_id = elt.get('revision_id')
+        format = elt.get("format")
+        if format is not None and format != "5":
+            raise errors.BzrError(f"invalid format version {format!r} on inventory")
+        data_revision_id = elt.get("revision_id")
         if data_revision_id is not None:
-            revision_id = data_revision_id.encode('utf-8')
-        inv = inventory.Inventory(root_id, revision_id=revision_id)
+            revision_id = data_revision_id.encode("utf-8")
+        inv = inventory.Inventory(root_id=None, revision_id=revision_id)
+        root = inventory.InventoryDirectory(root_id, "", None, revision=revision_id)
+        inv.add(root)
+
         # Optimizations tested
         #   baseline w/entry cache  2.85s
         #   using inv._byid         2.55s
         #   avoiding attributes     2.46s
         #   adding assertions       2.50s
         #   last_parent cache       2.52s (worse, removed)
-        byid = inv._byid
-        children = inv._children
+
         for e in elt:
-            ie = unpack_inventory_entry(e, entry_cache=entry_cache,
-                                        return_from_cache=return_from_cache, root_id=root_id)
-            try:
-                parent = byid[ie.parent_id]
-            except KeyError as err:
-                raise errors.BzrError(f"parent_id {{{ie.parent_id}}} not in inventory") from err
-            if ie.file_id in byid:
-                raise inventory.DuplicateFileId(ie.file_id, byid[ie.file_id])
-            siblings = children[parent.file_id]
-            if ie.name in siblings:
-                raise errors.BzrError(
-                    "{} is already versioned".format(
-                        osutils.pathjoin(
-                            inv.id2path(ie.parent_id), ie.name).encode('utf-8')))
-            siblings[ie.name] = ie
-            byid[ie.file_id] = ie
-            if ie.kind == 'directory':
-                children[ie.file_id] = {}
-        if revision_id is not None:
-            inv.root.revision = revision_id
+            ie = unpack_inventory_entry(
+                e,
+                entry_cache=entry_cache,
+                return_from_cache=return_from_cache,
+                root_id=root_id,
+            )
+            inv.add(ie)
         self._check_cache_size(len(inv), entry_cache)
         return inv
-
-    def _check_revisions(self, inv):
-        """Extension point for subclasses to check during serialisation.
-
-        In this version, no checking is done.
-
-        :param inv: An inventory about to be serialised, to be checked.
-        :raises: AssertionError if an error has occurred.
-        """
 
     def _append_inventory_root(self, append, inv):
         """Append the inventory root to output."""
         if inv.root.file_id not in (None, inventory.ROOT_ID):
-            fileid = b''.join([b' file_id="', encode_and_escape(inv.root.file_id), b'"'])
+            fileid = b"".join(
+                [b' file_id="', encode_and_escape(inv.root.file_id), b'"']
+            )
         else:
             fileid = b""
         if inv.revision_id is not None:
-            revid = b''.join([b' revision_id="', encode_and_escape(inv.revision_id), b'"'])
+            revid = b"".join(
+                [b' revision_id="', encode_and_escape(inv.revision_id), b'"']
+            )
         else:
             revid = b""
         append(b'<inventory%s format="5"%s>\n' % (fileid, revid))

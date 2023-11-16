@@ -16,6 +16,7 @@
 
 """Custom module finder for entire package."""
 
+import contextlib
 import os
 import sys
 
@@ -37,9 +38,8 @@ class CustomModuleFinder(modulefinder.ModuleFinder):
         if replace_paths is None:
             replace_paths = []
         if path is None:
-            path = [os.path.dirname(os.__file__)]    # only python std lib
-        modulefinder.ModuleFinder.__init__(
-            self, path, debug, excludes, replace_paths)
+            path = [os.path.dirname(os.__file__)]  # only python std lib
+        modulefinder.ModuleFinder.__init__(self, path, debug, excludes, replace_paths)
 
     def load_package_recursive(self, fqname):
         """Recursively process each module in package.
@@ -58,12 +58,10 @@ class CustomModuleFinder(modulefinder.ModuleFinder):
             # (The actual error is
             # AttributeError: 'NoneType' object has no attribute 'is_package')
             # Ignore errors here and bail out in the collection loop.
-            try:
+            with contextlib.suppress(BaseException):
                 self.import_module(
-                    partname, ".".join(path),
-                    self.modules.get(parent_path, None))
-            except BaseException:
-                pass
+                    partname, ".".join(path), self.modules.get(parent_path, None)
+                )
         stack = [(fqname, parent_path)]
         while stack:
             (package, parent_path) = stack.pop(0)
@@ -78,19 +76,17 @@ class CustomModuleFinder(modulefinder.ModuleFinder):
                 if os.path.isdir(full):
                     if filename == "tests":
                         continue
-                    init = os.path.join(full, '__init__.py')
+                    init = os.path.join(full, "__init__.py")
                     if os.path.isfile(init):
                         stack.append((".".join((package, filename)), package))
                     continue
-                if not filename.endswith('.py'):
+                if not filename.endswith(".py"):
                     continue
-                if filename == 'setup.py':     # skip
+                if filename == "setup.py":  # skip
                     continue
                 # We only accept .py files, so could use [:-3] too - faster...
                 partname = os.path.splitext(filename)[0]
-                self.import_module(
-                    partname,
-                    ".".join((package, partname)), pkg_module)
+                self.import_module(partname, ".".join((package, partname)), pkg_module)
 
     def get_result(self):
         """Return 2-tuple: (list of packages, list of modules)."""
@@ -99,16 +95,16 @@ class CustomModuleFinder(modulefinder.ModuleFinder):
         packs = []
         for key in keys:
             m = self.modules[key]
-            if not m.__file__:      # skip builtins
+            if not m.__file__:  # skip builtins
                 continue
             if m.__path__:
                 packs.append(key)
-            elif key != '__main__':
+            elif key != "__main__":
                 mods.append(key)
         return (packs, mods)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     package = sys.argv[1]
 
     mf = CustomModuleFinder()
@@ -116,8 +112,8 @@ if __name__ == '__main__':
 
     packs, mods = mf.get_result()
 
-    print('Packages:')
+    print("Packages:")
     print(packs)
 
-    print('Modules:')
+    print("Modules:")
     print(mods)

@@ -17,6 +17,7 @@
 """Unpeel map storage."""
 
 
+import contextlib
 from collections import defaultdict
 from io import BytesIO
 from typing import Dict, Set
@@ -44,8 +45,7 @@ class UnpeelMap:
     def load(self, f):
         firstline = f.readline()
         if firstline != b"unpeel map version 1\n":
-            raise AssertionError(
-                f"invalid format for unpeel map: {firstline!r}")
+            raise AssertionError(f"invalid format for unpeel map: {firstline!r}")
         for l in f.readlines():
             (k, v) = l.split(b":", 1)
             k = k.strip()
@@ -84,8 +84,6 @@ class UnpeelMap:
     def from_repository(cls, repository):
         """Load the unpeel map for a repository."""
         m = UnpeelMap()
-        try:
+        with contextlib.suppress(_mod_transport.NoSuchFile):
             m.load(repository.control_transport.get("git-unpeel-map"))
-        except _mod_transport.NoSuchFile:
-            pass
         return m

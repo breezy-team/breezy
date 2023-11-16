@@ -32,7 +32,7 @@ from typing import (
 
 from .pyutils import get_named_object
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class _ObjectGetter(Generic[T]):
@@ -45,7 +45,7 @@ class _ObjectGetter(Generic[T]):
     instance, etc)
     """
 
-    __slots__ = ['_obj']
+    __slots__ = ["_obj"]
 
     _obj: T
 
@@ -67,7 +67,7 @@ class _LazyObjectGetter(_ObjectGetter[T]):
     When requested, load and return it.
     """
 
-    __slots__ = ['_module_name', '_member_name', '_imported']
+    __slots__ = ["_module_name", "_member_name", "_imported"]
 
     def __init__(self, module_name, member_name):
         self._module_name = module_name
@@ -91,14 +91,21 @@ class _LazyObjectGetter(_ObjectGetter[T]):
         return super().get_obj()
 
     def __repr__(self):
-        return "<{}.{} object at {:x}, module={!r} attribute={!r} imported={!r}>".format(
-            self.__class__.__module__, self.__class__.__name__, id(self),
-            self._module_name, self._member_name, self._imported)
+        return (
+            "<{}.{} object at {:x}, module={!r} attribute={!r} imported={!r}>".format(
+                self.__class__.__module__,
+                self.__class__.__name__,
+                id(self),
+                self._module_name,
+                self._member_name,
+                self._imported,
+            )
+        )
 
 
-K = TypeVar('K')
-V = TypeVar('V')
-I = TypeVar('I')
+K = TypeVar("K")
+V = TypeVar("V")
+I = TypeVar("I")
 
 
 class Registry(Generic[K, V, I]):
@@ -122,7 +129,9 @@ class Registry(Generic[K, V, I]):
         self._default_key = None
         self._dict: Dict[K, _ObjectGetter[V]] = {}
         self._aliases: Dict[K, K] = {}
-        self._help_dict: Dict[K, Union[Callable[[Registry[K, V, I], Optional[K]], str], str]] = {}
+        self._help_dict: Dict[
+            K, Union[Callable[[Registry[K, V, I], Optional[K]], str], str]
+        ] = {}
         self._info_dict: Dict[K, Any] = {}
 
     def aliases(self) -> Dict[K, K]:
@@ -135,9 +144,14 @@ class Registry(Generic[K, V, I]):
             ret.setdefault(target, []).append(alias)
         return ret
 
-    def register(self, key: K, obj: V, help: Optional[str] = None,
-                 info: Optional[I] = None,
-                 override_existing: bool = False):
+    def register(
+        self,
+        key: K,
+        obj: V,
+        help: Optional[str] = None,
+        info: Optional[I] = None,
+        override_existing: bool = False,
+    ):
         """Register a new object to a name.
 
         :param key: This is the key to use to request the object later.
@@ -153,15 +167,20 @@ class Registry(Generic[K, V, I]):
                 already been registered for that key. If True, ignore if there
                 is an existing key (always register the new value).
         """
-        if not override_existing:
-            if key in self._dict:
-                raise KeyError(f'Key {key!r} already registered')
+        if not override_existing and key in self._dict:
+            raise KeyError(f"Key {key!r} already registered")
         self._dict[key] = _ObjectGetter[V](obj)
         self._add_help_and_info(key, help=help, info=info)
 
-    def register_lazy(self, key: K, module_name: str, member_name: str,
-                      help: Optional[str] = None, info: Optional[I] = None,
-                      override_existing: bool = False) -> None:
+    def register_lazy(
+        self,
+        key: K,
+        module_name: str,
+        member_name: str,
+        help: Optional[str] = None,
+        info: Optional[I] = None,
+        override_existing: bool = False,
+    ) -> None:
         """Register a new object to be loaded on request.
 
         :param key: This is the key to use to request the object later.
@@ -177,9 +196,8 @@ class Registry(Generic[K, V, I]):
                 with the new one. If False, if there is already something
                 registered with the same key, raise a KeyError
         """
-        if not override_existing:
-            if key in self._dict:
-                raise KeyError(f'Key {key!r} already registered')
+        if not override_existing and key in self._dict:
+            raise KeyError(f"Key {key!r} already registered")
         self._dict[key] = _LazyObjectGetter[V](module_name, member_name)
         self._add_help_and_info(key, help=help, info=info)
 
@@ -190,7 +208,7 @@ class Registry(Generic[K, V, I]):
         :param target: Target key name
         """
         if key in self._dict and key not in self._aliases:
-            raise KeyError(f'Key {key!r} already registered and not an alias')
+            raise KeyError(f"Key {key!r} already registered and not an alias")
         self._dict[key] = self._dict[target]
         self._aliases[key] = target
         if info is None:
@@ -238,14 +256,14 @@ class Registry(Generic[K, V, I]):
         """
         for key in self.keys():
             if fullname.startswith(key):
-                return self.get(key), fullname[len(key):]
+                return self.get(key), fullname[len(key) :]
 
     def _get_key_or_default(self, key=None):
         """Return either 'key' or the default key if key is None."""
         if key is not None:
             return key
         if self.default_key is None:
-            raise KeyError('Key is None, and no default key is set')
+            raise KeyError("Key is None, and no default key is set")
         else:
             return self.default_key
 
@@ -270,6 +288,9 @@ class Registry(Generic[K, V, I]):
     def __contains__(self, key):
         return key in self._dict
 
+    def __iter__(self):
+        return iter(self._dict)
+
     def keys(self):
         """Get a list of registered entries."""
         return sorted(self._dict)
@@ -285,20 +306,23 @@ class Registry(Generic[K, V, I]):
 
     def _set_default_key(self, key):
         if key not in self._dict:
-            raise KeyError(f'No object registered under key {key}.')
+            raise KeyError(f"No object registered under key {key}.")
         else:
             self._default_key = key
 
     def _get_default_key(self):
         return self._default_key
 
-    default_key = property(_get_default_key, _set_default_key,
-                           doc="Current value of the default key."
-                           " Can be set to any existing key.")
+    default_key = property(
+        _get_default_key,
+        _set_default_key,
+        doc="Current value of the default key." " Can be set to any existing key.",
+    )
 
 
-Format = TypeVar('Format')
-Info = TypeVar('Info')
+Format = TypeVar("Format")
+Info = TypeVar("Info")
+
 
 class FormatRegistry(Registry[str, Union[Format, Callable[[], Format]], Info]):
     """Registry specialised for handling formats."""
@@ -307,24 +331,44 @@ class FormatRegistry(Registry[str, Union[Format, Callable[[], Format]], Info]):
         super().__init__()
         self._other_registry = other_registry
 
-    def register(self, key, obj, help=None, info=None,
-                 override_existing=False):
-        Registry.register(self, key, obj, help=help, info=info,
-                          override_existing=override_existing)
+    def register(self, key, obj, help=None, info=None, override_existing=False):
+        Registry.register(
+            self, key, obj, help=help, info=info, override_existing=override_existing
+        )
         if self._other_registry is not None:
-            self._other_registry.register(key, obj, help=help,
-                                          info=info, override_existing=override_existing)
+            self._other_registry.register(
+                key, obj, help=help, info=info, override_existing=override_existing
+            )
 
-    def register_lazy(self, key, module_name, member_name,
-                      help=None, info=None,
-                      override_existing=False):
+    def register_lazy(
+        self,
+        key,
+        module_name,
+        member_name,
+        help=None,
+        info=None,
+        override_existing=False,
+    ):
         # Overridden to allow capturing registrations to two seperate
         # registries in a single call.
-        Registry.register_lazy(self, key, module_name, member_name,
-                               help=help, info=info, override_existing=override_existing)
+        Registry.register_lazy(
+            self,
+            key,
+            module_name,
+            member_name,
+            help=help,
+            info=info,
+            override_existing=override_existing,
+        )
         if self._other_registry is not None:
-            self._other_registry.register_lazy(key, module_name, member_name,
-                                               help=help, info=info, override_existing=override_existing)
+            self._other_registry.register_lazy(
+                key,
+                module_name,
+                member_name,
+                help=help,
+                info=info,
+                override_existing=override_existing,
+            )
 
     def remove(self, key):
         super().remove(key)

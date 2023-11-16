@@ -22,7 +22,9 @@ from typing import Optional
 
 from . import lazy_import
 
-lazy_import.lazy_import(globals(), """
+lazy_import.lazy_import(
+    globals(),
+    """
 from breezy import (
     diff,
     email_message,
@@ -36,7 +38,8 @@ from breezy.bzr import rio
 from breezy.bzr.bundle import (
     serializer as bundle_serializer,
     )
-""")
+""",
+)
 from . import branch as _mod_branch
 from . import errors, hooks, registry, trace
 from . import revision as _mod_revision
@@ -55,8 +58,9 @@ class IllegalMergeDirectivePayload(errors.BzrError):
 class MergeRequestBodyParams:
     """Parameter object for the merge_request_body hook."""
 
-    def __init__(self, body, orig_body, directive, to, basename, subject,
-                 branch, tree=None):
+    def __init__(
+        self, body, orig_body, directive, to, basename, subject, branch, tree=None
+    ):
         self.body = body
         self.orig_body = orig_body
         self.directive = directive
@@ -71,14 +75,15 @@ class MergeDirectiveHooks(hooks.Hooks):
     """Hooks for MergeDirective classes."""
 
     def __init__(self):
-        hooks.Hooks.__init__(self, "breezy.merge_directive",
-                             "BaseMergeDirective.hooks")
+        hooks.Hooks.__init__(self, "breezy.merge_directive", "BaseMergeDirective.hooks")
         self.add_hook(
-            'merge_request_body',
+            "merge_request_body",
             "Called with a MergeRequestBodyParams when a body is needed for"
             " a merge request.  Callbacks must return a body.  If more"
             " than one callback is registered, the output of one callback is"
-            " provided to the next.", (1, 15, 0))
+            " provided to the next.",
+            (1, 15, 0),
+        )
 
 
 class BaseMergeDirective:
@@ -98,10 +103,18 @@ class BaseMergeDirective:
     revision_id: _mod_revision.RevisionID
     message: str
 
-    def __init__(self, revision_id: _mod_revision.RevisionID, testament_sha1:
-                 bytes, time, timezone,
-                 target_branch, patch=None, source_branch=None,
-                 message=None, bundle=None):
+    def __init__(
+        self,
+        revision_id: _mod_revision.RevisionID,
+        testament_sha1: bytes,
+        time,
+        timezone,
+        target_branch,
+        patch=None,
+        source_branch=None,
+        message=None,
+        bundle=None,
+    ):
         """Constructor.
 
         :param revision_id: The revision to merge
@@ -150,18 +163,20 @@ class BaseMergeDirective:
         :return: a list of lines
         """
         time_str = _mod_patch.format_patch_date(self.time, self.timezone)
-        stanza = rio.Stanza(revision_id=self.revision_id.decode('utf-8'),
-                            timestamp=time_str,
-                            target_branch=self.target_branch,
-                            testament_sha1=self.testament_sha1.decode('utf-8'))
-        for key in ('source_branch', 'message'):
+        stanza = rio.Stanza(
+            revision_id=self.revision_id.decode("utf-8"),
+            timestamp=time_str,
+            target_branch=self.target_branch,
+            testament_sha1=self.testament_sha1.decode("utf-8"),
+        )
+        for key in ("source_branch", "message"):
             if self.__dict__[key] is not None:
                 stanza.add(key, self.__dict__[key])
         if base_revision:
-            stanza.add('base_revision_id', self.base_revision_id.decode('utf-8'))
-        lines = [b'# ' + self._format_string + b'\n']
+            stanza.add("base_revision_id", self.base_revision_id.decode("utf-8"))
+        lines = [b"# " + self._format_string + b"\n"]
         lines.extend(rio_patch.to_patch_lines(stanza))
-        lines.append(b'# \n')
+        lines.append(b"# \n")
         return lines
 
     def write_to_directory(self, path):
@@ -172,10 +187,18 @@ class BaseMergeDirective:
         raise NotImplementedError(self.write_to_directory)
 
     @classmethod
-    def from_objects(cls, repository, revision_id: _mod_revision.RevisionID,
-                     time, timezone,
-                     target_branch, patch_type='bundle',
-                     local_target_branch=None, public_branch=None, message=None):
+    def from_objects(
+        cls,
+        repository,
+        revision_id: _mod_revision.RevisionID,
+        time,
+        timezone,
+        target_branch,
+        patch_type="bundle",
+        local_target_branch=None,
+        public_branch=None,
+        message=None,
+    ):
         """Generate a merge directive from various objects.
 
         :param repository: The repository containing the revision
@@ -201,6 +224,7 @@ class BaseMergeDirective:
         if revision_id == _mod_revision.NULL_REVISION:
             t_revision_id = None
         from .bzr.testament import StrictTestament3
+
         t = StrictTestament3.from_revision(repository, t_revision_id)
         if local_target_branch is None:
             submit_branch = _mod_branch.Branch.open(target_branch)
@@ -214,22 +238,30 @@ class BaseMergeDirective:
             submit_revision_id = submit_branch.last_revision()
             repository.fetch(submit_branch.repository, submit_revision_id)
             graph = repository.get_graph()
-            ancestor_id = graph.find_unique_lca(revision_id,
-                                                submit_revision_id)
-            type_handler = {'bundle': cls._generate_bundle,
-                            'diff': cls._generate_diff,
-                            None: lambda x, y, z: None}
-            patch = type_handler[patch_type](repository, revision_id,
-                                             ancestor_id)
+            ancestor_id = graph.find_unique_lca(revision_id, submit_revision_id)
+            type_handler = {
+                "bundle": cls._generate_bundle,
+                "diff": cls._generate_diff,
+                None: lambda x, y, z: None,
+            }
+            patch = type_handler[patch_type](repository, revision_id, ancestor_id)
 
-        if public_branch is not None and patch_type != 'bundle':
+        if public_branch is not None and patch_type != "bundle":
             public_branch_obj = _mod_branch.Branch.open(public_branch)
             if not public_branch_obj.repository.has_revision(revision_id):
-                raise errors.PublicBranchOutOfDate(public_branch,
-                                                   revision_id)
+                raise errors.PublicBranchOutOfDate(public_branch, revision_id)
 
-        return cls(revision_id, t.as_sha1(), time, timezone, target_branch,
-                   patch, patch_type, public_branch, message)
+        return cls(
+            revision_id,
+            t.as_sha1(),
+            time,
+            timezone,
+            target_branch,
+            patch,
+            patch_type,
+            public_branch,
+            message,
+        )
 
     def get_disk_name(self, branch):
         """Generate a suitable basename for storing this directive on disk.
@@ -244,8 +276,8 @@ class BaseMergeDirective:
             try:
                 revno = branch.revision_id_to_dotted_revno(self.revision_id)
             except errors.NoSuchRevision:
-                revno = ['merge']
-        nick = re.sub('(\\W+)', '-', branch.nick).strip('-')
+                revno = ["merge"]
+        nick = re.sub("(\\W+)", "-", branch.nick).strip("-")
         return f"{nick}-{'.'.join(str(n) for n in revno)}"
 
     @staticmethod
@@ -253,14 +285,13 @@ class BaseMergeDirective:
         tree_1 = repository.revision_tree(ancestor_id)
         tree_2 = repository.revision_tree(revision_id)
         s = BytesIO()
-        diff.show_diff_trees(tree_1, tree_2, s, old_label='', new_label='')
+        diff.show_diff_trees(tree_1, tree_2, s, old_label="", new_label="")
         return s.getvalue()
 
     @classmethod
     def _generate_bundle(cls, repository, revision_id, ancestor_id):
         s = BytesIO()
-        bundle_serializer.write_bundle(repository, revision_id,
-                                       ancestor_id, s)
+        bundle_serializer.write_bundle(repository, revision_id, ancestor_id, s)
         return s.getvalue()
 
     def to_signed(self, branch):
@@ -270,7 +301,7 @@ class BaseMergeDirective:
         :return: a string
         """
         my_gpg = gpg.GPGStrategy(branch.get_config_stack())
-        return my_gpg.sign(b''.join(self.to_lines()), gpg.MODE_CLEAR)
+        return my_gpg.sign(b"".join(self.to_lines()), gpg.MODE_CLEAR)
 
     def to_email(self, mail_to, branch, sign=False):
         """Serialize as an email message.
@@ -281,26 +312,21 @@ class BaseMergeDirective:
         :param sign: If True, gpg-sign the email
         :return: an email message
         """
-        mail_from = branch.get_config_stack().get('email')
+        mail_from = branch.get_config_stack().get("email")
         if self.message is not None:
             subject = self.message
         else:
             revision = branch.repository.get_revision(self.revision_id)
             subject = revision.message
-        if sign:
-            body = self.to_signed(branch)
-        else:
-            body = b''.join(self.to_lines())
-        message = email_message.EmailMessage(mail_from, mail_to, subject,
-                                             body)
+        body = self.to_signed(branch) if sign else b"".join(self.to_lines())
+        message = email_message.EmailMessage(mail_from, mail_to, subject, body)
         return message
 
     def install_revisions(self, target_repo):
         """Install revisions and return the target revision."""
         if not target_repo.has_revision(self.revision_id):
-            if self.patch_type == 'bundle':
-                info = bundle_serializer.read_bundle(
-                    BytesIO(self.get_raw_bundle()))
+            if self.patch_type == "bundle":
+                info = bundle_serializer.read_bundle(BytesIO(self.get_raw_bundle()))
                 # We don't use the bundle's target revision, because
                 # MergeDirective.revision_id is authoritative.
                 try:
@@ -309,17 +335,17 @@ class BaseMergeDirective:
                     # At least one dependency isn't present.  Try installing
                     # missing revisions from the submit branch
                     try:
-                        submit_branch = \
-                            _mod_branch.Branch.open(self.target_branch)
+                        submit_branch = _mod_branch.Branch.open(self.target_branch)
                     except errors.NotBranchError as e:
                         raise errors.TargetNotBranch(self.target_branch) from e
                     missing_revisions = []
-                    bundle_revisions = {r.revision_id for r in
-                                           info.real_revisions}
+                    bundle_revisions = {r.revision_id for r in info.real_revisions}
                     for revision in info.real_revisions:
                         for parent_id in revision.parent_ids:
-                            if (parent_id not in bundle_revisions
-                                    and not target_repo.has_revision(parent_id)):
+                            if (
+                                parent_id not in bundle_revisions
+                                and not target_repo.has_revision(parent_id)
+                            ):
                                 missing_revisions.append(parent_id)
                     # reverse missing revisions to try to get heads first
                     unique_missing = []
@@ -330,8 +356,7 @@ class BaseMergeDirective:
                         unique_missing.append(revision)
                         unique_missing_set.add(revision)
                     for missing_revision in unique_missing:
-                        target_repo.fetch(submit_branch.repository,
-                                          missing_revision)
+                        target_repo.fetch(submit_branch.repository, missing_revision)
                     info.install_revisions(target_repo, stream_input=False)
             else:
                 source_branch = _mod_branch.Branch.open(self.source_branch)
@@ -348,26 +373,28 @@ class BaseMergeDirective:
             directive.
         """
         basename = self.get_disk_name(branch)
-        subject = '[MERGE] '
+        subject = "[MERGE] "
         if self.message is not None:
             subject += self.message
         else:
             revision = branch.repository.get_revision(self.revision_id)
             subject += revision.get_summary()
-        if getattr(mail_client, 'supports_body', False):
+        if getattr(mail_client, "supports_body", False):
             orig_body = body
-            for hook in self.hooks['merge_request_body']:
-                params = MergeRequestBodyParams(body, orig_body, self,
-                                                to, basename, subject, branch,
-                                                tree)
+            for hook in self.hooks["merge_request_body"]:
+                params = MergeRequestBodyParams(
+                    body, orig_body, self, to, basename, subject, branch, tree
+                )
                 body = hook(params)
-        elif len(self.hooks['merge_request_body']) > 0:
-            trace.warning('Cannot run merge_request_body hooks because mail'
-                          ' client %s does not support message bodies.',
-                          mail_client.__class__.__name__)
-        mail_client.compose_merge_request(to, subject,
-                                          b''.join(self.to_lines()),
-                                          basename, body)
+        elif len(self.hooks["merge_request_body"]) > 0:
+            trace.warning(
+                "Cannot run merge_request_body hooks because mail"
+                " client %s does not support message bodies.",
+                mail_client.__class__.__name__,
+            )
+        mail_client.compose_merge_request(
+            to, subject, b"".join(self.to_lines()), basename, body
+        )
 
 
 class MergeDirective(BaseMergeDirective):
@@ -385,11 +412,21 @@ class MergeDirective(BaseMergeDirective):
     directly using the standard patch program.
     """
 
-    _format_string = b'Bazaar merge directive format 1'
+    _format_string = b"Bazaar merge directive format 1"
 
-    def __init__(self, revision_id, testament_sha1, time, timezone,
-                 target_branch, patch=None, patch_type=None,
-                 source_branch=None, message=None, bundle=None):
+    def __init__(
+        self,
+        revision_id,
+        testament_sha1,
+        time,
+        timezone,
+        target_branch,
+        patch=None,
+        patch_type=None,
+        source_branch=None,
+        message=None,
+        bundle=None,
+    ):
         """Constructor.
 
         :param revision_id: The revision to merge
@@ -405,12 +442,19 @@ class MergeDirective(BaseMergeDirective):
         :param message: The message to use when committing this merge
         """
         BaseMergeDirective.__init__(
-            self, revision_id=revision_id, testament_sha1=testament_sha1, time=time,
-            timezone=timezone, target_branch=target_branch, patch=patch,
-            source_branch=source_branch, message=message)
-        if patch_type not in (None, 'diff', 'bundle'):
+            self,
+            revision_id=revision_id,
+            testament_sha1=testament_sha1,
+            time=time,
+            timezone=timezone,
+            target_branch=target_branch,
+            patch=patch,
+            source_branch=source_branch,
+            message=message,
+        )
+        if patch_type not in (None, "diff", "bundle"):
             raise ValueError(patch_type)
-        if patch_type != 'bundle' and source_branch is None:
+        if patch_type != "bundle" and source_branch is None:
             raise errors.NoMergeSource()
         if patch_type is not None and patch is None:
             raise errors.PatchMissing(patch_type)
@@ -424,7 +468,7 @@ class MergeDirective(BaseMergeDirective):
         return self.bundle
 
     def _bundle(self):
-        if self.patch_type == 'bundle':
+        if self.patch_type == "bundle":
             return self.patch
         else:
             return None
@@ -441,9 +485,8 @@ class MergeDirective(BaseMergeDirective):
         line_iter = iter(lines)
         firstline = b""
         for line in line_iter:
-            if line.startswith(b'# Bazaar merge directive format '):
-                return _format_registry.get(line[2:].rstrip())._from_lines(
-                    line_iter)
+            if line.startswith(b"# Bazaar merge directive format "):
+                return _format_registry.get(line[2:].rstrip())._from_lines(line_iter)
             firstline = firstline or line.strip()
         raise errors.NotAMergeDirective(firstline)
 
@@ -455,27 +498,30 @@ class MergeDirective(BaseMergeDirective):
             patch = None
             patch_type = None
         else:
-            patch = b''.join(patch_lines)
+            patch = b"".join(patch_lines)
             try:
                 bundle_serializer.read_bundle(BytesIO(patch))
-            except (errors.NotABundle, errors.BundleNotSupported,
-                    errors.BadBundle):
-                patch_type = 'diff'
+            except (errors.NotABundle, errors.BundleNotSupported, errors.BadBundle):
+                patch_type = "diff"
             else:
-                patch_type = 'bundle'
-        time, timezone = _mod_patch.parse_patch_date(stanza.get('timestamp'))
+                patch_type = "bundle"
+        time, timezone = _mod_patch.parse_patch_date(stanza.get("timestamp"))
         kwargs = {}
-        for key in ('revision_id', 'testament_sha1', 'target_branch',
-                    'source_branch', 'message'):
-            try:
+        for key in (
+            "revision_id",
+            "testament_sha1",
+            "target_branch",
+            "source_branch",
+            "message",
+        ):
+            with contextlib.suppress(KeyError):
                 kwargs[key] = stanza.get(key)
-            except KeyError:
-                pass
-        kwargs['revision_id'] = kwargs['revision_id'].encode('utf-8')
-        if 'testament_sha1' in kwargs:
-            kwargs['testament_sha1'] = kwargs['testament_sha1'].encode('ascii')
-        return MergeDirective(time=time, timezone=timezone,
-                              patch_type=patch_type, patch=patch, **kwargs)
+        kwargs["revision_id"] = kwargs["revision_id"].encode("utf-8")
+        if "testament_sha1" in kwargs:
+            kwargs["testament_sha1"] = kwargs["testament_sha1"].encode("ascii")
+        return MergeDirective(
+            time=time, timezone=timezone, patch_type=patch_type, patch=patch, **kwargs
+        )
 
     def to_lines(self):
         lines = self._to_lines()
@@ -484,9 +530,11 @@ class MergeDirective(BaseMergeDirective):
         return lines
 
     @classmethod
-    def _generate_bundle(cls, repository, revision_id: _mod_revision.RevisionID, ancestor_id):
+    def _generate_bundle(
+        cls, repository, revision_id: _mod_revision.RevisionID, ancestor_id
+    ):
         s = BytesIO()
-        bundle_serializer.write_bundle(repository, revision_id, ancestor_id, s, '0.9')  # type: ignore
+        bundle_serializer.write_bundle(repository, revision_id, ancestor_id, s, "0.9")  # type: ignore
         return s.getvalue()
 
     def get_merge_request(self, repository):
@@ -494,30 +542,47 @@ class MergeDirective(BaseMergeDirective):
 
         Returns suggested base, suggested target, and patch verification status
         """
-        return None, self.revision_id, 'inapplicable'
+        return None, self.revision_id, "inapplicable"
 
 
 class MergeDirective2(BaseMergeDirective):
+    _format_string = b"Bazaar merge directive format 2 (Bazaar 0.90)"
 
-    _format_string = b'Bazaar merge directive format 2 (Bazaar 0.90)'
-
-    def __init__(self, *, revision_id, testament_sha1, time, timezone,
-                 target_branch, patch=None, source_branch=None, message=None,
-                 bundle=None, base_revision_id=None):
+    def __init__(
+        self,
+        *,
+        revision_id,
+        testament_sha1,
+        time,
+        timezone,
+        target_branch,
+        patch=None,
+        source_branch=None,
+        message=None,
+        bundle=None,
+        base_revision_id=None,
+    ):
         if source_branch is None and bundle is None:
             raise errors.NoMergeSource()
         BaseMergeDirective.__init__(
-            self, revision_id=revision_id, testament_sha1=testament_sha1,
-            time=time, timezone=timezone, target_branch=target_branch,
-            patch=patch, source_branch=source_branch, message=message)
+            self,
+            revision_id=revision_id,
+            testament_sha1=testament_sha1,
+            time=time,
+            timezone=timezone,
+            target_branch=target_branch,
+            patch=patch,
+            source_branch=source_branch,
+            message=message,
+        )
         self.bundle = bundle
         self.base_revision_id = base_revision_id
 
     def _patch_type(self):
         if self.bundle is not None:
-            return 'bundle'
+            return "bundle"
         elif self.patch is not None:
-            return 'diff'
+            return "diff"
         else:
             return None
 
@@ -543,52 +608,65 @@ class MergeDirective2(BaseMergeDirective):
         except StopIteration:
             pass
         else:
-            if start.startswith(b'# Begin patch'):
+            if start.startswith(b"# Begin patch"):
                 patch_lines = []
                 for line in line_iter:
-                    if line.startswith(b'# Begin bundle'):
+                    if line.startswith(b"# Begin bundle"):
                         start = line
                         break
                     patch_lines.append(line)
                 else:
                     start = None
-                patch = b''.join(patch_lines)
+                patch = b"".join(patch_lines)
             if start is not None:
-                if start.startswith(b'# Begin bundle'):
-                    bundle = b''.join(line_iter)
+                if start.startswith(b"# Begin bundle"):
+                    bundle = b"".join(line_iter)
                 else:
                     raise IllegalMergeDirectivePayload(start)
-        time, timezone = _mod_patch.parse_patch_date(stanza.get('timestamp'))
+        time, timezone = _mod_patch.parse_patch_date(stanza.get("timestamp"))
         kwargs = {}
-        for key in ('revision_id', 'testament_sha1', 'target_branch',
-                    'source_branch', 'message', 'base_revision_id'):
-            try:
+        for key in (
+            "revision_id",
+            "testament_sha1",
+            "target_branch",
+            "source_branch",
+            "message",
+            "base_revision_id",
+        ):
+            with contextlib.suppress(KeyError):
                 kwargs[key] = stanza.get(key)
-            except KeyError:
-                pass
-        kwargs['revision_id'] = kwargs['revision_id'].encode('utf-8')
-        kwargs['base_revision_id'] =\
-            kwargs['base_revision_id'].encode('utf-8')
-        if 'testament_sha1' in kwargs:
-            kwargs['testament_sha1'] = kwargs['testament_sha1'].encode('ascii')
-        return cls(time=time, timezone=timezone, patch=patch, bundle=bundle,
-                   **kwargs)
+        kwargs["revision_id"] = kwargs["revision_id"].encode("utf-8")
+        kwargs["base_revision_id"] = kwargs["base_revision_id"].encode("utf-8")
+        if "testament_sha1" in kwargs:
+            kwargs["testament_sha1"] = kwargs["testament_sha1"].encode("ascii")
+        return cls(time=time, timezone=timezone, patch=patch, bundle=bundle, **kwargs)
 
     def to_lines(self):
         lines = self._to_lines(base_revision=True)
         if self.patch is not None:
-            lines.append(b'# Begin patch\n')
+            lines.append(b"# Begin patch\n")
             lines.extend(self.patch.splitlines(True))
         if self.bundle is not None:
-            lines.append(b'# Begin bundle\n')
+            lines.append(b"# Begin bundle\n")
             lines.extend(self.bundle.splitlines(True))
         return lines
 
     @classmethod
-    def from_objects(cls, *, repository, revision_id, time, timezone,
-                     target_branch, include_patch=True, include_bundle=True,
-                     local_target_branch=None, public_branch=None, message=None,
-                     base_revision_id=None):
+    def from_objects(
+        cls,
+        *,
+        repository,
+        revision_id,
+        time,
+        timezone,
+        target_branch,
+        include_patch=True,
+        include_bundle=True,
+        local_target_branch=None,
+        public_branch=None,
+        message=None,
+        base_revision_id=None,
+    ):
         """Generate a merge directive from various objects.
 
         :param repository: The repository containing the revision
@@ -613,11 +691,11 @@ class MergeDirective2(BaseMergeDirective):
         with contextlib.ExitStack() as exit_stack:
             exit_stack.enter_context(repository.lock_write())
             t_revision_id = revision_id
-            if revision_id == b'null:':
+            if revision_id == b"null:":
                 t_revision_id = None
             from .bzr.testament import StrictTestament3
-            t = StrictTestament3.from_revision(repository,
-                                                         t_revision_id)
+
+            t = StrictTestament3.from_revision(repository, t_revision_id)
             if local_target_branch is None:
                 submit_branch = _mod_branch.Branch.open(target_branch)
             else:
@@ -627,47 +705,53 @@ class MergeDirective2(BaseMergeDirective):
                 target_branch = submit_branch.get_public_branch()
             submit_revision_id = submit_branch.last_revision()
             graph = repository.get_graph(submit_branch.repository)
-            ancestor_id = graph.find_unique_lca(revision_id,
-                                                submit_revision_id)
+            ancestor_id = graph.find_unique_lca(revision_id, submit_revision_id)
             if base_revision_id is None:
                 base_revision_id = ancestor_id
             if (include_patch, include_bundle) != (False, False):
                 repository.fetch(submit_branch.repository, submit_revision_id)
             if include_patch:
-                patch = cls._generate_diff(repository, revision_id,
-                                             base_revision_id)
+                patch = cls._generate_diff(repository, revision_id, base_revision_id)
             else:
                 patch = None
 
             if include_bundle:
-                bundle = base64.b64encode(cls._generate_bundle(repository, revision_id,
-                                                                 ancestor_id))
+                bundle = base64.b64encode(
+                    cls._generate_bundle(repository, revision_id, ancestor_id)
+                )
             else:
                 bundle = None
 
             if public_branch is not None and not include_bundle:
                 public_branch_obj = _mod_branch.Branch.open(public_branch)
                 exit_stack.enter_context(public_branch_obj.lock_read())
-                if not public_branch_obj.repository.has_revision(
-                        revision_id):
-                    raise errors.PublicBranchOutOfDate(public_branch,
-                                                       revision_id)
+                if not public_branch_obj.repository.has_revision(revision_id):
+                    raise errors.PublicBranchOutOfDate(public_branch, revision_id)
             testament_sha1 = t.as_sha1()
-        return cls(revision_id=revision_id, testament_sha1=testament_sha1,
-                   time=time, timezone=timezone,
-                   target_branch=target_branch, patch=patch, source_branch=public_branch,
-                   message=message, bundle=bundle, base_revision_id=base_revision_id)
+        return cls(
+            revision_id=revision_id,
+            testament_sha1=testament_sha1,
+            time=time,
+            timezone=timezone,
+            target_branch=target_branch,
+            patch=patch,
+            source_branch=public_branch,
+            message=message,
+            bundle=bundle,
+            base_revision_id=base_revision_id,
+        )
 
     def _verify_patch(self, repository):
-        calculated_patch = self._generate_diff(repository, self.revision_id,
-                                               self.base_revision_id)
+        calculated_patch = self._generate_diff(
+            repository, self.revision_id, self.base_revision_id
+        )
         # Convert line-endings to UNIX
-        stored_patch = re.sub(b'\r\n?', b'\n', self.patch)
-        calculated_patch = re.sub(b'\r\n?', b'\n', calculated_patch)
+        stored_patch = re.sub(b"\r\n?", b"\n", self.patch)
+        calculated_patch = re.sub(b"\r\n?", b"\n", calculated_patch)
         # Strip trailing whitespace
-        calculated_patch = re.sub(b' *\n', b'\n', calculated_patch)
-        stored_patch = re.sub(b' *\n', b'\n', stored_patch)
-        return (calculated_patch == stored_patch)
+        calculated_patch = re.sub(b" *\n", b"\n", calculated_patch)
+        stored_patch = re.sub(b" *\n", b"\n", stored_patch)
+        return calculated_patch == stored_patch
 
     def get_merge_request(self, repository):
         """Provide data for performing a merge.
@@ -680,15 +764,14 @@ class MergeDirective2(BaseMergeDirective):
     def _maybe_verify(self, repository):
         if self.patch is not None:
             if self._verify_patch(repository):
-                return 'verified'
+                return "verified"
             else:
-                return 'failed'
+                return "failed"
         else:
-            return 'inapplicable'
+            return "inapplicable"
 
 
 class MergeDirectiveFormatRegistry(registry.Registry):
-
     def register(self, directive, format_string=None):
         if format_string is None:
             format_string = directive._format_string
@@ -701,5 +784,6 @@ _format_registry.register(MergeDirective2)
 # 0.19 never existed.  It got renamed to 0.90.  But by that point, there were
 # already merge directives in the wild that used 0.19. Registering with the old
 # format string to retain compatibility with those merge directives.
-_format_registry.register(MergeDirective2,
-                          b'Bazaar merge directive format 2 (Bazaar 0.19)')
+_format_registry.register(
+    MergeDirective2, b"Bazaar merge directive format 2 (Bazaar 0.19)"
+)

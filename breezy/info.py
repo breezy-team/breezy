@@ -14,8 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-__all__ = ['show_bzrdir_info']
+__all__ = ["show_bzrdir_info"]
 
+import contextlib
 import sys
 import time
 from io import StringIO
@@ -28,17 +29,16 @@ from .errors import NoRepositoryPresent, NotBranchError, NotLocalUrl, NoWorkingT
 from .missing import find_unmerged
 
 
-def plural(n, base='', pl=None):
+def plural(n, base="", pl=None):
     if n == 1:
         return base
     elif pl is not None:
         return pl
     else:
-        return 's'
+        return "s"
 
 
 class LocationList:
-
     def __init__(self, base_path):
         self.locs = []
         self.base_path = base_path
@@ -61,10 +61,10 @@ class LocationList:
         except errors.PathNotChild:
             pass
         else:
-            if path == '':
-                path = '.'
-        if path != '/':
-            path = path.rstrip('/')
+            if path == "":
+                path = "."
+        if path != "/":
+            path = path.rstrip("/")
         self.locs.append((label, path))
 
     def get_lines(self):
@@ -72,8 +72,7 @@ class LocationList:
         return ["  %*s: %s\n" % (max_len, l, u) for l, u in self.locs]
 
 
-def gather_location_info(repository=None, branch=None, working=None,
-                         control=None):
+def gather_location_info(repository=None, branch=None, working=None, control=None):
     locs = {}
     if branch is not None:
         branch_path = branch.user_url
@@ -85,66 +84,74 @@ def gather_location_info(repository=None, branch=None, working=None,
         master_path = None
         try:
             if control is not None and control.get_branch_reference():
-                locs['checkout of branch'] = control.get_branch_reference()
+                locs["checkout of branch"] = control.get_branch_reference()
         except NotBranchError:
             pass
     if working:
         working_path = working.user_url
         if working_path != branch_path:
-            locs['light checkout root'] = working_path
+            locs["light checkout root"] = working_path
         if master_path != branch_path:
             if repository.is_shared():
-                locs['repository checkout root'] = branch_path
+                locs["repository checkout root"] = branch_path
             else:
-                locs['checkout root'] = branch_path
+                locs["checkout root"] = branch_path
         if working_path != master_path:
-            (master_path_base, params) = urlutils.split_segment_parameters(
-                master_path)
+            (master_path_base, params) = urlutils.split_segment_parameters(master_path)
             if working_path == master_path_base:
-                locs['checkout of co-located branch'] = params['branch']
-            elif 'branch' in params:
-                locs['checkout of branch'] = "{}, branch {}".format(
-                    master_path_base, params['branch'])
+                locs["checkout of co-located branch"] = params["branch"]
+            elif "branch" in params:
+                locs["checkout of branch"] = "{}, branch {}".format(
+                    master_path_base, params["branch"]
+                )
             else:
-                locs['checkout of branch'] = master_path
+                locs["checkout of branch"] = master_path
         elif repository.is_shared():
-            locs['repository branch'] = branch_path
+            locs["repository branch"] = branch_path
         elif branch_path is not None:
             # standalone
-            locs['branch root'] = branch_path
+            locs["branch root"] = branch_path
     else:
         working_path = None
         if repository is not None and repository.is_shared():
             # lightweight checkout of branch in shared repository
             if branch_path is not None:
-                locs['repository branch'] = branch_path
+                locs["repository branch"] = branch_path
         elif branch_path is not None:
             # standalone
-            locs['branch root'] = branch_path
+            locs["branch root"] = branch_path
         elif repository is not None:
-            locs['repository'] = repository.user_url
+            locs["repository"] = repository.user_url
         elif control is not None:
-            locs['control directory'] = control.user_url
+            locs["control directory"] = control.user_url
         else:
             # Really, at least a control directory should be
             # passed in for this method to be useful.
             pass
         if master_path != branch_path:
-            locs['bound to branch'] = master_path
+            locs["bound to branch"] = master_path
     if repository is not None and repository.is_shared():
         # lightweight checkout of branch in shared repository
-        locs['shared repository'] = repository.user_url
-    order = ['control directory', 'light checkout root',
-             'repository checkout root', 'checkout root',
-             'checkout of branch', 'checkout of co-located branch',
-             'shared repository', 'repository', 'repository branch',
-             'branch root', 'bound to branch']
+        locs["shared repository"] = repository.user_url
+    order = [
+        "control directory",
+        "light checkout root",
+        "repository checkout root",
+        "checkout root",
+        "checkout of branch",
+        "checkout of co-located branch",
+        "shared repository",
+        "repository",
+        "repository branch",
+        "branch root",
+        "bound to branch",
+    ]
     return [(n, locs[n]) for n in order if n in locs]
 
 
 def _show_location_info(locs, outfile):
     """Show known locations for working, branch and repository."""
-    outfile.write('Location:\n')
+    outfile.write("Location:\n")
     path_list = LocationList(osutils.getcwd())
     for name, loc in locs:
         path_list.add_url(name, loc)
@@ -153,15 +160,16 @@ def _show_location_info(locs, outfile):
 
 def _gather_related_branches(branch):
     locs = LocationList(osutils.getcwd())
-    locs.add_url('public branch', branch.get_public_branch())
-    locs.add_url('push branch', branch.get_push_location())
-    locs.add_url('parent branch', branch.get_parent())
-    locs.add_url('submit branch', branch.get_submit_branch())
-    try:
-        locs.add_url('stacked on', branch.get_stacked_on_url())
-    except (_mod_branch.UnstackableBranchFormat, errors.UnstackableRepositoryFormat,
-            errors.NotStacked):
-        pass
+    locs.add_url("public branch", branch.get_public_branch())
+    locs.add_url("push branch", branch.get_push_location())
+    locs.add_url("parent branch", branch.get_parent())
+    locs.add_url("submit branch", branch.get_submit_branch())
+    with contextlib.suppress(
+        _mod_branch.UnstackableBranchFormat,
+        errors.UnstackableRepositoryFormat,
+        errors.NotStacked,
+    ):
+        locs.add_url("stacked on", branch.get_stacked_on_url())
     return locs
 
 
@@ -169,61 +177,56 @@ def _show_related_info(branch, outfile):
     """Show parent and push location of branch."""
     locs = _gather_related_branches(branch)
     if len(locs.locs) > 0:
-        outfile.write('\n')
-        outfile.write('Related branches:\n')
+        outfile.write("\n")
+        outfile.write("Related branches:\n")
         outfile.writelines(locs.get_lines())
 
 
 def _show_control_dir_info(control, outfile):
     """Show control dir information."""
     if control._format.colocated_branches:
-        outfile.write('\n')
-        outfile.write('Control directory:\n')
-        outfile.write(f'         {len(control.list_branches())} branches\n')
+        outfile.write("\n")
+        outfile.write("Control directory:\n")
+        outfile.write(f"         {len(control.list_branches())} branches\n")
 
 
-def _show_format_info(control=None, repository=None, branch=None,
-                      working=None, outfile=None):
+def _show_format_info(
+    control=None, repository=None, branch=None, working=None, outfile=None
+):
     """Show known formats for control, working, branch and repository."""
-    outfile.write('\n')
-    outfile.write('Format:\n')
+    outfile.write("\n")
+    outfile.write("Format:\n")
     if control:
-        outfile.write(f'       control: {control._format.get_format_description()}\n')
+        outfile.write(f"       control: {control._format.get_format_description()}\n")
     if working:
-        outfile.write(f'  working tree: {working._format.get_format_description()}\n')
+        outfile.write(f"  working tree: {working._format.get_format_description()}\n")
     if branch:
-        outfile.write(f'        branch: {branch._format.get_format_description()}\n')
+        outfile.write(f"        branch: {branch._format.get_format_description()}\n")
     if repository:
-        outfile.write('    repository: %s\n' %
-                      repository._format.get_format_description())
+        outfile.write(
+            "    repository: %s\n" % repository._format.get_format_description()
+        )
 
 
-def _show_locking_info(repository=None, branch=None, working=None,
-                       outfile=None):
+def _show_locking_info(repository=None, branch=None, working=None, outfile=None):
     """Show locking status of working, branch and repository."""
-    if (repository and repository.get_physical_lock_status() or
-        (branch and branch.get_physical_lock_status()) or
-            (working and working.get_physical_lock_status())):
-        outfile.write('\n')
-        outfile.write('Lock status:\n')
+    if (
+        repository
+        and repository.get_physical_lock_status()
+        or (branch and branch.get_physical_lock_status())
+        or (working and working.get_physical_lock_status())
+    ):
+        outfile.write("\n")
+        outfile.write("Lock status:\n")
         if working:
-            if working.get_physical_lock_status():
-                status = 'locked'
-            else:
-                status = 'unlocked'
-            outfile.write(f'  working tree: {status}\n')
+            status = "locked" if working.get_physical_lock_status() else "unlocked"
+            outfile.write(f"  working tree: {status}\n")
         if branch:
-            if branch.get_physical_lock_status():
-                status = 'locked'
-            else:
-                status = 'unlocked'
-            outfile.write(f'        branch: {status}\n')
+            status = "locked" if branch.get_physical_lock_status() else "unlocked"
+            outfile.write(f"        branch: {status}\n")
         if repository:
-            if repository.get_physical_lock_status():
-                status = 'locked'
-            else:
-                status = 'unlocked'
-            outfile.write(f'    repository: {status}\n')
+            status = "locked" if repository.get_physical_lock_status() else "unlocked"
+            outfile.write(f"    repository: {status}\n")
 
 
 def _show_missing_revisions_branch(branch, outfile):
@@ -233,10 +236,11 @@ def _show_missing_revisions_branch(branch, outfile):
     if master:
         local_extra, remote_extra = find_unmerged(branch, master)
         if remote_extra:
-            outfile.write('\n')
-            outfile.write(('Branch is out of date: missing %d '
-                           'revision%s.\n') % (len(remote_extra),
-                                               plural(len(remote_extra))))
+            outfile.write("\n")
+            outfile.write(
+                ("Branch is out of date: missing %d " "revision%s.\n")
+                % (len(remote_extra), plural(len(remote_extra)))
+            )
 
 
 def _show_missing_revisions_working(working, outfile):
@@ -254,9 +258,11 @@ def _show_missing_revisions_working(working, outfile):
     if branch_revno and tree_last_id != branch_last_revision:
         tree_last_revno = branch.revision_id_to_revno(tree_last_id)
         missing_count = branch_revno - tree_last_revno
-        outfile.write('\n')
-        outfile.write(('Working tree is out of date: missing %d '
-                       'revision%s.\n') % (missing_count, plural(missing_count)))
+        outfile.write("\n")
+        outfile.write(
+            ("Working tree is out of date: missing %d " "revision%s.\n")
+            % (missing_count, plural(missing_count))
+        )
 
 
 def _show_working_stats(working, outfile):
@@ -264,14 +270,14 @@ def _show_working_stats(working, outfile):
     basis = working.basis_tree()
     delta = working.changes_from(basis, want_unchanged=True)
 
-    outfile.write('\n')
-    outfile.write('In the working tree:\n')
-    outfile.write('  %8s unchanged\n' % len(delta.unchanged))
-    outfile.write(f'  {len(delta.modified):8} modified\n')
-    outfile.write(f'  {len(delta.added):8} added\n')
-    outfile.write(f'  {len(delta.removed):8} removed\n')
-    outfile.write(f'  {len(delta.renamed):8} renamed\n')
-    outfile.write(f'  {len(delta.copied):8} copied\n')
+    outfile.write("\n")
+    outfile.write("In the working tree:\n")
+    outfile.write("  %8s unchanged\n" % len(delta.unchanged))
+    outfile.write(f"  {len(delta.modified):8} modified\n")
+    outfile.write(f"  {len(delta.added):8} added\n")
+    outfile.write(f"  {len(delta.removed):8} removed\n")
+    outfile.write(f"  {len(delta.renamed):8} renamed\n")
+    outfile.write(f"  {len(delta.copied):8} copied\n")
 
     ignore_cnt = unknown_cnt = 0
     for path in working.extras():
@@ -279,15 +285,17 @@ def _show_working_stats(working, outfile):
             ignore_cnt += 1
         else:
             unknown_cnt += 1
-    outfile.write('  %8d unknown\n' % unknown_cnt)
-    outfile.write('  %8d ignored\n' % ignore_cnt)
+    outfile.write("  %8d unknown\n" % unknown_cnt)
+    outfile.write("  %8d ignored\n" % ignore_cnt)
 
     dir_cnt = 0
     for path, entry in working.iter_entries_by_dir():
-        if entry.kind == 'directory' and path != '':
+        if entry.kind == "directory" and path != "":
             dir_cnt += 1
-    outfile.write('  %8d versioned %s\n' % (dir_cnt,
-                                            plural(dir_cnt, 'subdirectory', 'subdirectories')))
+    outfile.write(
+        "  %8d versioned %s\n"
+        % (dir_cnt, plural(dir_cnt, "subdirectory", "subdirectories"))
+    )
 
 
 def _show_branch_stats(branch, verbose, outfile):
@@ -296,47 +304,49 @@ def _show_branch_stats(branch, verbose, outfile):
         revno, head = branch.last_revision_info()
     except errors.UnsupportedOperation:
         return {}
-    outfile.write('\n')
-    outfile.write('Branch history:\n')
-    outfile.write('  %8d revision%s\n' % (revno, plural(revno)))
+    outfile.write("\n")
+    outfile.write("Branch history:\n")
+    outfile.write("  %8d revision%s\n" % (revno, plural(revno)))
     stats = branch.repository.gather_stats(head, committers=verbose)
     if verbose:
-        committers = stats['committers']
-        outfile.write('  %8d committer%s\n' % (committers,
-                                               plural(committers)))
+        committers = stats["committers"]
+        outfile.write("  %8d committer%s\n" % (committers, plural(committers)))
     if revno:
-        timestamp, timezone = stats['firstrev']
+        timestamp, timezone = stats["firstrev"]
         age = int((time.time() - timestamp) / 3600 / 24)
-        outfile.write('  %8d day%s old\n' % (age, plural(age)))
-        outfile.write('   first revision: %s\n' %
-                      osutils.format_date(timestamp, timezone))
-        timestamp, timezone = stats['latestrev']
-        outfile.write('  latest revision: %s\n' %
-                      osutils.format_date(timestamp, timezone))
+        outfile.write("  %8d day%s old\n" % (age, plural(age)))
+        outfile.write(
+            "   first revision: %s\n" % osutils.format_date(timestamp, timezone)
+        )
+        timestamp, timezone = stats["latestrev"]
+        outfile.write(
+            "  latest revision: %s\n" % osutils.format_date(timestamp, timezone)
+        )
     return stats
 
 
 def _show_repository_info(repository, outfile):
     """Show settings of a repository."""
     if repository.make_working_trees():
-        outfile.write('\n')
-        outfile.write('Create working tree for new branches inside '
-                      'the repository.\n')
+        outfile.write("\n")
+        outfile.write(
+            "Create working tree for new branches inside " "the repository.\n"
+        )
 
 
 def _show_repository_stats(repository, stats, outfile):
     """Show statistics about a repository."""
     f = StringIO()
-    if 'revisions' in stats:
-        revisions = stats['revisions']
-        f.write('  %8d revision%s\n' % (revisions, plural(revisions)))
-    if 'size' in stats:
-        f.write('  %8d KiB\n' % (stats['size'] / 1024))
-    for hook in hooks['repository']:
+    if "revisions" in stats:
+        revisions = stats["revisions"]
+        f.write("  %8d revision%s\n" % (revisions, plural(revisions)))
+    if "size" in stats:
+        f.write("  %8d KiB\n" % (stats["size"] / 1024))
+    for hook in hooks["repository"]:
         hook(repository, stats, f)
     if f.getvalue() != "":
-        outfile.write('\n')
-        outfile.write('Repository:\n')
+        outfile.write("\n")
+        outfile.write("Repository:\n")
         outfile.write(f.getvalue())
 
 
@@ -345,8 +355,7 @@ def show_bzrdir_info(a_controldir, verbose=False, outfile=None):
     if outfile is None:
         outfile = sys.stdout
     try:
-        tree = a_controldir.open_workingtree(
-            recommend_upgrade=False)
+        tree = a_controldir.open_workingtree(recommend_upgrade=False)
     except (NoWorkingTree, NotLocalUrl, NotBranchError):
         tree = None
         try:
@@ -371,15 +380,15 @@ def show_bzrdir_info(a_controldir, verbose=False, outfile=None):
     if lockable is not None:
         lockable.lock_read()
     try:
-        show_component_info(a_controldir, repository, branch, tree, verbose,
-                            outfile)
+        show_component_info(a_controldir, repository, branch, tree, verbose, outfile)
     finally:
         if lockable is not None:
             lockable.unlock()
 
 
-def show_component_info(control, repository, branch=None, working=None,
-                        verbose=1, outfile=None):
+def show_component_info(
+    control, repository, branch=None, working=None, verbose=1, outfile=None
+):
     """Write info about all bzrdir components to stdout."""
     if outfile is None:
         outfile = sys.stdout
@@ -391,9 +400,11 @@ def show_component_info(control, repository, branch=None, working=None,
     format = describe_format(control, repository, branch, working)
     outfile.write(f"{layout} (format: {format})\n")
     _show_location_info(
-        gather_location_info(control=control, repository=repository,
-                             branch=branch, working=working),
-        outfile)
+        gather_location_info(
+            control=control, repository=repository, branch=branch, working=working
+        ),
+        outfile,
+    )
     if branch is not None:
         _show_related_info(branch, outfile)
     if verbose == 0:
@@ -435,43 +446,36 @@ def describe_layout(repository=None, branch=None, tree=None, control=None):
             if branch_reference is not None:
                 return "Dangling branch reference"
     if repository is None:
-        return 'Empty control directory'
+        return "Empty control directory"
     if branch is None and tree is None:
         if repository.is_shared():
-            phrase = 'Shared repository'
+            phrase = "Shared repository"
         else:
-            phrase = 'Unshared repository'
+            phrase = "Unshared repository"
         extra = []
         if repository.make_working_trees():
-            extra.append('trees')
+            extra.append("trees")
         if len(control.branch_names()) > 0:
-            extra.append('colocated branches')
+            extra.append("colocated branches")
         if extra:
-            phrase += ' with ' + " and ".join(extra)
+            phrase += " with " + " and ".join(extra)
         return phrase
     else:
-        if repository.is_shared():
-            independence = "Repository "
-        else:
-            independence = "Standalone "
-        if tree is not None:
-            phrase = "tree"
-        else:
-            phrase = "branch"
+        independence = "Repository " if repository.is_shared() else "Standalone "
+        phrase = "tree" if tree is not None else "branch"
         if branch is None and tree is not None:
             phrase = "branchless tree"
         else:
-            if (tree is not None and tree.controldir.control_url !=
-                    branch.controldir.control_url):
-                independence = ''
+            if (
+                tree is not None
+                and tree.controldir.control_url != branch.controldir.control_url
+            ):
+                independence = ""
                 phrase = "Lightweight checkout"
             elif branch.get_bound_location() is not None:
-                if independence == 'Standalone ':
-                    independence = ''
-                if tree is None:
-                    phrase = "Bound branch"
-                else:
-                    phrase = "Checkout"
+                if independence == "Standalone ":
+                    independence = ""
+                phrase = "Bound branch" if tree is None else "Checkout"
         if independence != "":
             phrase = phrase.lower()
         return f"{independence}{phrase}"
@@ -486,8 +490,7 @@ def describe_format(control, repository, branch, tree):
     If no matching candidate is found, "unnamed" is returned.
     """
     candidates = []
-    if (branch is not None and tree is not None and
-            branch.user_url != tree.user_url):
+    if branch is not None and tree is not None and branch.user_url != tree.user_url:
         branch = None
         repository = None
     non_aliases = set(controldir.format_registry.keys())
@@ -495,29 +498,27 @@ def describe_format(control, repository, branch, tree):
     for key in non_aliases:
         format = controldir.format_registry.make_controldir(key)
         if isinstance(format, bzrdir.BzrDirMetaFormat1):
-            if (tree and format.workingtree_format !=
-                    tree._format):
+            if tree and format.workingtree_format != tree._format:
                 continue
-            if (branch and format.get_branch_format() !=
-                    branch._format):
+            if branch and format.get_branch_format() != branch._format:
                 continue
-            if (repository and format.repository_format !=
-                    repository._format):
+            if repository and format.repository_format != repository._format:
                 continue
         if format.__class__ is not control._format.__class__:
             continue
         candidates.append(key)
     if len(candidates) == 0:
-        return 'unnamed'
+        return "unnamed"
     candidates.sort()
-    new_candidates = [c for c in candidates if not
-                      controldir.format_registry.get_info(c).hidden]
+    new_candidates = [
+        c for c in candidates if not controldir.format_registry.get_info(c).hidden
+    ]
     if len(new_candidates) > 0:
         # If there are any non-hidden formats that match, only return those to
         # avoid listing hidden formats except when only a hidden format will
         # do.
         candidates = new_candidates
-    return ' or '.join(candidates)
+    return " or ".join(candidates)
 
 
 class InfoHooks(_mod_hooks.Hooks):
@@ -526,10 +527,12 @@ class InfoHooks(_mod_hooks.Hooks):
     def __init__(self):
         super().__init__("breezy.info", "hooks")
         self.add_hook(
-            'repository',
+            "repository",
             "Invoked when displaying the statistics for a repository. "
             "repository is called with a statistics dictionary as returned "
-            "by the repository and a file-like object to write to.", (1, 15))
+            "by the repository and a file-like object to write to.",
+            (1, 15),
+        )
 
 
 hooks = InfoHooks()

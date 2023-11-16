@@ -44,33 +44,36 @@ from .transport import Transport
 
 have_fcntl = True
 
+
 def ReadLock(path):
-    return _transport_rs.ReadLock(path, 'strict_locks' in debug.debug_flags)
+    return _transport_rs.ReadLock(path, "strict_locks" in debug.debug_flags)
+
 
 def WriteLock(path):
-    return _transport_rs.WriteLock(path, 'strict_locks' in debug.debug_flags)
-
+    return _transport_rs.WriteLock(path, "strict_locks" in debug.debug_flags)
 
 
 LockToken = bytes
 
 
 class LockHooks(Hooks):
-
     def __init__(self):
         Hooks.__init__(self, "breezy.lock", "Lock.hooks")
         self.add_hook(
-            'lock_acquired',
-            "Called with a breezy.lock.LockResult when a physical lock is "
-            "acquired.", (1, 8))
+            "lock_acquired",
+            "Called with a breezy.lock.LockResult when a physical lock is " "acquired.",
+            (1, 8),
+        )
         self.add_hook(
-            'lock_released',
-            "Called with a breezy.lock.LockResult when a physical lock is "
-            "released.", (1, 8))
+            "lock_released",
+            "Called with a breezy.lock.LockResult when a physical lock is " "released.",
+            (1, 8),
+        )
         self.add_hook(
-            'lock_broken',
-            "Called with a breezy.lock.LockResult when a physical lock is "
-            "broken.", (1, 15))
+            "lock_broken",
+            "Called with a breezy.lock.LockResult when a physical lock is " "broken.",
+            (1, 15),
+        )
 
 
 class Lock:
@@ -81,24 +84,34 @@ class Lock:
 
     hooks = LockHooks()
 
-    def __init__(self, transport: Transport, path: str, file_modebits: int,
-                 dir_modebits: int) -> None: ...
+    def __init__(
+        self, transport: Transport, path: str, file_modebits: int, dir_modebits: int
+    ) -> None:
+        ...
 
-    def create(self, mode: int): ...
+    def create(self, mode: int):
+        ...
 
-    def break_lock(self) -> None: ...
+    def break_lock(self) -> None:
+        ...
 
-    def leave_in_place(self) -> None: ...
+    def leave_in_place(self) -> None:
+        ...
 
-    def dont_leave_in_place(self) -> None: ...
+    def dont_leave_in_place(self) -> None:
+        ...
 
-    def validate_token(self, token: Optional[LockToken]) -> None: ...
+    def validate_token(self, token: Optional[LockToken]) -> None:
+        ...
 
-    def lock_write(self, token: Optional[LockToken]) -> Optional[LockToken]: ...
+    def lock_write(self, token: Optional[LockToken]) -> Optional[LockToken]:
+        ...
 
-    def lock_read(self) -> None: ...
+    def lock_read(self) -> None:
+        ...
 
-    def unlock(self) -> None: ...
+    def unlock(self) -> None:
+        ...
 
     def peek(self) -> LockToken:
         raise NotImplementedError(self.peek)
@@ -116,7 +129,7 @@ class LockResult:
         return self.lock_url == other.lock_url and self.details == other.details
 
     def __repr__(self):
-        return f'{self.__class__.__name__}({self.lock_url}, {self.details})'
+        return f"{self.__class__.__name__}({self.lock_url}, {self.details})"
 
 
 class LogicalLockResult:
@@ -155,9 +168,8 @@ def cant_unlock_not_held(locked_object):
     # block, so it's useful to have the option not to generate a new error
     # here.  You can use -Werror to make it fatal.  It should possibly also
     # raise LockNotHeld.
-    if debug.debug_flag_enabled('unlock'):
-        warnings.warn(f"{locked_object!r} is already unlocked",
-                      stacklevel=3)
+    if debug.debug_flag_enabled("unlock"):
+        warnings.warn(f"{locked_object!r} is already unlocked", stacklevel=3)
     else:
         raise errors.LockNotHeld(locked_object)
 
@@ -174,12 +186,9 @@ class _RelockDebugMixin:
     _prev_lock = None
 
     def _note_lock(self, lock_type):
-        if debug.debug_flag_enabled('relock') and self._prev_lock == lock_type:
-            if lock_type == 'r':
-                type_name = 'read'
-            else:
-                type_name = 'write'
-            trace.note(gettext('{0!r} was {1} locked again'), self, type_name)
+        if debug.debug_flag_enabled("relock") and self._prev_lock == lock_type:
+            type_name = "read" if lock_type == "r" else "write"
+            trace.note(gettext("{0!r} was {1} locked again"), self, type_name)
         self._prev_lock = lock_type
 
 
@@ -192,4 +201,4 @@ def write_locked(lockable):
         lockable.unlock()
 
 
-_lock_classes = [('default', WriteLock, ReadLock)]
+_lock_classes = [("default", WriteLock, ReadLock)]

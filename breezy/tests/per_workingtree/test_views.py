@@ -29,43 +29,43 @@ from ...workingtree import WorkingTree
 
 
 class TestTreeViews(TestCaseWithWorkingTree):
-
     def setUp(self):
         # formats that don't support views can skip the rest of these
         # tests...
         fmt = self.workingtree_format
         f = fmt.supports_views
         if f is None:
-            raise TestSkipped("format %s doesn't declare whether it "
-                              "supports views, assuming not" % fmt)
+            raise TestSkipped(
+                "format %s doesn't declare whether it "
+                "supports views, assuming not" % fmt
+            )
         if not f():
             raise TestNotApplicable(f"format {fmt} doesn't support views")
         super().setUp()
 
     def test_views_initially_empty(self):
-        wt = self.make_branch_and_tree('wt')
+        wt = self.make_branch_and_tree("wt")
         current, views = wt.views.get_view_info()
         self.assertEqual(None, current)
         self.assertEqual({}, views)
 
     def test_set_and_get_view_info(self):
-        wt = self.make_branch_and_tree('wt')
-        view_current = 'view-name'
-        view_dict = {
-            view_current: ['dir-1'],
-            'other-name': ['dir-2']}
+        wt = self.make_branch_and_tree("wt")
+        view_current = "view-name"
+        view_dict = {view_current: ["dir-1"], "other-name": ["dir-2"]}
         wt.views.set_view_info(view_current, view_dict)
         current, views = wt.views.get_view_info()
         self.assertEqual(view_current, current)
         self.assertEqual(view_dict, views)
         # then reopen the tree and see they're still there
-        wt = WorkingTree.open('wt')
+        wt = WorkingTree.open("wt")
         current, views = wt.views.get_view_info()
         self.assertEqual(view_current, current)
         self.assertEqual(view_dict, views)
         # test setting a current view which does not exist
-        self.assertRaises(_mod_views.NoSuchView,
-                          wt.views.set_view_info, 'yet-another', view_dict)
+        self.assertRaises(
+            _mod_views.NoSuchView, wt.views.set_view_info, "yet-another", view_dict
+        )
         current, views = wt.views.get_view_info()
         self.assertEqual(view_current, current)
         self.assertEqual(view_dict, views)
@@ -76,36 +76,34 @@ class TestTreeViews(TestCaseWithWorkingTree):
         self.assertEqual(view_dict, views)
 
     def test_lookup_view(self):
-        wt = self.make_branch_and_tree('wt')
-        view_current = 'view-name'
-        view_dict = {
-            view_current: ['dir-1'],
-            'other-name': ['dir-2']}
+        wt = self.make_branch_and_tree("wt")
+        view_current = "view-name"
+        view_dict = {view_current: ["dir-1"], "other-name": ["dir-2"]}
         wt.views.set_view_info(view_current, view_dict)
         # test lookup of the default view
         result = wt.views.lookup_view()
-        self.assertEqual(result, ['dir-1'])
+        self.assertEqual(result, ["dir-1"])
         # test lookup of a named view
-        result = wt.views.lookup_view('other-name')
-        self.assertEqual(result, ['dir-2'])
+        result = wt.views.lookup_view("other-name")
+        self.assertEqual(result, ["dir-2"])
 
     def test_set_view(self):
-        wt = self.make_branch_and_tree('wt')
+        wt = self.make_branch_and_tree("wt")
         # test that set_view sets the current view by default
-        wt.views.set_view('view-1', ['dir-1'])
+        wt.views.set_view("view-1", ["dir-1"])
         current, views = wt.views.get_view_info()
-        self.assertEqual('view-1', current)
-        self.assertEqual({'view-1': ['dir-1']}, views)
+        self.assertEqual("view-1", current)
+        self.assertEqual({"view-1": ["dir-1"]}, views)
         # test adding a view and not making it the current one
-        wt.views.set_view('view-2', ['dir-2'], make_current=False)
+        wt.views.set_view("view-2", ["dir-2"], make_current=False)
         current, views = wt.views.get_view_info()
-        self.assertEqual('view-1', current)
-        self.assertEqual({'view-1': ['dir-1'], 'view-2': ['dir-2']}, views)
+        self.assertEqual("view-1", current)
+        self.assertEqual({"view-1": ["dir-1"], "view-2": ["dir-2"]}, views)
 
     def test_unicode_view(self):
-        wt = self.make_branch_and_tree('wt')
-        view_name = '\u3070'
-        view_files = ['foo', 'bar/']
+        wt = self.make_branch_and_tree("wt")
+        view_name = "\u3070"
+        view_files = ["foo", "bar/"]
         view_dict = {view_name: view_files}
         wt.views.set_view_info(view_name, view_dict)
         current, views = wt.views.get_view_info()
@@ -113,49 +111,47 @@ class TestTreeViews(TestCaseWithWorkingTree):
         self.assertEqual(view_dict, views)
 
     def test_no_such_view(self):
-        wt = self.make_branch_and_tree('wt')
+        wt = self.make_branch_and_tree("wt")
         try:
-            wt.views.lookup_view('opaque')
+            wt.views.lookup_view("opaque")
         except _mod_views.NoSuchView as e:
-            self.assertEqual(e.view_name, 'opaque')
-            self.assertEqual(str(e), 'No such view: opaque.')
+            self.assertEqual(e.view_name, "opaque")
+            self.assertEqual(str(e), "No such view: opaque.")
         else:
             self.fail("didn't get expected exception")
 
     def test_delete_view(self):
-        wt = self.make_branch_and_tree('wt')
-        view_name = '\N{GREEK SMALL LETTER ALPHA}'
-        view_files = ['alphas/']
+        wt = self.make_branch_and_tree("wt")
+        view_name = "\N{GREEK SMALL LETTER ALPHA}"
+        view_files = ["alphas/"]
         wt.views.set_view(view_name, view_files)
         # now try to delete it
         wt.views.delete_view(view_name)
         # now you can't look it up
-        self.assertRaises(_mod_views.NoSuchView,
-                          wt.views.lookup_view, view_name)
+        self.assertRaises(_mod_views.NoSuchView, wt.views.lookup_view, view_name)
         # and it's not in the dictionary
         self.assertEqual(wt.views.get_view_info()[1], {})
         # and you can't remove it a second time
-        self.assertRaises(_mod_views.NoSuchView,
-                          wt.views.delete_view, view_name)
+        self.assertRaises(_mod_views.NoSuchView, wt.views.delete_view, view_name)
         # or remove a view that never existed
-        self.assertRaises(_mod_views.NoSuchView,
-                          wt.views.delete_view, view_name + '2')
+        self.assertRaises(_mod_views.NoSuchView, wt.views.delete_view, view_name + "2")
 
     def test_check_path_in_view(self):
-        wt = self.make_branch_and_tree('wt')
-        view_current = 'view-name'
-        view_dict = {
-            view_current: ['dir-1'],
-            'other-name': ['dir-2']}
+        wt = self.make_branch_and_tree("wt")
+        view_current = "view-name"
+        view_dict = {view_current: ["dir-1"], "other-name": ["dir-2"]}
         wt.views.set_view_info(view_current, view_dict)
-        self.assertEqual(_mod_views.check_path_in_view(wt, 'dir-1'), None)
-        self.assertEqual(_mod_views.check_path_in_view(wt, 'dir-1/sub'), None)
-        self.assertRaises(_mod_views.FileOutsideView,
-                          _mod_views.check_path_in_view, wt, 'dir-2')
-        self.assertRaises(_mod_views.FileOutsideView,
-                          _mod_views.check_path_in_view, wt, 'dir-2/sub')
-        self.assertRaises(_mod_views.FileOutsideView,
-                          _mod_views.check_path_in_view, wt, 'other')
+        self.assertEqual(_mod_views.check_path_in_view(wt, "dir-1"), None)
+        self.assertEqual(_mod_views.check_path_in_view(wt, "dir-1/sub"), None)
+        self.assertRaises(
+            _mod_views.FileOutsideView, _mod_views.check_path_in_view, wt, "dir-2"
+        )
+        self.assertRaises(
+            _mod_views.FileOutsideView, _mod_views.check_path_in_view, wt, "dir-2/sub"
+        )
+        self.assertRaises(
+            _mod_views.FileOutsideView, _mod_views.check_path_in_view, wt, "other"
+        )
 
 
 class TestUnsupportedViews(TestCaseWithWorkingTree):
@@ -166,21 +162,21 @@ class TestUnsupportedViews(TestCaseWithWorkingTree):
         supported = fmt.supports_views
         if supported is None:
             warn(f"Format {fmt} doesn't declare whether it supports views or not")
-            raise TestSkipped('No view support at all')
+            raise TestSkipped("No view support at all")
         if supported():
             raise TestSkipped(f"Format {fmt} declares that views are supported")
             # it's covered by TestTreeViews
         super().setUp()
 
     def test_view_methods_raise(self):
-        wt = self.make_branch_and_tree('wt')
-        self.assertRaises(_mod_views.ViewsNotSupported,
-                          wt.views.set_view_info, 'bar', {'bar': ['bars/']})
-        self.assertRaises(_mod_views.ViewsNotSupported,
-                          wt.views.get_view_info)
-        self.assertRaises(_mod_views.ViewsNotSupported,
-                          wt.views.lookup_view, 'foo')
-        self.assertRaises(_mod_views.ViewsNotSupported,
-                          wt.views.set_view, 'foo', 'bar')
-        self.assertRaises(_mod_views.ViewsNotSupported,
-                          wt.views.delete_view, 'foo')
+        wt = self.make_branch_and_tree("wt")
+        self.assertRaises(
+            _mod_views.ViewsNotSupported,
+            wt.views.set_view_info,
+            "bar",
+            {"bar": ["bars/"]},
+        )
+        self.assertRaises(_mod_views.ViewsNotSupported, wt.views.get_view_info)
+        self.assertRaises(_mod_views.ViewsNotSupported, wt.views.lookup_view, "foo")
+        self.assertRaises(_mod_views.ViewsNotSupported, wt.views.set_view, "foo", "bar")
+        self.assertRaises(_mod_views.ViewsNotSupported, wt.views.delete_view, "foo")

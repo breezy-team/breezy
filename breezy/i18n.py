@@ -69,6 +69,8 @@ gettext_per_paragraph = _i18n_rs.gettext_per_paragraph
 
 
 _installed = False
+
+
 def install(lang=None):
     """Enables gettext translations in brz."""
     global _installed
@@ -86,19 +88,20 @@ def _get_locale_dir():
     :param base: plugins can specify their own local directory
     """
     base = os.path.dirname(__file__)
-    dirpath = os.path.realpath(os.path.join(base, 'locale'))
+    dirpath = os.path.realpath(os.path.join(base, "locale"))
     if os.path.exists(dirpath):
         return dirpath
     return os.path.join(sys.prefix, "share", "locale")
 
 
 def _check_win32_locale():
-    for i in ('LANGUAGE', 'LC_ALL', 'LC_MESSAGES', 'LANG'):
+    for i in ("LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"):
         if os.environ.get(i):
             break
     else:
         lang = None
         import locale
+
         try:
             import ctypes
         except ImportError:
@@ -108,27 +111,25 @@ def _check_win32_locale():
             # using ctypes to determine all locales
             lcid_user = ctypes.windll.kernel32.GetUserDefaultLCID()
             lcid_system = ctypes.windll.kernel32.GetSystemDefaultLCID()
-            if lcid_user != lcid_system:
-                lcid = [lcid_user, lcid_system]
-            else:
-                lcid = [lcid_user]
+            lcid = [lcid_user, lcid_system] if lcid_user != lcid_system else [lcid_user]
             lang = [locale.windows_locale.get(i) for i in lcid]
-            lang = ':'.join([i for i in lang if i])
+            lang = ":".join([i for i in lang if i])
         # set lang code for gettext
         if lang:
-            os.environ['LANGUAGE'] = lang
+            os.environ["LANGUAGE"] = lang
 
 
 def _get_current_locale():
-    if not os.environ.get('LANGUAGE'):
+    if not os.environ.get("LANGUAGE"):
         from . import config
-        lang = config.GlobalStack().get('language')
+
+        lang = config.GlobalStack().get("language")
         if lang:
-            os.environ['LANGUAGE'] = lang
+            os.environ["LANGUAGE"] = lang
             return lang
-    if sys.platform == 'win32':
+    if sys.platform == "win32":
         _check_win32_locale()
-    for i in ('LANGUAGE', 'LC_ALL', 'LC_MESSAGES', 'LANG'):
+    for i in ("LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"):
         lang = os.environ.get(i)
         if lang:
             return lang
@@ -136,7 +137,6 @@ def _get_current_locale():
 
 
 class Domain:
-
     def __init__(self, domain):
         self.domain = domain
 

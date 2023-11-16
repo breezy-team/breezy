@@ -19,21 +19,20 @@ from ..transport_util import TestCaseWithConnectionHookedTransport
 
 
 class TestCheckout(TestCaseWithConnectionHookedTransport):
-
     def test_checkout(self):
-        self.make_branch_and_tree('branch1')
+        self.make_branch_and_tree("branch1")
 
         self.start_logging_connections()
 
         cmd = cmd_checkout()
-        cmd.run(self.get_url('branch1'), 'local')
+        cmd.run(self.get_url("branch1"), "local")
         self.assertEqual(1, len(self.connections))
 
     def test_checkout_lightweight(self):
-        self.make_branch_and_tree('branch1')
+        self.make_branch_and_tree("branch1")
 
         self.start_logging_connections()
 
         cmd = cmd_checkout()
-        cmd.run(self.get_url('branch1'), 'local', lightweight=True)
+        cmd.run(self.get_url("branch1"), "local", lightweight=True)
         self.assertEqual(1, len(self.connections))

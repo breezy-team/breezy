@@ -24,7 +24,6 @@ from breezy.transport import memory
 
 
 class SelfTestPatch:
-
     def get_params_passed_to_core(self, cmdline):
         params = []
 
@@ -32,6 +31,7 @@ class SelfTestPatch:
             """Capture the arguments selftest was run with."""
             params.append((args, kwargs))
             return True
+
         # Yes this prevents using threads to run the test suite in parallel,
         # however we don't have a clean dependency injector for commands,
         # and even if we did - we'd still be testing that the glue is wired
@@ -46,57 +46,58 @@ class SelfTestPatch:
 
 
 class TestOptions(tests.TestCase, SelfTestPatch):
-
     def test_load_list(self):
-        params = self.get_params_passed_to_core('selftest --load-list foo')
-        self.assertEqual('foo', params[1]['load_list'])
+        params = self.get_params_passed_to_core("selftest --load-list foo")
+        self.assertEqual("foo", params[1]["load_list"])
 
     def test_transport_set_to_sftp(self):
         # Test that we can pass a transport to the selftest core - sftp
         # version.
         self.requireFeature(features.paramiko)
         from breezy.tests import stub_sftp
-        params = self.get_params_passed_to_core('selftest --transport=sftp')
-        self.assertEqual(stub_sftp.SFTPAbsoluteServer,
-                         params[1]["transport"])
+
+        params = self.get_params_passed_to_core("selftest --transport=sftp")
+        self.assertEqual(stub_sftp.SFTPAbsoluteServer, params[1]["transport"])
 
     def test_transport_set_to_memory(self):
         # Test that we can pass a transport to the selftest core - memory
         # version.
-        params = self.get_params_passed_to_core('selftest --transport=memory')
+        params = self.get_params_passed_to_core("selftest --transport=memory")
         self.assertEqual(memory.MemoryServer, params[1]["transport"])
 
     def test_parameters_passed_to_core(self):
-        params = self.get_params_passed_to_core('selftest --list-only')
+        params = self.get_params_passed_to_core("selftest --list-only")
+        self.assertIn("list_only", params[1])
+        params = self.get_params_passed_to_core("selftest --list-only selftest")
         self.assertIn("list_only", params[1])
         params = self.get_params_passed_to_core(
-            'selftest --list-only selftest')
+            ["selftest", "--list-only", "--exclude", "selftest"]
+        )
         self.assertIn("list_only", params[1])
-        params = self.get_params_passed_to_core(['selftest', '--list-only',
-                                                 '--exclude', 'selftest'])
-        self.assertIn("list_only", params[1])
-        params = self.get_params_passed_to_core(['selftest', '--list-only',
-                                                 'selftest', '--randomize', 'now'])
+        params = self.get_params_passed_to_core(
+            ["selftest", "--list-only", "selftest", "--randomize", "now"]
+        )
         self.assertSubset(["list_only", "random_seed"], params[1])
 
     def test_starting_with(self):
-        params = self.get_params_passed_to_core('selftest --starting-with foo')
-        self.assertEqual(['foo'], params[1]['starting_with'])
+        params = self.get_params_passed_to_core("selftest --starting-with foo")
+        self.assertEqual(["foo"], params[1]["starting_with"])
 
     def test_starting_with_multiple_argument(self):
         params = self.get_params_passed_to_core(
-            'selftest --starting-with foo --starting-with bar')
-        self.assertEqual(['foo', 'bar'], params[1]['starting_with'])
+            "selftest --starting-with foo --starting-with bar"
+        )
+        self.assertEqual(["foo", "bar"], params[1]["starting_with"])
 
     def test_subunitv1(self):
         self.requireFeature(features.subunit)
-        params = self.get_params_passed_to_core('selftest --subunit1')
-        self.assertEqual(tests.SubUnitBzrRunnerv1, params[1]['runner_class'])
+        params = self.get_params_passed_to_core("selftest --subunit1")
+        self.assertEqual(tests.SubUnitBzrRunnerv1, params[1]["runner_class"])
 
     def test_subunitv2(self):
         self.requireFeature(features.subunit)
-        params = self.get_params_passed_to_core('selftest --subunit2')
-        self.assertEqual(tests.SubUnitBzrRunnerv2, params[1]['runner_class'])
+        params = self.get_params_passed_to_core("selftest --subunit2")
+        self.assertEqual(tests.SubUnitBzrRunnerv2, params[1]["runner_class"])
 
     def _parse_test_list(self, lines, newlines_in_header=0):
         """Parse a list of lines into a tuple of 3 lists (header,body,footer)."""
@@ -108,21 +109,21 @@ class TestOptions(tests.TestCase, SelfTestPatch):
         header_newlines_found = 0
         for line in lines:
             if in_header:
-                if line == '':
+                if line == "":
                     header_newlines_found += 1
                     if header_newlines_found >= newlines_in_header:
                         in_header = False
                         continue
                 header.append(line)
             elif not in_footer:
-                if line.startswith('-------'):
+                if line.startswith("-------"):
                     in_footer = True
                 else:
                     body.append(line)
             else:
                 footer.append(line)
         # If the last body line is blank, drop it off the list
-        if len(body) > 0 and body[-1] == '':
+        if len(body) > 0 and body[-1] == "":
             body.pop()
         return (header, body, footer)
 
@@ -138,7 +139,8 @@ class TestOptions(tests.TestCase, SelfTestPatch):
             len(body)
             self.assertLength(0, header)
             self.assertLength(0, footer)
-            self.assertEqual('', err)
+            self.assertEqual("", err)
+
         # Yes this prevents using threads to run the test suite in parallel,
         # however we don't have a clean dependency injector for commands,
         # and even if we did - we'd still be testing that the glue is wired
@@ -146,22 +148,22 @@ class TestOptions(tests.TestCase, SelfTestPatch):
         original_selftest = tests.selftest
         tests.selftest = selftest
         try:
-            outputs_nothing('selftest --list-only')
-            outputs_nothing('selftest --list-only selftest')
-            outputs_nothing(
-                ['selftest', '--list-only', '--exclude', 'selftest'])
+            outputs_nothing("selftest --list-only")
+            outputs_nothing("selftest --list-only selftest")
+            outputs_nothing(["selftest", "--list-only", "--exclude", "selftest"])
         finally:
             tests.selftest = original_selftest
 
     def test_lsprof_tests(self):
-        params = self.get_params_passed_to_core('selftest --lsprof-tests')
+        params = self.get_params_passed_to_core("selftest --lsprof-tests")
         self.assertEqual(True, params[1]["lsprof_tests"])
 
     def test_parallel_fork_unsupported(self):
         if getattr(os, "fork", None) is not None:
             self.addCleanup(setattr, os, "fork", os.fork)
             del os.fork
-        out, err = self.run_bzr(["selftest", "--parallel=fork", "-s", "bt.x"],
-                                retcode=3)
+        out, err = self.run_bzr(
+            ["selftest", "--parallel=fork", "-s", "bt.x"], retcode=3
+        )
         self.assertIn("platform does not support fork", err)
         self.assertFalse(out)

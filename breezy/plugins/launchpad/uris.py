@@ -20,19 +20,17 @@ from urllib.parse import urlparse, urlunparse
 
 # We use production as the default because edge has been deprecated circa
 # 2010-11 (see bug https://bugs.launchpad.net/bzr/+bug/583667)
-DEFAULT_INSTANCE = 'production'
+DEFAULT_INSTANCE = "production"
 
 LAUNCHPAD_DOMAINS = {
-    'production': 'launchpad.net',
-    'staging': 'staging.launchpad.net',
-    'qastaging': 'qastaging.launchpad.net',
-    'demo': 'demo.launchpad.net',
-    'test': 'launchpad.test',
-    }
+    "production": "launchpad.net",
+    "staging": "staging.launchpad.net",
+    "qastaging": "qastaging.launchpad.net",
+    "demo": "demo.launchpad.net",
+    "test": "launchpad.test",
+}
 
-LAUNCHPAD_BAZAAR_DOMAINS = [
-    f'bazaar.{domain}'
-    for domain in LAUNCHPAD_DOMAINS.values()]
+LAUNCHPAD_BAZAAR_DOMAINS = [f"bazaar.{domain}" for domain in LAUNCHPAD_DOMAINS.values()]
 
 LPNET_SERVICE_ROOT = "https://api.launchpad.net/"
 QASTAGING_SERVICE_ROOT = "https://api.qastaging.launchpad.net/"
@@ -42,13 +40,13 @@ DOGFOOD_SERVICE_ROOT = "https://api.dogfood.paddev.net/"
 TEST_DEV_SERVICE_ROOT = "http://api.launchpad.test:8085/"
 
 service_roots = {
-    'production': LPNET_SERVICE_ROOT,
-    'edge': LPNET_SERVICE_ROOT,
-    'qastaging': QASTAGING_SERVICE_ROOT,
-    'staging': STAGING_SERVICE_ROOT,
-    'dogfood': DOGFOOD_SERVICE_ROOT,
-    'dev': DEV_SERVICE_ROOT,
-    'test_dev': TEST_DEV_SERVICE_ROOT,
+    "production": LPNET_SERVICE_ROOT,
+    "edge": LPNET_SERVICE_ROOT,
+    "qastaging": QASTAGING_SERVICE_ROOT,
+    "staging": STAGING_SERVICE_ROOT,
+    "dogfood": DOGFOOD_SERVICE_ROOT,
+    "dev": DEV_SERVICE_ROOT,
+    "test_dev": TEST_DEV_SERVICE_ROOT,
 }
 
 
@@ -68,9 +66,7 @@ def lookup_service_root(root):
         return root
 
     # It's not an alias or a valid URL.
-    raise ValueError(
-        f"{root} is not a valid URL or an alias for any Launchpad server"
-    )
+    raise ValueError(f"{root} is not a valid URL or an alias for any Launchpad server")
 
 
 def web_root_for_service_root(service_root):
@@ -82,14 +78,14 @@ def web_root_for_service_root(service_root):
     web_root_uri = urlparse(service_root)
     web_root_uri = web_root_uri._replace(path="")
     web_root_uri = web_root_uri._replace(
-        netloc=web_root_uri.netloc.replace("api.", "", 1))
+        netloc=web_root_uri.netloc.replace("api.", "", 1)
+    )
     return str(web_root_uri)
 
 
 def canonical_url(object):
     """Return the canonical URL for a branch."""
-    scheme, netloc, path, params, query, fragment = urlparse(
-        str(object.self_link))
-    path = '/'.join(path.split('/')[2:])
-    netloc = netloc.replace('api.', 'code.')
+    scheme, netloc, path, params, query, fragment = urlparse(str(object.self_link))
+    path = "/".join(path.split("/")[2:])
+    netloc = netloc.replace("api.", "code.")
     return urlunparse((scheme, netloc, path, params, query, fragment))

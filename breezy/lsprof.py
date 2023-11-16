@@ -16,7 +16,7 @@ from _lsprof import Profiler, profiler_entry
 
 from . import errors
 
-__all__ = ['profile', 'Stats']
+__all__ = ["profile", "Stats"]
 
 
 def profile(f, *args, **kwds):
@@ -73,8 +73,7 @@ class BzrProfiler:
         """
         self._g_threadmap = {}
         self.p = Profiler()
-        permitted = self.__class__.profiler_lock.acquire(
-            self.__class__.profiler_block)
+        permitted = self.__class__.profiler_lock.acquire(self.__class__.profiler_block)
         if not permitted:
             raise errors.InternalBzrError(msg="Already profiling something")
         try:
@@ -133,7 +132,7 @@ class Stats:
 
         :param crit: the data attribute used as the sort key.
         """
-        if crit not in profiler_entry.__dict__ or crit == 'code':
+        if crit not in profiler_entry.__dict__ or crit == "code":
             raise ValueError(f"Can't sort by {crit}")
 
         key_func = operator.attrgetter(crit)
@@ -158,16 +157,39 @@ class Stats:
             d = d[:top]
         cols = "% 12s %12s %11.4f %11.4f   %s\n"
         hcols = "% 12s %12s %12s %12s %s\n"
-        file.write(hcols % ("CallCount", "Recursive", "Total(ms)",
-                            "Inline(ms)", "module:lineno(function)"))
+        file.write(
+            hcols
+            % (
+                "CallCount",
+                "Recursive",
+                "Total(ms)",
+                "Inline(ms)",
+                "module:lineno(function)",
+            )
+        )
         for e in d:
-            file.write(cols % (e.callcount, e.reccallcount, e.totaltime,
-                               e.inlinetime, label(e.code)))
+            file.write(
+                cols
+                % (
+                    e.callcount,
+                    e.reccallcount,
+                    e.totaltime,
+                    e.inlinetime,
+                    label(e.code),
+                )
+            )
             if e.calls:
                 for se in e.calls:
-                    file.write(cols % (f"+{se.callcount}", se.reccallcount,
-                                       se.totaltime, se.inlinetime,
-                                       f"+{label(se.code)}"))
+                    file.write(
+                        cols
+                        % (
+                            f"+{se.callcount}",
+                            se.reccallcount,
+                            se.totaltime,
+                            se.inlinetime,
+                            f"+{label(se.code)}",
+                        )
+                    )
 
     def freeze(self):
         """Replace all references to code objects with string
@@ -203,20 +225,20 @@ class Stats:
         """
         if format is None:
             basename = os.path.basename(filename)
-            if basename.startswith('callgrind.out'):
+            if basename.startswith("callgrind.out"):
                 format = "callgrind"
             else:
                 ext = os.path.splitext(filename)[1]
                 if len(ext) > 1:
                     format = ext[1:]
-        with open(filename, 'wb') as outfile:
+        with open(filename, "wb") as outfile:
             if format == "callgrind":
                 # The callgrind format states it is 'ASCII based':
                 # <http://valgrind.org/docs/manual/cl-format.html>
                 # But includes filenames so lets ignore and use UTF-8.
-                self.calltree(codecs.getwriter('utf-8')(outfile))
+                self.calltree(codecs.getwriter("utf-8")(outfile))
             elif format == "txt":
-                self.pprint(file=codecs.getwriter('utf-8')(outfile))
+                self.pprint(file=codecs.getwriter("utf-8")(outfile))
             else:
                 self.freeze()
                 pickle.dump(self, outfile, 2)
@@ -239,7 +261,7 @@ class _CallTreeFilter:
 
     def output(self, out_file):
         self.out_file = out_file
-        out_file.write('events: Ticks\n')
+        out_file.write("events: Ticks\n")
         self._print_summary()
         for entry in self.data:
             self._entry(entry)
@@ -249,48 +271,41 @@ class _CallTreeFilter:
         for entry in self.data:
             totaltime = int(entry.totaltime * 1000)
             max_cost = max(max_cost, totaltime)
-        self.out_file.write('summary: %d\n' % (max_cost,))
+        self.out_file.write("summary: %d\n" % (max_cost,))
 
     def _entry(self, entry):
         out_file = self.out_file
         code = entry.code
         inlinetime = int(entry.inlinetime * 1000)
         if isinstance(code, str):
-            out_file.write('fi=~\n')
+            out_file.write("fi=~\n")
         else:
-            out_file.write(f'fi={code.co_filename}\n')
-        out_file.write(f'fn={label(code, True)}\n')
+            out_file.write(f"fi={code.co_filename}\n")
+        out_file.write(f"fn={label(code, True)}\n")
         if isinstance(code, str):
-            out_file.write(f'0  {inlinetime}\n')
+            out_file.write(f"0  {inlinetime}\n")
         else:
-            out_file.write('%d %d\n' % (code.co_firstlineno, inlinetime))
+            out_file.write("%d %d\n" % (code.co_firstlineno, inlinetime))
         # recursive calls are counted in entry.calls
-        if entry.calls:
-            calls = entry.calls
-        else:
-            calls = []
-        if isinstance(code, str):
-            lineno = 0
-        else:
-            lineno = code.co_firstlineno
+        calls = entry.calls if entry.calls else []
+        lineno = 0 if isinstance(code, str) else code.co_firstlineno
         for subentry in calls:
             self._subentry(lineno, subentry)
-        out_file.write('\n')
+        out_file.write("\n")
 
     def _subentry(self, lineno, subentry):
         out_file = self.out_file
         code = subentry.code
         totaltime = int(subentry.totaltime * 1000)
         if isinstance(code, str):
-            out_file.write('cfi=~\n')
-            out_file.write(f'cfn={label(code, True)}\n')
-            out_file.write('calls=%d 0\n' % (subentry.callcount,))
+            out_file.write("cfi=~\n")
+            out_file.write(f"cfn={label(code, True)}\n")
+            out_file.write("calls=%d 0\n" % (subentry.callcount,))
         else:
-            out_file.write(f'cfi={code.co_filename}\n')
-            out_file.write(f'cfn={label(code, True)}\n')
-            out_file.write('calls=%d %d\n' % (
-                subentry.callcount, code.co_firstlineno))
-        out_file.write('%d %d\n' % (lineno, totaltime))
+            out_file.write(f"cfi={code.co_filename}\n")
+            out_file.write(f"cfn={label(code, True)}\n")
+            out_file.write("calls=%d %d\n" % (subentry.callcount, code.co_firstlineno))
+        out_file.write("%d %d\n" % (lineno, totaltime))
 
 
 _fn2mod: Dict[str, object] = {}
@@ -305,7 +320,7 @@ def label(code, calltree=False):
         for k, v in sys.modules.items():
             if v is None:
                 continue
-            if getattr(v, '__file__', None) is None:
+            if getattr(v, "__file__", None) is None:
                 continue
             if not isinstance(v.__file__, str):
                 continue
@@ -313,11 +328,11 @@ def label(code, calltree=False):
                 mname = _fn2mod[code.co_filename] = k
                 break
         else:
-            mname = _fn2mod[code.co_filename] = f'<{code.co_filename}>'
+            mname = _fn2mod[code.co_filename] = f"<{code.co_filename}>"
     if calltree:
-        return '%s %s:%d' % (code.co_name, mname, code.co_firstlineno)
+        return "%s %s:%d" % (code.co_name, mname, code.co_firstlineno)
     else:
-        return '%s:%d(%s)' % (mname, code.co_firstlineno, code.co_name)
+        return "%s:%d(%s)" % (mname, code.co_firstlineno, code.co_name)
 
 
 def main():
@@ -326,10 +341,11 @@ def main():
         sys.stderr.write("usage: lsprof.py <script> <arguments...>\n")
         sys.exit(2)
     import runpy
-    result, stats = profile(runpy.run_path, sys.argv[0], run_name='__main__')
+
+    result, stats = profile(runpy.run_path, sys.argv[0], run_name="__main__")
     stats.sort()
     stats.pprint()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

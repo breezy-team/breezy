@@ -22,9 +22,10 @@ In this module the interesting classes are:
  - InventoryDeltaSerializer - object to read/write inventory deltas.
 """
 
-__all__ = ['InventoryDeltaSerializer']
+__all__ = ["InventoryDeltaSerializer"]
 
 from .._bzr_rs import inventory as _inventory_delta_rs
+from ..revision import RevisionID
 
 InventoryDeltaError = _inventory_delta_rs.InventoryDeltaError
 IncompatibleInventoryDelta = _inventory_delta_rs.IncompatibleInventoryDelta
@@ -46,7 +47,12 @@ class InventoryDeltaSerializer:
         self._versioned_root = versioned_root
         self._tree_references = tree_references
 
-    def delta_to_lines(self, old_name, new_name, delta_to_new):
+    def delta_to_lines(
+        self,
+        old_name: RevisionID,
+        new_name: RevisionID,
+        delta_to_new: _inventory_delta_rs.InventoryDelta,
+    ):
         """Return a line sequence for delta_to_new.
 
         Both the versioned_root and tree_references flags must be set via
@@ -62,7 +68,12 @@ class InventoryDeltaSerializer:
         :return: The serialized delta as lines.
         """
         return _inventory_delta_rs.serialize_inventory_delta(
-            old_name, new_name, delta_to_new, self._versioned_root, self._tree_references)
+            old_name,
+            new_name,
+            delta_to_new,
+            self._versioned_root,
+            self._tree_references,
+        )
 
 
 class InventoryDeltaDeserializer:
@@ -90,4 +101,6 @@ class InventoryDeltaDeserializer:
         :return: (parent_id, new_id, versioned_root, tree_references,
             inventory_delta)
         """
-        return _inventory_delta_rs.parse_inventory_delta(lines, self._allow_versioned_root, self._allow_tree_references)
+        return _inventory_delta_rs.parse_inventory_delta(
+            lines, self._allow_versioned_root, self._allow_tree_references
+        )

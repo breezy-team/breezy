@@ -34,7 +34,7 @@ def _load_data_py(kndx, fp):
     history_top = len(history) - 1
     for line in fp.readlines():
         rec = line.split()
-        if len(rec) < 5 or rec[-1] != b':':
+        if len(rec) < 5 or rec[-1] != b":":
             # corrupt line.
             # FIXME: in the future we should determine if its a
             # short write - and ignore it
@@ -44,7 +44,7 @@ def _load_data_py(kndx, fp):
         try:
             parents = []
             for value in rec[4:-1]:
-                if value[:1] == b'.':
+                if value[:1] == b".":
                     # uncompressed reference
                     parent_id = value[1:]
                 else:
@@ -65,13 +65,15 @@ def _load_data_py(kndx, fp):
         try:
             pos = int(pos)
         except ValueError as e:
-            raise KnitCorrupt(kndx._filename,
-                              f"invalid position on line {rec!r}: {e}") from e
+            raise KnitCorrupt(
+                kndx._filename, f"invalid position on line {rec!r}: {e}"
+            ) from e
         try:
             size = int(size)
         except ValueError as e:
-            raise KnitCorrupt(kndx._filename,
-                              f"invalid size on line {rec!r}: {e}") from e
+            raise KnitCorrupt(
+                kndx._filename, f"invalid size on line {rec!r}: {e}"
+            ) from e
 
         # See kndx._cache_version
         # only want the _history index to reference the 1st
@@ -82,10 +84,12 @@ def _load_data_py(kndx, fp):
             history.append(version_id)
         else:
             index = cache[version_id][5]
-        cache[version_id] = (version_id,
-                             options.split(b','),
-                             pos,
-                             size,
-                             tuple(parents),
-                             index)
+        cache[version_id] = (
+            version_id,
+            options.split(b","),
+            pos,
+            size,
+            tuple(parents),
+            index,
+        )
         # end kndx._cache_version

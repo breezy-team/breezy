@@ -19,13 +19,16 @@ import re
 
 from ..lazy_import import lazy_import
 
-lazy_import(globals(), """
+lazy_import(
+    globals(),
+    """
 
 from breezy import (
     cache_utf8,
     transform,
     )
-""")
+""",
+)
 
 from .. import errors, osutils
 from .. import transport as _mod_transport
@@ -33,7 +36,7 @@ from ..conflicts import Conflict as BaseConflict
 from ..conflicts import ConflictList as BaseConflictList
 from . import rio
 
-CONFLICT_SUFFIXES = ('.THIS', '.BASE', '.OTHER')
+CONFLICT_SUFFIXES = (".THIS", ".BASE", ".OTHER")
 
 
 class Conflict(BaseConflict):
@@ -54,7 +57,7 @@ class Conflict(BaseConflict):
         s = rio.Stanza(type=self.typestring, path=self.path)
         if self.file_id is not None:
             # Stanza requires Unicode apis
-            s.add('file_id', self.file_id.decode('utf8'))
+            s.add("file_id", self.file_id.decode("utf8"))
         return s
 
     def _cmp_list(self):
@@ -84,7 +87,7 @@ class Conflict(BaseConflict):
 
     def __repr__(self):
         rdict = dict(self.__dict__)
-        rdict['class'] = self.__class__.__name__
+        rdict["class"] = self.__class__.__name__
         return self.rformat % rdict
 
     @staticmethod
@@ -108,9 +111,9 @@ class Conflict(BaseConflict):
 
         :param tree: The tree passed as a parameter to the method.
         """
-        meth = getattr(self, f'action_{action}', None)
+        meth = getattr(self, f"action_{action}", None)
         if meth is None:
-            raise NotImplementedError(self.__class__.__name__ + '.' + action)
+            raise NotImplementedError(self.__class__.__name__ + "." + action)
         meth(tree)
 
     def action_auto(self, tree):
@@ -133,7 +136,6 @@ class Conflict(BaseConflict):
 
 
 class ConflictList(BaseConflictList):
-
     @staticmethod
     def from_stanzas(stanzas):
         """Produce a new ConflictList from an iterable of stanzas."""
@@ -147,8 +149,7 @@ class ConflictList(BaseConflictList):
         for conflict in self:
             yield conflict.as_stanza()
 
-    def select_conflicts(self, tree, paths, ignore_misses=False,
-                         recurse=False):
+    def select_conflicts(self, tree, paths, ignore_misses=False, recurse=False):
         """Select the conflicts associated with paths in a tree.
 
         File-ids are also used for this.
@@ -166,19 +167,18 @@ class ConflictList(BaseConflictList):
 
         for conflict in self:
             selected = False
-            for key in ('path', 'conflict_path'):
+            for key in ("path", "conflict_path"):
                 cpath = getattr(conflict, key, None)
                 if cpath is None:
                     continue
                 if cpath in path_set:
                     selected = True
                     selected_paths.add(cpath)
-                if recurse:
-                    if osutils.is_inside_any(path_set, cpath):
-                        selected = True
-                        selected_paths.add(cpath)
+                if recurse and osutils.is_inside_any(path_set, cpath):
+                    selected = True
+                    selected_paths.add(cpath)
 
-            for key in ('file_id', 'conflict_file_id'):
+            for key in ("file_id", "conflict_file_id"):
                 cfile_id = getattr(conflict, key, None)
                 if cfile_id is None:
                     continue
@@ -201,16 +201,14 @@ class ConflictList(BaseConflictList):
         return new_conflicts, selected_conflicts
 
 
-
-
 class PathConflict(Conflict):
     """A conflict was encountered merging file paths."""
 
-    typestring = 'path conflict'
+    typestring = "path conflict"
 
-    format = 'Path conflict: %(path)s / %(conflict_path)s'
+    format = "Path conflict: %(path)s / %(conflict_path)s"
 
-    rformat = '%(class)s(%(path)r, %(conflict_path)r, %(file_id)r)'
+    rformat = "%(class)s(%(path)r, %(conflict_path)r, %(file_id)r)"
 
     def __init__(self, path, conflict_path=None, file_id=None):
         Conflict.__init__(self, path, file_id)
@@ -219,7 +217,7 @@ class PathConflict(Conflict):
     def as_stanza(self):
         s = Conflict.as_stanza(self)
         if self.conflict_path is not None:
-            s.add('conflict_path', self.conflict_path)
+            s.add("conflict_path", self.conflict_path)
         return s
 
     def associated_filenames(self):
@@ -235,16 +233,16 @@ class PathConflict(Conflict):
         :param winner: 'this' or 'other' indicates which side is the winner.
         """
         path_to_create = None
-        if winner == 'this':
-            if self.path == '<deleted>':
+        if winner == "this":
+            if self.path == "<deleted>":
                 return  # Nothing to do
-            if self.conflict_path == '<deleted>':
+            if self.conflict_path == "<deleted>":
                 path_to_create = self.path
                 revid = tt._tree.get_parent_ids()[0]
-        elif winner == 'other':
-            if self.conflict_path == '<deleted>':
+        elif winner == "other":
+            if self.conflict_path == "<deleted>":
                 return  # Nothing to do
-            if self.path == '<deleted>':
+            if self.path == "<deleted>":
                 path_to_create = self.conflict_path
                 # FIXME: If there are more than two parents we may need to
                 # iterate. Taking the last parent is the safer bet in the mean
@@ -252,12 +250,11 @@ class PathConflict(Conflict):
                 revid = tt._tree.get_parent_ids()[-1]
         else:
             # Programmer error
-            raise AssertionError(f'bad winner: {winner!r}')
+            raise AssertionError(f"bad winner: {winner!r}")
         if path_to_create is not None:
             tid = tt.trans_id_tree_path(path_to_create)
             tree = self._revision_tree(tt._tree, revid)
-            transform.create_from_tree(
-                tt, tid, tree, tree.id2path(file_id))
+            transform.create_from_tree(tt, tid, tree, tree.id2path(file_id))
             tt.version_file(tid, file_id=file_id)
         else:
             tid = tt.trans_id_file_id(file_id)
@@ -275,7 +272,7 @@ class PathConflict(Conflict):
         # Establish which path we should use to find back the file-id
         possible_paths = []
         for p in (self.path, self.conflict_path):
-            if p == '<deleted>':
+            if p == "<deleted>":
                 # special hard-coded path
                 continue
             if p is not None:
@@ -292,26 +289,23 @@ class PathConflict(Conflict):
 
     def action_take_this(self, tree):
         if self.file_id is not None:
-            self._resolve_with_cleanups(tree, self.file_id, self.path,
-                                        winner='this')
+            self._resolve_with_cleanups(tree, self.file_id, self.path, winner="this")
         else:
             # Prior to bug #531967 we need to find back the file_id and restore
             # the content from there
             revtree, file_id = self._infer_file_id(tree)
-            tree.revert([revtree.id2path(file_id)],
-                        old_tree=revtree, backups=False)
+            tree.revert([revtree.id2path(file_id)], old_tree=revtree, backups=False)
 
     def action_take_other(self, tree):
         if self.file_id is not None:
-            self._resolve_with_cleanups(tree, self.file_id,
-                                        self.conflict_path,
-                                        winner='other')
+            self._resolve_with_cleanups(
+                tree, self.file_id, self.conflict_path, winner="other"
+            )
         else:
             # Prior to bug #531967 we need to find back the file_id and restore
             # the content from there
             revtree, file_id = self._infer_file_id(tree)
-            tree.revert([revtree.id2path(file_id)],
-                        old_tree=revtree, backups=False)
+            tree.revert([revtree.id2path(file_id)], old_tree=revtree, backups=False)
 
 
 class ContentsConflict(PathConflict):
@@ -319,12 +313,12 @@ class ContentsConflict(PathConflict):
 
     has_files = True
 
-    typestring = 'contents conflict'
+    typestring = "contents conflict"
 
-    format = 'Contents conflict in %(path)s'
+    format = "Contents conflict in %(path)s"
 
     def associated_filenames(self):
-        return [self.path + suffix for suffix in ('.BASE', '.OTHER')]
+        return [self.path + suffix for suffix in (".BASE", ".OTHER")]
 
     def _resolve(self, tt, suffix_to_remove):
         """Resolve the conflict.
@@ -339,7 +333,8 @@ class ContentsConflict(PathConflict):
             # Delete 'item.THIS' or 'item.OTHER' depending on
             # suffix_to_remove
             tt.delete_contents(
-                tt.trans_id_tree_path(self.path + '.' + suffix_to_remove))
+                tt.trans_id_tree_path(self.path + "." + suffix_to_remove)
+            )
         except _mod_transport.NoSuchFile:
             # There are valid cases where 'item.suffix_to_remove' either
             # never existed or was already deleted (including the case
@@ -364,10 +359,10 @@ class ContentsConflict(PathConflict):
             tt.apply()
 
     def action_take_this(self, tree):
-        self._resolve_with_cleanups(tree, 'OTHER')
+        self._resolve_with_cleanups(tree, "OTHER")
 
     def action_take_other(self, tree):
-        self._resolve_with_cleanups(tree, 'THIS')
+        self._resolve_with_cleanups(tree, "THIS")
 
 
 # TODO: There should be a base revid attribute to better inform the user about
@@ -377,13 +372,13 @@ class TextConflict(Conflict):
 
     has_files = True
 
-    typestring = 'text conflict'
+    typestring = "text conflict"
 
-    format = 'Text conflict in %(path)s'
+    format = "Text conflict in %(path)s"
 
-    rformat = '%(class)s(%(path)r, %(file_id)r)'
+    rformat = "%(class)s(%(path)r, %(file_id)r)"
 
-    _conflict_re = re.compile(b'^(<{7}|={7}|>{7})')
+    _conflict_re = re.compile(b"^(<{7}|={7}|>{7})")
 
     def associated_filenames(self):
         return [self.path + suffix for suffix in CONFLICT_SUFFIXES]
@@ -402,14 +397,12 @@ class TextConflict(Conflict):
         # item will exist after the conflict has been resolved anyway.
         item_tid = tt.trans_id_file_id(self.file_id)
         item_parent_tid = tt.get_tree_parent(item_tid)
-        winner_path = self.path + '.' + winner_suffix
+        winner_path = self.path + "." + winner_suffix
         winner_tid = tt.trans_id_tree_path(winner_path)
         winner_parent_tid = tt.get_tree_parent(winner_tid)
         # Switch the paths to preserve the content
-        tt.adjust_path(osutils.basename(self.path),
-                       winner_parent_tid, winner_tid)
-        tt.adjust_path(osutils.basename(winner_path),
-                       item_parent_tid, item_tid)
+        tt.adjust_path(osutils.basename(self.path), winner_parent_tid, winner_tid)
+        tt.adjust_path(osutils.basename(winner_path), item_parent_tid, item_tid)
         # Associate the file_id to the right content
         tt.unversion_file(item_tid)
         tt.version_file(winner_tid, file_id=self.file_id)
@@ -422,7 +415,7 @@ class TextConflict(Conflict):
             kind = tree.kind(self.path)
         except _mod_transport.NoSuchFile:
             return
-        if kind != 'file':
+        if kind != "file":
             raise NotImplementedError("Conflict is not a file")
         conflict_markers_in_line = self._conflict_re.search
         # GZ 2012-07-27: What if not tree.has_id(self.file_id) due to removal?
@@ -432,10 +425,10 @@ class TextConflict(Conflict):
                     raise NotImplementedError("Conflict markers present")
 
     def action_take_this(self, tree):
-        self._resolve_with_cleanups(tree, 'THIS')
+        self._resolve_with_cleanups(tree, "THIS")
 
     def action_take_other(self, tree):
-        self._resolve_with_cleanups(tree, 'OTHER')
+        self._resolve_with_cleanups(tree, "OTHER")
 
 
 class HandledConflict(Conflict):
@@ -454,7 +447,7 @@ class HandledConflict(Conflict):
 
     def as_stanza(self):
         s = Conflict.as_stanza(self)
-        s.add('action', self.action)
+        s.add("action", self.action)
         return s
 
     def associated_filenames(self):
@@ -467,11 +460,14 @@ class HandledPathConflict(HandledConflict):
     This is intended to be a base class.
     """
 
-    rformat = "%(class)s(%(action)r, %(path)r, %(conflict_path)r,"\
+    rformat = (
+        "%(class)s(%(action)r, %(path)r, %(conflict_path)r,"
         " %(file_id)r, %(conflict_file_id)r)"
+    )
 
-    def __init__(self, action, path, conflict_path, file_id=None,
-                 conflict_file_id=None):
+    def __init__(
+        self, action, path, conflict_path, file_id=None, conflict_file_id=None
+    ):
         HandledConflict.__init__(self, action, path, file_id)
         self.conflict_path = conflict_path
         # the factory blindly transfers the Stanza values to __init__,
@@ -481,14 +477,16 @@ class HandledPathConflict(HandledConflict):
         self.conflict_file_id = conflict_file_id
 
     def _cmp_list(self):
-        return HandledConflict._cmp_list(self) + [self.conflict_path,
-                                                  self.conflict_file_id]
+        return HandledConflict._cmp_list(self) + [
+            self.conflict_path,
+            self.conflict_file_id,
+        ]
 
     def as_stanza(self):
         s = HandledConflict.as_stanza(self)
-        s.add('conflict_path', self.conflict_path)
+        s.add("conflict_path", self.conflict_path)
         if self.conflict_file_id is not None:
-            s.add('conflict_file_id', self.conflict_file_id.decode('utf8'))
+            s.add("conflict_file_id", self.conflict_file_id.decode("utf8"))
 
         return s
 
@@ -496,17 +494,17 @@ class HandledPathConflict(HandledConflict):
 class DuplicateID(HandledPathConflict):
     """Two files want the same file_id."""
 
-    typestring = 'duplicate id'
+    typestring = "duplicate id"
 
-    format = 'Conflict adding id to %(conflict_path)s.  %(action)s %(path)s.'
+    format = "Conflict adding id to %(conflict_path)s.  %(action)s %(path)s."
 
 
 class DuplicateEntry(HandledPathConflict):
     """Two directory entries want to have the same name."""
 
-    typestring = 'duplicate'
+    typestring = "duplicate"
 
-    format = 'Conflict adding file %(conflict_path)s.  %(action)s %(path)s.'
+    format = "Conflict adding file %(conflict_path)s.  %(action)s %(path)s."
 
     def action_take_this(self, tree):
         tree.remove([self.conflict_path], force=True, keep_files=False)
@@ -528,9 +526,9 @@ class ParentLoop(HandledPathConflict):
     merge A and B
     """
 
-    typestring = 'parent loop'
+    typestring = "parent loop"
 
-    format = 'Conflict moving %(path)s into %(conflict_path)s. %(action)s.'
+    format = "Conflict moving %(path)s into %(conflict_path)s. %(action)s."
 
     def action_take_this(self, tree):
         # just acccept brz proposal
@@ -543,8 +541,7 @@ class ParentLoop(HandledPathConflict):
             cp_tid = tt.trans_id_file_id(self.conflict_file_id)
             cparent_tid = tt.get_tree_parent(cp_tid)
             tt.adjust_path(osutils.basename(self.path), cparent_tid, cp_tid)
-            tt.adjust_path(osutils.basename(self.conflict_path),
-                           parent_tid, p_tid)
+            tt.adjust_path(osutils.basename(self.conflict_path), parent_tid, p_tid)
             tt.apply()
 
 
@@ -554,10 +551,12 @@ class UnversionedParent(HandledConflict):
     and the other added a versioned file to it.
     """
 
-    typestring = 'unversioned parent'
+    typestring = "unversioned parent"
 
-    format = 'Conflict because %(path)s is not versioned, but has versioned'\
-             ' children.  %(action)s.'
+    format = (
+        "Conflict because %(path)s is not versioned, but has versioned"
+        " children.  %(action)s."
+    )
 
     # FIXME: We silently do nothing to make tests pass, but most probably the
     # conflict shouldn't exist (the long story is that the conflict is
@@ -576,9 +575,9 @@ class MissingParent(HandledConflict):
     See also: DeletingParent (same situation, THIS and OTHER reversed).
     """
 
-    typestring = 'missing parent'
+    typestring = "missing parent"
 
-    format = 'Conflict adding files to %(path)s.  %(action)s.'
+    format = "Conflict adding files to %(path)s.  %(action)s."
 
     def action_take_this(self, tree):
         tree.remove([self.path], force=True, keep_files=False)
@@ -594,10 +593,9 @@ class DeletingParent(HandledConflict):
     the THIS added a file to it.
     """
 
-    typestring = 'deleting parent'
+    typestring = "deleting parent"
 
-    format = "Conflict: can't delete %(path)s because it is not empty.  "\
-             "%(action)s."
+    format = "Conflict: can't delete %(path)s because it is not empty.  " "%(action)s."
 
     # FIXME: It's a bit strange that the default action is not coherent with
     # MissingParent from the *user* pov.
@@ -615,17 +613,18 @@ class NonDirectoryParent(HandledConflict):
     an attempt to change the kind of a directory with files.
     """
 
-    typestring = 'non-directory parent'
+    typestring = "non-directory parent"
 
-    format = "Conflict: %(path)s is not a directory, but has files in it."\
-             "  %(action)s."
+    format = (
+        "Conflict: %(path)s is not a directory, but has files in it." "  %(action)s."
+    )
 
     # FIXME: .OTHER should be used instead of .new when the conflict is created
 
     def action_take_this(self, tree):
         # FIXME: we should preserve that path when the conflict is generated !
-        if self.path.endswith('.new'):
-            conflict_path = self.path[:-(len('.new'))]
+        if self.path.endswith(".new"):
+            conflict_path = self.path[: -(len(".new"))]
             tree.remove([self.path], force=True, keep_files=False)
             tree.add(conflict_path)
         else:
@@ -633,8 +632,8 @@ class NonDirectoryParent(HandledConflict):
 
     def action_take_other(self, tree):
         # FIXME: we should preserve that path when the conflict is generated !
-        if self.path.endswith('.new'):
-            conflict_path = self.path[:-(len('.new'))]
+        if self.path.endswith(".new"):
+            conflict_path = self.path[: -(len(".new"))]
             tree.remove([conflict_path], force=True, keep_files=False)
             tree.rename_one(self.path, conflict_path)
         else:
@@ -651,6 +650,15 @@ def register_types(*conflict_types):
         ctype[conflict_type.typestring] = conflict_type
 
 
-register_types(ContentsConflict, TextConflict, PathConflict, DuplicateID,
-               DuplicateEntry, ParentLoop, UnversionedParent, MissingParent,
-               DeletingParent, NonDirectoryParent)
+register_types(
+    ContentsConflict,
+    TextConflict,
+    PathConflict,
+    DuplicateID,
+    DuplicateEntry,
+    ParentLoop,
+    UnversionedParent,
+    MissingParent,
+    DeletingParent,
+    NonDirectoryParent,
+)

@@ -311,4 +311,5 @@ impl RevisionSerializer for BEncodeRevisionSerializer1 {
     }
 }
 
+#[allow(dead_code)]
 const BENCODE_REVISION_SERIALIZER_V1: BEncodeRevisionSerializer1 = BEncodeRevisionSerializer1 {};

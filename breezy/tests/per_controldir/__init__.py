@@ -35,8 +35,9 @@ from breezy.transport import memory
 from ...controldir import ControlDirFormat
 
 
-def make_scenarios(vfs_factory, transport_server, transport_readonly_server,
-                   formats, name_suffix=''):
+def make_scenarios(
+    vfs_factory, transport_server, transport_readonly_server, formats, name_suffix=""
+):
     """Transform the input to a list of scenarios.
 
     :param formats: A list of bzrdir_format objects.
@@ -47,18 +48,20 @@ def make_scenarios(vfs_factory, transport_server, transport_readonly_server,
     for format in formats:
         scenario_name = format.__class__.__name__
         scenario_name += name_suffix
-        scenario = (scenario_name, {
-            "vfs_transport_factory": vfs_factory,
-            "transport_server": transport_server,
-            "transport_readonly_server": transport_readonly_server,
-            "bzrdir_format": format,
-            })
+        scenario = (
+            scenario_name,
+            {
+                "vfs_transport_factory": vfs_factory,
+                "transport_server": transport_server,
+                "transport_readonly_server": transport_readonly_server,
+                "bzrdir_format": format,
+            },
+        )
         result.append(scenario)
     return result
 
 
 class TestCaseWithControlDir(TestCaseWithTransport):
-
     def setUp(self):
         super().setUp()
         self.controldir = None
@@ -74,10 +77,10 @@ class TestCaseWithControlDir(TestCaseWithTransport):
 
 def load_tests(loader, standard_tests, pattern):
     test_per_controldir = [
-        'breezy.tests.per_controldir.test_controldir',
-        'breezy.tests.per_controldir.test_format',
-        'breezy.tests.per_controldir.test_push',
-        ]
+        "breezy.tests.per_controldir.test_controldir",
+        "breezy.tests.per_controldir.test_format",
+        "breezy.tests.per_controldir.test_push",
+    ]
     submod_tests = loader.loadTestsFromModuleNames(test_per_controldir)
     formats = ControlDirFormat.known_formats()
     scenarios = make_scenarios(
@@ -86,24 +89,31 @@ def load_tests(loader, standard_tests, pattern):
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
-        formats)
+        formats,
+    )
     # This will always add scenarios using the smart server.
     from ...bzr.remote import RemoteBzrDirFormat
 
     # test the remote server behaviour when backed with a MemoryTransport
     # Once for the current version
-    scenarios.extend(make_scenarios(
-        memory.MemoryServer,
-        test_server.SmartTCPServer_for_testing,
-        test_server.ReadonlySmartTCPServer_for_testing,
-        [(RemoteBzrDirFormat())],
-        name_suffix='-default'))
+    scenarios.extend(
+        make_scenarios(
+            memory.MemoryServer,
+            test_server.SmartTCPServer_for_testing,
+            test_server.ReadonlySmartTCPServer_for_testing,
+            [(RemoteBzrDirFormat())],
+            name_suffix="-default",
+        )
+    )
     # And once with < 1.6 - the 'v2' protocol.
-    scenarios.extend(make_scenarios(
-        memory.MemoryServer,
-        test_server.SmartTCPServer_for_testing_v2_only,
-        test_server.ReadonlySmartTCPServer_for_testing_v2_only,
-        [(RemoteBzrDirFormat())],
-        name_suffix='-v2'))
+    scenarios.extend(
+        make_scenarios(
+            memory.MemoryServer,
+            test_server.SmartTCPServer_for_testing_v2_only,
+            test_server.ReadonlySmartTCPServer_for_testing_v2_only,
+            [(RemoteBzrDirFormat())],
+            name_suffix="-v2",
+        )
+    )
     # add the tests for the sub modules
     return multiply_tests(submod_tests, scenarios, standard_tests)

@@ -192,20 +192,18 @@ def _get_list_dir_apache2_depth_1_allprop():
 
 
 class TestDavSaxParser(tests.TestCase):
-
     def _extract_dir_content_from_str(self, str):
-        return webdav._extract_dir_content(
-            'http://localhost/blah', StringIO(str))
+        return webdav._extract_dir_content("http://localhost/blah", StringIO(str))
 
     def _extract_stat_from_str(self, str):
-        return webdav._extract_stat_info(
-            'http://localhost/blah', StringIO(str))
+        return webdav._extract_stat_info("http://localhost/blah", StringIO(str))
 
     def test_unkown_format_response(self):
         # Valid but unrelated xml
         example = """<document/>"""
-        self.assertRaises(errors.InvalidHttpResponse,
-                          self._extract_dir_content_from_str, example)
+        self.assertRaises(
+            errors.InvalidHttpResponse, self._extract_dir_content_from_str, example
+        )
 
     def test_list_dir_malformed_response(self):
         # Invalid xml, neither multistatus nor response are properly closed
@@ -213,8 +211,9 @@ class TestDavSaxParser(tests.TestCase):
 <D:multistatus xmlns:D="DAV:" xmlns:ns0="urn:uuid:c2f41010-65b3-11d1-a29f-00aa00c14882/">
 <D:response>
 <D:href>http://localhost/</D:href>"""
-        self.assertRaises(errors.InvalidHttpResponse,
-                          self._extract_dir_content_from_str, example)
+        self.assertRaises(
+            errors.InvalidHttpResponse, self._extract_dir_content_from_str, example
+        )
 
     def test_list_dir_incomplete_format_response(self):
         # The information we need is not present
@@ -228,13 +227,15 @@ class TestDavSaxParser(tests.TestCase):
 </D:response>
 <D:href>http://localhost/toto</D:href>
 </D:multistatus>"""
-        self.assertRaises(errors.NotADirectory,
-                         self._extract_dir_content_from_str, example)
+        self.assertRaises(
+            errors.NotADirectory, self._extract_dir_content_from_str, example
+        )
 
     def test_list_dir_apache2_example(self):
         example = _get_list_dir_apache2_depth_1_prop()
-        self.assertRaises(errors.NotADirectory,
-                         self._extract_dir_content_from_str, example)
+        self.assertRaises(
+            errors.NotADirectory, self._extract_dir_content_from_str, example
+        )
 
     def test_list_dir_lighttpd_example(self):
         example = """<?xml version="1.0" encoding="utf-8"?>
@@ -249,16 +250,21 @@ class TestDavSaxParser(tests.TestCase):
 <D:href>http://localhost/toto</D:href>
 </D:response>
 </D:multistatus>"""
-        self.assertRaises(errors.NotADirectory,
-                         self._extract_dir_content_from_str, example)
+        self.assertRaises(
+            errors.NotADirectory, self._extract_dir_content_from_str, example
+        )
 
     def test_list_dir_apache2_dir_depth_1_example(self):
         example = _get_list_dir_apache2_depth_1_allprop()
-        self.assertEqual([('executable', False, 14, True),
-                           ('read-only', False, 42, False),
-                           ('titi', False, 6, False),
-                           ('toto', True, -1, False)],
-                          self._extract_dir_content_from_str(example))
+        self.assertEqual(
+            [
+                ("executable", False, 14, True),
+                ("read-only", False, 42, False),
+                ("titi", False, 6, False),
+                ("toto", True, -1, False),
+            ],
+            self._extract_dir_content_from_str(example),
+        )
 
     def test_stat_malformed_response(self):
         # Invalid xml, neither multistatus nor response are properly closed
@@ -266,8 +272,9 @@ class TestDavSaxParser(tests.TestCase):
 <D:multistatus xmlns:D="DAV:" xmlns:ns0="urn:uuid:c2f41010-65b3-11d1-a29f-00aa00c14882/">
 <D:response>
 <D:href>http://localhost/</D:href>"""
-        self.assertRaises(errors.InvalidHttpResponse,
-                          self._extract_stat_from_str, example)
+        self.assertRaises(
+            errors.InvalidHttpResponse, self._extract_stat_from_str, example
+        )
 
     def test_stat_incomplete_format_response(self):
         # The minimal information is present but doesn't conform to RFC 2518
@@ -280,8 +287,9 @@ class TestDavSaxParser(tests.TestCase):
 <D:multistatus xmlns:D="DAV:" xmlns:ns0="urn:uuid:c2f41010-65b3-11d1-a29f-00aa00c14882/">
 <D:href>http://localhost/toto</D:href>
 </D:multistatus>"""
-        self.assertRaises(errors.InvalidHttpResponse,
-                          self._extract_stat_from_str, example)
+        self.assertRaises(
+            errors.InvalidHttpResponse, self._extract_stat_from_str, example
+        )
 
     def test_stat_apache2_file_example(self):
         example = """<?xml version="1.0" encoding="utf-8"?>
@@ -320,8 +328,9 @@ class TestDavSaxParser(tests.TestCase):
 
     def test_stat_apache2_dir_depth_1_example(self):
         example = _get_list_dir_apache2_depth_1_allprop()
-        self.assertRaises(errors.InvalidHttpResponse,
-                          self._extract_stat_from_str, example)
+        self.assertRaises(
+            errors.InvalidHttpResponse, self._extract_stat_from_str, example
+        )
 
     def test_stat_apache2_dir_depth_0_example(self):
         example = """<?xml version="1.0" encoding="utf-8"?>
@@ -374,7 +383,7 @@ class CannedRequestHandler(http_server.TestingHTTPRequestHandler):
         requestline = self.rfile.readline()
         # Read headers
         parse_headers(self.rfile)
-        if requestline.startswith(b'POST'):
+        if requestline.startswith(b"POST"):
             # The body should be a single line (or we don't know where it ends
             # and we don't want to issue a blocking read)
             self.rfile.readline()
@@ -389,13 +398,11 @@ class HatterHttpServer(http_server.HttpServer):
     """
 
     def __init__(self):
-        super().__init__(CannedRequestHandler,
-                                               protocol_version='HTTP/1.1')
+        super().__init__(CannedRequestHandler, protocol_version="HTTP/1.1")
         self.canned_response = None
 
 
 class TestDAVErrors(tests.TestCase):
-
     def setUp(self):
         super().setUp()
         self._transport = webdav.HttpDavTransport
@@ -409,9 +416,9 @@ class TestDAVErrors(tests.TestCase):
 
     def test_delete_replies_202(self):
         """A bogus return code for delete raises an error."""
-        self.server.canned_response = b'''HTTP/1.1 202 OK\r
+        self.server.canned_response = b"""HTTP/1.1 202 OK\r
 Date: Tue, 10 Aug 2013 14:38:56 GMT\r
 Server: Apache/42 (Wonderland)\r
-'''
+"""
         t = self.get_transport()
-        self.assertRaises(errors.InvalidHttpResponse, t.delete, 'whatever')
+        self.assertRaises(errors.InvalidHttpResponse, t.delete, "whatever")

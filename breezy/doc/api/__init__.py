@@ -31,22 +31,21 @@ from breezy import tests
 
 
 def make_new_test_id(test):
-    new_id = f'{__name__}.DocFileTest({test.id()})'
+    new_id = f"{__name__}.DocFileTest({test.id()})"
     return lambda: new_id
 
 
 def load_tests(loader, basic_tests, pattern):
     """This module creates its own test suite with DocFileSuite."""
     dir_ = os.path.dirname(__file__)
-    if os.path.isdir(dir_):
-        candidates = os.listdir(dir_)
-    else:
-        candidates = []
-    scripts = [candidate for candidate in candidates
-               if candidate.endswith('.txt')]
+    candidates = os.listdir(dir_) if os.path.isdir(dir_) else []
+    scripts = [candidate for candidate in candidates if candidate.endswith(".txt")]
     # since this module doesn't define tests, we ignore basic_tests
-    suite = doctest.DocFileSuite(*scripts, setUp=tests.isolated_doctest_setUp,
-                                 tearDown=tests.isolated_doctest_tearDown)
+    suite = doctest.DocFileSuite(
+        *scripts,
+        setUp=tests.isolated_doctest_setUp,
+        tearDown=tests.isolated_doctest_tearDown,
+    )
     # DocFileCase reduces the test id to the base name of the tested file, we
     # want the module to appears there.
     for t in tests.iter_suite_tests(suite):

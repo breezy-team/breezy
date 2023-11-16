@@ -14,9 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import contextlib
 from io import BytesIO
 
-from . import osutils, progress, trace
+from . import errors, osutils, progress, trace
 from .i18n import gettext
 from .ui import ui_factory
 
@@ -39,7 +40,7 @@ class RenameMap:
         """
         modulus = 1024 * 1024 * 10
         for n in range(len(lines)):
-            yield hash(tuple(lines[n:n + 2])) % modulus
+            yield hash(tuple(lines[n : n + 2])) % modulus
 
     def add_edge_hashes(self, lines, tag):
         """Update edge_hashes to include the given lines.
@@ -59,8 +60,9 @@ class RenameMap:
         desired_files = [(tree.id2path(f), f) for f in file_ids]
         with ui_factory.nested_progress_bar() as task:
             for num, (file_id, contents) in enumerate(
-                    tree.iter_files_bytes(desired_files)):
-                task.update(gettext('Calculating hashes'), num, len(file_ids))
+                tree.iter_files_bytes(desired_files)
+            ):
+                task.update(gettext("Calculating hashes"), num, len(file_ids))
                 s = BytesIO()
                 s.writelines(contents)
                 s.seek(0)
@@ -95,7 +97,7 @@ class RenameMap:
         all_hits = []
         with ui_factory.nested_progress_bar() as task:
             for num, path in enumerate(paths):
-                task.update(gettext('Determining hash hits'), num, len(paths))
+                task.update(gettext("Determining hash hits"), num, len(paths))
                 hits = self.hitcounts(self.tree.get_file_lines(path))
                 all_hits.extend((v, path, k) for k, v in hits.items())
         return all_hits
@@ -165,15 +167,16 @@ class RenameMap:
         missing_parents = {}
         candidate_files = set()
         with ui_factory.nested_progress_bar() as task:
-            iterator = self.tree.iter_changes(basis, want_unversioned=True,
-                                              pb=task)
+            iterator = self.tree.iter_changes(basis, want_unversioned=True, pb=task)
             for change in iterator:
                 if change.kind[1] is None and change.versioned[1]:
                     if not self.tree.has_filename(
-                            self.tree.id2path(change.parent_id[0])):
-                        missing_parents.setdefault(
-                            change.parent_id[0], set()).add(change.file_id)
-                    if change.kind[0] == 'file':
+                        self.tree.id2path(change.parent_id[0])
+                    ):
+                        missing_parents.setdefault(change.parent_id[0], set()).add(
+                            change.file_id
+                        )
+                    if change.kind[0] == "file":
                         missing_files.add(change.file_id)
                     else:
                         # other kinds are not handled
@@ -181,12 +184,12 @@ class RenameMap:
                 if change.versioned == (False, False):
                     if self.tree.is_ignored(change.path[1]):
                         continue
-                    if change.kind[1] == 'file':
+                    if change.kind[1] == "file":
                         candidate_files.add(change.path[1])
-                    if change.kind[1] == 'directory':
+                    if change.kind[1] == "directory":
                         for _dir, children in self.tree.walkdirs(change.path[1]):
                             for child in children:
-                                if child[2] == 'file':
+                                if child[2] == "file":
                                     candidate_files.add(child[0])
         return missing_files, missing_parents, candidate_files
 
@@ -202,22 +205,23 @@ class RenameMap:
         """
         required_parents = {}
         with ui_factory.nested_progress_bar() as task:
-            pp = progress.ProgressPhase('Guessing renames', 4, task)
+            pp = progress.ProgressPhase("Guessing renames", 4, task)
             with from_tree.lock_read():
                 rn = klass(to_tree)
                 pp.next_phase()
-                missing_files, missing_parents, candidate_files = (
-                    rn._find_missing_files(from_tree))
+                (
+                    missing_files,
+                    missing_parents,
+                    candidate_files,
+                ) = rn._find_missing_files(from_tree)
                 pp.next_phase()
                 rn.add_file_edge_hashes(from_tree, missing_files)
             pp.next_phase()
             matches = rn.file_match(candidate_files)
             parents_matches = matches
             while len(parents_matches) > 0:
-                required_parents = rn.get_required_parents(
-                    parents_matches)
-                parents_matches = rn.match_parents(required_parents,
-                                                   missing_parents)
+                required_parents = rn.get_required_parents(parents_matches)
+                parents_matches = rn.match_parents(required_parents, missing_parents)
                 matches.update(parents_matches)
             pp.next_phase()
             delta = rn._make_inventory_delta(matches)
@@ -232,28 +236,24 @@ class RenameMap:
         file_id_matches = {f: p for p, f in matches.items()}
         file_id_query = []
         for f in matches.values():
-            try:
+            with contextlib.suppress(errors.NoSuchId):
                 file_id_query.append(self.tree.id2path(f))
-            except errors.NoSuchId:
-                pass
         for old_path, entry in self.tree.iter_entries_by_dir(
-                specific_files=file_id_query):
+            specific_files=file_id_query
+        ):
             new_path = file_id_matches[entry.file_id]
             parent_path, new_name = osutils.split(new_path)
             parent_id = matches.get(parent_path)
             if parent_id is None:
                 parent_id = self.tree.path2id(parent_path)
                 if parent_id is None:
-                    added, ignored = self.tree.smart_add(
-                        [parent_path], recurse=False)
+                    added, ignored = self.tree.smart_add([parent_path], recurse=False)
                     if len(ignored) > 0 and ignored[0] == parent_path:
                         continue
                     else:
                         parent_id = self.tree.path2id(parent_path)
             if entry.name == new_name and entry.parent_id == parent_id:
                 continue
-            new_entry = entry.copy()
-            new_entry.parent_id = parent_id
-            new_entry.name = new_name
+            new_entry = entry.derive(name=new_name, parent_id=parent_id)
             delta.append((old_path, new_path, new_entry.file_id, new_entry))
         return delta

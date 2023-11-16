@@ -89,9 +89,8 @@ class GitMemoryTree(MutableGitIndexTree, _mod_tree.Tree):
                     self._file_transport.mkdir(subpath)
                     trees.append((subpath, self.store[sha]))
                 elif stat.S_ISREG(mode):
-                    self._file_transport.put_bytes(
-                        subpath, self.store[sha].data)
-                    self._index_add_entry(subpath, 'file')
+                    self._file_transport.put_bytes(subpath, self.store[sha].data)
+                    self._index_add_entry(subpath, "file")
                 else:
                     raise NotImplementedError(self._populate_from_branch)
 
@@ -161,7 +160,8 @@ class GitMemoryTree(MutableGitIndexTree, _mod_tree.Tree):
     def _lstat(self, path):
         mem_stat = self._file_transport.stat(path)
         stat_val = os.stat_result(
-            (mem_stat.st_mode, 0, 0, 0, 0, 0, mem_stat.st_size, 0, 0, 0))
+            (mem_stat.st_mode, 0, 0, 0, 0, 0, mem_stat.st_size, 0, 0, 0)
+        )
         return stat_val
 
     def _live_entry(self, path):
@@ -171,11 +171,12 @@ class GitMemoryTree(MutableGitIndexTree, _mod_tree.Tree):
             return None
         elif stat.S_ISLNK(stat_val.st_mode):
             blob = Blob.from_string(
-                encode_git_path(self._file_transport.readlink(path)))
+                encode_git_path(self._file_transport.readlink(path))
+            )
         elif stat.S_ISREG(stat_val.st_mode):
             blob = Blob.from_string(self._file_transport.get_bytes(path))
         else:
-            raise AssertionError('unknown type %d' % stat_val.st_mode)
+            raise AssertionError("unknown type %d" % stat_val.st_mode)
         return index_entry_from_stat(stat_val, blob.id, mode=stat_val.st_mode)
 
     def get_file_with_stat(self, path):
@@ -204,8 +205,7 @@ class GitMemoryTree(MutableGitIndexTree, _mod_tree.Tree):
         with self.lock_read():
             if self.branch.head is None:
                 return _mod_revision.NULL_REVISION
-            return self.branch.repository.lookup_foreign_revision_id(
-                self.branch.head)
+            return self.branch.repository.lookup_foreign_revision_id(self.branch.head)
 
     def basis_tree(self):
         """See Tree.basis_tree()."""
@@ -231,11 +231,12 @@ class GitMemoryTree(MutableGitIndexTree, _mod_tree.Tree):
         else:
             self._parent_ids = parent_ids
             self.branch.head = self.branch.repository.lookup_bzr_revision_id(
-                parent_ids[0])[0]
+                parent_ids[0]
+            )[0]
 
     def mkdir(self, path, file_id=None):
         """See MutableTree.mkdir()."""
-        self.add(path, 'directory')
+        self.add(path, "directory")
         self._file_transport.mkdir(path)
 
     def _rename_one(self, from_rel, to_rel):

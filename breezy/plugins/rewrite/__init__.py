@@ -32,8 +32,15 @@ from ...i18n import load_plugin_translations
 translation = load_plugin_translations("bzr-rewrite")
 gettext = translation.gettext
 
-for cmd in ['rebase', 'rebase_abort', 'rebase_continue', 'rebase_todo',
-            'replay', 'pseudonyms', 'rebase_foreign']:
+for cmd in [
+    "rebase",
+    "rebase_abort",
+    "rebase_continue",
+    "rebase_todo",
+    "replay",
+    "pseudonyms",
+    "rebase_foreign",
+]:
     plugin_cmds.register_lazy(f"cmd_{cmd}", [], __name__ + ".commands")
 
 
@@ -46,26 +53,28 @@ def show_rebase_summary(params):
     if "rebase-v1" not in features:
         return
     from .rebase import RebaseState1, rebase_todo
+
     state = RebaseState1(params.new_tree)
     try:
         replace_map = state.read_plan()[1]
     except _mod_transport.NoSuchFile:
         return
     todo = list(rebase_todo(params.new_tree.branch.repository, replace_map))
-    params.to_file.write(f'Rebase in progress. ({len(todo)} revisions left)\n')
+    params.to_file.write(f"Rebase in progress. ({len(todo)} revisions left)\n")
 
 
 from ...hooks import install_lazy_named_hook
 
 install_lazy_named_hook(
-    'breezy.status', 'hooks', 'post_status',
-    show_rebase_summary, 'rewrite status')
+    "breezy.status", "hooks", "post_status", show_rebase_summary, "rewrite status"
+)
 
 
 def load_tests(loader, basic_tests, pattern):
     testmod_names = [
-        'tests',
-        ]
-    basic_tests.addTest(loader.loadTestsFromModuleNames(
-        [f"{__name__}.{tmn}" for tmn in testmod_names]))
+        "tests",
+    ]
+    basic_tests.addTest(
+        loader.loadTestsFromModuleNames([f"{__name__}.{tmn}" for tmn in testmod_names])
+    )
     return basic_tests

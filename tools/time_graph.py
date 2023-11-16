@@ -16,35 +16,35 @@ from breezy import (
 from breezy.ui import text
 
 p = optparse.OptionParser()
-p.add_option('--quick', default=False, action='store_true')
-p.add_option('--max-combinations', default=500, type=int)
-p.add_option('--lsprof', default=None, type=str)
+p.add_option("--quick", default=False, action="store_true")
+p.add_option("--max-combinations", default=500, type=int)
+p.add_option("--lsprof", default=None, type=str)
 opts, args = p.parse_args(sys.argv[1:])
 
 trace.enable_default_logging()
 ui.ui_factory = text.TextUIFactory()
 
 begin = osutils.perf_counter()
-if len(args) >= 1:
-    b = branch.Branch.open(args[0])
-else:
-    b = branch.Branch.open('.')
+b = branch.Branch.open(args[0]) if len(args) >= 1 else branch.Branch.open(".")
 with b.lock_read():
     g = b.repository.get_graph()
-    parent_map = dict(p for p in g.iter_ancestry([b.last_revision()])
-                      if p[1] is not None)
+    parent_map = dict(
+        p for p in g.iter_ancestry([b.last_revision()]) if p[1] is not None
+    )
 end = osutils.perf_counter()
 
-print(f'Found {len(parent_map)} nodes, loaded in {end - begin:.3f}s')
+print(f"Found {len(parent_map)} nodes, loaded in {end - begin:.3f}s")
+
 
 def all_heads_comp(g, combinations):
     h = []
     with ui.ui_factory.nested_progress_bar() as pb:
         for idx, combo in enumerate(combinations):
-            if idx & 0x1f == 0:
-                pb.update('proc', idx, len(combinations))
+            if idx & 0x1F == 0:
+                pb.update("proc", idx, len(combinations))
             h.append(g.heads(combo))
     return h
+
 
 combinations = []
 # parents = parent_map.keys()
@@ -66,7 +66,8 @@ for _revision_id, parent_ids in parent_map.iteritems():
 if opts.max_combinations > 0 and len(combinations) > opts.max_combinations:
     combinations = random.sample(combinations, opts.max_combinations)
 
-print(f'      {len(combinations)} combinations')
+print(f"      {len(combinations)} combinations")
+
 
 def combi_graph(graph_klass, comb):
     # DEBUG
@@ -80,7 +81,8 @@ def combi_graph(graph_klass, comb):
     else:
         heads = all_heads_comp(g, comb)
     end = osutils.perf_counter()
-    return {'elapsed': (end - begin), 'graph': g, 'heads': heads}
+    return {"elapsed": (end - begin), "graph": g, "heads": heads}
+
 
 def report(name, g):
     print(f"{name}: {g['elapsed']:.3f}s")
@@ -89,21 +91,24 @@ def report(name, g):
         if c:
             counters_used = True
     if counters_used:
-        print(f'  {graph._counters}')
+        print(f"  {graph._counters}")
+
 
 known_python = combi_graph(_known_graph_py.KnownGraph, combinations)
-report('Known', known_python)
+report("Known", known_python)
 
 known_pyrex = combi_graph(_known_graph_pyx.KnownGraph, combinations)
-report('Known (pyx)', known_pyrex)
+report("Known (pyx)", known_pyrex)
+
 
 def _simple_graph(parent_map):
     return graph.Graph(graph.DictParentsProvider(parent_map))
+
 
 if opts.quick:
     print(f"ratio: {known_python['elapsed'] / known_pyrex['elapsed']:.1f}:1 faster")
 else:
     orig = combi_graph(_simple_graph, combinations)
-    report('Orig', orig)
+    report("Orig", orig)
 
     print(f"ratio: {orig['elapsed'] / known_pyrex['elapsed']:.1f}:1 faster")

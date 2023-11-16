@@ -19,6 +19,7 @@ tree info.
 """
 
 import codecs
+import contextlib
 
 from breezy import errors
 from breezy.version_info_formats import VersionInfoBuilder, create_date_str
@@ -28,16 +29,14 @@ from ..revision import NULL_REVISION
 
 
 class MissingTemplateVariable(errors.BzrError):
-
-    _fmt = 'Variable {%(name)s} is not available.'
+    _fmt = "Variable {%(name)s} is not available."
 
     def __init__(self, name):
         self.name = name
 
 
 class NoTemplate(errors.BzrError):
-
-    _fmt = 'No template specified.'
+    _fmt = "No template specified."
 
 
 class Template:
@@ -59,7 +58,7 @@ class Template:
     ['xxx', '\n']
     """
 
-    _tag_re = lazy_compile('{(\\w+)}')
+    _tag_re = lazy_compile("{(\\w+)}")
 
     def __init__(self):
         self._data = {}
@@ -99,28 +98,26 @@ class CustomVersionInfoBuilder(VersionInfoBuilder):
             raise NoTemplate()
 
         info = Template()
-        info.add('build_date', create_date_str())
-        info.add('branch_nick', self._branch.nick)
+        info.add("build_date", create_date_str())
+        info.add("branch_nick", self._branch.nick)
 
         revision_id = self._get_revision_id()
         if revision_id == NULL_REVISION:
-            info.add('revno', 0)
+            info.add("revno", 0)
         else:
-            try:
-                info.add('revno', self._get_revno_str(revision_id))
-            except errors.GhostRevisionsHaveNoRevno:
-                pass
-            info.add('revision_id', revision_id.decode('utf-8'))
+            with contextlib.suppress(errors.GhostRevisionsHaveNoRevno):
+                info.add("revno", self._get_revno_str(revision_id))
+            info.add("revision_id", revision_id.decode("utf-8"))
             rev = self._branch.repository.get_revision(revision_id)
-            info.add('date', create_date_str(rev.timestamp, rev.timezone))
+            info.add("date", create_date_str(rev.timestamp, rev.timezone))
 
         if self._check:
             self._extract_file_revisions()
 
         if self._check:
             if self._clean:
-                info.add('clean', 1)
+                info.add("clean", 1)
             else:
-                info.add('clean', 0)
+                info.add("clean", 0)
 
         to_file.writelines(info.process(self._template))

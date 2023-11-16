@@ -56,18 +56,17 @@ class UTextWrapper(textwrap.TextWrapper):
 
     def __init__(self, width=None, **kwargs):
         if width is None:
-            width = (osutils.terminal_width() or
-                     osutils.default_terminal_width) - 1
+            width = (osutils.terminal_width() or osutils.default_terminal_width) - 1
 
-        ambi_width = kwargs.pop('ambiguous_width', 1)
+        ambi_width = kwargs.pop("ambiguous_width", 1)
         if ambi_width == 1:
-            self._east_asian_doublewidth = 'FW'
+            self._east_asian_doublewidth = "FW"
         elif ambi_width == 2:
-            self._east_asian_doublewidth = 'FWA'
+            self._east_asian_doublewidth = "FWA"
         else:
             raise ValueError("ambiguous_width should be 1 or 2")
 
-        self.max_lines = kwargs.get('max_lines', None)
+        self.max_lines = kwargs.get("max_lines", None)
         textwrap.TextWrapper.__init__(self, width, **kwargs)
 
     def _unicode_char_width(self, uc):
@@ -100,7 +99,7 @@ class UTextWrapper(textwrap.TextWrapper):
             w += charwidth(c)
             if w > width:
                 return s[:pos], s[pos:]
-        return s, ''
+        return s, ""
 
     def _fix_sentence_endings(self, chunks):
         r"""_fix_sentence_endings(chunks : [string]).
@@ -163,7 +162,10 @@ class UTextWrapper(textwrap.TextWrapper):
                 indent = self.subsequent_indent
             else:
                 indent = self.initial_indent
-            if self._width(indent) + self._width(self.placeholder.lstrip()) > self.width:
+            if (
+                self._width(indent) + self._width(self.placeholder.lstrip())
+                > self.width
+            ):
                 raise ValueError("placeholder too large for max width")
 
         # Arrange in reverse order so items can be efficiently popped
@@ -171,24 +173,20 @@ class UTextWrapper(textwrap.TextWrapper):
         chunks.reverse()
 
         while chunks:
-
             # Start the list of chunks that will make up the current line.
             # cur_len is just the length of all the chunks in cur_line.
             cur_line = []
             cur_len = 0
 
             # Figure out which static string will prefix this line.
-            if lines:
-                indent = self.subsequent_indent
-            else:
-                indent = self.initial_indent
+            indent = self.subsequent_indent if lines else self.initial_indent
 
             # Maximum width for this line.
             width = self.width - len(indent)
 
             # First chunk on line is whitespace -- drop it, unless this
             # is the very beginning of the text (ie. no lines started yet).
-            if self.drop_whitespace and chunks[-1].strip() == '' and lines:
+            if self.drop_whitespace and chunks[-1].strip() == "" and lines:
                 del chunks[-1]
 
             while chunks:
@@ -217,29 +215,38 @@ class UTextWrapper(textwrap.TextWrapper):
             # Convert current line back to a string and store it in list
             # of all lines (return value).
             if cur_line:
-                if (self.max_lines is None or
-                    len(lines) + 1 < self.max_lines or
-                    (not chunks or
-                        self.drop_whitespace and
-                     len(chunks) == 1 and
-                     not chunks[0].strip()) and cur_len <= width):
+                if (
+                    self.max_lines is None
+                    or len(lines) + 1 < self.max_lines
+                    or (
+                        not chunks
+                        or self.drop_whitespace
+                        and len(chunks) == 1
+                        and not chunks[0].strip()
+                    )
+                    and cur_len <= width
+                ):
                     # Convert current line back to a string and store it in
                     # list of all lines (return value).
-                    lines.append(indent + ''.join(cur_line))
+                    lines.append(indent + "".join(cur_line))
                 else:
                     while cur_line:
-                        if (cur_line[-1].strip() and
-                                cur_len + self._width(self.placeholder) <= width):
+                        if (
+                            cur_line[-1].strip()
+                            and cur_len + self._width(self.placeholder) <= width
+                        ):
                             cur_line.append(self.placeholder)
-                            lines.append(indent + ''.join(cur_line))
+                            lines.append(indent + "".join(cur_line))
                             break
                         cur_len -= self._width(cur_line[-1])
                         del cur_line[-1]
                     else:
                         if lines:
                             prev_line = lines[-1].rstrip()
-                            if (self._width(prev_line) + self._width(self.placeholder) <=
-                                    self.width):
+                            if (
+                                self._width(prev_line) + self._width(self.placeholder)
+                                <= self.width
+                            ):
                                 lines[-1] = prev_line + self.placeholder
                                 break
                         lines.append(indent + self.placeholder.lstrip())
@@ -265,6 +272,7 @@ class UTextWrapper(textwrap.TextWrapper):
     def wrap(self, text):
         # ensure text is unicode
         return textwrap.TextWrapper.wrap(self, osutils.safe_unicode(text))
+
 
 # -- Convenience interface ---------------------------------------------
 

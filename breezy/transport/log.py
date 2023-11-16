@@ -44,45 +44,55 @@ class TransportLogDecorator(decorator.TransportDecorator):
         def _make_hook(hookname):
             def _hook(relpath, *args, **kw):
                 return self._log_and_call(hookname, relpath, *args, **kw)
+
             return _hook
+
         # GZ 2017-05-21: Not all methods take relpath as first argument, for
         # instance copy_to takes list of relpaths. Also, unclear on url vs
         # filesystem path split. Needs tidying up.
         for methodname in (
-                'append_bytes',
-                'append_file',
-                'copy_to',
-                'delete',
-                'get',
-                'has',
-                'open_write_stream',
-                'mkdir',
-                'move',
-                'put_bytes', 'put_bytes_non_atomic', 'put_file put_file_non_atomic',
-                'list_dir', 'lock_read', 'lock_write',
-                'readv', 'rename', 'rmdir',
-                'stat',
-                'ulock',
-                ):
+            "append_bytes",
+            "append_file",
+            "copy_to",
+            "delete",
+            "get",
+            "has",
+            "open_write_stream",
+            "mkdir",
+            "move",
+            "put_bytes",
+            "put_bytes_non_atomic",
+            "put_file put_file_non_atomic",
+            "list_dir",
+            "lock_read",
+            "lock_write",
+            "readv",
+            "rename",
+            "rmdir",
+            "stat",
+            "ulock",
+        ):
             setattr(self, methodname, _make_hook(methodname))
 
     @classmethod
     def _get_url_prefix(self):
-        return 'log+'
+        return "log+"
 
     def iter_files_recursive(self):
         # needs special handling because it does not have a relpath parameter
         mutter(f"{'iter_files_recursive'} {self._decorated.base}")
-        return self._call_and_log_result('iter_files_recursive', (), {})
+        return self._call_and_log_result("iter_files_recursive", (), {})
 
     def _log_and_call(self, methodname, relpath, *args, **kwargs):
-        if kwargs:
-            kwargs_str = dict(kwargs)
-        else:
-            kwargs_str = ''
-        mutter("{} {} {} {}".format(methodname, relpath,
-                  self._shorten(self._strip_tuple_parens(args)),
-                  kwargs_str))
+        kwargs_str = dict(kwargs) if kwargs else ""
+        mutter(
+            "{} {} {} {}".format(
+                methodname,
+                relpath,
+                self._shorten(self._strip_tuple_parens(args)),
+                kwargs_str,
+            )
+        )
         return self._call_and_log_result(methodname, (relpath,) + args, kwargs)
 
     def _call_and_log_result(self, methodname, args, kwargs):
@@ -97,7 +107,10 @@ class TransportLogDecorator(decorator.TransportDecorator):
 
     def _show_result(self, before, methodname, result):
         result_len = None
-        if isinstance(result, types.GeneratorType) or type(result).__name__ == 'list_iterator':
+        if (
+            isinstance(result, types.GeneratorType)
+            or type(result).__name__ == "list_iterator"
+        ):
             # We now consume everything from the generator so that we can show
             # the results and the time it took to get them.  However, to keep
             # compatibility with callers that may specifically expect a result
@@ -108,17 +121,22 @@ class TransportLogDecorator(decorator.TransportDecorator):
         else:
             return_result = result
         # Is this an io object with a getvalue() method?
-        getvalue = getattr(result, 'getvalue', None)
+        getvalue = getattr(result, "getvalue", None)
         if getvalue is not None:
             val = repr(getvalue())
             result_len = len(val)
-            shown_result = "%s(%s) (%d bytes)" % (result.__class__.__name__,
-                                                  self._shorten(val), result_len)
-        elif methodname == 'readv':
+            shown_result = "%s(%s) (%d bytes)" % (
+                result.__class__.__name__,
+                self._shorten(val),
+                result_len,
+            )
+        elif methodname == "readv":
             num_hunks = len(result)
             total_bytes = sum((len(d) for o, d in result))
             shown_result = "readv response, %d hunks, %d total bytes" % (
-                num_hunks, total_bytes)
+                num_hunks,
+                total_bytes,
+            )
             result_len = total_bytes
         else:
             shown_result = self._shorten(self._strip_tuple_parens(result))
@@ -131,20 +149,19 @@ class TransportLogDecorator(decorator.TransportDecorator):
             if result_len and elapsed > 0:
                 # this is the rate of higher-level data, not the raw network
                 # speed using base-10 units (see HACKING.txt).
-                mutter("      %9.03fs %8dkB/s"
-                       % (elapsed, result_len / elapsed / 1000))
+                mutter("      %9.03fs %8dkB/s" % (elapsed, result_len / elapsed / 1000))
             else:
                 mutter(f"      {elapsed:9.03f}s")
         return return_result
 
     def _shorten(self, x):
         if len(x) > 70:
-            x = x[:67] + '...'
+            x = x[:67] + "..."
         return x
 
     def _strip_tuple_parens(self, t):
         t = repr(t)
-        if t[0] == '(' and t[-1] == ')':
+        if t[0] == "(" and t[-1] == ")":
             t = t[1:-1]
         return t
 
@@ -152,4 +169,5 @@ class TransportLogDecorator(decorator.TransportDecorator):
 def get_test_permutations():
     """Return the permutations to be used in testing."""
     from ..tests import test_server
+
     return [(TransportLogDecorator, test_server.LogDecoratorServer)]

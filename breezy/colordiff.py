@@ -15,6 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import contextlib
 import re
 from os.path import expanduser
 
@@ -30,10 +31,10 @@ from .patches import (
     hunk_from_header,
 )
 
-GLOBAL_COLORDIFFRC = '/etc/colordiffrc'
+GLOBAL_COLORDIFFRC = "/etc/colordiffrc"
+
 
 class LineParser:
-
     def parse_line(self, line):
         if line.startswith(b"@"):
             return hunk_from_header(line)
@@ -52,7 +53,7 @@ def read_colordiffrc(path):
     with open(path) as f:
         for line in f.readlines():
             try:
-                key, val = line.split('=')
+                key, val = line.split("=")
             except ValueError:
                 continue
 
@@ -69,24 +70,23 @@ def read_colordiffrc(path):
 
 
 class DiffWriter:
-
     def __init__(self, target, check_style=False):
         self.target = target
         self.lp = LineParser()
         self.chunks = []
         self.colors = {
-            'metaline': 'darkyellow',
-            'plain': 'darkwhite',
-            'newtext': 'darkblue',
-            'oldtext': 'darkred',
-            'diffstuff': 'darkgreen',
-            'trailingspace': 'yellow',
-            'leadingtabs': 'magenta',
-            'longline': 'cyan',
+            "metaline": "darkyellow",
+            "plain": "darkwhite",
+            "newtext": "darkblue",
+            "oldtext": "darkred",
+            "diffstuff": "darkgreen",
+            "trailingspace": "yellow",
+            "leadingtabs": "magenta",
+            "longline": "cyan",
         }
         if GLOBAL_COLORDIFFRC is not None:
             self._read_colordiffrc(GLOBAL_COLORDIFFRC)
-        self._read_colordiffrc(expanduser('~/.colordiffrc'))
+        self._read_colordiffrc(expanduser("~/.colordiffrc"))
         self.added_leading_tabs = 0
         self.added_trailing_whitespace = 0
         self.spurious_whitespace = 0
@@ -97,26 +97,29 @@ class DiffWriter:
         self.check_style = check_style
 
     def _read_colordiffrc(self, path):
-        try:
+        with contextlib.suppress(OSError):
             self.colors.update(read_colordiffrc(path))
-        except OSError:
-            pass
 
     def colorstring(self, type, item, bad_ws_match):
         color = self.colors[type]
         if color is not None:
             if self.check_style and bad_ws_match:
-                #highlight were needed
-                item.contents = ''.join(
+                # highlight were needed
+                item.contents = "".join(
                     terminal.colorstring(txt, color, bcol)
                     for txt, bcol in (
-                        (bad_ws_match.group(1).expandtabs(),
-                         self.colors['leadingtabs']),
-                        (bad_ws_match.group(2)[0:self.max_line_len], None),
-                        (bad_ws_match.group(2)[self.max_line_len:],
-                         self.colors['longline']),
-                        (bad_ws_match.group(3), self.colors['trailingspace'])
-                    )) + bad_ws_match.group(4)
+                        (
+                            bad_ws_match.group(1).expandtabs(),
+                            self.colors["leadingtabs"],
+                        ),
+                        (bad_ws_match.group(2)[0 : self.max_line_len], None),
+                        (
+                            bad_ws_match.group(2)[self.max_line_len :],
+                            self.colors["longline"],
+                        ),
+                        (bad_ws_match.group(3), self.colors["trailingspace"]),
+                    )
+                ) + bad_ws_match.group(4)
             if not isinstance(item, bytes):
                 item = item.as_bytes()
             string = terminal.colorstring(item, color)
@@ -125,9 +128,9 @@ class DiffWriter:
         self.target.write(string)
 
     def write(self, text):
-        newstuff = text.split(b'\n')
+        newstuff = text.split(b"\n")
         for newchunk in newstuff[:-1]:
-            self._writeline(b''.join(self.chunks + [newchunk, b'\n']))
+            self._writeline(b"".join(self.chunks + [newchunk, b"\n"]))
             self.chunks = []
         self.chunks = [newstuff[-1]]
 
@@ -139,11 +142,10 @@ class DiffWriter:
         item = self.lp.parse_line(line)
         bad_ws_match = None
         if isinstance(item, Hunk):
-            line_class = 'diffstuff'
+            line_class = "diffstuff"
             self._analyse_old_new()
         elif isinstance(item, HunkLine):
-            bad_ws_match = re.match(br'^([\t]*)(.*?)([\t ]*)(\r?\n)$',
-                                    item.contents)
+            bad_ws_match = re.match(rb"^([\t]*)(.*?)([\t ]*)(\r?\n)$", item.contents)
             has_leading_tabs = bool(bad_ws_match.group(1))
             has_trailing_whitespace = bool(bad_ws_match.group(3))
             if isinstance(item, InsertLine):
@@ -151,21 +153,22 @@ class DiffWriter:
                     self.added_leading_tabs += 1
                 if has_trailing_whitespace:
                     self.added_trailing_whitespace += 1
-                if (len(bad_ws_match.group(2)) > self.max_line_len and
-                        not item.contents.startswith(b'++ ')):
+                if len(
+                    bad_ws_match.group(2)
+                ) > self.max_line_len and not item.contents.startswith(b"++ "):
                     self.long_lines += 1
-                line_class = 'newtext'
+                line_class = "newtext"
                 self._new_lines.append(item)
             elif isinstance(item, RemoveLine):
-                line_class = 'oldtext'
+                line_class = "oldtext"
                 self._old_lines.append(item)
             else:
-                line_class = 'plain'
-        elif isinstance(item, bytes) and item.startswith(b'==='):
-            line_class = 'metaline'
+                line_class = "plain"
+        elif isinstance(item, bytes) and item.startswith(b"==="):
+            line_class = "metaline"
             self._analyse_old_new()
         else:
-            line_class = 'plain'
+            line_class = "plain"
             self._analyse_old_new()
         self.colorstring(line_class, item, bad_ws_match)
 
@@ -193,5 +196,5 @@ class DiffWriter:
             raise AssertionError
         if no_ws_matched > ws_matched:
             self.spurious_whitespace += no_ws_matched - ws_matched
-            self.target.write('^ Spurious whitespace change above.\n')
+            self.target.write("^ Spurious whitespace change above.\n")
         self._old_lines, self._new_lines = ([], [])

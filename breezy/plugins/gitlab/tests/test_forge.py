@@ -27,37 +27,44 @@ from ..forge import (
 
 
 class ParseGitLabMergeRequestUrlTests(TestCase):
-
     def test_invalid(self):
         self.assertRaises(
-            NotMergeRequestUrl, parse_gitlab_merge_request_url,
-            "https://salsa.debian.org/")
+            NotMergeRequestUrl,
+            parse_gitlab_merge_request_url,
+            "https://salsa.debian.org/",
+        )
         self.assertRaises(
-            NotGitLabUrl, parse_gitlab_merge_request_url,
-            "bzr://salsa.debian.org/")
+            NotGitLabUrl, parse_gitlab_merge_request_url, "bzr://salsa.debian.org/"
+        )
         self.assertRaises(
-            NotGitLabUrl, parse_gitlab_merge_request_url,
-            "https:///salsa.debian.org/")
+            NotGitLabUrl, parse_gitlab_merge_request_url, "https:///salsa.debian.org/"
+        )
         self.assertRaises(
-            NotMergeRequestUrl, parse_gitlab_merge_request_url,
-            "https://salsa.debian.org/jelmer/salsa")
+            NotMergeRequestUrl,
+            parse_gitlab_merge_request_url,
+            "https://salsa.debian.org/jelmer/salsa",
+        )
 
     def test_old_style(self):
         self.assertEqual(
-            ('salsa.debian.org', 'jelmer/salsa', 4),
+            ("salsa.debian.org", "jelmer/salsa", 4),
             parse_gitlab_merge_request_url(
-                'https://salsa.debian.org/jelmer/salsa/merge_requests/4'))
+                "https://salsa.debian.org/jelmer/salsa/merge_requests/4"
+            ),
+        )
 
     def test_new_style(self):
         self.assertEqual(
-            ('salsa.debian.org', 'jelmer/salsa', 4),
+            ("salsa.debian.org", "jelmer/salsa", 4),
             parse_gitlab_merge_request_url(
-                'https://salsa.debian.org/jelmer/salsa/-/merge_requests/4'))
+                "https://salsa.debian.org/jelmer/salsa/-/merge_requests/4"
+            ),
+        )
 
 
 class ParseTimestringTests(TestCase):
-
     def test_simple(self):
         self.assertEqual(
             datetime(2018, 9, 7, 11, 16, 17, 520000),
-            parse_timestring("2018-09-07T11:16:17.520Z"))
+            parse_timestring("2018-09-07T11:16:17.520Z"),
+        )

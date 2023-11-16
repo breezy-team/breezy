@@ -484,19 +484,21 @@ fn unescape_safe_chars(captures: &regex::Captures) -> String {
 /// This does not handle substitution of ~ but does handle '..' and '.'
 /// components.
 ///
-/// Examples::
+/// # Examples
 ///
-///     t._combine_paths('/home/sarah', 'project/foo')
-///         => '/home/sarah/project/foo'
-///     t._combine_paths('/home/sarah', '../../etc')
-///         => '/etc'
-///     t._combine_paths('/home/sarah', '/etc')
-///         => '/etc'
+///  use breezy_urlutils::combine_paths;
+///  assert_eq!("/home/sarah/project/foo", combine_paths("/home/sarah", "project/foo"));
+///  assert_eq!("/etc", combine_paths("/home/sarah", "../../etc"));
+///  assert_eq!("/etc", combine_paths("/home/sarah", "/etc"));
 ///
-/// Args:
-///   base_path: base path
-///   relpath: relative url string for relative part of remote path.
-/// Returns: urlencoded string for final path.
+/// # Arguments
+///
+/// * `base_path` - base path
+/// * `relpath` - relative path
+///
+/// # Returns
+///
+/// urlencoded string for final path.
 pub fn combine_paths(base_path: &str, relpath: &str) -> String {
     let relpath = URL_HEX_ESCAPES_RE
         .replace_all(relpath, unescape_safe_chars)
@@ -710,10 +712,10 @@ pub mod posix {
 
     pub fn local_path_from_url(url: &str) -> std::result::Result<PathBuf, super::Error> {
         let url = super::strip_segment_parameters(url);
-        let path = if url.starts_with(FILE_LOCALHOST_PREFIX) {
-            &url[FILE_LOCALHOST_PREFIX.len()..]
+        let path = if let Some(suffix) = url.strip_prefix(FILE_LOCALHOST_PREFIX) {
+            suffix
         } else if url.starts_with(PLAIN_FILE_PREFIX) {
-            &url[7..]
+            &url[PLAIN_FILE_PREFIX.len() - 1..]
         } else {
             return Err(super::Error::NotLocalUrl(url.to_string()));
         };
