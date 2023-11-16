@@ -16,6 +16,7 @@
 
 """Tests for the osutils wrapper."""
 
+import contextlib
 import errno
 import os
 import socket
@@ -811,18 +812,14 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
         with open("a", "wb") as a:
             a.write(b"foo\n")
 
-        try:
+        with contextlib.suppress(FileNotFoundError):
             osutils._win32_rename("b", "a")
-        except FileNotFoundError:
-            pass
         self.assertFileEqual(b"foo\n", "a")
 
     def test_rename_missing_dir(self):
         os.mkdir("a")
-        try:
+        with contextlib.suppress(FileNotFoundError):
             osutils._win32_rename("b", "a")
-        except FileNotFoundError:
-            pass
 
     def test_rename_current_dir(self):
         os.mkdir("a")
@@ -831,10 +828,8 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
         # doing rename non-existant . usually
         # just raises FileNotFoundError, since non-existant
         # doesn't exist.
-        try:
+        with contextlib.suppress(FileNotFoundError):
             osutils._win32_rename("b", ".")
-        except FileNotFoundError:
-            pass
 
     def test_splitpath(self):
         def check(expected, path):

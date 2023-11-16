@@ -233,10 +233,7 @@ class InterTagsFromGitToNonGit(InterTags):
     def merge(self, overwrite=False, ignore_master=False, selector=None):
         """See Tags.merge_to."""
         source_tag_refs = self.source.branch.get_tag_refs()
-        if ignore_master:
-            master = None
-        else:
-            master = self.target.branch.get_master_branch()
+        master = None if ignore_master else self.target.branch.get_master_branch()
         with contextlib.ExitStack() as es:
             if master is not None:
                 es.enter_context(master.lock_write())
@@ -337,10 +334,8 @@ class LocalGitTagDict(GitTags):
             name = tag_name_to_ref(k)
             if name in extra:
                 extra.remove(name)
-            try:
+            with contextlib.suppress(errors.GhostTagsNotSupported):
                 self.set_tag(k, revid)
-            except errors.GhostTagsNotSupported:
-                pass
         for name in extra:
             if is_tag(name):
                 del self.repository._git[name]
@@ -1247,11 +1242,10 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
             else:
                 result.old_revid = self.target.lookup_foreign_revision_id(old_ref)
             new_ref = self.source.repository.lookup_bzr_revision_id(stop_revision)[0]
-            if not overwrite:
-                if remote_divergence(
-                    old_ref, new_ref, self.source.repository._git.object_store
-                ):
-                    raise errors.DivergedBranches(self.source, self.target)
+            if not overwrite and remote_divergence(
+                old_ref, new_ref, self.source.repository._git.object_store
+            ):
+                raise errors.DivergedBranches(self.source, self.target)
             refs = {self.target.ref: new_ref}
             result.new_revid = stop_revision
             for name, sha in self.source.repository._git.refs.as_dict(

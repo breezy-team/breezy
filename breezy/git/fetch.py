@@ -82,10 +82,7 @@ def import_git_blob(
         return []
     file_id = lookup_file_id(decoded_path)
     decoded_name = decode_git_path(name)
-    if stat.S_ISLNK(mode):
-        kind = "symlink"
-    else:
-        kind = "file"
+    kind = "symlink" if stat.S_ISLNK(mode) else "file"
     kwargs = {}
     if base_hexsha == hexsha and mode_kind(base_mode) == mode_kind(mode):
         base_exec = base_bzr_tree.is_executable(decoded_path)
@@ -141,10 +138,7 @@ def import_git_blob(
         kwargs["revision"] = revision_id
         if kwargs["revision"] is None:
             raise ValueError("no file revision set")
-        if kind == "symlink":
-            chunks = []
-        else:
-            chunks = blob.chunked
+        chunks = [] if kind == "symlink" else blob.chunked
         texts.insert_record_stream(
             [
                 ChunkedContentFactory(

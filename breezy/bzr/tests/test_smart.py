@@ -393,18 +393,9 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithMemoryTransport):
         :result: The SmartServerResponse to expect when opening it.
         """
         repo = self.make_repository(".", shared=shared, format=format)
-        if repo.supports_rich_root():
-            rich_root = b"yes"
-        else:
-            rich_root = b"no"
-        if repo._format.supports_tree_reference:
-            subtrees = b"yes"
-        else:
-            subtrees = b"no"
-        if repo._format.supports_external_lookups:
-            external = b"yes"
-        else:
-            external = b"no"
+        rich_root = b"yes" if repo.supports_rich_root() else b"no"
+        subtrees = b"yes" if repo._format.supports_tree_reference else b"no"
+        external = b"yes" if repo._format.supports_external_lookups else b"no"
         if smart_dir.SmartServerRequestFindRepositoryV3 == self._request_class:
             return smart_req.SuccessfulSmartServerResponse(
                 (b"ok", b"", rich_root, subtrees, external, repo._format.network_name())
@@ -2345,10 +2336,7 @@ class TestSmartServerRepositoryGetPhysicalLockStatus(tests.TestCaseWithTransport
         self.addCleanup(repo.lock_write().unlock)
         # lock_write() doesn't necessarily actually take a physical
         # lock out.
-        if repo.get_physical_lock_status():
-            expected = b"yes"
-        else:
-            expected = b"no"
+        expected = b"yes" if repo.get_physical_lock_status() else b"no"
         request_class = smart_repo.SmartServerRepositoryGetPhysicalLockStatus
         request = request_class(backing)
         self.assertEqual(

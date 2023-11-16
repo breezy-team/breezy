@@ -203,10 +203,7 @@ class CHKMap:
             key_str = ""
         else:
             node_key = node.key()
-            if node_key is not None:
-                key_str = f" {decode(node_key[0])}"
-            else:
-                key_str = " None"
+            key_str = f" {decode(node_key[0])}" if node_key is not None else " None"
         result.append(f"{indent}{decode(prefix)!r} {node.__class__.__name__}{key_str}")
         if isinstance(node, InternalNode):
             # Trigger all child nodes to get loaded
@@ -1245,10 +1242,7 @@ class InternalNode(Node):
             # new child needed:
             child = self._new_child(search_key, LeafNode)
         old_len = len(child)
-        if isinstance(child, LeafNode):
-            old_size = child._current_size()
-        else:
-            old_size = None
+        old_size = child._current_size() if isinstance(child, LeafNode) else None
         prefix, node_details = child.map(store, key, value)
         if len(node_details) == 1:
             # child may have shrunk, or might be a new node
@@ -1332,10 +1326,7 @@ class InternalNode(Node):
         lines.append(b"%s\n" % (self._search_prefix,))
         prefix_len = len(self._search_prefix)
         for prefix, node in sorted(self._items.items()):
-            if isinstance(node, StaticTuple):
-                key = node[0]
-            else:
-                key = node._key[0]
+            key = node[0] if isinstance(node, StaticTuple) else node._key[0]
             serialised = b"%s\x00%s\n" % (prefix, key)
             if not serialised.startswith(self._search_prefix):
                 raise AssertionError(

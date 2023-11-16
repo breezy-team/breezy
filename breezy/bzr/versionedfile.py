@@ -2094,10 +2094,7 @@ def sort_groupcompress(parent_map):
     per_prefix_map = {}
     for item in parent_map.items():
         key = item[0]
-        if isinstance(key, bytes) or len(key) == 1:
-            prefix = b""
-        else:
-            prefix = key[0]
+        prefix = b"" if isinstance(key, bytes) or len(key) == 1 else key[0]
         try:
             per_prefix_map[prefix].append(item)
         except KeyError:

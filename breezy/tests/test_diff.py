@@ -414,10 +414,7 @@ class TestDiffFiles(tests.TestCaseInTempDir):
 
 def get_diff_as_string(tree1, tree2, specific_files=None, working_tree=None):
     output = BytesIO()
-    if working_tree is not None:
-        extra_trees = (working_tree,)
-    else:
-        extra_trees = ()
+    extra_trees = (working_tree,) if working_tree is not None else ()
     diff.show_diff_trees(
         tree1,
         tree2,
@@ -1152,10 +1149,7 @@ class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):
             dirname = scenario["info"]["directory"]
             filename = scenario["info"]["filename"]
 
-            if encoding == "iso-8859-1":
-                encoding = "iso-8859-2"
-            else:
-                encoding = "iso-8859-1"
+            encoding = "iso-8859-2" if encoding == "iso-8859-1" else "iso-8859-1"
 
             self.overrideAttr(diffobj, "_fenc", lambda: encoding)  # noqa: B023
             relpath = dirname + "/" + filename

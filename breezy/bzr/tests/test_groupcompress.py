@@ -784,10 +784,7 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
     def make_source_with_b(self, a_parent, path):
         source = self.make_test_vf(True, dir=path)
         source.add_lines((b"a",), (), [b"lines\n"])
-        if a_parent:
-            b_parents = ((b"a",),)
-        else:
-            b_parents = ()
+        b_parents = ((b"a",),) if a_parent else ()
         source.add_lines((b"b",), b_parents, [b"lines\n"])
         return source
 

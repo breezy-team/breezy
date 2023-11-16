@@ -15,6 +15,7 @@
 
 """CommitHandlers that build and save revisions & their inventories."""
 
+import contextlib
 from typing import Dict, List, Set, Tuple
 
 from fastimport import processor
@@ -147,10 +148,7 @@ class CommitHandler(processor.CommitHandler):
             Tuple[str | None, str | None, inventory.FileID, inventory.InventoryEntry],
         ] = {}
         if len(self.parents) == 0 or not self.rev_store.expects_rich_root():
-            if self.parents:
-                old_path = ""
-            else:
-                old_path = None
+            old_path = "" if self.parents else None
             # Need to explicitly add the root entry for the first revision
             # and for non rich-root inventories
             root_id = inventory.ROOT_ID
@@ -780,10 +778,8 @@ class CommitHandler(processor.CommitHandler):
         self._add_entry((path, None, ie.file_id, None))
         self._paths_deleted_this_commit.add(path)
         if ie.kind == "directory":
-            try:
+            with contextlib.suppress(KeyError):
                 del self.directory_entries[path]
-            except KeyError:
-                pass
             if self.basis_inventory.get_entry(ie.file_id).kind == "directory":
                 for child_relpath, entry in self.basis_inventory.iter_entries_by_dir(
                     from_dir=ie.file_id
@@ -792,10 +788,8 @@ class CommitHandler(processor.CommitHandler):
                     self._add_entry((child_path, None, entry.file_id, None))
                     self._paths_deleted_this_commit.add(child_path)
                     if entry.kind == "directory":
-                        try:
+                        with contextlib.suppress(KeyError):
                             del self.directory_entries[child_path]
-                        except KeyError:
-                            pass
 
     def record_rename(
         self,

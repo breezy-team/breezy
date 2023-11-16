@@ -17,6 +17,7 @@
 
 """Map from Git sha's to Bazaar objects."""
 
+import contextlib
 import posixpath
 import stat
 from typing import Dict, Iterable, Iterator, List, Tuple
@@ -704,10 +705,8 @@ class BazaarObjectStore(BaseObjectStore):
                 # if not, see if there are any unconverted revisions and
                 # add them to the map, search for sha in map again
                 self._update_sha_map()
-                try:
+                with contextlib.suppress(KeyError):
                     ret[sha] = list(self._cache.idmap.lookup_git_sha(sha))
-                except KeyError:
-                    pass
         return ret
 
     def lookup_git_sha(self, sha):

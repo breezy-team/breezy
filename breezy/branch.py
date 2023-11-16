@@ -298,10 +298,9 @@ class Branch(ControlComponent):
             mutter_callsite(4, "_lefthand_history scales with history.")
         # stop_revision must be a descendant of last_revision
         graph = self.repository.get_graph()
-        if last_rev is not None:
-            if not graph.is_ancestor(last_rev, revision_id):
-                # our previous tip is not merged into stop_revision
-                raise errors.DivergedBranches(self, other_branch)
+        if last_rev is not None and not graph.is_ancestor(last_rev, revision_id):
+            # our previous tip is not merged into stop_revision
+            raise errors.DivergedBranches(self, other_branch)
         # make a new revision history from the graph
         parents_map = graph.get_parent_map([revision_id])
         if revision_id not in parents_map:
@@ -801,10 +800,9 @@ class Branch(ControlComponent):
                 (last_revid, last_revno),
                 (_mod_revision.NULL_REVISION, 0),
             ]
-            if last_rev is not None:
-                if not graph.is_ancestor(last_rev, revision_id):
-                    # our previous tip is not merged into stop_revision
-                    raise errors.DivergedBranches(self, other_branch)
+            if last_rev is not None and not graph.is_ancestor(last_rev, revision_id):
+                # our previous tip is not merged into stop_revision
+                raise errors.DivergedBranches(self, other_branch)
             revno = graph.find_distance_to_null(revision_id, known_revision_ids)
             self.set_last_revision_info(revno, revision_id)
 
@@ -1487,10 +1485,8 @@ class Branch(ControlComponent):
         must_fetch = {self.last_revision()}
         if_present_fetch = set()
         if self.get_config_stack().get("branch.fetch_tags"):
-            try:
+            with contextlib.suppress(errors.TagsNotSupported):
                 if_present_fetch = set(self.tags.get_reverse_tag_dict())
-            except errors.TagsNotSupported:
-                pass
         must_fetch.discard(_mod_revision.NULL_REVISION)
         if_present_fetch.discard(_mod_revision.NULL_REVISION)
         return must_fetch, if_present_fetch

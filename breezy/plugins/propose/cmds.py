@@ -88,10 +88,7 @@ class cmd_publish_derived(Command):
         if name is None:
             name = branch_name(local_branch)
         forge = _mod_forge.get_forge(submit_branch)
-        if revision is None:
-            stop_revision = None
-        else:
-            stop_revision = revision.as_revision_id(branch)
+        stop_revision = None if revision is None else revision.as_revision_id(branch)
         remote_branch, public_url = forge.publish_derived(
             local_branch,
             submit_branch,
@@ -218,16 +215,10 @@ class cmd_propose_merge(Command):
         target = _mod_branch.Branch.open(submit_branch)
         if not allow_empty:
             _check_already_merged(branch, target)
-        if forge is None:
-            forge = _mod_forge.get_forge(target)
-        else:
-            forge = forge.probe(target)
+        forge = _mod_forge.get_forge(target) if forge is None else forge.probe(target)
         if name is None:
             name = branch_name(branch)
-        if revision is None:
-            stop_revision = None
-        else:
-            stop_revision = revision.as_revision_id(branch)
+        stop_revision = None if revision is None else revision.as_revision_id(branch)
         remote_branch, public_branch_url = forge.publish_derived(
             branch,
             target,

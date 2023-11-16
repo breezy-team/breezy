@@ -167,10 +167,7 @@ class BisectLog:
         # side.
 
         spread = len(between_revs) + 1
-        if spread < 2:
-            middle_index = 0
-        else:
-            middle_index = (spread // 2) - 1
+        middle_index = 0 if spread < 2 else spread // 2 - 1
 
         if len(between_revs) > 0:
             self._middle_revid = between_revs[middle_index]

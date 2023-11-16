@@ -22,13 +22,12 @@ from .. import lru_cache, tests
 def walk_lru(lru):
     """Test helper to walk the LRU list and assert its consistency."""
     node = lru._most_recently_used
-    if node is not None:
-        if node.prev is not None:
-            raise AssertionError(
-                "the _most_recently_used entry is not"
-                " supposed to have a previous entry"
-                f" {node}"
-            )
+    if node is not None and node.prev is not None:
+        raise AssertionError(
+            "the _most_recently_used entry is not"
+            " supposed to have a previous entry"
+            f" {node}"
+        )
     while node is not None:
         if node.next_key is lru_cache._null_key:
             if node is not lru._least_recently_used:

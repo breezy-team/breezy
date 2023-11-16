@@ -793,10 +793,7 @@ def _alter_files(
     change_list = working_tree.iter_changes(
         target_tree, specific_files=specific_files, pb=pb
     )
-    if not target_tree.is_versioned(""):
-        skip_root = True
-    else:
-        skip_root = False
+    skip_root = bool(not target_tree.is_versioned(""))
     deferred_files = []
     for _id_num, change in enumerate(change_list):
         target_path, wt_path = change.path

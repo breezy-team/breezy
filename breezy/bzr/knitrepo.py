@@ -31,6 +31,8 @@ from breezy.bzr import (
     )
 """,
 )
+import contextlib
+
 from .. import controldir, errors, lockdir, trace
 from .. import revision as _mod_revision
 from .. import transport as _mod_transport
@@ -167,10 +169,8 @@ class KnitRepository(MetaDirVersionedFileRepository):
         t = self._transport.clone("knits")
         rel_url = self.texts._index._mapper.map((file_id, None))
         for suffix in (".kndx", ".knit"):
-            try:
+            with contextlib.suppress(_mod_transport.NoSuchFile):
                 t.delete(rel_url + suffix)
-            except _mod_transport.NoSuchFile:
-                pass
 
     def _temp_inventories(self):
         result = self._format._get_inventories(self._transport, self, "inventory.new")

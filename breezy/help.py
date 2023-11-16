@@ -68,10 +68,7 @@ def help_commands(outfile=None):
 def _help_commands_to_text(topic):
     """Generate the help text for the list of commands."""
     out = []
-    if topic == "hidden-commands":
-        hidden = True
-    else:
-        hidden = False
+    hidden = topic == "hidden-commands"
     names = list(_mod_commands.all_command_names())
     commands = ((n, _mod_commands.get_cmd_object(n)) for n in names)
     shown_commands = [(n, o) for n, o in commands if o.hidden == hidden]
@@ -85,16 +82,10 @@ def _help_commands_to_text(topic):
 
     for cmd_name, cmd_object in sorted(shown_commands):
         plugin_name = cmd_object.plugin_name()
-        if plugin_name is None:
-            plugin_name = ""
-        else:
-            plugin_name = f" [{plugin_name}]"
+        plugin_name = "" if plugin_name is None else f" [{plugin_name}]"
 
         cmd_help = cmd_object.help()
-        if cmd_help:
-            firstline = cmd_help.split("\n", 1)[0]
-        else:
-            firstline = ""
+        firstline = cmd_help.split("\n", 1)[0] if cmd_help else ""
         helpstring = "%-*s %s%s" % (max_name, cmd_name, firstline, plugin_name)
         lines = utextwrap.wrap(
             helpstring, subsequent_indent=indent, width=width, break_long_words=False

@@ -16,6 +16,7 @@
 
 """Server for smart-server protocol."""
 
+import contextlib
 import errno
 import os.path
 import socket
@@ -144,10 +145,8 @@ class SmartTCPServer:
         # so we group those in a list - as there might be more aliases
         # in the future.
         urls = [self.backing_transport.base]
-        try:
+        with contextlib.suppress(errors.InProcessTransport):
             urls.append(self.backing_transport.external_url())
-        except errors.InProcessTransport:
-            pass
         return urls
 
     def run_server_started_hooks(self, backing_urls=None):

@@ -318,10 +318,7 @@ class BaseMergeDirective:
         else:
             revision = branch.repository.get_revision(self.revision_id)
             subject = revision.message
-        if sign:
-            body = self.to_signed(branch)
-        else:
-            body = b"".join(self.to_lines())
+        body = self.to_signed(branch) if sign else b"".join(self.to_lines())
         message = email_message.EmailMessage(mail_from, mail_to, subject, body)
         return message
 
@@ -517,10 +514,8 @@ class MergeDirective(BaseMergeDirective):
             "source_branch",
             "message",
         ):
-            try:
+            with contextlib.suppress(KeyError):
                 kwargs[key] = stanza.get(key)
-            except KeyError:
-                pass
         kwargs["revision_id"] = kwargs["revision_id"].encode("utf-8")
         if "testament_sha1" in kwargs:
             kwargs["testament_sha1"] = kwargs["testament_sha1"].encode("ascii")
@@ -638,10 +633,8 @@ class MergeDirective2(BaseMergeDirective):
             "message",
             "base_revision_id",
         ):
-            try:
+            with contextlib.suppress(KeyError):
                 kwargs[key] = stanza.get(key)
-            except KeyError:
-                pass
         kwargs["revision_id"] = kwargs["revision_id"].encode("utf-8")
         kwargs["base_revision_id"] = kwargs["base_revision_id"].encode("utf-8")
         if "testament_sha1" in kwargs:

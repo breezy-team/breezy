@@ -462,13 +462,12 @@ class TestInterRepository(TestCaseWithInterRepository):
         to_repo = self.make_to_repository("to_repo")
         # We build a broken revision so that we can test the fetch code dies
         # properly. So copy the inventory and revision, but not the text.
-        with to_repo.lock_write():
-            with WriteGroup(to_repo, suppress_errors=True):
-                inv = tree.branch.repository.get_inventory(rev1)
-                to_repo.add_inventory(rev1, inv, [])
-                rev = tree.branch.repository.get_revision(rev1)
-                to_repo.add_revision(rev1, rev, inv=inv)
-                self.disable_commit_write_group_paranoia(to_repo)
+        with to_repo.lock_write(), WriteGroup(to_repo, suppress_errors=True):
+            inv = tree.branch.repository.get_inventory(rev1)
+            to_repo.add_inventory(rev1, inv, [])
+            rev = tree.branch.repository.get_revision(rev1)
+            to_repo.add_revision(rev1, rev, inv=inv)
+            self.disable_commit_write_group_paranoia(to_repo)
 
         # Implementations can either ensure that the target of the delta is
         # reconstructable, or raise an exception (which stream based copies

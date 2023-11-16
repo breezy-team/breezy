@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import contextlib
+
 from . import debug, errors, osutils, trace
 from . import revision as _mod_revision
 
@@ -1381,10 +1383,7 @@ class _BreadthFirstSearcher:
         self._current_parents = {}
 
     def __repr__(self):
-        if self._iterations:
-            prefix = "searching"
-        else:
-            prefix = "starting"
+        prefix = "searching" if self._iterations else "starting"
         search = f"{prefix}={list(self._next_query)!r}"
         return "_BreadthFirstSearcher(iterations=%d, %s," " seen=%r)" % (
             self._iterations,
@@ -1590,10 +1589,8 @@ class _BreadthFirstSearcher:
             # 0 after this loop
             for parents in self._current_parents.values():
                 for parent_id in parents:
-                    try:
+                    with contextlib.suppress(KeyError):
                         stop_rev_references[parent_id] -= 1
-                    except KeyError:
-                        pass
             stop_parents = set()
             for rev_id, refs in stop_rev_references.items():
                 if refs == 0:

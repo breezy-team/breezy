@@ -167,14 +167,8 @@ def show_log(
     :param match: Dictionary of search lists to use when matching revision
       properties.
     """
-    if verbose:
-        delta_type = "full"
-    else:
-        delta_type = None
-    if show_diff:
-        diff_type = "full"
-    else:
-        diff_type = None
+    delta_type = "full" if verbose else None
+    diff_type = "full" if show_diff else None
 
     if isinstance(start_revision, int):
         try:
@@ -508,10 +502,7 @@ def _format_diff(branch, rev, diff_type, files=None):
         ancestor_id = rev.parent_ids[0]
     tree_1 = repo.revision_tree(ancestor_id)
     tree_2 = repo.revision_tree(rev.revision_id)
-    if diff_type == "partial" and files is not None:
-        specific_files = files
-    else:
-        specific_files = None
+    specific_files = files if diff_type == "partial" and files is not None else None
     s = BytesIO()
     path_encoding = get_diff_header_encoding()
     diff.show_diff_trees(
@@ -1116,10 +1107,7 @@ def _generate_deltas(repository, log_rev_iterator, delta_type, files, direction)
     check_files = files is not None and len(files) > 0
     if check_files:
         file_set = set(files)
-        if direction == "reverse":
-            stop_on = "add"
-        else:
-            stop_on = "remove"
+        stop_on = "add" if direction == "reverse" else "remove"
     else:
         file_set = None
     for revs in log_rev_iterator:
@@ -1438,10 +1426,9 @@ def _filter_revisions_touching_path(branch, path, view_revisions, include_merges
             # This needs to be logged, along with the extra revisions
             for idx in range(len(current_merge_stack)):
                 node = current_merge_stack[idx]
-                if node is not None:
-                    if include_merges or node[2] == 0:
-                        result.append(node)
-                        current_merge_stack[idx] = None
+                if node is not None and (include_merges or node[2] == 0):
+                    result.append(node)
+                    current_merge_stack[idx] = None
     return result
 
 
@@ -2024,10 +2011,7 @@ class GnuChangelogLogFormatter(LogFormatter):
             for c in (
                 revision.delta.added + revision.delta.removed + revision.delta.modified
             ):
-                if c.path[0] is None:
-                    path = c.path[1]
-                else:
-                    path = c.path[0]
+                path = c.path[1] if c.path[0] is None else c.path[0]
                 to_file.write(f"\t* {path}:\n")
             for c in revision.delta.renamed + revision.delta.copied:
                 # For renamed files, show both the old and the new path
@@ -2337,10 +2321,7 @@ def _get_info_for_log_files(revisionspec_list, file_list, exit_stack):
         # Revision range given. Get the file-id from the end tree.
         # If that fails, try the start tree.
         rev_id = end_rev_info.rev_id
-        if rev_id is None:
-            tree = b.basis_tree()
-        else:
-            tree = b.repository.revision_tree(rev_id)
+        tree = b.basis_tree() if rev_id is None else b.repository.revision_tree(rev_id)
         tree1 = None
         for fp in relpaths:
             kind = _get_kind_for_file(tree, fp)

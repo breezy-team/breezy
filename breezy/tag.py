@@ -261,10 +261,7 @@ class InterTags(InterObject[Tags]):
             # more clearly to the caller, but we don't want to break plugins
             # such as bzr-builddeb that use this API.
             stack.enter_context(self.target.branch.lock_write())
-            if ignore_master:
-                master = None
-            else:
-                master = self.target.branch.get_master_branch()
+            master = None if ignore_master else self.target.branch.get_master_branch()
             if master is not None:
                 stack.enter_context(master.lock_write())
             updates, conflicts = self._merge_to(

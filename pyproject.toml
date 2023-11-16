@@ -108,7 +108,7 @@ select = [
     "S",  # bandit
     "TCH", # typecheck
     "INT", # gettext
-#   "SIM", # simplify
+   "SIM", # simplify
     "C4",  # comprehensions
     "UP",  # pyupgrade
 ]
@@ -155,6 +155,17 @@ ignore = [
 
     # This triggers for docstrings that uses __doc__
     "D104", # Missing docstring in public package
+
+    "SIM102", # Use a single `if` statement instead of nested `if` statements
+    "SIM105", # Use `contextlib.suppress
+    "SIM108", # Use ternary operator
+    "SIM114", # Combine `if` branches using logical `or` operator
+    "SIM115", # Use context handler for opening files
+
+
+    # This is unsafe for breezy, where several objects (e.g. VersionedFiles)
+    # have a keys() method but no __iter__
+    "SIM118", # Use `key in dict` instead of `key in dict.keys()`
 ]
 # These are actually fine, but they make mypy more strict and then it fails.
 unfixable = ["ANN204"]

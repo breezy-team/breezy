@@ -32,6 +32,8 @@ from breezy.i18n import gettext
 """,
 )
 
+import contextlib
+
 from . import controldir, debug, errors, graph, osutils, registry, ui
 from . import revision as _mod_revision
 from .decorators import only_raises
@@ -431,10 +433,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         other_fb = other_repo._fallback_repositories
         if len(my_fb) != len(other_fb):
             return False
-        for f, g in zip(my_fb, other_fb):
-            if not f.has_same_location(g):
-                return False
-        return True
+        return all(f.has_same_location(g) for f, g in zip(my_fb, other_fb))
 
     def has_same_location(self, other):
         """Returns a boolean indicating if this repository is at the same
@@ -1236,10 +1235,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         if _deprecation_warning_done:
             return
         try:
-            if branch is None:
-                conf = config.GlobalStack()
-            else:
-                conf = branch.get_config_stack()
+            conf = config.GlobalStack() if branch is None else branch.get_config_stack()
             if "format_deprecation" in conf.get("suppress_warnings"):
                 return
             warning(
@@ -1547,10 +1543,8 @@ class InterRepository(InterObject[Repository]):
                             revision_id and its parents.
         """
         with self.lock_write():
-            try:
+            with contextlib.suppress(NotImplementedError, errors.RepositoryUpgradeRequired):
                 self.target.set_make_working_trees(self.source.make_working_trees())
-            except (NotImplementedError, errors.RepositoryUpgradeRequired):
-                pass
             self.target.fetch(self.source, revision_id=revision_id)
 
     def fetch(

@@ -246,10 +246,7 @@ class GitSmartTransport(Transport):
 
     def clone(self, offset=None):
         """See Transport.clone()."""
-        if offset is None:
-            newurl = self.base
-        else:
-            newurl = urlutils.join(self.base, offset)
+        newurl = self.base if offset is None else urlutils.join(self.base, offset)
 
         return self.__class__(newurl, self._client)
 
@@ -647,10 +644,7 @@ class RemoteGitDir(GitDir):
             actual_refname = refname
             old_sha = None
         else:
-            if ref_chain:
-                actual_refname = ref_chain[-1]
-            else:
-                actual_refname = refname
+            actual_refname = ref_chain[-1] if ref_chain else refname
         if isinstance(source, GitBranch) and lossy:
             raise errors.LossyPushToSameVCS(source.controldir, self)
         source_store = get_object_store(source.repository)
@@ -672,11 +666,10 @@ class RemoteGitDir(GitDir):
                         source, self.open_branch(name=name, nascent_ok=True)
                     ) from err
             old_sha = remote_refs.get(actual_refname)
-            if not overwrite:
-                if remote_divergence(old_sha, new_sha, source_store):
-                    raise DivergedBranches(
-                        source, self.open_branch(name, nascent_ok=True)
-                    )
+            if not overwrite and remote_divergence(old_sha, new_sha, source_store):
+                raise DivergedBranches(
+                    source, self.open_branch(name, nascent_ok=True)
+                )
             ret[actual_refname] = new_sha
             if fetch_tags:
                 for tagname, revid in source.tags.get_tag_dict().items():
@@ -703,10 +696,7 @@ class RemoteGitDir(GitDir):
 
             def generate_pack_data(have, want, progress=None, ofs_delta=True):
                 git_repo = getattr(source.repository, "_git", None)
-                if git_repo:
-                    shallow = git_repo.get_shallow()
-                else:
-                    shallow = None
+                shallow = git_repo.get_shallow() if git_repo else None
                 if lossy:
                     return source_store.generate_lossy_pack_data(
                         have,

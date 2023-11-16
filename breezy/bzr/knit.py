@@ -77,6 +77,8 @@ from breezy.bzr import pack_repo
 from breezy.i18n import gettext
 """,
 )
+import contextlib
+
 from .. import annotate, debug, errors, osutils, trace
 from .. import transport as _mod_transport
 from ..bzr.versionedfile import (
@@ -362,14 +364,8 @@ class KnitContentFactory(ContentFactory):
         self.sha1 = sha1
         self.key = key
         self.parents = parents
-        if build_details[0] == "line-delta":
-            kind = "delta"
-        else:
-            kind = "ft"
-        if annotated:
-            annotated_kind = "annotated-"
-        else:
-            annotated_kind = ""
+        kind = "delta" if build_details[0] == "line-delta" else "ft"
+        annotated_kind = "annotated-" if annotated else ""
         self.storage_kind = f"knit-{annotated_kind}{kind}-gz"
         self._raw_record = raw_record
         self._network_bytes = network_bytes
@@ -384,10 +380,7 @@ class KnitContentFactory(ContentFactory):
             parent_bytes = b"None:"
         else:
             parent_bytes = b"\t".join(b"\x00".join(key) for key in self.parents)
-        if self._build_details[1]:
-            noeol = b"N"
-        else:
-            noeol = b" "
+        noeol = b"N" if self._build_details[1] else b" "
         network_bytes = b"%s\n%s\n%s\n%s%s" % (
             self.storage_kind.encode("ascii"),
             key_bytes,
@@ -511,10 +504,7 @@ def knit_network_to_record(storage_kind, bytes, line_end):
         )
     start = line_end + 1
     noeol = bytes[start : start + 1] == b"N"
-    if "ft" in storage_kind:
-        method = "fulltext"
-    else:
-        method = "line-delta"
+    method = "fulltext" if "ft" in storage_kind else "line-delta"
     build_details = (method, noeol)
     start = start + 1
     raw_record = bytes[start:]
@@ -690,10 +680,7 @@ class _KnitFactory:
         """
         method, noeol = record_details
         if method == "line-delta":
-            if copy_base_content:
-                content = base_content.copy()
-            else:
-                content = base_content
+            content = base_content.copy() if copy_base_content else base_content
             delta = self.parse_line_delta(record, version_id)
             content.apply_delta(delta, version_id)
         else:
@@ -1155,10 +1142,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             options.append(b"no-eol")
             no_eol = True
             # Copy the existing list, or create a new one
-            if lines is None:
-                lines = osutils.split_lines(line_bytes)
-            else:
-                lines = lines[:]
+            lines = osutils.split_lines(line_bytes) if lines is None else lines[:]
             # Replace the last line with one that ends in a final newline
             lines[-1] = lines[-1] + b"\n"
         if lines is None:
@@ -1489,10 +1473,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         split_by_prefix = {}
         prefix_order = []
         for key in keys:
-            if len(key) == 1:
-                prefix = b""
-            else:
-                prefix = key[0]
+            prefix = b"" if len(key) == 1 else key[0]
 
             if prefix in split_by_prefix:
                 split_by_prefix[prefix].append(key)
@@ -1873,10 +1854,8 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                     adapter_key = record.storage_kind, "lines"
                     adapter = get_adapter(adapter_key)
                     lines = adapter.get_bytes(record, "lines")
-                try:
+                with contextlib.suppress(errors.RevisionAlreadyPresent):
                     self.add_lines(record.key, parents, lines)
-                except errors.RevisionAlreadyPresent:
-                    pass
             # Add any records whose basis parent is now available.
             if not buffered:
                 added_keys = [record.key]
@@ -2380,14 +2359,8 @@ class _ContentMapGenerator:
             else:
                 parent_bytes = b"\t".join(b"\x00".join(key) for key in parents)
             method_bytes = method.encode("ascii")
-            if noeol:
-                noeol_bytes = b"T"
-            else:
-                noeol_bytes = b"F"
-            if next:
-                next_bytes = b"\x00".join(next)
-            else:
-                next_bytes = b""
+            noeol_bytes = b"T" if noeol else b"F"
+            next_bytes = b"\x00".join(next) if next else b""
             map_byte_list.append(
                 b"\n".join(
                     [
@@ -2525,10 +2498,7 @@ class _NetworkContentMapGenerator(_ContentMapGenerator):
             # one line with next (b'' for None)
             line_end = bytes.find(b"\n", start)
             line = bytes[start:line_end]
-            if not line:
-                next = None
-            else:
-                next = tuple(bytes[start:line_end].split(b"\x00"))
+            next = None if not line else tuple(bytes[start:line_end].split(b"\x00"))
             start = line_end + 1
             # one line with byte count of the record bytes
             line_end = bytes.find(b"\n", start)
@@ -2772,10 +2742,7 @@ class _KndxIndex:
             if not isinstance(method, str):
                 raise TypeError(method)
             parents = parent_map[key]
-            if method == "fulltext":
-                compression_parent = None
-            else:
-                compression_parent = parents[0]
+            compression_parent = None if method == "fulltext" else parents[0]
             noeol = b"no-eol" in self.get_options(key)
             index_memo = self.get_position(key)
             result[key] = (index_memo, compression_parent, parents, (method, noeol))
@@ -3085,16 +3052,12 @@ class _KnitGraphIndex:
                 if key_dependencies is not None:
                     key_dependencies.add_references(key, parents)
             index, pos, size = access_memo
-            if b"no-eol" in options:
-                value = b"N"
-            else:
-                value = b" "
+            value = b"N" if b"no-eol" in options else b" "
             value += b"%d %d" % (pos, size)
-            if not self._deltas:
-                if b"line-delta" in options:
-                    raise KnitCorrupt(
-                        self, "attempt to add line-delta in non-delta knit"
-                    )
+            if not self._deltas and b"line-delta" in options:
+                raise KnitCorrupt(
+                    self, "attempt to add line-delta in non-delta knit"
+                )
             if self._parents:
                 if self._deltas:
                     if b"line-delta" in options:
@@ -3231,19 +3194,13 @@ class _KnitGraphIndex:
         entries = self._get_entries(keys, False)
         for entry in entries:
             key = entry[1]
-            if not self._parents:
-                parents = ()
-            else:
-                parents = entry[3][0]
+            parents = () if not self._parents else entry[3][0]
             if not self._deltas:
                 compression_parent_key = None
             else:
                 compression_parent_key = self._compression_parent(entry)
             noeol = entry[2][0:1] == b"N"
-            if compression_parent_key:
-                method = "line-delta"
-            else:
-                method = "fulltext"
+            method = "line-delta" if compression_parent_key else "fulltext"
             result[key] = (
                 self._node_to_position(entry),
                 compression_parent_key,

@@ -174,10 +174,9 @@ class ConflictList(BaseConflictList):
                 if cpath in path_set:
                     selected = True
                     selected_paths.add(cpath)
-                if recurse:
-                    if osutils.is_inside_any(path_set, cpath):
-                        selected = True
-                        selected_paths.add(cpath)
+                if recurse and osutils.is_inside_any(path_set, cpath):
+                    selected = True
+                    selected_paths.add(cpath)
 
             for key in ("file_id", "conflict_file_id"):
                 cfile_id = getattr(conflict, key, None)

@@ -33,10 +33,7 @@ class _LRUNode:
         self.value = value
 
     def __repr__(self):
-        if self.prev is None:
-            prev_key = None
-        else:
-            prev_key = self.prev.key
+        prev_key = None if self.prev is None else self.prev.key
         return "{}({!r} n:{!r} p:{!r})".format(
             self.__class__.__name__, self.key, self.next_key, prev_key
         )

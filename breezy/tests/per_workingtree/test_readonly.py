@@ -47,10 +47,7 @@ class TestReadonly(TestCaseWithWorkingTree):
 
     def _set_all_dirs(self, basedir, readonly=True):
         """Recursively set all directories beneath this one."""
-        if readonly:
-            mode = 0o555
-        else:
-            mode = 0o755
+        mode = 365 if readonly else 493
 
         for root, dirs, _files in os.walk(basedir, topdown=False):
             for d in dirs:

@@ -94,10 +94,7 @@ class MockTree(InventoryTree):
             yield path, self[file_id]
 
     def kind(self, path):
-        if path in self.contents:
-            kind = "file"
-        else:
-            kind = "directory"
+        kind = "file" if path in self.contents else "directory"
         return kind
 
     def make_entry(self, file_id, path):

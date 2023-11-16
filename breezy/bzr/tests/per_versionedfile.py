@@ -21,6 +21,7 @@
 # TODO: might be nice to create a versionedfile with some type of corruption
 # considered typical and check that it can be detected/corrected.
 
+import contextlib
 import itertools
 from gzip import GzipFile
 from io import BytesIO
@@ -70,10 +71,7 @@ def get_diamond_vf(f, trailing_eol=True, left_only=False):
         b"merged": ((b"left",), (b"right",)),
     }
     # insert a diamond graph to exercise deltas and merges.
-    if trailing_eol:
-        last_char = b"\n"
-    else:
-        last_char = b""
+    last_char = b"\n" if trailing_eol else b""
     f.add_lines(b"origin", [], [b"origin" + last_char])
     f.add_lines(b"base", [b"origin"], [b"base" + last_char])
     f.add_lines(b"left", [b"base"], [b"base\n", b"left" + last_char])
@@ -108,15 +106,9 @@ def get_diamond_files(
     """
     if nokeys:
         nograph = True
-    if key_length == 1:
-        prefixes = [()]
-    else:
-        prefixes = [(b"FileA",), (b"FileB",)]
+    prefixes = [()] if key_length == 1 else [(b"FileA",), (b"FileB",)]
     # insert a diamond graph to exercise deltas and merges.
-    if trailing_eol:
-        last_char = b"\n"
-    else:
-        last_char = b""
+    last_char = b"\n" if trailing_eol else b""
     result = []
 
     def get_parents(suffix_list):
@@ -306,10 +298,8 @@ class VersionedFileTestMixIn:
         )
         # but inline CR's are allowed
         vf.add_lines(b"a", [], [b"a\r\n"])
-        try:
+        with contextlib.suppress(NotImplementedError):
             vf.add_lines_with_ghosts(b"b", [], [b"a\r\n"])
-        except NotImplementedError:
-            pass
 
     def test_add_reserved(self):
         vf = self.get_file()
@@ -436,10 +426,7 @@ class VersionedFileTestMixIn:
         parents = []
         for i in range(4):
             version = b"v%d" % i
-            if i % 2:
-                lines = sample_text_nl
-            else:
-                lines = sample_text_no_nl
+            lines = sample_text_nl if i % 2 else sample_text_no_nl
             # left_matching blocks is an internal api; it operates on the
             # *internal* representation for a knit, which is with *all* lines
             # being normalised to end with \n - even the final line in a no_nl
@@ -1697,10 +1684,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
     def test_annotate(self):
         files = self.get_versionedfiles()
         self.get_diamond_files(files)
-        if self.key_length == 1:
-            prefix = ()
-        else:
-            prefix = (b"FileA",)
+        prefix = () if self.key_length == 1 else (b"FileA",)
         # introduced full text
         origins = files.annotate(prefix + (b"origin",))
         self.assertEqual([(prefix + (b"origin",), b"origin\n")], origins)
@@ -2146,10 +2130,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
 
     def assertStreamOrder(self, sort_order, seen, keys):
         self.assertEqual(len(set(seen)), len(keys))
-        if self.key_length == 1:
-            lows = {(): 0}
-        else:
-            lows = {(b"FileA",): 0, (b"FileB",): 0}
+        lows = {(): 0} if self.key_length == 1 else {(b"FileA",): 0, (b"FileB",): 0}
         if not self.graph:
             self.assertEqual(set(keys), set(seen))
         else:
@@ -2291,10 +2272,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         key = self.get_simple_key(b"ft")
         key_delta = self.get_simple_key(b"delta")
         files.add_lines(key, (), [b"my text\n", b"content"])
-        if self.graph:
-            delta_parents = (key,)
-        else:
-            delta_parents = ()
+        delta_parents = (key,) if self.graph else ()
         files.add_lines(key_delta, delta_parents, [b"different\n", b"content\n"])
         local = files.get_record_stream([key, key_delta], "unordered", False)
         ref = files.get_record_stream([key, key_delta], "unordered", False)
@@ -2327,10 +2305,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         key = self.get_simple_key(b"ft")
         key_delta = self.get_simple_key(b"delta")
         files.add_lines(key, (), [b"my text\n", b"content"])
-        if self.graph:
-            delta_parents = (key,)
-        else:
-            delta_parents = ()
+        delta_parents = (key,) if self.graph else ()
         files.add_lines(key_delta, delta_parents, [b"different\n", b"content\n"])
         # Copy the basis text across so we can reconstruct the delta during
         # insertion into target.
@@ -2366,10 +2341,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         key = self.get_simple_key(b"ft")
         key_delta = self.get_simple_key(b"delta")
         files.add_lines(key, (), [b"my text\n", b"content"])
-        if self.graph:
-            delta_parents = (key,)
-        else:
-            delta_parents = ()
+        delta_parents = (key,) if self.graph else ()
         files.add_lines(key_delta, delta_parents, [b"different\n", b"content\n"])
         local = files.get_record_stream([key_delta], "unordered", True)
         ref = files.get_record_stream([key_delta], "unordered", True)
@@ -3022,13 +2994,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         # bzr.
         files = self.get_versionedfiles()
         self.assertEqual(set(), set(files.keys()))
-        if self.key_length == 1:
-            key = (b"foo",)
-        else:
-            key = (
-                b"foo",
-                b"bar",
-            )
+        key = (b"foo",) if self.key_length == 1 else (b"foo", b"bar")
         files.add_lines(key, (), [])
         self.assertEqual({key}, set(files.keys()))
 

@@ -176,10 +176,7 @@ class BzrUploader:
 
     def upload_file(self, old_relpath, new_relpath, mode=None):
         if mode is None:
-            if self.tree.is_executable(new_relpath):
-                mode = 0o775
-            else:
-                mode = 0o664
+            mode = 509 if self.tree.is_executable(new_relpath) else 436
         if not self.quiet:
             self.outf.write(f"Uploading {old_relpath}\n")
         self._up_put_bytes(old_relpath, self.tree.get_file_text(new_relpath), mode)
@@ -357,9 +354,8 @@ class BzrUploader:
             return
 
         # Check if the revision hasn't already been uploaded
-        if rev_id == self.rev_id:
-            if not self.quiet:
-                self.outf.write("Remote location already up to date\n")
+        if rev_id == self.rev_id and not self.quiet:
+            self.outf.write("Remote location already up to date\n")
 
         from_tree = self.branch.repository.revision_tree(rev_id)
         self.to_transport.ensure_base()  # XXX: Handle errors (add
@@ -513,10 +509,7 @@ class cmd_upload(commands.Command):
             directory
         )
 
-        if wt:
-            locked = wt
-        else:
-            locked = branch
+        locked = wt if wt else branch
         with locked.lock_read():
             if wt:
                 changes = wt.changes_from(wt.basis_tree())

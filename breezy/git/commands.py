@@ -183,10 +183,7 @@ class cmd_git_object(Command):
                     obj = object_store[sha1.encode("ascii")]
                 except KeyError as err:
                     raise CommandError(gettext("Object not found: %s") % sha1) from err
-                if pretty:
-                    text = obj.as_pretty_string()
-                else:
-                    text = obj.as_raw_string()
+                text = obj.as_pretty_string() if pretty else obj.as_raw_string()
                 self.outf.write(text)
             else:
                 for sha1 in object_store:

@@ -96,10 +96,7 @@ class BranchBuilder:
              timestamp.
         """
         if parent_ids is not None:
-            if len(parent_ids) == 0:
-                base_id = revision.NULL_REVISION
-            else:
-                base_id = parent_ids[0]
+            base_id = revision.NULL_REVISION if len(parent_ids) == 0 else parent_ids[0]
             if base_id != self._branch.last_revision():
                 self._move_branch_pointer(
                     base_id, allow_leftmost_as_ghost=allow_leftmost_as_ghost
@@ -209,10 +206,7 @@ class BranchBuilder:
         :return: The revision_id of the new commit
         """
         if parent_ids is not None:
-            if len(parent_ids) == 0:
-                base_id = revision.NULL_REVISION
-            else:
-                base_id = parent_ids[0]
+            base_id = revision.NULL_REVISION if len(parent_ids) == 0 else parent_ids[0]
             if base_id != self._branch.last_revision():
                 self._move_branch_pointer(
                     base_id, allow_leftmost_as_ghost=allow_leftmost_as_ghost

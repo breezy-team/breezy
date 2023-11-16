@@ -225,10 +225,7 @@ def show_tree_status(
             if len(conflicts) > 0 and not short:
                 to_file.write("conflicts:\n")
             for conflict in conflicts:
-                if short:
-                    prefix = "C  "
-                else:
-                    prefix = " "
+                prefix = "C  " if short else " "
                 to_file.write(f"{prefix} {conflict.describe()}\n")
             # Show files that were requested but don't exist (and are
             # not versioned).  We don't involve delta in this; these
@@ -241,10 +238,7 @@ def show_tree_status(
                 # We could calculate prefix outside the loop but, given
                 # how rarely this ought to happen, it's OK and arguably
                 # slightly faster to do it here (ala conflicts above)
-                if short:
-                    prefix = "X  "
-                else:
-                    prefix = " "
+                prefix = "X  " if short else " "
                 to_file.write(f"{prefix} {nonexistent}\n")
             if new_is_working_tree and show_pending:
                 show_pending_merges(new, to_file, short, verbose=verbose)
@@ -310,10 +304,7 @@ def show_pending_merges(new, to_file, short=False, verbose=False):
         sub_prefix = "    "
 
     def show_log_message(rev, prefix):
-        if term_width is None:
-            width = term_width
-        else:
-            width = term_width - len(prefix)
+        width = term_width if term_width is None else term_width - len(prefix)
         log_message = log_formatter.log_string(None, rev, width, prefix=prefix)
         to_file.write(log_message + "\n")
 
@@ -520,10 +511,7 @@ def _show_shelve_summary(params):
         if shelves:
             singular = "%d shelf exists. "
             plural = "%d shelves exist. "
-            if len(shelves) == 1:
-                fmt = singular
-            else:
-                fmt = plural
+            fmt = singular if len(shelves) == 1 else plural
             params.to_file.write(fmt % len(shelves))
             params.to_file.write('See "brz shelve --list" for details.\n')
 

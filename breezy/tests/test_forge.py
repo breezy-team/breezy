@@ -48,10 +48,7 @@ class SampleForge(Forge):
         raise UnsupportedForge(url)
 
     def hosts(self, branch):
-        for b in self._locations:
-            if branch.user_url.startswith(b):
-                return True
-        return False
+        return any(branch.user_url.startswith(b) for b in self._locations)
 
     @classmethod
     def iter_instances(cls):

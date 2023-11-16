@@ -359,10 +359,7 @@ class _CaseSensitiveFilesystemFeature(Feature):
     def _probe(self):
         if CaseInsCasePresFilenameFeature.available():
             return False
-        elif CaseInsensitiveFilesystemFeature.available():
-            return False
-        else:
-            return True
+        return CaseInsensitiveFilesystemFeature.available()
 
     def feature_name(self):
         return "case-sensitive filesystem"
@@ -513,7 +510,7 @@ class _AttribFeature(Feature):
             proc = subprocess.Popen(["attrib", "."], stdout=subprocess.PIPE)  # noqa: S607
         except OSError:
             return False
-        return 0 == proc.wait()
+        return proc.wait() == 0
 
     def feature_name(self):
         return "attrib Windows command-line tool"

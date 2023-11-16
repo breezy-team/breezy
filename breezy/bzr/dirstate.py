@@ -541,10 +541,7 @@ class DirState:
         parent_info = self._empty_parent_info()
         minikind = DirState._kind_to_minikind[kind]
         if rename_from is not None:
-            if rename_from[0]:
-                old_path_utf8 = b"%s/%s" % rename_from
-            else:
-                old_path_utf8 = rename_from[1]
+            old_path_utf8 = b"%s/%s" % rename_from if rename_from[0] else rename_from[1]
             parent_info[0] = (b"r", old_path_utf8, 0, False, b"")
         if kind == "file":
             entry_data = (
@@ -755,10 +752,7 @@ class DirState:
                         #       shouldn't we just split the whole thing rather
                         #       than doing the split again in add_one_record?
                         fields = entries[num].split(b"\0")
-                        if fields[1]:
-                            path = fields[1] + b"/" + fields[2]
-                        else:
-                            path = fields[2]
+                        path = fields[1] + b"/" + fields[2] if fields[1] else fields[2]
                         paths.setdefault(path, []).append(fields)
 
                     for path in middle_files:
@@ -1097,11 +1091,10 @@ class DirState:
         # the basename of the directory must be the end of its full name.
         if not (
             parent_block_index == -1 and parent_block_index == -1 and dirname == b""
+        ) and not dirname.endswith(
+            self._dirblocks[parent_block_index][1][parent_row_index][0][1]
         ):
-            if not dirname.endswith(
-                self._dirblocks[parent_block_index][1][parent_row_index][0][1]
-            ):
-                raise AssertionError(f"bad dirname {dirname!r}")
+            raise AssertionError(f"bad dirname {dirname!r}")
         block_index, present = self._find_block_index_from_key((dirname, b"", b""))
         if not present:
             # In future, when doing partial parsing, this should load and
@@ -1520,10 +1513,7 @@ class DirState:
                 dirname_utf8, basename_utf8 = osutils.split(new_path_utf8)
                 if basename_utf8:
                     parents.add((dirname_utf8, inv_entry.parent_id))
-            if old_path is None:
-                old_path_utf8 = None
-            else:
-                old_path_utf8 = encode(old_path)
+            old_path_utf8 = None if old_path is None else encode(old_path)
             if old_path is None:
                 adds.append(
                     (None, new_path_utf8, file_id, inv_to_entry(inv_entry), True)
@@ -1688,13 +1678,12 @@ class DirState:
 
             block = self._dirblocks[block_index][1]
             entry_index, present = self._find_entry_index(entry_key, block)
-            if real_add:
-                if old_path is not None:
-                    self._raise_invalid(
-                        new_path,
-                        file_id,
-                        f"considered a real add but still had old_path at {old_path}",
-                    )
+            if real_add and old_path is not None:
+                self._raise_invalid(
+                    new_path,
+                    file_id,
+                    f"considered a real add but still had old_path at {old_path}",
+                )
             if present:
                 entry = block[entry_index]
                 basis_kind = entry[1][1][0]
@@ -2203,13 +2192,12 @@ class DirState:
             entry = self._dirblocks[block_index][1][entry_index]
             if not (entry[0][2] and entry[1][tree_index][0] not in (b"a", b"r")):
                 raise AssertionError("unversioned entry?")
-            if fileid_utf8:
-                if entry[0][2] != fileid_utf8:
-                    self._changes_aborted = True
-                    raise errors.BzrError(
-                        "integrity error ? : mismatching"
-                        " tree_index, file_id and path"
-                    )
+            if fileid_utf8 and entry[0][2] != fileid_utf8:
+                self._changes_aborted = True
+                raise errors.BzrError(
+                    "integrity error ? : mismatching"
+                    " tree_index, file_id and path"
+                )
             return entry
         else:
             possible_keys = self._get_id_index().get(fileid_utf8)
@@ -3256,17 +3244,15 @@ class DirState:
         from pprint import pformat
 
         self._read_dirblocks_if_needed()
-        if len(self._dirblocks) > 0:
-            if not self._dirblocks[0][0] == b"":
-                raise AssertionError(
-                    "dirblocks don't start with root block:\n"
-                    + pformat(self._dirblocks)
-                )
-        if len(self._dirblocks) > 1:
-            if not self._dirblocks[1][0] == b"":
-                raise AssertionError(
-                    "dirblocks missing root directory:\n" + pformat(self._dirblocks)
-                )
+        if len(self._dirblocks) > 0 and not self._dirblocks[0][0] == b"":
+            raise AssertionError(
+                "dirblocks don't start with root block:\n"
+                + pformat(self._dirblocks)
+            )
+        if len(self._dirblocks) > 1 and not self._dirblocks[1][0] == b"":
+            raise AssertionError(
+                "dirblocks missing root directory:\n" + pformat(self._dirblocks)
+            )
         # the dirblocks are sorted by their path components, name, and dir id
         dir_names = [d[0].split(b"/") for d in self._dirblocks[1:]]
         if dir_names != sorted(dir_names):
@@ -3753,10 +3739,7 @@ class ProcessEntryPython:
                         content_change = link_or_sha1 != source_details[1]
                     target_exec = False
                 elif target_kind == "tree-reference":
-                    if source_minikind != b"t":
-                        content_change = True
-                    else:
-                        content_change = False
+                    content_change = source_minikind != b"t"
                     target_exec = False
                 else:
                     if path is None:

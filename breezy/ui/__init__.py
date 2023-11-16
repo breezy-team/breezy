@@ -47,6 +47,7 @@ breezy.ui.text.TextUIFactory
     back to working through the terminal.
 """
 
+import contextlib
 import warnings
 from typing import TYPE_CHECKING, List, Set
 
@@ -91,10 +92,8 @@ def bool_from_string(s, accepted_values=None):
         accepted_values = _valid_boolean_strings
     val = None
     if isinstance(s, str):
-        try:
+        with contextlib.suppress(KeyError):
             val = accepted_values[s.lower()]
-        except KeyError:
-            pass
     return val
 
 
@@ -377,7 +376,7 @@ class UIFactory:
           True or False for y/yes or n/no.
         """
         choice = self.choose(prompt + "?", "&yes\n&no", default=None)
-        return 0 == choice
+        return choice == 0
 
     def get_integer(self, prompt):
         r"""Get an integer from the user.

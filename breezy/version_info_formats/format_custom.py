@@ -19,6 +19,7 @@ tree info.
 """
 
 import codecs
+import contextlib
 
 from breezy import errors
 from breezy.version_info_formats import VersionInfoBuilder, create_date_str
@@ -104,10 +105,8 @@ class CustomVersionInfoBuilder(VersionInfoBuilder):
         if revision_id == NULL_REVISION:
             info.add("revno", 0)
         else:
-            try:
+            with contextlib.suppress(errors.GhostRevisionsHaveNoRevno):
                 info.add("revno", self._get_revno_str(revision_id))
-            except errors.GhostRevisionsHaveNoRevno:
-                pass
             info.add("revision_id", revision_id.decode("utf-8"))
             rev = self._branch.repository.get_revision(revision_id)
             info.add("date", create_date_str(rev.timestamp, rev.timezone))

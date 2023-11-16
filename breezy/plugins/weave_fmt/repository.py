@@ -20,6 +20,7 @@ Weave based formats scaled linearly with history size and could not represent
 ghosts.
 """
 
+import contextlib
 import gzip
 import os
 from io import BytesIO
@@ -740,10 +741,8 @@ class TextVersionedFiles(VersionedFiles):
                 lines = adapter.get_bytes(
                     record, record.get_bytes_as(record.storage_kind)
                 )
-                try:
+                with contextlib.suppress(errors.RevisionAlreadyPresent):
                     self.add_lines(record.key, None, lines)
-                except errors.RevisionAlreadyPresent:
-                    pass
 
     def _load_text(self, key):
         if not self._is_locked():
@@ -899,10 +898,8 @@ class InterWeaveRepo(InterSameDataRepository):
         """See InterRepository.copy_content()."""
         with self.lock_write():
             # weave specific optimised path:
-            try:
+            with contextlib.suppress(errors.RepositoryUpgradeRequired, NotImplementedError):
                 self.target.set_make_working_trees(self.source.make_working_trees())
-            except (errors.RepositoryUpgradeRequired, NotImplementedError):
-                pass
             # FIXME do not peek!
             if self.source._transport.listable():
                 with ui.ui_factory.nested_progress_bar() as pb:

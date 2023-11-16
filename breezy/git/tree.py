@@ -17,6 +17,7 @@
 
 """Git Trees."""
 
+import contextlib
 import os
 import posixpath
 import stat
@@ -647,18 +648,17 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
                         hexsha = substore[hexsha].tree
                 else:
                     substore = store
-                if stat.S_ISDIR(mode):
-                    if specific_files is None or any(
-                        p for p in specific_files if p.startswith(child_path)
-                    ):
-                        extradirs.append(
-                            (
-                                substore,
-                                child_path,
-                                hexsha,
-                                self.path2id(child_path_decoded),
-                            )
+                if stat.S_ISDIR(mode) and (specific_files is None or any(
+                    p for p in specific_files if p.startswith(child_path)
+                )):
+                    extradirs.append(
+                        (
+                            substore,
+                            child_path,
+                            hexsha,
+                            self.path2id(child_path_decoded),
                         )
+                    )
                 if specific_files is None or child_path in specific_files:
                     if stat.S_ISDIR(mode):
                         yield (
@@ -840,14 +840,8 @@ def tree_delta_from_git_changes(
         if newpath == b"" and not include_root:
             continue
         copied = change_type == "copy"
-        if oldpath is not None:
-            oldpath_decoded = decode_git_path(oldpath)
-        else:
-            oldpath_decoded = None
-        if newpath is not None:
-            newpath_decoded = decode_git_path(newpath)
-        else:
-            newpath_decoded = None
+        oldpath_decoded = decode_git_path(oldpath) if oldpath is not None else None
+        newpath_decoded = decode_git_path(newpath) if newpath is not None else None
         if not (
             specific_files is None
             or (
@@ -1001,14 +995,8 @@ def changes_from_git_changes(
             continue
         (oldpath, oldmode, oldsha) = old
         (newpath, newmode, newsha) = new
-        if oldpath is not None:
-            oldpath_decoded = decode_git_path(oldpath)
-        else:
-            oldpath_decoded = None
-        if newpath is not None:
-            newpath_decoded = decode_git_path(newpath)
-        else:
-            newpath_decoded = None
+        oldpath_decoded = decode_git_path(oldpath) if oldpath is not None else None
+        newpath_decoded = decode_git_path(newpath) if newpath is not None else None
         if not (
             specific_files is None
             or (
@@ -1336,7 +1324,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
 
         if kinds is None:
             kinds = [None] * len(files)
-        elif not len(kinds) == len(files):
+        elif len(kinds) != len(files):
             raise AssertionError()
         with self.lock_tree_write():
             for f in files:
@@ -1505,10 +1493,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
 
     def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
         with self.lock_read():
-            if specific_files is not None:
-                specific_files = set(specific_files)
-            else:
-                specific_files = None
+            specific_files = set(specific_files) if specific_files is not None else None
             root_ie = self._get_dir_ie("", None)
             ret = {}
             if specific_files is None or "" in specific_files:
@@ -1740,10 +1725,8 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                     ) from err
             if kind != "directory":
                 (index, from_index_path) = self._lookup_index(from_path)
-                try:
+                with contextlib.suppress(KeyError):
                     self._index_del_entry(index, from_path)
-                except KeyError:
-                    pass
                 self._index_add_entry(to_rel, kind)
             else:
                 todo = [

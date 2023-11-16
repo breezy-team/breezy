@@ -31,6 +31,7 @@ __all__ = [
 ]
 
 
+import contextlib
 import warnings
 
 # Import the 'warn' symbol so breezy can call it even if we redefine it
@@ -174,10 +175,7 @@ def deprecated_passed(parameter_value):
 
 
 def _decorate_docstring(callable, deprecation_version, label, decorated_callable):
-    if callable.__doc__:
-        docstring_lines = callable.__doc__.split("\n")
-    else:
-        docstring_lines = []
+    docstring_lines = callable.__doc__.split("\n") if callable.__doc__ else []
     if len(docstring_lines) == 0:
         decorated_callable.__doc__ = deprecation_version % ("This " + label)
     elif len(docstring_lines) == 1:
@@ -329,10 +327,8 @@ def _remove_filter_callable(filter):
 
     def cleanup():
         if filter:
-            try:
+            with contextlib.suppress(ValueError, IndexError):
                 warnings.filters.remove(filter)
-            except (ValueError, IndexError):
-                pass
 
     return cleanup
 

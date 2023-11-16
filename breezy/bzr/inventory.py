@@ -50,6 +50,8 @@ from breezy.bzr import (
 """,
 )
 
+import contextlib
+
 from .. import errors, osutils
 from .._bzr_rs import ROOT_ID
 from .._bzr_rs import inventory as _mod_inventory_rs
@@ -285,10 +287,7 @@ class CHKInventory:
             or as list of elements.
         :return: tuple with ie, resolved elements and elements left to resolve
         """
-        if isinstance(relpath, str):
-            names = osutils.splitpath(relpath)
-        else:
-            names = relpath
+        names = osutils.splitpath(relpath) if isinstance(relpath, str) else relpath
 
         try:
             parent = self.root
@@ -321,10 +320,7 @@ class CHKInventory:
 
         Returns None IFF the path is not found.
         """
-        if isinstance(relpath, str):
-            names = osutils.splitpath(relpath)
-        else:
-            names = relpath
+        names = osutils.splitpath(relpath) if isinstance(relpath, str) else relpath
 
         try:
             parent = self.root
@@ -635,10 +631,8 @@ class CHKInventory:
                 new_value = None
                 # Update caches
                 if propagate_caches:
-                    try:
+                    with contextlib.suppress(KeyError):
                         del result._path_to_fileid_cache[old_path]
-                    except KeyError:
-                        pass
                 deletes.add(file_id)
             else:
                 new_key = StaticTuple(
@@ -871,10 +865,7 @@ class CHKInventory:
 
     def _parent_id_basename_key(self, entry):
         """Create a key for a entry in a parent_id_basename_to_file_id index."""
-        if entry.parent_id is not None:
-            parent_id = entry.parent_id
-        else:
-            parent_id = b""
+        parent_id = entry.parent_id if entry.parent_id is not None else b""
         return StaticTuple(parent_id, entry.name.encode("utf8")).intern()
 
     def get_entry(self, file_id):
@@ -1129,10 +1120,7 @@ class CHKInventory:
         parent_id_index = self.parent_id_basename_to_file_id
         cur_path = None
         for basename in names:
-            if cur_path is None:
-                cur_path = basename
-            else:
-                cur_path = cur_path + "/" + basename
+            cur_path = basename if cur_path is None else cur_path + "/" + basename
             basename_utf8 = basename.encode("utf8")
             file_id = self._path_to_fileid_cache.get(cur_path, None)
             if file_id is None:
@@ -1239,10 +1227,7 @@ def _make_delta(new, old):
         delta = []
         for key, old_value, self_value in new.id_to_entry.iter_changes(old.id_to_entry):
             file_id = key[0]
-            if old_value is not None:
-                old_path = old.id2path(file_id)
-            else:
-                old_path = None
+            old_path = old.id2path(file_id) if old_value is not None else None
             if self_value is not None:
                 entry = new._bytes_to_entry(self_value)
                 new._fileid_to_entry_cache[file_id] = entry

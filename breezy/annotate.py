@@ -131,10 +131,7 @@ def _show_id_annotations(annotations, to_file, full, encoding):
     last_rev_id = None
     max_origin_len = max(len(origin) for origin, text in annotations)
     for origin, text in annotations:
-        if full or last_rev_id != origin:
-            this = origin
-        else:
-            this = b""
+        this = origin if full or last_rev_id != origin else b""
         to_file.write(
             "%*s | %s" % (max_origin_len, this.decode("utf-8"), text.decode(encoding))
         )
