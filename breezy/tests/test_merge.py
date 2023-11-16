@@ -3607,10 +3607,7 @@ class TestMergeIntoBase(tests.TestCaseWithTransport):
 
     def setup_two_branches(self, custom_root_ids=True):
         """Setup 2 branches, one will be a library, the other a project."""
-        if custom_root_ids:
-            root_id = None
-        else:
-            root_id = inventory.ROOT_ID
+        root_id = None if custom_root_ids else inventory.ROOT_ID
         project_wt = self.setup_simple_branch(
             "project", ["README", "dir/", "dir/file.c"], root_id
         )

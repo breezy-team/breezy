@@ -671,10 +671,7 @@ class NewPack(Pack):
         :param label: What label to give the index e.g. 'revision'.
         """
         index_name = self.index_name(index_type, self.name)
-        if suspend:
-            transport = self.upload_transport
-        else:
-            transport = self.index_transport
+        transport = self.upload_transport if suspend else self.index_transport
         index_tempfile = index.finish()
         index_bytes = index_tempfile.read()
         write_stream = transport.open_write_stream(index_name, mode=self._file_mode)
@@ -1424,10 +1421,8 @@ class RepositoryPackCollection:
                 except _mod_transport.NoSuchFile:
                     # perhaps obsolete_packs was removed? Let's create it and
                     # try again
-                    try:
+                    with contextlib.suppress(_mod_transport.FileExists):
                         pack.pack_transport.mkdir("../obsolete_packs/")
-                    except _mod_transport.FileExists:
-                        pass
                     pack.pack_transport.move(
                         pack.file_name(), "../obsolete_packs/" + pack.file_name()
                     )

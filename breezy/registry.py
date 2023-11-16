@@ -167,9 +167,8 @@ class Registry(Generic[K, V, I]):
                 already been registered for that key. If True, ignore if there
                 is an existing key (always register the new value).
         """
-        if not override_existing:
-            if key in self._dict:
-                raise KeyError(f"Key {key!r} already registered")
+        if not override_existing and key in self._dict:
+            raise KeyError(f"Key {key!r} already registered")
         self._dict[key] = _ObjectGetter[V](obj)
         self._add_help_and_info(key, help=help, info=info)
 
@@ -197,9 +196,8 @@ class Registry(Generic[K, V, I]):
                 with the new one. If False, if there is already something
                 registered with the same key, raise a KeyError
         """
-        if not override_existing:
-            if key in self._dict:
-                raise KeyError(f"Key {key!r} already registered")
+        if not override_existing and key in self._dict:
+            raise KeyError(f"Key {key!r} already registered")
         self._dict[key] = _LazyObjectGetter[V](module_name, member_name)
         self._add_help_and_info(key, help=help, info=info)
 
@@ -289,6 +287,9 @@ class Registry(Generic[K, V, I]):
 
     def __contains__(self, key):
         return key in self._dict
+
+    def __iter__(self):
+        return iter(self._dict)
 
     def keys(self):
         """Get a list of registered entries."""

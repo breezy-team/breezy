@@ -183,10 +183,7 @@ class BundleSerializerV08(BundleSerializer):
                     base_id = NULL_REVISION
             else:
                 explicit_base = False
-                if rev.parent_ids:
-                    base_id = rev.parent_ids[-1]
-                else:
-                    base_id = NULL_REVISION
+                base_id = rev.parent_ids[-1] if rev.parent_ids else NULL_REVISION
 
             if base_id == last_rev_id:
                 base_tree = last_rev_tree

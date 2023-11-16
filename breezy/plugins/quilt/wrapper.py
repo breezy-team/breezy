@@ -73,10 +73,7 @@ def run_quilt(args, working_dir, series_file=None, patches_dir=None, quiet=None)
     # Hide output if -q is in use.
     if quiet is None:
         quiet = trace.is_quiet()
-    if not quiet:
-        stderr = subprocess.STDOUT
-    else:
-        stderr = subprocess.PIPE
+    stderr = subprocess.STDOUT if not quiet else subprocess.PIPE
     quilt_path = osutils.find_executable_on_path("quilt")
     if quilt_path is None:
         raise QuiltNotInstalled()

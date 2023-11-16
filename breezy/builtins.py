@@ -51,6 +51,8 @@ from breezy.i18n import gettext, ngettext
 """,
 )
 
+import contextlib
+
 from .commands import Command, builtin_command_registry, display_command
 from .option import ListOption, Option, RegistryOption, _parse_revision_str, custom_help
 from .revisionspec import RevisionInfo, RevisionSpec
@@ -250,10 +252,7 @@ def _get_one_revision_tree(command_name, revisions, branch=None, tree=None):
     if branch is None:
         branch = tree.branch
     if revisions is None:
-        if tree is not None:
-            rev_tree = tree.basis_tree()
-        else:
-            rev_tree = branch.basis_tree()
+        rev_tree = tree.basis_tree() if tree is not None else branch.basis_tree()
     else:
         revision = _get_one_revision(command_name, revisions)
         rev_tree = revision.as_tree(branch)
@@ -807,13 +806,12 @@ class cmd_add(Command):
             file_list, not no_recurse, action=action, save=not dry_run
         )
         self.cleanup_now()
-        if len(ignored) > 0:
-            if verbose:
-                for glob in sorted(ignored):
-                    for path in ignored[glob]:
-                        self.outf.write(
-                            gettext('ignored {0} matching "{1}"\n').format(path, glob)
-                        )
+        if len(ignored) > 0 and verbose:
+            for glob in sorted(ignored):
+                for path in ignored[glob]:
+                    self.outf.write(
+                        gettext('ignored {0} matching "{1}"\n').format(path, glob)
+                    )
 
 
 class cmd_mkdir(Command):
@@ -846,17 +844,12 @@ class cmd_mkdir(Command):
     def run(self, dir_list, parents=False):
         from .workingtree import WorkingTree
 
-        if parents:
-            add_file = self.add_file_with_parents
-        else:
-            add_file = self.add_file_single
+        add_file = self.add_file_with_parents if parents else self.add_file_single
         for dir in dir_list:
             wt, relpath = WorkingTree.open_containing(dir)
             if parents:
-                try:
+                with contextlib.suppress(FileExistsError):
                     os.makedirs(dir)
-                except FileExistsError:
-                    pass
             else:
                 os.mkdir(dir)
             add_file(wt, relpath)
@@ -1636,10 +1629,7 @@ class cmd_branch(Command):
         accelerator_tree, br_from = controldir.ControlDir.open_tree_or_branch(
             from_location, name=colocated_branch
         )
-        if no_recurse_nested:
-            recurse = "none"
-        else:
-            recurse = "down"
+        recurse = "none" if no_recurse_nested else "down"
         if not (hardlink or files_from):
             # accelerator_tree is usually slower because you have to read N
             # files (no readahead, lots of seeks, etc), but allow the user to
@@ -1811,10 +1801,7 @@ class cmd_branches(Command):
                 self.outf.write(f"* {gettext('(default)')}\n")
             for name in sorted(names):
                 active = names[name]
-                if active:
-                    prefix = "*"
-                else:
-                    prefix = " "
+                prefix = "*" if active else " "
                 self.outf.write(f"{prefix} {name}\n")
 
 
@@ -1881,10 +1868,7 @@ class cmd_checkout(Command):
         revision = _get_one_revision("checkout", revision)
         if files_from is not None and files_from != branch_location:
             accelerator_tree = WorkingTree.open(files_from)
-        if revision is not None:
-            revision_id = revision.as_revision_id(source)
-        else:
-            revision_id = None
+        revision_id = revision.as_revision_id(source) if revision is not None else None
         if to_location is None:
             to_location = urlutils.derive_to_location(branch_location)
         # if the source and to_location are the same,
@@ -2136,10 +2120,7 @@ class cmd_info(Command):
 
     @display_command
     def run(self, location=None, verbose=False):
-        if verbose:
-            noise_level = get_verbosity_level()
-        else:
-            noise_level = 0
+        noise_level = get_verbosity_level() if verbose else 0
         from .info import show_bzrdir_info
 
         show_bzrdir_info(
@@ -2390,10 +2371,7 @@ class cmd_init(Command):
         except errors.NotBranchError:
             # really a NotBzrDir error...
             create_branch = controldir.ControlDir.create_branch_convenience
-            if no_tree:
-                force_new_tree = False
-            else:
-                force_new_tree = None
+            force_new_tree = False if no_tree else None
             branch = create_branch(
                 to_transport.base,
                 format=format,
@@ -2440,10 +2418,8 @@ class cmd_init(Command):
             if repository.is_shared():
                 # XXX: maybe this can be refactored into transport.path_or_url()
                 url = repository.controldir.root_transport.external_url()
-                try:
+                with contextlib.suppress(urlutils.InvalidURL):
                     url = urlutils.local_path_from_url(url)
-                except urlutils.InvalidURL:
-                    pass
                 self.outf.write(gettext("Using shared repository: %s\n") % url)
 
 
@@ -2746,11 +2722,8 @@ class cmd_diff(Command):
         if color == "auto":
             from .terminal import has_ansi_colors
 
-            if has_ansi_colors():
-                color = "always"
-            else:
-                color = "never"
-        if "always" == color:
+            color = "always" if has_ansi_colors() else "never"
+        if color == "always":
             from .colordiff import DiffWriter
 
             outf = DiffWriter(outf)
@@ -3219,16 +3192,12 @@ class cmd_log(Command):
         if b.get_config_stack().get("validate_signatures_in_log"):
             signatures = True
 
-        if signatures:
-            if not gpg.GPGStrategy.verify_signatures_available():
-                raise errors.GpgmeNotInstalled(None)
+        if signatures and not gpg.GPGStrategy.verify_signatures_available():
+            raise errors.GpgmeNotInstalled(None)
 
         # Decide on the type of delta & diff filtering to use
         # TODO: add an --all-files option to make this configurable & consistent
-        if not verbose:
-            delta_type = None
-        else:
-            delta_type = "full"
+        delta_type = None if not verbose else "full"
         if not show_diff:
             diff_type = None
         elif files:
@@ -3484,10 +3453,7 @@ class cmd_ls(Command):
                 continue
             if apply_view:
                 try:
-                    if relpath:
-                        fullpath = osutils.pathjoin(relpath, fp)
-                    else:
-                        fullpath = fp
+                    fullpath = osutils.pathjoin(relpath, fp) if relpath else fp
                     views.check_path_in_view(tree, fullpath)
                 except views.FileOutsideView:
                     continue
@@ -3668,9 +3634,8 @@ class cmd_ignore(Command):
         self.enter_context(tree.lock_read())
         for filename, _fc, _fkind, entry in tree.list_files():
             id = getattr(entry, "file_id", None)
-            if id is not None:
-                if ignored.match(filename):
-                    matches.append(filename)
+            if id is not None and ignored.match(filename):
+                matches.append(filename)
         if len(matches) > 0:
             self.outf.write(
                 gettext(
@@ -4809,10 +4774,7 @@ class cmd_selftest(Command):
                 "breezy tests to run the breezy testsuite."
             ) from exc
 
-        if testspecs_list is not None:
-            pattern = "|".join(testspecs_list)
-        else:
-            pattern = ".*"
+        pattern = "|".join(testspecs_list) if testspecs_list is not None else ".*"
         if subunit1:
             try:
                 from .tests import SubUnitBzrRunnerv1
@@ -4860,10 +4822,7 @@ class cmd_selftest(Command):
                 )
             )
         test_suite_factory = None
-        if not exclude:
-            exclude_pattern = None
-        else:
-            exclude_pattern = "(" + "|".join(exclude) + ")"
+        exclude_pattern = None if not exclude else "(" + "|".join(exclude) + ")"
         if not sync:
             self._disable_fsync()
         selftest_kwargs = {
@@ -5109,9 +5068,8 @@ class cmd_merge(Command):
             )
 
         # die as quickly as possible if there are uncommitted changes
-        if not force:
-            if tree.has_changes():
-                raise errors.UncommittedChanges(tree)
+        if not force and tree.has_changes():
+            raise errors.UncommittedChanges(tree)
 
         view_info = _get_view_info_for_change_reporter(tree)
         change_reporter = delta._ChangeReporter(
@@ -5479,10 +5437,8 @@ class cmd_remerge(Command):
         if file_list is not None:
             restore_files = file_list
         for filename in restore_files:
-            try:
+            with contextlib.suppress(errors.NotConflicted):
                 restore(tree.abspath(filename))
-            except errors.NotConflicted:
-                pass
         # Disable pending merges, because the file texts we are remerging
         # have not had those merges performed.  If we use the wrong parents
         # list, we imply that the working tree text has seen and rejected
@@ -5918,14 +5874,8 @@ class cmd_testament(Command):
     def run(self, branch=".", revision=None, long=False, strict=False):
         from .bzr.testament import StrictTestament, Testament
 
-        if strict is True:
-            testament_class = StrictTestament
-        else:
-            testament_class = Testament
-        if branch == ".":
-            b = Branch.open_containing(branch)[0]
-        else:
-            b = Branch.open(branch)
+        testament_class = StrictTestament if strict is True else Testament
+        b = Branch.open_containing(branch)[0] if branch == "." else Branch.open(branch)
         self.enter_context(b.lock_read())
         if revision is None:
             rev_id = b.last_revision()
@@ -6228,12 +6178,11 @@ class cmd_uncommit(Command):
         else:
             self.outf.write(gettext("The above revision(s) will be removed.\n"))
 
-        if not force:
-            if not ui.ui_factory.confirm_action(
-                gettext("Uncommit these revisions"), "breezy.builtins.uncommit", {}
-            ):
-                self.outf.write(gettext("Canceled\n"))
-                return 0
+        if not force and not ui.ui_factory.confirm_action(
+            gettext("Uncommit these revisions"), "breezy.builtins.uncommit", {}
+        ):
+            self.outf.write(gettext("Canceled\n"))
+            return 0
 
         mutter("Uncommitting from {%s} to {%s}", last_rev_id, rev_id)
         uncommit(
@@ -6299,10 +6248,8 @@ class cmd_break_lock(Command):
             conf.break_lock()
         else:
             control, relpath = controldir.ControlDir.open_containing(location)
-            try:
+            with contextlib.suppress(NotImplementedError):
                 control.break_lock()
-            except NotImplementedError:
-                pass
 
 
 class cmd_wait_until_signalled(Command):
@@ -7405,10 +7352,7 @@ class cmd_view(Command):
             if view_dict:
                 self.outf.write(gettext("Views defined:\n"))
                 for view in sorted(view_dict):
-                    if view == current_view:
-                        active = "=>"
-                    else:
-                        active = "  "
+                    active = "=>" if view == current_view else "  "
                     view_str = views.view_display_str(view_dict[view])
                     self.outf.write("%s %-20s %s\n" % (active, view, view_str))
             else:
@@ -8093,7 +8037,8 @@ class cmd_patch(Command):
             my_file = getattr(sys.stdin, "buffer", sys.stdin)
         else:
             my_file = open(filename, "rb")
-        patches = [my_file.read()]
+        with my_file:
+            patches = [my_file.read()]
         from io import BytesIO
 
         b = BytesIO()

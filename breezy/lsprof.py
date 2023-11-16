@@ -287,14 +287,8 @@ class _CallTreeFilter:
         else:
             out_file.write("%d %d\n" % (code.co_firstlineno, inlinetime))
         # recursive calls are counted in entry.calls
-        if entry.calls:
-            calls = entry.calls
-        else:
-            calls = []
-        if isinstance(code, str):
-            lineno = 0
-        else:
-            lineno = code.co_firstlineno
+        calls = entry.calls if entry.calls else []
+        lineno = 0 if isinstance(code, str) else code.co_firstlineno
         for subentry in calls:
             self._subentry(lineno, subentry)
         out_file.write("\n")

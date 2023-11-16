@@ -504,10 +504,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                     # new version even if some other process reverts it while
                     # commit is running (with the revert happening after
                     # iter_changes did its examination).
-                    if change.executable[1]:
-                        executable = True
-                    else:
-                        executable = False
+                    executable = bool(change.executable[1])
                     if carry_over_possible and parent_entry.executable == executable:
                         # Check the file length, content hash after reading
                         # the file.
@@ -1734,7 +1731,7 @@ class VersionedFileRepository(Repository):
         with self.lock_read():
             if not self.has_revision(revision_id):
                 raise errors.NoSuchRevision(self, revision_id)
-            sig_present = 1 == len(self.signatures.get_parent_map([(revision_id,)]))
+            sig_present = len(self.signatures.get_parent_map([(revision_id,)])) == 1
             return sig_present
 
     def get_signature_text(self, revision_id):
@@ -2242,10 +2239,7 @@ class StreamSource:
         # NB: This currently reopens the inventory weave in source;
         # using a single stream interface instead would avoid this.
         from_weave = self.from_repository.inventories
-        if missing:
-            delta_closure = True
-        else:
-            delta_closure = not self.delta_on_metadata()
+        delta_closure = True if missing else not self.delta_on_metadata()
         yield (
             "inventories",
             from_weave.get_record_stream(
@@ -2868,10 +2862,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
         """See InterRepository.fetch()."""
         if lossy:
             raise errors.LossyPushToSameVCS(self.source, self.target)
-        if fetch_spec is not None:
-            revision_ids = fetch_spec.get_keys()
-        else:
-            revision_ids = None
+        revision_ids = fetch_spec.get_keys() if fetch_spec is not None else None
         if self.source._format.experimental:
             ui.ui_factory.show_user_warning(
                 "experimental_format_fetch",
@@ -2892,10 +2883,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
             )
         with self.lock_write():
             if revision_ids is None:
-                if revision_id:
-                    search_revision_ids = [revision_id]
-                else:
-                    search_revision_ids = None
+                search_revision_ids = [revision_id] if revision_id else None
                 revision_ids = self.target.search_missing_revision_ids(
                     self.source,
                     revision_ids=search_revision_ids,

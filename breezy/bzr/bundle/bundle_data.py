@@ -352,10 +352,7 @@ class BundleInfo:
                     "renamed action lines need both a from and to" ": %r" % extra
                 )
             old_path = info[0]
-            if info[1].startswith("=> "):
-                new_path = info[1][3:]
-            else:
-                new_path = info[1]
+            new_path = info[1][3:] if info[1].startswith("=> ") else info[1]
 
             bundle_tree.note_rename(old_path, new_path)
             last_modified, encoding = extra_info(info[2:], new_path)
@@ -533,10 +530,7 @@ class BundleTree(InventoryTree):
         # requires the objects to be identical
         if dirname != "":
             old_dir = self.old_path(dirname)
-            if old_dir is None:
-                old_path = None
-            else:
-                old_path = pathjoin(old_dir, basename)
+            old_path = None if old_dir is None else pathjoin(old_dir, basename)
         else:
             old_path = new_path
         # If the new path wasn't in renamed, the old one shouldn't be in
@@ -559,10 +553,7 @@ class BundleTree(InventoryTree):
         dirname, basename = os.path.split(old_path)
         if dirname != "":
             new_dir = self.new_path(dirname)
-            if new_dir is None:
-                new_path = None
-            else:
-                new_path = pathjoin(new_dir, basename)
+            new_path = None if new_dir is None else pathjoin(new_dir, basename)
         else:
             new_path = old_path
         # If the old path wasn't in renamed, the new one shouldn't be in
@@ -607,10 +598,7 @@ class BundleTree(InventoryTree):
                 then be cached.
         """
         old_path = self._base_inter.find_source_path(path)
-        if old_path is None:
-            patch_original = None
-        else:
-            patch_original = self.base_tree.get_file(old_path)
+        patch_original = None if old_path is None else self.base_tree.get_file(old_path)
         file_patch = self.patches.get(path)
         if file_patch is None:
             if patch_original is None and self.kind(path) == "directory":

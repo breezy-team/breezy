@@ -299,10 +299,7 @@ class TestSendStrictMixin(TestSendMixin):
         self.assertContainsRe(err, self._default_additional_error)
 
     def assertSendSucceeds(self, args, revs=None, with_warning=False):
-        if with_warning:
-            err_re = self._default_errors
-        else:
-            err_re = []
+        err_re = self._default_errors if with_warning else []
         if revs is None:
             revs = self._default_sent_revs or [self.local]
         out, err = self.run_send(args, err_re=err_re)

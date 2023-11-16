@@ -2020,10 +2020,7 @@ class TestGraphIndexPrefixAdapter(tests.TestCaseWithMemoryTransport):
             nodes = []
         result = _mod_index.InMemoryGraphIndex(ref_lists, key_elements=key_elements)
         result.add_nodes(nodes)
-        if add_callback:
-            add_nodes_callback = result.add_nodes
-        else:
-            add_nodes_callback = None
+        add_nodes_callback = result.add_nodes if add_callback else None
         adapter = _mod_index.GraphIndexPrefixAdapter(
             result,
             (b"prefix",),

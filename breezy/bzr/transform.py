@@ -748,10 +748,7 @@ class TreeTransformBase(TreeTransform):
                 from_path = None
             else:
                 from_path = self._tree_id_paths.get(from_trans_id)
-            if not to_versioned:
-                to_path = None
-            else:
-                to_path = final_paths.get_path(to_trans_id)
+            to_path = None if not to_versioned else final_paths.get_path(to_trans_id)
 
             from_name, from_parent, from_kind, from_executable = self._from_file_data(
                 from_trans_id, from_versioned, from_path
@@ -1668,10 +1665,7 @@ class InventoryTreeTransform(DiskTreeTransform):
             else:
                 inventory_delta = precomputed_delta
                 offset = 0
-            if _mover is None:
-                mover = _FileMover()
-            else:
-                mover = _mover
+            mover = _FileMover() if _mover is None else _mover
             try:
                 child_pb.update(gettext("Apply phase"), 0 + offset, 2 + offset)
                 self._apply_removals(mover)
@@ -2415,10 +2409,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
             deferred_contents = []
             num = 0
             total = len(tree.all_versioned_paths())
-            if delta_from_tree:
-                precomputed_delta = []
-            else:
-                precomputed_delta = None
+            precomputed_delta = [] if delta_from_tree else None
             # Check if tree inventory has content. If so, we populate
             # existing_files with the directory content. If there are no
             # entries we skip populating existing_files as its not used.
@@ -2488,10 +2479,8 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
         conflicts = tt.cook_conflicts(raw_conflicts)
         for conflict in conflicts:
             trace.warning(str(conflict))
-        try:
+        with contextlib.suppress(errors.UnsupportedOperation):
             wt.add_conflicts(conflicts)
-        except errors.UnsupportedOperation:
-            pass
         result = tt.apply(no_conflicts=True, precomputed_delta=precomputed_delta)
     finally:
         tt.finalize()

@@ -276,10 +276,7 @@ class SmartServerBranchRequestSetConfigOptionDict(SmartServerLockedBranchRequest
         value_dict = {}
         for key, value in utf8_dict.items():
             value_dict[key.decode("utf8")] = value.decode("utf8")
-        if not section:
-            section = None
-        else:
-            section = section.decode("utf-8")
+        section = None if not section else section.decode("utf-8")
         branch._get_config().set_option(value_dict, name.decode("utf-8"), section)
         return SuccessfulSmartServerResponse(())
 

@@ -84,10 +84,7 @@ class TransportLogDecorator(decorator.TransportDecorator):
         return self._call_and_log_result("iter_files_recursive", (), {})
 
     def _log_and_call(self, methodname, relpath, *args, **kwargs):
-        if kwargs:
-            kwargs_str = dict(kwargs)
-        else:
-            kwargs_str = ""
+        kwargs_str = dict(kwargs) if kwargs else ""
         mutter(
             "{} {} {} {}".format(
                 methodname,

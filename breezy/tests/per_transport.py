@@ -20,6 +20,7 @@ Transport implementations tested here are supplied by
 TransportTestProviderAdapter.
 """
 
+import contextlib
 import os
 import random
 import stat
@@ -126,10 +127,8 @@ class TransportTests(TestTransportImplementation):
     def test_external_url(self):
         """.external_url either works or raises InProcessTransport."""
         t = self.get_transport()
-        try:
+        with contextlib.suppress(errors.InProcessTransport):
             t.external_url()
-        except errors.InProcessTransport:
-            pass
 
     def test_has(self):
         t = self.get_transport()
@@ -193,10 +192,8 @@ class TransportTests(TestTransportImplementation):
             return
         # having got a file, read() must either work (i.e. http reading a dir
         # listing) or fail with ReadError
-        try:
+        with contextlib.suppress(errors.ReadError):
             a_file.read()
-        except errors.ReadError:
-            pass
 
     def test_get_bytes(self):
         t = self.get_transport()
@@ -1160,15 +1157,9 @@ class TransportTests(TestTransportImplementation):
                 path = t._parsed_url.path
             return str(urlutils.URL(scheme, user, password, host, port, path))
 
-        if t._parsed_url.scheme == "ftp":
-            scheme = "sftp"
-        else:
-            scheme = "ftp"
+        scheme = "sftp" if t._parsed_url.scheme == "ftp" else "ftp"
         self.assertIsNot(t, t._reuse_for(new_url(scheme=scheme)))
-        if t._parsed_url.user == "me":
-            user = "you"
-        else:
-            user = "me"
+        user = "you" if t._parsed_url.user == "me" else "me"
         self.assertIsNot(t, t._reuse_for(new_url(user=user)))
         # passwords are not taken into account because:
         # - it makes no sense to have two different valid passwords for the
@@ -1183,10 +1174,7 @@ class TransportTests(TestTransportImplementation):
         self.assertIs(t, t._reuse_for(new_url(password="from space")))
         # We will not connect, we can use a invalid host
         self.assertIsNot(t, t._reuse_for(new_url(host=t._parsed_url.host + "bar")))
-        if t._parsed_url.port == 1234:
-            port = 4321
-        else:
-            port = 1234
+        port = 4321 if t._parsed_url.port == 1234 else 1234
         self.assertIsNot(t, t._reuse_for(new_url(port=port)))
         # No point in trying to reuse a transport for a local URL
         self.assertIs(None, t._reuse_for("/valid_but_not_existing"))

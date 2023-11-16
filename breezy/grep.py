@@ -525,10 +525,7 @@ def versioned_file_grep(tree, tree_path, relpath, path, opts, revno, path_prefix
 def _path_in_glob_list(path, glob_list) -> bool:
     from fnmatch import fnmatch
 
-    for glob in glob_list:
-        if fnmatch(path, glob):
-            return True
-    return False
+    return any(fnmatch(path, glob) for glob in glob_list)
 
 
 def _file_grep_list_only_wtree(file, path, opts, path_prefix=None):

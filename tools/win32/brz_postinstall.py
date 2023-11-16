@@ -20,6 +20,7 @@ Written by Alexander Belchenko.
 Dependency: ctypes
 """
 
+import contextlib
 import os
 import shutil
 import sys
@@ -265,10 +266,7 @@ def main():
 
         GetShortPathName = ctypes.windll.kernel32.GetShortPathNameA
         buf = ctypes.create_string_buffer(260)
-        if GetShortPathName(brz_dir, buf, 260):
-            brz_dir_8_3 = buf.value
-        else:
-            brz_dir_8_3 = brz_dir
+        brz_dir_8_3 = buf.value if GetShortPathName(brz_dir, buf, 260) else brz_dir
         pattern = "SET PATH=%PATH%;" + brz_dir_8_3
 
         # search pattern
@@ -328,15 +326,11 @@ def main():
             _winreg.CloseKey(hkey)
 
     if delete_shell_menu:
-        try:
+        with contextlib.suppress(OSError):
             _winreg.DeleteKey(_winreg.HKEY_CLASSES_ROOT, r"Folder\shell\brz\command")
-        except OSError:
-            pass
 
-        try:
+        with contextlib.suppress(OSError):
             _winreg.DeleteKey(_winreg.HKEY_CLASSES_ROOT, r"Folder\shell\brz")
-        except OSError:
-            pass
 
     if check_mfc71:
         try:

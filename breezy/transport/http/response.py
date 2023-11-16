@@ -298,13 +298,12 @@ class RangeFile(ResponseFile):
                 self._pos,
                 f"Can't read {size} bytes before range ({self._start}, {self._size})",
             )
-        if self._size > 0:
-            if size > 0 and self._pos + size > self._start + self._size:
-                raise errors.InvalidRange(
-                    self._path,
-                    self._pos,
-                    f"Can't read {size} bytes across range ({self._start}, {self._size})",
-                )
+        if self._size > 0 and size > 0 and self._pos + size > self._start + self._size:
+            raise errors.InvalidRange(
+                self._path,
+                self._pos,
+                f"Can't read {size} bytes across range ({self._start}, {self._size})",
+            )
 
         # read data from file
         buf = BytesIO()

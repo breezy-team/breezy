@@ -168,9 +168,8 @@ class _SFTPReadvHelper:
         # short readv.
         data_stream = itertools.chain(fp.readv(requests), itertools.repeat(None))
         for (start, length), data in zip(requests, data_stream):
-            if data is None:
-                if cur_coalesced is not None:
-                    raise errors.ShortReadvError(self.relpath, start, length, len(data))
+            if data is None and cur_coalesced is not None:
+                raise errors.ShortReadvError(self.relpath, start, length, len(data))
             if len(data) != length:
                 raise errors.ShortReadvError(self.relpath, start, length, len(data))
             self._report_activity(length, "read")
@@ -331,10 +330,7 @@ class SFTPTransport(ConnectedTransport):
         interactively by the user and may be different from the one provided
         in base url at transport creation time.
         """
-        if credentials is None:
-            password = self._parsed_url.password
-        else:
-            password = credentials
+        password = self._parsed_url.password if credentials is None else credentials
 
         vendor = ssh._get_ssh_vendor()
         user = self._parsed_url.user
@@ -607,10 +603,7 @@ class SFTPTransport(ConnectedTransport):
                 yield relpath
 
     def _mkdir(self, abspath, mode=None):
-        if mode is None:
-            local_mode = 0o777
-        else:
-            local_mode = mode
+        local_mode = 511 if mode is None else mode
         try:
             self._report_activity(len(abspath), "write")
             self._get_sftp().mkdir(abspath, local_mode)
@@ -879,11 +872,7 @@ class SFTPTransport(ConnectedTransport):
             )
 
     def _can_roundtrip_unix_modebits(self):
-        if sys.platform == "win32":
-            # anyone else?
-            return False
-        else:
-            return True
+        return sys.platform != "win32"
 
 
 def get_test_permutations():

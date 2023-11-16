@@ -104,10 +104,7 @@ class SmartServerRequestBzrDir(SmartServerRequest):
         # the relpath of the bzrdir in the found repository gives us the
         # path segments to pop-out.
         relpath = repository.user_transport.relpath(current_transport.base)
-        if len(relpath):
-            segments = [".."] * len(relpath.split("/"))
-        else:
-            segments = []
+        segments = [".."] * len(relpath.split("/")) if len(relpath) else []
         return "/".join(segments)
 
 
@@ -178,10 +175,7 @@ class SmartServerBzrDirRequestCloningMetaDir(SmartServerRequestBzrDir):
             # possibly can't reach them anyway.  The client needs to resolve
             # the branch reference to determine the cloning_metadir.
             return FailedSmartServerResponse((b"BranchReference",))
-        if require_stacking == b"True":
-            require_stacking = True
-        else:
-            require_stacking = False
+        require_stacking = require_stacking == b"True"
         control_format = self._bzrdir.cloning_metadir(require_stacking=require_stacking)
         control_name = control_format.network_name()
         if not control_format.fixed_components:
@@ -417,10 +411,7 @@ class SmartServerBzrDirRequestConfigFile(SmartServerRequestBzrDir):
         The body is not utf8 decoded - it is the literal bytestream from disk.
         """
         config = self._bzrdir._get_config()
-        if config is None:
-            content = b""
-        else:
-            content = config._get_config_file().read()
+        content = b"" if config is None else config._get_config_file().read()
         return SuccessfulSmartServerResponse((), content)
 
 

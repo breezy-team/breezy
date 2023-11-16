@@ -135,28 +135,19 @@ class TestSource(TestSourceHelper):
 
     def is_our_code(self, fname):
         """True if it's a "real" part of breezy rather than external code."""
-        if "/util/" in fname or "/plugins/" in fname:
-            return False
-        else:
-            return True
+        return not ("/util/" in fname or "/plugins/" in fname)
 
     def is_copyright_exception(self, fname):
         """Certain files are allowed to be different."""
         if not self.is_our_code(fname):
             return True
-        for exc in COPYRIGHT_EXCEPTIONS:
-            if fname.endswith(exc):
-                return True
-        return False
+        return any(fname.endswith(exc) for exc in COPYRIGHT_EXCEPTIONS)
 
     def is_license_exception(self, fname):
         """Certain files are allowed to be different."""
         if not self.is_our_code(fname):
             return True
-        for exc in LICENSE_EXCEPTIONS:
-            if fname.endswith(exc):
-                return True
-        return False
+        return any(fname.endswith(exc) for exc in LICENSE_EXCEPTIONS)
 
     def test_tmpdir_not_in_source_files(self):
         """When scanning for source files, we don't descend test tempdirs."""

@@ -213,10 +213,7 @@ class Option:
         option_strings = [f"--{self.name}"]
         if short_name is not None:
             option_strings.append(f"-{short_name}")
-        if self.hidden:
-            help = optparse.SUPPRESS_HELP
-        else:
-            help = self.help
+        help = optparse.SUPPRESS_HELP if self.hidden else self.help
         optargfn = self.type
         if optargfn is None:
             parser.add_option(

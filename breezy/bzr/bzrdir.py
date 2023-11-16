@@ -179,14 +179,12 @@ class BzrDir(controldir.ControlDir):
             if local_active_branch.repository.has_same_location(local_repo):
                 local_repo = local_active_branch.repository
             if preserve_stacking:
-                try:
-                    stacked_on = local_active_branch.get_stacked_on_url()
-                except (
+                with contextlib.suppress(
                     _mod_branch.UnstackableBranchFormat,
                     errors.UnstackableRepositoryFormat,
                     errors.NotStacked,
                 ):
-                    pass
+                    stacked_on = local_active_branch.get_stacked_on_url()
         # Bug: We create a metadir without knowing if it can support stacking,
         # we should look up the policy needs first, or just use it as a hint,
         # or something.
@@ -496,10 +494,8 @@ class BzrDir(controldir.ControlDir):
                 )
                 with wt.lock_write():
                     if not wt.is_versioned(""):
-                        try:
+                        with contextlib.suppress(errors.NoWorkingTree):
                             wt.set_root_id(self.open_workingtree.path2id(""))
-                        except errors.NoWorkingTree:
-                            pass
             else:
                 wt = None
             if recurse == "down":
@@ -1057,10 +1053,8 @@ class BzrDirMeta1(BzrDir):
         branch_transport = self.transport.clone(path)
         mode = self._get_mkdir_mode()
         branch_transport.create_prefix(mode=mode)
-        try:
+        with contextlib.suppress(_mod_transport.FileExists):
             self.transport.mkdir(path, mode=mode)
-        except _mod_transport.FileExists:
-            pass
         return self.transport.clone(path)
 
     def get_repository_transport(self, repository_format):
@@ -1071,10 +1065,8 @@ class BzrDirMeta1(BzrDir):
             repository_format.get_format_string()
         except NotImplementedError as e:
             raise errors.IncompatibleFormat(repository_format, self._format) from e
-        try:
+        with contextlib.suppress(_mod_transport.FileExists):
             self.transport.mkdir("repository", mode=self._get_mkdir_mode())
-        except _mod_transport.FileExists:
-            pass
         return self.transport.clone("repository")
 
     def get_workingtree_transport(self, workingtree_format):
@@ -1085,10 +1077,8 @@ class BzrDirMeta1(BzrDir):
             workingtree_format.get_format_string()
         except NotImplementedError as e:
             raise errors.IncompatibleFormat(workingtree_format, self._format) from e
-        try:
+        with contextlib.suppress(_mod_transport.FileExists):
             self.transport.mkdir("checkout", mode=self._get_mkdir_mode())
-        except _mod_transport.FileExists:
-            pass
         return self.transport.clone("checkout")
 
     def branch_names(self):
@@ -1106,10 +1096,8 @@ class BzrDirMeta1(BzrDir):
     def get_branches(self):
         """See ControlDir.get_branches."""
         ret = {}
-        try:
+        with contextlib.suppress(errors.NotBranchError, errors.NoRepositoryPresent):
             ret[""] = self.open_branch(name="")
-        except (errors.NotBranchError, errors.NoRepositoryPresent):
-            pass
 
         for name in self._read_branch_list():
             ret[name] = self.open_branch(name=name)
@@ -1328,10 +1316,8 @@ class BzrFormat:
         """
         for name, necessity in updated_flags.items():
             if necessity is None:
-                try:
+                with contextlib.suppress(KeyError):
                     del self.features[name]
-                except KeyError:
-                    pass
             else:
                 self.features[name] = necessity
 

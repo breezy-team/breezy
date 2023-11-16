@@ -741,10 +741,7 @@ class TestPushStrictMixin:
         self.assertContainsRe(err, self._default_additional_error)
 
     def assertPushSucceeds(self, args, with_warning=False, revid_to_push=None):
-        if with_warning:
-            error_regexes = self._default_errors
-        else:
-            error_regexes = []
+        error_regexes = self._default_errors if with_warning else []
         out, err = self.run_bzr(
             self._default_command + args,
             working_dir=self._default_wd,

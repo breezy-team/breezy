@@ -196,10 +196,7 @@ def unpack_inventory_entry(
     if revision is not None:
         revision = get_utf8_or_ascii(revision)
     parent_id = elt_get("parent_id")
-    if parent_id is not None:
-        parent_id = get_utf8_or_ascii(parent_id)
-    else:
-        parent_id = root_id
+    parent_id = get_utf8_or_ascii(parent_id) if parent_id is not None else root_id
 
     if kind == "directory":
         ie = inventory.InventoryDirectory(file_id, elt_get("name"), parent_id, revision)
@@ -207,10 +204,7 @@ def unpack_inventory_entry(
         text_sha1 = elt_get("text_sha1")
         if text_sha1 is not None:
             text_sha1 = text_sha1.encode("ascii")
-        if elt_get("executable") == "yes":
-            executable = True
-        else:
-            executable = False
+        executable = elt_get("executable") == "yes"
         v = elt_get("text_size")
         text_size = v and int(v)
         ie = inventory.InventoryFile(
@@ -294,10 +288,7 @@ def serialize_inventory_flat(inv, append, root_id, supported_kinds, working):
         else:
             parent_str = b""
         if ie.kind == "file":
-            if ie.executable:
-                executable = b' executable="yes"'
-            else:
-                executable = b""
+            executable = b' executable="yes"' if ie.executable else b""
             if not working:
                 append(
                     b'<file%s file_id="%s" name="%s"%s revision="%s" '

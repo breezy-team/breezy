@@ -513,10 +513,7 @@ class Config:
     def validate_signatures_in_log(self):
         """Show GPG signature validity in log."""
         result = self._validate_signatures_in_log()
-        if result == "true":
-            result = True
-        else:
-            result = False
+        result = result == "true"
         return result
 
     def _validate_signatures_in_log(self):
@@ -580,10 +577,7 @@ class Config:
           True if the warning should be suppressed, False otherwise.
         """
         warnings = self.get_user_option_as_list("suppress_warnings")
-        if warnings is None or warning not in warnings:
-            return False
-        else:
-            return True
+        return not (warnings is None or warning not in warnings)
 
     def get_merge_tools(self):
         tools = {}
@@ -912,10 +906,7 @@ class IniBasedConfig(Config):
         """
         self.reload()
         parser = self._get_parser()
-        if section_name is None:
-            section = parser
-        else:
-            section = parser[section_name]
+        section = parser if section_name is None else parser[section_name]
         try:
             del section[option_name]
         except KeyError as e:
@@ -1640,11 +1631,10 @@ class AuthenticationConfig:
             # Attempt matching
             if a_scheme is not None and scheme != a_scheme:
                 continue
-            if a_host is not None:
-                if not (
-                    host == a_host or (a_host.startswith(".") and host.endswith(a_host))
-                ):
-                    continue
+            if a_host is not None and not (
+                host == a_host or (a_host.startswith(".") and host.endswith(a_host))
+            ):
+                continue
             if a_port is not None and port != a_port:
                 continue
             if a_path is not None and path is not None and not path.startswith(a_path):
@@ -1763,20 +1753,14 @@ class AuthenticationConfig:
         credentials = self.get_credentials(
             scheme, host, port, user=None, path=path, realm=realm
         )
-        if credentials is not None:
-            user = credentials["user"]
-        else:
-            user = None
+        user = credentials["user"] if credentials is not None else None
         if user is None:
             if ask:
                 if prompt is None:
                     # Create a default prompt suitable for most cases
                     prompt = f"{scheme.upper()}" + " %(host)s username"
                 # Special handling for optional fields in the prompt
-                if port is not None:
-                    prompt_host = "%s:%d" % (host, port)
-                else:
-                    prompt_host = host
+                prompt_host = "%s:%d" % (host, port) if port is not None else host
                 user = ui.ui_factory.get_username(prompt, host=prompt_host)
             else:
                 user = default
@@ -1815,10 +1799,7 @@ class AuthenticationConfig:
                 # Create a default prompt suitable for most cases
                 prompt = f"{scheme.upper()}" + " %(user)s@%(host)s password"
             # Special handling for optional fields in the prompt
-            if port is not None:
-                prompt_host = "%s:%d" % (host, port)
-            else:
-                prompt_host = host
+            prompt_host = "%s:%d" % (host, port) if port is not None else host
             password = ui.ui_factory.get_password(prompt, host=prompt_host, user=user)
         return password
 
@@ -3045,11 +3026,7 @@ class Store:
         raise NotImplementedError(self.save)
 
     def _need_saving(self):
-        for s in self.dirty_sections.values():
-            if s.orig:
-                # At least one dirty section contains a modification
-                return True
-        return False
+        return any(s.orig for s in self.dirty_sections.values())
 
     def apply_changes(self, dirty_sections):
         """Apply changes from dirty sections while checking for coherency.

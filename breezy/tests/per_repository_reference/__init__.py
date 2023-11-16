@@ -65,10 +65,7 @@ class TestCorrectFormat(TestCaseWithExternalReferenceRepository):
 class TestIncompatibleStacking(TestCaseWithRepository):
     def make_repo_and_incompatible_fallback(self):
         referring = self.make_repository("referring")
-        if referring._format.supports_chks:
-            different_fmt = "1.9"
-        else:
-            different_fmt = "2a"
+        different_fmt = "1.9" if referring._format.supports_chks else "2a"
         fallback = self.make_repository("fallback", format=different_fmt)
         return referring, fallback
 

@@ -146,10 +146,7 @@ class HasLayout(Matcher):
         """
         directories = []
         for entry in entries:
-            if isinstance(entry, str):
-                path = entry
-            else:
-                path = entry[0]
+            path = entry if isinstance(entry, str) else entry[0]
             if not path or path[-1] == "/":
                 # directory
                 directories.append((path, entry))

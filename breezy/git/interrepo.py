@@ -31,6 +31,8 @@ try:
 except ImportError:  # dulwich < 0.21.3
     from dulwich.refs import ANNOTATED_TAG_SUFFIX as PEELED_TAG_SUFFIX
 
+import contextlib
+
 from dulwich.walk import Walker
 
 from .. import config, trace, ui
@@ -301,10 +303,8 @@ class InterToLocalGitRepository(InterToGitRepository):
                         new_revid = self.mapping.revision_id_foreign_to_bzr(git_sha)
                     else:
                         new_revid = old_revid
-                        try:
+                        with contextlib.suppress(InvalidRevisionId):
                             self.mapping.revision_id_bzr_to_foreign(old_revid)
-                        except InvalidRevisionId:
-                            pass
                     revidmap[old_revid] = (git_sha, new_revid)
                 self.target_store.add_objects(object_generator)
                 return revidmap
@@ -769,7 +769,7 @@ class InterGitGitRepository(InterFromGitRepository):
         potential = {
             v
             for k, v in refs.items()
-            if not v == ZERO_SHA and not k.endswith(PEELED_TAG_SUFFIX)
+            if v != ZERO_SHA and not k.endswith(PEELED_TAG_SUFFIX)
         }
         return list(potential - self._target_has_shas(potential))
 

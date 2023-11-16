@@ -16,6 +16,7 @@
 
 """Tests for the test framework."""
 
+import contextlib
 import doctest
 import gc
 import os
@@ -135,7 +136,7 @@ class TestTransportScenarios(tests.TestCase):
         modules = _get_transport_modules()
         permutation_count = 0
         for module in modules:
-            try:
+            with contextlib.suppress(errors.DependencyNotPresent):
                 permutation_count += len(
                     reduce(
                         getattr,
@@ -143,8 +144,6 @@ class TestTransportScenarios(tests.TestCase):
                         __import__(module),
                     )()
                 )
-            except errors.DependencyNotPresent:
-                pass
         scenarios = transport_test_permutations()
         self.assertEqual(permutation_count, len(scenarios))
 

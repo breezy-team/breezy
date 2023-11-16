@@ -341,7 +341,7 @@ class DataCollector:
         for _optname, opt in sorted(opts.items()):
             cmd_data.options.extend(self.option(opt))
 
-        if "help" == name or "help" in cmd.aliases:
+        if name == "help" or "help" in cmd.aliases:
             cmd_data.fixed_words = "($cmds %s)" % " ".join(
                 sorted(help_topics.topic_registry.keys())
             )
@@ -399,10 +399,7 @@ def bash_completion_function(
     dc = DataCollector(no_plugins=no_plugins, selected_plugins=selected_plugins)
     data = dc.collect()
     cg = BashCodeGen(data, function_name=function_name, debug=debug)
-    if function_only:
-        res = cg.function()
-    else:
-        res = cg.script()
+    res = cg.function() if function_only else cg.script()
     out.write(res)
 
 

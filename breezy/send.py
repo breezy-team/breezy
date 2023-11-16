@@ -161,10 +161,7 @@ def send(
                     with open(path, "wb") as outfile:
                         outfile.writelines(lines)
             else:
-                if output == "-":
-                    outfile = to_file
-                else:
-                    outfile = open(output, "wb")
+                outfile = to_file if output == "-" else open(output, "wb")
                 try:
                     outfile.writelines(directive.to_lines())
                 finally:
@@ -219,10 +216,7 @@ def _send_0_9(
                 gettext("Format 0.9 does not" " permit bundle with no patch")
             )
     else:
-        if not no_patch:
-            patch_type = "diff"
-        else:
-            patch_type = None
+        patch_type = "diff" if not no_patch else None
     from breezy import merge_directive
 
     return merge_directive.MergeDirective.from_objects(

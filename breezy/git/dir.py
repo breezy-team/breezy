@@ -730,10 +730,7 @@ class LocalGitDir(GitDir):
             ref_chain, unused_sha = self._git.refs.follow(ref)
         except SymrefLoop as err:
             raise BranchReferenceLoop(self) from err
-        if ref_chain[-1] == b"HEAD":
-            controldir = self
-        else:
-            controldir = self._find_commondir()
+        controldir = self if ref_chain[-1] == b"HEAD" else self._find_commondir()
         return LocalGitBranch(controldir, repo, ref_chain[-1])
 
     def destroy_branch(self, name=None):

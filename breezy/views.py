@@ -184,10 +184,7 @@ class PathBasedViews(_Views):
         calling this method.
         """
         with self.tree.lock_write():
-            if self._current is None:
-                keywords = {}
-            else:
-                keywords = {"current": self._current}
+            keywords = {} if self._current is None else {"current": self._current}
             self.tree._transport.put_bytes(
                 "views", self._serialize_view_content(keywords, self._views)
             )

@@ -94,12 +94,9 @@ class HunkLine:
         self.contents = contents
 
     def get_str(self, leadchar):
-        if self.contents == b"\n" and leadchar == b" " and False:
+        if False:
             return b"\n"
-        if not self.contents.endswith(b"\n"):
-            terminator = b"\n" + NO_NL
-        else:
-            terminator = b""
+        terminator = b"\n" + NO_NL if not self.contents.endswith(b"\n") else b""
         return leadchar + self.contents + terminator
 
     def as_bytes(self):
@@ -160,10 +157,7 @@ class Hunk:
         self.lines: List[bytes] = []
 
     def get_header(self):
-        if self.tail is None:
-            tail_str = b""
-        else:
-            tail_str = b" " + self.tail
+        tail_str = b"" if self.tail is None else b" " + self.tail
         return b"@@ -%s +%s @@%s\n" % (
             self.range_str(self.orig_pos, self.orig_range),
             self.range_str(self.mod_pos, self.mod_range),

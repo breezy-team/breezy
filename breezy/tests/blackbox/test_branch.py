@@ -112,10 +112,7 @@ class TestBranch(tests.TestCaseWithTransport):
             c = f.read(1)
             f.seek(-5, os.SEEK_END)
             # Make sure we inject a value different than the one we just read
-            if c == b"\xFF":
-                corrupt = b"\x00"
-            else:
-                corrupt = b"\xFF"
+            corrupt = b"\x00" if c == b"\xff" else b"\xff"
             f.write(corrupt)  # make sure we corrupt something
         self.run_bzr_error(
             ["Corruption while decompressing repository file"], "branch a b", retcode=3

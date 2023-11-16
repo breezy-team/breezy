@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import contextlib
 import itertools
 
 from .. import errors, lockdir
@@ -51,10 +52,8 @@ class MetaDirRepository(Repository):
         """
         with self.lock_write():
             if new_value:
-                try:
+                with contextlib.suppress(_mod_transport.NoSuchFile):
                     self._transport.delete("no-working-trees")
-                except _mod_transport.NoSuchFile:
-                    pass
             else:
                 self._transport.put_bytes(
                     "no-working-trees", b"", mode=self.controldir._get_file_mode()

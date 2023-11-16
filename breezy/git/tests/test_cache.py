@@ -16,6 +16,7 @@
 
 """Tests for GitShaMap."""
 
+import contextlib
 import os
 import stat
 
@@ -141,10 +142,8 @@ class TestGitShaMap:
             [("tree", (b"fileid", b"myrevid"))], list(self.map.lookup_git_sha(t.id))
         )
         # It's possible for a backend to not implement lookup_tree
-        try:
+        with contextlib.suppress(NotImplementedError):
             self.assertEqual(t.id, self.map.lookup_tree_id(b"fileid", b"myrevid"))
-        except NotImplementedError:
-            pass
 
     def test_revids(self):
         self.map.start_write_group()

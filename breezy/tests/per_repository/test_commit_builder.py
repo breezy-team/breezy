@@ -287,10 +287,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
     def _add_commit_check_unchanged(self, tree, name):
         tree.add([name])
-        if tree.supports_file_ids:
-            file_id = tree.path2id(name)
-        else:
-            file_id = None
+        file_id = tree.path2id(name) if tree.supports_file_ids else None
         self._commit_check_unchanged(tree, name, file_id)
 
     def _commit_check_unchanged(self, tree, name, file_id):

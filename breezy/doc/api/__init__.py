@@ -38,10 +38,7 @@ def make_new_test_id(test):
 def load_tests(loader, basic_tests, pattern):
     """This module creates its own test suite with DocFileSuite."""
     dir_ = os.path.dirname(__file__)
-    if os.path.isdir(dir_):
-        candidates = os.listdir(dir_)
-    else:
-        candidates = []
+    candidates = os.listdir(dir_) if os.path.isdir(dir_) else []
     scripts = [candidate for candidate in candidates if candidate.endswith(".txt")]
     # since this module doesn't define tests, we ignore basic_tests
     suite = doctest.DocFileSuite(

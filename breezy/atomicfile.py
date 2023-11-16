@@ -66,10 +66,7 @@ class AtomicFile:
         elif mode != "wt":
             raise ValueError(f"invalid AtomicFile mode {mode!r}")
 
-        if new_mode is not None:
-            local_mode = new_mode
-        else:
-            local_mode = 0o666
+        local_mode = new_mode if new_mode is not None else 438
 
         # Use a low level fd operation to avoid chmodding later.
         # This may not succeed, but it should help most of the time

@@ -25,10 +25,7 @@ trace.enable_default_logging()
 ui.ui_factory = text.TextUIFactory()
 
 begin = osutils.perf_counter()
-if len(args) >= 1:
-    b = branch.Branch.open(args[0])
-else:
-    b = branch.Branch.open(".")
+b = branch.Branch.open(args[0]) if len(args) >= 1 else branch.Branch.open(".")
 with b.lock_read():
     g = b.repository.get_graph()
     parent_map = dict(

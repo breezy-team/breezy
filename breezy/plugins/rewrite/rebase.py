@@ -321,10 +321,7 @@ def generate_transpose_plan(ancestry, renames, graph, generate_revid):
             for c in children[r]:
                 if c in renames:
                     continue
-                if c in replace_map:
-                    parents = replace_map[c][1]
-                else:
-                    parents = parent_map[c]
+                parents = replace_map[c][1] if c in replace_map else parent_map[c]
                 if not isinstance(parents, tuple):
                     raise AssertionError(f"Expected tuple of parents, got: {parents!r}")
                 # replace r in parents with replace_map[r][0]

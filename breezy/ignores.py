@@ -16,6 +16,7 @@
 
 """Lists of ignore files, etc."""
 
+import contextlib
 import os
 from io import BytesIO
 from typing import BinaryIO, Iterable, Set
@@ -87,10 +88,8 @@ def get_user_ignores():
         # Create the ignore file, and just return the default
         # We want to ignore if we can't write to the file
         # since get_* should be a safe operation
-        try:
+        with contextlib.suppress(PermissionError, FileNotFoundError):
             _set_user_ignores(USER_DEFAULTS)
-        except (PermissionError, FileNotFoundError):
-            pass
         return patterns
 
     try:
@@ -181,10 +180,7 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
     if tree.has_filename(ifn):
         with open(ifn, "rb") as f:
             file_contents = f.read()
-            if file_contents.find(b"\r\n") != -1:
-                newline = b"\r\n"
-            else:
-                newline = b"\n"
+            newline = b"\r\n" if file_contents.find(b"\r\n") != -1 else b"\n"
     else:
         file_contents = b""
         newline = os.linesep.encode()

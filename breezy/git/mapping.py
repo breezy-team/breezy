@@ -19,6 +19,7 @@
 """Converters, etc for going between Bazaar and Git ids."""
 
 import base64
+import contextlib
 import stat
 from typing import Optional
 
@@ -267,10 +268,7 @@ class BzrGitMapping(foreign.VcsMapping):
         return message, metadata
 
     def _decode_commit_message(self, properties, message, encoding):
-        if message is None:
-            decoded_message = None
-        else:
-            decoded_message = message.decode(encoding)
+        decoded_message = None if message is None else message.decode(encoding)
         return decoded_message, CommitSupplement()
 
     def _encode_commit_message(self, rev, message, encoding):
@@ -315,10 +313,8 @@ class BzrGitMapping(foreign.VcsMapping):
             encoding = rev.properties["git-explicit-encoding"]
         except KeyError:
             encoding = rev.properties.get("git-implicit-encoding", "utf-8")
-        try:
+        with contextlib.suppress(KeyError):
             commit.encoding = rev.properties["git-explicit-encoding"].encode("ascii")
-        except KeyError:
-            pass
         commit.committer = fix_person_identifier(rev.committer.encode(encoding))
         first_author = rev.get_apparent_authors()[0]
         if "," in first_author and first_author.count(">") > 1:
@@ -402,10 +398,7 @@ class BzrGitMapping(foreign.VcsMapping):
         return commit
 
     def get_revision_id(self, commit):
-        if commit.encoding:
-            encoding = commit.encoding.decode("ascii")
-        else:
-            encoding = "utf-8"
+        encoding = commit.encoding.decode("ascii") if commit.encoding else "utf-8"
         if commit.message is not None:
             try:
                 message, metadata = self._decode_commit_message(
