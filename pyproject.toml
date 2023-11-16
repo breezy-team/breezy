@@ -111,6 +111,7 @@ select = [
 #   "SIM", # simplify
     "C4",  # comprehensions
     "UP",  # pyupgrade
+    "RUF", # ruf-specific
 ]
 ignore = [
     "ANN001",
@@ -155,12 +156,17 @@ ignore = [
 
     # This triggers for docstrings that uses __doc__
     "D104", # Missing docstring in public package
+
+    "RUF012", # Mutable class attributes should be annotated with `typing.ClassVar`
 ]
 # These are actually fine, but they make mypy more strict and then it fails.
 unfixable = ["ANN204"]
 extend-exclude = ["lib", "bin"]
 
 [tool.ruff.isort]
+
+[tool.ruff.extend-per-file-ignores]
+"breezy/plugins/po_merge/tests/test_po_merge.py" = ["RUF001"]
 
 
 [tool.ruff.pydocstyle]
