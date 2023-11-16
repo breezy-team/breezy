@@ -590,6 +590,7 @@ class TestIniConfigOptionExpansion(tests.TestCase):
     abstract as far as storing values is concerned, this can't be done
     properly (yet).
     """
+
     # FIXME: This should be rewritten when all configs share a storage
     # implementation -- vila 2011-02-18
 

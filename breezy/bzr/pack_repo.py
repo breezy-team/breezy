@@ -714,6 +714,7 @@ class AggregateIndex:
     to provide a knit access layer, and allows having up to one writable
     index within the collection.
     """
+
     # XXX: Probably 'can be written to' could/should be separated from 'acts
     # like a knit index' -- mbp 20071024
 

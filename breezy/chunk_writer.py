@@ -45,6 +45,7 @@ class ChunkWriter:
         node. This allows us to do a single compression pass, rather than
         trying until we overflow, and then recompressing again.
     """
+
     #    In testing, some values for bzr.dev::
     #        repack  time  MB   max   full
     #         1       7.5  4.6  1140  0

@@ -158,6 +158,8 @@ ignore = [
     "D104", # Missing docstring in public package
 
     "RUF012", # Mutable class attributes should be annotated with `typing.ClassVar`
+    "RUF005", # Consider iterable concatenation instead of list concatenation
+    "RUF015", # Prefer next() of single slice access
 ]
 # These are actually fine, but they make mypy more strict and then it fails.
 unfixable = ["ANN204"]

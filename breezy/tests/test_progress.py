@@ -29,6 +29,7 @@ class TestTextProgressView(tests.TestCase):
     These try to exercise the progressview independently of its construction,
     which is arranged by the TextUIFactory.
     """
+
     # The ProgressTask now connects directly to the ProgressView, so we can
     # check them independently of the factory or of the determination of what
     # view to use.

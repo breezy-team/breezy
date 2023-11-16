@@ -68,6 +68,7 @@ class TestUIFactory(TextUIFactory):
     See also CannedInputUIFactory which lets you provide programmatic input in
     a structured way.
     """
+
     # TODO: Capture progress events at the model level and allow them to be
     # observed by tests that care.
     #
