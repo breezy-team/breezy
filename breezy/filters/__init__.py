@@ -94,9 +94,8 @@ class ContentFilterContext:
 
     def revision_id(self):
         """Id of revision that last changed this file."""
-        if self._revision_id is None:
-            if self._tree is not None:
-                self._revision_id = self._tree.get_file_revision(self._relpath)
+        if self._revision_id is None and self._tree is not None:
+            self._revision_id = self._tree.get_file_revision(self._relpath)
         return self._revision_id
 
     def revision(self):
@@ -232,10 +231,7 @@ def _reset_registry(value=None):
     """
     global filter_stacks_registry
     original = filter_stacks_registry
-    if value is None:
-        filter_stacks_registry = registry.Registry()
-    else:
-        filter_stacks_registry = value
+    filter_stacks_registry = registry.Registry() if value is None else value
     _stack_cache.clear()
     return original
 

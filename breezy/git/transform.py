@@ -576,10 +576,7 @@ class TreeTransformBase(TreeTransform):
 
             to_name = self.final_name(trans_id)
             to_kind = self.final_kind(trans_id)
-            if trans_id in self._new_executability:
-                to_executable = self._new_executability[trans_id]
-            else:
-                to_executable = from_executable
+            to_executable = self._new_executability.get(trans_id, from_executable)
 
             if from_versioned and from_kind != to_kind:
                 modified = True
@@ -1369,10 +1366,7 @@ class GitTreeTransform(DiskTreeTransform):
             child_pb.update(gettext("Apply phase"), 0, 2)
             index_changes = self._generate_index_changes()
             offset = 1
-            if _mover is None:
-                mover = _FileMover()
-            else:
-                mover = _mover
+            mover = _FileMover() if _mover is None else _mover
             try:
                 child_pb.update(gettext("Apply phase"), 0 + offset, 2 + offset)
                 self._apply_removals(mover)

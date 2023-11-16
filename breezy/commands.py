@@ -123,10 +123,8 @@ class CommandRegistry(registry.Registry):
         except KeyError:
             previous = None
             if self.overridden_registry:
-                try:
+                with contextlib.suppress(KeyError):
                     previous = self.overridden_registry.get(k_unsquished)
-                except KeyError:
-                    pass
         info = CommandInfo.from_command(cmd)
         try:
             registry.Registry.register(
@@ -588,10 +586,7 @@ class Command:
         purpose, sections, order = self._get_help_parts(doc)
 
         # If a custom usage section was provided, use it
-        if "Usage" in sections:
-            usage = sections.pop("Usage")
-        else:
-            usage = self._usage()
+        usage = sections.pop("Usage") if "Usage" in sections else self._usage()
 
         # The header is the purpose and usage
         result = ""
@@ -943,10 +938,7 @@ def parse_args(command, argv, alias_argv=None):
     """
     # TODO: make it a method of the Command?
     parser = option.get_optparser([v for k, v in sorted(command.options().items())])
-    if alias_argv is not None:
-        args = alias_argv + argv
-    else:
-        args = argv
+    args = alias_argv + argv if alias_argv is not None else argv
 
     # python 2's optparse raises this exception if a non-ascii
     # option name is given.  See http://bugs.python.org/issue2931

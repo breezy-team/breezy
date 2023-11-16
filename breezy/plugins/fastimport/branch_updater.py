@@ -101,10 +101,7 @@ class BranchUpdater:
             # Using the Bazaar name, get a sister directory to the branch
             return osutils.pathjoin(self.branch.base, "..", name)
 
-        if self.branch is not None:
-            dir_policy = dir_sister_branch
-        else:
-            dir_policy = dir_under_current
+        dir_policy = dir_sister_branch if self.branch is not None else dir_under_current
 
         # Create/track missing branches
         can_create_branches = (

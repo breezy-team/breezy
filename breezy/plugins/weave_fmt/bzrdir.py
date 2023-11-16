@@ -16,6 +16,7 @@
 
 """Weave-era BzrDir formats."""
 
+import contextlib
 import os
 from io import BytesIO
 
@@ -991,14 +992,10 @@ class BzrDirPreSplitOut(BzrDir):
 
         self._make_tail(url)
         result = self._format._initialize_for_clone(url)
-        try:
+        with contextlib.suppress(errors.NoRepositoryPresent):
             self.open_repository().clone(result, revision_id=revision_id)
-        except errors.NoRepositoryPresent:
-            pass
-        try:
+        with contextlib.suppress(errors.NotBranchError):
             self.open_branch().sprout(result, revision_id=revision_id)
-        except errors.NotBranchError:
-            pass
 
         # we always want a working tree
         WorkingTreeFormat2().initialize(

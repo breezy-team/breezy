@@ -16,6 +16,8 @@
 
 """Tests for control directory implementations - tests a controldir format."""
 
+import contextlib
+
 import breezy.branch
 from breezy import branch as _mod_branch
 from breezy import (
@@ -1666,10 +1668,8 @@ class TestBreakLock(TestCaseWithControlDir):
     def test_break_lock_empty(self):
         # break lock on an empty bzrdir should work silently.
         dir = self.make_controldir(".")
-        try:
+        with contextlib.suppress(NotImplementedError):
             dir.break_lock()
-        except NotImplementedError:
-            pass
 
     def test_break_lock_repository(self):
         # break lock with just a repo should unlock the repo.

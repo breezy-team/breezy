@@ -611,10 +611,7 @@ class Launchpad(Forge):
 
     def iter_my_proposals(self, status="open", author=None):
         statuses = status_to_lp_mp_statuses(status)
-        if author is None:
-            author_obj = self.launchpad.me
-        else:
-            author_obj = self._getPerson(author)
+        author_obj = self.launchpad.me if author is None else self._getPerson(author)
         for mp in author_obj.getMergeProposals(status=statuses):
             yield LaunchpadMergeProposal(mp)
 

@@ -31,6 +31,8 @@ from breezy import (
 from breezy.i18n import gettext, ngettext
 """,
 )
+import contextlib
+
 from . import commands, errors, option, osutils, registry, trace
 
 
@@ -132,10 +134,7 @@ class cmd_resolve(commands.Command):
                 file_list, directory
             )
             if action is None:
-                if file_list is None:
-                    action = "auto"
-                else:
-                    action = "done"
+                action = "auto" if file_list is None else "done"
         before, after = resolve(tree, file_list, action=action)
         # GZ 2012-07-27: Should unify UI below now that auto is less magical.
         if action == "auto" and file_list is None:
@@ -295,10 +294,9 @@ class ConflictList:
             if conflict.path in path_set:
                 selected = True
                 selected_paths.add(conflict.path)
-            if recurse:
-                if osutils.is_inside_any(path_set, conflict.path):
-                    selected = True
-                    selected_paths.add(conflict.path)
+            if recurse and osutils.is_inside_any(path_set, conflict.path):
+                selected = True
+                selected_paths.add(conflict.path)
 
             if selected:
                 selected_conflicts.append(conflict)
@@ -327,10 +325,8 @@ class Conflict:
 
     def cleanup(self, tree):
         for fname in self.associated_filenames():
-            try:
+            with contextlib.suppress(FileNotFoundError):
                 osutils.delete_any(tree.abspath(fname))
-            except FileNotFoundError:
-                pass
 
     def do(self, action, tree):
         """Apply the specified action to the conflict.

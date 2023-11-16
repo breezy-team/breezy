@@ -58,10 +58,7 @@ class BTreeTestCase(TestCaseWithTransport):
 
         keys = []
         for prefix_pos in range(key_elements):
-            if key_elements - 1:
-                prefix = _pos_to_key(prefix_pos)
-            else:
-                prefix = ()
+            prefix = _pos_to_key(prefix_pos) if key_elements - 1 else ()
             for pos in range(count):
                 # TODO: This creates odd keys. When count == 100,000, it
                 #       creates a 240 byte key

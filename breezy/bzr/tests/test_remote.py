@@ -818,14 +818,8 @@ class TestBzrDirOpenBranch(TestRemote):
         transport = MemoryTransport()
         transport.mkdir("quack")
         transport = transport.clone("quack")
-        if rich_root:
-            rich_response = b"yes"
-        else:
-            rich_response = b"no"
-        if subtrees:
-            subtree_response = b"yes"
-        else:
-            subtree_response = b"no"
+        rich_response = b"yes" if rich_root else b"no"
+        subtree_response = b"yes" if subtrees else b"no"
         client = FakeClient(transport.base)
         client.add_success_response(
             b"ok", b"", rich_response, subtree_response, external_lookup, network_name
@@ -4630,7 +4624,7 @@ class TestStacking(tests.TestCaseWithTransport):
     def fetch_stream_to_rev_order(self, stream):
         result = []
         for kind, substream in stream:
-            if not kind == "revisions":
+            if kind != "revisions":
                 list(substream)
             else:
                 for content in substream:

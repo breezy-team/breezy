@@ -257,10 +257,7 @@ class DavListDirHandler(DavStatHandler):
             self.expected_content_handled = True
 
     def _make_response_tuple(self):
-        if self.executable == "T":
-            is_exec = True
-        else:
-            is_exec = False
+        is_exec = self.executable == "T"
         return (self.href, self.is_dir, self.length, is_exec)
 
     def _response_handled(self):
@@ -391,10 +388,7 @@ class HttpDavTransport(urllib.HttpTransport):
         return False
 
     def _raise_http_error(self, url, response, info=None):
-        if info is None:
-            msg = ""
-        else:
-            msg = ": " + info
+        msg = "" if info is None else ": " + info
         raise errors.InvalidHttpResponse(
             url, "Unable to handle http code %d%s" % (response.status, msg)
         )

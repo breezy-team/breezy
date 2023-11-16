@@ -17,6 +17,7 @@
 
 """File graph access."""
 
+import contextlib
 import posixpath
 import stat
 
@@ -124,8 +125,6 @@ class GitFileParentProvider:
                 raise TypeError(file_id)
             if not isinstance(text_revision, bytes):
                 raise TypeError(text_revision)
-            try:
+            with contextlib.suppress(KeyError):
                 ret[key] = self._get_parents(file_id, text_revision)
-            except KeyError:
-                pass
         return ret

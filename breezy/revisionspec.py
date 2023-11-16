@@ -417,10 +417,7 @@ class RevisionSpec_revno(RevisionSpec):
             if revno < 0:
                 # if get_rev_id supported negative revnos, there would not be a
                 # need for this special case.
-                if (-revno) >= last_revno:
-                    revno = 1
-                else:
-                    revno = last_revno + revno + 1
+                revno = 1 if -revno >= last_revno else last_revno + revno + 1
             try:
                 revision_id = branch.get_rev_id(revno)
             except (errors.NoSuchRevision, errors.RevnoOutOfBounds) as err:
@@ -667,10 +664,7 @@ def _parse_datespec(spec):
         if m.group("time"):
             hour = int(m.group("hour"))
             minute = int(m.group("minute"))
-            if m.group("second"):
-                second = int(m.group("second"))
-            else:
-                second = 0
+            second = int(m.group("second")) if m.group("second") else 0
         else:
             hour, minute, second = 0, 0, 0
 

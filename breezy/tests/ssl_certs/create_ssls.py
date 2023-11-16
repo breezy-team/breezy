@@ -49,6 +49,8 @@ _dir = os.path.dirname
 our_bzr = _dir(_dir(_dir(_dir(os.path.realpath(__file__)))))
 sys.path.insert(0, our_bzr)
 
+import contextlib
+
 from breezy.tests import ssl_certs
 
 
@@ -66,10 +68,8 @@ def needs(request, *paths):
 
 def rm_f(path):
     """Rm -f path."""
-    try:
+    with contextlib.suppress(BaseException):
         os.unlink(path)
-    except BaseException:
-        pass
 
 
 def _openssl(args, input=None):

@@ -26,6 +26,7 @@ The Transport returned has methods to read, write and manipulate files within
 it.
 """
 
+import contextlib
 import errno
 import sys
 from io import BytesIO
@@ -267,10 +268,8 @@ class FileStream:
 
     def close(self, want_fdatasync=False):
         if want_fdatasync:
-            try:
+            with contextlib.suppress(errors.TransportNotPossible):
                 self.fdatasync()
-            except errors.TransportNotPossible:
-                pass
         self._close()
         del _file_streams[self.transport.abspath(self.relpath)]
 
@@ -494,10 +493,8 @@ class Transport:
           value: Segment parameter value (urlencoded string)
         """
         if value is None:
-            try:
+            with contextlib.suppress(KeyError):
                 del self._segment_parameters[name]
-            except KeyError:
-                pass
         else:
             self._segment_parameters[name] = value
         self.base = urlutils.join_segment_parameters(
@@ -625,10 +622,7 @@ class Transport:
 
     def has_any(self, relpaths):
         """Return True if any of the paths exist."""
-        for relpath in relpaths:
-            if self.has(relpath):
-                return True
-        return False
+        return any(self.has(relpath) for relpath in relpaths)
 
     def iter_files_recursive(self):
         """Iter the relative paths of files in the transports sub-tree.

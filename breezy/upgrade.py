@@ -78,10 +78,7 @@ class Convert:
                 rich_root = self.controldir.find_repository()._format.rich_root_data
             except errors.NoRepositoryPresent:
                 rich_root = False  # assume no rich roots
-            if rich_root:
-                format_name = "default-rich-root"
-            else:
-                format_name = "default"
+            format_name = "default-rich-root" if rich_root else "default"
             format = format_registry.make_controldir(format_name)
         else:
             format = self.format

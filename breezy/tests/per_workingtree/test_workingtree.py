@@ -16,6 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import contextlib
 import errno
 import os
 from io import StringIO
@@ -1116,12 +1117,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             # Hard-link support is optional, so supplying hardlink=True may
             # or may not raise an exception.  But if it does, it must be
             # HardLinkNotSupported
-            try:
+            with contextlib.suppress(errors.HardLinkNotSupported):
                 source.controldir.sprout(
                     "target", accelerator_tree=source, hardlink=True
                 )
-            except errors.HardLinkNotSupported:
-                pass
         finally:
             os.link = real_os_link
 

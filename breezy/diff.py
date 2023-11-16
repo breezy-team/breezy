@@ -370,10 +370,7 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file, diff_opts):
         to_file.write(out)
         if rc not in (0, 1):
             # returns 1 if files differ; that's OK
-            if rc < 0:
-                msg = "signal %d" % (-rc)
-            else:
-                msg = "exit code %d" % rc
+            msg = "signal %d" % -rc if rc < 0 else "exit code %d" % rc
 
             raise errors.BzrError(
                 f"external diff failed with {msg}; command: {diffcmd!r}"
@@ -922,10 +919,8 @@ class DiffFromTool(DiffPath):
             self._root
         ):
             return False
-        try:
+        with contextlib.suppress(FileExistsError):
             os.symlink(tree.abspath(""), osutils.pathjoin(self._root, prefix))
-        except FileExistsError:
-            pass
         return True
 
     @staticmethod
@@ -967,10 +962,8 @@ class DiffFromTool(DiffPath):
         if not force_temp and self._try_symlink_root(tree, prefix):
             return full_path
         parent_dir = osutils.dirname(full_path)
-        try:
+        with contextlib.suppress(FileExistsError):
             os.makedirs(parent_dir)
-        except FileExistsError:
-            pass
         with tree.get_file(relpath) as source, open(full_path, "wb") as target:
             osutils.pumpfile(source, target)
         try:
@@ -1253,14 +1246,8 @@ class DiffTree:
         :param old_path: The path of the file in the old tree
         :param new_path: The path of the file in the new tree
         """
-        if old_path is None:
-            old_kind = None
-        else:
-            old_kind = self.old_tree.kind(old_path)
-        if new_path is None:
-            new_kind = None
-        else:
-            new_kind = self.new_tree.kind(new_path)
+        old_kind = None if old_path is None else self.old_tree.kind(old_path)
+        new_kind = None if new_path is None else self.new_tree.kind(new_path)
         self._diff(old_path, new_path, old_kind, new_kind)
 
     def _diff(self, old_path, new_path, old_kind, new_kind):

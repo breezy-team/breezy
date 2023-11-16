@@ -42,10 +42,7 @@ class TestHexAndUnhex(TestBtreeSerializer):
         ba_unhex = binascii.unhexlify(as_hex)
         mod_unhex = self.module._py_unhexlify(as_hex)
         if ba_unhex != mod_unhex:
-            if mod_unhex is None:
-                mod_hex = b"<None>"
-            else:
-                mod_hex = binascii.hexlify(mod_unhex)
+            mod_hex = b"<None>" if mod_unhex is None else binascii.hexlify(mod_unhex)
             self.fail(
                 "_py_unhexlify returned a different answer"
                 f" from binascii:\n    {binascii.hexlify(ba_unhex)!r}\n != {mod_hex!r}"
@@ -85,10 +82,7 @@ _hex_form = b"123456789012345678901234567890abcdefabcd"
 
 class Test_KeyToSha1(TestBtreeSerializer):
     def assertKeyToSha1(self, expected, key):
-        if expected is None:
-            expected_bin = None
-        else:
-            expected_bin = binascii.unhexlify(expected)
+        expected_bin = None if expected is None else binascii.unhexlify(expected)
         actual_sha1 = self.module._py_key_to_sha1(key)
         if expected_bin != actual_sha1:
             if actual_sha1 is not None:

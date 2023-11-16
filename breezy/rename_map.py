@@ -14,9 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import contextlib
 from io import BytesIO
 
-from . import osutils, progress, trace
+from . import errors, osutils, progress, trace
 from .i18n import gettext
 from .ui import ui_factory
 
@@ -235,10 +236,8 @@ class RenameMap:
         file_id_matches = {f: p for p, f in matches.items()}
         file_id_query = []
         for f in matches.values():
-            try:
+            with contextlib.suppress(errors.NoSuchId):
                 file_id_query.append(self.tree.id2path(f))
-            except errors.NoSuchId:
-                pass
         for old_path, entry in self.tree.iter_entries_by_dir(
             specific_files=file_id_query
         ):

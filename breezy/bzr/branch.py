@@ -31,6 +31,8 @@ from breezy import (
 """,
 )
 
+import contextlib
+
 from .. import errors, urlutils
 from .. import revision as _mod_revision
 from .. import transport as _mod_transport
@@ -1292,10 +1294,8 @@ class Converter5to6:
         # Clean up old files
         new_branch._transport.delete("revision-history")
         with branch.lock_write():
-            try:
+            with contextlib.suppress(_mod_transport.NoSuchFile):
                 branch.set_parent(None)
-            except _mod_transport.NoSuchFile:
-                pass
             branch.set_bound_location(None)
 
 

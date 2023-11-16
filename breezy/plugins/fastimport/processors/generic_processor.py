@@ -366,10 +366,7 @@ class GenericProcessor(processor.ImportProcessor):
             )
 
     def _update_working_trees(self, trees):
-        if self.verbose:
-            reporter = delta._ChangeReporter()
-        else:
-            reporter = None
+        reporter = delta._ChangeReporter() if self.verbose else None
         for wt in trees:
             self.note("Updating the working tree for %s ...", wt.basedir)
             wt.update(reporter)
@@ -463,10 +460,7 @@ class GenericProcessor(processor.ImportProcessor):
 
     def blob_handler(self, cmd):
         """Process a BlobCommand."""
-        if cmd.mark is not None:
-            dataref = cmd.id
-        else:
-            dataref = osutils.sha_strings(cmd.data)
+        dataref = cmd.id if cmd.mark is not None else osutils.sha_strings(cmd.data)
         self.cache_mgr.store_blob(dataref, cmd.data)
 
     def checkpoint_handler(self, cmd):

@@ -16,6 +16,8 @@
 
 """Tests for Branch.get_stacked_on_url and set_stacked_on_url."""
 
+import contextlib
+
 from breezy import branch as _mod_branch
 from breezy import check, controldir, errors
 from breezy.tests import TestNotApplicable, fixtures, transport_util
@@ -270,13 +272,11 @@ class TestStacking(TestCaseWithBranch):
         except unstackable_format_errors as e:
             raise TestNotApplicable(e) from e
         cloned_bzrdir = stacked_bzrdir.clone("cloned", preserve_stacking=True)
-        try:
+        with contextlib.suppress(unstackable_format_errors):
             self.assertEqual(
                 stacked_bzrdir.open_branch().get_stacked_on_url(),
                 cloned_bzrdir.open_branch().get_stacked_on_url(),
             )
-        except unstackable_format_errors:
-            pass
 
     def test_clone_from_branch_stacked_on_relative_url_preserve_stacking(self):
         # If a branch's stacked-on url is relative, we can still clone

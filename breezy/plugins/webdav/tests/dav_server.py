@@ -130,10 +130,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             else:
                 return self.list_directory(path)
         ctype = self.guess_type(path)
-        if ctype.startswith("text/"):
-            mode = "r"
-        else:
-            mode = "rb"
+        mode = "r" if ctype.startswith("text/") else "rb"
         try:
             f = open(path, mode)
         except OSError:
@@ -333,10 +330,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             prop["href"] = _prop("D", "href", path)
             prop["type"] = _prop("liveprop", "resourcetype")
             prop["length"] = _prop("liveprop", "getcontentlength", st.st_size)
-            if st.st_mode & stat.S_IXUSR:
-                is_exec = "T"
-            else:
-                is_exec = "F"
+            is_exec = "T" if st.st_mode & stat.S_IXUSR else "F"
             prop["exec"] = _prop("bzr", "executable", is_exec)
         prop["status"] = _prop("D", "status", "HTTP/1.1 200 OK")
 

@@ -16,6 +16,7 @@
 
 """A generator which creates a python script from the current tree info."""
 
+import contextlib
 import pprint
 
 from breezy import errors
@@ -58,10 +59,8 @@ class PythonVersionInfoBuilder(VersionInfoBuilder):
         if revision_id == NULL_REVISION:
             info["revno"] = "0"
         else:
-            try:
+            with contextlib.suppress(errors.GhostRevisionsHaveNoRevno):
                 info["revno"] = self._get_revno_str(revision_id)
-            except errors.GhostRevisionsHaveNoRevno:
-                pass
             info["revision_id"] = revision_id
             rev = self._branch.repository.get_revision(revision_id)
             info["date"] = create_date_str(rev.timestamp, rev.timezone)

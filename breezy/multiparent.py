@@ -27,6 +27,8 @@ from breezy import (
     )
 """,
 )
+import contextlib
+
 from . import errors
 from .i18n import gettext
 
@@ -592,14 +594,10 @@ class MultiVersionedFile(BaseVersionedFile):
         self._parents[version_id] = parent_ids
 
     def destroy(self):
-        try:
+        with contextlib.suppress(FileNotFoundError):
             os.unlink(self._filename + ".mpknit")
-        except FileNotFoundError:
-            pass
-        try:
+        with contextlib.suppress(FileNotFoundError):
             os.unlink(self._filename + ".mpidx")
-        except FileNotFoundError:
-            pass
 
     def save(self):
         import fastbencode as bencode

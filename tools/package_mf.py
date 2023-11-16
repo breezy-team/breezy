@@ -16,6 +16,7 @@
 
 """Custom module finder for entire package."""
 
+import contextlib
 import os
 import sys
 
@@ -57,12 +58,10 @@ class CustomModuleFinder(modulefinder.ModuleFinder):
             # (The actual error is
             # AttributeError: 'NoneType' object has no attribute 'is_package')
             # Ignore errors here and bail out in the collection loop.
-            try:
+            with contextlib.suppress(BaseException):
                 self.import_module(
                     partname, ".".join(path), self.modules.get(parent_path, None)
                 )
-            except BaseException:
-                pass
         stack = [(fqname, parent_path)]
         while stack:
             (package, parent_path) = stack.pop(0)

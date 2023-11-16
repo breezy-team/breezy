@@ -16,6 +16,7 @@
 
 """A Git repository implementation that uses a Bazaar transport."""
 
+import contextlib
 import os
 import posixpath
 import sys
@@ -244,10 +245,7 @@ class TransportRefsContainer(RefsContainer):
             exist.
         :raises IOError: if any other error occurs
         """
-        if name == b"HEAD":
-            transport = self.worktree_transport
-        else:
-            transport = self.transport
+        transport = self.worktree_transport if name == b"HEAD" else self.transport
         try:
             f = transport.get(urlutils.quote_from_bytes(name))
         except NoSuchFile:
@@ -362,14 +360,9 @@ class TransportRefsContainer(RefsContainer):
         """
         self._check_refname(name)
         # may only be packed
-        if name == b"HEAD":
-            transport = self.worktree_transport
-        else:
-            transport = self.transport
-        try:
+        transport = self.worktree_transport if name == b"HEAD" else self.transport
+        with contextlib.suppress(NoSuchFile):
             transport.delete(urlutils.quote_from_bytes(name))
-        except NoSuchFile:
-            pass
         self._remove_packed_ref(name)
         return True
 
@@ -380,21 +373,13 @@ class TransportRefsContainer(RefsContainer):
             return default
 
     def unlock_ref(self, name):
-        if name == b"HEAD":
-            transport = self.worktree_transport
-        else:
-            transport = self.transport
+        transport = self.worktree_transport if name == b"HEAD" else self.transport
         lockname = name + b".lock"
-        try:
+        with contextlib.suppress(NoSuchFile):
             transport.delete(urlutils.quote_from_bytes(lockname))
-        except NoSuchFile:
-            pass
 
     def lock_ref(self, name):
-        if name == b"HEAD":
-            transport = self.worktree_transport
-        else:
-            transport = self.transport
+        transport = self.worktree_transport if name == b"HEAD" else self.transport
         self._ensure_dir_exists(urlutils.quote_from_bytes(name))
         lockname = urlutils.quote_from_bytes(name + b".lock")
         try:
@@ -590,10 +575,8 @@ class TransportRepo(BaseRepo):
         else:
             control_transport = transport
         for d in BASE_DIRECTORIES:
-            try:
+            with contextlib.suppress(FileExists):
                 control_transport.mkdir("/".join(d))
-            except FileExists:
-                pass
         try:
             control_transport.mkdir(OBJECTDIR)
         except FileExists as err:
@@ -731,10 +714,8 @@ class TransportObjectStore(PackBasedObjectStore):
     def _remove_pack(self, pack):
         self.pack_transport.delete(os.path.basename(pack.index.path))
         self.pack_transport.delete(pack.data.filename)
-        try:
+        with contextlib.suppress(KeyError):
             del self._pack_cache[os.path.basename(pack._basename)]
-        except KeyError:
-            pass
 
     def _iter_loose_objects(self):
         for base in self.transport.list_dir("."):
@@ -764,10 +745,8 @@ class TransportObjectStore(PackBasedObjectStore):
         :param obj: Object to add
         """
         (dir, file) = self._split_loose_object(obj.id)
-        try:
+        with contextlib.suppress(FileExists):
             self.transport.mkdir(urlutils.quote_from_bytes(dir))
-        except FileExists:
-            pass
         path = urlutils.quote_from_bytes(osutils.pathjoin(dir, file))
         if self.transport.has(path):
             return  # Already there, no need to write again
@@ -783,14 +762,10 @@ class TransportObjectStore(PackBasedObjectStore):
 
     @classmethod
     def init(cls, transport):
-        try:
+        with contextlib.suppress(FileExists):
             transport.mkdir("info")
-        except FileExists:
-            pass
-        try:
+        with contextlib.suppress(FileExists):
             transport.mkdir(PACKDIR)
-        except FileExists:
-            pass
         return cls(transport)
 
     def _complete_pack(self, f, path, num_objects, indexer, progress=None):

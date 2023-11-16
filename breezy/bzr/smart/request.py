@@ -524,10 +524,7 @@ class SmartServerIsReadonly(SmartServerRequest):
     # XXX: this request method belongs somewhere else.
 
     def do(self):
-        if self._backing_transport.is_readonly():
-            answer = b"yes"
-        else:
-            answer = b"no"
+        answer = b"yes" if self._backing_transport.is_readonly() else b"no"
         return SuccessfulSmartServerResponse((answer,))
 
 

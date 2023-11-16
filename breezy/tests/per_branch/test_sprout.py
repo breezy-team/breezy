@@ -221,8 +221,5 @@ class TestSprout(TestCaseWithBranch):
         self.assertEqual(revid, result.last_revision())
         self.assertEqual(source.base, result.get_stacked_on_url())
         # Smart servers invoke hooks on both sides
-        if isinstance(result, remote.RemoteBranch):
-            expected_calls = 2
-        else:
-            expected_calls = 1
+        expected_calls = 2 if isinstance(result, remote.RemoteBranch) else 1
         self.assertEqual(expected_calls, len(self.hook_calls))

@@ -17,6 +17,7 @@
 """Tests for smart transport."""
 
 # all of this deals with byte strings so this is safe
+import contextlib
 import doctest
 import errno
 import os
@@ -1314,10 +1315,8 @@ class TestSmartTCPServer(tests.TestCase):
 
     def ensure_client_disconnected(self, client_sock):
         """Ensure that a socket is closed, discarding all errors."""
-        try:
+        with contextlib.suppress(Exception):
             client_sock.close()
-        except Exception:
-            pass
 
     def connect_to_server(self, server):
         """Create a client socket that can talk to the server."""
@@ -1973,10 +1972,7 @@ class TestSmartProtocol(tests.TestCase):
         # This is very similar to
         # breezy.bzr.smart.client._SmartClient._build_client_protocol
         # XXX: make this use _SmartClient!
-        if input_bytes is None:
-            input = BytesIO()
-        else:
-            input = BytesIO(input_bytes)
+        input = BytesIO() if input_bytes is None else BytesIO(input_bytes)
         output = BytesIO()
         client_medium = medium.SmartSimplePipesClientMedium(input, output, "base")
         request = client_medium.get_request()

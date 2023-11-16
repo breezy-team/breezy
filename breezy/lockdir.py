@@ -143,7 +143,6 @@ from .transport import FileExists, NoSuchFile
 # TODO: Make sure to pass the right file and directory mode bits to all
 # files/dirs created.
 
-
 _DEFAULT_TIMEOUT_SECONDS = 30
 _DEFAULT_POLL_SECONDS = 1.0
 
@@ -286,17 +285,16 @@ class LockDir(lock.Lock):
             it might be None if the lock can be seen to be held but the info
             can't be read.
         """
-        if other_holder is not None:
-            if other_holder.is_lock_holder_known_dead():
-                if self.get_config().get("locks.steal_dead"):
-                    ui.ui_factory.show_user_warning(
-                        "locks_steal_dead",
-                        lock_url=urlutils.join(self.transport.base, self.path),
-                        other_holder_info=str(other_holder),
-                    )
-                    self.force_break(other_holder)
-                    self._trace("stole lock from dead holder")
-                    return
+        if other_holder is not None and other_holder.is_lock_holder_known_dead():
+            if self.get_config().get("locks.steal_dead"):
+                ui.ui_factory.show_user_warning(
+                    "locks_steal_dead",
+                    lock_url=urlutils.join(self.transport.base, self.path),
+                    other_holder_info=str(other_holder),
+                )
+                self.force_break(other_holder)
+                self._trace("stole lock from dead holder")
+                return
         raise LockContention(self)
 
     def _remove_pending_dir(self, tmpname):
@@ -392,14 +390,13 @@ class LockDir(lock.Lock):
             if ui.ui_factory.get_boolean(f"Break (corrupt {self!r})"):
                 self.force_break_corrupt(e.file_data)
             return
-        if holder_info is not None:
-            if ui.ui_factory.confirm_action(
-                "Break %(lock_info)s",
-                "breezy.lockdir.break",
-                {"lock_info": str(holder_info)},
-            ):
-                result = self.force_break(holder_info)
-                ui.ui_factory.show_message(f"Broke lock {result.lock_url}")
+        if holder_info is not None and ui.ui_factory.confirm_action(
+            "Break %(lock_info)s",
+            "breezy.lockdir.break",
+            {"lock_info": str(holder_info)},
+        ):
+            result = self.force_break(holder_info)
+            ui.ui_factory.show_message(f"Broke lock {result.lock_url}")
 
     def force_break(self, dead_holder_info):
         """Release a lock held by another process.
@@ -544,10 +541,7 @@ class LockDir(lock.Lock):
         # As local lock urls are correct we display them.
         # We avoid displaying remote lock urls.
         lock_url = self.transport.abspath(self.path)
-        if lock_url.startswith("file://"):
-            lock_url = lock_url.split(".bzr/")[0]
-        else:
-            lock_url = ""
+        lock_url = lock_url.split(".bzr/")[0] if lock_url.startswith("file://") else ""
         return lock_url
 
     def wait_lock(self, timeout=None, poll=None, max_attempts=None):

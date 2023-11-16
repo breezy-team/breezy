@@ -934,10 +934,7 @@ class GraphIndex:
             # get the range of the probed & parsed location
             index = self._parsed_byte_index(location)
             # if the key is below the start of the range, its below
-            if key < self._parsed_key_map[index][0]:
-                direction = -1
-            else:
-                direction = +1
+            direction = -1 if key < self._parsed_key_map[index][0] else +1
             result.append(((location, key), direction))
         readv_ranges = []
         # lookup data to resolve references
@@ -1148,9 +1145,8 @@ class GraphIndex:
         for line in lines:
             if line == b"":
                 # must be at the end
-                if self._size:
-                    if not (self._size == pos + 1):
-                        raise AssertionError(f"{self._size} {pos}")
+                if self._size and not (self._size == pos + 1):
+                    raise AssertionError(f"{self._size} {pos}")
                 trailers += 1
                 continue
             elements = line.split(b"\0")
@@ -1172,10 +1168,7 @@ class GraphIndex:
             pos += len(line) + 1  # +1 for the \n
             if absent:
                 continue
-            if self.node_ref_lists:
-                node_value = (value, ref_lists)
-            else:
-                node_value = value
+            node_value = (value, ref_lists) if self.node_ref_lists else value
             nodes.append((key, node_value))
             # print "parsed ", key
         return first_key, key, nodes, trailers

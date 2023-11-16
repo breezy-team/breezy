@@ -993,10 +993,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         inv = Inventory(revision_id=revision, root_revision=root_revision)
         self.assertEqual(inv.root.revision, root_revision)
         file_id = b"a-file-id"
-        if inv_revision is not None:
-            entry_revision = inv_revision
-        else:
-            entry_revision = revision
+        entry_revision = inv_revision if inv_revision is not None else revision
         if file_contents is None:
             file_contents = b"%sline\n" % entry_revision
         text_sha1 = osutils.sha_string(file_contents)

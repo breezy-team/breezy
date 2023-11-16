@@ -136,7 +136,7 @@ def _compare_trees(
         if change.versioned == (False, False):
             delta.unversioned.append(change)
             continue
-        if not include_root and (None, None) == change.parent_id:
+        if not include_root and change.parent_id == (None, None):
             continue
         fully_present = tuple(
             (change.versioned[x] and change.kind[x] is not None) for x in range(2)
@@ -173,10 +173,7 @@ def _compare_trees(
             delta.unchanged.append(change)
 
     def change_key(change):
-        if change.path[0] is None:
-            path = change.path[1]
-        else:
-            path = change.path[0]
+        path = change.path[1] if change.path[0] is None else change.path[0]
         return (path, change.file_id)
 
     delta.removed.sort(key=change_key)
@@ -329,10 +326,7 @@ class _ChangeReporter:
         # otherwise we always show the current kind when there is one
         elif kind[1] is not None:
             path += self.kind_marker(kind[1])
-        if exe_change:
-            exe = "*"
-        else:
-            exe = " "
+        exe = "*" if exe_change else " "
         self.output(
             "%s%s%s %s%s", rename, self.modified_map[modified], exe, old_path, path
         )
@@ -356,10 +350,7 @@ def report_changes(change_iterator, reporter):
     }
 
     def path_key(change):
-        if change.path[0] is not None:
-            path = change.path[0]
-        else:
-            path = change.path[1]
+        path = change.path[0] if change.path[0] is not None else change.path[1]
         return osutils.splitpath(path)
 
     for change in sorted(change_iterator, key=path_key):
@@ -482,10 +473,7 @@ def report_delta(
     ):
         if files:
             header_shown = False
-            if short_status:
-                prefix = short_status_letter
-            else:
-                prefix = ""
+            prefix = short_status_letter if short_status else ""
             prefix = indent + prefix + "  "
 
             for item in files:

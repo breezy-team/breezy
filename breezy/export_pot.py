@@ -148,10 +148,7 @@ class _PotExporter:
             if s in self._msgids:
                 return
             self._msgids.add(s)
-        if comment is None:
-            comment = ""
-        else:
-            comment = f"# {comment}\n"
+        comment = "" if comment is None else f"# {comment}\n"
         mutter("Exporting msg %r at line %d in %r", s[:20], lineno, path)
         line = f'#: {path}:{lineno}\n{comment}msgid {_normalize(s)}\nmsgstr ""\n\n'
         self.outf.write(line)

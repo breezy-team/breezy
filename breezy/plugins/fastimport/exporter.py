@@ -43,6 +43,7 @@
 # is not updated (because the parent of commit is already merged, so we don't
 # set new_git_branch to the previously used name)
 
+import contextlib
 import re
 import sys
 import time
@@ -344,10 +345,7 @@ class BzrFastExporter:
 
         # Use treewalk to find the contents of our directory
         contents = list(tree.walkdirs(prefix=path))[0]
-        if len(contents[1]) == 0:
-            return True
-        else:
-            return False
+        return len(contents[1]) == 0
 
     def emit_features(self):
         for feature in sorted(commands.FEATURE_NAMES):
@@ -472,10 +470,8 @@ class BzrFastExporter:
         else:
             properties = revobj.properties
             for prop in self.properties_to_exclude:
-                try:
+                with contextlib.suppress(KeyError):
                     del properties[prop]
-                except KeyError:
-                    pass
 
         # Build and return the result
         return commands.CommitCommand(

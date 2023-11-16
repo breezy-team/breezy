@@ -323,13 +323,9 @@ class RevisionStore:
                 or parent_entry.executable != ie.executable
             ):
                 changed = True
-        elif ie.kind == "symlink":
-            if parent_entry.symlink_target != ie.symlink_target:
-                changed = True
-        if changed:
-            rev_id = ie.revision
-        else:
-            rev_id = parent_entry.revision
+        elif ie.kind == "symlink" and parent_entry.symlink_target != ie.symlink_target:
+            changed = True
+        rev_id = ie.revision if changed else parent_entry.revision
         return tuple(heads), rev_id
 
     def load_using_delta(

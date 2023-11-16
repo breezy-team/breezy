@@ -15,6 +15,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import contextlib
+
 import fastbencode as bencode
 
 from .. import errors, trace
@@ -71,10 +73,8 @@ class BasicTags(Tags):
                 raise errors.NoSuchTag(tag_name) from e
             master = self.branch.get_master_branch()
             if master is not None:
-                try:
+                with contextlib.suppress(errors.NoSuchTag):
                     master.tags.delete_tag(tag_name)
-                except errors.NoSuchTag:
-                    pass
             self._set_tag_dict(d)
 
     def _set_tag_dict(self, new_dict):

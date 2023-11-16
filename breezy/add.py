@@ -80,10 +80,7 @@ class AddWithSkipLargeAction(AddAction):
         if self._max_size is None:
             config = tree.get_config_stack()
             self._max_size = config.get(opt_name)
-        if stat_value is None:
-            file_size = os.path.getsize(path)
-        else:
-            file_size = stat_value.st_size
+        file_size = os.path.getsize(path) if stat_value is None else stat_value.st_size
         if self._max_size > 0 and file_size > self._max_size:
             ui.ui_factory.show_warning(
                 gettext("skipping {0} (larger than {1} of {2} bytes)").format(

@@ -305,9 +305,8 @@ class GPGStrategy:
         # User has specified a list of acceptable keys, check our result is in
         # it.  test_verify_unacceptable_key()
         fingerprint = result.signatures[0].fpr
-        if self.acceptable_keys is not None:
-            if fingerprint not in self.acceptable_keys:
-                return SIGNATURE_KEY_MISSING, fingerprint[-8:], plain_output
+        if self.acceptable_keys is not None and fingerprint not in self.acceptable_keys:
+            return SIGNATURE_KEY_MISSING, fingerprint[-8:], plain_output
         # Yay gpg set the valid bit.
         # Can't write a test for this one as you can't set a key to be
         # trusted using gpg.

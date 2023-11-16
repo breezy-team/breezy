@@ -17,6 +17,7 @@
 
 """An adapter between a Git index and a Bazaar Working Tree."""
 
+import contextlib
 import itertools
 import os
 import posixpath
@@ -381,10 +382,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         return False
 
     def break_lock(self):
-        try:
+        with contextlib.suppress(_mod_transport.NoSuchFile):
             self.control_transport.delete("index.lock")
-        except _mod_transport.NoSuchFile:
-            pass
         self.branch.break_lock()
 
     @only_raises(errors.LockNotHeld, errors.LockBroken)
@@ -442,10 +441,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 "MERGE_HEAD", b"\n".join(merges), mode=self.controldir._get_file_mode()
             )
         else:
-            try:
+            with contextlib.suppress(_mod_transport.NoSuchFile):
                 self.control_transport.delete("MERGE_HEAD")
-            except _mod_transport.NoSuchFile:
-                pass
 
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
         """Set the parent ids to revision_ids.
@@ -482,10 +479,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         value and uses that to decide what the parents list should be.
         """
         last_rev = self._last_revision()
-        if _mod_revision.NULL_REVISION == last_rev:
-            parents = []
-        else:
-            parents = [last_rev]
+        parents = [] if last_rev == _mod_revision.NULL_REVISION else [last_rev]
         try:
             merges_bytes = self.control_transport.get_bytes("MERGE_HEAD")
         except _mod_transport.NoSuchFile:
@@ -597,10 +591,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 abs_path = self.abspath(f)
                 if verbose:
                     # having removed it, it must be either ignored or unknown
-                    if self.is_ignored(f):
-                        new_status = "I"
-                    else:
-                        new_status = "?"
+                    new_status = "I" if self.is_ignored(f) else "?"
                     kind_ch = osutils.kind_marker(kind)
                     to_file.write(new_status + "       " + f + kind_ch + "\n")
                 if kind is None:
@@ -1616,10 +1607,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             config = GitConfigFile()
         section = (b"submodule", encode_git_path(tree_path))
         if branch_location is None:
-            try:
+            with contextlib.suppress(KeyError):
                 del config[section]
-            except KeyError:
-                pass
         else:
             branch_location = urlutils.join(
                 urlutils.strip_segment_parameters(self.branch.user_url), branch_location

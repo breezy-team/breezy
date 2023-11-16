@@ -111,10 +111,7 @@ def _check_win32_locale():
             # using ctypes to determine all locales
             lcid_user = ctypes.windll.kernel32.GetUserDefaultLCID()
             lcid_system = ctypes.windll.kernel32.GetSystemDefaultLCID()
-            if lcid_user != lcid_system:
-                lcid = [lcid_user, lcid_system]
-            else:
-                lcid = [lcid_user]
+            lcid = [lcid_user, lcid_system] if lcid_user != lcid_system else [lcid_user]
             lang = [locale.windows_locale.get(i) for i in lcid]
             lang = ":".join([i for i in lang if i])
         # set lang code for gettext

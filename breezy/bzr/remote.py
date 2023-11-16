@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import bz2
+import contextlib
 import os
 import re
 import zlib
@@ -237,10 +238,7 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
             if client_medium.should_probe():
                 try:
                     server_version = client_medium.protocol_version()
-                    if server_version != "2":
-                        do_vfs = True
-                    else:
-                        do_vfs = False
+                    do_vfs = server_version != "2"
                 except errors.SmartProtocolError:
                     # Apparently there's no usable smart server there, even though
                     # the medium supports the smart protocol.
@@ -633,10 +631,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         if medium._is_remote_before((1, 13)):
             return self._vfs_cloning_metadir(require_stacking=require_stacking)
         verb = b"BzrDir.cloning_metadir"
-        if require_stacking:
-            stacking = b"True"
-        else:
-            stacking = b"False"
+        stacking = b"True" if require_stacking else b"False"
         path = self._path_for_remote_call(self._client)
         try:
             response = self._call(verb, path, stacking)
@@ -750,10 +745,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
             raise controldir.NoColocatedBranchSupport(self)
         path = self._path_for_remote_call(self._client)
         try:
-            if name != "":
-                args = (name,)
-            else:
-                args = ()
+            args = (name,) if name != "" else ()
             response = self._call(b"BzrDir.destroy_branch", path, *args)
         except errors.UnknownSmartMethod:
             self._ensure_real()
@@ -1266,10 +1258,7 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
         # 2) try direct creation via RPC
         path = a_controldir._path_for_remote_call(a_controldir._client)
         verb = b"BzrDir.create_repository"
-        if shared:
-            shared_str = b"True"
-        else:
-            shared_str = b"False"
+        shared_str = b"True" if shared else b"False"
         try:
             response = a_controldir._call(verb, path, network_name, shared_str)
         except errors.UnknownSmartMethod:
@@ -1690,10 +1679,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         other_fb = other_repo._fallback_repositories
         if len(my_fb) != len(other_fb):
             return False
-        for f, g in zip(my_fb, other_fb):
-            if not f.has_same_location(g):
-                return False
-        return True
+        return all(f.has_same_location(g) for f, g in zip(my_fb, other_fb))
 
     def has_same_location(self, other):
         # TODO: Move to RepositoryBase and unify with the regular Repository
@@ -1724,14 +1710,8 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         """See Repository.gather_stats()."""
         path = self.controldir._path_for_remote_call(self._client)
         # revid can be None to indicate no revisions, not just NULL_REVISION
-        if revid is None or _mod_revision.is_null(revid):
-            fmt_revid = b""
-        else:
-            fmt_revid = revid
-        if committers is None or not committers:
-            fmt_committers = b"no"
-        else:
-            fmt_committers = b"yes"
+        fmt_revid = b"" if revid is None or _mod_revision.is_null(revid) else revid
+        fmt_committers = b"no" if committers is None or not committers else b"yes"
         response_tuple, response_handler = self._call_expecting_body(
             b"Repository.gather_stats", path, fmt_revid, fmt_committers
         )
@@ -1835,9 +1815,8 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         if not self._lock_mode:
             self._note_lock("w")
             if _skip_rpc:
-                if self._lock_token is not None:
-                    if token != self._lock_token:
-                        raise errors.TokenMismatch(token, self._lock_token)
+                if self._lock_token is not None and token != self._lock_token:
+                    raise errors.TokenMismatch(token, self._lock_token)
                 self._lock_token = token
             else:
                 self._lock_token = self._remote_lock_write(token)
@@ -2895,10 +2874,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         return self._real_repository.revisions
 
     def set_make_working_trees(self, new_value):
-        if new_value:
-            new_value_str = b"True"
-        else:
-            new_value_str = b"False"
+        new_value_str = b"True" if new_value else b"False"
         path = self.controldir._path_for_remote_call(self._client)
         try:
             response = self._call(
@@ -4577,10 +4553,9 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 (last_revid, last_revno),
                 (_mod_revision.NULL_REVISION, 0),
             ]
-            if last_rev is not None:
-                if not graph.is_ancestor(last_rev, revision_id):
-                    # our previous tip is not merged into stop_revision
-                    raise errors.DivergedBranches(self, other_branch)
+            if last_rev is not None and not graph.is_ancestor(last_rev, revision_id):
+                # our previous tip is not merged into stop_revision
+                raise errors.DivergedBranches(self, other_branch)
             revno = graph.find_distance_to_null(revision_id, known_revision_ids)
             self.set_last_revision_info(revno, revision_id)
 
@@ -4703,14 +4678,9 @@ class RemoteConfig:
             if section is None:
                 section_obj = configobj
             else:
-                try:
+                with contextlib.suppress(KeyError):
                     section_obj = configobj[section]
-                except KeyError:
-                    pass
-            if section_obj is None:
-                value = default
-            else:
-                value = section_obj.get(name, default)
+            value = default if section_obj is None else section_obj.get(name, default)
         except errors.UnknownSmartMethod:
             value = self._vfs_get_option(name, section, default)
         for hook in _mod_config.OldConfigHooks["get"]:
@@ -4924,10 +4894,7 @@ error_translators.register(
 
 
 def _translate_nobranch_error(err, find, get_path):
-    if len(err.error_args) >= 1:
-        extra = err.error_args[0].decode("utf-8")
-    else:
-        extra = None
+    extra = err.error_args[0].decode("utf-8") if len(err.error_args) >= 1 else None
     return errors.NotBranchError(path=find("bzrdir").root_transport.base, detail=extra)
 
 
@@ -4959,10 +4926,7 @@ error_translators.register(
 
 def _translate_PermissionDenied(err, find, get_path):
     path = get_path()
-    if len(err.error_args) >= 2:
-        extra = err.error_args[1].decode("utf-8")
-    else:
-        extra = None
+    extra = err.error_args[1].decode("utf-8") if len(err.error_args) >= 2 else None
     return errors.PermissionDenied(path, extra=extra)
 
 

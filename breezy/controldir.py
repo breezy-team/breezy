@@ -43,6 +43,8 @@ from breezy.i18n import gettext
 """,
 )
 
+import contextlib
+
 from . import errors, hooks, registry, trace
 from . import revision as _mod_revision
 from . import transport as _mod_transport
@@ -588,10 +590,7 @@ class ControlDir(ControlComponent):
             tree = None
             branch = self.open_branch(name=name)
         else:
-            if name is not None:
-                branch = self.open_branch(name=name)
-            else:
-                branch = tree.branch
+            branch = self.open_branch(name=name) if name is not None else tree.branch
         return tree, branch
 
     def get_config(self):
@@ -813,10 +812,8 @@ class ControlDir(ControlComponent):
         repo = controldir._find_or_create_repository(force_new_repo)
         result = controldir.create_branch()
         if force_new_tree or (repo.make_working_trees() and force_new_tree is None):
-            try:
+            with contextlib.suppress(errors.NotLocalUrl):
                 controldir.create_workingtree()
-            except errors.NotLocalUrl:
-                pass
         return result
 
     @classmethod

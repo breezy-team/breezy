@@ -64,6 +64,7 @@
 
 # FIXME: the conflict markers should be *7* characters
 
+import contextlib
 import hashlib
 import os
 from copy import copy
@@ -444,10 +445,8 @@ class Weave(VersionedFile):
                     adapter = adapter_factory(self)
                     adapters[adapter_key] = adapter
                 lines = adapter.get_bytes(record, "lines")
-                try:
+                with contextlib.suppress(RevisionAlreadyPresent):
                     self.add_lines(record.key[0], parents, lines)
-                except RevisionAlreadyPresent:
-                    pass
 
     def _check_repeated_add(self, name, parents, text, sha1):
         """Check that a duplicated add is OK.

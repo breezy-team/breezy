@@ -85,7 +85,7 @@ class _ChooseUI:
                 raise ValueError(f"duplicated choice: {name}")
             self.alternatives[name] = choice
             shortcut = c.find("&")
-            if -1 != shortcut and (shortcut + 1) < len(c):
+            if shortcut != -1 and (shortcut + 1) < len(c):
                 help = c[:shortcut]
                 help += "[" + c[shortcut + 1] + "]"
                 help += c[(shortcut + 2) :]
@@ -109,7 +109,7 @@ class _ChooseUI:
 
     def _getline(self):
         line = self.ui.stdin.readline()
-        if "" == line:
+        if line == "":
             raise EOFError
         return line.strip()
 
@@ -125,14 +125,11 @@ class _ChooseUI:
 
     def interact(self):
         """Keep asking the user until a valid choice is made."""
-        if self.line_based:
-            getchoice = self._getline
-        else:
-            getchoice = self._getchar
+        getchoice = self._getline if self.line_based else self._getchar
         iter = 0
         while True:
             iter += 1
-            if 1 == iter or self.line_based:
+            if iter == 1 or self.line_based:
                 self.ui.prompt(self.prompt)
             try:
                 choice = getchoice()

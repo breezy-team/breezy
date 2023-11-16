@@ -312,9 +312,8 @@ def _walk_modules(path):
     for root, dirs, files in os.walk(path):
         files.sort()
         for f in files:
-            if f[:2] != "__":
-                if f.endswith((".py", COMPILED_EXT)):
-                    yield f.rsplit(".", 1)[0], root
+            if f[:2] != "__" and f.endswith((".py", COMPILED_EXT)):
+                yield f.rsplit(".", 1)[0], root
         dirs.sort()
         for d in dirs:
             if d[:2] != "__":
@@ -351,10 +350,7 @@ def describe_plugins(show_paths=False, state=None):
                 version = ""
             yield f"{name} {version}\n"
             d = plugin.module.__doc__
-            if d:
-                doc = d.split("\n")[0]
-            else:
-                doc = "(no description)"
+            doc = d.split("\n")[0] if d else "(no description)"
             yield (f"  {doc}\n")
             if show_paths:
                 yield (f"   {plugin.path()}\n")

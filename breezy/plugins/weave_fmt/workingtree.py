@@ -87,10 +87,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         """See WorkingTreeFormat.initialize()."""
         if not isinstance(a_controldir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_controldir.transport.base)
-        if from_branch is not None:
-            branch = from_branch
-        else:
-            branch = a_controldir.open_branch()
+        branch = from_branch if from_branch is not None else a_controldir.open_branch()
         if revision_id is None:
             revision_id = branch.last_revision()
         with branch.lock_write():

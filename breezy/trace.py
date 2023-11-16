@@ -118,10 +118,7 @@ def mutter(fmt, *args):
     if isinstance(fmt, bytes):
         fmt = fmt.decode("ascii", "replace")
 
-    if args:
-        out = fmt % args
-    else:
-        out = fmt
+    out = fmt % args if args else fmt
 
     _trace_handler.mutter(out)
 
@@ -137,10 +134,7 @@ def mutter_callsite(stacklevel, fmt, *args):
     import traceback
 
     outf = StringIO()
-    if stacklevel is None:
-        limit = None
-    else:
-        limit = stacklevel + 1
+    limit = None if stacklevel is None else stacklevel + 1
     traceback.print_stack(limit=limit, file=outf)
     formatted_lines = outf.getvalue().splitlines()
     formatted_stack = "\n".join(formatted_lines[:-2])

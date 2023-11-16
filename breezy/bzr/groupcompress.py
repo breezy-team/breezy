@@ -73,10 +73,7 @@ def sort_gc_optimal(parent_map):
     # properly grouped by file-id.
     per_prefix_map = {}
     for key, value in parent_map.items():
-        if isinstance(key, bytes) or len(key) == 1:
-            prefix = b""
-        else:
-            prefix = key[0]
+        prefix = b"" if isinstance(key, bytes) or len(key) == 1 else key[0]
         try:
             per_prefix_map[prefix][key] = value
         except KeyError:
@@ -149,10 +146,9 @@ class GroupCompressBlock:
                 % (num_bytes, self._content_length)
             )
         # Expand the content if required
-        if self._content is None:
-            if self._content_chunks is not None:
-                self._content = b"".join(self._content_chunks)
-                self._content_chunks = None
+        if self._content is None and self._content_chunks is not None:
+            self._content = b"".join(self._content_chunks)
+            self._content_chunks = None
         if self._content is None:
             # We join self._z_content_chunks here, because if we are
             # decompressing, then it is *very* likely that we have a single
@@ -532,10 +528,7 @@ class _LazyGroupContentManager:
         return self._compressor_settings
 
     def add_factory(self, key, parents, start, end):
-        if not self._factories:
-            first = True
-        else:
-            first = False
+        first = bool(not self._factories)
         # Note that this creates a reference cycle....
         factory = _LazyGroupCompressFactory(key, parents, self, start, end, first=first)
         # max() works here, but as a function call, doing a compare seems to be
@@ -883,13 +876,9 @@ class _CommonGroupCompressor:
                 raise ExistingContent()
             return _null_sha1, 0, 0, "fulltext"
         # we assume someone knew what they were doing when they passed it in
-        if expected_sha is not None:
-            sha1 = expected_sha
-        else:
-            sha1 = osutils.sha_strings(chunks)
-        if nostore_sha is not None:
-            if sha1 == nostore_sha:
-                raise ExistingContent()
+        sha1 = expected_sha if expected_sha is not None else osutils.sha_strings(chunks)
+        if nostore_sha is not None and sha1 == nostore_sha:
+            raise ExistingContent()
         if key[-1] is None:
             key = key[:-1] + (b"sha1:" + sha1,)
 
@@ -1391,9 +1380,8 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
     def _check_add(self, key, random_id):
         """Check that version_id and lines are safe to add."""
         version_id = key[-1]
-        if version_id is not None:
-            if osutils.contains_whitespace(version_id):
-                raise errors.InvalidRevisionId(version_id, self)
+        if version_id is not None and osutils.contains_whitespace(version_id):
+            raise errors.InvalidRevisionId(version_id, self)
         self.check_not_reserved_id(version_id)
         # TODO: If random_id==False and the key is already present, we should
         # probably check that the existing content is identical to what is
@@ -2104,17 +2092,15 @@ class _GCGraphIndex:
         changed = False
         keys = {}
         for key, value, refs in records:
-            if not self._parents:
-                if refs:
-                    for ref in refs:
-                        if ref:
-                            raise knit.KnitCorrupt(
-                                self,
-                                "attempt to add node with parents "
-                                "in parentless index.",
-                            )
-                    refs = ()
-                    changed = True
+            if not self._parents and refs:
+                for ref in refs:
+                    if ref:
+                        raise knit.KnitCorrupt(
+                            self,
+                            "attempt to add node with parents " "in parentless index.",
+                        )
+                refs = ()
+                changed = True
             keys[key] = (value, refs)
         # check for dups
         if not random_id:
@@ -2242,10 +2228,7 @@ class _GCGraphIndex:
         entries = self._get_entries(keys)
         for entry in entries:
             key = entry[1]
-            if not self._parents:
-                parents = None
-            else:
-                parents = entry[3][0]
+            parents = None if not self._parents else entry[3][0]
             details = _GCBuildDetails(parents, self._node_to_position(entry))
             result[key] = details
         return result

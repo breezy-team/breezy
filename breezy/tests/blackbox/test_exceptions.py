@@ -104,10 +104,7 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
         return tree
 
     def check_warning(self, present):
-        if present:
-            check = self.assertContainsRe
-        else:
-            check = self.assertNotContainsRe
+        check = self.assertContainsRe if present else self.assertNotContainsRe
         check(self.get_log(), "WARNING.*brz upgrade")
 
     def test_repository_deprecation_warning(self):
