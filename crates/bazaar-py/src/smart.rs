@@ -14,7 +14,7 @@ pub(crate) fn _smart_rs(py: Python) -> PyResult<&PyModule> {
     )?;
     m.add(
         "RESPONSE_VERSION_TWO",
-        PyBytes::new(py, REQUEST_VERSION_TWO),
+        PyBytes::new(py, RESPONSE_VERSION_TWO),
     )?;
     m.add(
         "RESPONSE_VERSION_THREE",
