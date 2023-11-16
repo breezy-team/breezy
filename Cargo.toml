@@ -57,6 +57,7 @@ nix = { workspace = true, features = ["fs"] }
 nix = ">=0.26"
 pyo3 = ">=0.19"
 pyo3-file = "0.7.0"
-chrono = "0.4"
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 url = "2"
 log = "0.4"
+whoami = { version = "1", default-features = false }
