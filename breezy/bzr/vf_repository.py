@@ -1193,7 +1193,7 @@ class VersionedFileRepository(Repository):
         against the revision one as get_revision does: but it should only
         be used by reconcile, or reconcile-alike commands that are correcting
         or testing the revision graph.
-        """  # noqa: D403
+        """
         with self.lock_read():
             return self.get_revisions([revision_id])[0]
 

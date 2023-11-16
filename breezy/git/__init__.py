@@ -27,7 +27,7 @@ import sys
 
 dulwich_minimum_version = (0, 19, 11)
 
-from .. import __version__ as breezy_version  # noqa: F401
+from .. import __version__ as breezy_version
 from .. import errors as brz_errors
 from .. import trace, urlutils
 from ..commands import plugin_cmds

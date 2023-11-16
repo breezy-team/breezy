@@ -111,6 +111,7 @@ select = [
    "SIM", # simplify
     "C4",  # comprehensions
     "UP",  # pyupgrade
+    "RUF", # ruf-specific
 ]
 ignore = [
     "ANN001",
@@ -156,12 +157,15 @@ ignore = [
     # This triggers for docstrings that uses __doc__
     "D104", # Missing docstring in public package
 
+    "RUF012", # Mutable class attributes should be annotated with `typing.ClassVar`
+    "RUF005", # Consider iterable concatenation instead of list concatenation
+    "RUF015", # Prefer next() of single slice access
+
     "SIM102", # Use a single `if` statement instead of nested `if` statements
     "SIM105", # Use `contextlib.suppress
     "SIM108", # Use ternary operator
     "SIM114", # Combine `if` branches using logical `or` operator
     "SIM115", # Use context handler for opening files
-
 
     # This is unsafe for breezy, where several objects (e.g. VersionedFiles)
     # have a keys() method but no __iter__
@@ -172,6 +176,9 @@ unfixable = ["ANN204"]
 extend-exclude = ["lib", "bin"]
 
 [tool.ruff.isort]
+
+[tool.ruff.extend-per-file-ignores]
+"breezy/plugins/po_merge/tests/test_po_merge.py" = ["RUF001"]
 
 
 [tool.ruff.pydocstyle]

@@ -108,7 +108,7 @@ class BzrError(Exception):
     __str__ = _format
 
     def __repr__(self):
-        return f"{self.__class__.__name__}({str(self)})"
+        return f"{self.__class__.__name__}({self!s})"
 
     def _get_format_string(self):
         """Return format string for this exception or None."""

@@ -84,6 +84,7 @@ class SmartServerRequest:
     care to call `translate_client_path` and `transport_from_client_path` as
     appropriate when dealing with paths received from the client.
     """
+
     # XXX: rename this class to BaseSmartServerRequestHandler ?  A request
     # *handler* is a different concept to the request.
 

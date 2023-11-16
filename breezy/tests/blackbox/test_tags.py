@@ -138,7 +138,7 @@ class TestTagging(TestCaseWithTransport):
 
         (If the user runs 'brz commit', then that is when the tags from the
         merge are propagated.)
-        """  # noqa: D403
+        """
         master, child = self.make_master_and_checkout()
         fork = self.make_fork(master)
         fork.tags.set_tag("new-tag", fork.last_revision())

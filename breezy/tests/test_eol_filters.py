@@ -38,7 +38,7 @@ class TestEolFilters(TestCase):
 
 class TestEolRulesSpecifications(TestCase):
     def test_exact_value(self):
-        """'eol = exact' should have no content filters."""  # noqa: D403
+        """'eol = exact' should have no content filters."""
         prefs = (("eol", "exact"),)
         self.assertEqual([], _get_filter_stack_for(prefs))
 

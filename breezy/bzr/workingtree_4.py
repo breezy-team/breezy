@@ -2298,6 +2298,7 @@ class InterDirStateTree(InterInventoryTree):
     the source is any parent within the dirstate, and the destination is
     the current working tree of the same dirstate.
     """
+
     # this could be generalized to allow comparisons between any trees in the
     # dirstate, and possibly between trees stored in different dirstates.
 

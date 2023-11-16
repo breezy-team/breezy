@@ -2058,7 +2058,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             rec = self._check_header(key, df.readline())
         except Exception as e:
             raise KnitCorrupt(
-                self, f"While reading {{{key}}} got {e.__class__.__name__}({str(e)})"
+                self, f"While reading {{{key}}} got {e.__class__.__name__}({e!s})"
             ) from e
         return df, rec
 
@@ -2073,7 +2073,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             except Exception as e:
                 raise KnitCorrupt(
                     self,
-                    f"Corrupt compressed record {data!r}, got {e.__class__.__name__}({str(e)})",
+                    f"Corrupt compressed record {data!r}, got {e.__class__.__name__}({e!s})",
                 ) from e
             header = record_contents.pop(0)
             rec = self._split_header(header)

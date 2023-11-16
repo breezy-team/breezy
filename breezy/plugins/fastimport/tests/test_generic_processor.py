@@ -106,7 +106,7 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
         expected_modified=[],  # noqa: B006
         expected_renamed=[],  # noqa: B006
         expected_kind_changed=[],  # noqa: B006
-    ):  # noqa: B006
+    ):
         """Check the changes in a TreeDelta.
 
         This method checks that the TreeDelta contains the expected
@@ -152,7 +152,7 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
                     f"{expected_renamed_entry} is not renamed, {renamed_files} are",
                 )
         if expected_added is not None:
-            self.assertEqual(len(added), len(expected_added), f"{str(added)} is added")
+            self.assertEqual(len(added), len(expected_added), f"{added!s} is added")
             added_files = [(item.path[1],) for item in added]
             for expected_added_entry in expected_added:
                 expected_added_entry = (expected_added_entry[0].decode("utf-8"),)
@@ -163,7 +163,7 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
                 )
         if expected_removed is not None:
             self.assertEqual(
-                len(removed), len(expected_removed), f"{str(removed)} is removed"
+                len(removed), len(expected_removed), f"{removed!s} is removed"
             )
             removed_files = [(item.path[0],) for item in removed]
             for expected_removed_entry in expected_removed:
@@ -175,7 +175,7 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
                 )
         if expected_modified is not None:
             self.assertEqual(
-                len(modified), len(expected_modified), f"{str(modified)} is modified"
+                len(modified), len(expected_modified), f"{modified!s} is modified"
             )
             modified_files = [(item.path[1],) for item in modified]
             for expected_modified_entry in expected_modified:

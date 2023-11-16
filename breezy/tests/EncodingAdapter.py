@@ -1,4 +1,3 @@
-# noqa: N999
 # Copyright (C) 2006, 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify

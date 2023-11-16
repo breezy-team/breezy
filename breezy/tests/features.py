@@ -326,6 +326,7 @@ class _CaseInsensitiveFilesystemFeature(Feature):
     """Check if underlying filesystem is case-insensitive but *not* case
     preserving.
     """
+
     # Note that on Windows, Cygwin, MacOS etc, the file-systems are far
     # more likely to be case preserving, so this case is rare.
 

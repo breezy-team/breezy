@@ -79,10 +79,10 @@ from ._urlutils_rs import (  # noqa: F401
 from ._urlutils_rs import posix as posix_rs
 from ._urlutils_rs import win32 as win32_rs
 
-_posix_local_path_to_url = posix_rs.local_path_to_url  # noqa: F401
-_win32_local_path_to_url = win32_rs.local_path_to_url  # noqa: F401
-_win32_local_path_from_url = win32_rs.local_path_from_url  # noqa: F401
-_posix_local_path_from_url = posix_rs.local_path_from_url  # noqa: F401
+_posix_local_path_to_url = posix_rs.local_path_to_url
+_win32_local_path_to_url = win32_rs.local_path_to_url
+_win32_local_path_from_url = win32_rs.local_path_from_url
+_posix_local_path_from_url = posix_rs.local_path_from_url
 
 
 MIN_ABS_FILEURL_LENGTH = len("file:///")

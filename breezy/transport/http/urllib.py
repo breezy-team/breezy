@@ -1751,6 +1751,7 @@ class Opener:
 
     Daughter classes can override to build their own specific opener
     """
+
     # TODO: Provides hooks for daughter classes.
 
     def __init__(
