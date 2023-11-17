@@ -30,17 +30,19 @@ from fastbencode import bdecode_as_tuple, bencode
 import breezy
 
 from ... import debug, errors, osutils
+from ..._bzr_rs import smart as _smart_rs
 from ...trace import log_exception_quietly, mutter
 from . import message, request
 
 # Protocol version strings.  These are sent as prefixes of bzr requests and
 # responses to identify the protocol version being used. (There are no version
 # one strings because that version doesn't send any).
-REQUEST_VERSION_TWO = b"bzr request 2\n"
-RESPONSE_VERSION_TWO = b"bzr response 2\n"
+REQUEST_VERSION_TWO = _smart_rs.REQUEST_VERSION_TWO
+RESPONSE_VERSION_TWO = _smart_rs.RESPONSE_VERSION_TWO
 
-MESSAGE_VERSION_THREE = b"bzr message 3 (bzr 1.6)\n"
-RESPONSE_VERSION_THREE = REQUEST_VERSION_THREE = MESSAGE_VERSION_THREE
+MESSAGE_VERSION_THREE = _smart_rs.MESSAGE_VERSION_THREE
+REQUEST_VERSION_THREE = _smart_rs.REQUEST_VERSION_THREE
+RESPONSE_VERSION_THREE = _smart_rs.RESPONSE_VERSION_THREE
 
 
 class SmartMessageHandlerError(errors.InternalBzrError):

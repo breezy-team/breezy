@@ -12,6 +12,7 @@ mod chk_map;
 mod dirstate;
 mod groupcompress;
 mod inventory;
+mod smart;
 mod versionedfile;
 
 import_exception!(breezy.errors, ReservedId);
@@ -508,6 +509,9 @@ fn _bzr_rs(py: Python, m: &PyModule) -> PyResult<()> {
 
     let chk_mapm = chk_map::_chk_map_rs(py)?;
     m.add_submodule(chk_mapm)?;
+
+    let smartm = smart::_smart_rs(py)?;
+    m.add_submodule(smartm)?;
 
     let versionedfilem = versionedfile::_versionedfile_rs(py)?;
     m.add_submodule(versionedfilem)?;
