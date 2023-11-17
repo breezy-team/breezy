@@ -18,7 +18,6 @@
 
 import time
 import zlib
-from typing import Type
 
 from breezy import debug
 from breezy.i18n import gettext
@@ -851,6 +850,7 @@ class PyrexGroupCompressor:
     """
 
     chunks: list[bytes]
+
     def __init__(self, settings=None):
         """Create a GroupCompressor."""
         self._last = None
