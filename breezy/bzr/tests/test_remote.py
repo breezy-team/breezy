@@ -818,14 +818,8 @@ class TestBzrDirOpenBranch(TestRemote):
         transport = MemoryTransport()
         transport.mkdir("quack")
         transport = transport.clone("quack")
-        if rich_root:
-            rich_response = b"yes"
-        else:
-            rich_response = b"no"
-        if subtrees:
-            subtree_response = b"yes"
-        else:
-            subtree_response = b"no"
+        rich_response = b"yes" if rich_root else b"no"
+        subtree_response = b"yes" if subtrees else b"no"
         client = FakeClient(transport.base)
         client.add_success_response(
             b"ok", b"", rich_response, subtree_response, external_lookup, network_name
@@ -4044,9 +4038,7 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
         def inventories_substream():
             # An empty inventory fulltext.  This will be streamed normally.
             chunks = fmt._inventory_serializer.write_inventory_to_lines(inv)
-            yield versionedfile.ChunkedContentFactory(
-                (b"rev1",), (), None, chunks, chunks_are_lines=True
-            )
+            yield versionedfile.ChunkedContentFactory((b"rev1",), (), None, chunks)
 
         def inventory_delta_substream():
             # An inventory delta.  This can't be streamed via this verb, so it
@@ -4062,12 +4054,12 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
             )
             lines = serializer.delta_to_lines(b"rev1", b"rev2", delta)
             yield versionedfile.ChunkedContentFactory(
-                (b"rev2",), ((b"rev1",)), None, lines
+                (b"rev2",), ((b"rev1",),), None, lines
             )
             # Another delta.
             lines = serializer.delta_to_lines(b"rev1", b"rev3", delta)
             yield versionedfile.ChunkedContentFactory(
-                (b"rev3",), ((b"rev1",)), None, lines
+                (b"rev3",), ((b"rev1",),), None, lines
             )
 
         return stream_with_inv_delta()
@@ -4632,7 +4624,7 @@ class TestStacking(tests.TestCaseWithTransport):
     def fetch_stream_to_rev_order(self, stream):
         result = []
         for kind, substream in stream:
-            if not kind == "revisions":
+            if kind != "revisions":
                 list(substream)
             else:
                 for content in substream:
@@ -4983,7 +4975,7 @@ class TestRepositoryIterInventories(TestRemoteRepository):
                 "inventory-deltas",
                 [
                     versionedfile.FulltextContentFactory(
-                        b"somerevid",
+                        (b"somerevid",),
                         None,
                         None,
                         self._serialize_inv_delta(
@@ -5043,7 +5035,7 @@ class TestRepositoryRevisionTreeArchive(TestRemoteRepository):
                 "inventory-deltas",
                 [
                     versionedfile.FulltextContentFactory(
-                        b"somerevid",
+                        (b"somerevid",),
                         None,
                         None,
                         self._serialize_inv_delta(
@@ -5097,7 +5089,7 @@ class TestRepositoryAnnotate(TestRemoteRepository):
                 "inventory-deltas",
                 [
                     versionedfile.FulltextContentFactory(
-                        b"somerevid",
+                        (b"somerevid",),
                         None,
                         None,
                         self._serialize_inv_delta(

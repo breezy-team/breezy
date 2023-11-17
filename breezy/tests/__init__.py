@@ -1869,10 +1869,7 @@ class TestCase(testtools.TestCase):
 
     @staticmethod
     def _do_not_applicable(self, result, e):
-        if not e.args:
-            reason = "No reason given"
-        else:
-            reason = e.args[0]
+        reason = "No reason given" if not e.args else e.args[0]
         self._suppress_log()
         addNotApplicable = getattr(result, "addNotApplicable", None)
         if addNotApplicable is not None:
@@ -2268,9 +2265,8 @@ class TestCase(testtools.TestCase):
 
         :returns: Popen object for the started process.
         """
-        if skip_if_plan_to_signal:
-            if os.name != "posix":
-                raise TestSkipped("Sending signals not supported")
+        if skip_if_plan_to_signal and os.name != "posix":
+            raise TestSkipped("Sending signals not supported")
 
         if env_changes is None:
             env_changes = {}
@@ -3191,7 +3187,7 @@ class ChrootedTestCase(TestCaseWithTransport):
         from breezy.tests import http_server
 
         super().setUp()
-        if not self.vfs_transport_factory == memory.MemoryServer:
+        if self.vfs_transport_factory != memory.MemoryServer:
             self.transport_readonly_server = http_server.HttpServer
 
 
@@ -3245,10 +3241,7 @@ def condition_id_startswith(starts):
     """
 
     def condition(test):
-        for start in starts:
-            if test.id().startswith(start):
-                return True
-        return False
+        return any(test.id().startswith(start) for start in starts)
 
     return condition
 
@@ -3419,10 +3412,7 @@ def run_suite(
     :return: A boolean indicating success.
     """
     TestCase._gather_lsprof_in_benchmarks = lsprof_timed
-    if verbose:
-        verbosity = 2
-    else:
-        verbosity = 1
+    verbosity = 2 if verbose else 1
     if runner_class is None:
         runner_class = TextTestRunner
     if stream is None:
@@ -3888,10 +3878,7 @@ def selftest(
     if debug_flags is not None:
         selftest_debug_flags = set(debug_flags)
     try:
-        if load_list is None:
-            keep_only = None
-        else:
-            keep_only = load_test_id_list(load_list)
+        keep_only = None if load_list is None else load_test_id_list(load_list)
         if starting_with:
             starting_with = [
                 test_prefix_alias_registry.resolve_alias(start)

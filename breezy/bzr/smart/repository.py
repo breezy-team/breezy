@@ -289,10 +289,7 @@ class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryReadLocked):
 
         lines = []
         graph = repository.get_graph()
-        if revision_id:
-            search_ids = [revision_id]
-        else:
-            search_ids = repository.all_revision_ids()
+        search_ids = [revision_id] if revision_id else repository.all_revision_ids()
         search = graph._make_breadth_first_searcher(search_ids)
         transitive_ids = set(itertools.chain.from_iterable(search))
         parent_map = graph.get_parent_map(transitive_ids)
@@ -402,14 +399,8 @@ class SmartServerRepositoryGatherStats(SmartServerRepositoryRequest):
 
               But containing only fields returned by the gather_stats() call
         """
-        if revid == b"":
-            decoded_revision_id = None
-        else:
-            decoded_revision_id = revid
-        if committers == b"yes":
-            decoded_committers = True
-        else:
-            decoded_committers = None
+        decoded_revision_id = None if revid == b"" else revid
+        decoded_committers = True if committers == b"yes" else None
         try:
             stats = repository.gather_stats(decoded_revision_id, decoded_committers)
         except errors.NoSuchRevision:
@@ -694,12 +685,11 @@ class _ByteStreamDecoder:
         def wrap_and_count(pb, rc, substream):
             """Yield records from stream while showing progress."""
             counter = 0
-            if rc:
-                if self.current_type != "revisions" and self.key_count != 0:
-                    # As we know the number of revisions now (in self.key_count)
-                    # we can setup and use record_counter (rc).
-                    if not rc.is_initialized():
-                        rc.setup(self.key_count, self.key_count)
+            if rc and self.current_type != "revisions" and self.key_count != 0:
+                # As we know the number of revisions now (in self.key_count)
+                # we can setup and use record_counter (rc).
+                if not rc.is_initialized():
+                    rc.setup(self.key_count, self.key_count)
             for record in substream.read():
                 if rc:
                     if rc.is_initialized() and counter == rc.STEP:
@@ -787,10 +777,7 @@ class SmartServerRepositoryGetPhysicalLockStatus(SmartServerRepositoryRequest):
 
 class SmartServerRepositorySetMakeWorkingTrees(SmartServerRepositoryRequest):
     def do_repository_request(self, repository, str_bool_new_value):
-        if str_bool_new_value == b"True":
-            new_value = True
-        else:
-            new_value = False
+        new_value = str_bool_new_value == b"True"
         repository.set_make_working_trees(new_value)
         return SuccessfulSmartServerResponse((b"ok",))
 
@@ -1146,10 +1133,7 @@ class SmartServerRepositoryPack(SmartServerRepositoryRequest):
         return None
 
     def do_body(self, body_bytes):
-        if body_bytes == "":
-            hint = None
-        else:
-            hint = body_bytes.splitlines()
+        hint = None if body_bytes == "" else body_bytes.splitlines()
         with self._repository.lock_write(token=self._lock_token):
             self._repository.pack(hint, self._clean_obsolete_packs)
         return SuccessfulSmartServerResponse(
@@ -1275,13 +1259,11 @@ class SmartServerRepositoryGetInventories(SmartServerRepositoryRequest):
             for inv, _revid in repository._iter_inventories(revids, ordering):
                 if inv is None:
                     continue
-                inv_delta = inv._make_delta(prev_inv)
+                inv_delta = _mod_inventory._make_delta(inv, prev_inv)
                 lines = serializer.delta_to_lines(
                     prev_inv.revision_id, inv.revision_id, inv_delta
                 )
-                yield ChunkedContentFactory(
-                    inv.revision_id, None, None, lines, chunks_are_lines=True
-                )
+                yield ChunkedContentFactory((inv.revision_id,), None, None, lines)
                 prev_inv = inv
 
     def body_stream(self, repository, ordering, revids):

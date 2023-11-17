@@ -303,17 +303,16 @@ class cmd_ancestor_growth(commands.Command):
 def gather_class_stats(repository, revs):
     ret = {}
     total = 0
-    with ui.ui_factory.nested_progress_bar() as pb:
-        with repository.lock_read():
-            i = 0
-            for delta in repository.get_revision_deltas(revs):
-                pb.update("classifying commits", i, len(revs))
-                for c in classify_delta(delta):
-                    if c not in ret:
-                        ret[c] = 0
-                    ret[c] += 1
-                    total += 1
-                i += 1
+    with ui.ui_factory.nested_progress_bar() as pb, repository.lock_read():
+        i = 0
+        for delta in repository.get_revision_deltas(revs):
+            pb.update("classifying commits", i, len(revs))
+            for c in classify_delta(delta):
+                if c not in ret:
+                    ret[c] = 0
+                ret[c] += 1
+                total += 1
+            i += 1
     return ret, total
 
 

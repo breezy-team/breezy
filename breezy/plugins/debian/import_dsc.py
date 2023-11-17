@@ -1088,7 +1088,7 @@ class DistributionBranch:
             changelog, self.branch
         )
         if message is None:
-            message = f"Import packaging changes for version {str(version)}"
+            message = f"Import packaging changes for version {version!s}"
         supports_revprops = (
             self.tree.branch.repository._format.supports_custom_revision_properties
         )

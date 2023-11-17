@@ -16,6 +16,8 @@
 
 """Annotate."""
 
+import contextlib
+
 from dulwich.object_store import tree_lookup_path
 
 from .. import osutils
@@ -139,10 +141,8 @@ class AnnotateProvider:
             if text_revision == NULL_REVISION:
                 ret[key] = ()
                 continue
-            try:
+            with contextlib.suppress(KeyError):
                 ret[key] = self._get_parents(path, text_revision)
-            except KeyError:
-                pass
         return ret
 
     def get_record_stream(self, keys, ordering, include_delta_closure):

@@ -642,10 +642,7 @@ class TestGraph(TestCaseWithMemoryTransport):
                 ):
                     continue
                 tree.set_parent_ids(parents)
-                if len(parents) > 0:
-                    left_parent = parents[0]
-                else:
-                    left_parent = NULL_REVISION
+                left_parent = parents[0] if len(parents) > 0 else NULL_REVISION
                 tree.branch.set_last_revision_info(
                     len(tree.branch._lefthand_history(left_parent)), left_parent
                 )

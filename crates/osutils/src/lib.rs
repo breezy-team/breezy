@@ -3,24 +3,60 @@ use memchr::memchr;
 use rand::Rng;
 use std::borrow::Cow;
 
-fn is_well_formed_line(line: &[u8]) -> bool {
+pub fn is_well_formed_line(line: &[u8]) -> bool {
     if line.is_empty() {
         return false;
     }
     memchr(b'\n', line) == Some(line.len() - 1)
 }
 
-pub fn chunks_to_lines<'a, I, E>(chunks: I) -> impl Iterator<Item = Result<Cow<'a, [u8]>, E>>
+pub trait AsCow<'a, T: ToOwned + ?Sized> {
+    fn as_cow(self) -> Cow<'a, T>;
+}
+
+impl<'a> AsCow<'a, [u8]> for &'a [u8] {
+    fn as_cow(self) -> Cow<'a, [u8]> {
+        Cow::Borrowed(self)
+    }
+}
+
+impl<'a> AsCow<'a, [u8]> for Cow<'a, [u8]> {
+    fn as_cow(self) -> Cow<'a, [u8]> {
+        self
+    }
+}
+
+impl<'a> AsCow<'a, [u8]> for Vec<u8> {
+    fn as_cow(self) -> Cow<'a, [u8]> {
+        Cow::Owned(self)
+    }
+}
+
+impl<'a> AsCow<'a, [u8]> for &'a Vec<u8> {
+    fn as_cow(self) -> Cow<'a, [u8]> {
+        Cow::Borrowed(self.as_slice())
+    }
+}
+
+pub fn chunks_to_lines<'a, C, I, E>(chunks: I) -> impl Iterator<Item = Result<Cow<'a, [u8]>, E>>
 where
-    I: Iterator<Item = Result<&'a [u8], E>> + 'a,
+    I: Iterator<Item = Result<C, E>> + 'a,
+    C: AsCow<'a, [u8]> + 'a,
     E: std::fmt::Debug,
 {
-    pub struct ChunksToLines<'a, E> {
-        chunks: Box<dyn Iterator<Item = Result<&'a [u8], E>> + 'a>,
+    pub struct ChunksToLines<'a, C, E>
+    where
+        C: AsCow<'a, [u8]>,
+        E: std::fmt::Debug,
+    {
+        chunks: Box<dyn Iterator<Item = Result<C, E>> + 'a>,
         tail: Vec<u8>,
     }
 
-    impl<'a, E: std::fmt::Debug> Iterator for ChunksToLines<'a, E> {
+    impl<'a, C, E: std::fmt::Debug> Iterator for ChunksToLines<'a, C, E>
+    where
+        C: AsCow<'a, [u8]>,
+    {
         type Item = Result<Cow<'a, [u8]>, E>;
 
         fn next(&mut self) -> Option<Self::Item> {
@@ -39,11 +75,13 @@ where
                                 return Some(Err(e));
                             }
                             Ok(next_chunk) => {
+                                let next_chunk = next_chunk.as_cow();
                                 // If the chunk is well-formed, return it
-                                if self.tail.is_empty() && is_well_formed_line(next_chunk) {
-                                    return Some(Ok(Cow::Borrowed(next_chunk)));
+                                if self.tail.is_empty() && is_well_formed_line(next_chunk.as_ref())
+                                {
+                                    return Some(Ok(next_chunk));
                                 } else {
-                                    self.tail.extend_from_slice(next_chunk);
+                                    self.tail.extend_from_slice(next_chunk.as_ref());
                                 }
                             }
                         }
@@ -65,6 +103,54 @@ where
         chunks: Box::new(chunks),
         tail: Vec::new(),
     }
+}
+
+#[test]
+fn test_chunks_to_lines() {
+    assert_eq!(
+        chunks_to_lines(vec![Ok::<_, std::io::Error>("foo\nbar".as_bytes().as_cow())].into_iter())
+            .map(|x| x.unwrap())
+            .collect::<Vec<_>>(),
+        vec!["foo\n".as_bytes().as_cow(), "bar".as_bytes().as_cow()]
+    );
+}
+
+pub fn split_lines(text: &[u8]) -> impl Iterator<Item = Cow<'_, [u8]>> {
+    pub struct SplitLines<'a> {
+        text: &'a [u8],
+    }
+
+    impl<'a> Iterator for SplitLines<'a> {
+        type Item = Cow<'a, [u8]>;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            if self.text.is_empty() {
+                return None;
+            }
+            if let Some(newline) = memchr(b'\n', self.text) {
+                let line = Cow::Borrowed(&self.text[..=newline]);
+                self.text = &self.text[newline + 1..];
+                Some(line)
+            } else {
+                // No newline found, so return the rest of the text
+                let line = Cow::Borrowed(self.text);
+                self.text = &self.text[self.text.len()..];
+                Some(line)
+            }
+        }
+    }
+
+    SplitLines { text }
+}
+
+#[test]
+fn test_split_lines() {
+    assert_eq!(
+        split_lines("foo\nbar".as_bytes())
+            .map(|x| x.to_vec())
+            .collect::<Vec<_>>(),
+        vec!["foo\n".as_bytes().to_vec(), "bar".as_bytes().to_vec()]
+    );
 }
 
 pub fn set_or_unset_env(
@@ -116,7 +202,7 @@ pub fn get_umask() -> Mode {
     mask
 }
 
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum Kind {
     File,
     Directory,
@@ -140,6 +226,35 @@ impl Kind {
             Kind::Directory => "directory",
             Kind::Symlink => "symlink",
             Kind::TreeReference => "tree-reference",
+        }
+    }
+}
+
+#[cfg(feature = "pyo3")]
+impl pyo3::ToPyObject for Kind {
+    fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
+        match self {
+            Kind::File => "file".to_object(py),
+            Kind::Directory => "directory".to_object(py),
+            Kind::Symlink => "symlink".to_object(py),
+            Kind::TreeReference => "tree-reference".to_object(py),
+        }
+    }
+}
+
+#[cfg(feature = "pyo3")]
+impl pyo3::FromPyObject<'_> for Kind {
+    fn extract(ob: &pyo3::PyAny) -> pyo3::PyResult<Self> {
+        let s: String = ob.extract()?;
+        match s.as_str() {
+            "file" => Ok(Kind::File),
+            "directory" => Ok(Kind::Directory),
+            "symlink" => Ok(Kind::Symlink),
+            "tree-reference" => Ok(Kind::TreeReference),
+            _ => Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "Invalid kind: {}",
+                s
+            ))),
         }
     }
 }
@@ -259,6 +374,7 @@ pub fn get_user_encoding() -> Option<String> {
     }
 }
 
+pub mod chunkreader;
 pub mod file;
 pub mod iterablefile;
 pub mod path;

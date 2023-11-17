@@ -139,7 +139,7 @@ def main():
         "directory", default=".", nargs="?", type=str, help="Path to working tree"
     )
 
-    import breezy.bzr  # noqa: F401
+    import breezy.bzr
     import breezy.git  # noqa: F401
 
     args = parser.parse_args()

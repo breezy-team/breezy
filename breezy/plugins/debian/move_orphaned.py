@@ -27,7 +27,7 @@ from debmutate.control import ControlEditor
 from debmutate.deb822 import ChangeConflict
 from debmutate.reformatting import FormattingUnpreservable, GeneratedFile
 
-import breezy.bzr  # noqa: F401
+import breezy.bzr
 import breezy.git  # noqa: F401
 from breezy import osutils
 from breezy.branch import Branch
@@ -160,7 +160,7 @@ def set_vcs_fields_to_salsa_user(control, salsa_user):
 
 def set_maintainer_to_qa_team(control):
     if (
-        QA_MAINTAINER == control.source.get("Maintainer")
+        control.source.get("Maintainer") == QA_MAINTAINER
         and "Uploaders" not in control.source
     ):
         return False

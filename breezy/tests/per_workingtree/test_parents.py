@@ -433,8 +433,8 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
 
     def make_inv_delta(self, old, new):
         """Make an inventory delta from two inventories."""
-        old_ids = set(old._byid)
-        new_ids = set(new._byid)
+        old_ids = set(old.iter_all_ids())
+        new_ids = set(new.iter_all_ids())
         adds = new_ids - old_ids
         deletes = old_ids - new_ids
         common = old_ids.intersection(new_ids)

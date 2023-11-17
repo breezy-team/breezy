@@ -1,4 +1,3 @@
-# noqa: N999
 # (c) Canonical Ltd, 2006
 # written by Alexander Belchenko for brz project
 #
@@ -72,7 +71,7 @@ Congratulation! Brz successfully installed.
         batch_str = f"@{python_path} {script_path} {args}"
         # support of win98
         # if there is no HOME for brz then set it for Breezy manually
-        base = os.environ.get("brz_HOME", None)
+        base = os.environ.get("BRZ_HOME", None)
         if base is None:
             base = win32utils.get_appdata_location()
         if base is None:

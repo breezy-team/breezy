@@ -385,19 +385,21 @@ def report_extension_load_failures():
     # https://bugs.launchpad.net/bzr/+bug/430529
 
 
+import contextlib
+
 from ._osutils_rs import (  # noqa: F401
-    _accessible_normalized_filename,  # noqa: F401
+    _accessible_normalized_filename,
     _inaccessible_normalized_filename,
     check_legal_path,
-    chunks_to_lines,  # noqa: F401
+    chunks_to_lines,
     chunks_to_lines_iter,
     delete_any,
-    get_host_name,  # noqa: F401
+    get_host_name,
     link_or_copy,
     local_concurrency,
-    normalized_filename,  # noqa: F401
+    normalized_filename,
     normalizes_filenames,
-    split_lines,  # noqa: F401
+    split_lines,
 )
 
 readlink = _osutils_rs.readlink
@@ -623,9 +625,8 @@ def terminal_width():
 
     # If the OS claims to know how wide the terminal is, and this value has
     # ever changed, use that.
-    if _terminal_size_state == "changed":
-        if width is not None and width > 0:
-            return width
+    if _terminal_size_state == "changed" and width is not None and width > 0:
+        return width
 
     # If COLUMNS is set, use it.
     try:
@@ -634,9 +635,8 @@ def terminal_width():
         pass
 
     # Finally, use an unchanged size from the OS, if we have one.
-    if _terminal_size_state == "unchanged":
-        if width is not None and width > 0:
-            return width
+    if _terminal_size_state == "unchanged" and width is not None and width > 0:
+        return width
 
     # The width could not be determined.
     return None
@@ -689,10 +689,7 @@ def walkdirs(top, prefix="", fsdecode=os.fsdecode):
     while pending:
         # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
         relroot, _, _, _, top = pending.pop()
-        if relroot:
-            relprefix = relroot + "/"
-        else:
-            relprefix = ""
+        relprefix = relroot + "/" if relroot else ""
         top + "/"
 
         dirblock = []
@@ -814,10 +811,7 @@ class UnicodeDirReader(DirReader):
         """
         _utf8_encode = self._utf8_encode
 
-        if prefix:
-            relprefix = prefix + b"/"
-        else:
-            relprefix = b""
+        relprefix = prefix + b"/" if prefix else b""
         top_slash = top + "/"
 
         dirblock = []
@@ -849,10 +843,8 @@ MAX_SOCKET_CHUNK = 64 * 1024
 
 _end_of_stream_errors: List[int] = [errno.ECONNRESET, errno.EPIPE, errno.EINVAL]
 for _eno in ["WSAECONNRESET", "WSAECONNABORTED"]:
-    try:
+    with contextlib.suppress(AttributeError):
         _end_of_stream_errors.append(getattr(errno, _eno))
-    except AttributeError:
-        pass
 
 
 def read_bytes_from_socket(sock, report_activity=None, max_read_size=MAX_SOCKET_CHUNK):

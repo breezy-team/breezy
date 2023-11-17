@@ -275,7 +275,7 @@ class TestErrors(tests.TestCase):
         # An exception object can be passed rather than a string
         orig_error = ValueError("bad value")
         self.assertSocketConnectionError(
-            f"Failed to connect to ahost; {str(orig_error)}",
+            f"Failed to connect to ahost; {orig_error!s}",
             host="ahost",
             orig_error=orig_error,
         )

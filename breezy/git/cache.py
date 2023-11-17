@@ -16,6 +16,7 @@
 
 """Map from Git sha's to Bazaar objects."""
 
+import contextlib
 import hashlib
 import os
 import threading
@@ -24,7 +25,7 @@ from dulwich.objects import ShaFile, hex_to_sha, sha_to_hex
 
 from .. import errors as bzr_errors
 from .. import registry, trace
-from .._git_rs import get_cache_dir  # noqa: F401
+from .._git_rs import get_cache_dir
 from ..bzr import btree_index as _mod_btree_index
 from ..bzr import index as _mod_index
 from ..bzr import versionedfile
@@ -180,10 +181,8 @@ class BzrGitCacheFormat:
             except bzr_errors.ReadOnlyError:
                 transport = None
             else:
-                try:
+                with contextlib.suppress(FileExists):
                     repo_transport.mkdir("git")
-                except FileExists:
-                    pass
                 transport = repo_transport.clone("git")
         else:
             transport = None
@@ -456,10 +455,7 @@ class SqliteGitShaMap(GitShaMap):
         )
         for row in cursor.fetchall():
             found = True
-            if row[2] is not None:
-                verifiers = {"testament3-sha1": row[2]}
-            else:
-                verifiers = {}
+            verifiers = {"testament3-sha1": row[2]} if row[2] is not None else {}
             yield ("commit", (row[0], row[1], verifiers))
         cursor = self.db.execute(
             "select fileid, revid from blobs where sha1 = ?", (sha,)
@@ -510,10 +506,8 @@ class TdbCacheUpdater(CacheUpdater):
             if not isinstance(bzr_key_data, dict):
                 raise TypeError(bzr_key_data)
             type_data = (self.revid, obj.tree)
-            try:
+            with contextlib.suppress(KeyError):
                 type_data += (bzr_key_data["testament3-sha1"],)
-            except KeyError:
-                pass
             self._commit = obj
         elif type_name == "blob":
             if bzr_key_data is None:
@@ -792,10 +786,8 @@ class IndexGitShaMap(GitShaMap):
     def from_repository(cls, repository):
         transport = getattr(repository, "_transport", None)
         if transport is not None:
-            try:
+            with contextlib.suppress(FileExists):
                 transport.mkdir("git")
-            except FileExists:
-                pass
             return cls(transport.clone("git"))
         return cls(get_transport_from_path(get_cache_dir()))
 
@@ -881,10 +873,8 @@ class IndexGitShaMap(GitShaMap):
             self._name.update(hexsha)
             if type == b"commit":
                 td = (type_data[0], type_data[1])
-                try:
+                with contextlib.suppress(KeyError):
                     td += (type_data[2]["testament3-sha1"],)
-                except KeyError:
-                    pass
             else:
                 td = type_data
             self._add_node((b"git", hexsha, b"X"), b" ".join((type,) + td))
@@ -903,10 +893,7 @@ class IndexGitShaMap(GitShaMap):
         data = value.split(b" ", 3)
         if data[0] == b"commit":
             try:
-                if data[3]:
-                    verifiers = {"testament3-sha1": data[3]}
-                else:
-                    verifiers = {}
+                verifiers = {"testament3-sha1": data[3]} if data[3] else {}
             except IndexError:
                 verifiers = {}
             yield ("commit", (data[1], data[2], verifiers))

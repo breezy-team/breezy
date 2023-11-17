@@ -17,6 +17,7 @@
 """Commit message editor support."""
 
 import codecs
+import contextlib
 import os
 import sys
 from io import BytesIO, StringIO
@@ -36,10 +37,8 @@ class BadCommitMessageEncoding(BzrError):
 
 def _get_editor():
     """Return sequence of possible editor binaries for the current platform."""
-    try:
+    with contextlib.suppress(KeyError):
         yield os.environ["BRZ_EDITOR"], "$BRZ_EDITOR"
-    except KeyError:
-        pass
 
     e = config.GlobalStack().get("editor")
     if e is not None:
@@ -69,7 +68,7 @@ def _run_editor(filename):
                 # environment variable or config file) said to try it.  Let
                 # the user know their configuration is broken.
                 trace.warning(
-                    f'Could not start editor "{candidate}" (specified by {candidate_source}): {str(e)}\n'
+                    f'Could not start editor "{candidate}" (specified by {candidate_source}): {e!s}\n'
                 )
             continue
             raise
@@ -150,16 +149,15 @@ def edit_commit_message_encoded(
         if not _run_editor(msgfilename):
             return None
         edited_content = msg_transport.get_bytes(basename)
-        if edited_content == reference_content:
-            if not ui.ui_factory.confirm_action(
-                "Commit message was not edited, use anyway",
-                "breezy.msgeditor.unchanged",
-                {},
-            ):
-                # Returning "" makes cmd_commit raise 'empty commit message
-                # specified' which is a reasonable error, given the user has
-                # rejected using the unedited template.
-                return ""
+        if edited_content == reference_content and not ui.ui_factory.confirm_action(
+            "Commit message was not edited, use anyway",
+            "breezy.msgeditor.unchanged",
+            {},
+        ):
+            # Returning "" makes cmd_commit raise 'empty commit message
+            # specified' which is a reasonable error, given the user has
+            # rejected using the unedited template.
+            return ""
         started = False
         msg = []
         lastline, nlines = 0, 0

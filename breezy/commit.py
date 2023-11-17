@@ -634,10 +634,7 @@ class Commit:
         # With bound branches, when the master is behind the local branch,
         # the 'old_revno' and old_revid values here are incorrect.
         # XXX: FIXME ^. RBC 20060206
-        if self.parents:
-            old_revid = self.parents[0]
-        else:
-            old_revid = breezy.revision.NULL_REVISION
+        old_revid = self.parents[0] if self.parents else breezy.revision.NULL_REVISION
 
         if hook_name == "pre_commit":
             future_tree = self.builder.revision_tree()
@@ -731,9 +728,8 @@ class Commit:
                 change = change.discard_new()
                 new_path = change.path[1]
                 versioned = False
-            elif kind == "tree-reference":
-                if self.recursive == "down":
-                    self._commit_nested_tree(change.path[1])
+            elif kind == "tree-reference" and self.recursive == "down":
+                self._commit_nested_tree(change.path[1])
             if change.versioned[0] or change.versioned[1]:
                 yield change
                 if report_changes:

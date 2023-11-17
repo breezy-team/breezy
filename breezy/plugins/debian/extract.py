@@ -84,10 +84,10 @@ class OneZeroSourceExtractor(SourceExtractor):
         name = self.dsc["Source"]
         version = Version(self.dsc["Version"])
         self.extracted_upstream = os.path.join(
-            tempdir, f"{name}-{str(version.upstream_version)}.orig"
+            tempdir, f"{name}-{version.upstream_version!s}.orig"
         )
         self.extracted_debianised = os.path.join(
-            tempdir, f"{name}-{str(version.upstream_version)}"
+            tempdir, f"{name}-{version.upstream_version!s}"
         )
         if not os.path.exists(self.extracted_upstream):
             mutter("It's a native package")
@@ -134,7 +134,7 @@ class ThreeDotZeroNativeSourceExtractor(SourceExtractor):
         name = self.dsc["Source"]
         version = Version(self.dsc["Version"])
         self.extracted_debianised = os.path.join(
-            tempdir, f"{name}-{str(version.upstream_version)}"
+            tempdir, f"{name}-{version.upstream_version!s}"
         )
         self.extracted_upstream = None
         for part in self.dsc["files"]:
@@ -170,7 +170,7 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
         name = self.dsc["Source"]
         version = Version(self.dsc["Version"])
         self.extracted_debianised = os.path.join(
-            tempdir, f"{name}-{str(version.upstream_version)}"
+            tempdir, f"{name}-{version.upstream_version!s}"
         )
         self.extracted_upstream = self.extracted_debianised + ".orig"
         os.rename(self.extracted_debianised, self.extracted_upstream)
@@ -213,7 +213,7 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
         )
         for part in self.dsc["files"]:
             if part["name"].startswith(
-                f"{name}_{str(version.upstream_version)}.orig"
+                f"{name}_{version.upstream_version!s}.orig"
             ) and not part["name"].endswith(".asc"):
                 self.upstream_tarballs.append(
                     (

@@ -40,6 +40,8 @@ from breezy.bzr import (
     )
 """,
 )
+import contextlib
+
 from ..tree import (
     FileTimestampUnavailable,
     InterTree,
@@ -203,10 +205,8 @@ class InventoryTree(Tree):
         file_ids = self.paths2ids(paths, trees, require_versioned=require_versioned)
         ret = set()
         for file_id in file_ids:
-            try:
+            with contextlib.suppress(errors.NoSuchId):
                 ret.add(self.id2path(file_id))
-            except errors.NoSuchId:
-                pass
         return ret
 
     def paths2ids(self, paths, trees=None, require_versioned=True):
@@ -251,10 +251,7 @@ class InventoryTree(Tree):
 
     def _path2inv_ie(self, path):
         inv = self.root_inventory
-        if isinstance(path, list):
-            remaining = path
-        else:
-            remaining = osutils.splitpath(path)
+        remaining = path if isinstance(path, list) else osutils.splitpath(path)
         ie = inv.root
         while remaining:
             ie, base, remaining = inv.get_entry_by_path_partial(remaining)
@@ -322,7 +319,10 @@ class InventoryTree(Tree):
                         raise AssertionError(
                             f"{inventory!r} != {self.root_inventory!r}"
                         )
-                    inventory_file_ids.add(inv_file_id)
+                    if inv_file_id is not None:
+                        # TODO(jelmer): Should we perhaps raise NoSuchFile here
+                        # rather than silently skipping entries?
+                        inventory_file_ids.add(inv_file_id)
             else:
                 inventory_file_ids = None
 
@@ -692,7 +692,7 @@ class MutableInventoryTree(MutableTree, InventoryTree):
                 raise AssertionError()
         if kinds is None:
             kinds = [None] * len(files)
-        elif not len(kinds) == len(files):
+        elif len(kinds) != len(files):
             raise AssertionError()
         with self.lock_tree_write():
             for f in files:
@@ -1057,10 +1057,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
                     recurse_nested=recurse_nested,
                     recursive=recursive,
                 ):
-                    if subpath:
-                        full_subpath = osutils.pathjoin(path, subpath)
-                    else:
-                        full_subpath = path
+                    full_subpath = osutils.pathjoin(path, subpath) if subpath else path
                     yield full_subpath, status, kind, entry
             else:
                 yield path, "V", entry.kind, entry
@@ -1131,17 +1128,11 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
     def walkdirs(self, prefix=""):
         _directory = "directory"
         inv, top_id = self._path2inv_file_id(prefix)
-        if top_id is None:
-            pending = []
-        else:
-            pending = [(prefix, top_id)]
+        pending = [] if top_id is None else [(prefix, top_id)]
         while pending:
             dirblock = []
             root, file_id = pending.pop()
-            if root:
-                relroot = root + "/"
-            else:
-                relroot = ""
+            relroot = root + "/" if root else ""
             # FIXME: stash the node in pending
             subdirs = []
             for child in inv.iter_sorted_children(file_id):
@@ -1256,11 +1247,10 @@ class InterInventoryTree(InterTree):
                 source_path
             ) != self.target.get_symlink_target(target_path):
                 changed_content = True
-        elif source_kind == "tree-reference":
-            if self.source.get_reference_revision(
-                source_path
-            ) != self.target.get_reference_revision(target_path):
-                changed_content = True
+        elif source_kind == "tree-reference" and self.source.get_reference_revision(
+            source_path
+        ) != self.target.get_reference_revision(target_path):
+            changed_content = True
         parent = (source_parent, target_parent)
         name = (source_name, target_name)
         executable = (source_executable, target_executable)
@@ -1327,10 +1317,7 @@ class InterInventoryTree(InterTree):
             output. An unversioned file is defined as one with (False, False)
             for the versioned pair.
         """
-        if not extra_trees:
-            extra_trees = []
-        else:
-            extra_trees = list(extra_trees)
+        extra_trees = [] if not extra_trees else list(extra_trees)
         # The ids of items we need to examine to insure delta consistency.
         precise_file_ids = set()
         changed_file_ids = []

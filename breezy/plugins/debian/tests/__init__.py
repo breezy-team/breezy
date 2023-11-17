@@ -357,20 +357,20 @@ class SourcePackageBuilder:
             self._cl.add_change(change_text)
 
     def dsc_name(self):
-        return f"{self.name}_{str(self._cl.version)}.dsc"
+        return f"{self.name}_{self._cl.version!s}.dsc"
 
     def tar_name(self):
         if self.native:
-            return f"{self.name}_{str(self._cl.version)}.tar.gz"
-        return f"{self.name}_{str(self._cl.version.upstream_version)}.orig.tar.gz"
+            return f"{self.name}_{self._cl.version!s}.tar.gz"
+        return f"{self.name}_{self._cl.version.upstream_version!s}.orig.tar.gz"
 
     def diff_name(self):
         if self.native:
             raise AssertionError("Can't have a diff with a native package")
-        return f"{self.name}_{str(self._cl.version)}.diff.gz"
+        return f"{self.name}_{self._cl.version!s}.diff.gz"
 
     def changes_name(self):
-        return f"{self.name}_{str(self._cl.version)}_source.changes"
+        return f"{self.name}_{self._cl.version!s}_source.changes"
 
     def _make_files(self, files_list, basedir):
         for path, content in files_list.items():

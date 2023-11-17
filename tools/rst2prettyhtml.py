@@ -53,14 +53,8 @@ def safe_open(filename, mode):
 
 
 def main(template, source=None, target=None):
-    if source is not None:
-        rest_file = safe_open(source, "r")
-    else:
-        rest_file = sys.stdin
-    if target is not None:
-        out_file = safe_open(target, "w")
-    else:
-        out_file = sys.stdout
+    rest_file = safe_open(source, "r") if source is not None else sys.stdin
+    out_file = safe_open(target, "w") if target is not None else sys.stdout
     out_file.write(kidified_rest(rest_file, template))
 
 

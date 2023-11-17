@@ -218,10 +218,7 @@ class ScriptRunner:
             raise SyntaxError(
                 f'Command not found "{cmd[0]}"', (None, 1, 1, " ".join(cmd))
             )
-        if input is None:
-            str_input = ""
-        else:
-            str_input = "".join(input)
+        str_input = "" if input is None else "".join(input)
         args = list(self._pre_process_args(cmd[1:]))
         retcode, actual_output, actual_error = method(test_case, str_input, args)
 
@@ -442,10 +439,7 @@ class ScriptRunner:
                 if not force:
                     err = error("No such file or directory", p)
                     break
-        if err:
-            retcode = 1
-        else:
-            retcode = 0
+        retcode = 1 if err else 0
         return retcode, None, err
 
     def do_mv(self, test_case, input, args):
@@ -464,10 +458,7 @@ class ScriptRunner:
             os.rename(src, real_dst)
         except FileNotFoundError:
             err = error("No such file or directory", src, dst)
-        if err:
-            retcode = 1
-        else:
-            retcode = 0
+        retcode = 1 if err else 0
         return retcode, None, err
 
 

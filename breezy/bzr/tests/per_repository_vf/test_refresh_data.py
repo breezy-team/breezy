@@ -37,7 +37,7 @@ class TestRefreshData(TestCaseWithRepository):
         source = self.make_branch_and_memory_tree("source")
         source.lock_write()
         self.addCleanup(source.unlock)
-        source.add([""], [b"root-id"])
+        source.add([""], ids=[b"root-id"])
         revid = source.commit("foo", rev_id=b"new-rev")
         # Force data reading on weaves/knits
         repo.all_revision_ids()

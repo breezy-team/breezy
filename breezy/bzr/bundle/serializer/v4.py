@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import bz2
+import contextlib
 import re
 from io import BytesIO
 
@@ -26,6 +27,7 @@ from .... import revision as _mod_revision
 from ....i18n import ngettext
 from ... import pack, serializer
 from ... import versionedfile as _mod_versionedfile
+from ...inventory import _make_delta
 from .. import bundle_data
 from .. import serializer as bundle_serializer
 
@@ -401,15 +403,13 @@ class BundleWriteOperation:
             self.bundle.add_fulltext_record(
                 revision_text, parents, "revision", revision_id
             )
-            try:
+            with contextlib.suppress(errors.NoSuchRevision):
                 self.bundle.add_fulltext_record(
                     self.repository.get_signature_text(revision_id),
                     parents,
                     "signature",
                     revision_id,
                 )
-            except errors.NoSuchRevision:
-                pass
 
     @staticmethod
     def get_base_target(revision_ids, forced_bases, repository):
@@ -420,10 +420,7 @@ class BundleWriteOperation:
         base = forced_bases.get(target)
         if base is None:
             parents = repository.get_revision(target).parent_ids
-            if len(parents) == 0:
-                base = _mod_revision.NULL_REVISION
-            else:
-                base = parents[0]
+            base = _mod_revision.NULL_REVISION if len(parents) == 0 else parents[0]
         return base, target
 
     def _add_mp_records_keys(self, repo_kind, vf, keys):
@@ -440,10 +437,7 @@ class BundleWriteOperation:
             parents = [key[-1] for key in parent_map[item_key]]
             text = b"".join(mpdiff.to_patch())
             # Infer file id records as appropriate.
-            if len(item_key) == 2:
-                file_id = item_key[0]
-            else:
-                file_id = None
+            file_id = item_key[0] if len(item_key) == 2 else None
             self.bundle.add_multiparent_record(
                 text, sha1, parents, repo_kind, item_key[-1], file_id
             )
@@ -727,7 +721,7 @@ class RevisionInstaller:
                             revision_id, target_inv, parent_ids
                         )
                     else:
-                        delta = target_inv._make_delta(parent_inv)
+                        delta = _make_delta(target_inv, parent_inv)
                         self._repository.add_inventory_by_delta(
                             parent_ids[0], delta, revision_id, parent_ids
                         )

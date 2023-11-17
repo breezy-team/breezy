@@ -472,10 +472,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     if verbose:
                         # having removed it, it must be either ignored or
                         # unknown
-                        if self.is_ignored(f):
-                            new_status = "I"
-                        else:
-                            new_status = "?"
+                        new_status = "I" if self.is_ignored(f) else "?"
                         # XXX: Really should be a more abstract reporter
                         # interface
                         kind_ch = osutils.kind_marker(self.kind(f))
@@ -989,7 +986,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
         def add_children(inventory, other_inventory, entry):
             for child_entry in other_inventory.get_children(entry.file_id).values():
-                inventory._byid[child_entry.file_id] = child_entry
+                inventory.add(child_entry)
                 if child_entry.kind == "directory":
                     add_children(inventory, other_inventory, child_entry)
 
@@ -1839,10 +1836,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             currentdir = pending.pop()
             # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-id, 5-kind
             top_id = currentdir[4]
-            if currentdir[0]:
-                relroot = currentdir[0] + "/"
-            else:
-                relroot = ""
+            relroot = currentdir[0] + "/" if currentdir[0] else ""
             # FIXME: stash the node in pending
             entry = inv.get_entry(top_id)
             if entry.kind == "directory":
@@ -1897,10 +1891,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 for subpath, ie in subtree.iter_entries_by_dir(
                     recurse_nested=recurse_nested, specific_files=specific_files
                 ):
-                    if subpath:
-                        full_subpath = osutils.pathjoin(path, subpath)
-                    else:
-                        full_subpath = path
+                    full_subpath = osutils.pathjoin(path, subpath) if subpath else path
                     yield full_subpath, ie
             else:
                 yield path, ie

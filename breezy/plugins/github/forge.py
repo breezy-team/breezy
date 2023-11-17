@@ -535,10 +535,7 @@ class GitHub(Forge):
         return ret["items"][0]
 
     def _get_user(self, username=None):
-        if username:
-            path = f"users/{username}"
-        else:
-            path = "user"
+        path = f"users/{username}" if username else "user"
         response = self._api_request("GET", path)
         if response.status != 200:
             raise UnexpectedHttpStatus(
@@ -556,10 +553,7 @@ class GitHub(Forge):
         return json.loads(response.text)
 
     def _list_paged(self, path, parameters=None, per_page=None):
-        if parameters is None:
-            parameters = {}
-        else:
-            parameters = dict(parameters.items())
+        parameters = {} if parameters is None else dict(parameters.items())
         if per_page:
             parameters["per_page"] = str(per_page)
         page = 1
@@ -833,10 +827,7 @@ class GitHub(Forge):
         return GitHubMergeProposal(self, data)
 
     def iter_my_forks(self, owner=None):
-        if owner:
-            path = f"/users/{owner}/repos"
-        else:
-            path = "/user/repos"
+        path = f"/users/{owner}/repos" if owner else "/user/repos"
         for page in self._list_paged(path, per_page=DEFAULT_PER_PAGE):
             for project in page:
                 if not project["fork"]:

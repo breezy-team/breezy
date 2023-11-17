@@ -22,24 +22,25 @@ from ... import tests
 from ..._bzr_rs import groupcompress as _groupcompress_rs
 from ...tests import features
 from ...tests.scenarios import load_tests_apply_scenarios
-from .. import _groupcompress_py
+from .. import groupcompress
 
 
 def module_scenarios():
     scenarios = [
-        ("python", {"_gc_module": _groupcompress_py}),
+        (
+            "line",
+            {"make_delta": groupcompress.make_line_delta},
+        ),
+        ("rabin", {"make_delta": groupcompress.make_rabin_delta}),
     ]
-    if compiled_groupcompress_feature.available():
-        gc_module = compiled_groupcompress_feature.module
-        scenarios.append(("C", {"_gc_module": gc_module}))
     return scenarios
 
 
 def two_way_scenarios():
-    scenarios = [("PR", {"make_delta": _groupcompress_py.make_delta})]
-    if compiled_groupcompress_feature.available():
-        gc_module = compiled_groupcompress_feature.module
-        scenarios.extend([("CR", {"make_delta": gc_module.make_delta})])
+    scenarios = [
+        ("LR", {"make_delta": groupcompress.make_line_delta}),
+        ("RR", {"make_delta": groupcompress.make_rabin_delta}),
+    ]
     return scenarios
 
 
@@ -114,7 +115,6 @@ class TestMakeAndApplyDelta(tests.TestCase):
 
     def setUp(self):
         super().setUp()
-        self.make_delta = self._gc_module.make_delta
         self.apply_delta = _groupcompress_rs.apply_delta
         self.apply_delta_to_source = _groupcompress_rs.apply_delta_to_source
 
@@ -285,7 +285,7 @@ class TestDeltaIndex(tests.TestCase):
             for idx, (text_offset, hash_val) in enumerate(entry_list)
             if text_offset != 0 or hash_val != 0
         ]
-        rabin_hash = self._gc_module._rabin_hash
+        rabin_hash = groupcompress.rabin_hash
         self.assertEqual(
             [
                 (8, 16, rabin_hash(_text1[1:17])),
@@ -313,7 +313,7 @@ class TestDeltaIndex(tests.TestCase):
             for idx, (text_offset, hash_val) in enumerate(entry_list)
             if text_offset != 0 or hash_val != 0
         ]
-        rabin_hash = self._gc_module._rabin_hash
+        rabin_hash = groupcompress.rabin_hash
         self.assertEqual(
             [
                 (8, 16, rabin_hash(_text1[1:17])),
@@ -359,7 +359,7 @@ class TestDeltaIndex(tests.TestCase):
                 if text_offset != 0 or hash_val != 0
             ]
         )
-        rabin_hash = self._gc_module._rabin_hash
+        rabin_hash = groupcompress.rabin_hash
         self.assertEqual(
             [
                 (25, rabin_hash(_text1[10:26])),
@@ -474,94 +474,3 @@ class TestDeltaIndex(tests.TestCase):
             _fourth_text, _groupcompress_rs.apply_delta(source, fifth_delta)
         )
         self.assertEqual(b"\x80\x01\x91\xa7\x7f\x01\n", fifth_delta)
-
-
-class TestCopyInstruction(tests.TestCase):
-    def assertEncode(self, expected, offset, length):
-        data = _groupcompress_py.encode_copy_instruction(offset, length)
-        self.assertEqual(expected, data)
-
-    def assertDecode(self, exp_offset, exp_length, exp_newpos, data, pos):
-        cmd = data[pos]
-        pos += 1
-        out = _groupcompress_rs.decode_copy_instruction(data, cmd, pos)
-        self.assertEqual((exp_offset, exp_length, exp_newpos), out)
-
-    def test_encode_no_length(self):
-        self.assertEncode(b"\x80", 0, 64 * 1024)
-        self.assertEncode(b"\x81\x01", 1, 64 * 1024)
-        self.assertEncode(b"\x81\x0a", 10, 64 * 1024)
-        self.assertEncode(b"\x81\xff", 255, 64 * 1024)
-        self.assertEncode(b"\x82\x01", 256, 64 * 1024)
-        self.assertEncode(b"\x83\x01\x01", 257, 64 * 1024)
-        self.assertEncode(b"\x8F\xff\xff\xff\xff", 0xFFFFFFFF, 64 * 1024)
-        self.assertEncode(b"\x8E\xff\xff\xff", 0xFFFFFF00, 64 * 1024)
-        self.assertEncode(b"\x8D\xff\xff\xff", 0xFFFF00FF, 64 * 1024)
-        self.assertEncode(b"\x8B\xff\xff\xff", 0xFF00FFFF, 64 * 1024)
-        self.assertEncode(b"\x87\xff\xff\xff", 0x00FFFFFF, 64 * 1024)
-        self.assertEncode(b"\x8F\x04\x03\x02\x01", 0x01020304, 64 * 1024)
-
-    def test_encode_no_offset(self):
-        self.assertEncode(b"\x90\x01", 0, 1)
-        self.assertEncode(b"\x90\x0a", 0, 10)
-        self.assertEncode(b"\x90\xff", 0, 255)
-        self.assertEncode(b"\xA0\x01", 0, 256)
-        self.assertEncode(b"\xB0\x01\x01", 0, 257)
-        self.assertEncode(b"\xB0\xff\xff", 0, 0xFFFF)
-        # Special case, if copy == 64KiB, then we store exactly 0
-        # Note that this puns with a copy of exactly 0 bytes, but we don't care
-        # about that, as we would never actually copy 0 bytes
-        self.assertEncode(b"\x80", 0, 64 * 1024)
-
-    def test_encode(self):
-        self.assertEncode(b"\x91\x01\x01", 1, 1)
-        self.assertEncode(b"\x91\x09\x0a", 9, 10)
-        self.assertEncode(b"\x91\xfe\xff", 254, 255)
-        self.assertEncode(b"\xA2\x02\x01", 512, 256)
-        self.assertEncode(b"\xB3\x02\x01\x01\x01", 258, 257)
-        self.assertEncode(b"\xB0\x01\x01", 0, 257)
-        # Special case, if copy == 64KiB, then we store exactly 0
-        # Note that this puns with a copy of exactly 0 bytes, but we don't care
-        # about that, as we would never actually copy 0 bytes
-        self.assertEncode(b"\x81\x0a", 10, 64 * 1024)
-
-    def test_decode_no_length(self):
-        # If length is 0, it is interpreted as 64KiB
-        # The shortest possible instruction is a copy of 64KiB from offset 0
-        self.assertDecode(0, 65536, 1, b"\x80", 0)
-        self.assertDecode(1, 65536, 2, b"\x81\x01", 0)
-        self.assertDecode(10, 65536, 2, b"\x81\x0a", 0)
-        self.assertDecode(255, 65536, 2, b"\x81\xff", 0)
-        self.assertDecode(256, 65536, 2, b"\x82\x01", 0)
-        self.assertDecode(257, 65536, 3, b"\x83\x01\x01", 0)
-        self.assertDecode(0xFFFFFFFF, 65536, 5, b"\x8F\xff\xff\xff\xff", 0)
-        self.assertDecode(0xFFFFFF00, 65536, 4, b"\x8E\xff\xff\xff", 0)
-        self.assertDecode(0xFFFF00FF, 65536, 4, b"\x8D\xff\xff\xff", 0)
-        self.assertDecode(0xFF00FFFF, 65536, 4, b"\x8B\xff\xff\xff", 0)
-        self.assertDecode(0x00FFFFFF, 65536, 4, b"\x87\xff\xff\xff", 0)
-        self.assertDecode(0x01020304, 65536, 5, b"\x8F\x04\x03\x02\x01", 0)
-
-    def test_decode_no_offset(self):
-        self.assertDecode(0, 1, 2, b"\x90\x01", 0)
-        self.assertDecode(0, 10, 2, b"\x90\x0a", 0)
-        self.assertDecode(0, 255, 2, b"\x90\xff", 0)
-        self.assertDecode(0, 256, 2, b"\xA0\x01", 0)
-        self.assertDecode(0, 257, 3, b"\xB0\x01\x01", 0)
-        self.assertDecode(0, 65535, 3, b"\xB0\xff\xff", 0)
-        # Special case, if copy == 64KiB, then we store exactly 0
-        # Note that this puns with a copy of exactly 0 bytes, but we don't care
-        # about that, as we would never actually copy 0 bytes
-        self.assertDecode(0, 65536, 1, b"\x80", 0)
-
-    def test_decode(self):
-        self.assertDecode(1, 1, 3, b"\x91\x01\x01", 0)
-        self.assertDecode(9, 10, 3, b"\x91\x09\x0a", 0)
-        self.assertDecode(254, 255, 3, b"\x91\xfe\xff", 0)
-        self.assertDecode(512, 256, 3, b"\xA2\x02\x01", 0)
-        self.assertDecode(258, 257, 5, b"\xB3\x02\x01\x01\x01", 0)
-        self.assertDecode(0, 257, 3, b"\xB0\x01\x01", 0)
-
-    def test_decode_not_start(self):
-        self.assertDecode(1, 1, 6, b"abc\x91\x01\x01def", 3)
-        self.assertDecode(9, 10, 5, b"ab\x91\x09\x0ade", 2)
-        self.assertDecode(254, 255, 6, b"not\x91\xfe\xffcopy", 3)

@@ -398,10 +398,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         value and uses that to decide what the parents list should be.
         """
         last_rev = self._last_revision()
-        if _mod_revision.NULL_REVISION == last_rev:
-            parents = []
-        else:
-            parents = [last_rev]
+        parents = [] if last_rev == _mod_revision.NULL_REVISION else [last_rev]
         try:
             merges_bytes = self._transport.get_bytes("pending-merges")
         except NoSuchFile:

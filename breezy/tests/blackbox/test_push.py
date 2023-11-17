@@ -307,7 +307,7 @@ class TestPush(tests.TestCaseWithTransport):
         return tree
 
     def test_push_create_prefix(self):
-        """'brz push --create-prefix' will create leading directories."""  # noqa: D403
+        """'brz push --create-prefix' will create leading directories."""
         tree = self.create_simple_tree()
 
         self.run_bzr_error(
@@ -324,7 +324,7 @@ class TestPush(tests.TestCaseWithTransport):
         """'brz push --use-existing-dir' can push into an existing dir.
 
         By default, 'brz push' will not use an existing, non-versioned dir.
-        """  # noqa: D403
+        """
         tree = self.create_simple_tree()
         self.build_tree(["target/"])
 
@@ -347,7 +347,7 @@ class TestPush(tests.TestCaseWithTransport):
     def test_push_use_existing_into_empty_bzrdir(self):
         """'brz push --use-existing-dir' into a dir with an empty .bzr dir
         fails.
-        """  # noqa: D403
+        """
         self.create_simple_tree()
         self.build_tree(["target/", "target/.bzr/"])
         self.run_bzr_error(
@@ -741,10 +741,7 @@ class TestPushStrictMixin:
         self.assertContainsRe(err, self._default_additional_error)
 
     def assertPushSucceeds(self, args, with_warning=False, revid_to_push=None):
-        if with_warning:
-            error_regexes = self._default_errors
-        else:
-            error_regexes = []
+        error_regexes = self._default_errors if with_warning else []
         out, err = self.run_bzr(
             self._default_command + args,
             working_dir=self._default_wd,

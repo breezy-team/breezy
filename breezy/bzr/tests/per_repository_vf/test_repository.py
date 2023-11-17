@@ -16,6 +16,8 @@
 
 """Tests for repository implementations - tests a repository format."""
 
+import contextlib
+
 from breezy import errors, gpg, tests
 from breezy import repository as _mod_repository
 from breezy import revision as _mod_revision
@@ -302,10 +304,8 @@ class TestRepository(TestCaseWithRepository):
         parents[file_key + left_key] = (file_key + rev_key,)
         tree.merge_from_branch(tree2.branch)
         tree.put_file_bytes_non_atomic("foo", b"merged\n")
-        try:
+        with contextlib.suppress(errors.UnsupportedOperation):
             tree.auto_resolve()
-        except errors.UnsupportedOperation:
-            pass
         merge_key = (tree.commit("merged"),)
         keys.add(file_key + merge_key)
         parents[file_key + merge_key] = (file_key + left_key, file_key + right_key)

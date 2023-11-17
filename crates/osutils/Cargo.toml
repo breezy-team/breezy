@@ -9,7 +9,7 @@ license = "GPL-2.0+"
 
 [dependencies]
 memchr = "2.3.3"
-chrono = "0.4"
+chrono = { workspace = true }
 walkdir = "2"
 sha1 = "0.10"
 unicode-normalization = "0.1.19"
@@ -23,9 +23,13 @@ path-clean = "1"
 termion = ">=1"
 dirs = "5"
 encoding_rs = ">=0.8"
-whoami = "1"
+whoami = { workspace = true }
 nix = { workspace = true, features = ["fs"] }
+pyo3 = { workspace = true, optional = true }
 
 [target.'cfg(unix)'.dependencies]
 nix = { workspace = true, features = ["user", "process", "signal"] }
 termios = "0.3"
+
+[features]
+pyo3 = ["dep:pyo3"]

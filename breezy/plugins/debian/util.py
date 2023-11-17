@@ -231,7 +231,7 @@ def tarball_name(package, version, component=None, format=None):
     """
     if format is None:
         format = "gz"
-    name = f"{package}_{str(version)}.orig"
+    name = f"{package}_{version!s}.orig"
     if component is not None:
         name += "-" + component
     return f"{name}.tar.{format}"

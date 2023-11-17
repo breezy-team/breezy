@@ -37,6 +37,7 @@ from breezy.bzr import (
 )
 
 from .. import errors, osutils, trace
+from .._bzr_rs import groupcompress as _groupcompress_rs
 from ..lru_cache import LRUSizeCache
 from .btree_index import BTreeBuilder
 from .versionedfile import (
@@ -49,12 +50,13 @@ from .versionedfile import (
     adapter_registry,
 )
 
+_null_sha1 = _groupcompress_rs.NULL_SHA1
+PythonGroupCompressor = _groupcompress_rs.TraditionalGroupCompressor
+rabin_hash = _groupcompress_rs.rabin_hash
+
 # Minimum number of uncompressed bytes to try fetch at once when retrieving
 # groupcompress blocks.
 BATCH_SIZE = 2**16
-
-# osutils.sha_string(b'')
-_null_sha1 = b"da39a3ee5e6b4b0d3255bfef95601890afd80709"
 
 
 def sort_gc_optimal(parent_map):
@@ -71,10 +73,7 @@ def sort_gc_optimal(parent_map):
     # properly grouped by file-id.
     per_prefix_map = {}
     for key, value in parent_map.items():
-        if isinstance(key, bytes) or len(key) == 1:
-            prefix = b""
-        else:
-            prefix = key[0]
+        prefix = b"" if isinstance(key, bytes) or len(key) == 1 else key[0]
         try:
             per_prefix_map[prefix][key] = value
         except KeyError:
@@ -147,10 +146,9 @@ class GroupCompressBlock:
                 % (num_bytes, self._content_length)
             )
         # Expand the content if required
-        if self._content is None:
-            if self._content_chunks is not None:
-                self._content = b"".join(self._content_chunks)
-                self._content_chunks = None
+        if self._content is None and self._content_chunks is not None:
+            self._content = b"".join(self._content_chunks)
+            self._content_chunks = None
         if self._content is None:
             # We join self._z_content_chunks here, because if we are
             # decompressing, then it is *very* likely that we have a single
@@ -530,10 +528,7 @@ class _LazyGroupContentManager:
         return self._compressor_settings
 
     def add_factory(self, key, parents, start, end):
-        if not self._factories:
-            first = True
-        else:
-            first = False
+        first = bool(not self._factories)
         # Note that this creates a reference cycle....
         factory = _LazyGroupCompressFactory(key, parents, self, start, end, first=first)
         # max() works here, but as a function call, doing a compare seems to be
@@ -839,9 +834,10 @@ def network_block_to_records(storage_kind, bytes, line_end):
 
 
 class _CommonGroupCompressor:
+    chunks: list[bytes]
+
     def __init__(self, settings=None):
         """Create a GroupCompressor."""
-        self.chunks = []
         self._last = None
         self.endpoint = 0
         self.input_bytes = 0
@@ -880,13 +876,9 @@ class _CommonGroupCompressor:
                 raise ExistingContent()
             return _null_sha1, 0, 0, "fulltext"
         # we assume someone knew what they were doing when they passed it in
-        if expected_sha is not None:
-            sha1 = expected_sha
-        else:
-            sha1 = osutils.sha_strings(chunks)
-        if nostore_sha is not None:
-            if sha1 == nostore_sha:
-                raise ExistingContent()
+        sha1 = expected_sha if expected_sha is not None else osutils.sha_strings(chunks)
+        if nostore_sha is not None and sha1 == nostore_sha:
+            raise ExistingContent()
         if key[-1] is None:
             key = key[:-1] + (b"sha1:" + sha1,)
 
@@ -955,67 +947,12 @@ class _CommonGroupCompressor:
         After calling this, the compressor should no longer be used
         """
         self._block.set_chunked_content(self.chunks, self.endpoint)
-        self.chunks = None
         self._delta_index = None
         return self._block
-
-    def pop_last(self):
-        """Call this if you want to 'revoke' the last compression.
-
-        After this, the data structures will be rolled back, but you cannot do
-        more compression.
-        """
-        self._delta_index = None
-        del self.chunks[self._last[0] :]
-        self.endpoint = self._last[1]
-        self._last = None
 
     def ratio(self):
         """Return the overall compression ratio."""
         return float(self.input_bytes) / float(self.endpoint)
-
-
-class PythonGroupCompressor(_CommonGroupCompressor):
-    def __init__(self, settings=None):
-        """Create a GroupCompressor.
-
-        Used only if the pyrex version is not available.
-        """
-        super().__init__(settings)
-        self._delta_index = LinesDeltaIndex([])
-        # The actual content is managed by LinesDeltaIndex
-        self.chunks = self._delta_index.lines
-
-    def _compress(self, key, chunks, input_len, max_delta_size, soft=False):
-        """See _CommonGroupCompressor._compress."""
-        new_lines = osutils.chunks_to_lines(chunks)
-        out_lines, index_lines = self._delta_index.make_delta(
-            new_lines, bytes_length=input_len, soft=soft
-        )
-        delta_length = sum(map(len, out_lines))
-        if delta_length > max_delta_size:
-            # The delta is longer than the fulltext, insert a fulltext
-            type = "fulltext"
-            out_lines = [b"f", encode_base128_int(input_len)]
-            out_lines.extend(new_lines)
-            index_lines = [False, False]
-            index_lines.extend([True] * len(new_lines))
-        else:
-            # this is a worthy delta, output it
-            type = "delta"
-            out_lines[0] = b"d"
-            # Update the delta_length to include those two encoded integers
-            out_lines[1] = encode_base128_int(delta_length)
-        # Before insertion
-        start = self.endpoint
-        chunk_start = len(self.chunks)
-        self._last = (chunk_start, self.endpoint)
-        self._delta_index.extend_lines(out_lines, index_lines)
-        self.endpoint = self._delta_index.endpoint
-        self.input_bytes += input_len
-        chunk_end = len(self.chunks)
-        self.labels_deltas[key] = (start, chunk_start, self.endpoint, chunk_end)
-        return start, self.endpoint, type
 
 
 class PyrexGroupCompressor(_CommonGroupCompressor):
@@ -1037,6 +974,7 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
 
     def __init__(self, settings=None):
         super().__init__(settings)
+        self.chunks = []
         max_bytes_to_index = self._settings.get("max_bytes_to_index", 0)
         self._delta_index = DeltaIndex(max_bytes_to_index=max_bytes_to_index)
 
@@ -1096,6 +1034,11 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
         self.chunks.extend(new_chunks)
         endpoint += sum(map(len, new_chunks))
         self.endpoint = endpoint
+
+    def flush(self):
+        ret = super().flush()
+        self.chunks = None
+        return ret
 
 
 def make_pack_factory(graph, delta, keylength, inconsistency_fatal=True):
@@ -1347,9 +1290,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             self._check_lines_not_unicode(lines)
             self._check_lines_are_lines(lines)
         return self.add_content(
-            ChunkedContentFactory(
-                key, parents, osutils.sha_strings(lines), lines, chunks_are_lines=True
-            ),
+            ChunkedContentFactory(key, parents, osutils.sha_strings(lines), lines),
             parent_texts,
             left_matching_blocks,
             nostore_sha,
@@ -1439,9 +1380,8 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
     def _check_add(self, key, random_id):
         """Check that version_id and lines are safe to add."""
         version_id = key[-1]
-        if version_id is not None:
-            if osutils.contains_whitespace(version_id):
-                raise errors.InvalidRevisionId(version_id, self)
+        if version_id is not None and osutils.contains_whitespace(version_id):
+            raise errors.InvalidRevisionId(version_id, self)
         self.check_not_reserved_id(version_id)
         # TODO: If random_id==False and the key is already present, we should
         # probably check that the existing content is identical to what is
@@ -2152,17 +2092,15 @@ class _GCGraphIndex:
         changed = False
         keys = {}
         for key, value, refs in records:
-            if not self._parents:
-                if refs:
-                    for ref in refs:
-                        if ref:
-                            raise knit.KnitCorrupt(
-                                self,
-                                "attempt to add node with parents "
-                                "in parentless index.",
-                            )
-                    refs = ()
-                    changed = True
+            if not self._parents and refs:
+                for ref in refs:
+                    if ref:
+                        raise knit.KnitCorrupt(
+                            self,
+                            "attempt to add node with parents " "in parentless index.",
+                        )
+                refs = ()
+                changed = True
             keys[key] = (value, refs)
         # check for dups
         if not random_id:
@@ -2290,10 +2228,7 @@ class _GCGraphIndex:
         entries = self._get_entries(keys)
         for entry in entries:
             key = entry[1]
-            if not self._parents:
-                parents = None
-            else:
-                parents = entry[3][0]
+            parents = None if not self._parents else entry[3][0]
             details = _GCBuildDetails(parents, self._node_to_position(entry))
             result[key] = details
         return result
@@ -2351,7 +2286,12 @@ GroupCompressor: Type[_CommonGroupCompressor]
 
 
 from .._bzr_rs import groupcompress
-from ._groupcompress_py import LinesDeltaIndex
+
+encode_base128_int = groupcompress.encode_base128_int
+encode_copy_instruction = groupcompress.encode_copy_instruction
+LinesDeltaIndex = groupcompress.LinesDeltaIndex
+make_line_delta = groupcompress.make_line_delta
+make_rabin_delta = groupcompress.make_rabin_delta
 
 apply_delta = groupcompress.apply_delta
 apply_delta_to_source = groupcompress.apply_delta_to_source

@@ -48,6 +48,8 @@ from breezy.bzr import (
 """,
 )
 
+import contextlib
+
 from .. import cache_utf8, debug, errors, osutils, trace
 from .. import revision as _mod_revision
 from ..lock import LogicalLockResult
@@ -68,6 +70,7 @@ from .inventory import (
     InventoryFile,
     InventoryLink,
     TreeReference,
+    _make_delta,
 )
 from .inventory_delta import InventoryDelta
 from .inventorytree import InterInventoryTree, InventoryRevisionTree, InventoryTree
@@ -182,10 +185,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         # if the dirstate is locked by an active process, reject the break lock
         # call.
         try:
-            if self._dirstate is None:
-                clear = True
-            else:
-                clear = False
+            clear = self._dirstate is None
             state = self._current_dirstate()
             if state._lock_token is not None:
                 # we already have it locked. sheese, cant break our own lock.
@@ -597,9 +597,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
         if self._repo_supports_tree_reference and kind == "directory":
             with self.lock_read():
                 entry = self._get_entry(path=relpath)
-                if entry[1] is not None:
-                    if entry[1][0][0] == b"t":
-                        kind = "tree-reference"
+                if entry[1] is not None and entry[1][0][0] == b"t":
+                    kind = "tree-reference"
         return kind
 
     def _last_revision(self):
@@ -788,10 +787,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
 
                 from_missing = not self.has_filename(from_rel)
                 to_missing = not self.has_filename(to_rel)
-                if after:
-                    move_file = False
-                else:
-                    move_file = True
+                move_file = not after
                 if to_missing:
                     if not move_file:
                         raise errors.BzrMoveFailedError(
@@ -983,14 +979,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
         for path in paths:
             paths_utf8.add(path.encode("utf8"))
         # -- get the state object and prepare it.
-        state = self.current_dirstate()
-        if False and (
-            state._dirblock_state == dirstate.DirState.NOT_IN_MEMORY
-            and b"" not in paths
-        ):
-            paths2ids = self._paths2ids_using_bisect
-        else:
-            paths2ids = self._paths2ids_in_memory
+        self.current_dirstate()
+        paths2ids = self._paths2ids_using_bisect if False else self._paths2ids_in_memory
         return paths2ids(
             paths_utf8, search_indexes, require_versioned=require_versioned
         )
@@ -1242,8 +1232,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     # _make_delta if we can't get the RevisionTree
                     pass
                 else:
-                    delta = rev_tree.root_inventory._make_delta(
-                        basis_tree.root_inventory
+                    delta = _make_delta(
+                        rev_tree.root_inventory, basis_tree.root_inventory
                     )
                     dirstate.update_basis_by_delta(delta, rev_id)
                     updated = True
@@ -1279,9 +1269,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
 
             # eventually we should do signature checking during read locks for
             # dirstate updates.
-            if self._control_files._lock_mode == "w":
-                if self._dirty:
-                    self.flush()
+            if self._control_files._lock_mode == "w" and self._dirty:
+                self.flush()
             if self._dirstate is not None:
                 # This is a no-op if there are no modifications.
                 self._dirstate.save()
@@ -1435,7 +1424,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             # being created.
             self._inventory = None
             # generate a delta,
-            delta = inv._make_delta(self.root_inventory)
+            delta = _make_delta(inv, self.root_inventory)
             # and apply it.
             self.apply_inventory_delta(delta)
             if had_inventory:
@@ -1599,10 +1588,7 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
         transport.put_bytes(
             "format", self.as_string(), mode=a_controldir._get_file_mode()
         )
-        if from_branch is not None:
-            branch = from_branch
-        else:
-            branch = a_controldir.open_branch()
+        branch = from_branch if from_branch is not None else a_controldir.open_branch()
         if revision_id is None:
             revision_id = branch.last_revision()
         local_path = transport.local_abspath("dirstate")
@@ -1632,10 +1618,8 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
             # tree will be the tree from the branch, so the desired basis
             # tree will often be a parent of the accelerator tree.
             if accelerator_tree is not None:
-                try:
+                with contextlib.suppress(errors.NoSuchRevision):
                     basis = accelerator_tree.revision_tree(revision_id)
-                except errors.NoSuchRevision:
-                    pass
             if basis is None:
                 basis = branch.repository.revision_tree(revision_id)
             if revision_id == _mod_revision.NULL_REVISION:
@@ -2289,18 +2273,12 @@ class DirStateRevisionTree(InventoryTree):
         _directory = "directory"
         inv = self._get_root_inventory()
         top_id = inv.path2id(prefix)
-        if top_id is None:
-            pending = []
-        else:
-            pending = [(prefix, top_id)]
+        pending = [] if top_id is None else [(prefix, top_id)]
         while pending:
             dirblock = []
             relpath, file_id = pending.pop()
             # 0 - relpath, 1- file-id
-            if relpath:
-                relroot = relpath + "/"
-            else:
-                relroot = ""
+            relroot = relpath + "/" if relpath else ""
             # FIXME: stash the node in pending
             subdirs = []
             for child in inv.iter_sorted_children(file_id):
@@ -2320,6 +2298,7 @@ class InterDirStateTree(InterInventoryTree):
     the source is any parent within the dirstate, and the destination is
     the current working tree of the same dirstate.
     """
+
     # this could be generalized to allow comparisons between any trees in the
     # dirstate, and possibly between trees stored in different dirstates.
 

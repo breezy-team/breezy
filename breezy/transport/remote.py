@@ -174,10 +174,7 @@ class RemoteTransport(transport.ConnectedTransport):
             return self._client.call(method, *args)
         except errors.ErrorFromSmartServer as err:
             # The first argument, if present, is always a path.
-            if args:
-                context = {"relpath": args[0].decode("utf-8")}
-            else:
-                context = {}
+            context = {"relpath": args[0].decode("utf-8")} if args else {}
             self._translate_error(err, **context)
 
     def _call_with_body_bytes(self, method, args, body):
@@ -186,10 +183,7 @@ class RemoteTransport(transport.ConnectedTransport):
             return self._client.call_with_body_bytes(method, args, body)
         except errors.ErrorFromSmartServer as err:
             # The first argument, if present, is always a path.
-            if args:
-                context = {"relpath": args[0]}
-            else:
-                context = {}
+            context = {"relpath": args[0]} if args else {}
             self._translate_error(err, **context)
 
     def has(self, relpath):
@@ -595,10 +589,7 @@ class RemoteHTTPTransport(RemoteTransport):
         have to handle .bzr/smart requests at arbitrary places inside .bzr
         directories, just at the initial URL the user uses.
         """
-        if relative_url:
-            abs_url = self.abspath(relative_url)
-        else:
-            abs_url = self.base
+        abs_url = self.abspath(relative_url) if relative_url else self.base
         return RemoteHTTPTransport(
             abs_url, _from_transport=self, http_transport=self._http_transport
         )

@@ -16,6 +16,7 @@
 
 """Tests for the InterTree.compare() function."""
 
+import contextlib
 import os
 import shutil
 
@@ -1249,10 +1250,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
             raise tests.TestNotApplicable(
                 f"Cannot represent a FIFO in this case {self.id()}"
             ) from err
-        try:
+        with contextlib.suppress(errors.BadFileKindError):
             self.do_iter_changes(tree1, tree2)
-        except errors.BadFileKindError:
-            pass
 
     def test_missing_in_target(self):
         """Test with the target files versioned but absent from disk."""

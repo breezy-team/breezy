@@ -1036,10 +1036,7 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         """Connect this medium if not already connected."""
         if self._real_medium is not None:
             return
-        if self._vendor is None:
-            vendor = ssh._get_ssh_vendor()
-        else:
-            vendor = self._vendor
+        vendor = ssh._get_ssh_vendor() if self._vendor is None else self._vendor
         self._ssh_connection = vendor.connect_ssh(
             self._ssh_params.username,
             self._ssh_params.password,
@@ -1142,10 +1139,7 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
         """Connect this medium if not already connected."""
         if self._connected:
             return
-        if self._port is None:
-            port = BZR_DEFAULT_PORT
-        else:
-            port = int(self._port)
+        port = BZR_DEFAULT_PORT if self._port is None else int(self._port)
         try:
             sockaddrs = socket.getaddrinfo(
                 self._host, port, socket.AF_UNSPEC, socket.SOCK_STREAM, 0, 0

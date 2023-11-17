@@ -16,6 +16,8 @@
 
 """WorkingTree3 format and implementation."""
 
+import contextlib
+
 from .. import errors, trace
 from .. import revision as _mod_revision
 from .. import transport as _mod_transport
@@ -98,10 +100,8 @@ class WorkingTree3(PreDirStateWorkingTree):
     def _change_last_revision(self, revision_id):
         """See WorkingTree._change_last_revision."""
         if revision_id is None or revision_id == _mod_revision.NULL_REVISION:
-            try:
+            with contextlib.suppress(_mod_transport.NoSuchFile):
                 self._transport.delete("last-revision")
-            except _mod_transport.NoSuchFile:
-                pass
             return False
         else:
             self._transport.put_bytes(
@@ -194,10 +194,7 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
         transport.put_bytes(
             "format", self.as_string(), mode=a_controldir._get_file_mode()
         )
-        if from_branch is not None:
-            branch = from_branch
-        else:
-            branch = a_controldir.open_branch()
+        branch = from_branch if from_branch is not None else a_controldir.open_branch()
         if revision_id is None:
             revision_id = branch.last_revision()
         # WorkingTree3 can handle an inventory which has a unique root id.

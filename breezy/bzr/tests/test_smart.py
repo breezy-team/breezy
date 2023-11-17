@@ -35,6 +35,7 @@ from breezy import branch as _mod_branch
 from breezy import controldir, errors, gpg, tests, transport, urlutils
 from breezy.bzr import branch as _mod_bzrbranch
 from breezy.bzr import inventory_delta, versionedfile
+from breezy.bzr.inventory import _make_delta
 from breezy.bzr.smart import branch as smart_branch
 from breezy.bzr.smart import bzrdir as smart_dir
 from breezy.bzr.smart import packrepository as smart_packrepo
@@ -392,18 +393,9 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithMemoryTransport):
         :result: The SmartServerResponse to expect when opening it.
         """
         repo = self.make_repository(".", shared=shared, format=format)
-        if repo.supports_rich_root():
-            rich_root = b"yes"
-        else:
-            rich_root = b"no"
-        if repo._format.supports_tree_reference:
-            subtrees = b"yes"
-        else:
-            subtrees = b"no"
-        if repo._format.supports_external_lookups:
-            external = b"yes"
-        else:
-            external = b"no"
+        rich_root = b"yes" if repo.supports_rich_root() else b"no"
+        subtrees = b"yes" if repo._format.supports_tree_reference else b"no"
+        external = b"yes" if repo._format.supports_external_lookups else b"no"
         if smart_dir.SmartServerRequestFindRepositoryV3 == self._request_class:
             return smart_req.SuccessfulSmartServerResponse(
                 (b"ok", b"", rich_root, subtrees, external, repo._format.network_name())
@@ -2344,10 +2336,7 @@ class TestSmartServerRepositoryGetPhysicalLockStatus(tests.TestCaseWithTransport
         self.addCleanup(repo.lock_write().unlock)
         # lock_write() doesn't necessarily actually take a physical
         # lock out.
-        if repo.get_physical_lock_status():
-            expected = b"yes"
-        else:
-            expected = b"no"
+        expected = b"yes" if repo.get_physical_lock_status() else b"no"
         request_class = smart_repo.SmartServerRepositoryGetPhysicalLockStatus
         request = request_class(backing)
         self.assertEqual(
@@ -2883,7 +2872,7 @@ class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
     def _get_serialized_inventory_delta(self, repository, base_revid, revid):
         base_inv = repository.revision_tree(base_revid).root_inventory
         inv = repository.revision_tree(revid).root_inventory
-        inv_delta = inv._make_delta(base_inv)
+        inv_delta = _make_delta(inv, base_inv)
         serializer = inventory_delta.InventoryDeltaSerializer(True, True)
         return b"".join(serializer.delta_to_lines(base_revid, revid, inv_delta))
 
@@ -2904,7 +2893,7 @@ class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
                 "inventory-deltas",
                 [
                     versionedfile.FulltextContentFactory(
-                        b"somerev",
+                        (b"somerev",),
                         None,
                         None,
                         self._get_serialized_inventory_delta(

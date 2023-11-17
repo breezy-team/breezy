@@ -106,7 +106,7 @@ def update_packaging(
 def main():
     import argparse
 
-    import breezy.bzr  # noqa: F401
+    import breezy.bzr
     import breezy.git  # noqa: F401
     from breezy.revisionspec import RevisionSpec
 

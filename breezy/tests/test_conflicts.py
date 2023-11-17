@@ -751,10 +751,7 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
     def _get_resolve_path_arg(self, wt, action):
         tpath = self._this["path"]
         opath = self._other["path"]
-        if tpath == "<deleted>":
-            path = opath
-        else:
-            path = tpath
+        path = opath if tpath == "<deleted>" else tpath
         return path
 
     def assertPathConflict(self, wt, c):

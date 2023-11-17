@@ -2648,10 +2648,7 @@ class TestStacking(KnitTests):
         order = [record[0] for record in results]
         self.assertEqual([key_basis_2, key_basis, key], order)
         for result in results:
-            if result[0] == key:
-                source = test
-            else:
-                source = basis
+            source = test if result[0] == key else basis
             record = next(source.get_record_stream([result[0]], "unordered", True))
             self.assertEqual(record.key, result[0])
             self.assertEqual(record.sha1, result[1])
@@ -2756,10 +2753,7 @@ class TestStacking(KnitTests):
         order = [record[0] for record in results]
         self.assertEqual([key_basis_2, key_basis, key], order)
         for result in results:
-            if result[0] == key:
-                source = test
-            else:
-                source = basis
+            source = test if result[0] == key else basis
             record = next(source.get_record_stream([result[0]], "unordered", False))
             self.assertEqual(record.key, result[0])
             self.assertEqual(record.sha1, result[1])

@@ -16,6 +16,7 @@
 
 """Versioned text file storage api."""
 
+import functools
 import itertools
 import os
 import struct
@@ -39,9 +40,16 @@ from breezy import (
 from .. import errors, osutils, revision, urlutils
 from .. import graph as _mod_graph
 from .. import transport as _mod_transport
+from .._bzr_rs import versionedfile as _versionedfile_rs
 from ..registry import Registry
 from ..textmerge import TextMerge
 from . import index
+
+FulltextContentFactory = _versionedfile_rs.FulltextContentFactory
+ChunkedContentFactory = _versionedfile_rs.ChunkedContentFactory
+AbsentContentFactory = _versionedfile_rs.AbsentContentFactory
+record_to_fulltext_bytes = _versionedfile_rs.record_to_fulltext_bytes
+
 
 adapter_registry = Registry[Tuple[str, str], Any, None]()
 adapter_registry.register_lazy(
@@ -113,102 +121,16 @@ class ContentFactory:
         self.sha1: Optional[bytes] = None
         self.size: Optional[int] = None
         self.storage_kind: Optional[str] = None
-        self.key: Optional[Tuple[bytes]] = None
+        self.key: Optional[Tuple[bytes, ...]] = None
         self.parents = None
 
-
-class ChunkedContentFactory(ContentFactory):
-    """Static data content factory.
-
-    This takes a 'chunked' list of strings. The only requirement on 'chunked' is
-    that ''.join(lines) becomes a valid fulltext. A tuple of a single string
-    satisfies this, as does a list of lines.
-
-    :ivar sha1: None, or the sha1 of the content fulltext.
-    :ivar size: None, or the size of the content fulltext.
-    :ivar storage_kind: The native storage kind of this factory. Always
-        'chunked'
-    :ivar key: The key of this content. Each key is a tuple with a single
-        string in it.
-    :ivar parents: A tuple of parent keys for self.key. If the object has
-        no parent information, None (as opposed to () for an empty list of
-        parents).
-    :ivar chunks_are_lines: Whether chunks are lines.
-    """
-
-    def __init__(self, key, parents, sha1, chunks, chunks_are_lines=None) -> None:
-        """Create a ContentFactory."""
-        self.sha1 = sha1
-        self.size: int = sum(map(len, chunks))
-        self.storage_kind: str = "chunked"
-        self.key = key
-        self.parents = parents
-        self._chunks = chunks
-        self._chunks_are_lines = chunks_are_lines
-
-    def get_bytes_as(self, storage_kind):
-        if storage_kind == "chunked":
-            return self._chunks
-        elif storage_kind == "fulltext":
-            return b"".join(self._chunks)
-        elif storage_kind == "lines":
-            if self._chunks_are_lines:
-                return self._chunks
-            return list(osutils.chunks_to_lines(self._chunks))
-        raise UnavailableRepresentation(self.key, storage_kind, self.storage_kind)
-
-    def iter_bytes_as(self, storage_kind):
-        if storage_kind == "chunked":
-            return iter(self._chunks)
-        elif storage_kind == "lines":
-            if self._chunks_are_lines:
-                return iter(self._chunks)
-            return osutils.chunks_to_lines_iter(iter(self._chunks))
-        raise UnavailableRepresentation(self.key, storage_kind, self.storage_kind)
-
-
-class FulltextContentFactory(ContentFactory):
-    """Static data content factory.
-
-    This takes a fulltext when created and just returns that during
-    get_bytes_as('fulltext').
-
-    :ivar sha1: None, or the sha1 of the content fulltext.
-    :ivar storage_kind: The native storage kind of this factory. Always
-        'fulltext'.
-    :ivar key: The key of this content. Each key is a tuple with a single
-        string in it.
-    :ivar parents: A tuple of parent keys for self.key. If the object has
-        no parent information, None (as opposed to () for an empty list of
-        parents).
-    """
-
-    def __init__(self, key, parents, sha1, text):
-        """Create a ContentFactory."""
-        self.sha1 = sha1
-        self.size = len(text)
-        self.storage_kind = "fulltext"
-        self.key = key
-        self.parents = parents
-        if not isinstance(text, bytes):
-            raise TypeError(text)
-        self._text = text
-
-    def get_bytes_as(self, storage_kind):
-        if storage_kind == self.storage_kind:
-            return self._text
-        elif storage_kind == "chunked":
-            return [self._text]
-        elif storage_kind == "lines":
-            return osutils.split_lines(self._text)
-        raise UnavailableRepresentation(self.key, storage_kind, self.storage_kind)
-
-    def iter_bytes_as(self, storage_kind):
-        if storage_kind == "chunked":
-            return iter([self._text])
-        elif storage_kind == "lines":
-            return iter(osutils.split_lines(self._text))
-        raise UnavailableRepresentation(self.key, storage_kind, self.storage_kind)
+    def map_key(self, cb):
+        """Add prefix to all keys."""
+        if self.key is not None:
+            self.key = cb(self.key)
+        if self.parents is not None:
+            self.parents = tuple([cb(parent) for parent in self.parents])
+        return self
 
 
 class FileContentFactory(ContentFactory):
@@ -244,39 +166,6 @@ class FileContentFactory(ContentFactory):
         elif storage_kind == "lines":
             return self.file
         raise UnavailableRepresentation(self.key, storage_kind, self.storage_kind)
-
-
-class AbsentContentFactory(ContentFactory):
-    """A placeholder content factory for unavailable texts.
-
-    :ivar sha1: None.
-    :ivar storage_kind: 'absent'.
-    :ivar key: The key of this content. Each key is a tuple with a single
-        string in it.
-    :ivar parents: None.
-    """
-
-    def __init__(self, key):
-        """Create a ContentFactory."""
-        self.sha1 = None
-        self.size = None
-        self.storage_kind = "absent"
-        self.key = key
-        self.parents = None
-
-    def get_bytes_as(self, storage_kind):
-        raise ValueError(
-            f"A request was made for key: {self.key}, but that"
-            " content is not available, and the calling"
-            " code does not handle if it is missing."
-        )
-
-    def iter_bytes_as(self, storage_kind):
-        raise ValueError(
-            f"A request was made for key: {self.key}, but that"
-            " content is not available, and the calling"
-            " code does not handle if it is missing."
-        )
 
 
 class AdapterFactory(ContentFactory):
@@ -1630,17 +1519,19 @@ class ThunkedVersionedFiles(VersionedFiles):
 
     def get_record_stream(self, keys, ordering, include_delta_closure):
         """See VersionedFiles.get_record_stream()."""
+
         # Ordering will be taken care of by each partitioned store; group keys
         # by partition.
+        def add_prefix(p, k):
+            return p + k
+
         keys = sorted(keys)
         for prefix, suffixes, vf in self._iter_keys_vf(keys):
             suffixes = [(suffix,) for suffix in suffixes]
             for record in vf.get_record_stream(
                 suffixes, ordering, include_delta_closure
             ):
-                if record.parents is not None:
-                    record.parents = tuple(prefix + parent for parent in record.parents)
-                record.key = prefix + record.key
+                record.map_key(functools.partial(add_prefix, prefix))
                 yield record
 
     def _iter_keys_vf(self, keys):
@@ -1825,9 +1716,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
                 lines = self._lines[key]
                 parents = self._parents[key]
                 pending.remove(key)
-                yield ChunkedContentFactory(
-                    key, parents, None, lines, chunks_are_lines=True
-                )
+                yield ChunkedContentFactory(key, parents, None, lines)
         for versionedfile in self.fallback_versionedfiles:
             for record in versionedfile.get_record_stream(pending, "unordered", True):
                 if record.storage_kind == "absent":
@@ -2068,7 +1957,6 @@ class VirtualVersionedFiles(VersionedFiles):
                     None,
                     sha1=osutils.sha_strings(lines),
                     chunks=lines,
-                    chunks_are_lines=True,
                 )
             else:
                 yield AbsentContentFactory((k,))
@@ -2191,24 +2079,6 @@ def fulltext_network_to_record(kind, bytes, line_end):
     return [FulltextContentFactory(key, parents, None, fulltext)]
 
 
-def _length_prefix(bytes):
-    return struct.pack("!L", len(bytes))
-
-
-def record_to_fulltext_bytes(record):
-    if record.parents is None:
-        parents = b"nil"
-    else:
-        parents = tuple([tuple(p) for p in record.parents])
-    record_meta = bencode.bencode((record.key, parents))
-    record_content = record.get_bytes_as("fulltext")
-    return b"fulltext\n%s%s%s" % (
-        _length_prefix(record_meta),
-        record_meta,
-        record_content,
-    )
-
-
 def sort_groupcompress(parent_map):
     """Sort and group the keys in parent_map into groupcompress order.
 
@@ -2224,10 +2094,7 @@ def sort_groupcompress(parent_map):
     per_prefix_map = {}
     for item in parent_map.items():
         key = item[0]
-        if isinstance(key, bytes) or len(key) == 1:
-            prefix = b""
-        else:
-            prefix = key[0]
+        prefix = b"" if isinstance(key, bytes) or len(key) == 1 else key[0]
         try:
             per_prefix_map[prefix].append(item)
         except KeyError:

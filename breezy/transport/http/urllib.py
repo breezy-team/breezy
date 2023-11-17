@@ -53,7 +53,6 @@ from .response import handle_response
 # actual code more or less do that, tests should be written to
 # ensure that.
 
-
 checked_kerberos = False
 kerberos = None
 
@@ -425,10 +424,7 @@ class Request(urllib.request.Request):
         if port is None:
             # We need to set the default port ourselves way before it gets set
             # in the HTTP[S]Connection object at build time.
-            if self.type == "https":
-                conn_class = HTTPSConnection
-            else:
-                conn_class = HTTPConnection
+            conn_class = HTTPSConnection if self.type == "https" else HTTPConnection
             port = conn_class.default_port
         self.proxied_host = f"{host}:{port}"
         urllib.request.Request.set_proxy(self, proxy, type)
@@ -1755,6 +1751,7 @@ class Opener:
 
     Daughter classes can override to build their own specific opener
     """
+
     # TODO: Provides hooks for daughter classes.
 
     def __init__(
@@ -1955,10 +1952,7 @@ class HttpTransport(ConnectedTransport):
         response = self._head(relpath)
 
         code = response.status
-        if code == 200:  # "ok",
-            return True
-        else:
-            return False
+        return code == 200
 
     def get(self, relpath):
         """Get the file at the given relative path.

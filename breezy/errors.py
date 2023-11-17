@@ -108,7 +108,7 @@ class BzrError(Exception):
     __str__ = _format
 
     def __repr__(self):
-        return f"{self.__class__.__name__}({str(self)})"
+        return f"{self.__class__.__name__}({self!s})"
 
     def _get_format_string(self):
         """Return format string for this exception or None."""
@@ -1070,15 +1070,9 @@ class SocketConnectionError(ConnectionError):
     def __init__(self, host, port=None, msg=None, orig_error=None):
         if msg is None:
             msg = "Failed to connect to"
-        if orig_error is None:
-            orig_error = ""
-        else:
-            orig_error = "; " + str(orig_error)
+        orig_error = "" if orig_error is None else "; " + str(orig_error)
         self.host = host
-        if port is None:
-            port = ""
-        else:
-            port = f":{port}"
+        port = "" if port is None else f":{port}"
         self.port = port
         ConnectionError.__init__(self, f"{msg} {host}{port}{orig_error}")
 
@@ -1453,10 +1447,7 @@ class OutOfDateTree(BzrError):
     _fmt = "Working tree is out of date, please run 'brz update'.%(more)s"
 
     def __init__(self, tree, more=None):
-        if more is None:
-            more = ""
-        else:
-            more = " " + more
+        more = "" if more is None else " " + more
         BzrError.__init__(self)
         self.tree = tree
         self.more = more
@@ -1819,10 +1810,7 @@ class UncommittedChanges(BzrError):
     )
 
     def __init__(self, tree, more=None):
-        if more is None:
-            more = ""
-        else:
-            more = " " + more
+        more = "" if more is None else " " + more
         import breezy.urlutils as urlutils
 
         user_url = getattr(tree, "user_url", None)

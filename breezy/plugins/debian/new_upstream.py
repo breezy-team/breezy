@@ -402,7 +402,7 @@ def open_branch(
         raise e
 
 
-def find_new_upstream(  # noqa: C901
+def find_new_upstream(
     tree,
     subpath: str,
     config,
@@ -459,7 +459,7 @@ def find_new_upstream(  # noqa: C901
             upstream_branch_browse = None
     else:
         upstream_branch = None
-        upstream_subpath = None  # noqa: F841
+        upstream_subpath = None
 
     if upstream_branch is not None:
         try:
@@ -812,7 +812,7 @@ class MergeUpstreamResult:
         return (self.old_upstream_version, self.new_upstream_version)
 
 
-def merge_upstream(  # noqa: C901
+def merge_upstream(
     tree: WorkingTree,
     version_kind: str = "release",
     location: Optional[str] = None,

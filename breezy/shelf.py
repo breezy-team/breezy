@@ -456,10 +456,7 @@ class ShelfManager:
     def new_shelf(self):
         """Return a file object and id for a new set of shelved changes."""
         last_shelf = self.last_shelf()
-        if last_shelf is None:
-            next_shelf = 1
-        else:
-            next_shelf = last_shelf + 1
+        next_shelf = 1 if last_shelf is None else last_shelf + 1
         filename = self.get_shelf_filename(next_shelf)
         shelf_file = open(self.transport.local_abspath(filename), "wb")
         return next_shelf, shelf_file

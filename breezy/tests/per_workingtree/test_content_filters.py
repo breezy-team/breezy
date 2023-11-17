@@ -148,10 +148,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         basis = tree.basis_tree()
         basis.lock_read()
         self.addCleanup(basis.unlock)
-        if tree.supports_content_filtering():
-            expected = b"fOO tXT"
-        else:
-            expected = b"Foo Txt"
+        expected = b"fOO tXT" if tree.supports_content_filtering() else b"Foo Txt"
         self.assertEqual(expected, basis.get_file_text(txt_path))
         self.assertEqual(b"Foo Bin", basis.get_file_text(bin_path))
         # Check that the working tree has the original content
@@ -171,10 +168,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         basis = tree.basis_tree()
         basis.lock_read()
         self.addCleanup(basis.unlock)
-        if tree.supports_content_filtering():
-            expected = b"FOO TXT"
-        else:
-            expected = b"Foo Txt"
+        expected = b"FOO TXT" if tree.supports_content_filtering() else b"Foo Txt"
         self.assertEqual(expected, basis.get_file_text(txt_path))
         self.assertEqual(b"Foo Bin", basis.get_file_text(bin_path))
         # We expect the workingtree content to be unchanged (for now at least)

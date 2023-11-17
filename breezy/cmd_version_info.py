@@ -142,10 +142,7 @@ class cmd_version_info(Command):
             if "{clean}" in template:
                 check_clean = True
 
-        if revision is not None:
-            revision_id = revision[0].as_revision_id(b)
-        else:
-            revision_id = None
+        revision_id = revision[0].as_revision_id(b) if revision is not None else None
 
         builder = format(
             b,

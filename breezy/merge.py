@@ -837,10 +837,8 @@ class Merge3Merger:
             self._compute_transform()
             results = self.tt.apply(no_conflicts=True)
             self.write_modified(results)
-            try:
+            with contextlib.suppress(errors.UnsupportedOperation):
                 self.working_tree.add_conflicts(self.cooked_conflicts)
-            except errors.UnsupportedOperation:
-                pass
 
     def make_preview_transform(self):
         with self.base_tree.lock_read(), self.other_tree.lock_read():
@@ -1577,10 +1575,7 @@ class Merge3Merger:
             sequence_matcher=patiencediff.PatienceSequenceMatcher,
         )
         start_marker = b"!START OF MERGE CONFLICT!" + b"I HOPE THIS IS UNIQUE"
-        if self.show_base is True:
-            base_marker = b"|" * 7
-        else:
-            base_marker = None
+        base_marker = b"|" * 7 if self.show_base is True else None
 
         def iter_merge3(retval):
             retval["text_conflicts"] = False
@@ -1689,10 +1684,7 @@ class Merge3Merger:
         if winner == "conflict":
             # There must be a None in here, if we have a conflict, but we
             # need executability since file status was not deleted.
-            if other_path is None:
-                winner = "this"
-            else:
-                winner = "other"
+            winner = "this" if other_path is None else "other"
         if winner == "this" and file_status != "modified":
             return
         if self.tt.final_kind(trans_id) != "file":
@@ -1735,10 +1727,7 @@ class WeaveMerger(Merge3Merger):
         """
         from .bzr.versionedfile import PlanWeaveMerge
 
-        if self.cherrypick:
-            base = self.base_tree
-        else:
-            base = None
+        base = self.base_tree if self.cherrypick else None
         plan = self._generate_merge_plan(this_path, base)
         if debug.debug_flag_enabled("merge"):
             plan = list(plan)
@@ -1748,10 +1737,7 @@ class WeaveMerger(Merge3Merger):
             self.tt.new_file(name, self.tt.final_parent(trans_id), contents)
         textmerge = PlanWeaveMerge(plan, b"<<<<<<< TREE\n", b">>>>>>> MERGE-SOURCE\n")
         lines, conflicts = textmerge.merge_lines(self.reprocess)
-        if conflicts:
-            base_lines = textmerge.base_from_plan()
-        else:
-            base_lines = None
+        base_lines = textmerge.base_from_plan() if conflicts else None
         return lines, base_lines
 
     def text_merge(self, trans_id, paths):
@@ -2259,10 +2245,7 @@ class _PlanMerge(_PlanMergeBase):
             # per-file graphs
             # Ideally we would know that before we get this far
             self._head_key = heads.pop()
-            if self._head_key == self.a_key:
-                other = b_rev
-            else:
-                other = a_rev
+            other = b_rev if self._head_key == self.a_key else a_rev
             trace.mutter(
                 "found dominating revision for %s\n%s > %s",
                 self.vf,
@@ -2513,10 +2496,7 @@ class _PlanLCAMerge(_PlanMergeBase):
             else:
                 self.lcas.add(lca[-1])
         for lca in self.lcas:
-            if _mod_revision.is_null(lca):
-                lca_lines = []
-            else:
-                lca_lines = self.get_lines([lca])[lca]
+            lca_lines = [] if _mod_revision.is_null(lca) else self.get_lines([lca])[lca]
             matcher = patiencediff.PatienceSequenceMatcher(
                 None, self.lines_a, lca_lines
             )

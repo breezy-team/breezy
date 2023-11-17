@@ -171,10 +171,7 @@ def create_upgrade_plan(
             newrev = repository.get_revision(newrevid)
             check_revision_changed(oldrev, newrev)
 
-    if revision_id is None:
-        heads = repository.all_revision_ids()
-    else:
-        heads = [revision_id]
+    heads = repository.all_revision_ids() if revision_id is None else [revision_id]
 
     plan = generate_transpose_plan(
         graph.iter_ancestry(heads), upgrade_map, graph, determine_new_revid

@@ -16,6 +16,7 @@
 
 __all__ = ["show_bzrdir_info"]
 
+import contextlib
 import sys
 import time
 from io import StringIO
@@ -163,14 +164,12 @@ def _gather_related_branches(branch):
     locs.add_url("push branch", branch.get_push_location())
     locs.add_url("parent branch", branch.get_parent())
     locs.add_url("submit branch", branch.get_submit_branch())
-    try:
-        locs.add_url("stacked on", branch.get_stacked_on_url())
-    except (
+    with contextlib.suppress(
         _mod_branch.UnstackableBranchFormat,
         errors.UnstackableRepositoryFormat,
         errors.NotStacked,
     ):
-        pass
+        locs.add_url("stacked on", branch.get_stacked_on_url())
     return locs
 
 
@@ -220,22 +219,13 @@ def _show_locking_info(repository=None, branch=None, working=None, outfile=None)
         outfile.write("\n")
         outfile.write("Lock status:\n")
         if working:
-            if working.get_physical_lock_status():
-                status = "locked"
-            else:
-                status = "unlocked"
+            status = "locked" if working.get_physical_lock_status() else "unlocked"
             outfile.write(f"  working tree: {status}\n")
         if branch:
-            if branch.get_physical_lock_status():
-                status = "locked"
-            else:
-                status = "unlocked"
+            status = "locked" if branch.get_physical_lock_status() else "unlocked"
             outfile.write(f"        branch: {status}\n")
         if repository:
-            if repository.get_physical_lock_status():
-                status = "locked"
-            else:
-                status = "unlocked"
+            status = "locked" if repository.get_physical_lock_status() else "unlocked"
             outfile.write(f"    repository: {status}\n")
 
 
@@ -471,14 +461,8 @@ def describe_layout(repository=None, branch=None, tree=None, control=None):
             phrase += " with " + " and ".join(extra)
         return phrase
     else:
-        if repository.is_shared():
-            independence = "Repository "
-        else:
-            independence = "Standalone "
-        if tree is not None:
-            phrase = "tree"
-        else:
-            phrase = "branch"
+        independence = "Repository " if repository.is_shared() else "Standalone "
+        phrase = "tree" if tree is not None else "branch"
         if branch is None and tree is not None:
             phrase = "branchless tree"
         else:
@@ -491,10 +475,7 @@ def describe_layout(repository=None, branch=None, tree=None, control=None):
             elif branch.get_bound_location() is not None:
                 if independence == "Standalone ":
                     independence = ""
-                if tree is None:
-                    phrase = "Bound branch"
-                else:
-                    phrase = "Checkout"
+                phrase = "Bound branch" if tree is None else "Checkout"
         if independence != "":
             phrase = phrase.lower()
         return f"{independence}{phrase}"

@@ -189,10 +189,7 @@ class BodyExternalMailClient(MailClient):
         attach_path = osutils.pathjoin(pathname, basename + extension)
         with open(attach_path, "wb") as outfile:
             outfile.write(attachment)
-        if body is not None:
-            kwargs = {"body": body}
-        else:
-            kwargs = {}
+        kwargs = {"body": body} if body is not None else {}
         self._compose(
             prompt, to, subject, attach_path, mime_subtype, extension, **kwargs
         )
@@ -223,10 +220,7 @@ class BodyExternalMailClient(MailClient):
         """
         for name in self._get_client_commands():
             cmdline = [self._encode_path(name, "executable")]
-            if body is not None:
-                kwargs = {"body": body}
-            else:
-                kwargs = {}
+            kwargs = {"body": body} if body is not None else {}
             if from_ is not None:
                 kwargs["from_"] = from_
             cmdline.extend(

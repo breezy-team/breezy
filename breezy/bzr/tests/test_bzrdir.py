@@ -708,7 +708,7 @@ class ChrootedTests(TestCaseWithTransport):
 
     def setUp(self):
         super().setUp()
-        if not self.vfs_transport_factory == memory.MemoryServer:
+        if self.vfs_transport_factory != memory.MemoryServer:
             self.transport_readonly_server = http_server.HttpServer
 
     def local_branch_path(self, branch):

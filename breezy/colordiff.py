@@ -15,6 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import contextlib
 import re
 from os.path import expanduser
 
@@ -96,10 +97,8 @@ class DiffWriter:
         self.check_style = check_style
 
     def _read_colordiffrc(self, path):
-        try:
+        with contextlib.suppress(OSError):
             self.colors.update(read_colordiffrc(path))
-        except OSError:
-            pass
 
     def colorstring(self, type, item, bad_ws_match):
         color = self.colors[type]

@@ -100,10 +100,7 @@ class DirWrapper:
         return f"DirWrapper({self.root!r})"
 
     def getmembers(self, subdir=None):
-        if subdir is not None:
-            mydir = pathjoin(self.root, subdir)
-        else:
-            mydir = self.root
+        mydir = pathjoin(self.root, subdir) if subdir is not None else self.root
         for child in os.listdir(mydir):
             if subdir is not None:
                 child = pathjoin(subdir, child)

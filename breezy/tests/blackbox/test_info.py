@@ -1375,10 +1375,7 @@ Location:
                 % lco_tree.branch.controldir.root_transport.base
             )
 
-        if verbose >= 2:
-            verbose_info = "         0 committers\n"
-        else:
-            verbose_info = ""
+        verbose_info = "         0 committers\n" if verbose >= 2 else ""
 
         self.assertEqualDiff(
             f"""{description} (format: {format})

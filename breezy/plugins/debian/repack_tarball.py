@@ -122,9 +122,10 @@ class ZipTgzRepacker(TgzRepacker):
             tar.addfile(tarinfo, contents)
 
     def repack(self, target_f):
-        with zipfile.ZipFile(self.source_f, "r") as zip:
-            with tarfile.open(mode="w:gz", fileobj=target_f) as tar:
-                self._repack_zip_to_tar(zip, tar)
+        with zipfile.ZipFile(self.source_f, "r") as zip, tarfile.open(
+            mode="w:gz", fileobj=target_f
+        ) as tar:
+            self._repack_zip_to_tar(zip, tar)
 
 
 def get_filetype(filename):
@@ -168,9 +169,10 @@ def _error_if_exists(target_transport, new_name, source_name):
 
 def _repack_directory(target_transport, new_name, source_name):
     target_transport.ensure_base()
-    with target_transport.open_write_stream(new_name) as target_f:
-        with tarfile.open(mode="w:gz", fileobj=target_f) as tar:
-            tar.add(source_name, os.path.basename(source_name))
+    with target_transport.open_write_stream(new_name) as target_f, tarfile.open(
+        mode="w:gz", fileobj=target_f
+    ) as tar:
+        tar.add(source_name, os.path.basename(source_name))
 
 
 def _repack_other(target_transport, new_name, source_name):
@@ -180,10 +182,11 @@ def _repack_other(target_transport, new_name, source_name):
     if repacker_cls is None:
         raise UnsupportedRepackFormat(source_name)
     target_transport.ensure_base()
-    with target_transport.open_write_stream(new_name) as target_f:
-        with open_file(source_name) as source_f:
-            repacker = repacker_cls(source_f)
-            repacker.repack(target_f)
+    with target_transport.open_write_stream(new_name) as target_f, open_file(
+        source_name
+    ) as source_f:
+        repacker = repacker_cls(source_f)
+        repacker.repack(target_f)
 
 
 def repack_tarball(source_name, new_name, target_dir=None):

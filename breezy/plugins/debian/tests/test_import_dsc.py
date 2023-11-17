@@ -908,12 +908,12 @@ class DistributionBranchTests(BuilddebTestCase):
             if len(missing) > 0:
                 self.fail(
                     f"Some expected paths not found {type} in the changes: "
-                    f"{str(missing)}, expected {str(expected)}, got {str(actual)}."
+                    f"{missing!s}, expected {expected!s}, got {actual!s}."
                 )
             if len(extra) > 0:
                 self.fail(
                     f"Some extra paths found {type} in the changes: "
-                    f"{str(extra)}, expected {str(expected)}, got {str(actual)}."
+                    f"{extra!s}, expected {expected!s}, got {actual!s}."
                 )
 
         check_one_type("added", added, changes.added)

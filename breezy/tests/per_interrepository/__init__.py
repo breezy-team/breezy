@@ -26,6 +26,8 @@ rather than in tests/per_interrepository/*.py.
 """
 
 
+import contextlib
+
 from breezy import pyutils, transport
 from breezy.tests import TestSkipped, default_transport, multiply_tests
 from breezy.transport import FileExists
@@ -192,10 +194,8 @@ class TestCaseWithInterRepository(TestCaseWithControlDir):
             if segments and segments[-1] not in ("", "."):
                 parent = "/".join(segments[:-1])
                 t = transport.get_transport(parent)
-                try:
+                with contextlib.suppress(FileExists):
                     t.mkdir(segments[-1])
-                except FileExists:
-                    pass
             if format is None:
                 format = self.repository_format._matchingcontroldir
             return format.initialize(url)

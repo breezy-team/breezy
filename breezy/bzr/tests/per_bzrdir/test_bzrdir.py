@@ -16,6 +16,7 @@
 
 """Tests for bzrdir implementations - tests a bzrdir format."""
 
+import contextlib
 from stat import S_ISDIR
 
 import breezy.branch
@@ -478,10 +479,8 @@ class TestBzrDir(TestCaseWithBzrDir):
         repo = dir.create_repository()
         repo.fetch(tree.branch.repository)
         self.assertTrue(repo.has_revision(b"1"))
-        try:
+        with contextlib.suppress(errors.NotBranchError):
             self.assertTrue(_mod_revision.is_null(dir.open_branch().last_revision()))
-        except errors.NotBranchError:
-            pass
         target = dir.sprout(self.get_url("target"))
         self.assertNotEqual(dir.transport.base, target.transport.base)
         # testing inventory isn't reasonable for repositories

@@ -76,10 +76,7 @@ class VersionedFileStore(TransportStore):
     def has_id(self, file_id):
         suffixes = self._versionedfile_class.get_suffixes()
         filename = self.filename(file_id)
-        for suffix in suffixes:
-            if not self._transport.has(filename + suffix):
-                return False
-        return True
+        return all(self._transport.has(filename + suffix) for suffix in suffixes)
 
     def get_empty(self, file_id, transaction):
         """Get an empty weave, which implies deleting the existing one first."""

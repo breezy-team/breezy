@@ -227,10 +227,7 @@ def parse_gitlab_merge_request_url(url):
         raise NotMergeRequestUrl(host, url)
     if parts[-2] != "merge_requests":
         raise NotMergeRequestUrl(host, url)
-    if parts[-3] == "-":
-        project_name = "/".join(parts[:-3])
-    else:
-        project_name = "/".join(parts[:-2])
+    project_name = "/".join(parts[:-3]) if parts[-3] == "-" else "/".join(parts[:-2])
     return host, project_name, int(parts[-1])
 
 
@@ -578,10 +575,7 @@ class GitLab(Forge):
         return urlutils.join(self.base_url, username)
 
     def _list_paged(self, path, parameters=None, per_page=None):
-        if parameters is None:
-            parameters = {}
-        else:
-            parameters = dict(parameters.items())
+        parameters = {} if parameters is None else dict(parameters.items())
         if per_page:
             parameters["per_page"] = str(per_page)
         page = "1"

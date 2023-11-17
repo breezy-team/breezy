@@ -35,7 +35,7 @@ try:
     import pkg_resources
 except ModuleNotFoundError:
     ez = {}
-    exec(  # noqa: S301,S310,S102
+    exec(  # noqa: S102
         urllib2.urlopen("http://peak.telecommunity.com/dist/ez_setup.py").read(),
         ez,
     )

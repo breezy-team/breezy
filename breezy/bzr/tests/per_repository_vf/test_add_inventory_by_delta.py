@@ -44,10 +44,10 @@ class TestAddInventoryByDelta(TestCaseWithRepository):
             self.assertRaises(
                 errors.NoSuchRevision,
                 repo.add_inventory_by_delta,
-                "missing-revision",
+                b"missing-revision",
                 [],
-                "new-revision",
-                ["missing-revision"],
+                b"new-revision",
+                [b"missing-revision"],
             )
         finally:
             repo.abort_write_group()
@@ -59,10 +59,10 @@ class TestAddInventoryByDelta(TestCaseWithRepository):
         self.assertRaises(
             AssertionError,
             repo.add_inventory_by_delta,
-            "missing-revision",
+            b"missing-revision",
             [],
-            "new-revision",
-            ["missing-revision"],
+            b"new-revision",
+            [b"missing-revision"],
         )
 
     def make_inv_delta(self, old, new):

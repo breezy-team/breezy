@@ -45,6 +45,7 @@ class ChunkWriter:
         node. This allows us to do a single compression pass, rather than
         trying until we overflow, and then recompressing again.
     """
+
     #    In testing, some values for bzr.dev::
     #        repack  time  MB   max   full
     #         1       7.5  4.6  1140  0
@@ -205,10 +206,7 @@ class ChunkWriter:
         if self.num_repack > self._max_repack and not reserved:
             self.unused_bytes = bytes
             return True
-        if reserved:
-            capacity = self.chunk_size
-        else:
-            capacity = self.chunk_size - self.reserved_size
+        capacity = self.chunk_size if reserved else self.chunk_size - self.reserved_size
         comp = self.compressor
 
         # Check to see if the currently unflushed bytes would fit with a bit of
@@ -246,10 +244,7 @@ class ChunkWriter:
             # We are a bit extra conservative, because it seems that you *can*
             # get better compression with Z_SYNC_FLUSH than a full compress. It
             # is probably very rare, but we were able to trigger it.
-            if self.num_repack == 0:
-                safety_margin = 100
-            else:
-                safety_margin = 10
+            safety_margin = 100 if self.num_repack == 0 else 10
             if self.bytes_out_len + safety_margin <= capacity:
                 # It fit, so mark it added
                 self.bytes_in.append(bytes)

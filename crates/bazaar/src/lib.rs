@@ -2,6 +2,8 @@
 use pyo3::{prelude::*, types::PyBytes, ToPyObject};
 use std::fmt::{Debug, Error, Formatter};
 
+pub const DEFAULT_CHUNK_SIZE: usize = 4096;
+
 pub mod bencode_serializer;
 pub mod chk_inventory;
 pub mod chk_map;
@@ -13,10 +15,16 @@ pub mod groupcompress;
 pub mod hashcache;
 pub mod inventory;
 pub mod inventory_delta;
+pub mod repository;
 pub mod revision;
 pub mod rio;
 pub mod serializer;
+pub mod smart;
+pub mod versionedfile;
 pub mod xml_serializer;
+
+#[cfg(feature = "pyo3")]
+pub mod pyversionedfile;
 
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct FileId(Vec<u8>);
@@ -134,6 +142,12 @@ impl From<RevisionId> for Vec<u8> {
 impl FromPyObject<'_> for RevisionId {
     fn extract(ob: &PyAny) -> PyResult<Self> {
         let s: Vec<u8> = ob.extract()?;
+        if !is_valid(&s) {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "Invalid revision id: {:?}",
+                s
+            )));
+        }
         Ok(RevisionId::from(s))
     }
 }

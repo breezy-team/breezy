@@ -329,7 +329,7 @@ def main(argv=None):
     DEFAULT_BUILDER = "sbuild --no-clean-source"
     import argparse
 
-    import breezy.bzr  # noqa: F401
+    import breezy.bzr
     import breezy.git  # noqa: F401
     from breezy.branch import Branch
     from breezy.workingtree import WorkingTree

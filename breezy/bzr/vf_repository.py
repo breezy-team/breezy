@@ -69,6 +69,7 @@ from .inventory import (
     InventoryFile,
     InventoryLink,
     TreeReference,
+    _make_delta,
 )
 from .inventory_delta import InventoryDelta
 from .inventorytree import InventoryTreeChange
@@ -362,7 +363,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
             if basis_revision_id != self.parents[0] and not ghost_basis:
                 raise Exception("arbitrary basis parents not yet supported with merges")
             for revtree in revtrees[1:]:
-                for change in revtree.root_inventory._make_delta(basis_inv):
+                for change in _make_delta(revtree.root_inventory, basis_inv):
                     if change[1] is None:
                         # Not present in this parent.
                         continue
@@ -503,10 +504,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                     # new version even if some other process reverts it while
                     # commit is running (with the revert happening after
                     # iter_changes did its examination).
-                    if change.executable[1]:
-                        executable = True
-                    else:
-                        executable = False
+                    executable = bool(change.executable[1])
                     if carry_over_possible and parent_entry.executable == executable:
                         # Check the file length, content hash after reading
                         # the file.
@@ -939,7 +937,7 @@ class VersionedFileRepository(Repository):
             rev_id = record.key[0]
             inv = self._deserialise_inventory(rev_id, record.get_bytes_as("lines"))
             if last_object is not None:
-                delta = inv._make_delta(last_object)
+                delta = _make_delta(inv, last_object)
                 for _old_path, _path, _file_id, ie in delta:
                     if ie is None:
                         continue
@@ -1195,7 +1193,7 @@ class VersionedFileRepository(Repository):
         against the revision one as get_revision does: but it should only
         be used by reconcile, or reconcile-alike commands that are correcting
         or testing the revision graph.
-        """  # noqa: D403
+        """
         with self.lock_read():
             return self.get_revisions([revision_id])[0]
 
@@ -1733,7 +1731,7 @@ class VersionedFileRepository(Repository):
         with self.lock_read():
             if not self.has_revision(revision_id):
                 raise errors.NoSuchRevision(self, revision_id)
-            sig_present = 1 == len(self.signatures.get_parent_map([(revision_id,)]))
+            sig_present = len(self.signatures.get_parent_map([(revision_id,)])) == 1
             return sig_present
 
     def get_signature_text(self, revision_id):
@@ -2241,10 +2239,7 @@ class StreamSource:
         # NB: This currently reopens the inventory weave in source;
         # using a single stream interface instead would avoid this.
         from_weave = self.from_repository.inventories
-        if missing:
-            delta_closure = True
-        else:
-            delta_closure = not self.delta_on_metadata()
+        delta_closure = True if missing else not self.delta_on_metadata()
         yield (
             "inventories",
             from_weave.get_record_stream(
@@ -2317,7 +2312,7 @@ class StreamSource:
                         parent_inv = inventory_cache.get(parent_id, None)
                         if parent_inv is None:
                             parent_inv = from_repo.get_inventory(parent_id)
-                    candidate_delta = inv._make_delta(parent_inv)
+                    candidate_delta = _make_delta(inv, parent_inv)
                     if delta is None or len(delta) > len(candidate_delta):
                         delta = candidate_delta
                         basis_id = parent_id
@@ -2325,12 +2320,12 @@ class StreamSource:
                 # Either none of the parents ended up being suitable, or we
                 # were asked to delta against NULL
                 basis_id = _mod_revision.NULL_REVISION
-                delta = inv._make_delta(null_inventory)
+                delta = _make_delta(inv, null_inventory)
             invs_sent_so_far.add(inv.revision_id)
             inventory_cache[inv.revision_id] = inv
             delta_serialized = serializer.delta_to_lines(basis_id, key[-1], delta)
             yield versionedfile.ChunkedContentFactory(
-                key, parent_keys, None, delta_serialized, chunks_are_lines=True
+                key, parent_keys, None, delta_serialized
             )
 
 
@@ -2645,7 +2640,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
         # FIXME: Support nested trees
         texts_possibly_new_in_tree = set()
         for basis_id, basis_tree in possible_trees:
-            delta = tree.root_inventory._make_delta(basis_tree.root_inventory)
+            delta = _make_delta(tree.root_inventory, basis_tree.root_inventory)
             for _old_path, new_path, file_id, new_entry in delta:
                 if new_path is None:
                     # This file_id isn't present in the new rev, so we don't
@@ -2686,7 +2681,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
             parents_parents = [key[-1] for key in parents_parents_keys]
             basis_id = _mod_revision.NULL_REVISION
             basis_tree = self.source.revision_tree(basis_id)
-            delta = parent_tree.root_inventory._make_delta(basis_tree.root_inventory)
+            delta = _make_delta(parent_tree.root_inventory, basis_tree.root_inventory)
             self.target.add_inventory_by_delta(
                 basis_id, delta, current_revision_id, parents_parents
             )
@@ -2867,10 +2862,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
         """See InterRepository.fetch()."""
         if lossy:
             raise errors.LossyPushToSameVCS(self.source, self.target)
-        if fetch_spec is not None:
-            revision_ids = fetch_spec.get_keys()
-        else:
-            revision_ids = None
+        revision_ids = fetch_spec.get_keys() if fetch_spec is not None else None
         if self.source._format.experimental:
             ui.ui_factory.show_user_warning(
                 "experimental_format_fetch",
@@ -2891,10 +2883,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
             )
         with self.lock_write():
             if revision_ids is None:
-                if revision_id:
-                    search_revision_ids = [revision_id]
-                else:
-                    search_revision_ids = None
+                search_revision_ids = [revision_id] if revision_id else None
                 revision_ids = self.target.search_missing_revision_ids(
                     self.source,
                     revision_ids=search_revision_ids,
@@ -3039,7 +3028,7 @@ def _install_revision(repository, rev, revision_tree, signature, inventory_cache
             except KeyError:
                 repository.add_inventory(rev.revision_id, inv, present_parents)
             else:
-                delta = inv._make_delta(basis_inv)
+                delta = _make_delta(inv, basis_inv)
                 repository.add_inventory_by_delta(
                     rev.parent_ids[0], delta, rev.revision_id, present_parents
                 )

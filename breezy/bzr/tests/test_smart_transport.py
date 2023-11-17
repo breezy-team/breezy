@@ -17,6 +17,7 @@
 """Tests for smart transport."""
 
 # all of this deals with byte strings so this is safe
+import contextlib
 import doctest
 import errno
 import os
@@ -1314,10 +1315,8 @@ class TestSmartTCPServer(tests.TestCase):
 
     def ensure_client_disconnected(self, client_sock):
         """Ensure that a socket is closed, discarding all errors."""
-        try:
+        with contextlib.suppress(Exception):
             client_sock.close()
-        except Exception:
-            pass
 
     def connect_to_server(self, server):
         """Create a client socket that can talk to the server."""
@@ -1874,7 +1873,7 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
         self.assertEqual(None, handler.response.body)
 
     def test_readv_accept_body(self):
-        """'readv' should set finished_reading after reading offsets."""  # noqa: D403
+        """'readv' should set finished_reading after reading offsets."""
         self.build_tree(["a-file"])
         handler = self.build_handler(self.get_readonly_transport())
         handler.args_received((b"readv", b"a-file"))
@@ -1889,7 +1888,7 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
         self.assertEqual(b"nte", handler.response.body)
 
     def test_readv_short_read_response_contents(self):
-        """'readv' when a short read occurs sets the response appropriately."""  # noqa: D403
+        """'readv' when a short read occurs sets the response appropriately."""
         self.build_tree(["a-file"])
         handler = self.build_handler(self.get_readonly_transport())
         handler.args_received((b"readv", b"a-file"))
@@ -1973,10 +1972,7 @@ class TestSmartProtocol(tests.TestCase):
         # This is very similar to
         # breezy.bzr.smart.client._SmartClient._build_client_protocol
         # XXX: make this use _SmartClient!
-        if input_bytes is None:
-            input = BytesIO()
-        else:
-            input = BytesIO(input_bytes)
+        input = BytesIO() if input_bytes is None else BytesIO(input_bytes)
         output = BytesIO()
         client_medium = medium.SmartSimplePipesClientMedium(input, output, "base")
         request = client_medium.get_request()
@@ -4344,7 +4340,7 @@ class TestSuccessfulSmartServerResponse(tests.TestCase):
         self.assertEqual(bytes_iterable, response.body_stream)
 
     def test_construct_rejects_body_and_body_stream(self):
-        """'body' and 'body_stream' are mutually exclusive."""  # noqa: D403
+        """'body' and 'body_stream' are mutually exclusive."""
         self.assertRaises(
             errors.BzrError,
             _mod_request.SuccessfulSmartServerResponse,

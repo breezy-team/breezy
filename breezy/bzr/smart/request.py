@@ -84,6 +84,7 @@ class SmartServerRequest:
     care to call `translate_client_path` and `transport_from_client_path` as
     appropriate when dealing with paths received from the client.
     """
+
     # XXX: rename this class to BaseSmartServerRequestHandler ?  A request
     # *handler* is a different concept to the request.
 
@@ -524,10 +525,7 @@ class SmartServerIsReadonly(SmartServerRequest):
     # XXX: this request method belongs somewhere else.
 
     def do(self):
-        if self._backing_transport.is_readonly():
-            answer = b"yes"
-        else:
-            answer = b"no"
+        answer = b"yes" if self._backing_transport.is_readonly() else b"no"
         return SuccessfulSmartServerResponse((answer,))
 
 

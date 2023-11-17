@@ -33,7 +33,7 @@ class TestMkdir(TestCaseWithTransport):
     def test_mkdir_fails_cleanly(self):
         """'mkdir' fails cleanly when no working tree is available.
         https://bugs.launchpad.net/bzr/+bug/138600.
-        """  # noqa: D403
+        """
         # Since there is a safety working tree above us, we create a bare repo
         # here locally.
         self.make_repository(".")
@@ -59,7 +59,7 @@ class TestMkdir(TestCaseWithTransport):
         self.assertFalse(delta.modified)
 
     def test_mkdir_in_subdir(self):
-        """'brz mkdir' operation in subdirectory."""  # noqa: D403
+        """'brz mkdir' operation in subdirectory."""
         self.make_branch_and_tree(".")
         self.run_bzr(["mkdir", "dir"])
         self.assertTrue(os.path.isdir("dir"))
@@ -80,7 +80,7 @@ class TestMkdir(TestCaseWithTransport):
         self.assertFalse(delta.modified)
 
     def test_mkdir_w_nested_trees(self):
-        """'brz mkdir' with nested trees."""  # noqa: D403
+        """'brz mkdir' with nested trees."""
         self.make_branch_and_tree(".")
         self.make_branch_and_tree("a")
         self.make_branch_and_tree("a/b")
@@ -110,7 +110,7 @@ class TestMkdir(TestCaseWithTransport):
         self.assertFalse(delta.modified)
 
     def test_mkdir_quiet(self):
-        """'brz mkdir --quiet' should not print a status message."""  # noqa: D403
+        """'brz mkdir --quiet' should not print a status message."""
         self.make_branch_and_tree(".")
         out, err = self.run_bzr(["mkdir", "--quiet", "foo"])
         self.assertEqual("", err)

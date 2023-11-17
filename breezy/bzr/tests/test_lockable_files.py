@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import contextlib
+
 import breezy
 import breezy.branch
 
@@ -275,10 +277,8 @@ class TestLockableFiles_TransportLock(TestCaseInTempDir, _TestLockableFiles_mixi
         super().stop_server()
         # free the subtransport so that we do not get a 5 second
         # timeout due to the SFTP connection cache.
-        try:
+        with contextlib.suppress(AttributeError):
             del self.sub_transport
-        except AttributeError:
-            pass
 
     def get_lockable(self):
         return LockableFiles(self.sub_transport, "my-lock", TransportLock)

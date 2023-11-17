@@ -31,7 +31,7 @@ from debian.changelog import Changelog, Version
 from debmutate.changelog import ChangelogEditor, distribution_is_unreleased
 from debmutate.control import ControlEditor
 
-import breezy.bzr  # noqa: F401
+import breezy.bzr
 import breezy.git  # noqa: F401
 from breezy import urlutils
 from breezy.errors import (
