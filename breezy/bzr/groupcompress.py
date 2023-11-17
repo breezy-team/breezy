@@ -2282,7 +2282,7 @@ encode_base128_int = groupcompress.encode_base128_int
 try:
     from ._groupcompress_pyx import DeltaIndex
 
-    GroupCompressor = PyrexGroupCompressor
+    GroupCompressor = PyrexGroupCompressor  # type: ignore
 except ImportError as e:
     osutils.failed_to_load_extension(e)
-    GroupCompressor = PythonGroupCompressor
+    GroupCompressor = PythonGroupCompressor  # type: ignore
