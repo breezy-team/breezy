@@ -833,9 +833,24 @@ def network_block_to_records(storage_kind, bytes, line_end):
     return manager.get_record_stream()
 
 
-class _CommonGroupCompressor:
-    chunks: list[bytes]
+class PyrexGroupCompressor:
+    """Produce a serialised group of compressed texts.
 
+    It contains code very similar to SequenceMatcher because of having a similar
+    task. However some key differences apply:
+
+    * there is no junk, we want a minimal edit not a human readable diff.
+    * we don't filter very common lines (because we don't know where a good
+      range will start, and after the first text we want to be emitting minmal
+      edits only.
+    * we chain the left side, not the right side
+    * we incrementally update the adjacency matrix as new lines are provided.
+    * we look for matches in all of the left side, so the routine which does
+      the analagous task of find_longest_match does not need to filter on the
+      left side.
+    """
+
+    chunks: list[bytes]
     def __init__(self, settings=None):
         """Create a GroupCompressor."""
         self._last = None
@@ -848,6 +863,9 @@ class _CommonGroupCompressor:
             self._settings = {}
         else:
             self._settings = settings
+        self.chunks = []
+        max_bytes_to_index = self._settings.get("max_bytes_to_index", 0)
+        self._delta_index = DeltaIndex(max_bytes_to_index=max_bytes_to_index)
 
     def compress(self, key, chunks, length, expected_sha, nostore_sha=None, soft=False):
         """Compress lines with label key.
@@ -884,99 +902,6 @@ class _CommonGroupCompressor:
 
         start, end, type = self._compress(key, chunks, length, length / 2, soft)
         return sha1, start, end, type
-
-    def _compress(self, key, chunks, input_len, max_delta_size, soft=False):
-        """Compress lines with label key.
-
-        :param key: A key tuple. It is stored in the output for identification
-            of the text during decompression.
-
-        :param chunks: The chunks of bytes to be compressed
-
-        :param input_len: The length of the chunks
-
-        :param max_delta_size: The size above which we issue a fulltext instead
-            of a delta.
-
-        :param soft: Do a 'soft' compression. This means that we require larger
-            ranges to match to be considered for a copy command.
-
-        :return: The sha1 of lines, the start and end offsets in the delta, and
-            the type ('fulltext' or 'delta').
-        """
-        raise NotImplementedError(self._compress)
-
-    def extract(self, key):
-        """Extract a key previously added to the compressor.
-
-        :param key: The key to extract.
-        :return: An iterable over chunks and the sha1.
-        """
-        (start_byte, start_chunk, end_byte, end_chunk) = self.labels_deltas[key]
-        delta_chunks = self.chunks[start_chunk:end_chunk]
-        stored_bytes = b"".join(delta_chunks)
-        kind = stored_bytes[:1]
-        if kind == b"f":
-            fulltext_len, offset = decode_base128_int(stored_bytes[1:10])
-            data_len = fulltext_len + 1 + offset
-            if data_len != len(stored_bytes):
-                raise ValueError(
-                    "Index claimed fulltext len, but stored bytes"
-                    f" claim {len(stored_bytes)} != {data_len}"
-                )
-            data = [stored_bytes[offset + 1 :]]
-        else:
-            if kind != b"d":
-                raise ValueError(f"Unknown content kind, bytes claim {kind}")
-            # XXX: This is inefficient at best
-            source = b"".join(self.chunks[:start_chunk])
-            delta_len, offset = decode_base128_int(stored_bytes[1:10])
-            data_len = delta_len + 1 + offset
-            if data_len != len(stored_bytes):
-                raise ValueError(
-                    "Index claimed delta len, but stored bytes"
-                    f" claim {len(stored_bytes)} != {data_len}"
-                )
-            data = [apply_delta(source, stored_bytes[offset + 1 :])]
-        data_sha1 = osutils.sha_strings(data)
-        return data, data_sha1
-
-    def flush(self):
-        """Finish this group, creating a formatted stream.
-
-        After calling this, the compressor should no longer be used
-        """
-        self._block.set_chunked_content(self.chunks, self.endpoint)
-        self._delta_index = None
-        return self._block
-
-    def ratio(self):
-        """Return the overall compression ratio."""
-        return float(self.input_bytes) / float(self.endpoint)
-
-
-class PyrexGroupCompressor(_CommonGroupCompressor):
-    """Produce a serialised group of compressed texts.
-
-    It contains code very similar to SequenceMatcher because of having a similar
-    task. However some key differences apply:
-
-    * there is no junk, we want a minimal edit not a human readable diff.
-    * we don't filter very common lines (because we don't know where a good
-      range will start, and after the first text we want to be emitting minmal
-      edits only.
-    * we chain the left side, not the right side
-    * we incrementally update the adjacency matrix as new lines are provided.
-    * we look for matches in all of the left side, so the routine which does
-      the analagous task of find_longest_match does not need to filter on the
-      left side.
-    """
-
-    def __init__(self, settings=None):
-        super().__init__(settings)
-        self.chunks = []
-        max_bytes_to_index = self._settings.get("max_bytes_to_index", 0)
-        self._delta_index = DeltaIndex(max_bytes_to_index=max_bytes_to_index)
 
     def _compress(self, key, chunks, input_len, max_delta_size, soft=False):
         """See _CommonGroupCompressor._compress."""
@@ -1035,10 +960,69 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
         endpoint += sum(map(len, new_chunks))
         self.endpoint = endpoint
 
+    def extract(self, key):
+        """Extract a key previously added to the compressor.
+
+        :param key: The key to extract.
+        :return: An iterable over chunks and the sha1.
+        """
+        (start_byte, start_chunk, end_byte, end_chunk) = self.labels_deltas[key]
+        delta_chunks = self.chunks[start_chunk:end_chunk]
+        stored_bytes = b"".join(delta_chunks)
+        kind = stored_bytes[:1]
+        if kind == b"f":
+            fulltext_len, offset = decode_base128_int(stored_bytes[1:10])
+            data_len = fulltext_len + 1 + offset
+            if data_len != len(stored_bytes):
+                raise ValueError(
+                    "Index claimed fulltext len, but stored bytes"
+                    f" claim {len(stored_bytes)} != {data_len}"
+                )
+            data = [stored_bytes[offset + 1 :]]
+        else:
+            if kind != b"d":
+                raise ValueError(f"Unknown content kind, bytes claim {kind}")
+            # XXX: This is inefficient at best
+            source = b"".join(self.chunks[:start_chunk])
+            delta_len, offset = decode_base128_int(stored_bytes[1:10])
+            data_len = delta_len + 1 + offset
+            if data_len != len(stored_bytes):
+                raise ValueError(
+                    "Index claimed delta len, but stored bytes"
+                    f" claim {len(stored_bytes)} != {data_len}"
+                )
+            data = [apply_delta(source, stored_bytes[offset + 1 :])]
+        data_sha1 = osutils.sha_strings(data)
+        return data, data_sha1
+
     def flush(self):
-        ret = super().flush()
+        """Finish this group, creating a formatted stream.
+
+        After calling this, the compressor should no longer be used
+        """
+        self._block.set_chunked_content(self.chunks, self.endpoint)
+        self._delta_index = None
         self.chunks = None
-        return ret
+        return self._block
+
+    def flush_without_last(self):
+        self._pop_last()
+        return self.flush()
+
+    def _pop_last(self):
+        """Call this if you want to 'revoke' the last compression.
+
+        After this, the data structures will be rolled back, but you cannot do
+        more compression.
+        """
+        self._delta_index = None
+        del self.chunks[self._last[0] :]
+        self.endpoint = self._last[1]
+        self._last = None
+
+    def ratio(self):
+        """Return the overall compression ratio."""
+        return float(self.input_bytes) / float(self.endpoint)
 
 
 def make_pack_factory(graph, delta, keylength, inconsistency_fatal=True):
@@ -1756,8 +1740,8 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         self._unadded_refs = {}
         keys_to_add = []
 
-        def flush():
-            bytes_len, chunks = self._compressor.flush().to_chunks()
+        def flush(block):
+            bytes_len, chunks = block.to_chunks()
             self._compressor = self._make_group_compressor()
             # Note: At this point we still have 1 copy of the fulltext (in
             #       record and the var 'bytes'), and this generates 2 copies of
@@ -1889,8 +1873,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                 start_new_block = False
             last_prefix = prefix
             if start_new_block:
-                self._compressor.pop_last()
-                flush()
+                flush(self._compressor.flush_without_last())
                 max_fulltext_len = chunks_len
                 (found_sha1, start_point, end_point, type) = self._compressor.compress(
                     record.key, chunks, chunks_len, record.sha1
@@ -1909,7 +1892,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             refs = static_tuple.StaticTuple(parents)
             keys_to_add.append((key, b"%d %d" % (start_point, end_point), refs))
         if len(keys_to_add):
-            flush()
+            flush(self._compressor.flush())
         self._compressor = None
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
@@ -2280,9 +2263,6 @@ class _GCGraphIndex:
             # Add parent refs from graph_index (and discard parent refs
             # that the graph_index has).
             key_dependencies.add_references(node[1], node[3][0])
-
-
-GroupCompressor: Type[_CommonGroupCompressor]
 
 
 from .._bzr_rs import groupcompress
