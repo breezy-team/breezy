@@ -103,6 +103,11 @@ pub trait GroupCompressor {
     ///
     /// After calling this, the compressor should no longer be used
     fn flush(self) -> (Vec<Vec<u8>>, usize);
+
+    /// Call this if you want to 'revoke' the last compression.
+    ///
+    /// After this, the data structures will be rolled back, but you cannot do more compression.
+    fn flush_without_last(self) -> (Vec<Vec<u8>>, usize);
 }
 
 pub struct TraditionalGroupCompressor {
@@ -120,6 +125,11 @@ impl GroupCompressor for TraditionalGroupCompressor {
 
     fn flush(self) -> (Vec<Vec<u8>>, usize) {
         (self.delta_index.lines().to_vec(), self.endpoint)
+    }
+
+    fn flush_without_last(self) -> (Vec<Vec<u8>>, usize) {
+        let last = self.last.unwrap();
+        (self.delta_index.lines()[..last.0].to_vec(), last.1)
     }
 
     fn compress_block(

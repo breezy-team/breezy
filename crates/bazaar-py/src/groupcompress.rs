@@ -1,6 +1,6 @@
 use bazaar::groupcompress::compressor::GroupCompressor;
 use bazaar::versionedfile::Key;
-use pyo3::exceptions::PyValueError;
+use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use pyo3::wrap_pyfunction;
@@ -255,44 +255,92 @@ impl GroupCompressBlock {
 }
 
 #[pyclass]
-struct TraditionalGroupCompressor(bazaar::groupcompress::compressor::TraditionalGroupCompressor);
+struct TraditionalGroupCompressor(
+    Option<bazaar::groupcompress::compressor::TraditionalGroupCompressor>,
+);
 
 #[pymethods]
 impl TraditionalGroupCompressor {
     #[new]
     fn new() -> Self {
-        Self(bazaar::groupcompress::compressor::TraditionalGroupCompressor::new())
+        Self(Some(
+            bazaar::groupcompress::compressor::TraditionalGroupCompressor::new(),
+        ))
     }
 
     #[getter]
-    fn chunks(&self, py: Python) -> Vec<PyObject> {
-        self.0
-            .chunks()
-            .iter()
-            .map(|x| PyBytes::new(py, x.as_ref()).to_object(py))
-            .collect()
+    fn chunks(&self, py: Python) -> PyResult<Vec<PyObject>> {
+        if let Some(c) = self.0.as_ref() {
+            Ok(c.chunks()
+                .iter()
+                .map(|x| PyBytes::new(py, x.as_ref()).to_object(py))
+                .collect())
+        } else {
+            Err(PyRuntimeError::new_err("Compressor is already finalized")).unwrap()
+        }
     }
 
     #[getter]
-    fn endpoint(&self) -> usize {
-        self.0.endpoint()
+    fn endpoint(&self) -> PyResult<usize> {
+        if let Some(c) = self.0.as_ref() {
+            Ok(c.endpoint())
+        } else {
+            Err(PyRuntimeError::new_err("Compressor is already finalized")).unwrap()
+        }
     }
 
-    fn ratio(&self) -> f32 {
-        self.0.ratio()
+    fn ratio(&self) -> PyResult<f32> {
+        if let Some(c) = self.0.as_ref() {
+            Ok(c.ratio())
+        } else {
+            Err(PyRuntimeError::new_err("Compressor is already finalized")).unwrap()
+        }
     }
 
     fn extract(&self, py: Python, key: Vec<Vec<u8>>) -> PyResult<(Vec<PyObject>, PyObject)> {
-        let (data, hash) = self
-            .0
-            .extract(&key)
-            .map_err(|e| PyValueError::new_err(format!("Error during extract: {:?}", e)))?;
-        Ok((
-            data.iter()
-                .map(|x| PyBytes::new(py, x.as_ref()).to_object(py))
-                .collect(),
-            PyBytes::new(py, hash.as_bytes()).to_object(py),
-        ))
+        if let Some(c) = self.0.as_ref() {
+            let (data, hash) = c
+                .extract(&key)
+                .map_err(|e| PyValueError::new_err(format!("Error during extract: {:?}", e)))?;
+            Ok((
+                data.iter()
+                    .map(|x| PyBytes::new(py, x.as_ref()).to_object(py))
+                    .collect(),
+                PyBytes::new(py, hash.as_bytes()).to_object(py),
+            ))
+        } else {
+            Err(PyRuntimeError::new_err("Compressor is already finalized")).unwrap()
+        }
+    }
+
+    fn flush(&mut self, py: Python) -> PyResult<(Vec<PyObject>, usize)> {
+        if let Some(c) = self.0.take() {
+            let (chunks, endpoint) = c.flush();
+            Ok((
+                chunks
+                    .into_iter()
+                    .map(|x| PyBytes::new(py, x.as_ref()).to_object(py))
+                    .collect(),
+                endpoint,
+            ))
+        } else {
+            Err(PyRuntimeError::new_err("Compressor is already finalized")).unwrap()
+        }
+    }
+
+    fn flush_without_last(&mut self, py: Python) -> PyResult<(Vec<PyObject>, usize)> {
+        if let Some(c) = self.0.take() {
+            let (chunks, endpoint) = c.flush_without_last();
+            Ok((
+                chunks
+                    .into_iter()
+                    .map(|x| PyBytes::new(py, x.as_ref()).to_object(py))
+                    .collect(),
+                endpoint,
+            ))
+        } else {
+            Err(PyRuntimeError::new_err("Compressor is already finalized")).unwrap()
+        }
     }
 
     fn compress(
@@ -306,8 +354,8 @@ impl TraditionalGroupCompressor {
         soft: Option<bool>,
     ) -> PyResult<(PyObject, usize, usize, &str)> {
         let chunks_l = chunks.iter().map(|x| x.as_slice()).collect::<Vec<_>>();
-        self.0
-            .compress(
+        if let Some(c) = self.0.as_mut() {
+            c.compress(
                 &key,
                 chunks_l.as_slice(),
                 length,
@@ -324,6 +372,9 @@ impl TraditionalGroupCompressor {
                     kind,
                 )
             })
+        } else {
+            Err(PyRuntimeError::new_err("Compressor is already finalized")).unwrap()
+        }
     }
 }
 
