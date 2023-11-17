@@ -30,11 +30,9 @@ from fastbencode import bdecode_as_tuple, bencode
 import breezy
 
 from ... import debug, errors, osutils
+from ..._bzr_rs import smart as _smart_rs
 from ...trace import log_exception_quietly, mutter
 from . import message, request
-
-from ..._bzr_rs import smart as _smart_rs
-
 
 # Protocol version strings.  These are sent as prefixes of bzr requests and
 # responses to identify the protocol version being used. (There are no version
