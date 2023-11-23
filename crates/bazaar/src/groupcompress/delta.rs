@@ -11,6 +11,7 @@ pub fn encode_base128_int(val: u128) -> Vec<u8> {
     data
 }
 
+/// Encode an integer using base128 encoding.
 pub fn write_base128_int<W: std::io::Write>(mut writer: W, val: u128) -> std::io::Result<usize> {
     let mut val = val;
     let mut length = 0;
@@ -23,6 +24,7 @@ pub fn write_base128_int<W: std::io::Write>(mut writer: W, val: u128) -> std::io
     Ok(length + 1)
 }
 
+/// Decode a base128 encoded integer.
 pub fn read_base128_int<R: Read>(reader: &mut R) -> Result<u128, std::io::Error> {
     let mut val: u128 = 0;
     let mut shift = 0;
@@ -313,19 +315,19 @@ pub fn write_insert_instruction<W: Write>(
     Ok(data.len() + 1)
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Instruction<T: std::borrow::Borrow<[u8]>> {
     r#Copy { offset: usize, length: usize },
     Insert(T),
 }
 
-pub fn write_instruction<W: Write>(
+pub fn write_instruction<W: Write, T: std::borrow::Borrow<[u8]>>(
     writer: W,
-    instruction: &Instruction<&[u8]>,
+    instruction: &Instruction<T>,
 ) -> std::io::Result<usize> {
     match instruction {
         Instruction::Copy { offset, length } => write_copy_instruction(writer, *offset, *length),
-        Instruction::Insert(data) => write_insert_instruction(writer, data),
+        Instruction::Insert(data) => write_insert_instruction(writer, data.borrow()),
     }
 }
 
@@ -347,10 +349,11 @@ pub fn read_instruction<R: Read>(mut reader: R) -> Result<Instruction<Vec<u8>>, 
     }
 }
 
+/// Decode a copy instruction from the given data, starting at the given position.
 pub fn decode_instruction(data: &[u8], pos: usize) -> Result<(Instruction<&[u8]>, usize), String> {
     let cmd = data[pos];
     if cmd & 0x80 != 0 {
-        let (offset, length, newpos) = decode_copy_instruction(data, cmd, pos)?;
+        let (offset, length, newpos) = decode_copy_instruction(data, cmd, pos + 1)?;
         Ok((Instruction::Copy { offset, length }, newpos))
     } else {
         let length = cmd as usize;
@@ -476,5 +479,50 @@ mod test_copy_instruction {
         assert_decode(1, 1, 6, b"abc\x91\x01\x01def", 3);
         assert_decode(9, 10, 5, b"ab\x91\x09\x0ade", 2);
         assert_decode(254, 255, 6, b"not\x91\xfe\xffcopy", 3);
+    }
+}
+
+#[cfg(test)]
+mod test_instruction {
+    use super::{decode_instruction, Instruction};
+
+    #[test]
+    fn test_decode_copy_instruction() {
+        assert_eq!(
+            Ok((
+                Instruction::Copy {
+                    offset: 0,
+                    length: 65536
+                },
+                1
+            )),
+            decode_instruction(&b"\x80"[..], 0)
+        );
+        assert_eq!(
+            Ok((
+                Instruction::Copy {
+                    offset: 10,
+                    length: 65536
+                },
+                2
+            )),
+            decode_instruction(&b"\x81\x0a"[..], 0)
+        );
+    }
+
+    #[test]
+    fn test_decode_insert_instruction() {
+        assert_eq!(
+            Ok((Instruction::Insert(&b"\x00"[..]), 2)),
+            decode_instruction(&b"\x01\x00"[..], 0)
+        );
+        assert_eq!(
+            Ok((Instruction::Insert(&b"\x01"[..]), 2)),
+            decode_instruction(&b"\x01\x01"[..], 0)
+        );
+        assert_eq!(
+            Ok((Instruction::Insert(&b"\xff\x05"[..]), 3)),
+            decode_instruction(&b"\x02\xff\x05"[..], 0)
+        );
     }
 }
