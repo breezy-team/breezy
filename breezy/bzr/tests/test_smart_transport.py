@@ -1590,6 +1590,10 @@ class WritableEndToEndTests(SmartTCPTests):
         super().setUp()
         self.start_server()
 
+    def tearDown(self):
+        self.stop_server()
+        super().tearDown()
+
     def test_start_tcp_server(self):
         url = self.server.get_url()
         self.assertContainsRe(url, r"^bzr://127\.0\.0\.1:[0-9]{2,}/")
@@ -1705,6 +1709,7 @@ class TestServerHooks(SmartTCPTests):
         self.assertEqual(
             [([self.backing_transport.base], self.transport.base)], self.hook_calls
         )
+        self.stop_server()
 
     def test_server_started_hook_file(self):
         """The server_started hook fires when the server is started."""
