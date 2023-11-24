@@ -109,42 +109,52 @@ impl<K: Clone + Hash + PartialEq + Eq> ParentMap<K> {
         ParentMap(HashMap::new())
     }
 
+    #[inline]
     pub fn insert(&mut self, k: K, v: Parents<K>) {
         self.0.insert(k, v);
     }
 
+    #[inline]
     pub fn get(&self, k: &K) -> Option<&Parents<K>> {
         self.0.get(k)
     }
 
+    #[inline]
     pub fn get_key_value(&self, k: &K) -> Option<(&K, &Parents<K>)> {
         self.0.get_key_value(k)
     }
 
+    #[inline]
     pub fn iter(&self) -> impl Iterator<Item = (&K, &Parents<K>)> {
         self.0.iter()
     }
 
+    #[inline]
     pub fn keys(&self) -> impl Iterator<Item = &K> {
         self.0.keys()
     }
 
+    #[inline]
     pub fn values(&self) -> impl Iterator<Item = &Parents<K>> {
         self.0.values()
     }
 
+    #[inline]
     pub fn len(&self) -> usize {
         self.0.len()
     }
 
+    #[inline]
     pub fn remove(&mut self, k: &K) -> Option<Parents<K>> {
         self.0.remove(k)
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
+    #[inline]
     pub fn extend(&mut self, other: ParentMap<K>) {
         self.0.extend(other.0);
     }
