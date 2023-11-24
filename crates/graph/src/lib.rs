@@ -75,6 +75,18 @@ impl<K: pyo3::ToPyObject + Clone + PartialEq + Eq> pyo3::ToPyObject for Parents<
 }
 
 #[cfg(feature = "pyo3")]
+impl<K: pyo3::IntoPy<pyo3::PyObject> + Clone + PartialEq + Eq> pyo3::IntoPy<pyo3::PyObject>
+    for Parents<K>
+{
+    fn into_py(self, py: pyo3::Python) -> pyo3::PyObject {
+        match self {
+            Parents::Ghost => py.None(),
+            Parents::Known(v) => v.into_py(py),
+        }
+    }
+}
+
+#[cfg(feature = "pyo3")]
 impl<'a, K: pyo3::FromPyObject<'a> + Clone + PartialEq + Eq> pyo3::FromPyObject<'a> for Parents<K>
 where
     K: 'a,
@@ -105,6 +117,10 @@ impl<K: Clone + Hash + PartialEq + Eq> ParentMap<K> {
         self.0.get(k)
     }
 
+    pub fn get_key_value(&self, k: &K) -> Option<(&K, &Parents<K>)> {
+        self.0.get_key_value(k)
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = (&K, &Parents<K>)> {
         self.0.iter()
     }
@@ -128,6 +144,10 @@ impl<K: Clone + Hash + PartialEq + Eq> ParentMap<K> {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
+
+    pub fn extend(&mut self, other: ParentMap<K>) {
+        self.0.extend(other.0);
+    }
 }
 
 impl<K: Hash + Clone + PartialEq + Eq> IntoIterator for ParentMap<K> {
@@ -147,6 +167,19 @@ impl<K: pyo3::ToPyObject + Hash + Clone + PartialEq + Eq> pyo3::ToPyObject for P
             dict.set_item(k, v.to_object(py)).unwrap();
         }
         dict.to_object(py)
+    }
+}
+
+#[cfg(feature = "pyo3")]
+impl<K: pyo3::IntoPy<pyo3::PyObject> + Hash + Clone + PartialEq + Eq> pyo3::IntoPy<pyo3::PyObject>
+    for ParentMap<K>
+{
+    fn into_py(self, py: pyo3::Python) -> pyo3::PyObject {
+        let dict = pyo3::types::PyDict::new(py);
+        for (k, v) in self.into_iter() {
+            dict.set_item(k.into_py(py), v.into_py(py)).unwrap();
+        }
+        dict.into_py(py)
     }
 }
 
@@ -197,6 +230,19 @@ impl<K: pyo3::ToPyObject + Hash + Clone + PartialEq + Eq> pyo3::ToPyObject for C
             dict.set_item(k, v.to_object(py)).unwrap();
         }
         dict.to_object(py)
+    }
+}
+
+#[cfg(feature = "pyo3")]
+impl<K: pyo3::IntoPy<pyo3::PyObject> + Hash + Clone + PartialEq + Eq> pyo3::IntoPy<pyo3::PyObject>
+    for ChildMap<K>
+{
+    fn into_py(self, py: pyo3::Python) -> pyo3::PyObject {
+        let dict = pyo3::types::PyDict::new(py);
+        for (k, v) in self.into_iter() {
+            dict.set_item(k.into_py(py), v.into_py(py)).unwrap();
+        }
+        dict.into_py(py)
     }
 }
 
