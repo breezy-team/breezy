@@ -8,3 +8,9 @@ license = "GPL-2.0+"
 homepage = "https://www.breezy-vcs.org/"
 
 [lib]
+
+[dependencies]
+pyo3 = { workspace = true, optional = true }
+
+[features]
+pyo3 = ["dep:pyo3"]

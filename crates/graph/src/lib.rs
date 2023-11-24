@@ -24,20 +24,191 @@ use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
+//mod known_graph;
 mod parents_provider;
 pub use parents_provider::{DictParentsProvider, ParentsProvider, StackedParentsProvider};
 
-pub type ParentMap<K> = HashMap<K, Vec<K>>;
-pub type ChildMap<K> = HashMap<K, Vec<K>>;
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Parents<K: Clone + PartialEq + Eq> {
+    Ghost,
+    Known(Vec<K>),
+}
 
+impl<K: Clone + PartialEq + Eq> Parents<K> {
+    pub fn is_ghost(&self) -> bool {
+        match self {
+            Parents::Ghost => true,
+            Parents::Known(_) => false,
+        }
+    }
+
+    pub fn is_known(&self) -> bool {
+        match self {
+            Parents::Ghost => false,
+            Parents::Known(_) => true,
+        }
+    }
+
+    pub fn unwrap(&self) -> Vec<K> {
+        match self {
+            Parents::Ghost => panic!("unwrap called on Ghost"),
+            Parents::Known(v) => v.clone(),
+        }
+    }
+
+    pub fn as_ref(&self) -> Parents<&K> {
+        match self {
+            Parents::Ghost => Parents::Ghost,
+            Parents::Known(v) => Parents::Known(v.iter().collect()),
+        }
+    }
+}
+
+#[cfg(feature = "pyo3")]
+impl<K: pyo3::ToPyObject + Clone + PartialEq + Eq> pyo3::ToPyObject for Parents<K> {
+    fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
+        match self {
+            Parents::Ghost => py.None(),
+            Parents::Known(v) => v.to_object(py),
+        }
+    }
+}
+
+#[cfg(feature = "pyo3")]
+impl<'a, K: pyo3::FromPyObject<'a> + Clone + PartialEq + Eq> pyo3::FromPyObject<'a> for Parents<K>
+where
+    K: 'a,
+{
+    fn extract(obj: &'a pyo3::PyAny) -> pyo3::PyResult<Self> {
+        if obj.is_none() {
+            Ok(Parents::Ghost)
+        } else {
+            let v = obj.extract::<Vec<K>>()?;
+            Ok(Parents::Known(v))
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ParentMap<K: Hash + Clone + PartialEq + Eq>(HashMap<K, Parents<K>>);
+
+impl<K: Clone + Hash + PartialEq + Eq> ParentMap<K> {
+    pub fn new() -> Self {
+        ParentMap(HashMap::new())
+    }
+
+    pub fn insert(&mut self, k: K, v: Parents<K>) {
+        self.0.insert(k, v);
+    }
+
+    pub fn get(&self, k: &K) -> Option<&Parents<K>> {
+        self.0.get(k)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&K, &Parents<K>)> {
+        self.0.iter()
+    }
+
+    pub fn keys(&self) -> impl Iterator<Item = &K> {
+        self.0.keys()
+    }
+
+    pub fn values(&self) -> impl Iterator<Item = &Parents<K>> {
+        self.0.values()
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn remove(&mut self, k: &K) -> Option<Parents<K>> {
+        self.0.remove(k)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+impl<K: Hash + Clone + PartialEq + Eq> IntoIterator for ParentMap<K> {
+    type Item = (K, Parents<K>);
+    type IntoIter = std::collections::hash_map::IntoIter<K, Parents<K>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+#[cfg(feature = "pyo3")]
+impl<K: pyo3::ToPyObject + Hash + Clone + PartialEq + Eq> pyo3::ToPyObject for ParentMap<K> {
+    fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
+        let dict = pyo3::types::PyDict::new(py);
+        for (k, v) in self.iter() {
+            dict.set_item(k, v.to_object(py)).unwrap();
+        }
+        dict.to_object(py)
+    }
+}
+
+#[cfg(feature = "pyo3")]
+impl<'a, K: pyo3::FromPyObject<'a> + Hash + Clone + PartialEq + Eq + 'a> pyo3::FromPyObject<'a>
+    for ParentMap<K>
+where
+    K: 'a,
+{
+    fn extract(obj: &'a pyo3::PyAny) -> pyo3::PyResult<Self> {
+        let dict = obj.downcast::<pyo3::types::PyDict>()?;
+        let mut result = ParentMap::new();
+        for (k, v) in dict.iter() {
+            let k = k.extract::<K>()?;
+            let v = v.extract::<Parents<K>>()?;
+            result.insert(k, v);
+        }
+        Ok(result)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ChildMap<K: PartialEq + Eq + Hash>(HashMap<K, Vec<K>>);
+
+impl<K: Clone + Hash + PartialEq + Eq> ChildMap<K> {
+    pub fn new() -> Self {
+        ChildMap(HashMap::new())
+    }
+
+    pub fn add(&mut self, k: K, v: K) {
+        self.0.entry(k).or_insert_with(Vec::new).push(v);
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&K, &Vec<K>)> {
+        self.0.iter()
+    }
+
+    pub fn into_iter(self) -> impl Iterator<Item = (K, Vec<K>)> {
+        self.0.into_iter()
+    }
+}
+
+#[cfg(feature = "pyo3")]
+impl<K: pyo3::ToPyObject + Hash + Clone + PartialEq + Eq> pyo3::ToPyObject for ChildMap<K> {
+    fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
+        let dict = pyo3::types::PyDict::new(py);
+        for (k, v) in self.iter() {
+            dict.set_item(k, v.to_object(py)).unwrap();
+        }
+        dict.to_object(py)
+    }
+}
+
+/// Create a child map from a parent map.
 pub fn invert_parent_map<K: Hash + Eq + Clone>(parent_map: &ParentMap<K>) -> ChildMap<K> {
     let mut child_map = ChildMap::new();
     for (child, parents) in parent_map.iter() {
-        for p in parents.iter() {
-            child_map
-                .entry(p.clone())
-                .or_insert_with(Vec::new)
-                .push(child.clone());
+        if parents.is_ghost() {
+            continue;
+        }
+        for p in parents.unwrap().iter() {
+            child_map.add(p.clone(), child.clone());
         }
     }
     child_map
@@ -85,19 +256,16 @@ pub fn collapse_linear_regions<K: Hash + Eq + Clone>(parent_map: &ParentMap<K>) 
     let mut children: HashMap<K, Vec<K>> = HashMap::new();
     for (child, parents) in parent_map.iter() {
         children.entry(child.clone()).or_default();
-        for p in parents.iter() {
+        for p in parents.unwrap().iter() {
             children.entry(p.clone()).or_default().push(child.clone());
         }
     }
 
     let mut removed = HashSet::new();
-    let mut result: ParentMap<K> = parent_map
-        .iter()
-        .map(|(k, v)| (k.clone(), v.to_vec()))
-        .collect();
+    let mut result: ParentMap<K> = parent_map.clone();
     for node in parent_map.keys() {
         let node = node.borrow();
-        let parents = result.get(node).unwrap();
+        let parents = result.get(node).unwrap().unwrap();
         if parents.len() == 1 {
             let parent_children = children.get(&parents[0]).unwrap();
             if parent_children.len() != 1 {
@@ -109,7 +277,7 @@ pub fn collapse_linear_regions<K: Hash + Eq + Clone>(parent_map: &ParentMap<K>) 
                 continue;
             }
             if let Some(child_parents) = result.get(&node_children[0]) {
-                if child_parents.len() != 1 {
+                if child_parents.unwrap().len() != 1 {
                     // This is not its only parent
                     continue;
                 }
@@ -117,7 +285,7 @@ pub fn collapse_linear_regions<K: Hash + Eq + Clone>(parent_map: &ParentMap<K>) 
                 // this as a child. remove this node, and join the others together
                 let parents = parents.clone();
                 result.remove(node);
-                result.insert(node_children[0].clone(), parents.clone());
+                result.insert(node_children[0].clone(), Parents::Known(parents.clone()));
                 children.insert(parents[0].clone(), node_children.clone());
                 children.remove(node);
                 removed.insert(node);

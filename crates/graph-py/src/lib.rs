@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use breezy_graph::RevnoVec;
+use breezy_graph::{Parents, RevnoVec};
 use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList, PyTuple};
@@ -97,14 +97,14 @@ impl PartialEq for PyNode {
 
 impl std::cmp::Eq for PyNode {}
 
-fn extract_parent_map(parent_map: &PyDict) -> PyResult<HashMap<PyNode, Vec<PyNode>>> {
+fn extract_parent_map(parent_map: &PyDict) -> PyResult<HashMap<PyNode, Parents<PyNode>>> {
     parent_map
         .iter()
         .map(|(k, v)| {
             let vs = v
                 .iter()?
                 .map(|v| Ok::<_, PyErr>(v?.into()))
-                .collect::<Result<Vec<_>, _>>()?;
+                .collect::<Result<Parents<_>, _>>()?;
             Ok((k.into(), vs))
         })
         .collect::<Result<HashMap<_, _>, _>>()

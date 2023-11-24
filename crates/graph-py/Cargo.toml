@@ -7,5 +7,5 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = ">=0.19", features = ["extension-module"]}
-breezy-graph = { path = "../graph" }
+pyo3 = { workspace = true, features = ["extension-module"]}
+breezy-graph = { path = "../graph", features = ["pyo3"] }
