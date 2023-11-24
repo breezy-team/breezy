@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use breezy_graph::RevnoVec;
+use breezy_graph::{ChildMap, ParentMap, RevnoVec};
 use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList, PyTuple};
@@ -62,6 +62,12 @@ impl From<PyObject> for PyNode {
     }
 }
 
+impl FromPyObject<'_> for PyNode {
+    fn extract(obj: &PyAny) -> PyResult<Self> {
+        Ok(PyNode(obj.to_object(obj.py())))
+    }
+}
+
 impl IntoPy<PyObject> for PyNode {
     fn into_py(self, py: Python) -> PyObject {
         self.0.to_object(py)
@@ -70,6 +76,12 @@ impl IntoPy<PyObject> for PyNode {
 
 impl IntoPy<PyObject> for &PyNode {
     fn into_py(self, py: Python) -> PyObject {
+        self.0.to_object(py)
+    }
+}
+
+impl ToPyObject for PyNode {
+    fn to_object(&self, py: Python) -> PyObject {
         self.0.to_object(py)
     }
 }
@@ -97,37 +109,10 @@ impl PartialEq for PyNode {
 
 impl std::cmp::Eq for PyNode {}
 
-fn extract_parent_map(parent_map: &PyDict) -> PyResult<HashMap<PyNode, Vec<PyNode>>> {
-    parent_map
-        .iter()
-        .map(|(k, v)| {
-            let vs = v
-                .iter()?
-                .map(|v| Ok::<_, PyErr>(v?.into()))
-                .collect::<Result<Vec<_>, _>>()?;
-            Ok((k.into(), vs))
-        })
-        .collect::<Result<HashMap<_, _>, _>>()
-}
-
 /// Given a map from child => parents, create a map of parent => children
 #[pyfunction]
-fn invert_parent_map(py: Python, parent_map: &PyDict) -> PyResult<PyObject> {
-    let parent_map = extract_parent_map(parent_map)?;
-    let ret = PyDict::new(py);
-    let result = breezy_graph::invert_parent_map::<PyNode>(&parent_map);
-    if PyErr::occurred(py) {
-        return Err(PyErr::fetch(py));
-    }
-
-    for (k, vs) in result {
-        ret.set_item::<PyObject, &PyList>(
-            k.into_py(py),
-            PyList::new(py, vs.into_iter().map(|v| v.into_py(py))),
-        )?;
-    }
-
-    Ok(ret.to_object(py))
+fn invert_parent_map(parent_map: ParentMap<PyNode>) -> ChildMap<PyNode> {
+    breezy_graph::invert_parent_map::<PyNode>(&parent_map)
 }
 
 /// Collapse regions of the graph that are 'linear'.
@@ -143,23 +128,8 @@ fn invert_parent_map(py: Python, parent_map: &PyDict) -> PyResult<PyObject> {
 /// :param parent_map: A dictionary mapping children to their parents
 /// :return: Another dictionary with 'linear' chains collapsed
 #[pyfunction]
-fn collapse_linear_regions(py: Python, parent_map: &PyDict) -> PyResult<PyObject> {
-    let parent_map = extract_parent_map(parent_map)?;
-
-    let result = breezy_graph::collapse_linear_regions::<PyNode>(&parent_map);
-    if PyErr::occurred(py) {
-        return Err(PyErr::fetch(py));
-    }
-
-    let ret = PyDict::new(py);
-    for (k, vs) in result {
-        ret.set_item::<PyObject, &PyList>(
-            k.into_py(py),
-            PyList::new(py, vs.into_iter().map(|v| v.into_py(py))),
-        )?;
-    }
-
-    Ok(ret.to_object(py))
+fn collapse_linear_regions(parent_map: ParentMap<PyNode>) -> PyResult<ParentMap<PyNode>> {
+    Ok(breezy_graph::collapse_linear_regions::<PyNode>(&parent_map))
 }
 
 #[pyclass]
@@ -169,28 +139,19 @@ struct PyParentsProvider {
 
 #[pymethods]
 impl PyParentsProvider {
-    fn get_parent_map(&mut self, py: Python, keys: PyObject) -> PyResult<PyObject> {
+    fn get_parent_map(&mut self, py: Python, keys: PyObject) -> PyResult<ParentMap<PyNode>> {
         let mut hash_key: HashSet<PyNode> = HashSet::new();
         for key in keys.as_ref(py).iter()? {
             hash_key.insert(key?.into());
         }
-        let result = self
+        Ok(self
             .provider
-            .get_parent_map(&hash_key.into_iter().collect());
-        let ret = PyDict::new(py);
-        for (k, vs) in result {
-            ret.set_item::<PyObject, &PyTuple>(
-                k.into_py(py),
-                PyTuple::new(py, vs.iter().map(|v| v.into_py(py))),
-            )?;
-        }
-        Ok(ret.to_object(py))
+            .get_parent_map(&hash_key.into_iter().collect()))
     }
 }
 
 #[pyfunction]
-fn DictParentsProvider(py: Python, parent_map: &PyDict) -> PyResult<PyObject> {
-    let parent_map = extract_parent_map(parent_map)?;
+fn DictParentsProvider(py: Python, parent_map: ParentMap<PyNode>) -> PyResult<PyObject> {
     let provider = PyParentsProvider {
         provider: Box::new(breezy_graph::DictParentsProvider::<PyNode>::new(parent_map)),
     };

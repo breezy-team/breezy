@@ -209,6 +209,9 @@ dependencies = [
 [[package]]
 name = "breezy-graph"
 version = "3.4.0"
+dependencies = [
+ "pyo3",
+]
 
 [[package]]
 name = "breezy-osutils"
