@@ -130,6 +130,11 @@ impl<K: Clone + Hash + PartialEq + Eq> ParentMap<K> {
     }
 
     #[inline]
+    pub fn contains_key(&self, k: &K) -> bool {
+        self.0.contains_key(k)
+    }
+
+    #[inline]
     pub fn keys(&self) -> impl Iterator<Item = &K> {
         self.0.keys()
     }
@@ -157,6 +162,31 @@ impl<K: Clone + Hash + PartialEq + Eq> ParentMap<K> {
     #[inline]
     pub fn extend(&mut self, other: ParentMap<K>) {
         self.0.extend(other.0);
+    }
+}
+
+impl<K: Hash + Clone + PartialEq + Eq> Default for ParentMap<K> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<K: Hash + Clone + PartialEq + Eq> From<ParentMap<K>> for HashMap<K, Vec<K>> {
+    fn from(map: ParentMap<K>) -> Self {
+        map.0
+            .into_iter()
+            .map(|(k, v)| (k, v.unwrap()))
+            .collect::<HashMap<K, Vec<K>>>()
+    }
+}
+
+impl<K: Hash + Clone + PartialEq + Eq> From<HashMap<K, Vec<K>>> for ParentMap<K> {
+    fn from(map: HashMap<K, Vec<K>>) -> Self {
+        ParentMap(
+            map.into_iter()
+                .map(|(k, v)| (k, Parents::Known(v)))
+                .collect::<HashMap<K, Parents<K>>>(),
+        )
     }
 }
 
@@ -219,16 +249,57 @@ impl<K: Clone + Hash + PartialEq + Eq> ChildMap<K> {
         ChildMap(HashMap::new())
     }
 
+    #[inline]
+    pub fn insert(&mut self, k: K) {
+        self.0.entry(k).or_insert_with(Vec::new);
+    }
+
+    #[inline]
+    pub fn drain(&mut self) -> impl Iterator<Item = (K, Vec<K>)> + '_ {
+        self.0.drain()
+    }
+
+    #[inline]
     pub fn add(&mut self, k: K, v: K) {
         self.0.entry(k).or_insert_with(Vec::new).push(v);
     }
 
+    #[inline]
     pub fn iter(&self) -> impl Iterator<Item = (&K, &Vec<K>)> {
         self.0.iter()
     }
 
+    #[inline]
+    pub fn get(&self, k: &K) -> Option<&Vec<K>> {
+        self.0.get(k)
+    }
+
+    #[inline]
+    pub fn remove(&mut self, k: &K) -> Option<Vec<K>> {
+        self.0.remove(k)
+    }
+
+    #[inline]
     pub fn into_iter(self) -> impl Iterator<Item = (K, Vec<K>)> {
         self.0.into_iter()
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    #[inline]
+    pub fn contains_key(&self, k: &K) -> bool {
+        self.0.contains_key(k)
+    }
+}
+
+impl<K: Hash + Clone + Eq> std::ops::Index<&K> for ChildMap<K> {
+    type Output = Vec<K>;
+
+    fn index(&self, index: &K) -> &Self::Output {
+        &self.0[index]
     }
 }
 
@@ -256,6 +327,12 @@ impl<K: pyo3::IntoPy<pyo3::PyObject> + Hash + Clone + PartialEq + Eq> pyo3::Into
     }
 }
 
+impl<K: Hash + Clone + Eq> From<HashMap<K, Vec<K>>> for ChildMap<K> {
+    fn from(map: HashMap<K, Vec<K>>) -> Self {
+        ChildMap(map)
+    }
+}
+
 /// Create a child map from a parent map.
 pub fn invert_parent_map<K: Hash + Eq + Clone>(parent_map: &ParentMap<K>) -> ChildMap<K> {
     let mut child_map = ChildMap::new();
@@ -268,6 +345,49 @@ pub fn invert_parent_map<K: Hash + Eq + Clone>(parent_map: &ParentMap<K>) -> Chi
         }
     }
     child_map
+}
+
+impl<K> From<ParentMap<K>> for ChildMap<K>
+where
+    K: Hash + Eq + Clone,
+{
+    fn from(parent_map: ParentMap<K>) -> Self {
+        invert_parent_map(&parent_map)
+    }
+}
+
+#[cfg(test)]
+mod invert_parent_map_tests {
+    use super::*;
+    use maplit::hashmap;
+    #[test]
+    fn test_invert() {
+        assert_eq!(
+            ChildMap::from(hashmap! {
+                1 => vec![2, 3],
+                2 => vec![3],
+                3 => vec![],
+            }),
+            super::invert_parent_map(&ParentMap::from(hashmap! {
+                2 => vec![1],
+                3 => vec![1, 2],
+            }))
+        );
+    }
+
+    #[test]
+    fn test_ghost() {
+        assert_eq!(
+            ChildMap::from(hashmap! {
+                1 => vec![2, 3],
+                2 => vec![3],
+            }),
+            super::invert_parent_map(&ParentMap::from(hashmap! {
+                2 => vec![1],
+                3 => vec![1, 2],
+            }))
+        );
+    }
 }
 
 /// Collapse regions of the graph that are 'linear'.
@@ -438,3 +558,89 @@ impl From<usize> for RevnoVec {
         RevnoVec(vec![v])
     }
 }
+
+#[cfg(feature = "pyo3")]
+impl pyo3::ToPyObject for RevnoVec {
+    fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
+        pyo3::types::PyTuple::new(py, self.0.iter()).to_object(py)
+    }
+}
+
+#[cfg(feature = "pyo3")]
+impl<'source> pyo3::FromPyObject<'source> for RevnoVec {
+    fn extract(ob: &'source pyo3::PyAny) -> pyo3::PyResult<Self> {
+        let tuple = ob.downcast::<pyo3::types::PyTuple>()?;
+        let mut ret = RevnoVec::new();
+        for r in tuple.iter() {
+            ret.0.push(r.extract()?);
+        }
+        Ok(ret)
+    }
+}
+
+#[cfg(feature = "pyo3")]
+impl pyo3::IntoPy<pyo3::PyObject> for RevnoVec {
+    fn into_py(self, py: pyo3::Python) -> pyo3::PyObject {
+        use pyo3::ToPyObject;
+        self.to_object(py)
+    }
+}
+
+#[derive(std::fmt::Debug)]
+pub enum Error<K> {
+    Cycle(Vec<K>),
+    ParentMismatch {
+        key: K,
+        expected: Vec<K>,
+        actual: Vec<K>,
+    },
+}
+
+impl<K: std::fmt::Display> std::fmt::Display for Error<K> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Error::Cycle(cycle) => {
+                write!(f, "Cycle: ")?;
+                let mut first = true;
+                for c in cycle.iter() {
+                    if first {
+                        first = false;
+                    } else {
+                        write!(f, " -> ")?;
+                    }
+                    write!(f, "{}", c)?;
+                }
+                Ok(())
+            }
+            Error::ParentMismatch {
+                key,
+                expected,
+                actual,
+            } => {
+                write!(f, "Parent mismatch for {}: ", key)?;
+                let mut first = true;
+                for e in expected.iter() {
+                    if first {
+                        first = false;
+                    } else {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{}", e)?;
+                }
+                write!(f, " != ")?;
+                let mut first = true;
+                for a in actual.iter() {
+                    if first {
+                        first = false;
+                    } else {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{}", a)?;
+                }
+                Ok(())
+            }
+        }
+    }
+}
+
+impl<K: std::fmt::Debug + std::fmt::Display> std::error::Error for Error<K> {}

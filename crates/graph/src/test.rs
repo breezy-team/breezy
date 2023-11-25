@@ -1,4 +1,5 @@
-use crate::tsort::{Error, TopoSorter};
+use crate::tsort::TopoSorter;
+use crate::Error;
 use std::collections::HashMap;
 
 #[test]
