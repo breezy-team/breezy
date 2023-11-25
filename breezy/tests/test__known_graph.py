@@ -18,43 +18,11 @@
 
 import pprint
 
-from .. import _known_graph_py, errors, tests
+from .. import errors, tests
+from ..graph import KnownGraph
 from ..revision import NULL_REVISION
 from . import features, test_graph
 from .scenarios import load_tests_apply_scenarios
-
-
-def caching_scenarios():
-    scenarios = [
-        ("python", {"module": _known_graph_py, "do_cache": True}),
-    ]
-    if compiled_known_graph_feature.available():
-        scenarios.append(
-            ("C", {"module": compiled_known_graph_feature.module, "do_cache": True})
-        )
-    return scenarios
-
-
-def non_caching_scenarios():
-    scenarios = [
-        ("python-nocache", {"module": _known_graph_py, "do_cache": False}),
-    ]
-    if compiled_known_graph_feature.available():
-        scenarios.append(
-            (
-                "C-nocache",
-                {"module": compiled_known_graph_feature.module, "do_cache": False},
-            )
-        )
-    return scenarios
-
-
-load_tests = load_tests_apply_scenarios
-
-
-compiled_known_graph_feature = features.ModuleAvailableFeature(
-    "breezy._known_graph_pyx"
-)
 
 
 #  a
@@ -68,11 +36,9 @@ alt_merge = {b"a": [], b"b": [b"a"], b"c": [b"b"], b"d": [b"a", b"c"]}
 
 
 class TestCaseWithKnownGraph(tests.TestCase):
-    scenarios = caching_scenarios()
-    module = None  # Set by load_tests
 
     def make_known_graph(self, ancestry):
-        return self.module.KnownGraph(ancestry, do_cache=self.do_cache)
+        return KnownGraph(ancestry)
 
 
 class TestKnownGraph(TestCaseWithKnownGraph):
@@ -203,8 +169,6 @@ class TestKnownGraph(TestCaseWithKnownGraph):
 
 
 class TestKnownGraphHeads(TestCaseWithKnownGraph):
-    scenarios = caching_scenarios() + non_caching_scenarios()
-    do_cache = None  # Set by load_tests
 
     def test_heads_null(self):
         graph = self.make_known_graph(test_graph.ancestry_1)

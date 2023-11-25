@@ -4,8 +4,6 @@ import random
 import sys
 
 from breezy import (
-    _known_graph_py,
-    _known_graph_pyx,
     branch,
     commands,
     graph,
@@ -94,11 +92,8 @@ def report(name, g):
         print(f"  {graph._counters}")
 
 
-known_python = combi_graph(_known_graph_py.KnownGraph, combinations)
+known_python = combi_graph(graph.KnownGraph, combinations)
 report("Known", known_python)
-
-known_pyrex = combi_graph(_known_graph_pyx.KnownGraph, combinations)
-report("Known (pyx)", known_pyrex)
 
 
 def _simple_graph(parent_map):

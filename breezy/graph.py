@@ -1654,8 +1654,5 @@ class GraphThunkIdsToKeys:
 
 
 _counters = [0, 0, 0, 0, 0, 0, 0]
-try:
-    from ._known_graph_pyx import KnownGraph
-except ImportError as e:
-    osutils.failed_to_load_extension(e)
-    from ._known_graph_py import KnownGraph  # noqa: F401
+
+from ._known_graph_py import KnownGraph
