@@ -10,7 +10,11 @@ homepage = "https://www.breezy-vcs.org/"
 [lib]
 
 [dependencies]
+lazy_static = "1.4.0"
 pyo3 = { workspace = true, optional = true }
+
+[dev-dependencies]
+maplit = "1.0.2"
 
 [features]
 pyo3 = ["dep:pyo3"]

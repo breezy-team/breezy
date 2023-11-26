@@ -1,10 +1,11 @@
 #![allow(non_snake_case)]
 
-use breezy_graph::{ChildMap, ParentMap, RevnoVec};
-use pyo3::import_exception;
+use breezy_graph::{ChildMap, ParentMap, Parents, RevnoVec};
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyList, PyTuple};
+use pyo3::types::{PyDict, PyList, PySet, PyTuple};
 use pyo3::wrap_pyfunction;
+use pyo3::{create_exception, import_exception};
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
@@ -109,6 +110,42 @@ impl PartialEq for PyNode {
 
 impl std::cmp::Eq for PyNode {}
 
+impl PartialOrd for PyNode {
+    fn partial_cmp(&self, other: &PyNode) -> Option<std::cmp::Ordering> {
+        self.cmp(other).into()
+    }
+}
+
+impl Ord for PyNode {
+    fn cmp(&self, other: &PyNode) -> std::cmp::Ordering {
+        Python::with_gil(|py| match self.0.as_ref(py).lt(other.0.as_ref(py)) {
+            Err(err) => {
+                err.restore(py);
+                std::cmp::Ordering::Equal
+            }
+            Ok(b) => {
+                if b {
+                    std::cmp::Ordering::Less
+                } else {
+                    match self.0.as_ref(py).gt(other.0.as_ref(py)) {
+                        Err(err) => {
+                            err.restore(py);
+                            std::cmp::Ordering::Equal
+                        }
+                        Ok(b) => {
+                            if b {
+                                std::cmp::Ordering::Greater
+                            } else {
+                                std::cmp::Ordering::Equal
+                            }
+                        }
+                    }
+                }
+            }
+        })
+    }
+}
+
 /// Given a map from child => parents, create a map of parent => children
 #[pyfunction]
 fn invert_parent_map(parent_map: ParentMap<PyNode>) -> ChildMap<PyNode> {
@@ -188,7 +225,8 @@ impl TopoSorter {
         match self.sorter.next() {
             None => Ok(None),
             Some(Ok(node)) => Ok(Some(node.into_py(py))),
-            Some(Err(breezy_graph::tsort::Error::Cycle(e))) => Err(GraphCycleError::new_err(e)),
+            Some(Err(breezy_graph::Error::Cycle(e))) => Err(GraphCycleError::new_err(e)),
+            Some(Err(e)) => panic!("Unexpected error: {:?}", e),
         }
     }
 
@@ -298,7 +336,8 @@ impl MergeSorter {
                 )
                     .into_py(py),
             )),
-            Some(Err(breezy_graph::tsort::Error::Cycle(e))) => Err(GraphCycleError::new_err(e)),
+            Some(Err(breezy_graph::Error::Cycle(e))) => Err(GraphCycleError::new_err(e)),
+            Some(Err(e)) => panic!("Unexpected error: {:?}", e),
         }
     }
 

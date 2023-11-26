@@ -1,12 +1,7 @@
 #![allow(clippy::if_same_then_else)]
-use crate::RevnoVec;
+use crate::{Error, RevnoVec};
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
-
-#[derive(Debug)]
-pub enum Error<K> {
-    Cycle(Vec<K>),
-}
 
 #[derive(Debug)]
 pub struct TopoSorter<K: Eq + Hash> {
