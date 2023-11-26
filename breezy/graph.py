@@ -1655,4 +1655,4 @@ class GraphThunkIdsToKeys:
 
 _counters = [0, 0, 0, 0, 0, 0, 0]
 
-from ._known_graph_py import KnownGraph
+from ._known_graph_py import KnownGraph  # noqa: F401

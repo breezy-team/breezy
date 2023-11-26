@@ -21,9 +21,7 @@ import pprint
 from .. import errors, tests
 from ..graph import KnownGraph
 from ..revision import NULL_REVISION
-from . import features, test_graph
-from .scenarios import load_tests_apply_scenarios
-
+from . import test_graph
 
 #  a
 #  |\
