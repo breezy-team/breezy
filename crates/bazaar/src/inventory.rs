@@ -4,7 +4,6 @@ use breezy_osutils::Kind;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::VecDeque;
-use std::fmt::Write;
 use std::hash::Hash;
 
 // This should really be an id randomly assigned when the tree is
