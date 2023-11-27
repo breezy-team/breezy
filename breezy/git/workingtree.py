@@ -751,8 +751,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         """Yield all unversioned files in this WorkingTree.
         """
         with self.lock_read():
-            index_paths = {
-                decode_git_path(p) for p, sha, mode in self.iter_git_objects()}
+            index_paths = {decode_git_path(p) for p, _entry in self._recurse_index_entries()}
             all_paths = set(self._iter_files_recursive(include_dirs=False))
             return iter(all_paths - index_paths)
 
@@ -1086,7 +1085,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     try:
                         entry = conflict.to_index_entry(self)
                         if entry.this is None and entry.ancestor is None and entry.other is None:
-                            raise AssertionError
+                            continue
                         self.index[encode_git_path(conflict.path)] = entry
                     except KeyError:
                         raise errors.UnsupportedOperation(
