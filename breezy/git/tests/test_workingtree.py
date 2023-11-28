@@ -424,3 +424,20 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
         t.add(b"a", S_IFGITLINK, a.id)
         self.store.add_object(t)
         self.expectDelta([], tree_id=t.id)
+
+    def test_subsume(self):
+        self.build_tree(["a", "b"])
+        self.wt.add(["a", "b"])
+        myrevid = self.wt.commit("")
+
+        subwt = self.make_branch_and_tree("c", format="git")
+        self.build_tree(["c/d"])
+        subwt.add(["d"])
+        subrevid = subwt.commit("")
+
+        self.wt.subsume(subwt)
+        self.assertEqual([myrevid, subrevid], self.wt.get_parent_ids())
+        self.assertFalse(os.path.exists("c/.git"))
+        self.assertTrue(os.path.exists("c/.git.retired.0"))
+        changes = list(self.wt.iter_changes(self.wt.basis_tree()))
+        self.assertEqual(2, len(changes))
