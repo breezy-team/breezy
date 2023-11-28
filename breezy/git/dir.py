@@ -159,7 +159,7 @@ class GitDir(ControlDir):
                 to_path = ".git.retired.%d" % i
                 self.root_transport.rename(".git", to_path)
                 trace.note(
-                    "renamed {0} to {1}".format(
+                    "renamed {} to {}".format(
                         self.root_transport.abspath(".git"), to_path)
                 )
                 return
