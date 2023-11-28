@@ -1620,6 +1620,32 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
 
     _marker = object()
 
+    def subsume(self, other_tree):
+        for parent_id in other_tree.get_parent_ids():
+            self.branch.repository.fetch(other_tree.branch.repository, parent_id)
+        self.set_parent_ids(self.get_parent_ids() + other_tree.get_parent_ids())
+        with self.lock_tree_write(), other_tree.lock_tree_write():
+            try:
+                other_tree_path = self.relpath(other_tree.basedir)
+            except errors.PathNotChild as err:
+                raise errors.BadSubsumeSource(
+                    self, other_tree, "Tree is not contained by the other"
+                ) from err
+
+            other_tree_bytes = encode_git_path(other_tree_path)
+
+            ids = {}
+            for p, e in other_tree.index.iteritems():
+                newp = other_tree_bytes + b"/" +  p
+                self.index[newp] = e
+                self._index_dirty = True
+                ids[e.sha] = newp
+
+            self.store.add_objects(
+                [(other_tree.store[i], p) for (i, p) in ids.items()])
+
+        other_tree.controldir.retire_controldir()
+
     def update(
         self,
         change_reporter=None,

@@ -584,7 +584,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         )
         self.assertEqual([rev2], target.open_workingtree().get_parent_ids())
 
-    def test_retire_bzrdir(self):
+    def test_retire_controldir(self):
         bd = self.make_controldir(".")
         transport = bd.root_transport
         # must not overwrite existing directories
@@ -596,11 +596,11 @@ class TestBzrDir(TestCaseWithBzrDir):
             transport=transport,
         )
         self.assertTrue(transport.has(".bzr"))
-        bd.retire_bzrdir()
+        bd.retire_controldir()
         self.assertFalse(transport.has(".bzr"))
         self.assertTrue(transport.has(".bzr.retired.1"))
 
-    def test_retire_bzrdir_limited(self):
+    def test_retire_controldir_limited(self):
         bd = self.make_controldir(".")
         transport = bd.root_transport
         # must not overwrite existing directories
@@ -613,7 +613,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         )
         self.assertTrue(transport.has(".bzr"))
         self.assertRaises(
-            (FileExists, errors.DirectoryNotEmpty), bd.retire_bzrdir, limit=0
+            (FileExists, errors.DirectoryNotEmpty), bd.retire_controldir, limit=0
         )
 
     def test_get_branch_transport(self):

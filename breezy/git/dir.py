@@ -143,6 +143,33 @@ class GitDir(ControlDir):
     def _available_backup_name(self, base):
         return osutils.available_backup_name(base, self.root_transport.has)
 
+    def retire_controldir(self, limit=10000):
+        """Permanently disable the controldir.
+
+        This is done by renaming it to give the user some ability to recover
+        if there was a problem.
+
+        This will have horrible consequences if anyone has anything locked or
+        in use.
+        :param limit: number of times to retry
+        """
+        i = 0
+        while True:
+            try:
+                to_path = ".git.retired.%d" % i
+                self.root_transport.rename(".git", to_path)
+                trace.note(
+                    "renamed {} to {}".format(
+                        self.root_transport.abspath(".git"), to_path)
+                )
+                return
+            except (brz_errors.TransportError, OSError, brz_errors.PathError):
+                i += 1
+                if i > limit:
+                    raise
+                else:
+                    pass
+
     def sprout(
         self,
         url,

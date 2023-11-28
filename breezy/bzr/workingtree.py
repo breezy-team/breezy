@@ -1025,7 +1025,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 for parent_id in other_tree.get_parent_ids():
                     self.branch.fetch(other_tree.branch, parent_id)
                     self.add_parent_tree_id(parent_id)
-            other_tree.controldir.retire_bzrdir()
+            other_tree.controldir.retire_controldir()
 
     def extract(self, sub_path, format=None):
         """Extract a subtree from this tree.

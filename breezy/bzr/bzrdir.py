@@ -559,7 +559,7 @@ class BzrDir(controldir.ControlDir):
             self.root_transport.copy_tree(".bzr", backup_dir)
             return (old_path, new_path)
 
-    def retire_bzrdir(self, limit=10000):
+    def retire_controldir(self, limit=10000):
         """Permanently disable the bzrdir.
 
         This is done by renaming it to give the user some ability to recover
