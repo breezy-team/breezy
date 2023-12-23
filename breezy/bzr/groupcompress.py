@@ -850,6 +850,7 @@ class PyrexGroupCompressor:
     """
 
     chunks: list[bytes]
+
     def __init__(self, settings=None):
         """Create a GroupCompressor."""
         self._last = None
