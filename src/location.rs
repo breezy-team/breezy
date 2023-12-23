@@ -101,3 +101,31 @@ pub fn cvs_to_url(location: &str) -> Result<Url, Error> {
     .map_err(|e| Error(format!("Invalid URL: {}", e)))?;
     Ok(url)
 }
+
+pub trait AsLocation {
+    fn as_location(&self) -> PyObject;
+}
+
+impl AsLocation for &url::Url {
+    fn as_location(&self) -> PyObject {
+        Python::with_gil(|py| {
+            pyo3::types::PyString::new(py, self.to_string().as_str()).to_object(py)
+        })
+    }
+}
+
+impl AsLocation for &str {
+    fn as_location(&self) -> PyObject {
+        Python::with_gil(|py| {
+            pyo3::types::PyString::new(py, self).to_object(py)
+        })
+    }
+}
+
+impl AsLocation for &std::path::Path {
+    fn as_location(&self) -> PyObject {
+        Python::with_gil(|py| {
+            pyo3::types::PyString::new(py, self.to_str().unwrap()).to_object(py)
+        })
+    }
+}
