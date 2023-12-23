@@ -1,5 +1,6 @@
 use percent_encoding::{utf8_percent_encode, CONTROLS};
 use url::Url;
+use pyo3::prelude::*;
 
 use regex::Regex;
 
