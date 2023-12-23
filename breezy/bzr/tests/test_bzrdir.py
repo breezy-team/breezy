@@ -491,7 +491,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
         self.assertRaises(errors.NoRepositoryPresent, branch.controldir.open_repository)
 
     def test_create_branch_convenience_under_shared_repo_no_tree_policy_force_tree(
-        self
+        self,
     ):
         # inside a repo the default convenience output is a branch+ follow the
         # repo tree policy but we can override that

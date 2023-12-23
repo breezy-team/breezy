@@ -160,7 +160,8 @@ class GitDir(ControlDir):
                 self.root_transport.rename(".git", to_path)
                 trace.note(
                     "renamed {} to {}".format(
-                        self.root_transport.abspath(".git"), to_path)
+                        self.root_transport.abspath(".git"), to_path
+                    )
                 )
                 return
             except (brz_errors.TransportError, OSError, brz_errors.PathError):

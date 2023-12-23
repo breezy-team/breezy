@@ -1636,13 +1636,12 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
 
             ids = {}
             for p, e in other_tree.index.iteritems():
-                newp = other_tree_bytes + b"/" +  p
+                newp = other_tree_bytes + b"/" + p
                 self.index[newp] = e
                 self._index_dirty = True
                 ids[e.sha] = newp
 
-            self.store.add_objects(
-                [(other_tree.store[i], p) for (i, p) in ids.items()])
+            self.store.add_objects([(other_tree.store[i], p) for (i, p) in ids.items()])
 
         other_tree.controldir.retire_controldir()
 

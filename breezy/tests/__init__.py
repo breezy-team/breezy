@@ -334,9 +334,15 @@ class ExtendedTestResult(testtools.TextTestResult):
             )
             # We don't report the main thread as an active one.
             self.stream.write(
-                    "%d non-main threads were left active in the end: %r.\n"
-                % (len(self._active_threads) - 1,
-                   [t for t in self._active_threads if not isinstance(t, threading._MainThread)])
+                "%d non-main threads were left active in the end: %r.\n"
+                % (
+                    len(self._active_threads) - 1,
+                    [
+                        t
+                        for t in self._active_threads
+                        if not isinstance(t, threading._MainThread)
+                    ],
+                )
             )
 
     def getDescription(self, test):

@@ -34,7 +34,6 @@ alt_merge = {b"a": [], b"b": [b"a"], b"c": [b"b"], b"d": [b"a", b"c"]}
 
 
 class TestCaseWithKnownGraph(tests.TestCase):
-
     def make_known_graph(self, ancestry):
         return KnownGraph(ancestry)
 
@@ -167,7 +166,6 @@ class TestKnownGraph(TestCaseWithKnownGraph):
 
 
 class TestKnownGraphHeads(TestCaseWithKnownGraph):
-
     def test_heads_null(self):
         graph = self.make_known_graph(test_graph.ancestry_1)
         self.assertEqual({b"null:"}, graph.heads([b"null:"]))

@@ -1,6 +1,6 @@
 use percent_encoding::{utf8_percent_encode, CONTROLS};
-use url::Url;
 use pyo3::prelude::*;
+use url::Url;
 
 use regex::Regex;
 
@@ -117,16 +117,12 @@ impl AsLocation for &url::Url {
 
 impl AsLocation for &str {
     fn as_location(&self) -> PyObject {
-        Python::with_gil(|py| {
-            pyo3::types::PyString::new(py, self).to_object(py)
-        })
+        Python::with_gil(|py| pyo3::types::PyString::new(py, self).to_object(py))
     }
 }
 
 impl AsLocation for &std::path::Path {
     fn as_location(&self) -> PyObject {
-        Python::with_gil(|py| {
-            pyo3::types::PyString::new(py, self.to_str().unwrap()).to_object(py)
-        })
+        Python::with_gil(|py| pyo3::types::PyString::new(py, self.to_str().unwrap()).to_object(py))
     }
 }
