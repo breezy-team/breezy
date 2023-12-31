@@ -21,12 +21,6 @@ pub struct InventoryDeltaEntry {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct InventoryDelta(pub Vec<InventoryDeltaEntry>);
 
-impl InventoryDelta {
-    fn new() -> Self {
-        InventoryDelta(Vec::new())
-    }
-}
-
 impl FromIterator<InventoryDeltaEntry> for InventoryDelta {
     fn from_iter<T: IntoIterator<Item = InventoryDeltaEntry>>(iter: T) -> Self {
         InventoryDelta(iter.into_iter().collect())

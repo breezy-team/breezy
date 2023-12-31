@@ -4,17 +4,24 @@ use pyo3::types::{PyBytes, PyTuple};
 use std::borrow::Cow;
 use std::collections::HashMap;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Debug)]
 pub enum Error {
     ExistingContent(Key),
     VersionNotPresent(VersionId),
+    Io(std::io::Error),
+}
+
+impl From<std::io::Error> for Error {
+    fn from(e: std::io::Error) -> Error {
+        Error::Io(e)
+    }
 }
 
 #[cfg(feature = "pyo3")]
 impl From<Error> for pyo3::PyErr {
     fn from(e: Error) -> pyo3::PyErr {
         pyo3::import_exception!(breezy.errors, RevisionNotPresent);
-        pyo3::import_exception!(breezy.errors, ExistingContent);
+        pyo3::import_exception!(breezy.bzr.versionedfile, ExistingContent);
         match e {
             Error::VersionNotPresent(key) => {
                 RevisionNotPresent::new_err(format!("Version not present: {:?}", key))
@@ -22,6 +29,7 @@ impl From<Error> for pyo3::PyErr {
             Error::ExistingContent(key) => {
                 ExistingContent::new_err(format!("Existing content: {:?}", key))
             }
+            Error::Io(e) => e.into(),
         }
     }
 }
@@ -30,7 +38,7 @@ impl From<Error> for pyo3::PyErr {
 impl From<pyo3::PyErr> for Error {
     fn from(e: pyo3::PyErr) -> Error {
         pyo3::import_exception!(breezy.errors, RevisionNotPresent);
-        pyo3::import_exception!(breezy.errors, ExistingContent);
+        pyo3::import_exception!(breezy.bzr.versionedfile, ExistingContent);
         pyo3::Python::with_gil(|py| {
             if e.is_instance_of::<RevisionNotPresent>(py) {
                 Error::VersionNotPresent(
@@ -64,6 +72,7 @@ impl std::fmt::Display for Error {
         match self {
             Error::ExistingContent(key) => write!(f, "Existing content: {:?}", key),
             Error::VersionNotPresent(version) => write!(f, "Version not present: {:?}", version),
+            Error::Io(e) => write!(f, "IO error: {}", e),
         }
     }
 }

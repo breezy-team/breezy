@@ -273,13 +273,6 @@ class GitTree(_mod_tree.Tree):
     def supports_symlinks(self):
         return True
 
-    def iter_git_objects(self):
-        """Iterate over all the objects in the tree.
-
-        :return :Yields tuples with (path, sha, mode)
-        """
-        raise NotImplementedError(self.iter_git_objects)
-
     def git_snapshot(self, want_unversioned=False):
         """Snapshot a tree, and return tree object.
 
@@ -1279,7 +1272,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
         if self._lock_mode is None:
             raise errors.ObjectNotLocked(self)
         self._versioned_dirs = set()
-        for p, _sha, _mode in self.iter_git_objects():
+        for p, _entry in self._recurse_index_entries():
             self._ensure_versioned_dir(posixpath.dirname(p))
 
     def _ensure_versioned_dir(self, dirname):
@@ -1467,10 +1460,6 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
         self._index_dirty = True
         if self._versioned_dirs is not None:
             self._ensure_versioned_dir(index_path)
-
-    def iter_git_objects(self):
-        for p, entry in self._recurse_index_entries():
-            yield p, entry.sha, entry.mode
 
     def _recurse_index_entries(self, index=None, basepath=b"", recurse_nested=False):
         # Iterate over all index entries

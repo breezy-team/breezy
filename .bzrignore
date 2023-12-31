@@ -59,7 +59,6 @@ breezy/_chunks_to_lines_pyx.c
 breezy/bzr/_dirstate_helpers_pyx.c
 breezy/bzr/_groupcompress_pyx.c
 breezy/bzr/_knit_load_data_pyx.c
-breezy/_known_graph_pyx.c
 breezy/_readdir_pyx.c
 breezy/bzr/_simple_set_pyx.c
 breezy/bzr/_simple_set_pyx.h

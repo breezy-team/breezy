@@ -35,6 +35,11 @@ impl AbstractContentFactory {
     }
 
     fn get_bytes_as(&self, py: Python, storage_kind: &str) -> PyResult<PyObject> {
+        if self.0.storage_kind() == "absent" {
+            return Err(UnavailableRepresentation::new_err(
+                "Absent content has no bytes".to_string(),
+            ));
+        }
         match storage_kind {
             "fulltext" => Ok(PyBytes::new(py, self.0.to_fulltext().as_ref()).into()),
             "lines" => Ok(self

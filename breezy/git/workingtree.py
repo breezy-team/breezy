@@ -756,7 +756,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         """Yield all unversioned files in this WorkingTree."""
         with self.lock_read():
             index_paths = {
-                decode_git_path(p) for p, sha, mode in self.iter_git_objects()
+                decode_git_path(p) for p, _entry in self._recurse_index_entries()
             }
             all_paths = set(self._iter_files_recursive(include_dirs=False))
             return iter(all_paths - index_paths)
@@ -1096,7 +1096,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                             and entry.ancestor is None
                             and entry.other is None
                         ):
-                            raise AssertionError
+                            continue
                         self.index[encode_git_path(conflict.path)] = entry
                     except KeyError as err:
                         raise errors.UnsupportedOperation(
@@ -1619,6 +1619,31 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         self.add(".gitmodules")
 
     _marker = object()
+
+    def subsume(self, other_tree):
+        for parent_id in other_tree.get_parent_ids():
+            self.branch.repository.fetch(other_tree.branch.repository, parent_id)
+        self.set_parent_ids(self.get_parent_ids() + other_tree.get_parent_ids())
+        with self.lock_tree_write(), other_tree.lock_tree_write():
+            try:
+                other_tree_path = self.relpath(other_tree.basedir)
+            except errors.PathNotChild as err:
+                raise errors.BadSubsumeSource(
+                    self, other_tree, "Tree is not contained by the other"
+                ) from err
+
+            other_tree_bytes = encode_git_path(other_tree_path)
+
+            ids = {}
+            for p, e in other_tree.index.iteritems():
+                newp = other_tree_bytes + b"/" + p
+                self.index[newp] = e
+                self._index_dirty = True
+                ids[e.sha] = newp
+
+            self.store.add_objects([(other_tree.store[i], p) for (i, p) in ids.items()])
+
+        other_tree.controldir.retire_controldir()
 
     def update(
         self,
