@@ -21,7 +21,6 @@ to standard HTTP responses, single range responses and multipart range
 responses.
 """
 
-import cgi
 import email.utils as email_utils
 import http.client as http_client
 import os
@@ -380,10 +379,15 @@ def handle_response(url, code, getheader, data):
         # being of type 'application/octet-stream' as per RFC2616 section
         # 7.2.1.
         # Therefore it is obviously not multipart
-        content_type = getheader('content-type', 'application/octet-stream')
-        mimetype, options = cgi.parse_header(content_type)
+        content_type = getheader("content-type", "application/octet-stream")
+        from email.message import EmailMessage
+
+        msg = EmailMessage()
+        msg["content-type"] = content_type
+        params = msg["content-type"].params
+        mimetype = msg.get_content_type()
         if mimetype == 'multipart/byteranges':
-            rfile.set_boundary(options['boundary'].encode('ascii'))
+            rfile.set_boundary(params['boundary'].encode('ascii'))
         else:
             # A response to a range request, but not multipart
             content_range = getheader('content-range', None)

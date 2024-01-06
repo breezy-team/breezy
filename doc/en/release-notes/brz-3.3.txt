@@ -10,6 +10,8 @@ brz 3.3.5
 
 :3.3.5: UNRELEASED
 
+* Fix compatibility with Python 3.12. Jelmer Vernooĳ, #2047991)
+
 brz 3.3.4
 #########
 
