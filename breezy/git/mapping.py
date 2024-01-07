@@ -154,7 +154,7 @@ class BzrGitMapping(foreign.VcsMapping):
         super().__init__(foreign_vcs_git)
 
     def __eq__(self, other):
-        return (type(self) == type(other)
+        return (type(self) is type(other)
                 and self.revid_prefix == other.revid_prefix)
 
     @classmethod
