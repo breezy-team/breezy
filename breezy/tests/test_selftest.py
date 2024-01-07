@@ -1208,8 +1208,8 @@ class TestRunner(tests.TestCase):
     def test_verbose_test_count(self):
         """A verbose test run reports the right test count at the start"""
         suite = TestUtil.TestSuite([
-            unittest.FunctionTestCase(lambda:None),
-            unittest.FunctionTestCase(lambda:None)])
+            unittest.FunctionTestCase(lambda: None),
+            unittest.FunctionTestCase(lambda: None)])
         self.assertEqual(suite.countTestCases(), 2)
         stream = StringIO()
         runner = tests.TextTestRunner(stream=stream, verbosity=2)

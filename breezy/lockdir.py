@@ -785,7 +785,7 @@ class LockHeldInfo:
 
     def __eq__(self, other):
         """Equality check for lock holders."""
-        if type(self) != type(other):
+        if not isinstance(self, type(other)):
             return False
         return self.info_dict == other.info_dict
 

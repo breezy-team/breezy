@@ -19,7 +19,8 @@
 import os
 import subprocess
 import sys
-from distutils import version
+
+from packaging.version import Version
 
 import breezy
 
@@ -96,6 +97,6 @@ class TestDistutilsVersion(tests.TestCase):
     def test_version_with_string(self):
         # We really care about two pyrex specific versions and our ability to
         # detect them
-        lv = version.LooseVersion
+        lv = Version
         self.assertTrue(lv("0.9.4.1") < lv('0.17.beta1'))
         self.assertTrue(lv("0.9.6.3") < lv('0.10'))

@@ -22,7 +22,6 @@ There are separate implementation modules for each http client implementation.
 DEBUG = 0
 
 import base64
-import cgi
 import errno
 import http.client
 import os
@@ -302,8 +301,13 @@ class HTTPSConnection(AbstractHTTPConnection, http.client.HTTPSConnection):  # t
                  proxied_host=None,
                  report_activity=None, ca_certs=None):
         AbstractHTTPConnection.__init__(self, report_activity=report_activity)
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        if key_file or cert_file:
+            context.load_cert_chain(cert_file, key_file)
+        self.cert_file = cert_file
+        self.key_file = key_file
         http.client.HTTPSConnection.__init__(
-            self, host, port, key_file, cert_file)
+            self, host, port, context=context)
         self.proxied_host = proxied_host
         self.ca_certs = ca_certs
 
@@ -1859,8 +1863,11 @@ class HttpTransport(ConnectedTransport):
             def text(self):
                 if self.status == 204:
                     return None
-                charset = cgi.parse_header(
-                    self._actual.headers['Content-Type'])[1].get('charset')
+                from email.message import EmailMessage
+
+                msg = EmailMessage()
+                msg["content-type"] = self._actual.headers["Content-Type"]
+                charset = msg["content-type"].params.get("charset")
                 if charset:
                     return self.data.decode(charset)
                 else:
