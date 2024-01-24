@@ -380,7 +380,7 @@ class GCCHKPacker(Packer):
             add_callback = index.add_nodes
         else:
             indices = []
-            for pack in self.packs:  # noqa: F402
+            for pack in self.packs:
                 sub_index = getattr(pack, index_name)
                 index_to_pack[sub_index] = pack.access_tuple()
                 indices.append(sub_index)
