@@ -56,7 +56,7 @@ class GitControlDirFormat(ControlDirFormat):
     fixed_components = True
 
     def __eq__(self, other):
-        return type(self) == type(other)
+        return type(self) is type(other)
 
     def is_supported(self):
         return True
