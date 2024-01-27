@@ -166,7 +166,7 @@ fn bisect_dirblock(
     let hi = hi.unwrap_or(dirblocks.len());
     let cache = cache.unwrap_or_else(|| PyDict::new(py));
 
-    let dirname_split = match cache.get_item(&dirname) {
+    let dirname_split = match cache.get_item(&dirname)? {
         Some(item) => item.extract::<Vec<PathBuf>>()?,
         None => {
             let split = split_object(py, dirname.to_object(py))?;
@@ -183,7 +183,7 @@ fn bisect_dirblock(
         let dirblock = dirblocks.get_item(mid)?.downcast::<PyTuple>()?;
         let cur = dirblock.get_item(0)?;
 
-        let cur_split = match cache.get_item(cur) {
+        let cur_split = match cache.get_item(cur)? {
             Some(item) => item.extract::<Vec<PathBuf>>()?,
             None => {
                 let split = split_object(py, cur.into_py(py))?;

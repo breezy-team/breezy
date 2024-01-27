@@ -9,7 +9,7 @@ use pyo3::class::basic::CompareOp;
 
 use std::io::BufReader;
 
-use pyo3_file::PyFileLikeObject;
+use pyo3_filelike::PyBinaryFile;
 
 #[pyfunction]
 fn valid_tag(tag: &str) -> bool {
@@ -25,7 +25,7 @@ struct Stanza {
 #[pymethods]
 impl Stanza {
     #[new]
-    #[args(kwargs = "**")]
+    #[pyo3(signature = (**kwargs))]
     fn new(kwargs: Option<&PyDict>) -> PyResult<Self> {
         let mut obj = Stanza {
             stanza: bazaar::rio::Stanza::new(),
@@ -162,7 +162,7 @@ impl Stanza {
                 }
             }
         }
-        Ok(PyIterator::from_object(py, ret)?.into())
+        Ok(PyIterator::from_object(ret)?.into())
     }
 
     fn as_dict(&self, py: Python) -> PyResult<Py<PyDict>> {
@@ -194,7 +194,7 @@ impl Stanza {
     }
 
     fn write(&self, file: PyObject) -> PyResult<()> {
-        let mut writer = PyFileLikeObject::with_requirements(file, false, true, false)?;
+        let mut writer = PyBinaryFile::from(file);
         self.stanza.write(&mut writer)?;
         Ok(())
     }
@@ -202,14 +202,14 @@ impl Stanza {
 
 #[pyclass]
 struct RioWriter {
-    writer: bazaar::rio::RioWriter<PyFileLikeObject>,
+    writer: bazaar::rio::RioWriter<PyBinaryFile>,
 }
 
 #[pymethods]
 impl RioWriter {
     #[new]
     fn new(file: PyObject) -> PyResult<RioWriter> {
-        let fw = PyFileLikeObject::with_requirements(file, false, true, false)?;
+        let fw = PyBinaryFile::from(file);
         let writer = bazaar::rio::RioWriter::new(fw);
         Ok(RioWriter { writer })
     }
@@ -222,7 +222,7 @@ impl RioWriter {
 
 #[pyfunction]
 fn read_stanza_file(file: PyObject) -> PyResult<Option<Stanza>> {
-    let reader = PyFileLikeObject::with_requirements(file, true, false, false)?;
+    let reader = PyBinaryFile::from(file);
 
     let mut reader = BufReader::new(reader);
 
@@ -283,7 +283,7 @@ fn read_stanza(file: &PyAny) -> PyResult<Option<Stanza>> {
 #[pyfunction]
 fn read_stanzas(file: PyObject) -> PyResult<Py<PyList>> {
     Python::with_gil(|py| {
-        let reader = PyFileLikeObject::new(file)?;
+        let reader = PyBinaryFile::from(file);
         let ret = PyList::empty(py);
 
         let mut reader = BufReader::new(reader);
@@ -303,14 +303,14 @@ fn read_stanzas(file: PyObject) -> PyResult<Py<PyList>> {
 
 #[pyclass]
 struct RioReader {
-    reader: bazaar::rio::RioReader<BufReader<PyFileLikeObject>>,
+    reader: bazaar::rio::RioReader<BufReader<PyBinaryFile>>,
 }
 
 #[pymethods]
 impl RioReader {
     #[new]
     fn new(file: PyObject) -> PyResult<RioReader> {
-        let reader = PyFileLikeObject::with_requirements(file, true, false, false)?;
+        let reader = PyBinaryFile::from(file);
         let reader = BufReader::new(reader);
         let reader = bazaar::rio::RioReader::new(reader);
 
@@ -334,7 +334,7 @@ impl RioReader {
                     .into_py(py),
                 )?;
             }
-            Ok(PyIterator::from_object(py, ret)?.into())
+            Ok(PyIterator::from_object(ret)?.into())
         })
     }
 }
@@ -353,7 +353,7 @@ fn rio_iter(stanzas: &PyAny, header: Option<Vec<u8>>) -> PyResult<Py<PyIterator>
             let line = line.as_slice();
             ret.append(PyBytes::new(py, line))?;
         }
-        Ok(PyIterator::from_object(py, ret)?.into())
+        Ok(PyIterator::from_object(ret)?.into())
     })
 }
 

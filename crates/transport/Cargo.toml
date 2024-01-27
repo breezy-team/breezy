@@ -16,7 +16,7 @@ breezy-osutils = { path = "../osutils" }
 url = { workspace = true }
 tempfile = "3"
 pyo3 = { workspace = true, optional = true }
-pyo3-file = { workspace = true, optional = true }
+pyo3-filelike = { workspace = true, optional = true }
 breezy-urlutils = { path = "../urlutils" }
 path-clean = "1"
 walkdir = "2.3"
@@ -27,7 +27,7 @@ nix = { workspace = true, features = ["uio"] }
 
 [features]
 default = ["pyo3", "sftp"]
-pyo3 = ["dep:pyo3", "dep:pyo3-file"]
+pyo3 = ["dep:pyo3", "dep:pyo3-filelike"]
 
 [target.'cfg(unix)'.dependencies]
 nix = { workspace = true }

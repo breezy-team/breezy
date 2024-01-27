@@ -5,7 +5,7 @@ use crate::{
 use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
-use pyo3_file::PyFileLikeObject;
+use pyo3_filelike::PyBinaryFile;
 use std::collections::HashMap;
 use std::fs::Permissions;
 use std::io::{Read, Write};
@@ -113,7 +113,7 @@ impl From<PyErr> for Error {
     }
 }
 
-impl ReadStream for PyFileLikeObject {}
+impl ReadStream for PyBinaryFile {}
 
 // Bit of a hack - this reads the entire buffer, and then streams it
 fn py_read(r: &mut dyn Read) -> PyResult<PyObject> {
@@ -179,8 +179,7 @@ impl Transport for PyTransport {
     fn get(&self, path: &str) -> Result<Box<dyn ReadStream + Send + Sync>> {
         Python::with_gil(|py| {
             let obj = self.0.call_method1(py, "get", (path,))?;
-            Ok(PyFileLikeObject::with_requirements(obj, true, false, true)
-                .map(|f| Box::new(f) as Box<dyn ReadStream + Send + Sync>)?)
+            Ok(Box::new(PyBinaryFile::from(obj)) as Box<dyn ReadStream + Send + Sync>)
         })
     }
 
