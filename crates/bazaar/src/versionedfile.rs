@@ -3,6 +3,7 @@ use byteorder::{BigEndian, WriteBytesExt};
 use pyo3::types::{PyBytes, PyTuple};
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::convert::TryInto;
 
 #[derive(Debug)]
 pub enum Error {
@@ -715,4 +716,73 @@ fn length_prefix(data: &[u8]) -> Vec<u8> {
         .expect("Failed to write length bytes");
 
     length_bytes
+}
+
+pub fn fulltext_network_to_record(bytes: &[u8], line_end: usize) -> FulltextContentFactory {
+    // Extract meta_len from the network fulltext record
+    let meta_len_bytes: [u8; 4] = bytes[line_end..line_end + 4]
+        .try_into()
+        .expect("Expected 4 bytes for meta_len");
+    let meta_len = u32::from_be_bytes(meta_len_bytes) as usize;
+
+    // Extract record_meta using meta_len
+    let record_meta = &bytes[line_end + 4..line_end + 4 + meta_len];
+
+    // Decode record_meta using Bencode
+    let mut decoder = bendy::decoding::Decoder::new(record_meta);
+
+    let mut tuple = decoder
+        .next_object()
+        .expect("Failed to decode record_meta using Bencode")
+        .expect("Failed to decode tuple using Bencode")
+        .try_into_list()
+        .unwrap();
+
+    fn decode_key(o: bendy::decoding::Object) -> Key {
+        let mut ret = vec![];
+
+        let mut l = o.try_into_list().unwrap();
+
+        while let Some(b) = l.next_object().unwrap() {
+            ret.push(b.try_into_bytes().unwrap().to_vec());
+        }
+
+        Key::Fixed(ret)
+    }
+
+    let key = decode_key(
+        tuple
+            .next_object()
+            .expect("Failed to decode record_meta using Bencode")
+            .expect("Failed to decode key using Bencode"),
+    );
+
+    let parents = tuple
+        .next_object()
+        .expect("Failed to decode record_meta using Bencode")
+        .expect("Failed to decode parents using Bencode");
+
+    // Convert parents from "nil" to None
+    let parents = match parents {
+        bendy::decoding::Object::Bytes(bytes) => {
+            if bytes == b"nil" {
+                None
+            } else {
+                panic!("Expected parents to be a list or nil");
+            }
+        }
+        bendy::decoding::Object::List(mut l) => {
+            let mut parents = vec![];
+            while let Some(parent) = l.next_object().unwrap() {
+                parents.push(decode_key(parent));
+            }
+            Some(parents)
+        }
+        _ => panic!("Expected parents to be a list or nil"),
+    };
+
+    // Extract fulltext from the remaining bytes
+    let fulltext = &bytes[line_end + 4 + meta_len..];
+
+    FulltextContentFactory::new(None, key, parents, fulltext.to_vec())
 }
