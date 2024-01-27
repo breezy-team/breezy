@@ -20,8 +20,12 @@ from . import uris
 
 
 class TestWebRootForServiceRoot(TestCase):
-
     def test_simple(self):
-        self.assertEqual('https://launchpad.net', uris.web_root_for_service_root('https://api.launchpad.net/'))
-        self.assertEqual('https://beta.launchpad.net', uris.web_root_for_service_root('https://api.beta.launchpad.net/'))
-
+        self.assertEqual(
+            "https://launchpad.net",
+            uris.web_root_for_service_root("https://api.launchpad.net/"),
+        )
+        self.assertEqual(
+            "https://beta.launchpad.net",
+            uris.web_root_for_service_root("https://api.beta.launchpad.net/"),
+        )

@@ -74,6 +74,7 @@ struct FulltextContentFactory;
 #[pymethods]
 impl FulltextContentFactory {
     #[new]
+    #[pyo3(signature = (key, parents, sha1, text))]
     fn new(
         key: Key,
         parents: Option<Vec<Key>>,
@@ -92,6 +93,7 @@ struct ChunkedContentFactory;
 #[pymethods]
 impl ChunkedContentFactory {
     #[new]
+    #[pyo3(signature = (key, parents, sha1, chunks))]
     fn new(
         key: Key,
         parents: Option<Vec<Key>>,

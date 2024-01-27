@@ -1700,7 +1700,7 @@ fn parse_inventory_delta(
     Ok((parent, version, versioned_root, tree_references, result))
 }
 
-#[pyfunction]
+#[pyfunction(signature = (file_id, name, parent_id, revision, lines))]
 fn parse_inventory_entry(
     file_id: FileId,
     name: String,

@@ -4,7 +4,7 @@ use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyIterator, PyList};
 use pyo3::wrap_pyfunction;
-use pyo3_file::PyFileLikeObject;
+use pyo3_filelike::PyBinaryFile;
 use std::ffi::OsString;
 use std::io::Write;
 use std::os::unix::ffi::OsStringExt;
@@ -67,9 +67,7 @@ fn run_patch(
     _patch_cmd: Option<&str>,
 ) -> PyResult<()> {
     let mut out: Box<dyn Write> = if let Some(obj) = out {
-        Box::new(PyFileLikeObject::with_requirements(
-            obj, false, true, false,
-        )?)
+        Box::new(PyBinaryFile::from(obj))
     } else {
         Box::new(std::io::stdout())
     };

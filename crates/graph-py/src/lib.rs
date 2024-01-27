@@ -1,11 +1,11 @@
 #![allow(non_snake_case)]
 
-use breezy_graph::{ChildMap, ParentMap, Parents, RevnoVec};
-use pyo3::exceptions::PyValueError;
+use breezy_graph::{ChildMap, ParentMap, RevnoVec};
+
+use pyo3::import_exception;
 use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyList, PySet, PyTuple};
+use pyo3::types::{PyDict, PyList, PyTuple};
 use pyo3::wrap_pyfunction;
-use pyo3::{create_exception, import_exception};
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 

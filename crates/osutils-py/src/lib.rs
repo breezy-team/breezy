@@ -7,7 +7,7 @@ use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyIterator, PyList, PyTuple};
 use pyo3::wrap_pyfunction;
 use pyo3::PyErr;
-use pyo3_file::PyFileLikeObject;
+use pyo3_filelike::PyBinaryFile;
 use std::collections::HashSet;
 use std::ffi::OsString;
 use std::fs::Permissions;
@@ -168,7 +168,7 @@ fn sha_strings(py: Python, strings: &PyAny) -> PyResult<PyObject> {
 /// The file cursor should be already at the start.
 #[pyfunction]
 fn sha_file(py: Python, file: PyObject) -> PyResult<PyObject> {
-    let mut file = PyFileLikeObject::with_requirements(file, true, false, false)?;
+    let mut file = PyBinaryFile::from(file);
     let digest = breezy_osutils::sha::sha_file(&mut file).map_err(PyErr::from)?;
     Ok(PyBytes::new(py, digest.as_bytes()).into_py(py))
 }
@@ -179,7 +179,7 @@ fn sha_file(py: Python, file: PyObject) -> PyResult<PyObject> {
 /// the caller is responsible for closing the file afterwards.
 #[pyfunction]
 fn size_sha_file(py: Python, file: PyObject) -> PyResult<(usize, PyObject)> {
-    let mut file = PyFileLikeObject::with_requirements(file, true, false, false)?;
+    let mut file = PyBinaryFile::from(file);
     let (size, digest) = breezy_osutils::sha::size_sha_file(&mut file).map_err(PyErr::from)?;
     Ok((size, PyBytes::new(py, digest.as_bytes()).into_py(py)))
 }
@@ -826,8 +826,8 @@ fn local_concurrency(use_cache: Option<bool>) -> usize {
 
 #[pyfunction]
 fn pumpfile(from_file: PyObject, to_file: PyObject, read_size: Option<u64>) -> PyResult<u64> {
-    let mut from_file = PyFileLikeObject::with_requirements(from_file, true, false, false)?;
-    let mut to_file = PyFileLikeObject::with_requirements(to_file, false, true, false)?;
+    let mut from_file = PyBinaryFile::from(from_file);
+    let mut to_file = PyBinaryFile::from(to_file);
 
     Ok(breezy_osutils::pumpfile(
         &mut from_file,
@@ -892,7 +892,7 @@ fn dereference_path(path: PathBuf) -> std::io::Result<PathBuf> {
 
 #[pyfunction]
 fn pump_string_file(data: &[u8], file: PyObject, segment_size: Option<usize>) -> PyResult<()> {
-    let mut file = PyFileLikeObject::with_requirements(file, false, true, false)?;
+    let mut file = PyBinaryFile::from(file);
     Ok(breezy_osutils::pump_string_file(
         data,
         &mut file,
@@ -1090,7 +1090,7 @@ fn joinpath(py: Python, parts: Vec<PyObject>) -> PyResult<PathBuf> {
     }
 }
 
-#[pyfunction(args = "*")]
+#[pyfunction(signature = (*args))]
 fn pathjoin(py: Python, args: Vec<PyObject>) -> PyResult<PyObject> {
     let return_bytes = args[0].as_ref(py).is_instance_of::<PyBytes>();
     let parts = args
@@ -1141,8 +1141,8 @@ fn is_local_pid_dead(pid: i32) -> PyResult<bool> {
 
 #[pyfunction]
 fn compare_files(a: PyObject, b: PyObject) -> PyResult<bool> {
-    let a = PyFileLikeObject::with_requirements(a, true, false, false)?;
-    let b = PyFileLikeObject::with_requirements(b, true, false, false)?;
+    let a = PyBinaryFile::from(a);
+    let b = PyBinaryFile::from(b);
     Ok(breezy_osutils::file::compare_files(a, b)?)
 }
 
