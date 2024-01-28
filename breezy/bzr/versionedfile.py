@@ -19,7 +19,6 @@
 import functools
 import itertools
 import os
-import struct
 from copy import copy
 from io import BytesIO
 from typing import Any, Optional, Tuple
@@ -49,6 +48,7 @@ FulltextContentFactory = _versionedfile_rs.FulltextContentFactory
 ChunkedContentFactory = _versionedfile_rs.ChunkedContentFactory
 AbsentContentFactory = _versionedfile_rs.AbsentContentFactory
 record_to_fulltext_bytes = _versionedfile_rs.record_to_fulltext_bytes
+fulltext_network_to_record = _versionedfile_rs.fulltext_network_to_record
 
 
 adapter_registry = Registry[Tuple[str, str], Any, None]()
@@ -2066,17 +2066,6 @@ class NetworkRecordStream:
         for bytes in self._bytes_iterator:
             storage_kind, line_end = network_bytes_to_kind_and_offset(bytes)
             yield from self._kind_factory[storage_kind](storage_kind, bytes, line_end)
-
-
-def fulltext_network_to_record(kind, bytes, line_end):
-    """Convert a network fulltext record to record."""
-    (meta_len,) = struct.unpack("!L", bytes[line_end : line_end + 4])
-    record_meta = bytes[line_end + 4 : line_end + 4 + meta_len]
-    key, parents = bencode.bdecode_as_tuple(record_meta)
-    if parents == b"nil":
-        parents = None
-    fulltext = bytes[line_end + 4 + meta_len :]
-    return [FulltextContentFactory(key, parents, None, fulltext)]
 
 
 def sort_groupcompress(parent_map):
