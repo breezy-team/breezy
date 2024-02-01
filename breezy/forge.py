@@ -133,6 +133,12 @@ class MergeProposal:
     def __init__(self, url=None):
         self.url = url
 
+    def __str__(self):
+        return self.url
+
+    def __repr__(self):
+        return "<%s(%r)>" % (self.__class__.__name__, self.url)
+
     def get_web_url(self):
         raise NotImplementedError(self.get_web_url)
 
