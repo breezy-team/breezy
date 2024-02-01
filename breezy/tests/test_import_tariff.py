@@ -232,10 +232,8 @@ class TestImportTariffs(ImportTariffTestCase):
             'getpass',
             'kerberos',
             'merge3',
-            'shutil',
             'smtplib',
             'ssl',
-            'tempfile',
             'tarfile',
             'termios',
             'tty',
@@ -302,7 +300,6 @@ class TestImportTariffs(ImportTariffTestCase):
                                       'merge3',
                                       'smtplib',
                                       'tarfile',
-                                      'tempfile',
                                       'termios',
                                       'tty',
                                       ] + old_format_modules)
