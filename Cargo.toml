@@ -1,6 +1,6 @@
 [package]
 name = "breezy"
-version = "3.3.5"
+version = { workspace = true }
 authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@jelmer.uk>"]
 edition = "2018"
 publish = false
@@ -13,6 +13,9 @@ documentation = "https://www.breezy-vcs.org/doc/"
 
 [workspace]
 members = ["lib-rio"]
+
+[workspace.package]
+version = "3.3.6"
 
 [[bin]]
 name = "brz"
