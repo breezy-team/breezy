@@ -174,7 +174,6 @@ class TestImportTariffs(ImportTariffTestCase):
             "getpass",
             "kerberos",
             "merge3",
-            "shutil",
             "ssl",
             "socket",
             "smtplib",
