@@ -809,11 +809,11 @@ class TestTestResult(tests.TestCase):
 
         class TimeAddedVerboseTestResult(tests.VerboseTestResult):
             def startTest(self, test):
-                self.time(datetime.datetime.utcfromtimestamp(1.145))
+                self.time(datetime.datetime.fromtimestamp(1.145, datetime.UTC))
                 super().startTest(test)
 
             def addSuccess(self, test):
-                self.time(datetime.datetime.utcfromtimestamp(51.147))
+                self.time(datetime.datetime.fromtimestamp(51.147, datetime.UTC))
                 super().addSuccess(test)
 
             def report_tests_starting(self): pass

@@ -167,7 +167,7 @@ class _Serializer_v4(XMLSerializer):
 
         pelts = elt.find('parents')
 
-        if pelts:
+        if pelts is not None:
             for p in pelts:
                 rev.parent_ids.append(p.get('revision_id'))
                 rev.parent_sha1s.append(p.get('revision_sha1'))

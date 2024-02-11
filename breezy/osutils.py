@@ -736,10 +736,12 @@ def compare_files(a, b):
 
 def local_time_offset(t=None):
     """Return offset of local zone from GMT, either at present or at time t."""
-    from datetime import datetime
+    from datetime import UTC, datetime
+
+    from tzlocal import get_localzone
     if t is None:
         t = time.time()
-    offset = datetime.fromtimestamp(t) - datetime.utcfromtimestamp(t)
+    offset = datetime.fromtimestamp(t, get_localzone()) - datetime.fromtimestamp(t, UTC)
     return offset.days * 86400 + offset.seconds
 
 
