@@ -39,6 +39,7 @@ all: extensions
 extensions:
 	@echo "building extension modules."
 	$(PYTHON) setup.py build_ext -i $(PYTHON_BUILDFLAGS)
+	$(PYTHON) setup.py build_rust -i $(PYTHON_BUILDFLAGS)
 
 check:: docs check-nodocs
 
@@ -238,6 +239,7 @@ exe:
 	@echo *** Make brz.exe
 	$(PYTHON) tools/win32/ostools.py remove breezy/*.pyd
 	$(PYTHON) setup.py build_ext -i -f $(PYTHON_BUILDFLAGS)
+	$(PYTHON) setup.py build_rust -i -f $(PYTHON_BUILDFLAGS)
 	$(PYTHON) setup.py py2exe > py2exe.log
 	$(PYTHON) tools/win32/ostools.py copytodir tools/win32/start_brz.bat win32_brz.exe
 	$(PYTHON) tools/win32/ostools.py copytodir tools/win32/breezy.url win32_brz.exe

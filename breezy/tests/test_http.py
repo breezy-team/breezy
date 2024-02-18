@@ -963,8 +963,7 @@ class TruncatedMultipleRangeRequestHandler(http_server.TestingHTTPRequestHandler
         self.end_headers()
 
         # Send the multipart body
-        cur = 0
-        for start, end in ranges:
+        for cur, (start, end) in enumerate(ranges):
             self.wfile.write(boundary_line)
             self.send_header("Content-type", "application/octet-stream")
             self.send_header(
@@ -976,7 +975,6 @@ class TruncatedMultipleRangeRequestHandler(http_server.TestingHTTPRequestHandler
                 self.close_connection = 1
                 return
             self.send_range_content(file, start, end - start + 1)
-            cur += 1
         # Final boundary
         self.wfile.write(boundary_line)
 
@@ -1038,8 +1036,7 @@ class TruncatedBeforeBoundaryRequestHandler(http_server.TestingHTTPRequestHandle
         self.end_headers()
 
         # Send the multipart body
-        cur = 0
-        for start, end in ranges:
+        for cur, (start, end) in enumerate(ranges):
             if cur + self._truncated_ranges >= len(ranges):
                 # Abruptly ends the response and close the connection
                 self.close_connection = 1
@@ -1051,7 +1048,6 @@ class TruncatedBeforeBoundaryRequestHandler(http_server.TestingHTTPRequestHandle
             )
             self.end_headers()
             self.send_range_content(file, start, end - start + 1)
-            cur += 1
         # Final boundary
         self.wfile.write(boundary_line)
 

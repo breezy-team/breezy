@@ -2823,7 +2823,10 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         with tarfile.open(
             "repository", fileobj=tar_file, mode="r|bz2"
         ) as tar, osutils.TemporaryDirectory() as tmpdir:
-            tar.extractall(tmpdir)
+            members = tar.getmembers()
+            if any(m.name.startswith("/") or ".." in m.name for m in members):
+                raise AssertionError("Tarball contains absolute paths")
+            tar.extractall(tmpdir, members=members)  # noqa: S202
             tmp_bzrdir = _mod_bzrdir.BzrDir.open(tmpdir)
             tmp_repo = tmp_bzrdir.open_repository()
             tmp_repo.copy_content_into(destination, revision_id)

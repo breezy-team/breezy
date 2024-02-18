@@ -5,7 +5,6 @@ use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyType};
 
 use std::collections::VecDeque;
-use std::io::{Read, Seek};
 use std::sync::Arc;
 
 create_exception!(breezy._transport_rs, SFTPError, PyException);
