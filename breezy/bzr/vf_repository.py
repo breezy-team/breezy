@@ -465,7 +465,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                 carried_over = False
                 if len(heads) == 1:
                     # Could be a carry-over situation:
-                    parent_entry_revs = parent_entries.get(file_id, None)
+                    parent_entry_revs = parent_entries.get(file_id)
                     if parent_entry_revs:
                         parent_entry = parent_entry_revs.get(heads[0], None)
                     else:
@@ -1508,10 +1508,9 @@ class VersionedFileRepository(Repository):
         file_ids = self.fileids_altered_by_revision_ids(revision_ids, inv_w)
         count = 0
         num_file_ids = len(file_ids)
-        for file_id, altered_versions in file_ids.items():
+        for count, (file_id, altered_versions) in enumerate(file_ids.items()):
             if pb is not None:
                 pb.update(gettext("Fetch texts"), count, num_file_ids)
-            count += 1
             yield ("file", file_id, altered_versions)
 
     def _find_non_file_keys_to_fetch(self, revision_ids):

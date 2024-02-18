@@ -97,6 +97,9 @@ version = {attr = "breezy.__version__"}
 ignore_missing_imports = true
 
 [tool.ruff]
+extend-exclude = ["lib", "bin"]
+
+[tool.ruff.lint]
 select = [
     "ANN",  # annotations
     "D",  # pydocstyle
@@ -173,15 +176,12 @@ ignore = [
 ]
 # These are actually fine, but they make mypy more strict and then it fails.
 unfixable = ["ANN204"]
-extend-exclude = ["lib", "bin"]
 
-[tool.ruff.isort]
-
-[tool.ruff.extend-per-file-ignores]
+[tool.ruff.lint.extend-per-file-ignores]
 "breezy/plugins/po_merge/tests/test_po_merge.py" = ["RUF001"]
 
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "google"
 
 [tool.setuptools-gettext]

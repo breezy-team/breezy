@@ -72,13 +72,12 @@ class _ChooseUI:
         Setup final prompt and the lists of choices and associated
         shortcuts.
         """
-        index = 0
         help_list = []
         self.alternatives = {}
         choices = choices.split("\n")
         if default is not None and default not in range(0, len(choices)):
             raise ValueError("invalid default index")
-        for c in choices:
+        for index, c in enumerate(choices):
             name = c.replace("&", "").lower()
             choice = (name, index)
             if name in self.alternatives:
@@ -103,7 +102,6 @@ class _ChooseUI:
                 self.alternatives[""] = choice
                 self.alternatives["\r"] = choice
             help_list.append(help)
-            index += 1
 
         self.prompt = f"{msg} ({', '.join(help_list)}): "
 

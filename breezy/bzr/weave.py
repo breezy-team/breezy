@@ -651,9 +651,7 @@ class Weave(VersionedFile):
         istack = []
         dset = set()
 
-        lineno = 0  # line of weave, 0-based
-
-        for l in self._weave:
+        for lineno, l in enumerate(self._weave):
             if l.__class__ == tuple:
                 c, v = l
                 if c == b"{":
@@ -668,7 +666,6 @@ class Weave(VersionedFile):
                     raise WeaveFormatError(f"unexpected instruction {v!r}")
             else:
                 yield lineno, istack[-1], frozenset(dset), l
-            lineno += 1
 
         if istack:
             raise WeaveFormatError(
@@ -740,8 +737,6 @@ class Weave(VersionedFile):
         iset = set()
         dset = set()
 
-        lineno = 0  # line of weave, 0-based
-
         isactive = None
 
         result = []
@@ -770,7 +765,7 @@ class Weave(VersionedFile):
         # 'in' test could dominate, so I'm leaving this change in place - when
         # its fast enough to consider profiling big datasets we can review.
 
-        for l in self._weave:
+        for lineno, l in enumerate(self._weave):
             if l.__class__ == tuple:
                 c, v = l
                 isactive = None
@@ -792,7 +787,6 @@ class Weave(VersionedFile):
                     isactive = (not dset) and istack and (istack[-1] in included)
                 if isactive:
                     result.append((istack[-1], lineno, l))
-            lineno += 1
         if istack:
             raise WeaveFormatError(
                 "unclosed insertion blocks " "at end of weave: %s" % istack

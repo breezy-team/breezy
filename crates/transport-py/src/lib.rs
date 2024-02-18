@@ -1,5 +1,5 @@
 use breezy_transport::lock::{FileLock, Lock as LockTrait, LockError};
-use breezy_transport::{Error, ReadStream, Transport as TransportTrait, UrlFragment, WriteStream};
+use breezy_transport::{Error, ReadStream, Transport as _, UrlFragment, WriteStream};
 use log::debug;
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::import_exception;
