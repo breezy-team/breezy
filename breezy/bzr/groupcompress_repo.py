@@ -21,8 +21,9 @@ import time
 
 from .. import _bzr_rs, controldir, debug, errors, osutils, trace, ui
 from .. import revision as _mod_revision
-from ..bzr import chk_map, chk_serializer, inventory, pack, versionedfile
+from ..bzr import chk_map, chk_serializer, inventory, versionedfile
 from ..bzr import index as _mod_index
+from ..bzr import pack as _mod_pack
 from ..bzr.btree_index import BTreeBuilder, BTreeGraphIndex
 from ..bzr.groupcompress import GroupCompressVersionedFiles, _GCGraphIndex
 from ..bzr.vf_repository import StreamSource
@@ -147,7 +148,7 @@ class GCPack(NewPack):
         # expose this on self, for the occasion when clients want to add data.
         self._write_data = _write_data
         # a pack writer object to serialise pack records.
-        self._writer = pack.ContainerWriter(self._write_data)
+        self._writer = _mod_pack.ContainerWriter(self._write_data)
         self._writer.begin()
         # what state is the pack in? (open, finished, aborted)
         self._state = "open"
@@ -380,7 +381,7 @@ class GCCHKPacker(Packer):
             add_callback = index.add_nodes
         else:
             indices = []
-            for pack in self.packs:  # noqa: F402
+            for pack in self.packs:
                 sub_index = getattr(pack, index_name)
                 index_to_pack[sub_index] = pack.access_tuple()
                 indices.append(sub_index)

@@ -765,7 +765,7 @@ class CHKInventory:
         revision_id = info[b"revision_id"]
         root_id = info[b"root_id"]
         search_key_name = info.get(b"search_key_name", b"plain")
-        parent_id_basename_to_file_id = info.get(b"parent_id_basename_to_file_id", None)
+        parent_id_basename_to_file_id = info.get(b"parent_id_basename_to_file_id")
         if not parent_id_basename_to_file_id.startswith(b"sha1:"):
             raise ValueError(
                 "parent_id_basename_to_file_id should be a sha1"

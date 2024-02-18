@@ -5,7 +5,7 @@ use pyo3::exceptions::{PyNotImplementedError, PyRuntimeError, PyTypeError, PyVal
 use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyString};
-use pyo3_file::PyFileLikeObject;
+use pyo3_filelike::PyBinaryFile;
 use std::collections::HashMap;
 
 mod chk_map;
@@ -155,6 +155,7 @@ struct Revision(bazaar::revision::Revision);
 #[pymethods]
 impl Revision {
     #[new]
+    #[pyo3(signature = (revision_id, parent_ids, committer, message, properties, inventory_sha1, timestamp, timezone))]
     fn new(
         py: Python,
         revision_id: RevisionId,
@@ -364,7 +365,7 @@ impl RevisionSerializer {
 
     fn read_revision(&self, py: Python, file: PyObject) -> PyResult<Revision> {
         py.allow_threads(|| {
-            let mut file = PyFileLikeObject::with_requirements(file, true, false, false)?;
+            let mut file = PyBinaryFile::from(file);
             Ok(Revision(
                 self.0
                     .read_revision(&mut file)

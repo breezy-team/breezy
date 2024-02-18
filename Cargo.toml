@@ -55,8 +55,8 @@ nix = { workspace = true, features = ["fs"] }
 
 [workspace.dependencies]
 nix = ">=0.26"
-pyo3 = ">=0.19"
-pyo3-file = "0.7.0"
+pyo3 = ">=0.20"
+pyo3-filelike = "0.2.0"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 url = "2"
 log = "0.4"

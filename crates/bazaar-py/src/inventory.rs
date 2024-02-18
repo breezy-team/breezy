@@ -252,23 +252,21 @@ impl InventoryEntry {
                                 //  * there was a bug in revision updates with executable bit support
                                 let mut candidate =
                                     candidate.extract::<PyRefMut<InventoryEntry>>(py)?;
-                                match (&mut candidate.0, &mut entry.0) {
-                                    (
-                                        Entry::File {
-                                            executable: candidate_executable,
-                                            ..
-                                        },
-                                        Entry::File {
-                                            executable: entry_executable,
-                                            ..
-                                        },
-                                    ) => {
-                                        if candidate_executable != entry_executable {
-                                            *entry_executable = false;
-                                            *candidate_executable = false;
-                                        }
+                                if let (
+                                    Entry::File {
+                                        executable: candidate_executable,
+                                        ..
+                                    },
+                                    Entry::File {
+                                        executable: entry_executable,
+                                        ..
+                                    },
+                                ) = (&mut candidate.0, &mut entry.0)
+                                {
+                                    if candidate_executable != entry_executable {
+                                        *entry_executable = false;
+                                        *candidate_executable = false;
                                     }
-                                    _ => {}
                                 }
                             } else {
                                 // add this revision as a candidate.
@@ -1700,7 +1698,7 @@ fn parse_inventory_delta(
     Ok((parent, version, versioned_root, tree_references, result))
 }
 
-#[pyfunction]
+#[pyfunction(signature = (file_id, name, parent_id, revision, lines))]
 fn parse_inventory_entry(
     file_id: FileId,
     name: String,

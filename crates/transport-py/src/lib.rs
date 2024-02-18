@@ -1,11 +1,11 @@
 use breezy_transport::lock::{FileLock, Lock as LockTrait, LockError};
-use breezy_transport::{Error, ReadStream, Transport as TransportTrait, UrlFragment, WriteStream};
+use breezy_transport::{Error, ReadStream, Transport as _, UrlFragment, WriteStream};
 use log::debug;
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyIterator, PyList, PyType};
-use pyo3_file::PyFileLikeObject;
+use pyo3_filelike::PyBinaryFile;
 use std::collections::HashMap;
 use std::fs::Permissions;
 use std::io::{BufRead, BufReader, Read, Seek, Write};
@@ -432,7 +432,7 @@ impl Transport {
         mode: Option<PyObject>,
     ) -> PyResult<u64> {
         let t = &slf.borrow().0;
-        let mut file = PyFileLikeObject::with_requirements(file, true, false, false)?;
+        let mut file = PyBinaryFile::from(file);
         let ret = py
             .allow_threads(|| {
                 t.put_file(
@@ -455,7 +455,7 @@ impl Transport {
         dir_mode: Option<PyObject>,
     ) -> PyResult<()> {
         let t = &slf.borrow().0;
-        let mut file = PyFileLikeObject::with_requirements(file, true, false, false)?;
+        let mut file = PyBinaryFile::from(file);
         py.allow_threads(|| {
             t.put_file_non_atomic(
                 path,
@@ -572,7 +572,7 @@ impl Transport {
             Some(path),
         )?;
         let list = PyList::new(py, &buffered);
-        Ok(PyIterator::from_object(py, list)?.into_py(py))
+        Ok(PyIterator::from_object(list)?.into_py(py))
     }
 
     fn readv(
@@ -599,7 +599,7 @@ impl Transport {
             })
             .collect::<PyResult<Vec<(u64, PyObject)>>>()?;
         let list = PyList::new(py, &buffered);
-        Ok(PyIterator::from_object(py, list)?.to_object(py))
+        Ok(PyIterator::from_object(list)?.to_object(py))
     }
 
     fn listable(&self, py: Python) -> bool {
@@ -634,7 +634,7 @@ impl Transport {
         file: PyObject,
         mode: Option<PyObject>,
     ) -> PyResult<u64> {
-        let mut file = PyFileLikeObject::with_requirements(file, true, false, false)?;
+        let mut file = PyBinaryFile::from(file);
         let mode = mode.map(perms_from_py_object);
         py.allow_threads(|| self.0.append_file(path, &mut file, mode))
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
@@ -844,7 +844,7 @@ fn seek_and_read(
     bytes_to_read_before_seek: Option<usize>,
     path: Option<&str>,
 ) -> PyResult<Vec<(usize, PyObject)>> {
-    let f = PyFileLikeObject::with_requirements(file, true, false, true)?;
+    let f = PyBinaryFile::from(file);
     let mut data = py
         .allow_threads(|| {
             breezy_transport::readv::seek_and_read(

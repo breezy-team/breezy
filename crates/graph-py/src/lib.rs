@@ -2,10 +2,10 @@
 
 use breezy_graph::{ChildMap, ParentMap, RevnoVec};
 
+use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList, PyTuple};
 use pyo3::wrap_pyfunction;
-use pyo3::{import_exception};
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
@@ -301,13 +301,10 @@ impl MergeSorter {
         };
 
         // The null: revision doesn't exist in the graph, so don't attempt to remove it
-        match branch_tip {
-            Some(ref mut tip_obj) => {
-                if branch_tip_is_null(py, tip_obj.clone_ref(py)) {
-                    branch_tip = None;
-                }
+        if let Some(ref mut tip_obj) = branch_tip {
+            if branch_tip_is_null(py, tip_obj.clone_ref(py)) {
+                branch_tip = None;
             }
-            None => (),
         }
 
         let sorter = breezy_graph::tsort::MergeSorter::<PyNode>::new(

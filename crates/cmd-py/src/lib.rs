@@ -9,7 +9,7 @@ use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::pyclass::CompareOp;
 use pyo3::types::{PyBytes, PyString, PyTuple, PyType};
-use pyo3_file::PyFileLikeObject;
+use pyo3_filelike::PyBinaryFile;
 use std::io::Write;
 use std::path::PathBuf;
 
@@ -241,7 +241,7 @@ fn log_exception_quietly(py: Python, log: &dyn log::Log, err: &PyErr) -> PyResul
 impl BreezyTraceHandler {
     #[new]
     fn new(f: PyObject, short: bool) -> PyResult<Self> {
-        let f = PyFileLikeObject::with_requirements(f, false, true, false)?;
+        let f = PyBinaryFile::from(f);
         Ok(Self(Box::new(std::sync::Arc::new(
             breezy::trace::BreezyTraceLogger::new(Box::new(f), short),
         ))))

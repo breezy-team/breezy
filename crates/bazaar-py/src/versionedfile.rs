@@ -74,6 +74,7 @@ struct FulltextContentFactory;
 #[pymethods]
 impl FulltextContentFactory {
     #[new]
+    #[pyo3(signature = (key, parents, sha1, text))]
     fn new(
         key: Key,
         parents: Option<Vec<Key>>,
@@ -92,6 +93,7 @@ struct ChunkedContentFactory;
 #[pymethods]
 impl ChunkedContentFactory {
     #[new]
+    #[pyo3(signature = (key, parents, sha1, chunks))]
     fn new(
         key: Key,
         parents: Option<Vec<Key>>,
@@ -128,6 +130,21 @@ impl AbsentContentFactory {
     }
 }
 
+#[pyfunction]
+fn fulltext_network_to_record(
+    py: Python,
+    _kind: &str,
+    bytes: &[u8],
+    line_end: usize,
+) -> Vec<PyObject> {
+    let record = bazaar::versionedfile::fulltext_network_to_record(bytes, line_end);
+
+    let sub = PyClassInitializer::from(AbstractContentFactory(Box::new(record)))
+        .add_subclass(FulltextContentFactory);
+
+    vec![Py::new(py, sub).unwrap().to_object(py)]
+}
+
 pub(crate) fn _versionedfile_rs(py: Python) -> PyResult<&PyModule> {
     let m = PyModule::new(py, "versionedfile")?;
     m.add_class::<AbstractContentFactory>()?;
@@ -135,5 +152,6 @@ pub(crate) fn _versionedfile_rs(py: Python) -> PyResult<&PyModule> {
     m.add_class::<ChunkedContentFactory>()?;
     m.add_class::<AbsentContentFactory>()?;
     m.add_function(wrap_pyfunction!(record_to_fulltext_bytes, m)?)?;
+    m.add_function(wrap_pyfunction!(fulltext_network_to_record, m)?)?;
     Ok(m)
 }

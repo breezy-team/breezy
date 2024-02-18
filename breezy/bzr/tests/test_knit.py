@@ -290,9 +290,7 @@ class MockReadvFailingTransport(MockTransport):
     """
 
     def readv(self, relpath, offsets):
-        count = 0
-        for result in MockTransport.readv(self, relpath, offsets):
-            count += 1
+        for count, result in enumerate(MockTransport.readv(self, relpath, offsets), 1):
             # we use 2 because the first offset is the pack header, the second
             # is the first actual content requset
             if count > 2:

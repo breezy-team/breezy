@@ -5,10 +5,17 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+brz 3.3.6
+#########
+
+:3.3.6: UNRELEASED
+
 brz 3.3.5
 #########
 
-:3.3.5: UNRELEASED
+:3.3.5: 2024-01-19
+
+* Fix compatibility with Python 3.12. Jelmer Vernooĳ, #2047991)
 
 brz 3.3.4
 #########
