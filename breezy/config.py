@@ -3169,6 +3169,8 @@ class IniFileStore(Store):
         Args:
           bytes: A string representing the file content.
         """
+        if self.is_loaded():
+            return
         co_input = BytesIO(bytes)
         try:
             # The config files are always stored utf8-encoded
