@@ -2992,7 +2992,7 @@ class IniFileStore(Store):
           bytes: A string representing the file content.
         """
         if self.is_loaded():
-            raise AssertionError('Already loaded: {!r}'.format(self._config_obj))
+            return
         co_input = BytesIO(bytes)
         try:
             # The config files are always stored utf8-encoded
