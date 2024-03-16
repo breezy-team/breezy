@@ -2991,18 +2991,21 @@ class IniFileStore(Store):
         Args:
           bytes: A string representing the file content.
         """
-        if self.is_loaded():
-            return
         co_input = BytesIO(bytes)
         try:
             # The config files are always stored utf8-encoded
-            self._config_obj = ConfigObj(co_input, encoding='utf-8',
-                                         list_values=False)
+            new_config_obj = ConfigObj(co_input, encoding='utf-8', list_values=False)
         except configobj.ConfigObjError as e:
             self._config_obj = None
             raise ParseConfigError(e.errors, self.external_url())
         except UnicodeDecodeError:
             raise ConfigContentError(self.external_url())
+
+        if self._config_obj is not None:
+            if new_config_obj != self._config_obj:
+                raise AssertionError("ConfigObj instances are not equal")
+
+        self._config_obj = new_config_obj
 
     def save_changes(self):
         if not self.is_loaded():
