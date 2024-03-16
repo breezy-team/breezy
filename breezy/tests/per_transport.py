@@ -1606,7 +1606,7 @@ class TransportTests(TestTransportImplementation):
         # reference the returned data with the random data. To avoid doing
         # multiple large random byte look ups we do several tests on the same
         # backing data.
-        content = random.randbytes(200 * 1024)
+        content = random.randbytes(200 * 1024)  # noqa: S311
         content_size = len(content)
         if transport.is_readonly():
             self.build_tree_contents([("a", content)])

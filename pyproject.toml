@@ -62,6 +62,8 @@ dev = [
     "python-subunit",
     "cython>=0.29",
     "ruff",
+    "types-paramiko",
+    "types-PyYAML",
 ]
 testing = [
     "testtools",
