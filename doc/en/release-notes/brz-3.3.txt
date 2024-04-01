@@ -10,6 +10,8 @@ brz 3.3.7
 
 :3.3.7: UNRELEASED
 
+* Fix compatibility with Python 3 < 3.11, which don't have datetime.UTC. (Jelmer Vernooĳ)
+
 brz 3.3.6
 #########
 
