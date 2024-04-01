@@ -8,7 +8,11 @@ Breezy Release Notes
 brz 3.3.6
 #########
 
-:3.3.6: UNRELEASED
+:3.3.6: 2024-04-01
+
+* Ignore race conditions loading config files. (Jelmer Vernooĳ)
+
+* Fix tests on Python 3.12. (Jelmer Vernooĳ)
 
 brz 3.3.5
 #########
