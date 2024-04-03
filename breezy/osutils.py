@@ -408,14 +408,6 @@ if sys.platform == 'win32':
     normpath = _win32_normpath
     getcwd = _win32_getcwd
     rename = _rename_wrap_exception(_win32_rename)
-    try:
-        from . import _walkdirs_win32
-    except ImportError:
-        pass
-    else:
-        lstat = _walkdirs_win32.lstat
-        fstat = _walkdirs_win32.fstat
-        wrap_stat = _walkdirs_win32.wrap_stat
 
     MIN_ABS_PATHLENGTH = 3
 
@@ -1728,11 +1720,7 @@ def _walkdirs_utf8(top, prefix="", fs_enc=None):
         if fs_enc is None:
             fs_enc = sys.getfilesystemencoding()
         if sys.platform == "win32":
-            try:
-                from ._walkdirs_win32 import Win32ReadDir
-                _selected_dir_reader = Win32ReadDir()
-            except ImportError:
-                pass
+            pass
         elif fs_enc in ('utf-8', 'ascii'):
             try:
                 from ._readdir_pyx import UTF8DirReader
