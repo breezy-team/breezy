@@ -681,7 +681,7 @@ def guess_build_type(tree, version, subpath='', contains_upstream_source=True):
 
     # If the package doesn't have a debian revision then it is very probably
     # native, but it *could* be native.
-    if type(version_native) is bool and type(format_native) is bool:
+    if isinstance(version_native, bool) and isinstance(format_native, bool):
         if version_native is True and format_native is False:
             raise InconsistentSourceFormatError(
                 version_native, format_native, version, source_format)

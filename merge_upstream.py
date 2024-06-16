@@ -124,9 +124,10 @@ def do_import(
                 package, current_version, tempdir)
         else:
             db.create_empty_upstream_tree(tempdir)
-        if db.pristine_upstream_source.has_version(
-                package, version, try_hard=False):
-            raise UpstreamAlreadyImported(version)
+        tag = db.pristine_upstream_source.version_tag(
+                package, version, try_hard=False)
+        if tag is not None:
+            raise UpstreamAlreadyImported(version, tag)
 
         parents = {None: []}
         if db.pristine_upstream_branch.last_revision() != NULL_REVISION:
