@@ -5,3 +5,4 @@ MANIFEST
 .mypy_cache
 brz_debian.egg-info
 target
+.ruff_cache
