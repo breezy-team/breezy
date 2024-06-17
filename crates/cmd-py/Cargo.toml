@@ -10,5 +10,5 @@ crate-type = ["cdylib"]
 pyo3 = { workspace = true, features = ["extension-module"]}
 pyo3-filelike = { workspace = true }
 breezy = { path = "../..", features = ["pyo3"] }
-gettext-rs = "0.7"
+gettext-rs = { workspace = true }
 log = { workspace = true, features=["std"]}

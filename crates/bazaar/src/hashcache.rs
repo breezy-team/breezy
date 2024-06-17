@@ -203,7 +203,7 @@ impl HashCache {
         } else {
             self.miss_count += 1;
 
-            match SFlag::from_bits_truncate(file_fp.mode) {
+            match SFlag::from_bits_truncate(((file_fp.mode) >> 16) as u16) {
                 SFlag::S_IFREG => {
                     let filters: Box<dyn ContentFilter> =
                         if let Some(filter_provider) = self.filter_provider.as_ref() {
