@@ -91,9 +91,15 @@ pub struct Stat {
 
 impl From<Metadata> for Stat {
     fn from(metadata: Metadata) -> Self {
+        #[cfg(target_os = "macos")]
+        let mode = (metadata.permissions().mode() >> 16) as u16;
+
+        #[cfg(not(target_os = "macos"))]
+        let mode = metadata.permissions().mode();
+
         Stat {
             size: metadata.len() as usize,
-            mode: (metadata.permissions().mode() >> 16) as u16,
+            mode,
             mtime: metadata.modified().map_or(None, |t| {
                 Some(t.duration_since(UNIX_EPOCH).unwrap().as_secs_f64())
             }),
