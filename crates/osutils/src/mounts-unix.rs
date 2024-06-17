@@ -14,10 +14,10 @@ pub struct MountEntry {
 }
 
 // Read a mtab-style file
-pub fn read_mtab<P: AsRef<Path>>(path: P) -> impl Iterator<Item = MountEntry> {
-    let file = File::open(path).unwrap();
+pub fn read_mtab<P: AsRef<Path>>(path: P) -> Result<impl Iterator<Item = MountEntry>, std::io::Error> {
+    let file = File::open(path)?;
     let reader = BufReader::new(file);
-    reader
+    Ok(reader
         .lines()
         .filter_map(|line| line.ok())
         .filter(|line| !line.starts_with('#'))
@@ -38,7 +38,7 @@ pub fn read_mtab<P: AsRef<Path>>(path: P) -> impl Iterator<Item = MountEntry> {
             } else {
                 None
             }
-        })
+        }))
 }
 
 fn sort_mounts(mounts: &mut [MountEntry]) {
@@ -75,10 +75,10 @@ fn test_sort_mounts() {
     );
 }
 
-fn load_mounts() -> Vec<MountEntry> {
-    let mut mounts: Vec<MountEntry> = read_mtab("/proc/mounts").collect();
+fn load_mounts() -> Result<Vec<MountEntry>, std::io::Error> {
+    let mut mounts: Vec<MountEntry> = read_mtab("/proc/mounts")?.collect();
     sort_mounts(&mut mounts);
-    mounts
+    Ok(mounts)
 }
 
 #[cfg(target_os = "linux")]
@@ -96,7 +96,7 @@ pub fn find_mount_entry<P: AsRef<Path>>(entries: &[MountEntry], path: P) -> Opti
 }
 
 lazy_static! {
-    static ref MOUNTS: Vec<MountEntry> = load_mounts();
+    static ref MOUNTS: Result<Vec<MountEntry>, std::io::Error> = load_mounts();
 }
 
 fn extract_option<'a>(options: &'a str, name: &str) -> Option<&'a str> {
@@ -175,7 +175,11 @@ fn test_get_fs_type_overlay() {
 }
 
 pub fn get_fs_type<P: AsRef<Path>>(path: P) -> Option<String> {
-    get_fs_type_ext(&MOUNTS, path.as_ref()).map(|s| s.to_string())
+    if let Ok(mounts) = MOUNTS.as_ref() {
+        get_fs_type_ext(mounts, path.as_ref()).map(|s| s.to_string())
+    } else {
+        None
+    }
 }
 
 pub fn supports_hardlinks<P: AsRef<Path>>(path: P) -> Option<bool> {

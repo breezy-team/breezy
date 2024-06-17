@@ -768,7 +768,7 @@ fn supports_executable(path: PathBuf) -> Option<bool> {
 #[pyfunction]
 fn read_mtab(py: Python, path: PathBuf) -> PyResult<PyObject> {
     let it: Vec<breezy_osutils::mounts::MountEntry> =
-        breezy_osutils::mounts::read_mtab(path).collect();
+        breezy_osutils::mounts::read_mtab(path)?.collect();
     let list = PyList::empty(py);
     for entry in it {
         let tuple = PyTuple::new(py, &[entry.path.into_py(py), entry.fs_type.into_py(py)]);
