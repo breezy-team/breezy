@@ -80,7 +80,7 @@ fn default_perms() -> Permissions {
     let mask = umask(Mode::empty());
     umask(mask);
     let mode = 0o666 & !mask.bits();
-    Permissions::from_mode(mode)
+    Permissions::from_mode(mode.into())
 }
 
 #[pyclass]
@@ -310,7 +310,8 @@ impl Transport {
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
     }
 
-    fn has_any(&self, py: Python, paths: Vec<&str>) -> PyResult<bool> {
+    fn has_any(&self, py: Python, paths: Vec<String>) -> PyResult<bool> {
+        let paths = paths.iter().map(|x| x.as_str()).collect::<Vec<&str>>();
         py.allow_threads(|| self.0.has_any(paths.as_slice()))
             .map_err(|e| map_transport_err_to_py_err(e, None, None))
     }
@@ -364,7 +365,7 @@ impl Transport {
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))?;
         Ok(PyStat {
             st_size: stat.size,
-            st_mode: stat.mode,
+            st_mode: stat.mode.into(),
             st_mtime: stat.mtime,
         }
         .into_py(py))
