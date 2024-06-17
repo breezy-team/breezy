@@ -4755,17 +4755,6 @@ class cmd_selftest(Command):
         lsprof_tests=False,
         sync=False,
     ):
-        # During selftest, disallow proxying, as it can cause severe
-        # performance penalties and is only needed for thread
-        # safety. The selftest command is assumed to not use threads
-        # too heavily. The call should be as early as possible, as
-        # error reporting for past duplicate imports won't have useful
-        # backtraces.
-        if sys.version_info[0] < 3:
-            # TODO(pad.lv/1696545): Allow proxying on Python 3, since
-            # disallowing it currently leads to failures in many places.
-            lazy_import.disallow_proxying()
-
         try:
             from . import tests
         except ImportError as exc:
