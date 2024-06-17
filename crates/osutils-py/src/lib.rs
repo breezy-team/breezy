@@ -663,7 +663,7 @@ fn unpack_highres_date(date: &str) -> PyResult<(f64, i32)> {
 
 #[pyfunction]
 #[cfg(unix)]
-fn get_umask() -> PyResult<u32> {
+fn get_umask() -> PyResult<nix::sys::stat::mode_t> {
     Ok(breezy_osutils::get_umask().bits())
 }
 
@@ -768,7 +768,7 @@ fn supports_executable(path: PathBuf) -> Option<bool> {
 #[pyfunction]
 fn read_mtab(py: Python, path: PathBuf) -> PyResult<PyObject> {
     let it: Vec<breezy_osutils::mounts::MountEntry> =
-        breezy_osutils::mounts::read_mtab(path).collect();
+        breezy_osutils::mounts::read_mtab(path)?.collect();
     let list = PyList::empty(py);
     for entry in it {
         let tuple = PyTuple::new(py, &[entry.path.into_py(py), entry.fs_type.into_py(py)]);
@@ -804,7 +804,7 @@ fn win32_abspath(path: PathBuf) -> PyResult<PathBuf> {
 
 #[cfg(unix)]
 #[pyfunction]
-fn kind_from_mode(mode: u32) -> &'static str {
+fn kind_from_mode(mode: nix::sys::stat::mode_t) -> &'static str {
     use nix::sys::stat::SFlag;
     breezy_osutils::file::kind_from_mode(SFlag::from_bits_truncate(mode))
 }

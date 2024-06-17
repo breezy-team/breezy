@@ -81,9 +81,7 @@ def _parse_source(source_text, filename="<unknown>"):
             # string terminates on. It's more useful to have the line the
             # string begins on. Unfortunately, counting back newlines is
             # only an approximation as the AST is ignorant of escaping.
-            str_to_lineno[node.s] = node.lineno - (
-                0 if sys.version_info >= (3, 8) else node.s.count("\n")
-            )
+            str_to_lineno[node.s] = node.lineno
     return cls_to_lineno, str_to_lineno
 
 

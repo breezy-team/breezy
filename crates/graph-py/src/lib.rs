@@ -259,7 +259,7 @@ struct MergeSorter {
 fn branch_tip_is_null(py: Python, branch_tip: PyObject) -> bool {
     if let Ok(branch_tip) = branch_tip.extract::<&[u8]>(py) {
         branch_tip == b"null:"
-    } else if let Ok((branch_tip,)) = branch_tip.extract::<(&[u8],)>(py) {
+    } else if let Ok((branch_tip,)) = branch_tip.extract::<(Vec<u8>,)>(py) {
         branch_tip == b"null:"
     } else {
         false

@@ -85,15 +85,21 @@ impl From<breezy_urlutils::Error> for Error {
 
 pub struct Stat {
     pub size: usize,
-    pub mode: u32,
+    pub mode: nix::sys::stat::mode_t,
     pub mtime: Option<f64>,
 }
 
 impl From<Metadata> for Stat {
     fn from(metadata: Metadata) -> Self {
+        #[cfg(target_os = "macos")]
+        let mode = (metadata.permissions().mode() >> 16) as u16;
+
+        #[cfg(not(target_os = "macos"))]
+        let mode = metadata.permissions().mode();
+
         Stat {
             size: metadata.len() as usize,
-            mode: metadata.permissions().mode(),
+            mode,
             mtime: metadata.modified().map_or(None, |t| {
                 Some(t.duration_since(UNIX_EPOCH).unwrap().as_secs_f64())
             }),
@@ -415,7 +421,7 @@ pub trait Transport: std::fmt::Debug + 'static + Send + Sync {
         // create target directory with the same rwx bits as source
         // use umask to ensure bits other than rwx are ignored
         let stat = self.stat(from_relpath)?;
-        target.mkdir(".", Some(Permissions::from_mode(stat.mode)))?;
+        target.mkdir(".", Some(Permissions::from_mode(stat.mode.into())))?;
         source.copy_tree_to_transport(target.as_ref())?;
         Ok(())
     }
