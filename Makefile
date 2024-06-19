@@ -316,12 +316,12 @@ check-dist-tarball:
 	rm -rf $$tmpdir
 
 reformat:
-	isort breezy
+	ruff format breezy
 
 check:: check-formatting
 
 check-formatting:
-	isort --check-only breezy
+	ruff format --check breezy
 
 .testrepository:
 	testr init
