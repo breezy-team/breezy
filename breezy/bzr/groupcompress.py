@@ -2361,9 +2361,9 @@ from ._groupcompress_py import (
 )
 
 try:
-    from ._groupcompress_pyx import (
+    from ._groupcompress_pyx import (  # type: ignore
         DeltaIndex,
-        apply_delta,  # type: ignore
+        apply_delta,
         apply_delta_to_source,
         decode_base128_int,
         encode_base128_int,
