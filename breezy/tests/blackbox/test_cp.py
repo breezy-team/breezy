@@ -16,7 +16,6 @@
 
 """Test for 'brz mv'."""
 
-
 from breezy.tests import TestCaseWithTransport
 
 

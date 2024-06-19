@@ -2096,7 +2096,7 @@ class _GCGraphIndex:
                     details = f"{key} {value, node_refs} {passed}"
                     if self._inconsistency_fatal:
                         raise knit.KnitCorrupt(
-                            self, "inconsistent details" " in add_records: %s" % details
+                            self, "inconsistent details" " in add_records: {}".format(details)
                         )
                     else:
                         trace.warning(

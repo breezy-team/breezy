@@ -17,7 +17,6 @@
 
 """Tests for log+ transport decorator."""
 
-
 from breezy import transport
 from breezy.tests import TestCaseWithMemoryTransport
 

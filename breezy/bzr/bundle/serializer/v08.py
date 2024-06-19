@@ -441,7 +441,7 @@ class BundleReader:
         else:
             raise errors.MalformedHeader(
                 "While looking for key: value pairs,"
-                " did not find the colon %r" % (line)
+                " did not find the colon {!r}".format(line)
             )
 
         key = key.replace(" ", "_")
@@ -510,7 +510,7 @@ class BundleReader:
                     raise errors.MalformedPatches(
                         "The first line of all patches"
                         ' should be a bzr meta line "==="'
-                        ": %r" % line
+                        ": {!r}".format(line)
                     )
                 action = line[4:-1].decode("utf-8")
             elif line.startswith(b"... "):

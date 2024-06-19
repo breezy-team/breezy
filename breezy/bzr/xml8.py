@@ -196,7 +196,7 @@ class InventorySerializer_v8(XMLInventorySerializer):
             raise AssertionError(
                 "_find_text_key_references only "
                 "supported for branches which store inventory as unnested xml"
-                ", not on %r" % self
+                ", not on {!r}".format(self)
             )
         result = {}
 

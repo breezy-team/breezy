@@ -20,7 +20,6 @@ This defines the TestingDAVRequestHandler and the DAVServer classes which
 implements the DAV specification parts used by the webdav plugin.
 """
 
-
 import os
 import re
 import shutil  # FIXME: Can't we use breezy.osutils ?
@@ -74,7 +73,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
         encoding = self.headers.get("Transfer-Encoding")
         if encoding is not None:
             if encoding != "chunked":
-                raise AssertionError("Unsupported transfer encoding: %s" % encoding)
+                raise AssertionError("Unsupported transfer encoding: {}".format(encoding))
             body = []
             # We receive the content by chunk
             while True:

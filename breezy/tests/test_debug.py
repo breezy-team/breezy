@@ -16,7 +16,6 @@
 
 """Tests for breezy.debug."""
 
-
 from .. import config, debug, tests
 
 

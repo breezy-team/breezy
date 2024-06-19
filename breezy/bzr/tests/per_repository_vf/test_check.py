@@ -16,7 +16,6 @@
 
 """Test operations that check the repository for corruption."""
 
-
 from breezy import errors
 from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository,

@@ -47,7 +47,7 @@ class TestThunderbird(tests.TestCase):
         tbird = mail_client.Thunderbird(None)
         commandline = tbird._get_compose_commandline(None, None, "file%")
         self.assertEqual(
-            ["-compose", "attachment='%s'" % urlutils.local_path_to_url("file%")],
+            ["-compose", "attachment='{}'".format(urlutils.local_path_to_url("file%"))],
             commandline,
         )
         commandline = tbird._get_compose_commandline(

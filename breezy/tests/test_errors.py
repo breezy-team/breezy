@@ -45,7 +45,7 @@ class TestErrors(tests.TestCase):
                 )
             if fmt and fmt_pattern.search(fmt):
                 self.assertFalse(
-                    True, ('"message" not allowed in ' '"errors.%s._fmt"' % c.__name__)
+                    True, ('"message" not allowed in ' '"errors.{}._fmt"'.format(c.__name__))
                 )
 
     def test_duplicate_help_prefix(self):
@@ -463,9 +463,8 @@ class TestErrorsUsingTransport(tests.TestCaseWithMemoryTransport):
         repo = self.make_repository(".")
         error = errors.CorruptRepository(repo)
         self.assertEqualDiff(
-            "An error has been detected in the repository %s.\n"
-            "Please run brz reconcile on this repository."
-            % repo.controldir.root_transport.base,
+            "An error has been detected in the repository {}.\n"
+            "Please run brz reconcile on this repository.".format(repo.controldir.root_transport.base),
             str(error),
         )
 

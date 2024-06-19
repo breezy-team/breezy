@@ -221,7 +221,7 @@ class GioTransport(ConnectedTransport):
                     self.loop.run()
         except gio.Error as e:
             raise errors.TransportError(
-                msg="Error setting up connection:" " %s" % str(e), orig_error=e
+                msg="Error setting up connection:" " {}".format(str(e)), orig_error=e
             ) from e
         return connection, (user, password)
 
@@ -293,7 +293,7 @@ class GioTransport(ConnectedTransport):
         :param fp:       File-like or string object.
         """
         if debug.debug_flag_enabled("gio"):
-            mutter("GIO put_file %s" % relpath)
+            mutter("GIO put_file {}".format(relpath))
         tmppath = "%s.tmp.%.9f.%d.%d" % (
             relpath,
             time.time(),
@@ -330,7 +330,7 @@ class GioTransport(ConnectedTransport):
         """Create a directory at the given path."""
         try:
             if debug.debug_flag_enabled("gio"):
-                mutter("GIO mkdir: %s" % relpath)
+                mutter("GIO mkdir: {}".format(relpath))
             f = self._get_GIO(relpath)
             f.make_directory()
             self._setmode(relpath, mode)
@@ -340,7 +340,7 @@ class GioTransport(ConnectedTransport):
     def open_write_stream(self, relpath, mode=None):
         """See Transport.open_write_stream."""
         if debug.debug_flag_enabled("gio"):
-            mutter("GIO open_write_stream %s" % relpath)
+            mutter("GIO open_write_stream {}".format(relpath))
         if mode is not None:
             self._setmode(relpath, mode)
         result = GioFileStream(self, relpath)
@@ -361,7 +361,7 @@ class GioTransport(ConnectedTransport):
         """Delete the directory at rel_path."""
         try:
             if debug.debug_flag_enabled("gio"):
-                mutter("GIO rmdir %s" % relpath)
+                mutter("GIO rmdir {}".format(relpath))
             st = self.stat(relpath)
             if stat.S_ISDIR(st.st_mode):
                 f = self._get_GIO(relpath)
@@ -384,7 +384,7 @@ class GioTransport(ConnectedTransport):
         # GIO append_to seems not to append but to truncate
         # Work around this.
         if debug.debug_flag_enabled("gio"):
-            mutter("GIO append_file: %s" % relpath)
+            mutter("GIO append_file: {}".format(relpath))
         tmppath = "%s.tmp.%.9f.%d.%d" % (
             relpath,
             time.time(),
@@ -429,7 +429,7 @@ class GioTransport(ConnectedTransport):
         Only set permissions on Unix systems
         """
         if debug.debug_flag_enabled("gio"):
-            mutter("GIO _setmode %s" % relpath)
+            mutter("GIO _setmode {}".format(relpath))
         if mode:
             try:
                 f = self._get_GIO(relpath)

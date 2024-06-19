@@ -16,7 +16,6 @@
 
 """Test uncommit."""
 
-
 from .. import errors, tests, uncommit
 
 

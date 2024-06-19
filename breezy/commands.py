@@ -134,8 +134,7 @@ class CommandRegistry(registry.Registry):
             trace.warning(f"Two plugins defined the same command: {k!r}")
             trace.warning(f"Not loading the one in {sys.modules[cmd.__module__]!r}")
             trace.warning(
-                "Previously this command was registered from %r"
-                % sys.modules[previous.__module__]
+                "Previously this command was registered from {!r}".format(sys.modules[previous.__module__])
             )
         for a in cmd.aliases:
             self._alias_dict[a] = k_unsquished
@@ -1157,11 +1156,9 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
     argv = _specified_or_unicode_argv(argv)
     trace.mutter("brz arguments: %r", argv)
 
-    opt_lsprof = (
-        opt_profile
-    ) = (
-        opt_no_plugins
-    ) = opt_builtin = opt_coverage = opt_no_l10n = opt_no_aliases = False
+    opt_lsprof = opt_profile = opt_no_plugins = opt_builtin = opt_coverage = (
+        opt_no_l10n
+    ) = opt_no_aliases = False
     opt_lsprof_file = None
 
     # --no-plugins is handled specially at a very early stage. We need

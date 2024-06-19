@@ -16,7 +16,6 @@
 
 """Blackbox tests for -D debug options."""
 
-
 from breezy import tests
 
 

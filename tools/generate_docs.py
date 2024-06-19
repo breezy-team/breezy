@@ -31,6 +31,7 @@ Examples:
 
 Run "%(prog)s --help" for the option reference.
 """
+
 import sys
 from contextlib import ExitStack
 from optparse import OptionParser

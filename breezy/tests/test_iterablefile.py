@@ -18,7 +18,6 @@
 
 """Tests for iterablefile."""
 
-
 from breezy import tests
 
 from ..osutils import IterableFile

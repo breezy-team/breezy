@@ -17,7 +17,6 @@
 
 """Tests for the _generate_text_key_index API."""
 
-
 from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository,
     all_repository_vf_format_scenarios,

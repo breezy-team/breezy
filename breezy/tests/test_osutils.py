@@ -1524,8 +1524,8 @@ class TestDirReader(tests.TestCaseInTempDir):
     def test_symlink(self):
         self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.requireFeature(features.UnicodeFilenameFeature)
-        target = "target\N{Euro Sign}"
-        link_name = "l\N{Euro Sign}nk"
+        target = "target\N{EURO SIGN}"
+        link_name = "l\N{EURO SIGN}nk"
         os.symlink(target, link_name)
         link_name_utf8 = link_name.encode("UTF-8")
         expected_dirblocks = [
@@ -1555,8 +1555,8 @@ class TestReadLink(tests.TestCaseInTempDir):
     def setUp(self):
         super(tests.TestCaseInTempDir, self).setUp()
         self._test_needs_features.append(features.SymlinkFeature(self.test_dir))
-        self.link = "l\N{Euro Sign}ink"
-        self.target = "targe\N{Euro Sign}t"
+        self.link = "l\N{EURO SIGN}ink"
+        self.target = "targe\N{EURO SIGN}t"
         os.symlink(self.target, self.link)
 
     def test_os_readlink_link_encoding(self):

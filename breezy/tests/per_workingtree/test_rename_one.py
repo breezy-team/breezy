@@ -374,35 +374,35 @@ class TestRenameOne(TestCaseWithWorkingTree):
         """Check error when renaming an unversioned non-ascii file."""
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree(".")
-        self.build_tree(["\xA7"])
-        e = self.assertRaises(errors.BzrRenameFailedError, tree.rename_one, "\xA7", "b")
+        self.build_tree(["\xa7"])
+        e = self.assertRaises(errors.BzrRenameFailedError, tree.rename_one, "\xa7", "b")
         self.assertIsInstance(e.extra, errors.NotVersionedError)
-        self.assertEqual(e.extra.path, "\xA7")
+        self.assertEqual(e.extra.path, "\xa7")
 
     def test_rename_into_unversioned_non_ascii_dir(self):
         """Check error when renaming into unversioned non-ascii directory."""
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree(".")
-        self.build_tree(["a", "\xA7/"])
+        self.build_tree(["a", "\xa7/"])
         tree.add(["a"])
         if tree.has_versioned_directories():
             e = self.assertRaises(
-                errors.BzrMoveFailedError, tree.rename_one, "a", "\xA7/a"
+                errors.BzrMoveFailedError, tree.rename_one, "a", "\xa7/a"
             )
             self.assertIsInstance(e.extra, errors.NotVersionedError)
-            self.assertEqual(e.extra.path, "\xA7")
+            self.assertEqual(e.extra.path, "\xa7")
         else:
-            tree.rename_one("a", "\xA7/a")
+            tree.rename_one("a", "\xa7/a")
 
     def test_rename_over_already_versioned_non_ascii(self):
         """Check error renaming over an already versioned non-ascii file."""
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree(".")
-        self.build_tree(["a", "\xA7"])
-        tree.add(["a", "\xA7"])
-        e = self.assertRaises(errors.BzrMoveFailedError, tree.rename_one, "a", "\xA7")
+        self.build_tree(["a", "\xa7"])
+        tree.add(["a", "\xa7"])
+        e = self.assertRaises(errors.BzrMoveFailedError, tree.rename_one, "a", "\xa7")
         self.assertIsInstance(e.extra, errors.AlreadyVersionedError)
-        self.assertEqual(e.extra.path, "\xA7")
+        self.assertEqual(e.extra.path, "\xa7")
 
     def test_rename_after_non_existant_non_ascii(self):
         """Check error renaming after move with missing non-ascii file."""
@@ -411,7 +411,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         self.build_tree(["a"])
         tree.add(["a"])
         e = self.assertRaises(
-            errors.BzrMoveFailedError, tree.rename_one, "a", "\xA7", after=True
+            errors.BzrMoveFailedError, tree.rename_one, "a", "\xa7", after=True
         )
         self.assertIsInstance(e.extra, _mod_transport.NoSuchFile)
-        self.assertEqual(e.extra.path, "\xA7")
+        self.assertEqual(e.extra.path, "\xa7")

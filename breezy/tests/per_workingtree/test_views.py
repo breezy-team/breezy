@@ -20,7 +20,6 @@ The views are actually in the WorkingTree.views namespace, but these are
 1:1 with WorkingTree implementations so can be tested from here.
 """
 
-
 from breezy import views as _mod_views
 from breezy.tests import TestNotApplicable, TestSkipped
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
@@ -36,8 +35,8 @@ class TestTreeViews(TestCaseWithWorkingTree):
         f = fmt.supports_views
         if f is None:
             raise TestSkipped(
-                "format %s doesn't declare whether it "
-                "supports views, assuming not" % fmt
+                "format {} doesn't declare whether it "
+                "supports views, assuming not".format(fmt)
             )
         if not f():
             raise TestNotApplicable(f"format {fmt} doesn't support views")

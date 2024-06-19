@@ -17,7 +17,6 @@
 
 """Black-box tests for default log_formats/log_formatters."""
 
-
 import os
 
 from breezy import bedding, tests

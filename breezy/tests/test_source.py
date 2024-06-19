@@ -154,8 +154,8 @@ class TestSource(TestSourceHelper):
         for filename in self.get_source_files():
             if re.search(r"test....\.tmp", filename):
                 self.fail(
-                    "get_source_file() returned filename %r "
-                    "from within a temporary directory" % filename
+                    "get_source_file() returned filename {!r} "
+                    "from within a temporary directory".format(filename)
                 )
 
     def test_copyright(self):
@@ -257,7 +257,7 @@ class TestSource(TestSourceHelper):
                 for f, lines in dict_.items()
             ]
         )
-        return message + "\n\n    %s" % ("\n    ".join(files))
+        return message + "\n\n    {}".format("\n    ".join(files))
 
     def test_coding_style(self):
         """Check if bazaar code conforms to some coding style conventions.
@@ -307,7 +307,7 @@ class TestSource(TestSourceHelper):
             problems.append(
                 "The following source files doesn't have a "
                 "newline at the end:"
-                "\n\n    %s" % ("\n    ".join(no_newline_at_eof))
+                "\n\n    {}".format("\n    ".join(no_newline_at_eof))
             )
         if problems:
             self.fail("\n\n".join(problems))
@@ -330,8 +330,7 @@ class TestSource(TestSourceHelper):
                     break
         if badfiles:
             self.fail(
-                "these files contain an assert statement and should not:\n%s"
-                % "\n".join(badfiles)
+                "these files contain an assert statement and should not:\n{}".format("\n".join(badfiles))
             )
 
     def test_extension_exceptions(self):

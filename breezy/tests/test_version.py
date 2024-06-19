@@ -65,6 +65,6 @@ class TestPlatformUse(tests.TestCase):
         out = self.make_utf8_encoded_stringio()
         self.overrideAttr(platform, "platform", lambda **kwargs: self._platform)
         version.show_version(show_config=False, show_copyright=False, to_file=out)
-        expected = r"(?m)^  Platform: %s" % self._platform
+        expected = r"(?m)^  Platform: {}".format(self._platform)
         expected = expected.encode("utf-8")
         self.assertContainsRe(out.getvalue(), expected)

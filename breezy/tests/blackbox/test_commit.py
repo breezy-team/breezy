@@ -133,7 +133,7 @@ brz: ERROR: No changes to commit.\
     def test_unicode_commit_message_is_filename(self):
         """Unicode commit message same as a filename (Bug #563646)."""
         self.requireFeature(features.UnicodeFilenameFeature)
-        file_name = "\N{euro sign}"
+        file_name = "\N{EURO SIGN}"
         self.run_bzr(["init"])
         with open(file_name, "w") as f:
             f.write("hello world")

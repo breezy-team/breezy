@@ -10,9 +10,8 @@ import os
 import pickle
 import sys
 import threading
-from typing import Dict, TextIO
-
 from _lsprof import Profiler, profiler_entry
+from typing import Dict, TextIO
 
 from . import errors
 

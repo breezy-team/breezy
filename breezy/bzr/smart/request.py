@@ -30,7 +30,6 @@ Interesting module attributes:
 # SmartServerRequestHandler, whose dispatch_command method creates an instance
 # of a SmartServerRequest subclass.
 
-
 import threading
 from _thread import get_ident
 

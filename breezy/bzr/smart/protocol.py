@@ -18,7 +18,6 @@
 client and server.
 """
 
-
 import _thread
 import struct
 import sys

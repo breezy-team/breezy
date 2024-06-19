@@ -574,7 +574,7 @@ class TestBoundBranch(TestCaseWithTransport):
         cwd = urlutils.local_path_to_url(getcwd())
         self.assertEqual(
             "brz: ERROR: To use this feature you must "
-            "upgrade your branch at %s/.\n" % cwd,
+            "upgrade your branch at {}/.\n".format(cwd),
             err,
         )
 
