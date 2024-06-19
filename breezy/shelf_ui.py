@@ -22,8 +22,19 @@ from io import BytesIO
 
 import patiencediff
 
-from . import (builtins, delta, diff, errors, osutils, patches, shelf,
-               textfile, trace, ui, workingtree)
+from . import (
+    builtins,
+    delta,
+    diff,
+    errors,
+    osutils,
+    patches,
+    shelf,
+    textfile,
+    trace,
+    ui,
+    workingtree,
+)
 from .i18n import gettext
 
 
@@ -32,19 +43,18 @@ class UseEditor(Exception):
 
 
 class ShelfReporter:
-
-    vocab = {'add file': gettext('Shelve adding file "%(path)s"?'),
-             'binary': gettext('Shelve binary changes?'),
-             'change kind': gettext('Shelve changing "%s" from %(other)s'
-                                    ' to %(this)s?'),
-             'delete file': gettext('Shelve removing file "%(path)s"?'),
-             'final': gettext('Shelve %d change(s)?'),
-             'hunk': gettext('Shelve?'),
-             'modify target': gettext('Shelve changing target of'
-                                      ' "%(path)s" from "%(other)s" to "%(this)s"?'),
-             'rename': gettext('Shelve renaming "%(other)s" =>'
-                               ' "%(this)s"?')
-             }
+    vocab = {
+        "add file": gettext('Shelve adding file "%(path)s"?'),
+        "binary": gettext("Shelve binary changes?"),
+        "change kind": gettext('Shelve changing "%s" from %(other)s' " to %(this)s?"),
+        "delete file": gettext('Shelve removing file "%(path)s"?'),
+        "final": gettext("Shelve %d change(s)?"),
+        "hunk": gettext("Shelve?"),
+        "modify target": gettext(
+            "Shelve changing target of" ' "%(path)s" from "%(other)s" to "%(this)s"?'
+        ),
+        "rename": gettext('Shelve renaming "%(other)s" =>' ' "%(this)s"?'),
+    }
 
     invert_diff = False
 
@@ -53,7 +63,7 @@ class ShelfReporter:
 
     def no_changes(self):
         """Report that no changes were selected to apply."""
-        trace.warning('No changes to shelve.')
+        trace.warning("No changes to shelve.")
 
     def shelved_id(self, shelf_id):
         """Report the id changes were shelved to."""
@@ -61,7 +71,7 @@ class ShelfReporter:
 
     def changes_destroyed(self):
         """Report that changes were made without shelving."""
-        trace.note(gettext('Selected changes destroyed.'))
+        trace.note(gettext("Selected changes destroyed."))
 
     def selected_changes(self, transform):
         """Report the changes that were selected."""
@@ -71,31 +81,31 @@ class ShelfReporter:
 
     def prompt_change(self, change):
         """Determine the prompt for a change to apply."""
-        if change[0] == 'rename':
-            vals = {'this': change[3], 'other': change[2]}
-        elif change[0] == 'change kind':
-            vals = {'path': change[4], 'other': change[2], 'this': change[3]}
-        elif change[0] == 'modify target':
-            vals = {'path': change[2], 'other': change[3], 'this': change[4]}
+        if change[0] == "rename":
+            vals = {"this": change[3], "other": change[2]}
+        elif change[0] == "change kind":
+            vals = {"path": change[4], "other": change[2], "this": change[3]}
+        elif change[0] == "modify target":
+            vals = {"path": change[2], "other": change[3], "this": change[4]}
         else:
-            vals = {'path': change[3]}
+            vals = {"path": change[3]}
         prompt = self.vocab[change[0]] % vals
         return prompt
 
 
 class ApplyReporter(ShelfReporter):
-
-    vocab = {'add file': gettext('Delete file "%(path)s"?'),
-             'binary': gettext('Apply binary changes?'),
-             'change kind': gettext('Change "%(path)s" from %(this)s'
-                                    ' to %(other)s?'),
-             'delete file': gettext('Add file "%(path)s"?'),
-             'final': gettext('Apply %d change(s)?'),
-             'hunk': gettext('Apply change?'),
-             'modify target': gettext('Change target of'
-                                      ' "%(path)s" from "%(this)s" to "%(other)s"?'),
-             'rename': gettext('Rename "%(this)s" => "%(other)s"?'),
-             }
+    vocab = {
+        "add file": gettext('Delete file "%(path)s"?'),
+        "binary": gettext("Apply binary changes?"),
+        "change kind": gettext('Change "%(path)s" from %(this)s' " to %(other)s?"),
+        "delete file": gettext('Add file "%(path)s"?'),
+        "final": gettext("Apply %d change(s)?"),
+        "hunk": gettext("Apply change?"),
+        "modify target": gettext(
+            "Change target of" ' "%(path)s" from "%(this)s" to "%(other)s"?'
+        ),
+        "rename": gettext('Rename "%(this)s" => "%(other)s"?'),
+    }
 
     invert_diff = True
 
@@ -106,9 +116,19 @@ class ApplyReporter(ShelfReporter):
 class Shelver:
     """Interactively shelve the changes in a working tree."""
 
-    def __init__(self, work_tree, target_tree, diff_writer=None, auto=False,
-                 auto_apply=False, file_list=None, message=None,
-                 destroy=False, manager=None, reporter=None):
+    def __init__(
+        self,
+        work_tree,
+        target_tree,
+        diff_writer=None,
+        auto=False,
+        auto_apply=False,
+        file_list=None,
+        message=None,
+        destroy=False,
+        manager=None,
+        reporter=None,
+    ):
         """Constructor.
 
         :param work_tree: The working tree to shelve changes from.
@@ -144,8 +164,16 @@ class Shelver:
         self.work_tree.lock_tree_write()
 
     @classmethod
-    def from_args(klass, diff_writer, revision=None, all=False, file_list=None,
-                  message=None, directory=None, destroy=False):
+    def from_args(
+        klass,
+        diff_writer,
+        revision=None,
+        all=False,
+        file_list=None,
+        message=None,
+        directory=None,
+        destroy=False,
+    ):
         """Create a shelver from commandline arguments.
 
         The returned shelver wil have a work_tree that is locked and should
@@ -160,33 +188,33 @@ class Shelver:
             changes.
         """
         if directory is None:
-            directory = '.'
+            directory = "."
         elif file_list:
             file_list = [osutils.pathjoin(directory, f) for f in file_list]
         tree, path = workingtree.WorkingTree.open_containing(directory)
         # Ensure that tree is locked for the lifetime of target_tree, as
         # target tree may be reading from the same dirstate.
         with tree.lock_tree_write():
-            target_tree = builtins._get_one_revision_tree('shelf2', revision,
-                                                          tree.branch, tree)
+            target_tree = builtins._get_one_revision_tree(
+                "shelf2", revision, tree.branch, tree
+            )
             files = tree.safe_relpath_files(file_list)
-            return klass(tree, target_tree, diff_writer, all, all, files,
-                         message, destroy)
+            return klass(
+                tree, target_tree, diff_writer, all, all, files, message, destroy
+            )
 
     def run(self):
         """Interactively shelve the changes."""
-        creator = shelf.ShelfCreator(self.work_tree, self.target_tree,
-                                     self.file_list)
+        creator = shelf.ShelfCreator(self.work_tree, self.target_tree, self.file_list)
         self.tempdir = tempfile.mkdtemp()
         changes_shelved = 0
         try:
             for change in creator.iter_shelvable():
-                if change[0] == 'modify text':
+                if change[0] == "modify text":
                     try:
-                        changes_shelved += self.handle_modify_text(creator,
-                                                                   change[1])
+                        changes_shelved += self.handle_modify_text(creator, change[1])
                     except errors.BinaryFile:
-                        if self.prompt_bool(self.reporter.vocab['binary']):
+                        if self.prompt_bool(self.reporter.vocab["binary"]):
                             changes_shelved += 1
                             creator.shelve_content_change(change[1])
                 else:
@@ -195,14 +223,14 @@ class Shelver:
                         changes_shelved += 1
             if changes_shelved > 0:
                 self.reporter.selected_changes(creator.work_transform)
-                if (self.auto_apply or self.prompt_bool(
-                        self.reporter.vocab['final'] % changes_shelved)):
+                if self.auto_apply or self.prompt_bool(
+                    self.reporter.vocab["final"] % changes_shelved
+                ):
                     if self.destroy:
                         creator.transform()
                         self.reporter.changes_destroyed()
                     else:
-                        shelf_id = self.manager.shelve_changes(creator,
-                                                               self.message)
+                        shelf_id = self.manager.shelve_changes(creator, self.message)
                         self.reporter.shelved_id(shelf_id)
             else:
                 self.reporter.no_changes()
@@ -233,9 +261,10 @@ class Shelver:
         old_path = old_tree.id2path(file_id)
         new_path = new_tree.id2path(file_id)
         path_encoding = osutils.get_terminal_encoding()
-        text_differ = diff.DiffText(old_tree, new_tree, diff_file,
-                                    path_encoding=path_encoding)
-        patch = text_differ.diff(old_path, new_path, 'file', 'file')
+        text_differ = diff.DiffText(
+            old_tree, new_tree, diff_file, path_encoding=path_encoding
+        )
+        patch = text_differ.diff(old_path, new_path, "file", "file")
         diff_file.seek(0)
         return patches.parse_patch(diff_file)
 
@@ -252,27 +281,27 @@ class Shelver:
         """
         if self.auto:
             return True
-        alternatives_chars = 'yn'
-        alternatives = '&yes\n&No'
+        alternatives_chars = "yn"
+        alternatives = "&yes\n&No"
         if allow_editor:
-            alternatives_chars += 'e'
-            alternatives += '\n&edit manually'
-        alternatives_chars += 'fq'
-        alternatives += '\n&finish\n&quit'
+            alternatives_chars += "e"
+            alternatives += "\n&edit manually"
+        alternatives_chars += "fq"
+        alternatives += "\n&finish\n&quit"
         choice = self.prompt(question, alternatives, 1)
         if choice is None:
             # EOF.
-            char = 'n'
+            char = "n"
         else:
             char = alternatives_chars[choice]
-        if char == 'y':
+        if char == "y":
             return True
-        elif char == 'e' and allow_editor:
+        elif char == "e" and allow_editor:
             raise UseEditor
-        elif char == 'f':
+        elif char == "f":
             self.auto = True
             return True
-        if char == 'q':
+        if char == "q":
             raise errors.UserAbort()
         else:
             return False
@@ -287,8 +316,7 @@ class Shelver:
         path = self.work_tree.id2path(file_id)
         work_tree_lines = self.work_tree.get_file_lines(path, file_id)
         try:
-            lines, change_count = self._select_hunks(creator, file_id,
-                                                     work_tree_lines)
+            lines, change_count = self._select_hunks(creator, file_id, work_tree_lines)
         except UseEditor:
             lines, change_count = self._edit_file(file_id, work_tree_lines)
         if change_count != 0:
@@ -320,23 +348,23 @@ class Shelver:
             self.diff_writer.write(parsed.get_header())
             for hunk in parsed.hunks:
                 self.diff_writer.write(hunk.as_bytes())
-                selected = self.prompt_bool(self.reporter.vocab['hunk'],
-                                            allow_editor=(self.change_editor
-                                                          is not None))
+                selected = self.prompt_bool(
+                    self.reporter.vocab["hunk"],
+                    allow_editor=(self.change_editor is not None),
+                )
                 if not self.reporter.invert_diff:
-                    selected = (not selected)
+                    selected = not selected
                 if selected:
                     hunk.mod_pos += offset
                     final_hunks.append(hunk)
                 else:
-                    offset -= (hunk.mod_range - hunk.orig_range)
+                    offset -= hunk.mod_range - hunk.orig_range
         sys.stdout.flush()
         if self.reporter.invert_diff:
             change_count = len(final_hunks)
         else:
             change_count = len(parsed.hunks) - len(final_hunks)
-        patched = patches.iter_patched_from_hunks(target_lines,
-                                                  final_hunks)
+        patched = patches.iter_patched_from_hunks(target_lines, final_hunks)
         lines = list(patched)
         return lines, change_count
 
@@ -348,15 +376,17 @@ class Shelver:
             content of the file, and change_region_count is the number of
             changed regions.
         """
-        lines = osutils.split_lines(self.change_editor.edit_file(
-            self.change_editor.old_tree.id2path(file_id),
-            self.change_editor.new_tree.id2path(file_id)))
+        lines = osutils.split_lines(
+            self.change_editor.edit_file(
+                self.change_editor.old_tree.id2path(file_id),
+                self.change_editor.new_tree.id2path(file_id),
+            )
+        )
         return lines, self._count_changed_regions(work_tree_lines, lines)
 
     @staticmethod
     def _count_changed_regions(old_lines, new_lines):
-        matcher = patiencediff.PatienceSequenceMatcher(None, old_lines,
-                                                       new_lines)
+        matcher = patiencediff.PatienceSequenceMatcher(None, old_lines, new_lines)
         blocks = matcher.get_matching_blocks()
         return len(blocks) - 2
 
@@ -365,8 +395,9 @@ class Unshelver:
     """Unshelve changes into a working tree."""
 
     @classmethod
-    def from_args(klass, shelf_id=None, action='apply', directory='.',
-                  write_diff_to=None):
+    def from_args(
+        klass, shelf_id=None, action="apply", directory=".", write_diff_to=None
+    ):
         """Create an unshelver from commandline arguments.
 
         The returned shelver will have a tree that is locked and should
@@ -390,34 +421,49 @@ class Unshelver:
             else:
                 shelf_id = manager.last_shelf()
                 if shelf_id is None:
-                    raise errors.CommandError(
-                        gettext('No changes are shelved.'))
+                    raise errors.CommandError(gettext("No changes are shelved."))
             apply_changes = True
             delete_shelf = True
             read_shelf = True
             show_diff = False
-            if action == 'dry-run':
+            if action == "dry-run":
                 apply_changes = False
                 delete_shelf = False
-            elif action == 'preview':
+            elif action == "preview":
                 apply_changes = False
                 delete_shelf = False
                 show_diff = True
-            elif action == 'delete-only':
+            elif action == "delete-only":
                 apply_changes = False
                 read_shelf = False
-            elif action == 'keep':
+            elif action == "keep":
                 apply_changes = True
                 delete_shelf = False
         except:
             tree.unlock()
             raise
-        return klass(tree, manager, shelf_id, apply_changes, delete_shelf,
-                     read_shelf, show_diff, write_diff_to)
+        return klass(
+            tree,
+            manager,
+            shelf_id,
+            apply_changes,
+            delete_shelf,
+            read_shelf,
+            show_diff,
+            write_diff_to,
+        )
 
-    def __init__(self, tree, manager, shelf_id, apply_changes=True,
-                 delete_shelf=True, read_shelf=True, show_diff=False,
-                 write_diff_to=None):
+    def __init__(
+        self,
+        tree,
+        manager,
+        shelf_id,
+        apply_changes=True,
+        delete_shelf=True,
+        read_shelf=True,
+        show_diff=False,
+        write_diff_to=None,
+    ):
         """Constructor.
 
         :param tree: The working tree to unshelve into.
@@ -448,12 +494,11 @@ class Unshelver:
         with contextlib.ExitStack() as exit_stack:
             exit_stack.enter_context(self.tree.lock_tree_write())
             if self.read_shelf:
-                trace.note(gettext('Using changes with id "%d".') %
-                           self.shelf_id)
+                trace.note(gettext('Using changes with id "%d".') % self.shelf_id)
                 unshelver = self.manager.get_unshelver(self.shelf_id)
                 exit_stack.callback(unshelver.finalize)
                 if unshelver.message is not None:
-                    trace.note(gettext('Message: %s') % unshelver.message)
+                    trace.note(gettext("Message: %s") % unshelver.message)
                 change_reporter = delta._ChangeReporter()
                 merger = unshelver.make_merger()
                 merger.change_reporter = change_reporter
@@ -465,8 +510,7 @@ class Unshelver:
                     self.show_changes(merger)
             if self.delete_shelf:
                 self.manager.delete_shelf(self.shelf_id)
-                trace.note(gettext('Deleted changes with id "%d".') %
-                           self.shelf_id)
+                trace.note(gettext('Deleted changes with id "%d".') % self.shelf_id)
 
     def write_diff(self, merger):
         """Write this operation's diff to self.write_diff_to."""
@@ -474,11 +518,11 @@ class Unshelver:
         tt = tree_merger.make_preview_transform()
         new_tree = tt.get_preview_tree()
         if self.write_diff_to is None:
-            self.write_diff_to = ui.ui_factory.make_output_stream(
-                encoding_type='exact')
+            self.write_diff_to = ui.ui_factory.make_output_stream(encoding_type="exact")
         path_encoding = osutils.get_diff_header_encoding()
-        diff.show_diff_trees(merger.this_tree, new_tree, self.write_diff_to,
-                             path_encoding=path_encoding)
+        diff.show_diff_trees(
+            merger.this_tree, new_tree, self.write_diff_to, path_encoding=path_encoding
+        )
         tt.finalize()
 
     def show_changes(self, merger):

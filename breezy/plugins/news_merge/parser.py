@@ -24,11 +24,12 @@ it will print the parsed form of a file (a series of 2-tuples, see
 simple_parse's docstring).
 """
 
+
 def simple_parse_lines(lines):
     """Same as simple_parse, but takes an iterable of strs rather than a single
     str.
     """
-    return simple_parse(''.join(lines))
+    return simple_parse("".join(lines))
 
 
 def simple_parse(content):
@@ -37,33 +38,34 @@ def simple_parse(content):
     :kind: one of 'heading', 'release', 'section', 'empty' or 'text'.
     :text: a str, including newlines.
     """
-    blocks = content.split('\n\n')
+    blocks = content.split("\n\n")
     for block in blocks:
-        if block.startswith('###'):
+        if block.startswith("###"):
             # First line is ###...: Top heading
-            yield 'heading', block
+            yield "heading", block
             continue
-        last_line = block.rsplit('\n', 1)[-1]
-        if last_line.startswith('###'):
+        last_line = block.rsplit("\n", 1)[-1]
+        if last_line.startswith("###"):
             # last line is ###...: 2nd-level heading
-            yield 'release', block
-        elif last_line.startswith('***'):
+            yield "release", block
+        elif last_line.startswith("***"):
             # last line is ***...: 3rd-level heading
-            yield 'section', block
-        elif block.startswith('* '):
+            yield "section", block
+        elif block.startswith("* "):
             # bullet
-            yield 'bullet', block
-        elif block.strip() == '':
+            yield "bullet", block
+        elif block.strip() == "":
             # empty
-            yield 'empty', block
+            yield "empty", block
         else:
             # plain text
-            yield 'text', block
+            yield "text", block
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
-    with open(sys.argv[1], 'rb') as f:
+
+    with open(sys.argv[1], "rb") as f:
         content = f.read()
     for result in simple_parse(content):
         print(result)

@@ -28,8 +28,7 @@ from . import urlutils
 from .bzr import generate_ids
 from .controldir import ControlDir, is_control_filename
 from .errors import BzrError, CommandError, NotBranchError
-from .osutils import (basename, file_iterator, file_kind, isdir, pathjoin,
-                      splitpath)
+from .osutils import basename, file_iterator, file_kind, isdir, pathjoin, splitpath
 from .trace import warning
 from .transform import resolve_conflicts
 from .transport import NoSuchFile, get_transport
@@ -40,14 +39,13 @@ from .workingtree import WorkingTree
 def open_from_url(location):
     location = urlutils.normalize_url(location)
     dirname, basename = urlutils.split(location)
-    if location.endswith('/') and not basename.endswith('/'):
-        basename += '/'
+    if location.endswith("/") and not basename.endswith("/"):
+        basename += "/"
     return get_transport(dirname).get(basename)
 
 
 class NotArchiveType(BzrError):
-
-    _fmt = '%(path)s is not an archive.'
+    _fmt = "%(path)s is not an archive."
 
     def __init__(self, path):
         BzrError.__init__(self)
@@ -55,7 +53,6 @@ class NotArchiveType(BzrError):
 
 
 class ZipFileWrapper:
-
     def __init__(self, fileobj, mode):
         self.zipfile = zipfile.ZipFile(fileobj, mode)
 
@@ -68,7 +65,7 @@ class ZipFileWrapper:
 
     def add(self, filename):
         if isdir(filename):
-            self.zipfile.writestr(filename + '/', '')
+            self.zipfile.writestr(filename + "/", "")
         else:
             self.zipfile.write(filename)
 
@@ -77,7 +74,6 @@ class ZipFileWrapper:
 
 
 class ZipInfoWrapper:
-
     def __init__(self, zipfile, info):
         self.info = info
         self.type = None
@@ -87,7 +83,7 @@ class ZipInfoWrapper:
 
     def isdir(self):
         # Really? Eeeew!
-        return bool(self.name.endswith('/'))
+        return bool(self.name.endswith("/"))
 
     def isreg(self):
         # Really? Eeeew!
@@ -95,15 +91,13 @@ class ZipInfoWrapper:
 
 
 class DirWrapper:
-
-    def __init__(self, fileobj, mode='r'):
-        if mode != 'r':
-            raise AssertionError(
-                'only readonly supported')
-        self.root = os.path.realpath(fileobj.read().decode('utf-8'))
+    def __init__(self, fileobj, mode="r"):
+        if mode != "r":
+            raise AssertionError("only readonly supported")
+        self.root = os.path.realpath(fileobj.read().decode("utf-8"))
 
     def __repr__(self):
-        return 'DirWrapper(%r)' % self.root
+        return "DirWrapper(%r)" % self.root
 
     def getmembers(self, subdir=None):
         if subdir is not None:
@@ -119,27 +113,26 @@ class DirWrapper:
                 yield from self.getmembers(child)
 
     def extractfile(self, member):
-        return open(member.fullpath, 'rb')
+        return open(member.fullpath, "rb")
 
 
 class FileInfo:
-
     def __init__(self, root, filepath):
         self.fullpath = pathjoin(root, filepath)
         self.root = root
-        if filepath != '':
+        if filepath != "":
             self.name = pathjoin(basename(root), filepath)
         else:
-            print('root %r' % root)
+            print("root %r" % root)
             self.name = basename(root)
         self.type = None
         stat = os.lstat(self.fullpath)
         self.mode = stat.st_mode
         if self.isdir():
-            self.name += '/'
+            self.name += "/"
 
     def __repr__(self):
-        return 'FileInfo(%r)' % self.name
+        return "FileInfo(%r)" % self.name
 
     def isreg(self):
         return stat.S_ISREG(self.mode)
@@ -161,7 +154,7 @@ def top_path(path):
     if len(components) > 0:
         return components[0]
     else:
-        return ''
+        return ""
 
 
 def common_directory(names):
@@ -169,7 +162,7 @@ def common_directory(names):
     possible_prefix = None
     for name in names:
         name_top = top_path(name)
-        if name_top == '':
+        if name_top == "":
             return None
         if possible_prefix is None:
             possible_prefix = name_top
@@ -209,12 +202,12 @@ def import_tar(tree, tar_input):
     """Replace the contents of a working directory with tarfile contents.
     The tarfile may be a gzipped stream.  File ids will be updated.
     """
-    tar_file = tarfile.open('lala', 'r', tar_input)
+    tar_file = tarfile.open("lala", "r", tar_input)
     import_archive(tree, tar_file)
 
 
 def import_zip(tree, zip_input):
-    zip_file = ZipFileWrapper(zip_input, 'r')
+    zip_file = ZipFileWrapper(zip_input, "r")
     import_archive(tree, zip_file)
 
 
@@ -243,7 +236,7 @@ def import_archive_to_transform(tree, archive_file, tt):
     implied_parents = set()
     seen = set()
     for member in archive_file.getmembers():
-        if member.type == 'g':
+        if member.type == "g":
             # type 'g' is a header
             continue
         # Inverse functionality in bzr uses utf-8.  We could also
@@ -251,26 +244,25 @@ def import_archive_to_transform(tree, archive_file, tt):
         # behaviour better.
         relative_path = member.name
         if not isinstance(relative_path, str):
-            relative_path = relative_path.decode('utf-8')
+            relative_path = relative_path.decode("utf-8")
         if prefix is not None:
-            relative_path = relative_path[len(prefix) + 1:]
-            relative_path = relative_path.rstrip('/')
-        if relative_path == '':
+            relative_path = relative_path[len(prefix) + 1 :]
+            relative_path = relative_path.rstrip("/")
+        if relative_path == "":
             continue
         if should_ignore(relative_path):
             continue
         add_implied_parents(implied_parents, relative_path)
         trans_id = tt.trans_id_tree_path(relative_path)
-        added.add(relative_path.rstrip('/'))
+        added.add(relative_path.rstrip("/"))
         path = tree.abspath(relative_path)
         if member.name in seen:
-            if tt.final_kind(trans_id) == 'file':
+            if tt.final_kind(trans_id) == "file":
                 tt.set_executability(None, trans_id)
             tt.cancel_creation(trans_id)
         seen.add(member.name)
         if member.isreg():
-            tt.create_file(file_iterator(archive_file.extractfile(member)),
-                           trans_id)
+            tt.create_file(file_iterator(archive_file.extractfile(member)), trans_id)
             executable = (member.mode & 0o111) != 0
             tt.set_executability(executable, trans_id)
         elif member.isdir():
@@ -280,7 +272,7 @@ def import_archive_to_transform(tree, archive_file, tt):
         else:
             continue
         if not tt.final_is_versioned(trans_id):
-            name = basename(member.name.rstrip('/'))
+            name = basename(member.name.rstrip("/"))
             file_id = generate_ids.gen_file_id(name)
             tt.version_file(trans_id, file_id=file_id)
 
@@ -312,7 +304,7 @@ def do_import(source, tree_directory=None):
             branch = ControlDir.create_branch_convenience(tree_directory)
             tree = branch.controldir.open_workingtree()
     else:
-        tree = WorkingTree.open_containing('.')[0]
+        tree = WorkingTree.open_containing(".")[0]
     with tree.lock_write():
         if tree.changes_from(tree.basis_tree()).has_changed():
             raise CommandError("Working tree has uncommitted changes.")
@@ -320,23 +312,25 @@ def do_import(source, tree_directory=None):
         try:
             archive, external_compressor = get_archive_type(source)
         except NotArchiveType:
-            if file_kind(source) == 'directory':
-                s = BytesIO(source.encode('utf-8'))
+            if file_kind(source) == "directory":
+                s = BytesIO(source.encode("utf-8"))
                 s.seek(0)
                 import_dir(tree, s)
             else:
-                raise CommandError('Unhandled import source')
+                raise CommandError("Unhandled import source")
         else:
-            if archive == 'zip':
+            if archive == "zip":
                 import_zip(tree, open_from_url(source))
-            elif archive == 'tar':
+            elif archive == "tar":
                 try:
                     tar_input = open_from_url(source)
-                    if external_compressor == 'bz2':
+                    if external_compressor == "bz2":
                         import bz2
+
                         tar_input = BytesIO(bz2.decompress(tar_input.read()))
-                    elif external_compressor == 'lzma':
+                    elif external_compressor == "lzma":
                         import lzma
+
                         tar_input = BytesIO(lzma.decompress(tar_input.read()))
                 except OSError as e:
                     if e.errno == errno.ENOENT:
@@ -354,17 +348,17 @@ def get_archive_type(path):
     ('zip', None).  .tgz is treated as ('tar', 'gz') and '.tar.xz' is treated
     as ('tar', 'lzma').
     """
-    matches = re.match(r'.*\.(zip|tgz|tar(.(gz|bz2|lzma|xz))?)$', path)
+    matches = re.match(r".*\.(zip|tgz|tar(.(gz|bz2|lzma|xz))?)$", path)
     if not matches:
         raise NotArchiveType(path)
     external_compressor = None
     if matches.group(3) is not None:
-        archive = 'tar'
+        archive = "tar"
         external_compressor = matches.group(3)
-        if external_compressor == 'xz':
-            external_compressor = 'lzma'
-    elif matches.group(1) == 'tgz':
-        return 'tar', 'gz'
+        if external_compressor == "xz":
+            external_compressor = "lzma"
+    elif matches.group(1) == "tgz":
+        return "tar", "gz"
     else:
         archive = matches.group(1)
     return archive, external_compressor

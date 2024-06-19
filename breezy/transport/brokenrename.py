@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Transport implementation that doesn't detect clashing renames.
-"""
+"""Transport implementation that doesn't detect clashing renames."""
 
 from .. import urlutils
 from ..transport import FileExists
@@ -28,11 +27,10 @@ class BrokenRenameTransportDecorator(decorator.TransportDecorator):
     @classmethod
     def _get_url_prefix(self):
         """FakeNFS transports are identified by 'brokenrename+'"""
-        return 'brokenrename+'
+        return "brokenrename+"
 
     def rename(self, rel_from, rel_to):
-        """See Transport.rename().
-        """
+        """See Transport.rename()."""
         try:
             if self._decorated.has(rel_to):
                 rel_to = urlutils.join(rel_to, urlutils.basename(rel_from))

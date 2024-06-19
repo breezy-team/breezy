@@ -24,7 +24,6 @@ This is similar to the interface provided by
 <http://launchpad.net/testscenarios/>.
 """
 
-
 from . import iter_suite_tests, multiply_scenarios, multiply_tests
 
 
@@ -50,7 +49,7 @@ def multiply_tests_by_their_scenarios(some_tests, into_suite):
         inserted.
     """
     for test in iter_suite_tests(some_tests):
-        scenarios = getattr(test, 'scenarios', None)
+        scenarios = getattr(test, "scenarios", None)
         if scenarios is None:
             into_suite.addTest(test)
         else:

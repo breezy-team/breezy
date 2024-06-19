@@ -29,7 +29,6 @@ from . import revisionspec
 
 
 class BadOptionValue(errors.BzrError):
-
     _fmt = """Bad value "%(value)s" for option "%(name)s"."""
 
     def __init__(self, name, value):
@@ -92,7 +91,7 @@ def _parse_revision_str(revstr):
     # TODO: Maybe move this into revisionspec.py
     revs = []
     # split on .. that is not followed by a / or \
-    sep = re.compile(r'\.\.(?![\\/])')
+    sep = re.compile(r"\.\.(?![\\/])")
     for x in sep.split(revstr):
         revs.append(revisionspec.RevisionSpec.from_string(x or None))
     return revs
@@ -112,8 +111,7 @@ def _parse_change_str(revstr):
     revs = _parse_revision_str(revstr)
     if len(revs) > 1:
         raise errors.RangeInChangeOption()
-    return (revisionspec.RevisionSpec.from_string('before:' + revstr),
-            revs[0])
+    return (revisionspec.RevisionSpec.from_string("before:" + revstr), revs[0])
 
 
 def _parse_merge_type(typestring):
@@ -123,14 +121,17 @@ def _parse_merge_type(typestring):
 def get_merge_type(typestring):
     """Attempt to find the merge class/factory associated with a string."""
     from merge import merge_types
+
     try:
         return merge_types[typestring][0]
     except KeyError:
-        templ = '%s%%7s: %%s' % (' ' * 12)
+        templ = "%s%%7s: %%s" % (" " * 12)
         lines = [templ % (f[0], f[1][1]) for f in merge_types.items()]
-        type_list = '\n'.join(lines)
-        msg = "No known merge type %s. Supported types are:\n%s" %\
-            (typestring, type_list)
+        type_list = "\n".join(lines)
+        msg = "No known merge type %s. Supported types are:\n%s" % (
+            typestring,
+            type_list,
+        )
         raise errors.CommandError(msg)
 
 
@@ -150,9 +151,17 @@ class Option:
     # of supported options.
     OPTIONS: Dict[str, "Option"] = {}
 
-    def __init__(self, name, help='', type=None, argname=None,
-                 short_name=None, param_name=None, custom_callback=None,
-                 hidden=False):
+    def __init__(
+        self,
+        name,
+        help="",
+        type=None,
+        argname=None,
+        short_name=None,
+        param_name=None,
+        custom_callback=None,
+        hidden=False,
+    ):
         """Make a new command option.
 
         Args:
@@ -179,12 +188,12 @@ class Option:
         self._short_name = short_name
         if type is None:
             if argname:
-                raise ValueError('argname not valid for booleans')
+                raise ValueError("argname not valid for booleans")
         elif argname is None:
-            argname = 'ARG'
+            argname = "ARG"
         self.argname = argname
         if param_name is None:
-            self._param_name = self.name.replace('-', '_')
+            self._param_name = self.name.replace("-", "_")
         else:
             self._param_name = param_name
         self.custom_callback = custom_callback
@@ -198,39 +207,47 @@ class Option:
         self._short_name = short_name
 
     def get_negation_name(self):
-        if self.name.startswith('no-'):
+        if self.name.startswith("no-"):
             return self.name[3:]
         else:
-            return 'no-' + self.name
+            return "no-" + self.name
 
     def add_option(self, parser, short_name):
         """Add this option to an Optparse parser"""
-        option_strings = ['--%s' % self.name]
+        option_strings = ["--%s" % self.name]
         if short_name is not None:
-            option_strings.append('-%s' % short_name)
+            option_strings.append("-%s" % short_name)
         if self.hidden:
             help = optparse.SUPPRESS_HELP
         else:
             help = self.help
         optargfn = self.type
         if optargfn is None:
-            parser.add_option(action='callback',
-                              callback=self._optparse_bool_callback,
-                              callback_args=(True,),
-                              help=help,
-                              *option_strings)
-            negation_strings = ['--%s' % self.get_negation_name()]
-            parser.add_option(action='callback',
-                              callback=self._optparse_bool_callback,
-                              callback_args=(False,),
-                              help=optparse.SUPPRESS_HELP, *negation_strings)
+            parser.add_option(
+                action="callback",
+                callback=self._optparse_bool_callback,
+                callback_args=(True,),
+                help=help,
+                *option_strings,
+            )
+            negation_strings = ["--%s" % self.get_negation_name()]
+            parser.add_option(
+                action="callback",
+                callback=self._optparse_bool_callback,
+                callback_args=(False,),
+                help=optparse.SUPPRESS_HELP,
+                *negation_strings,
+            )
         else:
-            parser.add_option(action='callback',
-                              callback=self._optparse_callback,
-                              type='string', metavar=self.argname.upper(),
-                              help=help,
-                              default=OptionParser.DEFAULT_VALUE,
-                              *option_strings)
+            parser.add_option(
+                action="callback",
+                callback=self._optparse_callback,
+                type="string",
+                metavar=self.argname.upper(),
+                help=help,
+                default=OptionParser.DEFAULT_VALUE,
+                *option_strings,
+            )
 
     def _optparse_bool_callback(self, option, opt_str, value, parser, bool_v):
         setattr(parser.values, self._param_name, bool_v)
@@ -242,7 +259,8 @@ class Option:
             v = self.type(value)
         except ValueError as e:
             raise optparse.OptionValueError(
-                'invalid value for option {}: {}'.format(option, value))
+                "invalid value for option {}: {}".format(option, value)
+            )
         setattr(parser.values, self._param_name, v)
         if self.custom_callback is not None:
             self.custom_callback(option, self.name, v, parser)
@@ -274,18 +292,23 @@ class ListOption(Option):
 
     def add_option(self, parser, short_name):
         """Add this option to an Optparse parser."""
-        option_strings = ['--%s' % self.name]
+        option_strings = ["--%s" % self.name]
         if short_name is not None:
-            option_strings.append('-%s' % short_name)
-        parser.add_option(action='callback',
-                          callback=self._optparse_callback,
-                          type='string', metavar=self.argname.upper(),
-                          help=self.help, dest=self._param_name, default=[],
-                          *option_strings)
+            option_strings.append("-%s" % short_name)
+        parser.add_option(
+            action="callback",
+            callback=self._optparse_callback,
+            type="string",
+            metavar=self.argname.upper(),
+            help=self.help,
+            dest=self._param_name,
+            default=[],
+            *option_strings,
+        )
 
     def _optparse_callback(self, option, opt, value, parser):
         values = getattr(parser.values, self._param_name)
-        if value == '-':
+        if value == "-":
             del values[:]
         else:
             values.append(self.type(value))
@@ -314,9 +337,19 @@ class RegistryOption(Option):
         else:
             return self.converter(value)
 
-    def __init__(self, name, help, registry=None, converter=None,
-                 value_switches=False, title=None, enum_switch=True,
-                 lazy_registry=None, short_name=None, short_value_switches=None):
+    def __init__(
+        self,
+        name,
+        help,
+        registry=None,
+        converter=None,
+        value_switches=False,
+        title=None,
+        enum_switch=True,
+        lazy_registry=None,
+        short_name=None,
+        short_value_switches=None,
+    ):
         """
         Constructor.
 
@@ -336,18 +369,14 @@ class RegistryOption(Option):
           short_name: The short name for the enum switch, if any
           short_value_switches: A dict mapping values to short names
         """
-        Option.__init__(self, name, help, type=self.convert,
-                        short_name=short_name)
+        Option.__init__(self, name, help, type=self.convert, short_name=short_name)
         self._registry = registry
         if registry is None:
             if lazy_registry is None:
-                raise AssertionError(
-                    'One of registry or lazy_registry must be given.')
-            self._lazy_registry = _mod_registry._LazyObjectGetter(
-                *lazy_registry)
+                raise AssertionError("One of registry or lazy_registry must be given.")
+            self._lazy_registry = _mod_registry._LazyObjectGetter(*lazy_registry)
         if registry is not None and lazy_registry is not None:
-            raise AssertionError(
-                'registry and lazy_registry are mutually exclusive')
+            raise AssertionError("registry and lazy_registry are mutually exclusive")
         self.name = name
         self.converter = converter
         self.value_switches = value_switches
@@ -364,8 +393,9 @@ class RegistryOption(Option):
         return self._registry
 
     @staticmethod
-    def from_kwargs(name_, help=None, title=None, value_switches=False,
-                    enum_switch=True, **kwargs):
+    def from_kwargs(
+        name_, help=None, title=None, value_switches=False, enum_switch=True, **kwargs
+    ):
         """Convenience method to generate string-map registry options
 
         name, help, value_switches and enum_switch are passed to the
@@ -374,14 +404,20 @@ class RegistryOption(Option):
         """
         reg = _mod_registry.Registry()
         for name, switch_help in sorted(kwargs.items()):
-            name = name.replace('_', '-')
+            name = name.replace("_", "-")
             reg.register(name, name, help=switch_help)
             if not value_switches:
                 help = help + '  "' + name + '": ' + switch_help
                 if not help.endswith("."):
                     help = help + "."
-        return RegistryOption(name_, help, reg, title=title,
-                              value_switches=value_switches, enum_switch=enum_switch)
+        return RegistryOption(
+            name_,
+            help,
+            reg,
+            title=title,
+            value_switches=value_switches,
+            enum_switch=enum_switch,
+        )
 
     def add_option(self, parser, short_name):
         """Add this option to an Optparse parser"""
@@ -395,22 +431,26 @@ class RegistryOption(Option):
                 if key in self.registry.aliases():
                     continue
                 option_strings = [
-                    ('--%s' % name)
-                    for name in [key] +
-                    [alias for alias in alias_map.get(key, [])
-                        if not self.is_hidden(alias)]]
+                    ("--%s" % name)
+                    for name in [key]
+                    + [
+                        alias
+                        for alias in alias_map.get(key, [])
+                        if not self.is_hidden(alias)
+                    ]
+                ]
                 if self.is_hidden(key):
                     help = optparse.SUPPRESS_HELP
                 else:
                     help = self.registry.get_help(key)
-                if (self.short_value_switches and
-                        key in self.short_value_switches):
-                    option_strings.append('-%s' %
-                                          self.short_value_switches[key])
-                parser.add_option(action='callback',
-                                  callback=self._optparse_value_callback(key),
-                                  help=help,
-                                  *option_strings)
+                if self.short_value_switches and key in self.short_value_switches:
+                    option_strings.append("-%s" % self.short_value_switches[key])
+                parser.add_option(
+                    action="callback",
+                    callback=self._optparse_value_callback(key),
+                    help=help,
+                    *option_strings,
+                )
 
     def _optparse_value_callback(self, cb_value):
         def cb(option, opt, value, parser):
@@ -418,6 +458,7 @@ class RegistryOption(Option):
             setattr(parser.values, self._param_name, v)
             if self.custom_callback is not None:
                 self.custom_callback(option, self._param_name, v, parser)
+
         return cb
 
     def iter_switches(self):
@@ -439,7 +480,7 @@ class RegistryOption(Option):
     def is_hidden(self, name):
         if name == self.name:
             return Option.is_hidden(self, name)
-        return getattr(self.registry.get_info(name), 'hidden', False)
+        return getattr(self.registry.get_info(name), "hidden", False)
 
 
 class OptionParser(optparse.OptionParser):
@@ -465,6 +506,7 @@ class GettextIndentedHelpFormatter(optparse.IndentedHelpFormatter):
         """code taken from Python's optparse.py"""
         if option.help:
             from .i18n import gettext
+
             option.help = gettext(option.help)
         return optparse.IndentedHelpFormatter.format_option(self, option)
 
@@ -473,7 +515,7 @@ def get_optparser(options):
     """Generate an optparse parser for breezy-style options"""
 
     parser = OptionParser()
-    parser.remove_option('--help')
+    parser.remove_option("--help")
     for option in options:
         option.add_option(parser, option.short_name())
     return parser
@@ -482,6 +524,7 @@ def get_optparser(options):
 def custom_help(name, help):
     """Clone a common option overriding the help."""
     import copy
+
     o = copy.copy(Option.OPTIONS[name])
     o.help = help
     return o
@@ -539,54 +582,74 @@ def _verbosity_level_callback(option, opt_str, value, parser):
 
 
 # Declare the standard options
-_standard_option('help', short_name='h',
-                 help='Show help message.')
-_standard_option('quiet', short_name='q',
-                 help="Only display errors and warnings.",
-                 custom_callback=_verbosity_level_callback)
-_standard_option('usage',
-                 help='Show usage message and options.')
-_standard_option('verbose', short_name='v',
-                 help='Display more information.',
-                 custom_callback=_verbosity_level_callback)
+_standard_option("help", short_name="h", help="Show help message.")
+_standard_option(
+    "quiet",
+    short_name="q",
+    help="Only display errors and warnings.",
+    custom_callback=_verbosity_level_callback,
+)
+_standard_option("usage", help="Show usage message and options.")
+_standard_option(
+    "verbose",
+    short_name="v",
+    help="Display more information.",
+    custom_callback=_verbosity_level_callback,
+)
 
 # Declare commonly used options
-_global_option('change',
-               type=_parse_change_str,
-               short_name='c',
-               param_name='revision',
-               help='Select changes introduced by the specified revision. See also "help revisionspec".')
-_global_option('directory', short_name='d', type=str,
-               help='Branch to operate on, instead of working directory.')
-_global_option('file', type=str, short_name='F')
-_global_registry_option('log-format', "Use specified log format.",
-                        lazy_registry=('breezy.log', 'log_formatter_registry'),
-                        value_switches=True, title='Log format',
-                        short_value_switches={'short': 'S'})
-_global_registry_option('merge-type', 'Select a particular merge algorithm.',
-                        lazy_registry=('breezy.merge', 'merge_type_registry'),
-                        value_switches=True, title='Merge algorithm')
-_global_option('message', type=str,
-               short_name='m',
-               help='Message string.')
-_global_option('null', short_name='0',
-               help='Use an ASCII NUL (\\0) separator rather than '
-               'a newline.')
-_global_option('overwrite', help='Ignore differences between branches and '
-               'overwrite unconditionally.')
-_global_option('remember', help='Remember the specified location as a'
-               ' default.')
-_global_option('reprocess', help='Reprocess to reduce spurious conflicts.')
-_global_option('revision',
-               type=_parse_revision_str,
-               short_name='r',
-               help='See "help revisionspec" for details.')
-_global_option('show-ids',
-               help='Show internal object ids.')
-_global_option('timezone',
-               type=str,
-               help='Display timezone as local, original, or utc.')
+_global_option(
+    "change",
+    type=_parse_change_str,
+    short_name="c",
+    param_name="revision",
+    help='Select changes introduced by the specified revision. See also "help revisionspec".',
+)
+_global_option(
+    "directory",
+    short_name="d",
+    type=str,
+    help="Branch to operate on, instead of working directory.",
+)
+_global_option("file", type=str, short_name="F")
+_global_registry_option(
+    "log-format",
+    "Use specified log format.",
+    lazy_registry=("breezy.log", "log_formatter_registry"),
+    value_switches=True,
+    title="Log format",
+    short_value_switches={"short": "S"},
+)
+_global_registry_option(
+    "merge-type",
+    "Select a particular merge algorithm.",
+    lazy_registry=("breezy.merge", "merge_type_registry"),
+    value_switches=True,
+    title="Merge algorithm",
+)
+_global_option("message", type=str, short_name="m", help="Message string.")
+_global_option(
+    "null",
+    short_name="0",
+    help="Use an ASCII NUL (\\0) separator rather than " "a newline.",
+)
+_global_option(
+    "overwrite",
+    help="Ignore differences between branches and " "overwrite unconditionally.",
+)
+_global_option("remember", help="Remember the specified location as a" " default.")
+_global_option("reprocess", help="Reprocess to reduce spurious conflicts.")
+_global_option(
+    "revision",
+    type=_parse_revision_str,
+    short_name="r",
+    help='See "help revisionspec" for details.',
+)
+_global_option("show-ids", help="Show internal object ids.")
+_global_option(
+    "timezone", type=str, help="Display timezone as local, original, or utc."
+)
 
 diff_writer_registry = _mod_registry.Registry[str, Callable]()
-diff_writer_registry.register('plain', lambda x: x, 'Plaintext diff output.')
-diff_writer_registry.default_key = 'plain'
+diff_writer_registry.register("plain", lambda x: x, "Plaintext diff output.")
+diff_writer_registry.default_key = "plain"

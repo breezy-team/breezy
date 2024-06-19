@@ -25,20 +25,24 @@ from breezy import transport
 
 from ... import version_info  # noqa: F401
 
-transport.register_urlparse_netloc_protocol('http+webdav')
-transport.register_urlparse_netloc_protocol('https+webdav')
+transport.register_urlparse_netloc_protocol("http+webdav")
+transport.register_urlparse_netloc_protocol("https+webdav")
 
 transport.register_lazy_transport(
-    'https+webdav://', __name__ + '.webdav', 'HttpDavTransport')
+    "https+webdav://", __name__ + ".webdav", "HttpDavTransport"
+)
 transport.register_lazy_transport(
-    'http+webdav://', __name__ + '.webdav', 'HttpDavTransport')
+    "http+webdav://", __name__ + ".webdav", "HttpDavTransport"
+)
 
 
 def load_tests(loader, basic_tests, pattern):
     testmod_names = [
-        'tests',
-        ]
-    basic_tests.addTest(loader.loadTestsFromModuleNames(
-            ["{}.{}".format(__name__, tmn) for tmn in testmod_names]))
+        "tests",
+    ]
+    basic_tests.addTest(
+        loader.loadTestsFromModuleNames(
+            ["{}.{}".format(__name__, tmn) for tmn in testmod_names]
+        )
+    )
     return basic_tests
-

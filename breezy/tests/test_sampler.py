@@ -29,6 +29,5 @@ from breezy.tests import TestCaseInTempDir
 
 # Now we need a test script:
 class DemoTest(TestCaseInTempDir):
-
     def test_nothing(self):
         self.assertEqual(1, 1)

@@ -28,7 +28,6 @@ class SampleUnlockError(Exception):
 
 
 class TestOnlyRaisesDecorator(TestCase):
-
     def raise_ZeroDivisionError(self):
         1 / 0
 

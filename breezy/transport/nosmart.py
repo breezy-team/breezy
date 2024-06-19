@@ -30,7 +30,7 @@ class NoSmartTransportDecorator(decorator.TransportDecorator):
 
     @classmethod
     def _get_url_prefix(self):
-        return 'nosmart+'
+        return "nosmart+"
 
     def get_smart_medium(self):
         raise errors.NoSmartMedium(self)
@@ -39,4 +39,5 @@ class NoSmartTransportDecorator(decorator.TransportDecorator):
 def get_test_permutations():
     """Return the permutations to be used in testing."""
     from ..tests import test_server
+
     return [(NoSmartTransportDecorator, test_server.NoSmartTransportServer)]

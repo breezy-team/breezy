@@ -22,7 +22,9 @@ import fastbencode as bencode
 from . import errors
 from .lazy_import import lazy_import
 
-lazy_import(globals(), """
+lazy_import(
+    globals(),
+    """
 from breezy import (
     merge,
     transform,
@@ -30,16 +32,15 @@ from breezy import (
 from breezy.bzr import (
     pack,
     )
-""")
+""",
+)
 
 
 class ShelfCorrupt(errors.BzrError):
-
     _fmt = "Shelf corrupt."
 
 
 class NoSuchShelfId(errors.BzrError):
-
     _fmt = 'No changes are shelved with id "%(shelf_id)d".'
 
     def __init__(self, shelf_id):
@@ -47,7 +48,6 @@ class NoSuchShelfId(errors.BzrError):
 
 
 class InvalidShelfId(errors.BzrError):
-
     _fmt = '"%(invalid_id)s" is not a valid shelf id, try a number instead.'
 
     def __init__(self, invalid_id):
@@ -76,7 +76,8 @@ class ShelfCreator:
                 self.creation = {}
                 self.deletion = {}
                 self.iter_changes = work_tree.iter_changes(
-                    self.target_tree, specific_files=file_list)
+                    self.target_tree, specific_files=file_list
+                )
             except:
                 self.shelf_transform.finalize()
                 raise
@@ -102,45 +103,67 @@ class ShelfCreator:
             # lack roots, and bzr misbehaves when they do.
             # FIXME ADHB (2009-08-09): should still shelve adds of tree roots
             # when a tree root was deleted / renamed.
-            if change.kind[0] is None and change.name[1] == '':
+            if change.kind[0] is None and change.name[1] == "":
                 continue
             # Also don't shelve deletion of tree root.
-            if change.kind[1] is None and change.name[0] == '':
+            if change.kind[1] is None and change.name[0] == "":
                 continue
             if change.kind[0] is None or change.versioned[0] is False:
                 self.creation[change.file_id] = (
-                    change.kind[1], change.name[1], change.parent_id[1], change.versioned)
-                yield ('add file', change.file_id, change.kind[1], change.path[1])
+                    change.kind[1],
+                    change.name[1],
+                    change.parent_id[1],
+                    change.versioned,
+                )
+                yield ("add file", change.file_id, change.kind[1], change.path[1])
             elif change.kind[1] is None or change.versioned[0] is False:
                 self.deletion[change.file_id] = (
-                    change.kind[0], change.name[0], change.parent_id[0], change.versioned)
-                yield ('delete file', change.file_id, change.kind[0], change.path[0])
+                    change.kind[0],
+                    change.name[0],
+                    change.parent_id[0],
+                    change.versioned,
+                )
+                yield ("delete file", change.file_id, change.kind[0], change.path[0])
             else:
-                if change.name[0] != change.name[1] or change.parent_id[0] != change.parent_id[1]:
+                if (
+                    change.name[0] != change.name[1]
+                    or change.parent_id[0] != change.parent_id[1]
+                ):
                     self.renames[change.file_id] = (change.name, change.parent_id)
-                    yield ('rename', change.file_id) + change.path
+                    yield ("rename", change.file_id) + change.path
 
                 if change.kind[0] != change.kind[1]:
-                    yield ('change kind', change.file_id, change.kind[0], change.kind[1], change.path[0])
-                elif change.kind[0] == 'symlink':
+                    yield (
+                        "change kind",
+                        change.file_id,
+                        change.kind[0],
+                        change.kind[1],
+                        change.path[0],
+                    )
+                elif change.kind[0] == "symlink":
                     t_target = self.target_tree.get_symlink_target(change.path[0])
                     w_target = self.work_tree.get_symlink_target(change.path[1])
-                    yield ('modify target', change.file_id, change.path[0], t_target,
-                           w_target)
+                    yield (
+                        "modify target",
+                        change.file_id,
+                        change.path[0],
+                        t_target,
+                        w_target,
+                    )
                 elif change.changed_content:
-                    yield ('modify text', change.file_id)
+                    yield ("modify text", change.file_id)
 
     def shelve_change(self, change):
         """Shelve a change in the iter_shelvable format."""
-        if change[0] == 'rename':
+        if change[0] == "rename":
             self.shelve_rename(change[1])
-        elif change[0] == 'delete file':
+        elif change[0] == "delete file":
             self.shelve_deletion(change[1])
-        elif change[0] == 'add file':
+        elif change[0] == "add file":
             self.shelve_creation(change[1])
-        elif change[0] in ('change kind', 'modify text'):
+        elif change[0] in ("change kind", "modify text"):
             self.shelve_content_change(change[1])
-        elif change[0] == 'modify target':
+        elif change[0] == "modify target":
             self.shelve_modify_target(change[1])
         else:
             raise ValueError('Unknown change kind: "%s"' % change[0])
@@ -226,9 +249,16 @@ class ShelfCreator:
         """
         kind, name, parent, versioned = self.creation[file_id]
         version = not versioned[0]
-        self._shelve_creation(self.work_tree, file_id, self.work_transform,
-                              self.shelf_transform, kind, name, parent,
-                              version)
+        self._shelve_creation(
+            self.work_tree,
+            file_id,
+            self.work_transform,
+            self.shelf_transform,
+            kind,
+            name,
+            parent,
+            version,
+        )
 
     def shelve_deletion(self, file_id):
         """Shelve deletion of a file.
@@ -241,12 +271,30 @@ class ShelfCreator:
         if not self.work_tree.has_filename(existing_path):
             existing_path = None
         version = not versioned[1]
-        self._shelve_creation(self.target_tree, file_id, self.shelf_transform,
-                              self.work_transform, kind, name, parent,
-                              version, existing_path=existing_path)
+        self._shelve_creation(
+            self.target_tree,
+            file_id,
+            self.shelf_transform,
+            self.work_transform,
+            kind,
+            name,
+            parent,
+            version,
+            existing_path=existing_path,
+        )
 
-    def _shelve_creation(self, tree, file_id, from_transform, to_transform,
-                         kind, name, parent, version, existing_path=None):
+    def _shelve_creation(
+        self,
+        tree,
+        file_id,
+        from_transform,
+        to_transform,
+        kind,
+        name,
+        parent,
+        version,
+        existing_path=None,
+    ):
         w_trans_id = from_transform.trans_id_file_id(file_id)
         if parent is not None and kind is not None:
             from_transform.delete_contents(w_trans_id)
@@ -261,11 +309,11 @@ class ShelfCreator:
             to_transform.adjust_path(name, s_parent_id, s_trans_id)
             if existing_path is None:
                 if kind is None:
-                    to_transform.create_file([b''], s_trans_id)
+                    to_transform.create_file([b""], s_trans_id)
                 else:
                     transform.create_from_tree(
-                        to_transform, s_trans_id, tree,
-                        tree.id2path(file_id))
+                        to_transform, s_trans_id, tree, tree.id2path(file_id)
+                    )
         if version:
             to_transform.version_file(s_trans_id, file_id=file_id)
 
@@ -277,10 +325,13 @@ class ShelfCreator:
         work_lines = self.work_tree.get_file_lines(work_path)
         import patiencediff
         from merge3 import Merge3
+
         return Merge3(
-            new_lines, target_lines, work_lines,
+            new_lines,
+            target_lines,
+            work_lines,
             sequence_matcher=patiencediff.PatienceSequenceMatcher,
-            ).merge_lines()
+        ).merge_lines()
 
     def finalize(self):
         """Release all resources used by this ShelfCreator."""
@@ -293,11 +344,10 @@ class ShelfCreator:
 
     @staticmethod
     def metadata_record(serializer, revision_id, message=None):
-        metadata = {b'revision_id': revision_id}
+        metadata = {b"revision_id": revision_id}
         if message is not None:
-            metadata[b'message'] = message.encode('utf-8')
-        return serializer.bytes_record(
-            bencode.bencode(metadata), ((b'metadata',),))
+            metadata[b"message"] = message.encode("utf-8")
+        return serializer.bytes_record(bencode.bencode(metadata), ((b"metadata",),))
 
     def write_shelf(self, shelf_file, message=None):
         """Serialize the shelved changes to a file.
@@ -308,8 +358,7 @@ class ShelfCreator:
         """
         transform.resolve_conflicts(self.shelf_transform)
         revision_id = self.target_tree.get_revision_id()
-        return self._write_shelf(shelf_file, self.shelf_transform, revision_id,
-                                 message)
+        return self._write_shelf(shelf_file, self.shelf_transform, revision_id, message)
 
     @classmethod
     def _write_shelf(cls, shelf_file, transform, revision_id, message=None):
@@ -346,12 +395,12 @@ class Unshelver:
     @staticmethod
     def parse_metadata(records):
         names, metadata_bytes = next(records)
-        if names[0] != (b'metadata',):
+        if names[0] != (b"metadata",):
             raise ShelfCorrupt
         metadata = bencode.bdecode(metadata_bytes)
-        message = metadata.get(b'message')
+        message = metadata.get(b"message")
         if message is not None:
-            metadata[b'message'] = message.decode('utf-8')
+            metadata[b"message"] = message.decode("utf-8")
         return metadata
 
     @classmethod
@@ -364,20 +413,19 @@ class Unshelver:
         """
         records = klass.iter_records(shelf_file)
         metadata = klass.parse_metadata(records)
-        base_revision_id = metadata[b'revision_id']
+        base_revision_id = metadata[b"revision_id"]
         try:
             base_tree = tree.revision_tree(base_revision_id)
         except errors.NoSuchRevisionInTree:
             base_tree = tree.branch.repository.revision_tree(base_revision_id)
         tt = base_tree.preview_transform()
         tt.deserialize(records)
-        return klass(tree, base_tree, tt, metadata.get(b'message'))
+        return klass(tree, base_tree, tt, metadata.get(b"message"))
 
     def make_merger(self):
         """Return a merger that can unshelve the changes."""
         target_tree = self.transform.get_preview_tree()
-        merger = merge.Merger.from_uncommitted(self.tree, target_tree,
-                                               self.base_tree)
+        merger = merge.Merger.from_uncommitted(self.tree, target_tree, self.base_tree)
         merger.merge_type = merge.Merge3Merger
         return merger
 
@@ -391,14 +439,14 @@ class ShelfManager:
 
     def __init__(self, tree, transport):
         self.tree = tree
-        self.transport = transport.clone('shelf')
+        self.transport = transport.clone("shelf")
         self.transport.ensure_base()
 
     def get_shelf_filename(self, shelf_id):
-        return 'shelf-%d' % shelf_id
+        return "shelf-%d" % shelf_id
 
     def get_shelf_ids(self, filenames):
-        matcher = re.compile('shelf-([1-9][0-9]*)')
+        matcher = re.compile("shelf-([1-9][0-9]*)")
         shelf_ids = []
         for filename in filenames:
             match = matcher.match(filename)
@@ -414,7 +462,7 @@ class ShelfManager:
         else:
             next_shelf = last_shelf + 1
         filename = self.get_shelf_filename(next_shelf)
-        shelf_file = open(self.transport.local_abspath(filename), 'wb')
+        shelf_file = open(self.transport.local_abspath(filename), "wb")
         return next_shelf, shelf_file
 
     def shelve_changes(self, creator, message=None):
@@ -434,7 +482,7 @@ class ShelfManager:
         """
         filename = self.get_shelf_filename(shelf_id)
         try:
-            return open(self.transport.local_abspath(filename), 'rb')
+            return open(self.transport.local_abspath(filename), "rb")
         except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
@@ -470,7 +518,7 @@ class ShelfManager:
 
     def active_shelves(self):
         """Return a list of shelved changes."""
-        active = sorted(self.get_shelf_ids(self.transport.list_dir('.')))
+        active = sorted(self.get_shelf_ids(self.transport.list_dir(".")))
         return active
 
     def last_shelf(self):

@@ -46,7 +46,7 @@ class TextStore(TransportStore):
             f = BytesIO(f)
 
         sio = BytesIO()
-        gf = gzip.GzipFile(mode='wb', fileobj=sio)
+        gf = gzip.GzipFile(mode="wb", fileobj=sio)
         # if pumpfile handles files that don't fit in ram,
         # so will this function
         osutils.pumpfile(f, gf)
@@ -73,7 +73,7 @@ class TextStore(TransportStore):
             self._transport.put_file(fn, f, mode=self._file_mode)
 
     def _get(self, fn):
-        if fn.endswith('.gz'):
+        if fn.endswith(".gz"):
             return self._get_compressed(fn)
         else:
             return self._transport.get(fn)
@@ -84,10 +84,10 @@ class TextStore(TransportStore):
         # gzip.GzipFile.read() requires a tell() function
         # but some transports return objects that cannot seek
         # so buffer them in a BytesIO instead
-        if getattr(f, 'tell', None) is not None:
-            return gzip.GzipFile(mode='rb', fileobj=f)
+        if getattr(f, "tell", None) is not None:
+            return gzip.GzipFile(mode="rb", fileobj=f)
         try:
             sio = BytesIO(f.read())
-            return gzip.GzipFile(mode='rb', fileobj=sio)
+            return gzip.GzipFile(mode="rb", fileobj=sio)
         finally:
             f.close()

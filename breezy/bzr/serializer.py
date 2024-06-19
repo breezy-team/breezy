@@ -20,12 +20,10 @@ from .. import errors, registry
 
 
 class BadInventoryFormat(errors.BzrError):
-
     _fmt = "Root class for inventory serialization errors"
 
 
 class UnexpectedInventoryFormat(BadInventoryFormat):
-
     _fmt = "The inventory was not in the expected format:\n %(msg)s"
 
     def __init__(self, msg):
@@ -33,7 +31,6 @@ class UnexpectedInventoryFormat(BadInventoryFormat):
 
 
 class UnsupportedInventoryKind(errors.BzrError):
-
     _fmt = """Unsupported entry kind %(kind)s"""
 
     def __init__(self, kind):
@@ -77,8 +74,9 @@ class Serializer:
         """
         raise NotImplementedError(self.write_inventory_to_lines)
 
-    def read_inventory_from_lines(self, lines, revision_id=None,
-                                  entry_cache=None, return_from_cache=False):
+    def read_inventory_from_lines(
+        self, lines, revision_id=None, entry_cache=None, return_from_cache=False
+    ):
         """Read bytestring chunks into an inventory object.
 
         :param lines: The serialized inventory to read.
@@ -121,11 +119,13 @@ class SerializerRegistry(registry.Registry):
 
 
 format_registry = SerializerRegistry()
-format_registry.register_lazy('5', 'breezy.bzr.xml5', 'serializer_v5')
-format_registry.register_lazy('6', 'breezy.bzr.xml6', 'serializer_v6')
-format_registry.register_lazy('7', 'breezy.bzr.xml7', 'serializer_v7')
-format_registry.register_lazy('8', 'breezy.bzr.xml8', 'serializer_v8')
-format_registry.register_lazy('9', 'breezy.bzr.chk_serializer',
-                              'chk_serializer_255_bigpage')
-format_registry.register_lazy('10', 'breezy.bzr.chk_serializer',
-                              'chk_bencode_serializer')
+format_registry.register_lazy("5", "breezy.bzr.xml5", "serializer_v5")
+format_registry.register_lazy("6", "breezy.bzr.xml6", "serializer_v6")
+format_registry.register_lazy("7", "breezy.bzr.xml7", "serializer_v7")
+format_registry.register_lazy("8", "breezy.bzr.xml8", "serializer_v8")
+format_registry.register_lazy(
+    "9", "breezy.bzr.chk_serializer", "chk_serializer_255_bigpage"
+)
+format_registry.register_lazy(
+    "10", "breezy.bzr.chk_serializer", "chk_bencode_serializer"
+)

@@ -17,44 +17,44 @@
 """Tests for get_rev_id_for_revno."""
 
 from breezy import errors
-from breezy.tests.per_repository_reference import \
-    TestCaseWithExternalReferenceRepository
+from breezy.tests.per_repository_reference import (
+    TestCaseWithExternalReferenceRepository,
+)
 
 
 class TestGetRevIdForRevno(TestCaseWithExternalReferenceRepository):
-
     def setUp(self):
         super().setUp()
-        self.tree = self.make_branch_and_tree('base')
-        self.revid1 = self.tree.commit('one')
-        self.revid2 = self.tree.commit('two')
-        self.revid3 = self.tree.commit('three')
+        self.tree = self.make_branch_and_tree("base")
+        self.revid1 = self.tree.commit("one")
+        self.revid2 = self.tree.commit("two")
+        self.revid3 = self.tree.commit("three")
 
     def test_success(self):
         repo = self.tree.branch.repository
         repo.lock_read()
         self.addCleanup(repo.unlock)
         self.assertEqual(
-            (True, self.revid1),
-            repo.get_rev_id_for_revno(1, (3, self.revid3)))
+            (True, self.revid1), repo.get_rev_id_for_revno(1, (3, self.revid3))
+        )
         self.assertEqual(
-            (True, self.revid2),
-            repo.get_rev_id_for_revno(2, (3, self.revid3)))
+            (True, self.revid2), repo.get_rev_id_for_revno(2, (3, self.revid3))
+        )
 
     def test_unknown_revision(self):
-        tree2 = self.make_branch_and_tree('other')
-        unknown_revid = tree2.commit('other')
+        tree2 = self.make_branch_and_tree("other")
+        unknown_revid = tree2.commit("other")
         repo = self.tree.branch.repository
         repo.lock_read()
         self.addCleanup(repo.unlock)
         self.assertRaises(
-            errors.NoSuchRevision,
-            repo.get_rev_id_for_revno, 1, (3, unknown_revid))
+            errors.NoSuchRevision, repo.get_rev_id_for_revno, 1, (3, unknown_revid)
+        )
 
     def test_known_pair_is_after(self):
         repo = self.tree.branch.repository
         repo.lock_read()
         self.addCleanup(repo.unlock)
         self.assertRaises(
-            errors.RevnoOutOfBounds,
-            repo.get_rev_id_for_revno, 3, (2, self.revid2))
+            errors.RevnoOutOfBounds, repo.get_rev_id_for_revno, 3, (2, self.revid2)
+        )

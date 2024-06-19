@@ -37,7 +37,6 @@ class FakeTree:
 
 
 class TestFakeTree(TestCaseWithTransport):
-
     def testFakeTree(self):
         """Check that FakeTree works as required for the TreeBuilder tests."""
         tree = FakeTree()
@@ -49,7 +48,6 @@ class TestFakeTree(TestCaseWithTransport):
 
 
 class TestTreeBuilderMemoryTree(tests.TestCaseWithMemoryTransport):
-
     def test_create(self):
         TreeBuilder()
 
@@ -82,15 +80,11 @@ class TestTreeBuilderMemoryTree(tests.TestCaseWithMemoryTransport):
 
     def test_build_tree(self):
         """Test building works using a MemoryTree."""
-        branch = self.make_branch('branch')
+        branch = self.make_branch("branch")
         tree = MemoryTree.create_on_branch(branch)
         builder = TreeBuilder()
         builder.start_tree(tree)
-        builder.build(['foo', "bar/", "bar/file"])
-        self.assertEqual(
-            b'contents of foo\n',
-            tree.get_file('foo').read())
-        self.assertEqual(
-            b'contents of bar/file\n',
-            tree.get_file('bar/file').read())
+        builder.build(["foo", "bar/", "bar/file"])
+        self.assertEqual(b"contents of foo\n", tree.get_file("foo").read())
+        self.assertEqual(b"contents of bar/file\n", tree.get_file("bar/file").read())
         builder.finish_tree()

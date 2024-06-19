@@ -20,23 +20,24 @@ from breezy.selftest.treeshape import capture_tree_contents
 def main(argv):
     # a lame reimplementation of pformat that splits multi-line
     # strings into concatenated string literals.
-    print('[')
-    for tt in capture_tree_contents('.'):
+    print("[")
+    for tt in capture_tree_contents("."):
         assert isinstance(tt, tuple)
-        print('    (', repr(tt[0]) + ',', end=' ')
+        print("    (", repr(tt[0]) + ",", end=" ")
         if len(tt) == 1:
-            print('),')
+            print("),")
         else:
             assert len(tt) == 2
             val = tt[1]
             print()
-            if val == '':
+            if val == "":
                 print("        ''")
             else:
                 for valline in val.splitlines(True):
-                    print('       ', repr(valline))
-            print('    ),')
-    print(']')
+                    print("       ", repr(valline))
+            print("    ),")
+    print("]")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     sys.exit(main(sys.argv))

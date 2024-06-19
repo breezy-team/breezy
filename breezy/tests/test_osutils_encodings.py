@@ -33,6 +33,7 @@ class FakeCodec:
     implemented they cannot be removed. Be careful with naming to avoid
     collisions between tests.
     """
+
     _registered: bool = False
     _enabled_encodings: Set[str] = set()
 
@@ -50,19 +51,18 @@ class FakeCodec:
     def __call__(self, encoding_name):
         """Called indirectly by codecs module during lookup"""
         if encoding_name in self._enabled_encodings:
-            return codecs.lookup('latin-1')
+            return codecs.lookup("latin-1")
 
 
 fake_codec = FakeCodec()
 
 
 class TestFakeCodec(TestCase):
-
     def test_fake_codec(self):
-        self.assertRaises(LookupError, codecs.lookup, 'fake')
+        self.assertRaises(LookupError, codecs.lookup, "fake")
 
-        fake_codec.add('fake')
-        codecs.lookup('fake')
+        fake_codec.add("fake")
+        codecs.lookup("fake")
 
 
 class TestTerminalEncoding(TestCase):
@@ -70,17 +70,19 @@ class TestTerminalEncoding(TestCase):
 
     def setUp(self):
         super().setUp()
-        self.overrideAttr(sys, 'stdin')
-        self.overrideAttr(sys, 'stdout')
-        self.overrideAttr(sys, 'stderr')
-        self.overrideAttr(osutils, '_cached_user_encoding')
+        self.overrideAttr(sys, "stdin")
+        self.overrideAttr(sys, "stdout")
+        self.overrideAttr(sys, "stderr")
+        self.overrideAttr(osutils, "_cached_user_encoding")
 
-    def make_wrapped_streams(self,
-                             stdout_encoding,
-                             stderr_encoding,
-                             stdin_encoding,
-                             user_encoding='user_encoding',
-                             enable_fake_encodings=True):
+    def make_wrapped_streams(
+        self,
+        stdout_encoding,
+        stderr_encoding,
+        stdin_encoding,
+        user_encoding="user_encoding",
+        enable_fake_encodings=True,
+    ):
         sys.stdout = StringIOWithEncoding()
         sys.stdout.encoding = stdout_encoding
         sys.stderr = StringIOWithEncoding()
@@ -94,25 +96,25 @@ class TestTerminalEncoding(TestCase):
             fake_codec.add(stdin_encoding)
 
     def test_get_terminal_encoding(self):
-        self.make_wrapped_streams('stdout_encoding',
-                                  'stderr_encoding',
-                                  'stdin_encoding')
+        self.make_wrapped_streams(
+            "stdout_encoding", "stderr_encoding", "stdin_encoding"
+        )
 
         # first preference is stdout encoding
-        self.assertEqual('stdout_encoding', osutils.get_terminal_encoding())
+        self.assertEqual("stdout_encoding", osutils.get_terminal_encoding())
 
         sys.stdout.encoding = None
         # if sys.stdout is None, fall back to sys.stdin
-        self.assertEqual('stdin_encoding', osutils.get_terminal_encoding())
+        self.assertEqual("stdin_encoding", osutils.get_terminal_encoding())
 
         sys.stdin.encoding = None
         # and in the worst case, use osutils.get_user_encoding()
-        self.assertEqual('user_encoding', osutils.get_terminal_encoding())
+        self.assertEqual("user_encoding", osutils.get_terminal_encoding())
 
     def test_get_terminal_encoding_silent(self):
-        self.make_wrapped_streams('stdout_encoding',
-                                  'stderr_encoding',
-                                  'stdin_encoding')
+        self.make_wrapped_streams(
+            "stdout_encoding", "stderr_encoding", "stdin_encoding"
+        )
         # Calling get_terminal_encoding should not mutter when silent=True is
         # passed.
         log = self.get_log()
@@ -120,9 +122,9 @@ class TestTerminalEncoding(TestCase):
         self.assertEqual(log, self.get_log())
 
     def test_get_terminal_encoding_trace(self):
-        self.make_wrapped_streams('stdout_encoding',
-                                  'stderr_encoding',
-                                  'stdin_encoding')
+        self.make_wrapped_streams(
+            "stdout_encoding", "stderr_encoding", "stdin_encoding"
+        )
         # Calling get_terminal_encoding should not mutter when silent=True is
         # passed.
         log = self.get_log()
@@ -131,33 +133,35 @@ class TestTerminalEncoding(TestCase):
 
     def test_terminal_cp0(self):
         # test cp0 encoding (Windows returns cp0 when there is no encoding)
-        self.make_wrapped_streams('cp0',
-                                  'cp0',
-                                  'cp0',
-                                  user_encoding='latin-1',
-                                  enable_fake_encodings=False)
+        self.make_wrapped_streams(
+            "cp0", "cp0", "cp0", user_encoding="latin-1", enable_fake_encodings=False
+        )
 
         # cp0 is invalid encoding. We should fall back to user_encoding
-        self.assertEqual('latin-1', osutils.get_terminal_encoding())
+        self.assertEqual("latin-1", osutils.get_terminal_encoding())
 
         # check stderr
-        self.assertEqual('', sys.stderr.getvalue())
+        self.assertEqual("", sys.stderr.getvalue())
 
     def test_terminal_cp_unknown(self):
         # test against really unknown encoding
         # catch warning at stderr
-        self.make_wrapped_streams('cp-unknown',
-                                  'cp-unknown',
-                                  'cp-unknown',
-                                  user_encoding='latin-1',
-                                  enable_fake_encodings=False)
+        self.make_wrapped_streams(
+            "cp-unknown",
+            "cp-unknown",
+            "cp-unknown",
+            user_encoding="latin-1",
+            enable_fake_encodings=False,
+        )
 
-        self.assertEqual('latin-1', osutils.get_terminal_encoding())
+        self.assertEqual("latin-1", osutils.get_terminal_encoding())
 
         # check stderr
-        self.assertEqual('brz: warning: unknown terminal encoding cp-unknown.\n'
-                         '  Using encoding latin-1 instead.\n',
-                         sys.stderr.getvalue())
+        self.assertEqual(
+            "brz: warning: unknown terminal encoding cp-unknown.\n"
+            "  Using encoding latin-1 instead.\n",
+            sys.stderr.getvalue(),
+        )
 
 
 class TestUserEncoding(TestCase):
@@ -165,35 +169,39 @@ class TestUserEncoding(TestCase):
 
     def setUp(self):
         super().setUp()
-        self.overrideAttr(osutils, '_cached_user_encoding', None)
-        self.overrideAttr(locale, 'getpreferredencoding', self.get_encoding)
-        self.overrideAttr(locale, 'CODESET', None)
-        self.overrideAttr(sys, 'stderr', StringIOWithEncoding())
+        self.overrideAttr(osutils, "_cached_user_encoding", None)
+        self.overrideAttr(locale, "getpreferredencoding", self.get_encoding)
+        self.overrideAttr(locale, "CODESET", None)
+        self.overrideAttr(sys, "stderr", StringIOWithEncoding())
 
     def get_encoding(self, do_setlocale=True):
         return self._encoding
 
     def test_get_user_encoding(self):
-        self._encoding = 'user_encoding'
-        fake_codec.add('user_encoding')
-        self.assertEqual('iso8859-1',  # fake_codec maps to latin-1
-                         osutils.get_user_encoding())
-        self.assertEqual('', sys.stderr.getvalue())
+        self._encoding = "user_encoding"
+        fake_codec.add("user_encoding")
+        self.assertEqual(
+            "iso8859-1",  # fake_codec maps to latin-1
+            osutils.get_user_encoding(),
+        )
+        self.assertEqual("", sys.stderr.getvalue())
 
     def test_user_cp0(self):
-        self._encoding = 'cp0'
-        self.assertEqual('ascii', osutils.get_user_encoding())
-        self.assertEqual('', sys.stderr.getvalue())
+        self._encoding = "cp0"
+        self.assertEqual("ascii", osutils.get_user_encoding())
+        self.assertEqual("", sys.stderr.getvalue())
 
     def test_user_cp_unknown(self):
-        self._encoding = 'cp-unknown'
-        self.assertEqual('ascii', osutils.get_user_encoding())
-        self.assertEqual('brz: warning: unknown encoding cp-unknown.'
-                         ' Continuing with ascii encoding.\n',
-                         sys.stderr.getvalue())
+        self._encoding = "cp-unknown"
+        self.assertEqual("ascii", osutils.get_user_encoding())
+        self.assertEqual(
+            "brz: warning: unknown encoding cp-unknown."
+            " Continuing with ascii encoding.\n",
+            sys.stderr.getvalue(),
+        )
 
     def test_user_empty(self):
         """Running bzr from a vim script gives '' for a preferred locale"""
-        self._encoding = ''
-        self.assertEqual('ascii', osutils.get_user_encoding())
-        self.assertEqual('', sys.stderr.getvalue())
+        self._encoding = ""
+        self.assertEqual("ascii", osutils.get_user_encoding())
+        self.assertEqual("", sys.stderr.getvalue())

@@ -14,9 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for the SSL support in the urllib HTTP transport.
-
-"""
+"""Tests for the SSL support in the urllib HTTP transport."""
 
 import os
 import sys
@@ -26,39 +24,38 @@ from ..transport.http import opt_ssl_ca_certs, ssl
 
 
 class CaCertsConfigTests(tests.TestCaseInTempDir):
-
     def get_stack(self, content):
-        return config.MemoryStack(content.encode('utf-8'))
+        return config.MemoryStack(content.encode("utf-8"))
 
     def test_default_exists(self):
         """Check that the default we provide exists for the tested platform."""
         stack = self.get_stack("")
-        self.assertPathExists(stack.get('ssl.ca_certs'))
+        self.assertPathExists(stack.get("ssl.ca_certs"))
 
     def test_specified(self):
-        self.build_tree(['cacerts.pem'])
+        self.build_tree(["cacerts.pem"])
         path = os.path.join(self.test_dir, "cacerts.pem")
         stack = self.get_stack("ssl.ca_certs = %s\n" % path)
-        self.assertEqual(path, stack.get('ssl.ca_certs'))
+        self.assertEqual(path, stack.get("ssl.ca_certs"))
 
     def test_specified_doesnt_exist(self):
-        stack = self.get_stack('')
+        stack = self.get_stack("")
         # Disable the default value mechanism to force the behavior we want
-        self.overrideAttr(opt_ssl_ca_certs, 'default',
-                          os.path.join(self.test_dir, "nonexisting.pem"))
+        self.overrideAttr(
+            opt_ssl_ca_certs, "default", os.path.join(self.test_dir, "nonexisting.pem")
+        )
         self.warnings = []
 
         def warning(*args):
             self.warnings.append(args[0] % args[1:])
-        self.overrideAttr(trace, 'warning', warning)
-        self.assertEqual(None, stack.get('ssl.ca_certs'))
+
+        self.overrideAttr(trace, "warning", warning)
+        self.assertEqual(None, stack.get("ssl.ca_certs"))
         self.assertLength(1, self.warnings)
-        self.assertContainsRe(self.warnings[0],
-                              "is not valid for \"ssl.ca_certs\"")
+        self.assertContainsRe(self.warnings[0], 'is not valid for "ssl.ca_certs"')
 
 
 class CertReqsConfigTests(tests.TestCaseInTempDir):
-
     def test_default(self):
         stack = config.MemoryStack(b"")
         self.assertEqual(ssl.CERT_REQUIRED, stack.get("ssl.cert_reqs"))
@@ -69,5 +66,4 @@ class CertReqsConfigTests(tests.TestCaseInTempDir):
         stack = config.MemoryStack(b"ssl.cert_reqs = required\n")
         self.assertEqual(ssl.CERT_REQUIRED, stack.get("ssl.cert_reqs"))
         stack = config.MemoryStack(b"ssl.cert_reqs = invalid\n")
-        self.assertRaises(config.ConfigOptionValueError, stack.get,
-                          "ssl.cert_reqs")
+        self.assertRaises(config.ConfigOptionValueError, stack.get, "ssl.cert_reqs")

@@ -49,12 +49,12 @@ def build_tree_contents(template):
     """
     for tt in template:
         name = tt[0]
-        if name[-1] == '/':
+        if name[-1] == "/":
             os.mkdir(name)
-        elif name[-1] == '@':
+        elif name[-1] == "@":
             os.symlink(tt[1], tt[0][:-1])
         else:
-            with open(name, 'w' + ('b' if isinstance(tt[1], bytes) else '')) as f:
+            with open(name, "w" + ("b" if isinstance(tt[1], bytes) else "")) as f:
                 f.write(tt[1])
 
 
@@ -63,20 +63,19 @@ def capture_tree_contents(top):
 
     If top is an absolute path the descriptions will be absolute."""
     for dirpath, dirnames, filenames in os.walk(top):
-        yield (dirpath + '/', )
+        yield (dirpath + "/",)
         filenames.sort()
         for fn in filenames:
             fullpath = pathjoin(dirpath, fn)
-            if (fullpath[-1] in '@/'):
+            if fullpath[-1] in "@/":
                 raise AssertionError(fullpath)
             info = os.lstat(fullpath)
             if stat.S_ISLNK(info.st_mode):
-                yield (fullpath + '@', os.readlink(fullpath))
+                yield (fullpath + "@", os.readlink(fullpath))
             elif stat.S_ISREG(info.st_mode):
-                with open(fullpath, 'rb') as f:
+                with open(fullpath, "rb") as f:
                     file_bytes = f.read()
                 yield (fullpath, file_bytes)
             else:
-                warning("can't capture file %s with mode %#o",
-                        fullpath, info.st_mode)
+                warning("can't capture file %s with mode %#o", fullpath, info.st_mode)
                 pass

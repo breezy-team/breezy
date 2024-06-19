@@ -26,12 +26,15 @@ from . import branch as _mod_branch
 from . import errors, registry
 from .lazy_import import lazy_import
 
-lazy_import(globals(), """
+lazy_import(
+    globals(),
+    """
 from breezy import (
     controldir as _mod_controldir,
     urlutils,
     )
-""")
+""",
+)
 
 
 class DirectoryLookupFailure(errors.BzrError):
@@ -39,7 +42,6 @@ class DirectoryLookupFailure(errors.BzrError):
 
 
 class InvalidLocationAlias(DirectoryLookupFailure):
-
     _fmt = '"%(alias_name)s" is not a valid location alias.'
 
     def __init__(self, alias_name):
@@ -47,8 +49,7 @@ class InvalidLocationAlias(DirectoryLookupFailure):
 
 
 class UnsetLocationAlias(DirectoryLookupFailure):
-
-    _fmt = 'No %(alias_name)s location assigned.'
+    _fmt = "No %(alias_name)s location assigned."
 
     def __init__(self, alias_name):
         DirectoryLookupFailure.__init__(self, alias_name=alias_name[1:])
@@ -114,23 +115,37 @@ class AliasDirectory(Directory):
     supported.  On error, a subclass of DirectoryLookupFailure will be raised.
     """
 
-    branch_aliases = registry.Registry[str, Callable[[_mod_branch.Branch], Optional[str]]]()
-    branch_aliases.register('parent', lambda b: b.get_parent(),
-                            help="The parent of this branch.")
-    branch_aliases.register('submit', lambda b: b.get_submit_branch(),
-                            help="The submit branch for this branch.")
-    branch_aliases.register('public', lambda b: b.get_public_branch(),
-                            help="The public location of this branch.")
-    branch_aliases.register('bound', lambda b: b.get_bound_location(),
-                            help="The branch this branch is bound to, for bound branches.")
-    branch_aliases.register('push', lambda b: b.get_push_location(),
-                            help="The saved location used for `brz push` with no arguments.")
-    branch_aliases.register('this', lambda b: b.base,
-                            help="This branch.")
+    branch_aliases = registry.Registry[
+        str, Callable[[_mod_branch.Branch], Optional[str]]
+    ]()
+    branch_aliases.register(
+        "parent", lambda b: b.get_parent(), help="The parent of this branch."
+    )
+    branch_aliases.register(
+        "submit",
+        lambda b: b.get_submit_branch(),
+        help="The submit branch for this branch.",
+    )
+    branch_aliases.register(
+        "public",
+        lambda b: b.get_public_branch(),
+        help="The public location of this branch.",
+    )
+    branch_aliases.register(
+        "bound",
+        lambda b: b.get_bound_location(),
+        help="The branch this branch is bound to, for bound branches.",
+    )
+    branch_aliases.register(
+        "push",
+        lambda b: b.get_push_location(),
+        help="The saved location used for `brz push` with no arguments.",
+    )
+    branch_aliases.register("this", lambda b: b.base, help="This branch.")
 
     def look_up(self, name, url, purpose=None):
-        branch = _mod_branch.Branch.open_containing('.')[0]
-        parts = url.split('/', 1)
+        branch = _mod_branch.Branch.open_containing(".")[0]
+        parts = url.split("/", 1)
         if len(parts) == 2:
             name, extra = parts
         else:
@@ -170,8 +185,7 @@ For example, to push to the parent location::
 """ % "".join(alias_lines)
 
 
-directories.register(':', AliasDirectory,
-                     'Easy access to remembered branch locations')
+directories.register(":", AliasDirectory, "Easy access to remembered branch locations")
 
 
 class ColocatedDirectory(Directory):
@@ -182,10 +196,10 @@ class ColocatedDirectory(Directory):
     """
 
     def look_up(self, name, url, purpose=None):
-        dir = _mod_controldir.ControlDir.open_containing('.')[0]
+        dir = _mod_controldir.ControlDir.open_containing(".")[0]
         return urlutils.join_segment_parameters(
-            dir.user_url, {"branch": urlutils.escape(name)})
+            dir.user_url, {"branch": urlutils.escape(name)}
+        )
 
 
-directories.register('co:', ColocatedDirectory,
-                     'Easy access to colocated branches')
+directories.register("co:", ColocatedDirectory, "Easy access to colocated branches")

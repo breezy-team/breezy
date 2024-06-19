@@ -27,7 +27,7 @@ class RevisionSpec_svn(RevisionSpec):
     a Subversion revision number.
     """
 
-    prefix = 'svn:'
+    prefix = "svn:"
 
     def _match_on(self, branch, revs):
         raise InvalidRevisionSpec(self.user_spec, branch)

@@ -21,46 +21,49 @@ import sys
 
 import breezy
 from breezy import osutils, trace
-from breezy.tests import (TestCase, TestCaseInTempDir, TestSkipped,
-                          probe_unicode_in_user_encoding)
+from breezy.tests import (
+    TestCase,
+    TestCaseInTempDir,
+    TestSkipped,
+    probe_unicode_in_user_encoding,
+)
 
 
 class TestVersion(TestCase):
-
     def test_main_version(self):
         """Check output from version command and master option is reasonable"""
         # output is intentionally passed through to stdout so that we
         # can see the version being tested
         self.permit_source_tree_branch_repo()
-        output = self.run_bzr('version')[0]
-        self.log('brz version output:')
+        output = self.run_bzr("version")[0]
+        self.log("brz version output:")
         self.log(output)
-        self.assertTrue(output.startswith('Breezy (brz) '))
-        self.assertNotEqual(output.index('Canonical'), -1)
+        self.assertTrue(output.startswith("Breezy (brz) "))
+        self.assertNotEqual(output.index("Canonical"), -1)
         # make sure --version is consistent
-        tmp_output = self.run_bzr('--version')[0]
+        tmp_output = self.run_bzr("--version")[0]
         self.assertEqual(output, tmp_output)
 
     def test_version(self):
         self.permit_source_tree_branch_repo()
         out = self.run_bzr("version")[0]
         self.assertTrue(len(out) > 0)
-        self.assertEqualDiff(out.splitlines()[0],
-                             "Breezy (brz) %s" % breezy.__version__)
+        self.assertEqualDiff(
+            out.splitlines()[0], "Breezy (brz) %s" % breezy.__version__
+        )
         self.assertContainsRe(out, r"(?m)^  Python interpreter:")
         self.assertContainsRe(out, r"(?m)^  Python standard library:")
         self.assertContainsRe(out, r"(?m)^  breezy:")
         self.assertContainsRe(out, r"(?m)^  Breezy configuration:")
-        self.assertContainsRe(out, r'(?m)^  Breezy log file:.*[\\/]breezy[\\/]brz\.log')
+        self.assertContainsRe(out, r"(?m)^  Breezy log file:.*[\\/]breezy[\\/]brz\.log")
 
     def test_version_short(self):
         self.permit_source_tree_branch_repo()
         out = self.run_bzr(["version", "--short"])[0]
-        self.assertEqualDiff(out, breezy.version_string + '\n')
+        self.assertEqualDiff(out, breezy.version_string + "\n")
 
 
 class TestVersionUnicodeOutput(TestCaseInTempDir):
-
     def _check(self, args):
         self.permit_source_tree_branch_repo()
         # Even though trace._brz_log_filename variable
@@ -71,13 +74,13 @@ class TestVersionUnicodeOutput(TestCaseInTempDir):
         # but we run these tests in separate temp dir
         # with relative unicoded path
         old_trace_file = trace._brz_log_filename
-        trace._brz_log_filename = '\u1234/.brz.log'
+        trace._brz_log_filename = "\u1234/.brz.log"
         try:
             out = self.run_bzr(args)[0]
         finally:
             trace._brz_log_filename = old_trace_file
         self.assertTrue(len(out) > 0)
-        self.assertContainsRe(out, r'(?m)^  Breezy log file:.*brz\.log')
+        self.assertContainsRe(out, r"(?m)^  Breezy log file:.*brz\.log")
 
     def test_command(self):
         self._check("version")
@@ -88,45 +91,48 @@ class TestVersionUnicodeOutput(TestCaseInTempDir):
     def test_unicode_bzr_home(self):
         uni_val, str_val = probe_unicode_in_user_encoding()
         if uni_val is None:
-            raise TestSkipped('Cannot find a unicode character that works in'
-                              ' encoding %s' % (osutils.get_user_encoding(),))
+            raise TestSkipped(
+                "Cannot find a unicode character that works in"
+                " encoding %s" % (osutils.get_user_encoding(),)
+            )
 
-        self.overrideEnv('BRZ_HOME', uni_val)
+        self.overrideEnv("BRZ_HOME", uni_val)
         self.permit_source_tree_branch_repo()
         out = self.run_bzr_raw("version")[0]
         self.assertTrue(len(out) > 0)
-        self.assertContainsRe(out, br"(?m)^  Breezy configuration: " + str_val)
+        self.assertContainsRe(out, rb"(?m)^  Breezy configuration: " + str_val)
 
 
 class TestVersionBzrLogLocation(TestCaseInTempDir):
-
     def default_log(self):
-        return os.path.join(os.environ['BRZ_HOME'], 'breezy', 'brz.log')
+        return os.path.join(os.environ["BRZ_HOME"], "breezy", "brz.log")
 
     def test_simple(self):
-        brz_log = 'my.brz.log'
-        self.overrideEnv('BRZ_LOG', brz_log)
+        brz_log = "my.brz.log"
+        self.overrideEnv("BRZ_LOG", brz_log)
         self.assertPathDoesNotExist([self.default_log(), brz_log])
-        out = self.run_brz_subprocess('version')[0]
+        out = self.run_brz_subprocess("version")[0]
         self.assertTrue(len(out) > 0)
         self.assertContainsRe(
-            out, br"(?m)^  Breezy log file: " + brz_log.encode('ascii'))
+            out, rb"(?m)^  Breezy log file: " + brz_log.encode("ascii")
+        )
         self.assertPathExists(brz_log)
         self.assertPathDoesNotExist(self.default_log())
 
     def test_dev_null(self):
         # This test uses a subprocess to cause the log opening logic to
         # execute. It would be better to just execute that logic directly.
-        if sys.platform == 'win32':
-            brz_log = 'NUL'
+        if sys.platform == "win32":
+            brz_log = "NUL"
         else:
-            brz_log = '/dev/null'
-        self.overrideEnv('BRZ_LOG', brz_log)
+            brz_log = "/dev/null"
+        self.overrideEnv("BRZ_LOG", brz_log)
         self.assertPathDoesNotExist(self.default_log())
-        out = self.run_brz_subprocess('version')[0]
+        out = self.run_brz_subprocess("version")[0]
         self.assertTrue(len(out) > 0)
         self.assertContainsRe(
-            out, br"(?m)^  Breezy log file: " + brz_log.encode('ascii'))
+            out, rb"(?m)^  Breezy log file: " + brz_log.encode("ascii")
+        )
         self.assertPathDoesNotExist(self.default_log())
 
     def test_unicode_brz_log(self):
@@ -137,7 +143,9 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
         except UnicodeEncodeError:
             self.skipTest(
                 "Test string {!r} unrepresentable in user encoding {}".format(
-                    uni_val, enc))
+                    uni_val, enc
+                )
+            )
         brz_log = os.path.join(self.test_base_dir, uni_val)
         self.overrideEnv("BRZ_LOG", brz_log)
         out, err = self.run_brz_subprocess("version")

@@ -31,17 +31,17 @@ class TestCaseWithLock(tests.TestCaseWithTransport):
 def make_scenarios(lock_classes):
     result = []
     for name, write_lock, read_lock in lock_classes:
-        result.append(
-            (name, {'write_lock': write_lock, 'read_lock': read_lock}))
+        result.append((name, {"write_lock": write_lock, "read_lock": read_lock}))
     return result
 
 
 def load_tests(loader, standard_tests, pattern):
-    submod_tests = loader.loadTestsFromModuleNames([
-        'breezy.tests.per_lock.test_lock',
-        'breezy.tests.per_lock.test_temporary_write_lock',
-        ])
+    submod_tests = loader.loadTestsFromModuleNames(
+        [
+            "breezy.tests.per_lock.test_lock",
+            "breezy.tests.per_lock.test_temporary_write_lock",
+        ]
+    )
     scenarios = make_scenarios(lock._lock_classes)
     # add the tests for the sub modules
-    return tests.multiply_tests(submod_tests, scenarios,
-                                standard_tests)
+    return tests.multiply_tests(submod_tests, scenarios, standard_tests)

@@ -35,7 +35,7 @@ class Replacer:
     must not contain capturing groups.
     """
 
-    _expand = lazy_regex.lazy_compile('\\\\&')
+    _expand = lazy_regex.lazy_compile("\\\\&")
 
     def __init__(self, source=None):
         self._pat = None
@@ -72,38 +72,41 @@ class Replacer:
     def __call__(self, text):
         if not self._pat:
             self._pat = lazy_regex.lazy_compile(
-                '|'.join(['(%s)' % p for p in self._pats]),
-                re.UNICODE)
+                "|".join(["(%s)" % p for p in self._pats]), re.UNICODE
+            )
         return self._pat.sub(self._do_sub, text)
 
     def _do_sub(self, m):
         fun = self._funs[m.lastindex - 1]
-        if hasattr(fun, '__call__'):
+        if hasattr(fun, "__call__"):
             return fun(m.group(0))
         else:
             return self._expand.sub(m.group(0), fun)
 
 
 _sub_named = Replacer()
-_sub_named.add(r'\[:digit:\]', r'\d')
-_sub_named.add(r'\[:space:\]', r'\s')
-_sub_named.add(r'\[:alnum:\]', r'\w')
-_sub_named.add(r'\[:ascii:\]', r'\0-\x7f')
-_sub_named.add(r'\[:blank:\]', r' \t')
-_sub_named.add(r'\[:cntrl:\]', r'\0-\x1f\x7f-\x9f')
+_sub_named.add(r"\[:digit:\]", r"\d")
+_sub_named.add(r"\[:space:\]", r"\s")
+_sub_named.add(r"\[:alnum:\]", r"\w")
+_sub_named.add(r"\[:ascii:\]", r"\0-\x7f")
+_sub_named.add(r"\[:blank:\]", r" \t")
+_sub_named.add(r"\[:cntrl:\]", r"\0-\x1f\x7f-\x9f")
 
 
 def _sub_group(m):
-    if m[1] in ('!', '^'):
-        return '[^' + _sub_named(m[2:-1]) + ']'
-    return '[' + _sub_named(m[1:-1]) + ']'
+    if m[1] in ("!", "^"):
+        return "[^" + _sub_named(m[2:-1]) + "]"
+    return "[" + _sub_named(m[1:-1]) + "]"
 
 
 def _invalid_regex(repl):
     def _(m):
-        warning("'%s' not allowed within a regular expression. "
-                "Replacing with '%s'" % (m, repl))
+        warning(
+            "'%s' not allowed within a regular expression. "
+            "Replacing with '%s'" % (m, repl)
+        )
         return repl
+
     return _
 
 
@@ -114,39 +117,39 @@ def _trailing_backslashes_regex(m):
     one on the end that would escape the brackets we wrap the RE in.
     """
     if (len(m) % 2) != 0:
-        warning("Regular expressions cannot end with an odd number of '\\'. "
-                "Dropping the final '\\'.")
+        warning(
+            "Regular expressions cannot end with an odd number of '\\'. "
+            "Dropping the final '\\'."
+        )
         return m[:-1]
     return m
 
 
 _sub_re = Replacer()
-_sub_re.add('^RE:', '')
-_sub_re.add('\\((?!\\?)', '(?:')
-_sub_re.add('\\(\\?P<.*>', _invalid_regex('(?:'))
-_sub_re.add('\\(\\?P=[^)]*\\)', _invalid_regex(''))
-_sub_re.add(r'\\+$', _trailing_backslashes_regex)
+_sub_re.add("^RE:", "")
+_sub_re.add("\\((?!\\?)", "(?:")
+_sub_re.add("\\(\\?P<.*>", _invalid_regex("(?:"))
+_sub_re.add("\\(\\?P=[^)]*\\)", _invalid_regex(""))
+_sub_re.add(r"\\+$", _trailing_backslashes_regex)
 
 
 _sub_fullpath = Replacer()
-_sub_fullpath.add(r'^RE:.*', _sub_re)  # RE:<anything> is a regex
-_sub_fullpath.add(r'\[\^?\]?(?:[^][]|\[:[^]]+:\])+\]',
-                  _sub_group)  # char group
-_sub_fullpath.add(r'(?:(?<=/)|^)(?:\.?/)+', '')  # canonicalize path
-_sub_fullpath.add(r'\\.', r'\&')  # keep anything backslashed
-_sub_fullpath.add(r'[(){}|^$+.]', r'\\&')  # escape specials
-_sub_fullpath.add(r'(?:(?<=/)|^)\*\*+/', r'(?:.*/)?')  # **/ after ^ or /
-_sub_fullpath.add(r'\*+', r'[^/]*')  # * elsewhere
-_sub_fullpath.add(r'\?', r'[^/]')  # ? everywhere
+_sub_fullpath.add(r"^RE:.*", _sub_re)  # RE:<anything> is a regex
+_sub_fullpath.add(r"\[\^?\]?(?:[^][]|\[:[^]]+:\])+\]", _sub_group)  # char group
+_sub_fullpath.add(r"(?:(?<=/)|^)(?:\.?/)+", "")  # canonicalize path
+_sub_fullpath.add(r"\\.", r"\&")  # keep anything backslashed
+_sub_fullpath.add(r"[(){}|^$+.]", r"\\&")  # escape specials
+_sub_fullpath.add(r"(?:(?<=/)|^)\*\*+/", r"(?:.*/)?")  # **/ after ^ or /
+_sub_fullpath.add(r"\*+", r"[^/]*")  # * elsewhere
+_sub_fullpath.add(r"\?", r"[^/]")  # ? everywhere
 
 
 _sub_basename = Replacer()
-_sub_basename.add(r'\[\^?\]?(?:[^][]|\[:[^]]+:\])+\]',
-                  _sub_group)  # char group
-_sub_basename.add(r'\\.', r'\&')  # keep anything backslashed
-_sub_basename.add(r'[(){}|^$+.]', r'\\&')  # escape specials
-_sub_basename.add(r'\*+', r'.*')  # * everywhere
-_sub_basename.add(r'\?', r'.')  # ? everywhere
+_sub_basename.add(r"\[\^?\]?(?:[^][]|\[:[^]]+:\])+\]", _sub_group)  # char group
+_sub_basename.add(r"\\.", r"\&")  # keep anything backslashed
+_sub_basename.add(r"[(){}|^$+.]", r"\\&")  # escape specials
+_sub_basename.add(r"\*+", r".*")  # * everywhere
+_sub_basename.add(r"\?", r".")  # ? everywhere
 
 
 def _sub_extension(pattern):
@@ -178,6 +181,7 @@ class Globster:
     so are matched first, then the basename patterns, then the fullpath
     patterns.
     """
+
     # We want to _add_patterns in a specific order (as per type_list below)
     # starting with the shortest and going to the longest.
     # As some Python version don't support ordered dicts the list below is
@@ -187,16 +191,10 @@ class Globster:
     pattern_info = {
         "extension": {
             "translator": _sub_extension,
-            "prefix": r'(?:.*/)?(?!.*/)(?:.*\.)'
+            "prefix": r"(?:.*/)?(?!.*/)(?:.*\.)",
         },
-        "basename": {
-            "translator": _sub_basename,
-            "prefix": r'(?:.*/)?(?!.*/)'
-        },
-        "fullpath": {
-            "translator": _sub_fullpath,
-            "prefix": r''
-        },
+        "basename": {"translator": _sub_basename, "prefix": r"(?:.*/)?(?!.*/)"},
+        "fullpath": {"translator": _sub_fullpath, "prefix": r""},
     }
 
     def __init__(self, patterns):
@@ -211,19 +209,17 @@ class Globster:
             pattern_lists[Globster.identify(pat)].append(pat)
         pi = Globster.pattern_info
         for t in Globster.pattern_types:
-            self._add_patterns(pattern_lists[t], pi[t]["translator"],
-                               pi[t]["prefix"])
+            self._add_patterns(pattern_lists[t], pi[t]["translator"], pi[t]["prefix"])
 
-    def _add_patterns(self, patterns, translator, prefix=''):
+    def _add_patterns(self, patterns, translator, prefix=""):
         while patterns:
-            grouped_rules = [
-                '(%s)' % translator(pat) for pat in patterns[:99]]
-            joined_rule = '{}(?:{})$'.format(prefix, '|'.join(grouped_rules))
+            grouped_rules = ["(%s)" % translator(pat) for pat in patterns[:99]]
+            joined_rule = "{}(?:{})$".format(prefix, "|".join(grouped_rules))
             # Explicitly use lazy_compile here, because we count on its
             # nicer error reporting.
-            self._regex_patterns.append((
-                lazy_regex.lazy_compile(joined_rule, re.UNICODE),
-                patterns[:99]))
+            self._regex_patterns.append(
+                (lazy_regex.lazy_compile(joined_rule, re.UNICODE), patterns[:99])
+            )
             patterns = patterns[99:]
 
     def match(self, filename):
@@ -240,15 +236,13 @@ class Globster:
             # We can't show the default e.msg to the user as thats for
             # the combined pattern we sent to regex. Instead we indicate to
             # the user that an ignore file needs fixing.
-            mutter('Invalid pattern found in regex: %s.', e.msg)
-            e.msg = (
-                "File ~/.config/breezy/ignore or "
-                ".bzrignore contains error(s).")
-            bad_patterns = ''
+            mutter("Invalid pattern found in regex: %s.", e.msg)
+            e.msg = "File ~/.config/breezy/ignore or " ".bzrignore contains error(s)."
+            bad_patterns = ""
             for _, patterns in self._regex_patterns:
                 for p in patterns:
                     if not Globster.is_pattern_valid(p):
-                        bad_patterns += ('\n  %s' % p)
+                        bad_patterns += "\n  %s" % p
             e.msg += bad_patterns
             raise e
         return None
@@ -261,9 +255,9 @@ class Globster:
         Identify if a pattern is fullpath, basename or extension
         and returns the appropriate type.
         """
-        if pattern.startswith('RE:') or '/' in pattern:
+        if pattern.startswith("RE:") or "/" in pattern:
             return "fullpath"
-        elif pattern.startswith('*.'):
+        elif pattern.startswith("*."):
             return "extension"
         else:
             return "basename"
@@ -277,9 +271,8 @@ class Globster:
         see: globbing.normalize_pattern
         """
         result = True
-        translator = Globster.pattern_info[Globster.identify(
-            pattern)]["translator"]
-        tpattern = '(%s)' % translator(pattern)
+        translator = Globster.pattern_info[Globster.identify(pattern)]["translator"]
+        tpattern = "(%s)" % translator(pattern)
         try:
             re_obj = lazy_regex.lazy_compile(tpattern, re.UNICODE)
             re_obj.search("")  # force compile
@@ -302,9 +295,9 @@ class ExceptionGlobster:
     def __init__(self, patterns):
         ignores = [[], [], []]
         for p in patterns:
-            if p.startswith('!!'):
+            if p.startswith("!!"):
                 ignores[2].append(p[2:])
-            elif p.startswith('!'):
+            elif p.startswith("!"):
                 ignores[1].append(p[1:])
             else:
                 ignores[0].append(p)
@@ -337,11 +330,14 @@ class _OrderedGlobster(Globster):
         for pat in patterns:
             pat = normalize_pattern(pat)
             t = Globster.identify(pat)
-            self._add_patterns([pat], Globster.pattern_info[t]["translator"],
-                               Globster.pattern_info[t]["prefix"])
+            self._add_patterns(
+                [pat],
+                Globster.pattern_info[t]["translator"],
+                Globster.pattern_info[t]["prefix"],
+            )
 
 
-_slashes = lazy_regex.lazy_compile(r'[\\/]+')
+_slashes = lazy_regex.lazy_compile(r"[\\/]+")
 
 
 def normalize_pattern(pattern):
@@ -349,8 +345,8 @@ def normalize_pattern(pattern):
 
     Doesn't normalize regular expressions - they may contain escapes.
     """
-    if not (pattern.startswith('RE:') or pattern.startswith('!RE:')):
-        pattern = _slashes.sub('/', pattern)
+    if not (pattern.startswith("RE:") or pattern.startswith("!RE:")):
+        pattern = _slashes.sub("/", pattern)
     if len(pattern) > 1:
-        pattern = pattern.rstrip('/')
+        pattern = pattern.rstrip("/")
     return pattern

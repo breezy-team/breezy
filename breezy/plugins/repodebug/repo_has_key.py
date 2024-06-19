@@ -31,7 +31,7 @@ class cmd_repo_has_key(Command):
     """
 
     hidden = True
-    takes_args = ['repo', 'key_parts*']
+    takes_args = ["repo", "key_parts*"]
 
     def run(self, repo, key_parts_list=None):
         vf_name, key = key_parts_list[0], key_parts_list[1:]

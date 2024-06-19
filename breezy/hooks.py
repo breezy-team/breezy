@@ -23,17 +23,19 @@ from typing import Dict, List, Tuple
 from . import errors, registry
 from .lazy_import import lazy_import
 
-lazy_import(globals(), """
+lazy_import(
+    globals(),
+    """
 from breezy import (
     _format_version_tuple,
     pyutils,
     )
 from breezy.i18n import gettext
-""")
+""",
+)
 
 
 class UnknownHook(errors.BzrError):
-
     _fmt = "The %(type)s hook '%(hook)s' is unknown in this version of breezy."
 
     def __init__(self, hook_type, hook_name):
@@ -48,10 +50,14 @@ class KnownHooksRegistry(registry.Registry[str, "Hooks"]):
     # module where the specific hooks are defined
     # callable to get the empty specific Hooks for that attribute
 
-    def register_lazy_hook(self, hook_module_name, hook_member_name,
-                           hook_factory_member_name):
-        self.register_lazy((hook_module_name, hook_member_name),
-                           hook_module_name, hook_factory_member_name)
+    def register_lazy_hook(
+        self, hook_module_name, hook_member_name, hook_factory_member_name
+    ):
+        self.register_lazy(
+            (hook_module_name, hook_member_name),
+            hook_module_name,
+            hook_factory_member_name,
+        )
 
     def iter_parent_objects(self):
         """Yield (hook_key, (parent_object, attr)) tuples for every registered
@@ -77,27 +83,29 @@ class KnownHooksRegistry(registry.Registry[str, "Hooks"]):
 
 
 _builtin_known_hooks = (
-    ('breezy.branch', 'Branch.hooks', 'BranchHooks'),
-    ('breezy.controldir', 'ControlDir.hooks', 'ControlDirHooks'),
-    ('breezy.commands', 'Command.hooks', 'CommandHooks'),
-    ('breezy.config', 'ConfigHooks', '_ConfigHooks'),
-    ('breezy.info', 'hooks', 'InfoHooks'),
-    ('breezy.lock', 'Lock.hooks', 'LockHooks'),
-    ('breezy.merge', 'Merger.hooks', 'MergeHooks'),
-    ('breezy.msgeditor', 'hooks', 'MessageEditorHooks'),
-    ('breezy.mutabletree', 'MutableTree.hooks', 'MutableTreeHooks'),
-    ('breezy.bzr.smart.client', '_SmartClient.hooks', 'SmartClientHooks'),
-    ('breezy.bzr.smart.server', 'SmartTCPServer.hooks', 'SmartServerHooks'),
-    ('breezy.status', 'hooks', 'StatusHooks'),
-    ('breezy.transport', 'Transport.hooks', 'TransportHooks'),
-    ('breezy.version_info_formats.format_rio', 'RioVersionInfoBuilder.hooks',
-        'RioVersionInfoBuilderHooks'),
-    ('breezy.merge_directive', 'BaseMergeDirective.hooks',
-        'MergeDirectiveHooks'),
-    )
+    ("breezy.branch", "Branch.hooks", "BranchHooks"),
+    ("breezy.controldir", "ControlDir.hooks", "ControlDirHooks"),
+    ("breezy.commands", "Command.hooks", "CommandHooks"),
+    ("breezy.config", "ConfigHooks", "_ConfigHooks"),
+    ("breezy.info", "hooks", "InfoHooks"),
+    ("breezy.lock", "Lock.hooks", "LockHooks"),
+    ("breezy.merge", "Merger.hooks", "MergeHooks"),
+    ("breezy.msgeditor", "hooks", "MessageEditorHooks"),
+    ("breezy.mutabletree", "MutableTree.hooks", "MutableTreeHooks"),
+    ("breezy.bzr.smart.client", "_SmartClient.hooks", "SmartClientHooks"),
+    ("breezy.bzr.smart.server", "SmartTCPServer.hooks", "SmartServerHooks"),
+    ("breezy.status", "hooks", "StatusHooks"),
+    ("breezy.transport", "Transport.hooks", "TransportHooks"),
+    (
+        "breezy.version_info_formats.format_rio",
+        "RioVersionInfoBuilder.hooks",
+        "RioVersionInfoBuilderHooks",
+    ),
+    ("breezy.merge_directive", "BaseMergeDirective.hooks", "MergeDirectiveHooks"),
+)
 
 known_hooks = KnownHooksRegistry()
-for (_hook_module, _hook_attribute, _hook_class) in _builtin_known_hooks:
+for _hook_module, _hook_attribute, _hook_class in _builtin_known_hooks:
     known_hooks.register_lazy_hook(_hook_module, _hook_attribute, _hook_class)
 del _builtin_known_hooks, _hook_module, _hook_attribute, _hook_class
 
@@ -146,11 +154,17 @@ class Hooks(dict):
             raise errors.DuplicateKey(name)
         if self._module:
             callbacks = _lazy_hooks.setdefault(
-                (self._module, self._member_name, name), [])
+                (self._module, self._member_name, name), []
+            )
         else:
             callbacks = None
-        hookpoint = HookPoint(name=name, doc=doc, introduced=introduced,
-                              deprecated=deprecated, callbacks=callbacks)
+        hookpoint = HookPoint(
+            name=name,
+            doc=doc,
+            introduced=introduced,
+            deprecated=deprecated,
+            callbacks=callbacks,
+        )
         self[name] = hookpoint
 
     def docs(self):
@@ -179,15 +193,16 @@ class Hooks(dict):
         """
         name = self._callable_names.get(a_callable, None)
         if name is None and a_callable is not None:
-            name = self._lazy_callable_names.get((a_callable.__module__,
-                                                  a_callable.__name__),
-                                                 None)
+            name = self._lazy_callable_names.get(
+                (a_callable.__module__, a_callable.__name__), None
+            )
         if name is None:
-            return 'No hook name'
+            return "No hook name"
         return name
 
-    def install_named_hook_lazy(self, hook_name, callable_module,
-                                callable_member, name):
+    def install_named_hook_lazy(
+        self, hook_name, callable_module, callable_member, name
+    ):
         """Install a_callable in to the hook hook_name lazily, and label it.
 
         :param hook_name: A hook name. See the __init__ method for the complete
@@ -205,8 +220,7 @@ class Hooks(dict):
         try:
             hook_lazy = getattr(hook, "hook_lazy")
         except AttributeError:
-            raise errors.UnsupportedOperation(self.install_named_hook_lazy,
-                                              self)
+            raise errors.UnsupportedOperation(self.install_named_hook_lazy, self)
         else:
             hook_lazy(callable_module, callable_member, name)
         if name is not None:
@@ -257,8 +271,7 @@ class Hooks(dict):
         self._callable_names[a_callable] = name
 
     def name_hook_lazy(self, callable_module, callable_member, callable_name):
-        self._lazy_callable_names[(callable_module, callable_member)] = \
-            callable_name
+        self._lazy_callable_names[(callable_module, callable_member)] = callable_name
 
 
 class HookPoint:
@@ -300,26 +313,26 @@ class HookPoint:
         :return: A string terminated in \n.
         """
         import textwrap
+
         strings = []
         strings.append(self.name)
-        strings.append('~' * len(self.name))
-        strings.append('')
+        strings.append("~" * len(self.name))
+        strings.append("")
         if self.introduced:
             introduced_string = _format_version_tuple(self.introduced)
         else:
-            introduced_string = 'unknown'
-        strings.append(gettext('Introduced in: %s') % introduced_string)
+            introduced_string = "unknown"
+        strings.append(gettext("Introduced in: %s") % introduced_string)
         if self.deprecated:
             deprecated_string = _format_version_tuple(self.deprecated)
-            strings.append(gettext('Deprecated in: %s') % deprecated_string)
-        strings.append('')
-        strings.extend(textwrap.wrap(self.__doc__,
-                                     break_long_words=False))
-        strings.append('')
-        return '\n'.join(strings)
+            strings.append(gettext("Deprecated in: %s") % deprecated_string)
+        strings.append("")
+        strings.extend(textwrap.wrap(self.__doc__, break_long_words=False))
+        strings.append("")
+        return "\n".join(strings)
 
     def __eq__(self, other):
-        return (isinstance(other, type(self)) and other.__dict__ == self.__dict__)
+        return isinstance(other, type(self)) and other.__dict__ == self.__dict__
 
     def hook_lazy(self, callback_module, callback_member, callback_label):
         """Lazily register a callback to be called when this HookPoint fires.
@@ -330,8 +343,7 @@ class HookPoint:
         :param callback_label: A label to show in the UI while this callback is
             processing.
         """
-        obj_getter = registry._LazyObjectGetter(callback_module,
-                                                callback_member)
+        obj_getter = registry._LazyObjectGetter(callback_module, callback_member)
         self._callbacks.append((obj_getter, callback_label))
 
     def hook(self, callback, callback_label):
@@ -371,7 +383,7 @@ class HookPoint:
         strings.append(self.name)
         strings.append("), callbacks=[")
         callbacks = self._callbacks
-        for (callback, callback_name) in callbacks:
+        for callback, callback_name in callbacks:
             strings.append(repr(callback.get_obj()))
             strings.append("(")
             strings.append(callback_name)
@@ -379,11 +391,10 @@ class HookPoint:
         if len(callbacks) == 1:
             strings[-1] = ")"
         strings.append("]>")
-        return ''.join(strings)
+        return "".join(strings)
 
 
-_help_prefix = \
-    """
+_help_prefix = """
 Hooks
 =====
 
@@ -421,7 +432,7 @@ def hooks_help_text(topic):
     for hook_key in sorted(known_hooks.keys()):
         hooks = known_hooks_key_to_object(hook_key)
         segments.append(hooks.docs())
-    return '\n'.join(segments)
+    return "\n".join(segments)
 
 
 # Lazily registered hooks. Maps (module, name, hook_name) tuples
@@ -429,8 +440,9 @@ def hooks_help_text(topic):
 _lazy_hooks: Dict[Tuple[str, str, str], List[Tuple[registry._ObjectGetter, str]]] = {}
 
 
-def install_lazy_named_hook(hookpoints_module, hookpoints_name, hook_name,
-                            a_callable, name):
+def install_lazy_named_hook(
+    hookpoints_module, hookpoints_name, hook_name, a_callable, name
+):
     """Install a callable in to a hook lazily, and label it name.
 
     :param hookpoints_module: Module name of the hook points.
