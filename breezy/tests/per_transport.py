@@ -48,8 +48,7 @@ def get_transport_test_permutations(module):
     """Get the permutations module wants to have tested."""
     if getattr(module, "get_test_permutations", None) is None:
         raise AssertionError(
-            "transport module %s doesn't provide get_test_permutations()"
-            % module.__name__
+            "transport module {} doesn't provide get_test_permutations()".format(module.__name__)
         )
         return []
     return module.get_test_permutations()
@@ -957,7 +956,7 @@ class TransportTests(TestTransportImplementation):
             url = self._server.get_bogus_url()
         except NotImplementedError as err:
             raise TestSkipped(
-                "Transport %s has no bogus URL support." % self._server.__class__
+                "Transport {} has no bogus URL support.".format(self._server.__class__)
             ) from err
         t = _mod_transport.get_transport_from_url(url)
         self.assertRaises((ConnectionError, NoSuchFile), t.get, ".bzr/branch")
@@ -1019,7 +1018,7 @@ class TransportTests(TestTransportImplementation):
                 pass
         except TransportNotPossible as err:
             raise TestSkipped(
-                "Transport %s does not support hardlinks." % self._server.__class__
+                "Transport {} does not support hardlinks.".format(self._server.__class__)
             ) from err
 
     def test_symlink(self):
@@ -1044,7 +1043,7 @@ class TransportTests(TestTransportImplementation):
             )
         except TransportNotPossible as err:
             raise TestSkipped(
-                "Transport %s does not support symlinks." % self._server.__class__
+                "Transport {} does not support symlinks.".format(self._server.__class__)
             ) from err
 
         self.assertEqual(source_name, t.readlink(link_name))
@@ -1055,7 +1054,7 @@ class TransportTests(TestTransportImplementation):
             self.assertRaises(NoSuchFile, t.readlink, "nonexistent")
         except TransportNotPossible as err:
             raise TestSkipped(
-                "Transport %s does not support symlinks." % self._server.__class__
+                "Transport {} does not support symlinks.".format(self._server.__class__)
             ) from err
 
     def test_list_dir(self):

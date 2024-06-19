@@ -1012,7 +1012,7 @@ class ControlDir(ControlComponent):
         if klass is not ControlDir:
             raise AssertionError(
                 "ControlDir.create always creates the"
-                "default format, not one of %r" % klass
+                "default format, not one of {!r}".format(klass)
             )
         t = _mod_transport.get_transport(base, possible_transports)
         t.ensure_base()

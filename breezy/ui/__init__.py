@@ -185,7 +185,7 @@ class UIFactory:
     }
 
     def __init__(self) -> None:
-        self._task_stack: List["ProgressTask"] = []
+        self._task_stack: List[ProgressTask] = []
         self.suppressed_warnings: Set[str] = set()
         self._quiet = False
 
@@ -277,7 +277,7 @@ class UIFactory:
 
     def _make_output_stream_explicit(self, encoding, encoding_type):
         raise NotImplementedError(
-            "%s doesn't support make_output_stream" % (self.__class__.__name__)
+            "{} doesn't support make_output_stream".format(self.__class__.__name__)
         )
 
     def nested_progress_bar(self):

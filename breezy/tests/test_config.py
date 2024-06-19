@@ -1946,7 +1946,7 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
 
 class TestOptionNames(tests.TestCase):
     def is_valid(self, name):
-        return config._option_ref_re.match("{%s}" % name) is not None
+        return config._option_ref_re.match("{{{}}}".format(name)) is not None
 
     def test_valid_names(self):
         self.assertTrue(self.is_valid("foo"))
@@ -2595,8 +2595,7 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
         self.assertEqual(
             warnings,
             [
-                "Permission denied while trying to load configuration store %s."
-                % store.external_url()
+                "Permission denied while trying to load configuration store {}.".format(store.external_url())
             ],
         )
 

@@ -749,7 +749,7 @@ class AbstractHTTPHandler(urllib.request.AbstractHTTPHandler):
             resp.msg = r.reason
             resp.version = r.version
             if self._debuglevel >= 2:
-                print("Create addinfourl: %r" % resp)
+                print("Create addinfourl: {!r}".format(resp))
                 print(f"  For: {request.get_method()!r}({request.get_full_url()!r})")
             if debug.debug_flag_enabled("http"):
                 version = "HTTP/%d.%d"
@@ -1735,7 +1735,7 @@ class HTTPDefaultErrorHandler(urllib.request.HTTPDefaultErrorHandler):
         if code == 403:
             raise errors.TransportError(
                 "Server refuses to fulfill the request (403 Forbidden)"
-                " for %s" % req.get_full_url()
+                " for {}".format(req.get_full_url())
             )
         else:
             raise errors.UnexpectedHttpStatus(

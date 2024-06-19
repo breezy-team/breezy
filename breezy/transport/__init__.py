@@ -1104,10 +1104,10 @@ class Transport:
         it if at all possible.
         """
         raise errors.TransportNotPossible(
-            "Transport %r has not "
+            "Transport {!r} has not "
             "implemented list_dir "
             "(but must claim to be listable "
-            "to trigger this error)." % (self)
+            "to trigger this error).".format(self)
         )
 
     def lock_read(self, relpath):

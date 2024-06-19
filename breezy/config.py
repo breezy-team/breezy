@@ -1787,8 +1787,8 @@ class AuthenticationConfig:
             password = credentials["password"]
             if password is not None and scheme == "ssh":
                 trace.warning(
-                    "password ignored in section [%s],"
-                    " use an ssh agent instead" % credentials["name"]
+                    "password ignored in section [{}],"
+                    " use an ssh agent instead".format(credentials["name"])
                 )
                 password = None
         else:
@@ -2419,7 +2419,7 @@ class OptionRegistry(registry.Registry):
         Args:
           option_name: The name to validate.
         """
-        if _option_ref_re.match("{%s}" % option_name) is None:
+        if _option_ref_re.match("{{{}}}".format(option_name)) is None:
             raise IllegalOptionName(option_name)
 
     def register(self, option):

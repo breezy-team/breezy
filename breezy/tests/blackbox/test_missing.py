@@ -23,9 +23,9 @@ class TestMissing(tests.TestCaseWithTransport):
     def assertMessages(self, out, must_have=(), must_not_have=()):
         """Check if commit messages are in or not in the output."""
         for m in must_have:
-            self.assertContainsRe(out, r"\nmessage:\n  %s\n" % m)
+            self.assertContainsRe(out, r"\nmessage:\n  {}\n".format(m))
         for m in must_not_have:
-            self.assertNotContainsRe(out, r"\nmessage:\n  %s\n" % m)
+            self.assertNotContainsRe(out, r"\nmessage:\n  {}\n".format(m))
 
     def test_missing_quiet(self):
         # <https://bugs.launchpad.net/bzr/+bug/284748>
@@ -215,7 +215,7 @@ class TestMissing(tests.TestCaseWithTransport):
         # check last location
         lines, err = self.run_bzr("missing", working_dir="b")
         self.assertEqual(
-            "Using saved parent location: %s\n" "Branches are up to date.\n" % location,
+            "Using saved parent location: {}\n" "Branches are up to date.\n".format(location),
             lines,
         )
         self.assertEqual("", err)

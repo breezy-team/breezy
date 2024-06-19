@@ -828,7 +828,7 @@ class BzrDir(controldir.ControlDir):
         if cls is not BzrDir:
             raise AssertionError(
                 "BzrDir.create always creates the "
-                "default format, not one of %r" % cls
+                "default format, not one of {!r}".format(cls)
             )
         if format is None:
             format = BzrDirFormat.get_default_format()

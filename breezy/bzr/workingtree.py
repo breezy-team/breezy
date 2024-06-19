@@ -1563,7 +1563,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     "Rollback failed."
                     " The working tree is in an inconsistent state."
                     " Please consider doing a 'bzr revert'."
-                    " Error message is: %s" % e,
+                    " Error message is: {}".format(e),
                 ) from e
 
     def _move_entry(self, entry):

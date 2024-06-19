@@ -529,14 +529,14 @@ class BundleTester:
         for rev in info.real_revisions:
             self.assertTrue(
                 not repository.has_revision(rev.revision_id),
-                "Revision {%s} present before applying bundle" % rev.revision_id,
+                "Revision {{{}}} present before applying bundle".format(rev.revision_id),
             )
         merge_bundle(info, to_tree, True, merge.Merge3Merger, False, False)
 
         for rev in info.real_revisions:
             self.assertTrue(
                 repository.has_revision(rev.revision_id),
-                "Missing revision {%s} after applying bundle" % rev.revision_id,
+                "Missing revision {{{}}} after applying bundle".format(rev.revision_id),
             )
 
         self.assertTrue(to_tree.branch.repository.has_revision(info.target))

@@ -203,8 +203,8 @@ def _show_push_branch(
         if push_result.workingtree_updated is False:
             warning(
                 "This transport does not update the working "
-                "tree of: %s. See 'brz help working-trees' for "
-                "more information." % push_result.target_branch.base
+                "tree of: {}. See 'brz help working-trees' for "
+                "more information.".format(push_result.target_branch.base)
             )
     push_result.report(to_file)
     if verbose:

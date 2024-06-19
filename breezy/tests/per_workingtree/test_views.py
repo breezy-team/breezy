@@ -35,8 +35,8 @@ class TestTreeViews(TestCaseWithWorkingTree):
         f = fmt.supports_views
         if f is None:
             raise TestSkipped(
-                "format %s doesn't declare whether it "
-                "supports views, assuming not" % fmt
+                "format {} doesn't declare whether it "
+                "supports views, assuming not".format(fmt)
             )
         if not f():
             raise TestNotApplicable(f"format {fmt} doesn't support views")

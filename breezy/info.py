@@ -204,7 +204,7 @@ def _show_format_info(
         outfile.write(f"        branch: {branch._format.get_format_description()}\n")
     if repository:
         outfile.write(
-            "    repository: %s\n" % repository._format.get_format_description()
+            "    repository: {}\n".format(repository._format.get_format_description())
         )
 
 
@@ -316,11 +316,11 @@ def _show_branch_stats(branch, verbose, outfile):
         age = int((time.time() - timestamp) / 3600 / 24)
         outfile.write("  %8d day%s old\n" % (age, plural(age)))
         outfile.write(
-            "   first revision: %s\n" % osutils.format_date(timestamp, timezone)
+            "   first revision: {}\n".format(osutils.format_date(timestamp, timezone))
         )
         timestamp, timezone = stats["latestrev"]
         outfile.write(
-            "  latest revision: %s\n" % osutils.format_date(timestamp, timezone)
+            "  latest revision: {}\n".format(osutils.format_date(timestamp, timezone))
         )
     return stats
 

@@ -1448,7 +1448,7 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
         t = self.get_old_transport()
         new_prefix = f"http://{self.new_server.host}:{self.new_server.port}"
         self.old_server.redirections = [
-            ("(.*)", r"%s/1\1" % (new_prefix), 301),
+            ("(.*)", r"{}/1\1".format(new_prefix), 301),
         ]
         self.assertEqual(
             b"redirected once", t.request("GET", t._remote_path("a"), retries=1).read()
@@ -1459,11 +1459,11 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
         old_prefix = f"http://{self.old_server.host}:{self.old_server.port}"
         new_prefix = f"http://{self.new_server.host}:{self.new_server.port}"
         self.old_server.redirections = [
-            ("/1(.*)", r"%s/2\1" % (old_prefix), 302),
-            ("/2(.*)", r"%s/3\1" % (old_prefix), 303),
-            ("/3(.*)", r"%s/4\1" % (old_prefix), 307),
-            ("/4(.*)", r"%s/5\1" % (new_prefix), 301),
-            ("(/[^/]+)", r"%s/1\1" % (old_prefix), 301),
+            ("/1(.*)", r"{}/2\1".format(old_prefix), 302),
+            ("/2(.*)", r"{}/3\1".format(old_prefix), 303),
+            ("/3(.*)", r"{}/4\1".format(old_prefix), 307),
+            ("/4(.*)", r"{}/5\1".format(new_prefix), 301),
+            ("(/[^/]+)", r"{}/1\1".format(old_prefix), 301),
         ]
         self.assertEqual(
             b"redirected 5 times",
@@ -2267,7 +2267,7 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
         )
         new_prefix = f"http://{self.new_server.host}:{self.new_server.port}"
         self.old_server.redirections = [
-            ("(.*)", r"%s/1\1" % (new_prefix), 301),
+            ("(.*)", r"{}/1\1".format(new_prefix), 301),
         ]
         self.old_transport = self.get_old_transport()
         self.new_server.add_user("joe", "foo")
@@ -2309,7 +2309,7 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
         t = self.old_transport
         new_prefix = f"http://{self.new_server.host}:{self.new_server.port}"
         self.old_server.redirections = [
-            ("(.*)", r"%s/1\1" % (new_prefix), 301),
+            ("(.*)", r"{}/1\1".format(new_prefix), 301),
         ]
         self.assertEqual(
             b"redirected once", t.request("GET", t.abspath("a"), retries=3).read()

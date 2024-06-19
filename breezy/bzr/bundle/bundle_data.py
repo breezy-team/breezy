@@ -297,7 +297,7 @@ class BundleInfo:
         if sha1 != rev_info.sha1:
             raise TestamentMismatch(rev.revision_id, rev_info.sha1, sha1)
         if rev.revision_id in rev_to_sha1:
-            raise BzrError("Revision {%s} given twice in the list" % (rev.revision_id))
+            raise BzrError("Revision {{{}}} given twice in the list".format(rev.revision_id))
         rev_to_sha1[rev.revision_id] = sha1
 
     def _update_tree(self, bundle_tree, revision_id):
@@ -349,7 +349,7 @@ class BundleInfo:
             info = extra.split(" // ")
             if len(info) < 2:
                 raise BzrError(
-                    "renamed action lines need both a from and to" ": %r" % extra
+                    "renamed action lines need both a from and to" ": {!r}".format(extra)
                 )
             old_path = info[0]
             new_path = info[1][3:] if info[1].startswith("=> ") else info[1]
@@ -366,7 +366,7 @@ class BundleInfo:
                 # TODO: in the future we might allow file ids to be
                 # given for removed entries
                 raise BzrError(
-                    "removed action lines should only have the path" ": %r" % extra
+                    "removed action lines should only have the path" ": {!r}".format(extra)
                 )
             path = info[0]
             bundle_tree.note_deletion(path)
@@ -375,16 +375,16 @@ class BundleInfo:
             info = extra.split(" // ")
             if len(info) <= 1:
                 raise BzrError(
-                    "add action lines require the path and file id" ": %r" % extra
+                    "add action lines require the path and file id" ": {!r}".format(extra)
                 )
             elif len(info) > 5:
                 raise BzrError(
-                    "add action lines have fewer than 5 entries." ": %r" % extra
+                    "add action lines have fewer than 5 entries." ": {!r}".format(extra)
                 )
             path = info[0]
             if not info[1].startswith("file-id:"):
                 raise BzrError(
-                    "The file-id should follow the path for an add" ": %r" % extra
+                    "The file-id should follow the path for an add" ": {!r}".format(extra)
                 )
             # This will be Unicode because of how the stream is read. Turn it
             # back into a utf8 file_id
@@ -403,7 +403,7 @@ class BundleInfo:
             info = extra.split(" // ")
             if len(info) < 1:
                 raise BzrError(
-                    "modified action lines have at least" "the path in them: %r" % extra
+                    "modified action lines have at least" "the path in them: {!r}".format(extra)
                 )
             path = info[0]
 
@@ -425,7 +425,7 @@ class BundleInfo:
             second = action_line.find(" ", first + 1)
             if second == -1:
                 raise BzrError(
-                    "Bogus action line" " (missing second space): %r" % action_line
+                    "Bogus action line" " (missing second space): {!r}".format(action_line)
                 )
             action = action_line[:first]
             kind = action_line[first + 1 : second]
@@ -438,7 +438,7 @@ class BundleInfo:
 
             if action not in valid_actions:
                 raise BzrError(
-                    "Bogus action line" " (unrecognized action): %r" % action_line
+                    "Bogus action line" " (unrecognized action): {!r}".format(action_line)
                 )
             valid_actions[action](kind, extra, lines)
 
