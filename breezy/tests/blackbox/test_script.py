@@ -16,7 +16,6 @@
 
 """Blacbox tests for the test-script command."""
 
-
 from breezy import tests
 
 

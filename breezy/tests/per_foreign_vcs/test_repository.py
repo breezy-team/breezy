@@ -17,7 +17,6 @@
 
 """Tests specific to Repository implementations that use foreign VCS'es."""
 
-
 from breezy.tests import TestCase, TestCaseWithTransport
 
 

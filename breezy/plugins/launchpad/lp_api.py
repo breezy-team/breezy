@@ -20,7 +20,6 @@
 # its dependencies. However, our plan is to only load this module when it is
 # needed by a command that uses it.
 
-
 import re
 
 from ... import bedding, branch, errors, osutils, trace

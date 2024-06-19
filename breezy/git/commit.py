@@ -17,7 +17,6 @@
 
 """Support for committing in native Git working trees."""
 
-
 from dulwich.index import commit_tree, read_submodule_head
 from dulwich.objects import Blob, Commit
 

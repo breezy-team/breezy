@@ -525,21 +525,21 @@ class TestMove(TestCaseWithTransport):
         """Clear error on mv of an unversioned non-ascii file, see lp:707954."""
         self.requireFeature(UnicodeFilenameFeature)
         self.make_branch_and_tree(".")
-        self.build_tree(["\xA7"])
+        self.build_tree(["\xa7"])
         out, err = self.run_bzr_error(
-            ["Could not rename", "not versioned"], ["mv", "\xA7", "b"]
+            ["Could not rename", "not versioned"], ["mv", "\xa7", "b"]
         )
 
     def test_mv_removed_non_ascii(self):
         """Clear error on mv of a removed non-ascii file, see lp:898541."""
         self.requireFeature(UnicodeFilenameFeature)
         tree = self.make_branch_and_tree(".")
-        self.build_tree(["\xA7"])
-        tree.add(["\xA7"])
-        tree.commit("Adding \xA7")
-        os.remove("\xA7")
+        self.build_tree(["\xa7"])
+        tree.add(["\xa7"])
+        tree.commit("Adding \xa7")
+        os.remove("\xa7")
         out, err = self.run_bzr_error(
-            ["Could not rename", "not exist"], ["mv", "\xA7", "b"]
+            ["Could not rename", "not exist"], ["mv", "\xa7", "b"]
         )
 
     def test_dupe_move(self):

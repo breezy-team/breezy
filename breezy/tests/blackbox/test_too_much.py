@@ -32,7 +32,6 @@ rather starts again from the run_brz function.
 # them into small suites in breezy.tests.blackbox.test_FOO for the particular
 # UI command/aspect that is being tested.
 
-
 import os
 import sys
 

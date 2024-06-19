@@ -2833,9 +2833,9 @@ class DirState:
                     fingerprint = b""
             else:
                 # for safety disable variables
-                new_path_utf8 = (
-                    new_dirname
-                ) = new_basename = new_id = new_entry_key = None
+                new_path_utf8 = new_dirname = new_basename = new_id = new_entry_key = (
+                    None
+                )
             # 5 cases, we dont have a value that is strictly greater than everything, so
             # we make both end conditions explicit
             if not current_old:

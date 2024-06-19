@@ -17,7 +17,6 @@
 
 """Black-box tests for brz help."""
 
-
 from breezy import config, i18n, tests
 
 

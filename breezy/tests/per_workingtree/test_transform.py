@@ -854,10 +854,10 @@ class TestTreeTransform(TestCaseWithWorkingTree):
     def test_symlinks_unicode(self):
         self.requireFeature(features.UnicodeFilenameFeature)
         self._test_symlinks(
-            "\N{Euro Sign}wizard",
-            "wizard-targ\N{Euro Sign}t",
-            "\N{Euro Sign}wizard2",
-            "b\N{Euro Sign}hind_curtain",
+            "\N{EURO SIGN}wizard",
+            "wizard-targ\N{EURO SIGN}t",
+            "\N{EURO SIGN}wizard2",
+            "b\N{EURO SIGN}hind_curtain",
         )
 
     def test_unsupported_symlink_no_conflict(self):

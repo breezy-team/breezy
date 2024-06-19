@@ -17,7 +17,6 @@
 
 """Tests for _make_parents_provider on stacked repositories."""
 
-
 from breezy.tests.per_repository import TestCaseWithRepository
 
 

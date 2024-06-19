@@ -16,7 +16,6 @@
 
 """Unpeel map storage."""
 
-
 import contextlib
 from collections import defaultdict
 from io import BytesIO

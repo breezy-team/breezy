@@ -17,7 +17,6 @@
 
 """Black-box tests for brz log."""
 
-
 import os
 
 from breezy import branchbuilder, errors, log, osutils, tests

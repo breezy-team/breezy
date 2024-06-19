@@ -16,7 +16,6 @@
 
 """Tests for OS Locks."""
 
-
 from .. import _transport_rs, errors, lock, tests
 
 

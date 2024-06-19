@@ -1611,7 +1611,7 @@ class TestTransportConfig(tests.TestCaseWithTransport):
     def test_load_utf8(self):
         """Ensure we can load an utf8-encoded file."""
         t = self.get_transport()
-        unicode_user = "b\N{Euro Sign}ar"
+        unicode_user = "b\N{EURO SIGN}ar"
         unicode_content = f"user={unicode_user}"
         utf8_content = unicode_content.encode("utf8")
         # Store the raw content in the config file
@@ -2548,7 +2548,7 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
         """Ensure we can load an utf8-encoded file."""
         t = self.get_transport()
         # From http://pad.lv/799212
-        unicode_user = "b\N{Euro Sign}ar"
+        unicode_user = "b\N{EURO SIGN}ar"
         unicode_content = f"user={unicode_user}"
         utf8_content = unicode_content.encode("utf8")
         # Store the raw content in the config file
@@ -2615,7 +2615,7 @@ class TestIniConfigContent(tests.TestCaseWithTransport):
     def test_load_utf8(self):
         """Ensure we can load an utf8-encoded file."""
         # From http://pad.lv/799212
-        unicode_user = "b\N{Euro Sign}ar"
+        unicode_user = "b\N{EURO SIGN}ar"
         unicode_content = f"user={unicode_user}"
         utf8_content = unicode_content.encode("utf8")
         # Store the raw content in the config file

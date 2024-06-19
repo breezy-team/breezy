@@ -20,7 +20,6 @@ The views are actually in the WorkingTree.views namespace, but these are
 1:1 with WorkingTree implementations so can be tested from here.
 """
 
-
 from breezy import views as _mod_views
 from breezy.tests import TestNotApplicable, TestSkipped
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree

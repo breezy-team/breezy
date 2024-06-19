@@ -20,7 +20,6 @@ This defines the TestingDAVRequestHandler and the DAVServer classes which
 implements the DAV specification parts used by the webdav plugin.
 """
 
-
 import os
 import re
 import shutil  # FIXME: Can't we use breezy.osutils ?

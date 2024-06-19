@@ -16,7 +16,6 @@
 
 """Tests for interface conformance of inventories of trees."""
 
-
 from breezy import osutils
 from breezy.tests import TestSkipped, features, per_tree
 

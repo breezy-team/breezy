@@ -16,7 +16,6 @@
 
 """Topological sorting routines."""
 
-
 from . import graph as _mod_graph
 
 __all__ = ["topo_sort", "TopoSorter", "merge_sort", "MergeSorter"]

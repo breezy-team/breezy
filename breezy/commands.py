@@ -1157,11 +1157,9 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
     argv = _specified_or_unicode_argv(argv)
     trace.mutter("brz arguments: %r", argv)
 
-    opt_lsprof = (
-        opt_profile
-    ) = (
-        opt_no_plugins
-    ) = opt_builtin = opt_coverage = opt_no_l10n = opt_no_aliases = False
+    opt_lsprof = opt_profile = opt_no_plugins = opt_builtin = opt_coverage = (
+        opt_no_l10n
+    ) = opt_no_aliases = False
     opt_lsprof_file = None
 
     # --no-plugins is handled specially at a very early stage. We need

@@ -142,7 +142,6 @@ Known Issues
 # scary for the user when we say 'Deleting <path>' and are referring to
 # remote files...
 
-
 from ... import (
     commands,
     config,

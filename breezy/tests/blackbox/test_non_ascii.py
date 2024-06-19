@@ -118,7 +118,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         wt.add("a")
         wt.commit("adding a")
 
-        self.build_tree_contents([("b", b"non-ascii \xFF\xFF\xFC\xFB\x00 in b\n")])
+        self.build_tree_contents([("b", b"non-ascii \xff\xff\xfc\xfb\x00 in b\n")])
         wt.add("b")
         wt.commit(self.info["message"])
 
@@ -149,7 +149,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         # brz cat shouldn't change the contents
         # using run_brz since that doesn't decode
         txt = self.run_bzr_raw("cat b")[0]
-        self.assertEqual(b"non-ascii \xFF\xFF\xFC\xFB\x00 in b\n", txt)
+        self.assertEqual(b"non-ascii \xff\xff\xfc\xfb\x00 in b\n", txt)
 
         self._check_OSX_can_roundtrip(self.info["filename"])
         txt = self.run_bzr_raw(["cat", self.info["filename"]])[0]
