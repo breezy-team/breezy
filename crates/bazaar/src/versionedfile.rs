@@ -211,12 +211,14 @@ impl pyo3::ToPyObject for Key {
 #[cfg(feature = "pyo3")]
 impl pyo3::FromPyObject<'_> for Key {
     fn extract(ob: &pyo3::PyAny) -> pyo3::PyResult<Self> {
-        match ob.get_type().name().unwrap().as_ref() {
+        let name = ob.get_type().name().unwrap();
+        match name.as_ref().split('.').last().unwrap_or(name.as_ref()) {
             "tuple" | "StaticTuple" => {}
             _ => {
-                return Err(pyo3::exceptions::PyTypeError::new_err(
-                    "Expected tuple or StaticTuple".to_string(),
-                ));
+                return Err(pyo3::exceptions::PyTypeError::new_err(format!(
+                    "Expected tuple or StaticTuple, got {}",
+                    ob.get_type().name().unwrap()
+                )));
             }
         }
         let mut v = Vec::with_capacity(ob.len()?);
