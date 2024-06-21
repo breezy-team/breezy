@@ -16,7 +16,6 @@
 
 """Python implementations of Dirstate Helper functions."""
 
-
 # We cannot import the dirstate module, because it loads this module
 # All we really need is the IN_MEMORY_MODIFIED constant
 from .dirstate import DirState, DirstateCorrupt, _fields_per_entry

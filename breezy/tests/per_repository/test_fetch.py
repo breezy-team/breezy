@@ -88,7 +88,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
                 tree_b = b_branch.create_checkout("b", lightweight=True)
             except errors.NotLocalUrl as err:
                 raise TestSkipped(
-                    "cannot make working tree with transport %r" % b_bzrdir.transport
+                    "cannot make working tree with transport {!r}".format(b_bzrdir.transport)
                 ) from err
         rev2 = tree_b.commit("no change")
         rev2_tree = knit3_repo.revision_tree(rev2)

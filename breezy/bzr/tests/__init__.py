@@ -17,7 +17,6 @@
 
 """The basic test suite for bzr."""
 
-
 from ... import tests
 
 TestCase = tests.TestCase

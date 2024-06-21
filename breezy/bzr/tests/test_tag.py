@@ -16,7 +16,6 @@
 
 """Tests for breezy.bzr.tag."""
 
-
 from breezy.tests import TestCase
 
 from ..tag import BasicTags

@@ -57,7 +57,7 @@ class MsgEditorTest(TestCaseWithTransport):
         except UnicodeEncodeError:
             self.skipTest(
                 "can't build unicode working tree in "
-                "filesystem encoding %s" % sys.getfilesystemencoding()
+                "filesystem encoding {}".format(sys.getfilesystemencoding())
             )
         working_tree.add(filename)
         return working_tree
@@ -357,7 +357,7 @@ if len(sys.argv) == 2:
         if char is None:
             self.skipTest(
                 "Cannot find suitable non-ascii character "
-                "for user_encoding (%s)" % osutils.get_user_encoding()
+                "for user_encoding ({})".format(osutils.get_user_encoding())
             )
 
         self.make_fake_editor(message=char)

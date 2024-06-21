@@ -16,7 +16,6 @@
 
 """UI tests for brz ignore."""
 
-
 import os
 import re
 

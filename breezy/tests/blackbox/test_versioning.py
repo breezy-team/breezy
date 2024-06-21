@@ -19,7 +19,6 @@
 
 # TODO: test trying to commit within a directory that is not yet added
 
-
 import os
 
 from breezy.tests import TestCaseWithTransport

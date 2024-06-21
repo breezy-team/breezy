@@ -19,7 +19,6 @@
 These test the conformance of all the lock variations to the expected API.
 """
 
-
 from breezy import _transport_rs, tests
 
 

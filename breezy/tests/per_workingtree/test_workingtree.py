@@ -301,7 +301,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt.commit("create initial state")
 
         revid = b.last_revision()
-        self.log("first revision_id is {%s}" % revid)
+        self.log("first revision_id is {{{}}}".format(revid))
 
         tree = b.repository.revision_tree(revid)
         self.log(f"contents of tree: {list(tree.iter_entries_by_dir())!r}")

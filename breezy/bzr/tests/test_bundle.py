@@ -529,14 +529,14 @@ class BundleTester:
         for rev in info.real_revisions:
             self.assertTrue(
                 not repository.has_revision(rev.revision_id),
-                "Revision {%s} present before applying bundle" % rev.revision_id,
+                "Revision {{{}}} present before applying bundle".format(rev.revision_id),
             )
         merge_bundle(info, to_tree, True, merge.Merge3Merger, False, False)
 
         for rev in info.real_revisions:
             self.assertTrue(
                 repository.has_revision(rev.revision_id),
-                "Missing revision {%s} after applying bundle" % rev.revision_id,
+                "Missing revision {{{}}} after applying bundle".format(rev.revision_id),
             )
 
         self.assertTrue(to_tree.branch.repository.has_revision(info.target))
@@ -732,7 +732,7 @@ class BundleTester:
     def test_unicode_symlink_bundle(self):
         self.requireFeature(features.UnicodeFilenameFeature)
         self._test_symlink_bundle(
-            "\N{Euro Sign}link", "bar/\N{Euro Sign}foo", "mars\N{Euro Sign}"
+            "\N{EURO SIGN}link", "bar/\N{EURO SIGN}foo", "mars\N{EURO SIGN}"
         )
 
     def test_binary_bundle(self):
@@ -847,7 +847,7 @@ class BundleTester:
         self.requireFeature(features.UnicodeFilenameFeature)
         # Handle international characters
         os.mkdir("b1")
-        f = open("b1/with Dod\N{Euro Sign}", "wb")
+        f = open("b1/with Dod\N{EURO SIGN}", "wb")
 
         self.tree1 = self.make_branch_and_tree("b1")
         self.b1 = self.tree1.branch
@@ -859,7 +859,7 @@ class BundleTester:
         )
         f.close()
 
-        self.tree1.add(["with Dod\N{Euro Sign}"], ids=[b"withdod-id"])
+        self.tree1.add(["with Dod\N{EURO SIGN}"], ids=[b"withdod-id"])
         self.tree1.commit(
             "i18n commit from William Dod\xe9",
             rev_id=b"i18n-1",
@@ -870,7 +870,7 @@ class BundleTester:
         self.get_valid_bundle(b"null:", b"i18n-1")
 
         # Modified
-        f = open("b1/with Dod\N{Euro Sign}", "wb")
+        f = open("b1/with Dod\N{EURO SIGN}", "wb")
         f.write("Modified \xb5\n".encode())
         f.close()
         self.tree1.commit("modified", rev_id=b"i18n-2")
@@ -878,7 +878,7 @@ class BundleTester:
         self.get_valid_bundle(b"i18n-1", b"i18n-2")
 
         # Renamed
-        self.tree1.rename_one("with Dod\N{Euro Sign}", "B\N{Euro Sign}gfors")
+        self.tree1.rename_one("with Dod\N{EURO SIGN}", "B\N{EURO SIGN}gfors")
         self.tree1.commit(
             "renamed, the new i18n man", rev_id=b"i18n-3", committer="Erik B\xe5gfors"
         )
@@ -886,7 +886,7 @@ class BundleTester:
         self.get_valid_bundle(b"i18n-2", b"i18n-3")
 
         # Removed
-        self.tree1.remove(["B\N{Euro Sign}gfors"])
+        self.tree1.remove(["B\N{EURO SIGN}gfors"])
         self.tree1.commit("removed", rev_id=b"i18n-4")
 
         self.get_valid_bundle(b"i18n-3", b"i18n-4")

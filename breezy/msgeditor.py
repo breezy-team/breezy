@@ -80,8 +80,8 @@ def _run_editor(filename):
             break
     raise BzrError(
         "Could not start any editor.\nPlease specify one with:\n"
-        " - $BRZ_EDITOR\n - editor=/some/path in %s\n"
-        " - $VISUAL\n - $EDITOR" % bedding.config_path()
+        " - $BRZ_EDITOR\n - editor=/some/path in {}\n"
+        " - $VISUAL\n - $EDITOR".format(bedding.config_path())
     )
 
 

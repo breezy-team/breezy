@@ -16,7 +16,6 @@
 
 """Tests for breezy.switch."""
 
-
 import os
 
 from breezy import branch, errors, switch, tests, workingtree

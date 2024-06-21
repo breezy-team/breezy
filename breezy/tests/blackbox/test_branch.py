@@ -463,7 +463,7 @@ class TestBranchStacked(tests.TestCaseWithTransport):
         out, err = self.run_bzr(["branch", "branch", "--stacked", "branch2"])
         self.assertEqual("", out)
         self.assertEqual(
-            "Created new stacked branch referring to %s.\n" % branch_tree.branch.base,
+            "Created new stacked branch referring to {}.\n".format(branch_tree.branch.base),
             err,
         )
         self.assertEqual(
@@ -486,7 +486,7 @@ class TestBranchStacked(tests.TestCaseWithTransport):
         out, err = self.run_bzr(["branch", "--stacked", "mainline", "newbranch"])
         self.assertEqual("", out)
         self.assertEqual(
-            "Created new stacked branch referring to %s.\n" % trunk_tree.branch.base,
+            "Created new stacked branch referring to {}.\n".format(trunk_tree.branch.base),
             err,
         )
         self.assertRevisionNotInRepository("newbranch", original_revid)

@@ -422,7 +422,7 @@ class Tree:
 
     def kind(self, path):
         raise NotImplementedError(
-            "Tree subclass %s must implement kind" % self.__class__.__name__
+            "Tree subclass {} must implement kind".format(self.__class__.__name__)
         )
 
     def stored_kind(self, path):
@@ -454,8 +454,8 @@ class Tree:
 
     def get_reference_revision(self, path):
         raise NotImplementedError(
-            "Tree subclass %s must implement "
-            "get_reference_revision" % self.__class__.__name__
+            "Tree subclass {} must implement "
+            "get_reference_revision".format(self.__class__.__name__)
         )
 
     def _comparison_data(self, entry, path):

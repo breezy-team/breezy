@@ -45,8 +45,8 @@ class TestEolConversion(TestCaseWithWorkingTree):
         f = fmt.supports_content_filtering
         if f is None:
             raise TestSkipped(
-                "format %s doesn't declare whether it "
-                "supports content filtering, assuming not" % fmt
+                "format {} doesn't declare whether it "
+                "supports content filtering, assuming not".format(fmt)
             )
         if not f():
             raise TestSkipped(f"format {fmt} doesn't support content filtering")

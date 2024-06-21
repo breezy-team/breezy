@@ -97,7 +97,7 @@ class TestExport(TestCaseWithTransport):
         # FIXME: using fname = u'\xe5.txt' below triggers a bug revealed since
         # bzr.dev revno 4216 but more related to OSX/working trees/unicode than
         # export itself --vila 20090406
-        fname = "\N{Euro Sign}.txt"
+        fname = "\N{EURO SIGN}.txt"
         self.build_tree(["tar/" + fname])
         tree.add([fname])
         tree.commit("first")
@@ -112,7 +112,7 @@ class TestExport(TestCaseWithTransport):
     def test_tar_export_unicode_basedir(self):
         """Test for bug #413406."""
         self.requireFeature(features.UnicodeFilenameFeature)
-        basedir = "\N{euro sign}"
+        basedir = "\N{EURO SIGN}"
         os.mkdir(basedir)
         self.run_bzr(["init", basedir])
         self.run_bzr(["export", "--format", "tgz", "test.tar.gz", "-d", basedir])
@@ -190,7 +190,7 @@ class TestExport(TestCaseWithTransport):
     def test_zip_export_unicode(self):
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree("zip")
-        fname = "\N{Euro Sign}.txt"
+        fname = "\N{EURO SIGN}.txt"
         self.build_tree(["zip/" + fname])
         tree.add([fname])
         tree.commit("first")

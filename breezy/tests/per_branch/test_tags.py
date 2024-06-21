@@ -444,7 +444,7 @@ class TestUnsupportedTags(per_branch.TestCaseWithBranch):
         branch = self.make_branch("probe")
         if branch._format.supports_tags():
             raise tests.TestSkipped(
-                "Format %s declares that tags are supported" % branch._format
+                "Format {} declares that tags are supported".format(branch._format)
             )
             # it's covered by TestBranchTags
 

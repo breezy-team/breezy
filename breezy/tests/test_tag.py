@@ -16,7 +16,6 @@
 
 """Tests for breezy.tag."""
 
-
 from breezy import controldir, errors
 from breezy.tests import TestCase, TestCaseWithTransport
 

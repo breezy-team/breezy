@@ -32,15 +32,14 @@ User-Agent: Bazaar ({_breezy_version})
 _SIMPLE_MESSAGE = (
     """\
 MIME-Version: 1.0
-Content-Type: text/plain; charset="%%s"
-Content-Transfer-Encoding: %%s
+Content-Type: text/plain; charset="%s"
+Content-Transfer-Encoding: %s
 From: from@from.com
 Subject: subject
 To: to@to.com
-User-Agent: Bazaar (%s)
+User-Agent: Bazaar ({})
 
-%%s"""
-    % _breezy_version
+%s""".format(_breezy_version)
 )
 
 SIMPLE_MESSAGE_ASCII = _SIMPLE_MESSAGE % ("us-ascii", "7bit", "body")

@@ -1410,7 +1410,7 @@ class DirState:
                 self._raise_invalid(
                     path,
                     file_id,
-                    "Attempt to remove path has wrong id - found %r." % entry[0][2],
+                    "Attempt to remove path has wrong id - found {!r}.".format(entry[0][2]),
                 )
             self._make_absent(entry)
             # See if we have a malformed delta: deleting a directory must not
@@ -2833,9 +2833,9 @@ class DirState:
                     fingerprint = b""
             else:
                 # for safety disable variables
-                new_path_utf8 = (
-                    new_dirname
-                ) = new_basename = new_id = new_entry_key = None
+                new_path_utf8 = new_dirname = new_basename = new_id = new_entry_key = (
+                    None
+                )
             # 5 cases, we dont have a value that is strictly greater than everything, so
             # we make both end conditions explicit
             if not current_old:
@@ -3060,7 +3060,7 @@ class DirState:
                                 (b"%s/%s" % key[0:2]).decode("utf8"),
                                 key[2],
                                 "Attempt to add item at path already occupied by "
-                                "id %r" % entry[0][2],
+                                "id {!r}".format(entry[0][2]),
                             )
                         low_index += 1
                     else:

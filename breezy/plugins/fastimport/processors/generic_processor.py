@@ -15,7 +15,6 @@
 
 """Import processor that supports all Bazaar repository formats."""
 
-
 import time
 
 import configobj

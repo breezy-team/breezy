@@ -16,7 +16,6 @@
 
 """Tests for interface conformance of inventories of working trees."""
 
-
 import os
 
 from breezy import tests

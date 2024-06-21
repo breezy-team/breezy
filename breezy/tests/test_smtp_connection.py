@@ -149,7 +149,7 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
 
     def test_authenticate_with_byte_strings(self):
         user = b"joe"
-        unicode_pass = "h\xECspass"
+        unicode_pass = "h\xecspass"
         utf8_pass = unicode_pass.encode("utf-8")
         factory = WideOpenSMTPFactory()
         conn = self.get_connection(

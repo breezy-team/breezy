@@ -1611,7 +1611,7 @@ class TestTransportConfig(tests.TestCaseWithTransport):
     def test_load_utf8(self):
         """Ensure we can load an utf8-encoded file."""
         t = self.get_transport()
-        unicode_user = "b\N{Euro Sign}ar"
+        unicode_user = "b\N{EURO SIGN}ar"
         unicode_content = f"user={unicode_user}"
         utf8_content = unicode_content.encode("utf8")
         # Store the raw content in the config file
@@ -1946,7 +1946,7 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
 
 class TestOptionNames(tests.TestCase):
     def is_valid(self, name):
-        return config._option_ref_re.match("{%s}" % name) is not None
+        return config._option_ref_re.match("{{{}}}".format(name)) is not None
 
     def test_valid_names(self):
         self.assertTrue(self.is_valid("foo"))
@@ -2548,7 +2548,7 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
         """Ensure we can load an utf8-encoded file."""
         t = self.get_transport()
         # From http://pad.lv/799212
-        unicode_user = "b\N{Euro Sign}ar"
+        unicode_user = "b\N{EURO SIGN}ar"
         unicode_content = f"user={unicode_user}"
         utf8_content = unicode_content.encode("utf8")
         # Store the raw content in the config file
@@ -2595,8 +2595,7 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
         self.assertEqual(
             warnings,
             [
-                "Permission denied while trying to load configuration store %s."
-                % store.external_url()
+                "Permission denied while trying to load configuration store {}.".format(store.external_url())
             ],
         )
 
@@ -2615,7 +2614,7 @@ class TestIniConfigContent(tests.TestCaseWithTransport):
     def test_load_utf8(self):
         """Ensure we can load an utf8-encoded file."""
         # From http://pad.lv/799212
-        unicode_user = "b\N{Euro Sign}ar"
+        unicode_user = "b\N{EURO SIGN}ar"
         unicode_content = f"user={unicode_user}"
         utf8_content = unicode_content.encode("utf8")
         # Store the raw content in the config file

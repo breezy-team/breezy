@@ -16,7 +16,6 @@
 
 """URL Conversion."""
 
-
 from dulwich.client import parse_rsync_url
 
 from .. import urlutils

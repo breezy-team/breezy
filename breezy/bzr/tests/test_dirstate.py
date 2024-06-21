@@ -1604,7 +1604,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
     def test_add_symlink_unicode_to_root_no_parents_all_data(self):
         self.requireFeature(features.UnicodeFilenameFeature)
         self._test_add_symlink_to_root_no_parents_all_data(
-            "\N{Euro Sign}link", "targ\N{Euro Sign}et"
+            "\N{EURO SIGN}link", "targ\N{EURO SIGN}et"
         )
 
     def test_add_directory_and_child_no_parents_all_data(self):
@@ -2917,10 +2917,10 @@ class Test_InvEntryToDetails(tests.TestCase):
         self.assertIsInstance(tree_data, bytes)
 
     def test_unicode_symlink(self):
-        target = "link-targ\N{Euro Sign}t"
+        target = "link-targ\N{EURO SIGN}t"
         inv_entry = inventory.InventoryLink(
             b"link-file-id",
-            "nam\N{Euro Sign}e",
+            "nam\N{EURO SIGN}e",
             b"link-parent-id",
             b"link-revision-id",
             symlink_target=target,

@@ -16,7 +16,6 @@
 
 """Tests for profiling data collection."""
 
-
 import pickle
 import threading
 
