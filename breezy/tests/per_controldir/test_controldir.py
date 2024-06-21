@@ -52,7 +52,9 @@ class TestControlDir(TestCaseWithControlDir):
             a_controldir.open_workingtree()
         except (errors.NotLocalUrl, errors.NoWorkingTree) as e:
             raise TestSkipped(
-                "bzrdir on transport {!r} has no working tree".format(a_controldir.transport)
+                "bzrdir on transport {!r} has no working tree".format(
+                    a_controldir.transport
+                )
             ) from e
 
     def openWorkingTreeIfLocal(self, a_controldir):
@@ -72,7 +74,9 @@ class TestControlDir(TestCaseWithControlDir):
             return a_controldir.create_workingtree()
         except (errors.NotLocalUrl, errors.UnsupportedOperation) as e:
             raise TestSkipped(
-                "cannot make working tree with transport {!r}".format(a_controldir.transport)
+                "cannot make working tree with transport {!r}".format(
+                    a_controldir.transport
+                )
             ) from e
 
     def sproutOrSkip(

@@ -529,7 +529,9 @@ class BundleTester:
         for rev in info.real_revisions:
             self.assertTrue(
                 not repository.has_revision(rev.revision_id),
-                "Revision {{{}}} present before applying bundle".format(rev.revision_id),
+                "Revision {{{}}} present before applying bundle".format(
+                    rev.revision_id
+                ),
             )
         merge_bundle(info, to_tree, True, merge.Merge3Merger, False, False)
 

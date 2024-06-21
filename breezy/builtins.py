@@ -1775,9 +1775,11 @@ class cmd_branches(Command):
                 raise errors.CommandError("Can't scan this type of location.")
             for b in controldir.ControlDir.find_branches(t):
                 self.outf.write(
-                    "{}\n".format(urlutils.unescape_for_display(
-                        urlutils.relative_url(t.base, b.base), self.outf.encoding
-                    ).rstrip("/"))
+                    "{}\n".format(
+                        urlutils.unescape_for_display(
+                            urlutils.relative_url(t.base, b.base), self.outf.encoding
+                        ).rstrip("/")
+                    )
                 )
         else:
             dir = controldir.ControlDir.open_containing(location)[0]

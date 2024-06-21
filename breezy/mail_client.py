@@ -556,9 +556,9 @@ class EmacsMail(ExternalMailClient):
             elisp = self._prepare_send_function()
             self.elisp_tmp_file = elisp
             lmmform = f'(load "{elisp}")'
-            mmform = '(bzr-add-mime-att "{}")'.format(self._encode_path(
-                attach_path, "attachment"
-            ))
+            mmform = '(bzr-add-mime-att "{}")'.format(
+                self._encode_path(attach_path, "attachment")
+            )
             rmform = f'(delete-file "{elisp}")'
             commandline.append(lmmform)
             commandline.append(mmform)
@@ -615,13 +615,17 @@ class MailApp(BodyExternalMailClient):
             os.write(fd, "tell newMessage\n")
             if to is not None:
                 os.write(
-                    fd, "make new to recipient with properties" ' {{address:"{}"}}\n'.format(to)
+                    fd,
+                    "make new to recipient with properties"
+                    ' {{address:"{}"}}\n'.format(to),
                 )
             if from_ is not None:
                 # though from_ doesn't actually seem to be used
                 os.write(fd, 'set sender to "{}"\n'.format(from_.replace('"', '\\"')))
             if subject is not None:
-                os.write(fd, 'set subject to "{}"\n'.format(subject.replace('"', '\\"')))
+                os.write(
+                    fd, 'set subject to "{}"\n'.format(subject.replace('"', '\\"'))
+                )
             if body is not None:
                 # FIXME: would be nice to prepend the body to the
                 # existing content (e.g., preserve signature), but
@@ -629,7 +633,9 @@ class MailApp(BodyExternalMailClient):
                 # incantation.
                 os.write(
                     fd,
-                    'set content to "{}\\n\n"\n'.format(body.replace('"', '\\"').replace("\n", "\\n")),
+                    'set content to "{}\\n\n"\n'.format(
+                        body.replace('"', '\\"').replace("\n", "\\n")
+                    ),
                 )
 
             if attach_path is not None:
@@ -641,7 +647,9 @@ class MailApp(BodyExternalMailClient):
                     fd,
                     "tell content to make new attachment"
                     ' with properties {{file name:"{}"}}'
-                    " at after the last paragraph\n".format(self._encode_path(attach_path, "attachment")),
+                    " at after the last paragraph\n".format(
+                        self._encode_path(attach_path, "attachment")
+                    ),
                 )
             os.write(fd, "set visible to true\n")
             os.write(fd, "end tell\n")

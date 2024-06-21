@@ -29,8 +29,7 @@ User-Agent: Bazaar ({_breezy_version})
 
 """
 
-_SIMPLE_MESSAGE = (
-    """\
+_SIMPLE_MESSAGE = """\
 MIME-Version: 1.0
 Content-Type: text/plain; charset="%s"
 Content-Transfer-Encoding: %s
@@ -40,7 +39,6 @@ To: to@to.com
 User-Agent: Bazaar ({})
 
 %s""".format(_breezy_version)
-)
 
 SIMPLE_MESSAGE_ASCII = _SIMPLE_MESSAGE % ("us-ascii", "7bit", "body")
 SIMPLE_MESSAGE_UTF8 = _SIMPLE_MESSAGE % ("utf-8", "base64", "YsOzZHk=\n")

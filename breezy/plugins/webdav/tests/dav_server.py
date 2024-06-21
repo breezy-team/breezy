@@ -73,7 +73,9 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
         encoding = self.headers.get("Transfer-Encoding")
         if encoding is not None:
             if encoding != "chunked":
-                raise AssertionError("Unsupported transfer encoding: {}".format(encoding))
+                raise AssertionError(
+                    "Unsupported transfer encoding: {}".format(encoding)
+                )
             body = []
             # We receive the content by chunk
             while True:

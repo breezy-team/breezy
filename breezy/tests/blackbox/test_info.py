@@ -1350,9 +1350,9 @@ Location:
         tree_data = ""
         extra_space = ""
         if light_checkout:
-            tree_data = "  light checkout root: {}\n".format(friendly_location(
-                lco_tree.controldir.root_transport.base
-            ))
+            tree_data = "  light checkout root: {}\n".format(
+                friendly_location(lco_tree.controldir.root_transport.base)
+            )
             extra_space = " "
         if lco_tree.branch.get_bound_location() is not None:
             tree_data += "{}       checkout root: {}\n".format(
@@ -1370,8 +1370,8 @@ Location:
                 friendly_location(repo_branch.controldir.root_transport.base),
             )
         else:
-            branch_data = (
-                "   checkout of branch: {}\n".format(lco_tree.branch.controldir.root_transport.base)
+            branch_data = "   checkout of branch: {}\n".format(
+                lco_tree.branch.controldir.root_transport.base
             )
 
         verbose_info = "         0 committers\n" if verbose >= 2 else ""
