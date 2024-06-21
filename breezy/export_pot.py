@@ -28,7 +28,6 @@ is also left to that stage of the process.
 
 import inspect
 import os
-import sys
 
 import breezy
 
