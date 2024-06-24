@@ -32,7 +32,7 @@ def escape_commit_message(message: str) -> str:
     import re
 
     message, _ = re.subn(
-        "[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+",  # type: ignore
+        "[^\x09\x0a\x0d\u0020-\ud7ff\ue000-\ufffd]+",  # type: ignore
         lambda match: match.group(0).encode("unicode_escape"),  # type: ignore
         message,
     )  # type: ignore

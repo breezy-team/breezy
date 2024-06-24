@@ -17,7 +17,6 @@
 
 """Tests for foreign VCS utility code."""
 
-
 from .. import (
     branch,
     controldir,

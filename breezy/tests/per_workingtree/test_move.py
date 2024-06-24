@@ -547,21 +547,21 @@ class TestMove(TestCaseWithWorkingTree):
         """Check error when moving to unversioned non-ascii directory."""
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree(".")
-        self.build_tree(["a", "\xA7/"])
+        self.build_tree(["a", "\xa7/"])
         tree.add(["a"])
         if tree.has_versioned_directories():
-            e = self.assertRaises(errors.BzrMoveFailedError, tree.move, ["a"], "\xA7")
+            e = self.assertRaises(errors.BzrMoveFailedError, tree.move, ["a"], "\xa7")
             self.assertIsInstance(e.extra, errors.NotVersionedError)
-            self.assertEqual(e.extra.path, "\xA7")
+            self.assertEqual(e.extra.path, "\xa7")
         else:
-            tree.move(["a"], "\xA7")
+            tree.move(["a"], "\xa7")
 
     def test_move_unversioned_non_ascii(self):
         """Check error when moving an unversioned non-ascii file."""
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree(".")
-        self.build_tree(["\xA7", "dir/"])
+        self.build_tree(["\xa7", "dir/"])
         tree.add("dir")
-        e = self.assertRaises(errors.BzrMoveFailedError, tree.move, ["\xA7"], "dir")
+        e = self.assertRaises(errors.BzrMoveFailedError, tree.move, ["\xa7"], "dir")
         self.assertIsInstance(e.extra, errors.NotVersionedError)
-        self.assertEqual(e.extra.path, "\xA7")
+        self.assertEqual(e.extra.path, "\xa7")

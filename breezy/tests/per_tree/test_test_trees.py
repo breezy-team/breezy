@@ -346,9 +346,9 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         # unicode strings or '\xe2\x82\ac' (its utf-8 encoding) in raw strings.
         paths = [
             "",
-            "fo\N{Euro Sign}o",
-            "ba\N{Euro Sign}r/",
-            "ba\N{Euro Sign}r/ba\N{Euro Sign}z",
+            "fo\N{EURO SIGN}o",
+            "ba\N{EURO SIGN}r/",
+            "ba\N{EURO SIGN}r/ba\N{EURO SIGN}z",
         ]
         # bzr itself does not create unicode file ids, but we want them for
         # testing.
@@ -389,14 +389,14 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
 
         revision_id = "r\xe9v-1".encode()
         root_id = b"TREE_ROOT"
-        bar_id = "ba\N{Euro Sign}r-id".encode()
-        foo_id = "fo\N{Euro Sign}o-id".encode()
-        baz_id = "ba\N{Euro Sign}z-id".encode()
+        bar_id = "ba\N{EURO SIGN}r-id".encode()
+        foo_id = "fo\N{EURO SIGN}o-id".encode()
+        baz_id = "ba\N{EURO SIGN}z-id".encode()
         path_and_ids = [
             ("", root_id, None, None),
-            ("ba\N{Euro Sign}r", bar_id, root_id, revision_id),
-            ("fo\N{Euro Sign}o", foo_id, root_id, revision_id),
-            ("ba\N{Euro Sign}r/ba\N{Euro Sign}z", baz_id, bar_id, revision_id),
+            ("ba\N{EURO SIGN}r", bar_id, root_id, revision_id),
+            ("fo\N{EURO SIGN}o", foo_id, root_id, revision_id),
+            ("ba\N{EURO SIGN}r/ba\N{EURO SIGN}z", baz_id, bar_id, revision_id),
         ]
         with tree.lock_read():
             path_entries = list(tree.iter_entries_by_dir())
@@ -430,22 +430,22 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self._create_tree_with_utf8(wt)
 
         tree2 = wt.controldir.sprout("tree2").open_workingtree()
-        self.build_tree(["tree2/ba\N{Euro Sign}r/qu\N{Euro Sign}x"])
+        self.build_tree(["tree2/ba\N{EURO SIGN}r/qu\N{EURO SIGN}x"])
         if wt.supports_setting_file_ids():
             tree2.add(
-                ["ba\N{Euro Sign}r/qu\N{Euro Sign}x"],
-                ids=["qu\N{Euro Sign}x-id".encode()],
+                ["ba\N{EURO SIGN}r/qu\N{EURO SIGN}x"],
+                ids=["qu\N{EURO SIGN}x-id".encode()],
             )
         else:
-            tree2.add(["ba\N{Euro Sign}r/qu\N{Euro Sign}x"])
+            tree2.add(["ba\N{EURO SIGN}r/qu\N{EURO SIGN}x"])
         if wt.branch.repository._format.supports_setting_revision_ids:
             tree2.commit("to m\xe9rge", rev_id="r\xe9v-2".encode())
         else:
             tree2.commit("to m\xe9rge")
 
-        self.assertTrue(tree2.is_versioned("ba\N{Euro Sign}r/qu\N{Euro Sign}x"))
+        self.assertTrue(tree2.is_versioned("ba\N{EURO SIGN}r/qu\N{EURO SIGN}x"))
         wt.merge_from_branch(tree2.branch)
-        self.assertTrue(wt.is_versioned("ba\N{Euro Sign}r/qu\N{Euro Sign}x"))
+        self.assertTrue(wt.is_versioned("ba\N{EURO SIGN}r/qu\N{EURO SIGN}x"))
 
         if wt.branch.repository._format.supports_setting_revision_ids:
             wt.commit("m\xe9rge", rev_id="r\xe9v-3".encode())
@@ -456,16 +456,16 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         revision_id_1 = "r\xe9v-1".encode()
         revision_id_2 = "r\xe9v-2".encode()
         root_id = b"TREE_ROOT"
-        bar_id = "ba\N{Euro Sign}r-id".encode()
-        foo_id = "fo\N{Euro Sign}o-id".encode()
-        baz_id = "ba\N{Euro Sign}z-id".encode()
-        qux_id = "qu\N{Euro Sign}x-id".encode()
+        bar_id = "ba\N{EURO SIGN}r-id".encode()
+        foo_id = "fo\N{EURO SIGN}o-id".encode()
+        baz_id = "ba\N{EURO SIGN}z-id".encode()
+        qux_id = "qu\N{EURO SIGN}x-id".encode()
         path_and_ids = [
             ("", root_id, None, None),
-            ("ba\N{Euro Sign}r", bar_id, root_id, revision_id_1),
-            ("fo\N{Euro Sign}o", foo_id, root_id, revision_id_1),
-            ("ba\N{Euro Sign}r/ba\N{Euro Sign}z", baz_id, bar_id, revision_id_1),
-            ("ba\N{Euro Sign}r/qu\N{Euro Sign}x", qux_id, bar_id, revision_id_2),
+            ("ba\N{EURO SIGN}r", bar_id, root_id, revision_id_1),
+            ("fo\N{EURO SIGN}o", foo_id, root_id, revision_id_1),
+            ("ba\N{EURO SIGN}r/ba\N{EURO SIGN}z", baz_id, bar_id, revision_id_1),
+            ("ba\N{EURO SIGN}r/qu\N{EURO SIGN}x", qux_id, bar_id, revision_id_2),
         ]
         with tree.lock_read():
             path_entries = list(tree.iter_entries_by_dir())

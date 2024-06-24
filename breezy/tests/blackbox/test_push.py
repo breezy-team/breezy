@@ -70,8 +70,7 @@ class TestPush(tests.TestCaseWithTransport):
                 "",
                 "brz: ERROR: No push location known or specified. "
                 "To push to the parent branch "
-                "(at %s), use 'brz push :parent'.\n"
-                % urlutils.unescape_for_display(tree_b.branch.base, "utf-8"),
+                "(at {}), use 'brz push :parent'.\n".format(urlutils.unescape_for_display(tree_b.branch.base, "utf-8")),
             ),
         )
 
@@ -135,9 +134,9 @@ class TestPush(tests.TestCaseWithTransport):
         path = branch_a.get_push_location()
         self.assertEqual(
             err,
-            "Using saved push location: %s\n"
+            "Using saved push location: {}\n"
             "All changes applied successfully.\n"
-            "Pushed up to revision 2.\n" % urlutils.local_path_from_url(path),
+            "Pushed up to revision 2.\n".format(urlutils.local_path_from_url(path)),
         )
         self.assertEqual(path, branch_b.controldir.root_transport.base)
         # test explicit --remember
@@ -191,9 +190,8 @@ class TestPush(tests.TestCaseWithTransport):
         push_loc = t.branch.controldir.open_branch().get_push_location()
         out, err = self.run_bzr("push", working_dir="tree")
         self.assertEqual(
-            "Using saved push location: %s\n"
-            "No new revisions or tags to push.\n"
-            % urlutils.local_path_from_url(push_loc),
+            "Using saved push location: {}\n"
+            "No new revisions or tags to push.\n".format(urlutils.local_path_from_url(push_loc)),
             err,
         )
         out, err = self.run_bzr("push -q", working_dir="tree")
@@ -443,7 +441,7 @@ class TestPush(tests.TestCaseWithTransport):
         )
         self.assertEqual("", out)
         self.assertEqual(
-            "Created new stacked branch referring to %s.\n" % trunk_tree.branch.base,
+            "Created new stacked branch referring to {}.\n".format(trunk_tree.branch.base),
             err,
         )
         self.assertPublished(branch_tree.last_revision(), trunk_tree.branch.base)
@@ -467,7 +465,7 @@ class TestPush(tests.TestCaseWithTransport):
         )
         self.assertEqual("", out)
         self.assertEqual(
-            "Created new stacked branch referring to %s.\n" % trunk_tree.branch.base,
+            "Created new stacked branch referring to {}.\n".format(trunk_tree.branch.base),
             err,
         )
         self.assertPublished(branch_tree.last_revision(), trunk_tree.branch.base)
@@ -482,7 +480,7 @@ class TestPush(tests.TestCaseWithTransport):
         )
         self.assertEqual("", out)
         self.assertEqual(
-            "Created new stacked branch referring to %s.\n" % trunk_tree.branch.base,
+            "Created new stacked branch referring to {}.\n".format(trunk_tree.branch.base),
             err,
         )
         self.assertPublished(branch_tree.last_revision(), trunk_tree.branch.base)
@@ -504,7 +502,7 @@ class TestPush(tests.TestCaseWithTransport):
         )
         self.assertEqual("", out)
         self.assertEqual(
-            "Created new stacked branch referring to %s.\n" % trunk_public_url, err
+            "Created new stacked branch referring to {}.\n".format(trunk_public_url), err
         )
         self.assertPublished(branch_tree.last_revision(), trunk_public_url)
 

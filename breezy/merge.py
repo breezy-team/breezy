@@ -588,7 +588,7 @@ class Merger:
                 if self.base_rev_id in lcas:
                     trace.mutter(
                         "Unable to find unique lca. "
-                        "Fallback %r as best option." % self.base_rev_id
+                        "Fallback {!r} as best option.".format(self.base_rev_id)
                     )
                 interesting_revision_ids = set(lcas)
                 interesting_revision_ids.add(self.base_rev_id)
@@ -645,14 +645,14 @@ class Merger:
         elif self.reprocess:
             raise errors.BzrError(
                 "Conflict reduction is not supported for merge"
-                " type %s." % self.merge_type
+                " type {}.".format(self.merge_type)
             )
         if self.merge_type.supports_show_base:
             kwargs["show_base"] = self.show_base
         elif self.show_base:
             raise errors.BzrError(
                 "Showing base is not supported for this"
-                " merge type. %s" % self.merge_type
+                " merge type. {}".format(self.merge_type)
             )
         if (
             not getattr(self.merge_type, "supports_reverse_cherrypick", True)
@@ -1346,8 +1346,7 @@ class Merge3Merger:
                 # the tree root.
                 if names[self.winner_idx[parent_id_winner]] != "":
                     raise AssertionError(
-                        "File looks like a root, but named %s"
-                        % names[self.winner_idx[parent_id_winner]]
+                        "File looks like a root, but named {}".format(names[self.winner_idx[parent_id_winner]])
                     )
                 parent_trans_id = transform.ROOT_PARENT
             else:

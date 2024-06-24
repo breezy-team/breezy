@@ -16,7 +16,6 @@
 
 """UI implementations for use in testing."""
 
-
 from .. import progress, ui
 
 

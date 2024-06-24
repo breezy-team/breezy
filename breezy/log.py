@@ -1868,7 +1868,7 @@ class ShortLogFormatter(LogFormatter):
         to_file = self.to_file
         tags = ""
         if revision.tags:
-            tags = " {%s}" % (", ".join(sorted(revision.tags)))
+            tags = " {{{}}}".format(", ".join(sorted(revision.tags)))
         to_file.write(
             indent
             + "%*s %s\t%s%s%s\n"
@@ -1982,7 +1982,7 @@ class LineLogFormatter(LogFormatter):
         if len(rev.parent_ids) > 1:
             out.append("[merge]")
         if tags:
-            tag_str = "{%s}" % (", ".join(sorted(tags)))
+            tag_str = "{{{}}}".format(", ".join(sorted(tags)))
             out.append(tag_str)
         out.append(rev.get_summary())
         return self.truncate(prefix + " ".join(out).rstrip("\n"), max_chars)

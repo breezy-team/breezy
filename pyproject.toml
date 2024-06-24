@@ -83,6 +83,8 @@ dev = [
     "python-subunit",
     "cython>=0.29",
     "ruff",
+    "types-paramiko",
+    "types-PyYAML",
 ]
 testing = [
     "testtools",
@@ -195,6 +197,7 @@ ignore = [
     # This is unsafe for breezy, where several objects (e.g. VersionedFiles)
     # have a keys() method but no __iter__
     "SIM118", # Use `key in dict` instead of `key in dict.keys()`
+    "UP032", #  Use f-string instead of `format` call; f-strings break gettext
 ]
 # These are actually fine, but they make mypy more strict and then it fails.
 unfixable = ["ANN204"]

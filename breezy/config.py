@@ -1787,8 +1787,8 @@ class AuthenticationConfig:
             password = credentials["password"]
             if password is not None and scheme == "ssh":
                 trace.warning(
-                    "password ignored in section [%s],"
-                    " use an ssh agent instead" % credentials["name"]
+                    "password ignored in section [{}],"
+                    " use an ssh agent instead".format(credentials["name"])
                 )
                 password = None
         else:
@@ -2419,7 +2419,7 @@ class OptionRegistry(registry.Registry):
         Args:
           option_name: The name to validate.
         """
-        if _option_ref_re.match("{%s}" % option_name) is None:
+        if _option_ref_re.match("{{{}}}".format(option_name)) is None:
             raise IllegalOptionName(option_name)
 
     def register(self, option):
@@ -3169,17 +3169,21 @@ class IniFileStore(Store):
         Args:
           bytes: A string representing the file content.
         """
-        if self.is_loaded():
-            raise AssertionError(f"Already loaded: {self._config_obj!r}")
         co_input = BytesIO(bytes)
         try:
             # The config files are always stored utf8-encoded
-            self._config_obj = ConfigObj(co_input, encoding="utf-8", list_values=False)
+            new_config_obj = ConfigObj(co_input, encoding="utf-8", list_values=False)
         except configobj.ConfigObjError as e:
             self._config_obj = None
             raise ParseConfigError(e.errors, self.external_url()) from e
         except UnicodeDecodeError as e:
             raise ConfigContentError(self.external_url()) from e
+
+        if self._config_obj is not None:
+            if new_config_obj != self._config_obj:
+                raise AssertionError("ConfigObj instances are not equal")
+
+        self._config_obj = new_config_obj
 
     def save_changes(self):
         if not self.is_loaded():

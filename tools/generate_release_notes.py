@@ -26,7 +26,6 @@ doc/en/release-notes/brz-2.3.txt
 # NEWS file-id (so that merges of new work will tend to always land new NEWS
 # entries in the latest series).
 
-
 import os.path
 import re
 import sys

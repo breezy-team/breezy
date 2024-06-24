@@ -35,7 +35,7 @@ def check_repo_format_for_funky_id_on_win32(repo):
     if not repo._format.supports_funky_characters and sys.platform == "win32":
         raise TestSkipped(
             "funky chars not allowed on this platform in repository"
-            " %s" % repo.__class__.__name__
+            " {}".format(repo.__class__.__name__)
         )
 
 

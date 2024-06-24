@@ -100,23 +100,23 @@ class TestUnicodePaths(tests.TestCaseWithTransport):
 
     def test_messages(self):
         """Conflict messages involving non-ascii paths are displayed okay."""
-        make_tree_with_conflicts(self, "branch", prefix="\xA7")
+        make_tree_with_conflicts(self, "branch", prefix="\xa7")
         out, err = self.run_bzr(["conflicts", "-d", "branch"], encoding=self.encoding)
         self.assertEqual(
             out,
-            "Text conflict in \xA7_other_file\n"
-            "Path conflict: \xA7dir3 / \xA7dir2\n"
-            "Text conflict in \xA7file\n",
+            "Text conflict in \xa7_other_file\n"
+            "Path conflict: \xa7dir3 / \xa7dir2\n"
+            "Text conflict in \xa7file\n",
         )
         self.assertEqual(err, "")
 
     def test_text_conflict_paths(self):
         """Text conflicts on non-ascii paths are displayed okay."""
-        make_tree_with_conflicts(self, "branch", prefix="\xA7")
+        make_tree_with_conflicts(self, "branch", prefix="\xa7")
         out, err = self.run_bzr(
             ["conflicts", "-d", "branch", "--text"], encoding=self.encoding
         )
-        self.assertEqual(out, "\xA7_other_file\n" "\xA7file\n")
+        self.assertEqual(out, "\xa7_other_file\n" "\xa7file\n")
         self.assertEqual(err, "")
 
 

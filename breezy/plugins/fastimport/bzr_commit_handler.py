@@ -850,7 +850,7 @@ class CommitHandler(processor.CommitHandler):
                 symlink_target=old_ie.symlink_target,
             )
         else:
-            raise AssertionError("unknown kind: %s" % kind)
+            raise AssertionError("unknown kind: {}".format(kind))
 
         # Record it
         self.record_new(new_path, ie)

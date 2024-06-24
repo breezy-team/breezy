@@ -622,7 +622,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
     def test_last_modified_rev_after_content_unicode_link_changes(self):
         self.requireFeature(features.UnicodeFilenameFeature)
         self._test_last_mod_rev_after_content_link_changes(
-            "li\u1234nk", "targ\N{Euro Sign}t", "n\N{Euro Sign}wtarget"
+            "li\u1234nk", "targ\N{EURO SIGN}t", "n\N{EURO SIGN}wtarget"
         )
 
     def _commit_sprout(self, tree, name):

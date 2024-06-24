@@ -822,7 +822,7 @@ class TestStatusEncodings(TestCaseWithTransport):
         except UnicodeEncodeError as err:
             raise TestSkipped(
                 "can't build unicode working tree in "
-                "filesystem encoding %s" % sys.getfilesystemencoding()
+                "filesystem encoding {}".format(sys.getfilesystemencoding())
             ) from err
         working_tree.add(filename)
         return working_tree

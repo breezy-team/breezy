@@ -2330,7 +2330,7 @@ class TestColorGrep(GrepTestBase):
         self.assertEqual(out, res)
         self.assertEqual(len(out.splitlines()), 1)
 
-        out, err = self.run_bzr(["grep", "--color", "auto", "-r", "1", "foo"])
+        out, err = self.run_bzr(["grep", "--color", "never", "-r", "1", "foo"])
         self.assertEqual(out, txt_res)
         self.assertEqual(len(out.splitlines()), 1)
 

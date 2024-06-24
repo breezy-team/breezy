@@ -645,8 +645,8 @@ class BzrBranch8(BzrBranch):
                 if url is None:
                     hook_name = Branch.hooks.get_hook_name(hook)
                     raise AssertionError(
-                        "'transform_fallback_location' hook %s returned "
-                        "None, not a URL." % hook_name
+                        "'transform_fallback_location' hook {} returned "
+                        "None, not a URL.".format(hook_name)
                     )
             self._activate_fallback_location(
                 url, possible_transports=possible_transports

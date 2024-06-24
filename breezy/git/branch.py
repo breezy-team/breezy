@@ -17,7 +17,6 @@
 
 """An adapter between a Git Branch and a Bazaar Branch."""
 
-
 import contextlib
 from collections import defaultdict
 from functools import partial
@@ -134,9 +133,9 @@ class InterTagsFromGitToRemoteGit(InterTags):
                     pass
                 elif overwrite or ref_name not in old_refs:
                     ret[ref_name] = unpeeled
-                    updates[
-                        tag_name
-                    ] = self.target.branch.repository.lookup_foreign_revision_id(peeled)
+                    updates[tag_name] = (
+                        self.target.branch.repository.lookup_foreign_revision_id(peeled)
+                    )
                     ref_to_tag_map[ref_name] = tag_name
                     self.target.branch._tag_refs = None
                 else:

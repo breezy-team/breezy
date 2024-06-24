@@ -25,7 +25,6 @@ Specific tests for individual formats are in the tests/test_repository.py file
 rather than in tests/per_interrepository/*.py.
 """
 
-
 import contextlib
 
 from breezy import pyutils, transport

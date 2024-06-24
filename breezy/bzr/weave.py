@@ -669,7 +669,7 @@ class Weave(VersionedFile):
 
         if istack:
             raise WeaveFormatError(
-                "unclosed insertion blocks " "at end of weave: %s" % istack
+                "unclosed insertion blocks " "at end of weave: {}".format(istack)
             )
         if dset:
             raise WeaveFormatError(f"unclosed deletion blocks at end of weave: {dset}")
@@ -789,7 +789,7 @@ class Weave(VersionedFile):
                     result.append((istack[-1], lineno, l))
         if istack:
             raise WeaveFormatError(
-                "unclosed insertion blocks " "at end of weave: %s" % istack
+                "unclosed insertion blocks " "at end of weave: {}".format(istack)
             )
         if dset:
             raise WeaveFormatError(f"unclosed deletion blocks at end of weave: {dset}")

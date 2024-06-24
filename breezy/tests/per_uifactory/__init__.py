@@ -32,7 +32,6 @@
 #
 # Plugins that add new UIFactorys can create their own subclasses.
 
-
 from ... import tests, transport, ui
 from ..ui_testing import StringIOAsTTY, TextUIFactory
 
