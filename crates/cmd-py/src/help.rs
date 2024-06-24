@@ -6,8 +6,14 @@ struct DynamicHelpTopic(std::sync::Arc<breezy::help::DynamicHelpTopic>);
 
 #[pymethods]
 impl DynamicHelpTopic {
-    fn get_help_text(&self, additional_see_also: Option<Vec<String>>, plain: Option<bool>) -> String {
-        let additional_see_also = additional_see_also.as_ref().map(|x| x.iter().map(|x| x.as_str()).collect::<Vec<&str>>());
+    fn get_help_text(
+        &self,
+        additional_see_also: Option<Vec<String>>,
+        plain: Option<bool>,
+    ) -> String {
+        let additional_see_also = additional_see_also
+            .as_ref()
+            .map(|x| x.iter().map(|x| x.as_str()).collect::<Vec<&str>>());
         self.0
             .get_help_text(additional_see_also.as_deref(), plain.unwrap_or(true))
     }
@@ -46,8 +52,14 @@ impl StaticHelpTopic {
         self.0.name.to_string()
     }
 
-    fn get_help_text(&self, additional_see_also: Option<Vec<String>>, plain: Option<bool>) -> String {
-        let additional_see_also = additional_see_also.as_ref().map(|x| x.iter().map(|x| x.as_str()).collect::<Vec<&str>>());
+    fn get_help_text(
+        &self,
+        additional_see_also: Option<Vec<String>>,
+        plain: Option<bool>,
+    ) -> String {
+        let additional_see_also = additional_see_also
+            .as_ref()
+            .map(|x| x.iter().map(|x| x.as_str()).collect::<Vec<&str>>());
         self.0
             .get_help_text(additional_see_also.as_deref(), plain.unwrap_or(true))
     }

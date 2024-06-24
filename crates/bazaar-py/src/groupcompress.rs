@@ -4,8 +4,8 @@ use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use pyo3::wrap_pyfunction;
-use std::convert::TryInto;
 use std::borrow::Cow;
+use std::convert::TryInto;
 
 #[pyfunction]
 fn encode_base128_int(py: Python, value: u128) -> PyResult<&PyBytes> {
@@ -104,7 +104,10 @@ impl LinesDeltaIndex {
         bytes_length: usize,
         soft: Option<bool>,
     ) -> (Vec<Py<PyBytes>>, Vec<bool>) {
-        let source = source.iter().map(|x| Cow::Borrowed(x.as_slice())).collect::<Vec<Cow<'_, [u8]>>>();
+        let source = source
+            .iter()
+            .map(|x| Cow::Borrowed(x.as_slice()))
+            .collect::<Vec<Cow<'_, [u8]>>>();
         let (delta, index) = self.0.make_delta(source.as_slice(), bytes_length, soft);
         (
             delta

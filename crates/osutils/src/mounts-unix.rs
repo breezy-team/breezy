@@ -14,7 +14,9 @@ pub struct MountEntry {
 }
 
 // Read a mtab-style file
-pub fn read_mtab<P: AsRef<Path>>(path: P) -> Result<impl Iterator<Item = MountEntry>, std::io::Error> {
+pub fn read_mtab<P: AsRef<Path>>(
+    path: P,
+) -> Result<impl Iterator<Item = MountEntry>, std::io::Error> {
     let file = File::open(path)?;
     let reader = BufReader::new(file);
     Ok(reader

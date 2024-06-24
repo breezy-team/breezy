@@ -319,14 +319,20 @@ fn fields_per_entry(num_present_parents: usize) -> usize {
 
 #[pyfunction]
 fn get_ghosts_line(py: Python, ghost_ids: Vec<Vec<u8>>) -> PyResult<PyObject> {
-    let ghost_ids = ghost_ids.iter().map(|x| x.as_slice()).collect::<Vec<&[u8]>>();
+    let ghost_ids = ghost_ids
+        .iter()
+        .map(|x| x.as_slice())
+        .collect::<Vec<&[u8]>>();
     let bs = bazaar::dirstate::get_ghosts_line(ghost_ids.as_slice());
     Ok(PyBytes::new(py, bs.as_slice()).to_object(py))
 }
 
 #[pyfunction]
 fn get_parents_line(py: Python, parent_ids: Vec<Vec<u8>>) -> PyResult<PyObject> {
-    let parent_ids = parent_ids.iter().map(|x| x.as_slice()).collect::<Vec<&[u8]>>();
+    let parent_ids = parent_ids
+        .iter()
+        .map(|x| x.as_slice())
+        .collect::<Vec<&[u8]>>();
     let bs = bazaar::dirstate::get_parents_line(parent_ids.as_slice());
     Ok(PyBytes::new(py, bs.as_slice()).to_object(py))
 }

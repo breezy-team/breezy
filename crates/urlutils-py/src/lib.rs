@@ -177,7 +177,10 @@ fn join_segment_parameters_raw(url: &str, args: &PyTuple) -> PyResult<String> {
 
 #[pyfunction]
 fn join_segment_parameters(url: &str, parameters: HashMap<String, String>) -> PyResult<String> {
-    let parameters = parameters.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect::<HashMap<&str, &str>>();
+    let parameters = parameters
+        .iter()
+        .map(|(k, v)| (k.as_str(), v.as_str()))
+        .collect::<HashMap<&str, &str>>();
     breezy_urlutils::join_segment_parameters(url, &parameters).map_err(map_urlutils_error_to_pyerr)
 }
 

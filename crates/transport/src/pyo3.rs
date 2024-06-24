@@ -234,7 +234,9 @@ impl Transport for PyTransport {
             };
 
             Ok(Stat {
-                mode: stat_result.getattr(py, "st_mode")?.extract::<nix::sys::stat::mode_t>(py)?,
+                mode: stat_result
+                    .getattr(py, "st_mode")?
+                    .extract::<nix::sys::stat::mode_t>(py)?,
                 size: stat_result.getattr(py, "st_size")?.extract::<usize>(py)?,
                 mtime,
             })
