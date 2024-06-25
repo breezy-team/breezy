@@ -9,7 +9,7 @@ name = "rio"
 path = "pyrio.rs"
 
 [dependencies.pyo3]
-version = ">=0.14"
+workspace = true
 
 [dependencies.lazy_static]
 version = "1.4.0"
