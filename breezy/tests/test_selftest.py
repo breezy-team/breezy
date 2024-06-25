@@ -1240,7 +1240,7 @@ class TestRunner(tests.TestCase):
             "^----------------------------------------------------------------------\n"
             "Traceback \\(most recent call last\\):\n"
             "  .*"  # File .*, line .*, in failing_test' - but maybe not from .pyc
-            "    raise AssertionError\\(\"foo\"\\)\n"
+            '    raise AssertionError\\("foo"\\)\n'
             ".*"
             "^----------------------------------------------------------------------\n"
             ".*"
