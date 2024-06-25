@@ -414,9 +414,9 @@ class DistributionBranch:
         else:
             version_str = mangle_version(self.branch, version)
             yield version_str
-            yield from ["debian-%s" % version_str, "debian/%s" % version_str]
-            yield from ["ubuntu-%s" % version_str, "ubuntu/%s" % version_str]
-            yield from ["v%s" % version_str]
+            yield from ["debian-{}".format(version_str), "debian/{}".format(version_str)]
+            yield from ["ubuntu-{}".format(version_str), "ubuntu/{}".format(version_str)]
+            yield from ["v{}".format(version_str)]
 
     def revid_of_version(self, version: Version) -> RevisionID:
         """Returns the revision id corresponding to that version.
@@ -735,7 +735,7 @@ class DistributionBranch:
                 )
             else:
                 raise AssertionError(
-                    "Can't find the needed upstream part for version %s" % version
+                    "Can't find the needed upstream part for version {}".format(version)
                 )
         if (
             native
@@ -1408,7 +1408,7 @@ class DistributionBranch:
         # Use upstream_branch if it has been set, otherwise self.branch.
         source_branch = self.pristine_upstream_branch or self.branch
         if list(upstream_tips.keys()) != [None]:
-            raise AssertionError("Upstream tips: %r" % list(upstream_tips.keys()))
+            raise AssertionError("Upstream tips: {!r}".format(list(upstream_tips.keys())))
         # TODO(jelmer): Use colocated branches rather than creating a copy.
         if upstream_tips[None][1]:
             raise Exception("subpaths are not yet supported")
@@ -1641,7 +1641,7 @@ def branch_has_debian_version(branch, tag_name, md5=None):
         return rev.properties["deb-md5"] == md5
     except KeyError:
         warning(
-            "tag %s present in branch, but there is no "
-            "associated 'deb-md5' property" % tag_name
+            "tag {} present in branch, but there is no "
+            "associated 'deb-md5' property".format(tag_name)
         )
         return False

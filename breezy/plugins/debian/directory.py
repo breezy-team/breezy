@@ -55,7 +55,7 @@ def fixup_broken_git_url(url):
             path = "{}/{}".format(port, path.lstrip("/"))
         netloc = host
         if ":" in netloc:
-            netloc = "[%s]" % netloc
+            netloc = "[{}]".format(netloc)
         if credentials is not None and not (
             credentials == "git" and scheme not in ("git", "http", "https")
         ):
@@ -181,7 +181,7 @@ class AptDirectory:
             version = sorted(by_version, key=Version)[-1]
 
         if version not in by_version:
-            raise urlutils.InvalidURL(path=url, extra="version %s not found" % version)
+            raise urlutils.InvalidURL(path=url, extra="version {} not found".format(version))
 
         control = Deb822(by_version[version])
 
@@ -230,7 +230,7 @@ class DgitDirectory:
             version = sorted(urls, key=Version)[-1]
 
         if version not in urls:
-            raise urlutils.InvalidURL(path=url, extra="version %s not found" % version)
+            raise urlutils.InvalidURL(path=url, extra="version {} not found".format(version))
 
         if len(urls[version]) < 3:
             raise urlutils.InvalidURL(

@@ -29,7 +29,7 @@ from breezy.git.server import BzrBackend
 
 def main():
     if len(sys.argv) < 2:
-        print("usage: %s <git-dir>" % os.path.basename(sys.argv[0]))
+        print("usage: {} <git-dir>".format(os.path.basename(sys.argv[0])))
         sys.exit(1)
 
     backend = BzrBackend(breezy.transport.get_transport("/"))

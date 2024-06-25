@@ -138,7 +138,7 @@ def load_tests(loader, basic_tests, pattern):
     for mod in doctest_mod_names:
         basic_tests.addTest(doctest.DocTestSuite("breezy.plugins.debian." + mod))
     repack_tarball_tests = loader.loadTestsFromModuleNames(
-        ["%s.test_repack_tarball" % __name__]
+        ["{}.test_repack_tarball".format(__name__)]
     )
     scenarios = [
         (
@@ -334,11 +334,11 @@ class SourcePackageBuilder:
         del self.debian_files[filename]
 
     def add_default_control(self):
-        text = """Source: %s\nSection: misc\n""" % self.name
+        text = """Source: {}\nSection: misc\n""".format(self.name)
         text += "Priority: optional\n"
         text += "Maintainer: Maintainer <nobody@ubuntu.com>\n"
         text += "\n"
-        text += "Package: %s\n" % self.name
+        text += "Package: {}\n".format(self.name)
         text += "Architecture: all\n\n"
         self.add_debian_file("debian/control", text)
 
@@ -432,7 +432,7 @@ class SourcePackageBuilder:
                         )
                         if os.path.exists(tar_path):
                             os.unlink(tar_path)
-                        tar = tarfile.open(tar_path, "w:%s" % tar_format)
+                        tar = tarfile.open(tar_path, "w:{}".format(tar_format))
                         part_basedir = os.path.join(basedir, part)
                         try:
                             tar.add(part_basedir, arcname=part)
@@ -444,7 +444,7 @@ class SourcePackageBuilder:
                 )
                 if os.path.exists(tar_path):
                     os.unlink(tar_path)
-                tar = tarfile.open(tar_path, "w:%s" % tar_format)
+                tar = tarfile.open(tar_path, "w:{}".format(tar_format))
                 try:
                     tar.add(basedir)
                 finally:
@@ -457,7 +457,7 @@ class SourcePackageBuilder:
         ret = proc.wait()
         if ret != 0:
             raise AssertionError(f"dpkg-source failed, output:\n{proc.stdout.read()}")
-        cmd = "dpkg-genchanges -S > ../%s" % self.changes_name()
+        cmd = "dpkg-genchanges -S > ../{}".format(self.changes_name())
         proc = subprocess.Popen(
             cmd,
             shell=True,

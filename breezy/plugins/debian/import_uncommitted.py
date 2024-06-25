@@ -152,7 +152,7 @@ def download_snapshot(package: str, version: Version, output_dir: str) -> str:
                 raise SnapshotHashMismatch(filename, actual_hsh, hsh)
         except FileNotFoundError:
             with open(local_path, "wb") as f:
-                url = "https://snapshot.debian.org/file/%s" % hsh
+                url = "https://snapshot.debian.org/file/{}".format(hsh)
                 note(".. Downloading %s -> %s", url, filename)
                 try:
                     with urlopen(url) as g:  # noqa: S310
@@ -199,7 +199,7 @@ class TreeVersionNotInArchiveChangelog(Exception):
     def __init__(self, tree_version):
         self.tree_version = tree_version
         super().__init__(
-            "tree version %s does not appear in archive changelog" % tree_version
+            "tree version {} does not appear in archive changelog".format(tree_version)
         )
 
 
@@ -216,12 +216,12 @@ class TreeVersionWithoutTag(Exception):
 class TreeUpstreamVersionMissing(Exception):
     def __init__(self, upstream_version):
         self.upstream_version = upstream_version
-        super().__init__("unable to find upstream version %r" % upstream_version)
+        super().__init__("unable to find upstream version {!r}".format(upstream_version))
 
 
 class UnreleasedChangesSinceTreeVersion(Exception):
     def __init__(self, tree_version):
-        super().__init__("there are unreleased changes since %s" % tree_version)
+        super().__init__("there are unreleased changes since {}".format(tree_version))
 
 
 def find_missing_versions(
@@ -385,8 +385,7 @@ def import_uncommitted(
         revid = debcommit(
             tree,
             subpath=subpath,
-            message="Merge archive versions: %s"
-            % ", ".join([str(v) for (t, v, r) in ret]),
+            message="Merge archive versions: {}".format(", ".join([str(v) for (t, v, r) in ret])),
         )
         parent_ids = tree.branch.repository.get_revision(revid).parent_ids
         if parent_ids != [merge_into, to_merge]:
@@ -419,7 +418,7 @@ def set_vcs_git_url(
     old_vcs_url = control.source.get("Vcs-Git")
     if vcs_git_base is not None:
         control.source["Vcs-Git"] = urlutils.join(
-            vcs_git_base, "%s.git" % control.source["Source"]
+            vcs_git_base, "{}.git".format(control.source["Source"])
         )
     new_vcs_url = control.source.get("Vcs-Git")
     if vcs_browser_base:
@@ -519,7 +518,7 @@ def main(argv=None):
             else:
                 hint = None
             report_fatal(
-                "missing-changelog", "Missing changelog: %s" % e.path, hint=hint
+                "missing-changelog", "Missing changelog: {}".format(e.path), hint=hint
             )
             return 1
     else:
@@ -630,12 +629,10 @@ def main(argv=None):
 
     if os.environ.get("SVP_API") == "1":
         if len(ret) == 1:
-            commit_message = "Import missing upload: %s" % ret[0][1]
-            description = "Import uploaded version: %s" % (ret[0][1])
+            commit_message = "Import missing upload: {}".format(ret[0][1])
+            description = "Import uploaded version: {}".format(ret[0][1])
         else:
-            commit_message = "Import missing uploads: %s." % (
-                ", ".join([str(v) for t, v, rs in ret])
-            )
+            commit_message = "Import missing uploads: {}.".format(", ".join([str(v) for t, v, rs in ret]))
             description = "Import uploaded versions: %r" % (
                 [str(v) for t, v, rs in ret]
             )

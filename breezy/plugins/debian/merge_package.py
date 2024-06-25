@@ -289,8 +289,8 @@ def backport_suffix(release):
         release = distro_info.codename(release)
     version = distro_info.version(release)
     if version is None:
-        raise AssertionError("Unknown release %r" % release)
-    return "bpo%s" % version
+        raise AssertionError("Unknown release {!r}".format(release))
+    return "bpo{}".format(version)
 
 
 def determine_distribution(release: str, backport=False) -> str:

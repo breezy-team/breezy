@@ -93,7 +93,7 @@ class RevisionSpec_upstream(RevisionSpec):
             (cl, top_level) = find_changelog(tree, subpath, merge=False)
         except MissingChangelogError as e:
             raise InvalidRevisionSpec(
-                self.user_spec, branch, "no debian/changelog file found: %s" % e
+                self.user_spec, branch, "no debian/changelog file found: {}".format(e)
             ) from e
         if self.spec == "":
             version_spec = cl.version.upstream_version

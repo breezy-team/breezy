@@ -95,7 +95,7 @@ def upstream_tag_to_version(tag_name, package=None):
     if tag_name.startswith("version-"):
         tag_name = tag_name[len("version-") :]
     if package is not None and (
-        tag_name.startswith("%s-" % package) or tag_name.startswith("%s_" % package)
+        tag_name.startswith("{}-".format(package)) or tag_name.startswith("{}_".format(package))
     ):
         tag_name = tag_name[len(package) + 1 :]
     if package is None and "-" in tag_name:
@@ -300,11 +300,11 @@ def get_snapshot_revision(upstream_version):
         return None
     (kind, rev) = ret
     if kind == "svn":
-        return "svn:%s" % rev
+        return "svn:{}".format(rev)
     elif kind == "git":
-        return "git:%s" % rev
+        return "git:{}".format(rev)
     elif kind == "date":
-        return "date:%s" % rev
+        return "date:{}".format(rev)
     elif kind == "bzr":
         return str(rev)
     else:
@@ -386,12 +386,12 @@ def guess_upstream_tag(package, version, is_snapshot: bool = False) -> Iterable[
                 yield f"{package[len(prefix) :]}-{version}"
         yield f"{package}-{version}"
     if not is_snapshot:
-        yield "v%s" % version
-        yield "v.%s" % version
-        yield "release-%s" % version
-        yield "%s_release" % version.replace(".", "_")
-        yield "%s" % version.replace(".", "_")
-        yield "version-%s" % version
+        yield "v{}".format(version)
+        yield "v.{}".format(version)
+        yield "release-{}".format(version)
+        yield "{}_release".format(version.replace(".", "_"))
+        yield "{}".format(version.replace(".", "_"))
+        yield "version-{}".format(version)
         if package:
             yield "{}-{}-release".format(package, version.replace(".", "_"))
             yield f"{package}-v{version}"
@@ -412,16 +412,16 @@ def guess_upstream_revspec(package, version):
         is_snapshot = True
         m = re.match(r".*[~+]bzr(\.?)(\d+).*", version)
         if m:
-            yield "revno:%s" % m.group(2)
+            yield "revno:{}".format(m.group(2))
     (git_id, git_date) = git_snapshot_data_from_version(version)
     if git_id:
         is_snapshot = True
-        yield "git:%s" % git_id
+        yield "git:{}".format(git_id)
     if git_date:
         is_snapshot = True
-        yield "date:%s" % git_date
+        yield "date:{}".format(git_date)
     for tag in guess_upstream_tag(package, version, is_snapshot):
-        yield "tag:%s" % tag
+        yield "tag:{}".format(tag)
 
 
 class UpstreamBranchSource(UpstreamSource):
@@ -551,9 +551,9 @@ class UpstreamBranchSource(UpstreamSource):
         revid = self.upstream_branch.last_revision()
         version, mangled_version = self.get_version(package, current_version, revid)
         if mangled_version is not None:
-            self.upstream_revision_map[mangled_version] = "revid:%s" % revid.decode(
+            self.upstream_revision_map[mangled_version] = "revid:{}".format(revid.decode(
                 "utf-8"
-            )
+            ))
         return version, mangled_version
 
     def get_latest_release_version(self, package, current_version):
@@ -618,7 +618,7 @@ class UpstreamBranchSource(UpstreamSource):
                 if version is None:
                     continue
                 mangled_version = debianize_upstream_version(version, package)
-                self.upstream_revision_map[mangled_version] = "tag:%s" % tag
+                self.upstream_revision_map[mangled_version] = "tag:{}".format(tag)
                 if since_version is not None and mangled_version <= since_version:
                     continue
                 if since_revision and not graph.is_ancestor(since_revision, revision):

@@ -206,7 +206,7 @@ def describe_origin(branch, revid):
         else:
             if mapping.vcs.abbreviation == "git":
                 return "commit: {}".format(foreign_revid.decode("ascii")[:7])
-        return "commit, revision id: %s" % revid.decode("utf-8")
+        return "commit, revision id: {}".format(revid.decode("utf-8"))
 
 
 def write_dep3_patch(

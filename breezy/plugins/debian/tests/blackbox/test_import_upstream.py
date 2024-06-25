@@ -77,7 +77,7 @@ class TestImportUpstream(TestBaseImportDsc):
         return tree
 
     def upstream_tag(self, version):
-        return "upstream-%s" % version
+        return "upstream-{}".format(version)
 
     def test_import_upstream_no_branch_no_prior_tarball(self):
         self.make_upstream_tarball()
@@ -87,7 +87,7 @@ class TestImportUpstream(TestBaseImportDsc):
         self.make_debian_dir(tree.controldir.root_transport.local_abspath("debian"))
         tree.smart_add(["working"])
         tree.commit("save changes")
-        tar_path = "../%s" % self.upstream_tarball_name
+        tar_path = "../{}".format(self.upstream_tarball_name)
         out, err = self.run_bzr(
             ["import-upstream", self.upstream_version, tar_path], working_dir="working"
         )
@@ -111,7 +111,7 @@ class TestImportUpstream(TestBaseImportDsc):
             [
                 "import-upstream",
                 self.upstream_version,
-                "../%s" % self.upstream_tarball_name,
+                "../{}".format(self.upstream_tarball_name),
                 "../upstream",
             ],
             working_dir="working",
@@ -132,7 +132,7 @@ class TestImportUpstream(TestBaseImportDsc):
             [
                 "import-upstream",
                 self.upstream_version,
-                "../%s" % self.upstream_tarball_name,
+                "../{}".format(self.upstream_tarball_name),
                 "../upstream",
             ],
             working_dir="working",
@@ -144,10 +144,9 @@ class TestImportUpstream(TestBaseImportDsc):
             [
                 "import-upstream",
                 new_version.upstream_version,
-                "../%s"
-                % self._upstream_tarball_name(
+                "../{}".format(self._upstream_tarball_name(
                     self.package_name, new_version.upstream_version
-                ),
+                )),
                 "../upstream",
             ],
             working_dir="working",

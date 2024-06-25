@@ -93,7 +93,7 @@ class TestDep3Patch(ExternalBase):
         os.mkdir("packaging/.bzr-builddeb/")
         with open("packaging/.bzr-builddeb/local.conf", "w") as f:
             f.write(
-                "[BUILDDEB]\nupstream-branch = %s\n" % self.upstream_tree.branch.base
+                "[BUILDDEB]\nupstream-branch = {}\n".format(self.upstream_tree.branch.base)
             )
         self.feature_tree.commit(message="a message")
         (out, err) = self.run_bzr("dep3-patch -d packaging feature")
@@ -103,7 +103,7 @@ class TestDep3Patch(ExternalBase):
         os.mkdir("packaging/.bzr-builddeb/")
         with open("packaging/.bzr-builddeb/local.conf", "w") as f:
             f.write(
-                "[BUILDDEB]\nupstream-branch = %s\n" % self.upstream_tree.branch.base
+                "[BUILDDEB]\nupstream-branch = {}\n".format(self.upstream_tree.branch.base)
             )
         self.feature_tree.commit(message="a message")
         (out, err) = self.run_bzr("dep3-patch --no-upstream-check -d packaging feature")

@@ -218,7 +218,7 @@ class DescribeOriginTests(TestCaseWithTransport):
         tree = self.make_branch_and_tree(".")
         revid1 = tree.commit(message="msg1")
         self.assertEqual(
-            "commit, revision id: %s" % revid1.decode("utf-8"),
+            "commit, revision id: {}".format(revid1.decode("utf-8")),
             describe_origin(tree.branch, revid1),
         )
 

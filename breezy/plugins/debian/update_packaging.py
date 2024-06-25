@@ -98,7 +98,7 @@ def update_packaging(
                     paths=["debian/changelog", "debian/rules"],
                 )
         elif path.startswith("LICENSE") or path.startswith("COPYING"):
-            notes.append("License file %s has changed." % os.path.join(subpath, path))
+            notes.append("License file {} has changed.".format(os.path.join(subpath, path)))
 
     return notes
 

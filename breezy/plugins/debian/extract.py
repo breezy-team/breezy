@@ -250,5 +250,5 @@ def extract(dsc_filename: str, dsc, *, apply_patches: bool = False) -> SourceExt
     format = dsc.get("Format", FORMAT_1_0).strip()
     extractor_cls = SOURCE_EXTRACTORS.get(format)
     if extractor_cls is None:
-        raise AssertionError("Don't know how to import source format %s yet" % format)
+        raise AssertionError("Don't know how to import source format {} yet".format(format))
     return extractor_cls(dsc_filename, dsc, apply_patches=apply_patches)

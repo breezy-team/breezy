@@ -70,11 +70,11 @@ class TestBaseImportDsc(BuilddebTestCase):
         cl = self.make_changelog(version=version)
         self.write_changelog(cl, os.path.join(debian_dir, "changelog"))
         with open(os.path.join(debian_dir, "control"), "w") as f:
-            f.write("Source: %s\n" % self.package_name)
+            f.write("Source: {}\n".format(self.package_name))
             f.write("Maintainer: none\n")
             f.write("Standards-Version: 3.7.2\n")
             f.write("\n")
-            f.write("Package: %s\n" % self.package_name)
+            f.write("Package: {}\n".format(self.package_name))
             f.write("Architecture: all\n")
 
     def make_real_source_package(self, version=None):
@@ -86,7 +86,7 @@ class TestBaseImportDsc(BuilddebTestCase):
         debian_dir = os.path.join(upstream_dir, "debian")
         self.make_debian_dir(debian_dir, version=version)
         proc = subprocess.Popen(
-            "dpkg-source -b --format=1.0 %s" % upstream_dir,
+            "dpkg-source -b --format=1.0 {}".format(upstream_dir),
             shell=True,
             stdout=subprocess.PIPE,
         )
@@ -102,9 +102,9 @@ class TestImportDsc(TestBaseImportDsc):
         self.requireFeature(PristineTarFeature)
         tree = self.make_branch_and_tree(".")
         dsc_name = self.make_real_source_package(version="0.1-1")
-        self.run_bzr("import-dsc %s" % dsc_name)
+        self.run_bzr("import-dsc {}".format(dsc_name))
         dsc_name = self.make_real_source_package(version="0.2-1")
-        self.run_bzr("import-dsc %s" % dsc_name)
+        self.run_bzr("import-dsc {}".format(dsc_name))
         tree.lock_read()
         expected_shape = ["README", "debian/", "debian/changelog", "debian/control"]
         try:
@@ -120,7 +120,7 @@ class TestImportDsc(TestBaseImportDsc):
         self.requireFeature(PristineTarFeature)
         dsc_name = self.make_real_source_package()
         tree = self.make_branch_and_tree(".")
-        self.run_bzr("import-dsc %s" % dsc_name)
+        self.run_bzr("import-dsc {}".format(dsc_name))
         tree.lock_read()
         expected_shape = ["README", "debian/", "debian/changelog", "debian/control"]
         try:

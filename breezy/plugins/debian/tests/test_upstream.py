@@ -291,7 +291,7 @@ class RecordingSource(UpstreamSource):
         return [self._tarball_path(package, version, None, target_dir)]
 
     def __repr__(self):
-        return "%s()" % self.__class__.__name__
+        return "{}()".format(self.__class__.__name__)
 
 
 class StackedUpstreamSourceTests(TestCase):

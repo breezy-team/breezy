@@ -109,8 +109,8 @@ class PristineTarDeltaExists(PristineTarError):
 def git_store_pristine_tar(branch, filename, tree_id, delta, force=False):
     tree = branch.create_memorytree()
     with tree.lock_write():
-        id_filename = "%s.id" % filename
-        delta_filename = "%s.delta" % filename
+        id_filename = "{}.id".format(filename)
+        delta_filename = "{}.delta".format(filename)
         try:
             existing_id = tree.get_file_text(id_filename)
             existing_delta = tree.get_file_text(delta_filename)
@@ -126,7 +126,7 @@ def git_store_pristine_tar(branch, filename, tree_id, delta, force=False):
         tree.put_file_bytes_non_atomic(delta_filename, delta)
         tree.add([id_filename, delta_filename], [None, None], ["file", "file"])
         revid = tree.commit(
-            "Add pristine tar data for %s" % filename, reporter=NullCommitReporter()
+            "Add pristine tar data for {}".format(filename), reporter=NullCommitReporter()
         )
         mutter("Added pristine tar data for %s: %s", filename, revid)
 
@@ -155,7 +155,7 @@ def reconstruct_pristine_tar(dest, delta, dest_filename):
             raise
     (stdout, stderr) = proc.communicate(delta)
     if proc.returncode != 0:
-        raise PristineTarError("Generating tar from delta failed: %s" % stdout)
+        raise PristineTarError("Generating tar from delta failed: {}".format(stdout))
 
 
 def commit_pristine_tar(dest, tarball_path, upstream=None, committer=None):
@@ -195,7 +195,7 @@ def commit_pristine_tar(dest, tarball_path, upstream=None, committer=None):
                 "Generating pristine tar delta failed: " "no space left on device",
             )
         else:
-            raise PristineTarError("Generating delta from tar failed: %s" % stderr)
+            raise PristineTarError("Generating delta from tar failed: {}".format(stderr))
     return stdout
 
 
@@ -229,7 +229,7 @@ def make_pristine_tar_delta(dest, tarball_path):
         if b"excessively large binary delta" in stderr:
             raise PristineTarDeltaTooLarge(stderr)
         else:
-            raise PristineTarError("Generating delta from tar failed: %s" % stderr)
+            raise PristineTarError("Generating delta from tar failed: {}".format(stderr))
     return stdout
 
 
@@ -402,7 +402,7 @@ class BasePristineTarSource(UpstreamSource):
             (git_id, git_date) = git_snapshot_data_from_version(version)
             if git_id:
                 try:
-                    revspec = RevisionSpec.from_string("git:%s" % git_id)
+                    revspec = RevisionSpec.from_string("git:{}".format(git_id))
                     return revspec.as_revision_id(self.branch), ""
                 except (InvalidRevisionSpec, NoSuchTag):
                     pass
@@ -464,7 +464,7 @@ class BzrPristineTarSource(BasePristineTarSource):
         else:
             name = f"upstream-{distro}-{version}"
         if component is not None:
-            name += "/%s" % component
+            name += "/{}".format(component)
         return name
 
     def import_component_tarball(
@@ -521,7 +521,7 @@ class BzrPristineTarSource(BasePristineTarSource):
             tree.branch.repository._format.supports_custom_revision_properties
         )
         if component is not None:
-            message += ", component %s" % component
+            message += ", component {}".format(component)
             if supports_custom_revprops:
                 revprops["deb-component"] = component
         if md5 is not None:
@@ -688,7 +688,7 @@ class BzrPristineTarSource(BasePristineTarSource):
         for tag_name, revid in upstream_version_tag_start_revids(
             self.branch.tags.get_tag_dict(), package, version
         ):
-            sources.append("tag %s" % tag_name)
+            sources.append("tag {}".format(tag_name))
             start_revids.append(revid)
         note(
             "Searching for revision importing %s version %s on %s.",
@@ -817,7 +817,7 @@ class GitPristineTarSource(BasePristineTarSource):
         else:
             name = f"upstream-{distro}/{mangle_version_for_git(version)}"
         if component is not None:
-            name += "/%s" % component
+            name += "/{}".format(component)
         return name
 
     def import_component_tarball(
@@ -871,7 +871,7 @@ class GitPristineTarSource(BasePristineTarSource):
         message = f"Import upstream version {version}"
         revprops = {}
         if component is not None:
-            message += ", component %s" % component
+            message += ", component {}".format(component)
         if author is not None:
             revprops["authors"] = author
         timezone = None
@@ -920,7 +920,7 @@ class GitPristineTarSource(BasePristineTarSource):
                 )
                 list(builder.record_iter_changes(tree, tree.branch.last_revision(), []))
                 builder.finish_inventory()
-                builder.commit("Merge %s." % version)
+                builder.commit("Merge {}.".format(version))
 
         tree_id = revtree._lookup_path("")[2]
         try:
@@ -1147,7 +1147,7 @@ class GitPristineTarSource(BasePristineTarSource):
         for tag_name, revid in upstream_version_tag_start_revids(
             self.branch.tags.get_tag_dict(), package, version
         ):
-            sources.append("tag %s" % tag_name)
+            sources.append("tag {}".format(tag_name))
             start_revids.append(revid)
 
         note(

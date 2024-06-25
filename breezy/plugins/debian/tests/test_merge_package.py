@@ -639,10 +639,10 @@ class MergePackageTests(TestCaseWithTransport):
                 if urevid is not None:
                     msg += f"Merged tree {tree_nick(utree)}|{urevid}. "
                 else:
-                    msg += "Merged tree %s. " % utree
+                    msg += "Merged tree {}. ".format(utree)
             if paths is not None:
                 add_paths(paths)
-                msg += "Added paths: %s. " % str(paths)
+                msg += "Added paths: {}. ".format(str(paths))
 
             commit(msg, version)
 

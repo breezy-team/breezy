@@ -170,11 +170,11 @@ class UScanSource(UpstreamSource):
                 note("No watch file to use to check latest upstream release.")
                 return None, None
             args = [
-                "--watchfile=%s" % watch_tempfilename,
-                "--package=%s" % package,
+                "--watchfile={}".format(watch_tempfilename),
+                "--package={}".format(package),
                 "--report",
                 "--no-download",
-                "--upstream-version=%s" % current_version,
+                "--upstream-version={}".format(current_version),
             ]
             if self.skip_signatures:
                 args.append("--skip-signature")
@@ -234,8 +234,8 @@ class UScanSource(UpstreamSource):
                 "--rename",
                 "--check-dirname-level=0",
                 "--download",
-                "--destdir=%s" % container,
-                "--download-debversion=%s" % version,
+                "--destdir={}".format(container),
+                "--download-debversion={}".format(version),
             ]
             if self.skip_signatures:
                 args.append("--skip-signature")

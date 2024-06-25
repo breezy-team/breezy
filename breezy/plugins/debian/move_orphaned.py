@@ -363,23 +363,23 @@ def main(argv=None):
     except NoWnppBug as e:
         report_fatal(
             "nothing-to-do",
-            "Package %s is purported to be orphaned, "
-            "but no open wnpp bug exists." % e.package,
+            "Package {} is purported to be orphaned, "
+            "but no open wnpp bug exists.".format(e.package),
         )
         return 1
     except FormattingUnpreservable as e:
         report_fatal(
             "formatting-unpreservable",
-            "unable to preserve formatting while editing %s" % e.path,
+            "unable to preserve formatting while editing {}".format(e.path),
         )
         if hasattr(e, "diff"):
             sys.stderr.writelines(e.diff())
         return 1
     except (ChangeConflict, GeneratedFile) as e:
-        report_fatal("generated-file", "unable to edit generated file: %r" % e)
+        report_fatal("generated-file", "unable to edit generated file: {!r}".format(e))
         return 1
     except MissingControlFile as e:
-        report_fatal("missing-control-file", "Missing control file: %r" % e)
+        report_fatal("missing-control-file", "Missing control file: {!r}".format(e))
         return 1
 
     if result.new_vcs_url:

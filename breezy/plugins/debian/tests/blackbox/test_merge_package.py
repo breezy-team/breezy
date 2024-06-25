@@ -70,7 +70,7 @@ class TestMergePackageBB(BuilddebTestCase):
         os.chdir("ubup-o")
         merge_source = "../debp-n"
         self.run_bzr_error(
-            ["2 conflicts encountered."], "merge %s" % merge_source, retcode=1
+            ["2 conflicts encountered."], "merge {}".format(merge_source), retcode=1
         )
 
     def test_pre_merge_hook_shared_rev_conflict(self):
@@ -94,7 +94,7 @@ class TestMergePackageBB(BuilddebTestCase):
             raise TestNotApplicable("pre_merge hook requires bzr 2.5") from e
         self.run_bzr_error(
             ["branches for the merge source and target have diverged"],
-            "merge %s" % merge_source,
+            "merge {}".format(merge_source),
         )
 
     def make_conflicting_branches_setup(self):
@@ -223,10 +223,10 @@ class TestMergePackageBB(BuilddebTestCase):
                     if urevid is not None:
                         msg += f"Merged tree {tree_nick(utree)}|{urevid}. "
                     else:
-                        msg += "Merged tree %s. " % utree
+                        msg += "Merged tree {}. ".format(utree)
                 if paths is not None:
                     add_paths(paths)
-                    msg += "Added paths: %s. " % str(paths)
+                    msg += "Added paths: {}. ".format(str(paths))
 
                 commit(msg, version)
 

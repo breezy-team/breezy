@@ -163,7 +163,7 @@ class LocalApt(Apt):
     def _get_command(self, package, version_str=None, tar_only=False):
         args = ["apt", "source", "-d"]
         if self._rootdir is not None:
-            args.append("-oDir=%s" % self._rootdir)
+            args.append("-oDir={}".format(self._rootdir))
         if tar_only:
             args.append("--tar-only")
         args.extend(
@@ -229,7 +229,7 @@ class RemoteApt(LocalApt):
         aptdir = os.path.join(self._rootdir, "etc", "apt")
         os.makedirs(aptdir)
         if self.key_path:
-            tag = "[signed-by=%s]" % self.key_path
+            tag = "[signed-by={}]".format(self.key_path)
         else:
             tag = "[trusted=yes]"
         with open(os.path.join(aptdir, "sources.list"), "w") as f:

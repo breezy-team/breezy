@@ -32,25 +32,25 @@ def possible_upstream_tag_names(
     tags = []
     if component is None:
         # compatibility with git-buildpackage
-        tags.append("upstream/%s" % version)
-        tags.append("upstream-%s" % version)
-        manipulated = "upstream/%s" % mangle_version_for_git(version)
+        tags.append("upstream/{}".format(version))
+        tags.append("upstream-{}".format(version))
+        manipulated = "upstream/{}".format(mangle_version_for_git(version))
         if manipulated not in tags:
             tags.append(manipulated)
         # compatibility with svn-buildpackage
-        tags.append("upstream_%s" % version)
+        tags.append("upstream_{}".format(version))
 
         if try_hard:
             # common upstream names
-            tags.append("%s" % version)
-            tags.append("v%s" % version)
+            tags.append("{}".format(version))
+            tags.append("v{}".format(version))
             if "~" not in str(version) and "+" not in str(version):
-                tags.append("release-%s" % version)
-                tags.append("v%s-release" % version)
+                tags.append("release-{}".format(version))
+                tags.append("v{}-release".format(version))
             if package:
                 tags.append(f"{package}-{version}")
-            tags.append("v/%s" % version)
-            tags.append("v.%s" % version)
+            tags.append("v/{}".format(version))
+            tags.append("v.{}".format(version))
     else:
         tags.append(f"upstream-{version}/{component}")
         tags.append(f"upstream/{mangle_version_for_git(version)}/{component}")
@@ -77,7 +77,7 @@ def upstream_tag_version(tag):
     :return: tuple with version portion of the tag and component name
     """
     if not is_upstream_tag(tag):
-        raise AssertionError("Not an upstream tag: %s" % tag)
+        raise AssertionError("Not an upstream tag: {}".format(tag))
     if tag.startswith("upstream/"):
         tag = tag[len("upstream/") :]
     elif tag.startswith("upstream_"):
@@ -110,10 +110,10 @@ def _rev_is_upstream_import(revision: Revision, package: Optional[str], version:
         )
     possible_messages.extend(
         [
-            "Imported upstream version %s" % version,
-            "Import upstream version %s" % version,
-            "New upstream version %s" % version,
-            "New upstream version v%s" % version,
+            "Imported upstream version {}".format(version),
+            "Import upstream version {}".format(version),
+            "New upstream version {}".format(version),
+            "New upstream version v{}".format(version),
         ]
     )
     for possible_message in possible_messages:
@@ -126,7 +126,7 @@ def _rev_is_upstream_merge(
     revision: Revision, package: Optional[str], version: str
 ) -> bool:
     if revision.message.lower().startswith(
-        ("Merge tag 'v%s' into debian/" % version).lower()
+        ("Merge tag 'v{}' into debian/".format(version)).lower()
     ):
         return True
     if package is not None and revision.message.lower().startswith(
@@ -142,11 +142,11 @@ def upstream_version_tag_start_revids(tag_dict, package: Optional[str], version:
     This can be used by search_for_upstream_version
     """
     candidate_tag_start = [
-        "debian/%s-" % mangle_version_for_git(version),
-        "debian-%s" % version,
+        "debian/{}-".format(mangle_version_for_git(version)),
+        "debian-{}".format(version),
         # Epochs are sometimes replaced by underscores, rather than by %,
         # as DEP-14 suggests.
-        "debian/%s-" % mangle_version_for_git(version.replace(":", "_")),
+        "debian/{}-".format(mangle_version_for_git(version.replace(":", "_"))),
         # Haskell repo style
         f"{package}_v{version}",
     ]

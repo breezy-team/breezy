@@ -347,9 +347,9 @@ class BranchOpenError(Exception):
 
 def _convert_exception(url: str, e: Exception) -> Optional[BranchOpenError]:
     if isinstance(e, socket.error):
-        return BranchOpenError(url, "Socket error: %s" % e)
+        return BranchOpenError(url, "Socket error: {}".format(e))
     if isinstance(e, errors.NotBranchError):
-        return BranchOpenError(url, "Branch does not exist: %s" % e)
+        return BranchOpenError(url, "Branch does not exist: {}".format(e))
     if isinstance(e, UnsupportedProtocol):
         return BranchOpenError(url, str(e))
     if isinstance(e, ConnectionError):
@@ -739,10 +739,10 @@ def import_upstream(
             )
         except FileExists as e:
             raise AssertionError(
-                "The target file %s already exists, and is either "
+                "The target file {} already exists, and is either "
                 "different to the new upstream tarball, or they "
                 "are of different formats. Either delete the target "
-                "file, or use it as the argument to import." % e.path
+                "file, or use it as the argument to import.".format(e.path)
             ) from e
         imported_revisions = do_import(
             tree,
@@ -945,10 +945,10 @@ def merge_upstream(
                 )
             except FileExists as e:
                 raise AssertionError(
-                    "The target file %s already exists, and is either "
+                    "The target file {} already exists, and is either "
                     "different to the new upstream tarball, or they "
                     "are of different formats. Either delete the target "
-                    "file, or use it as the argument to import." % e.path
+                    "file, or use it as the argument to import.".format(e.path)
                 ) from e
             try:
                 conflicts, imported_revids = do_merge(
@@ -1298,14 +1298,14 @@ def main(argv=None):
             if version_kind == "snapshot":
                 report_fatal(
                     "nothing-to-do",
-                    "Last upstream version %s already imported." % e.version,
+                    "Last upstream version {} already imported.".format(e.version),
                     upstream_version=e.version,
                     transient=False,
                 )
             else:
                 report_fatal(
                     "nothing-to-do",
-                    "Last upstream version %s already imported. " % e.version,
+                    "Last upstream version {} already imported. ".format(e.version),
                     upstream_version=e.version,
                     hint="Import a snapshot by specifying --snapshot.",
                     transient=False,
@@ -1314,8 +1314,7 @@ def main(argv=None):
         except ReleaseWithoutChanges as e:
             report_fatal(
                 "nothing-to-do",
-                "New release %s is available, but does not contain changes."
-                % e.new_upstream_version,
+                "New release {} is available, but does not contain changes.".format(e.new_upstream_version),
                 upstream_version=e.new_upstream_version,
                 transient=False,
             )
@@ -1336,8 +1335,7 @@ def main(argv=None):
             return 1
         except UnsupportedRepackFormat as e:
             error_description = (
-                "Unable to repack file %s to supported tarball format."
-                % (os.path.basename(e.location))
+                "Unable to repack file {} to supported tarball format.".format(os.path.basename(e.location))
             )
             report_fatal(
                 "unsupported-repack-format", error_description, transient=False
@@ -1349,7 +1347,7 @@ def main(argv=None):
         except UpstreamAlreadyMerged as e:
             report_fatal(
                 "nothing-to-do",
-                "Last upstream version %s already merged." % e.version,
+                "Last upstream version {} already merged.".format(e.version),
                 upstream_version=e.version,
                 transient=False,
             )
@@ -1376,7 +1374,7 @@ def main(argv=None):
             )
             return 1
         except PristineTarError as e:
-            report_fatal("pristine-tar-error", "Pristine tar error: %s" % e)
+            report_fatal("pristine-tar-error", "Pristine tar error: {}".format(e))
             return 1
         except UpstreamBranchUnavailable as e:
             error_description = "The upstream branch at {} was unavailable: {}".format(
@@ -1421,7 +1419,7 @@ def main(argv=None):
                 conflicts = [[c.path, c.typestring] for c in e.conflicts]
             report_fatal(
                 "upstream-merged-conflicts",
-                "Merging upstream version %s resulted in conflicts." % e.version,
+                "Merging upstream version {} resulted in conflicts.".format(e.version),
                 upstream_version=e.version,
                 details={"conflicts": conflicts},
                 transient=False,
@@ -1449,14 +1447,14 @@ def main(argv=None):
         except InconsistentSourceFormatError as e:
             report_fatal(
                 "inconsistent-source-format",
-                "Inconsistencies in type of package: %s" % e,
+                "Inconsistencies in type of package: {}".format(e),
                 transient=False,
             )
             return 1
         except WatchLineWithoutMatches as e:
             report_fatal(
                 "uscan-watch-line-without-matches",
-                "UScan did not find matches for line: %s" % e.line.strip(),
+                "UScan did not find matches for line: {}".format(e.line.strip()),
                 transient=False,
             )
             return 1
@@ -1489,7 +1487,7 @@ def main(argv=None):
             return 1
         except MissingChangelogError as e:
             report_fatal(
-                "missing-changelog", "Missing changelog %s" % e, transient=False
+                "missing-changelog", "Missing changelog {}".format(e), transient=False
             )
             return 1
         except DistCommandFailed as e:
@@ -1501,7 +1499,7 @@ def main(argv=None):
             )
             return 1
         except MissingUpstreamTarball as e:
-            report_fatal("missing-upstream-tarball", "Missing upstream tarball: %s" % e)
+            report_fatal("missing-upstream-tarball", "Missing upstream tarball: {}".format(e))
             return 1
         except NewUpstreamTarballMissing as e:
             report_fatal(
@@ -1548,7 +1546,7 @@ def main(argv=None):
         except DistMissingNestedTree as e:
             report_fatal(
                 "requires-nested-tree-support",
-                "Unable to find nested tree at %s" % e.path,
+                "Unable to find nested tree at {}".format(e.path),
                 transient=False,
                 stage=("dist",),
             )
@@ -1584,8 +1582,7 @@ def main(argv=None):
                     json.dump(
                         {
                             "value": VALUE_IMPORT[version_kind],
-                            "description": "Imported new upstream version %s"
-                            % (result.new_upstream_version),
+                            "description": "Imported new upstream version {}".format(result.new_upstream_version),
                             "context": svp_context,
                             "versions": versions_dict(),
                         },
@@ -1630,7 +1627,7 @@ def main(argv=None):
                     )
                 except QuiltPatchDoesNotApply as e:
                     error_description = (
-                        "Quilt patch %s no longer applies" % e.patch_name
+                        "Quilt patch {} no longer applies".format(e.patch_name)
                     )
                     error_code = "quilt-patch-out-of-date"
                     report_fatal(error_code, error_description)
@@ -1653,15 +1650,14 @@ def main(argv=None):
 
             logging.info("Merge new upstream version %s", result.new_upstream_version)
             proposed_commit_message = (
-                "Merge new upstream release %s" % result.new_upstream_version
+                "Merge new upstream release {}".format(result.new_upstream_version)
             )
             if os.environ.get("SVP_API") == "1":
                 with open(os.environ["SVP_RESULT"], "w") as f:
                     json.dump(
                         {
                             "value": VALUE_MERGE[version_kind],
-                            "description": "Merged new upstream version %s"
-                            % (result.new_upstream_version),
+                            "description": "Merged new upstream version {}".format(result.new_upstream_version),
                             "commit-message": proposed_commit_message,
                             "context": svp_context,
                             "versions": versions_dict(),

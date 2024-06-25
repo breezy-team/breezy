@@ -72,7 +72,7 @@ class ExportedTarball(Fixture):
         self.version = version
 
     def setUp(self, test_case):
-        filename = "project-%s.tar.gz" % self.version
+        filename = "project-{}.tar.gz".format(self.version)
         tree = self.upstream.tree.branch.repository.revision_tree(
             self.upstream.tree.branch.last_revision()
         )
@@ -250,13 +250,13 @@ class TestMergeUpstream(BuilddebTestCase):
         os.mkdir(os.path.join(package_path, ".bzr-builddeb/"))
         with open(os.path.join(package_path, ".bzr-builddeb/local.conf"), "w") as f:
             f.write(
-                "[BUILDDEB]\n" "upstream-branch = %s\n" % changed_upstream.tree.basedir
+                "[BUILDDEB]\n" "upstream-branch = {}\n".format(changed_upstream.tree.basedir)
             )
 
         (out, err) = self.run_bzr(
             [
                 "merge-upstream",
-                "-rrevid:%s" % changed_upstream.tree.last_revision().decode("utf-8"),
+                "-rrevid:{}".format(changed_upstream.tree.last_revision().decode("utf-8")),
             ],
             working_dir=package.tree.basedir,
         )

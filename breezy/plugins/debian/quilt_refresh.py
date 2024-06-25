@@ -70,7 +70,7 @@ def refresh_quilt_patches(
                 with ChangelogEditor(
                     local_tree.abspath(os.path.join(subpath, "debian/changelog"))
                 ) as cl:
-                    cl.add_entry(["Drop patch %s, present upstream." % name])
+                    cl.add_entry(["Drop patch {}, present upstream.".format(name)])
                 debcommit(
                     local_tree,
                     committer=committer,

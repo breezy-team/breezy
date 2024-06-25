@@ -884,7 +884,7 @@ class TestExtractOrigTarballs(TestCaseInTempDir):
                 f.close()
             prefix = f"{package}_{version}.orig"
             if part is not None:
-                prefix += "-%s" % part
+                prefix += "-{}".format(part)
             tar_path = os.path.abspath(prefix + ".tar." + compression)
             if compression == "gz":
                 f = gzip.GzipFile(tar_path, "w")
@@ -895,7 +895,7 @@ class TestExtractOrigTarballs(TestCaseInTempDir):
 
                 f = lzma.LZMAFile(tar_path, "w")
             else:
-                raise AssertionError("Unknown compressin type %r" % compression)
+                raise AssertionError("Unknown compressin type {!r}".format(compression))
             try:
                 tf = tarfile.open(None, "w", f)
                 try:

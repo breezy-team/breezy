@@ -677,7 +677,7 @@ class cmd_builddeb(Command):
                 if prev_version is None:
                     build_options.extend(["-sa", "-v0"])
                 else:
-                    build_options.append("-v%s" % str(prev_version))
+                    build_options.append("-v{}".format(str(prev_version)))
                     if (
                         prev_version.upstream_version
                         != changelog.version.upstream_version
@@ -735,7 +735,7 @@ class cmd_builddeb(Command):
                     if result_dir is not None:
                         raise BzrCommandError(
                             "Could not find the .changes "
-                            "file from the build: %s" % build_dir
+                            "file from the build: {}".format(build_dir)
                         )
                     return
                 if is_local:
@@ -1224,10 +1224,10 @@ class cmd_merge_upstream(Command):
                     )
                 except FileExists as e:
                     raise BzrCommandError(
-                        "The target file %s already exists, and is either "
+                        "The target file {} already exists, and is either "
                         "different to the new upstream tarball, or they "
                         "are of different formats. Either delete the target "
-                        "file, or use it as the argument to import." % e.path
+                        "file, or use it as the argument to import.".format(e.path)
                     ) from e
                 try:
                     conflicts, imported_revids = do_merge(

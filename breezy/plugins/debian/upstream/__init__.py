@@ -363,7 +363,7 @@ class UpstreamProvider:
             except PackageVersionNotPresent as e:
                 raise MissingUpstreamTarball(self.package, self.version) from e
         else:
-            note("Using the upstream tarball that is present in %s" % self.store_dir)
+            note("Using the upstream tarball that is present in {}".format(self.store_dir))
         paths = self.provide_from_store_dir(target_dir)
         return [
             (p, component_from_orig_tarball(p, self.package, self.version))

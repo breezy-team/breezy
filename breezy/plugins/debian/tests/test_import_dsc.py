@@ -135,7 +135,7 @@ class DistributionBranchTests(BuilddebTestCase):
         with open(filename) as f:
             contents = f.read()
         self.assertEqual(
-            contents, expected_contents, "Contents of %s are not as expected" % filename
+            contents, expected_contents, "Contents of {} are not as expected".format(filename)
         )
 
     def do_commit_with_md5(self, tree, message, md5):
@@ -179,7 +179,7 @@ class DistributionBranchTests(BuilddebTestCase):
         db = self.db1
         version_no = "0.1-1"
         version = Version(version_no)
-        self.assertEqual(db.tag_name(version, "debian"), "debian/%s" % version_no)
+        self.assertEqual(db.tag_name(version, "debian"), "debian/{}".format(version_no))
 
     def test_tag_name_native(self):
         db = self.db1
@@ -957,7 +957,7 @@ class DistributionBranchTests(BuilddebTestCase):
         )
         rev = branch.repository.get_revision(rev_id)
         self.assertEqual(
-            rev.message, "Import upstream version %s" % str(version.upstream_version)
+            rev.message, "Import upstream version {}".format(str(version.upstream_version))
         )
         self.assertEqual(rev.properties.get("deb-md5"), None)
 
@@ -1006,7 +1006,7 @@ class DistributionBranchTests(BuilddebTestCase):
         )
         rev = branch.repository.get_revision(rev_id)
         self.assertEqual(
-            rev.message, "Import upstream version %s" % str(version2.upstream_version)
+            rev.message, "Import upstream version {}".format(str(version2.upstream_version))
         )
         self.assertIs(rev.properties.get("deb-md5"), None)
         rev_tree1 = branch.repository.revision_tree(rev.parent_ids[0])
@@ -1049,7 +1049,7 @@ class DistributionBranchTests(BuilddebTestCase):
         )
         rev = branch.repository.get_revision(rev_id)
         self.assertEqual(
-            rev.message, "Import upstream version %s" % str(version.upstream_version)
+            rev.message, "Import upstream version {}".format(str(version.upstream_version))
         )
         self.assertEqual(rev.properties["deb-md5"], self.fake_md5_1)
         self.assertTrue("deb-pristine-delta" in rev.properties)
@@ -1087,7 +1087,7 @@ class DistributionBranchTests(BuilddebTestCase):
         )
         rev = branch.repository.get_revision(rev_id)
         self.assertEqual(
-            rev.message, "Import upstream version %s" % str(version.upstream_version)
+            rev.message, "Import upstream version {}".format(str(version.upstream_version))
         )
         self.assertEqual(rev.properties["deb-md5"], self.fake_md5_1)
         self.assertTrue("deb-pristine-delta-bz2" in rev.properties)
@@ -1142,7 +1142,7 @@ class DistributionBranchTests(BuilddebTestCase):
         )
         rev = branch.repository.get_revision(rev_id)
         self.assertEqual(
-            rev.message, "Import upstream version %s" % str(version.upstream_version)
+            rev.message, "Import upstream version {}".format(str(version.upstream_version))
         )
         self.assertEqual(rev.properties["deb-md5"], self.fake_md5_1)
         self.assertTrue("deb-pristine-delta-xz" in rev.properties)
@@ -1983,7 +1983,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.addCleanup(tree.unlock)
         tree.commit("add packaging")
         tree.branch.tags.set_tag(
-            "upstream-%s" % version1.upstream_version, upstream_rev1
+            "upstream-{}".format(version1.upstream_version), upstream_rev1
         )
         builder = SourcePackageBuilder("package", version2)
         builder.add_default_control()
@@ -2023,7 +2023,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.addCleanup(tree.unlock)
         tree.commit("add packaging")
         tree.branch.tags.set_tag(
-            "upstream-%s" % version1.upstream_version, upstream_rev1
+            "upstream-{}".format(version1.upstream_version), upstream_rev1
         )
         builder = SourcePackageBuilder("package", version2)
         builder.add_default_control()
@@ -2066,7 +2066,7 @@ class DistributionBranchTests(BuilddebTestCase):
         packaging_tree.add(["a"], ids=[b"other-a-id"])
         packaging_tree.commit("add packaging")
         packaging_tree.branch.tags.set_tag(
-            "upstream-%s" % version1.upstream_version, upstream_rev1
+            "upstream-{}".format(version1.upstream_version), upstream_rev1
         )
         builder = SourcePackageBuilder("package", version2)
         builder.add_default_control()
