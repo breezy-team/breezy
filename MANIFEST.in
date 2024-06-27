@@ -11,6 +11,7 @@ recursive-include contrib *
 recursive-include doc *
 recursive-include po *
 recursive-include lib-* Cargo.toml *.rs
+include Cargo.lock
 
 include Cargo.toml
 include breezy/py.typed
