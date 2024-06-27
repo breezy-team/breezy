@@ -20,9 +20,19 @@
 import os
 from typing import Set
 
-from pyinotify import (IN_ATTRIB, IN_CLOSE_WRITE, IN_CREATE, IN_DELETE,
-                       IN_MOVED_FROM, IN_MOVED_TO, IN_Q_OVERFLOW, Event,
-                       Notifier, ProcessEvent, WatchManager)
+from pyinotify import (
+    IN_ATTRIB,
+    IN_CLOSE_WRITE,
+    IN_CREATE,
+    IN_DELETE,
+    IN_MOVED_FROM,
+    IN_MOVED_TO,
+    IN_Q_OVERFLOW,
+    Event,
+    Notifier,
+    ProcessEvent,
+    WatchManager,
+)
 
 from .workingtree import WorkingTree
 
@@ -31,13 +41,11 @@ MASK = (
 )
 
 
-
 class TooManyOpenFiles(Exception):
     """Too many open files."""
 
 
 class _Process(ProcessEvent):  # type: ignore
-
     paths: Set[str]
     created: Set[str]
 

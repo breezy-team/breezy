@@ -49,7 +49,6 @@ jobs:
       - name: Install dependencies (linux/pip)
         run: |
           sudo apt install libgpgme-dev
-          pip install pyinotify
           pip install ".[workspace,pgp]"
         if: "matrix.os == 'ubuntu-latest'"
       - name: Build docs

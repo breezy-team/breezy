@@ -48,12 +48,12 @@ def generate_unicode_names():
 
 
 interesting_encodings = [
-    ('iso-8859-1', False),
-    ('ascii', False),
-    ('cp850', False),
-    ('utf-8', True),
-    ('ucs-2', True),
-    ]
+    ("iso-8859-1", False),
+    ("ascii", False),
+    ("cp850", False),
+    ("utf-8", True),
+    ("ucs-2", True),
+]
 
 
 def generate_unicode_encodings(universal_encoding=None):
@@ -91,11 +91,11 @@ class RecordingContextManager:
         self._calls = []
 
     def __enter__(self):
-        self._calls.append('__enter__')
+        self._calls.append("__enter__")
         return self  # This is bound to the 'as' clause in a with statement.
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self._calls.append('__exit__')
+        self._calls.append("__exit__")
         return False  # propogate exceptions.
 
 
@@ -134,9 +134,9 @@ def make_branch_and_populated_tree(testcase):
     # TODO: Either accept or return the names of the files, so the caller
     # doesn't need to be bound to the particular files created? -- mbp
     # 20110705
-    tree = testcase.make_branch_and_tree('t')
-    testcase.build_tree_contents([('t/hello', b'hello world')])
-    tree.add(['hello'], ids=[b'hello-id'])
+    tree = testcase.make_branch_and_tree("t")
+    testcase.build_tree_contents([("t/hello", b"hello world")])
+    tree.add(["hello"], ids=[b"hello-id"])
     return tree
 
 
@@ -152,8 +152,9 @@ class TimeoutFixture:
 
     def __init__(self, timeout_secs, gentle=True):
         import signal
+
         self.timeout_secs = timeout_secs
-        self.alarm_fn = getattr(signal, 'alarm', None)
+        self.alarm_fn = getattr(signal, "alarm", None)
         self.gentle = gentle
         self._es = ExitStack()
 
@@ -162,6 +163,7 @@ class TimeoutFixture:
 
     def setUp(self):
         import signal
+
         if self.alarm_fn is None:
             return
         if self.gentle:

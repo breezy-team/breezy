@@ -37,15 +37,15 @@ class BisectCurrent:
         self._controldir = controldir
         self._branch = self._controldir.open_branch()
         if self._controldir.control_transport.has(filename):
-            self._revid = self._controldir.control_transport.get_bytes(
-                filename).strip()
+            self._revid = self._controldir.control_transport.get_bytes(filename).strip()
         else:
             self._revid = self._branch.last_revision()
 
     def _save(self):
         """Save the current revision."""
         self._controldir.control_transport.put_bytes(
-            self._filename, self._revid + b"\n")
+            self._filename, self._revid + b"\n"
+        )
 
     def get_current_revid(self):
         """Return the current revision id."""
@@ -70,8 +70,9 @@ class BisectCurrent:
         """Write the current revision's log entry to a file."""
         rev = self._branch.repository.get_revision(self._revid)
         revno = ".".join([str(x) for x in self.get_current_revno()])
-        outf.write("On revision {} ({}):\n{}\n".format(revno, rev.revision_id,
-                                                   rev.message))
+        outf.write(
+            "On revision {} ({}):\n{}\n".format(revno, rev.revision_id, rev.message)
+        )
 
     def switch(self, revid):
         """Switch the current revision to the given revid."""
@@ -80,8 +81,7 @@ class BisectCurrent:
             revid = self._branch.get_rev_id(revid)
         elif isinstance(revid, list):
             revid = revid[0].in_history(working.branch).rev_id
-        working.revert(None, working.branch.repository.revision_tree(revid),
-                       False)
+        working.revert(None, working.branch.repository.revision_tree(revid), False)
         self._revid = revid
         self._save()
 
@@ -135,14 +135,18 @@ class BisectLog:
         with repo.lock_read():
             graph = repo.get_graph()
             rev_sequence = graph.iter_lefthand_ancestry(
-                last_revid, (_mod_revision.NULL_REVISION,))
+                last_revid, (_mod_revision.NULL_REVISION,)
+            )
             high_revid = None
             low_revid = None
             between_revs = []
             for revision in rev_sequence:
                 between_revs.insert(0, revision)
-                matches = [x[1] for x in self._items
-                           if x[0] == revision and x[1] in ('yes', 'no')]
+                matches = [
+                    x[1]
+                    for x in self._items
+                    if x[0] == revision and x[1] in ("yes", "no")
+                ]
                 if not matches:
                     continue
                 if len(matches) > 1:
@@ -186,8 +190,9 @@ class BisectLog:
     def _set_status(self, revid, status):
         """Set the bisect status for the given revid."""
         if not self.is_done():
-            if status != "done" and revid in [x[0] for x in self._items
-                                              if x[1] in ['yes', 'no']]:
+            if status != "done" and revid in [
+                x[0] for x in self._items if x[1] in ["yes", "no"]
+            ]:
                 raise RuntimeError("attempting to add revid %s twice" % revid)
             self._items.append((revid, status))
 
@@ -202,16 +207,16 @@ class BisectLog:
             revlog = self._open_for_read()
             for line in revlog:
                 (revid, status) = line.split()
-                self._items.append((revid, status.decode('ascii')))
+                self._items.append((revid, status.decode("ascii")))
 
     def save(self):
         """Save the bisection log."""
-        contents = b''.join(
-            (b"%s %s\n" % (revid, status.encode('ascii')))
-            for (revid, status) in self._items)
+        contents = b"".join(
+            (b"%s %s\n" % (revid, status.encode("ascii")))
+            for (revid, status) in self._items
+        )
         if self._filename:
-            self._controldir.control_transport.put_bytes(
-                self._filename, contents)
+            self._controldir.control_transport.put_bytes(self._filename, contents)
         else:
             sys.stdout.write(contents)
 
@@ -243,9 +248,10 @@ class BisectLog:
         self._find_range_and_middle()
         # If we've found the "final" revision, check for a
         # merge point.
-        while ((self._middle_revid == self._high_revid or
-                self._middle_revid == self._low_revid) and
-                self.is_merge_point(self._middle_revid)):
+        while (
+            self._middle_revid == self._high_revid
+            or self._middle_revid == self._low_revid
+        ) and self.is_merge_point(self._middle_revid):
             for parent in self.get_parent_revids(self._middle_revid):
                 if parent == self._low_revid:
                     continue
@@ -253,8 +259,10 @@ class BisectLog:
                     self._find_range_and_middle(parent)
                     break
         self._switch_wc_to_revno(self._middle_revid, outf)
-        if self._middle_revid == self._high_revid or \
-           self._middle_revid == self._low_revid:
+        if (
+            self._middle_revid == self._high_revid
+            or self._middle_revid == self._low_revid
+        ):
             self.set_current("done")
 
 
@@ -308,10 +316,12 @@ class cmd_bisect(Command):
            anything else for no
     """
 
-    takes_args = ['subcommand', 'args*']
-    takes_options = [Option('output', short_name='o',
-                            help='Write log to this file.', type=str),
-                     'revision', 'directory']
+    takes_args = ["subcommand", "args*"]
+    takes_options = [
+        Option("output", short_name="o", help="Write log to this file.", type=str),
+        "revision",
+        "directory",
+    ]
 
     def _check(self, controldir):
         """Check preconditions for most operations to work."""
@@ -336,23 +346,20 @@ class cmd_bisect(Command):
         bisect_log.save()
         return False
 
-    def run(self, subcommand, args_list, directory='.', revision=None,
-            output=None):
+    def run(self, subcommand, args_list, directory=".", revision=None, output=None):
         """Handle the bisect command."""
 
         log_fn = None
-        if subcommand in ('yes', 'no', 'move') and revision:
+        if subcommand in ("yes", "no", "move") and revision:
             pass
-        elif subcommand in ('replay', ) and args_list and len(args_list) == 1:
+        elif subcommand in ("replay",) and args_list and len(args_list) == 1:
             log_fn = args_list[0]
-        elif subcommand in ('move', ) and not revision:
-            raise CommandError(
-                "The 'bisect move' command requires a revision.")
-        elif subcommand in ('run', ):
+        elif subcommand in ("move",) and not revision:
+            raise CommandError("The 'bisect move' command requires a revision.")
+        elif subcommand in ("run",):
             run_script = args_list[0]
         elif args_list or revision:
-            raise CommandError(
-                "Improper arguments to bisect " + subcommand)
+            raise CommandError("Improper arguments to bisect " + subcommand)
 
         controldir, _ = ControlDir.open_containing(directory)
 
@@ -374,8 +381,7 @@ class cmd_bisect(Command):
         elif subcommand == "run":
             self.run_bisect(controldir, run_script)
         else:
-            raise CommandError(
-                "Unknown bisect command: " + subcommand)
+            raise CommandError("Unknown bisect command: " + subcommand)
 
     def reset(self, controldir):
         """Reset the bisect state to no state."""
@@ -428,6 +434,7 @@ class cmd_bisect(Command):
 
     def run_bisect(self, controldir, script):
         import subprocess
+
         note("Starting bisect.")
         self.start(controldir)
         while True:
@@ -436,11 +443,11 @@ class cmd_bisect(Command):
                 process.wait()
                 retcode = process.returncode
                 if retcode == 0:
-                    done = self._set_state(controldir, None, 'yes')
+                    done = self._set_state(controldir, None, "yes")
                 elif retcode == 125:
                     break
                 else:
-                    done = self._set_state(controldir, None, 'no')
+                    done = self._set_state(controldir, None, "no")
                 if done:
                     break
             except RuntimeError:

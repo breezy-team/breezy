@@ -17,19 +17,21 @@
 #
 
 from .... import tests
-from ....tests import (TestCaseInTempDir, TestCaseWithTransport, TestUtil,
-                       multiply_tests)
+from ....tests import TestCaseInTempDir, TestCaseWithTransport, TestUtil, multiply_tests
 from ....tests.features import ExecutableFeature
 
-quilt_feature = ExecutableFeature('quilt')
+quilt_feature = ExecutableFeature("quilt")
 
 
 def load_tests(loader, basic_tests, pattern):
     testmod_names = [
-        'test_merge',
-        'test_wrapper',
-        ]
-    basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["{}.{}".format(__name__, i) for i in testmod_names]))
+        "test_merge",
+        "test_wrapper",
+    ]
+    basic_tests.addTest(
+        loader.loadTestsFromModuleNames(
+            ["{}.{}".format(__name__, i) for i in testmod_names]
+        )
+    )
 
     return basic_tests

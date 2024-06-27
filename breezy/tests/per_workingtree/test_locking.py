@@ -25,10 +25,9 @@ from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 
 class TestWorkingTreeLocking(TestCaseWithWorkingTree):
-
     def test_trivial_lock_read_unlock(self):
         """Locking and unlocking should work trivially."""
-        wt = self.make_branch_and_tree('.')
+        wt = self.make_branch_and_tree(".")
 
         self.assertFalse(wt.is_locked())
         self.assertFalse(wt.branch.is_locked())
@@ -42,12 +41,12 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         self.assertFalse(wt.branch.is_locked())
 
     def test_lock_read_returns_unlocker(self):
-        wt = self.make_branch_and_tree('.')
+        wt = self.make_branch_and_tree(".")
         self.assertThat(wt.lock_read, ReturnsUnlockable(wt))
 
     def test_trivial_lock_write_unlock(self):
         """Locking for write and unlocking should work trivially."""
-        wt = self.make_branch_and_tree('.')
+        wt = self.make_branch_and_tree(".")
 
         self.assertFalse(wt.is_locked())
         self.assertFalse(wt.branch.is_locked())
@@ -61,12 +60,12 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         self.assertFalse(wt.branch.is_locked())
 
     def test_lock_write_returns_unlocker(self):
-        wt = self.make_branch_and_tree('.')
+        wt = self.make_branch_and_tree(".")
         self.assertThat(wt.lock_write, ReturnsUnlockable(wt))
 
     def test_trivial_lock_tree_write_unlock(self):
         """Locking for tree write is ok when the branch is not locked."""
-        wt = self.make_branch_and_tree('.')
+        wt = self.make_branch_and_tree(".")
 
         self.assertFalse(wt.is_locked())
         self.assertFalse(wt.branch.is_locked())
@@ -80,12 +79,12 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         self.assertFalse(wt.branch.is_locked())
 
     def test_lock_tree_write_returns_unlocker(self):
-        wt = self.make_branch_and_tree('.')
+        wt = self.make_branch_and_tree(".")
         self.assertThat(wt.lock_tree_write, ReturnsUnlockable(wt))
 
     def test_trivial_lock_tree_write_branch_read_locked(self):
         """It is ok to lock_tree_write when the branch is read locked."""
-        wt = self.make_branch_and_tree('.')
+        wt = self.make_branch_and_tree(".")
 
         self.assertFalse(wt.is_locked())
         self.assertFalse(wt.branch.is_locked())
@@ -129,7 +128,7 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         # when unlocking the last lock count from tree_write_lock,
         # the tree should do a flush().
         # we test that by changing the inventory using set_root_id
-        tree = self.make_branch_and_tree('tree')
+        tree = self.make_branch_and_tree("tree")
         # prepare for a series of changes that will modify the
         # inventory
         getattr(tree, methodname)()
@@ -146,27 +145,27 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         # moment trigger inventory writes and thus will not
         # let us trigger a read-when-dirty situation.
         if tree.supports_file_ids:
-            old_root = tree.path2id('')
-        tree.add('')
+            old_root = tree.path2id("")
+        tree.add("")
         # to detect that the inventory is written by unlock, we
         # first check that it was not written yet.
         # TODO: This requires taking a read lock while we are holding the above
         #       write lock, which shouldn't actually be possible
         reference_tree = tree.controldir.open_workingtree()
         if tree.supports_file_ids:
-            self.assertEqual(old_root, reference_tree.path2id(''))
+            self.assertEqual(old_root, reference_tree.path2id(""))
         # now unlock the second held lock, which should do nothing.
         tree.unlock()
         reference_tree = tree.controldir.open_workingtree()
         if tree.supports_file_ids:
-            self.assertEqual(old_root, reference_tree.path2id(''))
+            self.assertEqual(old_root, reference_tree.path2id(""))
         # unlocking the first lock we took will now flush.
         tree.unlock()
         # and check it was written using another reference tree
         reference_tree = tree.controldir.open_workingtree()
         if reference_tree.supports_file_ids:
-            self.assertIsNot(None, reference_tree.path2id(''))
-        self.assertTrue(reference_tree.is_versioned(''))
+            self.assertIsNot(None, reference_tree.path2id(""))
+        self.assertTrue(reference_tree.is_versioned(""))
 
     def test_unlock_from_tree_write_lock_flushes(self):
         self._test_unlock_with_lock_method("lock_tree_write")
@@ -197,7 +196,7 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         # backdoor-in and change it reliably. For implementation specific tests
         # we can do such skullduggery, but not for interface specific tests.
         # And, its simpler :)
-        wt = self.make_branch_and_tree('.')
+        wt = self.make_branch_and_tree(".")
 
         self.assertFalse(wt.is_locked())
         self.assertFalse(wt.branch.is_locked())
@@ -224,8 +223,8 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         # second instance.  Our lock contract requires separate instances to
         # mutually exclude if a lock is exclusive at all: If we get no error
         # locking, the test still passes.
-        wt = self.make_branch_and_tree('.')
-        branch_copy = branch.Branch.open('.')
+        wt = self.make_branch_and_tree(".")
+        branch_copy = branch.Branch.open(".")
         branch_copy.lock_write()
         try:
             try:
@@ -251,8 +250,8 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         # Accordingly we test this by opening the branch twice, and locking the
         # branch for write in the second instance.  Our lock contract requires
         # separate instances to mutually exclude.
-        wt = self.make_branch_and_tree('.')
-        branch_copy = branch.Branch.open('.')
+        wt = self.make_branch_and_tree(".")
+        branch_copy = branch.Branch.open(".")
         branch_copy.lock_write()
         try:
             try:
@@ -273,8 +272,8 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         # second instance.  Our lock contract requires separate instances to
         # mutually exclude if a lock is exclusive at all: If we get no error
         # locking, the test still passes.
-        wt = self.make_branch_and_tree('.')
-        branch_copy = branch.Branch.open('.')
+        wt = self.make_branch_and_tree(".")
+        branch_copy = branch.Branch.open(".")
 
         branch_copy.lock_write()
         try:

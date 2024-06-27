@@ -20,7 +20,9 @@ from breezy.lazy_import import lazy_import
 
 from ... import config, merge
 
-lazy_import(globals(), """
+lazy_import(
+    globals(),
+    """
 import fnmatch
 import subprocess
 import tempfile
@@ -30,13 +32,14 @@ from breezy import (
     osutils,
     trace,
     )
-""")
+""",
+)
 
 
 command_option = config.Option(
-    'po_merge.command',
+    "po_merge.command",
     default='msgmerge -N "{other}" "{pot_file}" -C "{this}" -o "{result}"',
-    help='''\
+    help="""\
 Command used to create a conflict-free .po file during merge.
 
 The following parameters are provided by the hook:
@@ -48,21 +51,28 @@ file being merged.
 use the content of this file to produce the resulting ``.po`` file.
 
 All paths are absolute.
-''')
+""",
+)
 
 
 po_dirs_option = config.ListOption(
-    'po_merge.po_dirs', default='po,debian/po',
-    help='List of dirs containing .po files that the hook applies to.')
+    "po_merge.po_dirs",
+    default="po,debian/po",
+    help="List of dirs containing .po files that the hook applies to.",
+)
 
 
 po_glob_option = config.Option(
-    'po_merge.po_glob', default='*.po',
-    help='Glob matching all ``.po`` files in one of ``po_merge.po_dirs``.')
+    "po_merge.po_glob",
+    default="*.po",
+    help="Glob matching all ``.po`` files in one of ``po_merge.po_dirs``.",
+)
 
 pot_glob_option = config.Option(
-    'po_merge.pot_glob', default='*.pot',
-    help='Glob matching the ``.pot`` file in one of ``po_merge.po_dirs``.')
+    "po_merge.pot_glob",
+    default="*.pot",
+    help="Glob matching the ``.pot`` file in one of ``po_merge.po_dirs``.",
+)
 
 
 class PoMerger(merge.PerFileMerger):
@@ -77,15 +87,15 @@ class PoMerger(merge.PerFileMerger):
         # -- vila 2011-11-23
         self.conf = merger.this_branch.get_config_stack()
         # Which dirs are targeted by the hook
-        self.po_dirs = self.conf.get('po_merge.po_dirs')
+        self.po_dirs = self.conf.get("po_merge.po_dirs")
         # Which files are targeted by the hook
-        self.po_glob = self.conf.get('po_merge.po_glob')
+        self.po_glob = self.conf.get("po_merge.po_glob")
         # Which .pot file should be used
-        self.pot_glob = self.conf.get('po_merge.pot_glob')
-        self.command = self.conf.get('po_merge.command', expand=False)
+        self.pot_glob = self.conf.get("po_merge.pot_glob")
+        self.command = self.conf.get("po_merge.command", expand=False)
         # file_matches() will set the following for merge_text()
         self.pot_file_abspath = None
-        trace.mutter('PoMerger created')
+        trace.mutter("PoMerger created")
 
     def file_matches(self, params):
         """Return True if merge_matching should be called on this file."""
@@ -97,15 +107,17 @@ class PoMerger(merge.PerFileMerger):
         for po_dir in self.po_dirs:
             glob = osutils.pathjoin(po_dir, self.po_glob)
             if fnmatch.fnmatch(po_path, glob):
-                trace.mutter('po {} matches: {}'.format(po_path, glob))
+                trace.mutter("po {} matches: {}".format(po_path, glob))
                 break
         else:
-            trace.mutter('PoMerger did not match for %s and %s'
-                         % (self.po_dirs, self.po_glob))
+            trace.mutter(
+                "PoMerger did not match for %s and %s" % (self.po_dirs, self.po_glob)
+            )
             return False
         # Do we have the corresponding .pot file
         for path, file_class, kind, entry in self.merger.this_tree.list_files(
-                from_dir=po_dir, recursive=False):
+            from_dir=po_dir, recursive=False
+        ):
             pot_name, pot_file_id = path, entry
             if fnmatch.fnmatch(pot_name, self.pot_glob):
                 relpath = osutils.pathjoin(po_dir, pot_name)
@@ -117,19 +129,22 @@ class PoMerger(merge.PerFileMerger):
                 # user and he's happy OR the user needs to resolve the
                 # conflicts in the .pot file and use remerge.
                 # -- vila 2011-11-24
-                trace.mutter('will msgmerge %s using %s'
-                             % (po_path, self.pot_file_abspath))
+                trace.mutter(
+                    "will msgmerge %s using %s" % (po_path, self.pot_file_abspath)
+                )
                 return True
         else:
             return False
 
     def _invoke(self, command):
-        trace.mutter('Will msgmerge: {}'.format(command))
+        trace.mutter("Will msgmerge: {}".format(command))
         # We use only absolute paths so we don't care about the cwd
-        proc = subprocess.Popen(cmdline.split(command),
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE,
-                                stdin=subprocess.PIPE)
+        proc = subprocess.Popen(
+            cmdline.split(command),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            stdin=subprocess.PIPE,
+        )
         out, err = proc.communicate()
         return proc.returncode, out, err
 
@@ -142,26 +157,26 @@ class PoMerger(merge.PerFileMerger):
         This requires a valid .pot file to reconcile both sides.
         """
         # Create tmp files with the 'this' and 'other' content
-        tmpdir = tempfile.mkdtemp(prefix='po_merge')
+        tmpdir = tempfile.mkdtemp(prefix="po_merge")
         env = {}
-        env['this'] = osutils.pathjoin(tmpdir, 'this')
-        env['other'] = osutils.pathjoin(tmpdir, 'other')
-        env['result'] = osutils.pathjoin(tmpdir, 'result')
-        env['pot_file'] = self.pot_file_abspath
+        env["this"] = osutils.pathjoin(tmpdir, "this")
+        env["other"] = osutils.pathjoin(tmpdir, "other")
+        env["result"] = osutils.pathjoin(tmpdir, "result")
+        env["pot_file"] = self.pot_file_abspath
         try:
-            with open(env['this'], 'wb') as f:
+            with open(env["this"], "wb") as f:
                 f.writelines(params.this_lines)
-            with open(env['other'], 'wb') as f:
+            with open(env["other"], "wb") as f:
                 f.writelines(params.other_lines)
             command = self.conf.expand_options(self.command, env)
             retcode, out, err = self._invoke(command)
-            with open(env['result'], 'rb') as f:
+            with open(env["result"], "rb") as f:
                 # FIXME: To avoid the list() construct below which means the
                 # whole 'result' file is kept in memory, there may be a way to
                 # use an iterator that will close the file when it's done, but
                 # there is still the issue of removing the tmp dir...
                 # -- vila 2011-11-24
-                return 'success', list(f.readlines())
+                return "success", list(f.readlines())
         finally:
             osutils.rmtree(tmpdir)
-        return 'not applicable', []
+        return "not applicable", []

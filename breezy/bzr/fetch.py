@@ -39,8 +39,14 @@ class RepoFetcher:
     the logic in InterRepository.fetch().
     """
 
-    def __init__(self, to_repository, from_repository, last_revision=None,
-                 find_ghosts=True, fetch_spec=None):
+    def __init__(
+        self,
+        to_repository,
+        from_repository,
+        last_revision=None,
+        find_ghosts=True,
+        fetch_spec=None,
+    ):
         """Create a repo fetcher.
 
         Args:
@@ -60,9 +66,13 @@ class RepoFetcher:
         self._fetch_spec = fetch_spec
         self.find_ghosts = find_ghosts
         with self.from_repository.lock_read():
-            mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
-                   str(self.from_repository), str(self.from_repository._format),
-                   str(self.to_repository), str(self.to_repository._format))
+            mutter(
+                "Using fetch logic to copy between %s(%s) and %s(%s)",
+                str(self.from_repository),
+                str(self.from_repository._format),
+                str(self.to_repository),
+                str(self.to_repository._format),
+            )
             self.__fetch()
 
     def __fetch(self):
@@ -83,7 +93,7 @@ class RepoFetcher:
             pb.show_pct = pb.show_count = False
             pb.update(gettext("Finding revisions"), 0, 2)
             search_result = self._revids_to_fetch()
-            mutter('fetching: %s', str(search_result))
+            mutter("fetching: %s", str(search_result))
             if search_result.is_empty():
                 return
             pb.update(gettext("Fetching revisions"), 1, 2)
@@ -99,34 +109,37 @@ class RepoFetcher:
         # item_keys_introduced_by should have a richer API than it does at the
         # moment, so that it can feed the progress information back to this
         # function?
-        if (self.from_repository._format.rich_root_data and
-                not self.to_repository._format.rich_root_data):
+        if (
+            self.from_repository._format.rich_root_data
+            and not self.to_repository._format.rich_root_data
+        ):
             raise errors.IncompatibleRepositories(
-                self.from_repository, self.to_repository,
-                "different rich-root support")
+                self.from_repository, self.to_repository, "different rich-root support"
+            )
         with ui.ui_factory.nested_progress_bar() as pb:
             pb.update("Get stream source")
-            source = self.from_repository._get_source(
-                self.to_repository._format)
+            source = self.from_repository._get_source(self.to_repository._format)
             stream = source.get_stream(search)
             from_format = self.from_repository._format
             pb.update("Inserting stream")
             resume_tokens, missing_keys = self.sink.insert_stream(
-                stream, from_format, [])
+                stream, from_format, []
+            )
             if missing_keys:
                 pb.update("Missing keys")
                 stream = source.get_stream_for_missing_keys(missing_keys)
                 pb.update("Inserting missing keys")
                 resume_tokens, missing_keys = self.sink.insert_stream(
-                    stream, from_format, resume_tokens)
+                    stream, from_format, resume_tokens
+                )
             if missing_keys:
                 raise AssertionError(
-                    "second push failed to complete a fetch {!r}.".format(
-                        missing_keys))
+                    "second push failed to complete a fetch {!r}.".format(missing_keys)
+                )
             if resume_tokens:
                 raise AssertionError(
-                    "second push failed to commit the fetch {!r}.".format(
-                        resume_tokens))
+                    "second push failed to commit the fetch {!r}.".format(resume_tokens)
+                )
             pb.update("Finishing stream")
             self.sink.finished()
 
@@ -139,6 +152,7 @@ class RepoFetcher:
           PendingAncestryResult, EmptySearchResult, etc.)
         """
         from . import vf_search
+
         if self._fetch_spec is not None:
             # The fetch spec is already a concrete search result.
             return self._fetch_spec
@@ -147,14 +161,16 @@ class RepoFetcher:
             # explicit limit of no revisions needed
             return vf_search.EmptySearchResult()
         elif self._last_revision is not None:
-            return vf_search.NotInOtherForRevs(self.to_repository,
-                                               self.from_repository, [
-                                                   self._last_revision],
-                                               find_ghosts=self.find_ghosts).execute()
+            return vf_search.NotInOtherForRevs(
+                self.to_repository,
+                self.from_repository,
+                [self._last_revision],
+                find_ghosts=self.find_ghosts,
+            ).execute()
         else:  # self._last_revision is None:
-            return vf_search.EverythingNotInOther(self.to_repository,
-                                                  self.from_repository,
-                                                  find_ghosts=self.find_ghosts).execute()
+            return vf_search.EverythingNotInOther(
+                self.to_repository, self.from_repository, find_ghosts=self.find_ghosts
+            ).execute()
 
 
 class Inter1and2Helper:
@@ -197,8 +213,8 @@ class Inter1and2Helper:
     def _find_root_ids(self, revs, parent_map, graph):
         revision_root = {}
         for tree in self.iter_rev_trees(revs):
-            root_id = tree.path2id('')
-            revision_id = tree.get_file_revision('')
+            root_id = tree.path2id("")
+            revision_id = tree.get_file_revision("")
             revision_root[revision_id] = root_id
         # Find out which parents we don't already know root ids for
         parents = set(parent_map.values())
@@ -207,7 +223,7 @@ class Inter1and2Helper:
         # Limit to revisions present in the versionedfile
         parents = graph.get_parent_map(parents)
         for tree in self.iter_rev_trees(parents):
-            root_id = tree.path2id('')
+            root_id = tree.path2id("")
             revision_root[tree.get_revision_id()] = root_id
         return revision_root
 
@@ -218,12 +234,12 @@ class Inter1and2Helper:
           revs: the revisions to include
         """
         from ..tsort import topo_sort
+
         graph = self.source.get_graph()
         parent_map = graph.get_parent_map(revs)
         rev_order = topo_sort(parent_map)
         rev_id_to_root_id = self._find_root_ids(revs, parent_map, graph)
-        root_id_order = [(rev_id_to_root_id[rev_id], rev_id) for rev_id in
-                         rev_order]
+        root_id_order = [(rev_id_to_root_id[rev_id], rev_id) for rev_id in rev_order]
         # Guaranteed stable, this groups all the file id operations together
         # retaining topological order within the revisions of a file id.
         # File id splits and joins would invalidate this, but they don't exist
@@ -233,12 +249,14 @@ class Inter1and2Helper:
         if len(revs) > self.known_graph_threshold:
             graph = self.source.get_known_graph_ancestry(revs)
         new_roots_stream = _new_root_data_stream(
-            root_id_order, rev_id_to_root_id, parent_map, self.source, graph)
-        return [('texts', new_roots_stream)]
+            root_id_order, rev_id_to_root_id, parent_map, self.source, graph
+        )
+        return [("texts", new_roots_stream)]
 
 
 def _new_root_data_stream(
-        root_keys_to_create, rev_id_to_root_id_map, parent_map, repo, graph=None):
+    root_keys_to_create, rev_id_to_root_id_map, parent_map, repo, graph=None
+):
     """Generate a texts substream of synthesised root entries.
 
     Used in fetches that do rich-root upgrades.
@@ -254,15 +272,18 @@ def _new_root_data_stream(
       graph: a graph to use instead of repo.get_graph().
     """
     from .versionedfile import ChunkedContentFactory
+
     for root_key in root_keys_to_create:
         root_id, rev_id = root_key
         parent_keys = _parent_keys_for_root_version(
-            root_id, rev_id, rev_id_to_root_id_map, parent_map, repo, graph)
+            root_id, rev_id, rev_id_to_root_id_map, parent_map, repo, graph
+        )
         yield ChunkedContentFactory(root_key, parent_keys, None, [])
 
 
 def _parent_keys_for_root_version(
-        root_id, rev_id, rev_id_to_root_id_map, parent_map, repo, graph=None):
+    root_id, rev_id, rev_id_to_root_id_map, parent_map, repo, graph=None
+):
     """Get the parent keys for a given root id.
 
     A helper function for _new_root_data_stream.
@@ -285,7 +306,7 @@ def _parent_keys_for_root_version(
                 # But set parent_root_id to None since we don't really know
                 parent_root_id = None
             else:
-                parent_root_id = tree.path2id('')
+                parent_root_id = tree.path2id("")
             rev_id_to_root_id_map[parent_id] = None
             # XXX: why not:
             #   rev_id_to_root_id_map[parent_id] = parent_root_id
@@ -308,8 +329,8 @@ def _parent_keys_for_root_version(
             else:
                 try:
                     parent_ids.append(
-                        tree.get_file_revision(
-                            tree.id2path(root_id, recurse='none')))
+                        tree.get_file_revision(tree.id2path(root_id, recurse="none"))
+                    )
                 except errors.NoSuchId:
                     # not in the tree
                     pass
@@ -331,9 +352,9 @@ class TargetRepoKinds:
     They are the possible values of FetchSpecFactory.target_repo_kinds.
     """
 
-    PREEXISTING = 'preexisting'
-    STACKED = 'stacked'
-    EMPTY = 'empty'
+    PREEXISTING = "preexisting"
+    STACKED = "stacked"
+    EMPTY = "empty"
 
 
 class FetchSpecFactory:
@@ -373,13 +394,16 @@ class FetchSpecFactory:
     def make_fetch_spec(self):
         """Build a SearchResult or PendingAncestryResult or etc."""
         from . import vf_search
+
         if self.target_repo_kind is None or self.source_repo is None:
             raise AssertionError(
-                'Incomplete FetchSpecFactory: {!r}'.format(self.__dict__))
+                "Incomplete FetchSpecFactory: {!r}".format(self.__dict__)
+            )
         if len(self._explicit_rev_ids) == 0 and self.source_branch is None:
             if self.limit is not None:
                 raise NotImplementedError(
-                    "limit is only supported with a source branch set")
+                    "limit is only supported with a source branch set"
+                )
             # Caller hasn't specified any revisions or source branch
             if self.target_repo_kind == TargetRepoKinds.EMPTY:
                 return vf_search.EverythingResult(self.source_repo)
@@ -387,7 +411,8 @@ class FetchSpecFactory:
                 # We want everything not already in the target (or target's
                 # fallbacks).
                 return vf_search.EverythingNotInOther(
-                    self.target_repo, self.source_repo).execute()
+                    self.target_repo, self.source_repo
+                ).execute()
         heads_to_fetch = set(self._explicit_rev_ids)
         if self.source_branch is not None:
             must_fetch, if_present_fetch = self.source_branch.heads_to_fetch()
@@ -413,11 +438,14 @@ class FetchSpecFactory:
             if self.limit is not None:
                 graph = self.source_repo.get_graph()
                 topo_order = list(graph.iter_topo_order(ret.get_keys()))
-                result_set = topo_order[:self.limit]
-                ret = self.source_repo.revision_ids_to_search_result(
-                    result_set)
+                result_set = topo_order[: self.limit]
+                ret = self.source_repo.revision_ids_to_search_result(result_set)
             return ret
         else:
-            return vf_search.NotInOtherForRevs(self.target_repo, self.source_repo,
-                                               required_ids=heads_to_fetch, if_present_ids=if_present_fetch,
-                                               limit=self.limit).execute()
+            return vf_search.NotInOtherForRevs(
+                self.target_repo,
+                self.source_repo,
+                required_ids=heads_to_fetch,
+                if_present_ids=if_present_fetch,
+                limit=self.limit,
+            ).execute()

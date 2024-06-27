@@ -28,7 +28,7 @@ from .. import errors
 FORMAT_ONE = b"Bazaar pack format 1 (introduced in 0.18)"
 
 
-_whitespace_re = re.compile(b'[\t\n\x0b\x0c\r ]')
+_whitespace_re = re.compile(b"[\t\n\x0b\x0c\r ]")
 
 
 class ContainerError(errors.BzrError):
@@ -36,7 +36,6 @@ class ContainerError(errors.BzrError):
 
 
 class UnknownContainerFormatError(ContainerError):
-
     _fmt = "Unrecognised container format: %(container_format)r"
 
     def __init__(self, container_format):
@@ -44,12 +43,10 @@ class UnknownContainerFormatError(ContainerError):
 
 
 class UnexpectedEndOfContainerError(ContainerError):
-
     _fmt = "Unexpected end of container stream"
 
 
 class UnknownRecordTypeError(ContainerError):
-
     _fmt = "Unknown record type: %(record_type)r"
 
     def __init__(self, record_type):
@@ -57,7 +54,6 @@ class UnknownRecordTypeError(ContainerError):
 
 
 class InvalidRecordError(ContainerError):
-
     _fmt = "Invalid record: %(reason)s"
 
     def __init__(self, reason):
@@ -65,7 +61,6 @@ class InvalidRecordError(ContainerError):
 
 
 class ContainerHasExcessDataError(ContainerError):
-
     _fmt = "Container has data after end marker: %(excess)r"
 
     def __init__(self, excess):
@@ -73,7 +68,6 @@ class ContainerHasExcessDataError(ContainerError):
 
 
 class DuplicateRecordNameError(ContainerError):
-
     _fmt = "Container has multiple records with the same name: %(name)s"
 
     def __init__(self, name):
@@ -102,7 +96,7 @@ def _check_name_encoding(name):
     :raises InvalidRecordError: if name is not valid UTF-8.
     """
     try:
-        name.decode('utf-8')
+        name.decode("utf-8")
     except UnicodeDecodeError as e:
         raise InvalidRecordError(str(e))
 
@@ -135,10 +129,10 @@ class ContainerSerialiser:
             # half-written record if a name is bad!
             for name in name_tuple:
                 _check_name(name)
-            byte_sections.append(b'\x00'.join(name_tuple) + b"\n")
+            byte_sections.append(b"\x00".join(name_tuple) + b"\n")
         # End of headers
         byte_sections.append(b"\n")
-        return b''.join(byte_sections)
+        return b"".join(byte_sections)
 
     def bytes_record(self, bytes, names):
         """Return the bytes for a Bytes record with the given name and
@@ -202,8 +196,9 @@ class ContainerWriter:
         """
         current_offset = self.current_offset
         if length < self._JOIN_WRITES_THRESHOLD:
-            self.write_func(self._serialiser.bytes_header(length, names)
-                            + b''.join(chunks))
+            self.write_func(
+                self._serialiser.bytes_header(length, names) + b"".join(chunks)
+            )
         else:
             self.write_func(self._serialiser.bytes_header(length, names))
             for chunk in chunks:
@@ -237,8 +232,7 @@ class ReadVFile:
         self._string = None
 
     def _next(self):
-        if (self._string is None or
-                self._string.tell() == self._string_length):
+        if self._string is None or self._string.tell() == self._string_length:
             offset, data = next(self.readv_result)
             self._string_length = len(data)
             self._string = BytesIO(data)
@@ -247,18 +241,20 @@ class ReadVFile:
         self._next()
         result = self._string.read(length)
         if len(result) < length:
-            raise errors.BzrError('wanted %d bytes but next '
-                                  'hunk only contains %d: %r...' %
-                                  (length, len(result), result[:20]))
+            raise errors.BzrError(
+                "wanted %d bytes but next "
+                "hunk only contains %d: %r..." % (length, len(result), result[:20])
+            )
         return result
 
     def readline(self):
         """Note that readline will not cross readv segments."""
         self._next()
         result = self._string.readline()
-        if self._string.tell() == self._string_length and result[-1:] != b'\n':
-            raise errors.BzrError('short readline in the readvfile hunk: %r'
-                                  % (result, ))
+        if self._string.tell() == self._string_length and result[-1:] != b"\n":
+            raise errors.BzrError(
+                "short readline in the readvfile hunk: %r" % (result,)
+            )
         return result
 
 
@@ -272,13 +268,11 @@ def make_readv_reader(transport, filename, requested_records):
     """
     readv_blocks = [(0, len(FORMAT_ONE) + 1)]
     readv_blocks.extend(requested_records)
-    result = ContainerReader(ReadVFile(
-        transport.readv(filename, readv_blocks)))
+    result = ContainerReader(ReadVFile(transport.readv(filename, readv_blocks)))
     return result
 
 
 class BaseReader:
-
     def __init__(self, source_file):
         """Constructor.
 
@@ -292,9 +286,9 @@ class BaseReader:
 
     def _read_line(self):
         line = self._source.readline()
-        if not line.endswith(b'\n'):
+        if not line.endswith(b"\n"):
             raise UnexpectedEndOfContainerError()
-        return line.rstrip(b'\n')
+        return line.rstrip(b"\n")
 
 
 class ContainerReader(BaseReader):
@@ -351,14 +345,14 @@ class ContainerReader(BaseReader):
                 record_kind = self.reader_func(1)
             except StopIteration:
                 return
-            if record_kind == b'B':
+            if record_kind == b"B":
                 # Bytes record.
                 reader = BytesRecordReader(self._source)
                 yield reader
-            elif record_kind == b'E':
+            elif record_kind == b"E":
                 # End marker.  There are no more records.
                 return
-            elif record_kind == b'':
+            elif record_kind == b"":
                 # End of stream encountered, but no End Marker record seen, so
                 # this container is incomplete.
                 raise UnexpectedEndOfContainerError()
@@ -394,12 +388,11 @@ class ContainerReader(BaseReader):
                     raise DuplicateRecordNameError(name_tuple[0])
                 all_names.add(name_tuple)
         excess_bytes = self.reader_func(1)
-        if excess_bytes != b'':
+        if excess_bytes != b"":
             raise ContainerHasExcessDataError(excess_bytes)
 
 
 class BytesRecordReader(BaseReader):
-
     def read(self):
         """Read this record.
 
@@ -416,16 +409,15 @@ class BytesRecordReader(BaseReader):
         try:
             length = int(length_line)
         except ValueError:
-            raise InvalidRecordError(
-                "{!r} is not a valid length.".format(length_line))
+            raise InvalidRecordError("{!r} is not a valid length.".format(length_line))
 
         # Read the list of names.
         names = []
         while True:
             name_line = self._read_line()
-            if name_line == b'':
+            if name_line == b"":
                 break
-            name_tuple = tuple(name_line.split(b'\x00'))
+            name_tuple = tuple(name_line.split(b"\x00"))
             for name in name_tuple:
                 _check_name(name)
             names.append(name_tuple)
@@ -466,7 +458,7 @@ class ContainerPushParser:
     """
 
     def __init__(self):
-        self._buffer = b''
+        self._buffer = b""
         self._state_handler = self._state_expecting_format_line
         self._parsed_records = []
         self._reset_current_record()
@@ -483,8 +475,10 @@ class ContainerPushParser:
         last_buffer_length = None
         cur_buffer_length = len(self._buffer)
         last_state_handler = None
-        while (cur_buffer_length != last_buffer_length
-               or last_state_handler != self._state_handler):
+        while (
+            cur_buffer_length != last_buffer_length
+            or last_state_handler != self._state_handler
+        ):
             last_buffer_length = cur_buffer_length
             last_state_handler = self._state_handler
             self._state_handler()
@@ -506,10 +500,10 @@ class ContainerPushParser:
         If a newline byte is not found in the buffer, the buffer is
         unchanged and this returns None instead.
         """
-        newline_pos = self._buffer.find(b'\n')
+        newline_pos = self._buffer.find(b"\n")
         if newline_pos != -1:
             line = self._buffer[:newline_pos]
-            self._buffer = self._buffer[newline_pos + 1:]
+            self._buffer = self._buffer[newline_pos + 1 :]
             return line
         else:
             return None
@@ -525,9 +519,9 @@ class ContainerPushParser:
         if len(self._buffer) >= 1:
             record_type = self._buffer[:1]
             self._buffer = self._buffer[1:]
-            if record_type == b'B':
+            if record_type == b"B":
                 self._state_handler = self._state_expecting_length
-            elif record_type == b'E':
+            elif record_type == b"E":
                 self.finished = True
                 self._state_handler = self._state_expecting_nothing
             else:
@@ -539,24 +533,23 @@ class ContainerPushParser:
             try:
                 self._current_record_length = int(line)
             except ValueError:
-                raise InvalidRecordError(
-                    "{!r} is not a valid length.".format(line))
+                raise InvalidRecordError("{!r} is not a valid length.".format(line))
             self._state_handler = self._state_expecting_name
 
     def _state_expecting_name(self):
         encoded_name_parts = self._consume_line()
-        if encoded_name_parts == b'':
+        if encoded_name_parts == b"":
             self._state_handler = self._state_expecting_body
         elif encoded_name_parts:
-            name_parts = tuple(encoded_name_parts.split(b'\x00'))
+            name_parts = tuple(encoded_name_parts.split(b"\x00"))
             for name_part in name_parts:
                 _check_name(name_part)
             self._current_record_names.append(name_parts)
 
     def _state_expecting_body(self):
         if len(self._buffer) >= self._current_record_length:
-            body_bytes = self._buffer[:self._current_record_length]
-            self._buffer = self._buffer[self._current_record_length:]
+            body_bytes = self._buffer[: self._current_record_length]
+            self._buffer = self._buffer[self._current_record_length :]
             record = (self._current_record_names, body_bytes)
             self._parsed_records.append(record)
             self._reset_current_record()

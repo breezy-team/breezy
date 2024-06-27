@@ -30,25 +30,27 @@ class cmd_fix_missing_keys_for_stacking(Command):
     """
 
     hidden = True
-    takes_args = ['branch_url']
+    takes_args = ["branch_url"]
     takes_options = [
         Option(
-            'dry-run',
-            help="Show what would be done, but don't actually do anything."),
-        ]
+            "dry-run", help="Show what would be done, but don't actually do anything."
+        ),
+    ]
 
     def run(self, branch_url, dry_run=False):
         try:
             bd = ControlDir.open(branch_url)
             b = bd.open_branch(ignore_fallbacks=True)
         except (errors.NotBranchError, errors.InvalidURL):
-            raise errors.CommandError(
-                "Not a branch or invalid URL: %s" % branch_url)
+            raise errors.CommandError("Not a branch or invalid URL: %s" % branch_url)
         b.lock_read()
         try:
             url = b.get_stacked_on_url()
-        except (errors.UnstackableRepositoryFormat, errors.NotStacked,
-                errors.UnstackableBranchFormat):
+        except (
+            errors.UnstackableRepositoryFormat,
+            errors.NotStacked,
+            errors.UnstackableBranchFormat,
+        ):
             b.unlock()
             raise errors.CommandError("Not stacked: %s" % branch_url)
         raw_r = b.repository.controldir.open_repository()
@@ -75,7 +77,8 @@ class cmd_fix_missing_keys_for_stacking(Command):
                 return
             assert raw_r._format.network_name() == b.repository._format.network_name()
             stream = b.repository.inventories.get_record_stream(
-                needed, 'topological', True)
+                needed, "topological", True
+            )
             with WriteGroup(raw_r):
                 raw_r.inventories.insert_record_stream(stream)
         finally:
@@ -88,9 +91,9 @@ class cmd_mirror_revs_into(Command):
     """Mirror all revs from one repo into another."""
 
     hidden = True
-    takes_args = ['source', 'destination']
+    takes_args = ["source", "destination"]
 
-    _see_also = ['fetch-all-records']
+    _see_also = ["fetch-all-records"]
 
     def run(self, source, destination):
         bd = ControlDir.open(source)
@@ -99,5 +102,4 @@ class cmd_mirror_revs_into(Command):
         target_r = bd.open_branch().repository
         with source_r.lock_read(), target_r.lock_write():
             revs = [k[-1] for k in source_r.revisions.keys()]
-            target_r.fetch(
-                source_r, fetch_spec=PendingAncestryResult(revs, source_r))
+            target_r.fetch(source_r, fetch_spec=PendingAncestryResult(revs, source_r))

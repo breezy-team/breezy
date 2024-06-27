@@ -142,25 +142,22 @@ Known Issues
 # scary for the user when we say 'Deleting <path>' and are referring to
 # remote files...
 
-
 from ... import version_info  # noqa: F401
 from ... import commands, config, hooks
 
 
 def register_option(key, member):
     """Lazily register an option."""
-    config.option_registry.register_lazy(
-        key, 'breezy.plugins.upload.cmds', member)
+    config.option_registry.register_lazy(key, "breezy.plugins.upload.cmds", member)
 
 
-register_option('upload_auto', 'auto_option')
-register_option('upload_auto_quiet', 'auto_quiet_option')
-register_option('upload_location', 'location_option')
-register_option('upload_revid_location', 'revid_location_option')
+register_option("upload_auto", "auto_option")
+register_option("upload_auto_quiet", "auto_quiet_option")
+register_option("upload_location", "location_option")
+register_option("upload_revid_location", "revid_location_option")
 
 
-commands.plugin_cmds.register_lazy(
-    'cmd_upload', [], 'breezy.plugins.upload.cmds')
+commands.plugin_cmds.register_lazy("cmd_upload", [], "breezy.plugins.upload.cmds")
 
 
 def auto_upload_hook(params):
@@ -168,32 +165,38 @@ def auto_upload_hook(params):
 
     from ... import osutils, trace, transport, urlutils
     from .cmds import BzrUploader
+
     source_branch = params.branch
     conf = source_branch.get_config_stack()
-    destination = conf.get('upload_location')
+    destination = conf.get("upload_location")
     if destination is None:
         return
-    auto_upload = conf.get('upload_auto')
+    auto_upload = conf.get("upload_auto")
     if not auto_upload:
         return
-    quiet = conf.get('upload_auto_quiet')
+    quiet = conf.get("upload_auto_quiet")
     if not quiet:
         display_url = urlutils.unescape_for_display(
-            destination, osutils.get_terminal_encoding())
-        trace.note('Automatically uploading to %s', display_url)
+            destination, osutils.get_terminal_encoding()
+        )
+        trace.note("Automatically uploading to %s", display_url)
     to_transport = transport.get_transport(destination)
     last_revision = source_branch.last_revision()
     last_tree = source_branch.repository.revision_tree(last_revision)
-    uploader = BzrUploader(source_branch, to_transport, sys.stdout,
-                           last_tree, last_revision, quiet=quiet)
+    uploader = BzrUploader(
+        source_branch, to_transport, sys.stdout, last_tree, last_revision, quiet=quiet
+    )
     uploader.upload_tree()
 
 
 def install_auto_upload_hook():
     hooks.install_lazy_named_hook(
-        'breezy.branch', 'Branch.hooks',
-        'post_change_branch_tip', auto_upload_hook,
-        'Auto upload code from a branch when it is changed.')
+        "breezy.branch",
+        "Branch.hooks",
+        "post_change_branch_tip",
+        auto_upload_hook,
+        "Auto upload code from a branch when it is changed.",
+    )
 
 
 install_auto_upload_hook()
@@ -205,8 +208,11 @@ def load_tests(loader, basic_tests, pattern):
     # unwanted tests and I think that's sufficient.
 
     testmod_names = [
-        'tests',
-        ]
-    basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["{}.{}".format(__name__, tmn) for tmn in testmod_names]))
+        "tests",
+    ]
+    basic_tests.addTest(
+        loader.loadTestsFromModuleNames(
+            ["{}.{}".format(__name__, tmn) for tmn in testmod_names]
+        )
+    )
     return basic_tests

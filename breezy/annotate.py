@@ -30,20 +30,24 @@ import time
 
 from .lazy_import import lazy_import
 
-lazy_import(globals(), """
+lazy_import(
+    globals(),
+    """
 import patiencediff
 
 from breezy import (
     tsort,
     )
-""")
+""",
+)
 from . import config, errors, osutils
 from .repository import _strip_NULL_ghosts
 from .revision import CURRENT_REVISION, Revision
 
 
-def annotate_file_tree(tree, path, to_file, verbose=False, full=False,
-                       show_ids=False, branch=None):
+def annotate_file_tree(
+    tree, path, to_file, verbose=False, full=False, show_ids=False, branch=None
+):
     """Annotate path in a tree.
 
     The tree should already be read_locked() when annotate_file_tree is called.
@@ -75,16 +79,15 @@ def annotate_file_tree(tree, path, to_file, verbose=False, full=False,
         current_rev = Revision(CURRENT_REVISION)
         current_rev.parent_ids = tree.get_parent_ids()
         try:
-            current_rev.committer = branch.get_config_stack().get('email')
+            current_rev.committer = branch.get_config_stack().get("email")
         except errors.NoWhoami:
-            current_rev.committer = 'local user'
+            current_rev.committer = "local user"
         current_rev.message = "?"
         current_rev.timestamp = round(time.time(), 3)
         current_rev.timezone = osutils.local_time_offset()
     else:
         current_rev = None
-    annotation = list(_expand_annotations(
-        annotations, branch, current_rev))
+    annotation = list(_expand_annotations(annotations, branch, current_rev))
     _print_annotations(annotation, verbose, to_file, full, encoding)
 
 
@@ -106,21 +109,26 @@ def _print_annotations(annotation, verbose, to_file, full, encoding):
     max_revno_len = max(max_revno_len, 3)
 
     # Output the annotations
-    prevanno = ''
-    for (revno_str, author, date_str, line_rev_id, text) in annotation:
+    prevanno = ""
+    for revno_str, author, date_str, line_rev_id, text in annotation:
         if verbose:
-            anno = '%-*s %-*s %8s ' % (max_revno_len, revno_str,
-                                       max_origin_len, author, date_str)
+            anno = "%-*s %-*s %8s " % (
+                max_revno_len,
+                revno_str,
+                max_origin_len,
+                author,
+                date_str,
+            )
         else:
             if len(revno_str) > max_revno_len:
-                revno_str = revno_str[:max_revno_len - 1] + '>'
+                revno_str = revno_str[: max_revno_len - 1] + ">"
             anno = "%-*s %-7s " % (max_revno_len, revno_str, author[:7])
         if anno.lstrip() == "" and full:
             anno = prevanno
         # GZ 2017-05-21: Writing both unicode annotation and bytes from file
         # which the given to_file must cope with.
         to_file.write(anno)
-        to_file.write('| {}\n'.format(text.decode(encoding)))
+        to_file.write("| {}\n".format(text.decode(encoding)))
         prevanno = anno
 
 
@@ -133,9 +141,10 @@ def _show_id_annotations(annotations, to_file, full, encoding):
         if full or last_rev_id != origin:
             this = origin
         else:
-            this = b''
-        to_file.write('%*s | %s' % (
-            max_origin_len, this.decode('utf-8'), text.decode(encoding)))
+            this = b""
+        to_file.write(
+            "%*s | %s" % (max_origin_len, this.decode("utf-8"), text.decode(encoding))
+        )
         last_rev_id = origin
     return
 
@@ -163,19 +172,19 @@ def _expand_annotations(annotations, branch, current_rev=None):
         #      VF.get_known_graph_ancestry().
         graph = repository.get_graph()
         revision_graph = {
-            key: value for key, value in
-            graph.iter_ancestry(current_rev.parent_ids) if value is not None}
+            key: value
+            for key, value in graph.iter_ancestry(current_rev.parent_ids)
+            if value is not None
+        }
         revision_graph = _strip_NULL_ghosts(revision_graph)
         revision_graph[last_revision] = current_rev.parent_ids
         merge_sorted_revisions = tsort.merge_sort(
-            revision_graph,
-            last_revision,
-            None,
-            generate_revno=True)
+            revision_graph, last_revision, None, generate_revno=True
+        )
         revision_id_to_revno = {
             rev_id: revno
-            for seq_num, rev_id, depth, revno, end_of_merge in
-            merge_sorted_revisions}
+            for seq_num, rev_id, depth, revno, end_of_merge in merge_sorted_revisions
+        }
     else:
         # TODO(jelmer): Only look up the revision ids that we need (i.e. those
         # in revision_ids). Possibly add a HPSS call that can look those up
@@ -184,28 +193,26 @@ def _expand_annotations(annotations, branch, current_rev=None):
     last_origin = None
     revisions = {}
     if CURRENT_REVISION in revision_ids:
-        revision_id_to_revno[CURRENT_REVISION] = (
-            "%d?" % (branch.revno() + 1),)
+        revision_id_to_revno[CURRENT_REVISION] = ("%d?" % (branch.revno() + 1),)
         revisions[CURRENT_REVISION] = current_rev
     revisions.update(
-        entry for entry in
-        repository.iter_revisions(revision_ids)
-        if entry[1] is not None)
+        entry
+        for entry in repository.iter_revisions(revision_ids)
+        if entry[1] is not None
+    )
     for origin, text in annotations:
-        text = text.rstrip(b'\r\n')
+        text = text.rstrip(b"\r\n")
         if origin == last_origin:
-            (revno_str, author, date_str) = ('', '', '')
+            (revno_str, author, date_str) = ("", "", "")
         else:
             last_origin = origin
             if origin not in revisions:
-                (revno_str, author, date_str) = ('?', '?', '?')
+                (revno_str, author, date_str) = ("?", "?", "?")
             else:
-                revno_str = '.'.join(
-                    str(i) for i in revision_id_to_revno[origin])
+                revno_str = ".".join(str(i) for i in revision_id_to_revno[origin])
             rev = revisions[origin]
             tz = rev.timezone or 0
-            date_str = time.strftime('%Y%m%d',
-                                     time.gmtime(rev.timestamp + tz))
+            date_str = time.strftime("%Y%m%d", time.gmtime(rev.timestamp + tz))
             # a lazy way to get something like the email address
             # TODO: Get real email address
             author = rev.get_apparent_authors()[0]
@@ -215,9 +222,13 @@ def _expand_annotations(annotations, branch, current_rev=None):
         yield (revno_str, author, date_str, origin, text)
 
 
-def reannotate(parents_lines, new_lines, new_revision_id,
-               _left_matching_blocks=None,
-               heads_provider=None):
+def reannotate(
+    parents_lines,
+    new_lines,
+    new_revision_id,
+    _left_matching_blocks=None,
+    heads_provider=None,
+):
     """Create a new annotated version from new lines and parent annotations.
 
     :param parents_lines: List of annotated lines for all parents
@@ -236,19 +247,25 @@ def reannotate(parents_lines, new_lines, new_revision_id,
     if len(parents_lines) == 0:
         lines = [(new_revision_id, line) for line in new_lines]
     elif len(parents_lines) == 1:
-        lines = _reannotate(parents_lines[0], new_lines, new_revision_id,
-                            _left_matching_blocks)
+        lines = _reannotate(
+            parents_lines[0], new_lines, new_revision_id, _left_matching_blocks
+        )
     elif len(parents_lines) == 2:
-        left = _reannotate(parents_lines[0], new_lines, new_revision_id,
-                           _left_matching_blocks)
-        lines = _reannotate_annotated(parents_lines[1], new_lines,
-                                      new_revision_id, left,
-                                      heads_provider)
+        left = _reannotate(
+            parents_lines[0], new_lines, new_revision_id, _left_matching_blocks
+        )
+        lines = _reannotate_annotated(
+            parents_lines[1], new_lines, new_revision_id, left, heads_provider
+        )
     else:
-        reannotations = [_reannotate(parents_lines[0], new_lines,
-                                     new_revision_id, _left_matching_blocks)]
-        reannotations.extend(_reannotate(p, new_lines, new_revision_id)
-                             for p in parents_lines[1:])
+        reannotations = [
+            _reannotate(
+                parents_lines[0], new_lines, new_revision_id, _left_matching_blocks
+            )
+        ]
+        reannotations.extend(
+            _reannotate(p, new_lines, new_revision_id) for p in parents_lines[1:]
+        )
         lines = []
         for annos in zip(*reannotations):
             origins = {a for a, l in annos}
@@ -266,19 +283,19 @@ def reannotate(parents_lines, new_lines, new_revision_id,
     return lines
 
 
-def _reannotate(parent_lines, new_lines, new_revision_id,
-                matching_blocks=None):
+def _reannotate(parent_lines, new_lines, new_revision_id, matching_blocks=None):
     new_cur = 0
     if matching_blocks is None:
         plain_parent_lines = [l for r, l in parent_lines]
         matcher = patiencediff.PatienceSequenceMatcher(
-            None, plain_parent_lines, new_lines)
+            None, plain_parent_lines, new_lines
+        )
         matching_blocks = matcher.get_matching_blocks()
     lines = []
     for i, j, n in matching_blocks:
         for line in new_lines[new_cur:j]:
             lines.append((new_revision_id, line))
-        lines.extend(parent_lines[i:i + n])
+        lines.extend(parent_lines[i : i + n])
         new_cur = j + n
     return lines
 
@@ -312,10 +329,18 @@ def _old_break_annotation_tie(annotated_lines):
     return sorted(annotated_lines)[0]
 
 
-def _find_matching_unannotated_lines(output_lines, plain_child_lines,
-                                     child_lines, start_child, end_child,
-                                     right_lines, start_right, end_right,
-                                     heads_provider, revision_id):
+def _find_matching_unannotated_lines(
+    output_lines,
+    plain_child_lines,
+    child_lines,
+    start_child,
+    end_child,
+    right_lines,
+    start_right,
+    end_right,
+    heads_provider,
+    revision_id,
+):
     """Find lines in plain_right_lines that match the existing lines.
 
     :param output_lines: Append final annotated lines to this list
@@ -347,8 +372,9 @@ def _find_matching_unannotated_lines(output_lines, plain_child_lines,
     for right_idx, child_idx, match_len in match_blocks:
         # All the lines that don't match are just passed along
         if child_idx > last_child_idx:
-            output_extend(child_lines[start_child + last_child_idx:
-                                      start_child + child_idx])
+            output_extend(
+                child_lines[start_child + last_child_idx : start_child + child_idx]
+            )
         for offset in range(match_len):
             left = child_lines[start_child + child_idx + offset]
             right = right_lines[start_right + right_idx + offset]
@@ -373,15 +399,15 @@ def _find_matching_unannotated_lines(output_lines, plain_child_lines,
                         # performance degradation as criss-cross merges will
                         # flip-flop the attribution.
                         if _break_annotation_tie is None:
-                            output_append(
-                                _old_break_annotation_tie([left, right]))
+                            output_append(_old_break_annotation_tie([left, right]))
                         else:
                             output_append(_break_annotation_tie([left, right]))
         last_child_idx = child_idx + match_len
 
 
-def _reannotate_annotated(right_parent_lines, new_lines, new_revision_id,
-                          annotated_lines, heads_provider):
+def _reannotate_annotated(
+    right_parent_lines, new_lines, new_revision_id, annotated_lines, heads_provider
+):
     """Update the annotations for a node based on another parent.
 
     :param right_parent_lines: A list of annotated lines for the right-hand
@@ -404,8 +430,7 @@ def _reannotate_annotated(right_parent_lines, new_lines, new_revision_id,
     # The line just after the last match from the right side
     last_right_idx = 0
     last_left_idx = 0
-    matching_left_and_right = _get_matching_blocks(right_parent_lines,
-                                                   annotated_lines)
+    matching_left_and_right = _get_matching_blocks(right_parent_lines, annotated_lines)
     for right_idx, left_idx, match_len in matching_left_and_right:
         # annotated lines from last_left_idx to left_idx did not match the
         # lines from last_right_idx to right_idx, the raw lines should be
@@ -415,17 +440,22 @@ def _reannotate_annotated(right_parent_lines, new_lines, new_revision_id,
             lines_extend(annotated_lines[last_left_idx:left_idx])
         else:
             # We need to see if any of the unannotated lines match
-            _find_matching_unannotated_lines(lines,
-                                             new_lines, annotated_lines,
-                                             last_left_idx, left_idx,
-                                             right_parent_lines,
-                                             last_right_idx, right_idx,
-                                             heads_provider,
-                                             new_revision_id)
+            _find_matching_unannotated_lines(
+                lines,
+                new_lines,
+                annotated_lines,
+                last_left_idx,
+                left_idx,
+                right_parent_lines,
+                last_right_idx,
+                right_idx,
+                heads_provider,
+                new_revision_id,
+            )
         last_right_idx = right_idx + match_len
         last_left_idx = left_idx + match_len
         # If left and right agree on a range, just push that into the output
-        lines_extend(annotated_lines[left_idx:left_idx + match_len])
+        lines_extend(annotated_lines[left_idx : left_idx + match_len])
     return lines
 
 

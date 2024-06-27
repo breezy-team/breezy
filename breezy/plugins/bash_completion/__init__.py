@@ -22,17 +22,21 @@ bash completion function for bzr. See its documentation for details.
 
 from ... import commands, version_info  # noqa: F401
 
-bzr_plugin_name = 'bash_completion'
-bzr_commands = ['bash-completion']
+bzr_plugin_name = "bash_completion"
+bzr_commands = ["bash-completion"]
 
-commands.plugin_cmds.register_lazy('cmd_bash_completion', [],
-                                   'breezy.plugins.bash_completion.bashcomp')
+commands.plugin_cmds.register_lazy(
+    "cmd_bash_completion", [], "breezy.plugins.bash_completion.bashcomp"
+)
 
 
 def load_tests(loader, basic_tests, pattern):
     testmod_names = [
-        'tests',
-        ]
-    basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["{}.{}".format(__name__, tmn) for tmn in testmod_names]))
+        "tests",
+    ]
+    basic_tests.addTest(
+        loader.loadTestsFromModuleNames(
+            ["{}.{}".format(__name__, tmn) for tmn in testmod_names]
+        )
+    )
     return basic_tests

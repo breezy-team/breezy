@@ -31,7 +31,9 @@ from typing import List, Optional, Type, Union
 from . import i18n, option, osutils, trace
 from .lazy_import import lazy_import
 
-lazy_import(globals(), """
+lazy_import(
+    globals(),
+    """
 
 import breezy
 from breezy import (
@@ -39,7 +41,8 @@ from breezy import (
     debug,
     ui,
     )
-""")
+""",
+)
 
 from . import errors, registry
 from .hooks import Hooks
@@ -48,22 +51,20 @@ from .plugin import disable_plugins, load_plugins, plugin_name
 
 
 class CommandAvailableInPlugin(Exception):
-
     internal_error = False
 
     def __init__(self, cmd_name, plugin_metadata, provider):
-
         self.plugin_metadata = plugin_metadata
         self.cmd_name = cmd_name
         self.provider = provider
 
     def __str__(self):
-
-        _fmt = ('"%s" is not a standard brz command. \n'
-                'However, the following official plugin provides this command: %s\n'
-                'You can install it by going to: %s'
-                % (self.cmd_name, self.plugin_metadata['name'],
-                    self.plugin_metadata['url']))
+        _fmt = (
+            '"%s" is not a standard brz command. \n'
+            "However, the following official plugin provides this command: %s\n"
+            "You can install it by going to: %s"
+            % (self.cmd_name, self.plugin_metadata["name"], self.plugin_metadata["url"])
+        )
 
         return _fmt
 
@@ -129,14 +130,16 @@ class CommandRegistry(registry.Registry):
                     pass
         info = CommandInfo.from_command(cmd)
         try:
-            registry.Registry.register(self, k_unsquished, cmd,
-                                       override_existing=decorate, info=info)
+            registry.Registry.register(
+                self, k_unsquished, cmd, override_existing=decorate, info=info
+            )
         except KeyError:
-            trace.warning('Two plugins defined the same command: %r' % k)
-            trace.warning('Not loading the one in %r' %
-                          sys.modules[cmd.__module__])
-            trace.warning('Previously this command was registered from %r' %
-                          sys.modules[previous.__module__])
+            trace.warning("Two plugins defined the same command: %r" % k)
+            trace.warning("Not loading the one in %r" % sys.modules[cmd.__module__])
+            trace.warning(
+                "Previously this command was registered from %r"
+                % sys.modules[previous.__module__]
+            )
         for a in cmd.aliases:
             self._alias_dict[a] = k_unsquished
         return previous
@@ -150,8 +153,9 @@ class CommandRegistry(registry.Registry):
           module_name: The module that the command lives in.
         """
         key = self._get_name(command_name)
-        registry.Registry.register_lazy(self, key, module_name, command_name,
-                                        info=CommandInfo(aliases))
+        registry.Registry.register_lazy(
+            self, key, module_name, command_name, info=CommandInfo(aliases)
+        )
         for a in aliases:
             self._alias_dict[a] = key
 
@@ -171,11 +175,11 @@ def register_command(cmd, decorate=False):
 
 
 def _squish_command_name(cmd):
-    return 'cmd_' + cmd.replace('-', '_')
+    return "cmd_" + cmd.replace("-", "_")
 
 
 def _unsquish_command_name(cmd):
-    return cmd[4:].replace('_', '-')
+    return cmd[4:].replace("_", "-")
 
 
 def _register_builtin_commands():
@@ -183,6 +187,7 @@ def _register_builtin_commands():
         # only load once
         return
     import breezy.builtins
+
     for cmd_class in _scan_module_for_commands(breezy.builtins):
         builtin_command_registry.register(cmd_class)
     breezy.builtins._register_lazy_builtins()
@@ -210,11 +215,12 @@ def _list_bzr_commands(names):
 def all_command_names():
     """Return a set of all command names."""
     names = set()
-    for hook in Command.hooks['list_commands']:
+    for hook in Command.hooks["list_commands"]:
         names = hook(names)
         if names is None:
             raise AssertionError(
-                'hook %s returned None' % Command.hooks.get_hook_name(hook))
+                "hook %s returned None" % Command.hooks.get_hook_name(hook)
+            )
     return names
 
 
@@ -235,8 +241,8 @@ def plugin_command_names():
 
 # Overrides for common mispellings that heuristics get wrong
 _GUESS_OVERRIDES = {
-    'ic': {'ci': 0},  # heuristic finds nick
-    }
+    "ic": {"ci": 0},  # heuristic finds nick
+}
 
 
 def guess_command(cmd_name):
@@ -255,18 +261,19 @@ def guess_command(cmd_name):
     # candidate: modified levenshtein distance against cmd_name.
     costs = {}
     import patiencediff
+
     for name in sorted(names):
         matcher = patiencediff.PatienceSequenceMatcher(None, cmd_name, name)
         distance = 0.0
         opcodes = matcher.get_opcodes()
         for opcode, l1, l2, r1, r2 in opcodes:
-            if opcode == 'delete':
+            if opcode == "delete":
                 distance += l2 - l1
-            elif opcode == 'replace':
+            elif opcode == "replace":
                 distance += max(l2 - l1, r2 - l1)
-            elif opcode == 'insert':
+            elif opcode == "insert":
                 distance += r2 - r1
-            elif opcode == 'equal':
+            elif opcode == "equal":
                 # Score equal ranges lower, making similar commands of equal
                 # length closer than arbitrary same length commands.
                 distance -= 0.1 * (l2 - l1)
@@ -281,8 +288,7 @@ def guess_command(cmd_name):
     return candidate
 
 
-def get_cmd_object(
-        cmd_name: str, plugins_override: bool = True) -> "Command":
+def get_cmd_object(cmd_name: str, plugins_override: bool = True) -> "Command":
     """Return the command object for a command.
 
     plugins_override
@@ -296,14 +302,14 @@ def get_cmd_object(
         if candidate is not None:
             raise errors.CommandError(
                 gettext('unknown command "%s". Perhaps you meant "%s"')
-                % (cmd_name, candidate))
-        raise errors.CommandError(gettext('unknown command "%s"')
-                                  % cmd_name)
+                % (cmd_name, candidate)
+            )
+        raise errors.CommandError(gettext('unknown command "%s"') % cmd_name)
 
 
 def _get_cmd_object(
-        cmd_name: str, plugins_override: bool = True,
-        check_missing: bool = True) -> "Command":
+    cmd_name: str, plugins_override: bool = True, check_missing: bool = True
+) -> "Command":
     """Get a command object.
 
     Args:
@@ -324,14 +330,14 @@ def _get_cmd_object(
     # In the future, we may actually support Unicode command names.
     cmd: Optional[Command] = None
     # Get a command
-    for hook in Command.hooks['get_command']:
+    for hook in Command.hooks["get_command"]:
         cmd = hook(cmd, cmd_name)
         if cmd is not None and not plugins_override and not cmd.plugin_name():
             # We've found a non-plugin command, don't permit it to be
             # overridden.
             break
     if cmd is None and check_missing:
-        for hook in Command.hooks['get_missing_command']:
+        for hook in Command.hooks["get_missing_command"]:
             cmd = hook(cmd_name)
             if cmd is not None:
                 break
@@ -339,9 +345,9 @@ def _get_cmd_object(
         # No command found.
         raise KeyError
     # Allow plugins to extend commands
-    for hook in Command.hooks['extend_command']:
+    for hook in Command.hooks["extend_command"]:
         hook(cmd)
-    if getattr(cmd, 'invoked_as', None) is None:
+    if getattr(cmd, "invoked_as", None) is None:
         cmd.invoked_as = cmd_name
     return cmd
 
@@ -397,6 +403,7 @@ def _get_external_command(cmd_or_None, cmd_name):
     if cmd_or_None is not None:
         return cmd_or_None
     from breezy.externalcommand import ExternalCommand
+
     cmd_obj = ExternalCommand.find_command(cmd_name)
     if cmd_obj:
         return cmd_obj
@@ -480,10 +487,11 @@ class Command:
             class Foo(Command):
                 __doc__ = "My help goes here"
     """
+
     aliases: List[str] = []
     takes_args: List[str] = []
     takes_options: List[Union[str, option.Option]] = []
-    encoding_type: str = 'strict'
+    encoding_type: str = "strict"
     invoked_as: Optional[str] = None
     l10n: bool = True
     _see_also: List[str]
@@ -528,21 +536,26 @@ class Command:
 
         Only describes arguments, not options.
         """
-        s = 'brz ' + self.name() + ' '
+        s = "brz " + self.name() + " "
         for aname in self.takes_args:
             aname = aname.upper()
-            if aname[-1] in ['$', '+']:
-                aname = aname[:-1] + '...'
-            elif aname[-1] == '?':
-                aname = '[' + aname[:-1] + ']'
-            elif aname[-1] == '*':
-                aname = '[' + aname[:-1] + '...]'
-            s += aname + ' '
-        s = s[:-1]      # remove last space
+            if aname[-1] in ["$", "+"]:
+                aname = aname[:-1] + "..."
+            elif aname[-1] == "?":
+                aname = "[" + aname[:-1] + "]"
+            elif aname[-1] == "*":
+                aname = "[" + aname[:-1] + "...]"
+            s += aname + " "
+        s = s[:-1]  # remove last space
         return s
 
-    def get_help_text(self, additional_see_also=None, plain=True,
-                      see_also_as_links=False, verbose=True):
+    def get_help_text(
+        self,
+        additional_see_also=None,
+        plain=True,
+        see_also_as_links=False,
+        verbose=True,
+    ):
         """Return a text string with help for this command.
 
         Args:
@@ -574,27 +587,26 @@ class Command:
         purpose, sections, order = self._get_help_parts(doc)
 
         # If a custom usage section was provided, use it
-        if 'Usage' in sections:
-            usage = sections.pop('Usage')
+        if "Usage" in sections:
+            usage = sections.pop("Usage")
         else:
             usage = self._usage()
 
         # The header is the purpose and usage
         result = ""
-        result += gettext(':Purpose: %s\n') % (purpose,)
-        if usage.find('\n') >= 0:
-            result += gettext(':Usage:\n%s\n') % (usage,)
+        result += gettext(":Purpose: %s\n") % (purpose,)
+        if usage.find("\n") >= 0:
+            result += gettext(":Usage:\n%s\n") % (usage,)
         else:
-            result += gettext(':Usage:   %s\n') % (usage,)
-        result += '\n'
+            result += gettext(":Usage:   %s\n") % (usage,)
+        result += "\n"
 
         # Add the options
         #
         # XXX: optparse implicitly rewraps the help, and not always perfectly,
         # so we get <https://bugs.launchpad.net/bzr/+bug/249908>.  -- mbp
         # 20090319
-        parser = option.get_optparser(
-            [v for k, v in sorted(self.options().items())])
+        parser = option.get_optparser([v for k, v in sorted(self.options().items())])
         options = parser.format_option_help()
         # FIXME: According to the spec, ReST option lists actually don't
         # support options like --1.14 so that causes syntax errors (in Sphinx
@@ -602,37 +614,39 @@ class Command:
         # break, we trap on that and then format that block of 'format' options
         # as a literal block. We use the most recent format still listed so we
         # don't have to do that too often -- vila 20110514
-        if not plain and options.find('  --1.14  ') != -1:
-            options = options.replace(' format:\n', ' format::\n\n', 1)
-        if options.startswith('Options:'):
-            result += gettext(':Options:%s') % (options[len('options:'):],)
+        if not plain and options.find("  --1.14  ") != -1:
+            options = options.replace(" format:\n", " format::\n\n", 1)
+        if options.startswith("Options:"):
+            result += gettext(":Options:%s") % (options[len("options:") :],)
         else:
             result += options
-        result += '\n'
+        result += "\n"
 
         if verbose:
             # Add the description, indenting it 2 spaces
             # to match the indentation of the options
             if None in sections:
                 text = sections.pop(None)
-                text = '\n  '.join(text.splitlines())
-                result += gettext(':Description:\n  %s\n\n') % (text,)
+                text = "\n  ".join(text.splitlines())
+                result += gettext(":Description:\n  %s\n\n") % (text,)
 
             # Add the custom sections (e.g. Examples). Note that there's no need
             # to indent these as they must be indented already in the source.
             if sections:
                 for label in order:
                     if label in sections:
-                        result += ':{}:\n{}\n'.format(label, sections[label])
-                result += '\n'
+                        result += ":{}:\n{}\n".format(label, sections[label])
+                result += "\n"
         else:
-            result += (gettext("See brz help %s for more details and examples.\n\n")
-                       % self.name())
+            result += (
+                gettext("See brz help %s for more details and examples.\n\n")
+                % self.name()
+            )
 
         # Add the aliases, source (plug-in) and see also links, if any
         if self.aliases:
-            result += gettext(':Aliases:  ')
-            result += ', '.join(self.aliases) + '\n'
+            result += gettext(":Aliases:  ")
+            result += ", ".join(self.aliases) + "\n"
         plugin_name = self.plugin_name()
         if plugin_name is not None:
             result += gettext(':From:     plugin "%s"\n') % plugin_name
@@ -641,21 +655,21 @@ class Command:
             if not plain and see_also_as_links:
                 see_also_links = []
                 for item in see_also:
-                    if item == 'topics':
+                    if item == "topics":
                         # topics doesn't have an independent section
                         # so don't create a real link
                         see_also_links.append(item)
                     else:
                         # Use a Sphinx link for this entry
-                        link_text = gettext(":doc:`{0} <{1}-help>`").format(
-                            item, item)
+                        link_text = gettext(":doc:`{0} <{1}-help>`").format(item, item)
                         see_also_links.append(link_text)
                 see_also = see_also_links
-            result += gettext(':See also: %s') % ', '.join(see_also) + '\n'
+            result += gettext(":See also: %s") % ", ".join(see_also) + "\n"
 
         # If this will be rendered as plain text, convert it
         if plain:
             import breezy.help_topics
+
             result = breezy.help_topics.help_as_plain_text(result)
         return result
 
@@ -671,10 +685,11 @@ class Command:
             All text found outside a named section is assigned to the
             default section which is given the key of None.
         """
+
         def save_section(sections, order, label, section):
             if len(section) > 0:
                 if label in sections:
-                    sections[label] += '\n' + section
+                    sections[label] += "\n" + section
                 else:
                     order.append(label)
                     sections[label] = section
@@ -683,18 +698,17 @@ class Command:
         summary = lines.pop(0)
         sections = {}
         order = []
-        label, section = None, ''
+        label, section = None, ""
         for line in lines:
-            if line.startswith(':') and line.endswith(':') and len(line) > 2:
+            if line.startswith(":") and line.endswith(":") and len(line) > 2:
                 save_section(sections, order, label, section)
-                label, section = line[1:-1], ''
-            elif (label is not None and len(line) > 1 and
-                    not line[0].isspace()):
+                label, section = line[1:-1], ""
+            elif label is not None and len(line) > 1 and not line[0].isspace():
                 save_section(sections, order, label, section)
                 label, section = None, line
             else:
                 if len(section) > 0:
-                    section += '\n' + line
+                    section += "\n" + line
                 else:
                     section = line
         save_section(sections, order, label, section)
@@ -716,7 +730,7 @@ class Command:
         Returns:
           A list of help topics.
         """
-        see_also = set(getattr(self, '_see_also', []))
+        see_also = set(getattr(self, "_see_also", []))
         if additional_terms:
             see_also.update(additional_terms)
         return sorted(see_also)
@@ -737,8 +751,7 @@ class Command:
 
     def _setup_outf(self):
         """Return a file linked to stdout, which has proper encoding."""
-        self.outf = ui.ui_factory.make_output_stream(
-            encoding_type=self.encoding_type)
+        self.outf = ui.ui_factory.make_output_stream(encoding_type=self.encoding_type)
 
     def run_argv_aliases(self, argv, alias_argv=None):
         """Parse the command line and run with extra aliases in alias_argv."""
@@ -746,26 +759,26 @@ class Command:
         self._setup_outf()
 
         # Process the standard options
-        if 'help' in opts:  # e.g. brz add --help
+        if "help" in opts:  # e.g. brz add --help
             self.outf.write(self.get_help_text())
             return 0
-        if 'usage' in opts:  # e.g. brz add --usage
+        if "usage" in opts:  # e.g. brz add --usage
             self.outf.write(self.get_help_text(verbose=False))
             return 0
         trace.set_verbosity_level(option._verbosity_level)
-        if 'verbose' in self.supported_std_options:
-            opts['verbose'] = trace.is_verbose()
-        elif 'verbose' in opts:
-            del opts['verbose']
-        if 'quiet' in self.supported_std_options:
-            opts['quiet'] = trace.is_quiet()
-        elif 'quiet' in opts:
-            del opts['quiet']
+        if "verbose" in self.supported_std_options:
+            opts["verbose"] = trace.is_verbose()
+        elif "verbose" in opts:
+            del opts["verbose"]
+        if "quiet" in self.supported_std_options:
+            opts["quiet"] = trace.is_quiet()
+        elif "quiet" in opts:
+            del opts["quiet"]
         # mix arguments and options into one dictionary
         cmdargs = _match_argform(self.name(), self.takes_args, args)
         cmdopts = {}
         for k, v in opts.items():
-            cmdopts[k.replace('-', '_')] = v
+            cmdopts[k.replace("-", "_")] = v
 
         all_cmd_args = cmdargs.copy()
         all_cmd_args.update(cmdopts)
@@ -776,8 +789,7 @@ class Command:
             # reset it, so that other commands run in the same process won't
             # inherit state. Before we reset it, log any activity, so that it
             # gets properly tracked.
-            ui.ui_factory.log_transport_activity(
-                display=('bytes' in debug.debug_flags))
+            ui.ui_factory.log_transport_activity(display=("bytes" in debug.debug_flags))
             trace.set_verbosity_level(0)
 
     def _setup_run(self):
@@ -792,14 +804,15 @@ class Command:
         class_run = self.run
 
         def run(*args, **kwargs):
-            for hook in Command.hooks['pre_command']:
+            for hook in Command.hooks["pre_command"]:
                 hook(self)
             try:
                 with contextlib.ExitStack() as self._exit_stack:
                     return class_run(*args, **kwargs)
             finally:
-                for hook in Command.hooks['post_command']:
+                for hook in Command.hooks["post_command"]:
                     hook(self)
+
         self.run = run
 
     def run(self):  # type: ignore
@@ -823,12 +836,12 @@ class Command:
             def run(self, files=None):
                 pass
         """
-        raise NotImplementedError('no implementation of command %r'
-                                  % self.name())
+        raise NotImplementedError("no implementation of command %r" % self.name())
 
     def help(self):
         """Return help message for this class."""
         from inspect import getdoc
+
         if self.__doc__ is Command.__doc__:
             return None
         return getdoc(self)
@@ -867,40 +880,48 @@ class CommandHooks(Hooks):
         """
         Hooks.__init__(self, "breezy.commands", "Command.hooks")
         self.add_hook(
-            'extend_command',
+            "extend_command",
             "Called after creating a command object to allow modifications "
             "such as adding or removing options, docs etc. Called with the "
-            "new breezy.commands.Command object.", (1, 13))
+            "new breezy.commands.Command object.",
+            (1, 13),
+        )
         self.add_hook(
-            'get_command',
+            "get_command",
             "Called when creating a single command. Called with "
             "(cmd_or_None, command_name). get_command should either return "
             "the cmd_or_None parameter, or a replacement Command object that "
             "should be used for the command. Note that the Command.hooks "
             "hooks are core infrastructure. Many users will prefer to use "
             "breezy.commands.register_command or plugin_cmds.register_lazy.",
-            (1, 17))
+            (1, 17),
+        )
         self.add_hook(
-            'get_missing_command',
+            "get_missing_command",
             "Called when creating a single command if no command could be "
             "found. Called with (command_name). get_missing_command should "
             "either return None, or a Command object to be used for the "
-            "command.", (1, 17))
+            "command.",
+            (1, 17),
+        )
         self.add_hook(
-            'list_commands',
+            "list_commands",
             "Called when enumerating commands. Called with a set of "
             "cmd_name strings for all the commands found so far. This set "
             " is safe to mutate - e.g. to remove a command. "
             "list_commands should return the updated set of command names.",
-            (1, 17))
+            (1, 17),
+        )
         self.add_hook(
-            'pre_command',
-            "Called prior to executing a command. Called with the command "
-            "object.", (2, 6))
+            "pre_command",
+            "Called prior to executing a command. Called with the command " "object.",
+            (2, 6),
+        )
         self.add_hook(
-            'post_command',
-            "Called after executing a command. Called with the command "
-            "object.", (2, 6))
+            "post_command",
+            "Called after executing a command. Called with the command " "object.",
+            (2, 6),
+        )
 
 
 Command.hooks = CommandHooks()  # type: ignore
@@ -915,8 +936,7 @@ def parse_args(command, argv, alias_argv=None):
     they take, and which commands will accept them.
     """
     # TODO: make it a method of the Command?
-    parser = option.get_optparser(
-        [v for k, v in sorted(command.options().items())])
+    parser = option.get_optparser([v for k, v in sorted(command.options().items())])
     if alias_argv is not None:
         args = alias_argv + argv
     else:
@@ -927,11 +947,13 @@ def parse_args(command, argv, alias_argv=None):
     try:
         options, args = parser.parse_args(args)
     except UnicodeEncodeError:
-        raise errors.CommandError(
-            gettext('Only ASCII permitted in option names'))
+        raise errors.CommandError(gettext("Only ASCII permitted in option names"))
 
-    opts = {k: v for k, v in options.__dict__.items() if
-                v is not option.OptionParser.DEFAULT_VALUE}
+    opts = {
+        k: v
+        for k, v in options.__dict__.items()
+        if v is not option.OptionParser.DEFAULT_VALUE
+    }
     return args, opts
 
 
@@ -941,29 +963,33 @@ def _match_argform(cmd, takes_args, args):
     # step through args and takes_args, allowing appropriate 0-many matches
     for ap in takes_args:
         argname = ap[:-1]
-        if ap[-1] == '?':
+        if ap[-1] == "?":
             if args:
                 argdict[argname] = args.pop(0)
-        elif ap[-1] == '*':  # all remaining arguments
+        elif ap[-1] == "*":  # all remaining arguments
             if args:
-                argdict[argname + '_list'] = args[:]
+                argdict[argname + "_list"] = args[:]
                 args = []
             else:
-                argdict[argname + '_list'] = None
-        elif ap[-1] == '+':
+                argdict[argname + "_list"] = None
+        elif ap[-1] == "+":
             if not args:
-                raise errors.CommandError(gettext(
-                    "command {0!r} needs one or more {1}").format(
-                    cmd, argname.upper()))
+                raise errors.CommandError(
+                    gettext("command {0!r} needs one or more {1}").format(
+                        cmd, argname.upper()
+                    )
+                )
             else:
-                argdict[argname + '_list'] = args[:]
+                argdict[argname + "_list"] = args[:]
                 args = []
-        elif ap[-1] == '$':  # all but one
+        elif ap[-1] == "$":  # all but one
             if len(args) < 2:
                 raise errors.CommandError(
                     gettext("command {0!r} needs one or more {1}").format(
-                        cmd, argname.upper()))
-            argdict[argname + '_list'] = args[:-1]
+                        cmd, argname.upper()
+                    )
+                )
+            argdict[argname + "_list"] = args[:-1]
             args[:-1] = []
         else:
             # just a plain arg
@@ -971,23 +997,26 @@ def _match_argform(cmd, takes_args, args):
             if not args:
                 raise errors.CommandError(
                     gettext("command {0!r} requires argument {1}").format(
-                        cmd, argname.upper()))
+                        cmd, argname.upper()
+                    )
+                )
             else:
                 argdict[argname] = args.pop(0)
 
     if args:
-        raise errors.CommandError(gettext(
-            "extra argument to command {0}: {1}").format(
-            cmd, args[0]))
+        raise errors.CommandError(
+            gettext("extra argument to command {0}: {1}").format(cmd, args[0])
+        )
 
     return argdict
 
 
 def apply_coveraged(the_callable, *args, **kwargs):
     import coverage
+
     cov = coverage.Coverage()
     config_file = cov.config.config_file
-    os.environ['COVERAGE_PROCESS_START'] = config_file
+    os.environ["COVERAGE_PROCESS_START"] = config_file
     cov.start()
     try:
         return exception_to_return_code(the_callable, *args, **kwargs)
@@ -1001,17 +1030,20 @@ def apply_profiled(the_callable, *args, **kwargs):
 
     import hotshot
     import hotshot.stats
+
     pffileno, pfname = tempfile.mkstemp()
     try:
         prof = hotshot.Profile(pfname)
         try:
-            ret = prof.runcall(exception_to_return_code, the_callable, *args,
-                               **kwargs) or 0
+            ret = (
+                prof.runcall(exception_to_return_code, the_callable, *args, **kwargs)
+                or 0
+            )
         finally:
             prof.close()
         stats = hotshot.stats.load(pfname)
         stats.strip_dirs()
-        stats.sort_stats('cum')   # 'time'
+        stats.sort_stats("cum")  # 'time'
         # XXX: Might like to write to stderr or the trace file instead but
         # print_stats seems hardcoded to stdout
         stats.print_stats(20)
@@ -1035,17 +1067,18 @@ def exception_to_return_code(the_callable, *args, **kwargs):
         # specially here, but hopefully they're handled ok by the logger now
         exc_info = sys.exc_info()
         exitcode = trace.report_exception(exc_info, sys.stderr)
-        if os.environ.get('BRZ_PDB'):
-            print('**** entering debugger')
+        if os.environ.get("BRZ_PDB"):
+            print("**** entering debugger")
             import pdb
+
             pdb.post_mortem(exc_info[2])
         return exitcode
 
 
 def apply_lsprofiled(filename, the_callable, *args, **kwargs):
     from breezy.lsprof import profile
-    ret, stats = profile(exception_to_return_code, the_callable,
-                         *args, **kwargs)
+
+    ret, stats = profile(exception_to_return_code, the_callable, *args, **kwargs)
     stats.sort()
     if filename is None:
         stats.pprint()
@@ -1067,6 +1100,7 @@ def get_alias(cmd, config=None):
     """
     if config is None:
         import breezy.config
+
         config = breezy.config.GlobalConfig()
     alias = config.get_alias(cmd)
     if alias:
@@ -1123,8 +1157,9 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
     argv = _specified_or_unicode_argv(argv)
     trace.mutter("brz arguments: %r", argv)
 
-    opt_lsprof = opt_profile = opt_no_plugins = opt_builtin = \
-        opt_coverage = opt_no_l10n = opt_no_aliases = False
+    opt_lsprof = opt_profile = opt_no_plugins = opt_builtin = opt_coverage = (
+        opt_no_l10n
+    ) = opt_no_aliases = False
     opt_lsprof_file = None
 
     # --no-plugins is handled specially at a very early stage. We need
@@ -1136,32 +1171,32 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
     override_config = []
     while i < len(argv):
         a = argv[i]
-        if a == '--profile':
+        if a == "--profile":
             opt_profile = True
-        elif a == '--lsprof':
+        elif a == "--lsprof":
             opt_lsprof = True
-        elif a == '--lsprof-file':
+        elif a == "--lsprof-file":
             opt_lsprof = True
             opt_lsprof_file = argv[i + 1]
             i += 1
-        elif a == '--no-plugins':
+        elif a == "--no-plugins":
             opt_no_plugins = True
-        elif a == '--no-aliases':
+        elif a == "--no-aliases":
             opt_no_aliases = True
-        elif a == '--no-l10n':
+        elif a == "--no-l10n":
             opt_no_l10n = True
-        elif a == '--builtin':
+        elif a == "--builtin":
             opt_builtin = True
-        elif a == '--concurrency':
-            os.environ['BRZ_CONCURRENCY'] = argv[i + 1]
+        elif a == "--concurrency":
+            os.environ["BRZ_CONCURRENCY"] = argv[i + 1]
             i += 1
-        elif a == '--coverage':
+        elif a == "--coverage":
             opt_coverage = True
-        elif a == '--profile-imports':
+        elif a == "--profile-imports":
             pass  # already handled in startup script Bug #588277
-        elif a.startswith('-D'):
+        elif a.startswith("-D"):
             debug.debug_flags.add(a[2:])
-        elif a.startswith('-O'):
+        elif a.startswith("-O"):
             override_config.append(a[2:])
         else:
             argv_copy.append(a)
@@ -1174,19 +1209,20 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
 
     if not opt_no_plugins:
         from breezy import config
+
         c = config.GlobalConfig()
-        warn_load_problems = not c.suppress_warning('plugin_load_failure')
+        warn_load_problems = not c.suppress_warning("plugin_load_failure")
         load_plugins(warn_load_problems=warn_load_problems)
     else:
         disable_plugins()
 
     argv = argv_copy
-    if (not argv):
-        get_cmd_object('help').run_argv_aliases([])
+    if not argv:
+        get_cmd_object("help").run_argv_aliases([])
         return 0
 
-    if argv[0] == '--version':
-        get_cmd_object('version').run_argv_aliases([])
+    if argv[0] == "--version":
+        get_cmd_object("version").run_argv_aliases([])
         return 0
 
     alias_argv = None
@@ -1210,13 +1246,11 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         option._verbosity_level = 0
         if opt_lsprof:
             if opt_coverage:
-                trace.warning(
-                    '--coverage ignored, because --lsprof is in use.')
+                trace.warning("--coverage ignored, because --lsprof is in use.")
             ret = apply_lsprofiled(opt_lsprof_file, run, *run_argv)
         elif opt_profile:
             if opt_coverage:
-                trace.warning(
-                    '--coverage ignored, because --profile is in use.')
+                trace.warning("--coverage ignored, because --profile is in use.")
             ret = apply_profiled(run, *run_argv)
         elif opt_coverage:
             ret = apply_coveraged(run, *run_argv)
@@ -1227,8 +1261,8 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         # reset, in case we may do other commands later within the same
         # process. Commands that want to execute sub-commands must propagate
         # --verbose in their own way.
-        if 'memory' in debug.debug_flags:
-            trace.debug_memory('Process status after command:', short=False)
+        if "memory" in debug.debug_flags:
+            trace.debug_memory("Process status after command:", short=False)
         option._verbosity_level = saved_verbosity_level
         # Reset the overrides
         cmdline_overrides._reset()
@@ -1236,6 +1270,7 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
 
 def display_command(func):
     """Decorator that suppresses pipe/interrupt errors."""
+
     def ignore_pipe(*args, **kwargs):
         try:
             result = func(*args, **kwargs)
@@ -1243,15 +1278,17 @@ def display_command(func):
             return result
         except OSError as e:
             import errno
-            if getattr(e, 'errno', None) is None:
+
+            if getattr(e, "errno", None) is None:
                 raise
             if e.errno != errno.EPIPE:
                 # Win32 raises IOError with errno=0 on a broken pipe
-                if sys.platform != 'win32' or (e.errno not in (0, errno.EINVAL)):
+                if sys.platform != "win32" or (e.errno not in (0, errno.EINVAL)):
                     raise
             pass
         except KeyboardInterrupt:
             pass
+
     return ignore_pipe
 
 
@@ -1259,17 +1296,19 @@ def install_bzr_command_hooks():
     """Install the hooks to supply bzr's own commands."""
     if _list_bzr_commands in Command.hooks["list_commands"]:
         return
-    Command.hooks.install_named_hook("list_commands", _list_bzr_commands,
-                                     "bzr commands")
-    Command.hooks.install_named_hook("get_command", _get_bzr_command,
-                                     "bzr commands")
-    Command.hooks.install_named_hook("get_command", _get_plugin_command,
-                                     "bzr plugin commands")
-    Command.hooks.install_named_hook("get_command", _get_external_command,
-                                     "bzr external command lookup")
-    Command.hooks.install_named_hook("get_missing_command",
-                                     _try_plugin_provider,
-                                     "bzr plugin-provider-db check")
+    Command.hooks.install_named_hook(
+        "list_commands", _list_bzr_commands, "bzr commands"
+    )
+    Command.hooks.install_named_hook("get_command", _get_bzr_command, "bzr commands")
+    Command.hooks.install_named_hook(
+        "get_command", _get_plugin_command, "bzr plugin commands"
+    )
+    Command.hooks.install_named_hook(
+        "get_command", _get_external_command, "bzr external command lookup"
+    )
+    Command.hooks.install_named_hook(
+        "get_missing_command", _try_plugin_provider, "bzr plugin-provider-db check"
+    )
 
 
 def _specified_or_unicode_argv(argv):
@@ -1282,7 +1321,7 @@ def _specified_or_unicode_argv(argv):
         # ensure all arguments are unicode strings
         for a in argv:
             if not isinstance(a, str):
-                raise ValueError('not native str or unicode: {!r}'.format(a))
+                raise ValueError("not native str or unicode: {!r}".format(a))
             new_argv.append(a)
     except (ValueError, UnicodeDecodeError):
         raise errors.BzrError("argv should be list of unicode strings.")
@@ -1334,8 +1373,7 @@ def run_bzr_catch_user_errors(argv):
     try:
         return run_bzr(argv)
     except Exception as e:
-        if (isinstance(e, (OSError, IOError))
-                or not getattr(e, 'internal_error', True)):
+        if isinstance(e, (OSError, IOError)) or not getattr(e, "internal_error", True):
             trace.report_exception(sys.exc_info(), sys.stderr)
             return 3
         else:
@@ -1346,7 +1384,7 @@ class HelpCommandIndex:
     """A index for bzr help that returns commands."""
 
     def __init__(self):
-        self.prefix = 'commands/'
+        self.prefix = "commands/"
 
     def get_topics(self, topic):
         """Search for topic amongst commands.
@@ -1359,7 +1397,7 @@ class HelpCommandIndex:
           Command entry.
         """
         if topic and topic.startswith(self.prefix):
-            topic = topic[len(self.prefix):]
+            topic = topic[len(self.prefix) :]
         try:
             cmd = _get_cmd_object(topic, check_missing=False)
         except KeyError:

@@ -14,26 +14,24 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Check each CHK page to make sure it is in 'canonical' form.
-
-"""
+"""Check each CHK page to make sure it is in 'canonical' form."""
 
 from ... import commands, controldir, trace, transport, ui
 from ...bzr import chk_map, groupcompress
 
 
 class cmd_check_chk(commands.Command):
-    """Check the CHK pages for canonical form.
-    """
+    """Check the CHK pages for canonical form."""
 
     hidden = True
-    takes_options = ['directory', 'revision']
+    takes_options = ["directory", "revision"]
 
-    def run(self, directory='.', revision=None):
+    def run(self, directory=".", revision=None):
         wt, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(
-            directory)
+            directory
+        )
         factory = groupcompress.make_pack_factory(False, False, 1)
-        t = transport.get_transport('memory:///')
+        t = transport.get_transport("memory:///")
         vf = factory(t)
         self.add_cleanup(branch.lock_read().unlock)
         repo = branch.repository
@@ -49,21 +47,27 @@ class cmd_check_chk(commands.Command):
             inv_ids = g.find_unique_ancestors(r2, [r1])
         with ui.ui_factory.nested_progress_bar() as pb:
             for idx, inv in enumerate(repo.iter_inventories(inv_ids)):
-                pb.update('checking', idx, len(inv_ids))
+                pb.update("checking", idx, len(inv_ids))
                 d = dict(inv.id_to_entry.iteritems())
                 test_key = chk_map.CHKMap.from_dict(
-                    vf, d, maximum_size=inv.id_to_entry._root_node._maximum_size,
+                    vf,
+                    d,
+                    maximum_size=inv.id_to_entry._root_node._maximum_size,
                     key_width=inv.id_to_entry._root_node._key_width,
-                    search_key_func=inv.id_to_entry._search_key_func)
+                    search_key_func=inv.id_to_entry._search_key_func,
+                )
                 if inv.id_to_entry.key() != test_key:
-                    trace.warning('Failed for id_to_entry inv: %s'
-                                  % (inv.revision_id,))
+                    trace.warning("Failed for id_to_entry inv: %s" % (inv.revision_id,))
                 pid = inv.parent_id_basename_to_file_id
                 d = dict(pid.iteritems())
                 test_key = chk_map.CHKMap.from_dict(
-                    vf, d, maximum_size=pid._root_node._maximum_size,
+                    vf,
+                    d,
+                    maximum_size=pid._root_node._maximum_size,
                     key_width=pid._root_node._key_width,
-                    search_key_func=pid._search_key_func)
+                    search_key_func=pid._search_key_func,
+                )
                 if pid.key() != test_key:
-                    trace.warning('Failed for parent_id_to_basename inv: %s'
-                                  % (inv.revision_id,))
+                    trace.warning(
+                        "Failed for parent_id_to_basename inv: %s" % (inv.revision_id,)
+                    )

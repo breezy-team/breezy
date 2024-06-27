@@ -58,21 +58,26 @@ class SearchResult(AbstractSearchResult):
             a SearchResult from a smart server, in which case the keys list is
             not necessarily immediately available.
         """
-        self._recipe = ('search', start_keys, exclude_keys, key_count)
+        self._recipe = ("search", start_keys, exclude_keys, key_count)
         self._keys = frozenset(keys)
 
     def __repr__(self):
         kind, start_keys, exclude_keys, key_count = self._recipe
         if len(start_keys) > 5:
-            start_keys_repr = repr(list(start_keys)[:5])[:-1] + ', ...]'
+            start_keys_repr = repr(list(start_keys)[:5])[:-1] + ", ...]"
         else:
             start_keys_repr = repr(start_keys)
         if len(exclude_keys) > 5:
-            exclude_keys_repr = repr(list(exclude_keys)[:5])[:-1] + ', ...]'
+            exclude_keys_repr = repr(list(exclude_keys)[:5])[:-1] + ", ...]"
         else:
             exclude_keys_repr = repr(exclude_keys)
-        return '<%s %s:(%s, %s, %d)>' % (self.__class__.__name__,
-                                         kind, start_keys_repr, exclude_keys_repr, key_count)
+        return "<%s %s:(%s, %s, %d)>" % (
+            self.__class__.__name__,
+            kind,
+            start_keys_repr,
+            exclude_keys_repr,
+            key_count,
+        )
 
     def get_recipe(self):
         """Return a recipe that can be used to replay this search.
@@ -98,11 +103,13 @@ class SearchResult(AbstractSearchResult):
         return self._recipe
 
     def get_network_struct(self):
-        start_keys = b' '.join(self._recipe[1])
-        stop_keys = b' '.join(self._recipe[2])
-        count = str(self._recipe[3]).encode('ascii')
-        return (self._recipe[0].encode('ascii'),
-                b'\n'.join((start_keys, stop_keys, count)))
+        start_keys = b" ".join(self._recipe[1])
+        stop_keys = b" ".join(self._recipe[2])
+        count = str(self._recipe[3]).encode("ascii")
+        return (
+            self._recipe[0].encode("ascii"),
+            b"\n".join((start_keys, stop_keys, count)),
+        )
 
     def get_keys(self):
         """Return the keys found in this search.
@@ -161,11 +168,12 @@ class PendingAncestryResult(AbstractSearchResult):
     def __repr__(self):
         if len(self.heads) > 5:
             heads_repr = repr(list(self.heads)[:5])[:-1]
-            heads_repr += ', <%d more>...]' % (len(self.heads) - 5,)
+            heads_repr += ", <%d more>...]" % (len(self.heads) - 5,)
         else:
             heads_repr = repr(self.heads)
-        return '<{} heads:{} repo:{!r}>'.format(
-            self.__class__.__name__, heads_repr, self.repo)
+        return "<{} heads:{} repo:{!r}>".format(
+            self.__class__.__name__, heads_repr, self.repo
+        )
 
     def get_recipe(self):
         """Return a recipe that can be used to replay this search.
@@ -178,10 +186,10 @@ class PendingAncestryResult(AbstractSearchResult):
             To recreate this result, create a PendingAncestryResult with the
             start_keys_set.
         """
-        return ('proxy-search', self.heads, set(), -1)
+        return ("proxy-search", self.heads, set(), -1)
 
     def get_network_struct(self):
-        parts = [b'ancestry-of']
+        parts = [b"ancestry-of"]
         parts.extend(self.heads)
         return parts
 
@@ -195,8 +203,11 @@ class PendingAncestryResult(AbstractSearchResult):
 
     def _get_keys(self, graph):
         NULL_REVISION = revision.NULL_REVISION
-        keys = [key for (key, parents) in graph.iter_ancestry(self.heads)
-                if key != NULL_REVISION and parents is not None]
+        keys = [
+            key
+            for (key, parents) in graph.iter_ancestry(self.heads)
+            if key != NULL_REVISION and parents is not None
+        ]
         return keys
 
     def is_empty(self):
@@ -231,21 +242,23 @@ class EverythingResult(AbstractSearchResult):
         self._repo = repo
 
     def __repr__(self):
-        return '{}({!r})'.format(self.__class__.__name__, self._repo)
+        return "{}({!r})".format(self.__class__.__name__, self._repo)
 
     def get_recipe(self):
         raise NotImplementedError(self.get_recipe)
 
     def get_network_struct(self):
-        return (b'everything',)
+        return (b"everything",)
 
     def get_keys(self):
-        if 'evil' in debug.debug_flags:
+        if "evil" in debug.debug_flags:
             from . import remote
+
             if isinstance(self._repo, remote.RemoteRepository):
                 # warn developers (not users) not to do this
                 trace.mutter_callsite(
-                    2, "EverythingResult(RemoteRepository).get_keys() is slow.")
+                    2, "EverythingResult(RemoteRepository).get_keys() is slow."
+                )
         return self._repo.all_revision_ids()
 
     def is_empty(self):
@@ -271,14 +284,22 @@ class EverythingNotInOther(AbstractSearch):
 
     def execute(self):
         return self.to_repo.search_missing_revision_ids(
-            self.from_repo, find_ghosts=self.find_ghosts)
+            self.from_repo, find_ghosts=self.find_ghosts
+        )
 
 
 class NotInOtherForRevs(AbstractSearch):
     """Find all revisions missing in one repo for a some specific heads."""
 
-    def __init__(self, to_repo, from_repo, required_ids, if_present_ids=None,
-                 find_ghosts=False, limit=None):
+    def __init__(
+        self,
+        to_repo,
+        from_repo,
+        required_ids,
+        if_present_ids=None,
+        find_ghosts=False,
+        limit=None,
+    ):
         """Constructor.
 
         :param required_ids: revision IDs of heads that must be found, or else
@@ -299,25 +320,34 @@ class NotInOtherForRevs(AbstractSearch):
 
     def __repr__(self):
         if len(self.required_ids) > 5:
-            reqd_revs_repr = repr(list(self.required_ids)[:5])[:-1] + ', ...]'
+            reqd_revs_repr = repr(list(self.required_ids)[:5])[:-1] + ", ...]"
         else:
             reqd_revs_repr = repr(self.required_ids)
         if self.if_present_ids and len(self.if_present_ids) > 5:
-            ifp_revs_repr = repr(list(self.if_present_ids)[:5])[:-1] + ', ...]'
+            ifp_revs_repr = repr(list(self.if_present_ids)[:5])[:-1] + ", ...]"
         else:
             ifp_revs_repr = repr(self.if_present_ids)
 
-        return ("<%s from:%r to:%r find_ghosts:%r req'd:%r if-present:%r"
-                "limit:%r>") % (
-            self.__class__.__name__, self.from_repo, self.to_repo,
-            self.find_ghosts, reqd_revs_repr, ifp_revs_repr,
-            self.limit)
+        return (
+            "<%s from:%r to:%r find_ghosts:%r req'd:%r if-present:%r" "limit:%r>"
+        ) % (
+            self.__class__.__name__,
+            self.from_repo,
+            self.to_repo,
+            self.find_ghosts,
+            reqd_revs_repr,
+            ifp_revs_repr,
+            self.limit,
+        )
 
     def execute(self):
         return self.to_repo.search_missing_revision_ids(
-            self.from_repo, revision_ids=self.required_ids,
-            if_present_ids=self.if_present_ids, find_ghosts=self.find_ghosts,
-            limit=self.limit)
+            self.from_repo,
+            revision_ids=self.required_ids,
+            if_present_ids=self.if_present_ids,
+            find_ghosts=self.find_ghosts,
+            limit=self.limit,
+        )
 
 
 def search_result_from_parent_map(parent_map, missing_keys):
@@ -334,8 +364,10 @@ def search_result_from_parent_map(parent_map, missing_keys):
     # stop either.
     stop_keys.difference_update(missing_keys)
     key_count = len(parent_map)
-    if (revision.NULL_REVISION in result_parents
-            and revision.NULL_REVISION in missing_keys):
+    if (
+        revision.NULL_REVISION in result_parents
+        and revision.NULL_REVISION in missing_keys
+    ):
         # If we pruned NULL_REVISION from the stop_keys because it's also
         # in our cache of "missing" keys we need to increment our key count
         # by 1, because the reconsitituted SearchResult on the server will
@@ -414,8 +446,7 @@ def _find_possible_heads(parent_map, tip_keys, depth):
     return heads
 
 
-def limited_search_result_from_parent_map(parent_map, missing_keys, tip_keys,
-                                          depth):
+def limited_search_result_from_parent_map(parent_map, missing_keys, tip_keys, depth):
     """Transform a parent_map that is searching 'tip_keys' into an
     approximate SearchResult.
 

@@ -107,7 +107,7 @@ class TestFIFOCache(tests.TestCase):
 
     def test_pop_not_implemeted(self):
         c = fifo_cache.FIFOCache()
-        self.assertRaises(NotImplementedError, c.pop, 'key')
+        self.assertRaises(NotImplementedError, c.pop, "key")
 
     def test_popitem_not_implemeted(self):
         c = fifo_cache.FIFOCache()
@@ -146,25 +146,24 @@ class TestFIFOCache(tests.TestCase):
         c[8] = 9
         c[9] = 10
         c[10] = 11
-        self.assertEqual({1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 9,
-                          9: 10, 10: 11}, c)
+        self.assertEqual(
+            {1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 9, 9: 10, 10: 11}, c
+        )
         c[11] = 12
-        self.assertEqual({4: 5, 5: 6, 6: 7, 7: 8, 8: 9, 9: 10, 10: 11,
-                          11: 12}, c)
+        self.assertEqual({4: 5, 5: 6, 6: 7, 7: 8, 8: 9, 9: 10, 10: 11, 11: 12}, c)
 
     def test_setdefault(self):
         c = fifo_cache.FIFOCache(5, 4)
-        c['one'] = 1
-        c['two'] = 2
-        c['three'] = 3
+        c["one"] = 1
+        c["two"] = 2
+        c["three"] = 3
         myobj = object()
-        self.assertIs(myobj, c.setdefault('four', myobj))
-        self.assertEqual({'one': 1, 'two': 2, 'three': 3, 'four': myobj}, c)
-        self.assertEqual(3, c.setdefault('three', myobj))
-        c.setdefault('five', myobj)
-        c.setdefault('six', myobj)
-        self.assertEqual({'three': 3, 'four': myobj, 'five': myobj,
-                          'six': myobj}, c)
+        self.assertIs(myobj, c.setdefault("four", myobj))
+        self.assertEqual({"one": 1, "two": 2, "three": 3, "four": myobj}, c)
+        self.assertEqual(3, c.setdefault("three", myobj))
+        c.setdefault("five", myobj)
+        c.setdefault("six", myobj)
+        self.assertEqual({"three": 3, "four": myobj, "five": myobj, "six": myobj}, c)
 
     def test_update(self):
         c = fifo_cache.FIFOCache(5, 4)
@@ -173,22 +172,24 @@ class TestFIFOCache(tests.TestCase):
         self.assertEqual({1: 2, 3: 4}, c)
         # Or kwarg form
         c.update(foo=3, bar=4)
-        self.assertEqual({1: 2, 3: 4, 'foo': 3, 'bar': 4}, c)
+        self.assertEqual({1: 2, 3: 4, "foo": 3, "bar": 4}, c)
         # Even a dict (This triggers a cleanup)
-        c.update({'baz': 'biz', 'bing': 'bang'})
-        self.assertEqual({'foo': 3, 'bar': 4, 'baz': 'biz', 'bing': 'bang'}, c)
+        c.update({"baz": "biz", "bing": "bang"})
+        self.assertEqual({"foo": 3, "bar": 4, "baz": "biz", "bing": "bang"}, c)
         # We only allow 1 iterable, just like dict
         self.assertRaises(TypeError, c.update, [(1, 2)], [(3, 4)])
         # But you can mix and match. kwargs take precedence over iterable
-        c.update([('a', 'b'), ('d', 'e')], a='c', q='r')
-        self.assertEqual({'baz': 'biz', 'bing': 'bang',
-                          'a': 'c', 'd': 'e', 'q': 'r'}, c)
+        c.update([("a", "b"), ("d", "e")], a="c", q="r")
+        self.assertEqual(
+            {"baz": "biz", "bing": "bang", "a": "c", "d": "e", "q": "r"}, c
+        )
 
     def test_cleanup_funcs(self):
         log = []
 
         def logging_cleanup(key, value):
             log.append((key, value))
+
         c = fifo_cache.FIFOCache(5, 4)
         c.add(1, 2, cleanup=logging_cleanup)
         c.add(2, 3, cleanup=logging_cleanup)
@@ -221,6 +222,7 @@ class TestFIFOCache(tests.TestCase):
 
         def logging_cleanup(key, value):
             log.append((key, value))
+
         c = fifo_cache.FIFOCache()
         c.add(1, 2, cleanup=logging_cleanup)
         del c
@@ -232,20 +234,19 @@ class TestFIFOCache(tests.TestCase):
 
 
 class TestFIFOSizeCache(tests.TestCase):
-
     def test_add_is_present(self):
         c = fifo_cache.FIFOSizeCache()
-        c[1] = '2'
+        c[1] = "2"
         self.assertTrue(1 in c)
         self.assertEqual(1, len(c))
-        self.assertEqual('2', c[1])
-        self.assertEqual('2', c.get(1))
-        self.assertEqual('2', c.get(1, None))
+        self.assertEqual("2", c[1])
+        self.assertEqual("2", c.get(1))
+        self.assertEqual("2", c.get(1, None))
         self.assertEqual([1], list(c))
         self.assertEqual({1}, c.keys())
-        self.assertEqual([(1, '2')], sorted(c.items()))
-        self.assertEqual(['2'], sorted(c.values()))
-        self.assertEqual({1: '2'}, c)
+        self.assertEqual([(1, "2")], sorted(c.items()))
+        self.assertEqual(["2"], sorted(c.values()))
+        self.assertEqual({1: "2"}, c)
         self.assertEqual(1024 * 1024, c.cache_size())
 
     def test_missing(self):
@@ -263,54 +264,54 @@ class TestFIFOSizeCache(tests.TestCase):
 
     def test_add_maintains_fifo(self):
         c = fifo_cache.FIFOSizeCache(10, 8)
-        c[1] = 'ab'
-        c[2] = 'cde'
-        c[3] = 'fghi'
-        self.assertEqual({1: 'ab', 2: 'cde', 3: 'fghi'}, c)
-        c[4] = 'jkl'  # Collapse
-        self.assertEqual({3: 'fghi', 4: 'jkl'}, c)
+        c[1] = "ab"
+        c[2] = "cde"
+        c[3] = "fghi"
+        self.assertEqual({1: "ab", 2: "cde", 3: "fghi"}, c)
+        c[4] = "jkl"  # Collapse
+        self.assertEqual({3: "fghi", 4: "jkl"}, c)
         # Replacing an item will bump it to the end of the queue
-        c[3] = 'mnop'
-        self.assertEqual({3: 'mnop', 4: 'jkl'}, c)
-        c[5] = 'qrst'
-        self.assertEqual({3: 'mnop', 5: 'qrst'}, c)
+        c[3] = "mnop"
+        self.assertEqual({3: "mnop", 4: "jkl"}, c)
+        c[5] = "qrst"
+        self.assertEqual({3: "mnop", 5: "qrst"}, c)
 
     def test_adding_large_key(self):
         c = fifo_cache.FIFOSizeCache(10, 8)
-        c[1] = 'abcdefgh'  # Adding a large key won't get cached at all
+        c[1] = "abcdefgh"  # Adding a large key won't get cached at all
         self.assertEqual({}, c)
-        c[1] = 'abcdefg'
-        self.assertEqual({1: 'abcdefg'}, c)
+        c[1] = "abcdefg"
+        self.assertEqual({1: "abcdefg"}, c)
         # Replacing with a too-large key will remove it
-        c[1] = 'abcdefgh'
+        c[1] = "abcdefgh"
         self.assertEqual({}, c)
         self.assertEqual(0, c._value_size)
 
     def test_resize_smaller(self):
         c = fifo_cache.FIFOSizeCache(20, 16)
-        c[1] = 'a'
-        c[2] = 'bc'
-        c[3] = 'def'
-        c[4] = 'ghij'
+        c[1] = "a"
+        c[2] = "bc"
+        c[3] = "def"
+        c[4] = "ghij"
         # No cleanup, because it is the exact size
         c.resize(10, 8)
-        self.assertEqual({1: 'a', 2: 'bc', 3: 'def', 4: 'ghij'}, c)
+        self.assertEqual({1: "a", 2: "bc", 3: "def", 4: "ghij"}, c)
         self.assertEqual(10, c.cache_size())
         # Adding one more will trigger a cleanup, though
-        c[5] = 'k'
-        self.assertEqual({3: 'def', 4: 'ghij', 5: 'k'}, c)
+        c[5] = "k"
+        self.assertEqual({3: "def", 4: "ghij", 5: "k"}, c)
         c.resize(5, 4)
-        self.assertEqual({5: 'k'}, c)
+        self.assertEqual({5: "k"}, c)
 
     def test_resize_larger(self):
         c = fifo_cache.FIFOSizeCache(10, 8)
-        c[1] = 'a'
-        c[2] = 'bc'
-        c[3] = 'def'
-        c[4] = 'ghij'
+        c[1] = "a"
+        c[2] = "bc"
+        c[3] = "def"
+        c[4] = "ghij"
         c.resize(12, 10)
-        self.assertEqual({1: 'a', 2: 'bc', 3: 'def', 4: 'ghij'}, c)
-        c[5] = 'kl'
-        self.assertEqual({1: 'a', 2: 'bc', 3: 'def', 4: 'ghij', 5: 'kl'}, c)
-        c[6] = 'mn'
-        self.assertEqual({4: 'ghij', 5: 'kl', 6: 'mn'}, c)
+        self.assertEqual({1: "a", 2: "bc", 3: "def", 4: "ghij"}, c)
+        c[5] = "kl"
+        self.assertEqual({1: "a", 2: "bc", 3: "def", 4: "ghij", 5: "kl"}, c)
+        c[6] = "mn"
+        self.assertEqual({4: "ghij", 5: "kl", 6: "mn"}, c)

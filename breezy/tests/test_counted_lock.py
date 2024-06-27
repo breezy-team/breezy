@@ -33,29 +33,29 @@ class DummyLock:
 
     def lock_read(self):
         self._assert_not_locked()
-        self._lock_mode = 'r'
-        self._calls.append('lock_read')
+        self._lock_mode = "r"
+        self._calls.append("lock_read")
 
     def lock_write(self, token=None):
         if token is not None:
-            if token == 'token':
+            if token == "token":
                 # already held by this caller
-                return 'token'
+                return "token"
             else:
                 raise TokenMismatch()
         self._assert_not_locked()
-        self._lock_mode = 'w'
-        self._calls.append('lock_write')
-        return 'token'
+        self._lock_mode = "w"
+        self._calls.append("lock_write")
+        return "token"
 
     def unlock(self):
         self._assert_locked()
         self._lock_mode = None
-        self._calls.append('unlock')
+        self._calls.append("unlock")
 
     def break_lock(self):
         self._lock_mode = None
-        self._calls.append('break')
+        self._calls.append("break")
 
     def _assert_locked(self):
         if not self._lock_mode:
@@ -63,21 +63,19 @@ class DummyLock:
 
     def _assert_not_locked(self):
         if self._lock_mode:
-            raise LockError("%s is already locked in mode %r" %
-                            (self, self._lock_mode))
+            raise LockError("%s is already locked in mode %r" % (self, self._lock_mode))
 
     def validate_token(self, token):
-        if token == 'token':
+        if token == "token":
             # already held by this caller
-            return 'token'
+            return "token"
         elif token is None:
             return
         else:
-            raise TokenMismatch(token, 'token')
+            raise TokenMismatch(token, "token")
 
 
 class TestDummyLock(TestCase):
-
     def test_lock_initially_not_held(self):
         l = DummyLock()
         self.assertFalse(l.is_locked())
@@ -103,27 +101,24 @@ class TestDummyLock(TestCase):
         self.assertFalse(real_lock.is_locked())
         # lock write and unlock
         result = real_lock.lock_write()
-        self.assertEqual('token', result)
+        self.assertEqual("token", result)
         self.assertTrue(real_lock.is_locked())
         real_lock.unlock()
         self.assertFalse(real_lock.is_locked())
         # check calls
         self.assertEqual(
-            ['lock_read', 'unlock', 'lock_write', 'unlock'],
-            real_lock._calls)
+            ["lock_read", "unlock", "lock_write", "unlock"], real_lock._calls
+        )
 
     def test_break_lock(self):
         l = DummyLock()
         l.lock_write()
         l.break_lock()
         self.assertFalse(l.is_locked())
-        self.assertEqual(
-            ['lock_write', 'break'],
-            l._calls)
+        self.assertEqual(["lock_write", "break"], l._calls)
 
 
 class TestCountedLock(TestCase):
-
     def test_read_lock(self):
         # Lock and unlock a counted lock
         real_lock = DummyLock()
@@ -138,9 +133,7 @@ class TestCountedLock(TestCase):
         self.assertTrue(l.is_locked())
         l.unlock()
         self.assertFalse(l.is_locked())
-        self.assertEqual(
-            ['lock_read', 'unlock'],
-            real_lock._calls)
+        self.assertEqual(["lock_read", "unlock"], real_lock._calls)
 
     def test_unlock_not_locked(self):
         real_lock = DummyLock()
@@ -152,14 +145,12 @@ class TestCountedLock(TestCase):
         l = CountedLock(real_lock)
         l.lock_write()
         l.lock_read()
-        self.assertEqual('token', l.lock_write())
+        self.assertEqual("token", l.lock_write())
         l.unlock()
         l.unlock()
         l.unlock()
         self.assertFalse(l.is_locked())
-        self.assertEqual(
-            ['lock_write', 'unlock'],
-            real_lock._calls)
+        self.assertEqual(["lock_write", "unlock"], real_lock._calls)
 
     def test_write_lock_while_read_locked(self):
         real_lock = DummyLock()
@@ -169,15 +160,13 @@ class TestCountedLock(TestCase):
         self.assertRaises(ReadOnlyError, l.lock_write)
         l.unlock()
         self.assertFalse(l.is_locked())
-        self.assertEqual(
-            ['lock_read', 'unlock'],
-            real_lock._calls)
+        self.assertEqual(["lock_read", "unlock"], real_lock._calls)
 
     def test_write_lock_reentrant(self):
         real_lock = DummyLock()
         l = CountedLock(real_lock)
-        self.assertEqual('token', l.lock_write())
-        self.assertEqual('token', l.lock_write())
+        self.assertEqual("token", l.lock_write())
+        self.assertEqual("token", l.lock_write())
         l.unlock()
         l.unlock()
 
@@ -186,7 +175,7 @@ class TestCountedLock(TestCase):
         l1 = CountedLock(real_lock)
         l2 = CountedLock(real_lock)
         token = l1.lock_write()
-        self.assertEqual('token', token)
+        self.assertEqual("token", token)
         # now imagine that we lost that connection, but we still have the
         # token...
         del l1

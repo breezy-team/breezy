@@ -30,7 +30,6 @@ __unittest = 1
 
 
 class LogCollector(logging.Handler):
-
     def __init__(self):
         logging.Handler.__init__(self)
         self.records = []
@@ -63,8 +62,11 @@ def visitTests(suite, visitor):
                 visitor.visitSuite(test)
                 visitTests(test, visitor)
             else:
-                print("unvisitable non-unittest.TestCase element {!r} ({!r})".format(
-                    test, test.__class__))
+                print(
+                    "unvisitable non-unittest.TestCase element {!r} ({!r})".format(
+                        test, test.__class__
+                    )
+                )
 
 
 class FailedCollectionCase(unittest.TestCase):
@@ -104,6 +106,7 @@ class TestSuite(unittest.TestSuite):
         stored_count = 0
         count_stored_tests = getattr(result, "_count_stored_tests", int)
         from breezy.tests import selftest_debug_flags
+
         notify = "uncollected_cases" in selftest_debug_flags
         while tests:
             if result.shouldStop:
@@ -161,8 +164,7 @@ class TestLoader(unittest.TestLoader):
             # We already know them
             return test_fn_names
 
-        test_fn_names = unittest.TestLoader.getTestCaseNames(self,
-                                                             test_case_class)
+        test_fn_names = unittest.TestLoader.getTestCaseNames(self, test_case_class)
         self.test_func_names[test_case_class] = test_fn_names
         return test_fn_names
 

@@ -22,6 +22,7 @@ try:
     from ._static_tuple_c import StaticTuple
 except ImportError as e:
     from .. import osutils
+
     osutils.failed_to_load_extension(e)
     from ._static_tuple_py import StaticTuple
 
@@ -35,10 +36,10 @@ def expect_static_tuple(obj):
     As apis are improved, we will probably eventually stop calling this as it
     adds overhead we shouldn't need.
     """
-    if 'static_tuple' not in debug.debug_flags:
+    if "static_tuple" not in debug.debug_flags:
         return StaticTuple.from_sequence(obj)
     if not isinstance(obj, StaticTuple):
-        raise TypeError('We expected a StaticTuple not a {}'.format(type(obj)))
+        raise TypeError("We expected a StaticTuple not a {}".format(type(obj)))
     return obj
 
 

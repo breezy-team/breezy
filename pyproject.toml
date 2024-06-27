@@ -63,6 +63,7 @@ dev = [
     "python-subunit",
     "flake8",
     "cython>=0.29",
+    "ruff",
 ]
 testing = [
     "testtools",

@@ -28,23 +28,21 @@ from .textfile import check_text_path
 
 
 class PatchFailed(BzrError):
-
     _fmt = """Patch application failed"""
 
 
 class PatchInvokeError(BzrError):
-
     _fmt = """Error invoking patch: %(errstr)s%(stderr)s"""
     internal_error = False
 
-    def __init__(self, e, stderr=''):
+    def __init__(self, e, stderr=""):
         self.exception = e
         self.errstr = os.strerror(e.errno)
-        self.stderr = '\n' + stderr
+        self.stderr = "\n" + stderr
 
 
 _do_close_fds = True
-if os.name == 'nt':
+if os.name == "nt":
     _do_close_fds = False
 
 
@@ -57,8 +55,14 @@ def write_to_cmd(args, input=""):
     :param input: [optional] The text to send the process on stdin
     :return: (stdout, stderr, status)
     """
-    process = Popen(args, bufsize=len(input), stdin=PIPE, stdout=PIPE,
-                    stderr=PIPE, close_fds=_do_close_fds)
+    process = Popen(
+        args,
+        bufsize=len(input),
+        stdin=PIPE,
+        stdout=PIPE,
+        stderr=PIPE,
+        close_fds=_do_close_fds,
+    )
     stdout, stderr = process.communicate(input)
     status = process.wait()
     if status < 0:
@@ -94,10 +98,11 @@ def patch(patch_contents, filename, output_filename=None, reverse=False):
 def diff3(out_file, mine_path, older_path, yours_path):
     def add_label(args, label):
         args.extend(("-L", label))
+
     check_text_path(mine_path)
     check_text_path(older_path)
     check_text_path(yours_path)
-    args = ['diff3', "-E", "--merge"]
+    args = ["diff3", "-E", "--merge"]
     add_label(args, "TREE")
     add_label(args, "ANCESTOR")
     add_label(args, "MERGE-SOURCE")
@@ -111,13 +116,14 @@ def diff3(out_file, mine_path, older_path, yours_path):
             raise
     if status not in (0, 1):
         raise Exception(stderr)
-    with open(out_file, 'wb') as f:
+    with open(out_file, "wb") as f:
         f.write(output)
     return status
 
 
-def patch_tree(tree, patches, strip=0, reverse=False, dry_run=False,
-               quiet=False, out=None):
+def patch_tree(
+    tree, patches, strip=0, reverse=False, dry_run=False, quiet=False, out=None
+):
     """Apply a patch to a tree.
 
     Args:
@@ -127,26 +133,34 @@ def patch_tree(tree, patches, strip=0, reverse=False, dry_run=False,
       reverse: Apply reversal of patch
       dry_run: Dry run
     """
-    return run_patch(tree.basedir, patches, strip, reverse, dry_run,
-                     quiet, out=out)
+    return run_patch(tree.basedir, patches, strip, reverse, dry_run, quiet, out=out)
 
 
-def run_patch(directory, patches, strip=0, reverse=False, dry_run=False,
-              quiet=False, _patch_cmd='patch', target_file=None, out=None):
-    args = [_patch_cmd, '-d', directory, '-s', '-p%d' % strip, '-f']
+def run_patch(
+    directory,
+    patches,
+    strip=0,
+    reverse=False,
+    dry_run=False,
+    quiet=False,
+    _patch_cmd="patch",
+    target_file=None,
+    out=None,
+):
+    args = [_patch_cmd, "-d", directory, "-s", "-p%d" % strip, "-f"]
     if quiet:
-        args.append('--quiet')
+        args.append("--quiet")
 
     if sys.platform == "win32":
-        args.append('--binary')
+        args.append("--binary")
 
     if reverse:
-        args.append('-R')
+        args.append("-R")
     if dry_run:
-        if sys.platform.startswith('freebsd'):
-            args.append('--check')
+        if sys.platform.startswith("freebsd"):
+            args.append("--check")
         else:
-            args.append('--dry-run')
+            args.append("--dry-run")
         stderr = PIPE
     else:
         stderr = None
@@ -192,9 +206,19 @@ def iter_patched_from_hunks(orig_lines, hunks):
         f.flush()
         # TODO(jelmer): Stream patch contents to command, rather than
         # serializing the entire patch upfront.
-        serialized = b''.join([hunk.as_bytes() for hunk in hunks])
-        args = ["patch", "-f", "-s", "--posix", "--binary",
-                "-o", "-", f.name, "-r", "-"]
+        serialized = b"".join([hunk.as_bytes() for hunk in hunks])
+        args = [
+            "patch",
+            "-f",
+            "-s",
+            "--posix",
+            "--binary",
+            "-o",
+            "-",
+            f.name,
+            "-r",
+            "-",
+        ]
         stdout, stderr, status = write_to_cmd(args, serialized)
     if status == 0:
         return [stdout]

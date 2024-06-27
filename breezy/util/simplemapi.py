@@ -83,12 +83,12 @@ MAPI_DIALOG = 8
 
 class MapiRecipDesc(Structure):
     _fields_ = [
-        ('ulReserved', c_ulong),
-        ('ulRecipClass', c_ulong),
-        ('lpszName', c_char_p),
-        ('lpszAddress', c_char_p),
-        ('ulEIDSize', c_ulong),
-        ('lpEntryID', c_void_p),
+        ("ulReserved", c_ulong),
+        ("ulRecipClass", c_ulong),
+        ("lpszName", c_char_p),
+        ("lpszAddress", c_char_p),
+        ("ulEIDSize", c_ulong),
+        ("lpEntryID", c_void_p),
     ]
 
 
@@ -98,12 +98,12 @@ lppMapiRecipDesc = POINTER(lpMapiRecipDesc)
 
 class MapiFileDesc(Structure):
     _fields_ = [
-        ('ulReserved', c_ulong),
-        ('flFlags', c_ulong),
-        ('nPosition', c_ulong),
-        ('lpszPathName', c_char_p),
-        ('lpszFileName', c_char_p),
-        ('lpFileType', c_void_p),
+        ("ulReserved", c_ulong),
+        ("flFlags", c_ulong),
+        ("nPosition", c_ulong),
+        ("lpszPathName", c_char_p),
+        ("lpszFileName", c_char_p),
+        ("lpFileType", c_void_p),
     ]
 
 
@@ -112,18 +112,18 @@ lpMapiFileDesc = POINTER(MapiFileDesc)
 
 class MapiMessage(Structure):
     _fields_ = [
-        ('ulReserved', c_ulong),
-        ('lpszSubject', c_char_p),
-        ('lpszNoteText', c_char_p),
-        ('lpszMessageType', c_char_p),
-        ('lpszDateReceived', c_char_p),
-        ('lpszConversationID', c_char_p),
-        ('flFlags', FLAGS),
-        ('lpOriginator', lpMapiRecipDesc),
-        ('nRecipCount', c_ulong),
-        ('lpRecips', lpMapiRecipDesc),
-        ('nFileCount', c_ulong),
-        ('lpFiles', lpMapiFileDesc),
+        ("ulReserved", c_ulong),
+        ("lpszSubject", c_char_p),
+        ("lpszNoteText", c_char_p),
+        ("lpszMessageType", c_char_p),
+        ("lpszDateReceived", c_char_p),
+        ("lpszConversationID", c_char_p),
+        ("flFlags", FLAGS),
+        ("lpOriginator", lpMapiRecipDesc),
+        ("nRecipCount", c_ulong),
+        ("lpRecips", lpMapiRecipDesc),
+        ("nFileCount", c_ulong),
+        ("lpFiles", lpMapiFileDesc),
     ]
 
 
@@ -137,11 +137,17 @@ MAPISendMail.argtypes = (LHANDLE, c_ulong, lpMapiMessage, FLAGS, c_ulong)
 MAPIResolveName = MAPI.MAPIResolveName
 MAPIResolveName.restype = c_ulong
 MAPIResolveName.argtypes = (
-    LHANDLE, c_ulong, c_char_p, FLAGS, c_ulong, lppMapiRecipDesc)
+    LHANDLE,
+    c_ulong,
+    c_char_p,
+    FLAGS,
+    c_ulong,
+    lppMapiRecipDesc,
+)
 
 MAPIFreeBuffer = MAPI.MAPIFreeBuffer
 MAPIFreeBuffer.restype = c_ulong
-MAPIFreeBuffer.argtypes = (c_void_p, )
+MAPIFreeBuffer.argtypes = (c_void_p,)
 
 MAPILogon = MAPI.MAPILogon
 MAPILogon.restype = c_ulong
@@ -153,13 +159,12 @@ MAPILogoff.argtypes = (LHANDLE, c_ulong, FLAGS, c_ulong)
 
 
 class MAPIError(WindowsError):  # type: ignore
-
     def __init__(self, code):
         WindowsError.__init__(self)  # type: ignore
         self.code = code
 
     def __str__(self):
-        return 'MAPI error %d' % (self.code,)
+        return "MAPI error %d" % (self.code,)
 
 
 def _logon(profileName=None, password=None):
@@ -205,7 +210,7 @@ def _sendMail(session, recipient, subject, body, attach):
     else:
         lpFiles = lpMapiFileDesc()
 
-    RecipWork = recipient.split(';')
+    RecipWork = recipient.split(";")
     RecipCnt = len(RecipWork)
     MapiRecipDesc_A = MapiRecipDesc * len(RecipWork)
     rda = MapiRecipDesc_A()
@@ -221,9 +226,20 @@ def _sendMail(session, recipient, subject, body, attach):
         rd.lpEntryID = None
     recip = rda
 
-    msg = MapiMessage(0, subject, body, None, None, None, 0, lpMapiRecipDesc(),
-                      RecipCnt, recip,
-                      nFileCount, lpFiles)
+    msg = MapiMessage(
+        0,
+        subject,
+        body,
+        None,
+        None,
+        None,
+        0,
+        lpMapiRecipDesc(),
+        RecipCnt,
+        recip,
+        nFileCount,
+        lpFiles,
+    )
 
     rc = MAPISendMail(session, 0, byref(msg), MAPI_DIALOG, 0)
     if rc != SUCCESS_SUCCESS:
@@ -240,7 +256,7 @@ def SendMail(recipient, subject="", body="", attachfiles=""):
     """
 
     attach = []
-    AttachWork = attachfiles.split(';')
+    AttachWork = attachfiles.split(";")
     for f in AttachWork:
         if os.path.exists(f):
             attach.append(os.path.abspath(f))
@@ -256,8 +272,9 @@ def SendMail(recipient, subject="", body="", attachfiles=""):
         os.chdir(restore)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
+
     recipient = "test@johnnypops.demon.co.uk"
     subject = "Test Message Subject"
     body = "Hi,\r\n\r\nthis is a quick test message,\r\n\r\ncheers,\r\nJohn."

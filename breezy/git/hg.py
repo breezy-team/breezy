@@ -28,8 +28,8 @@ def format_hg_metadata(renames, branch, extra):
     :param extra: Dictionary with extra data
     :return: Tail for commit message
     """
-    extra_message = ''
-    if branch != 'default':
+    extra_message = ""
+    if branch != "default":
         extra_message += "branch : " + branch + "\n"
 
     if renames:
@@ -37,12 +37,10 @@ def format_hg_metadata(renames, branch, extra):
             extra_message += "rename : " + oldfile + " => " + newfile + "\n"
 
     for key, value in extra.iteritems():
-        if key in ('author', 'committer', 'encoding', 'message', 'branch',
-                   'hg-git'):
+        if key in ("author", "committer", "encoding", "message", "branch", "hg-git"):
             continue
         else:
-            extra_message += "extra : " + key + \
-                " : " + urllib.parse.quote(value) + "\n"
+            extra_message += "extra : " + key + " : " + urllib.parse.quote(value) + "\n"
 
     if extra_message:
         return "\n--HG--\n" + extra_message
@@ -65,15 +63,15 @@ def extract_hg_metadata(message):
         message, meta = split
         lines = meta.split("\n")
         for line in lines:
-            if line == '':
+            if line == "":
                 continue
             command, data = line.split(" : ", 1)
-            if command == 'rename':
+            if command == "rename":
                 before, after = data.split(" => ", 1)
                 renames[after] = before
-            elif command == 'branch':
+            elif command == "branch":
                 branch = data
-            elif command == 'extra':
+            elif command == "extra":
                 before, after = data.split(" : ", 1)
                 extra[before] = urllib.parse.unquote(after)
             else:

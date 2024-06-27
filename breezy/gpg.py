@@ -36,16 +36,16 @@ MODE_CLEAR = 2
 
 
 class GpgNotInstalled(errors.DependencyNotPresent):
-
-    _fmt = ('python-gpg is not installed, it is needed to create or '
-            'verify signatures. %(error)s')
+    _fmt = (
+        "python-gpg is not installed, it is needed to create or "
+        "verify signatures. %(error)s"
+    )
 
     def __init__(self, error):
-        errors.DependencyNotPresent.__init__(self, 'gpg', error)
+        errors.DependencyNotPresent.__init__(self, "gpg", error)
 
 
 class SigningFailed(errors.BzrError):
-
     _fmt = 'Failed to GPG sign data: "%(error)s"'
 
     def __init__(self, error):
@@ -53,15 +53,13 @@ class SigningFailed(errors.BzrError):
 
 
 class SignatureVerificationFailed(errors.BzrError):
-
     _fmt = 'Failed to verify GPG signature data with error "%(error)s"'
 
     def __init__(self, error):
         errors.BzrError.__init__(self, error=error)
 
 
-def bulk_verify_signatures(repository, revids, strategy,
-                           process_events_callback=None):
+def bulk_verify_signatures(repository, revids, strategy, process_events_callback=None):
     """Do verifications on a set of revisions
 
     :param repository: repository object
@@ -74,18 +72,20 @@ def bulk_verify_signatures(repository, revids, strategy,
              result list for each revision,
              boolean True if all results are verified successfully
     """
-    count = {SIGNATURE_VALID: 0,
-             SIGNATURE_KEY_MISSING: 0,
-             SIGNATURE_NOT_VALID: 0,
-             SIGNATURE_NOT_SIGNED: 0,
-             SIGNATURE_EXPIRED: 0}
+    count = {
+        SIGNATURE_VALID: 0,
+        SIGNATURE_KEY_MISSING: 0,
+        SIGNATURE_NOT_VALID: 0,
+        SIGNATURE_NOT_SIGNED: 0,
+        SIGNATURE_EXPIRED: 0,
+    }
     result = []
     all_verifiable = True
     total = len(revids)
     with ui.ui_factory.nested_progress_bar() as pb:
         for i, (rev_id, verification_result, uid) in enumerate(
-                repository.verify_revision_signatures(
-                    revids, strategy)):
+            repository.verify_revision_signatures(revids, strategy)
+        ):
             pb.update("verifying signatures", i, total)
             result.append([rev_id, verification_result, uid])
             count[verification_result] += 1
@@ -107,11 +107,13 @@ class DisabledGPGStrategy:
         """Real strategies take a configuration."""
 
     def sign(self, content, mode):
-        raise SigningFailed('Signing is disabled.')
+        raise SigningFailed("Signing is disabled.")
 
     def verify(self, signed_data, signature=None):
-        raise SignatureVerificationFailed('Signature verification is \
-disabled.')
+        raise SignatureVerificationFailed(
+            "Signature verification is \
+disabled."
+        )
 
     def set_acceptable_keys(self, command_line_input):
         pass
@@ -130,14 +132,17 @@ class LoopbackGPGStrategy:
         """Real strategies take a configuration."""
 
     def sign(self, content, mode):
-        return (b"-----BEGIN PSEUDO-SIGNED CONTENT-----\n" + content
-                + b"-----END PSEUDO-SIGNED CONTENT-----\n")
+        return (
+            b"-----BEGIN PSEUDO-SIGNED CONTENT-----\n"
+            + content
+            + b"-----END PSEUDO-SIGNED CONTENT-----\n"
+        )
 
     def verify(self, signed_data, signature=None):
         plain_text = signed_data.replace(
-            b"-----BEGIN PSEUDO-SIGNED CONTENT-----\n", b"")
-        plain_text = plain_text.replace(
-            b"-----END PSEUDO-SIGNED CONTENT-----\n", b"")
+            b"-----BEGIN PSEUDO-SIGNED CONTENT-----\n", b""
+        )
+        plain_text = plain_text.replace(b"-----END PSEUDO-SIGNED CONTENT-----\n", b"")
         return SIGNATURE_VALID, None, plain_text
 
     def set_acceptable_keys(self, command_line_input):
@@ -152,16 +157,15 @@ class LoopbackGPGStrategy:
 
 
 def _set_gpg_tty():
-    tty = os.environ.get('TTY')
+    tty = os.environ.get("TTY")
     if tty is not None:
-        os.environ['GPG_TTY'] = tty
-        trace.mutter('setting GPG_TTY=%s', tty)
+        os.environ["GPG_TTY"] = tty
+        trace.mutter("setting GPG_TTY=%s", tty)
     else:
         # This is not quite worthy of a warning, because some people
         # don't need GPG_TTY to be set. But it is worthy of a big mark
         # in brz.log, so that people can debug it if it happens to them
-        trace.mutter('** Env var TTY empty, cannot set GPG_TTY.'
-                     '  Is TTY exported?')
+        trace.mutter("** Env var TTY empty, cannot set GPG_TTY." "  Is TTY exported?")
 
 
 class GPGStrategy:
@@ -173,6 +177,7 @@ class GPGStrategy:
         self._config_stack = config_stack
         try:
             import gpg
+
             self.context = gpg.Context()
             self.context.armor = True
             self.context.signers = self._get_signing_keys()
@@ -181,8 +186,9 @@ class GPGStrategy:
 
     def _get_signing_keys(self):
         import gpg
-        keyname = self._config_stack.get('gpg_signing_key')
-        if keyname == 'default':
+
+        keyname = self._config_stack.get("gpg_signing_key")
+        if keyname == "default":
             # Leave things to gpg
             return []
 
@@ -195,9 +201,8 @@ class GPGStrategy:
         if keyname is None:
             # not setting gpg_signing_key at all means we should
             # use the user email address
-            keyname = config.extract_email_address(
-                self._config_stack.get('email'))
-        if keyname == 'default':
+            keyname = config.extract_email_address(self._config_stack.get("email"))
+        if keyname == "default":
             return []
         possible_keys = self.context.keylist(keyname, secret=True)
         try:
@@ -214,6 +219,7 @@ class GPGStrategy:
         """
         try:
             import gpg  # noqa: F401
+
             return True
         except ModuleNotFoundError:
             return False
@@ -223,19 +229,22 @@ class GPGStrategy:
             import gpg
         except ModuleNotFoundError as error:
             raise GpgNotInstalled(
-                'Set create_signatures=no to disable creating signatures.')
+                "Set create_signatures=no to disable creating signatures."
+            )
 
         if isinstance(content, str):
-            raise errors.BzrBadParameterUnicode('content')
+            raise errors.BzrBadParameterUnicode("content")
 
         plain_text = gpg.Data(content)
         try:
             output, result = self.context.sign(
-                plain_text, mode={
+                plain_text,
+                mode={
                     MODE_DETACH: gpg.constants.sig.mode.DETACH,
                     MODE_CLEAR: gpg.constants.sig.mode.CLEAR,
                     MODE_NORMAL: gpg.constants.sig.mode.NORMAL,
-                    }[mode])
+                }[mode],
+            )
         except gpg.errors.GPGMEError as error:
             raise SigningFailed(str(error))
         except gpg.errors.InvalidSigners as error:
@@ -255,7 +264,8 @@ class GPGStrategy:
             import gpg
         except ModuleNotFoundError as error:
             raise GpgNotInstalled(
-                'Set check_signatures=ignore to disable verifying signatures.')
+                "Set check_signatures=ignore to disable verifying signatures."
+            )
 
         signed_data = gpg.Data(signed_data)
         if signature:
@@ -265,8 +275,11 @@ class GPGStrategy:
         except gpg.errors.BadSignatures as error:
             fingerprint = error.result.signatures[0].fpr
             if error.result.signatures[0].summary & gpg.constants.SIGSUM_KEY_EXPIRED:
-                expires = self.context.get_key(
-                    error.result.signatures[0].fpr).subkeys[0].expires
+                expires = (
+                    self.context.get_key(error.result.signatures[0].fpr)
+                    .subkeys[0]
+                    .expires
+                )
                 if expires > error.result.signatures[0].timestamp:
                     # The expired key was not expired at time of signing.
                     # test_verify_expired_but_valid()
@@ -278,8 +291,7 @@ class GPGStrategy:
 
             # GPG does not know this key.
             # test_verify_unknown_key()
-            if (error.result.signatures[0].summary &
-                    gpg.constants.SIGSUM_KEY_MISSING):
+            if error.result.signatures[0].summary & gpg.constants.SIGSUM_KEY_MISSING:
                 return SIGNATURE_KEY_MISSING, fingerprint[-8:], None
 
             return SIGNATURE_NOT_VALID, None, None
@@ -304,10 +316,10 @@ class GPGStrategy:
             key = self.context.get_key(fingerprint)
             name = key.uids[0].name
             if isinstance(name, bytes):
-                name = name.decode('utf-8')
+                name = name.decode("utf-8")
             email = key.uids[0].email
             if isinstance(email, bytes):
-                email = email.decode('utf-8')
+                email = email.decode("utf-8")
             return (SIGNATURE_VALID, name + " <" + email + ">", plain_output)
         # Sigsum_red indicates a problem, unfortunatly I have not been able
         # to write any tests which actually set this.
@@ -315,8 +327,7 @@ class GPGStrategy:
             return SIGNATURE_NOT_VALID, None, plain_output
         # Summary isn't set if sig is valid but key is untrusted but if user
         # has explicity set the key as acceptable we can validate it.
-        if (result.signatures[0].summary == 0 and
-                self.acceptable_keys is not None):
+        if result.signatures[0].summary == 0 and self.acceptable_keys is not None:
             if fingerprint in self.acceptable_keys:
                 # test_verify_untrusted_but_accepted()
                 return SIGNATURE_VALID, None, plain_output
@@ -325,8 +336,7 @@ class GPGStrategy:
             return SIGNATURE_NOT_VALID, None, plain_output
         # Other error types such as revoked keys should (I think) be caught by
         # SIGSUM_RED so anything else means something is buggy.
-        raise SignatureVerificationFailed(
-            "Unknown GnuPG key verification result")
+        raise SignatureVerificationFailed("Unknown GnuPG key verification result")
 
     def set_acceptable_keys(self, command_line_input):
         """Set the acceptable keys for verifying with this GPGStrategy.
@@ -336,11 +346,11 @@ class GPGStrategy:
         :return: nothing
         """
         patterns = None
-        acceptable_keys_config = self._config_stack.get('acceptable_keys')
+        acceptable_keys_config = self._config_stack.get("acceptable_keys")
         if acceptable_keys_config is not None:
             patterns = acceptable_keys_config
         if command_line_input is not None:  # command line overrides config
-            patterns = command_line_input.split(',')
+            patterns = command_line_input.split(",")
 
         if patterns:
             self.acceptable_keys = []
@@ -352,47 +362,46 @@ class GPGStrategy:
                     self.acceptable_keys.append(key.subkeys[0].fpr)
                     trace.mutter("Added acceptable key: " + key.subkeys[0].fpr)
                 if not found_key:
-                    trace.note(gettext(
-                        "No GnuPG key results for pattern: {0}"
-                        ).format(pattern))
+                    trace.note(
+                        gettext("No GnuPG key results for pattern: {0}").format(pattern)
+                    )
 
 
 def valid_commits_message(count):
     """returns message for number of commits"""
-    return gettext("{0} commits with valid signatures").format(
-        count[SIGNATURE_VALID])
+    return gettext("{0} commits with valid signatures").format(count[SIGNATURE_VALID])
 
 
 def unknown_key_message(count):
     """returns message for number of commits"""
-    return ngettext("{0} commit with unknown key",
-                    "{0} commits with unknown keys",
-                    count[SIGNATURE_KEY_MISSING]).format(
-        count[SIGNATURE_KEY_MISSING])
+    return ngettext(
+        "{0} commit with unknown key",
+        "{0} commits with unknown keys",
+        count[SIGNATURE_KEY_MISSING],
+    ).format(count[SIGNATURE_KEY_MISSING])
 
 
 def commit_not_valid_message(count):
     """returns message for number of commits"""
-    return ngettext("{0} commit not valid",
-                    "{0} commits not valid",
-                    count[SIGNATURE_NOT_VALID]).format(
-        count[SIGNATURE_NOT_VALID])
+    return ngettext(
+        "{0} commit not valid", "{0} commits not valid", count[SIGNATURE_NOT_VALID]
+    ).format(count[SIGNATURE_NOT_VALID])
 
 
 def commit_not_signed_message(count):
     """returns message for number of commits"""
-    return ngettext("{0} commit not signed",
-                    "{0} commits not signed",
-                    count[SIGNATURE_NOT_SIGNED]).format(
-        count[SIGNATURE_NOT_SIGNED])
+    return ngettext(
+        "{0} commit not signed", "{0} commits not signed", count[SIGNATURE_NOT_SIGNED]
+    ).format(count[SIGNATURE_NOT_SIGNED])
 
 
 def expired_commit_message(count):
     """returns message for number of commits"""
-    return ngettext("{0} commit with key now expired",
-                    "{0} commits with key now expired",
-                    count[SIGNATURE_EXPIRED]).format(
-        count[SIGNATURE_EXPIRED])
+    return ngettext(
+        "{0} commit with key now expired",
+        "{0} commits with key now expired",
+        count[SIGNATURE_EXPIRED],
+    ).format(count[SIGNATURE_EXPIRED])
 
 
 def verbose_expired_key_message(result, repo) -> List[str]:
@@ -402,17 +411,19 @@ def verbose_expired_key_message(result, repo) -> List[str]:
     for rev_id, validity, fingerprint in result:
         if validity == SIGNATURE_EXPIRED:
             revision = repo.get_revision(rev_id)
-            authors = ', '.join(revision.get_apparent_authors())
+            authors = ", ".join(revision.get_apparent_authors())
             signers.setdefault(fingerprint, 0)
             signers[fingerprint] += 1
             fingerprint_to_authors[fingerprint] = authors
     ret: List[str] = []
     for fingerprint, number in signers.items():
         ret.append(
-            ngettext("{0} commit by author {1} with key {2} now expired",
-                     "{0} commits by author {1} with key {2} now expired",
-                     number).format(
-                number, fingerprint_to_authors[fingerprint], fingerprint))
+            ngettext(
+                "{0} commit by author {1} with key {2} now expired",
+                "{0} commits by author {1} with key {2} now expired",
+                number,
+            ).format(number, fingerprint_to_authors[fingerprint], fingerprint)
+        )
     return ret
 
 
@@ -425,9 +436,11 @@ def verbose_valid_message(result) -> List[str]:
             signers[uid] += 1
     ret: List[str] = []
     for uid, number in signers.items():
-        ret.append(ngettext("{0} signed {1} commit",
-                            "{0} signed {1} commits",
-                            number).format(uid, number))
+        ret.append(
+            ngettext("{0} signed {1} commit", "{0} signed {1} commits", number).format(
+                uid, number
+            )
+        )
     return ret
 
 
@@ -437,14 +450,16 @@ def verbose_not_valid_message(result, repo) -> List[str]:
     for rev_id, validity, empty in result:
         if validity == SIGNATURE_NOT_VALID:
             revision = repo.get_revision(rev_id)
-            authors = ', '.join(revision.get_apparent_authors())
+            authors = ", ".join(revision.get_apparent_authors())
             signers.setdefault(authors, 0)
             signers[authors] += 1
     ret: List[str] = []
     for authors, number in signers.items():
-        ret.append(ngettext("{0} commit by author {1}",
-                            "{0} commits by author {1}",
-                            number).format(number, authors))
+        ret.append(
+            ngettext(
+                "{0} commit by author {1}", "{0} commits by author {1}", number
+            ).format(number, authors)
+        )
     return ret
 
 
@@ -454,14 +469,16 @@ def verbose_not_signed_message(result, repo) -> List[str]:
     for rev_id, validity, empty in result:
         if validity == SIGNATURE_NOT_SIGNED:
             revision = repo.get_revision(rev_id)
-            authors = ', '.join(revision.get_apparent_authors())
+            authors = ", ".join(revision.get_apparent_authors())
             signers.setdefault(authors, 0)
             signers[authors] += 1
     ret: List[str] = []
     for authors, number in signers.items():
-        ret.append(ngettext("{0} commit by author {1}",
-                            "{0} commits by author {1}",
-                            number).format(number, authors))
+        ret.append(
+            ngettext(
+                "{0} commit by author {1}", "{0} commits by author {1}", number
+            ).format(number, authors)
+        )
     return ret
 
 
@@ -474,7 +491,11 @@ def verbose_missing_key_message(result) -> List[str]:
             signers[fingerprint] += 1
     ret: List[str] = []
     for fingerprint, number in list(signers.items()):
-        ret.append(ngettext("Unknown key {0} signed {1} commit",
-                            "Unknown key {0} signed {1} commits",
-                            number).format(fingerprint, number))
+        ret.append(
+            ngettext(
+                "Unknown key {0} signed {1} commit",
+                "Unknown key {0} signed {1} commits",
+                number,
+            ).format(fingerprint, number)
+        )
     return ret

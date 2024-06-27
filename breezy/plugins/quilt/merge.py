@@ -32,7 +32,6 @@ from .quilt import QuiltPatches
 
 
 class NoUnapplyingMerger(_mod_merge.Merge3Merger):
-
     _no_quilt_unapplying = True
 
 
@@ -59,16 +58,21 @@ def tree_unapply_patches(orig_tree, orig_branch=None, force=False):
     try:
         if isinstance(orig_tree, MutableTree):
             tree = orig_branch.create_checkout(
-                target_dir, lightweight=True,
+                target_dir,
+                lightweight=True,
                 revision_id=orig_tree.last_revision(),
-                accelerator_tree=orig_tree)
+                accelerator_tree=orig_tree,
+            )
             merger = _mod_merge.Merger.from_uncommitted(tree, orig_tree)
             merger.merge_type = NoUnapplyingMerger
             merger.do_merge()
         elif isinstance(orig_tree, RevisionTree):
             tree = orig_branch.create_checkout(
-                target_dir, lightweight=True,
-                accelerator_tree=orig_tree, revision_id=orig_tree.get_revision_id())
+                target_dir,
+                lightweight=True,
+                accelerator_tree=orig_tree,
+                revision_id=orig_tree.get_revision_id(),
+            )
         else:
             trace.mutter("Not sure how to create copy of %r", orig_tree)
             shutil.rmtree(target_dir)
@@ -132,7 +136,9 @@ def start_commit_quilt_patches(tree, policy):
         if applied_patches and unapplied_patches:
             trace.warning(
                 gettext("Committing with %d patches applied and %d patches unapplied."),
-                len(applied_patches), len(unapplied_patches))
+                len(applied_patches),
+                len(unapplied_patches),
+            )
     elif policy == "applied":
         quilt.push_all()
     elif policy == "unapplied":

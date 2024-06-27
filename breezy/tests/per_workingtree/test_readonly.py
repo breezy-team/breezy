@@ -27,15 +27,15 @@ from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 
 class TestReadonly(TestCaseWithWorkingTree):
-
     def setUp(self):
         if not self.platform_supports_readonly_dirs():
-            raise tests.TestSkipped('platform does not support readonly'
-                                    ' directories.')
+            raise tests.TestSkipped(
+                "platform does not support readonly" " directories."
+            )
         super().setUp()
 
     def platform_supports_readonly_dirs(self):
-        if sys.platform in ('win32', 'cygwin'):
+        if sys.platform in ("win32", "cygwin"):
             # Setting a directory to readonly in windows or cygwin doesn't seem
             # to have any effect. You can still create files in subdirectories.
             # TODO: jam 20061219 We could cheat and set just the hashcache file
@@ -62,10 +62,10 @@ class TestReadonly(TestCaseWithWorkingTree):
         self._set_all_dirs(basedir, readonly=True)
 
     def create_basic_tree(self):
-        tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/a', 'tree/b/', 'tree/b/c'])
-        tree.add(['a', 'b', 'b/c'])
-        tree.commit('creating an initial tree.')
+        tree = self.make_branch_and_tree("tree")
+        self.build_tree(["tree/a", "tree/b/", "tree/b/c"])
+        tree.add(["a", "b", "b/c"])
+        tree.commit("creating an initial tree.")
         return tree
 
     def _custom_cutoff_time(self):
@@ -84,7 +84,7 @@ class TestReadonly(TestCaseWithWorkingTree):
         # WorkingTree formats that don't have a _hashcache should update this
         # test so that they pass. For now, we just assert that we have the
         # right type of objects available.
-        the_hashcache = getattr(tree, '_hashcache', None)
+        the_hashcache = getattr(tree, "_hashcache", None)
         if the_hashcache is not None:
             self.assertIsInstance(the_hashcache, hashcache.HashCache)
             the_hashcache._cutoff_time = self._custom_cutoff_time
@@ -96,10 +96,10 @@ class TestReadonly(TestCaseWithWorkingTree):
             hack_dirstate = True
 
         # Make it a little dirty
-        self.build_tree_contents([('tree/a', b'new contents of a\n')])
+        self.build_tree_contents([("tree/a", b"new contents of a\n")])
 
         # Make it readonly, and do some operations and then unlock
-        self.set_dirs_readonly('tree')
+        self.set_dirs_readonly("tree")
 
         with tree.lock_read():
             if hack_dirstate:

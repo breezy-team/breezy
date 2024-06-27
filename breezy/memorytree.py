@@ -67,13 +67,13 @@ class MemoryTree(MutableInventoryTree):
                 if kind is None:
                     st_mode = self._file_transport.stat(f).st_mode
                     if stat.S_ISREG(st_mode):
-                        kind = 'file'
+                        kind = "file"
                     elif stat.S_ISLNK(st_mode):
-                        kind = 'symlink'
+                        kind = "symlink"
                     elif stat.S_ISDIR(st_mode):
-                        kind = 'directory'
+                        kind = "directory"
                     else:
-                        raise AssertionError('Unknown file kind')
+                        raise AssertionError("Unknown file kind")
                 if file_id is None:
                     self._inventory.add_path(f, kind=kind)
                 else:
@@ -122,21 +122,21 @@ class MemoryTree(MutableInventoryTree):
         """See Tree.path_content_summary."""
         id = self.path2id(path)
         if id is None:
-            return 'missing', None, None, None
+            return "missing", None, None, None
         kind = self.kind(path, id)
-        if kind == 'file':
+        if kind == "file":
             bytes = self._file_transport.get_bytes(path)
             size = len(bytes)
             executable = self._inventory[id].executable
             sha1 = None  # no stat cache
             return (kind, size, executable, sha1)
-        elif kind == 'directory':
+        elif kind == "directory":
             # memory tree does not support nested trees yet.
             return kind, None, None, None
-        elif kind == 'symlink':
+        elif kind == "symlink":
             return kind, None, None, self._inventory[id].symlink_target
         else:
-            raise NotImplementedError('unknown kind')
+            raise NotImplementedError("unknown kind")
 
     def get_parent_ids(self):
         """See Tree.get_parent_ids.
@@ -159,7 +159,7 @@ class MemoryTree(MutableInventoryTree):
 
     def mkdir(self, path, file_id=None):
         """See MutableTree.mkdir()."""
-        self.add(path, 'directory', file_id)
+        self.add(path, "directory", file_id)
         if file_id is None:
             file_id = self.path2id(path)
         self._file_transport.mkdir(path)
@@ -229,15 +229,14 @@ class MemoryTree(MutableInventoryTree):
         inventory_entries = self._basis_tree.iter_entries_by_dir()
         for path, entry in inventory_entries:
             self._inventory.add(entry.copy())
-            if path == '':
+            if path == "":
                 continue
-            if entry.kind == 'directory':
+            if entry.kind == "directory":
                 self._file_transport.mkdir(path)
-            elif entry.kind == 'symlink':
+            elif entry.kind == "symlink":
                 self._file_transport.symlink(entry.symlink_target, path)
-            elif entry.kind == 'file':
-                self._file_transport.put_file(
-                    path, self._basis_tree.get_file(path))
+            elif entry.kind == "file":
+                self._file_transport.put_file(path, self._basis_tree.get_file(path))
             else:
                 raise NotImplementedError(self._populate_from_branch)
 
@@ -302,11 +301,13 @@ class MemoryTree(MutableInventoryTree):
     def _set_basis(self):
         try:
             self._basis_tree = self.branch.repository.revision_tree(
-                self._branch_revision_id)
+                self._branch_revision_id
+            )
         except errors.NoSuchRevision:
             if self._allow_leftmost_as_ghost:
                 self._basis_tree = self.branch.repository.revision_tree(
-                    _mod_revision.NULL_REVISION)
+                    _mod_revision.NULL_REVISION
+                )
             else:
                 raise
 
@@ -319,15 +320,17 @@ class MemoryTree(MutableInventoryTree):
         if len(parents_list) == 0:
             self._parent_ids = []
             self._basis_tree = self.branch.repository.revision_tree(
-                _mod_revision.NULL_REVISION)
+                _mod_revision.NULL_REVISION
+            )
         else:
             if parents_list[0][1] is None and not allow_leftmost_as_ghost:
                 # a ghost in the left most parent
                 raise errors.GhostRevisionUnusableHere(parents_list[0][0])
             self._parent_ids = [parent_id for parent_id, tree in parents_list]
-            if parents_list[0][1] is None or parents_list[0][1] == b'null:':
+            if parents_list[0][1] is None or parents_list[0][1] == b"null:":
                 self._basis_tree = self.branch.repository.revision_tree(
-                    _mod_revision.NULL_REVISION)
+                    _mod_revision.NULL_REVISION
+                )
             else:
                 self._basis_tree = parents_list[0][1]
             self._branch_revision_id = parents_list[0][0]

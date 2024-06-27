@@ -32,8 +32,9 @@ class HTTPServerWithSmarts(http_server.HttpServer):
     """
 
     def __init__(self, protocol_version=None):
-        http_server.HttpServer.__init__(self, SmartRequestHandler,
-                                        protocol_version=protocol_version)
+        http_server.HttpServer.__init__(
+            self, SmartRequestHandler, protocol_version=protocol_version
+        )
 
 
 class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
@@ -45,7 +46,8 @@ class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
     def do_POST(self):
         """Hand the request off to a smart server instance."""
         backing = transport.get_transport_from_path(
-            self.server.test_case_server._home_dir)
+            self.server.test_case_server._home_dir
+        )
         chroot_server = chroot.ChrootServer(backing)
         chroot_server.start_server()
         try:
@@ -57,13 +59,14 @@ class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
     def do_POST_inner(self, chrooted_transport):
         self.send_response(200)
         self.send_header("Content-type", "application/octet-stream")
-        if not self.path.endswith('.bzr/smart'):
+        if not self.path.endswith(".bzr/smart"):
             raise AssertionError(
-                'POST to path not ending in .bzr/smart: {!r}'.format(self.path))
-        t = chrooted_transport.clone(self.path[:-len('.bzr/smart')])
+                "POST to path not ending in .bzr/smart: {!r}".format(self.path)
+            )
+        t = chrooted_transport.clone(self.path[: -len(".bzr/smart")])
         # if this fails, we should return 400 bad request, but failure is
         # failure for now - RBC 20060919
-        data_length = int(self.headers['Content-Length'])
+        data_length = int(self.headers["Content-Length"])
         # TODO: We might like to support streaming responses.  1.0 allows no
         # Content-length in this case, so for integrity we should perform our
         # own chunking within the stream.
@@ -72,17 +75,19 @@ class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
         # we have to stop early due to error, but we would also have to use the
         # HTTP trailer facility which may not be widely available.
         request_bytes = self.rfile.read(data_length)
-        protocol_factory, unused_bytes = (
-            medium._get_protocol_factory_for_bytes(request_bytes))
+        protocol_factory, unused_bytes = medium._get_protocol_factory_for_bytes(
+            request_bytes
+        )
         out_buffer = BytesIO()
-        smart_protocol_request = protocol_factory(t, out_buffer.write, '/')
+        smart_protocol_request = protocol_factory(t, out_buffer.write, "/")
         # Perhaps there should be a SmartServerHTTPMedium that takes care of
         # feeding the bytes in the http request to the smart_protocol_request,
         # but for now it's simpler to just feed the bytes directly.
         smart_protocol_request.accept_bytes(unused_bytes)
         if not (smart_protocol_request.next_read_size() == 0):
             raise errors.SmartProtocolError(
-                "not finished reading, but all data sent to protocol.")
+                "not finished reading, but all data sent to protocol."
+            )
         self.send_header("Content-Length", str(len(out_buffer.getvalue())))
         self.end_headers()
         self.wfile.write(out_buffer.getvalue())
@@ -100,15 +105,14 @@ class TestCaseWithWebserver(tests.TestCaseWithTransport):
     # needed, but must exist so that the create_transport_readonly_server()
     # method (or any method creating an http(s) server) can propagate it.
     _protocol_version = None
-    _url_protocol = 'http'
+    _url_protocol = "http"
 
     def setUp(self):
         super().setUp()
         self.transport_readonly_server = http_server.HttpServer
 
     def create_transport_readonly_server(self):
-        server = self.transport_readonly_server(
-            protocol_version=self._protocol_version)
+        server = self.transport_readonly_server(protocol_version=self._protocol_version)
         server._url_protocol = self._url_protocol
         return server
 
@@ -131,7 +135,8 @@ class TestCaseWithTwoWebservers(TestCaseWithWebserver):
         This is mostly a hook for daughter classes.
         """
         server = self.transport_secondary_server(
-            protocol_version=self._protocol_version)
+            protocol_version=self._protocol_version
+        )
         server._url_protocol = self._url_protocol
         return server
 
@@ -170,9 +175,9 @@ class RedirectRequestHandler(http_server.TestingHTTPRequestHandler):
             if code is not None and target is not None:
                 # Redirect as instructed
                 self.send_response(code)
-                self.send_header('Location', target)
+                self.send_header("Location", target)
                 # We do not send a body
-                self.send_header('Content-Length', '0')
+                self.send_header("Content-Length", "0")
                 self.end_headers()
                 return False  # The job is done
             else:
@@ -182,12 +187,12 @@ class RedirectRequestHandler(http_server.TestingHTTPRequestHandler):
 
 
 class HTTPServerRedirecting(http_server.HttpServer):
-    """An HttpServer redirecting to another server """
+    """An HttpServer redirecting to another server"""
 
-    def __init__(self, request_handler=RedirectRequestHandler,
-                 protocol_version=None):
-        http_server.HttpServer.__init__(self, request_handler,
-                                        protocol_version=protocol_version)
+    def __init__(self, request_handler=RedirectRequestHandler, protocol_version=None):
+        http_server.HttpServer.__init__(
+            self, request_handler, protocol_version=protocol_version
+        )
         # redirections is a list of tuples (source, target, code)
         # - source is a regexp for the paths requested
         # - target is a replacement for re.sub describing where
@@ -198,9 +203,7 @@ class HTTPServerRedirecting(http_server.HttpServer):
 
     def redirect_to(self, host, port):
         """Redirect all requests to a specific host:port"""
-        self.redirections = [('(.*)',
-                              r'http://{}:{}\1'.format(host, port),
-                              301)]
+        self.redirections = [("(.*)", r"http://{}:{}\1".format(host, port), 301)]
 
     def is_redirected(self, path):
         """Is the path redirected by this server.
@@ -212,7 +215,7 @@ class HTTPServerRedirecting(http_server.HttpServer):
         """
         code = None
         target = None
-        for (rsource, rtarget, rcode) in self.redirections:
+        for rsource, rtarget, rcode in self.redirections:
             target, match = re.subn(rsource, rtarget, path, count=1)
             if match:
                 code = rcode
@@ -240,8 +243,7 @@ class TestCaseWithRedirectedWebserver(TestCaseWithTwoWebservers):
     def create_transport_secondary_server(self):
         """Create the secondary server redirecting to the primary server"""
         new = self.get_readonly_server()
-        redirecting = HTTPServerRedirecting(
-            protocol_version=self._protocol_version)
+        redirecting = HTTPServerRedirecting(protocol_version=self._protocol_version)
         redirecting.redirect_to(new.host, new.port)
         redirecting._url_protocol = self._url_protocol
         return redirecting
@@ -287,7 +289,7 @@ class AuthRequestHandler(http_server.TestingHTTPRequestHandler):
         self.send_response(tcs.auth_error_code)
         self.send_header_auth_reqed()
         # We do not send a body
-        self.send_header('Content-Length', '0')
+        self.send_header("Content-Length", "0")
         self.end_headers()
         return
 
@@ -309,27 +311,26 @@ class BasicAuthRequestHandler(AuthRequestHandler):
 
     def authorized(self):
         tcs = self.server.test_case_server
-        if tcs.auth_scheme != 'basic':
+        if tcs.auth_scheme != "basic":
             return False
 
         auth_header = self.headers.get(tcs.auth_header_recv, None)
         if auth_header:
-            scheme, raw_auth = auth_header.split(' ', 1)
+            scheme, raw_auth = auth_header.split(" ", 1)
             if scheme.lower() == tcs.auth_scheme:
-                user, password = base64.b64decode(raw_auth).split(b':')
-                return tcs.authorized(user.decode('ascii'),
-                                      password.decode('ascii'))
+                user, password = base64.b64decode(raw_auth).split(b":")
+                return tcs.authorized(user.decode("ascii"), password.decode("ascii"))
 
         return False
 
     def send_header_auth_reqed(self):
         tcs = self.server.test_case_server
-        self.send_header(tcs.auth_header_sent,
-                         'Basic realm="%s"' % tcs.auth_realm)
+        self.send_header(tcs.auth_header_sent, 'Basic realm="%s"' % tcs.auth_realm)
 
 
 # FIXME: We could send an Authentication-Info header too when
 # the authentication is succesful
+
 
 class DigestAuthRequestHandler(AuthRequestHandler):
     """Implements the digest authentication of a request.
@@ -356,8 +357,7 @@ class DigestAuthRequestHandler(AuthRequestHandler):
     def send_header_auth_reqed(self):
         tcs = self.server.test_case_server
         header = 'Digest realm="%s", ' % tcs.auth_realm
-        header += 'nonce="{}", algorithm="{}", qop="auth"'.format(tcs.auth_nonce,
-                                                              'MD5')
+        header += 'nonce="{}", algorithm="{}", qop="auth"'.format(tcs.auth_nonce, "MD5")
         self.send_header(tcs.auth_header_sent, header)
 
 
@@ -371,11 +371,9 @@ class DigestAndBasicAuthRequestHandler(DigestAuthRequestHandler):
 
     def send_header_auth_reqed(self):
         tcs = self.server.test_case_server
-        self.send_header(tcs.auth_header_sent,
-                         'Basic realm="%s"' % tcs.auth_realm)
+        self.send_header(tcs.auth_header_sent, 'Basic realm="%s"' % tcs.auth_realm)
         header = 'Digest realm="%s", ' % tcs.auth_realm
-        header += 'nonce="{}", algorithm="{}", qop="auth"'.format(tcs.auth_nonce,
-                                                              'MD5')
+        header += 'nonce="{}", algorithm="{}", qop="auth"'.format(tcs.auth_nonce, "MD5")
         self.send_header(tcs.auth_header_sent, header)
 
 
@@ -396,10 +394,10 @@ class AuthServer(http_server.HttpServer):
     auth_error_code = None
     auth_realm = "Thou should not pass"
 
-    def __init__(self, request_handler, auth_scheme,
-                 protocol_version=None):
-        http_server.HttpServer.__init__(self, request_handler,
-                                        protocol_version=protocol_version)
+    def __init__(self, request_handler, auth_scheme, protocol_version=None):
+        http_server.HttpServer.__init__(
+            self, request_handler, protocol_version=protocol_version
+        )
         self.auth_scheme = auth_scheme
         self.password_of = {}
         self.auth_required_errors = 0
@@ -426,60 +424,60 @@ class AuthServer(http_server.HttpServer):
 class DigestAuthServer(AuthServer):
     """A digest authentication server"""
 
-    auth_nonce = 'now!'
+    auth_nonce = "now!"
 
-    def __init__(self, request_handler, auth_scheme,
-                 protocol_version=None):
-        AuthServer.__init__(self, request_handler, auth_scheme,
-                            protocol_version=protocol_version)
+    def __init__(self, request_handler, auth_scheme, protocol_version=None):
+        AuthServer.__init__(
+            self, request_handler, auth_scheme, protocol_version=protocol_version
+        )
 
     def digest_authorized(self, auth, command):
-        nonce = auth['nonce']
+        nonce = auth["nonce"]
         if nonce != self.auth_nonce:
             return False
-        realm = auth['realm']
+        realm = auth["realm"]
         if realm != self.auth_realm:
             return False
-        user = auth['username']
+        user = auth["username"]
         if user not in self.password_of:
             return False
-        algorithm = auth['algorithm']
-        if algorithm != 'MD5':
+        algorithm = auth["algorithm"]
+        if algorithm != "MD5":
             return False
-        qop = auth['qop']
-        if qop != 'auth':
+        qop = auth["qop"]
+        if qop != "auth":
             return False
 
         password = self.password_of[user]
 
         # Recalculate the response_digest to compare with the one
         # sent by the client
-        A1 = ('{}:{}:{}'.format(user, realm, password)).encode('utf-8')
-        A2 = ('{}:{}'.format(command, auth['uri'])).encode('utf-8')
+        A1 = ("{}:{}:{}".format(user, realm, password)).encode("utf-8")
+        A2 = ("{}:{}".format(command, auth["uri"])).encode("utf-8")
 
         def H(x):
             return osutils.md5(x).hexdigest()
 
         def KD(secret, data):
-            return H(("{}:{}".format(secret, data)).encode('utf-8'))
+            return H(("{}:{}".format(secret, data)).encode("utf-8"))
 
-        nonce_count = int(auth['nc'], 16)
+        nonce_count = int(auth["nc"], 16)
 
-        ncvalue = '%08x' % nonce_count
+        ncvalue = "%08x" % nonce_count
 
-        cnonce = auth['cnonce']
-        noncebit = '{}:{}:{}:{}:{}'.format(nonce, ncvalue, cnonce, qop, H(A2))
+        cnonce = auth["cnonce"]
+        noncebit = "{}:{}:{}:{}:{}".format(nonce, ncvalue, cnonce, qop, H(A2))
         response_digest = KD(H(A1), noncebit)
 
-        return response_digest == auth['response']
+        return response_digest == auth["response"]
 
 
 class HTTPAuthServer(AuthServer):
     """An HTTP server requiring authentication"""
 
     def init_http_auth(self):
-        self.auth_header_sent = 'WWW-Authenticate'
-        self.auth_header_recv = 'Authorization'
+        self.auth_header_sent = "WWW-Authenticate"
+        self.auth_header_recv = "Authorization"
         self.auth_error_code = 401
 
 
@@ -488,8 +486,8 @@ class ProxyAuthServer(AuthServer):
 
     def init_proxy_auth(self):
         self.proxy_requests = True
-        self.auth_header_sent = 'Proxy-Authenticate'
-        self.auth_header_recv = 'Proxy-Authorization'
+        self.auth_header_sent = "Proxy-Authenticate"
+        self.auth_header_recv = "Proxy-Authorization"
         self.auth_error_code = 407
 
 
@@ -497,8 +495,9 @@ class HTTPBasicAuthServer(HTTPAuthServer):
     """An HTTP server requiring basic authentication"""
 
     def __init__(self, protocol_version=None):
-        HTTPAuthServer.__init__(self, BasicAuthRequestHandler, 'basic',
-                                protocol_version=protocol_version)
+        HTTPAuthServer.__init__(
+            self, BasicAuthRequestHandler, "basic", protocol_version=protocol_version
+        )
         self.init_http_auth()
 
 
@@ -506,8 +505,9 @@ class HTTPDigestAuthServer(DigestAuthServer, HTTPAuthServer):
     """An HTTP server requiring digest authentication"""
 
     def __init__(self, protocol_version=None):
-        DigestAuthServer.__init__(self, DigestAuthRequestHandler, 'digest',
-                                  protocol_version=protocol_version)
+        DigestAuthServer.__init__(
+            self, DigestAuthRequestHandler, "digest", protocol_version=protocol_version
+        )
         self.init_http_auth()
 
 
@@ -515,20 +515,24 @@ class HTTPBasicAndDigestAuthServer(DigestAuthServer, HTTPAuthServer):
     """An HTTP server requiring basic or digest authentication"""
 
     def __init__(self, protocol_version=None):
-        DigestAuthServer.__init__(self, DigestAndBasicAuthRequestHandler,
-                                  'basicdigest',
-                                  protocol_version=protocol_version)
+        DigestAuthServer.__init__(
+            self,
+            DigestAndBasicAuthRequestHandler,
+            "basicdigest",
+            protocol_version=protocol_version,
+        )
         self.init_http_auth()
         # We really accept Digest only
-        self.auth_scheme = 'digest'
+        self.auth_scheme = "digest"
 
 
 class ProxyBasicAuthServer(ProxyAuthServer):
     """A proxy server requiring basic authentication"""
 
     def __init__(self, protocol_version=None):
-        ProxyAuthServer.__init__(self, BasicAuthRequestHandler, 'basic',
-                                 protocol_version=protocol_version)
+        ProxyAuthServer.__init__(
+            self, BasicAuthRequestHandler, "basic", protocol_version=protocol_version
+        )
         self.init_proxy_auth()
 
 
@@ -536,8 +540,9 @@ class ProxyDigestAuthServer(DigestAuthServer, ProxyAuthServer):
     """A proxy server requiring basic authentication"""
 
     def __init__(self, protocol_version=None):
-        ProxyAuthServer.__init__(self, DigestAuthRequestHandler, 'digest',
-                                 protocol_version=protocol_version)
+        ProxyAuthServer.__init__(
+            self, DigestAuthRequestHandler, "digest", protocol_version=protocol_version
+        )
         self.init_proxy_auth()
 
 
@@ -545,9 +550,12 @@ class ProxyBasicAndDigestAuthServer(DigestAuthServer, ProxyAuthServer):
     """An proxy server requiring basic or digest authentication"""
 
     def __init__(self, protocol_version=None):
-        DigestAuthServer.__init__(self, DigestAndBasicAuthRequestHandler,
-                                  'basicdigest',
-                                  protocol_version=protocol_version)
+        DigestAuthServer.__init__(
+            self,
+            DigestAndBasicAuthRequestHandler,
+            "basicdigest",
+            protocol_version=protocol_version,
+        )
         self.init_proxy_auth()
         # We really accept Digest only
-        self.auth_scheme = 'digest'
+        self.auth_scheme = "digest"

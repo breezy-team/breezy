@@ -30,8 +30,7 @@ from . import errors
 
 
 class InvalidPattern(errors.BzrError):
-
-    _fmt = ('Invalid pattern(s) found. %(msg)s')
+    _fmt = "Invalid pattern(s) found. %(msg)s"
 
     def __init__(self, msg):
         self.msg = msg
@@ -43,14 +42,25 @@ class LazyRegex:
     # These are the parameters on a real _sre.SRE_Pattern object, which we
     # will map to local members so that we don't have the proxy overhead.
     _regex_attributes_to_copy = [
-        '__copy__', '__deepcopy__', 'findall', 'finditer', 'match',
-        'scanner', 'search', 'split', 'sub', 'subn'
-        ]
+        "__copy__",
+        "__deepcopy__",
+        "findall",
+        "finditer",
+        "match",
+        "scanner",
+        "search",
+        "split",
+        "sub",
+        "subn",
+    ]
 
     # We use slots to keep the overhead low. But we need a slot entry for
     # all of the attributes we will copy
-    __slots__ = ['_real_regex', '_regex_args', '_regex_kwargs',
-                 ] + _regex_attributes_to_copy
+    __slots__ = [
+        "_real_regex",
+        "_regex_args",
+        "_regex_kwargs",
+    ] + _regex_attributes_to_copy
 
     def __init__(self, args, kwargs):
         """Create a new proxy object, passing in the args to pass to re.compile
@@ -64,8 +74,9 @@ class LazyRegex:
 
     def _compile_and_collapse(self):
         """Actually compile the requested regex"""
-        self._real_regex = self._real_re_compile(*self._regex_args,
-                                                 **self._regex_kwargs)
+        self._real_regex = self._real_re_compile(
+            *self._regex_args, **self._regex_kwargs
+        )
         for attr in self._regex_attributes_to_copy:
             setattr(self, attr, getattr(self._real_regex, attr))
 
@@ -83,7 +94,7 @@ class LazyRegex:
         return {
             "args": self._regex_args,
             "kwargs": self._regex_kwargs,
-            }
+        }
 
     def __setstate__(self, dict):
         """Restore from a pickled state."""

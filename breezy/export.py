@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Export trees to tarballs, non-controlled directories, zipfiles, etc.
-"""
+"""Export trees to tarballs, non-controlled directories, zipfiles, etc."""
 
 import errno
 import os
@@ -25,9 +24,16 @@ import time
 from . import archive, errors, osutils, trace
 
 
-def export(tree, dest, format=None, root=None, subdir=None,
-           per_file_timestamps=False, fileobj=None,
-           recurse_nested=False):
+def export(
+    tree,
+    dest,
+    format=None,
+    root=None,
+    subdir=None,
+    per_file_timestamps=False,
+    fileobj=None,
+    recurse_nested=False,
+):
     """Export the given Tree to the specific destination.
 
     Args:
@@ -60,10 +66,11 @@ def export(tree, dest, format=None, root=None, subdir=None,
 
     if not per_file_timestamps:
         force_mtime = time.time()
-        if getattr(tree, '_repository', None):
+        if getattr(tree, "_repository", None):
             try:
                 force_mtime = tree._repository.get_revision(
-                    tree.get_revision_id()).timestamp
+                    tree.get_revision_id()
+                ).timestamp
             except errors.NoSuchRevision:
                 pass
             except errors.UnsupportedOperation:
@@ -71,35 +78,40 @@ def export(tree, dest, format=None, root=None, subdir=None,
     else:
         force_mtime = None
 
-    trace.mutter('export version %r', tree)
+    trace.mutter("export version %r", tree)
 
-    if format == 'dir':
+    if format == "dir":
         # TODO(jelmer): If the tree is remote (e.g. HPSS, Git Remote),
         # then we should stream a tar file and unpack that on the fly.
         with tree.lock_read():
-            for unused in dir_exporter_generator(tree, dest, root, subdir,
-                                                 force_mtime,
-                                                 recurse_nested=recurse_nested):
+            for unused in dir_exporter_generator(
+                tree, dest, root, subdir, force_mtime, recurse_nested=recurse_nested
+            ):
                 pass
         return
 
     with tree.lock_read():
-        chunks = tree.archive(format, dest, root=root,
-                              subdir=subdir, force_mtime=force_mtime,
-                              recurse_nested=recurse_nested)
-        if dest == '-':
+        chunks = tree.archive(
+            format,
+            dest,
+            root=root,
+            subdir=subdir,
+            force_mtime=force_mtime,
+            recurse_nested=recurse_nested,
+        )
+        if dest == "-":
             for chunk in chunks:
-                getattr(sys.stdout, 'buffer', sys.stdout).write(chunk)
+                getattr(sys.stdout, "buffer", sys.stdout).write(chunk)
         elif fileobj is not None:
             for chunk in chunks:
                 fileobj.write(chunk)
         else:
-            with open(dest, 'wb') as f:
+            with open(dest, "wb") as f:
                 for chunk in chunks:
                     f.write(chunk)
 
 
-def guess_format(filename, default='dir'):
+def guess_format(filename, default="dir"):
     """Guess the export format based on a file name.
 
     :param filename: Filename to guess from
@@ -113,17 +125,15 @@ def guess_format(filename, default='dir'):
 
 
 def get_root_name(dest):
-    """Get just the root name for an export.
-
-    """
+    """Get just the root name for an export."""
     global _exporter_extensions
-    if dest == '-':
+    if dest == "-":
         # Exporting to -/foo doesn't make sense so use relative paths.
-        return ''
+        return ""
     dest = os.path.basename(dest)
     for ext in archive.format_registry.extensions:
         if dest.endswith(ext):
-            return dest[:-len(ext)]
+            return dest[: -len(ext)]
     return dest
 
 
@@ -136,24 +146,24 @@ def _export_iter_entries(tree, subdir, skip_special=True, recurse_nested=False):
     :return: iterator over tuples with final path, tree path and inventory
         entry for each entry to export
     """
-    if subdir == '':
+    if subdir == "":
         subdir = None
     if subdir is not None:
-        subdir = subdir.rstrip('/')
+        subdir = subdir.rstrip("/")
     entries = tree.iter_entries_by_dir(recurse_nested=recurse_nested)
     for path, entry in entries:
-        if path == '':
+        if path == "":
             continue
 
         if skip_special and tree.is_special_path(path):
             continue
         if path == subdir:
-            if entry.kind == 'directory':
+            if entry.kind == "directory":
                 continue
             final_path = entry.name
         elif subdir is not None:
-            if path.startswith(subdir + '/'):
-                final_path = path[len(subdir) + 1:]
+            if path.startswith(subdir + "/"):
+                final_path = path[len(subdir) + 1 :]
             else:
                 continue
         else:
@@ -164,9 +174,9 @@ def _export_iter_entries(tree, subdir, skip_special=True, recurse_nested=False):
         yield final_path, path, entry
 
 
-def dir_exporter_generator(tree, dest, root, subdir=None,
-                           force_mtime=None, fileobj=None,
-                           recurse_nested=False):
+def dir_exporter_generator(
+    tree, dest, root, subdir=None, force_mtime=None, fileobj=None, recurse_nested=False
+):
     """Return a generator that exports this tree to a new directory.
 
     `dest` should either not exist or should be empty. If it does not exist it
@@ -181,8 +191,7 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
         if e.errno == errno.EEXIST:
             # check if directory empty
             if os.listdir(dest) != []:
-                raise errors.BzrError(
-                    "Can't export tree to non-empty directory.")
+                raise errors.BzrError("Can't export tree to non-empty directory.")
         else:
             raise
     # Iterate everything, building up the files we will want to export, and
@@ -192,8 +201,7 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
     # Note in the case of revision trees, this does trigger a double inventory
     # lookup, hopefully it isn't too expensive.
     to_fetch = []
-    for dp, tp, ie in _export_iter_entries(
-            tree, subdir, recurse_nested=recurse_nested):
+    for dp, tp, ie in _export_iter_entries(tree, subdir, recurse_nested=recurse_nested):
         fullpath = osutils.pathjoin(dest, dp)
         if ie.kind == "file":
             to_fetch.append((tp, (dp, tp, None)))
@@ -206,22 +214,24 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
             except OSError as e:
                 raise errors.BzrError(
                     "Failed to create symlink %r -> %r, error: %s"
-                    % (fullpath, symlink_target, e))
+                    % (fullpath, symlink_target, e)
+                )
         else:
-            raise errors.BzrError("don't know how to export {%s} of kind %r" %
-                                  (tp, ie.kind))
+            raise errors.BzrError(
+                "don't know how to export {%s} of kind %r" % (tp, ie.kind)
+            )
 
         yield
     # The data returned here can be in any order, but we've already created all
     # the directories
-    flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY | getattr(os, 'O_BINARY', 0)
+    flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY | getattr(os, "O_BINARY", 0)
     for (relpath, treepath, unused_none), chunks in tree.iter_files_bytes(to_fetch):
         fullpath = osutils.pathjoin(dest, relpath)
         # We set the mode and let the umask sort out the file info
         mode = 0o666
         if tree.is_executable(treepath):
             mode = 0o777
-        with os.fdopen(os.open(fullpath, flags, mode), 'wb') as out:
+        with os.fdopen(os.open(fullpath, flags, mode), "wb") as out:
             out.writelines(chunks)
         if force_mtime is not None:
             mtime = force_mtime

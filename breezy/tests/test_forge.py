@@ -19,8 +19,14 @@ from typing import List
 
 from .. import forge as _mod_forge
 from .. import registry, tests, urlutils
-from ..forge import (Forge, MergeProposal, UnsupportedForge, determine_title,
-                     get_forge, get_proposal_by_url)
+from ..forge import (
+    Forge,
+    MergeProposal,
+    UnsupportedForge,
+    determine_title,
+    get_forge,
+    get_proposal_by_url,
+)
 
 
 class SampleMergeProposal(MergeProposal):
@@ -28,7 +34,6 @@ class SampleMergeProposal(MergeProposal):
 
 
 class SampleForge(Forge):
-
     _locations: List[str] = []
 
     @classmethod
@@ -60,16 +65,16 @@ class SampleForge(Forge):
 
 
 class SampleForgeTestCase(tests.TestCaseWithTransport):
-
     def setUp(self):
         super().setUp()
         self._old_forges = _mod_forge.forges
         _mod_forge.forges = registry.Registry()
         self.forge = SampleForge()
-        os.mkdir('hosted')
+        os.mkdir("hosted")
         SampleForge._add_location(
-            urlutils.local_path_to_url(os.path.join(self.test_dir, 'hosted')))
-        _mod_forge.forges.register('sample', self.forge)
+            urlutils.local_path_to_url(os.path.join(self.test_dir, "hosted"))
+        )
+        _mod_forge.forges.register("sample", self.forge)
 
     def tearDown(self):
         super().tearDown()
@@ -78,46 +83,57 @@ class SampleForgeTestCase(tests.TestCaseWithTransport):
 
 
 class TestGetForgeTests(SampleForgeTestCase):
-
     def test_get_forge(self):
-        tree = self.make_branch_and_tree('hosted/branch')
+        tree = self.make_branch_and_tree("hosted/branch")
         self.assertIs(self.forge, get_forge(tree.branch, [self.forge]))
         self.assertIsInstance(get_forge(tree.branch), SampleForge)
 
-        tree = self.make_branch_and_tree('blah')
+        tree = self.make_branch_and_tree("blah")
         self.assertRaises(UnsupportedForge, get_forge, tree.branch)
 
 
 class TestGetProposal(SampleForgeTestCase):
-
     def test_get_proposal_by_url(self):
-        self.assertRaises(UnsupportedForge, get_proposal_by_url, 'blah')
+        self.assertRaises(UnsupportedForge, get_proposal_by_url, "blah")
 
-        url = urlutils.local_path_to_url(os.path.join(self.test_dir, 'hosted', 'proposal'))
+        url = urlutils.local_path_to_url(
+            os.path.join(self.test_dir, "hosted", "proposal")
+        )
         self.assertIsInstance(get_proposal_by_url(url), MergeProposal)
 
 
 class DetermineTitleTests(tests.TestCase):
-
     def test_determine_title(self):
-        self.assertEqual('Make some change', determine_title("""\
+        self.assertEqual(
+            "Make some change",
+            determine_title("""\
 Make some change.
 
 And here are some more details.
-"""))
-        self.assertEqual('Make some change', determine_title("""\
+"""),
+        )
+        self.assertEqual(
+            "Make some change",
+            determine_title("""\
 Make some change. And another one.
 
 With details.
-"""))
-        self.assertEqual('Release version 5.1', determine_title("""\
+"""),
+        )
+        self.assertEqual(
+            "Release version 5.1",
+            determine_title("""\
 Release version 5.1
 
 And here are some more details.
-"""))
-        self.assertEqual('Release version 5.1', determine_title("""\
+"""),
+        )
+        self.assertEqual(
+            "Release version 5.1",
+            determine_title("""\
 
 Release version 5.1
 
 And here are some more details.
-"""))
+"""),
+        )

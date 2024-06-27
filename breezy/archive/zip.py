@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Export a Tree to a zip file.
-"""
+"""Export a Tree to a zip file."""
 
 import os
 import stat
@@ -31,27 +30,28 @@ from ..trace import mutter
 
 # Windows expects this bit to be set in the 'external_attr' section,
 # or it won't consider the entry a directory.
-ZIP_DIRECTORY_BIT = (1 << 4)
-FILE_PERMISSIONS = (0o644 << 16)
-DIR_PERMISSIONS = (0o755 << 16)
+ZIP_DIRECTORY_BIT = 1 << 4
+FILE_PERMISSIONS = 0o644 << 16
+DIR_PERMISSIONS = 0o755 << 16
 
 _FILE_ATTR = stat.S_IFREG | FILE_PERMISSIONS
 _DIR_ATTR = stat.S_IFDIR | ZIP_DIRECTORY_BIT | DIR_PERMISSIONS
 
 
-def zip_archive_generator(tree, dest, root, subdir=None,
-                          force_mtime=None, recurse_nested=False):
-    """ Export this tree to a new zip file.
+def zip_archive_generator(
+    tree, dest, root, subdir=None, force_mtime=None, recurse_nested=False
+):
+    """Export this tree to a new zip file.
 
     `dest` will be created holding the contents of this tree; if it
     already exists, it will be overwritten".
     """
     compression = zipfile.ZIP_DEFLATED
     with tempfile.SpooledTemporaryFile() as buf:
-        with closing(zipfile.ZipFile(buf, "w", compression)) as zipf, \
-                tree.lock_read():
+        with closing(zipfile.ZipFile(buf, "w", compression)) as zipf, tree.lock_read():
             for dp, tp, ie in _export_iter_entries(
-                    tree, subdir, recurse_nested=recurse_nested):
+                tree, subdir, recurse_nested=recurse_nested
+            ):
                 mutter("  export {%s} kind %s to %s", tp, ie.kind, dest)
 
                 # zipfile.ZipFile switches all paths to forward
@@ -63,9 +63,7 @@ def zip_archive_generator(tree, dest, root, subdir=None,
                 date_time = time.localtime(mtime)[:6]
                 filename = osutils.pathjoin(root, dp)
                 if ie.kind == "file":
-                    zinfo = zipfile.ZipInfo(
-                        filename=filename,
-                        date_time=date_time)
+                    zinfo = zipfile.ZipInfo(filename=filename, date_time=date_time)
                     zinfo.compress_type = compression
                     zinfo.external_attr = _FILE_ATTR
                     content = tree.get_file_text(tp)
@@ -75,15 +73,15 @@ def zip_archive_generator(tree, dest, root, subdir=None,
                     # to the zip routine that they are really directories and
                     # not just empty files.
                     zinfo = zipfile.ZipInfo(
-                        filename=filename + '/',
-                        date_time=date_time)
+                        filename=filename + "/", date_time=date_time
+                    )
                     zinfo.compress_type = compression
                     zinfo.external_attr = _DIR_ATTR
-                    zipf.writestr(zinfo, '')
+                    zipf.writestr(zinfo, "")
                 elif ie.kind == "symlink":
                     zinfo = zipfile.ZipInfo(
-                        filename=(filename + '.lnk'),
-                        date_time=date_time)
+                        filename=(filename + ".lnk"), date_time=date_time
+                    )
                     zinfo.compress_type = compression
                     zinfo.external_attr = _FILE_ATTR
                     zipf.writestr(zinfo, tree.get_symlink_target(tp))

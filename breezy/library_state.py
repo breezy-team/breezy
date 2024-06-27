@@ -17,8 +17,8 @@
 """The core state needed to make use of bzr is managed here."""
 
 __all__ = [
-    'BzrLibraryState',
-    ]
+    "BzrLibraryState",
+]
 
 
 import contextlib
@@ -27,7 +27,9 @@ import breezy
 
 from .lazy_import import lazy_import
 
-lazy_import(globals(), """
+lazy_import(
+    globals(),
+    """
 from breezy import (
     config,
     osutils,
@@ -35,7 +37,8 @@ from breezy import (
     trace,
     ui,
     )
-""")
+""",
+)
 
 
 class BzrLibraryState:
@@ -92,9 +95,10 @@ class BzrLibraryState:
         # TestRunBzrSubprocess may fail.
         self.exit_stack = contextlib.ExitStack()
 
-        if breezy.version_info[3] == 'final':
+        if breezy.version_info[3] == "final":
             self.exit_stack.callback(
-                symbol_versioning.suppress_deprecation_warnings(override=True))
+                symbol_versioning.suppress_deprecation_warnings(override=True)
+            )
 
         self._trace.__enter__()
 

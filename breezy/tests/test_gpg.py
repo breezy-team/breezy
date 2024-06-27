@@ -26,19 +26,18 @@ from . import TestCase, features
 
 
 class FakeConfig(config.MemoryStack):
-
     def __init__(self, content=None):
         if content is None:
-            content = b'''
+            content = b"""
 gpg_signing_key=amy@example.com
-'''
+"""
         super().__init__(content)
 
 
 class TestVerify(TestCase):
-
     def import_keys(self):
         import gpg
+
         context = gpg.Context()
 
         key = gpg.Data(b"""-----BEGIN PGP PUBLIC KEY BLOCK-----
@@ -212,8 +211,7 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
 """
         my_gpg = gpg.GPGStrategy(FakeConfig())
         my_gpg.set_acceptable_keys("bazaar@example.com")
-        self.assertEqual((gpg.SIGNATURE_VALID, None, plain),
-                         my_gpg.verify(content))
+        self.assertEqual((gpg.SIGNATURE_VALID, None, plain), my_gpg.verify(content))
 
     def test_verify_unacceptable_key(self):
         self.requireFeature(features.gpg)
@@ -243,8 +241,9 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
 """
         my_gpg = gpg.GPGStrategy(FakeConfig())
         my_gpg.set_acceptable_keys("foo@example.com")
-        self.assertEqual((gpg.SIGNATURE_KEY_MISSING, 'E3080E45', plain),
-                         my_gpg.verify(content))
+        self.assertEqual(
+            (gpg.SIGNATURE_KEY_MISSING, "E3080E45", plain), my_gpg.verify(content)
+        )
 
     def test_verify_valid_but_untrusted(self):
         self.requireFeature(features.gpg)
@@ -273,8 +272,7 @@ revision-id: amy@example.com-20110527185938-hluafawphszb8dl1
 sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
 """
         my_gpg = gpg.GPGStrategy(FakeConfig())
-        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None,
-                          plain), my_gpg.verify(content))
+        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None, plain), my_gpg.verify(content))
 
     def test_verify_revoked_signature(self):
         self.requireFeature(features.gpg)
@@ -297,8 +295,7 @@ JFA6kUIJU2w9LU/b88Y=
         plain = b"""asdf\n"""
         my_gpg = gpg.GPGStrategy(FakeConfig())
         my_gpg.set_acceptable_keys("test@example.com")
-        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None, None),
-                         my_gpg.verify(content))
+        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None, None), my_gpg.verify(content))
 
     def test_verify_invalid(self):
         self.requireFeature(features.gpg)
@@ -322,8 +319,7 @@ revision-id: amy@example.com-20110527185938-hluafawphszb8dl1
 sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
 """
         my_gpg = gpg.GPGStrategy(FakeConfig())
-        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None, plain),
-                         my_gpg.verify(content))
+        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None, plain), my_gpg.verify(content))
 
     def test_verify_expired_but_valid(self):
         self.requireFeature(features.gpg)
@@ -345,8 +341,9 @@ dTp8VatVVrwuvzOPDVc=
 -----END PGP SIGNATURE-----
 """
         my_gpg = gpg.GPGStrategy(FakeConfig())
-        self.assertEqual((gpg.SIGNATURE_EXPIRED, '4F8D1513', None),
-                         my_gpg.verify(content))
+        self.assertEqual(
+            (gpg.SIGNATURE_EXPIRED, "4F8D1513", None), my_gpg.verify(content)
+        )
 
     def test_verify_unknown_key(self):
         self.requireFeature(features.gpg)
@@ -368,25 +365,27 @@ sIODx4WcfJtjLG/qkRYqJ4gDHo0eMpTJSk2CWebajdm4b+JBrM1F9mgKuZFLruE=
 -----END PGP SIGNATURE-----
 """
         my_gpg = gpg.GPGStrategy(FakeConfig())
-        self.assertEqual((gpg.SIGNATURE_KEY_MISSING, '5D51E56F', None),
-                         my_gpg.verify(content))
+        self.assertEqual(
+            (gpg.SIGNATURE_KEY_MISSING, "5D51E56F", None), my_gpg.verify(content)
+        )
 
     def test_set_acceptable_keys(self):
         self.requireFeature(features.gpg)
         self.import_keys()
         my_gpg = gpg.GPGStrategy(FakeConfig())
         my_gpg.set_acceptable_keys("bazaar@example.com")
-        self.assertEqual(my_gpg.acceptable_keys,
-                         ['B5DEED5FCB15DAE6ECEF919587681B1EE3080E45'])
+        self.assertEqual(
+            my_gpg.acceptable_keys, ["B5DEED5FCB15DAE6ECEF919587681B1EE3080E45"]
+        )
 
     def test_set_acceptable_keys_from_config(self):
         self.requireFeature(features.gpg)
         self.import_keys()
-        my_gpg = gpg.GPGStrategy(FakeConfig(
-            b'acceptable_keys=bazaar@example.com'))
+        my_gpg = gpg.GPGStrategy(FakeConfig(b"acceptable_keys=bazaar@example.com"))
         my_gpg.set_acceptable_keys(None)
-        self.assertEqual(my_gpg.acceptable_keys,
-                         ['B5DEED5FCB15DAE6ECEF919587681B1EE3080E45'])
+        self.assertEqual(
+            my_gpg.acceptable_keys, ["B5DEED5FCB15DAE6ECEF919587681B1EE3080E45"]
+        )
 
     def test_set_acceptable_keys_unknown(self):
         self.requireFeature(features.gpg)
@@ -395,19 +394,25 @@ sIODx4WcfJtjLG/qkRYqJ4gDHo0eMpTJSk2CWebajdm4b+JBrM1F9mgKuZFLruE=
 
         def note(*args):
             self.notes.append(args[0] % args[1:])
-        self.overrideAttr(trace, 'note', note)
+
+        self.overrideAttr(trace, "note", note)
         my_gpg.set_acceptable_keys("unknown")
         self.assertEqual(my_gpg.acceptable_keys, [])
-        self.assertEqual(self.notes,
-                         ['No GnuPG key results for pattern: unknown'])
+        self.assertEqual(self.notes, ["No GnuPG key results for pattern: unknown"])
 
 
 class TestDisabled(TestCase):
-
     def test_sign(self):
-        self.assertRaises(gpg.SigningFailed,
-                          gpg.DisabledGPGStrategy(None).sign, b'content', gpg.MODE_CLEAR)
+        self.assertRaises(
+            gpg.SigningFailed,
+            gpg.DisabledGPGStrategy(None).sign,
+            b"content",
+            gpg.MODE_CLEAR,
+        )
 
     def test_verify(self):
-        self.assertRaises(gpg.SignatureVerificationFailed,
-                          gpg.DisabledGPGStrategy(None).verify, b'content')
+        self.assertRaises(
+            gpg.SignatureVerificationFailed,
+            gpg.DisabledGPGStrategy(None).verify,
+            b"content",
+        )

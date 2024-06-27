@@ -34,6 +34,7 @@ def load_tests(loader, standard_tests, pattern):
     colo_unsupported_formats = []
     # This will always add scenarios using the smart server.
     from breezy.bzr.remote import RemoteBzrDirFormat
+
     for format in ControlDirFormat.known_formats():
         if isinstance(format, RemoteBzrDirFormat):
             continue
@@ -41,31 +42,41 @@ def load_tests(loader, standard_tests, pattern):
             colo_supported_formats.append(format)
         else:
             colo_unsupported_formats.append(format)
-    supported_scenarios = make_scenarios(default_transport, None, None,
-                                         colo_supported_formats)
-    unsupported_scenarios = make_scenarios(default_transport, None, None,
-                                           colo_unsupported_formats)
+    supported_scenarios = make_scenarios(
+        default_transport, None, None, colo_supported_formats
+    )
+    unsupported_scenarios = make_scenarios(
+        default_transport, None, None, colo_unsupported_formats
+    )
     # test the remote server behaviour when backed with a MemoryTransport
     # Once for the current version
-    unsupported_scenarios.extend(make_scenarios(
-        memory.MemoryServer,
-        test_server.SmartTCPServer_for_testing,
-        test_server.ReadonlySmartTCPServer_for_testing,
-        [(RemoteBzrDirFormat())],
-        name_suffix='-default'))
+    unsupported_scenarios.extend(
+        make_scenarios(
+            memory.MemoryServer,
+            test_server.SmartTCPServer_for_testing,
+            test_server.ReadonlySmartTCPServer_for_testing,
+            [(RemoteBzrDirFormat())],
+            name_suffix="-default",
+        )
+    )
     # And once with < 1.6 - the 'v2' protocol.
-    unsupported_scenarios.extend(make_scenarios(
-        memory.MemoryServer,
-        test_server.SmartTCPServer_for_testing_v2_only,
-        test_server.ReadonlySmartTCPServer_for_testing_v2_only,
-        [(RemoteBzrDirFormat())],
-        name_suffix='-v2'))
+    unsupported_scenarios.extend(
+        make_scenarios(
+            memory.MemoryServer,
+            test_server.SmartTCPServer_for_testing_v2_only,
+            test_server.ReadonlySmartTCPServer_for_testing_v2_only,
+            [(RemoteBzrDirFormat())],
+            name_suffix="-v2",
+        )
+    )
 
     result = loader.suiteClass()
-    supported_tests = loader.loadTestsFromModuleNames([
-        'breezy.tests.per_controldir_colo.test_supported'])
-    unsupported_tests = loader.loadTestsFromModuleNames([
-        'breezy.tests.per_controldir_colo.test_unsupported'])
+    supported_tests = loader.loadTestsFromModuleNames(
+        ["breezy.tests.per_controldir_colo.test_supported"]
+    )
+    unsupported_tests = loader.loadTestsFromModuleNames(
+        ["breezy.tests.per_controldir_colo.test_unsupported"]
+    )
     multiply_tests(supported_tests, supported_scenarios, result)
     multiply_tests(unsupported_tests, unsupported_scenarios, result)
     return result

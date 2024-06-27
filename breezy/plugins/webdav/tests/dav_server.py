@@ -20,7 +20,6 @@ This defines the TestingDAVRequestHandler and the DAVServer classes which
 implements the DAV specification parts used by the webdav plugin.
 """
 
-
 import errno
 import os
 import re
@@ -41,12 +40,10 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
     really used by the plugin are.
     """
 
-    _RANGE_HEADER_RE = re.compile(
-        r'bytes (?P<begin>\d+)-(?P<end>\d+)/(?P<size>\d+|\*)')
+    _RANGE_HEADER_RE = re.compile(r"bytes (?P<begin>\d+)-(?P<end>\d+)/(?P<size>\d+|\*)")
 
     delete_success_code = 204
     move_default_overwrite = True
-
 
     def date_time_string(self, timestamp=None):
         """Return the current date and time formatted for a message header."""
@@ -54,9 +51,14 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             timestamp = time.time()
         year, month, day, hh, mm, ss, wd, y, z = time.gmtime(timestamp)
         s = "%s, %02d %3s %4d %02d:%02d:%02d GMT" % (
-                self.weekdayname[wd],
-                day, self.monthname[month], year,
-                hh, mm, ss)
+            self.weekdayname[wd],
+            day,
+            self.monthname[month],
+            year,
+            hh,
+            mm,
+            ss,
+        )
         return s
 
     def _read(self, length):
@@ -69,10 +71,10 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
 
     def read_body(self):
         """Read the body either by chunk or as a whole."""
-        content_length = self.headers.get('Content-Length')
-        encoding = self.headers.get('Transfer-Encoding')
+        content_length = self.headers.get("Content-Length")
+        encoding = self.headers.get("Transfer-Encoding")
         if encoding is not None:
-            assert encoding == 'chunked'
+            assert encoding == "chunked"
             body = []
             # We receive the content by chunk
             while True:
@@ -80,7 +82,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
                 if length == 0:
                     break
                 body.append(data)
-            body = ''.join(body)
+            body = "".join(body)
 
         else:
             if content_length is not None:
@@ -128,10 +130,10 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             else:
                 return self.list_directory(path)
         ctype = self.guess_type(path)
-        if ctype.startswith('text/'):
-            mode = 'r'
+        if ctype.startswith("text/"):
+            mode = "r"
         else:
-            mode = 'rb'
+            mode = "rb"
         try:
             f = open(path, mode)
         except OSError:
@@ -157,19 +159,19 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
 
         do_append = False
         # Check the Content-Range header
-        range_header = self.headers.get('Content-Range')
+        range_header = self.headers.get("Content-Range")
         if range_header is not None:
             match = self._RANGE_HEADER_RE.match(range_header)
             if match is None:
                 # FIXME: RFC2616 says to return a 501 if we don't
                 # understand the Content-Range header, but Apache
                 # just ignores them (bad Apache).
-                self.send_error(501, 'Not Implemented')
+                self.send_error(501, "Not Implemented")
                 return
-            begin = int(match.group('begin'))
+            begin = int(match.group("begin"))
             do_append = True
 
-        if self.headers.get('Expect') == '100-continue':
+        if self.headers.get("Expect") == "100-continue":
             # Tell the client to go ahead, we're ready to get the content
             self.send_response(100, "Continue")
             self.end_headers()
@@ -178,14 +180,15 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             trace.mutter("do_PUT will try to open: [%s]" % path)
             # Always write in binary mode.
             if do_append:
-                f = open(path, 'ab')
+                f = open(path, "ab")
                 f.seek(begin)
             else:
-                f = open(path, 'wb')
+                f = open(path, "wb")
         except OSError as e:
-            trace.mutter("do_PUT got: [%r] while opening/seeking on [%s]"
-                         % (e, self.path))
-            self.send_error(409, 'Conflict')
+            trace.mutter(
+                "do_PUT got: [%r] while opening/seeking on [%s]" % (e, self.path)
+            )
+            self.send_error(409, "Conflict")
             return
 
         try:
@@ -212,7 +215,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
         try:
             os.mkdir(path)
         except OSError as e:
-            if e.errno in (errno.ENOENT, ):
+            if e.errno in (errno.ENOENT,):
                 self.send_error(409, "Conflict")
             elif e.errno in (errno.EEXIST, errno.ENOTDIR):
                 self.send_error(405, "Not allowed")
@@ -226,15 +229,15 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
     def do_COPY(self):
         """Serve a COPY request."""
 
-        url_to = self.headers.get('Destination')
+        url_to = self.headers.get("Destination")
         if url_to is None:
             self.send_error(400, "Destination header missing")
             return
-        (scheme, netloc, rel_to,
-         params, query, fragment) = urllib.parse.urlparse(url_to)
+        (scheme, netloc, rel_to, params, query, fragment) = urllib.parse.urlparse(
+            url_to
+        )
         trace.mutter("urlparse: ({}) [{}]".format(url_to, rel_to))
-        trace.mutter("do_COPY rel_from: [{}], rel_to: [{}]".format(self.path,
-                                                               rel_to))
+        trace.mutter("do_COPY rel_from: [{}], rel_to: [{}]".format(self.path, rel_to))
         abs_from = self.translate_path(self.path)
         abs_to = self.translate_path(rel_to)
         try:
@@ -272,7 +275,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             else:
                 os.remove(path)
         except OSError as e:
-            if e.errno in (errno.ENOENT, ):
+            if e.errno in (errno.ENOENT,):
                 self.send_error(404, "File not found")
             else:
                 # Ok we fail for an unnkown reason :-/
@@ -284,21 +287,21 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
     def do_MOVE(self):
         """Serve a MOVE request."""
 
-        url_to = self.headers.get('Destination')
+        url_to = self.headers.get("Destination")
         if url_to is None:
             self.send_error(400, "Destination header missing")
             return
-        overwrite_header = self.headers.get('Overwrite')
+        overwrite_header = self.headers.get("Overwrite")
         should_overwrite = self.move_default_overwrite
-        if overwrite_header == 'F':
+        if overwrite_header == "F":
             should_overwrite = False
-        elif overwrite_header == 'T':
+        elif overwrite_header == "T":
             should_overwrite = True
-        (scheme, netloc, rel_to,
-         params, query, fragment) = urllib.parse.urlparse(url_to)
+        (scheme, netloc, rel_to, params, query, fragment) = urllib.parse.urlparse(
+            url_to
+        )
         trace.mutter("urlparse: ({}) [{}]".format(url_to, rel_to))
-        trace.mutter("do_MOVE rel_from: [{}], rel_to: [{}]".format(self.path,
-                                                               rel_to))
+        trace.mutter("do_MOVE rel_from: [{}], rel_to: [{}]".format(self.path, rel_to))
         abs_from = self.translate_path(self.path)
         abs_to = self.translate_path(rel_to)
         if not should_overwrite and os.access(abs_to, os.F_OK):
@@ -325,35 +328,35 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
 
         def _prop(ns, name, value=None):
             if value is None:
-                return '<{}:{}/>'.format(ns, name)
+                return "<{}:{}/>".format(ns, name)
             else:
-                return '<{}:{}>{}</{}:{}>'.format(ns, name, value, ns, name)
+                return "<{}:{}>{}</{}:{}>".format(ns, name, value, ns, name)
 
         # For namespaces (and test purposes), where apache2 use:
         # - lp1, we use liveprop,
         # - lp2, we use bzr
         if stat.S_ISDIR(st.st_mode):
             dpath = path
-            if not dpath.endswith('/'):
-                dpath += '/'
-            prop['href'] = _prop('D', 'href', dpath)
-            prop['type'] = _prop('liveprop', 'resourcetype', '<D:collection/>')
-            prop['length'] = ''
-            prop['exec'] = ''
+            if not dpath.endswith("/"):
+                dpath += "/"
+            prop["href"] = _prop("D", "href", dpath)
+            prop["type"] = _prop("liveprop", "resourcetype", "<D:collection/>")
+            prop["length"] = ""
+            prop["exec"] = ""
         else:
             # FIXME: assert S_ISREG ? Handle symlinks ?
-            prop['href'] = _prop('D', 'href', path)
-            prop['type'] = _prop('liveprop', 'resourcetype')
-            prop['length'] = _prop('liveprop', 'getcontentlength',
-                                          st.st_size)
+            prop["href"] = _prop("D", "href", path)
+            prop["type"] = _prop("liveprop", "resourcetype")
+            prop["length"] = _prop("liveprop", "getcontentlength", st.st_size)
             if st.st_mode & stat.S_IXUSR:
-                is_exec = 'T'
+                is_exec = "T"
             else:
-                is_exec = 'F'
-            prop['exec'] = _prop('bzr', 'executable', is_exec)
-        prop['status'] = _prop('D', 'status', 'HTTP/1.1 200 OK')
+                is_exec = "F"
+            prop["exec"] = _prop("bzr", "executable", is_exec)
+        prop["status"] = _prop("D", "status", "HTTP/1.1 200 OK")
 
-        response = """<D:response xmlns:liveprop="DAV:" xmlns:bzr="DAV:">
+        response = (
+            """<D:response xmlns:liveprop="DAV:" xmlns:bzr="DAV:">
     %(href)s
     <D:propstat>
         <D:prop>
@@ -364,7 +367,9 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
         %(status)s
     </D:propstat>
 </D:response>
-""" % prop
+"""
+            % prop
+        )
         return response, st
 
     def _generate_dir_responses(self, path, depth):
@@ -373,21 +378,21 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
 
         for entry in entries:
             entry_path = urlutils.escape(entry)
-            if path.endswith('/'):
+            if path.endswith("/"):
                 entry_path = path + entry_path
             else:
-                entry_path = path + '/' + entry_path
+                entry_path = path + "/" + entry_path
             response, st = self._generate_response(entry_path)
             yield response
-            if depth == 'Infinity' and stat.S_ISDIR(st.st_mode):
+            if depth == "Infinity" and stat.S_ISDIR(st.st_mode):
                 yield from self._generate_dir_responses(entry_path, depth)
 
     def do_PROPFIND(self):
         """Serve a PROPFIND request."""
-        depth = self.headers.get('Depth')
+        depth = self.headers.get("Depth")
         if depth is None:
-            depth = 'Infinity'
-        if depth not in ('0', '1', 'Infinity'):
+            depth = "Infinity"
+        if depth not in ("0", "1", "Infinity"):
             self.send_error(400, "Bad Depth")
             return
 
@@ -404,20 +409,22 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             else:
                 raise
 
-        if depth in ('1', 'Infinity') and stat.S_ISDIR(st.st_mode):
+        if depth in ("1", "Infinity") and stat.S_ISDIR(st.st_mode):
             dir_responses = self._generate_dir_responses(self.path, depth)
         else:
             dir_responses = []
 
         # Generate the response, we don't care about performance, so we just
         # expand everything into a big string.
-        response = ("""<?xml version="1.0" encoding="utf-8"?>
+        response = (
+            """<?xml version="1.0" encoding="utf-8"?>
 <D:multistatus xmlns:D="DAV:" xmlns:ns0="DAV:">
 {}{}
-</D:multistatus>""".format(response, ''.join(dir_responses))).encode('utf-8')
+</D:multistatus>""".format(response, "".join(dir_responses))
+        ).encode("utf-8")
 
         self.send_response(207)
-        self.send_header('Content-length', len(response))
+        self.send_header("Content-length", len(response))
         self.end_headers()
         self.wfile.write(response)
 
@@ -435,7 +442,7 @@ class DAVServer(http_server.HttpServer):
         super().__init__(TestingDAVRequestHandler)
 
     # urls returned by this server should require the webdav client impl
-    _url_protocol = 'http+webdav'
+    _url_protocol = "http+webdav"
 
 
 class QuirkyTestingDAVRequestHandler(TestingDAVRequestHandler):
@@ -460,5 +467,4 @@ class QuirkyDAVServer(http_server.HttpServer):
         super().__init__(QuirkyTestingDAVRequestHandler)
 
     # urls returned by this server should require the webdav client impl
-    _url_protocol = 'http+webdav'
-
+    _url_protocol = "http+webdav"

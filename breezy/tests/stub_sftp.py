@@ -33,34 +33,31 @@ from . import test_server
 
 
 class StubServer(paramiko.ServerInterface):
-
     def __init__(self, test_case_server):
         paramiko.ServerInterface.__init__(self)
         self.log = test_case_server.log
 
     def check_auth_password(self, username, password):
         # all are allowed
-        self.log('sftpserver - authorizing: {}'.format(username))
+        self.log("sftpserver - authorizing: {}".format(username))
         return paramiko.AUTH_SUCCESSFUL
 
     def check_channel_request(self, kind, chanid):
-        self.log('sftpserver - channel request: {}, {}'.format(kind, chanid))
+        self.log("sftpserver - channel request: {}, {}".format(kind, chanid))
         return paramiko.OPEN_SUCCEEDED
 
 
 class StubSFTPHandle(paramiko.SFTPHandle):
-
     def stat(self):
         try:
-            return paramiko.SFTPAttributes.from_stat(
-                os.fstat(self.readfile.fileno()))
+            return paramiko.SFTPAttributes.from_stat(os.fstat(self.readfile.fileno()))
         except OSError as e:
             return paramiko.SFTPServer.convert_errno(e.errno)
 
     def chattr(self, attr):
         # python doesn't have equivalents to fchown or fchmod, so we have to
         # use the stored filename
-        trace.mutter('Changing permissions on %s to %s', self.filename, attr)
+        trace.mutter("Changing permissions on %s to %s", self.filename, attr)
         try:
             paramiko.SFTPServer.set_file_attr(self.filename, attr)
         except OSError as e:
@@ -68,33 +65,33 @@ class StubSFTPHandle(paramiko.SFTPHandle):
 
 
 class StubSFTPServer(paramiko.SFTPServerInterface):
-
     def __init__(self, server, root, home=None):
         paramiko.SFTPServerInterface.__init__(self, server)
         # All paths are actually relative to 'root'.
         # this is like implementing chroot().
         self.root = root
         if home is None:
-            self.home = ''
+            self.home = ""
         else:
             if not home.startswith(self.root):
                 raise AssertionError(
-                    "home must be a subdirectory of root (%s vs %s)"
-                    % (home, root))
-            self.home = home[len(self.root):]
-        if self.home.startswith('/'):
+                    "home must be a subdirectory of root (%s vs %s)" % (home, root)
+                )
+            self.home = home[len(self.root) :]
+        if self.home.startswith("/"):
             self.home = self.home[1:]
-        server.log('sftpserver - new connection')
+        server.log("sftpserver - new connection")
 
     def _realpath(self, path):
         # paths returned from self.canonicalize() always start with
         # a path separator. So if 'root' is just '/', this would cause
         # a double slash at the beginning '//home/dir'.
-        if self.root == '/':
+        if self.root == "/":
             return self.canonicalize(path)
         return self.root + self.canonicalize(path)
 
-    if sys.platform == 'win32':
+    if sys.platform == "win32":
+
         def canonicalize(self, path):
             # Win32 sftp paths end up looking like
             #     sftp://host@foo/h:/foo/bar
@@ -104,18 +101,19 @@ class StubSFTPServer(paramiko.SFTPServerInterface):
             #     foo/bar
             # win32 needs to use the Unicode APIs. so we require the
             # paths to be utf8 (Linux just uses bytestreams)
-            thispath = path.decode('utf8')
-            if path.startswith('/'):
+            thispath = path.decode("utf8")
+            if path.startswith("/"):
                 # Abspath H:/foo/bar
                 return os.path.normpath(thispath[1:])
             else:
                 return os.path.normpath(os.path.join(self.home, thispath))
     else:
+
         def canonicalize(self, path):
             if os.path.isabs(path):
                 return osutils.normpath(path)
             else:
-                return osutils.normpath('/' + os.path.join(self.home, path))
+                return osutils.normpath("/" + os.path.join(self.home, path))
 
     def chattr(self, path, attr):
         try:
@@ -131,13 +129,14 @@ class StubSFTPServer(paramiko.SFTPServerInterface):
             # TODO: win32 incorrectly lists paths with non-ascii if path is not
             # unicode. However on unix the server should only deal with
             # bytestreams and posix.listdir does the right thing
-            if sys.platform == 'win32':
-                flist = [f.encode('utf8') for f in os.listdir(path)]
+            if sys.platform == "win32":
+                flist = [f.encode("utf8") for f in os.listdir(path)]
             else:
                 flist = os.listdir(path)
             for fname in flist:
                 attr = paramiko.SFTPAttributes.from_stat(
-                    os.stat(osutils.pathjoin(path, fname)))
+                    os.stat(osutils.pathjoin(path, fname))
+                )
                 attr.filename = fname
                 out.append(attr)
             return out
@@ -161,8 +160,8 @@ class StubSFTPServer(paramiko.SFTPServerInterface):
     def open(self, path, flags, attr):
         path = self._realpath(path)
         try:
-            flags |= getattr(os, 'O_BINARY', 0)
-            if getattr(attr, 'st_mode', None):
+            flags |= getattr(os, "O_BINARY", 0)
+            if getattr(attr, "st_mode", None):
                 fd = os.open(path, flags, attr.st_mode)
             else:
                 # os.open() defaults to 0777 which is
@@ -175,12 +174,12 @@ class StubSFTPServer(paramiko.SFTPServerInterface):
             attr._flags &= ~attr.FLAG_PERMISSIONS
             paramiko.SFTPServer.set_file_attr(path, attr)
         if flags & os.O_WRONLY:
-            fstr = 'wb'
+            fstr = "wb"
         elif flags & os.O_RDWR:
-            fstr = 'rb+'
+            fstr = "rb+"
         else:
             # O_RDONLY (== 0)
-            fstr = 'rb'
+            fstr = "rb"
         try:
             f = os.fdopen(fd, fstr)
         except OSError as e:
@@ -229,7 +228,7 @@ class StubSFTPServer(paramiko.SFTPServerInterface):
         try:
             # Using getattr() in case st_mode is None or 0
             # both evaluate to False
-            if getattr(attr, 'st_mode', None):
+            if getattr(attr, "st_mode", None):
                 os.mkdir(path, attr.st_mode)
             else:
                 os.mkdir(path)
@@ -290,12 +289,21 @@ class SocketDelay:
     """
 
     simulated_time = 0
-    _proxied_arguments = dict.fromkeys([
-        "close", "getpeername", "getsockname", "getsockopt", "gettimeout",
-        "setblocking", "setsockopt", "settimeout", "shutdown"])
+    _proxied_arguments = dict.fromkeys(
+        [
+            "close",
+            "getpeername",
+            "getsockname",
+            "getsockopt",
+            "gettimeout",
+            "setblocking",
+            "setsockopt",
+            "settimeout",
+            "shutdown",
+        ]
+    )
 
-    def __init__(self, sock, latency, bandwidth=1.0,
-                 really_sleep=True):
+    def __init__(self, sock, latency, bandwidth=1.0, really_sleep=True):
         """
         :param bandwith: simulated bandwith (MegaBit)
         :param really_sleep: If set to false, the SocketDelay will just
@@ -317,12 +325,12 @@ class SocketDelay:
     def __getattr__(self, attr):
         if attr in SocketDelay._proxied_arguments:
             return getattr(self.sock, attr)
-        raise AttributeError("'SocketDelay' object has no attribute %r" %
-                             attr)
+        raise AttributeError("'SocketDelay' object has no attribute %r" % attr)
 
     def dup(self):
-        return SocketDelay(self.sock.dup(), self.latency, self.time_per_byte,
-                           self._sleep)
+        return SocketDelay(
+            self.sock.dup(), self.latency, self.time_per_byte, self._sleep
+        )
 
     def recv(self, *args):
         data = self.sock.recv(*args)
@@ -349,18 +357,21 @@ class SocketDelay:
 
 
 class TestingSFTPConnectionHandler(socketserver.BaseRequestHandler):
-
     def setup(self):
         self.wrap_for_latency()
         tcs = self.server.test_case_server
         ptrans = paramiko.Transport(self.request)
         self.paramiko_transport = ptrans
         # Set it to a channel under 'bzr' so that we get debug info
-        ptrans.set_log_channel('brz.paramiko.transport')
+        ptrans.set_log_channel("brz.paramiko.transport")
         ptrans.add_server_key(tcs.get_host_key())
-        ptrans.set_subsystem_handler('sftp', paramiko.SFTPServer,
-                                     StubSFTPServer, root=tcs._root,
-                                     home=tcs._server_homedir)
+        ptrans.set_subsystem_handler(
+            "sftp",
+            paramiko.SFTPServer,
+            StubSFTPServer,
+            root=tcs._root,
+            home=tcs._server_homedir,
+        )
         server = tcs._server_interface(tcs)
         # This blocks until the key exchange has been done
         ptrans.start_server(None, server)
@@ -382,7 +393,6 @@ class TestingSFTPConnectionHandler(socketserver.BaseRequestHandler):
 
 
 class TestingSFTPWithoutSSHConnectionHandler(TestingSFTPConnectionHandler):
-
     def setup(self):
         self.wrap_for_latency()
         # Re-import these as locals, so that they're still accessible during
@@ -394,10 +404,10 @@ class TestingSFTPWithoutSSHConnectionHandler(TestingSFTPConnectionHandler):
                 return self
 
             def get_log_channel(self):
-                return 'brz.paramiko'
+                return "brz.paramiko"
 
             def get_name(self):
-                return '1'
+                return "1"
 
             def get_hexdump(self):
                 return False
@@ -407,13 +417,19 @@ class TestingSFTPWithoutSSHConnectionHandler(TestingSFTPConnectionHandler):
 
         tcs = self.server.test_case_server
         sftp_server = paramiko.SFTPServer(
-            FakeChannel(), 'sftp', StubServer(tcs), StubSFTPServer,
-            root=tcs._root, home=tcs._server_homedir)
+            FakeChannel(),
+            "sftp",
+            StubServer(tcs),
+            StubSFTPServer,
+            root=tcs._root,
+            home=tcs._server_homedir,
+        )
         self.sftp_server = sftp_server
         sys_stderr = sys.stderr  # Used in error reporting during shutdown
         try:
             sftp_server.start_subsystem(
-                'sftp', None, ssh.SocketAsChannelAdapter(self.request))
+                "sftp", None, ssh.SocketAsChannelAdapter(self.request)
+            )
         except OSError as e:
             if (len(e.args) > 0) and (e.args[0] == errno.EPIPE):
                 # it's okay for the client to disconnect abruptly
@@ -428,18 +444,18 @@ class TestingSFTPWithoutSSHConnectionHandler(TestingSFTPConnectionHandler):
             # seems to be the best we can do.
             # FIXME: All interpreter shutdown errors should have been related
             # to daemon threads, cleanup needed -- vila 20100623
-            sys_stderr.write('\nEXCEPTION {!r}: '.format(e.__class__))
-            sys_stderr.write('{}\n\n'.format(e))
+            sys_stderr.write("\nEXCEPTION {!r}: ".format(e.__class__))
+            sys_stderr.write("{}\n\n".format(e))
 
     def finish(self):
         self.sftp_server.finish_subsystem()
 
 
 class TestingSFTPServer(test_server.TestingThreadingTCPServer):
-
     def __init__(self, server_address, request_handler_class, test_case_server):
         test_server.TestingThreadingTCPServer.__init__(
-            self, server_address, request_handler_class)
+            self, server_address, request_handler_class
+        )
         self.test_case_server = test_case_server
 
 
@@ -447,11 +463,11 @@ class SFTPServer(test_server.TestingTCPServerInAThread):
     """Common code for SFTP server facilities."""
 
     def __init__(self, server_interface=StubServer):
-        self.host = '127.0.0.1'
+        self.host = "127.0.0.1"
         self.port = 0
-        super().__init__((self.host, self.port),
-                                         TestingSFTPServer,
-                                         TestingSFTPConnectionHandler)
+        super().__init__(
+            (self.host, self.port), TestingSFTPServer, TestingSFTPConnectionHandler
+        )
         self._original_vendor = None
         self._vendor = ssh.ParamikoVendor()
         self._server_interface = server_interface
@@ -471,15 +487,15 @@ class SFTPServer(test_server.TestingTCPServerInAThread):
         self.logs.append(message)
 
     def create_server(self):
-        server = self.server_class((self.host, self.port),
-                                   self.request_handler_class,
-                                   self)
+        server = self.server_class(
+            (self.host, self.port), self.request_handler_class, self
+        )
         return server
 
     def get_host_key(self):
         if self._host_key is None:
-            key_file = osutils.pathjoin(self._homedir, 'test_rsa.key')
-            f = open(key_file, 'w')
+            key_file = osutils.pathjoin(self._homedir, "test_rsa.key")
+            f = open(key_file, "w")
             try:
                 f.write(STUB_SERVER_KEY)
             finally:
@@ -490,24 +506,27 @@ class SFTPServer(test_server.TestingTCPServerInAThread):
     def start_server(self, backing_server=None):
         # XXX: TODO: make sftpserver back onto backing_server rather than local
         # disk.
-        if not (backing_server is None
-                or isinstance(backing_server, test_server.LocalURLServer)):
+        if not (
+            backing_server is None
+            or isinstance(backing_server, test_server.LocalURLServer)
+        ):
             raise AssertionError(
-                'backing_server should not be %r, because this can only serve '
-                'the local current working directory.' % (backing_server,))
+                "backing_server should not be %r, because this can only serve "
+                "the local current working directory." % (backing_server,)
+            )
         self._original_vendor = ssh._ssh_vendor_manager._cached_ssh_vendor
         ssh._ssh_vendor_manager._cached_ssh_vendor = self._vendor
         self._homedir = osutils.getcwd()
-        if sys.platform == 'win32':
+        if sys.platform == "win32":
             # Normalize the path or it will be wrongly escaped
             self._homedir = osutils.normpath(self._homedir)
         else:
             self._homedir = self._homedir
         if self._server_homedir is None:
             self._server_homedir = self._homedir
-        self._root = '/'
-        if sys.platform == 'win32':
-            self._root = ''
+        self._root = "/"
+        if sys.platform == "win32":
+            self._root = ""
         super().start_server()
 
     def stop_server(self):
@@ -522,8 +541,8 @@ class SFTPServer(test_server.TestingTCPServerInAThread):
         # we bind a random socket, so that we get a guaranteed unused port
         # we just never listen on that port
         s = socket.socket()
-        s.bind(('localhost', 0))
-        return 'sftp://%s:%s/' % s.getsockname()
+        s.bind(("localhost", 0))
+        return "sftp://%s:%s/" % s.getsockname()
 
 
 class SFTPFullAbsoluteServer(SFTPServer):
@@ -532,7 +551,7 @@ class SFTPFullAbsoluteServer(SFTPServer):
     def get_url(self):
         """See breezy.transport.Server.get_url."""
         homedir = self._homedir
-        if sys.platform != 'win32':
+        if sys.platform != "win32":
             # Remove the initial '/' on all platforms but win32
             homedir = homedir[1:]
         return self._get_sftp_url(urlutils.escape(homedir))
@@ -556,7 +575,7 @@ class SFTPAbsoluteServer(SFTPServerWithoutSSH):
     def get_url(self):
         """See breezy.transport.Server.get_url."""
         homedir = self._homedir
-        if sys.platform != 'win32':
+        if sys.platform != "win32":
             # Remove the initial '/' on all platforms but win32
             homedir = homedir[1:]
         return self._get_sftp_url(urlutils.escape(homedir))
@@ -579,5 +598,5 @@ class SFTPSiblingAbsoluteServer(SFTPAbsoluteServer):
     def create_server(self):
         # FIXME: Can't we do that in a cleaner way ? -- vila 20100623
         server = super().create_server()
-        server._server_homedir = '/dev/noone/runs/tests/here'
+        server._server_homedir = "/dev/noone/runs/tests/here"
         return server

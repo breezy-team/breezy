@@ -25,29 +25,32 @@ import breezy
 
 from .lazy_import import lazy_import
 
-lazy_import(globals(), """
+lazy_import(
+    globals(),
+    """
 from breezy import (
     atomicfile,
     globbing,
     trace,
     )
-""")
+""",
+)
 from . import bedding
 
 # ~/.config/breezy/ignore will be filled out using
 # this ignore list, if it does not exist
 # please keep these sorted (in C locale order) to aid merging
 USER_DEFAULTS = [
-    '*.a',
-    '*.o',
-    '*.py[co]',
-    '*.so',
-    '*.sw[nop]',
-    '*~',
-    '.#*',
-    '[#]*#',
-    '__pycache__',
-    'bzr-orphans',
+    "*.a",
+    "*.o",
+    "*.py[co]",
+    "*.so",
+    "*.sw[nop]",
+    "*~",
+    ".#*",
+    "[#]*#",
+    "__pycache__",
+    "bzr-orphans",
 ]
 
 
@@ -62,25 +65,26 @@ def parse_ignore_file(f):
     ignore_file = f.read()
     try:
         # Try and parse whole ignore file at once.
-        unicode_lines = ignore_file.decode('utf8').split('\n')
+        unicode_lines = ignore_file.decode("utf8").split("\n")
     except UnicodeDecodeError:
         # Otherwise go though line by line and pick out the 'good'
         # decodable lines
-        lines = ignore_file.split(b'\n')
+        lines = ignore_file.split(b"\n")
         unicode_lines = []
         for line_number, line in enumerate(lines):
             try:
-                unicode_lines.append(line.decode('utf-8'))
+                unicode_lines.append(line.decode("utf-8"))
             except UnicodeDecodeError:
                 # report error about line (idx+1)
                 trace.warning(
-                    '.bzrignore: On Line #%d, malformed utf8 character. '
-                    'Ignoring line.' % (line_number + 1))
+                    ".bzrignore: On Line #%d, malformed utf8 character. "
+                    "Ignoring line." % (line_number + 1)
+                )
 
     # Append each line to ignore list if it's not a comment line
     for line in unicode_lines:
-        line = line.rstrip('\r\n')
-        if not line or line.startswith('#'):
+        line = line.rstrip("\r\n")
+        if not line or line.startswith("#"):
             continue
         ignored.add(globbing.normalize_pattern(line))
     return ignored
@@ -91,10 +95,10 @@ def get_user_ignores():
     path = bedding.user_ignore_config_path()
     patterns = set(USER_DEFAULTS)
     try:
-        f = open(path, 'rb')
+        f = open(path, "rb")
     except OSError as e:
         # open() shouldn't return an IOError without errno, but just in case
-        err = getattr(e, 'errno', None)
+        err = getattr(e, "errno", None)
         if err not in (errno.ENOENT,):
             raise
         # Create the ignore file, and just return the default
@@ -126,9 +130,9 @@ def _set_user_ignores(patterns):
     bedding.ensure_config_dir_exists()
 
     # Create an empty file
-    with open(ignore_path, 'wb') as f:
+    with open(ignore_path, "wb") as f:
         for pattern in patterns:
-            f.write(pattern.encode('utf8') + b'\n')
+            f.write(pattern.encode("utf8") + b"\n")
 
 
 def add_unique_user_ignores(new_ignores):
@@ -148,9 +152,9 @@ def add_unique_user_ignores(new_ignores):
     if not to_add:
         return []
 
-    with open(bedding.user_ignore_config_path(), 'ab') as f:
+    with open(bedding.user_ignore_config_path(), "ab") as f:
         for pattern in to_add:
-            f.write(pattern.encode('utf8') + b'\n')
+            f.write(pattern.encode("utf8") + b"\n")
 
     return to_add
 
@@ -190,12 +194,12 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
     # read in the existing ignores set
     ifn = tree.abspath(tree._format.ignore_filename)
     if tree.has_filename(ifn):
-        with open(ifn, 'rb') as f:
+        with open(ifn, "rb") as f:
             file_contents = f.read()
-            if file_contents.find(b'\r\n') != -1:
-                newline = b'\r\n'
+            if file_contents.find(b"\r\n") != -1:
+                newline = b"\r\n"
             else:
-                newline = b'\n'
+                newline = b"\n"
     else:
         file_contents = b""
         newline = os.linesep.encode()
@@ -204,14 +208,14 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
         ignores = parse_ignore_file(sio)
 
     # write out the updated ignores set
-    with atomicfile.AtomicFile(ifn, 'wb') as f:
+    with atomicfile.AtomicFile(ifn, "wb") as f:
         # write the original contents, preserving original line endings
         f.write(file_contents)
-        if len(file_contents) > 0 and not file_contents.endswith(b'\n'):
+        if len(file_contents) > 0 and not file_contents.endswith(b"\n"):
             f.write(newline)
         for pattern in name_pattern_list:
             if pattern not in ignores:
-                f.write(pattern.encode('utf-8'))
+                f.write(pattern.encode("utf-8"))
                 f.write(newline)
 
     if not tree.is_versioned(tree._format.ignore_filename):

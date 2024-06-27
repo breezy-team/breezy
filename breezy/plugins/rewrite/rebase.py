@@ -22,8 +22,7 @@ from ... import config as _mod_config
 from ... import osutils, ui
 from ...bzr.generate_ids import gen_revision_id
 from ...bzr.inventorytree import InventoryTreeChange
-from ...errors import (BzrError, NoCommonAncestor, UnknownFormatError,
-                       UnrelatedBranches)
+from ...errors import BzrError, NoCommonAncestor, UnknownFormatError, UnrelatedBranches
 from ...graph import FrozenHeadsCache
 from ...merge import Merger
 from ...revision import NULL_REVISION
@@ -32,13 +31,13 @@ from ...transport import NoSuchFile
 from ...tsort import topo_sort
 from .maptree import MapTree, map_file_ids
 
-REBASE_PLAN_FILENAME = 'rebase-plan'
-REBASE_CURRENT_REVID_FILENAME = 'rebase-current'
+REBASE_PLAN_FILENAME = "rebase-plan"
+REBASE_CURRENT_REVID_FILENAME = "rebase-current"
 REBASE_PLAN_VERSION = 1
-REVPROP_REBASE_OF = 'rebase-of'
+REVPROP_REBASE_OF = "rebase-of"
+
 
 class RebaseState:
-
     def has_plan(self):
         """Check whether there is a rebase plan present.
 
@@ -61,8 +60,7 @@ class RebaseState:
         raise NotImplementedError(self.write_plan)
 
     def remove_plan(self):
-        """Remove a rebase plan file.
-        """
+        """Remove a rebase plan file."""
         raise NotImplementedError(self.remove_plan)
 
     def write_active_revid(self, revid):
@@ -81,7 +79,6 @@ class RebaseState:
 
 
 class RebaseState1(RebaseState):
-
     def __init__(self, wt):
         self.wt = wt
         self.transport = wt._transport
@@ -89,29 +86,28 @@ class RebaseState1(RebaseState):
     def has_plan(self):
         """See `RebaseState`."""
         try:
-            return self.transport.get_bytes(REBASE_PLAN_FILENAME) != b''
+            return self.transport.get_bytes(REBASE_PLAN_FILENAME) != b""
         except NoSuchFile:
             return False
 
     def read_plan(self):
         """See `RebaseState`."""
         text = self.transport.get_bytes(REBASE_PLAN_FILENAME)
-        if text == b'':
+        if text == b"":
             raise NoSuchFile(REBASE_PLAN_FILENAME)
         return unmarshall_rebase_plan(text)
 
     def write_plan(self, replace_map):
         """See `RebaseState`."""
         self.wt.update_feature_flags({b"rebase-v1": b"write-required"})
-        content = marshall_rebase_plan(
-            self.wt.branch.last_revision_info(), replace_map)
+        content = marshall_rebase_plan(self.wt.branch.last_revision_info(), replace_map)
         assert isinstance(content, bytes)
         self.transport.put_bytes(REBASE_PLAN_FILENAME, content)
 
     def remove_plan(self):
         """See `RebaseState`."""
         self.wt.update_feature_flags({b"rebase-v1": None})
-        self.transport.put_bytes(REBASE_PLAN_FILENAME, b'')
+        self.transport.put_bytes(REBASE_PLAN_FILENAME, b"")
 
     def write_active_revid(self, revid):
         """See `RebaseState`."""
@@ -142,8 +138,11 @@ def marshall_rebase_plan(last_rev_info, replace_map):
     ret += b"%d %s\n" % last_rev_info
     for oldrev in replace_map:
         (newrev, newparents) = replace_map[oldrev]
-        ret += b"%s %s" % (oldrev, newrev) + \
-            b"".join([b" %s" % p for p in newparents]) + b"\n"
+        ret += (
+            b"%s %s" % (oldrev, newrev)
+            + b"".join([b" %s" % p for p in newparents])
+            + b"\n"
+        )
     return ret
 
 
@@ -153,7 +152,7 @@ def unmarshall_rebase_plan(text):
     :param text: Text to parse
     :return: Tuple with last revision info, replace map.
     """
-    lines = text.split(b'\n')
+    lines = text.split(b"\n")
     # Make sure header is there
     if lines[0] != b"# Bazaar rebase plan %d" % REBASE_PLAN_VERSION:
         raise UnknownFormatError(lines[0])
@@ -182,8 +181,15 @@ def regenerate_default_revid(repository, revid):
     return gen_revision_id(rev.committer, rev.timestamp)
 
 
-def generate_simple_plan(todo_set, start_revid, stop_revid, onto_revid, graph,
-                         generate_revid, skip_full_merged=False):
+def generate_simple_plan(
+    todo_set,
+    start_revid,
+    stop_revid,
+    onto_revid,
+    graph,
+    generate_revid,
+    skip_full_merged=False,
+):
     """Create a simple rebase plan that replays history based
     on one revision being replayed on top of another.
 
@@ -201,8 +207,9 @@ def generate_simple_plan(todo_set, start_revid, stop_revid, onto_revid, graph,
 
     :return: replace map
     """
-    assert start_revid is None or start_revid in todo_set, \
-        "invalid start revid({!r}), todo_set({!r})".format(start_revid, todo_set)
+    assert (
+        start_revid is None or start_revid in todo_set
+    ), "invalid start revid({!r}), todo_set({!r})".format(start_revid, todo_set)
     assert stop_revid is None or stop_revid in todo_set, "invalid stop_revid"
     replace_map = {}
     parent_map = graph.get_parent_map(todo_set)
@@ -215,7 +222,7 @@ def generate_simple_plan(todo_set, start_revid, stop_revid, onto_revid, graph,
         if lca == {NULL_REVISION}:
             raise UnrelatedBranches()
         start_revid = order[0]
-    todo = order[order.index(start_revid):order.index(stop_revid) + 1]
+    todo = order[order.index(start_revid) : order.index(stop_revid) + 1]
     heads_cache = FrozenHeadsCache(graph)
     # XXX: The output replacemap'd parents should get looked up in some manner
     # by the heads cache? RBC 20080719
@@ -272,7 +279,7 @@ def generate_transpose_plan(ancestry, renames, graph, generate_revid):
     for r, ps in ancestry:
         if r not in children:
             children[r] = []
-        if ps is None: # Ghost
+        if ps is None:  # Ghost
             continue
         parent_map[r] = ps
         if r not in children:
@@ -282,7 +289,9 @@ def generate_transpose_plan(ancestry, renames, graph, generate_revid):
                 children[p] = []
             children[p].append(r)
 
-    parent_map.update(graph.get_parent_map(filter(lambda x: x not in parent_map, renames.values())))
+    parent_map.update(
+        graph.get_parent_map(filter(lambda x: x not in parent_map, renames.values()))
+    )
 
     # todo contains a list of revisions that need to
     # be rewritten
@@ -299,7 +308,7 @@ def generate_transpose_plan(ancestry, renames, graph, generate_revid):
             r = todo.pop()
             processed.add(r)
             i += 1
-            pb.update('determining dependencies', i, total)
+            pb.update("determining dependencies", i, total)
             # Add entry for them in replace_map
             for c in children[r]:
                 if c in renames:
@@ -308,15 +317,15 @@ def generate_transpose_plan(ancestry, renames, graph, generate_revid):
                     parents = replace_map[c][1]
                 else:
                     parents = parent_map[c]
-                assert isinstance(parents, tuple), \
+                assert isinstance(parents, tuple), (
                     "Expected tuple of parents, got: %r" % parents
+                )
                 # replace r in parents with replace_map[r][0]
                 if not replace_map[r][0] in parents:
                     parents = list(parents)
                     parents[parents.index(r)] = replace_map[r][0]
                     parents = tuple(parents)
-                replace_map[c] = (generate_revid(c, tuple(parents)),
-                                  tuple(parents))
+                replace_map[c] = (generate_revid(c, tuple(parents)), tuple(parents))
                 if replace_map[c][0] == c:
                     del replace_map[c]
                 elif c not in processed:
@@ -357,7 +366,7 @@ def rebase(repository, replace_map, revision_rewriter):
     pb = ui.ui_factory.nested_progress_bar()
     try:
         for i, revid in enumerate(todo):
-            pb.update('rebase revisions', i, len(todo))
+            pb.update("rebase revisions", i, len(todo))
             (newrevid, newparents) = replace_map[revid]
             assert isinstance(newparents, tuple), "Expected tuple for %r" % newparents
             if repository.has_revision(newrevid):
@@ -379,10 +388,15 @@ def wrap_iter_changes(old_iter_changes, map_tree):
         else:
             new_parent = change.parent_id[1]
         yield InventoryTreeChange(
-            map_tree.new_id(change.file_id), change.path,
-            change.changed_content, change.versioned,
-            (old_parent, new_parent), change.name, change.kind,
-            change.executable)
+            map_tree.new_id(change.file_id),
+            change.path,
+            change.changed_content,
+            change.versioned,
+            (old_parent, new_parent),
+            change.name,
+            change.kind,
+            change.executable,
+        )
 
 
 class CommitBuilderRevisionRewriter:
@@ -406,13 +420,19 @@ class CommitBuilderRevisionRewriter:
         :param newrevid: Revision id of the revision to create.
         :param new_parents: Revision ids of the new parent revisions.
         """
-        assert isinstance(new_parents, tuple), "CommitBuilderRevisionRewriter: Expected tuple for %r" % new_parents
-        mutter('creating copy %r of %r with new parents %r',
-               newrevid, oldrevid, new_parents)
+        assert isinstance(new_parents, tuple), (
+            "CommitBuilderRevisionRewriter: Expected tuple for %r" % new_parents
+        )
+        mutter(
+            "creating copy %r of %r with new parents %r",
+            newrevid,
+            oldrevid,
+            new_parents,
+        )
         oldrev = self.repository.get_revision(oldrevid)
 
         revprops = dict(oldrev.properties)
-        revprops[REVPROP_REBASE_OF] = oldrevid.decode('utf-8')
+        revprops[REVPROP_REBASE_OF] = oldrevid.decode("utf-8")
 
         # Check what new_ie.file_id should be
         # use old and new parent trees to generate new_id map
@@ -421,8 +441,8 @@ class CommitBuilderRevisionRewriter:
         oldtree = self.repository.revision_tree(oldrevid)
         if self.map_ids:
             fileid_map = map_file_ids(
-                self.repository, nonghost_oldparents,
-                nonghost_newparents)
+                self.repository, nonghost_oldparents, nonghost_newparents
+            )
             mappedtree = MapTree(oldtree, fileid_map)
         else:
             mappedtree = oldtree
@@ -439,13 +459,19 @@ class CommitBuilderRevisionRewriter:
         old_iter_changes = oldtree.iter_changes(old_base_tree)
         iter_changes = wrap_iter_changes(old_iter_changes, mappedtree)
         builder = self.repository.get_commit_builder(
-            branch=None, parents=new_parents, committer=oldrev.committer,
-            timestamp=oldrev.timestamp, timezone=oldrev.timezone,
-            revprops=revprops, revision_id=newrevid,
-            config_stack=_mod_config.GlobalStack())
+            branch=None,
+            parents=new_parents,
+            committer=oldrev.committer,
+            timestamp=oldrev.timestamp,
+            timezone=oldrev.timezone,
+            revprops=revprops,
+            revision_id=newrevid,
+            config_stack=_mod_config.GlobalStack(),
+        )
         try:
-            for (relpath, fs_hash) in builder.record_iter_changes(
-                    mappedtree, new_base, iter_changes):
+            for relpath, fs_hash in builder.record_iter_changes(
+                mappedtree, new_base, iter_changes
+            ):
                 pass
             builder.finish_inventory()
             return builder.commit(oldrev.message)
@@ -455,7 +481,6 @@ class CommitBuilderRevisionRewriter:
 
 
 class WorkingTreeRevisionRewriter:
-
     def __init__(self, wt, state, merge_type=None):
         """
         :param wt: Working tree in which to do the replays.
@@ -475,6 +500,7 @@ class WorkingTreeRevisionRewriter:
         repository = self.wt.branch.repository
         if self.merge_type is None:
             from ...merge import Merge3Merger
+
             merge_type = Merge3Merger
         else:
             merge_type = self.merge_type
@@ -482,16 +508,21 @@ class WorkingTreeRevisionRewriter:
         # Make sure there are no conflicts or pending merges/changes
         # in the working tree
         complete_revert(self.wt, [newparents[0]])
-        assert not self.wt.changes_from(self.wt.basis_tree()).has_changed(), "Changes in rev"
+        assert not self.wt.changes_from(
+            self.wt.basis_tree()
+        ).has_changed(), "Changes in rev"
 
         oldtree = repository.revision_tree(oldrevid)
         self.state.write_active_revid(oldrevid)
         merger = Merger(self.wt.branch, this_tree=self.wt)
         merger.set_other_revision(oldrevid, self.wt.branch)
         base_revid = self.determine_base(
-            oldrevid, oldrev.parent_ids, newrevid, newparents)
-        mutter('replaying %r as %r with base %r and new parents %r' %
-               (oldrevid, newrevid, base_revid, newparents))
+            oldrevid, oldrev.parent_ids, newrevid, newparents
+        )
+        mutter(
+            "replaying %r as %r with base %r and new parents %r"
+            % (oldrevid, newrevid, base_revid, newparents)
+        )
         merger.set_base_revision(base_revid, self.wt.branch)
         merger.merge_type = merge_type
         merger.do_merge()
@@ -538,7 +569,7 @@ class WorkingTreeRevisionRewriter:
         :param newrevid: New revision id."""
         assert oldrev.revision_id != newrevid, "Invalid revid %r" % newrevid
         revprops = dict(oldrev.properties)
-        revprops[REVPROP_REBASE_OF] = oldrev.revision_id.decode('utf-8')
+        revprops[REVPROP_REBASE_OF] = oldrev.revision_id.decode("utf-8")
         committer = self.wt.branch.get_config().username()
         authors = oldrev.get_apparent_authors()
         if oldrev.committer == committer:
@@ -549,14 +580,19 @@ class WorkingTreeRevisionRewriter:
         else:
             if oldrev.committer not in authors:
                 authors.append(oldrev.committer)
-        if 'author' in revprops:
-            del revprops['author']
-        if 'authors' in revprops:
-            del revprops['authors']
+        if "author" in revprops:
+            del revprops["author"]
+        if "authors" in revprops:
+            del revprops["authors"]
         self.wt.commit(
-            message=oldrev.message, timestamp=oldrev.timestamp,
-            timezone=oldrev.timezone, revprops=revprops, rev_id=newrevid,
-            committer=committer, authors=authors)
+            message=oldrev.message,
+            timestamp=oldrev.timestamp,
+            timezone=oldrev.timezone,
+            revprops=revprops,
+            rev_id=newrevid,
+            committer=committer,
+            authors=authors,
+        )
 
 
 def complete_revert(wt, newparents):
@@ -584,6 +620,7 @@ def complete_revert(wt, newparents):
 
 class ReplaySnapshotError(BzrError):
     """Raised when replaying a snapshot failed."""
+
     _fmt = """Replaying the snapshot failed: %(msg)s."""
 
     def __init__(self, msg):

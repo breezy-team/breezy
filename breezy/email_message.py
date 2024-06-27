@@ -65,12 +65,12 @@ class EmailMessage:
         for addr in to_address:
             to_addresses.append(self.address_to_encoded_header(addr))
 
-        self._headers['To'] = ', '.join(to_addresses)
-        self._headers['From'] = self.address_to_encoded_header(from_address)
-        self._headers['Subject'] = Header(safe_unicode(subject))
-        self._headers['User-Agent'] = 'Bazaar (%s)' % _breezy_version
+        self._headers["To"] = ", ".join(to_addresses)
+        self._headers["From"] = self.address_to_encoded_header(from_address)
+        self._headers["Subject"] = Header(safe_unicode(subject))
+        self._headers["User-Agent"] = "Bazaar (%s)" % _breezy_version
 
-    def add_inline_attachment(self, body, filename=None, mime_subtype='plain'):
+    def add_inline_attachment(self, body, filename=None, mime_subtype="plain"):
         """Add an inline attachment to the message.
 
         :param body: A text to attach. Can be an unicode string or a byte
@@ -87,7 +87,7 @@ class EmailMessage:
         # add_inline_attachment() has been called, so the message will be a
         # MIMEMultipart; add the provided body, if any, as the first attachment
         if self._body is not None:
-            self._parts.append((self._body, None, 'plain'))
+            self._parts.append((self._body, None, "plain"))
             self._body = None
 
         self._parts.append((body, filename, mime_subtype))
@@ -114,11 +114,11 @@ class EmailMessage:
                 payload = MIMEText(body, mime_subtype, encoding)
 
                 if filename is not None:
-                    content_type = payload['Content-Type']
+                    content_type = payload["Content-Type"]
                     content_type += '; name="%s"' % filename
-                    payload.replace_header('Content-Type', content_type)
+                    payload.replace_header("Content-Type", content_type)
 
-                payload['Content-Disposition'] = 'inline'
+                payload["Content-Disposition"] = "inline"
                 msgobj.attach(payload)
 
         # sort headers here to ease testing
@@ -145,8 +145,16 @@ class EmailMessage:
         return self._headers.__setitem__(header, value)
 
     @staticmethod
-    def send(config, from_address, to_address, subject, body, attachment=None,
-             attachment_filename=None, attachment_mime_subtype='plain'):
+    def send(
+        config,
+        from_address,
+        to_address,
+        subject,
+        body,
+        attachment=None,
+        attachment_filename=None,
+        attachment_mime_subtype="plain",
+    ):
         """Create an email message and send it with SMTPConnection.
 
         :param config: config object to pass to SMTPConnection constructor.
@@ -156,8 +164,9 @@ class EmailMessage:
         """
         msg = EmailMessage(from_address, to_address, subject, body)
         if attachment is not None:
-            msg.add_inline_attachment(attachment, attachment_filename,
-                                      attachment_mime_subtype)
+            msg.add_inline_attachment(
+                attachment, attachment_filename, attachment_mime_subtype
+            )
         SMTPConnection(config).send_email(msg)
 
     @staticmethod
@@ -175,8 +184,7 @@ class EmailMessage:
         if not user:
             return email
         else:
-            return formataddr((str(Header(safe_unicode(user))),
-                               email))
+            return formataddr((str(Header(safe_unicode(user))), email))
 
     @staticmethod
     def string_with_encoding(string_):
@@ -193,16 +201,16 @@ class EmailMessage:
         # and decode() whether the body is actually ascii-only.
         if isinstance(string_, str):
             try:
-                return (string_.encode('ascii'), 'ascii')
+                return (string_.encode("ascii"), "ascii")
             except UnicodeEncodeError:
-                return (string_.encode('utf-8'), 'utf-8')
+                return (string_.encode("utf-8"), "utf-8")
         else:
             try:
-                string_.decode('ascii')
-                return (string_, 'ascii')
+                string_.decode("ascii")
+                return (string_, "ascii")
             except UnicodeDecodeError:
                 try:
-                    string_.decode('utf-8')
-                    return (string_, 'utf-8')
+                    string_.decode("utf-8")
+                    return (string_, "utf-8")
                 except UnicodeDecodeError:
-                    return (string_, '8-bit')
+                    return (string_, "8-bit")

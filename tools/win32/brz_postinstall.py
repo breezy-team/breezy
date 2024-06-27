@@ -65,10 +65,10 @@ _major, _minor, _build, _platform, _text = sys.getwindowsversion()
 #   1                           Windows 98, or Windows 95.
 #   ==========================  ======================================
 if _platform == 2:
-    winver = 'Windows NT'
+    winver = "Windows NT"
 else:
     # don't care about real Windows name, just to force safe operations
-    winver = 'Windows 98'
+    winver = "Windows 98"
 
 
 ##
@@ -85,14 +85,16 @@ def main():
     import re
 
     import _winreg
-    user_encoding = locale.getpreferredencoding() or 'ascii'
+
+    user_encoding = locale.getpreferredencoding() or "ascii"
 
     import ctypes
 
-    hkey_str = {_winreg.HKEY_LOCAL_MACHINE: 'HKEY_LOCAL_MACHINE',
-                _winreg.HKEY_CURRENT_USER: 'HKEY_CURRENT_USER',
-                _winreg.HKEY_CLASSES_ROOT: 'HKEY_CLASSES_ROOT',
-                }
+    hkey_str = {
+        _winreg.HKEY_LOCAL_MACHINE: "HKEY_LOCAL_MACHINE",
+        _winreg.HKEY_CURRENT_USER: "HKEY_CURRENT_USER",
+        _winreg.HKEY_CLASSES_ROOT: "HKEY_CLASSES_ROOT",
+    }
 
     dry_run = False
     silent = False
@@ -104,17 +106,22 @@ def main():
     check_mfc71 = False
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hvnq",
-                                   ["help", "version",
-                                    "dry-run",
-                                    "silent",
-                                    "start-brz",
-                                    "add-path",
-                                    "delete-path",
-                                    "add-shell-menu",
-                                    "delete-shell-menu",
-                                    "check-mfc71",
-                                    ])
+        opts, args = getopt.getopt(
+            sys.argv[1:],
+            "hvnq",
+            [
+                "help",
+                "version",
+                "dry-run",
+                "silent",
+                "start-brz",
+                "add-path",
+                "delete-path",
+                "add-shell-menu",
+                "delete-shell-menu",
+                "check-mfc71",
+            ],
+        )
 
         for o, a in opts:
             if o in ("-h", "--help"):
@@ -124,9 +131,9 @@ def main():
                 print(VERSION_FORMAT % (USAGE.splitlines()[0], VERSION))
                 return OK
 
-            elif o in ('-n', "--dry-run"):
+            elif o in ("-n", "--dry-run"):
                 dry_run = True
-            elif o in ('-q', '--silent'):
+            elif o in ("-q", "--silent"):
                 silent = True
 
             elif o == "--start-brz":
@@ -165,46 +172,48 @@ def main():
 
         for ix in xrange(len(content)):
             s = content[ix]
-            if re.match(r'.*(?<!\\)brz\.exe([ "].*)?$',
-                        s.rstrip('\r\n'),
-                        re.IGNORECASE):
-                content[ix] = s.replace('brz.exe',
-                                        '"%s"' % os.path.join(brz_dir,
-                                                              'brz.exe'))
-            elif s.find(r'C:\Program Files\Breezy') != -1:
-                content[ix] = s.replace(r'C:\Program Files\Breezy',
-                                        brz_dir)
+            if re.match(
+                r'.*(?<!\\)brz\.exe([ "].*)?$', s.rstrip("\r\n"), re.IGNORECASE
+            ):
+                content[ix] = s.replace(
+                    "brz.exe", '"%s"' % os.path.join(brz_dir, "brz.exe")
+                )
+            elif s.find(r"C:\Program Files\Breezy") != -1:
+                content[ix] = s.replace(r"C:\Program Files\Breezy", brz_dir)
 
         if dry_run:
             print("*** Write file: start_brz.bat")
             print("*** File content:")
-            print(''.join(content))
+            print("".join(content))
         else:
-            with open(fname, 'w') as f:
-                f.write(''.join(content))
+            with open(fname, "w") as f:
+                f.write("".join(content))
 
-    if (add_path or delete_path) and winver == 'Windows NT':
+    if (add_path or delete_path) and winver == "Windows NT":
         # find appropriate registry key:
         # 1. HKLM\System\CurrentControlSet\Control\SessionManager\Environment
         # 2. HKCU\Environment
-        keys = ((_winreg.HKEY_LOCAL_MACHINE, (r'System\CurrentControlSet\Control'
-                                              r'\Session Manager\Environment')),
-                (_winreg.HKEY_CURRENT_USER, r'Environment'),
-                )
+        keys = (
+            (
+                _winreg.HKEY_LOCAL_MACHINE,
+                (r"System\CurrentControlSet\Control" r"\Session Manager\Environment"),
+            ),
+            (_winreg.HKEY_CURRENT_USER, r"Environment"),
+        )
 
         hkey = None
         for key, subkey in keys:
             try:
                 hkey = _winreg.OpenKey(key, subkey, 0, _winreg.KEY_ALL_ACCESS)
                 try:
-                    path_u, type_ = _winreg.QueryValueEx(hkey, 'Path')
+                    path_u, type_ = _winreg.QueryValueEx(hkey, "Path")
                 except OSError:
                     if key != _winreg.HKEY_CURRENT_USER:
                         _winreg.CloseKey(hkey)
                         hkey = None
                         continue
                     else:
-                        path_u = ''
+                        path_u = ""
                         type_ = _winreg.REG_SZ
             except OSError:
                 continue
@@ -213,7 +222,7 @@ def main():
         if hkey is None:
             print("Cannot find appropriate registry key for PATH")
         else:
-            path_list = [i for i in path_u.split(os.pathsep) if i != '']
+            path_list = [i for i in path_u.split(os.pathsep) if i != ""]
             f_change = False
             for ix, item in enumerate(path_list[:]):
                 if item == brz_dir:
@@ -235,18 +244,18 @@ def main():
                     print("*** Modify PATH variable. New value:")
                     print(path_u)
                 else:
-                    _winreg.SetValueEx(hkey, 'Path', 0, type_, path_u)
+                    _winreg.SetValueEx(hkey, "Path", 0, type_, path_u)
                     _winreg.FlushKey(hkey)
 
         if hkey is not None:
             _winreg.CloseKey(hkey)
 
-    if (add_path or delete_path) and winver == 'Windows 98':
+    if (add_path or delete_path) and winver == "Windows 98":
         # mutating autoexec.bat
         # adding or delete string:
         # SET PATH=%PATH%;C:\PROGRA~1\Breezy
-        abat = 'C:\\autoexec.bat'
-        abak = 'C:\\autoexec.bak'
+        abat = "C:\\autoexec.bat"
+        abak = "C:\\autoexec.bak"
 
         def backup_autoexec_bat(name, backupname, dry_run):
             # backup autoexec.bat
@@ -254,7 +263,7 @@ def main():
                 if not dry_run:
                     shutil.copyfile(name, backupname)
                 else:
-                    print('*** backup copy of autoexec.bat created')
+                    print("*** backup copy of autoexec.bat created")
 
         GetShortPathName = ctypes.windll.kernel32.GetShortPathNameA
         buf = ctypes.create_string_buffer(260)
@@ -262,86 +271,93 @@ def main():
             brz_dir_8_3 = buf.value
         else:
             brz_dir_8_3 = brz_dir
-        pattern = 'SET PATH=%PATH%;' + brz_dir_8_3
+        pattern = "SET PATH=%PATH%;" + brz_dir_8_3
 
         # search pattern
         with open(abat) as f:
             lines = f.readlines()
         found = False
         for i in lines:
-            if i.rstrip('\r\n') == pattern:
+            if i.rstrip("\r\n") == pattern:
                 found = True
                 break
 
         if delete_path and found:
             backup_autoexec_bat(abat, abak, dry_run)
             if not dry_run:
-                with open(abat, 'w') as f:
+                with open(abat, "w") as f:
                     for i in lines:
-                        if i.rstrip('\r\n') != pattern:
+                        if i.rstrip("\r\n") != pattern:
                             f.write(i)
             else:
-                print('*** Remove line <%s> from autoexec.bat' % pattern)
+                print("*** Remove line <%s> from autoexec.bat" % pattern)
 
         elif add_path and not found:
             backup_autoexec_bat(abat, abak, dry_run)
             if not dry_run:
-                with open(abat, 'a') as f:
+                with open(abat, "a") as f:
                     f.write(pattern)
-                    f.write('\n')
+                    f.write("\n")
             else:
-                print('*** Add line <%s> to autoexec.bat' % pattern)
+                print("*** Add line <%s> to autoexec.bat" % pattern)
 
     if add_shell_menu and not delete_shell_menu:
         hkey = None
         try:
-            hkey = _winreg.CreateKey(_winreg.HKEY_CLASSES_ROOT,
-                                     r'Folder\shell\brz')
+            hkey = _winreg.CreateKey(_winreg.HKEY_CLASSES_ROOT, r"Folder\shell\brz")
         except OSError:
             if not silent:
-                MessageBoxA(None,
-                            'Unable to create registry key for context menu',
-                            'EnvironmentError',
-                            MB_OK | MB_ICONERROR)
+                MessageBoxA(
+                    None,
+                    "Unable to create registry key for context menu",
+                    "EnvironmentError",
+                    MB_OK | MB_ICONERROR,
+                )
 
         if hkey is not None:
-            _winreg.SetValue(hkey, '', _winreg.REG_SZ, 'Brz Here')
-            hkey2 = _winreg.CreateKey(hkey, 'command')
-            _winreg.SetValue(hkey2, '', _winreg.REG_SZ,
-                             '{} /K "{}"'.format(
-                                    os.environ.get('COMSPEC', '%COMSPEC%'),
-                                    os.path.join(brz_dir, 'start_brz.bat')))
+            _winreg.SetValue(hkey, "", _winreg.REG_SZ, "Brz Here")
+            hkey2 = _winreg.CreateKey(hkey, "command")
+            _winreg.SetValue(
+                hkey2,
+                "",
+                _winreg.REG_SZ,
+                '{} /K "{}"'.format(
+                    os.environ.get("COMSPEC", "%COMSPEC%"),
+                    os.path.join(brz_dir, "start_brz.bat"),
+                ),
+            )
             _winreg.CloseKey(hkey2)
             _winreg.CloseKey(hkey)
 
     if delete_shell_menu:
         try:
-            _winreg.DeleteKey(_winreg.HKEY_CLASSES_ROOT,
-                              r'Folder\shell\brz\command')
+            _winreg.DeleteKey(_winreg.HKEY_CLASSES_ROOT, r"Folder\shell\brz\command")
         except OSError:
             pass
 
         try:
-            _winreg.DeleteKey(_winreg.HKEY_CLASSES_ROOT,
-                              r'Folder\shell\brz')
+            _winreg.DeleteKey(_winreg.HKEY_CLASSES_ROOT, r"Folder\shell\brz")
         except OSError:
             pass
 
     if check_mfc71:
         try:
-            ctypes.windll.LoadLibrary('mfc71.dll')
+            ctypes.windll.LoadLibrary("mfc71.dll")
         except OSError:
-            MessageBoxA(None,
-                        ("Library MFC71.DLL is not found on your system.\n"
-                         "This library needed for SFTP transport.\n"
-                         "If you need to work via SFTP you should download\n"
-                         "this library manually and put it to directory\n"
-                         "where Brz installed.\n"
-                         "For detailed instructions see:\n"
-                         "http://wiki.breezy-vcs.org/OnPureWindows"
-                         ),
-                        "Warning",
-                        MB_OK | MB_ICONEXCLAMATION)
+            MessageBoxA(
+                None,
+                (
+                    "Library MFC71.DLL is not found on your system.\n"
+                    "This library needed for SFTP transport.\n"
+                    "If you need to work via SFTP you should download\n"
+                    "this library manually and put it to directory\n"
+                    "where Brz installed.\n"
+                    "For detailed instructions see:\n"
+                    "http://wiki.breezy-vcs.org/OnPureWindows"
+                ),
+                "Warning",
+                MB_OK | MB_ICONEXCLAMATION,
+            )
 
     return OK
 

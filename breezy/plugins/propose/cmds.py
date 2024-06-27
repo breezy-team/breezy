@@ -39,8 +39,9 @@ def branch_name(branch):
 def _check_already_merged(branch, target):
     # TODO(jelmer): Check entire ancestry rather than just last revision?
     if branch.last_revision() == target.last_revision():
-        raise errors.CommandError(gettext(
-            'All local changes are already present in target.'))
+        raise errors.CommandError(
+            gettext("All local changes are already present in target.")
+        )
 
 
 class cmd_publish_derived(Command):
@@ -54,29 +55,35 @@ class cmd_publish_derived(Command):
     """
 
     takes_options = [
-        'directory',
-        Option('owner', help='Owner of the new remote branch.', type=str),
-        Option('project', help='Project name for the new remote branch.',
-               type=str),
-        Option('name', help='Name of the new remote branch.', type=str),
-        Option('no-allow-lossy',
-               help='Allow fallback to lossy push, if necessary.'),
-        Option('overwrite', help="Overwrite existing commits."),
-        'revision',
-        ]
-    takes_args = ['submit_branch?']
+        "directory",
+        Option("owner", help="Owner of the new remote branch.", type=str),
+        Option("project", help="Project name for the new remote branch.", type=str),
+        Option("name", help="Name of the new remote branch.", type=str),
+        Option("no-allow-lossy", help="Allow fallback to lossy push, if necessary."),
+        Option("overwrite", help="Overwrite existing commits."),
+        "revision",
+    ]
+    takes_args = ["submit_branch?"]
 
-    def run(self, submit_branch=None, owner=None, name=None, project=None,
-            no_allow_lossy=False, overwrite=False, directory='.',
-            revision=None):
+    def run(
+        self,
+        submit_branch=None,
+        owner=None,
+        name=None,
+        project=None,
+        no_allow_lossy=False,
+        overwrite=False,
+        directory=".",
+        revision=None,
+    ):
         local_branch = _mod_branch.Branch.open_containing(directory)[0]
         self.add_cleanup(local_branch.lock_write().unlock)
         if submit_branch is None:
             submit_branch = local_branch.get_submit_branch()
-            note(gettext('Using submit branch %s') % submit_branch)
+            note(gettext("Using submit branch %s") % submit_branch)
         if submit_branch is None:
             submit_branch = local_branch.get_parent()
-            note(gettext('Using parent branch %s') % submit_branch)
+            note(gettext("Using parent branch %s") % submit_branch)
         submit_branch = _mod_branch.Branch.open(submit_branch)
         _check_already_merged(local_branch, submit_branch)
         if name is None:
@@ -87,17 +94,22 @@ class cmd_publish_derived(Command):
         else:
             stop_revision = revision.as_revision_id(branch)
         remote_branch, public_url = forge.publish_derived(
-            local_branch, submit_branch, name=name, project=project,
-            owner=owner, allow_lossy=not no_allow_lossy,
-            overwrite=overwrite, revision_id=stop_revision)
+            local_branch,
+            submit_branch,
+            name=name,
+            project=project,
+            owner=owner,
+            allow_lossy=not no_allow_lossy,
+            overwrite=overwrite,
+            revision_id=stop_revision,
+        )
         local_branch.set_push_location(remote_branch.user_url)
         local_branch.set_public_branch(public_url)
         local_branch.set_submit_branch(submit_branch.user_url)
         note(gettext("Pushed to %s") % public_url)
 
 
-def summarize_unmerged(local_branch, remote_branch, target,
-                       prerequisite_branch=None):
+def summarize_unmerged(local_branch, remote_branch, target, prerequisite_branch=None):
     """Generate a text description of the unmerged revisions in branch.
 
     :param branch: The proposed branch
@@ -107,13 +119,15 @@ def summarize_unmerged(local_branch, remote_branch, target,
     """
     log_format = _mod_log.log_formatter_registry.get_default(local_branch)
     to_file = StringIO()
-    lf = log_format(to_file=to_file, show_ids=False, show_timezone='original')
+    lf = log_format(to_file=to_file, show_ids=False, show_timezone="original")
     if prerequisite_branch:
         local_extra = _mod_missing.find_unmerged(
-            remote_branch, prerequisite_branch, restrict='local')[0]
+            remote_branch, prerequisite_branch, restrict="local"
+        )[0]
     else:
         local_extra = _mod_missing.find_unmerged(
-            remote_branch, target, restrict='local')[0]
+            remote_branch, target, restrict="local"
+        )[0]
 
     if remote_branch.supports_tags():
         rev_tag_dict = remote_branch.tags.get_reverse_tag_dict()
@@ -121,7 +135,8 @@ def summarize_unmerged(local_branch, remote_branch, target,
         rev_tag_dict = {}
 
     for revision in _mod_missing.iter_log_revisions(
-            local_extra, local_branch.repository, False, rev_tag_dict):
+        local_extra, local_branch.repository, False, rev_tag_dict
+    ):
         lf.log_revision(revision)
     return to_file.getvalue()
 
@@ -135,52 +150,72 @@ class cmd_propose_merge(Command):
     """
 
     takes_options = [
-        'directory',
+        "directory",
         RegistryOption(
-            'forge',
-            help='Use the forge.',
-            lazy_registry=('breezy.forge', 'forges')),
-        ListOption('reviewers', short_name='R', type=str,
-                   help='Requested reviewers.'),
-        Option('name', help='Name of the new remote branch.', type=str),
-        Option('description', help='Description of the change.', type=str),
-        Option('prerequisite', help='Prerequisite branch.', type=str),
-        Option('wip', help='Mark merge request as work-in-progress'),
-        Option('auto', help='Automatically merge when the CI passes'),
+            "forge", help="Use the forge.", lazy_registry=("breezy.forge", "forges")
+        ),
+        ListOption("reviewers", short_name="R", type=str, help="Requested reviewers."),
+        Option("name", help="Name of the new remote branch.", type=str),
+        Option("description", help="Description of the change.", type=str),
+        Option("prerequisite", help="Prerequisite branch.", type=str),
+        Option("wip", help="Mark merge request as work-in-progress"),
+        Option("auto", help="Automatically merge when the CI passes"),
         Option(
-            'commit-message',
-            help='Set commit message for merge, if supported', type=str),
-        ListOption('labels', short_name='l', type=str,
-                   help='Labels to apply.'),
-        Option('no-allow-lossy',
-               help='Allow fallback to lossy push, if necessary.'),
-        Option('allow-collaboration',
-               help='Allow collaboration from target branch maintainer(s)'),
-        Option('allow-empty',
-               help='Do not prevent empty merge proposals.'),
-        Option('overwrite', help="Overwrite existing commits."),
-        Option('open', help='Open merge proposal in web browser'),
-        Option('delete-source-after-merge', help='Delete source branch when proposal is merged'),
-        'revision',
-        ]
-    takes_args = ['submit_branch?']
+            "commit-message",
+            help="Set commit message for merge, if supported",
+            type=str,
+        ),
+        ListOption("labels", short_name="l", type=str, help="Labels to apply."),
+        Option("no-allow-lossy", help="Allow fallback to lossy push, if necessary."),
+        Option(
+            "allow-collaboration",
+            help="Allow collaboration from target branch maintainer(s)",
+        ),
+        Option("allow-empty", help="Do not prevent empty merge proposals."),
+        Option("overwrite", help="Overwrite existing commits."),
+        Option("open", help="Open merge proposal in web browser"),
+        Option(
+            "delete-source-after-merge",
+            help="Delete source branch when proposal is merged",
+        ),
+        "revision",
+    ]
+    takes_args = ["submit_branch?"]
 
-    aliases = ['propose']
+    aliases = ["propose"]
 
-    def run(self, submit_branch=None, directory='.', forge=None,
-            reviewers=None, name=None, no_allow_lossy=False, description=None,
-            labels=None, prerequisite=None, commit_message=None, wip=False,
-            allow_collaboration=False, allow_empty=False, overwrite=False,
-            open=False, auto=False, delete_source_after_merge=None, revision=None):
-        tree, branch, relpath = (
-            controldir.ControlDir.open_containing_tree_or_branch(directory))
+    def run(
+        self,
+        submit_branch=None,
+        directory=".",
+        forge=None,
+        reviewers=None,
+        name=None,
+        no_allow_lossy=False,
+        description=None,
+        labels=None,
+        prerequisite=None,
+        commit_message=None,
+        wip=False,
+        allow_collaboration=False,
+        allow_empty=False,
+        overwrite=False,
+        open=False,
+        auto=False,
+        delete_source_after_merge=None,
+        revision=None,
+    ):
+        tree, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(
+            directory
+        )
         if submit_branch is None:
             submit_branch = branch.get_submit_branch()
         if submit_branch is None:
             submit_branch = branch.get_parent()
         if submit_branch is None:
             raise errors.CommandError(
-                gettext("No target location specified or remembered"))
+                gettext("No target location specified or remembered")
+            )
         target = _mod_branch.Branch.open(submit_branch)
         if not allow_empty:
             _check_already_merged(branch, target)
@@ -195,12 +230,19 @@ class cmd_propose_merge(Command):
         else:
             stop_revision = revision.as_revision_id(branch)
         remote_branch, public_branch_url = forge.publish_derived(
-            branch, target, name=name, allow_lossy=not no_allow_lossy,
-            overwrite=overwrite, revision_id=stop_revision)
+            branch,
+            target,
+            name=name,
+            allow_lossy=not no_allow_lossy,
+            overwrite=overwrite,
+            revision_id=stop_revision,
+        )
         branch.set_push_location(remote_branch.user_url)
         branch.set_submit_branch(target.user_url)
-        note(gettext('Published branch to %s'),
-             forge.get_web_url(remote_branch) or public_branch_url)
+        note(
+            gettext("Published branch to %s"),
+            forge.get_web_url(remote_branch) or public_branch_url,
+        )
         if prerequisite is not None:
             prerequisite_branch = _mod_branch.Branch.open(prerequisite)
         else:
@@ -210,24 +252,29 @@ class cmd_propose_merge(Command):
             body = proposal_builder.get_initial_body()
             info = proposal_builder.get_infotext()
             info += "\n\n" + summarize_unmerged(
-                branch, remote_branch, target, prerequisite_branch)
-            description = msgeditor.edit_commit_message(
-                info, start_message=body)
+                branch, remote_branch, target, prerequisite_branch
+            )
+            description = msgeditor.edit_commit_message(info, start_message=body)
         try:
             proposal = proposal_builder.create_proposal(
-                description=description, reviewers=reviewers,
-                prerequisite_branch=prerequisite_branch, labels=labels,
+                description=description,
+                reviewers=reviewers,
+                prerequisite_branch=prerequisite_branch,
+                labels=labels,
                 commit_message=commit_message,
-                work_in_progress=wip, allow_collaboration=allow_collaboration,
-                delete_source_after_merge=delete_source_after_merge)
+                work_in_progress=wip,
+                allow_collaboration=allow_collaboration,
+                delete_source_after_merge=delete_source_after_merge,
+            )
         except _mod_forge.MergeProposalExists as e:
-            note(gettext('There is already a branch merge proposal: %s'), e.url)
+            note(gettext("There is already a branch merge proposal: %s"), e.url)
         else:
-            note(gettext('Merge proposal created: %s') % proposal.url)
+            note(gettext("Merge proposal created: %s") % proposal.url)
             if open:
                 web_url = proposal.get_web_url()
                 import webbrowser
-                note(gettext('Opening %s in web browser'), web_url)
+
+                note(gettext("Opening %s in web browser"), web_url)
                 webbrowser.open(web_url)
             if auto:
                 proposal.merge(auto=True)
@@ -238,13 +285,14 @@ class cmd_find_merge_proposal(Command):
 
     """
 
-    takes_options = ['directory']
-    takes_args = ['submit_branch?']
-    aliases = ['find-proposal']
+    takes_options = ["directory"]
+    takes_args = ["submit_branch?"]
+    aliases = ["find-proposal"]
 
-    def run(self, directory='.', submit_branch=None):
+    def run(self, directory=".", submit_branch=None):
         tree, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(
-            directory)
+            directory
+        )
         public_location = branch.get_public_branch()
         if public_location:
             branch = _mod_branch.Branch.open(public_location)
@@ -254,12 +302,13 @@ class cmd_find_merge_proposal(Command):
             submit_branch = branch.get_parent()
         if submit_branch is None:
             raise errors.CommandError(
-                gettext("No target location specified or remembered"))
+                gettext("No target location specified or remembered")
+            )
         else:
             target = _mod_branch.Branch.open(submit_branch)
         forge = _mod_forge.get_forge(branch)
         for mp in forge.iter_proposals(branch, target):
-            self.outf.write(gettext('Merge proposal: %s\n') % mp.url)
+            self.outf.write(gettext("Merge proposal: %s\n") % mp.url)
 
 
 class cmd_my_merge_proposals(Command):
@@ -269,60 +318,58 @@ class cmd_my_merge_proposals(Command):
 
     hidden = True
 
-    takes_args = ['base_url?']
+    takes_args = ["base_url?"]
     takes_options = [
-        'verbose',
+        "verbose",
         RegistryOption.from_kwargs(
-            'status',
-            title='Proposal Status',
-            help='Only include proposals with specified status.',
+            "status",
+            title="Proposal Status",
+            help="Only include proposals with specified status.",
             value_switches=True,
             enum_switch=True,
-            all='All merge proposals',
-            open='Open merge proposals',
-            merged='Merged merge proposals',
-            closed='Closed merge proposals'),
+            all="All merge proposals",
+            open="Open merge proposals",
+            merged="Merged merge proposals",
+            closed="Closed merge proposals",
+        ),
         RegistryOption(
-            'forge',
-            help='Use the forge.',
-            lazy_registry=('breezy.forge', 'forges')),
-        ]
+            "forge", help="Use the forge.", lazy_registry=("breezy.forge", "forges")
+        ),
+    ]
 
-    def run(self, status='open', verbose=False, forge=None, base_url=None):
-
+    def run(self, status="open", verbose=False, forge=None, base_url=None):
         for instance in _mod_forge.iter_forge_instances(forge=forge):
             if base_url is not None and instance.base_url != base_url:
                 continue
             try:
                 for mp in instance.iter_my_proposals(status=status):
-                    self.outf.write('%s\n' % mp.url)
+                    self.outf.write("%s\n" % mp.url)
                     if verbose:
                         source_branch_url = mp.get_source_branch_url()
                         if source_branch_url:
                             self.outf.write(
-                                '(Merging %s into %s)\n' %
-                                (source_branch_url,
-                                 mp.get_target_branch_url()))
+                                "(Merging %s into %s)\n"
+                                % (source_branch_url, mp.get_target_branch_url())
+                            )
                         else:
                             self.outf.write(
-                                '(Merging into %s)\n' %
-                                mp.get_target_branch_url())
+                                "(Merging into %s)\n" % mp.get_target_branch_url()
+                            )
                         description = mp.get_description()
                         if description:
                             self.outf.writelines(
-                                ['\t%s\n' % l
-                                 for l in description.splitlines()])
-                        self.outf.write('\n')
+                                ["\t%s\n" % l for l in description.splitlines()]
+                            )
+                        self.outf.write("\n")
             except _mod_forge.ForgeLoginRequired as e:
-                warning('Skipping %s, login required.', instance)
+                warning("Skipping %s, login required.", instance)
 
 
 class cmd_land_merge_proposal(Command):
     __doc__ = """Land a merge proposal."""
 
-    takes_args = ['url']
-    takes_options = [
-        Option('message', help='Commit message to use.', type=str)]
+    takes_args = ["url"]
+    takes_options = [Option("message", help="Commit message to use.", type=str)]
 
     def run(self, url, message=None):
         proposal = _mod_forge.get_proposal_by_url(url)
@@ -333,11 +380,12 @@ class cmd_web_open(Command):
     __doc__ = """Open a branch page in your web browser."""
 
     takes_options = [
-        Option('dry-run',
-               'Do not actually open the browser. Just say the URL we would '
-               'use.'),
-        ]
-    takes_args = ['location?']
+        Option(
+            "dry-run",
+            "Do not actually open the browser. Just say the URL we would " "use.",
+        ),
+    ]
+    takes_args = ["location?"]
 
     def _possible_locations(self, location):
         """Yield possible external locations for the branch at 'location'."""
@@ -358,8 +406,7 @@ class cmd_web_open(Command):
             try:
                 branch = _mod_branch.Branch.open_containing(branch_url)[0]
             except errors.NotBranchError as e:
-                mutter('Unable to open branch %s: %s',
-                       branch_url, e)
+                mutter("Unable to open branch %s: %s", branch_url, e)
                 continue
 
             try:
@@ -368,14 +415,13 @@ class cmd_web_open(Command):
                 continue
 
             return forge.get_web_url(branch)
-        raise errors.CommandError(
-            'Unable to get web URL for %s' % location)
+        raise errors.CommandError("Unable to get web URL for %s" % location)
 
     def run(self, location=None, dry_run=False):
         if location is None:
-            location = '.'
+            location = "."
         web_url = self._get_web_url(location)
-        note(gettext('Opening %s in web browser') % web_url)
+        note(gettext("Opening %s in web browser") % web_url)
         if not dry_run:
             import webbrowser
 
@@ -395,15 +441,21 @@ class cmd_forges(Command):
                 current_user_url = instance.get_user_url(current_user)
                 if current_user_url is not None:
                     self.outf.write(
-                        gettext('%s (%s) - user: %s (%s)\n') % (
-                            instance.name, instance.base_url,
-                            current_user, current_user_url))
+                        gettext("%s (%s) - user: %s (%s)\n")
+                        % (
+                            instance.name,
+                            instance.base_url,
+                            current_user,
+                            current_user_url,
+                        )
+                    )
                 else:
                     self.outf.write(
-                        gettext('%s (%s) - user: %s\n') % (
-                            instance.name, instance.base_url,
-                            current_user))
+                        gettext("%s (%s) - user: %s\n")
+                        % (instance.name, instance.base_url, current_user)
+                    )
             else:
                 self.outf.write(
-                    gettext('%s (%s) - not logged in\n') % (
-                        instance.name, instance.base_url))
+                    gettext("%s (%s) - not logged in\n")
+                    % (instance.name, instance.base_url)
+                )

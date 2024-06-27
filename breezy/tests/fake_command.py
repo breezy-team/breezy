@@ -20,5 +20,4 @@ test_commands.lazy_command_imported = True  # type: ignore
 
 
 class cmd_fake:
-
     pass

@@ -72,18 +72,17 @@ def ref_to_branch_name(ref):
     if ref is None:
         return ref
     if ref.startswith(LOCAL_BRANCH_PREFIX):
-        return ref[len(LOCAL_BRANCH_PREFIX):].decode('utf-8')
+        return ref[len(LOCAL_BRANCH_PREFIX) :].decode("utf-8")
     raise ValueError("unable to map ref %s back to branch name" % ref)
 
 
 def ref_to_tag_name(ref):
     if ref.startswith(LOCAL_TAG_PREFIX):
-        return ref[len(LOCAL_TAG_PREFIX):].decode("utf-8")
+        return ref[len(LOCAL_TAG_PREFIX) :].decode("utf-8")
     raise ValueError("unable to map ref %s back to tag name" % ref)
 
 
 class BazaarRefsContainer(RefsContainer):
-
     def __init__(self, dir, object_store):
         self.dir = dir
         self.object_store = object_store
@@ -96,8 +95,8 @@ class BazaarRefsContainer(RefsContainer):
             pass  # FIXME: Switch default branch
         else:
             raise NotImplementedError(
-                "Symbolic references not supported for anything other than "
-                "HEAD")
+                "Symbolic references not supported for anything other than " "HEAD"
+            )
 
     def _get_revid_by_tag_name(self, tag_name):
         for branch in self.dir.list_branches():

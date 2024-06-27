@@ -22,13 +22,15 @@ import fastbencode as bencode
 
 from .. import lazy_import
 
-lazy_import.lazy_import(globals(),
-                        """
+lazy_import.lazy_import(
+    globals(),
+    """
 from breezy.bzr import (
     serializer,
     xml_serializer,
     )
-""")
+""",
+)
 from .. import cache_utf8, errors
 from .. import revision as _mod_revision
 from . import serializer
@@ -37,19 +39,22 @@ from . import serializer
 def _validate_properties(props, _decode=cache_utf8._utf8_decode):
     # TODO: we really want an 'isascii' check for key
     # Cast the utf8 properties into Unicode 'in place'
-    return {_decode(key)[0]: _decode(value, 'surrogateescape')[0] for key, value in props.items()}
+    return {
+        _decode(key)[0]: _decode(value, "surrogateescape")[0]
+        for key, value in props.items()
+    }
 
 
 def _is_format_10(value):
     if value != 10:
-        raise ValueError('Format number was not recognized, expected 10 got %d'
-                         % (value,))
+        raise ValueError(
+            "Format number was not recognized, expected 10 got %d" % (value,)
+        )
     return 10
 
 
 class BEncodeRevisionSerializer1:
-    """Simple revision serializer based around bencode.
-    """
+    """Simple revision serializer based around bencode."""
 
     squashes_xml_invalid_characters = False
 
@@ -59,16 +64,17 @@ class BEncodeRevisionSerializer1:
     # the type.
     # TODO: add a 'validate_utf8' for things like revision_id and file_id
     #       and a validator for parent-ids
-    _schema = {b'format': (None, int, _is_format_10),
-               b'committer': ('committer', bytes, cache_utf8.decode),
-               b'timezone': ('timezone', int, None),
-               b'timestamp': ('timestamp', bytes, float),
-               b'revision-id': ('revision_id', bytes, None),
-               b'parent-ids': ('parent_ids', list, None),
-               b'inventory-sha1': ('inventory_sha1', bytes, None),
-               b'message': ('message', bytes, cache_utf8.decode),
-               b'properties': ('properties', dict, _validate_properties),
-               }
+    _schema = {
+        b"format": (None, int, _is_format_10),
+        b"committer": ("committer", bytes, cache_utf8.decode),
+        b"timezone": ("timezone", int, None),
+        b"timestamp": ("timestamp", bytes, float),
+        b"revision-id": ("revision_id", bytes, None),
+        b"parent-ids": ("parent_ids", list, None),
+        b"inventory-sha1": ("inventory_sha1", bytes, None),
+        b"message": ("message", bytes, cache_utf8.decode),
+        b"properties": ("properties", dict, _validate_properties),
+    }
 
     def write_revision_to_string(self, rev):
         encode_utf8 = cache_utf8._utf8_encode
@@ -85,15 +91,17 @@ class BEncodeRevisionSerializer1:
         # which changes infrequently.
         revprops = {}
         for key, value in rev.properties.items():
-            revprops[encode_utf8(key)[0]] = encode_utf8(value, 'surrogateescape')[0]
-        ret.append((b'properties', revprops))
-        ret.extend([
-            (b"timestamp", b"%.3f" % rev.timestamp),
-            (b"revision-id", rev.revision_id),
-            (b"parent-ids", rev.parent_ids),
-            (b"inventory-sha1", rev.inventory_sha1),
-            (b"message", encode_utf8(rev.message)[0]),
-        ])
+            revprops[encode_utf8(key)[0]] = encode_utf8(value, "surrogateescape")[0]
+        ret.append((b"properties", revprops))
+        ret.extend(
+            [
+                (b"timestamp", b"%.3f" % rev.timestamp),
+                (b"revision-id", rev.revision_id),
+                (b"parent-ids", rev.parent_ids),
+                (b"inventory-sha1", rev.inventory_sha1),
+                (b"message", encode_utf8(rev.message)[0]),
+            ]
+        )
         return bencode.bencode(ret)
 
     def write_revision_to_lines(self, rev):
@@ -112,23 +120,27 @@ class BEncodeRevisionSerializer1:
             raise ValueError("invalid revision text")
         schema = self._schema
         # timezone is allowed to be missing, but should be set
-        bits = {'timezone': None}
+        bits = {"timezone": None}
         for key, value in ret:
             # Will raise KeyError if not a valid part of the schema, or an
             # entry is given 2 times.
             var_name, expected_type, validator = schema[key]
             if value.__class__ is not expected_type:
-                raise ValueError('key %s did not conform to the expected type'
-                                 ' %s, but was %s'
-                                 % (key, expected_type, type(value)))
+                raise ValueError(
+                    "key %s did not conform to the expected type"
+                    " %s, but was %s" % (key, expected_type, type(value))
+                )
             if validator is not None:
                 value = validator(value)
             bits[var_name] = value
         if len(bits) != len(schema):
-            missing = [key for key, (var_name, _, _) in schema.items()
-                       if var_name not in bits]
-            raise ValueError('Revision text was missing expected keys %s.'
-                             ' text %r' % (missing, text))
+            missing = [
+                key for key, (var_name, _, _) in schema.items() if var_name not in bits
+            ]
+            raise ValueError(
+                "Revision text was missing expected keys %s."
+                " text %r" % (missing, text)
+            )
         del bits[None]  # Get rid of 'format' since it doesn't get mapped
         rev = _mod_revision.Revision(**bits)
         return rev
@@ -140,25 +152,31 @@ class BEncodeRevisionSerializer1:
 class CHKSerializer(serializer.Serializer):
     """A CHKInventory based serializer with 'plain' behaviour."""
 
-    format_num = b'9'
+    format_num = b"9"
     revision_format_num = None
     support_altered_by_hack = False
-    supported_kinds = {'file', 'directory', 'symlink', 'tree-reference'}
+    supported_kinds = {"file", "directory", "symlink", "tree-reference"}
 
     def __init__(self, node_size, search_key_name):
         self.maximum_size = node_size
         self.search_key_name = search_key_name
 
-    def _unpack_inventory(self, elt, revision_id=None, entry_cache=None,
-                          return_from_cache=False):
+    def _unpack_inventory(
+        self, elt, revision_id=None, entry_cache=None, return_from_cache=False
+    ):
         """Construct from XML Element"""
-        inv = xml_serializer.unpack_inventory_flat(elt, self.format_num,
-                                                   xml_serializer.unpack_inventory_entry, entry_cache,
-                                                   return_from_cache)
+        inv = xml_serializer.unpack_inventory_flat(
+            elt,
+            self.format_num,
+            xml_serializer.unpack_inventory_entry,
+            entry_cache,
+            return_from_cache,
+        )
         return inv
 
-    def read_inventory_from_lines(self, xml_lines, revision_id=None,
-                                  entry_cache=None, return_from_cache=False):
+    def read_inventory_from_lines(
+        self, xml_lines, revision_id=None, entry_cache=None, return_from_cache=False
+    ):
         """Read xml_string into an inventory object.
 
         :param xml_string: The xml to read.
@@ -174,9 +192,11 @@ class CHKSerializer(serializer.Serializer):
         """
         try:
             return self._unpack_inventory(
-                xml_serializer.fromstringlist(xml_lines), revision_id,
+                xml_serializer.fromstringlist(xml_lines),
+                revision_id,
                 entry_cache=entry_cache,
-                return_from_cache=return_from_cache)
+                return_from_cache=return_from_cache,
+            )
         except xml_serializer.ParseError as e:
             raise serializer.UnexpectedInventoryFormat(e)
 
@@ -184,8 +204,7 @@ class CHKSerializer(serializer.Serializer):
         """Read an inventory from a file-like object."""
         try:
             try:
-                return self._unpack_inventory(self._read_element(f),
-                                              revision_id=None)
+                return self._unpack_inventory(self._read_element(f), revision_id=None)
             finally:
                 f.close()
         except xml_serializer.ParseError as e:
@@ -212,33 +231,43 @@ class CHKSerializer(serializer.Serializer):
         output = []
         append = output.append
         if inv.revision_id is not None:
-            revid = b''.join(
-                [b' revision_id="',
-                 xml_serializer.encode_and_escape(inv.revision_id), b'"'])
+            revid = b"".join(
+                [
+                    b' revision_id="',
+                    xml_serializer.encode_and_escape(inv.revision_id),
+                    b'"',
+                ]
+            )
         else:
             revid = b""
-        append(b'<inventory format="%s"%s>\n' % (
-            self.format_num, revid))
-        append(b'<directory file_id="%s" name="%s" revision="%s" />\n' % (
-            xml_serializer.encode_and_escape(inv.root.file_id),
-            xml_serializer.encode_and_escape(inv.root.name),
-            xml_serializer.encode_and_escape(inv.root.revision)))
-        xml_serializer.serialize_inventory_flat(inv,
-                                                append,
-                                                root_id=None, supported_kinds=self.supported_kinds,
-                                                working=working)
+        append(b'<inventory format="%s"%s>\n' % (self.format_num, revid))
+        append(
+            b'<directory file_id="%s" name="%s" revision="%s" />\n'
+            % (
+                xml_serializer.encode_and_escape(inv.root.file_id),
+                xml_serializer.encode_and_escape(inv.root.name),
+                xml_serializer.encode_and_escape(inv.root.revision),
+            )
+        )
+        xml_serializer.serialize_inventory_flat(
+            inv,
+            append,
+            root_id=None,
+            supported_kinds=self.supported_kinds,
+            working=working,
+        )
         if f is not None:
             f.writelines(output)
         return output
 
 
-chk_serializer_255_bigpage = CHKSerializer(65536, b'hash-255-way')
+chk_serializer_255_bigpage = CHKSerializer(65536, b"hash-255-way")
 
 
 class CHKBEncodeSerializer(BEncodeRevisionSerializer1, CHKSerializer):
     """A CHKInventory and BEncode based serializer with 'plain' behaviour."""
 
-    format_num = b'10'
+    format_num = b"10"
 
 
-chk_bencode_serializer = CHKBEncodeSerializer(65536, b'hash-255-way')
+chk_bencode_serializer = CHKBEncodeSerializer(65536, b"hash-255-way")

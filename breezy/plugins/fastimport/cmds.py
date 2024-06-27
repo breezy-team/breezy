@@ -34,6 +34,7 @@ def _run(source, processor_factory, verbose=False, user_map=None, **kwargs):
     from fastimport.errors import ParsingError
 
     from ...errors import CommandError
+
     stream = _get_source_stream(source)
     user_mapper = _get_user_mapper(user_map)
     proc = processor_factory(verbose=verbose, **kwargs)
@@ -45,14 +46,16 @@ def _run(source, processor_factory, verbose=False, user_map=None, **kwargs):
 
 
 def _get_source_stream(source):
-    if source == '-' or source is None:
+    if source == "-" or source is None:
         import sys
+
         try:
             stream = sys.stdin.buffer
         except AttributeError:
             stream = helpers.binary_stream(sys.stdin)
-    elif source.endswith('.gz'):
+    elif source.endswith(".gz"):
         import gzip
+
         stream = gzip.open(source, "rb")
     else:
         stream = open(source, "rb")
@@ -61,6 +64,7 @@ def _get_source_stream(source):
 
 def _get_user_mapper(filename):
     from . import user_mapper
+
     if filename is None:
         return None
     f = open(filename)
@@ -232,86 +236,118 @@ class cmd_fast_import(Command):
        darcs-fast-export > project.fi
        bzr fast-import project.fi project.bzr
     """
-    hidden = False
-    _see_also = ['fast-export', 'fast-import-filter', 'fast-import-info']
-    takes_args = ['source', 'destination?']
-    takes_options = ['verbose',
-                     Option('user-map', type=str,
-                            help="Path to file containing a map of user-ids.",
-                            ),
-                     Option('info', type=str,
-                            help="Path to file containing caching hints.",
-                            ),
-                     Option('trees',
-                            help="Update all working trees, not just trunk's.",
-                            ),
-                     Option('count', type=int,
-                            help="Import this many revisions then exit.",
-                            ),
-                     Option('checkpoint', type=int,
-                            help="Checkpoint automatically every N revisions."
-                            " The default is 10000.",
-                            ),
-                     Option('autopack', type=int,
-                            help="Pack every N checkpoints. The default is 4.",
-                            ),
-                     Option('inv-cache', type=int,
-                            help="Number of inventories to cache.",
-                            ),
-                     RegistryOption.from_kwargs('mode',
-                                                'The import algorithm to use.',
-                                                title='Import Algorithm',
-                                                default='Use the preferred algorithm (inventory deltas).',
-                                                experimental="Enable experimental features.",
-                                                value_switches=True, enum_switch=False,
-                                                ),
-                     Option('import-marks', type=str,
-                            help="Import marks from file."
-                            ),
-                     Option('export-marks', type=str,
-                            help="Export marks to file."
-                            ),
-                     RegistryOption('format',
-                                    help='Specify a format for the created repository. See'
-                                    ' "bzr help formats" for details.',
-                                    lazy_registry=(
-                                        'breezy.controldir', 'format_registry'),
-                                    converter=lambda name: controldir.format_registry.make_controldir(
-                                        name),
-                                    value_switches=False, title='Repository format'),
-                     ]
 
-    def run(self, source, destination='.', verbose=False, info=None,
-            trees=False, count=-1, checkpoint=10000, autopack=4, inv_cache=-1,
-            mode=None, import_marks=None, export_marks=None, format=None,
-            user_map=None):
+    hidden = False
+    _see_also = ["fast-export", "fast-import-filter", "fast-import-info"]
+    takes_args = ["source", "destination?"]
+    takes_options = [
+        "verbose",
+        Option(
+            "user-map",
+            type=str,
+            help="Path to file containing a map of user-ids.",
+        ),
+        Option(
+            "info",
+            type=str,
+            help="Path to file containing caching hints.",
+        ),
+        Option(
+            "trees",
+            help="Update all working trees, not just trunk's.",
+        ),
+        Option(
+            "count",
+            type=int,
+            help="Import this many revisions then exit.",
+        ),
+        Option(
+            "checkpoint",
+            type=int,
+            help="Checkpoint automatically every N revisions." " The default is 10000.",
+        ),
+        Option(
+            "autopack",
+            type=int,
+            help="Pack every N checkpoints. The default is 4.",
+        ),
+        Option(
+            "inv-cache",
+            type=int,
+            help="Number of inventories to cache.",
+        ),
+        RegistryOption.from_kwargs(
+            "mode",
+            "The import algorithm to use.",
+            title="Import Algorithm",
+            default="Use the preferred algorithm (inventory deltas).",
+            experimental="Enable experimental features.",
+            value_switches=True,
+            enum_switch=False,
+        ),
+        Option("import-marks", type=str, help="Import marks from file."),
+        Option("export-marks", type=str, help="Export marks to file."),
+        RegistryOption(
+            "format",
+            help="Specify a format for the created repository. See"
+            ' "bzr help formats" for details.',
+            lazy_registry=("breezy.controldir", "format_registry"),
+            converter=lambda name: controldir.format_registry.make_controldir(name),
+            value_switches=False,
+            title="Repository format",
+        ),
+    ]
+
+    def run(
+        self,
+        source,
+        destination=".",
+        verbose=False,
+        info=None,
+        trees=False,
+        count=-1,
+        checkpoint=10000,
+        autopack=4,
+        inv_cache=-1,
+        mode=None,
+        import_marks=None,
+        export_marks=None,
+        format=None,
+        user_map=None,
+    ):
         load_fastimport()
         from .helpers import open_destination_directory
         from .processors import generic_processor
+
         control = open_destination_directory(destination, format=format)
 
         # If an information file was given and the source isn't stdin,
         # generate the information by reading the source file as a first pass
-        if info is None and source != '-':
+        if info is None and source != "-":
             info = self._generate_info(source)
 
         # Do the work
         if mode is None:
-            mode = 'default'
+            mode = "default"
         params = {
-            'info': info,
-            'trees': trees,
-            'count': count,
-            'checkpoint': checkpoint,
-            'autopack': autopack,
-            'inv-cache': inv_cache,
-            'mode': mode,
-            'import-marks': import_marks,
-            'export-marks': export_marks,
-            }
-        return _run(source, generic_processor.GenericProcessor,
-                    bzrdir=control, params=params, verbose=verbose,
-                    user_map=user_map)
+            "info": info,
+            "trees": trees,
+            "count": count,
+            "checkpoint": checkpoint,
+            "autopack": autopack,
+            "inv-cache": inv_cache,
+            "mode": mode,
+            "import-marks": import_marks,
+            "export-marks": export_marks,
+        }
+        return _run(
+            source,
+            generic_processor.GenericProcessor,
+            bzrdir=control,
+            params=params,
+            verbose=verbose,
+            user_map=user_map,
+        )
 
     def _generate_info(self, source):
         from io import StringIO
@@ -321,6 +357,7 @@ class cmd_fast_import(Command):
         from fastimport.processors import info_processor
 
         from ...errors import CommandError
+
         stream = _get_source_stream(source)
         output = StringIO()
         try:
@@ -438,47 +475,66 @@ class cmd_fast_export(Command):
      bzr fast-export option --no-tags during the export of one or more
      branches to avoid the issue.
     """
-    hidden = False
-    _see_also = ['fast-import', 'fast-import-filter']
-    takes_args = ['source?', 'destination?']
-    takes_options = ['verbose', 'revision',
-                     Option('git-branch', short_name='b', type=str,
-                            argname='FILE',
-                            help='Name of the git branch to create (default=master).'
-                            ),
-                     Option('checkpoint', type=int, argname='N',
-                            help="Checkpoint every N revisions (default=10000)."
-                            ),
-                     Option('marks', type=str, argname='FILE',
-                            help="Import marks from and export marks to file."
-                            ),
-                     Option('import-marks', type=str, argname='FILE',
-                            help="Import marks from file."
-                            ),
-                     Option('export-marks', type=str, argname='FILE',
-                            help="Export marks to file."
-                            ),
-                     Option('plain',
-                            help="Exclude metadata to maximise interoperability."
-                            ),
-                     Option('rewrite-tag-names',
-                            help="Replace characters invalid in git with '_'"
-                            " (plain mode only).",
-                            ),
-                     Option('baseline',
-                            help="Export an 'absolute' baseline commit prior to"
-                            "the first relative commit",
-                            ),
-                     Option('no-tags',
-                            help="Don't export tags"
-                            ),
-                     ]
-    encoding_type = 'exact'
 
-    def run(self, source=None, destination=None, verbose=False,
-            git_branch="master", checkpoint=10000, marks=None,
-            import_marks=None, export_marks=None, revision=None,
-            plain=True, rewrite_tag_names=False, no_tags=False, baseline=False):
+    hidden = False
+    _see_also = ["fast-import", "fast-import-filter"]
+    takes_args = ["source?", "destination?"]
+    takes_options = [
+        "verbose",
+        "revision",
+        Option(
+            "git-branch",
+            short_name="b",
+            type=str,
+            argname="FILE",
+            help="Name of the git branch to create (default=master).",
+        ),
+        Option(
+            "checkpoint",
+            type=int,
+            argname="N",
+            help="Checkpoint every N revisions (default=10000).",
+        ),
+        Option(
+            "marks",
+            type=str,
+            argname="FILE",
+            help="Import marks from and export marks to file.",
+        ),
+        Option(
+            "import-marks", type=str, argname="FILE", help="Import marks from file."
+        ),
+        Option("export-marks", type=str, argname="FILE", help="Export marks to file."),
+        Option("plain", help="Exclude metadata to maximise interoperability."),
+        Option(
+            "rewrite-tag-names",
+            help="Replace characters invalid in git with '_'" " (plain mode only).",
+        ),
+        Option(
+            "baseline",
+            help="Export an 'absolute' baseline commit prior to"
+            "the first relative commit",
+        ),
+        Option("no-tags", help="Don't export tags"),
+    ]
+    encoding_type = "exact"
+
+    def run(
+        self,
+        source=None,
+        destination=None,
+        verbose=False,
+        git_branch="master",
+        checkpoint=10000,
+        marks=None,
+        import_marks=None,
+        export_marks=None,
+        revision=None,
+        plain=True,
+        rewrite_tag_names=False,
+        no_tags=False,
+        baseline=False,
+    ):
         load_fastimport()
         from ...branch import Branch
         from . import exporter
@@ -493,9 +549,16 @@ class cmd_fast_export(Command):
         outf = exporter._get_output_stream(destination)
         exporter = exporter.BzrFastExporter(
             branch,
-            outf=outf, ref=b"refs/heads/%s" % git_branch.encode('utf-8'),
-            checkpoint=checkpoint, import_marks_file=import_marks,
-            export_marks_file=export_marks, revision=revision, verbose=verbose,
-            plain_format=plain, rewrite_tags=rewrite_tag_names,
-            no_tags=no_tags, baseline=baseline)
+            outf=outf,
+            ref=b"refs/heads/%s" % git_branch.encode("utf-8"),
+            checkpoint=checkpoint,
+            import_marks_file=import_marks,
+            export_marks_file=export_marks,
+            revision=revision,
+            verbose=verbose,
+            plain_format=plain,
+            rewrite_tags=rewrite_tag_names,
+            no_tags=no_tags,
+            baseline=baseline,
+        )
         return exporter.run()

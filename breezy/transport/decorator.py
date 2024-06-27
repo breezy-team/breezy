@@ -46,9 +46,10 @@ class TransportDecorator(Transport):
         """
         prefix = self._get_url_prefix()
         if not url.startswith(prefix):
-            raise ValueError("url %r doesn't start with decorator prefix %r" %
-                             (url, prefix))
-        not_decorated_url = url[len(prefix):]
+            raise ValueError(
+                "url %r doesn't start with decorator prefix %r" % (url, prefix)
+            )
+        not_decorated_url = url[len(prefix) :]
         if _decorated is None:
             self._decorated = get_transport(not_decorated_url)
         else:
@@ -75,8 +76,8 @@ class TransportDecorator(Transport):
         """See Transport.clone()."""
         decorated_clone = self._decorated.clone(offset)
         return self.__class__(
-            self._get_url_prefix() + decorated_clone.base, decorated_clone,
-            self)
+            self._get_url_prefix() + decorated_clone.base, decorated_clone, self
+        )
 
     def delete(self, relpath):
         """See Transport.delete()."""
@@ -162,9 +163,11 @@ class TransportDecorator(Transport):
     def _set_segment_parameters(self, value):
         self._decorated.segment_parameters = value
 
-    segment_parameters = property(_get_segment_parameters,
-                                  _set_segment_parameters,
-                                  doc="See Transport.segment_parameters")
+    segment_parameters = property(
+        _get_segment_parameters,
+        _set_segment_parameters,
+        doc="See Transport.segment_parameters",
+    )
 
     def stat(self, relpath):
         """See Transport.stat()."""
@@ -181,8 +184,7 @@ class TransportDecorator(Transport):
     def _redirected_to(self, source, target):
         redirected = self._decorated._redirected_to(source, target)
         if redirected is not None:
-            return self.__class__(self._get_url_prefix() + redirected.base,
-                                  redirected)
+            return self.__class__(self._get_url_prefix() + redirected.base, redirected)
         else:
             return None
 

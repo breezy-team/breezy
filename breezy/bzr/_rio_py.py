@@ -21,7 +21,7 @@ from typing import Iterator, Optional
 
 from .rio import Stanza
 
-_tag_re = re.compile(r'^[-a-zA-Z0-9_]+$')
+_tag_re = re.compile(r"^[-a-zA-Z0-9_]+$")
 
 
 def _valid_tag(tag: str) -> bool:
@@ -42,31 +42,30 @@ def _read_stanza_utf8(line_iter: Iterator[bytes]) -> Optional[Stanza]:
     for bline in line_iter:
         if not isinstance(bline, bytes):
             raise TypeError(bline)
-        line = bline.decode('utf-8', 'surrogateescape')
-        if line is None or line == '':
-            break       # end of file
-        if line == '\n':
-            break       # end of stanza
+        line = bline.decode("utf-8", "surrogateescape")
+        if line is None or line == "":
+            break  # end of file
+        if line == "\n":
+            break  # end of stanza
         real_l = line
-        if line[0] == '\t':  # continues previous value
+        if line[0] == "\t":  # continues previous value
             if tag is None:
-                raise ValueError('invalid continuation line %r' % real_l)
-            accum_value.append('\n' + line[1:-1])
+                raise ValueError("invalid continuation line %r" % real_l)
+            accum_value.append("\n" + line[1:-1])
         else:  # new tag:value line
             if tag is not None:
-                stanza.add(tag, ''.join(accum_value))
+                stanza.add(tag, "".join(accum_value))
             try:
-                colon_index = line.index(': ')
+                colon_index = line.index(": ")
             except ValueError:
-                raise ValueError('tag/value separator not found in line %r'
-                                 % real_l)
+                raise ValueError("tag/value separator not found in line %r" % real_l)
             tag = str(line[:colon_index])
             if not _valid_tag(tag):
                 raise ValueError("invalid rio tag {!r}".format(tag))
-            accum_value = [line[colon_index + 2:-1]]
+            accum_value = [line[colon_index + 2 : -1]]
 
     if tag is not None:  # add last tag-value
-        stanza.add(tag, ''.join(accum_value))  # type: ignore
+        stanza.add(tag, "".join(accum_value))  # type: ignore
         return stanza
-    else:     # didn't see any content
+    else:  # didn't see any content
         return None

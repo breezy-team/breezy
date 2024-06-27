@@ -75,10 +75,12 @@ class HashCache:
     miss_count
         number of misses (times files have been completely re-read)
     """
+
     needs_write = False
 
-    def __init__(self, root, cache_file_name, mode=None,
-                 content_filter_stack_provider=None):
+    def __init__(
+        self, root, cache_file_name, mode=None, content_filter_stack_provider=None
+    ):
         """Create a hash cache in base dir, and set the file mode to mode.
 
         :param content_filter_stack_provider: a function that takes a
@@ -117,9 +119,11 @@ class HashCache:
         Obsolete entries are those where the file has been modified or deleted
         since the entry was inserted.
         """
+
         # Stat in inode order as optimisation for at least linux.
         def inode_order(path_and_cache):
             return path_and_cache[1][1][3]
+
         for path, cache_val in sorted(self._cache.items(), key=inode_order):
             abspath = osutils.pathjoin(self.root, path)
             fp = self._fingerprint(abspath)
@@ -132,8 +136,7 @@ class HashCache:
                 del self._cache[path]
 
     def get_sha1(self, path, stat_value=None):
-        """Return the sha1 of a file.
-        """
+        """Return the sha1 of a file."""
         abspath = osutils.pathjoin(self.root, path)
         self.stat_count += 1
         file_fp = self._fingerprint(abspath, stat_value)
@@ -166,16 +169,16 @@ class HashCache:
             digest = self._really_sha1_file(abspath, filters)
         elif stat.S_ISLNK(mode):
             target = osutils.readlink(abspath)
-            digest = osutils.sha_string(target.encode('UTF-8'))
+            digest = osutils.sha_string(target.encode("UTF-8"))
         else:
-            raise errors.BzrError("file %r: unknown file stat mode: %o"
-                                  % (abspath, mode))
+            raise errors.BzrError(
+                "file %r: unknown file stat mode: %o" % (abspath, mode)
+            )
 
         # window of 3 seconds to allow for 2s resolution on windows,
         # unsynchronized file servers, etc.
         cutoff = self._cutoff_time()
-        if file_fp[FP_MTIME_COLUMN] >= cutoff \
-                or file_fp[FP_CTIME_COLUMN] >= cutoff:
+        if file_fp[FP_MTIME_COLUMN] >= cutoff or file_fp[FP_CTIME_COLUMN] >= cutoff:
             # changed too recently; can't be cached.  we can
             # return the result and it could possibly be cached
             # next time.
@@ -208,15 +211,16 @@ class HashCache:
 
     def write(self):
         """Write contents of cache to file."""
-        with atomicfile.AtomicFile(self.cache_file_name(), 'wb',
-                                   new_mode=self._mode) as outf:
+        with atomicfile.AtomicFile(
+            self.cache_file_name(), "wb", new_mode=self._mode
+        ) as outf:
             outf.write(CACHE_HEADER)
 
             for path, c in self._cache.items():
-                line_info = [path.encode('utf-8'), b'// ', c[0], b' ']
-                line_info.append(b'%d %d %d %d %d %d' % c[1])
-                line_info.append(b'\n')
-                outf.write(b''.join(line_info))
+                line_info = [path.encode("utf-8"), b"// ", c[0], b" "]
+                line_info.append(b"%d %d %d %d %d %d" % c[1])
+                line_info.append(b"\n")
+                outf.write(b"".join(line_info))
             self.needs_write = False
             # mutter("write hash cache: %s hits=%d misses=%d stat=%d recent=%d updates=%d",
             #        self.cache_file_name(), self.hit_count, self.miss_count,
@@ -234,7 +238,7 @@ class HashCache:
 
         fn = self.cache_file_name()
         try:
-            inf = open(fn, 'rb', buffering=65000)
+            inf = open(fn, "rb", buffering=65000)
         except OSError as e:
             trace.mutter("failed to open %s: %s", fn, str(e))
             # better write it now so it is valid
@@ -244,20 +248,22 @@ class HashCache:
         with inf:
             hdr = inf.readline()
             if hdr != CACHE_HEADER:
-                trace.mutter('cache header marker not found at top of %s;'
-                             ' discarding cache', fn)
+                trace.mutter(
+                    "cache header marker not found at top of %s;" " discarding cache",
+                    fn,
+                )
                 self.needs_write = True
                 return
 
             for l in inf:
-                pos = l.index(b'// ')
-                path = l[:pos].decode('utf-8')
+                pos = l.index(b"// ")
+                path = l[:pos].decode("utf-8")
                 if path in self._cache:
-                    trace.warning('duplicated path %r in cache' % path)
+                    trace.warning("duplicated path %r in cache" % path)
                     continue
 
                 pos += 3
-                fields = l[pos:].split(b' ')
+                fields = l[pos:].split(b" ")
                 if len(fields) != 7:
                     trace.warning("bad line in hashcache: %r" % l)
                     continue
@@ -292,6 +298,11 @@ class HashCache:
             return None
         # we discard any high precision because it's not reliable; perhaps we
         # could do better on some systems?
-        return (stat_value.st_size, int(stat_value.st_mtime),
-                int(stat_value.st_ctime), stat_value.st_ino,
-                stat_value.st_dev, stat_value.st_mode)
+        return (
+            stat_value.st_size,
+            int(stat_value.st_mtime),
+            int(stat_value.st_ctime),
+            stat_value.st_ino,
+            stat_value.st_dev,
+            stat_value.st_mode,
+        )
