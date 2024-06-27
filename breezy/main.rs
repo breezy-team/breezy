@@ -2,12 +2,11 @@ use pyo3::prelude::*;
 use pyo3::types::*;
 use std::path::*;
 
-
 fn check_version(py: Python<'_>) -> PyResult<()> {
     let major: u32 = env!("CARGO_PKG_VERSION_MAJOR").parse::<u32>().unwrap();
     let minor: u32 = env!("CARGO_PKG_VERSION_MINOR").parse::<u32>().unwrap();
     let patch: u32 = env!("CARGO_PKG_VERSION_PATCH").parse::<u32>().unwrap();
-    let breezy = PyModule::import(py, "breezy").map_err(|e| {
+    let breezy = PyModule::import_bound(py, "breezy").map_err(|e| {
         eprintln!(
             "brz: ERROR: Couldn't import breezy and dependencies.\n\
              Please check the directory containing breezy is on your PYTHONPATH.\n"
@@ -36,7 +35,7 @@ fn check_version(py: Python<'_>) -> PyResult<()> {
 }
 
 fn setup_locale(py: Python<'_>) -> PyResult<()> {
-    let locale = PyModule::import(py, "locale")?;
+    let locale = PyModule::import_bound(py, "locale")?;
     locale
         .getattr("setlocale")?
         .call1((locale.getattr("LC_ALL")?, ""))?;
@@ -53,9 +52,9 @@ fn ensure_sane_fs_enc() -> () {
 }
 
 fn prepend_path(py: Python<'_>, el: &Path) -> PyResult<()> {
-    let sys = PyModule::import(py, "sys")?;
+    let sys = PyModule::import_bound(py, "sys")?;
 
-    let current_path: &pyo3::types::PyList = sys.getattr("path")?.try_into()?;
+    let current_path: Bound<pyo3::types::PyList> = sys.getattr("path")?.extract()?;
 
     current_path.insert(0, el.to_str().expect("invalid local path"))?;
 
@@ -66,7 +65,7 @@ fn prepend_path(py: Python<'_>, el: &Path) -> PyResult<()> {
 fn update_path(py: Python<'_>) -> PyResult<()> {
     let mut path = std::env::current_exe()?;
 
-    path.pop();  // Drop executable name
+    path.pop(); // Drop executable name
 
     let mut package_path = path.clone();
     package_path.push("breezy");
@@ -78,7 +77,7 @@ fn update_path(py: Python<'_>) -> PyResult<()> {
 }
 
 fn posix_setup(py: Python<'_>) -> PyResult<()> {
-    let os = PyModule::import(py, "os")?;
+    let os = PyModule::import_bound(py, "os")?;
 
     if os.getattr("name")?.to_string() == "posix" {
         if let Err(e) = setup_locale(py) {
@@ -110,14 +109,14 @@ fn main() -> PyResult<()> {
         let args: Vec<String> = std::env::args().collect();
 
         if args.contains(&String::from("--profile-imports")) {
-            let profile_imports = PyModule::import(py, "profile_imports")?;
+            let profile_imports = PyModule::import_bound(py, "profile_imports")?;
             profile_imports.getattr("install")?.call1(())?;
         }
 
-        let sys = PyModule::import(py, "sys")?;
-        sys.setattr("argv", PyList::new(py, args))?;
+        let sys = PyModule::import_bound(py, "sys")?;
+        sys.setattr("argv", PyList::new_bound(py, args))?;
 
-        let main = PyModule::import(py, "breezy.__main__")?;
+        let main = PyModule::import_bound(py, "breezy.__main__")?;
         main.getattr("main")?.call1(())?;
         Ok(())
     })
