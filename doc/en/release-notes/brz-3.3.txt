@@ -8,7 +8,10 @@ Breezy Release Notes
 brz 3.3.8
 #########
 
-:3.3.8: UNRELEASED
+:3.3.8: 2024-06-27
+
+* Prevent builds with PyO3 0.22 and up, which are incompatible with
+  Breezy 3.3. (Jelmer Vernooĳ)
 
 brz 3.3.7
 #########

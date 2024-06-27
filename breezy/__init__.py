@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""All of bzr.
+"""All of Breezy.
 
 Developer documentation is available at
 https://www.breezy-vcs.org/developers/.
@@ -49,7 +49,7 @@ __copyright__ = (
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (3, 3, 8, "dev", 0)
+version_info = (3, 3, 8, "final", 0)
 
 
 def _format_version_tuple(version_info):
