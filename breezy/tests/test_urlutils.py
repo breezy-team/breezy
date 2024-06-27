@@ -1189,12 +1189,7 @@ class QuoteTests(TestCase):
         self.assertEqual("abc/def", urlutils.quote("abc/def", safe="/"))
 
     def test_quote_tildes(self):
-        # Whether ~ is quoted by default depends on the python version
-        if sys.version_info[:2] >= (3, 7):
-            # https://docs.python.org/3/whatsnew/3.7.html#urllib-parse
-            self.assertEqual("~foo", urlutils.quote("~foo"))
-        else:
-            self.assertEqual("%7Efoo", urlutils.quote("~foo"))
+        self.assertEqual("~foo", urlutils.quote("~foo"))
         self.assertEqual("~foo", urlutils.quote("~foo", safe="/~"))
 
     def test_unquote(self):
