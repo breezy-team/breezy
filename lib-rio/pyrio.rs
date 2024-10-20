@@ -1,6 +1,4 @@
-#[macro_use]
-extern crate lazy_static;
-
+use lazy_static::lazy_static;
 use pyo3::prelude::*;
 use regex::Regex;
 
@@ -13,7 +11,7 @@ fn _valid_tag(tag: &str) -> bool {
 }
 
 #[pymodule]
-fn _rio_rs(_: Python, m: &PyModule) -> PyResult<()> {
+fn _rio_rs(_: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(_valid_tag)).unwrap();
 
     Ok(())

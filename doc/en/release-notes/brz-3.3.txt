@@ -10,6 +10,9 @@ brz 3.3.9
 
 :3.3.9: UNRELEASED
 
+* Update pyo3 to 0.22, adding support for Python 3.13. (Jelmer Vernooĳ,
+  #2084288
+
 brz 3.3.8
 #########
 
