@@ -1188,7 +1188,8 @@ impl Inventory {
             .map_err(|e| inventory_err_to_py_err(e, py))
     }
 
-    fn path2id_segments(&self, names: Vec<&str>) -> Option<FileId> {
+    fn path2id_segments(&self, names: Vec<String>) -> Option<FileId> {
+        let names = names.iter().map(|x| x.as_str()).collect::<Vec<&str>>();
         self.0.path2id_segments(names.as_slice()).cloned()
     }
 
@@ -1207,7 +1208,8 @@ impl Inventory {
     ) -> PyResult<(Option<PyObject>, Option<Vec<String>>, Option<Vec<String>>)> {
         let ret = if let Ok(relpath) = relpath.extract::<&str>(py) {
             self.0.get_entry_by_path_partial(relpath)
-        } else if let Ok(segments) = relpath.extract::<Vec<&str>>(py) {
+        } else if let Ok(segments) = relpath.extract::<Vec<String>>(py) {
+            let segments = segments.iter().map(|x| x.as_str()).collect::<Vec<&str>>();
             self.0
                 .get_entry_by_path_segments_partial(segments.as_slice())
         } else {
@@ -1231,7 +1233,8 @@ impl Inventory {
                 .0
                 .get_entry_by_path(relpath)
                 .map(|entry| entry_to_py(py, entry.clone()).unwrap()))
-        } else if let Ok(segments) = relpath.extract::<Vec<&str>>(py) {
+        } else if let Ok(segments) = relpath.extract::<Vec<String>>(py) {
+            let segments = segments.iter().map(|x| x.as_str()).collect::<Vec<&str>>();
             Ok(self
                 .0
                 .get_entry_by_path_segments(segments.as_slice())
