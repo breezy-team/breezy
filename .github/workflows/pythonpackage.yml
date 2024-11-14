@@ -10,15 +10,20 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: [3.7, 3.8, 3.9, "3.10", "3.11", '3.12']
+        python-version:
+        - '3.13'
+        - '3.12'
+        - '3.11'
+        - '3.10'
+        - '3.9'
         experimental: [false]
         include:
-          - os: macos-latest
-            experimental: true
-            python-version: 3.7
-          - os: windows-latest
-            python-version: 3.7
-            experimental: true
+        - os: macos-latest
+          experimental: true
+          python-version: 3.7
+        - os: windows-latest
+          python-version: 3.7
+          experimental: true
 # See https://github.com/actions/toolkit/issues/399
 #        include:
 #          - os: ubuntu-latest
@@ -27,65 +32,65 @@ jobs:
       fail-fast: false
 
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies (apt)
-        run: |
-          sudo apt install quilt
-        if: "matrix.os == 'ubuntu-latest'"
-      - name: Install dependencies (brew)
-        run: |
-          brew install quilt
-        if: "matrix.os == 'macos-latest'"
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -U pip "setuptools>=60" setuptools-gettext cython setuptools-rust
-          python -m pip install -U pip coverage codecov cython testscenarios git+https://github.com/dulwich/dulwich
-          python -m pip install ".[dev,paramiko,doc,launchpad,git,fastimport]"
-      - name: Install dependencies (linux/pip)
-        run: |
-          sudo apt install libgpgme-dev
-          pip install pyinotify
-          pip install ".[workspace,pgp]"
-        if: "matrix.os == 'ubuntu-latest'"
-      - name: Build docs
-        run: |
-          make docs PYTHON=python
-      - name: Build extensions
-        run: |
-          make extensions PYTHON=python
-        if: "matrix.python-version != 'pypy3'"
-      - name: Test suite run (Linux)
-        run: |
-          ./brz selftest
-        env:
-          PYTHONHASHSEED: random
-          BRZ_PLUGIN_PATH: -site:-user
-          PYTHONPATH: .
-        if: "matrix.os == 'ubuntu-latest'"
-      - name: Test suite run (Mac OS)
-        run: |
-          ./brz selftest --subunit2 | subunit-filter --fixup-expected-failures=xfail.macos -s --passthrough | subunit2pyunit
-        env:
-          PYTHONHASHSEED: random
-          BRZ_PLUGIN_PATH: -site:-user
-          PYTHONPATH: .
-        if: "matrix.os == 'macos-latest'"
-      - name: Test suite run (Windows)
-        run: |
-          python -m breezy selftest --subunit2 | subunit-filter --fixup-expected-failures=xfail.windows -s --passthrough | subunit2pyunit
-        env:
-          PYTHONHASHSEED: random
-          BRZ_PLUGIN_PATH: -site:-user
-          PYTHONPATH: .
-        shell: bash
-        if: "matrix.os == 'windows-latest'"
-      - name: Run mypy
-        run: |
-          python -m pip install mypy types-PyYAML types-paramiko types-setuptools
-          python -m mypy breezy
-        if: "matrix.python-version != 'pypy3'"
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies (apt)
+      run: |
+        sudo apt install quilt
+      if: "matrix.os == 'ubuntu-latest'"
+    - name: Install dependencies (brew)
+      run: |
+        brew install quilt
+      if: "matrix.os == 'macos-latest'"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install -U pip "setuptools>=60" setuptools-gettext cython setuptools-rust
+        python -m pip install -U pip coverage codecov cython testscenarios git+https://github.com/dulwich/dulwich
+        python -m pip install ".[dev,paramiko,doc,launchpad,git,fastimport]"
+    - name: Install dependencies (linux/pip)
+      run: |
+        sudo apt install libgpgme-dev
+        pip install pyinotify
+        pip install ".[workspace,pgp]"
+      if: "matrix.os == 'ubuntu-latest'"
+    - name: Build docs
+      run: |
+        make docs PYTHON=python
+    - name: Build extensions
+      run: |
+        make extensions PYTHON=python
+      if: "matrix.python-version != 'pypy3'"
+    - name: Test suite run (Linux)
+      run: |
+        ./brz selftest
+      env:
+        PYTHONHASHSEED: random
+        BRZ_PLUGIN_PATH: -site:-user
+        PYTHONPATH: .
+      if: "matrix.os == 'ubuntu-latest'"
+    - name: Test suite run (Mac OS)
+      run: |
+        ./brz selftest --subunit2 | subunit-filter --fixup-expected-failures=xfail.macos -s --passthrough | subunit2pyunit
+      env:
+        PYTHONHASHSEED: random
+        BRZ_PLUGIN_PATH: -site:-user
+        PYTHONPATH: .
+      if: "matrix.os == 'macos-latest'"
+    - name: Test suite run (Windows)
+      run: |
+        python -m breezy selftest --subunit2 | subunit-filter --fixup-expected-failures=xfail.windows -s --passthrough | subunit2pyunit
+      env:
+        PYTHONHASHSEED: random
+        BRZ_PLUGIN_PATH: -site:-user
+        PYTHONPATH: .
+      shell: bash
+      if: "matrix.os == 'windows-latest'"
+    - name: Run mypy
+      run: |
+        python -m pip install mypy types-PyYAML types-paramiko types-setuptools
+        python -m mypy breezy
+      if: "matrix.python-version != 'pypy3'"
