@@ -100,7 +100,7 @@ class ImportTariffTestCase(TestCaseWithTransport):
                 bad_modules.append(module_name)
 
         if bad_modules:
-            self.fail("command loaded forbidden modules %r" % (bad_modules,))
+            self.fail("command loaded forbidden modules {!r}".format(bad_modules))
 
     def finish_brz_subprocess_with_import_check(self, process, args, forbidden_imports):
         """Finish subprocess and check specific modules have not been

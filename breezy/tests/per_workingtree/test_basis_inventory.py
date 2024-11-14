@@ -26,14 +26,14 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         if isinstance(
             self.workingtree_format, breezy.bzr.workingtree_4.DirStateWorkingTreeFormat
         ):
-            raise TestNotApplicable("not applicable to %r" % (self.workingtree_format,))
+            raise TestNotApplicable("not applicable to {!r}".format(self.workingtree_format))
         # TODO: jam 20051218 this probably should add more than just
         #                    a couple files to the inventory
 
         # Make sure the basis file is created by a commit
         t = self.make_branch_and_tree(".")
         if getattr(t, "root_inventory", None) is None:
-            raise TestNotApplicable("not applicable to %r" % (self.workingtree_format,))
+            raise TestNotApplicable("not applicable to {!r}".format(self.workingtree_format))
 
         b = t.branch
         with open("a", "wb") as f:
@@ -72,10 +72,10 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         if isinstance(
             self.workingtree_format, breezy.bzr.workingtree_4.DirStateWorkingTreeFormat
         ):
-            raise TestNotApplicable("not applicable to %r" % (self.workingtree_format,))
+            raise TestNotApplicable("not applicable to {!r}".format(self.workingtree_format))
         t = self.make_branch_and_tree(".")
         if getattr(t, "root_inventory", None) is None:
-            raise TestNotApplicable("not applicable to %r" % (self.workingtree_format,))
+            raise TestNotApplicable("not applicable to {!r}".format(self.workingtree_format))
 
         b = t.branch
         with open("a", "wb") as f:

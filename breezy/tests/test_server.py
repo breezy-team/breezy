@@ -480,7 +480,7 @@ class TestingThreadingTCPServer(TestingTCPServerMixin, socketserver.ThreadingTCP
             # re-raised
             if debug_threads():
                 sys.stderr.write(
-                    "Client thread %s will be joined\n" % (connection_thread.name,)
+                    "Client thread {} will be joined\n".format(connection_thread.name)
                 )
             connection_thread.join()
 
@@ -525,7 +525,7 @@ class TestingTCPServerInAThread(transport.Server):
         self.host, self.port = self.server.server_address
         self._server_thread.name = self.server.server_address
         if debug_threads():
-            sys.stderr.write("Server thread %s started\n" % (self._server_thread.name,))
+            sys.stderr.write("Server thread {} started\n".format(self._server_thread.name))
         # If an exception occured during the server start, it will get raised,
         # otherwise, the server is blocked on its accept() call.
         self._server_thread.pending_exception()
@@ -547,7 +547,7 @@ class TestingTCPServerInAThread(transport.Server):
             self.server.serving = False
             if debug_threads():
                 sys.stderr.write(
-                    "Server thread %s will be joined\n" % (self._server_thread.name,)
+                    "Server thread {} will be joined\n".format(self._server_thread.name)
                 )
             # The server is listening for a last connection, let's give it:
             last_conn = None

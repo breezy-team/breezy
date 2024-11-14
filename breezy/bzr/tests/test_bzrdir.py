@@ -1308,7 +1308,7 @@ class TestDotBzrHidden(TestCaseWithTransport):
     def get_ls(self):
         f = subprocess.Popen(self.ls, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, err = f.communicate()
-        self.assertEqual(0, f.returncode, "Calling %s failed: %s" % (self.ls, err))
+        self.assertEqual(0, f.returncode, "Calling {} failed: {}".format(self.ls, err))
         return out.splitlines()
 
     def test_dot_bzr_hidden(self):

@@ -49,7 +49,7 @@ class BisectTestCase(TestCaseWithTransport):
             rev_ids = {rev_contents[k]: k for k in rev_contents.keys()}
             found_rev = rev_ids[content]
             raise AssertionError(
-                "expected rev %0.1f, found rev %0.1f" % (rev, found_rev)
+                "expected rev {:0.1f}, found rev {:0.1f}".format(rev, found_rev)
             )
 
     def setUp(self):

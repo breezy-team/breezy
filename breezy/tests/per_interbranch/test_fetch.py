@@ -36,7 +36,7 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
             b2.fetch(b1)
         except NoRoundtrippingSupport:
             raise TestNotApplicable(
-                "lossless cross-vcs fetch %r to %r not supported" % (b1, b2)
+                "lossless cross-vcs fetch {!r} to {!r} not supported".format(b1, b2)
             )
 
         # fetch does not update the last revision
@@ -66,7 +66,7 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
             raise TestNotApplicable("interbranch does not support fetch limits")
         except NoRoundtrippingSupport:
             raise TestNotApplicable(
-                "lossless cross-vcs fetch %r to %r not supported" % (b1, b2)
+                "lossless cross-vcs fetch {!r} to {!r} not supported".format(b1, b2)
             )
 
         # fetch does not update the last revision
@@ -89,7 +89,7 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
             raise TestNotApplicable("interbranch does not support fetch limits")
         except NoRoundtrippingSupport:
             raise TestNotApplicable(
-                "lossless cross-vcs fetch %r to %r not supported" % (b1, b2)
+                "lossless cross-vcs fetch {!r} to {!r} not supported".format(b1, b2)
             )
 
         self.assertEqual(

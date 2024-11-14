@@ -252,7 +252,7 @@ class TestReconfigureStacking(tests.TestCaseWithTransport):
         # can also give the absolute URL of the branch, and it gets stored
         # as a relative path if possible
         out, err = self.run_bzr(
-            "reconfigure --stacked-on %s b2" % (self.get_url("b1"),)
+            "reconfigure --stacked-on {} b2".format(self.get_url("b1"))
         )
         self.assertContainsRe(out, "^.*/b2/ is now stacked on ../b1\n$")
         self.assertEqual("", err)

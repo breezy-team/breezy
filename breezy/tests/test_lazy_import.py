@@ -1007,7 +1007,7 @@ class TestCanonicalize(TestCase):
         self.assertEqual(
             expected,
             parsed,
-            "Incorrect parsing of text:\n%s\n%s\n!=\n%s" % (text, expected, parsed),
+            "Incorrect parsing of text:\n{}\n{}\n!=\n{}".format(text, expected, parsed),
         )
 
     def test_import_one(self):
@@ -1064,7 +1064,7 @@ class TestImportProcessor(TestCase):
         self.assertEqual(
             expected,
             proc.imports,
-            "Incorrect processing of:\n%s\n%s\n!=\n%s" % (text, expected, proc.imports),
+            "Incorrect processing of:\n{}\n{}\n!=\n{}".format(text, expected, proc.imports),
         )
 
     def test_import_one(self):

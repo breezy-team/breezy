@@ -193,7 +193,7 @@ class TestSource(TestSourceHelper):
                     incorrect.append(
                         (
                             fname,
-                            'should not have: "by Canonical": %s' % (match.group(),),
+                            'should not have: "by Canonical": {}'.format(match.group()),
                         )
                     )
 

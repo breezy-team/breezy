@@ -96,7 +96,7 @@ class Test_KeyToSha1(TestBtreeSerializer):
             if actual_sha1 is not None:
                 actual_hex_sha1 = binascii.hexlify(actual_sha1)
             self.fail(
-                "_key_to_sha1 returned:\n    %s\n != %s" % (actual_sha1, expected)
+                "_key_to_sha1 returned:\n    {}\n != {}".format(actual_sha1, expected)
             )
 
     def test_simple(self):

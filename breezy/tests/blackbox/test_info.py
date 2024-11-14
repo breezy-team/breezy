@@ -1455,7 +1455,7 @@ Location:
                 friendly_location(shared_repo.controldir.root_transport.base),
             )
         elif repo_branch is not None:
-            branch_data = "%s  checkout of branch: %s\n" % (
+            branch_data = "{}  checkout of branch: {}\n".format(
                 extra_space,
                 friendly_location(repo_branch.controldir.root_transport.base),
             )
