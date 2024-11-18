@@ -653,7 +653,9 @@ class CHKInventory:
                     raise errors.InconsistentDelta(
                         old_path,
                         file_id,
-                        "Entry was at wrong other path {!r}.".format(self.id2path(file_id)),
+                        "Entry was at wrong other path {!r}.".format(
+                            self.id2path(file_id)
+                        ),
                     )
                 altered.add(file_id)
             id_to_entry_delta.append(StaticTuple(old_key, new_key, new_value))

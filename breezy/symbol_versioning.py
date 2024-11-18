@@ -48,9 +48,9 @@ def deprecated_in(version_tuple):
     >>> deprecated_in((1, 4, 0))
     '%s was deprecated in version 1.4.0.'
     """
-    return "%s was deprecated in version {}.".format(breezy._format_version_tuple(
-        version_tuple
-    ))
+    return "%s was deprecated in version {}.".format(
+        breezy._format_version_tuple(version_tuple)
+    )
 
 
 def set_warning_method(method):

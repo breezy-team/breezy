@@ -1410,7 +1410,9 @@ class DirState:
                 self._raise_invalid(
                     path,
                     file_id,
-                    "Attempt to remove path has wrong id - found {!r}.".format(entry[0][2]),
+                    "Attempt to remove path has wrong id - found {!r}.".format(
+                        entry[0][2]
+                    ),
                 )
             self._make_absent(entry)
             # See if we have a malformed delta: deleting a directory must not

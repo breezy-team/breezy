@@ -2595,7 +2595,9 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
         self.assertEqual(
             warnings,
             [
-                "Permission denied while trying to load configuration store {}.".format(store.external_url())
+                "Permission denied while trying to load configuration store {}.".format(
+                    store.external_url()
+                )
             ],
         )
 

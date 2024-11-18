@@ -88,7 +88,10 @@ class VersionedFileCheck(Check):
     def check(self, callback_refs=None, check_repo=True):
         if callback_refs is None:
             callback_refs = {}
-        with self.repository.lock_read(), ui.ui_factory.nested_progress_bar() as self.progress:
+        with (
+            self.repository.lock_read(),
+            ui.ui_factory.nested_progress_bar() as self.progress,
+        ):
             self.progress.update(gettext("check"), 0, 4)
             if self.check_repo:
                 self.progress.update(gettext("checking revisions"), 0)

@@ -107,9 +107,10 @@ class TestBuildTree(TestCaseWithTransport):
             target.conflicts(),
         )
         target2 = self.make_branch_and_tree("target2")
-        with open("target2/file", "wb") as target_file, open(
-            "source/file", "rb"
-        ) as source_file:
+        with (
+            open("target2/file", "wb") as target_file,
+            open("source/file", "rb") as source_file,
+        ):
             target_file.write(source_file.read())
         build_tree(source.basis_tree(), target2)
         self.assertEqual([], target2.conflicts())

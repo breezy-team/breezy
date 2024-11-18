@@ -64,8 +64,9 @@ class SmartServerLockedBranchRequest(SmartServerBranchRequest):
         processed.  The physical lock state won't be changed.
         """
         # XXX: write a test for LockContention
-        with branch.repository.lock_write(token=repo_token), branch.lock_write(
-            token=branch_token
+        with (
+            branch.repository.lock_write(token=repo_token),
+            branch.lock_write(token=branch_token),
         ):
             return self.do_with_locked_branch(branch, *args)
 
@@ -110,9 +111,10 @@ class SmartServerBranchPutConfigFile(SmartServerBranchRequest):
         return None
 
     def do_body(self, body_bytes):
-        with self._branch.repository.lock_write(
-            token=self._repo_token
-        ), self._branch.lock_write(token=self._branch_token):
+        with (
+            self._branch.repository.lock_write(token=self._repo_token),
+            self._branch.lock_write(token=self._branch_token),
+        ):
             self._branch.control_transport.put_bytes("branch.conf", body_bytes)
         return SuccessfulSmartServerResponse((b"ok",))
 
