@@ -19,18 +19,17 @@
 from .... import (
     osutils,
     revision as _mod_revision,
-    )
+)
 from ....repository import WriteGroup
 from ... import (
     inventory,
-    )
+)
 from ...knitrepo import RepositoryFormatKnit
 from ....tests.per_repository import TestCaseWithRepository
 from ....tests import TestNotApplicable
 
 
 class TestCaseWithBrokenRevisionIndex(TestCaseWithRepository):
-
     def make_repo_with_extra_ghost_index(self):
         """Make a corrupt repository.
 
@@ -47,27 +46,31 @@ class TestCaseWithBrokenRevisionIndex(TestCaseWithRepository):
             # pretty deprecated.  Ideally these tests should apply to any repo
             # where repo.revision_graph_can_have_wrong_parents() is True, but
             # at the moment we only know how to corrupt knit repos.
-            raise TestNotApplicable(
-                "%s isn't a knit format" % self.repository_format)
+            raise TestNotApplicable("%s isn't a knit format" % self.repository_format)
 
-        repo = self.make_repository('broken')
+        repo = self.make_repository("broken")
         with repo.lock_write(), WriteGroup(repo):
-            inv = inventory.Inventory(revision_id=b'revision-id')
-            inv.root.revision = b'revision-id'
-            inv_sha1 = repo.add_inventory(b'revision-id', inv, [])
+            inv = inventory.Inventory(revision_id=b"revision-id")
+            inv.root.revision = b"revision-id"
+            inv_sha1 = repo.add_inventory(b"revision-id", inv, [])
             if repo.supports_rich_root():
                 root_id = inv.root.file_id
-                repo.texts.add_lines((root_id, b'revision-id'), [], [])
-            revision = _mod_revision.Revision(b'revision-id',
-                                              committer='jrandom@example.com', timestamp=0,
-                                              inventory_sha1=inv_sha1, timezone=0, message='message',
-                                              parent_ids=[])
+                repo.texts.add_lines((root_id, b"revision-id"), [], [])
+            revision = _mod_revision.Revision(
+                b"revision-id",
+                committer="jrandom@example.com",
+                timestamp=0,
+                inventory_sha1=inv_sha1,
+                timezone=0,
+                message="message",
+                parent_ids=[],
+            )
             # Manually add the revision text using the RevisionStore API, with
             # bad parents.
             lines = repo._serializer.write_revision_to_lines(revision)
-            repo.revisions.add_lines((revision.revision_id,),
-                                     [(b'incorrect-parent',)],
-                                     lines)
+            repo.revisions.add_lines(
+                (revision.revision_id,), [(b"incorrect-parent",)], lines
+            )
 
         repo.lock_write()
         self.addCleanup(repo.unlock)

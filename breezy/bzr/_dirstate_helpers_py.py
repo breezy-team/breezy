@@ -25,7 +25,7 @@ import struct
 from .dirstate import DirState, DirstateCorrupt
 
 
-def pack_stat(st, _b64=binascii.b2a_base64, _pack=struct.Struct('>6L').pack):
+def pack_stat(st, _b64=binascii.b2a_base64, _pack=struct.Struct(">6L").pack):
     """Convert stat values into a packed representation
 
     Not all of the fields from the stat included are strictly needed, and by
@@ -33,9 +33,16 @@ def pack_stat(st, _b64=binascii.b2a_base64, _pack=struct.Struct('>6L').pack):
     However, using the pyrex version instead is a bigger win.
     """
     # base64 encoding always adds a final newline, so strip it off
-    return _b64(_pack(st.st_size & 0xFFFFFFFF, int(st.st_mtime) & 0xFFFFFFFF,
-                      int(st.st_ctime) & 0xFFFFFFFF, st.st_dev & 0xFFFFFFFF,
-                      st.st_ino & 0xFFFFFFFF, st.st_mode))[:-1]
+    return _b64(
+        _pack(
+            st.st_size & 0xFFFFFFFF,
+            int(st.st_mtime) & 0xFFFFFFFF,
+            int(st.st_ctime) & 0xFFFFFFFF,
+            st.st_dev & 0xFFFFFFFF,
+            st.st_ino & 0xFFFFFFFF,
+            st.st_mode,
+        )
+    )[:-1]
 
 
 def _unpack_stat(packed_stat):
@@ -43,10 +50,17 @@ def _unpack_stat(packed_stat):
 
     This is meant as a debugging tool, should not be used in real code.
     """
-    (st_size, st_mtime, st_ctime, st_dev, st_ino,
-     st_mode) = struct.unpack('>6L', binascii.a2b_base64(packed_stat))
-    return dict(st_size=st_size, st_mtime=st_mtime, st_ctime=st_ctime,
-                st_dev=st_dev, st_ino=st_ino, st_mode=st_mode)
+    (st_size, st_mtime, st_ctime, st_dev, st_ino, st_mode) = struct.unpack(
+        ">6L", binascii.a2b_base64(packed_stat)
+    )
+    return dict(
+        st_size=st_size,
+        st_mtime=st_mtime,
+        st_ctime=st_ctime,
+        st_dev=st_dev,
+        st_ino=st_ino,
+        st_mode=st_mode,
+    )
 
 
 def _bisect_path_left(paths, path):
@@ -141,7 +155,7 @@ def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
     try:
         dirname_split = cache[dirname]
     except KeyError:
-        dirname_split = dirname.split(b'/')
+        dirname_split = dirname.split(b"/")
         cache[dirname] = dirname_split
     while lo < hi:
         mid = (lo + hi) // 2
@@ -150,7 +164,7 @@ def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
         try:
             cur_split = cache[cur]
         except KeyError:
-            cur_split = cur.split(b'/')
+            cur_split = cur.split(b"/")
             cache[cur] = cur_split
         if cur_split < dirname_split:
             lo = mid + 1
@@ -175,12 +189,14 @@ def lt_by_dirs(path1, path2):
     :return: True if path1 comes first, otherwise False
     """
     if not isinstance(path1, bytes):
-        raise TypeError("'path1' must be a byte string, not %s: %r"
-                        % (type(path1), path1))
+        raise TypeError(
+            "'path1' must be a byte string, not %s: %r" % (type(path1), path1)
+        )
     if not isinstance(path2, bytes):
-        raise TypeError("'path2' must be a byte string, not %s: %r"
-                        % (type(path2), path2))
-    return path1.split(b'/') < path2.split(b'/')
+        raise TypeError(
+            "'path2' must be a byte string, not %s: %r" % (type(path2), path2)
+        )
+    return path1.split(b"/") < path2.split(b"/")
 
 
 def _lt_path_by_dirblock(path1, path2):
@@ -195,15 +211,17 @@ def _lt_path_by_dirblock(path1, path2):
     :return: True if path1 comes first, otherwise False
     """
     if not isinstance(path1, bytes):
-        raise TypeError("'path1' must be a plain string, not %s: %r"
-                        % (type(path1), path1))
+        raise TypeError(
+            "'path1' must be a plain string, not %s: %r" % (type(path1), path1)
+        )
     if not isinstance(path2, bytes):
-        raise TypeError("'path2' must be a plain string, not %s: %r"
-                        % (type(path2), path2))
+        raise TypeError(
+            "'path2' must be a plain string, not %s: %r" % (type(path2), path2)
+        )
     dirname1, basename1 = os.path.split(path1)
-    key1 = (dirname1.split(b'/'), basename1)
+    key1 = (dirname1.split(b"/"), basename1)
     dirname2, basename2 = os.path.split(path2)
-    key2 = (dirname2.split(b'/'), basename2)
+    key2 = (dirname2.split(b"/"), basename2)
     return key1 < key2
 
 
@@ -221,12 +239,11 @@ def _read_dirblocks(state):
     text = state._state_file.read()
     # TODO: check the crc checksums. crc_measured = zlib.crc32(text)
 
-    fields = text.split(b'\0')
+    fields = text.split(b"\0")
     # Remove the last blank entry
     trailing = fields.pop()
-    if trailing != b'':
-        raise DirstateCorrupt(state,
-                              'trailing garbage: {!r}'.format(trailing))
+    if trailing != b"":
+        raise DirstateCorrupt(state, "trailing garbage: {!r}".format(trailing))
     # consider turning fields into a tuple.
 
     # skip the first field which is the trailing null from the header.
@@ -244,11 +261,18 @@ def _read_dirblocks(state):
     field_count = len(fields)
     # this checks our adjustment, and also catches file too short.
     if field_count - cur != expected_field_count:
-        raise DirstateCorrupt(state,
-                              'field count incorrect %s != %s, entry_size=%s, '
-                              'num_entries=%s fields=%r' % (
-                                  field_count - cur, expected_field_count, entry_size,
-                                  state._num_entries, fields))
+        raise DirstateCorrupt(
+            state,
+            "field count incorrect %s != %s, entry_size=%s, "
+            "num_entries=%s fields=%r"
+            % (
+                field_count - cur,
+                expected_field_count,
+                entry_size,
+                state._num_entries,
+                fields,
+            ),
+        )
 
     if num_present_parents == 1:
         # Bind external functions to local names
@@ -259,7 +283,7 @@ def _read_dirblocks(state):
         # do we want to do a lot of slicing)
         _iter = iter(fields)
         # Get a local reference to the compatible next method
-        next = getattr(_iter, '__next__', None)
+        next = getattr(_iter, "__next__", None)
         if next is None:
             next = _iter.next
         # Move the iterator to the current position
@@ -267,9 +291,9 @@ def _read_dirblocks(state):
             next()
         # The two blocks here are deliberate: the root block and the
         # contents-of-root block.
-        state._dirblocks = [(b'', []), (b'', [])]
+        state._dirblocks = [(b"", []), (b"", [])]
         current_block = state._dirblocks[0][1]
-        current_dirname = b''
+        current_dirname = b""
         append_entry = current_block.append
         for count in range(state._num_entries):
             dirname = next()
@@ -283,32 +307,37 @@ def _read_dirblocks(state):
                 append_entry = current_block.append
             # we know current_dirname == dirname, so re-use it to avoid
             # creating new strings
-            entry = ((current_dirname, name, file_id),
-                     [(  # Current Tree
-                         next(),                # minikind
-                         next(),                # fingerprint
-                         _int(next()),          # size
-                         next() == b'y',        # executable
-                         next(),                # packed_stat or revision_id
-                     ),
-                (  # Parent 1
-                         next(),                # minikind
-                         next(),                # fingerprint
-                         _int(next()),          # size
-                         next() == b'y',        # executable
-                         next(),                # packed_stat or revision_id
-                     ),
-                ])
+            entry = (
+                (current_dirname, name, file_id),
+                [
+                    (  # Current Tree
+                        next(),  # minikind
+                        next(),  # fingerprint
+                        _int(next()),  # size
+                        next() == b"y",  # executable
+                        next(),  # packed_stat or revision_id
+                    ),
+                    (  # Parent 1
+                        next(),  # minikind
+                        next(),  # fingerprint
+                        _int(next()),  # size
+                        next() == b"y",  # executable
+                        next(),  # packed_stat or revision_id
+                    ),
+                ],
+            )
             trailing = next()
-            if trailing != b'\n':
+            if trailing != b"\n":
                 raise ValueError("trailing garbage in dirstate: %r" % trailing)
             # append the entry to the current block
             append_entry(entry)
         state._split_root_dirblock_into_contents()
     else:
         fields_to_entry = state._get_fields_to_entry()
-        entries = [fields_to_entry(fields[pos:pos + entry_size])
-                   for pos in range(cur, field_count, entry_size)]
+        entries = [
+            fields_to_entry(fields[pos : pos + entry_size])
+            for pos in range(cur, field_count, entry_size)
+        ]
         state._entries_to_current_state(entries)
     # To convert from format 2  => format 3
     # state._dirblocks = sorted(state._dirblocks,

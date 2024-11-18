@@ -20,23 +20,24 @@ from ..views import (
     FileOutsideView,
     NoSuchView,
     ViewsNotSupported,
-    )
+)
 
 
 class TestErrors(TestCase):
-
     def test_no_such_view(self):
-        err = NoSuchView('foo')
+        err = NoSuchView("foo")
         self.assertEqual("No such view: foo.", str(err))
 
     def test_views_not_supported(self):
-        err = ViewsNotSupported('atree')
+        err = ViewsNotSupported("atree")
         err_str = str(err)
         self.assertStartsWith(err_str, "Views are not supported by ")
-        self.assertEndsWith(err_str, "; use 'brz upgrade' to change your "
-                            "tree to a later format.")
+        self.assertEndsWith(
+            err_str, "; use 'brz upgrade' to change your " "tree to a later format."
+        )
 
     def test_file_outside_view(self):
-        err = FileOutsideView('baz', ['foo', 'bar'])
-        self.assertEqual('Specified file "baz" is outside the current view: '
-                         'foo, bar', str(err))
+        err = FileOutsideView("baz", ["foo", "bar"])
+        self.assertEqual(
+            'Specified file "baz" is outside the current view: ' "foo, bar", str(err)
+        )

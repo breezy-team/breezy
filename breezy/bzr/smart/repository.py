@@ -33,29 +33,29 @@ from ... import (
     osutils,
     trace,
     ui,
-    )
+)
 from .. import (
     inventory as _mod_inventory,
     inventory_delta,
     pack,
     vf_search,
-    )
+)
 from ..bzrdir import BzrDir
 from .request import (
     FailedSmartServerResponse,
     SmartServerRequest,
     SuccessfulSmartServerResponse,
-    )
+)
 from ...repository import (
     _strip_NULL_ghosts,
     network_format_registry,
-    )
+)
 from ... import revision as _mod_revision
 from ..versionedfile import (
     ChunkedContentFactory,
     NetworkRecordStream,
     record_to_fulltext_bytes,
-    )
+)
 
 
 class SmartServerRepositoryRequest(SmartServerRequest):
@@ -94,21 +94,21 @@ class SmartServerRepositoryRequest(SmartServerRequest):
             recreate_search trusts that clients will look for missing things
             they expected and get it from elsewhere.
         """
-        if search_bytes == b'everything':
+        if search_bytes == b"everything":
             return vf_search.EverythingResult(repository), None
-        lines = search_bytes.split(b'\n')
-        if lines[0] == b'ancestry-of':
+        lines = search_bytes.split(b"\n")
+        if lines[0] == b"ancestry-of":
             heads = lines[1:]
             search_result = vf_search.PendingAncestryResult(heads, repository)
             return search_result, None
-        elif lines[0] == b'search':
-            return self.recreate_search_from_recipe(repository, lines[1:],
-                                                    discard_excess=discard_excess)
+        elif lines[0] == b"search":
+            return self.recreate_search_from_recipe(
+                repository, lines[1:], discard_excess=discard_excess
+            )
         else:
-            return (None, FailedSmartServerResponse((b'BadSearch',)))
+            return (None, FailedSmartServerResponse((b"BadSearch",)))
 
-    def recreate_search_from_recipe(self, repository, lines,
-                                    discard_excess=False):
+    def recreate_search_from_recipe(self, repository, lines, discard_excess=False):
         """Recreate a specific revision search (vs a from-tip search).
 
         :param discard_excess: If True, and the search refers to data we don't
@@ -116,12 +116,11 @@ class SmartServerRepositoryRequest(SmartServerRequest):
             recreate_search trusts that clients will look for missing things
             they expected and get it from elsewhere.
         """
-        start_keys = set(lines[0].split(b' '))
-        exclude_keys = set(lines[1].split(b' '))
-        revision_count = int(lines[2].decode('ascii'))
+        start_keys = set(lines[0].split(b" "))
+        exclude_keys = set(lines[1].split(b" "))
+        revision_count = int(lines[2].decode("ascii"))
         with repository.lock_read():
-            search = repository.get_graph()._make_breadth_first_searcher(
-                start_keys)
+            search = repository.get_graph()._make_breadth_first_searcher(start_keys)
             while True:
                 try:
                     next_revs = next(search)
@@ -129,15 +128,16 @@ class SmartServerRepositoryRequest(SmartServerRequest):
                     break
                 search.stop_searching_any(exclude_keys.intersection(next_revs))
             (started_keys, excludes, included_keys) = search.get_state()
-            if (not discard_excess and len(included_keys) != revision_count):
+            if not discard_excess and len(included_keys) != revision_count:
                 # we got back a different amount of data than expected, this
                 # gets reported as NoSuchRevision, because less revisions
                 # indicates missing revisions, and more should never happen as
                 # the excludes list considers ghosts and ensures that ghost
                 # filling races are not a problem.
-                return (None, FailedSmartServerResponse((b'NoSuchRevision',)))
-            search_result = vf_search.SearchResult(started_keys, excludes,
-                                                   len(included_keys), included_keys)
+                return (None, FailedSmartServerResponse((b"NoSuchRevision",)))
+            search_result = vf_search.SearchResult(
+                started_keys, excludes, len(included_keys), included_keys
+            )
             return (search_result, None)
 
 
@@ -155,7 +155,7 @@ class SmartServerRepositoryBreakLock(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository):
         repository.break_lock()
-        return SuccessfulSmartServerResponse((b'ok', ))
+        return SuccessfulSmartServerResponse((b"ok",))
 
 
 _lsprof_count = 0
@@ -196,8 +196,14 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
         with repository.lock_read():
             return self._do_repository_request(body_bytes)
 
-    def _expand_requested_revs(self, repo_graph, revision_ids, client_seen_revs,
-                               include_missing, max_size=65536):
+    def _expand_requested_revs(
+        self,
+        repo_graph,
+        revision_ids,
+        client_seen_revs,
+        include_missing,
+        max_size=65536,
+    ):
         result = {}
         queried_revs = set()
         estimator = estimate_compressed_size.ZLibEstimator(max_size)
@@ -222,22 +228,27 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
                     missing_rev = True
                     encoded_id = b"missing:" + revision_id
                     parents = []
-                if (revision_id not in client_seen_revs
-                        and (not missing_rev or include_missing)):
+                if revision_id not in client_seen_revs and (
+                    not missing_rev or include_missing
+                ):
                     # Client does not have this revision, give it to it.
                     # add parents to the result
                     result[encoded_id] = parents
                     # Approximate the serialized cost of this revision_id.
-                    line = encoded_id + b' ' + b' '.join(parents) + b'\n'
+                    line = encoded_id + b" " + b" ".join(parents) + b"\n"
                     estimator.add_content(line)
             # get all the directly asked for parents, and then flesh out to
             # 64K (compressed) or so. We do one level of depth at a time to
             # stay in sync with the client. The 250000 magic number is
             # estimated compression ratio taken from bzr.dev itself.
             if self.no_extra_results or (first_loop_done and estimator.full()):
-                trace.mutter('size: %d, z_size: %d'
-                             % (estimator._uncompressed_size_added,
-                                estimator._compressed_size_added))
+                trace.mutter(
+                    "size: %d, z_size: %d"
+                    % (
+                        estimator._uncompressed_size_added,
+                        estimator._compressed_size_added,
+                    )
+                )
                 next_revs = set()
                 break
             # don't query things we've already queried
@@ -248,12 +259,11 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
     def _do_repository_request(self, body_bytes):
         repository = self._repository
         revision_ids = set(self._revision_ids)
-        include_missing = b'include-missing:' in revision_ids
+        include_missing = b"include-missing:" in revision_ids
         if include_missing:
-            revision_ids.remove(b'include-missing:')
-        body_lines = body_bytes.split(b'\n')
-        search_result, error = self.recreate_search_from_recipe(
-            repository, body_lines)
+            revision_ids.remove(b"include-missing:")
+        body_lines = body_bytes.split(b"\n")
+        search_result, error = self.recreate_search_from_recipe(repository, body_lines)
         if error is not None:
             return error
         # TODO might be nice to start up the search again; but that's not
@@ -263,21 +273,20 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
         client_seen_revs.difference_update(revision_ids)
 
         repo_graph = repository.get_graph()
-        result = self._expand_requested_revs(repo_graph, revision_ids,
-                                             client_seen_revs, include_missing)
+        result = self._expand_requested_revs(
+            repo_graph, revision_ids, client_seen_revs, include_missing
+        )
 
         # sorting trivially puts lexographically similar revision ids together.
         # Compression FTW.
         lines = []
         for revision, parents in sorted(result.items()):
-            lines.append(b' '.join((revision, ) + tuple(parents)))
+            lines.append(b" ".join((revision,) + tuple(parents)))
 
-        return SuccessfulSmartServerResponse(
-            (b'ok', ), bz2.compress(b'\n'.join(lines)))
+        return SuccessfulSmartServerResponse((b"ok",), bz2.compress(b"\n".join(lines)))
 
 
 class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryReadLocked):
-
     def do_readlocked_repository_request(self, repository, revision_id):
         """Return the result of repository.get_revision_graph(revision_id).
 
@@ -305,45 +314,43 @@ class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryReadLocked):
             # Note that we return an empty body, rather than omitting the body.
             # This way the client knows that it can always expect to find a body
             # in the response for this method, even in the error case.
-            return FailedSmartServerResponse((b'nosuchrevision', revision_id), b'')
+            return FailedSmartServerResponse((b"nosuchrevision", revision_id), b"")
 
         for revision, parents in revision_graph.items():
-            lines.append(b' '.join((revision, ) + tuple(parents)))
+            lines.append(b" ".join((revision,) + tuple(parents)))
 
-        return SuccessfulSmartServerResponse((b'ok', ), b'\n'.join(lines))
+        return SuccessfulSmartServerResponse((b"ok",), b"\n".join(lines))
 
 
 class SmartServerRepositoryGetRevIdForRevno(SmartServerRepositoryReadLocked):
-
-    def do_readlocked_repository_request(self, repository, revno,
-                                         known_pair):
+    def do_readlocked_repository_request(self, repository, revno, known_pair):
         """Find the revid for a given revno, given a known revno/revid pair.
 
         New in 1.17.
         """
         try:
-            found_flag, result = repository.get_rev_id_for_revno(
-                revno, known_pair)
+            found_flag, result = repository.get_rev_id_for_revno(revno, known_pair)
         except errors.NoSuchRevision as err:
             if err.revision != known_pair[1]:
                 raise AssertionError(
-                    'get_rev_id_for_revno raised RevisionNotPresent for '
-                    'non-initial revision: ' + err.revision)
-            return FailedSmartServerResponse(
-                (b'nosuchrevision', err.revision))
+                    "get_rev_id_for_revno raised RevisionNotPresent for "
+                    "non-initial revision: " + err.revision
+                )
+            return FailedSmartServerResponse((b"nosuchrevision", err.revision))
         except errors.RevnoOutOfBounds as e:
             return FailedSmartServerResponse(
-                (b'revno-outofbounds', e.revno, e.minimum, e.maximum))
+                (b"revno-outofbounds", e.revno, e.minimum, e.maximum)
+            )
         if found_flag:
-            return SuccessfulSmartServerResponse((b'ok', result))
+            return SuccessfulSmartServerResponse((b"ok", result))
         else:
             earliest_revno, earliest_revid = result
             return SuccessfulSmartServerResponse(
-                (b'history-incomplete', earliest_revno, earliest_revid))
+                (b"history-incomplete", earliest_revno, earliest_revid)
+            )
 
 
 class SmartServerRepositoryGetSerializerFormat(SmartServerRepositoryRequest):
-
     def do_repository_request(self, repository):
         """Return the serializer format for this repository.
 
@@ -353,11 +360,10 @@ class SmartServerRepositoryGetSerializerFormat(SmartServerRepositoryRequest):
         :return: A smart server response (b'ok', FORMAT)
         """
         serializer = repository.get_serializer_format()
-        return SuccessfulSmartServerResponse((b'ok', serializer))
+        return SuccessfulSmartServerResponse((b"ok", serializer))
 
 
 class SmartServerRequestHasRevision(SmartServerRepositoryRequest):
-
     def do_repository_request(self, repository, revision_id):
         """Return ok if a specific revision is in the repository at path.
 
@@ -367,14 +373,12 @@ class SmartServerRequestHasRevision(SmartServerRepositoryRequest):
             present. ('no', ) if it is missing.
         """
         if repository.has_revision(revision_id):
-            return SuccessfulSmartServerResponse((b'yes', ))
+            return SuccessfulSmartServerResponse((b"yes",))
         else:
-            return SuccessfulSmartServerResponse((b'no', ))
+            return SuccessfulSmartServerResponse((b"no",))
 
 
-class SmartServerRequestHasSignatureForRevisionId(
-        SmartServerRepositoryRequest):
-
+class SmartServerRequestHasSignatureForRevisionId(SmartServerRepositoryRequest):
     def do_repository_request(self, repository, revision_id):
         """Return ok if a signature is present for a revision.
 
@@ -388,16 +392,14 @@ class SmartServerRequestHasSignatureForRevisionId(
         """
         try:
             if repository.has_signature_for_revision_id(revision_id):
-                return SuccessfulSmartServerResponse((b'yes', ))
+                return SuccessfulSmartServerResponse((b"yes",))
             else:
-                return SuccessfulSmartServerResponse((b'no', ))
+                return SuccessfulSmartServerResponse((b"no",))
         except errors.NoSuchRevision:
-            return FailedSmartServerResponse(
-                (b'nosuchrevision', revision_id))
+            return FailedSmartServerResponse((b"nosuchrevision", revision_id))
 
 
 class SmartServerRepositoryGatherStats(SmartServerRepositoryRequest):
-
     def do_repository_request(self, repository, revid, committers):
         """Return the result of repository.gather_stats().
 
@@ -413,37 +415,35 @@ class SmartServerRepositoryGatherStats(SmartServerRepositoryRequest):
 
               But containing only fields returned by the gather_stats() call
         """
-        if revid == b'':
+        if revid == b"":
             decoded_revision_id = None
         else:
             decoded_revision_id = revid
-        if committers == b'yes':
+        if committers == b"yes":
             decoded_committers = True
         else:
             decoded_committers = None
         try:
-            stats = repository.gather_stats(decoded_revision_id,
-                                            decoded_committers)
+            stats = repository.gather_stats(decoded_revision_id, decoded_committers)
         except errors.NoSuchRevision:
-            return FailedSmartServerResponse((b'nosuchrevision', revid))
+            return FailedSmartServerResponse((b"nosuchrevision", revid))
 
-        body = b''
-        if 'committers' in stats:
-            body += b'committers: %d\n' % stats['committers']
-        if 'firstrev' in stats:
-            body += b'firstrev: %.3f %d\n' % stats['firstrev']
-        if 'latestrev' in stats:
-            body += b'latestrev: %.3f %d\n' % stats['latestrev']
-        if 'revisions' in stats:
-            body += b'revisions: %d\n' % stats['revisions']
-        if 'size' in stats:
-            body += b'size: %d\n' % stats['size']
+        body = b""
+        if "committers" in stats:
+            body += b"committers: %d\n" % stats["committers"]
+        if "firstrev" in stats:
+            body += b"firstrev: %.3f %d\n" % stats["firstrev"]
+        if "latestrev" in stats:
+            body += b"latestrev: %.3f %d\n" % stats["latestrev"]
+        if "revisions" in stats:
+            body += b"revisions: %d\n" % stats["revisions"]
+        if "size" in stats:
+            body += b"size: %d\n" % stats["size"]
 
-        return SuccessfulSmartServerResponse((b'ok', ), body)
+        return SuccessfulSmartServerResponse((b"ok",), body)
 
 
-class SmartServerRepositoryGetRevisionSignatureText(
-        SmartServerRepositoryRequest):
+class SmartServerRepositoryGetRevisionSignatureText(SmartServerRepositoryRequest):
     """Return the signature text of a revision.
 
     New in 2.5.
@@ -459,13 +459,11 @@ class SmartServerRepositoryGetRevisionSignatureText(
         try:
             text = repository.get_signature_text(revision_id)
         except errors.NoSuchRevision as err:
-            return FailedSmartServerResponse(
-                (b'nosuchrevision', err.revision))
-        return SuccessfulSmartServerResponse((b'ok', ), text)
+            return FailedSmartServerResponse((b"nosuchrevision", err.revision))
+        return SuccessfulSmartServerResponse((b"ok",), text)
 
 
 class SmartServerRepositoryIsShared(SmartServerRepositoryRequest):
-
     def do_repository_request(self, repository):
         """Return the result of repository.is_shared().
 
@@ -474,13 +472,12 @@ class SmartServerRepositoryIsShared(SmartServerRepositoryRequest):
             shared, and ('no', ) if it is not.
         """
         if repository.is_shared():
-            return SuccessfulSmartServerResponse((b'yes', ))
+            return SuccessfulSmartServerResponse((b"yes",))
         else:
-            return SuccessfulSmartServerResponse((b'no', ))
+            return SuccessfulSmartServerResponse((b"no",))
 
 
 class SmartServerRepositoryMakeWorkingTrees(SmartServerRepositoryRequest):
-
     def do_repository_request(self, repository):
         """Return the result of repository.make_working_trees().
 
@@ -491,36 +488,33 @@ class SmartServerRepositoryMakeWorkingTrees(SmartServerRepositoryRequest):
             working trees, and ('no', ) if it is not.
         """
         if repository.make_working_trees():
-            return SuccessfulSmartServerResponse((b'yes', ))
+            return SuccessfulSmartServerResponse((b"yes",))
         else:
-            return SuccessfulSmartServerResponse((b'no', ))
+            return SuccessfulSmartServerResponse((b"no",))
 
 
 class SmartServerRepositoryLockWrite(SmartServerRepositoryRequest):
-
-    def do_repository_request(self, repository, token=b''):
+    def do_repository_request(self, repository, token=b""):
         # XXX: this probably should not have a token.
-        if token == b'':
+        if token == b"":
             token = None
         try:
             token = repository.lock_write(token=token).repository_token
         except errors.LockContention as e:
-            return FailedSmartServerResponse((b'LockContention',))
+            return FailedSmartServerResponse((b"LockContention",))
         except errors.UnlockableTransport:
-            return FailedSmartServerResponse((b'UnlockableTransport',))
+            return FailedSmartServerResponse((b"UnlockableTransport",))
         except errors.LockFailed as e:
-            return FailedSmartServerResponse((b'LockFailed',
-                                              str(e.lock), str(e.why)))
+            return FailedSmartServerResponse((b"LockFailed", str(e.lock), str(e.why)))
         if token is not None:
             repository.leave_lock_in_place()
         repository.unlock()
         if token is None:
-            token = b''
-        return SuccessfulSmartServerResponse((b'ok', token))
+            token = b""
+        return SuccessfulSmartServerResponse((b"ok", token))
 
 
 class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
-
     def do_repository_request(self, repository, to_network_name):
         """Get a stream for inserting into a to_format repository.
 
@@ -538,7 +532,8 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
         self._to_format = network_format_registry.get(to_network_name)
         if self._should_fake_unknown():
             return FailedSmartServerResponse(
-                (b'UnknownMethod', b'Repository.get_stream'))
+                (b"UnknownMethod", b"Repository.get_stream")
+            )
         return None  # Signal that we want a body.
 
     def _should_fake_unknown(self):
@@ -562,9 +557,11 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
         if not from_format.supports_chks:
             # Source not CHK: that's ok
             return False
-        if (to_format.supports_chks
+        if (
+            to_format.supports_chks
             and from_format.repository_class is to_format.repository_class
-                and from_format._serializer == to_format._serializer):
+            and from_format._serializer == to_format._serializer
+        ):
             # Source is CHK, but target matches: that's ok
             # (e.g. 2a->2a, or CHK2->2a)
             return False
@@ -576,8 +573,9 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
         repository = self._repository
         repository.lock_read()
         try:
-            search_result, error = self.recreate_search(repository, body_bytes,
-                                                        discard_excess=True)
+            search_result, error = self.recreate_search(
+                repository, body_bytes, discard_excess=True
+            )
             if error is not None:
                 repository.unlock()
                 return error
@@ -589,8 +587,9 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
                 repository.unlock()
             finally:
                 raise
-        return SuccessfulSmartServerResponse((b'ok',),
-                                             body_stream=self.body_stream(stream, repository))
+        return SuccessfulSmartServerResponse(
+            (b"ok",), body_stream=self.body_stream(stream, repository)
+        )
 
     def body_stream(self, stream, repository):
         byte_stream = _stream_to_byte_stream(stream, repository._format)
@@ -600,7 +599,7 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
             # This shouldn't be able to happen, but as we don't buffer
             # everything it can in theory happen.
             repository.unlock()
-            yield FailedSmartServerResponse((b'NoSuchRevision', e.revision_id))
+            yield FailedSmartServerResponse((b"NoSuchRevision", e.revision_id))
         else:
             repository.unlock()
 
@@ -623,12 +622,12 @@ def _stream_to_byte_stream(stream, src_format):
     """Convert a record stream to a self delimited byte stream."""
     pack_writer = pack.ContainerSerialiser()
     yield pack_writer.begin()
-    yield pack_writer.bytes_record(src_format.network_name(), b'')
+    yield pack_writer.bytes_record(src_format.network_name(), b"")
     for substream_type, substream in stream:
         for record in substream:
-            if record.storage_kind in ('chunked', 'fulltext'):
+            if record.storage_kind in ("chunked", "fulltext"):
                 serialised = record_to_fulltext_bytes(record)
-            elif record.storage_kind == 'absent':
+            elif record.storage_kind == "absent":
                 raise ValueError("Absent factory for {}".format(record.key))
             else:
                 serialised = record.get_bytes_as(record.storage_kind)
@@ -636,7 +635,9 @@ def _stream_to_byte_stream(stream, src_format):
                 # Some streams embed the whole stream into the wire
                 # representation of the first record, which means that
                 # later records have no wire representation: we skip them.
-                yield pack_writer.bytes_record(serialised, [(substream_type.encode('ascii'),)])
+                yield pack_writer.bytes_record(
+                    serialised, [(substream_type.encode("ascii"),)]
+                )
     yield pack_writer.end()
 
 
@@ -690,7 +691,7 @@ class _ByteStreamDecoder:
             self.first_bytes = None
         for record in self.iter_pack_records:
             record_names, record_bytes = record
-            record_name, = record_names
+            (record_name,) = record_names
             substream_type = record_name[0]
             if substream_type != self.current_type:
                 # end of a substream, seed the next substream.
@@ -701,11 +702,12 @@ class _ByteStreamDecoder:
 
     def record_stream(self):
         """Yield substream_type, substream from the byte stream."""
+
         def wrap_and_count(pb, rc, substream):
             """Yield records from stream while showing progress."""
             counter = 0
             if rc:
-                if self.current_type != 'revisions' and self.key_count != 0:
+                if self.current_type != "revisions" and self.key_count != 0:
                     # As we know the number of revisions now (in self.key_count)
                     # we can setup and use record_counter (rc).
                     if not rc.is_initialized():
@@ -714,9 +716,9 @@ class _ByteStreamDecoder:
                 if rc:
                     if rc.is_initialized() and counter == rc.STEP:
                         rc.increment(counter)
-                        pb.update('Estimate', rc.current, rc.max)
+                        pb.update("Estimate", rc.current, rc.max)
                         counter = 0
-                    if self.current_type == 'revisions':
+                    if self.current_type == "revisions":
                         # Total records is proportional to number of revs
                         # to fetch. With remote, we used self.key_count to
                         # track the number of revs. Once we have the revs
@@ -724,7 +726,7 @@ class _ByteStreamDecoder:
                         # from 'Estimating..' to 'Estimate' above.
                         self.key_count += 1
                         if counter == rc.STEP:
-                            pb.update('Estimating..', self.key_count)
+                            pb.update("Estimating..", self.key_count)
                             counter = 0
                 counter += 1
                 yield record
@@ -735,15 +737,17 @@ class _ByteStreamDecoder:
             try:
                 # Make and consume sub generators, one per substream type:
                 while self.first_bytes is not None:
-                    substream = NetworkRecordStream(
-                        self.iter_substream_bytes())
+                    substream = NetworkRecordStream(self.iter_substream_bytes())
                     # after substream is fully consumed, self.current_type is set
                     # to the next type, and self.first_bytes is set to the matching
                     # bytes.
-                    yield self.current_type.decode('ascii'), wrap_and_count(pb, rc, substream)
+                    yield (
+                        self.current_type.decode("ascii"),
+                        wrap_and_count(pb, rc, substream),
+                    )
             finally:
                 if rc:
-                    pb.update('Done', rc.max, rc.max)
+                    pb.update("Done", rc.max, rc.max)
 
     def seed_state(self):
         """Prepare the _ByteStreamDecoder to decode from the pack stream."""
@@ -770,15 +774,14 @@ def _byte_stream_to_stream(byte_stream, record_counter=None):
 
 
 class SmartServerRepositoryUnlock(SmartServerRepositoryRequest):
-
     def do_repository_request(self, repository, token):
         try:
             repository.lock_write(token=token)
         except errors.TokenMismatch as e:
-            return FailedSmartServerResponse((b'TokenMismatch',))
+            return FailedSmartServerResponse((b"TokenMismatch",))
         repository.dont_leave_lock_in_place()
         repository.unlock()
-        return SuccessfulSmartServerResponse((b'ok',))
+        return SuccessfulSmartServerResponse((b"ok",))
 
 
 class SmartServerRepositoryGetPhysicalLockStatus(SmartServerRepositoryRequest):
@@ -789,20 +792,19 @@ class SmartServerRepositoryGetPhysicalLockStatus(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository):
         if repository.get_physical_lock_status():
-            return SuccessfulSmartServerResponse((b'yes', ))
+            return SuccessfulSmartServerResponse((b"yes",))
         else:
-            return SuccessfulSmartServerResponse((b'no', ))
+            return SuccessfulSmartServerResponse((b"no",))
 
 
 class SmartServerRepositorySetMakeWorkingTrees(SmartServerRepositoryRequest):
-
     def do_repository_request(self, repository, str_bool_new_value):
-        if str_bool_new_value == b'True':
+        if str_bool_new_value == b"True":
             new_value = True
         else:
             new_value = False
         repository.set_make_working_trees(new_value)
-        return SuccessfulSmartServerResponse((b'ok',))
+        return SuccessfulSmartServerResponse((b"ok",))
 
 
 class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
@@ -820,13 +822,13 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
     def do_repository_request(self, repository, compression):
         tmp_dirname, tmp_repo = self._copy_to_tempdir(repository)
         try:
-            controldir_name = tmp_dirname + '/.bzr'
+            controldir_name = tmp_dirname + "/.bzr"
             return self._tarfile_response(controldir_name, compression)
         finally:
             osutils.rmtree(tmp_dirname)
 
     def _copy_to_tempdir(self, from_repo):
-        tmp_dirname = tempfile.mkdtemp(prefix='tmpbzrclone')
+        tmp_dirname = tempfile.mkdtemp(prefix="tmpbzrclone")
         tmp_bzrdir = from_repo.controldir._format.initialize(tmp_dirname)
         tmp_repo = from_repo._format.initialize(tmp_bzrdir)
         from_repo.copy_content_into(tmp_repo)
@@ -837,15 +839,17 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
             self._tarball_of_dir(tmp_dirname, compression, temp.file)
             # all finished; write the tempfile out to the network
             temp.seek(0)
-            return SuccessfulSmartServerResponse((b'ok',), temp.read())
+            return SuccessfulSmartServerResponse((b"ok",), temp.read())
             # FIXME: Don't read the whole thing into memory here; rather stream
             # it out from the file onto the network. mbp 20070411
 
     def _tarball_of_dir(self, dirname, compression, ofile):
         import tarfile
+
         filename = os.path.basename(ofile.name)
-        with tarfile.open(fileobj=ofile, name=filename,
-                          mode='w|' + compression) as tarball:
+        with tarfile.open(
+            fileobj=ofile, name=filename, mode="w|" + compression
+        ) as tarball:
             # The tarball module only accepts ascii names, and (i guess)
             # packs them with their 8bit names.  We know all the files
             # within the repository have ASCII names so the should be safe
@@ -853,9 +857,9 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
             dirname = dirname.encode(sys.getfilesystemencoding())
             # python's tarball module includes the whole path by default so
             # override it
-            if not dirname.endswith('.bzr'):
+            if not dirname.endswith(".bzr"):
                 raise ValueError(dirname)
-            tarball.add(dirname, '.bzr')  # recursive by default
+            tarball.add(dirname, ".bzr")  # recursive by default
 
 
 class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
@@ -874,8 +878,7 @@ class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
         self.do_insert_stream_request(repository, resume_tokens)
 
     def do_insert_stream_request(self, repository, resume_tokens):
-        tokens = [token.decode('utf-8')
-                  for token in resume_tokens.split(b' ') if token]
+        tokens = [token.decode("utf-8") for token in resume_tokens.split(b" ") if token]
         self.tokens = tokens
         self.repository = repository
         self.queue = queue.Queue()
@@ -887,10 +890,10 @@ class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
 
     def _inserter_thread(self):
         try:
-            src_format, stream = _byte_stream_to_stream(
-                self.blocking_byte_stream())
+            src_format, stream = _byte_stream_to_stream(self.blocking_byte_stream())
             self.insert_result = self.repository._get_sink().insert_stream(
-                stream, src_format, self.tokens)
+                stream, src_format, self.tokens
+            )
             self.insert_ok = True
         except:
             self.insert_exception = sys.exc_info()
@@ -919,14 +922,16 @@ class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
             # bzip needed? missing keys should typically be a small set.
             # Should this be a streaming body response ?
             missing_keys = sorted(
-                [(entry[0].encode('utf-8'),) + entry[1:] for entry in missing_keys])
-            bytes = bencode.bencode((
-                [token.encode('utf-8') for token in write_group_tokens], missing_keys))
+                [(entry[0].encode("utf-8"),) + entry[1:] for entry in missing_keys]
+            )
+            bytes = bencode.bencode(
+                ([token.encode("utf-8") for token in write_group_tokens], missing_keys)
+            )
             self.repository.unlock()
-            return SuccessfulSmartServerResponse((b'missing-basis', bytes))
+            return SuccessfulSmartServerResponse((b"missing-basis", bytes))
         else:
             self.repository.unlock()
-            return SuccessfulSmartServerResponse((b'ok', ))
+            return SuccessfulSmartServerResponse((b"ok",))
 
 
 class SmartServerRepositoryInsertStream_1_19(SmartServerRepositoryInsertStreamLocked):
@@ -943,7 +948,8 @@ class SmartServerRepositoryInsertStream_1_19(SmartServerRepositoryInsertStreamLo
     def do_repository_request(self, repository, resume_tokens, lock_token=None):
         """StreamSink.insert_stream for a remote repository."""
         SmartServerRepositoryInsertStreamLocked.do_repository_request(
-            self, repository, resume_tokens, lock_token)
+            self, repository, resume_tokens, lock_token
+        )
 
 
 class SmartServerRepositoryInsertStream(SmartServerRepositoryInsertStreamLocked):
@@ -968,8 +974,9 @@ class SmartServerRepositoryAddSignatureText(SmartServerRepositoryRequest):
     New in 2.5.
     """
 
-    def do_repository_request(self, repository, lock_token, revision_id,
-                              *write_group_tokens):
+    def do_repository_request(
+        self, repository, lock_token, revision_id, *write_group_tokens
+    ):
         """Add a revision signature text.
 
         :param repository: Repository to operate on
@@ -979,8 +986,9 @@ class SmartServerRepositoryAddSignatureText(SmartServerRepositoryRequest):
         """
         self._lock_token = lock_token
         self._revision_id = revision_id
-        self._write_group_tokens = [token.decode(
-            'utf-8') for token in write_group_tokens]
+        self._write_group_tokens = [
+            token.decode("utf-8") for token in write_group_tokens
+        ]
         return None
 
     def do_body(self, body_bytes):
@@ -993,12 +1001,13 @@ class SmartServerRepositoryAddSignatureText(SmartServerRepositoryRequest):
         with self._repository.lock_write(token=self._lock_token):
             self._repository.resume_write_group(self._write_group_tokens)
             try:
-                self._repository.add_signature_text(self._revision_id,
-                                                    body_bytes)
+                self._repository.add_signature_text(self._revision_id, body_bytes)
             finally:
                 new_write_group_tokens = self._repository.suspend_write_group()
         return SuccessfulSmartServerResponse(
-            (b'ok', ) + tuple([token.encode('utf-8') for token in new_write_group_tokens]))
+            (b"ok",)
+            + tuple([token.encode("utf-8") for token in new_write_group_tokens])
+        )
 
 
 class SmartServerRepositoryStartWriteGroup(SmartServerRepositoryRequest):
@@ -1014,8 +1023,8 @@ class SmartServerRepositoryStartWriteGroup(SmartServerRepositoryRequest):
             try:
                 tokens = repository.suspend_write_group()
             except errors.UnsuspendableWriteGroup:
-                return FailedSmartServerResponse((b'UnsuspendableWriteGroup',))
-        return SuccessfulSmartServerResponse((b'ok', tokens))
+                return FailedSmartServerResponse((b"UnsuspendableWriteGroup",))
+        return SuccessfulSmartServerResponse((b"ok", tokens))
 
 
 class SmartServerRepositoryCommitWriteGroup(SmartServerRepositoryRequest):
@@ -1024,17 +1033,21 @@ class SmartServerRepositoryCommitWriteGroup(SmartServerRepositoryRequest):
     New in 2.5.
     """
 
-    def do_repository_request(self, repository, lock_token,
-                              write_group_tokens):
+    def do_repository_request(self, repository, lock_token, write_group_tokens):
         """Commit a write group."""
         with repository.lock_write(token=lock_token):
             try:
                 repository.resume_write_group(
-                    [token.decode('utf-8') for token in write_group_tokens])
+                    [token.decode("utf-8") for token in write_group_tokens]
+                )
             except errors.UnresumableWriteGroup as e:
                 return FailedSmartServerResponse(
-                    (b'UnresumableWriteGroup', [token.encode('utf-8') for token
-                                                in e.write_groups], e.reason.encode('utf-8')))
+                    (
+                        b"UnresumableWriteGroup",
+                        [token.encode("utf-8") for token in e.write_groups],
+                        e.reason.encode("utf-8"),
+                    )
+                )
             try:
                 repository.commit_write_group()
             except:
@@ -1042,7 +1055,7 @@ class SmartServerRepositoryCommitWriteGroup(SmartServerRepositoryRequest):
                 # FIXME JRV 2011-11-19: What if the write_group_tokens
                 # have changed?
                 raise
-        return SuccessfulSmartServerResponse((b'ok', ))
+        return SuccessfulSmartServerResponse((b"ok",))
 
 
 class SmartServerRepositoryAbortWriteGroup(SmartServerRepositoryRequest):
@@ -1056,14 +1069,18 @@ class SmartServerRepositoryAbortWriteGroup(SmartServerRepositoryRequest):
         with repository.lock_write(token=lock_token):
             try:
                 repository.resume_write_group(
-                    [token.decode('utf-8') for token in write_group_tokens])
+                    [token.decode("utf-8") for token in write_group_tokens]
+                )
             except errors.UnresumableWriteGroup as e:
                 return FailedSmartServerResponse(
-                    (b'UnresumableWriteGroup',
-                        [token.encode('utf-8') for token in e.write_groups],
-                        e.reason.encode('utf-8')))
+                    (
+                        b"UnresumableWriteGroup",
+                        [token.encode("utf-8") for token in e.write_groups],
+                        e.reason.encode("utf-8"),
+                    )
+                )
                 repository.abort_write_group()
-        return SuccessfulSmartServerResponse((b'ok', ))
+        return SuccessfulSmartServerResponse((b"ok",))
 
 
 class SmartServerRepositoryCheckWriteGroup(SmartServerRepositoryRequest):
@@ -1077,15 +1094,19 @@ class SmartServerRepositoryCheckWriteGroup(SmartServerRepositoryRequest):
         with repository.lock_write(token=lock_token):
             try:
                 repository.resume_write_group(
-                    [token.decode('utf-8') for token in write_group_tokens])
+                    [token.decode("utf-8") for token in write_group_tokens]
+                )
             except errors.UnresumableWriteGroup as e:
                 return FailedSmartServerResponse(
-                    (b'UnresumableWriteGroup',
-                        [token.encode('utf-8') for token in e.write_groups],
-                        e.reason.encode('utf-8')))
+                    (
+                        b"UnresumableWriteGroup",
+                        [token.encode("utf-8") for token in e.write_groups],
+                        e.reason.encode("utf-8"),
+                    )
+                )
             else:
                 repository.suspend_write_group()
-        return SuccessfulSmartServerResponse((b'ok', ))
+        return SuccessfulSmartServerResponse((b"ok",))
 
 
 class SmartServerRepositoryAllRevisionIds(SmartServerRepositoryRequest):
@@ -1096,7 +1117,7 @@ class SmartServerRepositoryAllRevisionIds(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository):
         revids = repository.all_revision_ids()
-        return SuccessfulSmartServerResponse((b"ok", ), b"\n".join(revids))
+        return SuccessfulSmartServerResponse((b"ok",), b"\n".join(revids))
 
 
 class SmartServerRepositoryReconcile(SmartServerRepositoryRequest):
@@ -1109,8 +1130,7 @@ class SmartServerRepositoryReconcile(SmartServerRepositoryRequest):
         try:
             repository.lock_write(token=lock_token)
         except errors.TokenLockingNotSupported as e:
-            return FailedSmartServerResponse(
-                (b'TokenLockingNotSupported', ))
+            return FailedSmartServerResponse((b"TokenLockingNotSupported",))
         try:
             reconciler = repository.reconcile()
         finally:
@@ -1118,8 +1138,8 @@ class SmartServerRepositoryReconcile(SmartServerRepositoryRequest):
         body = [
             b"garbage_inventories: %d\n" % reconciler.garbage_inventories,
             b"inconsistent_parents: %d\n" % reconciler.inconsistent_parents,
-            ]
-        return SuccessfulSmartServerResponse((b'ok', ), b"".join(body))
+        ]
+        return SuccessfulSmartServerResponse((b"ok",), b"".join(body))
 
 
 class SmartServerRepositoryPack(SmartServerRepositoryRequest):
@@ -1131,7 +1151,7 @@ class SmartServerRepositoryPack(SmartServerRepositoryRequest):
     def do_repository_request(self, repository, lock_token, clean_obsolete_packs):
         self._repository = repository
         self._lock_token = lock_token
-        if clean_obsolete_packs == b'True':
+        if clean_obsolete_packs == b"True":
             self._clean_obsolete_packs = True
         else:
             self._clean_obsolete_packs = False
@@ -1144,7 +1164,9 @@ class SmartServerRepositoryPack(SmartServerRepositoryRequest):
             hint = body_bytes.splitlines()
         with self._repository.lock_write(token=self._lock_token):
             self._repository.pack(hint, self._clean_obsolete_packs)
-        return SuccessfulSmartServerResponse((b"ok", ), )
+        return SuccessfulSmartServerResponse(
+            (b"ok",),
+        )
 
 
 class SmartServerRepositoryIterFilesBytes(SmartServerRepositoryRequest):
@@ -1172,17 +1194,21 @@ class SmartServerRepositoryIterFilesBytes(SmartServerRepositoryRequest):
             text_keys = {}
             for i, key in enumerate(desired_files):
                 text_keys[key] = i
-            for record in repository.texts.get_record_stream(text_keys,
-                                                             'unordered', True):
+            for record in repository.texts.get_record_stream(
+                text_keys, "unordered", True
+            ):
                 identifier = text_keys[record.key]
-                if record.storage_kind == 'absent':
-                    yield b"absent\0%s\0%s\0%d\n" % (record.key[0],
-                                                     record.key[1], identifier)
+                if record.storage_kind == "absent":
+                    yield b"absent\0%s\0%s\0%d\n" % (
+                        record.key[0],
+                        record.key[1],
+                        identifier,
+                    )
                     # FIXME: Way to abort early?
                     continue
                 yield b"ok\0%d\n" % identifier
                 compressor = zlib.compressobj()
-                for bytes in record.iter_bytes_as('chunked'):
+                for bytes in record.iter_bytes_as("chunked"):
                     data = compressor.compress(bytes)
                     if data:
                         yield data
@@ -1191,10 +1217,10 @@ class SmartServerRepositoryIterFilesBytes(SmartServerRepositoryRequest):
                     yield data
 
     def do_body(self, body_bytes):
-        desired_files = [
-            tuple(l.split(b"\0")) for l in body_bytes.splitlines()]
-        return SuccessfulSmartServerResponse((b'ok', ),
-                                             body_stream=self.body_stream(self._repository, desired_files))
+        desired_files = [tuple(l.split(b"\0")) for l in body_bytes.splitlines()]
+        return SuccessfulSmartServerResponse(
+            (b"ok",), body_stream=self.body_stream(self._repository, desired_files)
+        )
 
     def do_repository_request(self, repository):
         # Signal that we want a body
@@ -1222,16 +1248,18 @@ class SmartServerRepositoryIterRevisions(SmartServerRepositoryRequest):
     def do_body(self, body_bytes):
         revision_ids = body_bytes.split(b"\n")
         return SuccessfulSmartServerResponse(
-            (b'ok', self._repository.get_serializer_format()),
-            body_stream=self.body_stream(self._repository, revision_ids))
+            (b"ok", self._repository.get_serializer_format()),
+            body_stream=self.body_stream(self._repository, revision_ids),
+        )
 
     def body_stream(self, repository, revision_ids):
         with self._repository.lock_read():
             for record in repository.revisions.get_record_stream(
-                    [(revid,) for revid in revision_ids], 'unordered', True):
-                if record.storage_kind == 'absent':
+                [(revid,) for revid in revision_ids], "unordered", True
+            ):
+                if record.storage_kind == "absent":
                     continue
-                yield zlib.compress(record.get_bytes_as('fulltext'))
+                yield zlib.compress(record.get_bytes_as("fulltext"))
 
 
 class SmartServerRepositoryGetInventories(SmartServerRepositoryRequest):
@@ -1249,47 +1277,51 @@ class SmartServerRepositoryGetInventories(SmartServerRepositoryRequest):
     """
 
     def _inventory_delta_stream(self, repository, ordering, revids):
-        prev_inv = _mod_inventory.Inventory(root_id=None,
-                                            revision_id=_mod_revision.NULL_REVISION)
+        prev_inv = _mod_inventory.Inventory(
+            root_id=None, revision_id=_mod_revision.NULL_REVISION
+        )
         serializer = inventory_delta.InventoryDeltaSerializer(
-            repository.supports_rich_root(),
-            repository._format.supports_tree_reference)
+            repository.supports_rich_root(), repository._format.supports_tree_reference
+        )
         with repository.lock_read():
             for inv, revid in repository._iter_inventories(revids, ordering):
                 if inv is None:
                     continue
                 inv_delta = inv._make_delta(prev_inv)
                 lines = serializer.delta_to_lines(
-                    prev_inv.revision_id, inv.revision_id, inv_delta)
+                    prev_inv.revision_id, inv.revision_id, inv_delta
+                )
                 yield ChunkedContentFactory(
-                    inv.revision_id, None, None, lines,
-                    chunks_are_lines=True)
+                    inv.revision_id, None, None, lines, chunks_are_lines=True
+                )
                 prev_inv = inv
 
     def body_stream(self, repository, ordering, revids):
-        substream = self._inventory_delta_stream(repository,
-                                                 ordering, revids)
-        return _stream_to_byte_stream([('inventory-deltas', substream)],
-                                      repository._format)
+        substream = self._inventory_delta_stream(repository, ordering, revids)
+        return _stream_to_byte_stream(
+            [("inventory-deltas", substream)], repository._format
+        )
 
     def do_body(self, body_bytes):
-        return SuccessfulSmartServerResponse((b'ok', ),
-                                             body_stream=self.body_stream(self._repository, self._ordering,
-                                                                          body_bytes.splitlines()))
+        return SuccessfulSmartServerResponse(
+            (b"ok",),
+            body_stream=self.body_stream(
+                self._repository, self._ordering, body_bytes.splitlines()
+            ),
+        )
 
     def do_repository_request(self, repository, ordering):
-        ordering = ordering.decode('ascii')
-        if ordering == 'unordered':
+        ordering = ordering.decode("ascii")
+        if ordering == "unordered":
             # inventory deltas for a topologically sorted stream
             # are likely to be smaller
-            ordering = 'topological'
+            ordering = "topological"
         self._ordering = ordering
         # Signal that we want a body
         return None
 
 
 class SmartServerRepositoryGetStreamForMissingKeys(SmartServerRepositoryRequest):
-
     def do_repository_request(self, repository, to_network_name):
         """Get a stream for missing keys.
 
@@ -1301,7 +1333,8 @@ class SmartServerRepositoryGetStreamForMissingKeys(SmartServerRepositoryRequest)
             self._to_format = network_format_registry.get(to_network_name)
         except KeyError:
             return FailedSmartServerResponse(
-                (b'UnknownFormat', b'repository', to_network_name))
+                (b"UnknownFormat", b"repository", to_network_name)
+            )
         return None  # Signal that we want a body.
 
     def do_body(self, body_bytes):
@@ -1310,9 +1343,9 @@ class SmartServerRepositoryGetStreamForMissingKeys(SmartServerRepositoryRequest)
         try:
             source = repository._get_source(self._to_format)
             keys = []
-            for entry in body_bytes.split(b'\n'):
-                (kind, revid) = entry.split(b'\t')
-                keys.append((kind.decode('utf-8'), revid))
+            for entry in body_bytes.split(b"\n"):
+                (kind, revid) = entry.split(b"\t")
+                keys.append((kind.decode("utf-8"), revid))
             stream = source.get_stream_for_missing_keys(keys)
         except Exception:
             try:
@@ -1320,8 +1353,9 @@ class SmartServerRepositoryGetStreamForMissingKeys(SmartServerRepositoryRequest)
                 repository.unlock()
             finally:
                 raise
-        return SuccessfulSmartServerResponse((b'ok',),
-                                             body_stream=self.body_stream(stream, repository))
+        return SuccessfulSmartServerResponse(
+            (b"ok",), body_stream=self.body_stream(stream, repository)
+        )
 
     def body_stream(self, stream, repository):
         byte_stream = _stream_to_byte_stream(stream, repository._format)
@@ -1331,15 +1365,15 @@ class SmartServerRepositoryGetStreamForMissingKeys(SmartServerRepositoryRequest)
             # This shouldn't be able to happen, but as we don't buffer
             # everything it can in theory happen.
             repository.unlock()
-            yield FailedSmartServerResponse((b'NoSuchRevision', e.revision_id))
+            yield FailedSmartServerResponse((b"NoSuchRevision", e.revision_id))
         else:
             repository.unlock()
 
 
 class SmartServerRepositoryRevisionArchive(SmartServerRepositoryRequest):
-
-    def do_repository_request(self, repository, revision_id, format, name,
-                              root, subdir=None, force_mtime=None):
+    def do_repository_request(
+        self, repository, revision_id, format, name, root, subdir=None, force_mtime=None
+    ):
         """Stream an archive file for a specific revision.
         :param repository: The repository to stream from.
         :param revision_id: Revision for which to export the tree
@@ -1350,15 +1384,21 @@ class SmartServerRepositoryRevisionArchive(SmartServerRepositoryRequest):
         """
         tree = repository.revision_tree(revision_id)
         if subdir is not None:
-            subdir = subdir.decode('utf-8')
+            subdir = subdir.decode("utf-8")
         if root is not None:
-            root = root.decode('utf-8')
-        name = name.decode('utf-8')
-        return SuccessfulSmartServerResponse((b'ok',),
-                                             body_stream=self.body_stream(
-            tree, format.decode(
-                'utf-8'), os.path.basename(name), root, subdir,
-            force_mtime))
+            root = root.decode("utf-8")
+        name = name.decode("utf-8")
+        return SuccessfulSmartServerResponse(
+            (b"ok",),
+            body_stream=self.body_stream(
+                tree,
+                format.decode("utf-8"),
+                os.path.basename(name),
+                root,
+                subdir,
+                force_mtime,
+            ),
+        )
 
     def body_stream(self, tree, format, name, root, subdir=None, force_mtime=None):
         with tree.lock_read():
@@ -1366,9 +1406,9 @@ class SmartServerRepositoryRevisionArchive(SmartServerRepositoryRequest):
 
 
 class SmartServerRepositoryAnnotateFileRevision(SmartServerRepositoryRequest):
-
-    def do_repository_request(self, repository, revision_id, tree_path,
-                              file_id=None, default_revision=None):
+    def do_repository_request(
+        self, repository, revision_id, tree_path, file_id=None, default_revision=None
+    ):
         """Stream an archive file for a specific revision.
 
         :param repository: The repository to stream from.
@@ -1379,6 +1419,7 @@ class SmartServerRepositoryAnnotateFileRevision(SmartServerRepositoryRequest):
         """
         tree = repository.revision_tree(revision_id)
         with tree.lock_read():
-            body = bencode.bencode(list(tree.annotate_iter(
-                tree_path.decode('utf-8'), default_revision)))
-            return SuccessfulSmartServerResponse((b'ok',), body=body)
+            body = bencode.bencode(
+                list(tree.annotate_iter(tree_path.decode("utf-8"), default_revision))
+            )
+            return SuccessfulSmartServerResponse((b"ok",), body=body)

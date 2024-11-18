@@ -18,27 +18,26 @@
 
 from breezy import (
     repository,
-    )
+)
 from breezy.tests.per_repository import TestCaseWithRepository
 
 
 class TestRefreshData(TestCaseWithRepository):
-
     def test_refresh_data_unlocked(self):
         # While not interesting, it should not error.
-        repo = self.make_repository('.')
+        repo = self.make_repository(".")
         repo.refresh_data()
 
     def test_refresh_data_read_locked(self):
         # While not interesting, it should not error.
-        repo = self.make_repository('.')
+        repo = self.make_repository(".")
         repo.lock_read()
         self.addCleanup(repo.unlock)
         repo.refresh_data()
 
     def test_refresh_data_write_locked(self):
         # While not interesting, it should not error.
-        repo = self.make_repository('.')
+        repo = self.make_repository(".")
         repo.lock_write()
         self.addCleanup(repo.unlock)
         repo.refresh_data()
@@ -46,7 +45,7 @@ class TestRefreshData(TestCaseWithRepository):
     def test_refresh_data_in_write_group(self):
         # refresh_data may either succeed or raise IsInWriteGroupError during a
         # write group.
-        repo = self.make_repository('.')
+        repo = self.make_repository(".")
         repo.lock_write()
         self.addCleanup(repo.unlock)
         repo.start_write_group()

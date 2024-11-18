@@ -23,7 +23,7 @@ from . import (
     errors,
     osutils,
     ui,
-    )
+)
 from .i18n import gettext
 
 
@@ -54,7 +54,7 @@ class AddAction:
         :param kind: The kind of the object being added.
         """
         if self.should_print:
-            self._to_file.write('adding %s\n' % _quote(path))
+            self._to_file.write("adding %s\n" % _quote(path))
         return None
 
     def skip_file(self, tree, path, kind, stat_value=None):
@@ -78,9 +78,9 @@ class AddWithSkipLargeAction(AddAction):
     _maxSize = None
 
     def skip_file(self, tree, path, kind, stat_value=None):
-        if kind != 'file':
+        if kind != "file":
             return False
-        opt_name = 'add.maximum_file_size'
+        opt_name = "add.maximum_file_size"
         if self._maxSize is None:
             config = tree.get_config_stack()
             self._maxSize = config.get(opt_name)
@@ -89,9 +89,11 @@ class AddWithSkipLargeAction(AddAction):
         else:
             file_size = stat_value.st_size
         if self._maxSize > 0 and file_size > self._maxSize:
-            ui.ui_factory.show_warning(gettext(
-                "skipping {0} (larger than {1} of {2} bytes)").format(
-                path, opt_name, self._maxSize))
+            ui.ui_factory.show_warning(
+                gettext("skipping {0} (larger than {1} of {2} bytes)").format(
+                    path, opt_name, self._maxSize
+                )
+            )
             return True
         return False
 
@@ -100,8 +102,7 @@ class AddFromBaseAction(AddAction):
     """This class will try to extract file ids from another tree."""
 
     def __init__(self, base_tree, base_path, to_file=None, should_print=None):
-        super().__init__(to_file=to_file,
-                                                should_print=should_print)
+        super().__init__(to_file=to_file, should_print=should_print)
         self.base_tree = base_tree
         self.base_path = base_path
 
@@ -111,13 +112,13 @@ class AddFromBaseAction(AddAction):
         file_id, base_path = self._get_base_file_id(path, parent_ie)
         if file_id is not None:
             if self.should_print:
-                self._to_file.write('adding %s w/ file id from %s\n'
-                                    % (path, base_path))
+                self._to_file.write(
+                    "adding %s w/ file id from %s\n" % (path, base_path)
+                )
         else:
             # we aren't doing anything special, so let the default
             # reporter happen
-            file_id = super().__call__(
-                inv, parent_ie, path, kind)
+            file_id = super().__call__(inv, parent_ie, path, kind)
         return file_id
 
     def _get_base_file_id(self, path, parent_ie):

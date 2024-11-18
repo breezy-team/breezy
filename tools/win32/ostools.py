@@ -24,6 +24,7 @@ import os
 import shutil
 import sys
 
+
 def makedir(dirname):
     if not os.path.exists(dirname):
         os.makedirs(dirname)
@@ -32,20 +33,21 @@ def makedir(dirname):
         return 2
     return 0
 
+
 def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
 
     if not argv:
-        argv = ['help']
+        argv = ["help"]
 
     cmd = argv.pop(0)
 
-    if cmd == 'help':
+    if cmd == "help":
         print(__doc__)
         return 0
 
-    if cmd == 'copytodir':
+    if cmd == "copytodir":
         if len(argv) < 2:
             print("Usage:  ostools.py copytodir FILES... DIR")
             return 1
@@ -66,7 +68,7 @@ def main(argv=None):
 
         return 0
 
-    if cmd == 'copytree':
+    if cmd == "copytree":
         if len(argv) < 2:
             print("Usage:  ostools.py copytree FILES... DIR")
             return 1
@@ -92,7 +94,7 @@ def main(argv=None):
 
         return 0
 
-    if cmd == 'copydir':
+    if cmd == "copydir":
         if len(argv) != 2:
             print("Usage:  ostools.py copydir SOURCE TARGET")
             return 1
@@ -100,13 +102,12 @@ def main(argv=None):
         def _copy(src, dest, follow_symlinks=True):
             shutil.copy(src, dest, follow_symlinks=follow_symlinks)
             print("Copied:", src, "=>", dest)
-        shutil.copytree(
-            argv[0], argv[1],
-            copy_function=_copy, dirs_exist_ok=True)
+
+        shutil.copytree(argv[0], argv[1], copy_function=_copy, dirs_exist_ok=True)
 
         return 0
 
-    if cmd == 'remove':
+    if cmd == "remove":
         if len(argv) == 0:
             print("Usage:  ostools.py remove [FILES...] [DIRS...]")
             return 1
@@ -136,7 +137,7 @@ def main(argv=None):
             print(os.path.basename(path))
         return 0
 
-    if cmd == 'makedir':
+    if cmd == "makedir":
         if len(argv) == 0:
             print("Usage:  ostools.py makedir DIR")
             return 1

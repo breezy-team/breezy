@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Export trees to tarballs, zipfiles, etc.
-"""
+"""Export trees to tarballs, zipfiles, etc."""
 
 import os
 import time
@@ -27,11 +26,10 @@ from .. import (
     pyutils,
     registry,
     trace,
-    )
+)
 
 
 class ArchiveFormatInfo:
-
     def __init__(self, extensions):
         self.extensions = extensions
 
@@ -48,16 +46,16 @@ class ArchiveFormatRegistry(registry.Registry):
         return self._extension_map.keys()
 
     def register(self, key, factory, extensions, help=None):
-        """Register an archive format.
-        """
-        registry.Registry.register(self, key, factory, help,
-                                   ArchiveFormatInfo(extensions))
+        """Register an archive format."""
+        registry.Registry.register(
+            self, key, factory, help, ArchiveFormatInfo(extensions)
+        )
         self._register_extensions(key, extensions)
 
-    def register_lazy(self, key, module_name, member_name, extensions,
-                      help=None):
-        registry.Registry.register_lazy(self, key, module_name, member_name,
-                                        help, ArchiveFormatInfo(extensions))
+    def register_lazy(self, key, module_name, member_name, extensions, help=None):
+        registry.Registry.register_lazy(
+            self, key, module_name, member_name, help, ArchiveFormatInfo(extensions)
+        )
         self._register_extensions(key, extensions)
 
     def _register_extensions(self, name, extensions):
@@ -77,29 +75,45 @@ class ArchiveFormatRegistry(registry.Registry):
             return None
 
 
-def create_archive(format, tree, name, root=None, subdir=None,
-                   force_mtime=None, recurse_nested=False) -> Iterator[bytes]:
+def create_archive(
+    format, tree, name, root=None, subdir=None, force_mtime=None, recurse_nested=False
+) -> Iterator[bytes]:
     try:
         archive_fn = format_registry.get(format)
     except KeyError as exc:
         raise errors.NoSuchExportFormat(format) from exc
-    return cast(Iterator[bytes],
-                archive_fn(
-                    tree, name, root=root, subdir=subdir,
-                    force_mtime=force_mtime,
-                    recurse_nested=recurse_nested))
+    return cast(
+        Iterator[bytes],
+        archive_fn(
+            tree,
+            name,
+            root=root,
+            subdir=subdir,
+            force_mtime=force_mtime,
+            recurse_nested=recurse_nested,
+        ),
+    )
 
 
 format_registry = ArchiveFormatRegistry()
-format_registry.register_lazy('tar', 'breezy.archive.tar',
-                              'plain_tar_generator', ['.tar'], )
-format_registry.register_lazy('tgz', 'breezy.archive.tar',
-                              'tgz_generator', ['.tar.gz', '.tgz'])
-format_registry.register_lazy('tbz2', 'breezy.archive.tar',
-                              'tbz_generator', ['.tar.bz2', '.tbz2'])
-format_registry.register_lazy('tlzma', 'breezy.archive.tar',
-                              'tar_lzma_generator', ['.tar.lzma'])
-format_registry.register_lazy('txz', 'breezy.archive.tar',
-                              'tar_xz_generator', ['.tar.xz'])
-format_registry.register_lazy('zip', 'breezy.archive.zip',
-                              'zip_archive_generator', ['.zip'])
+format_registry.register_lazy(
+    "tar",
+    "breezy.archive.tar",
+    "plain_tar_generator",
+    [".tar"],
+)
+format_registry.register_lazy(
+    "tgz", "breezy.archive.tar", "tgz_generator", [".tar.gz", ".tgz"]
+)
+format_registry.register_lazy(
+    "tbz2", "breezy.archive.tar", "tbz_generator", [".tar.bz2", ".tbz2"]
+)
+format_registry.register_lazy(
+    "tlzma", "breezy.archive.tar", "tar_lzma_generator", [".tar.lzma"]
+)
+format_registry.register_lazy(
+    "txz", "breezy.archive.tar", "tar_xz_generator", [".tar.xz"]
+)
+format_registry.register_lazy(
+    "zip", "breezy.archive.zip", "zip_archive_generator", [".zip"]
+)

@@ -34,7 +34,7 @@ class CatchingExceptionThread(threading.Thread):
         # blocked. The main example is a calling thread that want to wait for
         # the called thread to be in a given state before continuing.
         try:
-            sync_event = kwargs.pop('sync_event')
+            sync_event = kwargs.pop("sync_event")
         except KeyError:
             # If the caller didn't pass a specific event, create our own
             sync_event = threading.Event()
@@ -98,7 +98,12 @@ class CatchingExceptionThread(threading.Thread):
         finally:
             self.lock.release()
 
-    def set_ignored_exceptions(self, ignored: Union[Callable[[Exception], bool], None, List[Type[Exception]], Type[Exception]]):
+    def set_ignored_exceptions(
+        self,
+        ignored: Union[
+            Callable[[Exception], bool], None, List[Type[Exception]], Type[Exception]
+        ],
+    ):
         """Declare which exceptions will be ignored.
 
         :param ignored: Can be either:
@@ -141,8 +146,9 @@ class CatchingExceptionThread(threading.Thread):
         if self.exception is not None:
             exc_class, exc_value, exc_tb = self.exception
             self.exception = None  # The exception should be raised only once
-            if (self.ignored_exceptions is None
-                    or not self.ignored_exceptions(exc_value)):
+            if self.ignored_exceptions is None or not self.ignored_exceptions(
+                exc_value
+            ):
                 # Raise non ignored exceptions
                 raise exc_value
 

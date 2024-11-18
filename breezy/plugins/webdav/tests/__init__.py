@@ -14,10 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+
 def load_tests(loader, basic_tests, pattern):
     testmod_names = [
-        'test_webdav',
-        ]
-    basic_tests.addTest(loader.loadTestsFromModuleNames(
-            ["{}.{}".format(__name__, tmn) for tmn in testmod_names]))
+        "test_webdav",
+    ]
+    basic_tests.addTest(
+        loader.loadTestsFromModuleNames(
+            ["{}.{}".format(__name__, tmn) for tmn in testmod_names]
+        )
+    )
     return basic_tests

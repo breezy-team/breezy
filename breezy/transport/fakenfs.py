@@ -28,7 +28,7 @@ from .. import (
     errors,
     transport as _mod_transport,
     urlutils,
-    )
+)
 from . import decorator
 
 
@@ -38,7 +38,7 @@ class FakeNFSTransportDecorator(decorator.TransportDecorator):
     @classmethod
     def _get_url_prefix(self):
         """FakeNFS transports are identified by 'fakenfs+'"""
-        return 'fakenfs+'
+        return "fakenfs+"
 
     def rename(self, rel_from, rel_to):
         """See Transport.rename().
@@ -58,7 +58,7 @@ class FakeNFSTransportDecorator(decorator.TransportDecorator):
                 raise
 
     def delete(self, relpath):
-        if urlutils.basename(relpath).startswith('.nfs'):
+        if urlutils.basename(relpath).startswith(".nfs"):
             raise errors.ResourceBusy(self.abspath(relpath))
         return self._decorated.delete(relpath)
 
@@ -66,4 +66,7 @@ class FakeNFSTransportDecorator(decorator.TransportDecorator):
 def get_test_permutations():
     """Return the permutations to be used in testing."""
     from breezy.tests import test_server
-    return [(FakeNFSTransportDecorator, test_server.FakeNFSServer), ]
+
+    return [
+        (FakeNFSTransportDecorator, test_server.FakeNFSServer),
+    ]

@@ -25,7 +25,7 @@ from breezy import (
     tests,
     transport,
     urlutils,
-    )
+)
 
 
 class TestOutsideWT(tests.ChrootedTestCase):
@@ -35,23 +35,20 @@ class TestOutsideWT(tests.ChrootedTestCase):
         # Watch out for tricky test dir (on OSX /tmp -> /private/tmp)
         tmp_dir = osutils.realpath(tempfile.mkdtemp())
         # We expect a read-to-root attempt to occur.
-        self.permit_url('file:///')
+        self.permit_url("file:///")
         self.addCleanup(osutils.rmtree, tmp_dir)
-        out, err = self.run_bzr('log', retcode=3, working_dir=tmp_dir)
-        self.assertEqual('brz: ERROR: Not a branch: "%s/".\n'
-                         % (tmp_dir,),
-                         err)
+        out, err = self.run_bzr("log", retcode=3, working_dir=tmp_dir)
+        self.assertEqual('brz: ERROR: Not a branch: "%s/".\n' % (tmp_dir,), err)
 
     def test_url_log(self):
-        url = self.get_readonly_url() + 'subdir/'
-        out, err = self.run_bzr(['log', url], retcode=3)
-        self.assertEqual('brz: ERROR: Not a branch:'
-                         ' "%s".\n' % url, err)
+        url = self.get_readonly_url() + "subdir/"
+        out, err = self.run_bzr(["log", url], retcode=3)
+        self.assertEqual("brz: ERROR: Not a branch:" ' "%s".\n' % url, err)
 
     def test_diff_outside_tree(self):
-        tree = self.make_branch_and_tree('branch1')
-        tree.commit('nothing')
-        tree.commit('nothing')
+        tree = self.make_branch_and_tree("branch1")
+        tree.commit("nothing")
+        tree.commit("nothing")
         # A directory we can run commands from which we hope is not contained
         # in a brz tree (though if there is one at or above $TEMPDIR, this is
         # false and may cause test failures).
@@ -59,24 +56,27 @@ class TestOutsideWT(tests.ChrootedTestCase):
         tmp_dir = osutils.realpath(tempfile.mkdtemp())
         self.addCleanup(osutils.rmtree, tmp_dir)
         # We expect a read-to-root attempt to occur.
-        self.permit_url('file:///')
+        self.permit_url("file:///")
         expected_error = 'brz: ERROR: Not a branch: "%s/branch2/".\n' % tmp_dir
         # -r X..Y
-        out, err = self.run_bzr('diff -r revno:2:branch2..revno:1', retcode=3,
-                                working_dir=tmp_dir)
-        self.assertEqual('', out)
+        out, err = self.run_bzr(
+            "diff -r revno:2:branch2..revno:1", retcode=3, working_dir=tmp_dir
+        )
+        self.assertEqual("", out)
         self.assertEqual(expected_error, err)
         # -r X
-        out, err = self.run_bzr('diff -r revno:2:branch2', retcode=3,
-                                working_dir=tmp_dir)
-        self.assertEqual('', out)
+        out, err = self.run_bzr(
+            "diff -r revno:2:branch2", retcode=3, working_dir=tmp_dir
+        )
+        self.assertEqual("", out)
         self.assertEqual(expected_error, err)
         # -r X..
-        out, err = self.run_bzr('diff -r revno:2:branch2..', retcode=3,
-                                working_dir=tmp_dir)
-        self.assertEqual('', out)
+        out, err = self.run_bzr(
+            "diff -r revno:2:branch2..", retcode=3, working_dir=tmp_dir
+        )
+        self.assertEqual("", out)
         self.assertEqual(expected_error, err)
         # no -r at all.
-        out, err = self.run_bzr('diff', retcode=3, working_dir=tmp_dir)
-        self.assertEqual('', out)
+        out, err = self.run_bzr("diff", retcode=3, working_dir=tmp_dir)
+        self.assertEqual("", out)
         self.assertEqual('brz: ERROR: Not a branch: "%s/".\n' % tmp_dir, err)

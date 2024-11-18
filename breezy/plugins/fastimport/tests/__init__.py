@@ -23,7 +23,6 @@ from .. import load_fastimport
 
 
 class _FastimportFeature(Feature):
-
     def _probe(self):
         try:
             load_fastimport()
@@ -32,20 +31,23 @@ class _FastimportFeature(Feature):
         return True
 
     def feature_name(self):
-        return 'fastimport'
+        return "fastimport"
 
 
 FastimportFeature = _FastimportFeature()
 
 
 def test_suite():
-    module_names = [__name__ + '.' + x for x in [
-        'test_commands',
-        'test_exporter',
-        'test_branch_mapper',
-        'test_generic_processor',
-        'test_marks_file',
-        'test_revision_store',
-        ]]
+    module_names = [
+        __name__ + "." + x
+        for x in [
+            "test_commands",
+            "test_exporter",
+            "test_branch_mapper",
+            "test_generic_processor",
+            "test_marks_file",
+            "test_revision_store",
+        ]
+    ]
     loader = TestLoader()
     return loader.loadTestsFromModuleNames(module_names)

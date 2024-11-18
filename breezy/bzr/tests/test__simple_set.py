@@ -20,10 +20,10 @@ import sys
 
 from breezy import (
     tests,
-    )
+)
 from breezy.tests import (
     features,
-    )
+)
 
 try:
     from .. import _simple_set_pyx  # type: ignore
@@ -51,7 +51,6 @@ class _Hashable:
 
 
 class _BadSecondHash(_Hashable):
-
     def __init__(self, the_hash):
         _Hashable.__init__(self, the_hash)
         self._first = True
@@ -61,19 +60,17 @@ class _BadSecondHash(_Hashable):
             self._first = False
             return self.hash
         else:
-            raise ValueError('I can only be hashed once.')
+            raise ValueError("I can only be hashed once.")
 
 
 class _BadCompare(_Hashable):
-
     def __eq__(self, other):
-        raise RuntimeError('I refuse to play nice')
+        raise RuntimeError("I refuse to play nice")
 
     __hash__ = _Hashable.__hash__
 
 
 class _NoImplementCompare(_Hashable):
-
     def __eq__(self, other):
         return NotImplemented
 
@@ -83,11 +80,11 @@ class _NoImplementCompare(_Hashable):
 # Even though this is an extension, we don't permute the tests for a python
 # version. As the plain python version is just a dict or set
 compiled_simpleset_feature = features.ModuleAvailableFeature(
-    'breezy.bzr._simple_set_pyx')
+    "breezy.bzr._simple_set_pyx"
+)
 
 
 class TestSimpleSet(tests.TestCase):
-
     _test_needs_features = [compiled_simpleset_feature]
     module = _simple_set_pyx
 
@@ -116,25 +113,25 @@ class TestSimpleSet(tests.TestCase):
     def test_initial(self):
         obj = self.module.SimpleSet()
         self.assertEqual(0, len(obj))
-        self.assertFillState(0, 0, 0x3ff, obj)
+        self.assertFillState(0, 0, 0x3FF, obj)
 
     def test__lookup(self):
         # These are carefully chosen integers to force hash collisions in the
         # algorithm, based on the initial set size of 1024
         obj = self.module.SimpleSet()
-        self.assertLookup(643, '<null>', obj, _Hashable(643))
-        self.assertLookup(643, '<null>', obj, _Hashable(643 + 1024))
-        self.assertLookup(643, '<null>', obj, _Hashable(643 + 50 * 1024))
+        self.assertLookup(643, "<null>", obj, _Hashable(643))
+        self.assertLookup(643, "<null>", obj, _Hashable(643 + 1024))
+        self.assertLookup(643, "<null>", obj, _Hashable(643 + 50 * 1024))
 
     def test__lookup_collision(self):
         obj = self.module.SimpleSet()
         k1 = _Hashable(643)
         k2 = _Hashable(643 + 1024)
-        self.assertLookup(643, '<null>', obj, k1)
-        self.assertLookup(643, '<null>', obj, k2)
+        self.assertLookup(643, "<null>", obj, k1)
+        self.assertLookup(643, "<null>", obj, k2)
         obj.add(k1)
         self.assertLookup(643, k1, obj, k1)
-        self.assertLookup(644, '<null>', obj, k2)
+        self.assertLookup(644, "<null>", obj, k2)
 
     def test__lookup_after_resize(self):
         obj = self.module.SimpleSet()
@@ -169,38 +166,38 @@ class TestSimpleSet(tests.TestCase):
         k4 = _Hashable(h4)
         k5 = _Hashable(h5)
         k6 = _Hashable(h6)
-        self.assertLookup(643, '<null>', obj, k1)
-        self.assertLookup(643, '<null>', obj, k2)
-        self.assertLookup(643, '<null>', obj, k3)
-        self.assertLookup(643, '<null>', obj, k4)
-        self.assertLookup(644, '<null>', obj, k5)
-        self.assertLookup(644, '<null>', obj, k6)
+        self.assertLookup(643, "<null>", obj, k1)
+        self.assertLookup(643, "<null>", obj, k2)
+        self.assertLookup(643, "<null>", obj, k3)
+        self.assertLookup(643, "<null>", obj, k4)
+        self.assertLookup(644, "<null>", obj, k5)
+        self.assertLookup(644, "<null>", obj, k6)
         obj.add(k1)
         self.assertIn(k1, obj)
         self.assertNotIn(k2, obj)
         self.assertNotIn(k3, obj)
         self.assertNotIn(k4, obj)
         self.assertLookup(643, k1, obj, k1)
-        self.assertLookup(644, '<null>', obj, k2)
-        self.assertLookup(644, '<null>', obj, k3)
-        self.assertLookup(644, '<null>', obj, k4)
-        self.assertLookup(644, '<null>', obj, k5)
-        self.assertLookup(644, '<null>', obj, k6)
+        self.assertLookup(644, "<null>", obj, k2)
+        self.assertLookup(644, "<null>", obj, k3)
+        self.assertLookup(644, "<null>", obj, k4)
+        self.assertLookup(644, "<null>", obj, k5)
+        self.assertLookup(644, "<null>", obj, k6)
         self.assertIs(k1, obj[k1])
         self.assertIs(k2, obj.add(k2))
         self.assertIs(k2, obj[k2])
         self.assertLookup(643, k1, obj, k1)
         self.assertLookup(644, k2, obj, k2)
-        self.assertLookup(646, '<null>', obj, k3)
-        self.assertLookup(646, '<null>', obj, k4)
-        self.assertLookup(645, '<null>', obj, k5)
-        self.assertLookup(645, '<null>', obj, k6)
+        self.assertLookup(646, "<null>", obj, k3)
+        self.assertLookup(646, "<null>", obj, k4)
+        self.assertLookup(645, "<null>", obj, k5)
+        self.assertLookup(645, "<null>", obj, k6)
         self.assertLookup(643, k1, obj, _Hashable(h1))
         self.assertLookup(644, k2, obj, _Hashable(h2))
-        self.assertLookup(646, '<null>', obj, _Hashable(h3))
-        self.assertLookup(646, '<null>', obj, _Hashable(h4))
-        self.assertLookup(645, '<null>', obj, _Hashable(h5))
-        self.assertLookup(645, '<null>', obj, _Hashable(h6))
+        self.assertLookup(646, "<null>", obj, _Hashable(h3))
+        self.assertLookup(646, "<null>", obj, _Hashable(h4))
+        self.assertLookup(645, "<null>", obj, _Hashable(h5))
+        self.assertLookup(645, "<null>", obj, _Hashable(h6))
         obj.add(k3)
         self.assertIs(k3, obj[k3])
         self.assertIn(k1, obj)
@@ -209,10 +206,10 @@ class TestSimpleSet(tests.TestCase):
         self.assertNotIn(k4, obj)
 
         obj.discard(k1)
-        self.assertLookup(643, '<dummy>', obj, k1)
+        self.assertLookup(643, "<dummy>", obj, k1)
         self.assertLookup(644, k2, obj, k2)
         self.assertLookup(646, k3, obj, k3)
-        self.assertLookup(643, '<dummy>', obj, k4)
+        self.assertLookup(643, "<dummy>", obj, k4)
         self.assertNotIn(k1, obj)
         self.assertIn(k2, obj)
         self.assertIn(k3, obj)
@@ -220,26 +217,26 @@ class TestSimpleSet(tests.TestCase):
 
     def test_add(self):
         obj = self.module.SimpleSet()
-        self.assertFillState(0, 0, 0x3ff, obj)
+        self.assertFillState(0, 0, 0x3FF, obj)
         # We use this clumsy notation, because otherwise the refcounts are off.
         # I'm guessing the python compiler sees it is a static tuple, and adds
         # it to the function variables, or somesuch
-        k1 = tuple(['foo'])
+        k1 = tuple(["foo"])
         self.assertRefcount(1, k1)
         self.assertIs(k1, obj.add(k1))
-        self.assertFillState(1, 1, 0x3ff, obj)
+        self.assertFillState(1, 1, 0x3FF, obj)
         self.assertRefcount(2, k1)
         ktest = obj[k1]
         self.assertRefcount(3, k1)
         self.assertIs(k1, ktest)
         del ktest
         self.assertRefcount(2, k1)
-        k2 = tuple(['foo'])
+        k2 = tuple(["foo"])
         self.assertRefcount(1, k2)
         self.assertIsNot(k1, k2)
         # doesn't add anything, so the counters shouldn't be adjusted
         self.assertIs(k1, obj.add(k2))
-        self.assertFillState(1, 1, 0x3ff, obj)
+        self.assertFillState(1, 1, 0x3FF, obj)
         self.assertRefcount(2, k1)  # not changed
         self.assertRefcount(1, k2)  # not incremented
         self.assertIs(k1, obj[k1])
@@ -248,24 +245,24 @@ class TestSimpleSet(tests.TestCase):
         self.assertRefcount(1, k2)
         # Deleting an entry should remove the fill, but not the used
         obj.discard(k1)
-        self.assertFillState(0, 1, 0x3ff, obj)
+        self.assertFillState(0, 1, 0x3FF, obj)
         self.assertRefcount(1, k1)
-        k3 = tuple(['bar'])
+        k3 = tuple(["bar"])
         self.assertRefcount(1, k3)
         self.assertIs(k3, obj.add(k3))
-        self.assertFillState(1, 2, 0x3ff, obj)
+        self.assertFillState(1, 2, 0x3FF, obj)
         self.assertRefcount(2, k3)
         self.assertIs(k2, obj.add(k2))
-        self.assertFillState(2, 2, 0x3ff, obj)
+        self.assertFillState(2, 2, 0x3FF, obj)
         self.assertRefcount(1, k1)
         self.assertRefcount(2, k2)
         self.assertRefcount(2, k3)
 
     def test_discard(self):
         obj = self.module.SimpleSet()
-        k1 = tuple(['foo'])
-        k2 = tuple(['foo'])
-        k3 = tuple(['bar'])
+        k1 = tuple(["foo"])
+        k2 = tuple(["foo"])
+        k3 = tuple(["bar"])
         self.assertRefcount(1, k1)
         self.assertRefcount(1, k2)
         self.assertRefcount(1, k3)
@@ -288,26 +285,26 @@ class TestSimpleSet(tests.TestCase):
         obj.add(k2)
         obj.add(k3)
         obj.discard(k2)
-        self.assertFillState(2, 3, 0x3ff, obj)
+        self.assertFillState(2, 3, 0x3FF, obj)
         self.assertEqual(1024, obj._py_resize(500))
         # Doesn't change the size, but does change the content
-        self.assertFillState(2, 2, 0x3ff, obj)
+        self.assertFillState(2, 2, 0x3FF, obj)
         obj.add(k2)
         obj.discard(k3)
-        self.assertFillState(2, 3, 0x3ff, obj)
+        self.assertFillState(2, 3, 0x3FF, obj)
         self.assertEqual(4096, obj._py_resize(4095))
-        self.assertFillState(2, 2, 0xfff, obj)
+        self.assertFillState(2, 2, 0xFFF, obj)
         self.assertIn(k1, obj)
         self.assertIn(k2, obj)
         self.assertNotIn(k3, obj)
         obj.add(k2)
         self.assertIn(k2, obj)
         obj.discard(k2)
-        self.assertEqual((591, '<dummy>'), obj._test_lookup(k2))
-        self.assertFillState(1, 2, 0xfff, obj)
+        self.assertEqual((591, "<dummy>"), obj._test_lookup(k2))
+        self.assertFillState(1, 2, 0xFFF, obj)
         self.assertEqual(2048, obj._py_resize(1024))
-        self.assertFillState(1, 1, 0x7ff, obj)
-        self.assertEqual((591, '<null>'), obj._test_lookup(k2))
+        self.assertFillState(1, 1, 0x7FF, obj)
+        self.assertEqual((591, "<null>"), obj._test_lookup(k2))
 
     def test_second_hash_failure(self):
         obj = self.module.SimpleSet()
@@ -332,24 +329,23 @@ class TestSimpleSet(tests.TestCase):
         # NotImplemented, which means we treat them as not equal
         k1 = _NoImplementCompare(200)
         k2 = _NoImplementCompare(200)
-        self.assertLookup(200, '<null>', obj, k1)
-        self.assertLookup(200, '<null>', obj, k2)
+        self.assertLookup(200, "<null>", obj, k1)
+        self.assertLookup(200, "<null>", obj, k2)
         self.assertIs(k1, obj.add(k1))
         self.assertLookup(200, k1, obj, k1)
-        self.assertLookup(201, '<null>', obj, k2)
+        self.assertLookup(201, "<null>", obj, k2)
         self.assertIs(k2, obj.add(k2))
         self.assertIs(k1, obj[k1])
 
     def test_add_and_remove_lots_of_items(self):
         obj = self.module.SimpleSet()
-        chars = ('ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-                 'abcdefghijklmnopqrstuvwxyz1234567890')
+        chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" "abcdefghijklmnopqrstuvwxyz1234567890"
         for i in chars:
             for j in chars:
                 k = (i, j)
                 obj.add(k)
         num = len(chars) * len(chars)
-        self.assertFillState(num, num, 0x1fff, obj)
+        self.assertFillState(num, num, 0x1FFF, obj)
         # Now delete all of the entries and it should shrink again
         for i in chars:
             for j in chars:
@@ -357,15 +353,15 @@ class TestSimpleSet(tests.TestCase):
                 obj.discard(k)
         # It should be back to 1024 wide mask, though there may still be some
         # dummy values in there
-        self.assertFillState(0, obj.fill, 0x3ff, obj)
+        self.assertFillState(0, obj.fill, 0x3FF, obj)
         # but there should be fewer than 1/5th dummy entries
         self.assertTrue(obj.fill < 1024 / 5)
 
     def test__iter__(self):
         obj = self.module.SimpleSet()
-        k1 = ('1',)
-        k2 = ('1', '2')
-        k3 = ('3', '4')
+        k1 = ("1",)
+        k2 = ("1", "2")
+        k3 = ("3", "4")
         obj.add(k1)
         obj.add(k2)
         obj.add(k3)
@@ -375,7 +371,7 @@ class TestSimpleSet(tests.TestCase):
         self.assertEqual(sorted([k1, k2, k3]), sorted(all))
         iterator = iter(obj)
         self.assertIn(next(iterator), all)
-        obj.add(('foo',))
+        obj.add(("foo",))
         # Set changed size
         self.assertRaises(RuntimeError, next, iterator)
         # And even removing an item still causes it to fail

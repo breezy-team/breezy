@@ -20,7 +20,7 @@
 from dulwich.index import (
     commit_tree,
     read_submodule_head,
-    )
+)
 import stat
 
 from .. import (
@@ -30,27 +30,27 @@ from .. import (
     osutils,
     revision as _mod_revision,
     trace,
-    )
+)
 from ..errors import (
     BzrError,
     RootMissing,
     UnsupportedOperation,
-    )
+)
 from ..repository import (
     CommitBuilder,
-    )
+)
 
 from dulwich.objects import (
     Blob,
     Commit,
-    )
+)
 
 
 from .mapping import (
     encode_git_path,
     object_mode,
     fix_person_identifier,
-    )
+)
 from .tree import entry_factory
 
 
@@ -86,14 +86,22 @@ class GitCommitBuilder(CommitBuilder):
             else:
                 file_id = None
             if change.path[1]:
-                parent_id_new = self._mapping.generate_file_id(osutils.dirname(change.path[1]))
+                parent_id_new = self._mapping.generate_file_id(
+                    osutils.dirname(change.path[1])
+                )
             else:
                 parent_id_new = None
             if change.kind[1] in ("directory",):
                 self._inv_delta.append(
-                    (change.path[0], change.path[1], file_id,
-                     entry_factory[change.kind[1]](
-                         file_id, change.name[1], parent_id_new)))
+                    (
+                        change.path[0],
+                        change.path[1],
+                        file_id,
+                        entry_factory[change.kind[1]](
+                            file_id, change.name[1], parent_id_new
+                        ),
+                    )
+                )
                 if change.kind[0] in ("file", "symlink"):
                     self._blobs[encode_git_path(change.path[0])] = None
                     self._any_changes = True
@@ -175,24 +183,24 @@ class GitCommitBuilder(CommitBuilder):
         self._blobs = {k: v for (k, v) in self._blobs.items()}
 
     def _iterblobs(self):
-        return ((path, sha, mode) for (path, (mode, sha))
-                in self._blobs.items())
+        return ((path, sha, mode) for (path, (mode, sha)) in self._blobs.items())
 
     def commit(self, message):
-        self._validate_unicode_text(message, 'commit message')
+        self._validate_unicode_text(message, "commit message")
         c = Commit()
-        c.parents = [self.repository.lookup_bzr_revision_id(
-            revid)[0] for revid in self.parents]
+        c.parents = [
+            self.repository.lookup_bzr_revision_id(revid)[0] for revid in self.parents
+        ]
         c.tree = commit_tree(self.store, self._iterblobs())
-        encoding = self._revprops.pop('git-explicit-encoding', 'utf-8')
-        c.encoding = encoding.encode('ascii')
+        encoding = self._revprops.pop("git-explicit-encoding", "utf-8")
+        c.encoding = encoding.encode("ascii")
         c.committer = fix_person_identifier(self._committer.encode(encoding))
         pseudoheaders = []
         try:
-            author = self._revprops.pop('author')
+            author = self._revprops.pop("author")
         except KeyError:
             try:
-                authors = self._revprops.pop('authors').splitlines()
+                authors = self._revprops.pop("authors").splitlines()
             except KeyError:
                 author = self._committer
             else:
@@ -202,10 +210,11 @@ class GitCommitBuilder(CommitBuilder):
                     author = authors[0]
                     for coauthor in authors[1:]:
                         pseudoheaders.append(
-                            b'Co-authored-by: %s'
-                            % fix_person_identifier(coauthor.encode(encoding)))
+                            b"Co-authored-by: %s"
+                            % fix_person_identifier(coauthor.encode(encoding))
+                        )
         c.author = fix_person_identifier(author.encode(encoding))
-        bugstext = self._revprops.pop('bugs', None)
+        bugstext = self._revprops.pop("bugs", None)
         if bugstext is not None:
             for url, status in bugtracker.decode_bug_urls(bugstext):
                 if status == bugtracker.FIXED:
@@ -225,20 +234,22 @@ class GitCommitBuilder(CommitBuilder):
             if not c.message.endswith(b"\n"):
                 c.message += b"\n"
             c.message += b"\n" + b"".join([line + b"\n" for line in pseudoheaders])
-        create_signatures = self._config_stack.get('create_signatures')
-        if (create_signatures in (
-                _mod_config.SIGN_ALWAYS, _mod_config.SIGN_WHEN_POSSIBLE)):
+        create_signatures = self._config_stack.get("create_signatures")
+        if create_signatures in (
+            _mod_config.SIGN_ALWAYS,
+            _mod_config.SIGN_WHEN_POSSIBLE,
+        ):
             strategy = gpg.GPGStrategy(self._config_stack)
             try:
                 c.gpgsig = strategy.sign(c.as_raw_string(), gpg.MODE_DETACH)
             except gpg.GpgNotInstalled as e:
                 if create_signatures == _mod_config.SIGN_WHEN_POSSIBLE:
-                    trace.note('skipping commit signature: %s', e)
+                    trace.note("skipping commit signature: %s", e)
                 else:
                     raise
             except gpg.SigningFailed as e:
                 if create_signatures == _mod_config.SIGN_WHEN_POSSIBLE:
-                    trace.note('commit signature failed: %s', e)
+                    trace.note("commit signature failed: %s", e)
                 else:
                     raise
         self.store.add_object(c)

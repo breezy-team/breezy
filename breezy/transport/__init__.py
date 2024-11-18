@@ -35,7 +35,7 @@ from stat import S_ISDIR
 
 from ..trace import (
     mutter,
-    )
+)
 from .. import (
     errors,
     hooks,
@@ -43,7 +43,7 @@ from .. import (
     osutils,
     ui,
     urlutils,
-    )
+)
 
 
 # a dictionary of open file streams. Keys are absolute paths, values are
@@ -78,24 +78,20 @@ def _get_transport_modules():
             modules.add(factory.get_module())
     # Add chroot and pathfilter directly, because there is no handler
     # registered for it.
-    modules.add('breezy.transport.chroot')
-    modules.add('breezy.transport.pathfilter')
+    modules.add("breezy.transport.chroot")
+    modules.add("breezy.transport.pathfilter")
     result = sorted(modules)
     return result
 
 
 class UnusableRedirect(errors.BzrError):
-
-    _fmt = ("Unable to follow redirect from %(source)s to %(target)s: "
-            "%(reason)s.")
+    _fmt = "Unable to follow redirect from %(source)s to %(target)s: " "%(reason)s."
 
     def __init__(self, source, target, reason):
-        super().__init__(
-            source=source, target=target, reason=reason)
+        super().__init__(source=source, target=target, reason=reason)
 
 
 class UnsupportedProtocol(errors.PathError):
-
     _fmt = 'Unsupported protocol for url "%(path)s"%(extra)s'
 
     def __init__(self, url, extra=""):
@@ -103,12 +99,10 @@ class UnsupportedProtocol(errors.PathError):
 
 
 class NoSuchFile(errors.PathError):
-
     _fmt = "No such file: %(path)r%(extra)s"
 
 
 class FileExists(errors.PathError):
-
     _fmt = "File exists: %(path)r%(extra)s"
 
 
@@ -131,8 +125,7 @@ class TransportListRegistry(registry.Registry):
         self.get(key).insert(0, registry._ObjectGetter(obj))
 
     def register_lazy_transport_provider(self, key, module_name, member_name):
-        self.get(key).insert(0,
-                             registry._LazyObjectGetter(module_name, member_name))
+        self.get(key).insert(0, registry._LazyObjectGetter(module_name, member_name))
 
     def register_transport(self, key, help=None):
         self.register(key, [], help)
@@ -141,11 +134,10 @@ class TransportListRegistry(registry.Registry):
 transport_list_registry = TransportListRegistry()
 
 
-def register_transport_proto(prefix, help=None, info=None,
-                             register_netloc=False):
+def register_transport_proto(prefix, help=None, info=None, register_netloc=False):
     transport_list_registry.register_transport(prefix, help)
     if register_netloc:
-        if not prefix.endswith('://'):
+        if not prefix.endswith("://"):
             raise ValueError(prefix)
         register_urlparse_netloc_protocol(prefix[:-3])
 
@@ -153,8 +145,7 @@ def register_transport_proto(prefix, help=None, info=None,
 def register_lazy_transport(prefix, module, classname):
     if prefix not in transport_list_registry:
         register_transport_proto(prefix)
-    transport_list_registry.register_lazy_transport_provider(
-        prefix, module, classname)
+    transport_list_registry.register_lazy_transport_provider(prefix, module, classname)
 
 
 def register_transport(prefix, klass):
@@ -194,7 +185,7 @@ def unregister_transport(scheme, factory):
 class _CoalescedOffset:
     """A data container for keeping track of coalesced offsets."""
 
-    __slots__ = ['start', 'length', 'ranges']
+    __slots__ = ["start", "length", "ranges"]
 
     def __init__(self, start, length, ranges):
         self.start = start
@@ -202,16 +193,23 @@ class _CoalescedOffset:
         self.ranges = ranges
 
     def __lt__(self, other):
-        return ((self.start, self.length, self.ranges) <
-                (other.start, other.length, other.ranges))
+        return (self.start, self.length, self.ranges) < (
+            other.start,
+            other.length,
+            other.ranges,
+        )
 
     def __eq__(self, other):
-        return ((self.start, self.length, self.ranges) ==
-                (other.start, other.length, other.ranges))
+        return (self.start, self.length, self.ranges) == (
+            other.start,
+            other.length,
+            other.ranges,
+        )
 
     def __repr__(self):
-        return '{}({!r}, {!r}, {!r})'.format(self.__class__.__name__,
-                                   self.start, self.length, self.ranges)
+        return "{}({!r}, {!r}, {!r})".format(
+            self.__class__.__name__, self.start, self.length, self.ranges
+        )
 
 
 class LateReadError:
@@ -285,8 +283,7 @@ class FileStream:
         :raises TransportNotPossible: If this transport has no way to
             flush to disk.
         """
-        raise errors.TransportNotPossible(
-            "{} cannot fdatasync".format(self.transport))
+        raise errors.TransportNotPossible("{} cannot fdatasync".format(self.transport))
 
 
 class FileFileStream(FileStream):
@@ -330,10 +327,13 @@ class TransportHooks(hooks.Hooks):
 
     def __init__(self):
         super().__init__()
-        self.add_hook("post_connect",
-                      "Called after a new connection is established or a reconnect "
-                      "occurs. The sole argument passed is either the connected "
-                      "transport or smart medium instance.", (2, 5))
+        self.add_hook(
+            "post_connect",
+            "Called after a new connection is established or a reconnect "
+            "occurs. The sole argument passed is either the connected "
+            "transport or smart medium instance.",
+            (2, 5),
+        )
 
 
 class Transport:
@@ -361,15 +361,16 @@ class Transport:
     def __init__(self, base):
         super().__init__()
         self.base = base
-        (self._raw_base, self._segment_parameters) = (
-            urlutils.split_segment_parameters(base))
+        (self._raw_base, self._segment_parameters) = urlutils.split_segment_parameters(
+            base
+        )
 
     def _translate_error(self, e, path, raise_generic=True):
         """Translate an IOError or OSError into an appropriate bzr error.
 
         This handles things like ENOENT, ENOTDIR, EEXIST, and EACCESS
         """
-        if getattr(e, 'errno', None) is not None:
+        if getattr(e, "errno", None) is not None:
             if e.errno in (errno.ENOENT, errno.ENOTDIR):
                 raise NoSuchFile(path, extra=e)
             elif e.errno == errno.EINVAL:
@@ -379,7 +380,7 @@ class Transport:
             # any matching for 267
             # This is the error when doing a listdir on a file:
             # WindowsError: [Errno 267] The directory name is invalid
-            if sys.platform == 'win32' and e.errno in (errno.ESRCH, 267):
+            if sys.platform == "win32" and e.errno in (errno.ESRCH, 267):
                 raise NoSuchFile(path, extra=e)
             if e.errno == errno.EEXIST:
                 raise FileExists(path, extra=e)
@@ -405,13 +406,13 @@ class Transport:
         needed = [cur_transport]
         # Recurse upwards until we can create a directory successfully
         while True:
-            new_transport = cur_transport.clone('..')
+            new_transport = cur_transport.clone("..")
             if new_transport.base == cur_transport.base:
                 raise errors.CommandError(
-                    "Failed to create path prefix for %s."
-                    % cur_transport.base)
+                    "Failed to create path prefix for %s." % cur_transport.base
+                )
             try:
-                new_transport.mkdir('.', mode=mode)
+                new_transport.mkdir(".", mode=mode)
             except NoSuchFile:
                 needed.append(new_transport)
                 cur_transport = new_transport
@@ -434,11 +435,11 @@ class Transport:
         # than permission". We attempt to create the directory, and just
         # suppress FileExists and PermissionDenied (for Windows) exceptions.
         try:
-            self.mkdir('.', mode=mode)
+            self.mkdir(".", mode=mode)
         except (FileExists, errors.PermissionDenied):
             return False
         except errors.TransportNotPossible:
-            if self.has('.'):
+            if self.has("."):
                 return False
             raise
         else:
@@ -467,8 +468,7 @@ class Transport:
         raise NotImplementedError(self.external_url)
 
     def get_segment_parameters(self):
-        """Return the segment parameters for the top segment of the URL.
-        """
+        """Return the segment parameters for the top segment of the URL."""
         return self._segment_parameters
 
     def set_segment_parameter(self, name, value):
@@ -486,7 +486,8 @@ class Transport:
         else:
             self._segment_parameters[name] = value
         self.base = urlutils.join_segment_parameters(
-            self._raw_base, self._segment_parameters)
+            self._raw_base, self._segment_parameters
+        )
 
     def _pump(self, from_file, to_file):
         """Most children will need to copy from one file-like
@@ -584,7 +585,7 @@ class Transport:
         if not (abspath == self.base[:-1] or abspath.startswith(self.base)):
             raise errors.PathNotChild(abspath, self.base)
         pl = len(self.base)
-        return abspath[pl:].strip('/')
+        return abspath[pl:].strip("/")
 
     def local_abspath(self, relpath):
         """Return the absolute path on the local filesystem.
@@ -623,10 +624,12 @@ class Transport:
         As with other listing functions, only some transports implement this,.
         you may check via listable() to determine if it will.
         """
-        raise errors.TransportNotPossible("This transport has not "
-                                          "implemented iter_files_recursive "
-                                          "(but must claim to be listable "
-                                          "to trigger this error).")
+        raise errors.TransportNotPossible(
+            "This transport has not "
+            "implemented iter_files_recursive "
+            "(but must claim to be listable "
+            "to trigger this error)."
+        )
 
     def get(self, relpath):
         """Get the file at the given relative path.
@@ -668,8 +671,7 @@ class Transport:
         """
         raise errors.NoSmartMedium(self)
 
-    def readv(self, relpath, offsets, adjust_for_latency=False,
-              upper_limit=None):
+    def readv(self, relpath, offsets, adjust_for_latency=False, upper_limit=None):
         """Get parts of the file at the given relative path.
 
         Args:
@@ -717,7 +719,7 @@ class Transport:
         fp = self.get(relpath)
         return self._seek_and_read(fp, offsets, relpath)
 
-    def _seek_and_read(self, fp, offsets, relpath='<unknown>'):
+    def _seek_and_read(self, fp, offsets, relpath="<unknown>"):
         """An implementation of readv that uses fp.seek and fp.read.
 
         This uses _coalesce_offsets to issue larger reads and fewer seeks.
@@ -735,9 +737,11 @@ class Transport:
         # turn the list of offsets into a stack
         offset_stack = iter(offsets)
         cur_offset_and_size = next(offset_stack)
-        coalesced = self._coalesce_offsets(sorted_offsets,
-                                           limit=self._max_readv_combine,
-                                           fudge_factor=self._bytes_to_read_before_seek)
+        coalesced = self._coalesce_offsets(
+            sorted_offsets,
+            limit=self._max_readv_combine,
+            fudge_factor=self._bytes_to_read_before_seek,
+        )
 
         # Cache the results, but only until they have been fulfilled
         data_map = {}
@@ -749,11 +753,12 @@ class Transport:
                 fp.seek(c_offset.start)
                 data = fp.read(c_offset.length)
                 if len(data) < c_offset.length:
-                    raise errors.ShortReadvError(relpath, c_offset.start,
-                                                 c_offset.length, actual=len(data))
+                    raise errors.ShortReadvError(
+                        relpath, c_offset.start, c_offset.length, actual=len(data)
+                    )
                 for suboffset, subsize in c_offset.ranges:
                     key = (c_offset.start + suboffset, subsize)
-                    data_map[key] = data[suboffset:suboffset + subsize]
+                    data_map[key] = data[suboffset : suboffset + subsize]
 
                 # Now that we've read some data, see if we can yield anything back
                 while cur_offset_and_size in data_map:
@@ -780,12 +785,14 @@ class Transport:
         offsets = sorted(offsets)
         # short circuit empty requests
         if len(offsets) == 0:
+
             def empty_yielder():
                 # Quick thunk to stop this function becoming a generator
                 # itself, rather we return a generator that has nothing to
                 # yield.
                 if False:
                     yield None
+
             return empty_yielder()
         # expand by page size at either end
         maximum_expansion = self.recommended_page_size()
@@ -801,8 +808,7 @@ class Transport:
             if new_offset < 0:
                 # don't ask for anything < 0
                 new_offset = 0
-            if (upper_limit is not None and
-                    new_offset + new_length > upper_limit):
+            if upper_limit is not None and new_offset + new_length > upper_limit:
                 new_length = upper_limit - new_offset
             new_offsets.append((new_offset, new_length))
         # combine the expanded offsets
@@ -867,15 +873,19 @@ class Transport:
 
         for start, size in offsets:
             end = start + size
-            if (last_end is not None
+            if (
+                last_end is not None
                 and start <= last_end + fudge_factor
                 and start >= cur.start
                 and (limit <= 0 or len(cur.ranges) < limit)
-                    and (max_size <= 0 or end - cur.start <= max_size)):
+                and (max_size <= 0 or end - cur.start <= max_size)
+            ):
                 if start < last_end:
-                    raise ValueError('Overlapping range not allowed:'
-                                     ' last range ended at %s, new one starts at %s'
-                                     % (last_end, start))
+                    raise ValueError(
+                        "Overlapping range not allowed:"
+                        " last range ended at %s, new one starts at %s"
+                        % (last_end, start)
+                    )
                 cur.length = end - cur.start
                 cur.ranges.append((start - cur.start, size))
             else:
@@ -899,12 +909,18 @@ class Transport:
         """
         if not isinstance(raw_bytes, bytes):
             raise TypeError(
-                'raw_bytes must be a plain string, not %s' % type(raw_bytes))
+                "raw_bytes must be a plain string, not %s" % type(raw_bytes)
+            )
         return self.put_file(relpath, BytesIO(raw_bytes), mode=mode)
 
-    def put_bytes_non_atomic(self, relpath, raw_bytes: bytes, mode=None,
-                             create_parent_dir=False,
-                             dir_mode=None):
+    def put_bytes_non_atomic(
+        self,
+        relpath,
+        raw_bytes: bytes,
+        mode=None,
+        create_parent_dir=False,
+        dir_mode=None,
+    ):
         """Copy the string into the target location.
 
         This function is not strictly safe to use. See
@@ -922,10 +938,15 @@ class Transport:
         """
         if not isinstance(raw_bytes, bytes):
             raise TypeError(
-                'raw_bytes must be a plain string, not %s' % type(raw_bytes))
-        self.put_file_non_atomic(relpath, BytesIO(raw_bytes), mode=mode,
-                                 create_parent_dir=create_parent_dir,
-                                 dir_mode=dir_mode)
+                "raw_bytes must be a plain string, not %s" % type(raw_bytes)
+            )
+        self.put_file_non_atomic(
+            relpath,
+            BytesIO(raw_bytes),
+            mode=mode,
+            create_parent_dir=create_parent_dir,
+            dir_mode=dir_mode,
+        )
 
     def put_file(self, relpath, f, mode=None):
         """Copy the file-like object into the location.
@@ -938,9 +959,9 @@ class Transport:
         """
         raise NotImplementedError(self.put_file)
 
-    def put_file_non_atomic(self, relpath, f, mode=None,
-                            create_parent_dir=False,
-                            dir_mode=None):
+    def put_file_non_atomic(
+        self, relpath, f, mode=None, create_parent_dir=False, dir_mode=None
+    ):
         """Copy the file-like object into the target location.
 
         This function is not strictly safe to use. It is only meant to
@@ -1016,8 +1037,7 @@ class Transport:
         :returns: the length of relpath before the content was written to it.
         """
         if not isinstance(data, bytes):
-            raise TypeError(
-                'bytes must be a plain string, not %s' % type(data))
+            raise TypeError("bytes must be a plain string, not %s" % type(data))
         return self.append_file(relpath, BytesIO(data), mode=mode)
 
     def copy(self, rel_from, rel_to):
@@ -1037,11 +1057,14 @@ class Transport:
         TODO: This interface needs to be updated so that the target location
               can be different from the source location.
         """
+
         # The dummy implementation just does a simple get + put
         def copy_entry(path):
             other.put_file(path, self.get(path), mode=mode)
 
-        return len(self._iterate_over(relpaths, copy_entry, pb, 'copy_to', expand=False))
+        return len(
+            self._iterate_over(relpaths, copy_entry, pb, "copy_to", expand=False)
+        )
 
     def copy_tree(self, from_relpath, to_relpath):
         """Copy a subtree from one relpath to another.
@@ -1055,7 +1078,7 @@ class Transport:
         # create target directory with the same rwx bits as source.
         # use mask to ensure that bits other than rwx are ignored.
         stat = self.stat(from_relpath)
-        target.mkdir('.', stat.st_mode & 0o777)
+        target.mkdir(".", stat.st_mode & 0o777)
         source.copy_tree_to_transport(target)
 
     def copy_tree_to_transport(self, to_transport):
@@ -1066,13 +1089,13 @@ class Transport:
         directory).
         """
         files = []
-        directories = ['.']
+        directories = ["."]
         while directories:
             dir = directories.pop()
-            if dir != '.':
+            if dir != ".":
                 to_transport.mkdir(dir)
             for path in self.list_dir(dir):
-                path = dir + '/' + path
+                path = dir + "/" + path
                 stat = self.stat(path)
                 if S_ISDIR(stat.st_mode):
                     directories.append(path)
@@ -1123,14 +1146,14 @@ class Transport:
         """Delete an entire tree. This may require a listable transport."""
         subtree = self.clone(relpath)
         files = []
-        directories = ['.']
+        directories = ["."]
         pending_rmdirs = []
         while directories:
             dir = directories.pop()
-            if dir != '.':
+            if dir != ".":
                 pending_rmdirs.append(dir)
             for path in subtree.list_dir(dir):
-                path = dir + '/' + path
+                path = dir + "/" + path
                 stat = subtree.stat(path)
                 if S_ISDIR(stat.st_mode):
                     directories.append(path)
@@ -1144,7 +1167,9 @@ class Transport:
         self.rmdir(relpath)
 
     def __repr__(self):
-        return "<{}.{} url={}>".format(self.__module__, self.__class__.__name__, self.base)
+        return "<{}.{} url={}>".format(
+            self.__module__, self.__class__.__name__, self.base
+        )
 
     def stat(self, relpath):
         """Return the stat information for a file.
@@ -1165,17 +1190,16 @@ class Transport:
     def readlink(self, relpath):
         """Return a string representing the path to which the symbolic link points."""
         raise errors.TransportNotPossible(
-            "Dereferencing symlinks is not supported on %s" % self)
+            "Dereferencing symlinks is not supported on %s" % self
+        )
 
     def hardlink(self, source, link_name):
         """Create a hardlink pointing to source named link_name."""
-        raise errors.TransportNotPossible(
-            "Hard links are not supported on %s" % self)
+        raise errors.TransportNotPossible("Hard links are not supported on %s" % self)
 
     def symlink(self, source, link_name):
         """Create a symlink pointing to source named link_name."""
-        raise errors.TransportNotPossible(
-            "Symlinks are not supported on %s" % self)
+        raise errors.TransportNotPossible("Symlinks are not supported on %s" % self)
 
     def listable(self):
         """Return True if this store supports listing."""
@@ -1186,11 +1210,12 @@ class Transport:
         WARNING: many transports do not support this, so trying avoid using
         it if at all possible.
         """
-        raise errors.TransportNotPossible("Transport %r has not "
-                                          "implemented list_dir "
-                                          "(but must claim to be listable "
-                                          "to trigger this error)."
-                                          % (self))
+        raise errors.TransportNotPossible(
+            "Transport %r has not "
+            "implemented list_dir "
+            "(but must claim to be listable "
+            "to trigger this error)." % (self)
+        )
 
     def lock_read(self, relpath):
         """Lock the given file for shared (read) access.
@@ -1203,8 +1228,7 @@ class Transport:
 
         :return: A lock object, which should contain an unlock() function.
         """
-        raise errors.TransportNotPossible(
-            "transport locks not supported on %s" % self)
+        raise errors.TransportNotPossible("transport locks not supported on %s" % self)
 
     def lock_write(self, relpath):
         """Lock the given file for exclusive (write) access.
@@ -1217,8 +1241,7 @@ class Transport:
 
         :return: A lock object, which should contain an unlock() function.
         """
-        raise errors.TransportNotPossible(
-            "transport locks not supported on %s" % self)
+        raise errors.TransportNotPossible("transport locks not supported on %s" % self)
 
     def is_readonly(self):
         """Return true if this connection cannot be written to."""
@@ -1266,8 +1289,7 @@ class Transport:
         """
         # This returns None by default, meaning the transport can't handle the
         # redirection.
-        raise UnusableRedirect(
-            source, target, "transport does not support redirection")
+        raise UnusableRedirect(source, target, "transport does not support redirection")
 
 
 class _SharedConnection:
@@ -1307,8 +1329,8 @@ class ConnectedTransport(Transport):
         :param _from_transport: optional transport to build from. The built
             transport will share the connection with this transport.
         """
-        if not base.endswith('/'):
-            base += '/'
+        if not base.endswith("/"):
+            base += "/"
         self._parsed_url = self._split_url(base)
         if _from_transport is not None:
             # Copy the password as it does not appear in base and will be lost
@@ -1317,7 +1339,8 @@ class ConnectedTransport(Transport):
             # prompt the user for one when appropriate.
             self._parsed_url.password = _from_transport._parsed_url.password
             self._parsed_url.quoted_password = (
-                _from_transport._parsed_url.quoted_password)
+                _from_transport._parsed_url.quoted_password
+            )
 
         base = str(self._parsed_url)
 
@@ -1388,9 +1411,9 @@ class ConnectedTransport(Transport):
             # Note that we don't put the password back even if we
             # have one so that it doesn't get accidentally
             # exposed.
-            netloc = '{}@{}'.format(urlutils.quote(user), netloc)
+            netloc = "{}@{}".format(urlutils.quote(user), netloc)
         if port is not None:
-            netloc = '%s:%d' % (netloc, port)
+            netloc = "%s:%d" % (netloc, port)
         path = urlutils.escape(path)
         return urlutils.urlparse.urlunparse((scheme, netloc, path, None, None, None))
 
@@ -1399,21 +1422,23 @@ class ConnectedTransport(Transport):
         parsed_url = self._split_url(abspath)
         error = []
         if parsed_url.scheme != self._parsed_url.scheme:
-            error.append('scheme mismatch')
+            error.append("scheme mismatch")
         if parsed_url.user != self._parsed_url.user:
-            error.append('user name mismatch')
+            error.append("user name mismatch")
         if parsed_url.host != self._parsed_url.host:
-            error.append('host mismatch')
+            error.append("host mismatch")
         if parsed_url.port != self._parsed_url.port:
-            error.append('port mismatch')
-        if (not (parsed_url.path == self._parsed_url.path[:-1] or
-                 parsed_url.path.startswith(self._parsed_url.path))):
-            error.append('path mismatch')
+            error.append("port mismatch")
+        if not (
+            parsed_url.path == self._parsed_url.path[:-1]
+            or parsed_url.path.startswith(self._parsed_url.path)
+        ):
+            error.append("path mismatch")
         if error:
-            extra = ', '.join(error)
+            extra = ", ".join(error)
             raise errors.PathNotChild(abspath, self.base, extra=extra)
         pl = len(self._parsed_url.path)
-        return parsed_url.path[pl:].strip('/')
+        return parsed_url.path[pl:].strip("/")
 
     def abspath(self, relpath):
         """Return the full url to the given relative path.
@@ -1513,15 +1538,17 @@ class ConnectedTransport(Transport):
         transport = None
         # Don't compare passwords, they may be absent from other_base or from
         # self and they don't carry more information than user anyway.
-        if (parsed_url.scheme == self._parsed_url.scheme
+        if (
+            parsed_url.scheme == self._parsed_url.scheme
             and parsed_url.user == self._parsed_url.user
             and parsed_url.host == self._parsed_url.host
-                and parsed_url.port == self._parsed_url.port):
+            and parsed_url.port == self._parsed_url.port
+        ):
             path = parsed_url.path
-            if not path.endswith('/'):
+            if not path.endswith("/"):
                 # This normally occurs at __init__ time, but it's easier to do
                 # it now to avoid creating two transports for the same base.
-                path += '/'
+                path += "/"
             if self._parsed_url.path == path:
                 # shortcut, it's really the same transport
                 return self
@@ -1545,8 +1572,7 @@ def get_transport_from_path(path, possible_transports=None):
     :param path: Local path as byte or unicode string
     :return: Transport object for path
     """
-    return get_transport_from_url(urlutils.local_path_to_url(path),
-                                  possible_transports)
+    return get_transport_from_url(urlutils.local_path_to_url(path), possible_transports)
 
 
 def get_transport_from_url(url, possible_transports=None):
@@ -1599,11 +1625,12 @@ def get_transport(base, possible_transports=None, purpose=None):
         possible_transports.
     """
     if base is None:
-        base = '.'
+        base = "."
     from ..location import location_to_url
+
     return get_transport_from_url(
-        location_to_url(base, purpose=purpose),
-        possible_transports)
+        location_to_url(base, purpose=purpose), possible_transports
+    )
 
 
 def _try_transport_factories(base, factory_list):
@@ -1612,21 +1639,20 @@ def _try_transport_factories(base, factory_list):
         try:
             return factory.get_obj()(base), None
         except errors.DependencyNotPresent as e:
-            mutter("failed to instantiate transport %r for %r: %r" %
-                   (factory, base, e))
+            mutter("failed to instantiate transport %r for %r: %r" % (factory, base, e))
             last_err = e
             continue
     return None, last_err
 
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 def do_catching_redirections(
-        action: Callable[[Transport], T],
-        transport: Transport,
-        redirected: Callable[
-            [Transport, errors.RedirectRequested, str], Transport]) -> T:
+    action: Callable[[Transport], T],
+    transport: Transport,
+    redirected: Callable[[Transport, errors.RedirectRequested, str], Transport],
+) -> T:
     """Execute an action with given transport catching redirections.
 
     This is a facility provided for callers needing to follow redirections
@@ -1652,8 +1678,9 @@ def do_catching_redirections(
         try:
             return action(transport)
         except errors.RedirectRequested as e:
-            redirection_notice = '{} is{} redirected to {}'.format(
-                e.source, e.permanently, e.target)
+            redirection_notice = "{} is{} redirected to {}".format(
+                e.source, e.permanently, e.target
+            )
             transport = redirected(transport, e, redirection_notice)
     else:
         # Loop exited without resolving redirect ? Either the
@@ -1695,6 +1722,7 @@ def open_file(url):
 
 def open_file_via_transport(filename, transport):
     """Open a file using the transport, follow redirects as necessary."""
+
     def open_file(transport):
         return transport.get(filename)
 
@@ -1708,114 +1736,131 @@ def open_file_via_transport(filename, transport):
 
 
 # None is the default transport, for things with no url scheme
-register_transport_proto('file://',
-                         help="Access using the standard filesystem (default)")
-register_lazy_transport('file://', 'breezy.transport.local', 'LocalTransport')
-
-register_transport_proto('sftp://',
-                         help="Access using SFTP (most SSH servers provide SFTP).",
-                         register_netloc=True)
-register_lazy_transport('sftp://', 'breezy.transport.sftp', 'SFTPTransport')
-# Decorated http transport
-register_transport_proto('http+urllib://',
-                         #                help="Read-only access of branches exported on the web."
-                         register_netloc=True)
-register_lazy_transport('http+urllib://', 'breezy.transport.http.urllib',
-                        'HttpTransport')
-register_transport_proto('https+urllib://',
-                         #                help="Read-only access of branches exported on the web using SSL."
-                         register_netloc=True)
-register_lazy_transport('https+urllib://', 'breezy.transport.http.urllib',
-                        'HttpTransport')
-# Default http transports (last declared wins (if it can be imported))
-register_transport_proto('http://',
-                         help="Read-only access of branches exported on the web.")
-register_transport_proto('https://',
-                         help="Read-only access of branches exported on the web using SSL.")
-# The default http implementation is urllib
-register_lazy_transport('http://', 'breezy.transport.http.urllib',
-                        'HttpTransport')
-register_lazy_transport('https://', 'breezy.transport.http.urllib',
-                        'HttpTransport')
+register_transport_proto(
+    "file://", help="Access using the standard filesystem (default)"
+)
+register_lazy_transport("file://", "breezy.transport.local", "LocalTransport")
 
 register_transport_proto(
-    'gio+', help="Access using any GIO supported protocols.")
+    "sftp://",
+    help="Access using SFTP (most SSH servers provide SFTP).",
+    register_netloc=True,
+)
+register_lazy_transport("sftp://", "breezy.transport.sftp", "SFTPTransport")
+# Decorated http transport
+register_transport_proto(
+    "http+urllib://",
+    #                help="Read-only access of branches exported on the web."
+    register_netloc=True,
+)
 register_lazy_transport(
-    'gio+', 'breezy.transport.gio_transport', 'GioTransport')
+    "http+urllib://", "breezy.transport.http.urllib", "HttpTransport"
+)
+register_transport_proto(
+    "https+urllib://",
+    #                help="Read-only access of branches exported on the web using SSL."
+    register_netloc=True,
+)
+register_lazy_transport(
+    "https+urllib://", "breezy.transport.http.urllib", "HttpTransport"
+)
+# Default http transports (last declared wins (if it can be imported))
+register_transport_proto(
+    "http://", help="Read-only access of branches exported on the web."
+)
+register_transport_proto(
+    "https://", help="Read-only access of branches exported on the web using SSL."
+)
+# The default http implementation is urllib
+register_lazy_transport("http://", "breezy.transport.http.urllib", "HttpTransport")
+register_lazy_transport("https://", "breezy.transport.http.urllib", "HttpTransport")
+
+register_transport_proto("gio+", help="Access using any GIO supported protocols.")
+register_lazy_transport("gio+", "breezy.transport.gio_transport", "GioTransport")
 
 
-register_transport_proto('memory://')
-register_lazy_transport('memory://', 'breezy.transport.memory',
-                        'MemoryTransport')
+register_transport_proto("memory://")
+register_lazy_transport("memory://", "breezy.transport.memory", "MemoryTransport")
 
-register_transport_proto('readonly+',
-                         #              help="This modifier converts any transport to be readonly."
-                         )
-register_lazy_transport('readonly+', 'breezy.transport.readonly',
-                        'ReadonlyTransportDecorator')
+register_transport_proto(
+    "readonly+",
+    #              help="This modifier converts any transport to be readonly."
+)
+register_lazy_transport(
+    "readonly+", "breezy.transport.readonly", "ReadonlyTransportDecorator"
+)
 
-register_transport_proto('fakenfs+')
-register_lazy_transport('fakenfs+', 'breezy.transport.fakenfs',
-                        'FakeNFSTransportDecorator')
+register_transport_proto("fakenfs+")
+register_lazy_transport(
+    "fakenfs+", "breezy.transport.fakenfs", "FakeNFSTransportDecorator"
+)
 
-register_transport_proto('log+')
-register_lazy_transport('log+', 'breezy.transport.log',
-                        'TransportLogDecorator')
+register_transport_proto("log+")
+register_lazy_transport("log+", "breezy.transport.log", "TransportLogDecorator")
 
-register_transport_proto('trace+')
-register_lazy_transport('trace+', 'breezy.transport.trace',
-                        'TransportTraceDecorator')
+register_transport_proto("trace+")
+register_lazy_transport("trace+", "breezy.transport.trace", "TransportTraceDecorator")
 
-register_transport_proto('unlistable+')
-register_lazy_transport('unlistable+', 'breezy.transport.unlistable',
-                        'UnlistableTransportDecorator')
+register_transport_proto("unlistable+")
+register_lazy_transport(
+    "unlistable+", "breezy.transport.unlistable", "UnlistableTransportDecorator"
+)
 
-register_transport_proto('brokenrename+')
-register_lazy_transport('brokenrename+', 'breezy.transport.brokenrename',
-                        'BrokenRenameTransportDecorator')
+register_transport_proto("brokenrename+")
+register_lazy_transport(
+    "brokenrename+", "breezy.transport.brokenrename", "BrokenRenameTransportDecorator"
+)
 
-register_transport_proto('vfat+')
-register_lazy_transport('vfat+',
-                        'breezy.transport.fakevfat',
-                        'FakeVFATTransportDecorator')
+register_transport_proto("vfat+")
+register_lazy_transport(
+    "vfat+", "breezy.transport.fakevfat", "FakeVFATTransportDecorator"
+)
 
-register_transport_proto('nosmart+')
-register_lazy_transport('nosmart+', 'breezy.transport.nosmart',
-                        'NoSmartTransportDecorator')
+register_transport_proto("nosmart+")
+register_lazy_transport(
+    "nosmart+", "breezy.transport.nosmart", "NoSmartTransportDecorator"
+)
 
-register_transport_proto('bzr://',
-                         help="Fast access using the Bazaar smart server.",
-                         register_netloc=True)
+register_transport_proto(
+    "bzr://", help="Fast access using the Bazaar smart server.", register_netloc=True
+)
 
-register_lazy_transport('bzr://', 'breezy.transport.remote',
-                        'RemoteTCPTransport')
-register_transport_proto('bzr-v2://', register_netloc=True)
+register_lazy_transport("bzr://", "breezy.transport.remote", "RemoteTCPTransport")
+register_transport_proto("bzr-v2://", register_netloc=True)
 
-register_lazy_transport('bzr-v2://', 'breezy.transport.remote',
-                        'RemoteTCPTransportV2Only')
-register_transport_proto('bzr+http://',
-                         #                help="Fast access using the Bazaar smart server over HTTP."
-                         register_netloc=True)
-register_lazy_transport('bzr+http://', 'breezy.transport.remote',
-                        'RemoteHTTPTransport')
-register_transport_proto('bzr+https://',
-                         #                help="Fast access using the Bazaar smart server over HTTPS."
-                         register_netloc=True)
-register_lazy_transport('bzr+https://',
-                        'breezy.transport.remote',
-                        'RemoteHTTPTransport')
-register_transport_proto('bzr+ssh://',
-                         help="Fast access using the Bazaar smart server over SSH.",
-                         register_netloc=True)
-register_lazy_transport('bzr+ssh://', 'breezy.transport.remote',
-                        'RemoteSSHTransport')
+register_lazy_transport(
+    "bzr-v2://", "breezy.transport.remote", "RemoteTCPTransportV2Only"
+)
+register_transport_proto(
+    "bzr+http://",
+    #                help="Fast access using the Bazaar smart server over HTTP."
+    register_netloc=True,
+)
+register_lazy_transport("bzr+http://", "breezy.transport.remote", "RemoteHTTPTransport")
+register_transport_proto(
+    "bzr+https://",
+    #                help="Fast access using the Bazaar smart server over HTTPS."
+    register_netloc=True,
+)
+register_lazy_transport(
+    "bzr+https://", "breezy.transport.remote", "RemoteHTTPTransport"
+)
+register_transport_proto(
+    "bzr+ssh://",
+    help="Fast access using the Bazaar smart server over SSH.",
+    register_netloc=True,
+)
+register_lazy_transport("bzr+ssh://", "breezy.transport.remote", "RemoteSSHTransport")
 
-register_transport_proto('ssh:')
-register_lazy_transport('ssh:', 'breezy.transport.remote',
-                        'HintingSSHTransport')
+register_transport_proto("ssh:")
+register_lazy_transport("ssh:", "breezy.transport.remote", "HintingSSHTransport")
 
 
 transport_server_registry = registry.Registry[str, Callable]()
-transport_server_registry.register_lazy('bzr', 'breezy.bzr.smart.server',
-                                        'serve_bzr', help="The Bazaar smart server protocol over TCP. (default port: 4155)")
-transport_server_registry.default_key = 'bzr'
+transport_server_registry.register_lazy(
+    "bzr",
+    "breezy.bzr.smart.server",
+    "serve_bzr",
+    help="The Bazaar smart server protocol over TCP. (default port: 4155)",
+)
+transport_server_registry.default_key = "bzr"

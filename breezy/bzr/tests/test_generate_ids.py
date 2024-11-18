@@ -18,10 +18,10 @@
 
 from ... import (
     tests,
-    )
+)
 from .. import (
     generate_ids,
-    )
+)
 
 
 class TestFileIds(tests.TestCase):
@@ -33,28 +33,28 @@ class TestFileIds(tests.TestCase):
         The file id should be ascii, and should be an 8-bit string
         """
         file_id = generate_ids.gen_file_id(filename)
-        self.assertContainsRe(file_id, b'^' + regex + b'$')
+        self.assertContainsRe(file_id, b"^" + regex + b"$")
         # It should be a utf8 file_id, not a unicode one
         self.assertIsInstance(file_id, bytes)
         # gen_file_id should always return ascii file ids.
-        file_id.decode('ascii')
+        file_id.decode("ascii")
 
     def test_gen_file_id(self):
         gen_file_id = generate_ids.gen_file_id
 
         # We try to use the filename if possible
-        self.assertStartsWith(gen_file_id('bar'), b'bar-')
+        self.assertStartsWith(gen_file_id("bar"), b"bar-")
 
         # but we squash capitalization, and remove non word characters
-        self.assertStartsWith(gen_file_id('Mwoo oof\t m'), b'mwoooofm-')
+        self.assertStartsWith(gen_file_id("Mwoo oof\t m"), b"mwoooofm-")
 
         # We also remove leading '.' characters to prevent hidden file-ids
-        self.assertStartsWith(gen_file_id('..gam.py'), b'gam.py-')
-        self.assertStartsWith(gen_file_id('..Mwoo oof\t m'), b'mwoooofm-')
+        self.assertStartsWith(gen_file_id("..gam.py"), b"gam.py-")
+        self.assertStartsWith(gen_file_id("..Mwoo oof\t m"), b"mwoooofm-")
 
         # we remove unicode characters, and still don't end up with a
         # hidden file id
-        self.assertStartsWith(gen_file_id('\xe5\xb5.txt'), b'txt-')
+        self.assertStartsWith(gen_file_id("\xe5\xb5.txt"), b"txt-")
 
         # Our current method of generating unique ids adds 33 characters
         # plus an serial number (log10(N) characters)
@@ -62,22 +62,22 @@ class TestFileIds(tests.TestCase):
         # be <= 20 characters, so the maximum length should now be approx < 60
 
         # Test both case squashing and length restriction
-        fid = gen_file_id('A' * 50 + '.txt')
-        self.assertStartsWith(fid, b'a' * 20 + b'-')
+        fid = gen_file_id("A" * 50 + ".txt")
+        self.assertStartsWith(fid, b"a" * 20 + b"-")
         self.assertTrue(len(fid) < 60)
 
         # restricting length happens after the other actions, so
         # we preserve as much as possible
-        fid = gen_file_id('\xe5\xb5..aBcd\tefGhijKLMnop\tqrstuvwxyz')
-        self.assertStartsWith(fid, b'abcdefghijklmnopqrst-')
+        fid = gen_file_id("\xe5\xb5..aBcd\tefGhijKLMnop\tqrstuvwxyz")
+        self.assertStartsWith(fid, b"abcdefghijklmnopqrst-")
         self.assertTrue(len(fid) < 60)
 
     def test_file_ids_are_ascii(self):
-        tail = br'-\d{14}-[a-z0-9]{16}-\d+'
-        self.assertGenFileId(b'foo' + tail, 'foo')
-        self.assertGenFileId(b'foo' + tail, 'foo')
-        self.assertGenFileId(b'bar' + tail, 'bar')
-        self.assertGenFileId(b'br' + tail, 'b\xe5r')
+        tail = rb"-\d{14}-[a-z0-9]{16}-\d+"
+        self.assertGenFileId(b"foo" + tail, "foo")
+        self.assertGenFileId(b"foo" + tail, "foo")
+        self.assertGenFileId(b"bar" + tail, "bar")
+        self.assertGenFileId(b"br" + tail, "b\xe5r")
 
     def test__next_id_suffix_sets_suffix(self):
         generate_ids._gen_file_id_suffix = None
@@ -106,7 +106,7 @@ class TestFileIds(tests.TestCase):
     def test_gen_root_id(self):
         # Mostly just make sure gen_root_id() exists
         root_id = generate_ids.gen_root_id()
-        self.assertStartsWith(root_id, b'tree_root-')
+        self.assertStartsWith(root_id, b"tree_root-")
 
 
 class TestGenRevisionId(tests.TestCase):
@@ -115,47 +115,49 @@ class TestGenRevisionId(tests.TestCase):
     def assertGenRevisionId(self, regex, username, timestamp=None):
         """gen_revision_id should create a revision id matching the regex"""
         revision_id = generate_ids.gen_revision_id(username, timestamp)
-        self.assertContainsRe(revision_id, b'^' + regex + b'$')
+        self.assertContainsRe(revision_id, b"^" + regex + b"$")
         # It should be a utf8 revision_id, not a unicode one
         self.assertIsInstance(revision_id, bytes)
         # gen_revision_id should always return ascii revision ids.
-        revision_id.decode('ascii')
+        revision_id.decode("ascii")
 
     def test_timestamp(self):
         """passing a timestamp should cause it to be used"""
+        self.assertGenRevisionId(rb"user@host-\d{14}-[a-z0-9]{16}", "user@host")
         self.assertGenRevisionId(
-            br'user@host-\d{14}-[a-z0-9]{16}', 'user@host')
-        self.assertGenRevisionId(b'user@host-20061102205056-[a-z0-9]{16}',
-                                 'user@host', 1162500656.688)
-        self.assertGenRevisionId(br'user@host-20061102205024-[a-z0-9]{16}',
-                                 'user@host', 1162500624.000)
+            b"user@host-20061102205056-[a-z0-9]{16}", "user@host", 1162500656.688
+        )
+        self.assertGenRevisionId(
+            rb"user@host-20061102205024-[a-z0-9]{16}", "user@host", 1162500624.000
+        )
 
     def test_gen_revision_id_email(self):
         """gen_revision_id uses email address if present"""
-        regex = br'user\+joe_bar@foo-bar\.com-\d{14}-[a-z0-9]{16}'
-        self.assertGenRevisionId(regex, 'user+joe_bar@foo-bar.com')
-        self.assertGenRevisionId(regex, '<user+joe_bar@foo-bar.com>')
-        self.assertGenRevisionId(regex, 'Joe Bar <user+joe_bar@foo-bar.com>')
-        self.assertGenRevisionId(regex, 'Joe Bar <user+Joe_Bar@Foo-Bar.com>')
-        self.assertGenRevisionId(
-            regex, 'Joe B\xe5r <user+Joe_Bar@Foo-Bar.com>')
+        regex = rb"user\+joe_bar@foo-bar\.com-\d{14}-[a-z0-9]{16}"
+        self.assertGenRevisionId(regex, "user+joe_bar@foo-bar.com")
+        self.assertGenRevisionId(regex, "<user+joe_bar@foo-bar.com>")
+        self.assertGenRevisionId(regex, "Joe Bar <user+joe_bar@foo-bar.com>")
+        self.assertGenRevisionId(regex, "Joe Bar <user+Joe_Bar@Foo-Bar.com>")
+        self.assertGenRevisionId(regex, "Joe B\xe5r <user+Joe_Bar@Foo-Bar.com>")
 
     def test_gen_revision_id_user(self):
         """If there is no email, fall back to the whole username"""
-        tail = br'-\d{14}-[a-z0-9]{16}'
-        self.assertGenRevisionId(b'joe_bar' + tail, 'Joe Bar')
-        self.assertGenRevisionId(b'joebar' + tail, 'joebar')
-        self.assertGenRevisionId(b'joe_br' + tail, 'Joe B\xe5r')
-        self.assertGenRevisionId(br'joe_br_user\+joe_bar_foo-bar.com' + tail,
-                                 'Joe B\xe5r <user+Joe_Bar_Foo-Bar.com>')
+        tail = rb"-\d{14}-[a-z0-9]{16}"
+        self.assertGenRevisionId(b"joe_bar" + tail, "Joe Bar")
+        self.assertGenRevisionId(b"joebar" + tail, "joebar")
+        self.assertGenRevisionId(b"joe_br" + tail, "Joe B\xe5r")
+        self.assertGenRevisionId(
+            rb"joe_br_user\+joe_bar_foo-bar.com" + tail,
+            "Joe B\xe5r <user+Joe_Bar_Foo-Bar.com>",
+        )
 
     def test_revision_ids_are_ascii(self):
         """gen_revision_id should always return an ascii revision id."""
-        tail = br'-\d{14}-[a-z0-9]{16}'
-        self.assertGenRevisionId(b'joe_bar' + tail, 'Joe Bar')
-        self.assertGenRevisionId(b'joe_bar' + tail, 'Joe Bar')
-        self.assertGenRevisionId(b'joe@foo' + tail, 'Joe Bar <joe@foo>')
+        tail = rb"-\d{14}-[a-z0-9]{16}"
+        self.assertGenRevisionId(b"joe_bar" + tail, "Joe Bar")
+        self.assertGenRevisionId(b"joe_bar" + tail, "Joe Bar")
+        self.assertGenRevisionId(b"joe@foo" + tail, "Joe Bar <joe@foo>")
         # We cheat a little with this one, because email-addresses shouldn't
         # contain non-ascii characters, but generate_ids should strip them
         # anyway.
-        self.assertGenRevisionId(b'joe@f' + tail, 'Joe Bar <joe@f\xb6>')
+        self.assertGenRevisionId(b"joe@f" + tail, "Joe Bar <joe@f\xb6>")

@@ -34,26 +34,30 @@ def shellcomplete_on_command(cmdname, outfile=None):
 
     from inspect import getdoc
     from . import commands
+
     cmdobj = commands.get_cmd_object(cmdname)
 
     doc = getdoc(cmdobj)
     if doc is None:
         raise NotImplementedError(
-            "sorry, no detailed shellcomplete yet for %r" % cmdname)
+            "sorry, no detailed shellcomplete yet for %r" % cmdname
+        )
 
     shellcomplete_on_options(cmdobj.options().values(), outfile=outfile)
     for aname in cmdobj.takes_args:
-        outfile.write(aname + '\n')
+        outfile.write(aname + "\n")
 
 
 def shellcomplete_on_options(options, outfile=None):
     for opt in options:
         short_name = opt.short_name()
         if short_name:
-            outfile.write('"(--%s -%s)"{--%s,-%s}\n'
-                          % (opt.name, short_name, opt.name, short_name))
+            outfile.write(
+                '"(--%s -%s)"{--%s,-%s}\n'
+                % (opt.name, short_name, opt.name, short_name)
+            )
         else:
-            outfile.write('--%s\n' % opt.name)
+            outfile.write("--%s\n" % opt.name)
 
 
 def shellcomplete_commands(outfile=None):
@@ -78,8 +82,8 @@ def shellcomplete_commands(outfile=None):
             continue
         doc = getdoc(cmd)
         if doc is None:
-            outfile.write(cmdname + '\n')
+            outfile.write(cmdname + "\n")
         else:
             doclines = doc.splitlines()
             firstline = doclines[0].lower()
-            outfile.write(cmdname + ':' + firstline[0:-1] + '\n')
+            outfile.write(cmdname + ":" + firstline[0:-1] + "\n")

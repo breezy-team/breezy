@@ -17,23 +17,22 @@
 from ... import (
     branch,
     builtins,
-    )
+)
 from .. import (
     transport_util,
     ui_testing,
-    )
+)
 
 
 class TestUpdate(transport_util.TestCaseWithConnectionHookedTransport):
-
     def test_update(self):
-        remote_wt = self.make_branch_and_tree('remote')
-        local_wt = self.make_branch_and_tree('local')
+        remote_wt = self.make_branch_and_tree("remote")
+        local_wt = self.make_branch_and_tree("local")
 
-        remote_branch = branch.Branch.open(self.get_url('remote'))
+        remote_branch = branch.Branch.open(self.get_url("remote"))
         local_wt.branch.bind(remote_branch)
 
-        remote_wt.commit('empty commit')
+        remote_wt.commit("empty commit")
 
         self.start_logging_connections()
 
@@ -41,5 +40,5 @@ class TestUpdate(transport_util.TestCaseWithConnectionHookedTransport):
         # update needs the encoding from outf to print URLs
         update.outf = ui_testing.StringIOWithEncoding()
         # update calls it 'dir' where other commands calls it 'directory'
-        update.run(dir='local')
+        update.run(dir="local")
         self.assertEqual(1, len(self.connections))

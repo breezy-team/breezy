@@ -21,7 +21,7 @@
 
 from ..errors import (
     InvalidRevisionId,
-    )
+)
 from ..revision import (
     NULL_REVISION,
 )
@@ -29,7 +29,7 @@ from ..revisionspec import (
     InvalidRevisionSpec,
     RevisionInfo,
     RevisionSpec,
-    )
+)
 
 
 def valid_git_sha1(hex):
@@ -57,19 +57,22 @@ class RevisionSpec_git(RevisionSpec):
     imported into Bazaar repositories.
     """
 
-    prefix = 'git:'
+    prefix = "git:"
     wants_revision_history = False
 
     def _lookup_git_sha1(self, branch, sha1):
         from .errors import (
             GitSmartRemoteNotSupported,
-            )
+        )
         from .mapping import (
             default_mapping,
-            )
+        )
 
-        bzr_revid = getattr(branch.repository, "lookup_foreign_revision_id",
-                            default_mapping.revision_id_foreign_to_bzr)(sha1)
+        bzr_revid = getattr(
+            branch.repository,
+            "lookup_foreign_revision_id",
+            default_mapping.revision_id_foreign_to_bzr,
+        )(sha1)
         try:
             if branch.repository.has_revision(bzr_revid):
                 return bzr_revid
@@ -89,9 +92,14 @@ class RevisionSpec_git(RevisionSpec):
         from .mapping import (
             ForeignGit,
             mapping_registry,
-            )
-        parse_revid = getattr(branch.repository, "lookup_bzr_revision_id",
-                              mapping_registry.parse_revision_id)
+        )
+
+        parse_revid = getattr(
+            branch.repository,
+            "lookup_bzr_revision_id",
+            mapping_registry.parse_revision_id,
+        )
+
         def matches_revid(revid):
             if revid == NULL_REVISION:
                 return False
@@ -102,6 +110,7 @@ class RevisionSpec_git(RevisionSpec):
             if not isinstance(mapping.vcs, ForeignGit):
                 return False
             return foreign_revid.startswith(sha1)
+
         with branch.repository.lock_read():
             graph = branch.repository.get_graph()
             last_revid = branch.last_revision()
@@ -113,14 +122,14 @@ class RevisionSpec_git(RevisionSpec):
             raise InvalidRevisionSpec(self.user_spec, branch)
 
     def _as_revision_id(self, context_branch):
-        loc = self.spec.find(':')
-        git_sha1 = self.spec[loc + 1:].encode("utf-8")
-        if (len(git_sha1) > 40 or len(git_sha1) < 4 or
-                not valid_git_sha1(git_sha1)):
+        loc = self.spec.find(":")
+        git_sha1 = self.spec[loc + 1 :].encode("utf-8")
+        if len(git_sha1) > 40 or len(git_sha1) < 4 or not valid_git_sha1(git_sha1):
             raise InvalidRevisionSpec(self.user_spec, context_branch)
         from . import (
             lazy_check_versions,
-            )
+        )
+
         lazy_check_versions()
         if len(git_sha1) == 40:
             return self._lookup_git_sha1(context_branch, git_sha1)

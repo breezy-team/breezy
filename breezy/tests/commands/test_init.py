@@ -18,11 +18,10 @@ from ...builtins import cmd_init
 from .. import (
     transport_util,
     ui_testing,
-    )
+)
 
 
 class TestInit(transport_util.TestCaseWithConnectionHookedTransport):
-
     def setUp(self):
         super().setUp()
         self.start_logging_connections()

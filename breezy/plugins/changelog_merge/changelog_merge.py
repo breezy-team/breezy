@@ -23,7 +23,7 @@ from ... import (
     debug,
     merge,
     osutils,
-    )
+)
 from merge3 import Merge3
 from ...trace import mutter
 
@@ -36,7 +36,7 @@ def changelog_entries(lines):
     """
     entries = []
     for line in lines:
-        if line[0] not in (' ', '\t', '\n'):
+        if line[0] not in (" ", "\t", "\n"):
             # new entry
             entries.append([line])
         else:
@@ -69,7 +69,7 @@ class ChangeLogMerger(merge.ConfigurableFileMerger):
             # just add the part we're interested in to the params to avoid
             # reading the config files repeatedly (breezy.conf, location.conf,
             # branch.conf).
-            config_key = self.name_prefix + '_merge_files'
+            config_key = self.name_prefix + "_merge_files"
             affected_files = config.get_user_option_as_list(config_key)
             if affected_files is None:
                 # If nothing was specified in the config, use the default.
@@ -84,28 +84,27 @@ class ChangeLogMerger(merge.ConfigurableFileMerger):
     def merge_text(self, params):
         """Merge changelog changes.
 
-         * new entries from other will float to the top
-         * edits to older entries are preserved
+        * new entries from other will float to the top
+        * edits to older entries are preserved
         """
         # Transform files into lists of changelog entries
         this_entries = changelog_entries(params.this_lines)
         other_entries = changelog_entries(params.other_lines)
         base_entries = changelog_entries(params.base_lines)
         try:
-            result_entries = merge_entries(
-                base_entries, this_entries, other_entries)
+            result_entries = merge_entries(base_entries, this_entries, other_entries)
         except EntryConflict:
             # XXX: generating a nice conflict file would be better
-            return 'not_applicable', None
+            return "not_applicable", None
         # Transform the merged elements back into real blocks of lines.
-        return 'success', entries_to_lines(result_entries)
+        return "success", entries_to_lines(result_entries)
 
 
 class EntryConflict(Exception):
     pass
 
 
-def default_guess_edits(new_entries, deleted_entries, entry_as_str=b''.join):
+def default_guess_edits(new_entries, deleted_entries, entry_as_str=b"".join):
     """Default implementation of guess_edits param of merge_entries.
 
     This algorithm does O(N^2 * logN) SequenceMatcher.ratio() calls, which is
@@ -136,8 +135,7 @@ def default_guess_edits(new_entries, deleted_entries, entry_as_str=b''.join):
             # lists for the next round.
             del_index = deleted_entries_as_strs.index(best[1])
             new_index = new_entries_as_strs.index(best[0])
-            result_edits.append(
-                (result_deleted[del_index], result_new[new_index]))
+            result_edits.append((result_deleted[del_index], result_new[new_index]))
             del deleted_entries_as_strs[del_index], result_deleted[del_index]
             del new_entries_as_strs[new_index], result_new[new_index]
         else:
@@ -147,42 +145,44 @@ def default_guess_edits(new_entries, deleted_entries, entry_as_str=b''.join):
     return result_new, result_deleted, result_edits
 
 
-def merge_entries(base_entries, this_entries, other_entries,
-                  guess_edits=default_guess_edits):
+def merge_entries(
+    base_entries, this_entries, other_entries, guess_edits=default_guess_edits
+):
     """Merge changelog given base, this, and other versions."""
     m3 = Merge3(
-        base_entries, this_entries, other_entries,
-        sequence_matcher=patiencediff.PatienceSequenceMatcher)
+        base_entries,
+        this_entries,
+        other_entries,
+        sequence_matcher=patiencediff.PatienceSequenceMatcher,
+    )
     result_entries = []
     at_top = True
     for group in m3.merge_groups():
-        if 'changelog_merge' in debug.debug_flags:
-            mutter('merge group:\n%r', group)
+        if "changelog_merge" in debug.debug_flags:
+            mutter("merge group:\n%r", group)
         group_kind = group[0]
-        if group_kind == 'conflict':
+        if group_kind == "conflict":
             _, base, this, other = group
             # Find additions
-            new_in_other = [
-                entry for entry in other if entry not in base]
+            new_in_other = [entry for entry in other if entry not in base]
             # Find deletions
-            deleted_in_other = [
-                entry for entry in base if entry not in other]
+            deleted_in_other = [entry for entry in base if entry not in other]
             if at_top and deleted_in_other:
                 # Magic!  Compare deletions and additions to try spot edits
                 new_in_other, deleted_in_other, edits_in_other = guess_edits(
-                    new_in_other, deleted_in_other)
+                    new_in_other, deleted_in_other
+                )
             else:
                 # Changes not made at the top are always preserved as is, no
                 # need to try distinguish edits from adds and deletes.
                 edits_in_other = []
-            if 'changelog_merge' in debug.debug_flags:
-                mutter('at_top: %r', at_top)
-                mutter('new_in_other: %r', new_in_other)
-                mutter('deleted_in_other: %r', deleted_in_other)
-                mutter('edits_in_other: %r', edits_in_other)
+            if "changelog_merge" in debug.debug_flags:
+                mutter("at_top: %r", at_top)
+                mutter("new_in_other: %r", new_in_other)
+                mutter("deleted_in_other: %r", deleted_in_other)
+                mutter("edits_in_other: %r", edits_in_other)
             # Apply deletes and edits
-            updated_this = [
-                entry for entry in this if entry not in deleted_in_other]
+            updated_this = [entry for entry in this if entry not in deleted_in_other]
             for old_entry, new_entry in edits_in_other:
                 try:
                     index = updated_this.index(old_entry)
@@ -191,8 +191,8 @@ def merge_entries(base_entries, this_entries, other_entries,
                     # declare a conflict.
                     raise EntryConflict()
                 updated_this[index] = new_entry
-            if 'changelog_merge' in debug.debug_flags:
-                mutter('updated_this: %r', updated_this)
+            if "changelog_merge" in debug.debug_flags:
+                mutter("updated_this: %r", updated_this)
             if at_top:
                 # Float new entries from other to the top
                 result_entries = new_in_other + result_entries

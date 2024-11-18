@@ -49,7 +49,7 @@ check_refs are tuples (kind, value). Currently defined kinds are:
 
 from .. import (
     ui,
-    )
+)
 from ..branch import Branch
 from ..check import Check
 from ..revision import NULL_REVISION
@@ -91,17 +91,17 @@ class VersionedFileCheck(Check):
         if callback_refs is None:
             callback_refs = {}
         with self.repository.lock_read(), ui.ui_factory.nested_progress_bar() as self.progress:
-            self.progress.update(gettext('check'), 0, 4)
+            self.progress.update(gettext("check"), 0, 4)
             if self.check_repo:
-                self.progress.update(gettext('checking revisions'), 0)
+                self.progress.update(gettext("checking revisions"), 0)
                 self.check_revisions()
-                self.progress.update(gettext('checking commit contents'), 1)
+                self.progress.update(gettext("checking commit contents"), 1)
                 self.repository._check_inventories(self)
-                self.progress.update(gettext('checking file graphs'), 2)
+                self.progress.update(gettext("checking file graphs"), 2)
                 # check_weaves is done after the revision scan so that
                 # revision index is known to be valid.
                 self.check_weaves()
-            self.progress.update(gettext('checking branches and trees'), 3)
+            self.progress.update(gettext("checking branches and trees"), 3)
             if callback_refs:
                 repo = self.repository
                 # calculate all refs, and callback the objects requesting them.
@@ -117,27 +117,26 @@ class VersionedFileCheck(Check):
                 for ref, wantlist in callback_refs.items():
                     wanting_items.update(wantlist)
                     kind, value = ref
-                    if kind == 'trees':
+                    if kind == "trees":
                         refs[ref] = repo.revision_tree(value)
-                    elif kind == 'lefthand-distance':
+                    elif kind == "lefthand-distance":
                         distances.add(value)
-                    elif kind == 'revision-existence':
+                    elif kind == "revision-existence":
                         existences.add(value)
                     else:
-                        raise AssertionError(
-                            'unknown ref kind for ref %s' % ref)
+                        raise AssertionError("unknown ref kind for ref %s" % ref)
                 node_distances = repo.get_graph().find_lefthand_distances(distances)
                 for key, distance in node_distances.items():
-                    refs[('lefthand-distance', key)] = distance
+                    refs[("lefthand-distance", key)] = distance
                     if key in existences and distance > 0:
-                        refs[('revision-existence', key)] = True
+                        refs[("revision-existence", key)] = True
                         existences.remove(key)
                 parent_map = repo.get_graph().get_parent_map(existences)
                 for key in parent_map:
-                    refs[('revision-existence', key)] = True
+                    refs[("revision-existence", key)] = True
                     existences.remove(key)
                 for key in existences:
-                    refs[('revision-existence', key)] = False
+                    refs[("revision-existence", key)] = False
                 for item in wanting_items:
                     if isinstance(item, WorkingTree):
                         item._check(refs)
@@ -162,7 +161,8 @@ class VersionedFileCheck(Check):
     def check_revisions(self):
         """Scan revisions, checking data directly available as we go."""
         revision_iterator = self.repository.iter_revisions(
-            self.repository.all_revision_ids())
+            self.repository.all_revision_ids()
+        )
         revision_iterator = self._check_revisions(revision_iterator)
         # We read the all revisions here:
         # - doing this allows later code to depend on the revision index.
@@ -176,7 +176,8 @@ class VersionedFileCheck(Check):
                 pass
         else:
             bad_revisions = self.repository._find_inconsistent_revision_parents(
-                revision_iterator)
+                revision_iterator
+            )
             self.revs_with_bad_parents_in_index = list(bad_revisions)
 
     def report_results(self, verbose):
@@ -186,62 +187,87 @@ class VersionedFileCheck(Check):
             result.report_results(verbose)
 
     def _report_repo_results(self, verbose):
-        note(gettext('checked repository {0} format {1}').format(
-            self.repository.user_url,
-            self.repository._format))
-        note(gettext('%6d revisions'), self.checked_rev_cnt)
-        note(gettext('%6d file-ids'), len(self.checked_weaves))
+        note(
+            gettext("checked repository {0} format {1}").format(
+                self.repository.user_url, self.repository._format
+            )
+        )
+        note(gettext("%6d revisions"), self.checked_rev_cnt)
+        note(gettext("%6d file-ids"), len(self.checked_weaves))
         if verbose:
-            note(gettext('%6d unreferenced text versions'),
-                 len(self.unreferenced_versions))
+            note(
+                gettext("%6d unreferenced text versions"),
+                len(self.unreferenced_versions),
+            )
         if verbose and len(self.unreferenced_versions):
             for file_id, revision_id in self.unreferenced_versions:
-                note(gettext('unreferenced version: {{{0}}} in {1}').format(
-                    revision_id.decode('utf-8'), file_id.decode('utf-8')))
+                note(
+                    gettext("unreferenced version: {{{0}}} in {1}").format(
+                        revision_id.decode("utf-8"), file_id.decode("utf-8")
+                    )
+                )
         if self.missing_inventory_sha_cnt:
-            note(gettext('%6d revisions are missing inventory_sha1'),
-                 self.missing_inventory_sha_cnt)
+            note(
+                gettext("%6d revisions are missing inventory_sha1"),
+                self.missing_inventory_sha_cnt,
+            )
         if self.missing_revision_cnt:
-            note(gettext('%6d revisions are mentioned but not present'),
-                 self.missing_revision_cnt)
+            note(
+                gettext("%6d revisions are mentioned but not present"),
+                self.missing_revision_cnt,
+            )
         if len(self.ghosts):
-            note(gettext('%6d ghost revisions'), len(self.ghosts))
+            note(gettext("%6d ghost revisions"), len(self.ghosts))
             if verbose:
                 for ghost in self.ghosts:
-                    note('      %s', ghost.decode('utf-8'))
+                    note("      %s", ghost.decode("utf-8"))
         if len(self.missing_parent_links):
-            note(gettext('%6d revisions missing parents in ancestry'),
-                 len(self.missing_parent_links))
+            note(
+                gettext("%6d revisions missing parents in ancestry"),
+                len(self.missing_parent_links),
+            )
             if verbose:
                 for link, linkers in self.missing_parent_links.items():
-                    note(gettext('      %s should be in the ancestry for:'),
-                         link.decode('utf-8'))
+                    note(
+                        gettext("      %s should be in the ancestry for:"),
+                        link.decode("utf-8"),
+                    )
                     for linker in linkers:
-                        note('       * %s', linker.decode('utf-8'))
+                        note("       * %s", linker.decode("utf-8"))
         if len(self.inconsistent_parents):
-            note(gettext('%6d inconsistent parents'),
-                 len(self.inconsistent_parents))
+            note(gettext("%6d inconsistent parents"), len(self.inconsistent_parents))
             if verbose:
                 for info in self.inconsistent_parents:
                     revision_id, file_id, found_parents, correct_parents = info
-                    note(gettext('      * {0} version {1} has parents ({2}) '
-                                 'but should have ({3})').format(
-                         file_id.decode('utf-8'), revision_id.decode('utf-8'),
-                         ', '.join(p.decode('utf-8') for p in found_parents),
-                         ', '.join(p.decode('utf-8') for p in correct_parents)))
+                    note(
+                        gettext(
+                            "      * {0} version {1} has parents ({2}) "
+                            "but should have ({3})"
+                        ).format(
+                            file_id.decode("utf-8"),
+                            revision_id.decode("utf-8"),
+                            ", ".join(p.decode("utf-8") for p in found_parents),
+                            ", ".join(p.decode("utf-8") for p in correct_parents),
+                        )
+                    )
         if self.revs_with_bad_parents_in_index:
-            note(gettext(
-                 '%6d revisions have incorrect parents in the revision index'),
-                 len(self.revs_with_bad_parents_in_index))
+            note(
+                gettext("%6d revisions have incorrect parents in the revision index"),
+                len(self.revs_with_bad_parents_in_index),
+            )
             if verbose:
                 for item in self.revs_with_bad_parents_in_index:
                     revision_id, index_parents, actual_parents = item
-                    note(gettext(
-                        '       {0} has wrong parents in index: '
-                        '({1}) should be ({2})').format(
-                        revision_id.decode('utf-8'),
-                        ', '.join(p.decode('utf-8') for p in index_parents),
-                        ', '.join(p.decode('utf-8') for p in actual_parents)))
+                    note(
+                        gettext(
+                            "       {0} has wrong parents in index: "
+                            "({1}) should be ({2})"
+                        ).format(
+                            revision_id.decode("utf-8"),
+                            ", ".join(p.decode("utf-8") for p in index_parents),
+                            ", ".join(p.decode("utf-8") for p in actual_parents),
+                        )
+                    )
         for item in self._report_items:
             note(item)
 
@@ -252,9 +278,11 @@ class VersionedFileCheck(Check):
         :param rev: A revision or None to indicate a missing revision.
         """
         if rev.revision_id != rev_id:
-            self._report_items.append(gettext(
-                'Mismatched internal revid {{{0}}} and index revid {{{1}}}').format(
-                rev.revision_id.decode('utf-8'), rev_id.decode('utf-8')))
+            self._report_items.append(
+                gettext(
+                    "Mismatched internal revid {{{0}}} and index revid {{{1}}}"
+                ).format(rev.revision_id.decode("utf-8"), rev_id.decode("utf-8"))
+            )
             rev_id = rev.revision_id
         # Check this revision tree etc, and count as seen when we encounter a
         # reference to it.
@@ -267,8 +295,9 @@ class VersionedFileCheck(Check):
                 self.ghosts.add(parent)
 
         self.ancestors[rev_id] = tuple(rev.parent_ids) or (NULL_REVISION,)
-        self.add_pending_item(rev_id, ('inventories', rev_id), 'inventory',
-                              rev.inventory_sha1)
+        self.add_pending_item(
+            rev_id, ("inventories", rev_id), "inventory", rev.inventory_sha1
+        )
         self.checked_rev_cnt += 1
 
     def add_pending_item(self, referer, key, kind, sha1):
@@ -282,32 +311,36 @@ class VersionedFileCheck(Check):
         existing = self.pending_keys.get(key)
         if existing:
             if sha1 != existing[1]:
-                self._report_items.append(gettext('Multiple expected sha1s for {0}. {{{1}}}'
-                                                  ' expects {{{2}}}, {{{3}}} expects {{{4}}}').format(
-                    key, referer, sha1, existing[1], existing[0]))
+                self._report_items.append(
+                    gettext(
+                        "Multiple expected sha1s for {0}. {{{1}}}"
+                        " expects {{{2}}}, {{{3}}} expects {{{4}}}"
+                    ).format(key, referer, sha1, existing[1], existing[0])
+                )
         else:
             self.pending_keys[key] = (kind, sha1, referer)
 
     def check_weaves(self):
-        """Check all the weaves we can get our hands on.
-        """
+        """Check all the weaves we can get our hands on."""
         weave_ids = []
         with ui.ui_factory.nested_progress_bar() as storebar:
             self._check_weaves(storebar)
 
     def _check_weaves(self, storebar):
-        storebar.update('text-index', 0, 2)
+        storebar.update("text-index", 0, 2)
         if self.repository._format.fast_deltas:
             # We haven't considered every fileid instance so far.
             weave_checker = self.repository._get_versioned_file_checker(
-                ancestors=self.ancestors)
+                ancestors=self.ancestors
+            )
         else:
             weave_checker = self.repository._get_versioned_file_checker(
-                text_key_references=self.text_key_references,
-                ancestors=self.ancestors)
-        storebar.update('file-graph', 1)
+                text_key_references=self.text_key_references, ancestors=self.ancestors
+            )
+        storebar.update("file-graph", 1)
         wrongs, unused_versions = weave_checker.check_file_version_parents(
-            self.repository.texts)
+            self.repository.texts
+        )
         self.checked_weaves = weave_checker.file_ids
         for text_key, (stored_parents, correct_parents) in wrongs.items():
             # XXX not ready for id join/split operations.
@@ -316,11 +349,12 @@ class VersionedFileCheck(Check):
             weave_parents = tuple([parent[-1] for parent in stored_parents])
             correct_parents = tuple([parent[-1] for parent in correct_parents])
             self.inconsistent_parents.append(
-                (revision_id, weave_id, weave_parents, correct_parents))
+                (revision_id, weave_id, weave_parents, correct_parents)
+            )
         self.unreferenced_versions.update(unused_versions)
 
     def _add_entry_to_text_key_references(self, inv, entry):
-        if not self.rich_roots and entry.name == '':
+        if not self.rich_roots and entry.name == "":
             return
         key = (entry.file_id, entry.revision)
         self.text_key_references.setdefault(key, False)

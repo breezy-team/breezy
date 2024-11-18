@@ -20,16 +20,18 @@ import warnings
 from breezy import (
     bugtracker,
     revision,
-    )
+)
 from breezy.revision import NULL_REVISION
 from breezy.tests import TestCase, TestCaseWithTransport
 from breezy.tests.matchers import MatchesAncestry
 
 # We're allowed to test deprecated interfaces
-warnings.filterwarnings('ignore',
-                        '.*get_intervening_revisions was deprecated',
-                        DeprecationWarning,
-                        r'breezy\.tests\.test_revision')
+warnings.filterwarnings(
+    "ignore",
+    ".*get_intervening_revisions was deprecated",
+    DeprecationWarning,
+    r"breezy\.tests\.test_revision",
+)
 
 # XXX: Make this a method of a merge base case
 
@@ -64,13 +66,13 @@ def make_branches(self, format=None):
     br2 = tree2.branch
     tree2.commit("Commit four", rev_id=b"b@u-0-3")
     tree2.commit("Commit five", rev_id=b"b@u-0-4")
-    self.assertEqual(br2.last_revision(), b'b@u-0-4')
+    self.assertEqual(br2.last_revision(), b"b@u-0-4")
 
     tree1.merge_from_branch(br2)
     tree1.commit("Commit six", rev_id=b"a@u-0-3")
     tree1.commit("Commit seven", rev_id=b"a@u-0-4")
     tree2.commit("Commit eight", rev_id=b"b@u-0-5")
-    self.assertEqual(br2.last_revision(), b'b@u-0-5')
+    self.assertEqual(br2.last_revision(), b"b@u-0-5")
 
     tree1.merge_from_branch(br2)
     tree1.commit("Commit nine", rev_id=b"a@u-0-5")
@@ -78,8 +80,9 @@ def make_branches(self, format=None):
     br1.lock_read()
     try:
         graph = br1.repository.get_graph()
-        revhistory = list(graph.iter_lefthand_ancestry(br1.last_revision(),
-                                                       [revision.NULL_REVISION]))
+        revhistory = list(
+            graph.iter_lefthand_ancestry(br1.last_revision(), [revision.NULL_REVISION])
+        )
         revhistory.reverse()
     finally:
         br1.unlock()
@@ -90,43 +93,89 @@ def make_branches(self, format=None):
 
 
 class TestIsAncestor(TestCaseWithTransport):
-
     def test_recorded_ancestry(self):
         """Test that commit records all ancestors"""
         br1, br2 = make_branches(self)
-        d = [(b'a@u-0-0', [b'a@u-0-0']),
-             (b'a@u-0-1', [b'a@u-0-0', b'a@u-0-1']),
-             (b'a@u-0-2', [b'a@u-0-0', b'a@u-0-1', b'a@u-0-2']),
-             (b'b@u-0-3', [b'a@u-0-0', b'a@u-0-1', b'a@u-0-2', b'b@u-0-3']),
-             (b'b@u-0-4', [b'a@u-0-0', b'a@u-0-1', b'a@u-0-2', b'b@u-0-3',
-                           b'b@u-0-4']),
-             (b'a@u-0-3', [b'a@u-0-0', b'a@u-0-1', b'a@u-0-2', b'b@u-0-3', b'b@u-0-4',
-                           b'a@u-0-3']),
-             (b'a@u-0-4', [b'a@u-0-0', b'a@u-0-1', b'a@u-0-2', b'b@u-0-3', b'b@u-0-4',
-                           b'a@u-0-3', b'a@u-0-4']),
-             (b'b@u-0-5', [b'a@u-0-0', b'a@u-0-1', b'a@u-0-2', b'b@u-0-3', b'b@u-0-4',
-                           b'b@u-0-5']),
-             (b'a@u-0-5', [b'a@u-0-0', b'a@u-0-1', b'a@u-0-2', b'a@u-0-3', b'a@u-0-4',
-                           b'b@u-0-3', b'b@u-0-4',
-                           b'b@u-0-5', b'a@u-0-5']),
-             (b'b@u-0-6', [b'a@u-0-0', b'a@u-0-1', b'a@u-0-2', b'a@u-0-4',
-                           b'b@u-0-3', b'b@u-0-4',
-                           b'b@u-0-5', b'b@u-0-6']),
-             ]
-        br1_only = (b'a@u-0-3', b'a@u-0-4', b'a@u-0-5')
-        br2_only = (b'b@u-0-6',)
+        d = [
+            (b"a@u-0-0", [b"a@u-0-0"]),
+            (b"a@u-0-1", [b"a@u-0-0", b"a@u-0-1"]),
+            (b"a@u-0-2", [b"a@u-0-0", b"a@u-0-1", b"a@u-0-2"]),
+            (b"b@u-0-3", [b"a@u-0-0", b"a@u-0-1", b"a@u-0-2", b"b@u-0-3"]),
+            (b"b@u-0-4", [b"a@u-0-0", b"a@u-0-1", b"a@u-0-2", b"b@u-0-3", b"b@u-0-4"]),
+            (
+                b"a@u-0-3",
+                [
+                    b"a@u-0-0",
+                    b"a@u-0-1",
+                    b"a@u-0-2",
+                    b"b@u-0-3",
+                    b"b@u-0-4",
+                    b"a@u-0-3",
+                ],
+            ),
+            (
+                b"a@u-0-4",
+                [
+                    b"a@u-0-0",
+                    b"a@u-0-1",
+                    b"a@u-0-2",
+                    b"b@u-0-3",
+                    b"b@u-0-4",
+                    b"a@u-0-3",
+                    b"a@u-0-4",
+                ],
+            ),
+            (
+                b"b@u-0-5",
+                [
+                    b"a@u-0-0",
+                    b"a@u-0-1",
+                    b"a@u-0-2",
+                    b"b@u-0-3",
+                    b"b@u-0-4",
+                    b"b@u-0-5",
+                ],
+            ),
+            (
+                b"a@u-0-5",
+                [
+                    b"a@u-0-0",
+                    b"a@u-0-1",
+                    b"a@u-0-2",
+                    b"a@u-0-3",
+                    b"a@u-0-4",
+                    b"b@u-0-3",
+                    b"b@u-0-4",
+                    b"b@u-0-5",
+                    b"a@u-0-5",
+                ],
+            ),
+            (
+                b"b@u-0-6",
+                [
+                    b"a@u-0-0",
+                    b"a@u-0-1",
+                    b"a@u-0-2",
+                    b"a@u-0-4",
+                    b"b@u-0-3",
+                    b"b@u-0-4",
+                    b"b@u-0-5",
+                    b"b@u-0-6",
+                ],
+            ),
+        ]
+        br1_only = (b"a@u-0-3", b"a@u-0-4", b"a@u-0-5")
+        br2_only = (b"b@u-0-6",)
         for branch in br1, br2:
             for rev_id, anc in d:
                 if rev_id in br1_only and branch is not br1:
                     continue
                 if rev_id in br2_only and branch is not br2:
                     continue
-                self.assertThat(anc,
-                                MatchesAncestry(branch.repository, rev_id))
+                self.assertThat(anc, MatchesAncestry(branch.repository, rev_id))
 
 
 class TestIntermediateRevisions(TestCaseWithTransport):
-
     def setUp(self):
         TestCaseWithTransport.setUp(self)
         self.br1, self.br2 = make_branches(self)
@@ -166,58 +215,56 @@ class TestCommonAncestor(TestCaseWithTransport):
         # TODO: test ghosts on all parents, we should get some
         # indicator. i.e. NULL_REVISION
         # RBC 20060608
-        tree = self.make_branch_and_tree('.')
-        tree.commit('1', rev_id=b'1', allow_pointless=True)
-        tree.commit('2', rev_id=b'2', allow_pointless=True)
-        tree.commit('3', rev_id=b'3', allow_pointless=True)
-        rev = tree.branch.repository.get_revision(b'1')
+        tree = self.make_branch_and_tree(".")
+        tree.commit("1", rev_id=b"1", allow_pointless=True)
+        tree.commit("2", rev_id=b"2", allow_pointless=True)
+        tree.commit("3", rev_id=b"3", allow_pointless=True)
+        rev = tree.branch.repository.get_revision(b"1")
         history = rev.get_history(tree.branch.repository)
-        self.assertEqual([None, b'1'], history)
-        rev = tree.branch.repository.get_revision(b'2')
+        self.assertEqual([None, b"1"], history)
+        rev = tree.branch.repository.get_revision(b"2")
         history = rev.get_history(tree.branch.repository)
-        self.assertEqual([None, b'1', b'2'], history)
-        rev = tree.branch.repository.get_revision(b'3')
+        self.assertEqual([None, b"1", b"2"], history)
+        rev = tree.branch.repository.get_revision(b"3")
         history = rev.get_history(tree.branch.repository)
-        self.assertEqual([None, b'1', b'2', b'3'], history)
+        self.assertEqual([None, b"1", b"2", b"3"], history)
 
 
 class TestReservedId(TestCase):
-
     def test_is_reserved_id(self):
         self.assertEqual(True, revision.is_reserved_id(NULL_REVISION))
-        self.assertEqual(True, revision.is_reserved_id(
-            revision.CURRENT_REVISION))
-        self.assertEqual(True, revision.is_reserved_id(b'arch:'))
-        self.assertEqual(False, revision.is_reserved_id(b'null'))
-        self.assertEqual(False, revision.is_reserved_id(
-            b'arch:a@example.com/c--b--v--r'))
+        self.assertEqual(True, revision.is_reserved_id(revision.CURRENT_REVISION))
+        self.assertEqual(True, revision.is_reserved_id(b"arch:"))
+        self.assertEqual(False, revision.is_reserved_id(b"null"))
+        self.assertEqual(
+            False, revision.is_reserved_id(b"arch:a@example.com/c--b--v--r")
+        )
         self.assertEqual(False, revision.is_reserved_id(None))
 
 
 class TestRevisionMethods(TestCase):
-
     def test_get_summary(self):
-        r = revision.Revision('1')
-        r.message = 'a'
-        self.assertEqual('a', r.get_summary())
-        r.message = 'a\nb'
-        self.assertEqual('a', r.get_summary())
-        r.message = '\na\nb'
-        self.assertEqual('a', r.get_summary())
+        r = revision.Revision("1")
+        r.message = "a"
+        self.assertEqual("a", r.get_summary())
+        r.message = "a\nb"
+        self.assertEqual("a", r.get_summary())
+        r.message = "\na\nb"
+        self.assertEqual("a", r.get_summary())
         r.message = None
-        self.assertEqual('', r.get_summary())
+        self.assertEqual("", r.get_summary())
 
     def test_get_apparent_authors(self):
-        r = revision.Revision('1')
-        r.committer = 'A'
-        self.assertEqual(['A'], r.get_apparent_authors())
-        r.properties['author'] = 'B'
-        self.assertEqual(['B'], r.get_apparent_authors())
-        r.properties['authors'] = 'C\nD'
-        self.assertEqual(['C', 'D'], r.get_apparent_authors())
+        r = revision.Revision("1")
+        r.committer = "A"
+        self.assertEqual(["A"], r.get_apparent_authors())
+        r.properties["author"] = "B"
+        self.assertEqual(["B"], r.get_apparent_authors())
+        r.properties["authors"] = "C\nD"
+        self.assertEqual(["C", "D"], r.get_apparent_authors())
 
     def test_get_apparent_authors_no_committer(self):
-        r = revision.Revision('1')
+        r = revision.Revision("1")
         self.assertEqual([], r.get_apparent_authors())
 
 
@@ -225,33 +272,41 @@ class TestRevisionBugs(TestCase):
     """Tests for getting the bugs that a revision is linked to."""
 
     def test_no_bugs(self):
-        r = revision.Revision('1')
+        r = revision.Revision("1")
         self.assertEqual([], list(r.iter_bugs()))
 
     def test_some_bugs(self):
         r = revision.Revision(
-            '1', properties={
-                'bugs': bugtracker.encode_fixes_bug_urls(
-                    [('http://example.com/bugs/1', 'fixed'),
-                     ('http://launchpad.net/bugs/1234', 'fixed')])})
+            "1",
+            properties={
+                "bugs": bugtracker.encode_fixes_bug_urls(
+                    [
+                        ("http://example.com/bugs/1", "fixed"),
+                        ("http://launchpad.net/bugs/1234", "fixed"),
+                    ]
+                )
+            },
+        )
         self.assertEqual(
-            [('http://example.com/bugs/1', bugtracker.FIXED),
-             ('http://launchpad.net/bugs/1234', bugtracker.FIXED)],
-            list(r.iter_bugs()))
+            [
+                ("http://example.com/bugs/1", bugtracker.FIXED),
+                ("http://launchpad.net/bugs/1234", bugtracker.FIXED),
+            ],
+            list(r.iter_bugs()),
+        )
 
     def test_no_status(self):
-        r = revision.Revision(
-            '1', properties={'bugs': 'http://example.com/bugs/1'})
-        self.assertRaises(bugtracker.InvalidLineInBugsProperty, list,
-                          r.iter_bugs())
+        r = revision.Revision("1", properties={"bugs": "http://example.com/bugs/1"})
+        self.assertRaises(bugtracker.InvalidLineInBugsProperty, list, r.iter_bugs())
 
     def test_too_much_information(self):
         r = revision.Revision(
-            '1', properties={'bugs': 'http://example.com/bugs/1 fixed bar'})
-        self.assertRaises(bugtracker.InvalidLineInBugsProperty, list,
-                          r.iter_bugs())
+            "1", properties={"bugs": "http://example.com/bugs/1 fixed bar"}
+        )
+        self.assertRaises(bugtracker.InvalidLineInBugsProperty, list, r.iter_bugs())
 
     def test_invalid_status(self):
         r = revision.Revision(
-            '1', properties={'bugs': 'http://example.com/bugs/1 faxed'})
+            "1", properties={"bugs": "http://example.com/bugs/1 faxed"}
+        )
         self.assertRaises(bugtracker.InvalidBugStatus, list, r.iter_bugs())

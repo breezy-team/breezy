@@ -34,20 +34,20 @@ load_tests = load_tests_apply_scenarios
 
 
 def create_bundle_file(test_case):
-    test_case.build_tree(['tree/', 'tree/a', 'tree/subdir/'])
+    test_case.build_tree(["tree/", "tree/a", "tree/subdir/"])
 
     format = breezy.bzr.bzrdir.BzrDirFormat.get_default_format()
 
-    bzrdir = format.initialize('tree')
+    bzrdir = format.initialize("tree")
     repo = bzrdir.create_repository()
     branch = repo.controldir.create_branch()
     wt = branch.controldir.create_workingtree()
 
-    wt.add(['a', 'subdir/'])
-    wt.commit('new project', rev_id=b'commit-1')
+    wt.add(["a", "subdir/"])
+    wt.commit("new project", rev_id=b"commit-1")
 
     out = BytesIO()
-    write_bundle(wt.branch.repository, wt.get_parent_ids()[0], b'null:', out)
+    write_bundle(wt.branch.repository, wt.get_parent_ids()[0], b"null:", out)
     out.seek(0)
     return out, wt
 
@@ -59,20 +59,21 @@ class TestReadMergeableBundleFromURL(TestTransportImplementation):
 
     def setUp(self):
         super().setUp()
-        self.bundle_name = 'test_bundle'
+        self.bundle_name = "test_bundle"
         # read_mergeable_from_url will invoke get_transport which may *not*
         # respect self._transport (i.e. returns a transport that is different
         # from the one we want to test, so we must inject a correct transport
         # into possible_transports first).
         self.possible_transports = [self.get_transport(self.bundle_name)]
-        self.overrideEnv('BRZ_NO_SMART_VFS', None)
+        self.overrideEnv("BRZ_NO_SMART_VFS", None)
         self.create_test_bundle()
 
     def read_mergeable_from_url(self, url):
         return breezy.mergeable.read_mergeable_from_url(
-            url, possible_transports=self.possible_transports)
+            url, possible_transports=self.possible_transports
+        )
 
-    def get_url(self, relpath=''):
+    def get_url(self, relpath=""):
         return breezy.urlutils.join(self._server.get_url(), relpath)
 
     def create_test_bundle(self):
@@ -81,30 +82,31 @@ class TestReadMergeableBundleFromURL(TestTransportImplementation):
             self.build_tree_contents([(self.bundle_name, out.getvalue())])
         else:
             self.get_transport().put_file(self.bundle_name, out)
-            self.log('Put to: %s', self.get_url(self.bundle_name))
+            self.log("Put to: %s", self.get_url(self.bundle_name))
         return wt
 
     def test_read_mergeable_from_url(self):
-        info = self.read_mergeable_from_url(
-            str(self.get_url(self.bundle_name)))
+        info = self.read_mergeable_from_url(str(self.get_url(self.bundle_name)))
         revision = info.real_revisions[-1]
-        self.assertEqual(b'commit-1', revision.revision_id)
+        self.assertEqual(b"commit-1", revision.revision_id)
 
     def test_read_fail(self):
         # Trying to read from a directory, or non-bundle file
         # should fail with NotABundle
-        self.assertRaises(errors.NotABundle,
-                          self.read_mergeable_from_url, self.get_url('tree'))
-        self.assertRaises(errors.NotABundle,
-                          self.read_mergeable_from_url, self.get_url('tree/a'))
+        self.assertRaises(
+            errors.NotABundle, self.read_mergeable_from_url, self.get_url("tree")
+        )
+        self.assertRaises(
+            errors.NotABundle, self.read_mergeable_from_url, self.get_url("tree/a")
+        )
 
     def test_read_mergeable_respects_possible_transports(self):
-        if not isinstance(self.get_transport(self.bundle_name),
-                          breezy.transport.ConnectedTransport):
+        if not isinstance(
+            self.get_transport(self.bundle_name), breezy.transport.ConnectedTransport
+        ):
             # There is no point testing transport reuse for not connected
             # transports (the test will fail even).
-            raise tests.TestSkipped(
-                'Need a ConnectedTransport to test transport reuse')
+            raise tests.TestSkipped("Need a ConnectedTransport to test transport reuse")
         url = str(self.get_url(self.bundle_name))
         self.read_mergeable_from_url(url)
         self.assertEqual(1, len(self.possible_transports))

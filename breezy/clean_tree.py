@@ -22,7 +22,7 @@ from . import (
     controldir,
     errors,
     ui,
-    )
+)
 from .osutils import isdir
 from .trace import note
 from .workingtree import WorkingTree
@@ -31,8 +31,13 @@ from .i18n import gettext
 
 def is_detritus(subp):
     """Return True if the supplied path is detritus, False otherwise"""
-    return subp.endswith('.THIS') or subp.endswith('.BASE') or\
-        subp.endswith('.OTHER') or subp.endswith('~') or subp.endswith('.tmp')
+    return (
+        subp.endswith(".THIS")
+        or subp.endswith(".BASE")
+        or subp.endswith(".OTHER")
+        or subp.endswith("~")
+        or subp.endswith(".tmp")
+    )
 
 
 def iter_deletables(tree, unknown=False, ignored=False, detritus=False):
@@ -49,23 +54,30 @@ def iter_deletables(tree, unknown=False, ignored=False, detritus=False):
                 yield tree.abspath(subp), subp
 
 
-def clean_tree(directory, unknown=False, ignored=False, detritus=False,
-               dry_run=False, no_prompt=False):
+def clean_tree(
+    directory,
+    unknown=False,
+    ignored=False,
+    detritus=False,
+    dry_run=False,
+    no_prompt=False,
+):
     """Remove files in the specified classes from the tree"""
     tree = WorkingTree.open_containing(directory)[0]
     with tree.lock_read():
-        deletables = list(iter_deletables(tree, unknown=unknown,
-                                          ignored=ignored, detritus=detritus))
+        deletables = list(
+            iter_deletables(tree, unknown=unknown, ignored=ignored, detritus=detritus)
+        )
         deletables = _filter_out_nested_controldirs(deletables)
         if len(deletables) == 0:
-            note(gettext('Nothing to delete.'))
+            note(gettext("Nothing to delete."))
             return 0
         if not no_prompt:
             for path, subp in deletables:
                 ui.ui_factory.note(subp)
-            prompt = gettext('Are you sure you wish to delete these')
+            prompt = gettext("Are you sure you wish to delete these")
             if not ui.ui_factory.get_boolean(prompt):
-                ui.ui_factory.note(gettext('Canceled'))
+                ui.ui_factory.note(gettext("Canceled"))
                 return 0
         delete_items(deletables, dry_run=dry_run)
 
@@ -93,14 +105,15 @@ def _filter_out_nested_controldirs(deletables):
 
 def delete_items(deletables, dry_run=False):
     """Delete files in the deletables iterable"""
+
     def onerror(function, path, excinfo):
-        """Show warning for errors seen by rmtree.
-        """
+        """Show warning for errors seen by rmtree."""
         # Handle only permission error while removing files.
         # Other errors are re-raised.
         if function is not os.remove or excinfo[1].errno != errno.EACCES:
             raise
-        ui.ui_factory.show_warning(gettext('unable to remove %s') % path)
+        ui.ui_factory.show_warning(gettext("unable to remove %s") % path)
+
     has_deleted = False
     for path, subp in deletables:
         if not has_deleted:
@@ -112,15 +125,15 @@ def delete_items(deletables, dry_run=False):
             else:
                 try:
                     os.unlink(path)
-                    note('  ' + subp)
+                    note("  " + subp)
                 except OSError as e:
                     # We handle only permission error here
                     if e.errno != errno.EACCES:
                         raise e
-                    ui.ui_factory.show_warning(gettext(
-                        'unable to remove "{0}": {1}.').format(
-                        path, e.strerror))
+                    ui.ui_factory.show_warning(
+                        gettext('unable to remove "{0}": {1}.').format(path, e.strerror)
+                    )
         else:
-            note('  ' + subp)
+            note("  " + subp)
     if not has_deleted:
         note(gettext("No files deleted."))

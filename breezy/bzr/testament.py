@@ -75,7 +75,7 @@ from ..osutils import (
     contains_whitespace,
     contains_linebreaks,
     sha_strings,
-    )
+)
 from ..tree import Tree
 
 
@@ -90,8 +90,8 @@ class Testament:
       - compared to a revision
     """
 
-    long_header = 'bazaar-ng testament version 1\n'
-    short_header = 'bazaar-ng testament short form 1\n'
+    long_header = "bazaar-ng testament version 1\n"
+    short_header = "bazaar-ng testament short form 1\n"
     include_root = False
 
     @classmethod
@@ -116,8 +116,9 @@ class Testament:
         self.message = rev.message
         self.parent_ids = rev.parent_ids[:]
         if not isinstance(tree, Tree):
-            raise TypeError("As of bzr 2.4 Testament.__init__() takes a "
-                            "Revision and a Tree.")
+            raise TypeError(
+                "As of bzr 2.4 Testament.__init__() takes a " "Revision and a Tree."
+            )
         self.tree = tree
         self.revprops = copy(rev.properties)
         if contains_whitespace(self.revision_id):
@@ -134,81 +135,88 @@ class Testament:
         r = []
         a = r.append
         a(self.long_header)
-        a('revision-id: %s\n' % self.revision_id.decode('utf-8'))
-        a('committer: %s\n' % self.committer)
-        a('timestamp: %d\n' % self.timestamp)
-        a('timezone: %d\n' % self.timezone)
+        a("revision-id: %s\n" % self.revision_id.decode("utf-8"))
+        a("committer: %s\n" % self.committer)
+        a("timestamp: %d\n" % self.timestamp)
+        a("timezone: %d\n" % self.timezone)
         # inventory length contains the root, which is not shown here
-        a('parents:\n')
+        a("parents:\n")
         for parent_id in sorted(self.parent_ids):
             if contains_whitespace(parent_id):
                 raise ValueError(parent_id)
-            a('  %s\n' % parent_id.decode('utf-8'))
-        a('message:\n')
+            a("  %s\n" % parent_id.decode("utf-8"))
+        a("message:\n")
         for l in self.message.splitlines():
-            a('  %s\n' % l)
-        a('inventory:\n')
+            a("  %s\n" % l)
+        a("inventory:\n")
         for path, ie in self._get_entries():
             a(self._entry_to_line(path, ie))
         r.extend(self._revprops_to_lines())
-        return [line.encode('utf-8') for line in r]
+        return [line.encode("utf-8") for line in r]
 
     def _get_entries(self):
-        return ((path, ie) for (path, file_class, kind, ie) in
-                self.tree.list_files(include_root=self.include_root))
+        return (
+            (path, ie)
+            for (path, file_class, kind, ie) in self.tree.list_files(
+                include_root=self.include_root
+            )
+        )
 
     def _escape_path(self, path):
         if contains_linebreaks(path):
             raise ValueError(path)
         if not isinstance(path, str):
             # TODO(jelmer): Clean this up for pad.lv/1696545
-            path = path.decode('ascii')
-        return path.replace('\\', '/').replace(' ', '\\ ')
+            path = path.decode("ascii")
+        return path.replace("\\", "/").replace(" ", "\\ ")
 
     def _entry_to_line(self, path, ie):
         """Turn an inventory entry into a testament line"""
         if contains_whitespace(ie.file_id):
             raise ValueError(ie.file_id)
-        content = ''
-        content_spacer = ''
-        if ie.kind == 'file':
+        content = ""
+        content_spacer = ""
+        if ie.kind == "file":
             # TODO: avoid switching on kind
             if not ie.text_sha1:
                 raise AssertionError()
-            content = ie.text_sha1.decode('ascii')
-            content_spacer = ' '
-        elif ie.kind == 'symlink':
+            content = ie.text_sha1.decode("ascii")
+            content_spacer = " "
+        elif ie.kind == "symlink":
             if not ie.symlink_target:
                 raise AssertionError()
             content = self._escape_path(ie.symlink_target)
-            content_spacer = ' '
+            content_spacer = " "
 
-        l = '  {} {} {}{}{}\n'.format(ie.kind, self._escape_path(path),
-                                   ie.file_id.decode('utf8'),
-                                   content_spacer, content)
+        l = "  {} {} {}{}{}\n".format(
+            ie.kind,
+            self._escape_path(path),
+            ie.file_id.decode("utf8"),
+            content_spacer,
+            content,
+        )
         return l
 
     def as_text(self):
-        return b''.join(self.as_text_lines())
+        return b"".join(self.as_text_lines())
 
     def as_short_text(self):
         """Return short digest-based testament."""
-        return (self.short_header.encode('ascii') +
-                b'revision-id: %s\n'
-                b'sha1: %s\n'
-                % (self.revision_id, self.as_sha1()))
+        return self.short_header.encode(
+            "ascii"
+        ) + b"revision-id: %s\n" b"sha1: %s\n" % (self.revision_id, self.as_sha1())
 
     def _revprops_to_lines(self):
         """Pack up revision properties."""
         if not self.revprops:
             return []
-        r = ['properties:\n']
+        r = ["properties:\n"]
         for name, value in sorted(self.revprops.items()):
             if contains_whitespace(name):
                 raise ValueError(name)
-            r.append('  %s:\n' % name)
+            r.append("  %s:\n" % name)
             for line in value.splitlines():
-                r.append('    %s\n' % line)
+                r.append("    %s\n" % line)
         return r
 
     def as_sha1(self):
@@ -218,14 +226,14 @@ class Testament:
 class StrictTestament(Testament):
     """This testament format is for use as a checksum in bundle format 0.8"""
 
-    long_header = 'bazaar-ng testament version 2.1\n'
-    short_header = 'bazaar-ng testament short form 2.1\n'
+    long_header = "bazaar-ng testament version 2.1\n"
+    short_header = "bazaar-ng testament short form 2.1\n"
     include_root = False
 
     def _entry_to_line(self, path, ie):
         l = Testament._entry_to_line(self, path, ie)[:-1]
-        l += ' ' + ie.revision.decode('utf-8')
-        l += {True: ' yes\n', False: ' no\n'}[ie.executable]
+        l += " " + ie.revision.decode("utf-8")
+        l += {True: " yes\n", False: " no\n"}[ie.executable]
         return l
 
 
@@ -235,8 +243,8 @@ class StrictTestament3(StrictTestament):
     It differs from StrictTestament by including data about the tree root.
     """
 
-    long_header = 'bazaar testament version 3 strict\n'
-    short_header = 'bazaar testament short form 3 strict\n'
+    long_header = "bazaar testament version 3 strict\n"
+    short_header = "bazaar testament short form 3 strict\n"
     include_root = True
 
     def _escape_path(self, path):
@@ -244,7 +252,7 @@ class StrictTestament3(StrictTestament):
             raise ValueError(path)
         if not isinstance(path, str):
             # TODO(jelmer): Clean this up for pad.lv/1696545
-            path = path.decode('ascii')
-        if path == '':
-            path = '.'
-        return path.replace('\\', '/').replace(' ', '\\ ')
+            path = path.decode("ascii")
+        if path == "":
+            path = "."
+        return path.replace("\\", "/").replace(" ", "\\ ")

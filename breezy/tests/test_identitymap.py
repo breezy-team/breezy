@@ -26,7 +26,6 @@ from .. import identitymap as identitymap
 
 
 class TestIdentityMap(TestCase):
-
     def test_symbols(self):
         from ..identitymap import IdentityMap
 
@@ -55,7 +54,6 @@ class TestIdentityMap(TestCase):
 
 
 class TestNullIdentityMap(TestCase):
-
     def test_symbols(self):
         from ..identitymap import NullIdentityMap
 
@@ -77,4 +75,4 @@ class TestNullIdentityMap(TestCase):
 
     def test_null_identity_map_has_no_remove(self):
         map = identitymap.NullIdentityMap()
-        self.assertEqual(None, getattr(map, 'remove_object', None))
+        self.assertEqual(None, getattr(map, "remove_object", None))

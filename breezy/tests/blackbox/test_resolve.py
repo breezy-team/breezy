@@ -17,20 +17,19 @@
 from breezy import (
     conflicts,
     tests,
-    )
+)
 from breezy.bzr import conflicts as _mod_bzr_conflicts
 from breezy.tests import (
     script,
     KnownFailure,
-    )
+)
 from breezy.tests.blackbox import test_conflicts
 
 
 class TestResolve(script.TestCaseWithTransportAndScript):
-
     def setUp(self):
         super().setUp()
-        test_conflicts.make_tree_with_conflicts(self, 'branch', 'other')
+        test_conflicts.make_tree_with_conflicts(self, "branch", "other")
 
     def test_resolve_one_by_one(self):
         self.run_script("""\
@@ -133,9 +132,9 @@ $ brz status tree
 
 
 class TestBug788000(script.TestCaseWithTransportAndScript):
-
     def test_bug_788000(self):
-        self.run_script('''\
+        self.run_script(
+            """\
 $ brz init a
 $ mkdir a/dir
 $ echo foo > a/dir/file
@@ -149,10 +148,11 @@ $ cd a
 $ rm -r dir
 $ brz commit -m two
 $ cd ../b
-''',
-                        null_output_matches_anything=True)
+""",
+            null_output_matches_anything=True,
+        )
 
-        self.run_script('''\
+        self.run_script("""\
 $ brz pull
 Using saved parent location:...
 Now on revision 2.
@@ -161,30 +161,27 @@ Now on revision 2.
 2>Conflict because dir is not versioned, but has versioned children...
 2>Contents conflict in dir/file
 2>3 conflicts encountered.
-''')
-        self.run_script('''\
+""")
+        self.run_script("""\
 $ brz resolve --take-other
 2>deleted dir/file.THIS
 2>deleted dir
 2>3 conflicts resolved, 0 remaining
-''')
+""")
 
 
 class TestResolveAuto(tests.TestCaseWithTransport):
-
     def test_auto_resolve(self):
         """Text conflicts can be resolved automatically"""
-        tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/file',
-                                   b'<<<<<<<\na\n=======\n>>>>>>>\n')])
-        tree.add('file', ids=b'file_id')
-        self.assertEqual(tree.kind('file'), 'file')
-        file_conflict = _mod_bzr_conflicts.TextConflict('file', file_id=b'file_id')
+        tree = self.make_branch_and_tree("tree")
+        self.build_tree_contents([("tree/file", b"<<<<<<<\na\n=======\n>>>>>>>\n")])
+        tree.add("file", ids=b"file_id")
+        self.assertEqual(tree.kind("file"), "file")
+        file_conflict = _mod_bzr_conflicts.TextConflict("file", file_id=b"file_id")
         tree.set_conflicts([file_conflict])
-        note = self.run_bzr('resolve', retcode=1, working_dir='tree')[1]
-        self.assertContainsRe(note, '0 conflicts auto-resolved.')
-        self.assertContainsRe(note,
-                              'Remaining conflicts:\nText conflict in file')
-        self.build_tree_contents([('tree/file', b'a\n')])
-        note = self.run_bzr('resolve', working_dir='tree')[1]
-        self.assertContainsRe(note, 'All conflicts resolved.')
+        note = self.run_bzr("resolve", retcode=1, working_dir="tree")[1]
+        self.assertContainsRe(note, "0 conflicts auto-resolved.")
+        self.assertContainsRe(note, "Remaining conflicts:\nText conflict in file")
+        self.build_tree_contents([("tree/file", b"a\n")])
+        note = self.run_bzr("resolve", working_dir="tree")[1]
+        self.assertContainsRe(note, "All conflicts resolved.")

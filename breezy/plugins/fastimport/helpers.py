@@ -19,7 +19,7 @@ import stat
 
 from ... import (
     controldir,
-    )
+)
 
 
 def escape_commit_message(message):
@@ -32,10 +32,12 @@ def escape_commit_message(message):
     # aren't listed in the XML specification
     # (http://www.w3.org/TR/REC-xml/#NT-Char).
     import re
+
     message, _ = re.subn(
-        '[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
-        lambda match: match.group(0).encode('unicode_escape'),
-        message)
+        "[^\x09\x0a\x0d\u0020-\ud7ff\ue000-\ufffd]+",
+        lambda match: match.group(0).encode("unicode_escape"),
+        message,
+    )
     return message
 
 
@@ -83,6 +85,7 @@ def open_destination_directory(location, format=None, verbose=True):
     """
     import os
     from ... import controldir, errors, trace, transport
+
     try:
         control, relpath = controldir.ControlDir.open_containing(location)
         # XXX: Check the relpath is None here?
@@ -94,25 +97,27 @@ def open_destination_directory(location, format=None, verbose=True):
     if os.path.exists(location):
         contents = os.listdir(location)
         if contents:
-            errors.CommandError("Destination must have a .bzr directory, "
-                                " not yet exist or be empty - files found in %s" % (location,))
+            errors.CommandError(
+                "Destination must have a .bzr directory, "
+                " not yet exist or be empty - files found in %s" % (location,)
+            )
     else:
         try:
             os.mkdir(location)
         except OSError as ex:
-            raise errors.CommandError(
-                "Unable to create {}: {}".format(location, ex))
+            raise errors.CommandError("Unable to create {}: {}".format(location, ex))
 
     # Create a repository for the nominated format.
     trace.note("Creating destination repository ...")
     if format is None:
-        format = controldir.format_registry.make_controldir('default')
+        format = controldir.format_registry.make_controldir("default")
     to_transport = transport.get_transport(location)
     to_transport.ensure_base()
     control = format.initialize_on_transport(to_transport)
     repo = control.create_repository(shared=True)
     if verbose:
         from ...info import show_bzrdir_info
+
         show_bzrdir_info(repo.controldir, verbose=0)
     return control
 
@@ -138,15 +143,15 @@ def kind_to_mode(kind, executable):
 def mode_to_kind(mode):
     # Note: Output from git-fast-export slightly different to spec
     if mode in (0o644, 0o100644):
-        return 'file', False
+        return "file", False
     elif mode in (0o755, 0o100755):
-        return 'file', True
+        return "file", True
     elif mode == 0o040000:
-        return 'directory', False
+        return "directory", False
     elif mode == 0o120000:
-        return 'symlink', False
+        return "symlink", False
     elif mode == 0o160000:
-        return 'tree-reference', False
+        return "tree-reference", False
     else:
         raise AssertionError("invalid mode %o" % mode)
 
@@ -158,12 +163,14 @@ def binary_stream(stream):
     """
     try:
         import os
-        if os.name == 'nt':
-            fileno = getattr(stream, 'fileno', None)
+
+        if os.name == "nt":
+            fileno = getattr(stream, "fileno", None)
             if fileno:
                 no = fileno()
-                if no >= 0:     # -1 means we're working as subprocess
+                if no >= 0:  # -1 means we're working as subprocess
                     import msvcrt
+
                     msvcrt.setmode(no, os.O_BINARY)
     except ImportError:
         pass

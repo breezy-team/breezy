@@ -30,16 +30,15 @@ from . import (
     errors,
     osutils,
     transport,
-    )
+)
 
 
-_VIEWS_FORMAT_MARKER_RE = re.compile(b'Bazaar views format (\\d+)')
+_VIEWS_FORMAT_MARKER_RE = re.compile(b"Bazaar views format (\\d+)")
 _VIEWS_FORMAT1_MARKER = b"Bazaar views format 1\n"
 
 
 class NoSuchView(errors.BzrError):
-    """A view does not exist.
-    """
+    """A view does not exist."""
 
     _fmt = "No such view: %(view_name)s."
 
@@ -48,20 +47,19 @@ class NoSuchView(errors.BzrError):
 
 
 class ViewsNotSupported(errors.BzrError):
-    """Views are not supported by a tree format.
-    """
+    """Views are not supported by a tree format."""
 
-    _fmt = ("Views are not supported by %(tree)s;"
-            " use 'brz upgrade' to change your tree to a later format.")
+    _fmt = (
+        "Views are not supported by %(tree)s;"
+        " use 'brz upgrade' to change your tree to a later format."
+    )
 
     def __init__(self, tree):
         self.tree = tree
 
 
 class FileOutsideView(errors.BzrError):
-
-    _fmt = ('Specified file "%(file_name)s" is outside the current view: '
-            '%(view_str)s')
+    _fmt = 'Specified file "%(file_name)s" is outside the current view: ' "%(view_str)s"
 
     def __init__(self, file_name, view_files):
         self.file_name = file_name
@@ -194,22 +192,22 @@ class PathBasedViews(_Views):
             if self._current is None:
                 keywords = {}
             else:
-                keywords = {'current': self._current}
+                keywords = {"current": self._current}
             self.tree._transport.put_bytes(
-                'views', self._serialize_view_content(keywords, self._views))
+                "views", self._serialize_view_content(keywords, self._views)
+            )
 
     def _load_view_info(self):
         """Load the current view and dictionary of view definitions."""
         if not self._loaded:
             with self.tree.lock_read():
                 try:
-                    view_content = self.tree._transport.get_bytes('views')
+                    view_content = self.tree._transport.get_bytes("views")
                 except transport.NoSuchFile:
                     self._current, self._views = None, {}
                 else:
-                    keywords, self._views = \
-                        self._deserialize_view_content(view_content)
-                    self._current = keywords.get('current')
+                    keywords, self._views = self._deserialize_view_content(view_content)
+                    self._current = keywords.get("current")
             self._loaded = True
 
     def _serialize_view_content(self, keywords, view_dict):
@@ -217,52 +215,50 @@ class PathBasedViews(_Views):
         lines = [_VIEWS_FORMAT1_MARKER]
         for key in keywords:
             line = "{}={}\n".format(key, keywords[key])
-            lines.append(line.encode('utf-8'))
+            lines.append(line.encode("utf-8"))
         if view_dict:
             lines.append(b"views:\n")
             for view in sorted(view_dict):
                 view_data = "{}\0{}\n".format(view, "\0".join(view_dict[view]))
-                lines.append(view_data.encode('utf-8'))
+                lines.append(view_data.encode("utf-8"))
         return b"".join(lines)
 
     def _deserialize_view_content(self, view_content):
         """Convert a stream into view keywords and a dictionary of views."""
         # as a special case to make initialization easy, an empty definition
         # maps to no current view and an empty view dictionary
-        if view_content == b'':
+        if view_content == b"":
             return {}, {}
         lines = view_content.splitlines()
         match = _VIEWS_FORMAT_MARKER_RE.match(lines[0])
         if not match:
-            raise ValueError(
-                "format marker missing from top of views file")
-        elif match.group(1) != b'1':
-            raise ValueError(
-                "cannot decode views format %s" % match.group(1))
+            raise ValueError("format marker missing from top of views file")
+        elif match.group(1) != b"1":
+            raise ValueError("cannot decode views format %s" % match.group(1))
         try:
             keywords = {}
             views = {}
             in_views = False
             for line in lines[1:]:
-                text = line.decode('utf-8')
+                text = line.decode("utf-8")
                 if in_views:
-                    parts = text.split('\0')
+                    parts = text.split("\0")
                     view = parts.pop(0)
                     views[view] = parts
-                elif text == 'views:':
+                elif text == "views:":
                     in_views = True
                     continue
-                elif text.find('=') >= 0:
+                elif text.find("=") >= 0:
                     # must be a name-value pair
-                    keyword, value = text.split('=', 1)
+                    keyword, value = text.split("=", 1)
                     keywords[keyword] = value
                 else:
-                    raise ValueError("failed to deserialize views line %s",
-                                     text)
+                    raise ValueError("failed to deserialize views line %s", text)
             return keywords, views
         except ValueError as e:
-            raise ValueError("failed to deserialize views content %r: %s"
-                             % (view_content, e))
+            raise ValueError(
+                "failed to deserialize views content %r: %s" % (view_content, e)
+            )
 
 
 class DisabledViews(_Views):
@@ -297,7 +293,7 @@ def view_display_str(view_files, encoding=None):
     if encoding is None:
         return ", ".join(view_files)
     else:
-        return ", ".join([v.encode(encoding, 'replace') for v in view_files])
+        return ", ".join([v.encode(encoding, "replace") for v in view_files])
 
 
 def check_path_in_view(tree, relpath):

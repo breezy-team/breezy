@@ -43,7 +43,7 @@ Note that context is currently only supported for write converters.
 
 from io import (
     BytesIO,
-    )
+)
 
 from typing import List, Tuple, Dict, Callable
 
@@ -51,11 +51,10 @@ from .. import (
     errors,
     osutils,
     registry,
-    )
+)
 
 
 class ContentFilter:
-
     def __init__(self, reader, writer):
         """Create a filter that converts content while reading and writing.
 
@@ -104,8 +103,7 @@ class ContentFilterContext:
         """Id of revision that last changed this file."""
         if self._revision_id is None:
             if self._tree is not None:
-                self._revision_id = self._tree.get_file_revision(
-                    self._relpath)
+                self._revision_id = self._tree.get_file_revision(self._relpath)
         return self._revision_id
 
     def revision(self):
@@ -113,7 +111,7 @@ class ContentFilterContext:
         if self._revision is None:
             rev_id = self.revision_id()
             if rev_id is not None:
-                repo = getattr(self._tree, '_repository', None)
+                repo = getattr(self._tree, "_repository", None)
                 if repo is None:
                     repo = self._tree.branch.repository
                 self._revision = repo.get_revision(rev_id)
@@ -133,7 +131,7 @@ def filtered_input_file(f, filters):
     for filter in filters:
         if filter.reader is not None:
             chunks = filter.reader(chunks)
-    text = b''.join(chunks)
+    text = b"".join(chunks)
     return BytesIO(text), len(text)
 
 
@@ -162,14 +160,13 @@ def internal_size_sha_file_byname(name, filters):
       name: path to file
       filters: the stack of filters to apply
     """
-    with open(name, 'rb', 65000) as f:
+    with open(name, "rb", 65000) as f:
         if filters:
             f, size = filtered_input_file(f, filters)
         return osutils.size_sha_file(f)
 
 
 class FilteredStat:
-
     def __init__(self, base, st_size=None):
         self.st_mode = base.st_mode
         self.st_size = st_size or base.st_size
@@ -248,4 +245,4 @@ def _reset_registry(value=None):
     return original
 
 
-filter_stacks_registry.register_lazy('eol', 'breezy.filters.eol', 'eol_lookup')
+filter_stacks_registry.register_lazy("eol", "breezy.filters.eol", "eol_lookup")

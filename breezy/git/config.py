@@ -18,7 +18,7 @@
 
 from .. import (
     config,
-    )
+)
 
 
 class GitBranchConfig(config.BranchConfig):
@@ -32,16 +32,17 @@ class GitBranchConfig(config.BranchConfig):
     def __repr__(self):
         return "<{} of {!r}>".format(self.__class__.__name__, self.branch)
 
-    def set_user_option(self, name, value, store=config.STORE_BRANCH,
-                        warn_masked=False):
+    def set_user_option(
+        self, name, value, store=config.STORE_BRANCH, warn_masked=False
+    ):
         """Force local to True"""
         config.BranchConfig.set_user_option(
-            self, name, value, store=config.STORE_LOCATION,
-            warn_masked=warn_masked)
+            self, name, value, store=config.STORE_LOCATION, warn_masked=warn_masked
+        )
 
     def _get_user_id(self):
         # TODO: Read from ~/.gitconfig
-        return self._get_best_value('_get_user_id')
+        return self._get_best_value("_get_user_id")
 
 
 class GitConfigSectionDefault(config.Section):
@@ -53,19 +54,19 @@ class GitConfigSectionDefault(config.Section):
         self._config = config
 
     def get(self, name, default=None, expand=True):
-        if name == 'email':
+        if name == "email":
             try:
-                email = self._config.get((b'user', ), b'email')
+                email = self._config.get((b"user",), b"email")
             except KeyError:
                 return None
             try:
-                name = self._config.get((b'user', ), b'name')
+                name = self._config.get((b"user",), b"name")
             except KeyError:
                 return email.decode()
-            return '{} <{}>'.format(name.decode(), email.decode())
-        if name == 'gpg_signing_key':
+            return "{} <{}>".format(name.decode(), email.decode())
+        if name == "gpg_signing_key":
             try:
-                key = self._config.get((b'user', ), b'signingkey')
+                key = self._config.get((b"user",), b"signingkey")
             except KeyError:
                 return None
             return key.decode()
@@ -73,17 +74,17 @@ class GitConfigSectionDefault(config.Section):
 
     def iter_option_names(self):
         try:
-            self._config.get((b'user', ), b'email')
+            self._config.get((b"user",), b"email")
         except KeyError:
             pass
         else:
-            yield 'email'
+            yield "email"
         try:
-            self._config.get((b'user', ), b'signingkey')
+            self._config.get((b"user",), b"signingkey")
         except KeyError:
             pass
         else:
-            yield 'gpg_signing_key'
+            yield "gpg_signing_key"
 
 
 class GitConfigStore(config.Store):
@@ -95,8 +96,8 @@ class GitConfigStore(config.Store):
 
     def get_sections(self):
         return [
-            (self, GitConfigSectionDefault('default', self._config)),
-            ]
+            (self, GitConfigSectionDefault("default", self._config)),
+        ]
 
 
 class GitBranchStack(config._CompatibleStack):
@@ -109,9 +110,9 @@ class GitBranchStack(config._CompatibleStack):
         section_getters.append(loc_matcher.get_sections)
         # FIXME: This should also be looking in .git/config for
         # local git branches.
-        git = getattr(branch.repository, '_git', None)
+        git = getattr(branch.repository, "_git", None)
         if git:
-            cstore = GitConfigStore('branch', git.get_config())
+            cstore = GitConfigStore("branch", git.get_config())
             section_getters.append(cstore.get_sections)
         gstore = config.GlobalStore()
         section_getters.append(gstore.get_sections)
@@ -119,5 +120,7 @@ class GitBranchStack(config._CompatibleStack):
             section_getters,
             # All modifications go to the corresponding section in
             # locations.conf
-            lstore, branch.base)
+            lstore,
+            branch.base,
+        )
         self.branch = branch

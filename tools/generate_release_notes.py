@@ -26,7 +26,6 @@ doc/en/release-notes/brz-2.3.txt
 # NEWS file-id (so that merges of new work will tend to always land new NEWS
 # entries in the latest series).
 
-
 import os.path
 import re
 import sys
@@ -65,10 +64,10 @@ def natural_sort_key(file_name):
         True
     """
     file_name = os.path.basename(file_name)
-    parts = re.findall(r'(?:[0-9]+|[^0-9]+)', file_name)
+    parts = re.findall(r"(?:[0-9]+|[^0-9]+)", file_name)
     result = []
     for part in parts:
-        if re.match('^[0-9]+$', part) is not None:
+        if re.match("^[0-9]+$", part) is not None:
             part = int(part)
         result.append(part)
     return tuple(result)
@@ -76,30 +75,30 @@ def natural_sort_key(file_name):
 
 def output_news_file_sphinx(out_file, news_file_name):
     news_file_name = os.path.basename(news_file_name)
-    if not news_file_name.endswith('.txt'):
+    if not news_file_name.endswith(".txt"):
         raise AssertionError(
-            'NEWS file %s does not have .txt extension.'
-            % (news_file_name,))
+            "NEWS file %s does not have .txt extension." % (news_file_name,)
+        )
     doc_name = news_file_name[:-4]
-    link_text = doc_name.replace('-', ' ')
-    out_file.write('   {} <{}>\n'.format(link_text, doc_name))
+    link_text = doc_name.replace("-", " ")
+    out_file.write("   {} <{}>\n".format(link_text, doc_name))
 
 
 def output_news_file_plain(out_file, news_file_name):
     with open(news_file_name) as f:
         lines = f.readlines()
-    title = os.path.basename(news_file_name)[len('brz-'):-len('.txt')]
+    title = os.path.basename(news_file_name)[len("brz-") : -len(".txt")]
     for line in lines:
-        if line == '####################\n':
-            line = '#' * len(title) + '\n'
-        elif line == 'Breezy Release Notes\n':
-            line = title + '\n'
-        elif line == '.. toctree::\n':
+        if line == "####################\n":
+            line = "#" * len(title) + "\n"
+        elif line == "Breezy Release Notes\n":
+            line = title + "\n"
+        elif line == ".. toctree::\n":
             continue
-        elif line == '   :maxdepth: 1\n':
+        elif line == "   :maxdepth: 1\n":
             continue
         out_file.write(line)
-    out_file.write('\n\n')
+    out_file.write("\n\n")
 
 
 def main(argv):
@@ -114,18 +113,18 @@ def main(argv):
     out_file_name = args[0]
     news_file_names = sorted(args[1:], key=natural_sort_key, reverse=True)
 
-    if os.path.basename(out_file_name) == 'index.txt':
+    if os.path.basename(out_file_name) == "index.txt":
         preamble = preamble_sphinx
         output_news_file = output_news_file_sphinx
     else:
         preamble = preamble_plain
         output_news_file = output_news_file_plain
 
-    with open(out_file_name, 'w') as out_file:
+    with open(out_file_name, "w") as out_file:
         out_file.write(preamble)
         for news_file_name in news_file_names:
             output_news_file(out_file, news_file_name)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(sys.argv[1:])

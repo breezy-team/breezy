@@ -21,20 +21,21 @@ from ... import (
     osutils,
     trace,
     ui,
-    )
+)
 from ...errors import (
     BzrError,
-    )
+)
 from .rebase import (
     generate_transpose_plan,
     CommitBuilderRevisionRewriter,
     rebase,
     rebase_todo,
-    )
+)
 
 
 class UpgradeChangesContent(BzrError):
     """Inconsistency was found upgrading the mapping of a revision."""
+
     _fmt = """Upgrade will change contents in revision %(revid)s. Use --allow-changes to override."""
 
     def __init__(self, revid):
@@ -50,13 +51,20 @@ def create_deterministic_revid(revid, new_parents):
     :return: New revision id
     """
     if "-rebase-" in revid:
-        revid = revid[0:revid.rfind("-rebase-")]
+        revid = revid[0 : revid.rfind("-rebase-")]
     return revid + "-rebase-" + osutils.sha_string(":".join(new_parents))[:8]
 
 
-def upgrade_tags(tags, repository, generate_rebase_map, determine_new_revid,
-                 allow_changes=False, verbose=False, branch_renames=None,
-                 branch_ancestry=None):
+def upgrade_tags(
+    tags,
+    repository,
+    generate_rebase_map,
+    determine_new_revid,
+    allow_changes=False,
+    verbose=False,
+    branch_renames=None,
+    branch_ancestry=None,
+):
     """Upgrade a tags dictionary."""
     renames = {}
     if branch_renames is not None:
@@ -73,20 +81,27 @@ def upgrade_tags(tags, repository, generate_rebase_map, determine_new_revid,
                 finally:
                     repository.unlock()
                 if revid_exists:
-                    renames.update(upgrade_repository(
-                        repository,
-                        generate_rebase_map, determine_new_revid,
-                        revision_id=revid, allow_changes=allow_changes,
-                        verbose=verbose))
-            if (revid in renames and
-                    (branch_ancestry is None or revid not in branch_ancestry)):
+                    renames.update(
+                        upgrade_repository(
+                            repository,
+                            generate_rebase_map,
+                            determine_new_revid,
+                            revision_id=revid,
+                            allow_changes=allow_changes,
+                            verbose=verbose,
+                        )
+                    )
+            if revid in renames and (
+                branch_ancestry is None or revid not in branch_ancestry
+            ):
                 tags.set_tag(name, renames[revid])
     finally:
         pb.finished()
 
 
-def upgrade_branch(branch, generate_rebase_map, determine_new_revid,
-                   allow_changes=False, verbose=False):
+def upgrade_branch(
+    branch, generate_rebase_map, determine_new_revid, allow_changes=False, verbose=False
+):
     """Upgrade a branch to the current mapping version.
 
     :param branch: Branch to upgrade.
@@ -96,34 +111,50 @@ def upgrade_branch(branch, generate_rebase_map, determine_new_revid,
     """
     revid = branch.last_revision()
     renames = upgrade_repository(
-        branch.repository, generate_rebase_map,
-        determine_new_revid, revision_id=revid,
-        allow_changes=allow_changes, verbose=verbose)
+        branch.repository,
+        generate_rebase_map,
+        determine_new_revid,
+        revision_id=revid,
+        allow_changes=allow_changes,
+        verbose=verbose,
+    )
     if revid in renames:
         branch.generate_revision_history(renames[revid])
-    ancestry = branch.repository.get_ancestry(
-        branch.last_revision(), topo_sorted=False)
+    ancestry = branch.repository.get_ancestry(branch.last_revision(), topo_sorted=False)
     upgrade_tags(
-        branch.tags, branch.repository, generate_rebase_map,
-        determine_new_revid, allow_changes=allow_changes, verbose=verbose,
-        branch_renames=renames, branch_ancestry=ancestry)
+        branch.tags,
+        branch.repository,
+        generate_rebase_map,
+        determine_new_revid,
+        allow_changes=allow_changes,
+        verbose=verbose,
+        branch_renames=renames,
+        branch_ancestry=ancestry,
+    )
     return renames
 
 
 def check_revision_changed(oldrev, newrev):
     """Check if two revisions are different. This is exactly the same
     as Revision.equals() except that it does not check the revision_id."""
-    if (newrev.inventory_sha1 != oldrev.inventory_sha1 or
-            newrev.timestamp != oldrev.timestamp or
-            newrev.message != oldrev.message or
-            newrev.timezone != oldrev.timezone or
-            newrev.committer != oldrev.committer or
-            newrev.properties != oldrev.properties):
+    if (
+        newrev.inventory_sha1 != oldrev.inventory_sha1
+        or newrev.timestamp != oldrev.timestamp
+        or newrev.message != oldrev.message
+        or newrev.timezone != oldrev.timezone
+        or newrev.committer != oldrev.committer
+        or newrev.properties != oldrev.properties
+    ):
         raise UpgradeChangesContent(oldrev.revision_id)
 
 
-def create_upgrade_plan(repository, generate_rebase_map, determine_new_revid,
-                        revision_id=None, allow_changes=False):
+def create_upgrade_plan(
+    repository,
+    generate_rebase_map,
+    determine_new_revid,
+    revision_id=None,
+    allow_changes=False,
+):
     """Generate a rebase plan for upgrading revisions.
 
     :param repository: Repository to do upgrade in
@@ -152,18 +183,26 @@ def create_upgrade_plan(repository, generate_rebase_map, determine_new_revid,
         heads = [revision_id]
 
     plan = generate_transpose_plan(
-        graph.iter_ancestry(heads), upgrade_map, graph, determine_new_revid)
+        graph.iter_ancestry(heads), upgrade_map, graph, determine_new_revid
+    )
+
     def remove_parents(entry):
         (oldrevid, (newrevid, parents)) = entry
         return (oldrevid, newrevid)
+
     upgrade_map.update(dict(map(remove_parents, plan.iteritems())))
 
     return (plan, upgrade_map)
 
 
-def upgrade_repository(repository, generate_rebase_map,
-                       determine_new_revid, revision_id=None,
-                       allow_changes=False, verbose=False):
+def upgrade_repository(
+    repository,
+    generate_rebase_map,
+    determine_new_revid,
+    revision_id=None,
+    allow_changes=False,
+    verbose=False,
+):
     """Upgrade the revisions in repository until the specified stop revision.
 
     :param repository: Repository in which to upgrade.
@@ -179,8 +218,12 @@ def upgrade_repository(repository, generate_rebase_map,
     # dictionary with revision ids in key, new parents in value
     with repository.lock_write():
         (plan, revid_renames) = create_upgrade_plan(
-            repository, generate_rebase_map, determine_new_revid,
-            revision_id=revision_id, allow_changes=allow_changes)
+            repository,
+            generate_rebase_map,
+            determine_new_revid,
+            revision_id=revision_id,
+            allow_changes=allow_changes,
+        )
         if verbose:
             for revid in rebase_todo(repository, plan):
                 trace.note("{} -> {}".format(revid, plan[revid][0]))

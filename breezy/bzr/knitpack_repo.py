@@ -19,10 +19,13 @@
 from .. import (
     errors,
     transport as _mod_transport,
-    )
+)
 
 from ..lazy_import import lazy_import
-lazy_import(globals(), """
+
+lazy_import(
+    globals(),
+    """
 import time
 
 from breezy import (
@@ -45,20 +48,21 @@ from breezy.bzr.knit import (
     KnitPlainFactory,
     KnitVersionedFiles,
     )
-""")
+""",
+)
 
 from ..bzr import (
     btree_index,
-    )
+)
 from ..bzr.index import (
     CombinedGraphIndex,
     GraphIndex,
     GraphIndexPrefixAdapter,
     InMemoryGraphIndex,
-    )
+)
 from .knitrepo import (
     KnitRepository,
-    )
+)
 from .pack_repo import (
     _DirectPackAccess,
     NewPack,
@@ -68,57 +72,82 @@ from .pack_repo import (
     PackCommitBuilder,
     PackRepository,
     RepositoryPackCollection,
-    )
+)
 from ..bzr.vf_repository import (
     StreamSource,
-    )
+)
 
 
 class KnitPackRepository(PackRepository, KnitRepository):
-
-    def __init__(self, _format, a_controldir, control_files, _commit_builder_class,
-                 _serializer):
-        PackRepository.__init__(self, _format, a_controldir, control_files,
-                                _commit_builder_class, _serializer)
+    def __init__(
+        self, _format, a_controldir, control_files, _commit_builder_class, _serializer
+    ):
+        PackRepository.__init__(
+            self,
+            _format,
+            a_controldir,
+            control_files,
+            _commit_builder_class,
+            _serializer,
+        )
         if self._format.supports_chks:
             raise AssertionError("chk not supported")
-        index_transport = self._transport.clone('indices')
-        self._pack_collection = KnitRepositoryPackCollection(self,
-                                                             self._transport,
-                                                             index_transport,
-                                                             self._transport.clone(
-                                                                 'upload'),
-                                                             self._transport.clone(
-                                                                 'packs'),
-                                                             _format.index_builder_class,
-                                                             _format.index_class,
-                                                             use_chk_index=False,
-                                                             )
+        index_transport = self._transport.clone("indices")
+        self._pack_collection = KnitRepositoryPackCollection(
+            self,
+            self._transport,
+            index_transport,
+            self._transport.clone("upload"),
+            self._transport.clone("packs"),
+            _format.index_builder_class,
+            _format.index_class,
+            use_chk_index=False,
+        )
         self.inventories = KnitVersionedFiles(
-            _KnitGraphIndex(self._pack_collection.inventory_index.combined_index,
-                            add_callback=self._pack_collection.inventory_index.add_callback,
-                            deltas=True, parents=True, is_locked=self.is_locked),
+            _KnitGraphIndex(
+                self._pack_collection.inventory_index.combined_index,
+                add_callback=self._pack_collection.inventory_index.add_callback,
+                deltas=True,
+                parents=True,
+                is_locked=self.is_locked,
+            ),
             data_access=self._pack_collection.inventory_index.data_access,
-            max_delta_chain=200)
+            max_delta_chain=200,
+        )
         self.revisions = KnitVersionedFiles(
-            _KnitGraphIndex(self._pack_collection.revision_index.combined_index,
-                            add_callback=self._pack_collection.revision_index.add_callback,
-                            deltas=False, parents=True, is_locked=self.is_locked,
-                            track_external_parent_refs=True),
+            _KnitGraphIndex(
+                self._pack_collection.revision_index.combined_index,
+                add_callback=self._pack_collection.revision_index.add_callback,
+                deltas=False,
+                parents=True,
+                is_locked=self.is_locked,
+                track_external_parent_refs=True,
+            ),
             data_access=self._pack_collection.revision_index.data_access,
-            max_delta_chain=0)
+            max_delta_chain=0,
+        )
         self.signatures = KnitVersionedFiles(
-            _KnitGraphIndex(self._pack_collection.signature_index.combined_index,
-                            add_callback=self._pack_collection.signature_index.add_callback,
-                            deltas=False, parents=False, is_locked=self.is_locked),
+            _KnitGraphIndex(
+                self._pack_collection.signature_index.combined_index,
+                add_callback=self._pack_collection.signature_index.add_callback,
+                deltas=False,
+                parents=False,
+                is_locked=self.is_locked,
+            ),
             data_access=self._pack_collection.signature_index.data_access,
-            max_delta_chain=0)
+            max_delta_chain=0,
+        )
         self.texts = KnitVersionedFiles(
-            _KnitGraphIndex(self._pack_collection.text_index.combined_index,
-                            add_callback=self._pack_collection.text_index.add_callback,
-                            deltas=True, parents=True, is_locked=self.is_locked),
+            _KnitGraphIndex(
+                self._pack_collection.text_index.combined_index,
+                add_callback=self._pack_collection.text_index.add_callback,
+                deltas=True,
+                parents=True,
+                is_locked=self.is_locked,
+            ),
             data_access=self._pack_collection.text_index.data_access,
-            max_delta_chain=200)
+            max_delta_chain=200,
+        )
         self.chk_bytes = None
         # True when the repository object is 'write locked' (as opposed to the
         # physical lock only taken out around changes to the pack-names list.)
@@ -154,18 +183,18 @@ class RepositoryFormatKnitPack1(RepositoryFormatPack):
     @property
     def _serializer(self):
         return xml5.serializer_v5
+
     # What index classes to use
     index_builder_class = InMemoryGraphIndex
     index_class = GraphIndex
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_controldir('pack-0.92')
+        return controldir.format_registry.make_controldir("pack-0.92")
 
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingcontroldir = property(
-        _get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
@@ -196,24 +225,25 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
     @property
     def _serializer(self):
         return xml7.serializer_v7
+
     # What index classes to use
     index_builder_class = InMemoryGraphIndex
     index_class = GraphIndex
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_controldir(
-            'pack-0.92-subtree')
+        return controldir.format_registry.make_controldir("pack-0.92-subtree")
 
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingcontroldir = property(
-        _get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return b"Bazaar pack repository format 1 with subtree support (needs bzr 0.92)\n"
+        return (
+            b"Bazaar pack repository format 1 with subtree support (needs bzr 0.92)\n"
+        )
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -237,25 +267,23 @@ class RepositoryFormatKnitPack4(RepositoryFormatPack):
     @property
     def _serializer(self):
         return xml6.serializer_v6
+
     # What index classes to use
     index_builder_class = InMemoryGraphIndex
     index_class = GraphIndex
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_controldir(
-            'rich-root-pack')
+        return controldir.format_registry.make_controldir("rich-root-pack")
 
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingcontroldir = property(
-        _get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return (b"Bazaar pack repository format 1 with rich root"
-                b" (needs bzr 1.0)\n")
+        return b"Bazaar pack repository format 1 with rich root" b" (needs bzr 1.0)\n"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -281,13 +309,12 @@ class RepositoryFormatKnitPack5(RepositoryFormatPack):
         return xml5.serializer_v5
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_controldir('1.6')
+        return controldir.format_registry.make_controldir("1.6")
 
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingcontroldir = property(
-        _get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
@@ -320,14 +347,12 @@ class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
         return xml6.serializer_v6
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_controldir(
-            '1.6.1-rich-root')
+        return controldir.format_registry.make_controldir("1.6.1-rich-root")
 
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingcontroldir = property(
-        _get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
@@ -364,16 +389,14 @@ class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
         return xml7.serializer_v7
 
     def _get_matching_bzrdir(self):
-        matching = controldir.format_registry.make_controldir(
-            '1.6.1-rich-root')
+        matching = controldir.format_registry.make_controldir("1.6.1-rich-root")
         matching.repository_format = self
         return matching
 
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingcontroldir = property(
-        _get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
@@ -381,8 +404,10 @@ class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
         return b"Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n"
 
     def get_format_description(self):
-        return ("Packs 5 rich-root (adds stacking support, requires bzr 1.6)"
-                " (deprecated)")
+        return (
+            "Packs 5 rich-root (adds stacking support, requires bzr 1.6)"
+            " (deprecated)"
+        )
 
     def is_deprecated(self):
         return True
@@ -407,13 +432,12 @@ class RepositoryFormatKnitPack6(RepositoryFormatPack):
         return xml5.serializer_v5
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_controldir('1.9')
+        return controldir.format_registry.make_controldir("1.9")
 
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingcontroldir = property(
-        _get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
@@ -445,14 +469,12 @@ class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
         return xml6.serializer_v6
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_controldir(
-            '1.9-rich-root')
+        return controldir.format_registry.make_controldir("1.9-rich-root")
 
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingcontroldir = property(
-        _get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
@@ -487,25 +509,27 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
         return xml7.serializer_v7
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_controldir(
-            'development5-subtree')
+        return controldir.format_registry.make_controldir("development5-subtree")
 
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingcontroldir = property(
-        _get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return (b"Bazaar development format 2 with subtree support "
-                b"(needs bzr.dev from before 1.8)\n")
+        return (
+            b"Bazaar development format 2 with subtree support "
+            b"(needs bzr.dev from before 1.8)\n"
+        )
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
-        return ("Development repository format, currently the same as "
-                "1.6.1-subtree with B+Tree indices.\n")
+        return (
+            "Development repository format, currently the same as "
+            "1.6.1-subtree with B+Tree indices.\n"
+        )
 
 
 class KnitPackStreamSource(StreamSource):
@@ -523,55 +547,61 @@ class KnitPackStreamSource(StreamSource):
     def __init__(self, from_repository, to_format):
         super().__init__(from_repository, to_format)
         self._text_keys = None
-        self._text_fetch_order = 'unordered'
+        self._text_fetch_order = "unordered"
 
     def _get_filtered_inv_stream(self, revision_ids):
         from_repo = self.from_repository
         parent_ids = from_repo._find_parent_ids_of_revisions(revision_ids)
         parent_keys = [(p,) for p in parent_ids]
         find_text_keys = from_repo._serializer._find_text_key_references
-        parent_text_keys = set(find_text_keys(
-            from_repo._inventory_xml_lines_for_keys(parent_keys)))
+        parent_text_keys = set(
+            find_text_keys(from_repo._inventory_xml_lines_for_keys(parent_keys))
+        )
         content_text_keys = set()
         knit = KnitVersionedFiles(None, None)
         factory = KnitPlainFactory()
 
         def find_text_keys_from_content(record):
-            if record.storage_kind not in ('knit-delta-gz', 'knit-ft-gz'):
-                raise ValueError("Unknown content storage kind for"
-                                 " inventory text: %s" % (record.storage_kind,))
+            if record.storage_kind not in ("knit-delta-gz", "knit-ft-gz"):
+                raise ValueError(
+                    "Unknown content storage kind for"
+                    " inventory text: %s" % (record.storage_kind,)
+                )
             # It's a knit record, it has a _raw_record field (even if it was
             # reconstituted from a network stream).
             raw_data = record._raw_record
             # read the entire thing
             revision_id = record.key[-1]
             content, _ = knit._parse_record(revision_id, raw_data)
-            if record.storage_kind == 'knit-delta-gz':
+            if record.storage_kind == "knit-delta-gz":
                 line_iterator = factory.get_linedelta_content(content)
-            elif record.storage_kind == 'knit-ft-gz':
+            elif record.storage_kind == "knit-ft-gz":
                 line_iterator = factory.get_fulltext_content(content)
-            content_text_keys.update(find_text_keys(
-                [(line, revision_id) for line in line_iterator]))
+            content_text_keys.update(
+                find_text_keys([(line, revision_id) for line in line_iterator])
+            )
+
         revision_keys = [(r,) for r in revision_ids]
 
         def _filtered_inv_stream():
             source_vf = from_repo.inventories
-            stream = source_vf.get_record_stream(revision_keys,
-                                                 'unordered', False)
+            stream = source_vf.get_record_stream(revision_keys, "unordered", False)
             for record in stream:
-                if record.storage_kind == 'absent':
+                if record.storage_kind == "absent":
                     raise errors.NoSuchRevision(from_repo, record.key)
                 find_text_keys_from_content(record)
                 yield record
             self._text_keys = content_text_keys - parent_text_keys
-        return ('inventories', _filtered_inv_stream())
+
+        return ("inventories", _filtered_inv_stream())
 
     def _get_text_stream(self):
         # Note: We know we don't have to handle adding root keys, because both
         # the source and target are the identical network name.
         text_stream = self.from_repository.texts.get_record_stream(
-            self._text_keys, self._text_fetch_order, False)
-        return ('texts', text_stream)
+            self._text_keys, self._text_fetch_order, False
+        )
+        return ("texts", text_stream)
 
     def get_stream(self, search):
         revision_ids = search.get_keys()
@@ -584,11 +614,16 @@ class KnitPackStreamSource(StreamSource):
 class KnitPacker(Packer):
     """Packer that works with knit packs."""
 
-    def __init__(self, pack_collection, packs, suffix, revision_ids=None,
-                 reload_func=None):
-        super().__init__(pack_collection, packs, suffix,
-                                         revision_ids=revision_ids,
-                                         reload_func=reload_func)
+    def __init__(
+        self, pack_collection, packs, suffix, revision_ids=None, reload_func=None
+    ):
+        super().__init__(
+            pack_collection,
+            packs,
+            suffix,
+            revision_ids=revision_ids,
+            reload_func=reload_func,
+        )
 
     def _pack_map_and_index_list(self, index_attribute):
         """Convert a list of packs to an index pack map and index list.
@@ -619,18 +654,19 @@ class KnitPacker(Packer):
         else:
             return all_index.iter_entries(key_filter)
 
-    def _copy_nodes(self, nodes, index_map, writer, write_index,
-                    output_lines=None):
+    def _copy_nodes(self, nodes, index_map, writer, write_index, output_lines=None):
         """Copy knit nodes between packs with no graph references.
 
         :param output_lines: Output full texts of copied items.
         """
         with ui.ui_factory.nested_progress_bar() as pb:
-            return self._do_copy_nodes(nodes, index_map, writer,
-                                       write_index, pb, output_lines=output_lines)
+            return self._do_copy_nodes(
+                nodes, index_map, writer, write_index, pb, output_lines=output_lines
+            )
 
-    def _do_copy_nodes(self, nodes, index_map, writer, write_index, pb,
-                       output_lines=None):
+    def _do_copy_nodes(
+        self, nodes, index_map, writer, write_index, pb, output_lines=None
+    ):
         # for record verification
         knit = KnitVersionedFiles(None, None)
         # plan a readv on each source pack:
@@ -651,7 +687,7 @@ class KnitPacker(Packer):
             pack_readv_requests = []
             for key, value in items:
                 # ---- KnitGraphIndex.get_position
-                bits = value[1:].split(b' ')
+                bits = value[1:].split(b" ")
                 offset, length = int(bits[0]), int(bits[1])
                 pack_readv_requests.append((offset, length, (key, value[0:1])))
             # linear scan up the pack
@@ -660,14 +696,16 @@ class KnitPacker(Packer):
             pack_obj = index_map[index]
             transport, path = pack_obj.access_tuple()
             try:
-                reader = pack.make_readv_reader(transport, path,
-                                                [offset[0:2] for offset in pack_readv_requests])
+                reader = pack.make_readv_reader(
+                    transport, path, [offset[0:2] for offset in pack_readv_requests]
+                )
             except _mod_transport.NoSuchFile:
                 if self._reload_func is not None:
                     self._reload_func()
                 raise
             for (names, read_func), (_1, _2, (key, eol_flag)) in zip(
-                    reader.iter_records(), pack_readv_requests):
+                reader.iter_records(), pack_readv_requests
+            ):
                 raw_data = read_func(None)
                 # check the header only
                 if output_lines is not None:
@@ -680,19 +718,41 @@ class KnitPacker(Packer):
                 pb.update("Copied record", record_index)
                 record_index += 1
 
-    def _copy_nodes_graph(self, index_map, writer, write_index,
-                          readv_group_iter, total_items, output_lines=False):
+    def _copy_nodes_graph(
+        self,
+        index_map,
+        writer,
+        write_index,
+        readv_group_iter,
+        total_items,
+        output_lines=False,
+    ):
         """Copy knit nodes between packs.
 
         :param output_lines: Return lines present in the copied data as
             an iterator of line,version_id.
         """
         with ui.ui_factory.nested_progress_bar() as pb:
-            yield from self._do_copy_nodes_graph(index_map, writer,
-                                                    write_index, output_lines, pb, readv_group_iter, total_items)
+            yield from self._do_copy_nodes_graph(
+                index_map,
+                writer,
+                write_index,
+                output_lines,
+                pb,
+                readv_group_iter,
+                total_items,
+            )
 
-    def _do_copy_nodes_graph(self, index_map, writer, write_index,
-                             output_lines, pb, readv_group_iter, total_items):
+    def _do_copy_nodes_graph(
+        self,
+        index_map,
+        writer,
+        write_index,
+        output_lines,
+        pb,
+        readv_group_iter,
+        total_items,
+    ):
         # for record verification
         knit = KnitVersionedFiles(None, None)
         # for line extraction when requested (inventories only)
@@ -711,7 +771,8 @@ class KnitPacker(Packer):
                     self._reload_func()
                 raise
             for (names, read_func), (key, eol_flag, references) in zip(
-                    reader.iter_records(), node_vector):
+                reader.iter_records(), node_vector
+            ):
                 raw_data = read_func(None)
                 if output_lines:
                     # read the entire thing
@@ -727,8 +788,7 @@ class KnitPacker(Packer):
                     df, _ = knit._parse_record_header(key, raw_data)
                     df.close()
                 pos, size = writer.add_bytes_record([raw_data], len(raw_data), names)
-                write_index.add_node(key, eol_flag + b"%d %d" %
-                                     (pos, size), references)
+                write_index.add_node(key, eol_flag + b"%d %d" % (pos, size), references)
                 pb.update("Copied record", record_index)
                 record_index += 1
 
@@ -736,11 +796,11 @@ class KnitPacker(Packer):
         """Use up the inv_lines generator and setup a text key filter."""
         repo = self._pack_collection.repo
         fileid_revisions = repo._find_file_ids_from_xml_inventory_lines(
-            inv_lines, self.revision_keys)
+            inv_lines, self.revision_keys
+        )
         text_filter = []
         for fileid, file_revids in fileid_revisions.items():
-            text_filter.extend([(fileid, file_revid)
-                                for file_revid in file_revids])
+            text_filter.extend([(fileid, file_revid) for file_revid in file_revids])
         self._text_filter = text_filter
 
     def _copy_inventory_texts(self):
@@ -750,7 +810,8 @@ class KnitPacker(Packer):
         # is missed, so do not change it to query separately without cross
         # checking like the text key check below.
         inventory_index_map, inventory_indices = self._pack_map_and_index_list(
-            'inventory_index')
+            "inventory_index"
+        )
         inv_nodes = self._index_contents(inventory_indices, inv_keys)
         # copy inventory keys and adjust values
         # XXX: Should be a helper function to allow different inv representation
@@ -759,21 +820,29 @@ class KnitPacker(Packer):
         total_items, readv_group_iter = self._least_readv_node_readv(inv_nodes)
         # Only grab the output lines if we will be processing them
         output_lines = bool(self.revision_ids)
-        inv_lines = self._copy_nodes_graph(inventory_index_map,
-                                           self.new_pack._writer, self.new_pack.inventory_index,
-                                           readv_group_iter, total_items, output_lines=output_lines)
+        inv_lines = self._copy_nodes_graph(
+            inventory_index_map,
+            self.new_pack._writer,
+            self.new_pack.inventory_index,
+            readv_group_iter,
+            total_items,
+            output_lines=output_lines,
+        )
         if self.revision_ids:
             self._process_inventory_lines(inv_lines)
         else:
             # eat the iterator to cause it to execute.
             list(inv_lines)
             self._text_filter = None
-        if 'pack' in debug.debug_flags:
-            trace.mutter('%s: create_pack: inventories copied: %s%s %d items t+%6.3fs',
-                         time.ctime(), self._pack_collection._upload_transport.base,
-                         self.new_pack.random_name,
-                         self.new_pack.inventory_index.key_count(),
-                         time.time() - self.new_pack.start_time)
+        if "pack" in debug.debug_flags:
+            trace.mutter(
+                "%s: create_pack: inventories copied: %s%s %d items t+%6.3fs",
+                time.ctime(),
+                self._pack_collection._upload_transport.base,
+                self.new_pack.random_name,
+                self.new_pack.inventory_index.key_count(),
+                time.time() - self.new_pack.start_time,
+            )
 
     def _update_pack_order(self, entries, index_to_pack_map):
         """Determine how we want our packs to be ordered.
@@ -794,53 +863,59 @@ class KnitPacker(Packer):
                 packs.append(index_to_pack_map[index])
                 seen_indexes.add(index)
         if len(packs) == len(self.packs):
-            if 'pack' in debug.debug_flags:
-                trace.mutter('Not changing pack list, all packs used.')
+            if "pack" in debug.debug_flags:
+                trace.mutter("Not changing pack list, all packs used.")
             return
         seen_packs = set(packs)
         for pack in self.packs:
             if pack not in seen_packs:
                 packs.append(pack)
                 seen_packs.add(pack)
-        if 'pack' in debug.debug_flags:
+        if "pack" in debug.debug_flags:
             old_names = [p.access_tuple()[1] for p in self.packs]
             new_names = [p.access_tuple()[1] for p in packs]
-            trace.mutter('Reordering packs\nfrom: %s\n  to: %s',
-                         old_names, new_names)
+            trace.mutter("Reordering packs\nfrom: %s\n  to: %s", old_names, new_names)
         self.packs = packs
 
     def _copy_revision_texts(self):
         # select revisions
         if self.revision_ids:
-            revision_keys = [(revision_id,)
-                             for revision_id in self.revision_ids]
+            revision_keys = [(revision_id,) for revision_id in self.revision_ids]
         else:
             revision_keys = None
         # select revision keys
         revision_index_map, revision_indices = self._pack_map_and_index_list(
-            'revision_index')
+            "revision_index"
+        )
         revision_nodes = self._index_contents(revision_indices, revision_keys)
         revision_nodes = list(revision_nodes)
         self._update_pack_order(revision_nodes, revision_index_map)
         # copy revision keys and adjust values
         self.pb.update("Copying revision texts", 1)
-        total_items, readv_group_iter = self._revision_node_readv(
-            revision_nodes)
-        list(self._copy_nodes_graph(revision_index_map, self.new_pack._writer,
-                                    self.new_pack.revision_index, readv_group_iter, total_items))
-        if 'pack' in debug.debug_flags:
-            trace.mutter('%s: create_pack: revisions copied: %s%s %d items t+%6.3fs',
-                         time.ctime(), self._pack_collection._upload_transport.base,
-                         self.new_pack.random_name,
-                         self.new_pack.revision_index.key_count(),
-                         time.time() - self.new_pack.start_time)
+        total_items, readv_group_iter = self._revision_node_readv(revision_nodes)
+        list(
+            self._copy_nodes_graph(
+                revision_index_map,
+                self.new_pack._writer,
+                self.new_pack.revision_index,
+                readv_group_iter,
+                total_items,
+            )
+        )
+        if "pack" in debug.debug_flags:
+            trace.mutter(
+                "%s: create_pack: revisions copied: %s%s %d items t+%6.3fs",
+                time.ctime(),
+                self._pack_collection._upload_transport.base,
+                self.new_pack.random_name,
+                self.new_pack.revision_index.key_count(),
+                time.time() - self.new_pack.start_time,
+            )
         self._revision_keys = revision_keys
 
     def _get_text_nodes(self):
-        text_index_map, text_indices = self._pack_map_and_index_list(
-            'text_index')
-        return text_index_map, self._index_contents(text_indices,
-                                                    self._text_filter)
+        text_index_map, text_indices = self._pack_map_and_index_list("text_index")
+        return text_index_map, self._index_contents(text_indices, self._text_filter)
 
     def _copy_text_texts(self):
         # select text keys
@@ -858,17 +933,21 @@ class KnitPacker(Packer):
             if missing_text_keys:
                 # TODO: raise a specific error that can handle many missing
                 # keys.
-                trace.mutter("missing keys during fetch: %r",
-                             missing_text_keys)
+                trace.mutter("missing keys during fetch: %r", missing_text_keys)
                 a_missing_key = missing_text_keys.pop()
-                raise errors.RevisionNotPresent(a_missing_key[1],
-                                                a_missing_key[0])
+                raise errors.RevisionNotPresent(a_missing_key[1], a_missing_key[0])
         # copy text keys and adjust values
         self.pb.update("Copying content texts", 3)
-        total_items, readv_group_iter = self._least_readv_node_readv(
-            text_nodes)
-        list(self._copy_nodes_graph(text_index_map, self.new_pack._writer,
-                                    self.new_pack.text_index, readv_group_iter, total_items))
+        total_items, readv_group_iter = self._least_readv_node_readv(text_nodes)
+        list(
+            self._copy_nodes_graph(
+                text_index_map,
+                self.new_pack._writer,
+                self.new_pack.text_index,
+                readv_group_iter,
+                total_items,
+            )
+        )
         self._log_copied_texts()
 
     def _create_pack_from_packs(self):
@@ -878,35 +957,50 @@ class KnitPacker(Packer):
         # buffer data - we won't be reading-back during the pack creation and
         # this makes a significant difference on sftp pushes.
         new_pack.set_write_cache_size(1024 * 1024)
-        if 'pack' in debug.debug_flags:
-            plain_pack_list = ['{}{}'.format(a_pack.pack_transport.base, a_pack.name)
-                               for a_pack in self.packs]
+        if "pack" in debug.debug_flags:
+            plain_pack_list = [
+                "{}{}".format(a_pack.pack_transport.base, a_pack.name)
+                for a_pack in self.packs
+            ]
             if self.revision_ids is not None:
                 rev_count = len(self.revision_ids)
             else:
-                rev_count = 'all'
-            trace.mutter('%s: create_pack: creating pack from source packs: '
-                         '%s%s %s revisions wanted %s t=0',
-                         time.ctime(), self._pack_collection._upload_transport.base, new_pack.random_name,
-                         plain_pack_list, rev_count)
+                rev_count = "all"
+            trace.mutter(
+                "%s: create_pack: creating pack from source packs: "
+                "%s%s %s revisions wanted %s t=0",
+                time.ctime(),
+                self._pack_collection._upload_transport.base,
+                new_pack.random_name,
+                plain_pack_list,
+                rev_count,
+            )
         self._copy_revision_texts()
         self._copy_inventory_texts()
         self._copy_text_texts()
         # select signature keys
         signature_filter = self._revision_keys  # same keyspace
         signature_index_map, signature_indices = self._pack_map_and_index_list(
-            'signature_index')
-        signature_nodes = self._index_contents(signature_indices,
-                                               signature_filter)
+            "signature_index"
+        )
+        signature_nodes = self._index_contents(signature_indices, signature_filter)
         # copy signature keys and adjust values
         self.pb.update("Copying signature texts", 4)
-        self._copy_nodes(signature_nodes, signature_index_map, new_pack._writer,
-                         new_pack.signature_index)
-        if 'pack' in debug.debug_flags:
-            trace.mutter('%s: create_pack: revision signatures copied: %s%s %d items t+%6.3fs',
-                         time.ctime(), self._pack_collection._upload_transport.base, new_pack.random_name,
-                         new_pack.signature_index.key_count(),
-                         time.time() - new_pack.start_time)
+        self._copy_nodes(
+            signature_nodes,
+            signature_index_map,
+            new_pack._writer,
+            new_pack.signature_index,
+        )
+        if "pack" in debug.debug_flags:
+            trace.mutter(
+                "%s: create_pack: revision signatures copied: %s%s %d items t+%6.3fs",
+                time.ctime(),
+                self._pack_collection._upload_transport.base,
+                new_pack.random_name,
+                new_pack.signature_index.key_count(),
+                time.time() - new_pack.start_time,
+            )
         new_pack._check_references()
         if not self._use_pack(new_pack):
             new_pack.abort()
@@ -941,10 +1035,11 @@ class KnitPacker(Packer):
             pack_readv_requests = []
             for key, value, references in items:
                 # ---- KnitGraphIndex.get_position
-                bits = value[1:].split(b' ')
+                bits = value[1:].split(b" ")
                 offset, length = int(bits[0]), int(bits[1])
                 pack_readv_requests.append(
-                    ((offset, length), (key, value[0:1], references)))
+                    ((offset, length), (key, value[0:1], references))
+                )
             # linear scan up the pack to maximum range combining.
             pack_readv_requests.sort()
             # split out the readv and the node data.
@@ -993,9 +1088,10 @@ class KnitReconcilePacker(KnitPacker):
         # we have three major tasks here:
         # 1) generate the ideal index
         repo = self._pack_collection.repo
-        ancestors = {key[0]: tuple(ref[0] for ref in refs[0]) for
-                          _1, key, _2, refs in
-                          self.new_pack.revision_index.iter_all_entries()}
+        ancestors = {
+            key[0]: tuple(ref[0] for ref in refs[0])
+            for _1, key, _2, refs in self.new_pack.revision_index.iter_all_entries()
+        }
         ideal_index = repo._generate_text_key_index(self._text_refs, ancestors)
         # 2) generate a text_nodes list that contains all the deltas that can
         #    be used as-is, with corrected parents.
@@ -1025,8 +1121,9 @@ class KnitReconcilePacker(KnitPacker):
                     # today. Either way, we can preserve the representation as
                     # long as we change the refs to be inserted.
                     self._data_changed = True
-                    ok_nodes.append((node[0], node[1], node[2],
-                                     (ideal_parents, node[3][1])))
+                    ok_nodes.append(
+                        (node[0], node[1], node[2], (ideal_parents, node[3][1]))
+                    )
                     self._data_changed = True
                 else:
                     # Reinsert this text completely
@@ -1037,8 +1134,15 @@ class KnitReconcilePacker(KnitPacker):
         del text_nodes
         # 3) bulk copy the ok data
         total_items, readv_group_iter = self._least_readv_node_readv(ok_nodes)
-        list(self._copy_nodes_graph(text_index_map, self.new_pack._writer,
-                                    self.new_pack.text_index, readv_group_iter, total_items))
+        list(
+            self._copy_nodes_graph(
+                text_index_map,
+                self.new_pack._writer,
+                self.new_pack.text_index,
+                readv_group_iter,
+                total_items,
+            )
+        )
         # 4) adhoc copy all the other texts.
         # We have to topologically insert all texts otherwise we can fail to
         # reconcile when parts of a single delta chain are preserved intact,
@@ -1056,17 +1160,29 @@ class KnitReconcilePacker(KnitPacker):
         transaction = repo.get_transaction()
         file_id_index = GraphIndexPrefixAdapter(
             self.new_pack.text_index,
-            ('blank', ), 1,
-            add_nodes_callback=self.new_pack.text_index.add_nodes)
+            ("blank",),
+            1,
+            add_nodes_callback=self.new_pack.text_index.add_nodes,
+        )
         data_access = _DirectPackAccess(
-            {self.new_pack.text_index: self.new_pack.access_tuple()})
-        data_access.set_writer(self.new_pack._writer, self.new_pack.text_index,
-                               self.new_pack.access_tuple())
+            {self.new_pack.text_index: self.new_pack.access_tuple()}
+        )
+        data_access.set_writer(
+            self.new_pack._writer,
+            self.new_pack.text_index,
+            self.new_pack.access_tuple(),
+        )
         output_texts = KnitVersionedFiles(
-            _KnitGraphIndex(self.new_pack.text_index,
-                            add_callback=self.new_pack.text_index.add_nodes,
-                            deltas=True, parents=True, is_locked=repo.is_locked),
-            data_access=data_access, max_delta_chain=200)
+            _KnitGraphIndex(
+                self.new_pack.text_index,
+                add_callback=self.new_pack.text_index.add_nodes,
+                deltas=True,
+                parents=True,
+                is_locked=repo.is_locked,
+            ),
+            data_access=data_access,
+            max_delta_chain=200,
+        )
         for key, parent_keys in bad_texts:
             # We refer to the new pack to delta data being output.
             # A possible improvement would be to catch errors on short reads
@@ -1076,18 +1192,22 @@ class KnitReconcilePacker(KnitPacker):
             for parent_key in parent_keys:
                 if parent_key[0] != key[0]:
                     # Graph parents must match the fileid
-                    raise errors.BzrError('Mismatched key parent %r:%r' %
-                                          (key, parent_keys))
+                    raise errors.BzrError(
+                        "Mismatched key parent %r:%r" % (key, parent_keys)
+                    )
                 parents.append(parent_key[1])
-            text_lines = next(repo.texts.get_record_stream(
-                [key], 'unordered', True)).get_bytes_as('lines')
-            output_texts.add_lines(key, parent_keys, text_lines,
-                                   random_id=True, check_content=False)
+            text_lines = next(
+                repo.texts.get_record_stream([key], "unordered", True)
+            ).get_bytes_as("lines")
+            output_texts.add_lines(
+                key, parent_keys, text_lines, random_id=True, check_content=False
+            )
         # 5) check that nothing inserted has a reference outside the keyspace.
         missing_text_keys = self.new_pack.text_index._external_references()
         if missing_text_keys:
-            raise errors.BzrCheckError('Reference to missing compression parents %r'
-                                       % (missing_text_keys,))
+            raise errors.BzrCheckError(
+                "Reference to missing compression parents %r" % (missing_text_keys,)
+            )
         self._log_copied_texts()
 
     def _use_pack(self, new_pack):
@@ -1131,10 +1251,11 @@ class OptimisingKnitPacker(KnitPacker):
         for key in reversed(order):
             index, value, references = by_key[key]
             # ---- KnitGraphIndex.get_position
-            bits = value[1:].split(b' ')
+            bits = value[1:].split(b" ")
             offset, length = int(bits[0]), int(bits[1])
             requests.append(
-                (index, [(offset, length)], [(key, value[0:1], references)]))
+                (index, [(offset, length)], [(key, value[0:1], references)])
+            )
         # TODO: combine requests in the same index that are in ascending order.
         return total, requests
 

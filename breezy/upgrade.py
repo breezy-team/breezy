@@ -21,17 +21,16 @@ from . import (
     trace,
     ui,
     urlutils,
-    )
+)
 from .controldir import (
     ControlDir,
     format_registry,
-    )
+)
 from .i18n import gettext
 from .bzr.remote import RemoteBzrDir
 
 
 class Convert:
-
     def __init__(self, url=None, format=None, control_dir=None):
         """Convert a Bazaar control directory to a given format.
 
@@ -45,11 +44,10 @@ class Convert:
         """
         self.format = format
         # XXX: Change to cleanup
-        warning_id = 'cross_format_fetch'
+        warning_id = "cross_format_fetch"
         saved_warning = warning_id in ui.ui_factory.suppressed_warnings
         if url is None and control_dir is None:
-            raise AssertionError(
-                "either the url or control_dir parameter must be set.")
+            raise AssertionError("either the url or control_dir parameter must be set.")
         if control_dir is not None:
             self.controldir = control_dir
         else:
@@ -71,10 +69,13 @@ class Convert:
         try:
             branch = self.controldir.open_branch()
             if branch.user_url != self.controldir.user_url:
-                ui.ui_factory.note(gettext(
-                    'This is a checkout. The branch (%s) needs to be upgraded'
-                    ' separately.') % (urlutils.unescape_for_display(
-                        branch.user_url, 'utf-8')))
+                ui.ui_factory.note(
+                    gettext(
+                        "This is a checkout. The branch (%s) needs to be upgraded"
+                        " separately."
+                    )
+                    % (urlutils.unescape_for_display(branch.user_url, "utf-8"))
+                )
             del branch
         except (errors.NotBranchError, errors.IncompatibleRepositories):
             # might not be a format we can open without upgrading; see e.g.
@@ -95,17 +96,21 @@ class Convert:
         if not self.controldir.needs_format_conversion(format):
             raise errors.UpToDateFormat(self.controldir._format)
         if not self.controldir.can_convert_format():
-            raise errors.BzrError(gettext("cannot upgrade from bzrdir format %s") %
-                                  self.controldir._format)
+            raise errors.BzrError(
+                gettext("cannot upgrade from bzrdir format %s")
+                % self.controldir._format
+            )
         self.controldir.check_conversion_target(format)
-        ui.ui_factory.note(gettext('starting upgrade of %s') %
-                           urlutils.unescape_for_display(self.transport.base, 'utf-8'))
+        ui.ui_factory.note(
+            gettext("starting upgrade of %s")
+            % urlutils.unescape_for_display(self.transport.base, "utf-8")
+        )
 
         self.backup_oldpath, self.backup_newpath = self.controldir.backup_bzrdir()
         while self.controldir.needs_format_conversion(format):
             converter = self.controldir._format.get_converter(format)
             self.controldir = converter.convert(self.controldir, None)
-        ui.ui_factory.note(gettext('finished'))
+        ui.ui_factory.note(gettext("finished"))
 
     def clean_up(self):
         """Clean-up after a conversion.
@@ -115,7 +120,7 @@ class Convert:
         transport = self.transport
         backup_relpath = transport.relpath(self.backup_newpath)
         with ui.ui_factory.nested_progress_bar() as child_pb:
-            child_pb.update(gettext('Deleting backup.bzr'))
+            child_pb.update(gettext("Deleting backup.bzr"))
             transport.delete_tree(backup_relpath)
 
 
@@ -136,21 +141,22 @@ def upgrade(url, format=None, clean_up=False, dry_run=False):
     :return: the list of exceptions encountered
     """
     control_dirs = [ControlDir.open_unsupported(url)]
-    attempted, succeeded, exceptions = smart_upgrade(control_dirs,
-                                                     format, clean_up=clean_up, dry_run=dry_run)
+    attempted, succeeded, exceptions = smart_upgrade(
+        control_dirs, format, clean_up=clean_up, dry_run=dry_run
+    )
     if len(attempted) > 1:
         attempted_count = len(attempted)
         succeeded_count = len(succeeded)
         failed_count = attempted_count - succeeded_count
         ui.ui_factory.note(
-            gettext('\nSUMMARY: {0} upgrades attempted, {1} succeeded,'
-                    ' {2} failed').format(
-                attempted_count, succeeded_count, failed_count))
+            gettext(
+                "\nSUMMARY: {0} upgrades attempted, {1} succeeded," " {2} failed"
+            ).format(attempted_count, succeeded_count, failed_count)
+        )
     return exceptions
 
 
-def smart_upgrade(control_dirs, format, clean_up=False,
-                  dry_run=False):
+def smart_upgrade(control_dirs, format, clean_up=False, dry_run=False):
     """Convert control directories to a new format intelligently.
 
     If the control directory is a shared repository, dependent branches
@@ -168,16 +174,16 @@ def smart_upgrade(control_dirs, format, clean_up=False,
     all_succeeded = []
     all_exceptions = []
     for control_dir in control_dirs:
-        attempted, succeeded, exceptions = _smart_upgrade_one(control_dir,
-                                                              format, clean_up=clean_up, dry_run=dry_run)
+        attempted, succeeded, exceptions = _smart_upgrade_one(
+            control_dir, format, clean_up=clean_up, dry_run=dry_run
+        )
         all_attempted.extend(attempted)
         all_succeeded.extend(succeeded)
         all_exceptions.extend(exceptions)
     return all_attempted, all_succeeded, all_exceptions
 
 
-def _smart_upgrade_one(control_dir, format, clean_up=False,
-                       dry_run=False):
+def _smart_upgrade_one(control_dir, format, clean_up=False, dry_run=False):
     """Convert a control directory to a new format intelligently.
 
     See smart_upgrade for parameter details.
@@ -197,21 +203,23 @@ def _smart_upgrade_one(control_dir, format, clean_up=False,
 
     # Do the conversions
     attempted = [control_dir]
-    succeeded, exceptions = _convert_items([control_dir], format, clean_up,
-                                           dry_run)
+    succeeded, exceptions = _convert_items([control_dir], format, clean_up, dry_run)
     if succeeded and dependents:
-        ui.ui_factory.note(gettext('Found %d dependent branches - upgrading ...')
-                           % (len(dependents),))
+        ui.ui_factory.note(
+            gettext("Found %d dependent branches - upgrading ...") % (len(dependents),)
+        )
         # Convert dependent branches
         branch_cdirs = [b.controldir for b in dependents]
-        successes, problems = _convert_items(branch_cdirs, format, clean_up,
-                                             dry_run, label="branch")
+        successes, problems = _convert_items(
+            branch_cdirs, format, clean_up, dry_run, label="branch"
+        )
         attempted.extend(branch_cdirs)
         succeeded.extend(successes)
         exceptions.extend(problems)
 
     # Return the result
     return attempted, succeeded, exceptions
+
 
 # FIXME: There are several problems below:
 # - RemoteRepository doesn't support _unsupported (really ?)
@@ -232,8 +240,7 @@ def _get_object_and_label(control_dir):
     """
     try:
         try:
-            br = control_dir.open_branch(unsupported=True,
-                                         ignore_fallbacks=True)
+            br = control_dir.open_branch(unsupported=True, ignore_fallbacks=True)
         except NotImplementedError:
             # RemoteRepository doesn't support the unsupported parameter
             br = control_dir.open_branch(ignore_fallbacks=True)
@@ -270,16 +277,19 @@ def _convert_items(items, format, clean_up, dry_run, label=None):
     succeeded = []
     exceptions = []
     with ui.ui_factory.nested_progress_bar() as child_pb:
-        child_pb.update(gettext('Upgrading bzrdirs'), 0, len(items))
+        child_pb.update(gettext("Upgrading bzrdirs"), 0, len(items))
         for i, control_dir in enumerate(items):
             # Do the conversion
             location = control_dir.root_transport.base
             bzr_object, bzr_label = _get_object_and_label(control_dir)
             type_label = label or bzr_label
-            child_pb.update(gettext("Upgrading %s") %
-                            (type_label), i + 1, len(items))
-            ui.ui_factory.note(gettext('Upgrading {0} {1} ...').format(type_label,
-                                                                       urlutils.unescape_for_display(location, 'utf-8'),))
+            child_pb.update(gettext("Upgrading %s") % (type_label), i + 1, len(items))
+            ui.ui_factory.note(
+                gettext("Upgrading {0} {1} ...").format(
+                    type_label,
+                    urlutils.unescape_for_display(location, "utf-8"),
+                )
+            )
             try:
                 if not dry_run:
                     cv = Convert(control_dir=control_dir, format=format)
@@ -288,7 +298,7 @@ def _convert_items(items, format, clean_up, dry_run, label=None):
                 succeeded.append(control_dir)
                 continue
             except Exception as ex:
-                trace.warning('conversion error: %s' % ex)
+                trace.warning("conversion error: %s" % ex)
                 exceptions.append(ex)
                 continue
 
@@ -296,12 +306,13 @@ def _convert_items(items, format, clean_up, dry_run, label=None):
             succeeded.append(control_dir)
             if clean_up:
                 try:
-                    ui.ui_factory.note(gettext('Removing backup ...'))
+                    ui.ui_factory.note(gettext("Removing backup ..."))
                     if not dry_run:
                         cv.clean_up()
                 except Exception as ex:
                     trace.warning(
-                        gettext('failed to clean-up {0}: {1}') % (location, ex))
+                        gettext("failed to clean-up {0}: {1}") % (location, ex)
+                    )
                     exceptions.append(ex)
 
     # Return the result

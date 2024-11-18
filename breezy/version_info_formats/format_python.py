@@ -21,11 +21,11 @@ import pprint
 from breezy import errors
 from breezy.revision import (
     NULL_REVISION,
-    )
+)
 from breezy.version_info_formats import (
     create_date_str,
     VersionInfoBuilder,
-    )
+)
 
 
 # Header and footer for the python format
@@ -38,69 +38,70 @@ So don't edit it. :)
 '''
 
 
-_py_version_footer = '''
+_py_version_footer = """
 if __name__ == '__main__':
     print('revision: %(revno)s' % version_info)
     print('nick: %(branch_nick)s' % version_info)
     print('revision id: %(revision_id)s' % version_info)
-'''
+"""
 
 
 class PythonVersionInfoBuilder(VersionInfoBuilder):
     """Create a version file which is a python source module."""
 
     def generate(self, to_file):
-        info = {'build_date': create_date_str(),
-                'revno': None,
-                'revision_id': None,
-                'branch_nick': self._branch.nick,
-                'clean': None,
-                'date': None
-                }
+        info = {
+            "build_date": create_date_str(),
+            "revno": None,
+            "revision_id": None,
+            "branch_nick": self._branch.nick,
+            "clean": None,
+            "date": None,
+        }
         revisions = []
 
         revision_id = self._get_revision_id()
         if revision_id == NULL_REVISION:
-            info['revno'] = '0'
+            info["revno"] = "0"
         else:
             try:
-                info['revno'] = self._get_revno_str(revision_id)
+                info["revno"] = self._get_revno_str(revision_id)
             except errors.GhostRevisionsHaveNoRevno:
                 pass
-            info['revision_id'] = revision_id
+            info["revision_id"] = revision_id
             rev = self._branch.repository.get_revision(revision_id)
-            info['date'] = create_date_str(rev.timestamp, rev.timezone)
+            info["date"] = create_date_str(rev.timestamp, rev.timezone)
 
         if self._check or self._include_file_revs:
             self._extract_file_revisions()
 
         if self._check:
             if self._clean:
-                info['clean'] = True
+                info["clean"] = True
             else:
-                info['clean'] = False
+                info["clean"] = False
 
         info_str = pprint.pformat(info)
         to_file.write(_py_version_header)
-        to_file.write('version_info = ')
+        to_file.write("version_info = ")
         to_file.write(info_str)
-        to_file.write('\n\n')
+        to_file.write("\n\n")
 
         if self._include_history:
             history = list(self._iter_revision_history())
             revision_str = pprint.pformat(history)
-            to_file.write('revisions = ')
+            to_file.write("revisions = ")
             to_file.write(revision_str)
-            to_file.write('\n\n')
+            to_file.write("\n\n")
         else:
-            to_file.write('revisions = {}\n\n')
+            to_file.write("revisions = {}\n\n")
 
         if self._include_file_revs:
             file_rev_str = pprint.pformat(self._file_revisions)
-            to_file.write('file_revisions = ')
+            to_file.write("file_revisions = ")
             to_file.write(file_rev_str)
-            to_file.write('\n\n')
+            to_file.write("\n\n")
         else:
-            to_file.write('file_revisions = {}\n\n')
+            to_file.write("file_revisions = {}\n\n")
 
         to_file.write(_py_version_footer)

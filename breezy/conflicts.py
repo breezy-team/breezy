@@ -22,13 +22,17 @@ import os
 import re
 
 from .lazy_import import lazy_import
-lazy_import(globals(), """
+
+lazy_import(
+    globals(),
+    """
 
 from breezy import (
     workingtree,
     )
 from breezy.i18n import gettext, ngettext
-""")
+""",
+)
 from . import (
     errors,
     commands,
@@ -36,7 +40,7 @@ from . import (
     osutils,
     registry,
     trace,
-    )
+)
 
 
 class cmd_conflicts(commands.Command):
@@ -54,46 +58,50 @@ class cmd_conflicts(commands.Command):
     Use brz resolve when you have fixed a problem.
     """
     takes_options = [
-        'directory',
-        option.Option('text',
-                      help='List paths of files with text conflicts.'),
-        ]
-    _see_also = ['resolve', 'conflict-types']
+        "directory",
+        option.Option("text", help="List paths of files with text conflicts."),
+    ]
+    _see_also = ["resolve", "conflict-types"]
 
-    def run(self, text=False, directory='.'):
+    def run(self, text=False, directory="."):
         wt = workingtree.WorkingTree.open_containing(directory)[0]
         for conflict in wt.conflicts():
             if text:
-                if conflict.typestring != 'text conflict':
+                if conflict.typestring != "text conflict":
                     continue
-                self.outf.write(conflict.path + '\n')
+                self.outf.write(conflict.path + "\n")
             else:
-                self.outf.write(str(conflict) + '\n')
+                self.outf.write(str(conflict) + "\n")
 
 
 resolve_action_registry = registry.Registry[str, str]()
 
 
 resolve_action_registry.register(
-    'auto', 'auto', 'Detect whether conflict has been resolved by user.')
+    "auto", "auto", "Detect whether conflict has been resolved by user."
+)
+resolve_action_registry.register("done", "done", "Marks the conflict as resolved.")
 resolve_action_registry.register(
-    'done', 'done', 'Marks the conflict as resolved.')
+    "take-this",
+    "take_this",
+    "Resolve the conflict preserving the version in the working tree.",
+)
 resolve_action_registry.register(
-    'take-this', 'take_this',
-    'Resolve the conflict preserving the version in the working tree.')
-resolve_action_registry.register(
-    'take-other', 'take_other',
-    'Resolve the conflict taking the merged version into account.')
-resolve_action_registry.default_key = 'done'
+    "take-other",
+    "take_other",
+    "Resolve the conflict taking the merged version into account.",
+)
+resolve_action_registry.default_key = "done"
 
 
 class ResolveActionOption(option.RegistryOption):
-
     def __init__(self):
         super().__init__(
-            'action', 'How to resolve the conflict.',
+            "action",
+            "How to resolve the conflict.",
             value_switches=True,
-            registry=resolve_action_registry)
+            registry=resolve_action_registry,
+        )
 
 
 class cmd_resolve(commands.Command):
@@ -108,56 +116,65 @@ class cmd_resolve(commands.Command):
     text conflicts as fixed, "brz resolve FILE" to mark a specific conflict as
     resolved, or "brz resolve --all" to mark all conflicts as resolved.
     """
-    aliases = ['resolved']
-    takes_args = ['file*']
+    aliases = ["resolved"]
+    takes_args = ["file*"]
     takes_options = [
-        'directory',
-        option.Option('all', help='Resolve all conflicts in this tree.'),
+        "directory",
+        option.Option("all", help="Resolve all conflicts in this tree."),
         ResolveActionOption(),
-        ]
-    _see_also = ['conflicts']
+    ]
+    _see_also = ["conflicts"]
 
     def run(self, file_list=None, all=False, action=None, directory=None):
         if all:
             if file_list:
-                raise errors.CommandError(gettext("If --all is specified,"
-                                                  " no FILE may be provided"))
+                raise errors.CommandError(
+                    gettext("If --all is specified," " no FILE may be provided")
+                )
             if directory is None:
-                directory = '.'
+                directory = "."
             tree = workingtree.WorkingTree.open_containing(directory)[0]
             if action is None:
-                action = 'done'
+                action = "done"
         else:
             tree, file_list = workingtree.WorkingTree.open_containing_paths(
-                file_list, directory)
+                file_list, directory
+            )
             if action is None:
                 if file_list is None:
-                    action = 'auto'
+                    action = "auto"
                 else:
-                    action = 'done'
+                    action = "done"
         before, after = resolve(tree, file_list, action=action)
         # GZ 2012-07-27: Should unify UI below now that auto is less magical.
-        if action == 'auto' and file_list is None:
+        if action == "auto" and file_list is None:
             if after > 0:
                 trace.note(
-                    ngettext('%d conflict auto-resolved.',
-                             '%d conflicts auto-resolved.', before - after),
-                    before - after)
-                trace.note(gettext('Remaining conflicts:'))
+                    ngettext(
+                        "%d conflict auto-resolved.",
+                        "%d conflicts auto-resolved.",
+                        before - after,
+                    ),
+                    before - after,
+                )
+                trace.note(gettext("Remaining conflicts:"))
                 for conflict in tree.conflicts():
                     trace.note(str(conflict))
                 return 1
             else:
-                trace.note(gettext('All conflicts resolved.'))
+                trace.note(gettext("All conflicts resolved."))
                 return 0
         else:
-            trace.note(ngettext('{0} conflict resolved, {1} remaining',
-                                '{0} conflicts resolved, {1} remaining',
-                                before - after).format(before - after, after))
+            trace.note(
+                ngettext(
+                    "{0} conflict resolved, {1} remaining",
+                    "{0} conflicts resolved, {1} remaining",
+                    before - after,
+                ).format(before - after, after)
+            )
 
 
-def resolve(tree, paths=None, ignore_misses=False, recursive=False,
-            action='done'):
+def resolve(tree, paths=None, ignore_misses=False, recursive=False, action="done"):
     """Resolve some or all of the conflicts in a working tree.
 
     :param paths: If None, resolve all conflicts.  Otherwise, select only
@@ -180,7 +197,8 @@ def resolve(tree, paths=None, ignore_misses=False, recursive=False,
             to_process = tree_conflicts
         else:
             new_conflicts, to_process = tree_conflicts.select_conflicts(
-                tree, paths, ignore_misses, recursive)
+                tree, paths, ignore_misses, recursive
+            )
         for conflict in to_process:
             try:
                 conflict.do(action, tree)
@@ -274,8 +292,7 @@ class ConflictList:
                 continue
             conflict.cleanup(tree)
 
-    def select_conflicts(self, tree, paths, ignore_misses=False,
-                         recurse=False):
+    def select_conflicts(self, tree, paths, ignore_misses=False, recurse=False):
         """Select the conflicts associated with paths in a tree.
 
         :return: a pair of ConflictLists: (not_selected, selected)

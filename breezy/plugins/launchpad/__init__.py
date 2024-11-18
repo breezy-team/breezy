@@ -41,10 +41,10 @@ from ... import (
     # Since we are a built-in plugin we share the breezy version
     trace,
     version_info,  # noqa: F401
-    )
+)
 from ...commands import (
     plugin_cmds,
-    )
+)
 from ...directory_service import directories
 from ...help_topics import topic_registry
 
@@ -52,31 +52,41 @@ for klsname, aliases in [
     ("cmd_launchpad_open", ["lp-open"]),
     ("cmd_launchpad_login", ["lp-login"]),
     ("cmd_launchpad_logout", ["lp-logout"]),
-        ("cmd_lp_find_proposal", [])]:
-    plugin_cmds.register_lazy(klsname, aliases,
-                              "breezy.plugins.launchpad.cmds")
+    ("cmd_lp_find_proposal", []),
+]:
+    plugin_cmds.register_lazy(klsname, aliases, "breezy.plugins.launchpad.cmds")
 
 
 def _register_directory():
-    directories.register_lazy('lp:', 'breezy.plugins.launchpad.lp_directory',
-                              'LaunchpadDirectory',
-                              'Launchpad-based directory service',)
-    directories.register_lazy('lp+bzr:', 'breezy.plugins.launchpad.lp_directory',
-                              'LaunchpadDirectory',
-                              'Bazaar-specific Launchpad directory service',)
+    directories.register_lazy(
+        "lp:",
+        "breezy.plugins.launchpad.lp_directory",
+        "LaunchpadDirectory",
+        "Launchpad-based directory service",
+    )
+    directories.register_lazy(
+        "lp+bzr:",
+        "breezy.plugins.launchpad.lp_directory",
+        "LaunchpadDirectory",
+        "Bazaar-specific Launchpad directory service",
+    )
 
 
 _register_directory()
 
+
 def load_tests(loader, basic_tests, pattern):
     testmod_names = [
-        'test_account',
-        'test_lp_api',
-        'test_lp_directory',
-        'test_lp_login',
-        ]
-    basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["{}.{}".format(__name__, tmn) for tmn in testmod_names]))
+        "test_account",
+        "test_lp_api",
+        "test_lp_directory",
+        "test_lp_login",
+    ]
+    basic_tests.addTest(
+        loader.loadTestsFromModuleNames(
+            ["{}.{}".format(__name__, tmn) for tmn in testmod_names]
+        )
+    )
     return basic_tests
 
 
@@ -105,10 +115,9 @@ features to communicate with Launchpad:
 
 For more information see http://help.launchpad.net/
 """
-topic_registry.register('launchpad',
-                        _launchpad_help,
-                        'Using Bazaar with Launchpad.net')
+topic_registry.register("launchpad", _launchpad_help, "Using Bazaar with Launchpad.net")
 
 
 from ...forge import forges
-forges.register_lazy("launchpad", __name__ + '.forge', "Launchpad")
+
+forges.register_lazy("launchpad", __name__ + ".forge", "Launchpad")

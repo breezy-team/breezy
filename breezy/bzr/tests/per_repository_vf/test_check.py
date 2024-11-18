@@ -16,28 +16,26 @@
 
 """Test operations that check the repository for corruption"""
 
-
 from breezy import (
     errors,
-    )
+)
 from breezy.tests import (
     TestNotApplicable,
-    )
+)
 from breezy.tests.scenarios import load_tests_apply_scenarios
 from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository,
     all_repository_vf_format_scenarios,
-    )
+)
 from breezy.bzr.tests.per_repository_vf.helpers import (
     TestCaseWithBrokenRevisionIndex,
-    )
+)
 
 
 load_tests = load_tests_apply_scenarios
 
 
 class TestFindInconsistentRevisionParents(TestCaseWithBrokenRevisionIndex):
-
     scenarios = all_repository_vf_format_scenarios()
 
     def test__find_inconsistent_revision_parents(self):
@@ -46,8 +44,9 @@ class TestFindInconsistentRevisionParents(TestCaseWithBrokenRevisionIndex):
         """
         repo = self.make_repo_with_extra_ghost_index()
         self.assertEqual(
-            [(b'revision-id', (b'incorrect-parent',), ())],
-            list(repo._find_inconsistent_revision_parents()))
+            [(b"revision-id", (b"incorrect-parent",), ())],
+            list(repo._find_inconsistent_revision_parents()),
+        )
 
     def test__check_for_inconsistent_revision_parents(self):
         """_check_for_inconsistent_revision_parents raises BzrCheckError if
@@ -55,17 +54,16 @@ class TestFindInconsistentRevisionParents(TestCaseWithBrokenRevisionIndex):
         """
         repo = self.make_repo_with_extra_ghost_index()
         self.assertRaises(
-            errors.BzrCheckError,
-            repo._check_for_inconsistent_revision_parents)
+            errors.BzrCheckError, repo._check_for_inconsistent_revision_parents
+        )
 
     def test__check_for_inconsistent_revision_parents_on_clean_repo(self):
         """_check_for_inconsistent_revision_parents does nothing if there are
         no broken revisions.
         """
-        repo = self.make_repository('empty-repo')
+        repo = self.make_repository("empty-repo")
         if not repo._format.revision_graph_can_have_wrong_parents:
-            raise TestNotApplicable(
-                '%r cannot have corrupt revision index.' % repo)
+            raise TestNotApplicable("%r cannot have corrupt revision index." % repo)
         with repo.lock_read():
             repo._check_for_inconsistent_revision_parents()  # nothing happens
 
@@ -73,25 +71,26 @@ class TestFindInconsistentRevisionParents(TestCaseWithBrokenRevisionIndex):
         repo = self.make_repo_with_extra_ghost_index()
         # XXX: check requires a non-empty revision IDs list, but it ignores the
         # contents of it!
-        check_object = repo.check(['ignored'])
+        check_object = repo.check(["ignored"])
         check_object.report_results(verbose=False)
-        self.assertContainsRe(self.get_log(),
-                              '1 revisions have incorrect parents in the revision index')
+        self.assertContainsRe(
+            self.get_log(), "1 revisions have incorrect parents in the revision index"
+        )
         check_object.report_results(verbose=True)
         self.assertContainsRe(
             self.get_log(),
             "revision-id has wrong parents in index: "
-            r"\(incorrect-parent\) should be \(\)")
+            r"\(incorrect-parent\) should be \(\)",
+        )
 
 
 class TestCallbacks(TestCaseWithRepository):
-
     scenarios = all_repository_vf_format_scenarios()
 
     def test_callback_tree_and_branch(self):
         # use a real tree to get actual refs that will work
-        tree = self.make_branch_and_tree('foo')
-        revid = tree.commit('foo')
+        tree = self.make_branch_and_tree("foo")
+        revid = tree.commit("foo")
         tree.lock_read()
         self.addCleanup(tree.unlock)
         needed_refs = {}
@@ -108,27 +107,26 @@ class TestCallbacks(TestCaseWithRepository):
         self.assertNotEqual([], self.callbacks)
 
     def tree_callback(self, refs):
-        self.callbacks.append(('tree', refs))
+        self.callbacks.append(("tree", refs))
         return self.tree_check(refs)
 
     def branch_callback(self, refs):
-        self.callbacks.append(('branch', refs))
+        self.callbacks.append(("branch", refs))
         return self.branch_check(refs)
 
 
 class TestNoSpuriousInconsistentAncestors(TestCaseWithRepository):
-
     scenarios = all_repository_vf_format_scenarios()
 
     def test_two_files_different_versions_no_inconsistencies_bug_165071(self):
         """Two files, with different versions can be clean."""
-        tree = self.make_branch_and_tree('.')
-        self.build_tree(['foo'])
-        tree.smart_add(['.'])
-        revid1 = tree.commit('1')
-        self.build_tree(['bar'])
-        tree.smart_add(['.'])
-        revid2 = tree.commit('2')
+        tree = self.make_branch_and_tree(".")
+        self.build_tree(["foo"])
+        tree.smart_add(["."])
+        revid1 = tree.commit("1")
+        self.build_tree(["bar"])
+        tree.smart_add(["."])
+        revid2 = tree.commit("2")
         check_object = tree.branch.repository.check([revid1, revid2])
         check_object.report_results(verbose=True)
         self.assertContainsRe(self.get_log(), "0 unreferenced text versions")

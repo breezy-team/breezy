@@ -40,14 +40,15 @@ _version = 0.1
 # =======
 # ::
 
-#from pprint import pprint # for debugging
+# from pprint import pprint # for debugging
 import os
 
 # Docutils::
 
 try:
     import locale
-    locale.setlocale(locale.LC_ALL, '')
+
+    locale.setlocale(locale.LC_ALL, "")
 except:
     pass
 
@@ -56,6 +57,7 @@ from docutils.core import default_usage, default_description, Publisher
 # Rubber (rubber is not installed in the PYTHONPATH)::
 
 import sys
+
 sys.path.append("/usr/share/rubber")
 
 try:
@@ -77,11 +79,11 @@ except ModuleNotFoundError:
 # Default values::
 
 reader = None
-reader_name = 'standalone'
+reader_name = "standalone"
 parser = None
-parser_name = 'restructuredtext'
+parser_name = "restructuredtext"
 writer = None
-writer_name = 'pseudoxml'
+writer_name = "pseudoxml"
 settings = None
 settings_spec = None
 settings_overrides = None
@@ -93,10 +95,12 @@ description = default_description
 
 # Argument values given to publish_cmdline() in rst2latex.py::
 
-description = ('Generates PDF documents from standalone reStructuredText '
-               'sources using the "latex" Writer and the "rubber" '
-               'building system for LaTeX documents.  ' + default_description)
-writer_name = 'latex'
+description = (
+    "Generates PDF documents from standalone reStructuredText "
+    'sources using the "latex" Writer and the "rubber" '
+    "building system for LaTeX documents.  " + default_description
+)
+writer_name = "latex"
 
 # Set up the publisher::
 
@@ -106,8 +110,14 @@ pub.set_components(reader_name, parser_name, writer_name)
 # Parse the command line args
 # (Publisher.publish does this in a try statement)::
 
-pub.process_command_line(argv, usage, description, settings_spec,
-                         config_section, **(settings_overrides or {}))
+pub.process_command_line(
+    argv,
+    usage,
+    description,
+    settings_spec,
+    config_section,
+    **(settings_overrides or {}),
+)
 # pprint(pub.settings.__dict__)
 
 # Get source and destination path::
@@ -132,8 +142,15 @@ pub.settings._destination = texpath
 
 # Now do the rst -> latex conversion::
 
-pub.publish(argv, usage, description, settings_spec, settings_overrides,
-            config_section=config_section, enable_exit_status=enable_exit_status)
+pub.publish(
+    argv,
+    usage,
+    description,
+    settings_spec,
+    settings_overrides,
+    config_section=config_section,
+    enable_exit_status=enable_exit_status,
+)
 
 
 # Generating the PDF document with rubber
@@ -143,10 +160,11 @@ pub.publish(argv, usage, description, settings_spec, settings_overrides,
 # rubber_ has no documentet API for programmatic use. We simualate a command
 # line call and pass command line arguments (see man: rubber-pipe) in an array::
 
-rubber_argv = ["--pdf",    # use pdflatex to produce PDF
-               "--short",   # Display LaTeX’s error messages one error per line.
-               texpath
-               ]
+rubber_argv = [
+    "--pdf",  # use pdflatex to produce PDF
+    "--short",  # Display LaTeX’s error messages one error per line.
+    texpath,
+]
 
 # Get a TeX processing class instance and do the latex->pdf conversion::
 

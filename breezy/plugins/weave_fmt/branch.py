@@ -20,11 +20,11 @@ from ... import (
     controldir as _mod_controldir,
     errors,
     lockable_files,
-    )
+)
 
 from ...decorators import (
     only_raises,
-    )
+)
 from ...lock import LogicalLockResult
 from ...trace import mutter
 
@@ -32,10 +32,10 @@ from ...branch import (
     BindingUnsupported,
     BranchFormat,
     BranchWriteLockResult,
-    )
+)
 from ...bzr.fullhistory import (
     FullHistoryBzrBranch,
-    )
+)
 
 
 class BzrBranch4(FullHistoryBzrBranch):
@@ -49,13 +49,14 @@ class BzrBranch4(FullHistoryBzrBranch):
         :return: A BranchWriteLockResult.
         """
         if not self.is_locked():
-            self._note_lock('w')
+            self._note_lock("w")
         # All-in-one needs to always unlock/lock.
         self.repository._warn_if_deprecated(self)
         self.repository.lock_write()
         try:
-            return BranchWriteLockResult(self.unlock,
-                                         self.control_files.lock_write(token=token))
+            return BranchWriteLockResult(
+                self.unlock, self.control_files.lock_write(token=token)
+            )
         except:
             self.repository.unlock()
             raise
@@ -66,7 +67,7 @@ class BzrBranch4(FullHistoryBzrBranch):
         :return: A breezy.lock.LogicalLockResult.
         """
         if not self.is_locked():
-            self._note_lock('r')
+            self._note_lock("r")
         # All-in-one needs to always unlock/lock.
         self.repository._warn_if_deprecated(self)
         self.repository.lock_read()
@@ -91,10 +92,10 @@ class BzrBranch4(FullHistoryBzrBranch):
                 self._clear_cached_state()
 
     def _get_checkout_format(self, lightweight=False):
-        """Return the most suitable metadir for a checkout of this branch.
-        """
+        """Return the most suitable metadir for a checkout of this branch."""
         from .repository import RepositoryFormat7
         from ...bzr.bzrdir import BzrDirMetaFormat1
+
         format = BzrDirMetaFormat1()
         if lightweight:
             format.set_branch_format(self._format)
@@ -132,8 +133,9 @@ class BzrBranchFormat4(BranchFormat):
     It does not support binding.
     """
 
-    def initialize(self, a_controldir, name=None, repository=None,
-                   append_revisions_only=None):
+    def initialize(
+        self, a_controldir, name=None, repository=None, append_revisions_only=None
+    ):
         """Create a branch of this format in a_controldir.
 
         :param a_controldir: The bzrdir to initialize the branch in
@@ -144,17 +146,22 @@ class BzrBranchFormat4(BranchFormat):
             raise errors.UpgradeRequired(a_controldir.user_url)
         if repository is not None:
             raise NotImplementedError(
-                "initialize(repository=<not None>) on {!r}".format(self))
-        if not [isinstance(a_controldir._format, format) for format in
-                self._compatible_bzrdirs]:
+                "initialize(repository=<not None>) on {!r}".format(self)
+            )
+        if not [
+            isinstance(a_controldir._format, format)
+            for format in self._compatible_bzrdirs
+        ]:
             raise errors.IncompatibleFormat(self, a_controldir._format)
-        utf8_files = [('revision-history', b''),
-                      ('branch-name', b''),
-                      ]
-        mutter('creating branch %r in %s', self, a_controldir.user_url)
+        utf8_files = [
+            ("revision-history", b""),
+            ("branch-name", b""),
+        ]
+        mutter("creating branch %r in %s", self, a_controldir.user_url)
         branch_transport = a_controldir.get_branch_transport(self, name=name)
-        control_files = lockable_files.LockableFiles(branch_transport,
-                                                     'branch-lock', lockable_files.TransportLock)
+        control_files = lockable_files.LockableFiles(
+            branch_transport, "branch-lock", lockable_files.TransportLock
+        )
         control_files.create_lock()
         try:
             control_files.lock_write()
@@ -163,26 +170,27 @@ class BzrBranchFormat4(BranchFormat):
         else:
             lock_taken = True
         try:
-            for (filename, content) in utf8_files:
+            for filename, content in utf8_files:
                 branch_transport.put_bytes(
-                    filename, content,
-                    mode=a_controldir._get_file_mode())
+                    filename, content, mode=a_controldir._get_file_mode()
+                )
         finally:
             if lock_taken:
                 control_files.unlock()
-        branch = self.open(a_controldir, name, _found=True,
-                           found_repository=None)
+        branch = self.open(a_controldir, name, _found=True, found_repository=None)
         self._run_post_branch_init_hooks(a_controldir, name, branch)
         return branch
 
     def __init__(self):
         super().__init__()
         from .bzrdir import (
-            BzrDirFormat4, BzrDirFormat5, BzrDirFormat6,
-            )
+            BzrDirFormat4,
+            BzrDirFormat5,
+            BzrDirFormat6,
+        )
+
         self._matchingcontroldir = BzrDirFormat6()
-        self._compatible_bzrdirs = [BzrDirFormat4, BzrDirFormat5,
-                                    BzrDirFormat6]
+        self._compatible_bzrdirs = [BzrDirFormat4, BzrDirFormat5, BzrDirFormat6]
 
     def network_name(self):
         """The network name for this format is the control dirs disk label."""
@@ -191,8 +199,15 @@ class BzrBranchFormat4(BranchFormat):
     def get_format_description(self):
         return "Branch format 4"
 
-    def open(self, a_controldir, name=None, _found=False, ignore_fallbacks=False,
-             found_repository=None, possible_transports=None):
+    def open(
+        self,
+        a_controldir,
+        name=None,
+        _found=False,
+        ignore_fallbacks=False,
+        found_repository=None,
+        possible_transports=None,
+    ):
         """See BranchFormat.open()."""
         if name is None:
             name = a_controldir._get_selected_branch()
@@ -203,12 +218,14 @@ class BzrBranchFormat4(BranchFormat):
             raise NotImplementedError
         if found_repository is None:
             found_repository = a_controldir.open_repository()
-        return BzrBranch4(_format=self,
-                          _control_files=a_controldir._control_files,
-                          a_controldir=a_controldir,
-                          name=name,
-                          _repository=found_repository,
-                          possible_transports=possible_transports)
+        return BzrBranch4(
+            _format=self,
+            _control_files=a_controldir._control_files,
+            a_controldir=a_controldir,
+            name=name,
+            _repository=found_repository,
+            possible_transports=possible_transports,
+        )
 
     def __str__(self):
         return "Bazaar-NG branch format 4"

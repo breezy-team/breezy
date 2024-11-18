@@ -18,7 +18,7 @@
 
 from . import (
     errors,
-    )
+)
 
 
 class CountedLock:
@@ -37,8 +37,7 @@ class CountedLock:
         self._lock_count = 0
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__,
-                           self._real_lock)
+        return "{}({!r})".format(self.__class__.__name__, self._real_lock)
 
     def break_lock(self):
         self._real_lock.break_lock()
@@ -72,7 +71,7 @@ class CountedLock:
         else:
             self._real_lock.lock_read()
             self._lock_count = 1
-            self._lock_mode = 'r'
+            self._lock_mode = "r"
 
     def lock_write(self, token=None):
         """Acquire the lock in write mode.
@@ -87,10 +86,10 @@ class CountedLock:
         """
         if self._lock_count == 0:
             self._token = self._real_lock.lock_write(token=token)
-            self._lock_mode = 'w'
+            self._lock_mode = "w"
             self._lock_count += 1
             return self._token
-        elif self._lock_mode != 'w':
+        elif self._lock_mode != "w":
             raise errors.ReadOnlyError(self)
         else:
             self._real_lock.validate_token(token)

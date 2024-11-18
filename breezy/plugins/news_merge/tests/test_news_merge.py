@@ -22,6 +22,6 @@
 from breezy import (
     option,
     tests,
-    )
+)
 from breezy.merge import Merger
 from breezy.plugins import news_merge

@@ -25,19 +25,19 @@ from ... import (
     cache_utf8,
     osutils,
     timestamp,
-    )
+)
 from . import apply_bundle
 from ...errors import (
     TestamentMismatch,
     BzrError,
     NoSuchId,
-    )
+)
 from ..inventory import (
     Inventory,
     InventoryDirectory,
     InventoryFile,
     InventoryLink,
-    )
+)
 from ..inventorytree import InventoryTree
 from ...osutils import sha_string, sha_strings, pathjoin
 from ...revision import Revision, NULL_REVISION
@@ -46,13 +46,12 @@ from ...trace import mutter, warning
 from ...tree import (
     InterTree,
     Tree,
-    )
+)
 from ..xml5 import serializer_v5
 
 
 class RevisionInfo:
-    """Gets filled out for each revision object that is read.
-    """
+    """Gets filled out for each revision object that is read."""
 
     def __init__(self, revision_id):
         self.revision_id = revision_id
@@ -73,27 +72,29 @@ class RevisionInfo:
         return pprint.pformat(self.__dict__)
 
     def as_revision(self):
-        rev = Revision(revision_id=self.revision_id,
-                       committer=self.committer,
-                       timestamp=float(self.timestamp),
-                       timezone=int(self.timezone),
-                       inventory_sha1=self.inventory_sha1,
-                       message='\n'.join(self.message))
+        rev = Revision(
+            revision_id=self.revision_id,
+            committer=self.committer,
+            timestamp=float(self.timestamp),
+            timezone=int(self.timezone),
+            inventory_sha1=self.inventory_sha1,
+            message="\n".join(self.message),
+        )
 
         if self.parent_ids:
             rev.parent_ids.extend(self.parent_ids)
 
         if self.properties:
             for property in self.properties:
-                key_end = property.find(': ')
+                key_end = property.find(": ")
                 if key_end == -1:
-                    if not property.endswith(':'):
+                    if not property.endswith(":"):
                         raise ValueError(property)
                     key = str(property[:-1])
-                    value = ''
+                    value = ""
                 else:
                     key = str(property[:key_end])
-                    value = property[key_end + 2:]
+                    value = property[key_end + 2 :]
                 rev.properties[key] = value
 
         return rev
@@ -101,14 +102,12 @@ class RevisionInfo:
     @staticmethod
     def from_revision(revision):
         revision_info = RevisionInfo(revision.revision_id)
-        date = timestamp.format_highres_date(revision.timestamp,
-                                             revision.timezone)
+        date = timestamp.format_highres_date(revision.timestamp, revision.timezone)
         revision_info.date = date
         revision_info.timezone = revision.timezone
         revision_info.timestamp = revision.timestamp
-        revision_info.message = revision.message.split('\n')
-        revision_info.properties = [': '.join(p) for p in
-                                    revision.properties.items()]
+        revision_info.message = revision.message.split("\n")
+        revision_info.properties = [": ".join(p) for p in revision.properties.items()]
         return revision_info
 
 
@@ -147,6 +146,7 @@ class BundleInfo:
         when information is missing.
         """
         from breezy.timestamp import unpack_highres_date
+
         # Put in all of the guessable information.
         if not self.timestamp and self.date:
             self.timestamp, self.timezone = unpack_highres_date(self.date)
@@ -155,8 +155,7 @@ class BundleInfo:
         for rev in self.revisions:
             if rev.timestamp is None:
                 if rev.date is not None:
-                    rev.timestamp, rev.timezone = \
-                        unpack_highres_date(rev.date)
+                    rev.timestamp, rev.timezone = unpack_highres_date(rev.date)
                 else:
                     rev.timestamp = self.timestamp
                     rev.timezone = self.timezone
@@ -187,7 +186,7 @@ class BundleInfo:
             return self.revisions[0].revision_id
         return None
 
-    target = property(_get_target, doc='The target revision id')
+    target = property(_get_target, doc="The target revision id")
 
     def get_revision(self, revision_id):
         for r in self.real_revisions:
@@ -210,8 +209,7 @@ class BundleInfo:
             self._validate_references_from_repository(repository)
         revision_info = self.get_revision_info(revision_id)
         inventory_revision_id = revision_id
-        bundle_tree = BundleTree(repository.revision_tree(base),
-                                 inventory_revision_id)
+        bundle_tree = BundleTree(repository.revision_tree(base), inventory_revision_id)
         self._update_tree(bundle_tree, revision_id)
 
         inv = bundle_tree.inventory
@@ -231,16 +229,18 @@ class BundleInfo:
         def add_sha(d, revision_id, sha1):
             if revision_id is None:
                 if sha1 is not None:
-                    raise BzrError('A Null revision should always'
-                                   'have a null sha1 hash')
+                    raise BzrError(
+                        "A Null revision should always" "have a null sha1 hash"
+                    )
                 return
             if revision_id in d:
                 # This really should have been validated as part
                 # of _validate_revisions but lets do it again
                 if sha1 != d[revision_id]:
-                    raise BzrError('** Revision %r referenced with 2 different'
-                                   ' sha hashes %s != %s' % (revision_id,
-                                                             sha1, d[revision_id]))
+                    raise BzrError(
+                        "** Revision %r referenced with 2 different"
+                        " sha hashes %s != %s" % (revision_id, sha1, d[revision_id])
+                    )
             else:
                 d[revision_id] = sha1
 
@@ -251,20 +251,20 @@ class BundleInfo:
             checked[rev_info.revision_id] = True
             add_sha(rev_to_sha, rev_info.revision_id, rev_info.sha1)
 
-        for (rev, rev_info) in zip(self.real_revisions, self.revisions):
+        for rev, rev_info in zip(self.real_revisions, self.revisions):
             add_sha(inv_to_sha, rev_info.revision_id, rev_info.inventory_sha1)
 
         count = 0
         missing = {}
         for revision_id, sha1 in rev_to_sha.items():
             if repository.has_revision(revision_id):
-                testament = StrictTestament.from_revision(repository,
-                                                          revision_id)
-                local_sha1 = self._testament_sha1_from_revision(repository,
-                                                                revision_id)
+                testament = StrictTestament.from_revision(repository, revision_id)
+                local_sha1 = self._testament_sha1_from_revision(repository, revision_id)
                 if sha1 != local_sha1:
-                    raise BzrError('sha1 mismatch. For revision id {%s}'
-                                   'local: %s, bundle: %s' % (revision_id, local_sha1, sha1))
+                    raise BzrError(
+                        "sha1 mismatch. For revision id {%s}"
+                        "local: %s, bundle: %s" % (revision_id, local_sha1, sha1)
+                    )
                 else:
                     count += 1
             elif revision_id not in checked:
@@ -272,9 +272,11 @@ class BundleInfo:
 
         if len(missing) > 0:
             # I don't know if this is an error yet
-            warning('Not all revision hashes could be validated.'
-                    ' Unable validate %d hashes' % len(missing))
-        mutter('Verified %d sha hashes for the bundle.' % count)
+            warning(
+                "Not all revision hashes could be validated."
+                " Unable validate %d hashes" % len(missing)
+            )
+        mutter("Verified %d sha hashes for the bundle." % count)
         self._validated_revisions_against_repo = True
 
     def _validate_inventory(self, inv, revision_id):
@@ -289,10 +291,12 @@ class BundleInfo:
         if rev.revision_id != revision_id:
             raise AssertionError()
         if sha1 != rev.inventory_sha1:
-            with open(',,bogus-inv', 'wb') as f:
+            with open(",,bogus-inv", "wb") as f:
                 f.writelines(cs)
-            warning('Inventory sha hash mismatch for revision %s. %s'
-                    ' != %s' % (revision_id, sha1, rev.inventory_sha1))
+            warning(
+                "Inventory sha hash mismatch for revision %s. %s"
+                " != %s" % (revision_id, sha1, rev.inventory_sha1)
+            )
 
     def _testament(self, revision, tree):
         raise NotImplementedError(self._testament)
@@ -314,8 +318,7 @@ class BundleInfo:
         if sha1 != rev_info.sha1:
             raise TestamentMismatch(rev.revision_id, rev_info.sha1, sha1)
         if rev.revision_id in rev_to_sha1:
-            raise BzrError('Revision {%s} given twice in the list'
-                           % (rev.revision_id))
+            raise BzrError("Revision {%s} given twice in the list" % (rev.revision_id))
         rev_to_sha1[rev.revision_id] = sha1
 
     def _update_tree(self, bundle_tree, revision_id):
@@ -340,36 +343,37 @@ class BundleInfo:
             encoding = None
             for info_item in info:
                 try:
-                    name, value = info_item.split(':', 1)
+                    name, value = info_item.split(":", 1)
                 except ValueError:
-                    raise ValueError('Value %r has no colon' % info_item)
-                if name == 'last-changed':
+                    raise ValueError("Value %r has no colon" % info_item)
+                if name == "last-changed":
                     last_changed = value
-                elif name == 'executable':
-                    val = (value == 'yes')
+                elif name == "executable":
+                    val = value == "yes"
                     bundle_tree.note_executable(new_path, val)
-                elif name == 'target':
+                elif name == "target":
                     bundle_tree.note_target(new_path, value)
-                elif name == 'encoding':
+                elif name == "encoding":
                     encoding = value
             return last_changed, encoding
 
         def do_patch(path, lines, encoding):
-            if encoding == 'base64':
-                patch = base64.b64decode(b''.join(lines))
+            if encoding == "base64":
+                patch = base64.b64decode(b"".join(lines))
             elif encoding is None:
-                patch = b''.join(lines)
+                patch = b"".join(lines)
             else:
                 raise ValueError(encoding)
             bundle_tree.note_patch(path, patch)
 
         def renamed(kind, extra, lines):
-            info = extra.split(' // ')
+            info = extra.split(" // ")
             if len(info) < 2:
-                raise BzrError('renamed action lines need both a from and to'
-                               ': %r' % extra)
+                raise BzrError(
+                    "renamed action lines need both a from and to" ": %r" % extra
+                )
             old_path = info[0]
-            if info[1].startswith('=> '):
+            if info[1].startswith("=> "):
                 new_path = info[1][3:]
             else:
                 new_path = info[1]
@@ -381,27 +385,31 @@ class BundleInfo:
                 do_patch(new_path, lines, encoding)
 
         def removed(kind, extra, lines):
-            info = extra.split(' // ')
+            info = extra.split(" // ")
             if len(info) > 1:
                 # TODO: in the future we might allow file ids to be
                 # given for removed entries
-                raise BzrError('removed action lines should only have the path'
-                               ': %r' % extra)
+                raise BzrError(
+                    "removed action lines should only have the path" ": %r" % extra
+                )
             path = info[0]
             bundle_tree.note_deletion(path)
 
         def added(kind, extra, lines):
-            info = extra.split(' // ')
+            info = extra.split(" // ")
             if len(info) <= 1:
-                raise BzrError('add action lines require the path and file id'
-                               ': %r' % extra)
+                raise BzrError(
+                    "add action lines require the path and file id" ": %r" % extra
+                )
             elif len(info) > 5:
-                raise BzrError('add action lines have fewer than 5 entries.'
-                               ': %r' % extra)
+                raise BzrError(
+                    "add action lines have fewer than 5 entries." ": %r" % extra
+                )
             path = info[0]
-            if not info[1].startswith('file-id:'):
-                raise BzrError('The file-id should follow the path for an add'
-                               ': %r' % extra)
+            if not info[1].startswith("file-id:"):
+                raise BzrError(
+                    "The file-id should follow the path for an add" ": %r" % extra
+                )
             # This will be Unicode because of how the stream is read. Turn it
             # back into a utf8 file_id
             file_id = cache_utf8.encode(info[1][8:])
@@ -411,15 +419,16 @@ class BundleInfo:
             bundle_tree.note_executable(path, False)
             last_changed, encoding = extra_info(info[2:], path)
             revision = get_rev_id(last_changed, path, kind)
-            if kind == 'directory':
+            if kind == "directory":
                 return
             do_patch(path, lines, encoding)
 
         def modified(kind, extra, lines):
-            info = extra.split(' // ')
+            info = extra.split(" // ")
             if len(info) < 1:
-                raise BzrError('modified action lines have at least'
-                               'the path in them: %r' % extra)
+                raise BzrError(
+                    "modified action lines have at least" "the path in them: %r" % extra
+                )
             path = info[0]
 
             last_modified, encoding = extra_info(info[1:], path)
@@ -428,31 +437,35 @@ class BundleInfo:
                 do_patch(path, lines, encoding)
 
         valid_actions = {
-            'renamed': renamed,
-            'removed': removed,
-            'added': added,
-            'modified': modified
+            "renamed": renamed,
+            "removed": removed,
+            "added": added,
+            "modified": modified,
         }
-        for action_line, lines in \
-                self.get_revision_info(revision_id).tree_actions:
-            first = action_line.find(' ')
+        for action_line, lines in self.get_revision_info(revision_id).tree_actions:
+            first = action_line.find(" ")
             if first == -1:
-                raise BzrError('Bogus action line'
-                               ' (no opening space): %r' % action_line)
-            second = action_line.find(' ', first + 1)
+                raise BzrError(
+                    "Bogus action line" " (no opening space): %r" % action_line
+                )
+            second = action_line.find(" ", first + 1)
             if second == -1:
-                raise BzrError('Bogus action line'
-                               ' (missing second space): %r' % action_line)
+                raise BzrError(
+                    "Bogus action line" " (missing second space): %r" % action_line
+                )
             action = action_line[:first]
-            kind = action_line[first + 1:second]
-            if kind not in ('file', 'directory', 'symlink'):
-                raise BzrError('Bogus action line'
-                               ' (invalid object kind %r): %r' % (kind, action_line))
-            extra = action_line[second + 1:]
+            kind = action_line[first + 1 : second]
+            if kind not in ("file", "directory", "symlink"):
+                raise BzrError(
+                    "Bogus action line"
+                    " (invalid object kind %r): %r" % (kind, action_line)
+                )
+            extra = action_line[second + 1 :]
 
             if action not in valid_actions:
-                raise BzrError('Bogus action line'
-                               ' (unrecognized action): %r' % action_line)
+                raise BzrError(
+                    "Bogus action line" " (unrecognized action): %r" % action_line
+                )
             valid_actions[action](kind, extra, lines)
 
     def install_revisions(self, target_repo, stream_input=True):
@@ -469,11 +482,10 @@ class BundleInfo:
 
         Returns suggested base, suggested target, and patch verification status
         """
-        return None, self.target, 'inapplicable'
+        return None, self.target, "inapplicable"
 
 
 class BundleTree(InventoryTree):
-
     def __init__(self, base_tree, revision_id):
         self.base_tree = base_tree
         self._renamed = {}  # Mapping from old_path => new_path
@@ -502,19 +514,18 @@ class BundleTree(InventoryTree):
         self._renamed[new_path] = old_path
         self._renamed_r[old_path] = new_path
 
-    def note_id(self, new_id, new_path, kind='file'):
+    def note_id(self, new_id, new_path, kind="file"):
         """Files that don't exist in base need a new id."""
         self._new_id[new_path] = new_id
         self._new_id_r[new_id] = new_path
         self._kinds[new_path] = kind
 
     def note_last_changed(self, file_id, revision_id):
-        if (file_id in self._last_changed
-                and self._last_changed[file_id] != revision_id):
-            raise BzrError('Mismatched last-changed revision for file_id {%s}'
-                           ': %s != %s' % (file_id,
-                                           self._last_changed[file_id],
-                                           revision_id))
+        if file_id in self._last_changed and self._last_changed[file_id] != revision_id:
+            raise BzrError(
+                "Mismatched last-changed revision for file_id {%s}"
+                ": %s != %s" % (file_id, self._last_changed[file_id], revision_id)
+            )
         self._last_changed[file_id] = revision_id
 
     def note_patch(self, new_path, patch):
@@ -534,7 +545,7 @@ class BundleTree(InventoryTree):
 
     def old_path(self, new_path):
         """Get the old_path (path in the base_tree) for the file at new_path"""
-        if new_path[:1] in ('\\', '/'):
+        if new_path[:1] in ("\\", "/"):
             raise ValueError(new_path)
         old_path = self._renamed.get(new_path)
         if old_path is not None:
@@ -543,7 +554,7 @@ class BundleTree(InventoryTree):
         # dirname is not '' doesn't work, because
         # dirname may be a unicode entry, and is
         # requires the objects to be identical
-        if dirname != '':
+        if dirname != "":
             old_dir = self.old_path(dirname)
             if old_dir is None:
                 old_path = None
@@ -561,7 +572,7 @@ class BundleTree(InventoryTree):
         """Get the new_path (path in the target_tree) for the file at old_path
         in the base tree.
         """
-        if old_path[:1] in ('\\', '/'):
+        if old_path[:1] in ("\\", "/"):
             raise ValueError(old_path)
         new_path = self._renamed_r.get(old_path)
         if new_path is not None:
@@ -569,7 +580,7 @@ class BundleTree(InventoryTree):
         if new_path in self._renamed:
             return None
         dirname, basename = os.path.split(old_path)
-        if dirname != '':
+        if dirname != "":
             new_dir = self.new_path(dirname)
             if new_dir is None:
                 new_path = None
@@ -595,7 +606,7 @@ class BundleTree(InventoryTree):
             return None
         return self.base_tree.path2id(old_path)
 
-    def id2path(self, file_id, recurse='down'):
+    def id2path(self, file_id, recurse="down"):
         """Return the new path in the target tree of the file with id file_id"""
         path = self._new_id_r.get(file_id)
         if path is not None:
@@ -625,16 +636,14 @@ class BundleTree(InventoryTree):
             patch_original = self.base_tree.get_file(old_path)
         file_patch = self.patches.get(path)
         if file_patch is None:
-            if (patch_original is None and
-                    self.kind(path) == 'directory'):
+            if patch_original is None and self.kind(path) == "directory":
                 return BytesIO()
             if patch_original is None:
                 raise AssertionError("None: %s" % file_id)
             return patch_original
 
-        if file_patch.startswith(b'\\'):
-            raise ValueError(
-                'Malformed patch for {}, {!r}'.format(file_id, file_patch))
+        if file_patch.startswith(b"\\"):
+            raise ValueError("Malformed patch for {}, {!r}".format(file_id, file_patch))
         return patched_file(file_patch, patch_original)
 
     def get_symlink_target(self, path):
@@ -695,10 +704,11 @@ class BundleTree(InventoryTree):
         This need to be called before ever accessing self.inventory
         """
         from os.path import dirname, basename
+
         inv = Inventory(None, self.revision_id)
 
         def add_entry(path, file_id):
-            if path == '':
+            if path == "":
                 parent_id = None
             else:
                 parent_path = dirname(path)
@@ -708,21 +718,20 @@ class BundleTree(InventoryTree):
             revision_id = self.get_last_changed(path)
 
             name = basename(path)
-            if kind == 'directory':
+            if kind == "directory":
                 ie = InventoryDirectory(file_id, name, parent_id)
-            elif kind == 'file':
+            elif kind == "file":
                 ie = InventoryFile(file_id, name, parent_id)
                 ie.executable = self.is_executable(path)
-            elif kind == 'symlink':
+            elif kind == "symlink":
                 ie = InventoryLink(file_id, name, parent_id)
                 ie.symlink_target = self.get_symlink_target(path)
             ie.revision = revision_id
 
-            if kind == 'file':
+            if kind == "file":
                 ie.text_size, ie.text_sha1 = self.get_size_and_sha1(path)
                 if ie.text_size is None:
-                    raise BzrError(
-                        'Got a text_size of None for file_id %r' % file_id)
+                    raise BzrError("Got a text_size of None for file_id %r" % file_id)
             inv.add(ie)
 
         sorted_entries = self.sorted_path_id()
@@ -761,7 +770,7 @@ class BundleTree(InventoryTree):
             # skip the root for compatibility with the current apis.
             next(entries)
         for path, entry in entries:
-            yield path, 'V', entry.kind, entry
+            yield path, "V", entry.kind, entry
 
     def sorted_path_id(self):
         paths = []
@@ -769,7 +778,7 @@ class BundleTree(InventoryTree):
             paths.append(result)
         for id in self.base_tree.all_file_ids():
             try:
-                path = self.id2path(id, recurse='none')
+                path = self.id2path(id, recurse="none")
             except NoSuchId:
                 continue
             paths.append((path, id))
@@ -781,9 +790,9 @@ def patched_file(file_patch, original):
     """Produce a file-like object with the patched version of a text"""
     from breezy.patches import iter_patched
     from breezy.iterablefile import IterableFile
+
     if file_patch == b"":
         return IterableFile(())
     # string.splitlines(True) also splits on '\r', but the iter_patched code
     # only expects to iterate over '\n' style lines
-    return IterableFile(iter_patched(original,
-                                     BytesIO(file_patch).readlines()))
+    return IterableFile(iter_patched(original, BytesIO(file_patch).readlines()))

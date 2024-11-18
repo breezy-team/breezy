@@ -20,7 +20,7 @@ import codecs
 
 from .. import (
     tests,
-    )
+)
 from . import (
     fixtures,
-    )
+)

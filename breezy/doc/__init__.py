@@ -27,8 +27,8 @@ def load_tests(loader, basic_tests, pattern):
     suite.addTests(basic_tests)
 
     testmod_names = [
-        'breezy.doc.api',
-        ]
+        "breezy.doc.api",
+    ]
 
     # add the tests for the sub modules
     suite.addTests(loader.loadTestsFromModuleNames(testmod_names))

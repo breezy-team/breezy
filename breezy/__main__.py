@@ -22,23 +22,26 @@ import sys
 
 
 profiling = False
-if '--profile-imports' in sys.argv:
+if "--profile-imports" in sys.argv:
     import profile_imports
+
     profile_imports.install()
     profiling = True
 
 
 if os.name == "posix":
     import locale
+
     try:
-        locale.setlocale(locale.LC_ALL, '')
+        locale.setlocale(locale.LC_ALL, "")
     except locale.Error as e:
         sys.stderr.write(
-            'brz: warning: %s\n'
-            '  bzr could not set the application locale.\n'
-            '  Although this should be no problem for bzr itself, it might\n'
-            '  cause problems with some plugins. To investigate the issue,\n'
-            '  look at the output of the locale(1p) tool.\n' % e)
+            "brz: warning: %s\n"
+            "  bzr could not set the application locale.\n"
+            "  Although this should be no problem for bzr itself, it might\n"
+            "  cause problems with some plugins. To investigate the issue,\n"
+            "  look at the output of the locale(1p) tool.\n" % e
+        )
     # Use better default than ascii with posix filesystems that deal in bytes
     # natively even when the C locale or no locale at all is given. Note that
     # we need an immortal string for the hack, hence the lack of a hyphen.
@@ -47,6 +50,7 @@ if os.name == "posix":
 
 def main():
     import breezy.breakin
+
     breezy.breakin.hook_debugger_to_signal()
 
     import breezy.commands
@@ -70,5 +74,5 @@ def main():
     os._exit(exit_val)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

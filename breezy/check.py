@@ -38,7 +38,7 @@ import contextlib
 
 from . import (
     errors,
-    )
+)
 from .controldir import ControlDir
 from .trace import note
 from .i18n import gettext
@@ -95,8 +95,9 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
     an exception raised at the end of the process.
     """
     try:
-        base_tree, branch, repo, relpath = \
+        base_tree, branch, repo, relpath = (
             ControlDir.open_containing_tree_branch_or_repository(path)
+        )
     except errors.NotBranchError:
         base_tree = branch = repo = None
 
@@ -135,10 +136,8 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
                 note(gettext("No working tree found at specified location."))
             if do_repo or do_branch or do_tree:
                 if do_repo:
-                    note(gettext("Checking repository at '%s'.")
-                         % (repo.user_url,))
-                result = repo.check(None, callback_refs=needed_refs,
-                                    check_repo=do_repo)
+                    note(gettext("Checking repository at '%s'.") % (repo.user_url,))
+                result = repo.check(None, callback_refs=needed_refs, check_repo=do_repo)
                 result.report_results(verbose)
         else:
             if do_tree:

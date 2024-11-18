@@ -27,19 +27,23 @@ def escape(s):
 
     (Why not just use backslashes?  Because then we couldn't parse
     lines just by splitting on spaces.)"""
-    return (s.replace('\\', r'\x5c')
-            .replace(' ', r'\x20')
-            .replace('\t', r'\x09')
-            .replace('\n', r'\x0a'))
+    return (
+        s.replace("\\", r"\x5c")
+        .replace(" ", r"\x20")
+        .replace("\t", r"\x09")
+        .replace("\n", r"\x0a")
+    )
 
 
 def unescape(s):
-    if s.find(' ') != -1:
+    if s.find(" ") != -1:
         raise AssertionError()
-    s = (s.replace(r'\x20', ' ')
-         .replace(r'\x09', '\t')
-         .replace(r'\x0a', '\n')
-         .replace(r'\x5c', '\\'))
+    s = (
+        s.replace(r"\x20", " ")
+        .replace(r"\x09", "\t")
+        .replace(r"\x0a", "\n")
+        .replace(r"\x5c", "\\")
+    )
 
     # TODO: What if there's anything else?
 
@@ -53,15 +57,15 @@ def write_text_inventory(inv, outf):
         if inv.is_root(ie.file_id):
             continue
 
-        outf.write(ie.file_id + ' ')
-        outf.write(escape(ie.name) + ' ')
-        outf.write(ie.kind + ' ')
-        outf.write(ie.parent_id + ' ')
+        outf.write(ie.file_id + " ")
+        outf.write(escape(ie.name) + " ")
+        outf.write(ie.kind + " ")
+        outf.write(ie.parent_id + " ")
 
-        if ie.kind == 'file':
+        if ie.kind == "file":
             outf.write(ie.text_id)
-            outf.write(' ' + ie.text_sha1)
-            outf.write(' ' + str(ie.text_size))
+            outf.write(" " + ie.text_sha1)
+            outf.write(" " + str(ie.text_size))
         outf.write("\n")
     outf.write(END_MARK)
 
@@ -74,13 +78,15 @@ def read_text_inventory(tf):
     inv = Inventory()
 
     for l in tf:
-        fields = l.split(' ')
-        if fields[0] == '#':
+        fields = l.split(" ")
+        if fields[0] == "#":
             break
-        ie = {'file_id': fields[0],
-              'name': unescape(fields[1]),
-              'kind': fields[2],
-              'parent_id': fields[3]}
+        ie = {
+            "file_id": fields[0],
+            "name": unescape(fields[1]),
+            "kind": fields[2],
+            "parent_id": fields[3],
+        }
         # inv.add(ie)
 
     if l != END_MARK:

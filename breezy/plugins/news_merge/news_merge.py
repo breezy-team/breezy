@@ -41,20 +41,23 @@ class NewsMerger(merge.ConfigurableFileMerger):
         other_lines = list(simple_parse_lines(params.other_lines))
         base_lines = list(simple_parse_lines(params.base_lines))
         m3 = Merge3(
-            base_lines, this_lines, other_lines,
-            sequence_matcher=patiencediff.PatienceSequenceMatcher)
+            base_lines,
+            this_lines,
+            other_lines,
+            sequence_matcher=patiencediff.PatienceSequenceMatcher,
+        )
         result_chunks = []
         for group in m3.merge_groups():
-            if group[0] == 'conflict':
+            if group[0] == "conflict":
                 _, base, a, b = group
                 # Are all the conflicting lines bullets?  If so, we can merge
                 # this.
                 for line_set in [base, a, b]:
                     for line in line_set:
-                        if line[0] != 'bullet':
+                        if line[0] != "bullet":
                             # Something else :(
                             # Maybe the default merge can cope.
-                            return 'not_applicable', None
+                            return "not_applicable", None
                 # Calculate additions and deletions.
                 new_in_a = set(a).difference(base)
                 new_in_b = set(b).difference(base)
@@ -62,17 +65,16 @@ class NewsMerger(merge.ConfigurableFileMerger):
                 deleted_in_a = set(base).difference(a)
                 deleted_in_b = set(base).difference(b)
                 # Combine into the final set of bullet points.
-                final = all_new.difference(deleted_in_a).difference(
-                    deleted_in_b)
+                final = all_new.difference(deleted_in_a).difference(deleted_in_b)
                 # Sort, and emit.
                 final = sorted(final, key=sort_key)
                 result_chunks.extend(final)
             else:
                 result_chunks.extend(group[1])
         # Transform the merged elements back into real blocks of lines.
-        result_lines = '\n\n'.join(chunk[1] for chunk in result_chunks)
-        return 'success', result_lines
+        result_lines = "\n\n".join(chunk[1] for chunk in result_chunks)
+        return "success", result_lines
 
 
 def sort_key(chunk):
-    return chunk[1].replace('`', '').lower()
+    return chunk[1].replace("`", "").lower()

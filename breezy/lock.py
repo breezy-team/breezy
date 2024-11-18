@@ -45,7 +45,7 @@ from . import (
     errors,
     osutils,
     trace,
-    )
+)
 from .hooks import Hooks
 from .i18n import gettext
 from .transport import Transport
@@ -55,21 +55,23 @@ LockToken = bytes
 
 
 class LockHooks(Hooks):
-
     def __init__(self):
         Hooks.__init__(self, "breezy.lock", "Lock.hooks")
         self.add_hook(
-            'lock_acquired',
-            "Called with a breezy.lock.LockResult when a physical lock is "
-            "acquired.", (1, 8))
+            "lock_acquired",
+            "Called with a breezy.lock.LockResult when a physical lock is " "acquired.",
+            (1, 8),
+        )
         self.add_hook(
-            'lock_released',
-            "Called with a breezy.lock.LockResult when a physical lock is "
-            "released.", (1, 8))
+            "lock_released",
+            "Called with a breezy.lock.LockResult when a physical lock is " "released.",
+            (1, 8),
+        )
         self.add_hook(
-            'lock_broken',
-            "Called with a breezy.lock.LockResult when a physical lock is "
-            "broken.", (1, 15))
+            "lock_broken",
+            "Called with a breezy.lock.LockResult when a physical lock is " "broken.",
+            (1, 15),
+        )
 
 
 class Lock:
@@ -80,8 +82,9 @@ class Lock:
 
     hooks = LockHooks()
 
-    def __init__(self, transport: Transport, path: str, file_modebits: int,
-                 dir_modebits: int) -> None: ...
+    def __init__(
+        self, transport: Transport, path: str, file_modebits: int, dir_modebits: int
+    ) -> None: ...
 
     def create(self, mode: int): ...
 
@@ -115,8 +118,7 @@ class LockResult:
         return self.lock_url == other.lock_url and self.details == other.details
 
     def __repr__(self):
-        return '{}({}, {})'.format(self.__class__.__name__,
-                               self.lock_url, self.details)
+        return "{}({}, {})".format(self.__class__.__name__, self.lock_url, self.details)
 
 
 class LogicalLockResult:
@@ -155,31 +157,32 @@ def cant_unlock_not_held(locked_object):
     # block, so it's useful to have the option not to generate a new error
     # here.  You can use -Werror to make it fatal.  It should possibly also
     # raise LockNotHeld.
-    if 'unlock' in debug.debug_flags:
-        warnings.warn("{!r} is already unlocked".format(locked_object),
-                      stacklevel=3)
+    if "unlock" in debug.debug_flags:
+        warnings.warn("{!r} is already unlocked".format(locked_object), stacklevel=3)
     else:
         raise errors.LockNotHeld(locked_object)
 
 
 try:
     import fcntl
+
     have_fcntl = True
 except ModuleNotFoundError:
     have_fcntl = False
 
 have_ctypes_win32 = False
-if sys.platform == 'win32':
+if sys.platform == "win32":
     import msvcrt
+
     try:
         import ctypes
+
         have_ctypes_win32 = True
     except ImportError:
         pass
 
 
 class _OSLock:
-
     def __init__(self):
         self.f = None
         self.filename = None
@@ -198,7 +201,7 @@ class _OSLock:
             # maybe this is an old branch (before may 2005)
             trace.mutter("trying to create missing lock %r", self.filename)
 
-            self.f = open(self.filename, 'wb+')
+            self.f = open(self.filename, "wb+")
             return self.f
 
     def _clear_f(self):
@@ -217,13 +220,11 @@ _lock_classes: List[Tuple[str, Any, Any]] = []
 if have_fcntl:
 
     class _fcntl_FileLock(_OSLock):
-
         def _unlock(self):
             fcntl.lockf(self.f, fcntl.LOCK_UN)
             self._clear_f()
 
     class _fcntl_WriteLock(_fcntl_FileLock):
-
         _open_locks: Set[str] = set()
 
         def __init__(self, filename):
@@ -234,14 +235,16 @@ if have_fcntl:
                 self._clear_f()
                 raise errors.LockContention(self.filename)
             if self.filename in _fcntl_ReadLock._open_locks:
-                if 'strict_locks' in debug.debug_flags:
+                if "strict_locks" in debug.debug_flags:
                     self._clear_f()
                     raise errors.LockContention(self.filename)
                 else:
-                    trace.mutter('Write lock taken w/ an open read lock on: %s'
-                                 % (self.filename,))
+                    trace.mutter(
+                        "Write lock taken w/ an open read lock on: %s"
+                        % (self.filename,)
+                    )
 
-            self._open(self.filename, 'rb+')
+            self._open(self.filename, "rb+")
             # reserve a slot for this lock - even if the lockf call fails,
             # at this point unlock() will be called, because self.f is set.
             # TODO: make this fully threadsafe, if we decide we care.
@@ -263,23 +266,24 @@ if have_fcntl:
             self._unlock()
 
     class _fcntl_ReadLock(_fcntl_FileLock):
-
         _open_locks: Dict[str, int] = {}
 
         def __init__(self, filename):
             super().__init__()
             self.filename = osutils.realpath(filename)
             if self.filename in _fcntl_WriteLock._open_locks:
-                if 'strict_locks' in debug.debug_flags:
+                if "strict_locks" in debug.debug_flags:
                     # We raise before calling _open so we don't need to
                     # _clear_f
                     raise errors.LockContention(self.filename)
                 else:
-                    trace.mutter('Read lock taken w/ an open write lock on: %s'
-                                 % (self.filename,))
+                    trace.mutter(
+                        "Read lock taken w/ an open write lock on: %s"
+                        % (self.filename,)
+                    )
             _fcntl_ReadLock._open_locks.setdefault(self.filename, 0)
             _fcntl_ReadLock._open_locks[self.filename] += 1
-            self._open(filename, 'rb')
+            self._open(filename, "rb")
             try:
                 # LOCK_NB will cause IOError to be raised if we can't grab a
                 # lock right away.
@@ -308,8 +312,7 @@ if have_fcntl:
             :return: A token which can be used to switch back to a read lock.
             """
             if self.filename in _fcntl_WriteLock._open_locks:
-                raise AssertionError('file already locked: %r'
-                                     % (self.filename,))
+                raise AssertionError("file already locked: %r" % (self.filename,))
             try:
                 wlock = _fcntl_TemporaryWriteLock(self)
             except errors.LockError:
@@ -335,15 +338,14 @@ if have_fcntl:
                 raise errors.LockContention(self.filename)
 
             if self.filename in _fcntl_WriteLock._open_locks:
-                raise AssertionError('file already locked: %r'
-                                     % (self.filename,))
+                raise AssertionError("file already locked: %r" % (self.filename,))
 
             # See if we can open the file for writing. Another process might
             # have a read lock. We don't use self._open() because we don't want
             # to create the file if it exists. That would have already been
             # done by _fcntl_ReadLock
             try:
-                new_f = open(self.filename, 'rb+')
+                new_f = open(self.filename, "rb+")
             except OSError as e:
                 if e.errno in (errno.EACCES, errno.EPERM):
                     raise errors.LockFailed(self.filename, str(e))
@@ -371,27 +373,28 @@ if have_fcntl:
             self._read_lock = None
             return read_lock
 
-    _lock_classes.append(('fcntl', _fcntl_WriteLock, _fcntl_ReadLock))
+    _lock_classes.append(("fcntl", _fcntl_WriteLock, _fcntl_ReadLock))
 
 
 if have_ctypes_win32:
     from ctypes.wintypes import DWORD, LPWSTR
     import ctypes
+
     LPSECURITY_ATTRIBUTES = ctypes.c_void_p  # used as NULL no need to declare
     HANDLE = ctypes.c_int  # rather than unsigned as in ctypes.wintypes
     _function_name = "CreateFileW"
 
     # CreateFile <http://msdn.microsoft.com/en-us/library/aa363858.aspx>
-    _CreateFile = ctypes.WINFUNCTYPE(   # type: ignore
-        HANDLE,                # return value
-        LPWSTR,                # lpFileName
-        DWORD,                 # dwDesiredAccess
-        DWORD,                 # dwShareMode
+    _CreateFile = ctypes.WINFUNCTYPE(  # type: ignore
+        HANDLE,  # return value
+        LPWSTR,  # lpFileName
+        DWORD,  # dwDesiredAccess
+        DWORD,  # dwShareMode
         LPSECURITY_ATTRIBUTES,  # lpSecurityAttributes
-        DWORD,                 # dwCreationDisposition
-        DWORD,                 # dwFlagsAndAttributes
-        HANDLE                 # hTemplateFile
-     )((_function_name, ctypes.windll.kernel32))  # type: ignore
+        DWORD,  # dwCreationDisposition
+        DWORD,  # dwFlagsAndAttributes
+        HANDLE,  # hTemplateFile
+    )((_function_name, ctypes.windll.kernel32))  # type: ignore
 
     INVALID_HANDLE_VALUE = -1
 
@@ -405,11 +408,11 @@ if have_ctypes_win32:
     ERROR_SHARING_VIOLATION = 32
 
     class _ctypes_FileLock(_OSLock):
-
         def _open(self, filename, access, share, cflags, pymode):
             self.filename = osutils.realpath(filename)
-            handle = _CreateFile(filename, access, share, None, OPEN_ALWAYS,
-                                 FILE_ATTRIBUTE_NORMAL, 0)
+            handle = _CreateFile(
+                filename, access, share, None, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0
+            )
             if handle in (INVALID_HANDLE_VALUE, 0):
                 e = ctypes.WinError()
                 if e.args[0] == ERROR_ACCESS_DENIED:
@@ -427,8 +430,7 @@ if have_ctypes_win32:
     class _ctypes_ReadLock(_ctypes_FileLock):
         def __init__(self, filename):
             super().__init__()
-            self._open(filename, GENERIC_READ, FILE_SHARE_READ, os.O_RDONLY,
-                       "rb")
+            self._open(filename, GENERIC_READ, FILE_SHARE_READ, os.O_RDONLY, "rb")
 
         def temporary_write_lock(self):
             """Try to grab a write lock on the file.
@@ -452,8 +454,7 @@ if have_ctypes_win32:
     class _ctypes_WriteLock(_ctypes_FileLock):
         def __init__(self, filename):
             super().__init__()
-            self._open(filename, GENERIC_READ | GENERIC_WRITE, 0, os.O_RDWR,
-                       "rb+")
+            self._open(filename, GENERIC_READ | GENERIC_WRITE, 0, os.O_RDWR, "rb+")
 
         def restore_read_lock(self):
             """Restore the original ReadLock."""
@@ -462,14 +463,13 @@ if have_ctypes_win32:
             self.unlock()
             return _ctypes_ReadLock(self.filename)
 
-    _lock_classes.append(('ctypes', _ctypes_WriteLock, _ctypes_ReadLock))
+    _lock_classes.append(("ctypes", _ctypes_WriteLock, _ctypes_ReadLock))
 
 
 if len(_lock_classes) == 0:
     raise NotImplementedError(
-        "We must have one of fcntl or ctypes available"
-        " to support OS locking."
-        )
+        "We must have one of fcntl or ctypes available" " to support OS locking."
+    )
 
 
 # We default to using the first available lock class.
@@ -488,12 +488,12 @@ class _RelockDebugMixin:
     _prev_lock = None
 
     def _note_lock(self, lock_type):
-        if 'relock' in debug.debug_flags and self._prev_lock == lock_type:
-            if lock_type == 'r':
-                type_name = 'read'
+        if "relock" in debug.debug_flags and self._prev_lock == lock_type:
+            if lock_type == "r":
+                type_name = "read"
             else:
-                type_name = 'write'
-            trace.note(gettext('{0!r} was {1} locked again'), self, type_name)
+                type_name = "write"
+            trace.note(gettext("{0!r} was {1} locked again"), self, type_name)
         self._prev_lock = lock_type
 
 

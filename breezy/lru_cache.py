@@ -18,7 +18,7 @@
 
 from . import (
     trace,
-    )
+)
 
 
 _null_key = object()
@@ -27,7 +27,7 @@ _null_key = object()
 class _LRUNode:
     """This maintains the linked-list which is the lru internals."""
 
-    __slots__ = ('prev', 'next_key', 'key', 'value')
+    __slots__ = ("prev", "next_key", "key", "value")
 
     def __init__(self, key, value):
         self.prev = None
@@ -40,8 +40,9 @@ class _LRUNode:
             prev_key = None
         else:
             prev_key = self.prev.key
-        return '{}({!r} n:{!r} p:{!r})'.format(self.__class__.__name__, self.key,
-                                     self.next_key, prev_key)
+        return "{}({!r} n:{!r} p:{!r})".format(
+            self.__class__.__name__, self.key, self.next_key, prev_key
+        )
 
 
 class LRUCache:
@@ -95,7 +96,7 @@ class LRUCache:
     def __setitem__(self, key, value):
         """Add a new value to the cache"""
         if key is _null_key:
-            raise ValueError('cannot use _null_key as a key')
+            raise ValueError("cannot use _null_key as a key")
         if key in self._cache:
             node = self._cache[key]
             node.value = value
@@ -204,16 +205,14 @@ class LRUCache:
 
     def resize(self, max_cache, after_cleanup_count=None):
         """Change the number of entries that will be cached."""
-        self._update_max_cache(max_cache,
-                               after_cleanup_count=after_cleanup_count)
+        self._update_max_cache(max_cache, after_cleanup_count=after_cleanup_count)
 
     def _update_max_cache(self, max_cache, after_cleanup_count=None):
         self._max_cache = max_cache
         if after_cleanup_count is None:
             self._after_cleanup_count = self._max_cache * 8 // 10
         else:
-            self._after_cleanup_count = min(after_cleanup_count,
-                                            self._max_cache)
+            self._after_cleanup_count = min(after_cleanup_count, self._max_cache)
         self.cleanup()
 
 
@@ -227,8 +226,9 @@ class LRUSizeCache(LRUCache):
     defaults to len() if not supplied.
     """
 
-    def __init__(self, max_size=1024 * 1024, after_cleanup_size=None,
-                 compute_size=None):
+    def __init__(
+        self, max_size=1024 * 1024, after_cleanup_size=None, compute_size=None
+    ):
         """Create a new LRUSizeCache.
 
         :param max_size: The max number of bytes to store before we start
@@ -252,16 +252,21 @@ class LRUSizeCache(LRUCache):
     def __setitem__(self, key, value):
         """Add a new value to the cache"""
         if key is _null_key:
-            raise ValueError('cannot use _null_key as a key')
+            raise ValueError("cannot use _null_key as a key")
         node = self._cache.get(key, None)
         value_len = self._compute_size(value)
         if value_len >= self._after_cleanup_size:
             # The new value is 'too big to fit', as it would fill up/overflow
             # the cache all by itself
-            trace.mutter('Adding the key %r to an LRUSizeCache failed.'
-                         ' value %d is too big to fit in a the cache'
-                         ' with size %d %d', key, value_len,
-                         self._after_cleanup_size, self._max_size)
+            trace.mutter(
+                "Adding the key %r to an LRUSizeCache failed."
+                " value %d is too big to fit in a the cache"
+                " with size %d %d",
+                key,
+                value_len,
+                self._after_cleanup_size,
+                self._max_size,
+            )
             if node is not None:
                 # We won't be replacing the old node, so just remove it
                 self._remove_node(node)

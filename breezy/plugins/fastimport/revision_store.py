@@ -22,11 +22,11 @@ from ... import (
     graph as _mod_graph,
     osutils,
     revision as _mod_revision,
-    )
+)
 from ...bzr.inventorytree import InventoryTreeChange
 from ...bzr import (
     inventory,
-    )
+)
 
 
 class _TreeShim:
@@ -40,12 +40,14 @@ class _TreeShim:
         self._content_provider = content_provider
         self._basis_inv = basis_inv
         self._inv_delta = inv_delta
-        self._new_info_by_id = {file_id: (new_path, ie)
-                                    for _, new_path, file_id, ie in inv_delta}
-        self._new_info_by_path = {new_path: ie
-                                  for _, new_path, file_id, ie in inv_delta}
+        self._new_info_by_id = {
+            file_id: (new_path, ie) for _, new_path, file_id, ie in inv_delta
+        }
+        self._new_info_by_path = {
+            new_path: ie for _, new_path, file_id, ie in inv_delta
+        }
 
-    def id2path(self, file_id, recurse='down'):
+    def id2path(self, file_id, recurse="down"):
         if file_id in self._new_info_by_id:
             new_path = self._new_info_by_id[file_id][0]
             if new_path is None:
@@ -78,9 +80,10 @@ class _TreeShim:
             assert file_id not in self._new_info_by_id
             old_ie = self._basis_inv.get_entry(file_id)
             old_text_key = (file_id, old_ie.revision)
-            stream = self._repo.texts.get_record_stream([old_text_key],
-                                                        'unordered', True)
-            return next(stream).get_bytes_as('fulltext')
+            stream = self._repo.texts.get_record_stream(
+                [old_text_key], "unordered", True
+            )
+            return next(stream).get_bytes_as("fulltext")
 
     def get_symlink_target(self, path):
         try:
@@ -116,7 +119,7 @@ class _TreeShim:
             except errors.NoSuchId:
                 old_ie = None
                 if ie is None:
-                    raise AssertionError('How is both old and new None?')
+                    raise AssertionError("How is both old and new None?")
                     change = InventoryTreeChange(
                         file_id,
                         (old_path, new_path),
@@ -126,7 +129,7 @@ class _TreeShim:
                         (None, None),
                         (None, None),
                         (None, None),
-                        )
+                    )
                 change = InventoryTreeChange(
                     file_id,
                     (old_path, new_path),
@@ -136,7 +139,7 @@ class _TreeShim:
                     (None, ie.name),
                     (None, ie.kind),
                     (None, ie.executable),
-                    )
+                )
             else:
                 if ie is None:
                     change = InventoryTreeChange(
@@ -148,10 +151,12 @@ class _TreeShim:
                         (old_ie.name, None),
                         (old_ie.kind, None),
                         (old_ie.executable, None),
-                        )
+                    )
                 else:
-                    content_modified = (ie.text_sha1 != old_ie.text_sha1 or
-                                        ie.text_size != old_ie.text_size)
+                    content_modified = (
+                        ie.text_sha1 != old_ie.text_sha1
+                        or ie.text_size != old_ie.text_size
+                    )
                     # TODO: ie.kind != old_ie.kind
                     # TODO: symlinks changing targets, content_modified?
                     change = InventoryTreeChange(
@@ -163,12 +168,11 @@ class _TreeShim:
                         (old_ie.name, ie.name),
                         (old_ie.kind, ie.kind),
                         (old_ie.executable, ie.executable),
-                        )
+                    )
             yield change
 
 
 class RevisionStore:
-
     def __init__(self, repo):
         """An object responsible for loading revisions into a repository.
 
@@ -181,7 +185,7 @@ class RevisionStore:
         self.repo = repo
         self._graph = None
         self._use_known_graph = True
-        self._supports_chks = getattr(repo._format, 'supports_chks', False)
+        self._supports_chks = getattr(repo._format, "supports_chks", False)
 
     def expects_rich_root(self):
         """Does this store expect inventories with rich roots?"""
@@ -201,6 +205,7 @@ class RevisionStore:
     def _init_chk_inventory(self, revision_id, root_id):
         """Generate a CHKInventory for a parentless revision."""
         from ...bzr import chk_map
+
         # Get the creation parameters
         chk_store = self.repo.chk_bytes
         serializer = self.repo._format._serializer
@@ -214,10 +219,10 @@ class RevisionStore:
         search_key_func = chk_map.search_key_registry.get(search_key_name)
         inv.id_to_entry = chk_map.CHKMap(chk_store, None, search_key_func)
         inv.id_to_entry._root_node.set_maximum_size(maximum_size)
-        inv.parent_id_basename_to_file_id = chk_map.CHKMap(chk_store,
-                                                           None, search_key_func)
-        inv.parent_id_basename_to_file_id._root_node.set_maximum_size(
-            maximum_size)
+        inv.parent_id_basename_to_file_id = chk_map.CHKMap(
+            chk_store, None, search_key_func
+        )
+        inv.parent_id_basename_to_file_id._root_node.set_maximum_size(maximum_size)
         inv.parent_id_basename_to_file_id._root_node._key_width = 2
         return inv
 
@@ -248,9 +253,14 @@ class RevisionStore:
         # where the default batch size is currently 10000. IGC 20090312
         self._commit_builder = self.repo.get_commit_builder(
             self.repo,
-            parents, config, timestamp=revision.timestamp,
-            timezone=revision.timezone, committer=revision.committer,
-            revprops=revision.properties, revision_id=revision.revision_id)
+            parents,
+            config,
+            timestamp=revision.timestamp,
+            timezone=revision.timezone,
+            committer=revision.committer,
+            revprops=revision.properties,
+            revision_id=revision.revision_id,
+        )
 
     def get_parents_and_revision_for_entry(self, ie):
         """Get the parents and revision for an inventory entry.
@@ -262,18 +272,23 @@ class RevisionStore:
         """
         # Check for correct API usage
         if self._current_rev_id is None:
-            raise AssertionError("start_new_revision() must be called"
-                                 " before get_parents_and_revision_for_entry()")
+            raise AssertionError(
+                "start_new_revision() must be called"
+                " before get_parents_and_revision_for_entry()"
+            )
         if ie.revision != self._current_rev_id:
-            raise AssertionError("start_new_revision() registered a different"
-                                 " revision (%s) to that in the inventory entry (%s)" %
-                                 (self._current_rev_id, ie.revision))
+            raise AssertionError(
+                "start_new_revision() registered a different"
+                " revision (%s) to that in the inventory entry (%s)"
+                % (self._current_rev_id, ie.revision)
+            )
 
         # Find the heads. This code is lifted from
         # repository.CommitBuilder.record_entry_contents().
         parent_candidate_entries = ie.parent_candidates(self._rev_parent_invs)
-        head_set = self._commit_builder._heads(ie.file_id,
-                                               list(parent_candidate_entries))
+        head_set = self._commit_builder._heads(
+            ie.file_id, list(parent_candidate_entries)
+        )
         heads = []
         for inv in self._rev_parent_invs:
             try:
@@ -294,14 +309,19 @@ class RevisionStore:
         changed = False
         if len(heads) > 1:
             changed = True
-        elif (parent_entry.name != ie.name or parent_entry.kind != ie.kind
-              or parent_entry.parent_id != ie.parent_id):
+        elif (
+            parent_entry.name != ie.name
+            or parent_entry.kind != ie.kind
+            or parent_entry.parent_id != ie.parent_id
+        ):
             changed = True
-        elif ie.kind == 'file':
-            if (parent_entry.text_sha1 != ie.text_sha1
-                    or parent_entry.executable != ie.executable):
+        elif ie.kind == "file":
+            if (
+                parent_entry.text_sha1 != ie.text_sha1
+                or parent_entry.executable != ie.executable
+            ):
                 changed = True
-        elif ie.kind == 'symlink':
+        elif ie.kind == "symlink":
             if parent_entry.symlink_target != ie.symlink_target:
                 changed = True
         if changed:
@@ -310,8 +330,16 @@ class RevisionStore:
             rev_id = parent_entry.revision
         return tuple(heads), rev_id
 
-    def load_using_delta(self, rev, basis_inv, inv_delta, signature,
-                         text_provider, parents_provider, inventories_provider=None):
+    def load_using_delta(
+        self,
+        rev,
+        basis_inv,
+        inv_delta,
+        signature,
+        text_provider,
+        parents_provider,
+        inventories_provider=None,
+    ):
         """Load a revision by applying a delta to a (CHK)Inventory.
 
         :param rev: the Revision
@@ -330,16 +358,23 @@ class RevisionStore:
             If None, a default implementation is provided.
         """
         # TODO: set revision_id = rev.revision_id
-        builder = self.repo._commit_builder_class(self.repo,
-                                                  parents=rev.parent_ids, config=None, timestamp=rev.timestamp,
-                                                  timezone=rev.timezone, committer=rev.committer,
-                                                  revprops=rev.properties, revision_id=rev.revision_id)
+        builder = self.repo._commit_builder_class(
+            self.repo,
+            parents=rev.parent_ids,
+            config=None,
+            timestamp=rev.timestamp,
+            timezone=rev.timezone,
+            committer=rev.committer,
+            revprops=rev.properties,
+            revision_id=rev.revision_id,
+        )
         if self._graph is None and self._use_known_graph:
-            if (getattr(_mod_graph, 'GraphThunkIdsToKeys', None)
+            if (
+                getattr(_mod_graph, "GraphThunkIdsToKeys", None)
                 and getattr(_mod_graph.GraphThunkIdsToKeys, "add_node", None)
-                    and getattr(self.repo, "get_known_graph_ancestry", None)):
-                self._graph = self.repo.get_known_graph_ancestry(
-                    rev.parent_ids)
+                and getattr(self.repo, "get_known_graph_ancestry", None)
+            ):
+                self._graph = self.repo.get_known_graph_ancestry(rev.parent_ids)
             else:
                 self._use_known_graph = False
         if self._graph is not None:
@@ -356,6 +391,7 @@ class RevisionStore:
                 # if old_res != res:
                 #     import pdb; pdb.set_trace()
                 return res
+
             builder._heads = thunked_heads
 
         if rev.parent_ids:
@@ -364,8 +400,7 @@ class RevisionStore:
             basis_rev_id = _mod_revision.NULL_REVISION
         tree = _TreeShim(self.repo, basis_inv, inv_delta, text_provider)
         changes = tree._delta_to_iter_changes()
-        for (path, fs_hash) in builder.record_iter_changes(
-                tree, basis_rev_id, changes):
+        for path, fs_hash in builder.record_iter_changes(tree, basis_rev_id, changes):
             # So far, we don't *do* anything with the result
             pass
         builder.finish_inventory()
@@ -380,13 +415,14 @@ class RevisionStore:
         # Revision object, and we *don't* want to call commit_write_group()
         rev.inv_sha1 = builder.inv_sha1
         config = builder._config_stack
-        builder.repository.add_revision(builder._new_revision_id, rev,
-                                        builder.revision_tree().root_inventory)
+        builder.repository.add_revision(
+            builder._new_revision_id, rev, builder.revision_tree().root_inventory
+        )
         if self._graph is not None:
             # TODO: Use StaticTuple and .intern() for these things
             self._graph.add_node(builder._new_revision_id, rev.parent_ids)
 
         if signature is not None:
-            raise AssertionError('signatures not guaranteed yet')
+            raise AssertionError("signatures not guaranteed yet")
             self.repo.add_signature_text(rev.revision_id, signature)
         return builder.revision_tree().root_inventory

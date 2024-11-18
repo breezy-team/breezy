@@ -25,7 +25,7 @@ from .... import (
     osutils,
     transport as _mod_transport,
     ui,
-    )
+)
 from . import TransportStore
 from ....trace import mutter
 
@@ -35,14 +35,25 @@ class VersionedFileStore(TransportStore):
 
     # TODO: Rather than passing versionedfile_kwargs, perhaps pass in a
     # transport factory callable?
-    def __init__(self, transport, prefixed=False, precious=False,
-                 dir_mode=None, file_mode=None,
-                 versionedfile_class=None,
-                 versionedfile_kwargs={},
-                 escaped=False):
-        super().__init__(transport,
-                                                 dir_mode=dir_mode, file_mode=file_mode,
-                                                 prefixed=prefixed, compressed=False, escaped=escaped)
+    def __init__(
+        self,
+        transport,
+        prefixed=False,
+        precious=False,
+        dir_mode=None,
+        file_mode=None,
+        versionedfile_class=None,
+        versionedfile_kwargs={},
+        escaped=False,
+    ):
+        super().__init__(
+            transport,
+            dir_mode=dir_mode,
+            file_mode=file_mode,
+            prefixed=prefixed,
+            compressed=False,
+            escaped=escaped,
+        )
         self._precious = precious
         self._versionedfile_class = versionedfile_class
         self._versionedfile_kwargs = versionedfile_kwargs
@@ -60,7 +71,7 @@ class VersionedFileStore(TransportStore):
             for suffix in suffixes:
                 if relpath.endswith(suffix):
                     # TODO: use standard remove_suffix function
-                    escaped_id = os.path.basename(relpath[:-len(suffix)])
+                    escaped_id = os.path.basename(relpath[: -len(suffix)])
                     file_id = self._mapper.unmap(escaped_id)[0]
                     if file_id not in ids:
                         ids.add(file_id)
@@ -111,20 +122,28 @@ class VersionedFileStore(TransportStore):
         if _filename is None:
             _filename = self.filename(file_id)
         if transaction.writeable():
-            w = self._versionedfile_class(_filename, self._transport, self._file_mode,
-                                          get_scope=self.get_scope, **self._versionedfile_kwargs)
+            w = self._versionedfile_class(
+                _filename,
+                self._transport,
+                self._file_mode,
+                get_scope=self.get_scope,
+                **self._versionedfile_kwargs,
+            )
         else:
-            w = self._versionedfile_class(_filename,
-                                          self._transport,
-                                          self._file_mode,
-                                          create=False,
-                                          access_mode='r',
-                                          get_scope=self.get_scope,
-                                          **self._versionedfile_kwargs)
+            w = self._versionedfile_class(
+                _filename,
+                self._transport,
+                self._file_mode,
+                create=False,
+                access_mode="r",
+                get_scope=self.get_scope,
+                **self._versionedfile_kwargs,
+            )
         return w
 
-    def _make_new_versionedfile(self, file_id, transaction,
-                                known_missing=False, _filename=None):
+    def _make_new_versionedfile(
+        self, file_id, transaction, known_missing=False, _filename=None
+    ):
         """Make a new versioned file.
 
         :param _filename: filename that would be returned from self.filename for
@@ -138,8 +157,14 @@ class VersionedFileStore(TransportStore):
         try:
             # we try without making the directory first because that's optimising
             # for the common case.
-            weave = self._versionedfile_class(_filename, self._transport, self._file_mode, create=True,
-                                              get_scope=self.get_scope, **self._versionedfile_kwargs)
+            weave = self._versionedfile_class(
+                _filename,
+                self._transport,
+                self._file_mode,
+                create=True,
+                get_scope=self.get_scope,
+                **self._versionedfile_kwargs,
+            )
         except _mod_transport.NoSuchFile:
             if not self._prefixed:
                 # unexpected error - NoSuchFile is expected to be raised on a
@@ -147,10 +172,14 @@ class VersionedFileStore(TransportStore):
                 raise
             dirname = osutils.dirname(_filename)
             self._transport.mkdir(dirname, mode=self._dir_mode)
-            weave = self._versionedfile_class(_filename, self._transport,
-                                              self._file_mode, create=True,
-                                              get_scope=self.get_scope,
-                                              **self._versionedfile_kwargs)
+            weave = self._versionedfile_class(
+                _filename,
+                self._transport,
+                self._file_mode,
+                create=True,
+                get_scope=self.get_scope,
+                **self._versionedfile_kwargs,
+            )
         return weave
 
     def get_weave_or_empty(self, file_id, transaction):
@@ -164,16 +193,19 @@ class VersionedFileStore(TransportStore):
         try:
             return self.get_weave(file_id, transaction, _filename=_filename)
         except _mod_transport.NoSuchFile:
-            weave = self._make_new_versionedfile(file_id, transaction,
-                                                 known_missing=True, _filename=_filename)
+            weave = self._make_new_versionedfile(
+                file_id, transaction, known_missing=True, _filename=_filename
+            )
             return weave
 
     def _put_weave(self, file_id, weave, transaction):
         """Preserved here for upgrades-to-weaves to use."""
         myweave = self._make_new_versionedfile(file_id, transaction)
-        myweave.insert_record_stream(weave.get_record_stream(
-            [(version,) for version in weave.versions()],
-            'topological', False))
+        myweave.insert_record_stream(
+            weave.get_record_stream(
+                [(version,) for version in weave.versions()], "topological", False
+            )
+        )
 
     def total_size(self):
         count, bytes = super().total_size()

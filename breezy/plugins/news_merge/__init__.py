@@ -39,13 +39,20 @@ from ...hooks import install_lazy_named_hook
 def news_merge_hook(merger):
     """Merger.merge_file_content hook for bzr-format NEWS files."""
     from .news_merge import NewsMerger
+
     return NewsMerger(merger)
 
 
-install_lazy_named_hook("breezy.merge", "Merger.hooks", "merge_file_content",
-                        news_merge_hook, "NEWS file merge")
+install_lazy_named_hook(
+    "breezy.merge",
+    "Merger.hooks",
+    "merge_file_content",
+    news_merge_hook,
+    "NEWS file merge",
+)
 
 
 def test_suite():
     from . import tests
+
     return tests.test_suite()

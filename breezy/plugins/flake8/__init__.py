@@ -19,12 +19,10 @@ Set the ``flake8.pre_commit_check`` configuration variable to True
 to enable this.
 """
 
-
 from breezy.errors import BzrError, DependencyNotPresent
 
 
 class Flake8Errors(BzrError):
-
     _fmt = (
         "Running in strict flake8 mode; aborting commit, "
         "since %(errors)d flake8 errors exist."
@@ -78,9 +76,7 @@ def _update_paths(checker_manager, temp_prefix):
     for checker in checker_manager.checkers:
         filename = checker.display_name
         if filename.startswith(temp_prefix):
-            checker.display_name = os.path.relpath(
-                filename[temp_prefix_length:]
-            )
+            checker.display_name = os.path.relpath(filename[temp_prefix_length:])
 
 
 def hook(config, tree_delta, future_tree):
@@ -100,16 +96,14 @@ def hook(config, tree_delta, future_tree):
     try:
         from flake8.main import application
     except ModuleNotFoundError as e:
-        raise DependencyNotPresent('flake8', e)
+        raise DependencyNotPresent("flake8", e)
     import tempfile
 
     strict = config.get("flake8.strict")
 
     app = application.Application()
     with tempfile.TemporaryDirectory() as tempdir:
-        filepaths = list(
-            _copy_files_to(future_tree, tempdir, _delta_files(tree_delta))
-        )
+        filepaths = list(_copy_files_to(future_tree, tempdir, _delta_files(tree_delta)))
         app.initialize([tempdir])
         app.options._running_from_vcs = True
         app.run_checks(filepaths)
@@ -121,8 +115,16 @@ def hook(config, tree_delta, future_tree):
             raise Flake8Errors(app.result_count)
 
 
-def _check_flake8(local, master, old_revno, old_revid, future_revno,
-                  future_revid, tree_delta, future_tree):
+def _check_flake8(
+    local,
+    master,
+    old_revno,
+    old_revid,
+    future_revno,
+    future_revid,
+    tree_delta,
+    future_tree,
+):
     branch = local or master
     config = branch.get_config_stack()
     if config.get("flake8.pre_commit_check"):
@@ -130,4 +132,5 @@ def _check_flake8(local, master, old_revno, old_revid, future_revno,
 
 
 from breezy.branch import Branch
+
 Branch.hooks.install_named_hook("pre_commit", _check_flake8, "Check flake8")  # type: ignore

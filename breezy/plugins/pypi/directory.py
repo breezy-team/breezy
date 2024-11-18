@@ -28,7 +28,6 @@ from urllib.error import HTTPError
 
 
 class PypiProjectWithoutRepositoryURL(InvalidURL):
-
     _fmt = "No repository URL set for pypi project %(name)s"
 
     def __init__(self, name, url=None):
@@ -36,7 +35,6 @@ class PypiProjectWithoutRepositoryURL(InvalidURL):
 
 
 class NoSuchPypiProject(InvalidURL):
-
     _fmt = "No pypi project with name %(name)s"
 
     def __init__(self, name, url=None):
@@ -44,23 +42,23 @@ class NoSuchPypiProject(InvalidURL):
 
 
 def find_repo_url(data):
-    for key, value in data['info']['project_urls'].items():
-        if key == 'Repository':
-            note('Found repository URL %s for pypi project %s',
-                 value, name)
+    for key, value in data["info"]["project_urls"].items():
+        if key == "Repository":
+            note("Found repository URL %s for pypi project %s", value, name)
             return value
         parsed_url = urlparse(value)
-        if (parsed_url.hostname == 'github.com' and
-                parsed_url.path.strip('/').count('/') == 1):
+        if (
+            parsed_url.hostname == "github.com"
+            and parsed_url.path.strip("/").count("/") == 1
+        ):
             return value
 
 
 class PypiDirectory:
-
     def look_up(self, name, url, purpose=None):
         """See DirectoryService.look_up"""
         try:
-            with urlopen('https://pypi.org/pypi/%s/json' % name) as f:
+            with urlopen("https://pypi.org/pypi/%s/json" % name) as f:
                 data = json.load(f)
         except HTTPError as e:
             if e.status == 404:

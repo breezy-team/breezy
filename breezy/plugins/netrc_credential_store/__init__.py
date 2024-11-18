@@ -24,15 +24,15 @@ from ... import (
     errors,
     lazy_import,
     transport as _mod_transport,
-    )
+)
 
 
 class NetrcCredentialStore(config.CredentialStore):
-
     def __init__(self):
         super().__init__()
         import netrc
         import errno
+
         try:
             self._netrc = netrc.netrc()
         except OSError as e:
@@ -42,11 +42,11 @@ class NetrcCredentialStore(config.CredentialStore):
                 raise
 
     def decode_password(self, credentials):
-        auth = self._netrc.authenticators(credentials['host'])
+        auth = self._netrc.authenticators(credentials["host"])
         password = None
         if auth is not None:
             user, account, password = auth
-            cred_user = credentials.get('user', None)
+            cred_user = credentials.get("user", None)
             if cred_user is None or user != cred_user:
                 # We don't use the netrc ability to provide a user since there
                 # is no way to give it back to AuthConfig. So if the user
@@ -56,13 +56,17 @@ class NetrcCredentialStore(config.CredentialStore):
 
 
 config.credential_store_registry.register_lazy(
-    'netrc', __name__, 'NetrcCredentialStore', help=__doc__)
+    "netrc", __name__, "NetrcCredentialStore", help=__doc__
+)
 
 
 def load_tests(loader, basic_tests, pattern):
     testmod_names = [
-        'tests',
-        ]
-    basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["{}.{}".format(__name__, tmn) for tmn in testmod_names]))
+        "tests",
+    ]
+    basic_tests.addTest(
+        loader.loadTestsFromModuleNames(
+            ["{}.{}".format(__name__, tmn) for tmn in testmod_names]
+        )
+    )
     return basic_tests

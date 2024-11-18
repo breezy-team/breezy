@@ -29,10 +29,10 @@ import os
 from .... import (
     errors,
     transport as _mod_transport,
-    )
+)
 from ....bzr import (
     versionedfile,
-    )
+)
 from ....errors import BzrError, UnlistableStore
 from ....trace import mutter
 
@@ -53,7 +53,7 @@ class Store:
     """
 
     def __len__(self):
-        raise NotImplementedError('Children should define their length')
+        raise NotImplementedError("Children should define their length")
 
     def get(self, fileid, suffix=None):
         """Returns a file reading from a particular entry.
@@ -68,7 +68,8 @@ class Store:
     def add(self, f, fileid):
         """Add a file object f to the store accessible from the given fileid"""
         raise NotImplementedError(
-            'Children of Store must define their method of adding entries.')
+            "Children of Store must define their method of adding entries."
+        )
 
     def has_id(self, fileid, suffix=None):
         """Return True or false for the presence of fileid in the store.
@@ -79,7 +80,7 @@ class Store:
 
     def listable(self):
         """Return True if this store is able to be listed."""
-        return (getattr(self, "__iter__", None) is not None)
+        return getattr(self, "__iter__", None) is not None
 
 
 class TransportStore(Store):
@@ -93,8 +94,9 @@ class TransportStore(Store):
         mutter("add store entry %r", fileid)
         names = self._id_to_names(fileid, suffix)
         if self._transport.has_any(names):
-            raise BzrError("store %r already contains id %r"
-                           % (self._transport.base, fileid))
+            raise BzrError(
+                "store %r already contains id %r" % (self._transport.base, fileid)
+            )
 
         # Most of the time, just adding the file will work
         # if we find a time where it fails, (because the dir
@@ -105,13 +107,14 @@ class TransportStore(Store):
         """Actually add the file to the given location.
         This should be overridden by children.
         """
-        raise NotImplementedError('children need to implement this function.')
+        raise NotImplementedError("children need to implement this function.")
 
     def _check_fileid(self, fileid):
         if not isinstance(fileid, bytes):
-            raise TypeError('Fileids should be bytestrings: {} {!r}'.format(
-                type(fileid), fileid))
-        if b'\\' in fileid or b'/' in fileid:
+            raise TypeError(
+                "Fileids should be bytestrings: {} {!r}".format(type(fileid), fileid)
+            )
+        if b"\\" in fileid or b"/" in fileid:
             raise ValueError("invalid store id %r" % fileid)
 
     def _id_to_names(self, fileid, suffix):
@@ -122,7 +125,7 @@ class TransportStore(Store):
             fn = self._relpath(fileid)
 
         # FIXME RBC 20051128 this belongs in TextStore.
-        fn_gz = fn + '.gz'
+        fn_gz = fn + ".gz"
         if self._compressed:
             return fn_gz, fn
         else:
@@ -161,9 +164,15 @@ class TransportStore(Store):
                 pass
         raise KeyError(fileid)
 
-    def __init__(self, a_transport, prefixed=False, compressed=False,
-                 dir_mode=None, file_mode=None,
-                 escaped=False):
+    def __init__(
+        self,
+        a_transport,
+        prefixed=False,
+        compressed=False,
+        dir_mode=None,
+        file_mode=None,
+        escaped=False,
+    ):
         super().__init__()
         self._transport = a_transport
         self._prefixed = prefixed
@@ -183,8 +192,8 @@ class TransportStore(Store):
             self._mapper = versionedfile.HashPrefixMapper()
         elif self._escaped:
             raise ValueError(
-                "%r: escaped unprefixed stores are not permitted."
-                % (self,))
+                "%r: escaped unprefixed stores are not permitted." % (self,)
+            )
         else:
             self._mapper = versionedfile.PrefixMapper()
 
@@ -196,12 +205,12 @@ class TransportStore(Store):
         for relpath in self._iter_files_recursive():
             # worst case is one of each suffix.
             name = os.path.basename(relpath)
-            if name.endswith('.gz'):
+            if name.endswith(".gz"):
                 name = name[:-3]
             skip = False
             for count in range(len(self._suffixes)):
                 for suffix in self._suffixes:
-                    if name.endswith('.' + suffix):
+                    if name.endswith("." + suffix):
                         skip = True
             if not skip:
                 yield self._mapper.unmap(name)[0]
@@ -215,11 +224,11 @@ class TransportStore(Store):
             for suffix in suffixes:
                 if suffix not in self._suffixes:
                     raise ValueError("Unregistered suffix %r" % suffix)
-                self._check_fileid(suffix.encode('utf-8'))
+                self._check_fileid(suffix.encode("utf-8"))
         else:
             suffixes = []
         path = self._mapper.map((fileid,))
-        full_path = '.'.join([path] + suffixes)
+        full_path = ".".join([path] + suffixes)
         return full_path
 
     def __repr__(self):
@@ -236,8 +245,8 @@ class TransportStore(Store):
 
     def register_suffix(self, suffix):
         """Register a suffix as being expected in this store."""
-        self._check_fileid(suffix.encode('utf-8'))
-        if suffix == 'gz':
+        self._check_fileid(suffix.encode("utf-8"))
+        if suffix == "gz":
             raise ValueError('You cannot register the "gz" suffix.')
         self._suffixes.add(suffix)
 

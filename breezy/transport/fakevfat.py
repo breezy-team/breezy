@@ -70,7 +70,7 @@ class FakeVFATTransportDecorator(decorator.TransportDecorator):
     @classmethod
     def _get_url_prefix(self):
         """Readonly transport decorators are invoked via 'vfat+'"""
-        return 'vfat+'
+        return "vfat+"
 
     def _squash_name(self, name):
         """Return vfat-squashed filename.
@@ -78,7 +78,7 @@ class FakeVFATTransportDecorator(decorator.TransportDecorator):
         The name is returned as it will be stored on disk.  This raises an
         error if there are invalid characters in the name.
         """
-        if re.search(r'[?*:;<>]', name):
+        if re.search(r"[?*:;<>]", name):
             raise ValueError("illegal characters for VFAT filename: %r" % name)
         return name.lower()
 
@@ -101,4 +101,7 @@ class FakeVFATTransportDecorator(decorator.TransportDecorator):
 def get_test_permutations():
     """Return the permutations to be used in testing."""
     from breezy.tests import test_server
-    return [(FakeVFATTransportDecorator, test_server.FakeVFATServer), ]
+
+    return [
+        (FakeVFATTransportDecorator, test_server.FakeVFATServer),
+    ]

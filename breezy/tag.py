@@ -39,7 +39,7 @@ from .revision import RevisionID
 from . import (
     branch as _mod_branch,
     errors,
-    )
+)
 
 
 TagSelector = Callable[[str], bool]
@@ -48,10 +48,11 @@ TagConflict = Tuple[str, bytes, bytes]
 
 
 def _reconcile_tags(
-        source_dict: Dict[str, bytes], dest_dict: Dict[str, bytes],
-        overwrite: bool, selector: Optional[TagSelector]) -> Tuple[
-            Dict[str, RevisionID], TagUpdates,
-            List[TagConflict]]:
+    source_dict: Dict[str, bytes],
+    dest_dict: Dict[str, bytes],
+    overwrite: bool,
+    selector: Optional[TagSelector],
+) -> Tuple[Dict[str, RevisionID], TagUpdates, List[TagConflict]]:
     """Do a two-way merge of two tag dictionaries.
 
     * only in source => source value
@@ -80,27 +81,29 @@ def _reconcile_tags(
 
 
 class Tags:
-
     def __init__(self, branch):
         self.branch = branch
 
     def get_tag_dict(self) -> Dict[str, RevisionID]:
-        """Return a dictionary mapping tags to revision ids.
-        """
+        """Return a dictionary mapping tags to revision ids."""
         raise NotImplementedError(self.get_tag_dict)
 
     def get_reverse_tag_dict(self) -> Dict[RevisionID, Set[str]]:
         """Returns a dict with revisions as keys
-           and a list of tags for that revision as value"""
+        and a list of tags for that revision as value"""
         d = self.get_tag_dict()
         rev = defaultdict(set)
         for key in d:
             rev[d[key]].add(key)
         return rev
 
-    def merge_to(self, to_tags: "Tags", overwrite: bool = False,
-                 ignore_master: bool = False,
-                 selector: Optional[TagSelector] = None) -> Tuple[TagUpdates, Set[TagConflict]]:
+    def merge_to(
+        self,
+        to_tags: "Tags",
+        overwrite: bool = False,
+        ignore_master: bool = False,
+        selector: Optional[TagSelector] = None,
+    ) -> Tuple[TagUpdates, Set[TagConflict]]:
         """Copy tags between repositories if necessary and possible.
 
         This method has common command-line behaviour about handling
@@ -123,8 +126,8 @@ class Tags:
         """
         intertags: InterTags = InterTags.get(self, to_tags)
         return intertags.merge(
-            overwrite=overwrite, ignore_master=ignore_master,
-            selector=selector)
+            overwrite=overwrite, ignore_master=ignore_master, selector=selector
+        )
 
     def set_tag(self, tag_name: str, revision: RevisionID) -> None:
         """Set a tag.
@@ -153,8 +156,7 @@ class Tags:
         """
         raise NotImplementedError(self.delete_tag)
 
-    def rename_revisions(
-            self, rename_map: Dict[RevisionID, RevisionID]) -> None:
+    def rename_revisions(self, rename_map: Dict[RevisionID, RevisionID]) -> None:
         """Rename revisions in this tags dictionary.
 
         :param rename_map: Dictionary mapping old revids to new revids
@@ -198,8 +200,7 @@ class DisabledTags(Tags):
 
 
 class InterTags(InterObject[Tags]):
-    """Operations between sets of tags.
-    """
+    """Operations between sets of tags."""
 
     _optimisers = []
     """The available optimised InterTags types."""
@@ -209,9 +210,12 @@ class InterTags(InterObject[Tags]):
         # This is the default implementation
         return True
 
-    def merge(self, overwrite: bool = False, ignore_master: bool = False,
-              selector: Optional[TagSelector] = None
-              ) -> Tuple[TagUpdates, Set[TagConflict]]:
+    def merge(
+        self,
+        overwrite: bool = False,
+        ignore_master: bool = False,
+        selector: Optional[TagSelector] = None,
+    ) -> Tuple[TagUpdates, Set[TagConflict]]:
         """Copy tags between repositories if necessary and possible.
 
         This method has common command-line behaviour about handling
@@ -266,10 +270,12 @@ class InterTags(InterObject[Tags]):
             if master is not None:
                 stack.enter_context(master.lock_write())
             updates, conflicts = self._merge_to(
-                self.target, source_dict, overwrite, selector=selector)
+                self.target, source_dict, overwrite, selector=selector
+            )
             if master is not None:
                 extra_updates, extra_conflicts = self._merge_to(
-                    master.tags, source_dict, overwrite, selector=selector)
+                    master.tags, source_dict, overwrite, selector=selector
+                )
                 updates.update(extra_updates)
                 conflicts += extra_conflicts
         # We use set() to remove any duplicate conflicts from the master
@@ -280,14 +286,14 @@ class InterTags(InterObject[Tags]):
     def _merge_to(cls, to_tags, source_dict, overwrite, selector):
         dest_dict = to_tags.get_tag_dict()
         result, updates, conflicts = _reconcile_tags(
-            source_dict, dest_dict, overwrite, selector)
+            source_dict, dest_dict, overwrite, selector
+        )
         if result != dest_dict:
             to_tags._set_tag_dict(result)
         return updates, conflicts
 
 
 class MemoryTags(Tags):
-
     def __init__(self, tag_dict):
         self._tag_dict = tag_dict
 
@@ -313,8 +319,8 @@ class MemoryTags(Tags):
 
     def rename_revisions(self, revid_map):
         self._tag_dict = {
-            name: revid_map.get(revid, revid)
-            for name, revid in self._tag_dict.items()}
+            name: revid_map.get(revid, revid) for name, revid in self._tag_dict.items()
+        }
 
     def _set_tag_dict(self, result):
         self._tag_dict = dict(result.items())
@@ -323,7 +329,8 @@ class MemoryTags(Tags):
         source_dict = self.get_tag_dict()
         dest_dict = to_tags.get_tag_dict()
         result, updates, conflicts = _reconcile_tags(
-            source_dict, dest_dict, overwrite, selector)
+            source_dict, dest_dict, overwrite, selector
+        )
         if result != dest_dict:
             to_tags._set_tag_dict(result)
         return updates, conflicts
@@ -335,10 +342,15 @@ def sort_natural(branch, tags):
     :param branch: Branch
     :param tags: List of tuples with tag name and revision id.
     """
+
     def natural_sort_key(tag):
-        return [f(s) for f, s in
-                zip(itertools.cycle((str.lower, int)),
-                    re.split('([0-9]+)', tag[0]))]
+        return [
+            f(s)
+            for f, s in zip(
+                itertools.cycle((str.lower, int)), re.split("([0-9]+)", tag[0])
+            )
+        ]
+
     tags.sort(key=natural_sort_key)
 
 
@@ -370,10 +382,11 @@ def sort_time(branch, tags):
 
 
 tag_sort_methods = Registry[str, Callable[[_mod_branch.Branch, List[str]], List[str]]]()
-tag_sort_methods.register("natural", sort_natural,
-                          'Sort numeric substrings as numbers. (default)')
-tag_sort_methods.register("alpha", sort_alpha, 'Sort tags lexicographically.')
-tag_sort_methods.register("time", sort_time, 'Sort tags chronologically.')
+tag_sort_methods.register(
+    "natural", sort_natural, "Sort numeric substrings as numbers. (default)"
+)
+tag_sort_methods.register("alpha", sort_alpha, "Sort tags lexicographically.")
+tag_sort_methods.register("time", sort_time, "Sort tags chronologically.")
 tag_sort_methods.default_key = "natural"
 
 

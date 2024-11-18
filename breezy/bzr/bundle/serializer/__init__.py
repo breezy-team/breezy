@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Serializer factory for reading and writing bundles.
-"""
+"""Serializer factory for reading and writing bundles."""
 
 import base64
 from io import BytesIO
@@ -24,27 +23,30 @@ import re
 from .... import (
     errors,
     registry,
-    )
+)
 from ....diff import internal_diff
 from ....revision import NULL_REVISION
+
 # For backwards-compatibility
 from ....timestamp import unpack_highres_date, format_highres_date
 
 
 # New bundles should try to use this header format
-BUNDLE_HEADER = b'# Bazaar revision bundle v'
+BUNDLE_HEADER = b"# Bazaar revision bundle v"
 BUNDLE_HEADER_RE = re.compile(
-    br'^# Bazaar revision bundle v(?P<version>\d+[\w.]*)(?P<lineending>\r?)\n$')
+    rb"^# Bazaar revision bundle v(?P<version>\d+[\w.]*)(?P<lineending>\r?)\n$"
+)
 CHANGESET_OLD_HEADER_RE = re.compile(
-    br'^# Bazaar-NG changeset v(?P<version>\d+[\w.]*)(?P<lineending>\r?)\n$')
+    rb"^# Bazaar-NG changeset v(?P<version>\d+[\w.]*)(?P<lineending>\r?)\n$"
+)
 
 
 def _get_bundle_header(version):
-    return b''.join([BUNDLE_HEADER, version.encode('ascii'), b'\n'])
+    return b"".join([BUNDLE_HEADER, version.encode("ascii"), b"\n"])
 
 
 def _get_filename(f):
-    return getattr(f, 'name', '<unknown>')
+    return getattr(f, "name", "<unknown>")
 
 
 def read_bundle(f):
@@ -57,31 +59,28 @@ def read_bundle(f):
     for line in f:
         m = BUNDLE_HEADER_RE.match(line)
         if m:
-            if m.group('lineending') != b'':
+            if m.group("lineending") != b"":
                 raise errors.UnsupportedEOLMarker()
-            version = m.group('version')
+            version = m.group("version")
             break
         elif line.startswith(BUNDLE_HEADER):
-            raise errors.MalformedHeader(
-                'Extra characters after version number')
+            raise errors.MalformedHeader("Extra characters after version number")
         m = CHANGESET_OLD_HEADER_RE.match(line)
         if m:
-            version = m.group('version')
-            raise errors.BundleNotSupported(version,
-                                            'old format bundles not supported')
+            version = m.group("version")
+            raise errors.BundleNotSupported(version, "old format bundles not supported")
 
     if version is None:
-        raise errors.NotABundle('Did not find an opening header')
+        raise errors.NotABundle("Did not find an opening header")
 
-    return get_serializer(version.decode('ascii')).read(f)
+    return get_serializer(version.decode("ascii")).read(f)
 
 
 def get_serializer(version):
     try:
         serializer = serializer_registry.get(version)
     except KeyError:
-        raise errors.BundleNotSupported(version,
-                                        'unknown bundle format')
+        raise errors.BundleNotSupported(version, "unknown bundle format")
 
     return serializer(version)
 
@@ -96,8 +95,7 @@ def write(source, revision_ids, f, version=None, forced_bases={}):
     """
 
     with source.lock_read():
-        return get_serializer(version).write(source, revision_ids,
-                                             forced_bases, f)
+        return get_serializer(version).write(source, revision_ids, forced_bases, f)
 
 
 def write_bundle(repository, revision_id, base_revision_id, out, format=None):
@@ -111,8 +109,9 @@ def write_bundle(repository, revision_id, base_revision_id, out, format=None):
     :return: List of revision ids written
     """
     with repository.lock_read():
-        return get_serializer(format).write_bundle(repository, revision_id,
-                                                   base_revision_id, out)
+        return get_serializer(format).write_bundle(
+            repository, revision_id, base_revision_id, out
+        )
 
 
 class BundleSerializer:
@@ -147,19 +146,17 @@ class BundleSerializer:
 
 def binary_diff(old_filename, old_lines, new_filename, new_lines, to_file):
     temp = BytesIO()
-    internal_diff(old_filename, old_lines, new_filename, new_lines, temp,
-                  allow_binary=True)
+    internal_diff(
+        old_filename, old_lines, new_filename, new_lines, temp, allow_binary=True
+    )
     temp.seek(0)
     base64.encode(temp, to_file)
-    to_file.write(b'\n')
+    to_file.write(b"\n")
 
 
 serializer_registry = registry.Registry[str, BundleSerializer]()
 
-serializer_registry.register_lazy(
-    '0.8', __name__ + '.v08', 'BundleSerializerV08')
-serializer_registry.register_lazy(
-    '0.9', __name__ + '.v09', 'BundleSerializerV09')
-serializer_registry.register_lazy('4', __name__ + '.v4',
-                                  'BundleSerializerV4')
-serializer_registry.default_key = '4'
+serializer_registry.register_lazy("0.8", __name__ + ".v08", "BundleSerializerV08")
+serializer_registry.register_lazy("0.9", __name__ + ".v09", "BundleSerializerV09")
+serializer_registry.register_lazy("4", __name__ + ".v4", "BundleSerializerV4")
+serializer_registry.default_key = "4"

@@ -18,7 +18,7 @@
 
 from breezy import (
     osutils,
-    )
+)
 
 # Directory containing all ssl files, keys or certificates
 base_dir = osutils.dirname(osutils.realpath(__file__))

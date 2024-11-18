@@ -17,7 +17,6 @@ from email.utils import parseaddr
 
 
 class UserMapper:
-
     def __init__(self, lines):
         """Create a user-mapper from a list of lines.
 
@@ -41,12 +40,12 @@ class UserMapper:
         self._default_domain = None
         for line in lines:
             line = line.strip()
-            if len(line) == 0 or line.startswith(b'#'):
+            if len(line) == 0 or line.startswith(b"#"):
                 continue
-            old, new = line.split(b'=', 1)
+            old, new = line.split(b"=", 1)
             old = old.strip()
             new = new.strip()
-            if old == b'@':
+            if old == b"@":
                 self._default_domain = new
                 continue
             # Parse each id into a name and email address
@@ -56,7 +55,7 @@ class UserMapper:
             self._user_map[(old_name, old_email)] = (new_name, new_email)
 
     def _parse_id(self, id):
-        if id.find(b'<') == -1:
+        if id.find(b"<") == -1:
             return id, b""
         else:
             return parseaddr(id)

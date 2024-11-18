@@ -19,11 +19,10 @@ import threading
 from .. import (
     cethread,
     tests,
-    )
+)
 
 
 class TestCatchingExceptionThread(tests.TestCase):
-
     def test_start_and_join_smoke_test(self):
         def do_nothing():
             pass
@@ -75,8 +74,9 @@ class TestCatchingExceptionThread(tests.TestCase):
             # Now we can raise
             raise MyException()
 
-        tt = cethread.CatchingExceptionThread(target=raise_my_exception,
-                                              sync_event=in_thread)
+        tt = cethread.CatchingExceptionThread(
+            target=raise_my_exception, sync_event=in_thread
+        )
         tt.start()
         tt.join(timeout=0)
         self.assertIs(None, tt.exception)
@@ -92,10 +92,9 @@ class TestCatchingExceptionThread(tests.TestCase):
         control3 = threading.Event()
 
         class TestThread(cethread.CatchingExceptionThread):
-
             def __init__(self):
                 super().__init__(target=self.step_by_step)
-                self.current_step = 'starting'
+                self.current_step = "starting"
                 self.step1 = threading.Event()
                 self.set_sync_event(self.step1)
                 self.step2 = threading.Event()
@@ -103,27 +102,27 @@ class TestCatchingExceptionThread(tests.TestCase):
 
             def step_by_step(self):
                 control1.wait()
-                self.current_step = 'step1'
+                self.current_step = "step1"
                 self.switch_and_set(self.step2)
                 control2.wait()
-                self.current_step = 'step2'
+                self.current_step = "step2"
                 self.switch_and_set(self.final)
                 control3.wait()
-                self.current_step = 'done'
+                self.current_step = "done"
 
         tt = TestThread()
         tt.start()
-        self.assertEqual('starting', tt.current_step)
+        self.assertEqual("starting", tt.current_step)
         control1.set()
         tt.step1.wait()
-        self.assertEqual('step1', tt.current_step)
+        self.assertEqual("step1", tt.current_step)
         control2.set()
         tt.step2.wait()
-        self.assertEqual('step2', tt.current_step)
+        self.assertEqual("step2", tt.current_step)
         control3.set()
         # We don't wait on tt.final
         tt.join()
-        self.assertEqual('done', tt.current_step)
+        self.assertEqual("done", tt.current_step)
 
     def test_exception_while_switch_and_set(self):
         control1 = threading.Event()
@@ -132,18 +131,16 @@ class TestCatchingExceptionThread(tests.TestCase):
             pass
 
         class TestThread(cethread.CatchingExceptionThread):
-
             def __init__(self, *args, **kwargs):
                 self.step1 = threading.Event()
                 self.step2 = threading.Event()
-                super().__init__(target=self.step_by_step,
-                                                 sync_event=self.step1)
-                self.current_step = 'starting'
+                super().__init__(target=self.step_by_step, sync_event=self.step1)
+                self.current_step = "starting"
                 self.set_sync_event(self.step1)
 
             def step_by_step(self):
                 control1.wait()
-                self.current_step = 'step1'
+                self.current_step = "step1"
                 self.switch_and_set(self.step2)
 
             def set_sync_event(self, event):
@@ -154,7 +151,7 @@ class TestCatchingExceptionThread(tests.TestCase):
 
         tt = TestThread()
         tt.start()
-        self.assertEqual('starting', tt.current_step)
+        self.assertEqual("starting", tt.current_step)
         control1.set()
         # We now wait on step1 which will be set when catching the exception
         tt.step1.wait()

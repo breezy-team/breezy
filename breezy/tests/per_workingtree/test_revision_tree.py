@@ -27,14 +27,13 @@ from breezy import (
     errors,
     tests,
     transport as _mod_transport,
-    )
+)
 from breezy.tests import per_workingtree
 
 
 class TestRevisionTree(per_workingtree.TestCaseWithWorkingTree):
-
     def test_get_zeroth_basis_tree_via_revision_tree(self):
-        tree = self.make_branch_and_tree('.')
+        tree = self.make_branch_and_tree(".")
         try:
             revision_tree = tree.revision_tree(tree.last_revision())
         except errors.NoSuchRevision:
@@ -44,17 +43,17 @@ class TestRevisionTree(per_workingtree.TestCaseWithWorkingTree):
         self.assertTreesEqual(revision_tree, basis_tree)
 
     def test_get_nonzeroth_basis_tree_via_revision_tree(self):
-        tree = self.make_branch_and_tree('.')
-        revision1 = tree.commit('first post')
+        tree = self.make_branch_and_tree(".")
+        revision1 = tree.commit("first post")
         revision_tree = tree.revision_tree(revision1)
         basis_tree = tree.basis_tree()
         self.assertTreesEqual(revision_tree, basis_tree)
 
     def test_get_pending_merge_revision_tree(self):
-        tree = self.make_branch_and_tree('tree1')
-        tree.commit('first post')
-        tree2 = tree.controldir.sprout('tree2').open_workingtree()
-        revision1 = tree2.commit('commit in branch', allow_pointless=True)
+        tree = self.make_branch_and_tree("tree1")
+        tree.commit("first post")
+        tree2 = tree.controldir.sprout("tree2").open_workingtree()
+        revision1 = tree2.commit("commit in branch", allow_pointless=True)
         tree.merge_from_branch(tree2.branch)
         try:
             cached_revision_tree = tree.revision_tree(revision1)
@@ -70,22 +69,20 @@ class TestRevisionTree(per_workingtree.TestCaseWithWorkingTree):
         # revision_tree method should always raise when a request tree is not
         # cached, so we force this by setting a basis that is a ghost and
         # thus cannot be cached.
-        tree = self.make_branch_and_tree('.')
+        tree = self.make_branch_and_tree(".")
         if not tree.branch.repository._format.supports_ghosts:
-            self.skipTest('format does not support ghosts')
-        tree.set_parent_ids([b'a-ghost'], allow_leftmost_as_ghost=True)
-        self.assertRaises(errors.NoSuchRevision,
-                          tree.revision_tree, b'a-ghost')
+            self.skipTest("format does not support ghosts")
+        tree.set_parent_ids([b"a-ghost"], allow_leftmost_as_ghost=True)
+        self.assertRaises(errors.NoSuchRevision, tree.revision_tree, b"a-ghost")
 
     def test_revision_tree_different_root_id(self):
         """A revision tree might have a very different root."""
-        tree = self.make_branch_and_tree('tree1')
+        tree = self.make_branch_and_tree("tree1")
         if not tree.supports_setting_file_ids():
-            raise tests.TestNotApplicable(
-                'tree does not support setting file ids')
-        tree.set_root_id(b'one')
-        rev1 = tree.commit('first post')
-        tree.set_root_id(b'two')
+            raise tests.TestNotApplicable("tree does not support setting file ids")
+        tree.set_root_id(b"one")
+        rev1 = tree.commit("first post")
+        tree.set_root_id(b"two")
         try:
             cached_revision_tree = tree.revision_tree(rev1)
         except errors.NoSuchRevision:
@@ -96,29 +93,30 @@ class TestRevisionTree(per_workingtree.TestCaseWithWorkingTree):
 
 
 class TestRevisionTreeKind(per_workingtree.TestCaseWithWorkingTree):
-
-    def make_branch_with_merged_deletions(self, relpath='tree'):
+    def make_branch_with_merged_deletions(self, relpath="tree"):
         tree = self.make_branch_and_tree(relpath)
-        files = ['a', 'b/', 'b/c']
-        self.build_tree(files, line_endings='binary',
-                        transport=tree.controldir.root_transport)
+        files = ["a", "b/", "b/c"]
+        self.build_tree(
+            files, line_endings="binary", transport=tree.controldir.root_transport
+        )
         tree.add(files)
-        base_revid = tree.commit('a, b and b/c')
-        tree2 = tree.controldir.sprout(relpath + '2').open_workingtree()
+        base_revid = tree.commit("a, b and b/c")
+        tree2 = tree.controldir.sprout(relpath + "2").open_workingtree()
         # Delete 'a' in tree
-        tree.remove('a', keep_files=False)
-        this_revid = tree.commit('remove a')
+        tree.remove("a", keep_files=False)
+        this_revid = tree.commit("remove a")
         # Delete 'c' in tree2
-        tree2.remove('b/c', keep_files=False)
-        tree2.remove('b', keep_files=False)
-        other_revid = tree2.commit('remove b/c')
+        tree2.remove("b/c", keep_files=False)
+        tree2.remove("b", keep_files=False)
+        other_revid = tree2.commit("remove b/c")
         # Merge tree2 into tree
         tree.merge_from_branch(tree2.branch)
         return tree, [base_revid, this_revid, other_revid]
 
     def test_kind_parent_tree(self):
-        tree, [base_revid, this_revid,
-               other_revid] = self.make_branch_with_merged_deletions()
+        tree, [base_revid, this_revid, other_revid] = (
+            self.make_branch_with_merged_deletions()
+        )
         tree.lock_read()
         self.addCleanup(tree.unlock)
         parents = tree.get_parent_ids()
@@ -126,17 +124,16 @@ class TestRevisionTreeKind(per_workingtree.TestCaseWithWorkingTree):
         basis = tree.revision_tree(parents[0])
         basis.lock_read()
         self.addCleanup(basis.unlock)
-        self.assertRaises(_mod_transport.NoSuchFile, basis.kind, 'a')
-        self.assertEqual(['directory', 'file'],
-                         [basis.kind('b'), basis.kind('b/c')])
+        self.assertRaises(_mod_transport.NoSuchFile, basis.kind, "a")
+        self.assertEqual(["directory", "file"], [basis.kind("b"), basis.kind("b/c")])
         try:
             other = tree.revision_tree(parents[1])
         except errors.NoSuchRevisionInTree:
             raise tests.TestNotApplicable(
-                'Tree type %s caches only the basis revision tree.'
-                % type(tree))
+                "Tree type %s caches only the basis revision tree." % type(tree)
+            )
         other.lock_read()
         self.addCleanup(other.unlock)
-        self.assertRaises(_mod_transport.NoSuchFile, other.kind, 'b')
-        self.assertRaises(_mod_transport.NoSuchFile, other.kind, 'c')
-        self.assertEqual('file', other.kind('a'))
+        self.assertRaises(_mod_transport.NoSuchFile, other.kind, "b")
+        self.assertRaises(_mod_transport.NoSuchFile, other.kind, "c")
+        self.assertEqual("file", other.kind("a"))

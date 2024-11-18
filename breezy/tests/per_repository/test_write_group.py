@@ -18,34 +18,33 @@
 
 from breezy import (
     errors,
-    )
+)
 from breezy.tests import (
     per_repository,
     test_server,
-    )
+)
 from breezy.transport import memory
 
 
 class TestWriteGroup(per_repository.TestCaseWithRepository):
-
     def test_start_write_group_unlocked_needs_write_lock(self):
-        repo = self.make_repository('.')
+        repo = self.make_repository(".")
         self.assertRaises(errors.NotWriteLocked, repo.start_write_group)
 
     def test_start_write_group_read_locked_needs_write_lock(self):
-        repo = self.make_repository('.')
+        repo = self.make_repository(".")
         with repo.lock_read():
             self.assertRaises(errors.NotWriteLocked, repo.start_write_group)
 
     def test_start_write_group_write_locked_gets_None(self):
-        repo = self.make_repository('.')
+        repo = self.make_repository(".")
         repo.lock_write()
         self.assertEqual(None, repo.start_write_group())
         repo.commit_write_group()
         repo.unlock()
 
     def test_start_write_group_twice_errors(self):
-        repo = self.make_repository('.')
+        repo = self.make_repository(".")
         repo.lock_write()
         repo.start_write_group()
         try:
@@ -58,7 +57,7 @@ class TestWriteGroup(per_repository.TestCaseWithRepository):
             repo.unlock()
 
     def test_commit_write_group_does_not_error(self):
-        repo = self.make_repository('.')
+        repo = self.make_repository(".")
         repo.lock_write()
         repo.start_write_group()
         # commit_write_group can either return None (for repositories without
@@ -68,7 +67,7 @@ class TestWriteGroup(per_repository.TestCaseWithRepository):
         repo.unlock()
 
     def test_unlock_in_write_group(self):
-        repo = self.make_repository('.')
+        repo = self.make_repository(".")
         repo.lock_write()
         repo.start_write_group()
         # don't need a specific exception for now - this is
@@ -82,7 +81,7 @@ class TestWriteGroup(per_repository.TestCaseWithRepository):
         self.assertRaises(errors.BzrError, repo.unlock)
 
     def test_is_in_write_group(self):
-        repo = self.make_repository('.')
+        repo = self.make_repository(".")
         self.assertFalse(repo.is_in_write_group())
         repo.lock_write()
         repo.start_write_group()
@@ -97,7 +96,7 @@ class TestWriteGroup(per_repository.TestCaseWithRepository):
         repo.unlock()
 
     def test_abort_write_group_gets_None(self):
-        repo = self.make_repository('.')
+        repo = self.make_repository(".")
         repo.lock_write()
         repo.start_write_group()
         self.assertEqual(None, repo.abort_write_group())
@@ -107,14 +106,14 @@ class TestWriteGroup(per_repository.TestCaseWithRepository):
         if self.transport_server is test_server.LocalURLServer:
             self.transport_server = None
         self.vfs_transport_factory = memory.MemoryServer
-        repo = self.make_repository('repo')
+        repo = self.make_repository("repo")
         token = repo.lock_write()
         self.addCleanup(repo.unlock)
         repo.start_write_group()
         # Damage the repository on the filesystem
-        t = self.get_transport('')
-        t.rename('repo', 'foo')
-        self.addCleanup(t.rename, 'foo', 'repo')
+        t = self.get_transport("")
+        t.rename("repo", "foo")
+        self.addCleanup(t.rename, "foo", "repo")
         # abort_write_group will not raise an error, because either an
         # exception was not generated, or the exception was caught and
         # suppressed.  See also test_pack_repository's test of the same name.

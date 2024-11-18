@@ -23,15 +23,16 @@ from ... import version_info  # noqa: F401
 from breezy import (
     controldir,
     errors,
-    )
+)
 
 
 class DarcsUnsupportedError(errors.UnsupportedVcs):
-
     vcs = "darcs"
 
-    _fmt = ('Darcs branches are not yet supported. '
-            'To interoperate with darcs branches, use fastimport.')
+    _fmt = (
+        "Darcs branches are not yet supported. "
+        "To interoperate with darcs branches, use fastimport."
+    )
 
 
 class DarcsDirFormat(controldir.ControlDirFormat):
@@ -56,8 +57,9 @@ class DarcsDirFormat(controldir.ControlDirFormat):
     def _known_formats(self):
         return {DarcsDirFormat()}
 
-    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
-                             basedir=None):
+    def check_support_status(
+        self, allow_unsupported, recommend_upgrade=True, basedir=None
+    ):
         raise DarcsUnsupportedError()
 
     def open(self, transport):
@@ -67,16 +69,15 @@ class DarcsDirFormat(controldir.ControlDirFormat):
 
 
 class DarcsProber(controldir.Prober):
-
     @classmethod
     def priority(klass, transport):
-        if 'darcs' in transport.base:
+        if "darcs" in transport.base:
             return 90
         return 100
 
     @classmethod
     def probe_transport(klass, transport):
-        if transport.has_any(['_darcs/format', '_darcs/inventory']):
+        if transport.has_any(["_darcs/format", "_darcs/inventory"]):
             return DarcsDirFormat()
         raise errors.NotBranchError(path=transport.base)
 

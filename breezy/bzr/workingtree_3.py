@@ -14,9 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""WorkingTree3 format and implementation.
-
-"""
+"""WorkingTree3 format and implementation."""
 
 import errno
 
@@ -25,7 +23,7 @@ from . import (
     hashcache,
     inventory,
     transform as bzr_transform,
-    )
+)
 
 from .. import (
     errors,
@@ -33,7 +31,7 @@ from .. import (
     revision as _mod_revision,
     trace,
     transport as _mod_transport,
-    )
+)
 from ..lockable_files import LockableFiles
 from ..lockdir import LockDir
 from ..mutabletree import MutableTree
@@ -41,12 +39,11 @@ from ..transport.local import LocalTransport
 from .workingtree import (
     InventoryWorkingTree,
     WorkingTreeFormatMetaDir,
-    )
+)
 
 
 class PreDirStateWorkingTree(InventoryWorkingTree):
-
-    def __init__(self, basedir='.', *args, **kwargs):
+    def __init__(self, basedir=".", *args, **kwargs):
         super().__init__(basedir, *args, **kwargs)
         # update the whole cache up front and write to disk if anything changed;
         # in the future we might want to do this more selectively
@@ -55,10 +52,13 @@ class PreDirStateWorkingTree(InventoryWorkingTree):
         # cache file, and have the parser take the most recent entry for a
         # given path only.
         wt_trans = self.controldir.get_workingtree_transport(None)
-        cache_filename = wt_trans.local_abspath('stat-cache')
-        self._hashcache = hashcache.HashCache(basedir, cache_filename,
-                                              self.controldir._get_file_mode(),
-                                              self._content_filter_stack_provider())
+        cache_filename = wt_trans.local_abspath("stat-cache")
+        self._hashcache = hashcache.HashCache(
+            basedir,
+            cache_filename,
+            self.controldir._get_file_mode(),
+            self._content_filter_stack_provider(),
+        )
         hc = self._hashcache
         hc.read()
         # is this scan needed ? it makes things kinda slow.
@@ -79,9 +79,11 @@ class PreDirStateWorkingTree(InventoryWorkingTree):
                 # TODO: jam 20061219 Should this be a warning? A single line
                 #       warning might be sufficient to let the user know what
                 #       is going on.
-                trace.mutter('Could not write hashcache for %s\nError: %s',
-                             self._hashcache.cache_file_name(),
-                             osutils.safe_unicode(e.args[1]))
+                trace.mutter(
+                    "Could not write hashcache for %s\nError: %s",
+                    self._hashcache.cache_file_name(),
+                    osutils.safe_unicode(e.args[1]),
+                )
 
     def get_file_sha1(self, path, stat_value=None):
         with self.lock_read():
@@ -105,7 +107,7 @@ class WorkingTree3(PreDirStateWorkingTree):
         """See Mutable.last_revision."""
         with self.lock_read():
             try:
-                return self._transport.get_bytes('last-revision')
+                return self._transport.get_bytes("last-revision")
             except _mod_transport.NoSuchFile:
                 return _mod_revision.NULL_REVISION
 
@@ -113,18 +115,19 @@ class WorkingTree3(PreDirStateWorkingTree):
         """See WorkingTree._change_last_revision."""
         if revision_id is None or revision_id == _mod_revision.NULL_REVISION:
             try:
-                self._transport.delete('last-revision')
+                self._transport.delete("last-revision")
             except _mod_transport.NoSuchFile:
                 pass
             return False
         else:
-            self._transport.put_bytes('last-revision', revision_id,
-                                      mode=self.controldir._get_file_mode())
+            self._transport.put_bytes(
+                "last-revision", revision_id, mode=self.controldir._get_file_mode()
+            )
             return True
 
     def _get_check_refs(self):
         """Return the references needed to perform a check of this tree."""
-        return [('trees', self.last_revision())]
+        return [("trees", self.last_revision())]
 
     def unlock(self):
         if self._control_files._lock_count == 1:
@@ -177,10 +180,16 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
 
     def _open_control_files(self, a_controldir):
         transport = a_controldir.get_workingtree_transport(None)
-        return LockableFiles(transport, 'lock', LockDir)
+        return LockableFiles(transport, "lock", LockDir)
 
-    def initialize(self, a_controldir, revision_id=None, from_branch=None,
-                   accelerator_tree=None, hardlink=False):
+    def initialize(
+        self,
+        a_controldir,
+        revision_id=None,
+        from_branch=None,
+        accelerator_tree=None,
+        hardlink=False,
+    ):
         """See WorkingTreeFormat.initialize().
 
         :param revision_id: if supplied, create a working tree at a different
@@ -198,8 +207,9 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
         control_files = self._open_control_files(a_controldir)
         control_files.create_lock()
         control_files.lock_write()
-        transport.put_bytes('format', self.as_string(),
-                            mode=a_controldir._get_file_mode())
+        transport.put_bytes(
+            "format", self.as_string(), mode=a_controldir._get_file_mode()
+        )
         if from_branch is not None:
             branch = from_branch
         else:
@@ -212,25 +222,27 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
         # are maintaining compatibility with older clients.
         # inv = Inventory(root_id=gen_root_id())
         inv = self._initial_inventory()
-        wt = self._tree_class(a_controldir.root_transport.local_abspath('.'),
-                              branch,
-                              inv,
-                              _internal=True,
-                              _format=self,
-                              _controldir=a_controldir,
-                              _control_files=control_files)
+        wt = self._tree_class(
+            a_controldir.root_transport.local_abspath("."),
+            branch,
+            inv,
+            _internal=True,
+            _format=self,
+            _controldir=a_controldir,
+            _control_files=control_files,
+        )
         wt.lock_tree_write()
         try:
             basis_tree = branch.repository.revision_tree(revision_id)
             # only set an explicit root id if there is one to set.
-            if basis_tree.path2id('') is not None:
-                wt.set_root_id(basis_tree.path2id(''))
+            if basis_tree.path2id("") is not None:
+                wt.set_root_id(basis_tree.path2id(""))
             if revision_id == _mod_revision.NULL_REVISION:
                 wt.set_parent_trees([])
             else:
                 wt.set_parent_trees([(revision_id, basis_tree)])
             bzr_transform.build_tree(basis_tree, wt)
-            for hook in MutableTree.hooks['post_build_tree']:
+            for hook in MutableTree.hooks["post_build_tree"]:
                 hook(wt)
         finally:
             # Unlock in this order so that the unlock-triggers-flush in
@@ -262,8 +274,10 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
         :param a_controldir: the dir for the tree.
         :param control_files: the control files for the tree.
         """
-        return self._tree_class(a_controldir.root_transport.local_abspath('.'),
-                                _internal=True,
-                                _format=self,
-                                _controldir=a_controldir,
-                                _control_files=control_files)
+        return self._tree_class(
+            a_controldir.root_transport.local_abspath("."),
+            _internal=True,
+            _format=self,
+            _controldir=a_controldir,
+            _control_files=control_files,
+        )

@@ -21,13 +21,13 @@ from .. import rio
 
 
 def load_tests(loader, standard_tests, pattern):
-    suite, _ = tests.permute_tests_for_extension(standard_tests, loader,
-                                                 'breezy.bzr._rio_py', 'breezy.bzr._rio_pyx')
+    suite, _ = tests.permute_tests_for_extension(
+        standard_tests, loader, "breezy.bzr._rio_py", "breezy.bzr._rio_pyx"
+    )
     return suite
 
 
 class TestValidTag(tests.TestCase):
-
     module = None  # Filled in by test parameterization
 
     def test_ok(self):
@@ -57,7 +57,6 @@ class TestValidTag(tests.TestCase):
 
 
 class TestReadUTF8Stanza(tests.TestCase):
-
     module = None  # Filled in by test parameterization
 
     def assertReadStanza(self, result, line_iter):
@@ -84,8 +83,7 @@ class TestReadUTF8Stanza(tests.TestCase):
         self.assertReadStanza(rio.Stanza(foo="bar"), [b"foo: bar\n", b""])
 
     def test_multi_line(self):
-        self.assertReadStanza(
-            rio.Stanza(foo="bar\nbla"), [b"foo: bar\n", b"\tbla\n"])
+        self.assertReadStanza(rio.Stanza(foo="bar\nbla"), [b"foo: bar\n", b"\tbla\n"])
 
     def test_repeated(self):
         s = rio.Stanza()
@@ -104,9 +102,7 @@ class TestReadUTF8Stanza(tests.TestCase):
 
     def test_large(self):
         value = b"bla" * 9000
-        self.assertReadStanza(rio.Stanza(foo=value.decode()),
-                              [b"foo: %s\n" % value])
+        self.assertReadStanza(rio.Stanza(foo=value.decode()), [b"foo: %s\n" % value])
 
     def test_non_ascii_char(self):
-        self.assertReadStanza(rio.Stanza(foo="n\xe5me"),
-                              ["foo: n\xe5me\n".encode()])
+        self.assertReadStanza(rio.Stanza(foo="n\xe5me"), ["foo: n\xe5me\n".encode()])

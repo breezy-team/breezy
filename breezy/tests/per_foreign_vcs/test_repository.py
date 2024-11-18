@@ -17,26 +17,21 @@
 
 """Tests specific to Repository implementations that use foreign VCS'es."""
 
-
 from breezy.tests import (
     TestCase,
     TestCaseWithTransport,
-    )
+)
 
 
 class TestRepositoryFormat(TestCase):
-
     def test_format_string(self):
-        self.assertRaises(NotImplementedError,
-                          self.repository_format.get_format_string)
+        self.assertRaises(NotImplementedError, self.repository_format.get_format_string)
 
     def test_network_name(self):
-        self.assertIsInstance(self.repository_format.network_name(),
-                              bytes)
+        self.assertIsInstance(self.repository_format.network_name(), bytes)
 
     def test_format_description(self):
-        self.assertIsInstance(self.repository_format.get_format_description(),
-                              str)
+        self.assertIsInstance(self.repository_format.get_format_description(), str)
 
 
 class ForeignRepositoryFactory:

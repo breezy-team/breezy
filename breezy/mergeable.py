@@ -17,20 +17,24 @@
 from io import BytesIO
 
 from .lazy_import import lazy_import
-lazy_import(globals(), """
+
+lazy_import(
+    globals(),
+    """
 from breezy.i18n import gettext
-""")
+""",
+)
 
 from . import (
     errors,
     urlutils,
-    )
+)
 from .trace import note
 from .transport import (
     do_catching_redirections,
     get_transport,
     get_transport_from_url,
-    )
+)
 
 
 class Mergeable:
@@ -58,10 +62,11 @@ def read_mergeable_from_url(url, _do_directive=True, possible_transports=None):
         the target is not a mergeable type.
     """
     child_transport = get_transport(url, possible_transports=possible_transports)
-    transport = child_transport.clone('..')
+    transport = child_transport.clone("..")
     filename = transport.relpath(child_transport.base)
-    mergeable, transport = read_mergeable_from_transport(transport, filename,
-                                                         _do_directive)
+    mergeable, transport = read_mergeable_from_transport(
+        transport, filename, _do_directive
+    )
     return mergeable
 
 
@@ -71,15 +76,15 @@ def read_mergeable_from_transport(transport, filename, _do_directive=True):
 
     def redirected_transport(transport, exception, redirection_notice):
         note(redirection_notice)
-        url, filename = urlutils.split(exception.target,
-                                       exclude_trailing_slash=False)
+        url, filename = urlutils.split(exception.target, exclude_trailing_slash=False)
         if not filename:
-            raise errors.NotABundle(gettext('A directory cannot be a bundle'))
+            raise errors.NotABundle(gettext("A directory cannot be a bundle"))
         return get_transport_from_url(url)
 
     try:
         bytef, transport = do_catching_redirections(
-            get_bundle, transport, redirected_transport)
+            get_bundle, transport, redirected_transport
+        )
     except errors.TooManyRedirections:
         raise errors.NotABundle(transport.clone(filename).base)
     except (errors.ConnectionReset, errors.ConnectionError) as e:
@@ -98,10 +103,12 @@ def read_mergeable_from_transport(transport, filename, _do_directive=True):
 
     if _do_directive:
         from .merge_directive import MergeDirective
+
         try:
             return MergeDirective.from_lines(bytef), transport
         except errors.NotAMergeDirective:
             bytef.seek(0)
 
     from .bzr.bundle import serializer as _serializer
+
     return _serializer.read_bundle(bytef), transport

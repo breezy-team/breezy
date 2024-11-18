@@ -18,30 +18,30 @@ from ...builtins import cmd_push
 from .. import (
     transport_util,
     ui_testing,
-    )
+)
 
 
 class TestPush(transport_util.TestCaseWithConnectionHookedTransport):
-
     def test_push(self):
-        self.make_branch_and_tree('branch')
+        self.make_branch_and_tree("branch")
 
         self.start_logging_connections()
 
         cmd = cmd_push()
         # We don't care about the output but 'outf' should be defined
         cmd.outf = ui_testing.StringIOWithEncoding()
-        cmd.run(self.get_url('remote'), directory='branch')
+        cmd.run(self.get_url("remote"), directory="branch")
         self.assertEqual(1, len(self.connections))
 
     def test_push_onto_stacked(self):
-        self.make_branch_and_tree('base', format='1.9')
-        self.make_branch_and_tree('source', format='1.9')
+        self.make_branch_and_tree("base", format="1.9")
+        self.make_branch_and_tree("source", format="1.9")
 
         self.start_logging_connections()
 
         cmd = cmd_push()
         cmd.outf = ui_testing.StringIOWithEncoding()
-        cmd.run(self.get_url('remote'), directory='source',
-                stacked_on=self.get_url('base'))
+        cmd.run(
+            self.get_url("remote"), directory="source", stacked_on=self.get_url("base")
+        )
         self.assertEqual(1, len(self.connections))

@@ -24,31 +24,33 @@ from breezy.tests import TestNotApplicable
 
 
 class TestBranchReconcile(TestCaseWithBranch):
-
     def test_reconcile_fixes_invalid_revhistory(self):
         if not isinstance(self.branch_format, BzrBranch):
             raise TestNotApplicable("test only applies to bzr formats")
         # Different formats have different ways of handling invalid revision
         # histories, so the setup portion is customized
-        tree = self.make_branch_and_tree('test')
-        r1 = tree.commit('one')
-        r2 = tree.commit('two')
-        r3 = tree.commit('three')
-        r4 = tree.commit('four')
+        tree = self.make_branch_and_tree("test")
+        r1 = tree.commit("one")
+        r2 = tree.commit("two")
+        r3 = tree.commit("three")
+        r4 = tree.commit("four")
         # create an alternate branch
         tree.set_parent_ids([r1])
         tree.branch.set_last_revision_info(1, r1)
-        r2b = tree.commit('two-b')
+        r2b = tree.commit("two-b")
 
         # now go back and merge the commit
         tree.set_parent_ids([r4, r2b])
         tree.branch.set_last_revision_info(4, r4)
 
-        r5 = tree.commit('five')
+        r5 = tree.commit("five")
         # Now, try to set an invalid history
         try:
-            self.applyDeprecated(deprecated_in((2, 4, 0)),
-                                 tree.branch.set_revision_history, [r1, r2b, r5])
+            self.applyDeprecated(
+                deprecated_in((2, 4, 0)),
+                tree.branch.set_revision_history,
+                [r1, r2b, r5],
+            )
             if tree.branch.last_revision_info() != (3, r5):
                 # RemoteBranch silently corrects an impossible revision
                 # history given to set_revision_history.  It can be tricked
@@ -66,25 +68,24 @@ class TestBranchReconcile(TestCaseWithBranch):
         self.assertIs(True, reconciler.fixed_history)
 
     def test_reconcile_returns_reconciler(self):
-        a_branch = self.make_branch('a_branch')
+        a_branch = self.make_branch("a_branch")
         result = a_branch.reconcile()
         self.assertIsInstance(result, reconcile.ReconcileResult)
         # No history to fix
-        self.assertIs(False, getattr(result, 'fixed_history', False))
+        self.assertIs(False, getattr(result, "fixed_history", False))
 
     def test_reconcile_supports_thorough(self):
-        a_branch = self.make_branch('a_branch')
+        a_branch = self.make_branch("a_branch")
         a_branch.reconcile(thorough=False)
         a_branch.reconcile(thorough=True)
 
     def test_reconcile_handles_ghosts_in_revhistory(self):
-        tree = self.make_branch_and_tree('test')
+        tree = self.make_branch_and_tree("test")
         if not tree.branch.repository._format.supports_ghosts:
-            raise TestNotApplicable(
-                "repository format does not support ghosts")
+            raise TestNotApplicable("repository format does not support ghosts")
         tree.set_parent_ids([b"spooky"], allow_leftmost_as_ghost=True)
-        r1 = tree.commit('one')
-        r2 = tree.commit('two')
+        r1 = tree.commit("one")
+        r2 = tree.commit("two")
         tree.branch.set_last_revision_info(2, r2)
 
         reconciler = tree.branch.reconcile()

@@ -21,7 +21,7 @@ from . import (
     commit,
     errors,
     revision,
-    )
+)
 
 
 class BranchBuilder:
@@ -71,25 +71,27 @@ class BranchBuilder:
         """
         if branch is not None:
             if format is not None:
-                raise AssertionError(
-                    "branch and format kwargs are mutually exclusive")
+                raise AssertionError("branch and format kwargs are mutually exclusive")
             if transport is not None:
                 raise AssertionError(
-                    "branch and transport kwargs are mutually exclusive")
+                    "branch and transport kwargs are mutually exclusive"
+                )
             self._branch = branch
         else:
-            if not transport.has('.'):
-                transport.mkdir('.')
+            if not transport.has("."):
+                transport.mkdir(".")
             if format is None:
-                format = 'default'
+                format = "default"
             if isinstance(format, str):
                 format = controldir.format_registry.make_controldir(format)
             self._branch = controldir.ControlDir.create_branch_convenience(
-                transport.base, format=format, force_new_tree=False)
+                transport.base, format=format, force_new_tree=False
+            )
         self._tree = None
 
-    def build_commit(self, parent_ids=None, allow_leftmost_as_ghost=False,
-                     **commit_kwargs):
+    def build_commit(
+        self, parent_ids=None, allow_leftmost_as_ghost=False, **commit_kwargs
+    ):
         """Build a commit on the branch.
 
         This makes a commit with no real file content for when you only want
@@ -105,25 +107,26 @@ class BranchBuilder:
                 base_id = parent_ids[0]
             if base_id != self._branch.last_revision():
                 self._move_branch_pointer(
-                    base_id, allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+                    base_id, allow_leftmost_as_ghost=allow_leftmost_as_ghost
+                )
         tree = self._branch.create_memorytree()
         with tree.lock_write():
             if parent_ids is not None:
                 tree.set_parent_ids(
-                    parent_ids,
-                    allow_leftmost_as_ghost=allow_leftmost_as_ghost)
-            tree.add('')
+                    parent_ids, allow_leftmost_as_ghost=allow_leftmost_as_ghost
+                )
+            tree.add("")
             return self._do_commit(tree, **commit_kwargs)
 
     def _do_commit(self, tree, message=None, message_callback=None, **kwargs):
         reporter = commit.NullCommitReporter()
         if message is None and message_callback is None:
-            message = 'commit %d' % (self._branch.revno() + 1,)
-        return tree.commit(message, message_callback=message_callback,
-                           reporter=reporter, **kwargs)
+            message = "commit %d" % (self._branch.revno() + 1,)
+        return tree.commit(
+            message, message_callback=message_callback, reporter=reporter, **kwargs
+        )
 
-    def _move_branch_pointer(self, new_revision_id,
-                             allow_leftmost_as_ghost=False):
+    def _move_branch_pointer(self, new_revision_id, allow_leftmost_as_ghost=False):
         """Point self._branch to a different revision id."""
         with self._branch.lock_write():
             # We don't seem to have a simple set_last_revision(), so we
@@ -132,7 +135,8 @@ class BranchBuilder:
             try:
                 g = self._branch.repository.get_graph()
                 new_revno = g.find_distance_to_null(
-                    new_revision_id, [(cur_revision_id, cur_revno)])
+                    new_revision_id, [(cur_revision_id, cur_revno)]
+                )
                 self._branch.set_last_revision_info(new_revno, new_revision_id)
             except errors.GhostRevisionsHaveNoRevno:
                 if not allow_leftmost_as_ghost:
@@ -158,8 +162,9 @@ class BranchBuilder:
         Make sure to call 'finish_series' when you are done.
         """
         if self._tree is not None:
-            raise AssertionError('You cannot start a new series while a'
-                                 ' series is already going.')
+            raise AssertionError(
+                "You cannot start a new series while a" " series is already going."
+            )
         self._tree = self._branch.create_memorytree()
         self._tree.lock_write()
 
@@ -168,9 +173,18 @@ class BranchBuilder:
         self._tree.unlock()
         self._tree = None
 
-    def build_snapshot(self, parent_ids, actions, message=None, timestamp=None,
-                       allow_leftmost_as_ghost=False, committer=None,
-                       timezone=None, message_callback=None, revision_id=None):
+    def build_snapshot(
+        self,
+        parent_ids,
+        actions,
+        message=None,
+        timestamp=None,
+        allow_leftmost_as_ghost=False,
+        committer=None,
+        timezone=None,
+        message_callback=None,
+        revision_id=None,
+    ):
         """Build a commit, shaped in a specific way.
 
         Most of the actions are self-explanatory.  'flush' is special action to
@@ -206,7 +220,8 @@ class BranchBuilder:
                 base_id = parent_ids[0]
             if base_id != self._branch.last_revision():
                 self._move_branch_pointer(
-                    base_id, allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+                    base_id, allow_leftmost_as_ghost=allow_leftmost_as_ghost
+                )
 
         if self._tree is not None:
             tree = self._tree
@@ -215,17 +230,17 @@ class BranchBuilder:
         with tree.lock_write():
             if parent_ids is not None:
                 tree.set_parent_ids(
-                    parent_ids,
-                    allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+                    parent_ids, allow_leftmost_as_ghost=allow_leftmost_as_ghost
+                )
             # Unfortunately, MemoryTree.add(directory) just creates an
             # inventory entry. And the only public function to create a
             # directory is MemoryTree.mkdir() which creates the directory, but
             # also always adds it. So we have to use a multi-pass setup.
             pending = _PendingActions()
             for action, info in actions:
-                if action == 'add':
+                if action == "add":
                     path, file_id, kind, content = info
-                    if kind == 'directory':
+                    if kind == "directory":
                         pending.to_add_directories.append((path, file_id))
                     else:
                         pending.to_add_files.append(path)
@@ -233,38 +248,42 @@ class BranchBuilder:
                         pending.to_add_kinds.append(kind)
                         if content is not None:
                             pending.new_contents[path] = content
-                elif action == 'modify':
+                elif action == "modify":
                     path, content = info
                     pending.new_contents[path] = content
-                elif action == 'unversion':
+                elif action == "unversion":
                     pending.to_unversion_paths.add(info)
-                elif action == 'rename':
+                elif action == "rename":
                     from_relpath, to_relpath = info
                     pending.to_rename.append((from_relpath, to_relpath))
-                elif action == 'flush':
+                elif action == "flush":
                     self._flush_pending(tree, pending)
                     pending = _PendingActions()
                 else:
                     raise ValueError('Unknown build action: "{}"'.format(action))
             self._flush_pending(tree, pending)
             return self._do_commit(
-                tree, message=message, rev_id=revision_id,
-                timestamp=timestamp, timezone=timezone, committer=committer,
-                message_callback=message_callback)
+                tree,
+                message=message,
+                rev_id=revision_id,
+                timestamp=timestamp,
+                timezone=timezone,
+                committer=committer,
+                message_callback=message_callback,
+            )
 
     def _flush_pending(self, tree, pending):
         """Flush the pending actions in 'pending', i.e. apply them to tree."""
         for path, file_id in pending.to_add_directories:
-            if path == '':
-                if tree.has_filename(path) \
-                        and path in pending.to_unversion_paths:
+            if path == "":
+                if tree.has_filename(path) and path in pending.to_unversion_paths:
                     # We're overwriting this path, no need to unversion
                     pending.to_unversion_paths.discard(path)
                 # Special case, because the path already exists
                 if file_id is not None:
-                    tree.add([path], ['directory'], ids=[file_id])
+                    tree.add([path], ["directory"], ids=[file_id])
                 else:
-                    tree.add([path], ['directory'])
+                    tree.add([path], ["directory"])
             else:
                 if file_id is not None:
                     tree.mkdir(path, file_id)
@@ -275,8 +294,9 @@ class BranchBuilder:
         if pending.to_unversion_paths:
             tree.unversion(pending.to_unversion_paths)
         if tree.supports_file_ids:
-            tree.add(pending.to_add_files,
-                     pending.to_add_kinds, pending.to_add_file_ids)
+            tree.add(
+                pending.to_add_files, pending.to_add_kinds, pending.to_add_file_ids
+            )
         else:
             tree.add(pending.to_add_files, pending.to_add_kinds)
         for path, content in pending.new_contents.items():

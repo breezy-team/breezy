@@ -38,21 +38,27 @@ from ... import hooks
 from ...config import (
     option_registry,
     ListOption,
-    )
+)
 
 option_registry.register(
-    ListOption('commit.template_from_files', default=[], help="""\
+    ListOption(
+        "commit.template_from_files",
+        default=[],
+        help="""\
 List of fnmatch(2)-style shell file patterns to use when creating commit
 templates.
-"""))
+""",
+    )
+)
 
 
 def commit_template(commit, message):
     """Create a commit message for commit based on changes in the tree."""
     config_stack = commit.work_tree.get_config_stack()
-    filespec = config_stack.get('commit.template_from_files')
+    filespec = config_stack.get("commit.template_from_files")
     if filespec:
         from .committemplate import CommitTemplate
+
         template = CommitTemplate(commit, message, filespec)
         return template.make()
     return message
@@ -60,10 +66,13 @@ def commit_template(commit, message):
 
 def load_tests(loader, basic_tests, pattern):
     testmod_names = [
-        'tests',
-        ]
-    basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["{}.{}".format(__name__, tmn) for tmn in testmod_names]))
+        "tests",
+    ]
+    basic_tests.addTest(
+        loader.loadTestsFromModuleNames(
+            ["{}.{}".format(__name__, tmn) for tmn in testmod_names]
+        )
+    )
     return basic_tests
 
 
@@ -77,9 +86,12 @@ def register():
     # isolated.
     _registered = True
     hooks.install_lazy_named_hook(
-        'breezy.msgeditor', 'hooks',
-        'commit_message_template',
-        commit_template, 'commitfromnews template')
+        "breezy.msgeditor",
+        "hooks",
+        "commit_message_template",
+        commit_template,
+        "commitfromnews template",
+    )
 
 
 register()

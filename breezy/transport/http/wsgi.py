@@ -27,8 +27,14 @@ from ...transport import chroot, get_transport
 from ...urlutils import local_path_to_url
 
 
-def make_app(root, prefix, path_var='REQUEST_URI', readonly=True,
-             load_plugins=True, enable_logging=True):
+def make_app(
+    root,
+    prefix,
+    path_var="REQUEST_URI",
+    readonly=True,
+    load_plugins=True,
+    enable_logging=True,
+):
     """Convenience function to construct a WSGI bzr smart server.
 
     :param root: a local path that requests will be relative to.
@@ -37,17 +43,19 @@ def make_app(root, prefix, path_var='REQUEST_URI', readonly=True,
     """
     local_url = local_path_to_url(root)
     if readonly:
-        base_transport = get_transport('readonly+' + local_url)
+        base_transport = get_transport("readonly+" + local_url)
     else:
         base_transport = get_transport(local_url)
     if load_plugins:
         from ...plugin import load_plugins
+
         load_plugins()
     if enable_logging:
         import breezy.trace
+
         breezy.trace.enable_default_logging()
     app = SmartWSGIApp(base_transport, prefix)
-    app = RelpathSetter(app, '', path_var)
+    app = RelpathSetter(app, "", path_var)
     return app
 
 
@@ -66,7 +74,7 @@ class RelpathSetter:
     'breezy.relpath' variable to "repo/branch".
     """
 
-    def __init__(self, app, prefix='', path_var='REQUEST_URI'):
+    def __init__(self, app, prefix="", path_var="REQUEST_URI"):
         """Constructor.
 
         :param app: WSGI app to wrap, e.g. a SmartWSGIApp instance.
@@ -81,18 +89,18 @@ class RelpathSetter:
 
     def __call__(self, environ, start_response):
         path = environ[self.path_var]
-        suffix = '/.bzr/smart'
+        suffix = "/.bzr/smart"
         if not (path.startswith(self.prefix) and path.endswith(suffix)):
-            start_response('404 Not Found', [])
+            start_response("404 Not Found", [])
             return []
-        environ['breezy.relpath'] = path[len(self.prefix):-len(suffix)]
+        environ["breezy.relpath"] = path[len(self.prefix) : -len(suffix)]
         return self.app(environ, start_response)
 
 
 class SmartWSGIApp:
     """A WSGI application for the bzr smart server."""
 
-    def __init__(self, backing_transport, root_client_path='/'):
+    def __init__(self, backing_transport, root_client_path="/"):
         """Constructor.
 
         :param backing_transport: a transport.  Requests will be processed
@@ -118,16 +126,16 @@ class SmartWSGIApp:
 
     def __call__(self, environ, start_response):
         """WSGI application callable."""
-        if environ['REQUEST_METHOD'] != 'POST':
-            start_response('405 Method not allowed', [('Allow', 'POST')])
+        if environ["REQUEST_METHOD"] != "POST":
+            start_response("405 Method not allowed", [("Allow", "POST")])
             return []
 
-        relpath = environ['breezy.relpath']
+        relpath = environ["breezy.relpath"]
 
-        if not relpath.startswith('/'):
-            relpath = '/' + relpath
-        if not relpath.endswith('/'):
-            relpath += '/'
+        if not relpath.startswith("/"):
+            relpath = "/" + relpath
+        if not relpath.endswith("/"):
+            relpath += "/"
 
         # Compare the HTTP path (relpath) and root_client_path, and calculate
         # new relpath and root_client_path accordingly, to be used to build the
@@ -138,46 +146,48 @@ class SmartWSGIApp:
             # adjusted_rcp to None to tell the request handler that no further
             # path translation is required.
             adjusted_rcp = None
-            adjusted_relpath = relpath[len(self.root_client_path):]
+            adjusted_relpath = relpath[len(self.root_client_path) :]
         elif self.root_client_path.startswith(relpath):
             # The relpath traverses some of the mandatory root client path.
             # Subtract the relpath from the root_client_path, and set the
             # relpath to '.'.
-            adjusted_rcp = '/' + self.root_client_path[len(relpath):]
-            adjusted_relpath = '.'
+            adjusted_rcp = "/" + self.root_client_path[len(relpath) :]
+            adjusted_relpath = "."
         else:
             adjusted_rcp = self.root_client_path
             adjusted_relpath = relpath
 
-        if adjusted_relpath.startswith('/'):
+        if adjusted_relpath.startswith("/"):
             adjusted_relpath = adjusted_relpath[1:]
-        if adjusted_relpath.startswith('/'):
+        if adjusted_relpath.startswith("/"):
             raise AssertionError(adjusted_relpath)
 
         transport = self.backing_transport.clone(adjusted_relpath)
         out_buffer = BytesIO()
-        request_data_length = int(environ['CONTENT_LENGTH'])
-        request_data_bytes = environ['wsgi.input'].read(request_data_length)
+        request_data_length = int(environ["CONTENT_LENGTH"])
+        request_data_bytes = environ["wsgi.input"].read(request_data_length)
         smart_protocol_request = self.make_request(
-            transport, out_buffer.write, request_data_bytes,
-            adjusted_rcp)
+            transport, out_buffer.write, request_data_bytes, adjusted_rcp
+        )
         if smart_protocol_request.next_read_size() != 0:
             # The request appears to be incomplete, or perhaps it's just a
             # newer version we don't understand.  Regardless, all we can do
             # is return an error response in the format of our version of the
             # protocol.
-            response_data = b'error\x01incomplete request\n'
+            response_data = b"error\x01incomplete request\n"
         else:
             response_data = out_buffer.getvalue()
-        headers = [('Content-type', 'application/octet-stream')]
+        headers = [("Content-type", "application/octet-stream")]
         headers.append(("Content-Length", str(len(response_data))))
-        start_response('200 OK', headers)
+        start_response("200 OK", headers)
         return [response_data]
 
     def make_request(self, transport, write_func, request_bytes, rcp):
         protocol_factory, unused_bytes = medium._get_protocol_factory_for_bytes(
-            request_bytes)
+            request_bytes
+        )
         server_protocol = protocol_factory(
-            transport, write_func, rcp, self.backing_transport)
+            transport, write_func, rcp, self.backing_transport
+        )
         server_protocol.accept_bytes(unused_bytes)
         return server_protocol

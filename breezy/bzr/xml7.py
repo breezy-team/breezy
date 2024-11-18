@@ -16,7 +16,7 @@
 
 from . import (
     xml6,
-    )
+)
 
 
 class Serializer_v7(xml6.Serializer_v6):
@@ -24,8 +24,8 @@ class Serializer_v7(xml6.Serializer_v6):
 
     # this format is used by BzrBranch6
 
-    supported_kinds = {'file', 'directory', 'symlink', 'tree-reference'}
-    format_num = b'7'
+    supported_kinds = {"file", "directory", "symlink", "tree-reference"}
+    format_num = b"7"
 
 
 serializer_v7 = Serializer_v7()

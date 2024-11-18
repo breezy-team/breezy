@@ -59,29 +59,33 @@ from ... import (
     progress,
     trace,
     transport as _mod_transport,
-    )
+)
 
 from . import (
     helpers,
     marks_file,
-    )
+)
 
-lazy_import.lazy_import(globals(),
-                        """
+lazy_import.lazy_import(
+    globals(),
+    """
 from fastimport import commands
-""")
+""",
+)
 
 REVISIONS_CHUNK_SIZE = 1000
 
 
 def _get_output_stream(destination):
-    if destination is None or destination == '-':
+    if destination is None or destination == "-":
         return helpers.binary_stream(getattr(sys.stdout, "buffer", sys.stdout))
-    elif destination.endswith('.gz'):
+    elif destination.endswith(".gz"):
         import gzip
-        return gzip.open(destination, 'wb')
+
+        return gzip.open(destination, "wb")
     else:
-        return open(destination, 'wb')
+        return open(destination, "wb")
+
 
 # from dulwich.repo:
 
@@ -98,22 +102,22 @@ def check_ref_format(refname):
     """
     # These could be combined into one big expression, but are listed separately
     # to parallel [1].
-    if b'/.' in refname or refname.startswith(b'.'):
+    if b"/." in refname or refname.startswith(b"."):
         return False
-    if b'/' not in refname:
+    if b"/" not in refname:
         return False
-    if b'..' in refname:
+    if b".." in refname:
         return False
     for i in range(len(refname)):
-        if ord(refname[i:i + 1]) < 0o40 or refname[i] in b'\177 ~^:?*[':
+        if ord(refname[i : i + 1]) < 0o40 or refname[i] in b"\177 ~^:?*[":
             return False
-    if refname[-1] in b'/.':
+    if refname[-1] in b"/.":
         return False
-    if refname.endswith(b'.lock'):
+    if refname.endswith(b".lock"):
         return False
-    if b'@{' in refname:
+    if b"@{" in refname:
         return False
-    if b'\\' in refname:
+    if b"\\" in refname:
         return False
     return True
 
@@ -130,33 +134,46 @@ def sanitize_ref_name_for_git(refname):
     :return: new refname
     """
     import struct
+
     new_refname = re.sub(
         # '/.' in refname or startswith '.'
-        br"/\.|^\."
+        rb"/\.|^\."
         # '..' in refname
-        br"|\.\."
+        rb"|\.\."
         # ord(c) < 040
-        br"|[" + b"".join([bytes([x]) for x in range(0o40)]) + br"]"
+        rb"|[" + b"".join([bytes([x]) for x in range(0o40)]) + rb"]"
         # c in '\177 ~^:?*['
-        br"|[\177 ~^:?*[]"
+        rb"|[\177 ~^:?*[]"
         # last char in "/."
-        br"|[/.]$"
+        rb"|[/.]$"
         # endswith '.lock'
-        br"|.lock$"
+        rb"|.lock$"
         # "@{" in refname
-        br"|@{"
+        rb"|@{"
         # "\\" in refname
-        br"|\\",
-        b"_", refname)
+        rb"|\\",
+        b"_",
+        refname,
+    )
     return new_refname
 
 
 class BzrFastExporter:
-
-    def __init__(self, source, outf, ref=None, checkpoint=-1,
-                 import_marks_file=None, export_marks_file=None, revision=None,
-                 verbose=False, plain_format=False, rewrite_tags=False,
-                 no_tags=False, baseline=False):
+    def __init__(
+        self,
+        source,
+        outf,
+        ref=None,
+        checkpoint=-1,
+        import_marks_file=None,
+        export_marks_file=None,
+        revision=None,
+        verbose=False,
+        plain_format=False,
+        rewrite_tags=False,
+        no_tags=False,
+        baseline=False,
+    ):
         """Export branch data in fast import format.
 
         :param plain_format: if True, 'classic' fast-import format is
@@ -182,9 +199,10 @@ class BzrFastExporter:
         self.no_tags = no_tags
         self.baseline = baseline
         self.tree_cache = lru_cache.LRUCache(max_cache=20)
-        self._multi_author_api_available = hasattr(breezy.revision.Revision,
-                                                   'get_apparent_authors')
-        self.properties_to_exclude = ['authors', 'author']
+        self._multi_author_api_available = hasattr(
+            breezy.revision.Revision, "get_apparent_authors"
+        )
+        self.properties_to_exclude = ["authors", "author"]
 
         # Progress reporting stuff
         self.verbose = verbose
@@ -201,23 +219,27 @@ class BzrFastExporter:
         if self.import_marks_file:
             marks_info = marks_file.import_marks(self.import_marks_file)
             if marks_info is not None:
-                self.revid_to_mark = {r: m for m, r in
-                                          marks_info.items()}
+                self.revid_to_mark = {r: m for m, r in marks_info.items()}
                 # These are no longer included in the marks file
-                #self.branch_names = marks_info[1]
+                # self.branch_names = marks_info[1]
 
     def interesting_history(self):
         if self.revision:
             rev1, rev2 = builtins._get_revision_range(
-                self.revision, self.branch, "fast-export")
+                self.revision, self.branch, "fast-export"
+            )
             start_rev_id = rev1.rev_id
             end_rev_id = rev2.rev_id
         else:
             start_rev_id = None
             end_rev_id = None
         self.note("Calculating the revisions to include ...")
-        view_revisions = [rev_id for rev_id, _, _, _ in
-                          self.branch.iter_merge_sorted_revisions(end_rev_id, start_rev_id)]
+        view_revisions = [
+            rev_id
+            for rev_id, _, _, _ in self.branch.iter_merge_sorted_revisions(
+                end_rev_id, start_rev_id
+            )
+        ]
         view_revisions.reverse()
         # If a starting point was given, we need to later check that we don't
         # start emitting revisions from before that point. Collect the
@@ -225,7 +247,11 @@ class BzrFastExporter:
         if start_rev_id is not None:
             self.note("Calculating the revisions to exclude ...")
             self.excluded_revisions = {
-                rev_id for rev_id, _, _, _ in self.branch.iter_merge_sorted_revisions(start_rev_id)}
+                rev_id
+                for rev_id, _, _, _ in self.branch.iter_merge_sorted_revisions(
+                    start_rev_id
+                )
+            }
             if self.baseline:
                 # needed so the first relative commit knows its parent
                 self.excluded_revisions.remove(start_rev_id)
@@ -237,12 +263,14 @@ class BzrFastExporter:
             revobj = self.branch.repository.get_revision(interesting.pop(0))
             self.emit_baseline(revobj, self.ref)
         for i in range(0, len(interesting), REVISIONS_CHUNK_SIZE):
-            chunk = interesting[i:i + REVISIONS_CHUNK_SIZE]
+            chunk = interesting[i : i + REVISIONS_CHUNK_SIZE]
             history = dict(self.branch.repository.iter_revisions(chunk))
             trees_needed = set()
             trees = {}
             for revid in chunk:
-                trees_needed.update(self.preprocess_commit(revid, history[revid], self.ref))
+                trees_needed.update(
+                    self.preprocess_commit(revid, history[revid], self.ref)
+                )
 
             for tree in self._get_revision_trees(trees_needed):
                 trees[tree.get_revision_id()] = tree
@@ -260,8 +288,7 @@ class BzrFastExporter:
         with self.branch.repository.lock_read():
             interesting = self.interesting_history()
             self._commit_total = len(interesting)
-            self.note("Starting export of %d revisions ..." %
-                      self._commit_total)
+            self.note("Starting export of %d revisions ..." % self._commit_total)
             if not self.plain_format:
                 self.emit_features()
             self.emit_commits(interesting)
@@ -287,7 +314,7 @@ class BzrFastExporter:
         # Note: this is a separate method so tests can patch in a fixed value
         return time.strftime("%H:%M:%S")
 
-    def report_progress(self, commit_count, details=''):
+    def report_progress(self, commit_count, details=""):
         if commit_count and commit_count % self.progress_every == 0:
             if self._commit_total:
                 counts = "%d/%d" % (commit_count, self._commit_total)
@@ -304,9 +331,12 @@ class BzrFastExporter:
     def dump_stats(self):
         time_required = progress.str_tdelta(time.time() - self._start_time)
         rc = len(self.revid_to_mark)
-        self.note("Exported %d %s in %s",
-                  rc, helpers.single_plural(rc, "revision", "revisions"),
-                  time_required)
+        self.note(
+            "Exported %d %s in %s",
+            rc,
+            helpers.single_plural(rc, "revision", "revisions"),
+            time_required,
+        )
 
     def print_cmd(self, cmd):
         self.outf.write(b"%s\n" % cmd)
@@ -319,11 +349,10 @@ class BzrFastExporter:
     def is_empty_dir(self, tree, path):
         # Continue if path is not a directory
         try:
-            if tree.kind(path) != 'directory':
+            if tree.kind(path) != "directory":
                 return False
         except _mod_transport.NoSuchFile:
-            self.warning("Skipping empty_dir detection - no file_id for %s" %
-                         (path,))
+            self.warning("Skipping empty_dir detection - no file_id for %s" % (path,))
             return False
 
         # Use treewalk to find the contents of our directory
@@ -341,8 +370,7 @@ class BzrFastExporter:
         # Emit a full source tree of the first commit's parent
         mark = 1
         self.revid_to_mark[revobj.revision_id] = b"%d" % mark
-        tree_old = self.branch.repository.revision_tree(
-            breezy.revision.NULL_REVISION)
+        tree_old = self.branch.repository.revision_tree(breezy.revision.NULL_REVISION)
         [tree_new] = list(self._get_revision_trees([revobj.revision_id]))
         file_cmds = self._get_filecommands(tree_old, tree_new)
         self.print_cmd(commands.ResetCommand(ref, None))
@@ -366,8 +394,7 @@ class BzrFastExporter:
             parent = revobj.parent_ids[0]
 
         # Print the commit
-        self.revid_to_mark[revobj.revision_id] = b"%d" % (
-            len(self.revid_to_mark) + 1)
+        self.revid_to_mark[revobj.revision_id] = b"%d" % (len(self.revid_to_mark) + 1)
         return [parent, revobj.revision_id]
 
     def emit_commit(self, revobj, ref, tree_old, tree_new):
@@ -383,20 +410,23 @@ class BzrFastExporter:
         # Report progress and checkpoint if it's time for that
         ncommits = len(self.revid_to_mark)
         self.report_progress(ncommits)
-        if (self.checkpoint is not None and self.checkpoint > 0 and ncommits and
-                ncommits % self.checkpoint == 0):
-            self.note("Exported %i commits - adding checkpoint to output"
-                      % ncommits)
+        if (
+            self.checkpoint is not None
+            and self.checkpoint > 0
+            and ncommits
+            and ncommits % self.checkpoint == 0
+        ):
+            self.note("Exported %i commits - adding checkpoint to output" % ncommits)
             self._save_marks()
             self.print_cmd(commands.CheckpointCommand())
 
     def _get_name_email(self, user):
-        if user.find('<') == -1:
+        if user.find("<") == -1:
             # If the email isn't inside <>, we need to use it as the name
             # in order for things to round-trip correctly.
             # (note: parseaddr('a@b.com') => name:'', email: 'a@b.com')
             name = user
-            email = ''
+            email = ""
         else:
             name, email = parseaddr(user)
         return name.encode("utf-8"), email.encode("utf-8")
@@ -419,7 +449,8 @@ class BzrFastExporter:
             for a in more_authors:
                 name, email = self._get_name_email(a)
                 more_author_info.append(
-                    (name, email, revobj.timestamp, revobj.timezone))
+                    (name, email, revobj.timestamp, revobj.timezone)
+                )
         elif author != committer:
             name, email = self._get_name_email(author)
             author_info = (name, email, revobj.timestamp, revobj.timezone)
@@ -461,9 +492,17 @@ class BzrFastExporter:
 
         # Build and return the result
         return commands.CommitCommand(
-            git_ref, mark, author_info, committer_info,
-            revobj.message.encode("utf-8"), from_, merges, file_cmds,
-            more_authors=more_author_info, properties=properties)
+            git_ref,
+            mark,
+            author_info,
+            committer_info,
+            revobj.message.encode("utf-8"),
+            from_,
+            merges,
+            file_cmds,
+            more_authors=more_author_info,
+            properties=properties,
+        )
 
     def _get_revision_trees(self, revids):
         missing = []
@@ -495,14 +534,16 @@ class BzrFastExporter:
         # The potential interaction between renames and deletes is messy.
         # Handle it here ...
         file_cmds, rd_modifies, renamed = self._process_renames_and_deletes(
-            changes.renamed, changes.removed, tree_new.get_revision_id(), tree_old)
+            changes.renamed, changes.removed, tree_new.get_revision_id(), tree_old
+        )
 
         yield from file_cmds
 
         # Map kind changes to a delete followed by an add
         for change in changes.kind_changed:
             path = self._adjust_path_for_renames(
-                change.path[0], renamed, tree_new.get_revision_id())
+                change.path[0], renamed, tree_new.get_revision_id()
+            )
             # IGC: I don't understand why a delete is needed here.
             # In fact, it seems harmful? If you uncomment this line,
             # please file a bug explaining why you needed to.
@@ -512,35 +553,45 @@ class BzrFastExporter:
         # Record modifications
         files_to_get = []
         for change in changes.added + changes.copied + my_modified + rd_modifies:
-            if change.kind[1] == 'file':
+            if change.kind[1] == "file":
                 files_to_get.append(
-                    (change.path[1],
-                     (change.path[1], helpers.kind_to_mode(
-                         'file', change.executable[1]))))
-            elif change.kind[1] == 'symlink':
+                    (
+                        change.path[1],
+                        (
+                            change.path[1],
+                            helpers.kind_to_mode("file", change.executable[1]),
+                        ),
+                    )
+                )
+            elif change.kind[1] == "symlink":
                 yield commands.FileModifyCommand(
                     change.path[1].encode("utf-8"),
-                    helpers.kind_to_mode('symlink', False),
-                    None, tree_new.get_symlink_target(
-                        change.path[1]).encode('utf-8'))
-            elif change.kind[1] == 'directory':
+                    helpers.kind_to_mode("symlink", False),
+                    None,
+                    tree_new.get_symlink_target(change.path[1]).encode("utf-8"),
+                )
+            elif change.kind[1] == "directory":
                 if not self.plain_format:
                     yield commands.FileModifyCommand(
                         change.path[1].encode("utf-8"),
-                        helpers.kind_to_mode('directory', False), None,
-                        None)
+                        helpers.kind_to_mode("directory", False),
+                        None,
+                        None,
+                    )
             else:
-                self.warning("cannot export '%s' of kind %s yet - ignoring" %
-                             (change.path[1], change.kind[1]))
+                self.warning(
+                    "cannot export '%s' of kind %s yet - ignoring"
+                    % (change.path[1], change.kind[1])
+                )
 
         # TODO(jelmer): Improve performance on remote repositories
         # by using Repository.iter_files_bytes for bzr repositories here.
         for (path, mode), chunks in tree_new.iter_files_bytes(files_to_get):
             yield commands.FileModifyCommand(
-                path.encode("utf-8"), mode, None, b''.join(chunks))
+                path.encode("utf-8"), mode, None, b"".join(chunks)
+            )
 
-    def _process_renames_and_deletes(self, renames, deletes,
-                                     revision_id, tree_old):
+    def _process_renames_and_deletes(self, renames, deletes, revision_id, tree_old):
         file_cmds = []
         modifies = []
         renamed = []
@@ -569,15 +620,19 @@ class BzrFastExporter:
         old_to_new = {}
         deleted_paths = {change.path[0] for change in deletes}
         for change in renames:
-            emit = change.kind[1] != 'directory' or not self.plain_format
+            emit = change.kind[1] != "directory" or not self.plain_format
             if change.path[1] in deleted_paths:
                 if emit:
-                    file_cmds.append(commands.FileDeleteCommand(
-                        change.path[1].encode("utf-8")))
+                    file_cmds.append(
+                        commands.FileDeleteCommand(change.path[1].encode("utf-8"))
+                    )
                 deleted_paths.remove(change.path[1])
-            if (self.is_empty_dir(tree_old, change.path[0])):
-                self.note("Skipping empty dir {} in rev {}".format(change.path[0],
-                                                               revision_id))
+            if self.is_empty_dir(tree_old, change.path[0]):
+                self.note(
+                    "Skipping empty dir {} in rev {}".format(
+                        change.path[0], revision_id
+                    )
+                )
                 continue
             # oldpath = self._adjust_path_for_renames(oldpath, renamed,
             #    revision_id)
@@ -585,15 +640,20 @@ class BzrFastExporter:
             old_to_new[change.path[0]] = change.path[1]
             if emit:
                 file_cmds.append(
-                    commands.FileRenameCommand(change.path[0].encode("utf-8"), change.path[1].encode("utf-8")))
+                    commands.FileRenameCommand(
+                        change.path[0].encode("utf-8"), change.path[1].encode("utf-8")
+                    )
+                )
             if change.changed_content or change.meta_modified():
                 modifies.append(change)
 
             # Renaming a directory implies all children must be renamed.
             # Note: changes_from() doesn't handle this
-            if change.kind == ('directory', 'directory'):
-                for p, e in tree_old.iter_entries_by_dir(specific_files=[change.path[0]]):
-                    if e.kind == 'directory' and self.plain_format:
+            if change.kind == ("directory", "directory"):
+                for p, e in tree_old.iter_entries_by_dir(
+                    specific_files=[change.path[0]]
+                ):
+                    if e.kind == "directory" and self.plain_format:
                         continue
                     old_child_path = osutils.pathjoin(change.path[0], p)
                     new_child_path = osutils.pathjoin(change.path[1], p)
@@ -606,18 +666,24 @@ class BzrFastExporter:
             for old_child_path in sorted(still_to_be_renamed):
                 new_child_path = must_be_renamed[old_child_path]
                 if self.verbose:
-                    self.note("implicitly renaming {} => {}".format(old_child_path,
-                                                                new_child_path))
-                file_cmds.append(commands.FileRenameCommand(old_child_path.encode("utf-8"),
-                                                            new_child_path.encode("utf-8")))
+                    self.note(
+                        "implicitly renaming {} => {}".format(
+                            old_child_path, new_child_path
+                        )
+                    )
+                file_cmds.append(
+                    commands.FileRenameCommand(
+                        old_child_path.encode("utf-8"), new_child_path.encode("utf-8")
+                    )
+                )
 
         # Record remaining deletes
         for change in deletes:
             if change.path[0] not in deleted_paths:
                 continue
-            if change.kind[0] == 'directory' and self.plain_format:
+            if change.kind[0] == "directory" and self.plain_format:
                 continue
-            #path = self._adjust_path_for_renames(path, renamed, revision_id)
+            # path = self._adjust_path_for_renames(path, renamed, revision_id)
             file_cmds.append(commands.FileDeleteCommand(change.path[0].encode("utf-8")))
         return file_cmds, modifies, renamed
 
@@ -625,13 +691,16 @@ class BzrFastExporter:
         # If a previous rename is found, we should adjust the path
         for old, new in renamed:
             if path == old:
-                self.note("Changing path %s given rename to %s in revision %s"
-                          % (path, new, revision_id))
+                self.note(
+                    "Changing path %s given rename to %s in revision %s"
+                    % (path, new, revision_id)
+                )
                 path = new
-            elif path.startswith(old + '/'):
+            elif path.startswith(old + "/"):
                 self.note(
                     "Adjusting path %s given rename of %s to %s in revision %s"
-                    % (path, old, new, revision_id))
+                    % (path, old, new, revision_id)
+                )
                 path = path.replace(old + "/", new + "/")
         return path
 
@@ -640,18 +709,26 @@ class BzrFastExporter:
             try:
                 mark = self.revid_to_mark[revid]
             except KeyError:
-                self.warning('not creating tag %r pointing to non-existent '
-                             'revision %s' % (tag, revid))
+                self.warning(
+                    "not creating tag %r pointing to non-existent "
+                    "revision %s" % (tag, revid)
+                )
             else:
-                git_ref = b'refs/tags/%s' % tag.encode("utf-8")
+                git_ref = b"refs/tags/%s" % tag.encode("utf-8")
                 if self.plain_format and not check_ref_format(git_ref):
                     if self.rewrite_tags:
                         new_ref = sanitize_ref_name_for_git(git_ref)
-                        self.warning('tag %r is exported as %r to be valid in git.',
-                                     git_ref, new_ref)
+                        self.warning(
+                            "tag %r is exported as %r to be valid in git.",
+                            git_ref,
+                            new_ref,
+                        )
                         git_ref = new_ref
                     else:
-                        self.warning('not creating tag %r as its name would not be '
-                                     'valid in git.', git_ref)
+                        self.warning(
+                            "not creating tag %r as its name would not be "
+                            "valid in git.",
+                            git_ref,
+                        )
                         continue
                 self.print_cmd(commands.ResetCommand(git_ref, b":%s" % mark))

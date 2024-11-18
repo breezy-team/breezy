@@ -23,16 +23,15 @@ from breezy.tests.per_tree import TestCaseWithTree
 
 
 class TestIterSearchRules(TestCaseWithTree):
-
     def make_per_user_searcher(self, text):
         """Make a _RulesSearcher from a string"""
         return rules._IniBasedRulesSearcher(text.splitlines(True))
 
     def make_tree_with_rules(self, text):
-        tree = self.make_branch_and_tree('.')
+        tree = self.make_branch_and_tree(".")
         if text is not None:
             self.fail("No method for in-tree rules agreed on yet.")
-            text_utf8 = text.encode('utf-8')
+            text_utf8 = text.encode("utf-8")
             self.build_tree_contents([(rules.RULES_TREE_FILENAME, text_utf8)])
             tree.add(rules.RULES_TREE_FILENAME)
             tree.commit("add rules file")
@@ -43,35 +42,33 @@ class TestIterSearchRules(TestCaseWithTree):
 
     def test_iter_search_rules_no_tree(self):
         per_user = self.make_per_user_searcher(
-            "[name ./a.txt]\nfoo=baz\n"
-            "[name *.txt]\nfoo=bar\na=True\n")
+            "[name ./a.txt]\nfoo=baz\n" "[name *.txt]\nfoo=bar\na=True\n"
+        )
         tree = self.make_tree_with_rules(None)
-        result = list(tree.iter_search_rules(['a.txt', 'dir/a.txt'],
-                                             _default_searcher=per_user))
-        self.assertEqual((('foo', 'baz'),), result[0])
-        self.assertEqual((('foo', 'bar'), ('a', 'True')), result[1])
+        result = list(
+            tree.iter_search_rules(["a.txt", "dir/a.txt"], _default_searcher=per_user)
+        )
+        self.assertEqual((("foo", "baz"),), result[0])
+        self.assertEqual((("foo", "bar"), ("a", "True")), result[1])
 
     def _disabled_test_iter_search_rules_just_tree(self):
-        per_user = self.make_per_user_searcher('')
+        per_user = self.make_per_user_searcher("")
         tree = self.make_tree_with_rules(
-            "[name ./a.txt]\n"
-            "foo=baz\n"
-            "[name *.txt]\n"
-            "foo=bar\n"
-            "a=True\n")
-        result = list(tree.iter_search_rules(['a.txt', 'dir/a.txt'],
-                                             _default_searcher=per_user))
-        self.assertEqual((('foo', 'baz'),), result[0])
-        self.assertEqual((('foo', 'bar'), ('a', 'True')), result[1])
+            "[name ./a.txt]\n" "foo=baz\n" "[name *.txt]\n" "foo=bar\n" "a=True\n"
+        )
+        result = list(
+            tree.iter_search_rules(["a.txt", "dir/a.txt"], _default_searcher=per_user)
+        )
+        self.assertEqual((("foo", "baz"),), result[0])
+        self.assertEqual((("foo", "bar"), ("a", "True")), result[1])
 
     def _disabled_test_iter_search_rules_tree_and_per_user(self):
         per_user = self.make_per_user_searcher(
-            "[name ./a.txt]\nfoo=baz\n"
-            "[name *.txt]\nfoo=bar\na=True\n")
-        tree = self.make_tree_with_rules(
-            "[name ./a.txt]\n"
-            "foo=qwerty\n")
-        result = list(tree.iter_search_rules(['a.txt', 'dir/a.txt'],
-                                             _default_searcher=per_user))
-        self.assertEqual((('foo', 'qwerty'),), result[0])
-        self.assertEqual((('foo', 'bar'), ('a', 'True')), result[1])
+            "[name ./a.txt]\nfoo=baz\n" "[name *.txt]\nfoo=bar\na=True\n"
+        )
+        tree = self.make_tree_with_rules("[name ./a.txt]\n" "foo=qwerty\n")
+        result = list(
+            tree.iter_search_rules(["a.txt", "dir/a.txt"], _default_searcher=per_user)
+        )
+        self.assertEqual((("foo", "qwerty"),), result[0])
+        self.assertEqual((("foo", "bar"), ("a", "True")), result[1])

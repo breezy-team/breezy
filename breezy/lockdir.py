@@ -119,7 +119,7 @@ from . import (
     osutils,
     ui,
     urlutils,
-    )
+)
 from .decorators import only_raises
 from .errors import (
     DirectoryNotEmpty,
@@ -132,14 +132,14 @@ from .errors import (
     PathError,
     ResourceBusy,
     TransportError,
-    )
+)
 from .i18n import gettext
 from .osutils import format_delta, rand_chars, get_host_name
 from .trace import mutter, note
 from .transport import (
     FileExists,
     NoSuchFile,
-    )
+)
 
 
 # XXX: At the moment there is no consideration of thread safety on LockDir
@@ -162,13 +162,18 @@ _DEFAULT_POLL_SECONDS = 1.0
 
 
 class LockDir(lock.Lock):
-    """Write-lock guarding access to data.
-    """
+    """Write-lock guarding access to data."""
 
-    __INFO_NAME = '/info'
+    __INFO_NAME = "/info"
 
-    def __init__(self, transport, path, file_modebits=0o644,
-                 dir_modebits=0o755, extra_holder_info=None):
+    def __init__(
+        self,
+        transport,
+        path,
+        file_modebits=0o644,
+        dir_modebits=0o755,
+        extra_holder_info=None,
+    ):
         """Create a new LockDir object.
 
         The LockDir is initially unlocked - this just creates the object.
@@ -187,7 +192,7 @@ class LockDir(lock.Lock):
         self._lock_held = False
         self._locked_via_token = False
         self._fake_read_lock = False
-        self._held_dir = path + '/held'
+        self._held_dir = path + "/held"
         self._held_info_path = self._held_dir + self.__INFO_NAME
         self._file_modebits = file_modebits
         self._dir_modebits = dir_modebits
@@ -196,9 +201,9 @@ class LockDir(lock.Lock):
         self._warned_about_lock_holder = None
 
     def __repr__(self):
-        return '{}({}{})'.format(self.__class__.__name__,
-                             self.transport.base,
-                             self.path)
+        return "{}({}{})".format(
+            self.__class__.__name__, self.transport.base, self.path
+        )
 
     is_held = property(lambda self: self._lock_held)
 
@@ -240,8 +245,13 @@ class LockDir(lock.Lock):
             try:
                 self.transport.rename(tmpname, self._held_dir)
                 break
-            except (errors.TransportError, PathError, DirectoryNotEmpty,
-                    FileExists, ResourceBusy) as e:
+            except (
+                errors.TransportError,
+                PathError,
+                DirectoryNotEmpty,
+                FileExists,
+                ResourceBusy,
+            ) as e:
                 self._trace("... contention, %s", e)
                 other_holder = self.peek()
                 self._trace("other holder is %r" % other_holder)
@@ -268,15 +278,14 @@ class LockDir(lock.Lock):
         info = self.peek()
         self._trace("after locking, info=%r", info)
         if info is None:
-            raise LockFailed(self, "lock was renamed into place, but "
-                             "now is missing!")
+            raise LockFailed(
+                self, "lock was renamed into place, but " "now is missing!"
+            )
         if info.nonce != self.nonce:
-            self._trace("rename succeeded, "
-                        "but lock is still held by someone else")
+            self._trace("rename succeeded, " "but lock is still held by someone else")
             raise LockContention(self)
         self._lock_held = True
-        self._trace("... lock succeeded after %dms",
-                    (time.time() - start_time) * 1000)
+        self._trace("... lock succeeded after %dms", (time.time() - start_time) * 1000)
         return self.nonce
 
     def _handle_lock_contention(self, other_holder):
@@ -292,13 +301,14 @@ class LockDir(lock.Lock):
             it might be None if the lock can be seen to be held but the info
             can't be read.
         """
-        if (other_holder is not None):
+        if other_holder is not None:
             if other_holder.is_lock_holder_known_dead():
-                if self.get_config().get('locks.steal_dead'):
+                if self.get_config().get("locks.steal_dead"):
                     ui.ui_factory.show_user_warning(
-                        'locks_steal_dead',
+                        "locks_steal_dead",
                         lock_url=urlutils.join(self.transport.base, self.path),
-                        other_holder_info=str(other_holder))
+                        other_holder_info=str(other_holder),
+                    )
                     self.force_break(other_holder)
                     self._trace("stole lock from dead holder")
                     return
@@ -318,7 +328,7 @@ class LockDir(lock.Lock):
             note(gettext("error removing pending lock: %s"), e)
 
     def _create_pending_dir(self):
-        tmpname = '{}/{}.tmp'.format(self.path, rand_chars(10))
+        tmpname = "{}/{}.tmp".format(self.path, rand_chars(10))
         try:
             self.transport.mkdir(tmpname)
         except NoSuchFile:
@@ -335,14 +345,12 @@ class LockDir(lock.Lock):
         # directory so we don't have to worry about files existing there.
         # We'll rename the whole directory into place to get atomic
         # properties
-        self.transport.put_bytes_non_atomic(tmpname + self.__INFO_NAME,
-                                            info.to_bytes())
+        self.transport.put_bytes_non_atomic(tmpname + self.__INFO_NAME, info.to_bytes())
         return tmpname
 
     @only_raises(LockNotHeld, LockBroken)
     def unlock(self):
-        """Release a held lock
-        """
+        """Release a held lock"""
         if self._fake_read_lock:
             self._fake_read_lock = False
             return
@@ -357,7 +365,7 @@ class LockDir(lock.Lock):
             # whole tree
             start_time = time.time()
             self._trace("unlocking")
-            tmpname = '{}/releasing.{}.tmp'.format(self.path, rand_chars(20))
+            tmpname = "{}/releasing.{}.tmp".format(self.path, rand_chars(20))
             # gotta own it to unlock
             self.confirm()
             self.transport.rename(self._held_dir, tmpname)
@@ -370,14 +378,15 @@ class LockDir(lock.Lock):
                 # another locker within the 'held' directory.  do a slower
                 # deletion where we list the directory and remove everything
                 # within it.
-                self._trace("doing recursive deletion of non-empty directory "
-                            "%s", tmpname)
+                self._trace(
+                    "doing recursive deletion of non-empty directory " "%s", tmpname
+                )
                 self.transport.delete_tree(tmpname)
-            self._trace("... unlock succeeded after %dms",
-                        (time.time() - start_time) * 1000)
-            result = lock.LockResult(self.transport.abspath(self.path),
-                                     old_nonce)
-            for hook in self.hooks['lock_released']:
+            self._trace(
+                "... unlock succeeded after %dms", (time.time() - start_time) * 1000
+            )
+            result = lock.LockResult(self.transport.abspath(self.path), old_nonce)
+            for hook in self.hooks["lock_released"]:
                 hook(result)
 
     def break_lock(self):
@@ -401,11 +410,11 @@ class LockDir(lock.Lock):
         if holder_info is not None:
             if ui.ui_factory.confirm_action(
                 "Break %(lock_info)s",
-                'breezy.lockdir.break',
-                    dict(lock_info=str(holder_info))):
+                "breezy.lockdir.break",
+                dict(lock_info=str(holder_info)),
+            ):
                 result = self.force_break(holder_info)
-                ui.ui_factory.show_message(
-                    "Broke lock %s" % result.lock_url)
+                ui.ui_factory.show_message("Broke lock %s" % result.lock_url)
 
     def force_break(self, dead_holder_info):
         """Release a lock held by another process.
@@ -435,7 +444,7 @@ class LockDir(lock.Lock):
             return
         if current_info != dead_holder_info:
             raise LockBreakMismatch(self, current_info, dead_holder_info)
-        tmpname = '{}/broken.{}.tmp'.format(self.path, rand_chars(20))
+        tmpname = "{}/broken.{}.tmp".format(self.path, rand_chars(20))
         self.transport.rename(self._held_dir, tmpname)
         # check that we actually broke the right lock, not someone else;
         # there's a small race window between checking it and doing the
@@ -446,9 +455,8 @@ class LockDir(lock.Lock):
             raise LockBreakMismatch(self, broken_info, dead_holder_info)
         self.transport.delete(broken_info_path)
         self.transport.rmdir(tmpname)
-        result = lock.LockResult(self.transport.abspath(self.path),
-                                 current_info.nonce)
-        for hook in self.hooks['lock_broken']:
+        result = lock.LockResult(self.transport.abspath(self.path), current_info.nonce)
+        for hook in self.hooks["lock_broken"]:
             hook(result)
         return result
 
@@ -465,7 +473,7 @@ class LockDir(lock.Lock):
         # XXX: this copes with unparsable info files, but what about missing
         # info files?  Or missing lock dirs?
         self._check_not_locked()
-        tmpname = '{}/broken.{}.tmp'.format(self.path, rand_chars(20))
+        tmpname = "{}/broken.{}.tmp".format(self.path, rand_chars(20))
         self.transport.rename(self._held_dir, tmpname)
         # check that we actually broke the right lock, not someone else;
         # there's a small race window between checking it and doing the
@@ -478,7 +486,7 @@ class LockDir(lock.Lock):
         self.transport.delete(broken_info_path)
         self.transport.rmdir(tmpname)
         result = lock.LockResult(self.transport.abspath(self.path))
-        for hook in self.hooks['lock_broken']:
+        for hook in self.hooks["lock_broken"]:
             hook(result)
 
     def _check_not_locked(self):
@@ -511,8 +519,7 @@ class LockDir(lock.Lock):
 
         peek() reads the info file of the lock holder, if any.
         """
-        return LockHeldInfo.from_info_file_bytes(
-            self.transport.get_bytes(path))
+        return LockHeldInfo.from_info_file_bytes(self.transport.get_bytes(path))
 
     def peek(self):
         """Check if the lock is held by anyone.
@@ -529,8 +536,7 @@ class LockDir(lock.Lock):
             self._trace("peek -> not held")
 
     def _prepare_info(self):
-        """Write information about a pending lock to a temporary file.
-        """
+        """Write information about a pending lock to a temporary file."""
 
     def attempt_lock(self):
         """Take the lock; fail if it's already held.
@@ -544,9 +550,8 @@ class LockDir(lock.Lock):
         if self._fake_read_lock:
             raise LockContention(self)
         result = self._attempt_lock()
-        hook_result = lock.LockResult(self.transport.abspath(self.path),
-                                      self.nonce)
-        for hook in self.hooks['lock_acquired']:
+        hook_result = lock.LockResult(self.transport.abspath(self.path), self.nonce)
+        for hook in self.hooks["lock_acquired"]:
             hook(hook_result)
         return result
 
@@ -555,10 +560,10 @@ class LockDir(lock.Lock):
         # As local lock urls are correct we display them.
         # We avoid displaying remote lock urls.
         lock_url = self.transport.abspath(self.path)
-        if lock_url.startswith('file://'):
-            lock_url = lock_url.split('.bzr/')[0]
+        if lock_url.startswith("file://"):
+            lock_url = lock_url.split(".bzr/")[0]
         else:
-            lock_url = ''
+            lock_url = ""
         return lock_url
 
     def wait_lock(self, timeout=None, poll=None, max_attempts=None):
@@ -607,20 +612,22 @@ class LockDir(lock.Lock):
             new_info = self.peek()
             if new_info is not None and new_info != last_info:
                 if last_info is None:
-                    start = gettext('Unable to obtain')
+                    start = gettext("Unable to obtain")
                 else:
-                    start = gettext('Lock owner changed for')
+                    start = gettext("Lock owner changed for")
                 last_info = new_info
-                msg = gettext('{0} lock {1} {2}.').format(start, lock_url,
-                                                          new_info)
+                msg = gettext("{0} lock {1} {2}.").format(start, lock_url, new_info)
                 if deadline_str is None:
-                    deadline_str = time.strftime('%H:%M:%S',
-                                                 time.localtime(deadline))
+                    deadline_str = time.strftime("%H:%M:%S", time.localtime(deadline))
                 if timeout > 0:
-                    msg += '\n' + gettext(
-                        'Will continue to try until %s, unless '
-                        'you press Ctrl-C.') % deadline_str
-                msg += '\n' + gettext('See "brz help break-lock" for more.')
+                    msg += (
+                        "\n"
+                        + gettext(
+                            "Will continue to try until %s, unless " "you press Ctrl-C."
+                        )
+                        % deadline_str
+                    )
+                msg += "\n" + gettext('See "brz help break-lock" for more.')
                 self._report_function(msg)
             if (max_attempts is not None) and (attempt_count >= max_attempts):
                 self._trace("exceeded %d attempts")
@@ -633,7 +640,7 @@ class LockDir(lock.Lock):
                 # this block is applicable only for local
                 # lock contention
                 self._trace("timeout after waiting %ss", timeout)
-                raise LockContention('(local)', lock_url)
+                raise LockContention("(local)", lock_url)
 
     def leave_in_place(self):
         self._locked_via_token = True
@@ -696,7 +703,7 @@ class LockDir(lock.Lock):
                 self._trace("revalidated by token %r", token)
 
     def _trace(self, format, *args):
-        if 'lock' not in debug.debug_flags:
+        if "lock" not in debug.debug_flags:
             return
         mutter(str(self) + ": " + (format % args))
 
@@ -727,9 +734,13 @@ class LockHeldInfo:
     def __str__(self):
         """Return a user-oriented description of this object."""
         d = self.to_readable_dict()
-        return (gettext(
-            'held by %(user)s on %(hostname)s (process #%(pid)s), '
-            'acquired %(time_ago)s') % d)
+        return (
+            gettext(
+                "held by %(user)s on %(hostname)s (process #%(pid)s), "
+                "acquired %(time_ago)s"
+            )
+            % d
+        )
 
     def to_readable_dict(self):
         """Turn the holder info into a dict of human-readable attributes.
@@ -740,25 +751,20 @@ class LockHeldInfo:
         Returns a list of [user, hostname, pid, time_ago] all as readable
         strings.
         """
-        start_time = self.info_dict.get('start_time')
+        start_time = self.info_dict.get("start_time")
         if start_time is None:
-            time_ago = '(unknown)'
+            time_ago = "(unknown)"
         else:
-            time_ago = format_delta(
-                time.time() - self.info_dict['start_time'])
-        user = self.info_dict.get('user', '<unknown>')
-        hostname = self.info_dict.get('hostname', '<unknown>')
-        pid = self.info_dict.get('pid', '<unknown>')
-        return dict(
-            user=user,
-            hostname=hostname,
-            pid=pid,
-            time_ago=time_ago)
+            time_ago = format_delta(time.time() - self.info_dict["start_time"])
+        user = self.info_dict.get("user", "<unknown>")
+        hostname = self.info_dict.get("hostname", "<unknown>")
+        pid = self.info_dict.get("pid", "<unknown>")
+        return dict(user=user, hostname=hostname, pid=pid, time_ago=time_ago)
 
     @property
     def nonce(self):
-        nonce = self.get('nonce')
-        return nonce.encode('ascii') if nonce else None
+        nonce = self.get("nonce")
+        return nonce.encode("ascii") if nonce else None
 
     def get(self, field_name):
         """Return the contents of a field from the lock info, or None."""
@@ -766,21 +772,20 @@ class LockHeldInfo:
 
     @classmethod
     def for_this_process(cls, extra_holder_info):
-        """Return a new LockHeldInfo for a lock taken by this process.
-        """
+        """Return a new LockHeldInfo for a lock taken by this process."""
         info = dict(
             hostname=get_host_name(),
             pid=os.getpid(),
             nonce=rand_chars(20),
             start_time=int(time.time()),
             user=get_username_for_lock_info(),
-            )
+        )
         if extra_holder_info is not None:
             info.update(extra_holder_info)
         return cls(info)
 
     def to_bytes(self):
-        return yaml.dump(self.info_dict).encode('utf-8')
+        return yaml.dump(self.info_dict).encode("utf-8")
 
     @classmethod
     def from_info_file_bytes(cls, info_file_bytes):
@@ -789,9 +794,8 @@ class LockHeldInfo:
             ret = yaml.safe_load(info_file_bytes)
         except yaml.reader.ReaderError as e:
             lines = osutils.split_lines(info_file_bytes)
-            mutter('Corrupt lock info file: %r', lines)
-            raise LockCorrupt("could not parse lock info file: " + str(e),
-                              lines)
+            mutter("Corrupt lock info file: %r", lines)
+            raise LockCorrupt("could not parse lock info file: " + str(e), lines)
         if ret is None:
             # see bug 185013; we fairly often end up with the info file being
             # empty after an interruption; we could log a message here but
@@ -815,9 +819,10 @@ class LockHeldInfo:
     def is_locked_by_this_process(self):
         """True if this process seems to be the current lock holder."""
         return (
-            self.get('hostname') == get_host_name()
-            and self.get('pid') == os.getpid()
-            and self.get('user') == get_username_for_lock_info())
+            self.get("hostname") == get_host_name()
+            and self.get("pid") == os.getpid()
+            and self.get("user") == get_username_for_lock_info()
+        )
 
     def is_lock_holder_known_dead(self):
         """True if the lock holder process is known to be dead.
@@ -831,24 +836,23 @@ class LockHeldInfo:
         This doesn't check whether the lock holder is in fact the same process
         calling this method.  (In that case it will return true.)
         """
-        if self.get('hostname') != get_host_name():
+        if self.get("hostname") != get_host_name():
             return False
-        if self.get('hostname') == 'localhost':
+        if self.get("hostname") == "localhost":
             # Too ambiguous.
             return False
-        if self.get('user') != get_username_for_lock_info():
+        if self.get("user") != get_username_for_lock_info():
             # Could well be another local process by a different user, but
             # just to be safe we won't conclude about this either.
             return False
-        pid_str = self.info_dict.get('pid', None)
+        pid_str = self.info_dict.get("pid", None)
         if not pid_str:
             mutter("no pid recorded in {!r}".format(self))
             return False
         try:
             pid = int(pid_str)
         except ValueError:
-            mutter("can't parse pid %r from %r"
-                   % (pid_str, self))
+            mutter("can't parse pid %r from %r" % (pid_str, self))
             return False
         return osutils.is_local_pid_dead(pid)
 
@@ -860,6 +864,6 @@ def get_username_for_lock_info():
     as it gives some clue who the user is.
     """
     try:
-        return config.GlobalStack().get('email')
+        return config.GlobalStack().get("email")
     except errors.NoWhoami:
         return osutils.getuser_unicode()

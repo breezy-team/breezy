@@ -24,26 +24,24 @@ from ...transport import transport_server_registry
 from ...tests import (
     TestCase,
     TestCaseWithTransport,
-    )
+)
 
 from ..server import (
     BzrBackend,
     BzrTCPGitServer,
-    )
+)
 
 
 class TestPresent(TestCase):
-
     def test_present(self):
         # Just test that the server is registered.
-        transport_server_registry.get('git')
+        transport_server_registry.get("git")
 
 
 class GitServerTestCase(TestCaseWithTransport):
-
     def start_server(self, t):
         backend = BzrBackend(t)
-        server = BzrTCPGitServer(backend, 'localhost', port=0)
+        server = BzrTCPGitServer(backend, "localhost", port=0)
         self.addCleanup(server.shutdown)
         thread = threading.Thread(target=server.serve).start()
         self._server = server
@@ -52,48 +50,43 @@ class GitServerTestCase(TestCaseWithTransport):
 
 
 class TestPlainFetch(GitServerTestCase):
-
     def test_fetch_from_native_git(self):
-        wt = self.make_branch_and_tree('t', format='git')
-        self.build_tree(['t/foo'])
-        wt.add('foo')
+        wt = self.make_branch_and_tree("t", format="git")
+        self.build_tree(["t/foo"])
+        wt.add("foo")
         revid = wt.commit(message="some data")
         wt.branch.tags.set_tag("atag", revid)
-        t = self.get_transport('t')
+        t = self.get_transport("t")
         port = self.start_server(t)
-        c = TCPGitClient('localhost', port=port)
-        gitrepo = Repo.init('gitrepo', mkdir=True)
-        result = c.fetch('/', gitrepo)
+        c = TCPGitClient("localhost", port=port)
+        gitrepo = Repo.init("gitrepo", mkdir=True)
+        result = c.fetch("/", gitrepo)
         self.assertEqual(
-            set(result.refs.keys()),
-            {b"refs/tags/atag", b'refs/heads/master', b"HEAD"})
+            set(result.refs.keys()), {b"refs/tags/atag", b"refs/heads/master", b"HEAD"}
+        )
 
     def test_fetch_nothing(self):
-        wt = self.make_branch_and_tree('t')
-        self.build_tree(['t/foo'])
-        wt.add('foo')
+        wt = self.make_branch_and_tree("t")
+        self.build_tree(["t/foo"])
+        wt.add("foo")
         revid = wt.commit(message="some data")
         wt.branch.tags.set_tag("atag", revid)
-        t = self.get_transport('t')
+        t = self.get_transport("t")
         port = self.start_server(t)
-        c = TCPGitClient('localhost', port=port)
-        gitrepo = Repo.init('gitrepo', mkdir=True)
-        result = c.fetch('/', gitrepo, determine_wants=lambda x: [])
-        self.assertEqual(
-            set(result.refs.keys()),
-            {b"refs/tags/atag", b"HEAD"})
+        c = TCPGitClient("localhost", port=port)
+        gitrepo = Repo.init("gitrepo", mkdir=True)
+        result = c.fetch("/", gitrepo, determine_wants=lambda x: [])
+        self.assertEqual(set(result.refs.keys()), {b"refs/tags/atag", b"HEAD"})
 
     def test_fetch_from_non_git(self):
-        wt = self.make_branch_and_tree('t', format='bzr')
-        self.build_tree(['t/foo'])
-        wt.add('foo')
+        wt = self.make_branch_and_tree("t", format="bzr")
+        self.build_tree(["t/foo"])
+        wt.add("foo")
         revid = wt.commit(message="some data")
         wt.branch.tags.set_tag("atag", revid)
-        t = self.get_transport('t')
+        t = self.get_transport("t")
         port = self.start_server(t)
-        c = TCPGitClient('localhost', port=port)
-        gitrepo = Repo.init('gitrepo', mkdir=True)
-        result = c.fetch('/', gitrepo)
-        self.assertEqual(
-            set(result.refs.keys()),
-            {b"refs/tags/atag", b"HEAD"})
+        c = TCPGitClient("localhost", port=port)
+        gitrepo = Repo.init("gitrepo", mkdir=True)
+        result = c.fetch("/", gitrepo)
+        self.assertEqual(set(result.refs.keys()), {b"refs/tags/atag", b"HEAD"})

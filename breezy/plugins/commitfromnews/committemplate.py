@@ -21,11 +21,10 @@ import patiencediff
 from ... import bugtracker, osutils
 import re
 
-_BUG_MATCH = re.compile(r'lp:(\d+)')
+_BUG_MATCH = re.compile(r"lp:(\d+)")
 
 
 class CommitTemplate:
-
     def __init__(self, commit, message, filespec):
         """Create a commit template for commit with initial message message.
 
@@ -58,8 +57,10 @@ class CommitTemplate:
             # New file
             _, new_chunks = next(
                 self.commit.builder.repository.iter_files_bytes(
-                    [(found_entry.file_id, found_entry.revision, None)]))
-            content = b''.join(new_chunks).decode('utf-8')
+                    [(found_entry.file_id, found_entry.revision, None)]
+                )
+            )
+            content = b"".join(new_chunks).decode("utf-8")
             return self.merge_message(content)
         else:
             # Get a diff. XXX Is this hookable? I thought it was, can't find it
@@ -69,35 +70,37 @@ class CommitTemplate:
             # changed in new version of the file. So for now a direct diff
             # using patiencediff is done.
             old_revision = self.commit.basis_tree.get_file_revision(old_path)
-            needed = [(found_entry.file_id, found_entry.revision, 'new'),
-                      (found_entry.file_id, old_revision, 'old')]
+            needed = [
+                (found_entry.file_id, found_entry.revision, "new"),
+                (found_entry.file_id, old_revision, "old"),
+            ]
             contents = self.commit.builder.repository.iter_files_bytes(needed)
             lines = {}
             for name, chunks in contents:
                 lines[name] = osutils.chunks_to_lines(list(chunks))
-            new = lines['new']
+            new = lines["new"]
             sequence_matcher = patiencediff.PatienceSequenceMatcher(
-                None, lines['old'], new)
+                None, lines["old"], new
+            )
             new_lines = []
             for group in sequence_matcher.get_opcodes():
                 tag, i1, i2, j1, j2 = group
-                if tag == 'equal':
+                if tag == "equal":
                     continue
-                if tag == 'delete':
+                if tag == "delete":
                     continue
-                new_lines.extend([l.decode('utf-8') for l in new[j1:j2]])
-            if not self.commit.revprops.get('bugs'):
+                new_lines.extend([l.decode("utf-8") for l in new[j1:j2]])
+            if not self.commit.revprops.get("bugs"):
                 # TODO: Allow the user to configure the bug tracker to use
                 # rather than hardcoding Launchpad.
-                bt = bugtracker.tracker_registry.get('launchpad')
+                bt = bugtracker.tracker_registry.get("launchpad")
                 bugids = []
                 for line in new_lines:
                     bugids.extend(_BUG_MATCH.findall(line))
-                self.commit.revprops['bugs'] = \
-                    bugtracker.encode_fixes_bug_urls(
-                        [(bt.get_bug_url(bugid), bugtracker.FIXED)
-                         for bugid in bugids])
-            return self.merge_message(''.join(new_lines))
+                self.commit.revprops["bugs"] = bugtracker.encode_fixes_bug_urls(
+                    [(bt.get_bug_url(bugid), bugtracker.FIXED) for bugid in bugids]
+                )
+            return self.merge_message("".join(new_lines))
 
     def merge_message(self, new_message):
         """Merge new_message with self.message.

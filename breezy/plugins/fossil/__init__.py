@@ -24,15 +24,16 @@ from ... import version_info  # noqa: F401
 from ... import (
     controldir,
     errors,
-    )
+)
 
 
 class FossilUnsupportedError(errors.UnsupportedVcs):
-
     vcs = "fossil"
 
-    _fmt = ('Fossil branches are not yet supported. '
-            'To interoperate with Fossil branches, use fastimport.')
+    _fmt = (
+        "Fossil branches are not yet supported. "
+        "To interoperate with Fossil branches, use fastimport."
+    )
 
 
 class FossilDirFormat(controldir.ControlDirFormat):
@@ -53,8 +54,9 @@ class FossilDirFormat(controldir.ControlDirFormat):
     def supports_transport(self, transport):
         return False
 
-    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
-                             basedir=None):
+    def check_support_status(
+        self, allow_unsupported, recommend_upgrade=True, basedir=None
+    ):
         raise FossilUnsupportedError(format=self)
 
     def open(self, transport):
@@ -64,7 +66,6 @@ class FossilDirFormat(controldir.ControlDirFormat):
 
 
 class RemoteFossilProber(controldir.Prober):
-
     @classmethod
     def priority(klass, transport):
         return 95
@@ -72,16 +73,18 @@ class RemoteFossilProber(controldir.Prober):
     @classmethod
     def probe_transport(klass, transport):
         from breezy.transport.http.urllib import HttpTransport
+
         if not isinstance(transport, HttpTransport):
             raise errors.NotBranchError(path=transport.base)
         response = transport.request(
-            'POST', transport.base, headers={'Content-Type': 'application/x-fossil'})
+            "POST", transport.base, headers={"Content-Type": "application/x-fossil"}
+        )
         if response.status == 501:
             raise errors.NotBranchError(path=transport.base)
-        ct = response.getheader('Content-Type')
+        ct = response.getheader("Content-Type")
         if ct is None:
             raise errors.NotBranchError(path=transport.base)
-        if ct.split(';')[0] != 'application/x-fossil':
+        if ct.split(";")[0] != "application/x-fossil":
             raise errors.NotBranchError(path=transport.base)
         return FossilDirFormat()
 
