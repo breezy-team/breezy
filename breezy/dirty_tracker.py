@@ -18,7 +18,6 @@
 """Track whether a particular directory structure is dirty."""
 
 import os
-from typing import Set
 
 from pyinotify import (
     IN_ATTRIB,
@@ -46,8 +45,8 @@ class TooManyOpenFiles(Exception):
 
 
 class _Process(ProcessEvent):  # type: ignore
-    paths: Set[str]
-    created: Set[str]
+    paths: set[str]
+    created: set[str]
 
     def my_init(self) -> None:
         self.paths = set()
@@ -117,19 +116,19 @@ class DirtyTracker:
         self._process_pending()
         return bool(self._paths)
 
-    def paths(self) -> Set[str]:
+    def paths(self) -> set[str]:
         """Return the paths that have changed."""
         self._process_pending()
         return self._paths
 
     @property
-    def _paths(self) -> Set[str]:
+    def _paths(self) -> set[str]:
         return self._process.paths
 
     @property
     def _created(self):
         return self._process.created
 
-    def relpaths(self) -> Set[str]:
+    def relpaths(self) -> set[str]:
         """Return the paths relative to the tree root that changed."""
         return {self._tree.relpath(p) for p in self.paths()}

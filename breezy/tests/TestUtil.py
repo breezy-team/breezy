@@ -19,7 +19,6 @@
 import logging
 import unittest
 import weakref
-from typing import Dict, List
 
 from .. import pyutils
 
@@ -32,7 +31,7 @@ __unittest = 1
 class LogCollector(logging.Handler):
     def __init__(self) -> None:
         logging.Handler.__init__(self)
-        self.records: List[str] = []
+        self.records: list[str] = []
 
     def emit(self, record) -> None:
         self.records.append(record.getMessage())
@@ -140,7 +139,7 @@ class TestLoader(unittest.TestLoader):
 
     suiteClass = TestSuite  # noqa: N815
     # Memoize test names by test class dict
-    test_func_names: Dict[str, List[str]] = {}
+    test_func_names: dict[str, list[str]] = {}
 
     def loadTestsFromModuleNames(self, names):
         """Use a custom means to load tests from modules.

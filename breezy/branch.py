@@ -18,7 +18,7 @@ __docformat__ = "google"
 
 import contextlib
 import itertools
-from typing import TYPE_CHECKING, Dict, List, Optional, TextIO, Tuple, Union, cast
+from typing import TYPE_CHECKING, Optional, TextIO, Union, cast
 
 from . import config as _mod_config
 from . import debug, errors, registry, repository, urlutils
@@ -78,7 +78,7 @@ class Branch(ControlComponent):
 
     _format: "BranchFormat"
 
-    _last_revision_info_cache: Optional[Tuple[int, RevisionID]]
+    _last_revision_info_cache: Optional[tuple[int, RevisionID]]
 
     repository: repository.Repository
 
@@ -88,12 +88,12 @@ class Branch(ControlComponent):
     def user_transport(self) -> Transport:
         return self.controldir.user_transport
 
-    def __init__(self, possible_transports: Optional[List[Transport]] = None) -> None:
+    def __init__(self, possible_transports: Optional[list[Transport]] = None) -> None:
         self.tags = self._format.make_tags(self)
         self._revision_history_cache = None
         self._revision_id_to_revno_cache = None
-        self._partial_revision_id_to_revno_cache: Dict[RevisionID, int] = {}
-        self._partial_revision_history_cache: List[RevisionID] = []
+        self._partial_revision_id_to_revno_cache: dict[RevisionID, int] = {}
+        self._partial_revision_history_cache: list[RevisionID] = []
         self._last_revision_info_cache = None
         self._master_branch_cache = None
         self._merge_sorted_revisions_cache = None
@@ -753,7 +753,7 @@ class Branch(ControlComponent):
         )
 
     def get_master_branch(
-        self, possible_transports: Optional[List[Transport]] = None
+        self, possible_transports: Optional[list[Transport]] = None
     ) -> Optional["Branch"]:
         """Return the branch we are bound to.
 
@@ -888,7 +888,7 @@ class Branch(ControlComponent):
         """
         raise NotImplementedError(self._gen_revision_history)
 
-    def _revision_history(self) -> List[RevisionID]:
+    def _revision_history(self) -> list[RevisionID]:
         if debug.debug_flag_enabled("evil"):
             mutter_callsite(3, "revision_history scales with history.")
         if self._revision_history_cache is not None:
@@ -914,7 +914,7 @@ class Branch(ControlComponent):
         """Return last revision id, or NULL_REVISION."""
         return self.last_revision_info()[1]
 
-    def last_revision_info(self) -> Tuple[int, RevisionID]:
+    def last_revision_info(self) -> tuple[int, RevisionID]:
         """Return information about the last revision.
 
         Returns: A tuple (revno, revision_id).
@@ -959,7 +959,7 @@ class Branch(ControlComponent):
             raise errors.NoSuchRevision(self, revision_id) from exc
 
     def get_rev_id(
-        self, revno: int, history: Optional[List[RevisionID]] = None
+        self, revno: int, history: Optional[list[RevisionID]] = None
     ) -> RevisionID:
         """Find the revision id of the specified revno."""
         with self.lock_read():
@@ -981,7 +981,7 @@ class Branch(ControlComponent):
         *,
         overwrite: bool = False,
         stop_revision: Optional[RevisionID] = None,
-        possible_transports: Optional[List[Transport]] = None,
+        possible_transports: Optional[list[Transport]] = None,
         **kwargs,
     ) -> "PullResult":
         """Mirror source into this branch.
@@ -2007,7 +2007,7 @@ class PullResult(_Result):
     master_branch: Branch
     local_branch: Optional[Branch]
     target_branch: Branch
-    tag_conflicts: List["TagConflict"]
+    tag_conflicts: list["TagConflict"]
     tag_updates: "TagUpdates"
 
     def report(self, to_file: TextIO) -> None:
@@ -2139,7 +2139,7 @@ class InterBranch(InterObject[Branch]):
         self,
         overwrite: bool = False,
         stop_revision: Optional[RevisionID] = None,
-        possible_transports: Optional[List[Transport]] = None,
+        possible_transports: Optional[list[Transport]] = None,
         local: bool = False,
         tag_selector=None,
     ) -> PullResult:

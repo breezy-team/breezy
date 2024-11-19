@@ -15,7 +15,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-from typing import List
 
 from .. import forge as _mod_forge
 from .. import registry, tests, urlutils
@@ -34,7 +33,7 @@ class SampleMergeProposal(MergeProposal):
 
 
 class SampleForge(Forge):
-    _locations: List[str] = []
+    _locations: list[str] = []
 
     @classmethod
     def _add_location(cls, url):

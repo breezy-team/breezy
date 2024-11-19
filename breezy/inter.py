@@ -16,7 +16,7 @@
 
 """Inter-object utility class."""
 
-from typing import Generic, List, Type, TypeVar
+from typing import Generic, TypeVar
 
 from .errors import BzrError
 from .lock import LogicalLockResult
@@ -61,7 +61,7 @@ class InterObject(Generic[T]):
     source: T
     target: T
 
-    _optimisers: List[Type["InterObject[T]"]]
+    _optimisers: list[type["InterObject[T]"]]
 
     # _optimisers = list()
     # Each concrete InterObject type should have its own optimisers list.

@@ -19,15 +19,14 @@ import getpass
 import logging
 import os
 from binascii import hexlify
-from typing import Dict
 
 import paramiko
 
 from ... import bedding, config, errors, osutils, trace, ui
 from . import SSHConnection, SSHVendor
 
-SYSTEM_HOSTKEYS: Dict[str, Dict[str, str]] = {}
-BRZ_HOSTKEYS: Dict[str, Dict[str, str]] = {}
+SYSTEM_HOSTKEYS: dict[str, dict[str, str]] = {}
+BRZ_HOSTKEYS: dict[str, dict[str, str]] = {}
 
 
 def _paramiko_auth(username, password, host, port, paramiko_transport):

@@ -359,9 +359,7 @@ class TestingTCPServerMixin:
                 errno.ENOTCONN,
                 errno.EPIPE,
             ]
-        if isinstance(e, socket.error) and e.errno in accepted_errnos:
-            return True
-        return False
+        return bool(isinstance(e, socket.error) and e.errno in accepted_errnos)
 
     # The following methods are called by the main thread
 

@@ -250,9 +250,7 @@ class _ByteStringNamedFilesystem(Feature):
     """Is the filesystem based on bytes?"""
 
     def _probe(self):
-        if os.name == "posix":
-            return True
-        return False
+        return os.name == "posix"
 
 
 ByteStringNamedFilesystem = _ByteStringNamedFilesystem()
@@ -262,9 +260,7 @@ class _UTF8Filesystem(Feature):
     """Is the filesystem UTF-8?"""
 
     def _probe(self):
-        if sys.getfilesystemencoding().upper() in ("UTF-8", "UTF8"):
-            return True
-        return False
+        return sys.getfilesystemencoding().upper() in ("UTF-8", "UTF8")
 
 
 UTF8Filesystem = _UTF8Filesystem()

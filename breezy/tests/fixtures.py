@@ -26,7 +26,6 @@ should be passed to `addCleanup` on the test.
 
 import itertools
 from contextlib import ExitStack
-from typing import List
 
 
 def generate_unicode_names():
@@ -89,7 +88,7 @@ class RecordingContextManager:
     """A context manager that records."""
 
     def __init__(self) -> None:
-        self._calls: List[str] = []
+        self._calls: list[str] = []
 
     def __enter__(self):
         self._calls.append("__enter__")

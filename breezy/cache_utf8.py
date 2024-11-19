@@ -21,7 +21,6 @@
 
 from codecs import utf_8_decode as _utf8_decode
 from codecs import utf_8_encode as _utf8_encode
-from typing import Dict
 
 
 def _utf8_decode_with_None(bytestring, _utf8_decode=_utf8_decode):
@@ -39,8 +38,8 @@ def _utf8_decode_with_None(bytestring, _utf8_decode=_utf8_decode):
 # Map revisions from and to utf8 encoding
 # Whenever we do an encode/decode operation, we save the result, so that
 # we don't have to do it again.
-_unicode_to_utf8_map: Dict[str, bytes] = {}
-_utf8_to_unicode_map: Dict[bytes, str] = {}
+_unicode_to_utf8_map: dict[str, bytes] = {}
+_utf8_to_unicode_map: dict[bytes, str] = {}
 
 
 def encode(

@@ -107,9 +107,7 @@ def check_ref_format(refname):
         return False
     if b"@{" in refname:
         return False
-    if b"\\" in refname:
-        return False
-    return True
+    return b"\\" not in refname
 
 
 def sanitize_ref_name_for_git(refname):

@@ -72,9 +72,7 @@ class RevisionSpec_git(RevisionSpec):
         # The default implementation uses branch.repository.has_revision()
         if self.rev_id is None:
             return False
-        if self.rev_id == NULL_REVISION:
-            return False
-        return True
+        return self.rev_id != NULL_REVISION
 
     def _find_short_git_sha1(self, branch, sha1):
         from .mapping import ForeignGit, mapping_registry

@@ -19,7 +19,6 @@
 That is, tests for reconcile and check.
 """
 
-from typing import List
 
 from breezy import osutils
 from breezy.bzr.tests.per_repository_vf import (
@@ -936,7 +935,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         repo,
         revision_id: RevisionID,
         inv: Inventory,
-        parent_ids: List[RevisionID],
+        parent_ids: list[RevisionID],
     ) -> None:
         """Add a revision with a given inventory and parents to a repository.
 

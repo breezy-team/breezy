@@ -21,7 +21,7 @@ import contextlib
 from collections import defaultdict
 from functools import partial
 from io import BytesIO
-from typing import Dict, Optional, Set, Tuple
+from typing import Optional
 
 from dulwich.config import ConfigFile as GitConfigFile
 from dulwich.config import parse_submodules
@@ -105,16 +105,14 @@ class InterTagsFromGitToRemoteGit(InterTags):
             return False
         if not isinstance(target, GitTags):
             return False
-        if getattr(target.branch.repository, "_git", None) is not None:
-            return False
-        return True
+        return not getattr(target.branch.repository, "_git", None) is not None
 
     def merge(
         self,
         overwrite: bool = False,
         ignore_master: bool = False,
         selector: Optional[TagSelector] = None,
-    ) -> Tuple[TagUpdates, Set[TagConflict]]:
+    ) -> tuple[TagUpdates, set[TagConflict]]:
         if self.source.branch.repository.has_same_location(
             self.target.branch.repository
         ):
@@ -170,9 +168,7 @@ class InterTagsFromGitToLocalGit(InterTags):
             return False
         if not isinstance(target, GitTags):
             return False
-        if getattr(target.branch.repository, "_git", None) is None:
-            return False
-        return True
+        return getattr(target.branch.repository, "_git", None) is not None
 
     def merge(self, overwrite=False, ignore_master=False, selector=None):
         if self.source.branch.repository.has_same_location(
@@ -225,9 +221,7 @@ class InterTagsFromGitToNonGit(InterTags):
     def is_compatible(klass, source: Tags, target: Tags):
         if not isinstance(source, GitTags):
             return False
-        if isinstance(target, GitTags):
-            return False
-        return True
+        return not isinstance(target, GitTags)
 
     def merge(self, overwrite=False, ignore_master=False, selector=None):
         """See Tags.merge_to."""
@@ -455,7 +449,7 @@ class GitBranch(ForeignBranch):
         self._user_transport = controldir.user_transport.clone(".")
         self._control_transport = controldir.control_transport.clone(".")
         self._tag_refs = None
-        params: Dict[str, str] = {}
+        params: dict[str, str] = {}
         try:
             self.name = ref_to_branch_name(ref)
         except ValueError:
@@ -1007,10 +1001,8 @@ class InterFromGitBranch(branch.GenericInterBranch):
         if isinstance(target, GitBranch):
             # InterLocalGitRemoteGitBranch or InterToGitBranch should be used
             return False
-        if getattr(cls._get_interrepo(source, target), "fetch_objects", None) is None:
-            # fetch_objects is necessary for this to work
-            return False
-        return True
+        # fetch_objects is necessary for this to work
+        return getattr(cls._get_interrepo(source, target), "fetch_objects", None) is not None
 
     def fetch(self, stop_revision=None, fetch_tags=None, limit=None, lossy=False):
         self.fetch_objects(

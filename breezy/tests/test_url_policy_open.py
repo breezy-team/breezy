@@ -16,7 +16,6 @@
 
 """Tests for the branch open with specific URL policy code."""
 
-from typing import List
 
 from .. import urlutils
 from ..branch import Branch
@@ -141,7 +140,7 @@ class TestBranchOpenerCheckAndFollowBranchReference(TestCase):
 class TrackingProber(BzrProber):
     """Subclass of BzrProber which tracks URLs it has been asked to open."""
 
-    seen_urls: List[str] = []
+    seen_urls: list[str] = []
 
     @classmethod
     def probe_transport(klass, transport):

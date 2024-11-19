@@ -16,7 +16,6 @@
 """CommitHandlers that build and save revisions & their inventories."""
 
 import contextlib
-from typing import Dict, List, Set, Tuple
 
 from fastimport import processor
 
@@ -60,15 +59,15 @@ class CommitHandler(processor.CommitHandler):
         # If the same path is created multiple times, we need to warn the
         # user and add it just once.
         # If a path is added then renamed or copied, we need to handle that.
-        self._new_file_ids: Dict[str, inventory.FileID] = {}
+        self._new_file_ids: dict[str, inventory.FileID] = {}
         # This tracks path->file-id for things we're modifying this commit.
         # If a path is modified then renamed or copied, we need the make
         # sure we grab the new content.
-        self._modified_file_ids: Dict[str, inventory.FileID] = {}
+        self._modified_file_ids: dict[str, inventory.FileID] = {}
         # This tracks the paths for things we're deleting this commit.
         # If the same path is added or the destination of a rename say,
         # then a fresh file-id is required.
-        self._paths_deleted_this_commit: Set[str] = set()
+        self._paths_deleted_this_commit: set[str] = set()
 
     def mutter(self, msg, *args):
         """Output a mutter but add context."""
@@ -95,7 +94,7 @@ class CommitHandler(processor.CommitHandler):
         """Prepare for committing."""
         self.revision_id = self.gen_revision_id()
         # cache of texts for this commit, indexed by file-id
-        self.data_for_commit: Dict[bytes, bytes] = {}
+        self.data_for_commit: dict[bytes, bytes] = {}
         # if self.rev_store.expects_rich_root():
         self.data_for_commit[inventory.ROOT_ID] = b""
 
@@ -120,8 +119,8 @@ class CommitHandler(processor.CommitHandler):
         self.rev_store.start_new_revision(self.revision, self.parents, self.parent_invs)
 
         # cache of per-file parents for this commit, indexed by file-id
-        self.per_file_parents_for_commit: Dict[
-            inventory.FileID, List[inventory.FileID]
+        self.per_file_parents_for_commit: dict[
+            inventory.FileID, list[inventory.FileID]
         ] = {}
         if self.rev_store.expects_rich_root():
             self.per_file_parents_for_commit[inventory.ROOT_ID] = []
@@ -137,15 +136,15 @@ class CommitHandler(processor.CommitHandler):
             self.inventory_root_id = self.basis_inventory.root.file_id
 
         # directory-path -> inventory-entry for current inventory
-        self.directory_entries: Dict[str, inventory.InventoryEntry] = {}
+        self.directory_entries: dict[str, inventory.InventoryEntry] = {}
 
-        self._dirs_that_might_become_empty: Set[str] = set()
+        self._dirs_that_might_become_empty: set[str] = set()
 
         # A given file-id can only appear once so we accumulate
         # the entries in a dict then build the actual delta at the end
-        self._delta_entries_by_fileid: Dict[
+        self._delta_entries_by_fileid: dict[
             inventory.FileID,
-            Tuple[str | None, str | None, inventory.FileID, inventory.InventoryEntry],
+            tuple[str | None, str | None, inventory.FileID, inventory.InventoryEntry],
         ] = {}
         if len(self.parents) == 0 or not self.rev_store.expects_rich_root():
             old_path = "" if self.parents else None
@@ -180,7 +179,7 @@ class CommitHandler(processor.CommitHandler):
 
     def _get_per_file_parents(
         self, file_id: inventory.FileID
-    ) -> List[inventory.FileID]:
+    ) -> list[inventory.FileID]:
         """Get the lines for a file-id."""
         return self.per_file_parents_for_commit[file_id]
 
@@ -211,7 +210,7 @@ class CommitHandler(processor.CommitHandler):
             inventories.append(inv)
         return present, inventories
 
-    def bzr_file_id_and_new(self, path: str) -> Tuple[inventory.FileID, bool]:
+    def bzr_file_id_and_new(self, path: str) -> tuple[inventory.FileID, bool]:
         """Get a Bazaar file identifier and new flag for a path.
 
         :return: file_id, is_new where
@@ -320,7 +319,7 @@ class CommitHandler(processor.CommitHandler):
             parent_ids=self.parents,
         )
 
-    def _legal_revision_properties(self, props: Dict[str, str]) -> Dict[str, str]:
+    def _legal_revision_properties(self, props: dict[str, str]) -> dict[str, str]:
         """Clean-up any revision properties we can't handle."""
         # For now, we just check for None because that's not allowed in 2.0rc1
         result = {}
@@ -333,7 +332,7 @@ class CommitHandler(processor.CommitHandler):
                     result[name] = value
         return result
 
-    def _save_author_info(self, rev_props: Dict[str, str]) -> None:
+    def _save_author_info(self, rev_props: dict[str, str]) -> None:
         author = self.command.author
         if author is None:
             return
@@ -430,7 +429,7 @@ class CommitHandler(processor.CommitHandler):
 
     def _ensure_directory(
         self, path: str, inv: inventory.Inventory
-    ) -> Tuple[str, inventory.FileID]:
+    ) -> tuple[str, inventory.FileID]:
         """Ensure that the containing directory exists for 'path'."""
         dirname, basename = osutils.split(path)
         if dirname == "":
@@ -609,14 +608,14 @@ class CommitHandler(processor.CommitHandler):
         self.cache_mgr.inventories[self.revision_id] = inv
         # print "committed %s" % self.revision_id
 
-    def _get_final_delta(self):
+    def _get_final_delta(self) -> InventoryDelta:
         """Generate the final delta.
 
         Smart post-processing of changes, e.g. pruning of directories
         that would become empty, goes here.
         """
-        delta: List[
-            Tuple[str | None, str | None, inventory.FileID, inventory.InventoryEntry]
+        delta: list[
+            tuple[str | None, str | None, inventory.FileID, inventory.InventoryEntry]
         ] = list(self._delta_entries_by_fileid.values())
         if self.prune_empty_dirs and self._dirs_that_might_become_empty:
             candidates = self._dirs_that_might_become_empty
@@ -642,7 +641,7 @@ class CommitHandler(processor.CommitHandler):
 
     def _empty_after_delta(
         self, delta, candidates
-    ) -> List[Tuple[str, inventory.FileID]]:
+    ) -> list[tuple[str, inventory.FileID]]:
         # self.mutter("delta so far is:\n%s" % "\n".join([str(de) for de in delta]))
         # self.mutter("candidates for deletion are:\n%s" % "\n".join([c for c in candidates]))
         new_inv = self._get_proposed_inventory(delta)
@@ -679,7 +678,7 @@ class CommitHandler(processor.CommitHandler):
 
     def _add_entry(
         self,
-        entry: Tuple[
+        entry: tuple[
             str | None, str | None, inventory.FileID, inventory.InventoryEntry
         ],
     ) -> None:

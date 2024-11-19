@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from typing import List
 
 from ... import revision as _mod_revision
 from ...bzr import inventory
@@ -47,7 +46,7 @@ class _RevisionSerializer_v4(XMLRevisionSerializer):
     v4 serialisation is no longer supported, only deserialisation.
     """
 
-    __slots__: List[str] = []
+    __slots__: list[str] = []
 
     def _pack_revision(self, rev):
         """Revision object -> xml tree."""

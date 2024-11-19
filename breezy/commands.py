@@ -26,7 +26,7 @@ __docformat__ = "google"
 import contextlib
 import os
 import sys
-from typing import List, Optional, Union
+from typing import Optional, Union
 
 from . import i18n, option, trace
 from .lazy_import import lazy_import
@@ -488,13 +488,13 @@ class Command:
                 __doc__ = "My help goes here"
     """
 
-    aliases: List[str] = []
-    takes_args: List[str] = []
-    takes_options: List[Union[str, option.Option]] = []
+    aliases: list[str] = []
+    takes_args: list[str] = []
+    takes_options: list[Union[str, option.Option]] = []
     encoding_type: str = "strict"
     invoked_as: Optional[str] = None
     l10n: bool = True
-    _see_also: List[str]
+    _see_also: list[str]
 
     hidden: bool = False
 

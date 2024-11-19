@@ -16,7 +16,8 @@
 
 __docformat__ = "google"
 
-from typing import TYPE_CHECKING, Iterable, Optional
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Optional
 
 from .lazy_import import lazy_import
 

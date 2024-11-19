@@ -22,7 +22,6 @@ import os
 import socket
 import subprocess
 import sys
-from typing import Set, Tuple, Type
 
 from ... import config, errors, osutils, registry, trace
 from ..._transport_rs import sftp as _sftp_rs
@@ -248,7 +247,7 @@ class LoopbackVendor(SSHVendor):
 register_ssh_vendor("loopback", LoopbackVendor())
 
 
-_ssh_connection_errors: Tuple[Type[Exception], ...] = (
+_ssh_connection_errors: tuple[type[Exception], ...] = (
     EOFError,
     OSError,
     IOError,
@@ -460,7 +459,7 @@ def os_specific_subprocess_params():
 
 import weakref
 
-_subproc_weakrefs: Set[weakref.ref] = set()
+_subproc_weakrefs: set[weakref.ref] = set()
 
 
 def _close_ssh_proc(proc, sock):

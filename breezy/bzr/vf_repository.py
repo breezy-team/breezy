@@ -2608,9 +2608,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
         # too much IO (both bandwidth and roundtrips) over a network.
         if not source.controldir.transport.base.startswith("file:///"):
             return False
-        if not target.controldir.transport.base.startswith("file:///"):
-            return False
-        return True
+        return target.controldir.transport.base.startswith("file:///")
 
     def _get_trees(self, revision_ids, cache):
         possible_trees = []

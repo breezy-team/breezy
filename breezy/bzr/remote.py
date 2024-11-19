@@ -19,7 +19,7 @@ import contextlib
 import os
 import re
 import zlib
-from typing import Callable, List, Optional
+from typing import Callable, Optional
 
 import fastbencode as bencode
 
@@ -3728,7 +3728,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         format=None,
         setup_stacking: bool = True,
         name: Optional[str] = None,
-        possible_transports: Optional[List[_mod_transport.Transport]] = None,
+        possible_transports: Optional[list[_mod_transport.Transport]] = None,
     ):
         """Create a RemoteBranch instance.
 

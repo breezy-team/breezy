@@ -20,7 +20,7 @@
 import contextlib
 import posixpath
 import stat
-from typing import Dict, Iterable, Iterator, List, Tuple
+from collections.abc import Iterable, Iterator
 
 from dulwich.object_store import BaseObjectStore
 from dulwich.objects import ZERO_SHA, Blob, Commit, ObjectID, ShaFile, Tree, sha_to_hex
@@ -693,8 +693,8 @@ class BazaarObjectStore(BaseObjectStore):
         self._map_updated = False
         self.repository.unlock()
 
-    def lookup_git_shas(self, shas: Iterable[ObjectID]) -> Dict[ObjectID, List]:
-        ret: Dict[ObjectID, List] = {}
+    def lookup_git_shas(self, shas: Iterable[ObjectID]) -> dict[ObjectID, list]:
+        ret: dict[ObjectID, list] = {}
         for sha in shas:
             if sha == ZERO_SHA:
                 ret[sha] = [("commit", (NULL_REVISION, None, {}))]
@@ -799,14 +799,14 @@ class BazaarObjectStore(BaseObjectStore):
         get_tagged=None,
         lossy: bool = False,
         ofs_delta=False,
-    ) -> Iterator[Tuple[ObjectID, Tuple[int, str]]]:
+    ) -> Iterator[tuple[ObjectID, tuple[int, str]]]:
         """Iterate over the contents of a pack file.
 
         :param haves: List of SHA1s of objects that should not be sent
         :param wants: List of SHA1s of objects that should be sent
         """
         processed = set()
-        ret: Dict[ObjectID, List] = self.lookup_git_shas(haves + wants)
+        ret: dict[ObjectID, list] = self.lookup_git_shas(haves + wants)
         for commit_sha in haves:
             commit_sha = self.unpeel_map.peel_tag(commit_sha, commit_sha)
             try:

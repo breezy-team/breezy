@@ -18,7 +18,6 @@
 
 import pickle
 import re
-from typing import List, Tuple
 
 from .. import lazy_regex, tests
 
@@ -32,7 +31,7 @@ class TestErrors(tests.TestCase):
 class InstrumentedLazyRegex(lazy_regex.LazyRegex):
     """Keep track of actions on the lazy regex."""
 
-    _actions: List[Tuple[str, ...]] = []
+    _actions: list[tuple[str, ...]] = []
 
     @classmethod
     def use_actions(cls, actions):

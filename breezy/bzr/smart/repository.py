@@ -535,18 +535,14 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
         if not from_format.supports_chks:
             # Source not CHK: that's ok
             return False
-        if (
+        # Source is CHK, but target matches: that's ok
+        # (e.g. 2a->2a, or CHK2->2a)
+        return not (
             to_format.supports_chks
             and from_format.repository_class is to_format.repository_class
             and from_format._revision_serializer == to_format._revision_serializer
             and from_format._inventory_serializer == to_format._inventory_serializer
-        ):
-            # Source is CHK, but target matches: that's ok
-            # (e.g. 2a->2a, or CHK2->2a)
-            return False
-        # Source is CHK, and target is not CHK or incompatible CHK.  We can't
-        # generate a compatible stream.
-        return True
+        )
 
     def do_body(self, body_bytes):
         repository = self._repository

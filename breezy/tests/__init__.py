@@ -48,7 +48,7 @@ import traceback
 import unittest
 import warnings
 from io import BytesIO, StringIO, TextIOWrapper
-from typing import Callable, Set
+from typing import Callable
 
 import testtools
 from testtools import content
@@ -3843,7 +3843,7 @@ class ProfileResult(testtools.ExtendedToOriginalDecorator):
 #   -Euncollected_cases     Display the identity of any test cases that weren't
 #                           deallocated after being completed.
 #   -Econfig_stats          Will collect statistics using addDetail
-selftest_debug_flags: Set[str] = set()
+selftest_debug_flags: set[str] = set()
 
 
 def selftest(

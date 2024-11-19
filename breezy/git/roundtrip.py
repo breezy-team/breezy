@@ -46,7 +46,7 @@ This extra metadata is stored in so-called "supplements":
 """
 
 from io import BytesIO
-from typing import Any, Dict
+from typing import Any
 
 
 class CommitSupplement:
@@ -63,8 +63,8 @@ class CommitSupplement:
     explicit_parent_ids = None
 
     def __init__(self) -> None:
-        self.properties: Dict[str, bytes] = {}
-        self.verifiers: Dict[str, Any] = {}
+        self.properties: dict[str, bytes] = {}
+        self.verifiers: dict[str, Any] = {}
 
     def __nonzero__(self) -> bool:
         return bool(self.revision_id or self.properties or self.explicit_parent_ids)
