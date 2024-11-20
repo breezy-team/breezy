@@ -2215,8 +2215,8 @@ class TestCase(testtools.TestCase):
             for system-wide plugins to create unexpected output on stderr,
             which can cause unnecessary test failures.
         """
-        env_changes = kwargs.get("env_changes", None)
-        working_dir = kwargs.get("working_dir", None)
+        env_changes = kwargs.get("env_changes")
+        working_dir = kwargs.get("working_dir")
         allow_plugins = kwargs.get("allow_plugins", False)
         if len(args) == 1:
             if isinstance(args[0], list):
