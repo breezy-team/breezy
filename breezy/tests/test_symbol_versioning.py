@@ -100,10 +100,10 @@ class TestDeprecationWarnings(TestCase):
         expected_docstring = (
             "Deprecated method docstring.\n"
             "\n"
-            "        This might explain stuff.\n"
-            "        \n"
-            "        This method was deprecated in version 0.7.0.\n"
-            "        "
+            "This might explain stuff.\n"
+            "\n"
+            "This method was deprecated in version 0.7.0.\n"
+            ""
         )
         self.check_deprecated_callable(
             expected_warning,
