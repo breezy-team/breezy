@@ -117,7 +117,7 @@ def build_ca_key():
     key_path = ssl_certs.build_path("ca.key")
     rm_f(key_path)
     _openssl(
-        ["genrsa", "-passout", "stdin", "-des3", "-out", key_path, "4096"],
+        ["genrsa", "-passout", "stdin", "-aes256", "-out", key_path, "4096"],
         input="%(ca_pass)s\n%(ca_pass)s\n" % ssl_params,
     )
 
