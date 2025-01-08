@@ -131,6 +131,8 @@ def build_ca_certificate():
     _openssl(
         [
             "req",
+            "-addext",
+            "keyUsage = keyCertSign",
             "-passin",
             "stdin",
             "-new",
