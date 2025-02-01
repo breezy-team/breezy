@@ -111,6 +111,8 @@ class TestBreakLockOldBranch(TestCaseWithTransport):
         self.assertEqual("", err)
 
 
+# Note that the testdata here intentionally contains outdated links to
+# the old location of the Bazaar website.
 _upgrade1_template = [
     ("foo", b"new contents\n"),
     (".bzr/",),
