@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
       - name: Install native dependencies (Ubuntu)
         run: sudo apt-get update && sudo apt-get install -y libgpgme-dev
         if: "matrix.os == 'ubuntu-latest'"
@@ -70,7 +70,7 @@ jobs:
     needs: build
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/brz-')
     steps:
-      - uses: actions/setup-python@v3
+      - uses: actions/setup-python@v5
 
       - name: Install twine
         run: |
