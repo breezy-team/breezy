@@ -1510,7 +1510,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
                 "README",
                 b"This is a Bazaar control directory.\n"
                 b"Do not change any files in this directory.\n"
-                b"See http://bazaar.canonical.com/ for more information about Bazaar.\n",
+                b"See https://launchpad.net/bzr for more information about Bazaar.\n",
             ),
             ("branch-format", self.as_string()),
         ]
