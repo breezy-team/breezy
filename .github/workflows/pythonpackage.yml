@@ -15,9 +15,9 @@ jobs:
         include:
           - os: macos-latest
             experimental: true
-            python-version: 3.7
+            python-version: '3.12'
           - os: windows-latest
-            python-version: 3.7
+            python-version: '3.12'
             experimental: true
 # See https://github.com/actions/toolkit/issues/399
 #        include:
