@@ -8,7 +8,7 @@ license = "GPL-2.0+"
 [lib]
 
 [dependencies]
-memchr = "2.3.3"
+memchr = "2.7.4"
 chrono = { workspace = true }
 walkdir = "2"
 sha1 = "0.10"

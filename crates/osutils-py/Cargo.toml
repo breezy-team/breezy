@@ -10,7 +10,7 @@ crate-type = ["cdylib"]
 pyo3 = { workspace = true, features = ["extension-module", "chrono" ]}
 breezy-osutils = { path = "../osutils" }
 pyo3-filelike = { workspace = true }
-memchr = "2.3.4"
+memchr = "2.7.4"
 termion = ">=1"
 
 [target.'cfg(unix)'.dependencies]
