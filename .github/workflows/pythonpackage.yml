@@ -46,6 +46,8 @@ jobs:
           python -m pip install -U pip "setuptools>=60" setuptools-gettext cython setuptools-rust
           python -m pip install -U pip coverage codecov cython testscenarios git+https://github.com/dulwich/dulwich
           python -m pip install ".[dev,paramiko,doc,launchpad,git,fastimport]"
+        env:
+          PYO3_USE_ABI3_FORWARD_COMPATIBILITY: "1"
       - name: Install dependencies (linux/pip)
         run: |
           sudo apt install libgpgme-dev libgpg-error-dev
@@ -60,6 +62,8 @@ jobs:
         run: |
           make docs PYTHON=python
       - name: Build extensions
+        env:
+          PYO3_USE_ABI3_FORWARD_COMPATIBILITY: "1"
         run: |
           make extensions PYTHON=python
         if: "matrix.python-version != 'pypy3'"
