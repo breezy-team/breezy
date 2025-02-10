@@ -12,7 +12,7 @@ dependencies = [
     "breezy>=3.3.0.dev.0",
     "debmutate[watch]>=0.60",
     "python_debian",
-    "python-apt",
+    "python-apt@git+https://salsa.debian.org/apt-team/python-apt",
     "distro-info",
 ]
 version = "2.8.78"
