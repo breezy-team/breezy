@@ -23,7 +23,7 @@ tempfile = "3"
 log = "0.4"
 pyo3 = { version = ">=0.17", optional = true }
 crc32fast = "1.2.0"
-base64 = "0.21.0"
+base64 = "0.22.1"
 maplit = "1.0.2"
 lazy-regex = "3.4.0"
 byteorder = "1.5.0"
