@@ -311,7 +311,9 @@ class HTTPSConnection(AbstractHTTPConnection, http.client.HTTPSConnection):  # t
         ca_certs=None,
     ):
         AbstractHTTPConnection.__init__(self, report_activity=report_activity)
-        http.client.HTTPSConnection.__init__(self, host, port, key_file, cert_file)
+        http.client.HTTPSConnection.__init__(self, host=host, port=port)
+        self.key_file = key_file
+        self.cert_file = cert_file
         self.proxied_host = proxied_host
         self.ca_certs = ca_certs
 

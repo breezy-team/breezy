@@ -267,7 +267,7 @@ struct TraditionalGroupCompressor(
 #[pymethods]
 impl TraditionalGroupCompressor {
     #[new]
-    fn new(settings: PyObject) -> Self {
+    fn new(settings: Option<PyObject>) -> Self {
         Self(Some(
             bazaar::groupcompress::compressor::TraditionalGroupCompressor::new(),
         ))
