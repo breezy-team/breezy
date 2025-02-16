@@ -213,7 +213,16 @@ impl pyo3::ToPyObject for Key {
 #[cfg(feature = "pyo3")]
 impl pyo3::FromPyObject<'_> for Key {
     fn extract(ob: &pyo3::PyAny) -> pyo3::PyResult<Self> {
-        match ob.get_type().name().unwrap().as_ref() {
+        // Look at the type name, stripping out the module name.
+        match ob
+            .get_type()
+            .name()
+            .unwrap()
+            .as_ref()
+            .split('.')
+            .last()
+            .unwrap()
+        {
             "tuple" | "StaticTuple" => {}
             _ => {
                 return Err(pyo3::exceptions::PyTypeError::new_err(format!(
