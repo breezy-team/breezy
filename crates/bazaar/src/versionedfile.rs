@@ -109,9 +109,10 @@ impl pyo3::FromPyObject<'_> for Ordering {
         match s.as_str() {
             "unordered" => Ok(Ordering::Unordered),
             "topological" => Ok(Ordering::Topological),
-            _ => Err(pyo3::exceptions::PyValueError::new_err(
-                "Expected 'unordered' or 'topological'".to_string(),
-            )),
+            _ => Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "Expected 'unordered' or 'topological', got '{}'",
+                s
+            ))),
         }
     }
 }
@@ -215,9 +216,10 @@ impl pyo3::FromPyObject<'_> for Key {
         match ob.get_type().name().unwrap().as_ref() {
             "tuple" | "StaticTuple" => {}
             _ => {
-                return Err(pyo3::exceptions::PyTypeError::new_err(
-                    "Expected tuple or StaticTuple".to_string(),
-                ));
+                return Err(pyo3::exceptions::PyTypeError::new_err(format!(
+                    "Expected tuple or StaticTuple, got {}",
+                    ob.get_type().name().unwrap()
+                )));
             }
         }
         let mut v = Vec::with_capacity(ob.len()?);
