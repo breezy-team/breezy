@@ -27,7 +27,8 @@ fn gen_file_id_suffix() -> String {
 }
 
 pub fn next_id_suffix(suffix: Option<&str>) -> Vec<u8> {
-    static mut GEN_FILE_ID_SERIAL: u64 = 0;
+    static GEN_FILE_ID_SERIAL: std::sync::atomic::AtomicUsize =
+        std::sync::atomic::AtomicUsize::new(0);
 
     // XXX TODO: change breezy.add.smart_add_tree to call workingtree.add() rather
     // than having to move the id randomness out of the inner loop like this.
@@ -38,16 +39,13 @@ pub fn next_id_suffix(suffix: Option<&str>) -> Vec<u8> {
     //           amount. time.time() shouldn't be terribly expensive to call,
     //           and it means that long-lived processes wouldn't use the same
     //           suffix forever.
-    // TODO(jelmer): Avoid unsafe code here..
-    unsafe {
-        GEN_FILE_ID_SERIAL += 1;
-        format!(
-            "{}{}",
-            suffix.unwrap_or(GEN_FILE_ID_SUFFIX.as_str()),
-            GEN_FILE_ID_SERIAL
-        )
-        .into_bytes()
-    }
+    let serial = GEN_FILE_ID_SERIAL.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    format!(
+        "{}{}",
+        suffix.unwrap_or(GEN_FILE_ID_SUFFIX.as_str()),
+        serial
+    )
+    .into_bytes()
 }
 
 pub fn gen_file_id(name: &str) -> Vec<u8> {
