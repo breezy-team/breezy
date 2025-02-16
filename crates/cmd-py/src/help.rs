@@ -124,7 +124,7 @@ impl HelpTopicRegistry {
         summary: &str,
         section: Option<&str>,
     ) -> PyResult<()> {
-        let mut o = py.import(module)?.to_object(py);
+        let mut o = py.import_bound(module)?.to_object(py);
 
         for attr in path.split('.') {
             o = o.getattr(py, attr)?;
@@ -206,7 +206,7 @@ fn known_env_variables() -> Vec<(String, String)> {
         .collect()
 }
 
-pub(crate) fn help_topics(m: &PyModule) -> PyResult<()> {
+pub(crate) fn help_topics(m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<DynamicHelpTopic>()?;
     m.add_class::<StaticHelpTopic>()?;
     m.add_class::<HelpTopicRegistry>()?;

@@ -1,5 +1,6 @@
 use byteorder::{BigEndian, WriteBytesExt};
 
+use pyo3::prelude::PyAnyMethods;
 use pyo3::types::{PyBytes, PyTuple};
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -43,7 +44,7 @@ impl From<pyo3::PyErr> for Error {
         pyo3::Python::with_gil(|py| {
             if e.is_instance_of::<RevisionNotPresent>(py) {
                 Error::VersionNotPresent(
-                    e.value(py)
+                    e.value_bound(py)
                         .getattr("args")
                         .unwrap()
                         .get_item(0)
@@ -53,7 +54,7 @@ impl From<pyo3::PyErr> for Error {
                 )
             } else if e.is_instance_of::<ExistingContent>(py) {
                 Error::ExistingContent(
-                    e.value(py)
+                    e.value_bound(py)
                         .getattr("args")
                         .unwrap()
                         .get_item(0)
@@ -121,7 +122,7 @@ pub struct VersionId(Vec<u8>);
 #[cfg(feature = "pyo3")]
 impl pyo3::ToPyObject for VersionId {
     fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
-        PyBytes::new(py, &self.0).to_object(py)
+        PyBytes::new_bound(py, &self.0).to_object(py)
     }
 }
 
@@ -189,20 +190,20 @@ impl pyo3::ToPyObject for Key {
     fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
         match self {
             Key::Fixed(ref v) => {
-                let t = PyTuple::new(
+                let t = PyTuple::new_bound(
                     py,
                     v.iter()
-                        .map(|v| pyo3::types::PyBytes::new(py, v.as_slice())),
+                        .map(|v| pyo3::types::PyBytes::new_bound(py, v.as_slice())),
                 );
                 t.to_object(py)
             }
             Key::ContentAddressed(ref v) => {
                 let mut entries = v
                     .iter()
-                    .map(|v| pyo3::types::PyBytes::new(py, v.as_slice()).to_object(py))
+                    .map(|v| pyo3::types::PyBytes::new_bound(py, v.as_slice()).to_object(py))
                     .collect::<Vec<_>>();
                 entries.push(py.None());
-                PyTuple::new(py, entries).to_object(py)
+                PyTuple::new_bound(py, entries).to_object(py)
             }
         }
     }
@@ -238,20 +239,20 @@ impl pyo3::IntoPy<pyo3::PyObject> for Key {
     fn into_py(self, py: pyo3::Python) -> pyo3::PyObject {
         match self {
             Key::Fixed(v) => {
-                let t = PyTuple::new(
+                let t = PyTuple::new_bound(
                     py,
                     v.into_iter()
-                        .map(|v| pyo3::types::PyBytes::new(py, v.as_slice())),
+                        .map(|v| pyo3::types::PyBytes::new_bound(py, v.as_slice())),
                 );
                 t.into_py(py)
             }
             Key::ContentAddressed(v) => {
                 let mut entries = v
                     .into_iter()
-                    .map(|v| pyo3::types::PyBytes::new(py, v.as_slice()).into_py(py))
+                    .map(|v| pyo3::types::PyBytes::new_bound(py, v.as_slice()).into_py(py))
                     .collect::<Vec<_>>();
                 entries.push(py.None());
-                PyTuple::new(py, entries).into_py(py)
+                PyTuple::new_bound(py, entries).into_py(py)
             }
         }
     }
