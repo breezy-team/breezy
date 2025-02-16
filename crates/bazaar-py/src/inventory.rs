@@ -1206,8 +1206,8 @@ impl Inventory {
         py: Python,
         relpath: PyObject,
     ) -> PyResult<(Option<PyObject>, Option<Vec<String>>, Option<Vec<String>>)> {
-        let ret = if let Ok(relpath) = relpath.extract::<&str>(py) {
-            self.0.get_entry_by_path_partial(relpath)
+        let ret = if let Ok(relpath) = relpath.extract::<String>(py) {
+            self.0.get_entry_by_path_partial(&relpath)
         } else if let Ok(segments) = relpath.extract::<Vec<String>>(py) {
             let segments = segments.iter().map(|s| s.as_str()).collect::<Vec<_>>();
             self.0
@@ -1228,10 +1228,10 @@ impl Inventory {
     }
 
     fn get_entry_by_path(&self, py: Python, relpath: PyObject) -> PyResult<Option<PyObject>> {
-        if let Ok(relpath) = relpath.extract::<&str>(py) {
+        if let Ok(relpath) = relpath.extract::<String>(py) {
             Ok(self
                 .0
-                .get_entry_by_path(relpath)
+                .get_entry_by_path(&relpath)
                 .map(|entry| entry_to_py(py, entry.clone()).unwrap()))
         } else if let Ok(segments) = relpath.extract::<Vec<String>>(py) {
             let segments = segments.iter().map(|s| s.as_str()).collect::<Vec<_>>();
