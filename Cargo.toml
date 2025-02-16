@@ -33,7 +33,7 @@ i18n = ["dep:gettext-rs"]
 pyo3 = []
 
 [dependencies]
-pyo3 = { workspace = true }
+pyo3 = { workspace = true, features = ["abi3"] }
 gettext-rs = { version = "0.7", optional = true }
 log = { workspace = true }
 breezy-osutils = { path = "crates/osutils", version = ">=3.3.4" }

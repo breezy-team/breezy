@@ -20,8 +20,8 @@ pub enum CompressorKind {
 #[cfg(feature = "pyo3")]
 impl pyo3::FromPyObject<'_> for CompressorKind {
     fn extract(ob: &pyo3::PyAny) -> pyo3::PyResult<Self> {
-        let s: &str = ob.extract()?;
-        match s {
+        let s: Cow<str> = ob.extract()?;
+        match s.as_ref() {
             "zlib" => Ok(CompressorKind::Zlib),
             "lzma" => Ok(CompressorKind::Lzma),
             _ => Err(pyo3::exceptions::PyValueError::new_err(format!(
