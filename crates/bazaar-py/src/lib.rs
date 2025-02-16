@@ -275,8 +275,8 @@ impl Revision {
         self.0.timezone
     }
 
-    fn datetime(&self) -> PyResult<NaiveDateTime> {
-        Ok(self.0.datetime())
+    fn datetime(&self) -> NaiveDateTime {
+        self.0.datetime()
     }
 
     fn check_properties(&self) -> PyResult<()> {

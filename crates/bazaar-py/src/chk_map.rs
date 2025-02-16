@@ -34,7 +34,8 @@ fn common_prefix_pair(py: Python, key: &[u8], key2: &[u8]) -> Py<PyBytes> {
 }
 
 #[pyfunction]
-fn common_prefix_many(py: Python, keys: Vec<&[u8]>) -> Option<Py<PyBytes>> {
+fn common_prefix_many(py: Python, keys: Vec<Vec<u8>>) -> Option<Py<PyBytes>> {
+    let keys = keys.iter().map(|v| v.as_slice()).collect::<Vec<&[u8]>>();
     bazaar::chk_map::common_prefix_many(keys.into_iter())
         .as_ref()
         .map(|v| PyBytes::new(py, v).into_py(py))

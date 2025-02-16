@@ -411,7 +411,10 @@ fn help_as_plain_text(text: &str) -> PyResult<String> {
 }
 
 #[pyfunction]
-fn format_see_also(see_also: Option<Vec<&str>>) -> PyResult<String> {
+fn format_see_also(see_also: Option<Vec<String>>) -> PyResult<String> {
+    let see_also = see_also
+        .as_ref()
+        .map(|x: &Vec<String>| x.iter().map(|s| s.as_str()).collect::<Vec<&str>>());
     if see_also.is_none() {
         return Ok("".to_string());
     }
@@ -431,9 +434,10 @@ impl TreeBuilder {
         TreeBuilder(breezy::treebuilder::TreeBuilder::new())
     }
 
-    fn build(&mut self, recipe: Vec<&str>) -> PyResult<()> {
+    fn build(&mut self, recipe: Vec<String>) -> PyResult<()> {
+        let recipe_ref = recipe.iter().map(|s| s.as_str()).collect::<Vec<&str>>();
         self.0
-            .build(recipe.as_slice())
+            .build(recipe_ref.as_slice())
             .map_err(|e| PyRuntimeError::new_err(format!("Failed to build tree: {:?}", e)))
     }
 
