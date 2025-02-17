@@ -83,8 +83,7 @@ class MergeHooks(hooks.Hooks):
         )
         self.add_hook(
             "pre_merge",
-            "Called before a merge. "
-            "Receives a Merger object as the single argument.",
+            "Called before a merge. Receives a Merger object as the single argument.",
             (2, 5),
         )
         self.add_hook(
@@ -585,8 +584,7 @@ class Merger:
                 raise errors.UnrelatedBranches()
             if self._is_criss_cross:
                 trace.warning(
-                    "Warning: criss-cross merge encountered.  See bzr"
-                    " help criss-cross."
+                    "Warning: criss-cross merge encountered.  See bzr help criss-cross."
                 )
                 trace.mutter("Criss-cross lcas: %r" % lcas)
                 if self.base_rev_id in lcas:
@@ -2025,9 +2023,7 @@ def merge_inner(
                     branch.get_revision_tree(base_revision))
     """
     if this_tree is None:
-        raise errors.BzrError(
-            "breezy.merge.merge_inner requires a this_tree " "parameter"
-        )
+        raise errors.BzrError("breezy.merge.merge_inner requires a this_tree parameter")
     merger = Merger(
         this_branch,
         other_tree,
@@ -2307,7 +2303,7 @@ class _PlanMerge(_PlanMergeBase):
                 # More than 2 lca's, fall back to grabbing all nodes between
                 # this and the unique lca.
                 trace.mutter(
-                    "More than 2 LCAs, falling back to all nodes for:" " %s, %s\n=> %s",
+                    "More than 2 LCAs, falling back to all nodes for: %s, %s\n=> %s",
                     self.a_key,
                     self.b_key,
                     cur_ancestors,

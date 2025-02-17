@@ -715,7 +715,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             raise tests.TestNotApplicable("Cannot make a shared repository")
         if repo.controldir._format.fixed_components:
             self.knownFailure(
-                "pre metadir branches do not upgrade on push " "with stacking policy"
+                "pre metadir branches do not upgrade on push with stacking policy"
             )
         if isinstance(
             repo._format, knitpack_repo.RepositoryFormatKnitPack5RichRootBroken
@@ -781,7 +781,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = made_control.create_repository(shared=shared)
         if not repo._format.supports_nesting_repositories:
             raise tests.TestNotApplicable(
-                "repository does not support " "nesting repositories"
+                "repository does not support nesting repositories"
             )
         controldir.ControlDir.create_branch_convenience(
             self.get_url("repository/foo"), force_new_repo=False
@@ -826,7 +826,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         branch = self.make_branch("branch")
         if not branch.repository._format.supports_nesting_repositories:
             raise tests.TestNotApplicable(
-                "format does not support nesting " "repositories"
+                "format does not support nesting repositories"
             )
         contained = self.make_branch("branch/contained")
         branches = branch.repository.find_branches(using=True)
@@ -839,7 +839,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             repo = self.make_repository("repo", shared=False)
         except errors.IncompatibleFormat:
             raise tests.TestNotApplicable(
-                "format does not support standalone " "repositories"
+                "format does not support standalone repositories"
             )
         try:
             repo.controldir.open_branch()
@@ -1101,7 +1101,7 @@ class TestDeltaRevisionFilesFiltered(per_repository.TestCaseWithRepository):
             ("bar", "directory"),
             ("bar/b3", "file"),
         ]:
-            self.knownFailure("bzr incorrectly reports 'bar' as added - " "bug 878217")
+            self.knownFailure("bzr incorrectly reports 'bar' as added - bug 878217")
         self.assertEqual(
             [
                 ("bar/b3", "file"),

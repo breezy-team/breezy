@@ -216,7 +216,7 @@ class TestShowLog(tests.TestCaseWithTransport):
         wt.add("hello")
         wt.commit(
             "add one file",
-            committer="\u013d\xf3r\xe9m \xcdp\u0161\xfam " "<test@example.com>",
+            committer="\u013d\xf3r\xe9m \xcdp\u0161\xfam <test@example.com>",
         )
         lf = LogCatcher()
         log.show_log(wt.branch, lf, verbose=True)
@@ -1203,7 +1203,7 @@ class TestLogFormatter(tests.TestCase):
 
     def test_short_author_from_authors(self):
         self.rev.properties["authors"] = (
-            "John Smith <jsmith@example.com>\n" "Jane Rey <jrey@example.com>"
+            "John Smith <jsmith@example.com>\nJane Rey <jrey@example.com>"
         )
         self.assertEqual("John Smith", self.lf.short_author(self.rev))
 
@@ -1553,7 +1553,7 @@ class TestLogWithBugs(TestCaseForLogFormatter, TestLogMixin):
             "multiline\nlog\nmessage\n",
             rev_id=b"a2",
             authors=["Joe Bar <joe@bar.com>"],
-            revprops={"bugs": "test://bug/id fixed\n" "test://bug/2 fixed"},
+            revprops={"bugs": "test://bug/id fixed\ntest://bug/2 fixed"},
         )
         return tree
 

@@ -358,7 +358,7 @@ class RemoteTransport(transport.ConnectedTransport):
             requests.append(cur_request)
         if "hpss" in debug.debug_flags:
             trace.mutter(
-                "%s.readv %s offsets => %s coalesced" " => %s requests (%s)",
+                "%s.readv %s offsets => %s coalesced => %s requests (%s)",
                 self.__class__.__name__,
                 len(offsets),
                 len(coalesced),

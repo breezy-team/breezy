@@ -46,7 +46,7 @@ class _OutputHandler:
         if not self.cur_insert_lines:
             return
         if self.cur_insert_len > 127:
-            raise AssertionError("We cannot insert more than 127 bytes" " at a time.")
+            raise AssertionError("We cannot insert more than 127 bytes at a time.")
         self.out_lines.append(bytes([self.cur_insert_len]))
         self.index_lines.append(False)
         self.out_lines.extend(self.cur_insert_lines)
@@ -73,7 +73,7 @@ class _OutputHandler:
     def add_insert(self, lines):
         if self.cur_insert_lines != []:
             raise AssertionError(
-                "self.cur_insert_lines must be empty when" " adding a new insert"
+                "self.cur_insert_lines must be empty when adding a new insert"
             )
         for line in lines:
             if len(line) > 127:
@@ -442,7 +442,7 @@ def apply_delta(basis, delta):
             offset, length, pos = decode_copy_instruction(delta, cmd, pos)
             last = offset + length
             if last > len(basis):
-                raise ValueError("data would copy bytes past the" "end of source")
+                raise ValueError("data would copy bytes past theend of source")
             lines.append(basis[offset:last])
         else:  # Insert of 'cmd' bytes
             if cmd == 0:

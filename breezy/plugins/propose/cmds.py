@@ -382,7 +382,7 @@ class cmd_web_open(Command):
     takes_options = [
         Option(
             "dry-run",
-            "Do not actually open the browser. Just say the URL we would " "use.",
+            "Do not actually open the browser. Just say the URL we would use.",
         ),
     ]
     takes_args = ["location?"]

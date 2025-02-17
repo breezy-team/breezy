@@ -28,7 +28,7 @@ class TestReadWorkingInventory(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree("t1")
         if not isinstance(tree, InventoryWorkingTree):
             raise TestNotApplicable(
-                "read_working_inventory not usable on " "non-inventory working trees"
+                "read_working_inventory not usable on non-inventory working trees"
             )
         tree.lock_read()
         self.assertIsInstance(tree.read_working_inventory(), inventory.Inventory)
@@ -38,7 +38,7 @@ class TestReadWorkingInventory(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree("tree")
         if not isinstance(tree, InventoryWorkingTree):
             raise TestNotApplicable(
-                "read_working_inventory not usable on " "non-inventory working trees"
+                "read_working_inventory not usable on non-inventory working trees"
             )
         # prepare for a series of changes that will modify the
         # inventory

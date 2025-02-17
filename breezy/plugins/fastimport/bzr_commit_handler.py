@@ -245,7 +245,7 @@ class CommitHandler(processor.CommitHandler):
         except UnicodeDecodeError:
             # The spec says fields are *typically* utf8 encoded
             # but that isn't enforced by git-fast-export (at least)
-            self.warning("%s not in utf8 - replacing unknown " "characters" % (field,))
+            self.warning("%s not in utf8 - replacing unknown characters" % (field,))
             return value.decode("utf-8", "replace")
 
     def _decode_path(self, path):
@@ -254,9 +254,7 @@ class CommitHandler(processor.CommitHandler):
         except UnicodeDecodeError:
             # The spec says fields are *typically* utf8 encoded
             # but that isn't enforced by git-fast-export (at least)
-            self.warning(
-                "path %r not in utf8 - replacing unknown " "characters" % (path,)
-            )
+            self.warning("path %r not in utf8 - replacing unknown characters" % (path,))
             return path.decode("utf-8", "replace")
 
     def _format_name_email(self, section, name, email):

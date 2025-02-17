@@ -159,7 +159,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
     def test_fetch_to_rich_root_set_parent_1_ghost_parent(self):
         # 1 ghost parent -> No parents
         if not self.repository_format.supports_ghosts:
-            raise TestNotApplicable("repository format does not support " "ghosts")
+            raise TestNotApplicable("repository format does not support ghosts")
         self.do_test_fetch_to_rich_root_sets_parents_correctly(
             (),
             [
@@ -380,7 +380,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
 
     def make_simple_branch_with_ghost(self):
         if not self.repository_format.supports_ghosts:
-            raise TestNotApplicable("repository format does not support " "ghosts")
+            raise TestNotApplicable("repository format does not support ghosts")
         builder = self.make_branch_builder("source")
         builder.start_series()
         a_revid = builder.build_snapshot(

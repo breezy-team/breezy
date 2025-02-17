@@ -42,7 +42,7 @@ class build_mo(Command):
         ("output-base=", "o", "mo-files base name"),
         ("source-dir=", None, "Directory with sources po files"),
         ("force", "f", "Force creation of mo files"),
-        ("lang=", None, "Comma-separated list of languages " "to process"),
+        ("lang=", None, "Comma-separated list of languages to process"),
     ]
 
     boolean_options = ["force"]

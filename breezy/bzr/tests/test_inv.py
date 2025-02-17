@@ -1251,7 +1251,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         ie.text_size = 100
         bytes = inv._entry_to_bytes(ie)
         self.assertEqual(
-            b"file: file-id\nparent-id\nfilename\n" b"file-rev-id\nabcdefgh\n100\nY",
+            b"file: file-id\nparent-id\nfilename\nfile-rev-id\nabcdefgh\n100\nY",
             bytes,
         )
         ie2 = inv._bytes_to_entry(bytes)
@@ -1271,7 +1271,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         ie.text_size = 25
         bytes = inv._entry_to_bytes(ie)
         self.assertEqual(
-            b"file: file-id\nparent-id\n\xce\xa9name\n" b"file-rev-id\n123456\n25\nN",
+            b"file: file-id\nparent-id\n\xce\xa9name\nfile-rev-id\n123456\n25\nN",
             bytes,
         )
         ie2 = inv._bytes_to_entry(bytes)
@@ -1300,7 +1300,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         ie = inventory.InventoryDirectory(b"dir-id", "dir\u03a9name", None)
         ie.revision = b"dir-rev-id"
         bytes = inv._entry_to_bytes(ie)
-        self.assertEqual(b"dir: dir-id\n\ndir\xce\xa9name\n" b"dir-rev-id", bytes)
+        self.assertEqual(b"dir: dir-id\n\ndir\xce\xa9name\ndir-rev-id", bytes)
         ie2 = inv._bytes_to_entry(bytes)
         self.assertEqual(ie, ie2)
         self.assertIsInstance(ie2.name, str)
@@ -1317,7 +1317,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         ie.symlink_target = "target/path"
         bytes = inv._entry_to_bytes(ie)
         self.assertEqual(
-            b"symlink: link-id\nparent-id\nlinkname\n" b"link-rev-id\ntarget/path",
+            b"symlink: link-id\nparent-id\nlinkname\nlink-rev-id\ntarget/path",
             bytes,
         )
         ie2 = inv._bytes_to_entry(bytes)
@@ -1355,8 +1355,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         ie.reference_revision = b"ref-rev-id"
         bytes = inv._entry_to_bytes(ie)
         self.assertEqual(
-            b"tree: tree-root-id\nparent-id\ntree\xce\xa9name\n"
-            b"tree-rev-id\nref-rev-id",
+            b"tree: tree-root-id\nparent-id\ntree\xce\xa9name\ntree-rev-id\nref-rev-id",
             bytes,
         )
         ie2 = inv._bytes_to_entry(bytes)

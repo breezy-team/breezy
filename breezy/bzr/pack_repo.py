@@ -69,8 +69,7 @@ class RetryWithNewPacks(errors.BzrError):
     internal_error = True
 
     _fmt = (
-        "Pack files have changed, reload and retry. context: %(context)s"
-        " %(orig_error)s"
+        "Pack files have changed, reload and retry. context: %(context)s %(orig_error)s"
     )
 
     def __init__(self, context, reload_occurred, exc_info):
@@ -1245,8 +1244,7 @@ class RepositoryPackCollection:
             final_pack_list.extend(pack_files)
         if len(final_pack_list) == 1:
             raise AssertionError(
-                "We somehow generated an autopack with a"
-                " single pack file being moved."
+                "We somehow generated an autopack with a single pack file being moved."
             )
             return []
         return [[final_rev_count, final_pack_list]]

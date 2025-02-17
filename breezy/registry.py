@@ -314,7 +314,7 @@ class Registry(Generic[K, V]):
     default_key = property(
         _get_default_key,
         _set_default_key,
-        doc="Current value of the default key." " Can be set to any existing key.",
+        doc="Current value of the default key. Can be set to any existing key.",
     )
 
 

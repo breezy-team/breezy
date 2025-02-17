@@ -363,7 +363,7 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file, diff_opts):
             m = re.match(b"^(binary )?files.*differ$", first_line, re.I)
             if m is None:
                 raise errors.BzrError(
-                    "external diff failed with exit code 2;" " command: %r" % (diffcmd,)
+                    "external diff failed with exit code 2; command: %r" % (diffcmd,)
                 )
             else:
                 # Binary files differ, just return

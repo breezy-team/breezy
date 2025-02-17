@@ -138,8 +138,7 @@ class BEncodeRevisionSerializer1:
                 key for key, (var_name, _, _) in schema.items() if var_name not in bits
             ]
             raise ValueError(
-                "Revision text was missing expected keys %s."
-                " text %r" % (missing, text)
+                "Revision text was missing expected keys %s. text %r" % (missing, text)
             )
         del bits[None]  # Get rid of 'format' since it doesn't get mapped
         rev = _mod_revision.Revision(**bits)

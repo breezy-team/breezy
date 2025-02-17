@@ -124,7 +124,7 @@ class Editor(MailClient):
 
     def _get_merge_prompt(self, prompt, to, subject, attachment):
         """See MailClient._get_merge_prompt"""
-        return "%s\n\n" "To: %s\n" "Subject: %s\n\n" "%s" % (
+        return "%s\n\nTo: %s\nSubject: %s\n\n%s" % (
             prompt,
             to,
             subject,
@@ -608,7 +608,7 @@ class MAPIClient(BodyExternalMailClient):
         except simplemapi.MAPIError as e:
             if e.code != simplemapi.MAPI_USER_ABORT:
                 raise MailClientNotFound(
-                    ["MAPI supported mail client" " (error %d)" % (e.code,)]
+                    ["MAPI supported mail client (error %d)" % (e.code,)]
                 )
 
 
@@ -637,7 +637,7 @@ class MailApp(BodyExternalMailClient):
             os.write(fd, "tell newMessage\n")
             if to is not None:
                 os.write(
-                    fd, "make new to recipient with properties" ' {address:"%s"}\n' % to
+                    fd, 'make new to recipient with properties {address:"%s"}\n' % to
                 )
             if from_ is not None:
                 # though from_ doesn't actually seem to be used

@@ -53,17 +53,17 @@ class LockHooks(Hooks):
         Hooks.__init__(self, "breezy.lock", "Lock.hooks")
         self.add_hook(
             "lock_acquired",
-            "Called with a breezy.lock.LockResult when a physical lock is " "acquired.",
+            "Called with a breezy.lock.LockResult when a physical lock is acquired.",
             (1, 8),
         )
         self.add_hook(
             "lock_released",
-            "Called with a breezy.lock.LockResult when a physical lock is " "released.",
+            "Called with a breezy.lock.LockResult when a physical lock is released.",
             (1, 8),
         )
         self.add_hook(
             "lock_broken",
-            "Called with a breezy.lock.LockResult when a physical lock is " "broken.",
+            "Called with a breezy.lock.LockResult when a physical lock is broken.",
             (1, 15),
         )
 
@@ -462,7 +462,7 @@ if have_ctypes_win32:
 
 if len(_lock_classes) == 0:
     raise NotImplementedError(
-        "We must have one of fcntl or ctypes available" " to support OS locking."
+        "We must have one of fcntl or ctypes available to support OS locking."
     )
 
 

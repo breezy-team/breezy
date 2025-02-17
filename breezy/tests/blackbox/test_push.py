@@ -403,10 +403,7 @@ class TestPush(tests.TestCaseWithTransport):
         self.assertFalse(tree_to.changes_from(tree_to.basis_tree()).has_changed())
 
         self.run_bzr_error(
-            [
-                "brz: ERROR: brz push --revision "
-                "takes exactly one revision identifier\n"
-            ],
+            ["brz: ERROR: brz push --revision takes exactly one revision identifier\n"],
             "push -r0..2 ../to",
             working_dir="from",
         )
@@ -727,7 +724,7 @@ class TestPushStrictMixin:
     _default_command = ["push", "../to"]
     _default_wd = "local"
     _default_errors = [
-        'Working tree ".*/local/" has uncommitted ' "changes \\(See brz status\\)\\.",
+        'Working tree ".*/local/" has uncommitted changes \\(See brz status\\)\\.',
     ]
     _default_additional_error = "Use --no-strict to force the push.\n"
     _default_additional_warning = "Uncommitted changes will not be pushed."
@@ -830,7 +827,7 @@ class TestPushStrictWithChanges(tests.TestCaseWithTransport, TestPushStrictMixin
         # Exercise commands from the checkout directory
         self._default_wd = "checkout"
         self._default_errors = [
-            "Working tree is out of date, please run" " 'brz update'\\.",
+            "Working tree is out of date, please run 'brz update'\\.",
         ]
 
     def test_push_default(self):

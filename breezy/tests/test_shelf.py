@@ -38,7 +38,7 @@ class TestErrors(tests.TestCase):
         invalid_id = "foo"
         err = shelf.InvalidShelfId(invalid_id)
         self.assertEqual(
-            '"foo" is not a valid shelf id, ' "try a number instead.", str(err)
+            '"foo" is not a valid shelf id, try a number instead.', str(err)
         )
 
 

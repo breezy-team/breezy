@@ -2893,7 +2893,7 @@ class TestRepositoryReconcile(TestRemoteRepository):
     def test_reconcile(self):
         transport_path = "hill"
         repo, client = self.setup_fake_client_and_repository(transport_path)
-        body = b"garbage_inventories: 2\n" b"inconsistent_parents: 3\n"
+        body = b"garbage_inventories: 2\ninconsistent_parents: 3\n"
         client.add_expected_call(
             b"Repository.lock_write", (b"hill/", b""), b"success", (b"ok", b"a token")
         )

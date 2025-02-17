@@ -57,7 +57,7 @@ class TestThunderbird(tests.TestCase):
         self.assertEqual(
             [
                 "-compose",
-                "body=bo%27dy," "subject='Hi there!'," "to='jrandom@example.org'",
+                "body=bo%27dy,subject='Hi there!',to='jrandom@example.org'",
             ],
             commandline,
         )
@@ -169,7 +169,7 @@ class TestEvolution(tests.TestCase):
             "jrandom@example.org", "Hi there!", None, "bo&dy"
         )
         self.assertEqual(
-            ["mailto:jrandom@example.org?body=bo%26dy&" "subject=Hi%20there%21"],
+            ["mailto:jrandom@example.org?body=bo%26dy&subject=Hi%20there%21"],
             commandline,
         )
 
@@ -296,7 +296,7 @@ class TestEditor(tests.TestCase):
             "foo\u1234", "bar\u1234", "baz\u1234", "qux\u1234".encode()
         )
         self.assertContainsRe(
-            prompt, "foo\u1234(.|\n)*bar\u1234" "(.|\n)*baz\u1234(.|\n)*qux\u1234"
+            prompt, "foo\u1234(.|\n)*bar\u1234(.|\n)*baz\u1234(.|\n)*qux\u1234"
         )
         editor._get_merge_prompt("foo", "bar", "baz", b"qux\xff")
 
