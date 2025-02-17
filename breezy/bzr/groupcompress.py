@@ -17,6 +17,7 @@
 """Core compression logic for compressing streams of related files."""
 
 import time
+from typing import List
 import zlib
 
 from breezy import debug
@@ -849,7 +850,7 @@ class PyrexGroupCompressor:
       left side.
     """
 
-    chunks: list[bytes]
+    chunks: List[bytes]
 
     def __init__(self, settings=None):
         """Create a GroupCompressor."""

@@ -22,7 +22,7 @@ from . import FastimportFeature
 try:
     from fastimport import commands
 except ImportError:
-    commands = object()
+    commands = object()  # type: ignore
 
 
 def load_tests(loader, standard_tests, pattern):
