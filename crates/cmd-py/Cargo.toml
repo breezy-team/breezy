@@ -6,9 +6,13 @@ edition = "2021"
 [lib]
 crate-type = ["cdylib"]
 
+[features]
+default = ["i18n"]
+i18n = ["gettext-rs", "breezy/i18n"]
+
 [dependencies]
 pyo3 = { workspace = true, features = ["extension-module"]}
 pyo3-filelike = { workspace = true }
-breezy = { path = "../..", features = ["pyo3"] }
-gettext-rs = "0.7"
+breezy = { path = "../..", features = ["pyo3"], default-features = false }
+gettext-rs = { workspace = true, optional = true }
 log = { workspace = true, features=["std"]}

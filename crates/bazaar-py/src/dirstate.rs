@@ -318,13 +318,21 @@ fn fields_per_entry(num_present_parents: usize) -> usize {
 }
 
 #[pyfunction]
-fn get_ghosts_line(py: Python, ghost_ids: Vec<&[u8]>) -> PyResult<PyObject> {
+fn get_ghosts_line(py: Python, ghost_ids: Vec<Vec<u8>>) -> PyResult<PyObject> {
+    let ghost_ids = ghost_ids
+        .iter()
+        .map(|x| x.as_slice())
+        .collect::<Vec<&[u8]>>();
     let bs = bazaar::dirstate::get_ghosts_line(ghost_ids.as_slice());
     Ok(PyBytes::new(py, bs.as_slice()).to_object(py))
 }
 
 #[pyfunction]
-fn get_parents_line(py: Python, parent_ids: Vec<&[u8]>) -> PyResult<PyObject> {
+fn get_parents_line(py: Python, parent_ids: Vec<Vec<u8>>) -> PyResult<PyObject> {
+    let parent_ids = parent_ids
+        .iter()
+        .map(|x| x.as_slice())
+        .collect::<Vec<&[u8]>>();
     let bs = bazaar::dirstate::get_parents_line(parent_ids.as_slice());
     Ok(PyBytes::new(py, bs.as_slice()).to_object(py))
 }
@@ -415,7 +423,8 @@ fn inv_entry_to_details(
 }
 
 #[pyfunction]
-fn get_output_lines(py: Python, lines: Vec<&[u8]>) -> Vec<PyObject> {
+fn get_output_lines(py: Python, lines: Vec<Vec<u8>>) -> Vec<PyObject> {
+    let lines = lines.iter().map(|x| x.as_slice()).collect::<Vec<&[u8]>>();
     bazaar::dirstate::get_output_lines(lines)
         .into_iter()
         .map(|x| PyBytes::new(py, x.as_slice()).to_object(py))

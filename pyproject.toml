@@ -34,6 +34,7 @@ dependencies = [
     "dulwich>=0.21.6",
     "urllib3>=1.24.1",
     "pyyaml",
+    "tzlocal",
 ]
 dynamic = ["version", "scripts"]
 
@@ -45,7 +46,7 @@ Download = "https://launchpad.net/brz/+download"
 fastimport = ["fastimport"]
 git = ["dulwich>=0.21.6"]
 launchpad = ["launchpadlib>=1.6.3"]
-workspace = ["pyinotify"]
+workspace = ["pyinotify", "pyasyncore;python_version>='3.12'"]
 doc = [
     "docutils",
     "setuptools",

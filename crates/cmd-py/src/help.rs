@@ -6,7 +6,14 @@ struct DynamicHelpTopic(std::sync::Arc<breezy::help::DynamicHelpTopic>);
 
 #[pymethods]
 impl DynamicHelpTopic {
-    fn get_help_text(&self, additional_see_also: Option<Vec<&str>>, plain: Option<bool>) -> String {
+    fn get_help_text(
+        &self,
+        additional_see_also: Option<Vec<String>>,
+        plain: Option<bool>,
+    ) -> String {
+        let additional_see_also = additional_see_also
+            .as_ref()
+            .map(|v| v.iter().map(|s| s.as_str()).collect::<Vec<_>>());
         self.0
             .get_help_text(additional_see_also.as_deref(), plain.unwrap_or(true))
     }
@@ -45,7 +52,14 @@ impl StaticHelpTopic {
         self.0.name.to_string()
     }
 
-    fn get_help_text(&self, additional_see_also: Option<Vec<&str>>, plain: Option<bool>) -> String {
+    fn get_help_text(
+        &self,
+        additional_see_also: Option<Vec<String>>,
+        plain: Option<bool>,
+    ) -> String {
+        let additional_see_also = additional_see_also
+            .as_ref()
+            .map(|v| v.iter().map(|s| s.as_str()).collect::<Vec<_>>());
         self.0
             .get_help_text(additional_see_also.as_deref(), plain.unwrap_or(true))
     }
@@ -110,7 +124,7 @@ impl HelpTopicRegistry {
         summary: &str,
         section: Option<&str>,
     ) -> PyResult<()> {
-        let mut o = py.import(module)?.to_object(py);
+        let mut o = py.import_bound(module)?.to_object(py);
 
         for attr in path.split('.') {
             o = o.getattr(py, attr)?;
@@ -179,8 +193,9 @@ impl HelpTopicRegistry {
 }
 
 #[pyfunction]
-fn _format_see_also(topics: Vec<&str>) -> String {
-    breezy::help::format_see_also(topics.as_slice())
+fn _format_see_also(topics: Vec<String>) -> String {
+    let topics_ref = topics.iter().map(|t| t.as_str()).collect::<Vec<_>>();
+    breezy::help::format_see_also(topics_ref.as_slice())
 }
 
 #[pyfunction]
@@ -191,7 +206,7 @@ fn known_env_variables() -> Vec<(String, String)> {
         .collect()
 }
 
-pub(crate) fn help_topics(m: &PyModule) -> PyResult<()> {
+pub(crate) fn help_topics(m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<DynamicHelpTopic>()?;
     m.add_class::<StaticHelpTopic>()?;
     m.add_class::<HelpTopicRegistry>()?;

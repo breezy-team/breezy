@@ -472,7 +472,8 @@ class BundleTester:
     def get_checkout(self, rev_id, checkout_dir=None):
         """Get a new tree, with the specified revision in it."""
         if checkout_dir is None:
-            checkout_dir = tempfile.mkdtemp(prefix="test-branch-", dir=".")
+            checkout_dir = tempfile.mkdtemp(prefix='test-branch-', dir='.')
+            checkout_dir = os.path.relpath(checkout_dir, os.getcwd())
         else:
             if not os.path.exists(checkout_dir):
                 os.mkdir(checkout_dir)

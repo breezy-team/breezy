@@ -126,7 +126,7 @@ To start a new release cycle:
 
 #. Add a landing job for the release branch at https://ci.breezy-vcs.org/
 
-#. Update the version number in the ``brz`` script, and the
+#. Update the version number in the ``Cargo.toml`` script, and the
    ``breezy/__init__.py`` file::
 
        version_info = (x, y, z, 'dev', 0)
@@ -172,7 +172,7 @@ The process for releasing an alpha release is therefore:
 - post an announcement on the home page.
 
 Uploading tarballs are described below, just use alpha versions (3, 0, 0,
-'alpha', 1) in ``./breezy/__init__.py``
+'alpha', 1) in ``./breezy/__init__.py`` and ``./Cargo.toml``.
 
 Update the source code
 ----------------------
@@ -196,8 +196,8 @@ Update the source code
 
    Alternatively, think about automating these merges.
 
-#. In the release branch, update  ``version_info`` in ``./breezy/__init__.py``.
-   Make sure the corresponding milestone exists.
+#. In the release branch, update  ``version_info`` in ``./breezy/__init__.py``
+   and ``./Cargo.toml``.  Make sure the corresponding milestone exists.
    Double check that ./brz ``_script_version`` matches ``version_info``. Check
    the output of ``./brz --version``.
 
@@ -272,8 +272,8 @@ Update the source code
    The diff before you commit will be something like::
 
       === modified file 'breezy/__init__.py'
-      --- breezy/__init__.py	2011-02-09 06:35:00 +0000
-      +++ breezy/__init__.py	2011-03-10 10:24:47 +0000
+      --- old/breezy/__init__.py	2011-02-09 06:35:00 +0000
+      +++ new/breezy/__init__.py	2011-03-10 10:24:47 +0000
       @@ -52,7 +52,7 @@
        # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
        # releaselevel of 'dev' for unreleased under-development code.
@@ -284,9 +284,21 @@ Update the source code
        # API compatibility version
        api_minimum_version = (2, 3, 0)
 
+      === modified file 'Cargo.toml'
+      --- old/Cargo.toml	2023-09-04 17:12:03 +0000
+      +++ new/Cargo.toml	2024-02-03 12:47:50 +0000
+      @@ -1,6 +1,6 @@
+       [package]
+       name = "breezy"
+      -version = "3.3.5"
+      +version = "3.3.6"
+       authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@jelmer.uk>"]
+       edition = "2018"
+       publish = false
+
       === modified file 'doc/en/release-notes/brz-2.3.txt'
-      --- doc/en/release-notes/brz-2.3.txt	2011-03-09 08:30:16 +0000
-      +++ doc/en/release-notes/brz-2.3.txt	2011-03-10 10:40:47 +0000
+      --- old/doc/en/release-notes/brz-2.3.txt	2011-03-09 08:30:16 +0000
+      +++ new/doc/en/release-notes/brz-2.3.txt	2011-03-10 10:40:47 +0000
       @@ -8,23 +8,10 @@
        brz 2.3.1
        #########
@@ -317,8 +329,8 @@ Update the source code
        *********
       
       === modified file 'doc/en/whats-new/whats-new-in-2.3.txt'
-      --- doc/en/whats-new/whats-new-in-2.3.txt	2011-02-03 16:29:18 +0000
-      +++ doc/en/whats-new/whats-new-in-2.3.txt	2011-03-10 11:10:36 +0000
+      --- old/doc/en/whats-new/whats-new-in-2.3.txt	2011-02-03 16:29:18 +0000
+      +++ new/doc/en/whats-new/whats-new-in-2.3.txt	2011-03-10 11:10:36 +0000
       @@ -17,8 +17,13 @@
        improvements made to the core product, it highlights enhancements within the
        broader Breezy world of potential interest to those upgrading.
@@ -412,9 +424,9 @@ file correctly, so the sooner the branch is opened again, the better.
 
 This matters more for ``lp:brz`` than for ``lp:brz/x.y``, ``lp:brz`` should
 always be open for landing, so you should do `At the start of a release
-cycle`_ as soon as possible (i.e. update the version number in ``brz`` and
-``breezy/__init__``, create/update the news files and create/update the
-milestone for the next relase).
+cycle`_ as soon as possible (i.e. update the version number in
+``Cargo.toml`` and ``breezy/__init__``, create/update the news files and
+create/update the milestone for the next relase).
 
 You may also need to do `At the start of a series cycle`_ if you're starting
 a new series.
@@ -610,7 +622,7 @@ Merge the release branch back into the trunk.  The ``doc/en/release-notes``
 changes should be merged into the right place because each release series
 has its own release-notes file, but double-check.
 
-If it's not already done, advance the version number in ``brz`` and
+If it's not already done, advance the version number in ``Cargo.toml`` and
 ``breezy/__init__.py``. File a merge proposal against ``lp:brz``.
 
 As soon as you change the version number in trunk, make sure you have

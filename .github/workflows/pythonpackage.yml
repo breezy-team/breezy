@@ -2,23 +2,17 @@ name: Python package
 
 on: [push, pull_request]
 
+env:
+  PYO3_USE_ABI3_FORWARD_COMPATIBILITY: "1"
+
 jobs:
   build:
 
-    continue-on-error: ${{ matrix.experimental }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: [3.9, "3.10", "3.11", '3.12', '3.13']
-        experimental: [false]
-        include:
-          - os: macos-latest
-            experimental: true
-            python-version: '3.12'
-          - os: windows-latest
-            python-version: '3.12'
-            experimental: true
+        python-version: [3.9, "3.10", "3.11", '3.12']
 # See https://github.com/actions/toolkit/issues/399
 #        include:
 #          - os: ubuntu-latest
@@ -46,8 +40,6 @@ jobs:
           python -m pip install -U pip "setuptools>=60" setuptools-gettext cython setuptools-rust
           python -m pip install -U pip coverage codecov cython testscenarios git+https://github.com/dulwich/dulwich
           python -m pip install ".[dev,paramiko,doc,launchpad,git,fastimport]"
-        env:
-          PYO3_USE_ABI3_FORWARD_COMPATIBILITY: "1"
       - name: Install dependencies (linux/pip)
         run: |
           sudo apt install libgpgme-dev libgpg-error-dev
@@ -62,8 +54,6 @@ jobs:
         run: |
           make docs PYTHON=python
       - name: Build extensions
-        env:
-          PYO3_USE_ABI3_FORWARD_COMPATIBILITY: "1"
         run: |
           make extensions PYTHON=python
         if: "matrix.python-version != 'pypy3'"

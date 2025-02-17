@@ -980,11 +980,19 @@ class TestTestResult(tests.TestCase):
 
         class TimeAddedVerboseTestResult(tests.VerboseTestResult):
             def startTest(self, test):
-                self.time(datetime.datetime.utcfromtimestamp(1.145))
+                try:
+                    dt = datetime.datetime.fromtimestamp(1.145, datetime.UTC)
+                except AttributeError:
+                    dt = datetime.datetime.utcfromtimestamp(1.145)
+                self.time(dt)
                 super().startTest(test)
 
             def addSuccess(self, test):
-                self.time(datetime.datetime.utcfromtimestamp(51.147))
+                try:
+                    dt = datetime.datetime.fromtimestamp(51.147, datetime.UTC)
+                except AttributeError:
+                    dt = datetime.datetime.utcfromtimestamp(51.147)
+                self.time(dt)
                 super().addSuccess(test)
 
             def report_tests_starting(self):

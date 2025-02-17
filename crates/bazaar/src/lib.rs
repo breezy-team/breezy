@@ -86,14 +86,14 @@ impl FromPyObject<'_> for FileId {
 #[cfg(feature = "pyo3")]
 impl ToPyObject for FileId {
     fn to_object(&self, py: Python) -> PyObject {
-        PyBytes::new(py, &self.0).to_object(py)
+        PyBytes::new_bound(py, &self.0).to_object(py)
     }
 }
 
 #[cfg(feature = "pyo3")]
 impl IntoPy<PyObject> for FileId {
     fn into_py(self, py: Python) -> PyObject {
-        PyBytes::new(py, &self.0).to_object(py)
+        PyBytes::new_bound(py, &self.0).to_object(py)
     }
 }
 
@@ -155,14 +155,14 @@ impl FromPyObject<'_> for RevisionId {
 #[cfg(feature = "pyo3")]
 impl ToPyObject for RevisionId {
     fn to_object(&self, py: Python) -> PyObject {
-        PyBytes::new(py, &self.0).to_object(py)
+        PyBytes::new_bound(py, &self.0).to_object(py)
     }
 }
 
 #[cfg(feature = "pyo3")]
 impl IntoPy<PyObject> for RevisionId {
     fn into_py(self, py: Python) -> PyObject {
-        PyBytes::new(py, &self.0).to_object(py)
+        PyBytes::new_bound(py, &self.0).to_object(py)
     }
 }
 

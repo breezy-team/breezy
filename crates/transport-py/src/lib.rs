@@ -310,7 +310,8 @@ impl Transport {
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
     }
 
-    fn has_any(&self, py: Python, paths: Vec<&str>) -> PyResult<bool> {
+    fn has_any(&self, py: Python, paths: Vec<String>) -> PyResult<bool> {
+        let paths = paths.iter().map(|p| p.as_str()).collect::<Vec<_>>();
         py.allow_threads(|| self.0.has_any(paths.as_slice()))
             .map_err(|e| map_transport_err_to_py_err(e, None, None))
     }
@@ -715,14 +716,16 @@ impl Transport {
         let relpaths = relpaths
             .as_ref(py)
             .iter()?
-            .map(|o| o?.extract())
+            .map(|o| o?.extract::<String>())
             .collect::<PyResult<Vec<_>>>()?;
+
+        let relpaths_ref = relpaths.iter().map(|s| s.as_str()).collect::<Vec<_>>();
 
         if let Ok(t) = to_transport.clone_ref(py).downcast::<PyCell<Transport>>(py) {
             let t = &t.borrow().0;
             py.allow_threads(|| {
                 self.0.copy_to(
-                    relpaths.as_slice(),
+                    relpaths_ref.as_slice(),
                     t.as_ref(),
                     mode.map(perms_from_py_object),
                 )
@@ -733,7 +736,7 @@ impl Transport {
             py.allow_threads(|| {
                 self.0
                     .copy_to(
-                        relpaths.as_slice(),
+                        relpaths_ref.as_slice(),
                         t.as_ref(),
                         mode.map(perms_from_py_object),
                     )
@@ -787,8 +790,8 @@ impl LocalTransport {
     fn clone(slf: PyRef<Self>, py: Python, offset: Option<PyObject>) -> PyResult<PyObject> {
         let super_ = slf.as_ref();
         let inner = if let Some(offset) = offset {
-            let offset = offset.extract::<&str>(py)?;
-            super_.0.clone(Some(offset))
+            let offset = offset.extract::<String>(py)?;
+            super_.0.clone(Some(&offset))
         } else {
             super_.0.clone(None)
         }
