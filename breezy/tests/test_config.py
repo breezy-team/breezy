@@ -569,7 +569,7 @@ class TestIniConfigBuilding(TestIniConfig):
         got = os.stat("foo.conf")
         expected = os.stat(".")
         self.assertEqual(expected.st_uid, got.st_uid)
-        self.assertEqual(expected.st_gid, got.st_uid)
+        self.assertEqual(expected.st_gid, got.st_gid)
 
 
 class TestIniConfigSaving(tests.TestCaseInTempDir):
