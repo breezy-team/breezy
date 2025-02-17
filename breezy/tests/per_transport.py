@@ -147,8 +147,7 @@ class TransportTests(TestTransportImplementation):
     def test_has_root_works(self):
         if self.transport_server is test_server.SmartTCPServer_for_testing:
             raise TestNotApplicable(
-                "SmartTCPServer_for_testing intentionally does not allow "
-                "access to /."
+                "SmartTCPServer_for_testing intentionally does not allow access to /."
             )
         current_transport = self.get_transport()
         self.assertTrue(current_transport.has("/"))

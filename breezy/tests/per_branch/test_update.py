@@ -71,7 +71,7 @@ class TestUpdate(per_branch.TestCaseWithBranch):
             tree1.branch.tags.set_tag("test-tag", rev1)
         except errors.TagsNotSupported:
             # Tags not supported
-            raise tests.TestNotApplicable("only triggered from branches with" " tags")
+            raise tests.TestNotApplicable("only triggered from branches with tags")
         readonly_branch1 = branch.Branch.open("readonly+" + tree1.branch.base)
         tree2 = tree1.controldir.sprout("tree2").open_workingtree()
         try:

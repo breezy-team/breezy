@@ -207,9 +207,9 @@ def generate_simple_plan(
 
     :return: replace map
     """
-    assert (
-        start_revid is None or start_revid in todo_set
-    ), "invalid start revid({!r}), todo_set({!r})".format(start_revid, todo_set)
+    assert start_revid is None or start_revid in todo_set, (
+        "invalid start revid({!r}), todo_set({!r})".format(start_revid, todo_set)
+    )
     assert stop_revid is None or stop_revid in todo_set, "invalid stop_revid"
     replace_map = {}
     parent_map = graph.get_parent_map(todo_set)
@@ -508,9 +508,9 @@ class WorkingTreeRevisionRewriter:
         # Make sure there are no conflicts or pending merges/changes
         # in the working tree
         complete_revert(self.wt, [newparents[0]])
-        assert not self.wt.changes_from(
-            self.wt.basis_tree()
-        ).has_changed(), "Changes in rev"
+        assert not self.wt.changes_from(self.wt.basis_tree()).has_changed(), (
+            "Changes in rev"
+        )
 
         oldtree = repository.revision_tree(oldrevid)
         self.state.write_active_revid(oldrevid)

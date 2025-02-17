@@ -326,9 +326,7 @@ def show_pending_merges(new, to_file, short=False, verbose=False):
         if verbose:
             to_file.write("pending merges:\n")
         else:
-            to_file.write(
-                "pending merge tips:" " (use -v to see all merge revisions)\n"
-            )
+            to_file.write("pending merge tips: (use -v to see all merge revisions)\n")
     graph = branch.repository.get_graph()
     other_revisions = [last_revision]
     log_formatter = log.LineLogFormatter(to_file)

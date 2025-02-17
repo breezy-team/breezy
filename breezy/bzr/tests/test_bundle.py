@@ -861,9 +861,7 @@ class BundleTester:
         self.b1 = self.tree1.branch
 
         f.write(
-            (
-                "A file\n" "With international man of mystery\n" "William Dod\xe9\n"
-            ).encode()
+            ("A file\nWith international man of mystery\nWilliam Dod\xe9\n").encode()
         )
         f.close()
 
@@ -905,7 +903,7 @@ class BundleTester:
     def test_whitespace_bundle(self):
         if sys.platform in ("win32", "cygwin"):
             raise tests.TestSkipped(
-                "Windows doesn't support filenames" " with tabs or trailing spaces"
+                "Windows doesn't support filenames with tabs or trailing spaces"
             )
         self.tree1 = self.make_branch_and_tree("b1")
         self.b1 = self.tree1.branch
@@ -1203,10 +1201,7 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
         bundle_sio, revision_ids = self.create_bundle_text(b"null:", b"rev1")
         self.assertContainsRe(
             bundle_sio.getvalue(),
-            b"# properties:\n"
-            b"#   branch-nick: tree\n"
-            b"#   empty: \n"
-            b"#   one: two\n",
+            b"# properties:\n#   branch-nick: tree\n#   empty: \n#   one: two\n",
         )
         bundle = read_bundle(bundle_sio)
         revision_info = bundle.revisions[0]
@@ -1242,10 +1237,7 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
 
         self.assertContainsRe(
             bundle_sio.getvalue(),
-            b"# properties:\n"
-            b"#   branch-nick: tree\n"
-            b"#   empty:\n"
-            b"#   one: two\n",
+            b"# properties:\n#   branch-nick: tree\n#   empty:\n#   one: two\n",
         )
         bundle = read_bundle(bundle_sio)
         revision_info = bundle.revisions[0]

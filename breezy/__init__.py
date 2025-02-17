@@ -39,7 +39,7 @@ import codecs
 import sys
 
 __copyright__ = (
-    "Copyright 2005-2012 Canonical Ltd.\n" "Copyright 2017-2025 Breezy developers"
+    "Copyright 2005-2012 Canonical Ltd.\nCopyright 2017-2025 Breezy developers"
 )
 
 # same format as sys.version_info: "A tuple containing the five components of

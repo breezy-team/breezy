@@ -732,7 +732,7 @@ class TestBranchUploadLocations(per_branch.TestCaseWithBranch):
         fn = bedding.locations_config_path()
         b = self.get_branch()
         with open(fn, "w") as f:
-            f.write("[%s]\n" "upload_location=foo\n" % b.base.rstrip("/"))
+            f.write("[%s]\nupload_location=foo\n" % b.base.rstrip("/"))
         self.assertEqual("foo", b.get_config_stack().get("upload_location"))
 
     def test_set_push_location(self):

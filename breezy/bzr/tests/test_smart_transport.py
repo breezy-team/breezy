@@ -245,9 +245,7 @@ class SmartClientMediumTests(tests.TestCase):
             [
                 sys.executable,
                 "-c",
-                "import sys\n"
-                "sys.stdout.write(sys.stdin.read(4))\n"
-                "sys.stdout.close()\n",
+                "import sys\nsys.stdout.write(sys.stdin.read(4))\nsys.stdout.close()\n",
             ],
             stdout=subprocess.PIPE,
             stdin=subprocess.PIPE,
@@ -289,9 +287,7 @@ class SmartClientMediumTests(tests.TestCase):
             [
                 sys.executable,
                 "-c",
-                "import sys\n"
-                "sys.stdout.write(sys.stdin.read(4))\n"
-                "sys.stdout.close()\n",
+                "import sys\nsys.stdout.write(sys.stdin.read(4))\nsys.stdout.close()\n",
             ],
             stdout=subprocess.PIPE,
             stdin=subprocess.PIPE,
@@ -911,9 +907,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
             transport, from_server.write
         )
         server._serve_one_request(smart_protocol)
-        self.assertEqual(
-            b"ok\n" b"17\n" b"contents\nof\nfile\n" b"done\n", from_server.getvalue()
-        )
+        self.assertEqual(b"ok\n17\ncontents\nof\nfile\ndone\n", from_server.getvalue())
 
     def test_response_to_canned_get_of_utf8(self):
         # wire-to-wire, using the whole stack, with a UTF-8 filename.
@@ -929,9 +923,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
             transport, from_server.write
         )
         server._serve_one_request(smart_protocol)
-        self.assertEqual(
-            b"ok\n" b"17\n" b"contents\nof\nfile\n" b"done\n", from_server.getvalue()
-        )
+        self.assertEqual(b"ok\n17\ncontents\nof\nfile\ndone\n", from_server.getvalue())
 
     def test_pipe_like_stream_with_bulk_data(self):
         sample_request_bytes = b"command\n9\nbulk datadone\n"

@@ -1039,15 +1039,11 @@ class TestCanonicalize(TestCase):
         )
         self.check(
             ["import one", "import two, three", "from one import four"],
-            "import one\n" "import two, three\n" "from one import four",
+            "import one\nimport two, three\nfrom one import four",
         )
         self.check(
             ["import one", "import two, three", "from one import  four, "],
-            "import one\n"
-            "import two, three\n"
-            "from one import (\n"
-            "    four,\n"
-            "    )\n",
+            "import one\nimport two, three\nfrom one import (\n    four,\n    )\n",
         )
 
     def test_missing_trailing(self):
@@ -1124,7 +1120,7 @@ class TestImportProcessor(TestCase):
     def test_from_one_import_two(self):
         exp = {"two": (["one"], "two", {})}
         self.check(exp, "from one import two\n")
-        self.check(exp, "from one import (\n" "    two,\n" "    )\n")
+        self.check(exp, "from one import (\n    two,\n    )\n")
 
     def test_from_one_import_two_two(self):
         exp = {"two": (["one"], "two", {})}
@@ -1132,7 +1128,7 @@ class TestImportProcessor(TestCase):
         self.check(exp, "from one import (two)\n")
         self.check(exp, "from one import (two,)\n")
         self.check(exp, "from one import two as two\n")
-        self.check(exp, "from one import (\n" "    two,\n" "    )\n")
+        self.check(exp, "from one import (\n    two,\n    )\n")
 
     def test_from_many(self):
         exp = {
@@ -1141,7 +1137,7 @@ class TestImportProcessor(TestCase):
             "five": (["one", "two"], "four", {}),
         }
         self.check(
-            exp, "from one import two\n" "from one.two import three, four as five\n"
+            exp, "from one import two\nfrom one.two import three, four as five\n"
         )
         self.check(
             exp,

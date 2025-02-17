@@ -2824,9 +2824,10 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         if tar_file is None:
             return None
         destination = to_bzrdir.create_repository()
-        with tarfile.open(
-            "repository", fileobj=tar_file, mode="r|bz2"
-        ) as tar, osutils.TemporaryDirectory() as tmpdir:
+        with (
+            tarfile.open("repository", fileobj=tar_file, mode="r|bz2") as tar,
+            osutils.TemporaryDirectory() as tmpdir,
+        ):
             tar.extractall(tmpdir)
             tmp_bzrdir = _mod_bzrdir.BzrDir.open(tmpdir)
             tmp_repo = tmp_bzrdir.open_repository()
@@ -3863,7 +3864,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         if self._real_branch is None:
             if not vfs.vfs_enabled():
                 raise AssertionError(
-                    "smart server vfs must be enabled " "to use vfs implementation"
+                    "smart server vfs must be enabled to use vfs implementation"
                 )
             self.controldir._ensure_real()
             self._real_branch = self.controldir._real_bzrdir.open_branch(

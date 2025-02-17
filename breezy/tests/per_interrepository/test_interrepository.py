@@ -61,8 +61,9 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         tree_a = self.make_branch_and_tree("a")
         self.controldir = tree_a.branch.controldir
         # add a corrupt inventory 'orphan'
-        with tree_a.branch.repository.lock_write(), WriteGroup(
-            tree_a.branch.repository
+        with (
+            tree_a.branch.repository.lock_write(),
+            WriteGroup(tree_a.branch.repository),
         ):
             if tree_a.branch.repository._format.supports_ghosts:
                 inv_file = tree_a.branch.repository.inventories
@@ -145,8 +146,9 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
             raise TestNotApplicable("to repository does not support signatures")
         # and sign 'rev2'
         tree_a = WorkingTree.open("a")
-        with tree_a.branch.repository.lock_write(), WriteGroup(
-            tree_a.branch.repository
+        with (
+            tree_a.branch.repository.lock_write(),
+            WriteGroup(tree_a.branch.repository),
         ):
             tree_a.branch.repository.sign_revision(
                 self.rev2, breezy.gpg.LoopbackGPGStrategy(None)

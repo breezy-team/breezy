@@ -213,9 +213,7 @@ class BundleInfo:
         def add_sha(d, revision_id, sha1):
             if revision_id is None:
                 if sha1 is not None:
-                    raise BzrError(
-                        "A Null revision should always" "have a null sha1 hash"
-                    )
+                    raise BzrError("A Null revision should alwayshave a null sha1 hash")
                 return
             if revision_id in d:
                 # This really should have been validated as part
@@ -354,7 +352,7 @@ class BundleInfo:
             info = extra.split(" // ")
             if len(info) < 2:
                 raise BzrError(
-                    "renamed action lines need both a from and to" ": %r" % extra
+                    "renamed action lines need both a from and to: %r" % extra
                 )
             old_path = info[0]
             if info[1].startswith("=> "):
@@ -374,7 +372,7 @@ class BundleInfo:
                 # TODO: in the future we might allow file ids to be
                 # given for removed entries
                 raise BzrError(
-                    "removed action lines should only have the path" ": %r" % extra
+                    "removed action lines should only have the path: %r" % extra
                 )
             path = info[0]
             bundle_tree.note_deletion(path)
@@ -383,16 +381,16 @@ class BundleInfo:
             info = extra.split(" // ")
             if len(info) <= 1:
                 raise BzrError(
-                    "add action lines require the path and file id" ": %r" % extra
+                    "add action lines require the path and file id: %r" % extra
                 )
             elif len(info) > 5:
                 raise BzrError(
-                    "add action lines have fewer than 5 entries." ": %r" % extra
+                    "add action lines have fewer than 5 entries.: %r" % extra
                 )
             path = info[0]
             if not info[1].startswith("file-id:"):
                 raise BzrError(
-                    "The file-id should follow the path for an add" ": %r" % extra
+                    "The file-id should follow the path for an add: %r" % extra
                 )
             # This will be Unicode because of how the stream is read. Turn it
             # back into a utf8 file_id
@@ -411,7 +409,7 @@ class BundleInfo:
             info = extra.split(" // ")
             if len(info) < 1:
                 raise BzrError(
-                    "modified action lines have at least" "the path in them: %r" % extra
+                    "modified action lines have at leastthe path in them: %r" % extra
                 )
             path = info[0]
 
@@ -429,13 +427,11 @@ class BundleInfo:
         for action_line, lines in self.get_revision_info(revision_id).tree_actions:
             first = action_line.find(" ")
             if first == -1:
-                raise BzrError(
-                    "Bogus action line" " (no opening space): %r" % action_line
-                )
+                raise BzrError("Bogus action line (no opening space): %r" % action_line)
             second = action_line.find(" ", first + 1)
             if second == -1:
                 raise BzrError(
-                    "Bogus action line" " (missing second space): %r" % action_line
+                    "Bogus action line (missing second space): %r" % action_line
                 )
             action = action_line[:first]
             kind = action_line[first + 1 : second]
@@ -448,7 +444,7 @@ class BundleInfo:
 
             if action not in valid_actions:
                 raise BzrError(
-                    "Bogus action line" " (unrecognized action): %r" % action_line
+                    "Bogus action line (unrecognized action): %r" % action_line
                 )
             valid_actions[action](kind, extra, lines)
 

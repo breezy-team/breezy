@@ -38,7 +38,7 @@ class TestOutsideWT(tests.ChrootedTestCase):
     def test_url_log(self):
         url = self.get_readonly_url() + "subdir/"
         out, err = self.run_bzr(["log", url], retcode=3)
-        self.assertEqual("brz: ERROR: Not a branch:" ' "%s".\n' % url, err)
+        self.assertEqual('brz: ERROR: Not a branch: "%s".\n' % url, err)
 
     def test_diff_outside_tree(self):
         tree = self.make_branch_and_tree("branch1")

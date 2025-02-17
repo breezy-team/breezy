@@ -597,13 +597,12 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
             paramiko_transport.auth_password(username, password)
         except paramiko.SSHException as e:
             raise errors.ConnectionError(
-                "Unable to authenticate to SSH host as"
-                "\n  %s@%s\n" % (username, host),
+                "Unable to authenticate to SSH host as\n  %s@%s\n" % (username, host),
                 e,
             )
     else:
         raise errors.ConnectionError(
-            "Unable to authenticate to SSH host as" "  %s@%s" % (username, host)
+            "Unable to authenticate to SSH host as  %s@%s" % (username, host)
         )
 
 

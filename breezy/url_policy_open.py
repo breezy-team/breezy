@@ -43,7 +43,7 @@ class BranchLoopError(errors.BzrError):
     and this exception is raised when we detect such a cycle.
     """
 
-    _fmt = "Encountered a branch cycle" ""
+    _fmt = "Encountered a branch cycle"
 
 
 class BranchOpenPolicy:
