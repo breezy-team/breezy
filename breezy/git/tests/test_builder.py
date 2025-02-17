@@ -246,7 +246,7 @@ class TestGitBranchBuilder(tests.TestCase):
         builder = tests.GitBranchBuilder(stream)
         builder.reset(mark=b"123")
         self.assertEqualDiff(
-            b"reset refs/heads/master\n" b"from :123\n" b"\n", stream.getvalue()
+            b"reset refs/heads/master\nfrom :123\n\n", stream.getvalue()
         )
 
 

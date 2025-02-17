@@ -840,7 +840,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             self._check_kind_change(self.make_dir, self.make_file, expect_fs_hash=True)
         except errors.UnsupportedKindChange as err:
             raise tests.TestSkipped(
-                "tree does not support changing entry kind from " "directory to file"
+                "tree does not support changing entry kind from directory to file"
             ) from err
 
     def test_last_modified_dir_link(self):
@@ -854,7 +854,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             self._check_kind_change(self.make_dir, self.make_link)
         except errors.UnsupportedKindChange as err:
             raise tests.TestSkipped(
-                "tree does not support changing entry kind from " "directory to link"
+                "tree does not support changing entry kind from directory to link"
             ) from err
 
     def test_last_modified_link_file(self):

@@ -73,7 +73,9 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
         encoding = self.headers.get("Transfer-Encoding")
         if encoding is not None:
             if encoding != "chunked":
-                raise AssertionError("Unsupported transfer encoding: {}".format(encoding))
+                raise AssertionError(
+                    "Unsupported transfer encoding: {}".format(encoding)
+                )
             body = []
             # We receive the content by chunk
             while True:
@@ -334,14 +336,14 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
         prop["status"] = _prop("D", "status", "HTTP/1.1 200 OK")
 
         response = f"""<D:response xmlns:liveprop="DAV:" xmlns:bzr="DAV:">
-    {prop['href']}
+    {prop["href"]}
     <D:propstat>
         <D:prop>
-             {prop['type']}
-             {prop['length']}
-             {prop['exec']}
+             {prop["type"]}
+             {prop["length"]}
+             {prop["exec"]}
         </D:prop>
-        {prop['status']}
+        {prop["status"]}
     </D:propstat>
 </D:response>
 """
@@ -390,7 +392,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
         # expand everything into a big string.
         response = f"""<?xml version="1.0" encoding="utf-8"?>
 <D:multistatus xmlns:D="DAV:" xmlns:ns0="DAV:">
-{response}{''.join(dir_responses)}
+{response}{"".join(dir_responses)}
 </D:multistatus>""".encode()
 
         self.send_response(207)

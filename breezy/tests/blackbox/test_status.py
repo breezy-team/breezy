@@ -430,7 +430,7 @@ class BranchStatus(TestCaseWithTransport):
             "  NONEXISTENT\n",
         ]
         out, err = self.run_bzr(
-            "status NONEXISTENT " "FILE_A FILE_B FILE_C FILE_D FILE_E", retcode=3
+            "status NONEXISTENT FILE_A FILE_B FILE_C FILE_D FILE_E", retcode=3
         )
         self.assertEqual(expected, out.splitlines(True))
         self.assertContainsRe(err, r".*ERROR: Path\(s\) do not exist: " "NONEXISTENT.*")
@@ -441,7 +441,7 @@ class BranchStatus(TestCaseWithTransport):
             "X   NONEXISTENT\n",
         ]
         out, err = self.run_bzr(
-            "status --short NONEXISTENT " "FILE_A FILE_B FILE_C FILE_D FILE_E",
+            "status --short NONEXISTENT FILE_A FILE_B FILE_C FILE_D FILE_E",
             retcode=3,
         )
         self.assertEqual(expected, out.splitlines(True))
@@ -461,9 +461,7 @@ class BranchStatus(TestCaseWithTransport):
             "  NONEXISTENT\n",
         ]
         out, err = self.run_bzr(
-            "status NONEXISTENT "
-            "FILE_A FILE_B ANOTHER_NONEXISTENT "
-            "FILE_C FILE_D FILE_E",
+            "status NONEXISTENT FILE_A FILE_B ANOTHER_NONEXISTENT FILE_C FILE_D FILE_E",
             retcode=3,
         )
         self.assertEqual(expected, out.splitlines(True))
@@ -672,7 +670,7 @@ class TestStatus(TestCaseWithTransport):
 
         self.build_tree(["world.txt"])
         result = self.run_bzr("status -r 0")[0]
-        self.assertContainsRe(result, "added:\n  hello.txt\n" "unknown:\n  world.txt\n")
+        self.assertContainsRe(result, "added:\n  hello.txt\nunknown:\n  world.txt\n")
         result2 = self.run_bzr("status -r 0..")[0]
         self.assertEqual(result2, result)
 
@@ -693,7 +691,7 @@ class TestStatus(TestCaseWithTransport):
 
         self.build_tree(["world.txt"])
         result = self.run_bzr("status -S -r 0")[0]
-        self.assertContainsRe(result, "[+]N  hello.txt\n" "[?]   world.txt\n")
+        self.assertContainsRe(result, "[+]N  hello.txt\n[?]   world.txt\n")
         result2 = self.run_bzr("status -S -r 0..")[0]
         self.assertEqual(result2, result)
 
@@ -759,7 +757,7 @@ class TestStatus(TestCaseWithTransport):
         self.assertStatusContains("kind changed:\n  file \\(file => directory\\)")
         tree.rename_one("file", "directory")
         self.assertStatusContains(
-            "renamed:\n  file => directory/\n" "modified:\n  directory/\n"
+            "renamed:\n  file => directory/\nmodified:\n  directory/\n"
         )
         rmdir("directory")
         self.assertStatusContains("removed:\n  file\n")
@@ -821,8 +819,9 @@ class TestStatusEncodings(TestCaseWithTransport):
             self.build_tree_contents([(filename, b"contents of hello")])
         except UnicodeEncodeError as err:
             raise TestSkipped(
-                "can't build unicode working tree in "
-                "filesystem encoding {}".format(sys.getfilesystemencoding())
+                "can't build unicode working tree in filesystem encoding {}".format(
+                    sys.getfilesystemencoding()
+                )
             ) from err
         working_tree.add(filename)
         return working_tree

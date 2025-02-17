@@ -34,13 +34,11 @@ sample_config = (
     b"revision_mail_headers=X-Cheese: to the rescue!\n"
 )
 
-unconfigured_config = b"[DEFAULT]\n" b"email=Robert <foo@example.com>\n"
+unconfigured_config = b"[DEFAULT]\nemail=Robert <foo@example.com>\n"
 
-sender_configured_config = (
-    b"[DEFAULT]\n" b"post_commit_sender=Sample <foo@example.com>\n"
-)
+sender_configured_config = b"[DEFAULT]\npost_commit_sender=Sample <foo@example.com>\n"
 
-to_configured_config = b"[DEFAULT]\n" b"post_commit_to=Sample <foo@example.com>\n"
+to_configured_config = b"[DEFAULT]\npost_commit_to=Sample <foo@example.com>\n"
 
 multiple_to_configured_config = (
     b"[DEFAULT]\n"
@@ -58,7 +56,7 @@ customized_mail_config = (
 )
 
 push_config = (
-    b"[DEFAULT]\n" b"post_commit_to=demo@example.com\n" b"post_commit_push_pull=True\n"
+    b"[DEFAULT]\npost_commit_to=demo@example.com\npost_commit_push_pull=True\n"
 )
 
 with_url_config = (
@@ -152,7 +150,7 @@ class TestGetTo(TestCaseInTempDir):
         self.assertEqual(sender.url(), "http://some.fake/url/")
 
     def test_public_url_set(self):
-        config = b"[DEFAULT]\n" b"public_branch=http://the.publication/location/\n"
+        config = b"[DEFAULT]\npublic_branch=http://the.publication/location/\n"
         sender, revid = self.get_sender(config)
         self.assertEqual(sender.url(), "http://the.publication/location/")
 

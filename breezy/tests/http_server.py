@@ -449,7 +449,9 @@ class HttpServer(test_server.TestingTCPServerInAThread):
             or isinstance(backing_transport_server, test_server.LocalURLServer)
         ):
             raise AssertionError(
-                "HTTPServer currently assumes local transport, got {}".format(backing_transport_server)
+                "HTTPServer currently assumes local transport, got {}".format(
+                    backing_transport_server
+                )
             )
         self._home_dir = osutils.getcwd()
         self._local_path_parts = self._home_dir.split(os.path.sep)

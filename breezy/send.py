@@ -76,7 +76,7 @@ def send(
             target_branch = branch.get_parent()
             remembered_target_branch = "parent"
         if target_branch is None:
-            raise errors.CommandError(gettext("No submit branch known or" " specified"))
+            raise errors.CommandError(gettext("No submit branch known or specified"))
         if remembered_target_branch is not None:
             trace.note(
                 gettext(
@@ -108,13 +108,13 @@ def send(
         elif remember or (remember is None and stored_public_branch is None):
             branch.set_public_branch(public_branch)
         if no_bundle and public_branch is None:
-            raise errors.CommandError(gettext("No public branch specified or" " known"))
+            raise errors.CommandError(gettext("No public branch specified or known"))
         base_revision_id = None
         revision_id = None
         if revision is not None:
             if len(revision) > 2:
                 raise errors.CommandError(
-                    gettext("bzr send takes " "at most two one revision identifiers")
+                    gettext("bzr send takes at most two one revision identifiers")
                 )
             revision_id = revision[-1].as_revision_id(branch)
             if len(revision) == 2:
@@ -213,7 +213,7 @@ def _send_0_9(
             patch_type = "bundle"
         else:
             raise errors.CommandError(
-                gettext("Format 0.9 does not" " permit bundle with no patch")
+                gettext("Format 0.9 does not permit bundle with no patch")
             )
     else:
         patch_type = "diff" if not no_patch else None

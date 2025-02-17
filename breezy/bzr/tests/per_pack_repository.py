@@ -930,8 +930,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
                 mismatching_format_name = "pack-0.92-subtree"
             else:
                 raise TestNotApplicable(
-                    "No formats use non-v5 serializer"
-                    " without having rich-root also set"
+                    "No formats use non-v5 serializer without having rich-root also set"
                 )
         base = self.make_repository("base", format=matching_format_name)
         repo.add_fallback_repository(base)
@@ -1167,8 +1166,7 @@ def load_tests(loader, basic_tests, pattern):
         },
         {
             "format_name": "1.6.1-rich-root",
-            "format_string": "Bazaar RepositoryFormatKnitPack5RichRoot "
-            "(bzr 1.6.1)\n",
+            "format_string": "Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6.1)\n",
             "format_supports_external_lookups": True,
             "index_class": GraphIndex,
         },
@@ -1180,14 +1178,13 @@ def load_tests(loader, basic_tests, pattern):
         },
         {
             "format_name": "1.9-rich-root",
-            "format_string": "Bazaar RepositoryFormatKnitPack6RichRoot " "(bzr 1.9)\n",
+            "format_string": "Bazaar RepositoryFormatKnitPack6RichRoot (bzr 1.9)\n",
             "format_supports_external_lookups": True,
             "index_class": BTreeGraphIndex,
         },
         {
             "format_name": "2a",
-            "format_string": "Bazaar repository format 2a "
-            "(needs bzr 1.16 or later)\n",
+            "format_string": "Bazaar repository format 2a (needs bzr 1.16 or later)\n",
             "format_supports_external_lookups": True,
             "index_class": BTreeGraphIndex,
         },

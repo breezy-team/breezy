@@ -841,7 +841,7 @@ class TreeTransformBase(TreeTransform):
         revno, last_rev_id = branch.last_revision_info()
         if last_rev_id == _mod_revision.NULL_REVISION:
             if merge_parents is not None:
-                raise ValueError("Cannot supply merge parents for first" " commit.")
+                raise ValueError("Cannot supply merge parents for first commit.")
             parent_ids = []
         else:
             parent_ids = [last_rev_id]
@@ -849,7 +849,9 @@ class TreeTransformBase(TreeTransform):
                 parent_ids.extend(merge_parents)
         if self._tree.get_revision_id() != last_rev_id:
             raise ValueError(
-                "TreeTransform not based on branch basis: {}".format(self._tree.get_revision_id().decode("utf-8"))
+                "TreeTransform not based on branch basis: {}".format(
+                    self._tree.get_revision_id().decode("utf-8")
+                )
             )
         from .. import commit
 

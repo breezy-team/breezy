@@ -400,9 +400,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
         builder = self.create_merged_trees()
 
         self.assertBranchAnnotate(
-            "1     joe@foo | first\n"
-            "2     joe@foo | second\n"
-            "1.1.1 barry@f | third\n",
+            "1     joe@foo | first\n2     joe@foo | second\n1.1.1 barry@f | third\n",
             builder.get_branch(),
             "a",
             b"rev-3",

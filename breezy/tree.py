@@ -35,7 +35,7 @@ class FileTimestampUnavailable(errors.BzrError):
 
 
 class MissingNestedTree(errors.BzrError):
-    _fmt = "The nested tree for %(path)s can not be resolved." ""
+    _fmt = "The nested tree for %(path)s can not be resolved."
 
     def __init__(self, path):
         self.path = path
@@ -454,8 +454,9 @@ class Tree:
 
     def get_reference_revision(self, path):
         raise NotImplementedError(
-            "Tree subclass {} must implement "
-            "get_reference_revision".format(self.__class__.__name__)
+            "Tree subclass {} must implement get_reference_revision".format(
+                self.__class__.__name__
+            )
         )
 
     def _comparison_data(self, entry, path):

@@ -1316,7 +1316,7 @@ Location:
             # in the different process -- either on win32 or on linux).
             # This should be removed when the locking errors are fixed.
             self.expectFailure(
-                "OS locks are exclusive " "for different processes (Bug #174055)",
+                "OS locks are exclusive for different processes (Bug #174055)",
                 self.run_brz_subprocess,
                 "info " + command_string,
             )
@@ -1350,9 +1350,9 @@ Location:
         tree_data = ""
         extra_space = ""
         if light_checkout:
-            tree_data = "  light checkout root: {}\n".format(friendly_location(
-                lco_tree.controldir.root_transport.base
-            ))
+            tree_data = "  light checkout root: {}\n".format(
+                friendly_location(lco_tree.controldir.root_transport.base)
+            )
             extra_space = " "
         if lco_tree.branch.get_bound_location() is not None:
             tree_data += "{}       checkout root: {}\n".format(
@@ -1370,8 +1370,8 @@ Location:
                 friendly_location(repo_branch.controldir.root_transport.base),
             )
         else:
-            branch_data = (
-                "   checkout of branch: {}\n".format(lco_tree.branch.controldir.root_transport.base)
+            branch_data = "   checkout of branch: {}\n".format(
+                lco_tree.branch.controldir.root_transport.base
             )
 
         verbose_info = "         0 committers\n" if verbose >= 2 else ""
@@ -1497,7 +1497,11 @@ Repository:
                 verbose=True,
             )
         # L U L
-        with lco_tree.lock_write(), lco_tree.branch.unlock(), lco_tree.branch.repository.lock_write():
+        with (
+            lco_tree.lock_write(),
+            lco_tree.branch.unlock(),
+            lco_tree.branch.repository.lock_write(),
+        ):
             self.assertCheckoutStatusOutput(
                 "-v tree/lightcheckout",
                 lco_tree,
@@ -1517,7 +1521,7 @@ Repository:
             )
 
         if sys.platform == "win32":
-            self.knownFailure('Win32 cannot run "brz info"' " when the tree is locked.")
+            self.knownFailure('Win32 cannot run "brz info" when the tree is locked.')
 
     def test_info_stacked(self):
         # We have a mainline

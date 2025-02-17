@@ -70,7 +70,9 @@ class TestPush(tests.TestCaseWithTransport):
                 "",
                 "brz: ERROR: No push location known or specified. "
                 "To push to the parent branch "
-                "(at {}), use 'brz push :parent'.\n".format(urlutils.unescape_for_display(tree_b.branch.base, "utf-8")),
+                "(at {}), use 'brz push :parent'.\n".format(
+                    urlutils.unescape_for_display(tree_b.branch.base, "utf-8")
+                ),
             ),
         )
 
@@ -190,8 +192,9 @@ class TestPush(tests.TestCaseWithTransport):
         push_loc = t.branch.controldir.open_branch().get_push_location()
         out, err = self.run_bzr("push", working_dir="tree")
         self.assertEqual(
-            "Using saved push location: {}\n"
-            "No new revisions or tags to push.\n".format(urlutils.local_path_from_url(push_loc)),
+            "Using saved push location: {}\nNo new revisions or tags to push.\n".format(
+                urlutils.local_path_from_url(push_loc)
+            ),
             err,
         )
         out, err = self.run_bzr("push -q", working_dir="tree")
@@ -403,10 +406,7 @@ class TestPush(tests.TestCaseWithTransport):
         self.assertFalse(tree_to.changes_from(tree_to.basis_tree()).has_changed())
 
         self.run_bzr_error(
-            [
-                "brz: ERROR: brz push --revision "
-                "takes exactly one revision identifier\n"
-            ],
+            ["brz: ERROR: brz push --revision takes exactly one revision identifier\n"],
             "push -r0..2 ../to",
             working_dir="from",
         )
@@ -441,7 +441,9 @@ class TestPush(tests.TestCaseWithTransport):
         )
         self.assertEqual("", out)
         self.assertEqual(
-            "Created new stacked branch referring to {}.\n".format(trunk_tree.branch.base),
+            "Created new stacked branch referring to {}.\n".format(
+                trunk_tree.branch.base
+            ),
             err,
         )
         self.assertPublished(branch_tree.last_revision(), trunk_tree.branch.base)
@@ -465,7 +467,9 @@ class TestPush(tests.TestCaseWithTransport):
         )
         self.assertEqual("", out)
         self.assertEqual(
-            "Created new stacked branch referring to {}.\n".format(trunk_tree.branch.base),
+            "Created new stacked branch referring to {}.\n".format(
+                trunk_tree.branch.base
+            ),
             err,
         )
         self.assertPublished(branch_tree.last_revision(), trunk_tree.branch.base)
@@ -480,7 +484,9 @@ class TestPush(tests.TestCaseWithTransport):
         )
         self.assertEqual("", out)
         self.assertEqual(
-            "Created new stacked branch referring to {}.\n".format(trunk_tree.branch.base),
+            "Created new stacked branch referring to {}.\n".format(
+                trunk_tree.branch.base
+            ),
             err,
         )
         self.assertPublished(branch_tree.last_revision(), trunk_tree.branch.base)
@@ -502,7 +508,8 @@ class TestPush(tests.TestCaseWithTransport):
         )
         self.assertEqual("", out)
         self.assertEqual(
-            "Created new stacked branch referring to {}.\n".format(trunk_public_url), err
+            "Created new stacked branch referring to {}.\n".format(trunk_public_url),
+            err,
         )
         self.assertPublished(branch_tree.last_revision(), trunk_public_url)
 
@@ -724,7 +731,7 @@ class TestPushStrictMixin:
     _default_command = ["push", "../to"]
     _default_wd = "local"
     _default_errors = [
-        'Working tree ".*/local/" has uncommitted ' "changes \\(See brz status\\)\\.",
+        'Working tree ".*/local/" has uncommitted changes \\(See brz status\\)\\.',
     ]
     _default_additional_error = "Use --no-strict to force the push.\n"
     _default_additional_warning = "Uncommitted changes will not be pushed."
@@ -824,7 +831,7 @@ class TestPushStrictWithChanges(tests.TestCaseWithTransport, TestPushStrictMixin
         # Exercise commands from the checkout directory
         self._default_wd = "checkout"
         self._default_errors = [
-            "Working tree is out of date, please run" " 'brz update'\\.",
+            "Working tree is out of date, please run 'brz update'\\.",
         ]
 
     def test_push_default(self):

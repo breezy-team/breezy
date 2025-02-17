@@ -155,7 +155,7 @@ class BranchBuilder:
         """
         if self._tree is not None:
             raise AssertionError(
-                "You cannot start a new series while a" " series is already going."
+                "You cannot start a new series while a series is already going."
             )
         self._tree = self._branch.create_memorytree()
         self._tree.lock_write()

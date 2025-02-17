@@ -217,7 +217,7 @@ class TestPush(per_branch.TestCaseWithBranch):
             pass
         else:
             raise tests.TestNotApplicable(
-                "some formats can't have a repo" " without a branch"
+                "some formats can't have a repo without a branch"
             )
         try:
             source = self.make_branch_builder("source", format=self.bzrdir_format)
@@ -444,7 +444,7 @@ class EmptyPushSmartEffortTests(per_branch.TestCaseWithBranch):
             self.transport_server, test_server.SmartTCPServer_for_testing
         ):
             raise tests.TestNotApplicable(
-                "Does not apply when remote backing branch is also " "a smart branch"
+                "Does not apply when remote backing branch is also a smart branch"
             )
         if not self.branch_format.supports_leaving_lock():
             raise tests.TestNotApplicable("Branch format is not usable via HPSS.")

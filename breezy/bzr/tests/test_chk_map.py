@@ -88,7 +88,7 @@ class TestCaseWithStore(tests.TestCaseWithMemoryTransport):
         self.assertEqual(
             root_key,
             root_key2,
-            "CHKMap.from_dict() did not" " match CHKMap._create_via_map",
+            "CHKMap.from_dict() did not match CHKMap._create_via_map",
         )
         chkmap = CHKMap(chk_bytes, root_key, search_key_func=search_key_func)
         return chkmap
@@ -581,12 +581,10 @@ class TestMap(TestCaseWithStore):
         # Should fit 2 keys per LeafNode
         chkmap._root_node.set_maximum_size(35)
         chkmap.map((b"aaa",), b"v")
-        self.assertEqualDiff(
-            "'' LeafNode\n" "      ('aaa',) 'v'\n", chkmap._dump_tree()
-        )
+        self.assertEqualDiff("'' LeafNode\n      ('aaa',) 'v'\n", chkmap._dump_tree())
         chkmap.map((b"aab",), b"v")
         self.assertEqualDiff(
-            "'' LeafNode\n" "      ('aaa',) 'v'\n" "      ('aab',) 'v'\n",
+            "'' LeafNode\n      ('aaa',) 'v'\n      ('aab',) 'v'\n",
             chkmap._dump_tree(),
         )
         self.assertCanonicalForm(chkmap)
@@ -675,7 +673,7 @@ class TestMap(TestCaseWithStore):
         chkmap.map((b"aaaaaaaa",), b"v")
         chkmap.map((b"aaaaabaa",), b"v")
         self.assertEqualDiff(
-            "'' LeafNode\n" "      ('aaaaaaaa',) 'v'\n" "      ('aaaaabaa',) 'v'\n",
+            "'' LeafNode\n      ('aaaaaaaa',) 'v'\n      ('aaaaabaa',) 'v'\n",
             chkmap._dump_tree(),
         )
         chkmap.map((b"aaabaaaa",), b"v")
@@ -779,7 +777,7 @@ class TestMap(TestCaseWithStore):
         # Now changing the value to something small should cause a rebuild
         chkmap.map((b"aab",), b"v")
         self.assertEqualDiff(
-            "'' LeafNode\n" "      ('aaa',) 'v'\n" "      ('aab',) 'v'\n",
+            "'' LeafNode\n      ('aaa',) 'v'\n      ('aab',) 'v'\n",
             chkmap._dump_tree(),
         )
         self.assertCanonicalForm(chkmap)
@@ -806,10 +804,7 @@ class TestMap(TestCaseWithStore):
         chkmap.map((b"aab",), b"v")
         self.assertCanonicalForm(chkmap)
         self.assertEqualDiff(
-            "'' LeafNode\n"
-            "      ('aaa',) 'v'\n"
-            "      ('aab',) 'v'\n"
-            "      ('abc',) 'v'\n",
+            "'' LeafNode\n      ('aaa',) 'v'\n      ('aab',) 'v'\n      ('abc',) 'v'\n",
             chkmap._dump_tree(),
         )
 
@@ -821,7 +816,7 @@ class TestMap(TestCaseWithStore):
         chkmap.map((b"aaa",), b"v")
         chkmap.map((b"aab",), b"v")
         self.assertEqualDiff(
-            "'' LeafNode\n" "      ('aaa',) 'v'\n" "      ('aab',) 'v'\n",
+            "'' LeafNode\n      ('aaa',) 'v'\n      ('aab',) 'v'\n",
             chkmap._dump_tree(),
         )
         # Creates a new internal node, and splits the others into leaves
@@ -841,7 +836,7 @@ class TestMap(TestCaseWithStore):
         # structures.
         chkmap.unmap((b"aac",))
         self.assertEqualDiff(
-            "'' LeafNode\n" "      ('aaa',) 'v'\n" "      ('aab',) 'v'\n",
+            "'' LeafNode\n      ('aaa',) 'v'\n      ('aab',) 'v'\n",
             chkmap._dump_tree(),
         )
         self.assertCanonicalForm(chkmap)
@@ -1653,10 +1648,7 @@ class TestMapSearchKeys(TestCaseWithStore):
         chkmap.map((b"2",), b"bar")
         chkmap.map((b"3",), b"baz")
         self.assertEqualDiff(
-            "'' LeafNode\n"
-            "      ('1',) 'foo'\n"
-            "      ('2',) 'bar'\n"
-            "      ('3',) 'baz'\n",
+            "'' LeafNode\n      ('1',) 'foo'\n      ('2',) 'bar'\n      ('3',) 'baz'\n",
             chkmap._dump_tree(),
         )
 
@@ -1714,8 +1706,7 @@ class TestLeafNode(TestCaseWithStore):
 
     def test_deserialise_item_with_null_width_2(self):
         node = LeafNode.deserialise(
-            b"chkleaf:\n0\n2\n2\n\nfoo\x001\x001\nbar\x00baz\n"
-            b"quux\x00\x001\nblarh\n",
+            b"chkleaf:\n0\n2\n2\n\nfoo\x001\x001\nbar\x00baz\nquux\x00\x001\nblarh\n",
             (b"sha1:1234",),
         )
         self.assertEqual(2, len(node))
@@ -2899,7 +2890,7 @@ class TestIterInterestingNodes(TestCaseWithExampleMaps):
         # layer. It should only be returned one time regardless
         target1_map = CHKMap(self.get_chk_bytes(), target1)
         self.assertEqualDiff(
-            "'' LeafNode\n" "      ('aaa',) 'common'\n", target1_map._dump_tree()
+            "'' LeafNode\n      ('aaa',) 'common'\n", target1_map._dump_tree()
         )
         target2_map = CHKMap(self.get_chk_bytes(), target2)
         self.assertEqualDiff(
@@ -3084,7 +3075,7 @@ class TestIterInterestingNodes(TestCaseWithExampleMaps):
         # Get right expected data
         right_map = CHKMap(self.get_chk_bytes(), right)
         self.assertEqualDiff(
-            "'' LeafNode\n" "      ('abb',) 'right'\n", right_map._dump_tree()
+            "'' LeafNode\n      ('abb',) 'right'\n", right_map._dump_tree()
         )
         # Keys from the right side target - none, the root is enough.
         # Test behaviour

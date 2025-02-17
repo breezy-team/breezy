@@ -47,9 +47,7 @@ from .errors import BzrError, InternalBzrError
 
 
 class ImportNameCollision(InternalBzrError):
-    _fmt = (
-        "Tried to import an object to the same name as" " an existing object. %(name)s"
-    )
+    _fmt = "Tried to import an object to the same name as an existing object. %(name)s"
 
     def __init__(self, name):
         BzrError.__init__(self)
@@ -57,7 +55,7 @@ class ImportNameCollision(InternalBzrError):
 
 
 class IllegalUseOfScopeReplacer(InternalBzrError):
-    _fmt = "ScopeReplacer object %(name)r was used incorrectly:" " %(msg)s%(extra)s"
+    _fmt = "ScopeReplacer object %(name)r was used incorrectly: %(msg)s%(extra)s"
 
     def __init__(self, name, msg, extra=None):
         BzrError.__init__(self)
@@ -138,8 +136,7 @@ class ScopeReplacer:
         if not ScopeReplacer._should_proxy:
             raise IllegalUseOfScopeReplacer(
                 name,
-                msg="Object already replaced, did you assign it"
-                " to another variable?",
+                msg="Object already replaced, did you assign it to another variable?",
             )
         return real_obj
 

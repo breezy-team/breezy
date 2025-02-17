@@ -157,7 +157,7 @@ class TestDiff(DiffBase):
         out, err = self.run_bzr(
             "diff --color=never -r 123",
             retcode=3,
-            error_regexes=("Requested revision: '123' does not " "exist in branch:",),
+            error_regexes=("Requested revision: '123' does not exist in branch:",),
         )
 
     def test_diff_nonexistent_dotted_revision(self):
@@ -486,7 +486,7 @@ class TestExternalDiff(DiffBase):
             b"--- old/goodbye\t1970-01-01 00:00:00 +0000\n"
             b"+++ new/goodbye\t",
         )
-        self.assertEndsWith(out, b"\n@@ -0,0 +1 @@\n" b"+baz\n\n")
+        self.assertEndsWith(out, b"\n@@ -0,0 +1 @@\n+baz\n\n")
 
     def test_external_diff_options_and_using(self):
         """Test that the options are passed correctly to an external diff process."""

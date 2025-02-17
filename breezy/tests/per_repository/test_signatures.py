@@ -62,7 +62,7 @@ class TestSignatures(per_repository.TestCaseWithRepository):
                 )
             except errors.NoSuchRevision as err:
                 raise tests.TestNotApplicable(
-                    "repository does not support signing non-present" "revisions"
+                    "repository does not support signing non-presentrevisions"
                 ) from err
         # A signature without a revision should not be accessible.
         self.assertRaises(

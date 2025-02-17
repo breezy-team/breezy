@@ -43,9 +43,7 @@ ROOT_PARENT = "root-parent"
 
 
 class NoFinalPath(BzrError):
-    _fmt = (
-        "No final name for trans_id %(trans_id)r\n" "root trans-id: %(root_trans_id)r\n"
-    )
+    _fmt = "No final name for trans_id %(trans_id)r\nroot trans-id: %(root_trans_id)r\n"
 
     def __init__(self, trans_id, transform):
         self.trans_id = trans_id

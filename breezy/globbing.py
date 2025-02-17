@@ -45,8 +45,7 @@ def _sub_group(m):
 def _invalid_regex(repl):
     def _(m):
         warning(
-            f"'{m}' not allowed within a regular expression. "
-            f"Replacing with '{repl}'"
+            f"'{m}' not allowed within a regular expression. Replacing with '{repl}'"
         )
         return repl
 
@@ -180,7 +179,7 @@ class Globster:
             # the combined pattern we sent to regex. Instead we indicate to
             # the user that an ignore file needs fixing.
             mutter("Invalid pattern found in regex: %s.", e.msg)
-            e.msg = "File ~/.config/breezy/ignore or " ".bzrignore contains error(s)."
+            e.msg = "File ~/.config/breezy/ignore or .bzrignore contains error(s)."
             bad_patterns = ""
             for _, patterns in self._regex_patterns:
                 for p in patterns:

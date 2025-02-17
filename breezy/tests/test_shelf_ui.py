@@ -231,7 +231,7 @@ class TestShelver(ShelfTestCase):
         self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
         self.addCleanup(shelver.finalize)
-        shelver.expect('Shelve changing target of "baz" from "bar" to ' '"vax"?', 0)
+        shelver.expect('Shelve changing target of "baz" from "bar" to "vax"?', 0)
         shelver.expect("Shelve 1 change(s)?", 0)
         shelver.run()
         self.assertEqual("bar", os.readlink("tree/baz"))

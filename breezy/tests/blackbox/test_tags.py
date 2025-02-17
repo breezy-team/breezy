@@ -338,19 +338,19 @@ class TestTagging(TestCaseWithTransport):
         self.run_bzr_error(
             args="tags -r 123",
             error_regexes=[
-                "brz: ERROR: Requested revision: '123' " "does not exist in branch:"
+                "brz: ERROR: Requested revision: '123' does not exist in branch:"
             ],
         )
         self.run_bzr_error(
             args="tags -r ..123",
             error_regexes=[
-                "brz: ERROR: Requested revision: '123' " "does not exist in branch:"
+                "brz: ERROR: Requested revision: '123' does not exist in branch:"
             ],
         )
         self.run_bzr_error(
             args="tags -r 123.123",
             error_regexes=[
-                "brz: ERROR: Requested revision: '123.123' " "does not exist in branch:"
+                "brz: ERROR: Requested revision: '123.123' does not exist in branch:"
             ],
         )
 

@@ -314,8 +314,7 @@ class MergeTest(TestCaseWithTransport):
         """Test diff3 merging."""
         if sys.platform == "win32":
             raise TestSkipped(
-                "diff3 does not have --binary flag"
-                " and therefore always fails on win32"
+                "diff3 does not have --binary flag and therefore always fails on win32"
             )
         try:
             self.do_contents_test(Diff3Merger)

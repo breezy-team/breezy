@@ -76,7 +76,7 @@ class TestIniBasedRulesSearcher(tests.TestCase):
 
     def test_get_items_match_first(self):
         rs = self.make_searcher(
-            "[name ./a.txt]\nfoo=baz\n" "[name *.txt]\nfoo=bar\na=True\n"
+            "[name ./a.txt]\nfoo=baz\n[name *.txt]\nfoo=bar\na=True\n"
         )
         self.assertEqual((("foo", "baz"),), rs.get_items("a.txt"))
         self.assertEqual("baz", rs.get_single_value("a.txt", "foo"))
