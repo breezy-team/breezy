@@ -19,7 +19,7 @@
 import contextlib
 import os
 from io import BytesIO
-from typing import BinaryIO, Iterable, Set
+from typing import BinaryIO, Iterable, Set, List
 
 from . import bedding, trace
 
@@ -125,7 +125,7 @@ def add_unique_user_ignores(new_ignores: Set[str]):
     from .globbing import normalize_pattern
 
     ignored = get_user_ignores()
-    to_add: list[str] = []
+    to_add: List[str] = []
     for ignore in new_ignores:
         ignore = normalize_pattern(ignore)
         if ignore not in ignored:

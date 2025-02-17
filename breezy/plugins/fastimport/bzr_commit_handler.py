@@ -16,7 +16,7 @@
 """CommitHandlers that build and save revisions & their inventories."""
 
 import contextlib
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Set, Tuple, Optional
 
 from fastimport import processor
 
@@ -145,7 +145,7 @@ class CommitHandler(processor.CommitHandler):
         # the entries in a dict then build the actual delta at the end
         self._delta_entries_by_fileid: Dict[
             inventory.FileID,
-            Tuple[str | None, str | None, inventory.FileID, inventory.InventoryEntry],
+            Tuple[Optional[str], Optional[str], inventory.FileID, inventory.InventoryEntry],
         ] = {}
         if len(self.parents) == 0 or not self.rev_store.expects_rich_root():
             old_path = "" if self.parents else None
@@ -354,7 +354,7 @@ class CommitHandler(processor.CommitHandler):
         path: str,
         kind: str,
         is_executable: bool,
-        data: bytes | None,
+        data: Optional[bytes],
         inv: inventory.Inventory,
     ) -> None:
         """Add to or change an item in the inventory."""
@@ -616,7 +616,7 @@ class CommitHandler(processor.CommitHandler):
         that would become empty, goes here.
         """
         delta: List[
-            Tuple[str | None, str | None, inventory.FileID, inventory.InventoryEntry]
+            Tuple[Optional[str], Optional[str], inventory.FileID, inventory.InventoryEntry]
         ] = list(self._delta_entries_by_fileid.values())
         if self.prune_empty_dirs and self._dirs_that_might_become_empty:
             candidates = self._dirs_that_might_become_empty
@@ -680,7 +680,7 @@ class CommitHandler(processor.CommitHandler):
     def _add_entry(
         self,
         entry: Tuple[
-            str | None, str | None, inventory.FileID, inventory.InventoryEntry
+            Optional[str], Optional[str], inventory.FileID, inventory.InventoryEntry
         ],
     ) -> None:
         # We need to combine the data if multiple entries have the same file-id.
