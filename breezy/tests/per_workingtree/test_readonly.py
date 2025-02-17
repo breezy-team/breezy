@@ -30,9 +30,7 @@ from ...bzr.workingtree import InventoryWorkingTree
 class TestReadonly(TestCaseWithWorkingTree):
     def setUp(self):
         if not self.platform_supports_readonly_dirs():
-            raise tests.TestSkipped(
-                "platform does not support readonly" " directories."
-            )
+            raise tests.TestSkipped("platform does not support readonly directories.")
         super().setUp()
 
     def platform_supports_readonly_dirs(self):

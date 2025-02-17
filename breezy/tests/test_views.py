@@ -28,11 +28,11 @@ class TestErrors(TestCase):
         err_str = str(err)
         self.assertStartsWith(err_str, "Views are not supported by ")
         self.assertEndsWith(
-            err_str, "; use 'brz upgrade' to change your " "tree to a later format."
+            err_str, "; use 'brz upgrade' to change your tree to a later format."
         )
 
     def test_file_outside_view(self):
         err = FileOutsideView("baz", ["foo", "bar"])
         self.assertEqual(
-            'Specified file "baz" is outside the current view: ' "foo, bar", str(err)
+            'Specified file "baz" is outside the current view: foo, bar', str(err)
         )

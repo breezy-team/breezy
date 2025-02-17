@@ -85,7 +85,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         error = self.run_bzr("bind", retcode=3, working_dir="branch2")[1]
         self.assertEndsWith(
             error,
-            "No location supplied.  This format does not remember" " old locations.\n",
+            "No location supplied.  This format does not remember old locations.\n",
         )
 
     def test_bound_commit(self):

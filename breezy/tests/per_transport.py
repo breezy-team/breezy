@@ -48,7 +48,9 @@ def get_transport_test_permutations(module):
     """Get the permutations module wants to have tested."""
     if getattr(module, "get_test_permutations", None) is None:
         raise AssertionError(
-            "transport module {} doesn't provide get_test_permutations()".format(module.__name__)
+            "transport module {} doesn't provide get_test_permutations()".format(
+                module.__name__
+            )
         )
         return []
     return module.get_test_permutations()
@@ -145,8 +147,7 @@ class TransportTests(TestTransportImplementation):
     def test_has_root_works(self):
         if self.transport_server is test_server.SmartTCPServer_for_testing:
             raise TestNotApplicable(
-                "SmartTCPServer_for_testing intentionally does not allow "
-                "access to /."
+                "SmartTCPServer_for_testing intentionally does not allow access to /."
             )
         current_transport = self.get_transport()
         self.assertTrue(current_transport.has("/"))
@@ -1018,7 +1019,9 @@ class TransportTests(TestTransportImplementation):
                 pass
         except TransportNotPossible as err:
             raise TestSkipped(
-                "Transport {} does not support hardlinks.".format(self._server.__class__)
+                "Transport {} does not support hardlinks.".format(
+                    self._server.__class__
+                )
             ) from err
 
     def test_symlink(self):

@@ -43,9 +43,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
         self.revision_id_2 = wt.commit(
             "add nomail", committer="no mail", timestamp=1165970000.00, timezone=0
         )
-        self.build_tree_contents(
-            [("hello.txt", b"my helicopter\n" b"your helicopter\n")]
-        )
+        self.build_tree_contents([("hello.txt", b"my helicopter\nyour helicopter\n")])
         self.revision_id_3 = wt.commit(
             "mod hello", committer="user@test", timestamp=1166040000.00, timezone=0
         )
@@ -53,10 +51,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
             [
                 (
                     "hello.txt",
-                    b"my helicopter\n"
-                    b"your helicopter\n"
-                    b"all of\n"
-                    b"our helicopters\n",
+                    b"my helicopter\nyour helicopter\nall of\nour helicopters\n",
                 )
             ]
         )
@@ -199,14 +194,14 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
             ["annotate", "file", "-r", "branch:../trunk"], working_dir="work"
         )
         self.assertEqual("", err)
-        self.assertEqual("1   test@ho | foo\n" "            | gam\n", out)
+        self.assertEqual("1   test@ho | foo\n            | gam\n", out)
 
     def test_annotate_edited_file(self):
         self._setup_edited_file()
         self.overrideEnv("BRZ_EMAIL", "current@host2")
         out, err = self.run_bzr("annotate file")
         self.assertEqual(
-            "1   test@ho | foo\n" "2?  current | bar\n" "1   test@ho | gam\n", out
+            "1   test@ho | foo\n2?  current | bar\n1   test@ho | gam\n", out
         )
 
     def test_annotate_edited_file_no_default(self):
@@ -215,14 +210,14 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         self._setup_edited_file()
         out, err = self.run_bzr("annotate file")
         self.assertEqual(
-            "1   test@ho | foo\n" "2?  local u | bar\n" "1   test@ho | gam\n", out
+            "1   test@ho | foo\n2?  local u | bar\n1   test@ho | gam\n", out
         )
 
     def test_annotate_edited_file_show_ids(self):
         self._setup_edited_file()
         self.overrideEnv("BRZ_EMAIL", "current@host2")
         out, err = self.run_bzr("annotate file --show-ids")
-        self.assertEqual("    rev1 | foo\n" "current: | bar\n" "    rev1 | gam\n", out)
+        self.assertEqual("    rev1 | foo\ncurrent: | bar\n    rev1 | gam\n", out)
 
     def _create_merged_file(self):
         """Create a file with a pending merge and local edit."""

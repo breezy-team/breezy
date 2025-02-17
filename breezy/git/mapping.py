@@ -98,7 +98,7 @@ def unescape_file_id(file_id):
             elif file_id[i + 1 : i + 2] == b"c":
                 ret.append(b"\x0c"[0])
             else:
-                raise ValueError(f"unknown escape character {file_id[i + 1:i + 2]}")
+                raise ValueError(f"unknown escape character {file_id[i + 1 : i + 2]}")
             i += 1
         i += 1
     return bytes(ret)
@@ -141,7 +141,7 @@ def warn_escaped(commit, num_escaped):
 
 def warn_unusual_mode(commit, path, mode):
     trace.mutter(
-        "Unusual file mode %o for %s in %s. Storing as revision " "property. ",
+        "Unusual file mode %o for %s in %s. Storing as revision property. ",
         mode,
         path,
         commit,

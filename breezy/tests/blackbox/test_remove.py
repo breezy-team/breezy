@@ -85,7 +85,7 @@ class TestRemove(TestCaseWithTransport):
         self.get_transport(".").delete_tree("dir/missing")
         out, err = self.run_bzr(["rm"])
         self.assertEqual("", out)
-        self.assertEqual("removed dir/missing/child\n" "removed dir/missing\n", err)
+        self.assertEqual("removed dir/missing/child\nremoved dir/missing\n", err)
         # non-missing paths not touched:
         self.assertInWorkingTree("foo", tree=tree)
         self.assertPathExists("foo")

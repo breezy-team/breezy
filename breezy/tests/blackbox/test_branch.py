@@ -264,9 +264,7 @@ class TestBranch(tests.TestCaseWithTransport):
         source.add("file1")
         source.commit("added file")
         source.controldir.sprout("second")
-        out, err = self.run_bzr(
-            "branch source target --files-from second" " --hardlink"
-        )
+        out, err = self.run_bzr("branch source target --files-from second --hardlink")
         source_stat = os.stat("source/file1")
         second_stat = os.stat("second/file1")
         target_stat = os.stat("target/file1")
@@ -463,7 +461,9 @@ class TestBranchStacked(tests.TestCaseWithTransport):
         out, err = self.run_bzr(["branch", "branch", "--stacked", "branch2"])
         self.assertEqual("", out)
         self.assertEqual(
-            "Created new stacked branch referring to {}.\n".format(branch_tree.branch.base),
+            "Created new stacked branch referring to {}.\n".format(
+                branch_tree.branch.base
+            ),
             err,
         )
         self.assertEqual(
@@ -486,7 +486,9 @@ class TestBranchStacked(tests.TestCaseWithTransport):
         out, err = self.run_bzr(["branch", "--stacked", "mainline", "newbranch"])
         self.assertEqual("", out)
         self.assertEqual(
-            "Created new stacked branch referring to {}.\n".format(trunk_tree.branch.base),
+            "Created new stacked branch referring to {}.\n".format(
+                trunk_tree.branch.base
+            ),
             err,
         )
         self.assertRevisionNotInRepository("newbranch", original_revid)

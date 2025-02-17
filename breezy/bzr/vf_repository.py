@@ -175,7 +175,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
             missing_keys = sink.insert_missing_keys(source, missing_keys)
         if missing_keys:
             raise errors.BzrError(
-                "Unable to fill in parent inventories for a" " stacked branch"
+                "Unable to fill in parent inventories for a stacked branch"
             )
 
     def commit(self, message):

@@ -266,7 +266,7 @@ class RevpropsRepository(tests.TestCaseWithTransport):
         wt.branch.repository.get_revision(revid)
         r = dulwich.repo.Repo(".")
         self.assertEqual(
-            b"base\n\n" b"Fixes: https://github.com/jelmer/dulwich/issues/123\n",
+            b"base\n\nFixes: https://github.com/jelmer/dulwich/issues/123\n",
             r[r.head()].message,
         )
 

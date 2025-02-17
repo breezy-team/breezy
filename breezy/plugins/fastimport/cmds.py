@@ -264,7 +264,7 @@ class cmd_fast_import(Command):
         Option(
             "checkpoint",
             type=int,
-            help="Checkpoint automatically every N revisions." " The default is 10000.",
+            help="Checkpoint automatically every N revisions. The default is 10000.",
         ),
         Option(
             "autopack",
@@ -508,7 +508,7 @@ class cmd_fast_export(Command):
         Option("plain", help="Exclude metadata to maximise interoperability."),
         Option(
             "rewrite-tag-names",
-            help="Replace characters invalid in git with '_'" " (plain mode only).",
+            help="Replace characters invalid in git with '_' (plain mode only).",
         ),
         Option(
             "baseline",

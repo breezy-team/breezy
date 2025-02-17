@@ -134,7 +134,7 @@ class cmd_verify_signatures(Command):
                 if from_revno is None or to_revno is None:
                     raise errors.CommandError(
                         gettext(
-                            "Cannot verify a range of non-revision-history" " revisions"
+                            "Cannot verify a range of non-revision-history revisions"
                         )
                     )
                 for revno in range(from_revno, to_revno + 1):

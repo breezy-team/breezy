@@ -910,7 +910,7 @@ class LeafNode(Node):
             lines.append(b"\n")
             if len(self._items) != 0:
                 raise AssertionError(
-                    "If _common_serialised_prefix is None" " we should have no items"
+                    "If _common_serialised_prefix is None we should have no items"
                 )
         else:
             lines.append(b"%s\n" % (self._common_serialised_prefix,))

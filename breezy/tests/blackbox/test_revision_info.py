@@ -120,5 +120,5 @@ class TestRevisionInfo(TestCaseWithTransport):
         builder.finish_series()
         self.check_output(
             "  1 A-id\n??? B-id\n  2 C-id\n",
-            "revision-info -d branch" " revid:A-id revid:B-id revid:C-id",
+            "revision-info -d branch revid:A-id revid:B-id revid:C-id",
         )

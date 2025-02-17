@@ -56,7 +56,7 @@ def brz():
 def call_or_fail(*args, **kwargs):
     """Call a subprocess, and fail if the return code is not 0."""
     if DEBUG_SUBPROCESS:
-        print(f"  calling: \"{' '.join(args[0])}\"")
+        print(f'  calling: "{" ".join(args[0])}"')
     p = subprocess.Popen(*args, **kwargs)
     (out, err) = p.communicate()
     if p.returncode != 0:

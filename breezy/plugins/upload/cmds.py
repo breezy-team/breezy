@@ -347,7 +347,7 @@ class BzrUploader:
         if rev_id == revision.NULL_REVISION:
             if not self.quiet:
                 self.outf.write(
-                    "No uploaded revision id found," " switching to full upload\n"
+                    "No uploaded revision id found, switching to full upload\n"
                 )
             self.upload_full_tree()
             # We're done
@@ -487,7 +487,7 @@ class cmd_upload(commands.Command):
         ),
         option.Option(
             "auto",
-            "Trigger an upload from this branch whenever the tip " "revision changes.",
+            "Trigger an upload from this branch whenever the tip revision changes.",
         ),
     ]
 

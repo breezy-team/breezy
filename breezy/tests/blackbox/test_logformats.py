@@ -105,7 +105,7 @@ log_format=line
         """Author field should get larger for column widths over 80."""
         wt = self.make_branch_and_tree(".")
         wt.commit(
-            "revision with a long author", committer="Person with" " long name SENTINEL"
+            "revision with a long author", committer="Person with long name SENTINEL"
         )
         log, err = self.run_bzr("log --line")
         self.assertNotContainsString(log, "SENTINEL")

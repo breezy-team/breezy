@@ -2093,9 +2093,7 @@ class TestSmartServerRepositoryGatherStats(tests.TestCaseWithMemoryTransport):
 
         tree.branch.repository.gather_stats()
         expected_body = (
-            b"firstrev: 123456.200 3600\n"
-            b"latestrev: 654321.400 0\n"
-            b"revisions: 2\n"
+            b"firstrev: 123456.200 3600\nlatestrev: 654321.400 0\nrevisions: 2\n"
         )
         self.assertEqual(
             smart_req.SmartServerResponse((b"ok",), expected_body),
@@ -2370,7 +2368,7 @@ class TestSmartServerRepositoryReconcile(tests.TestCaseWithTransport):
         request = request_class(backing)
         self.assertEqual(
             smart_req.SuccessfulSmartServerResponse(
-                (b"ok",), b"garbage_inventories: 0\n" b"inconsistent_parents: 0\n"
+                (b"ok",), b"garbage_inventories: 0\ninconsistent_parents: 0\n"
             ),
             request.execute(b"", token),
         )

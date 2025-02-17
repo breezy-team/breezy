@@ -32,11 +32,11 @@ class TestErrors(tests.TestCase):
     def test_unknown_hook(self):
         error = UnknownHook("branch", "foo")
         self.assertEqualDiff(
-            "The branch hook 'foo' is unknown in this version" " of breezy.", str(error)
+            "The branch hook 'foo' is unknown in this version of breezy.", str(error)
         )
         error = UnknownHook("tree", "bar")
         self.assertEqualDiff(
-            "The tree hook 'bar' is unknown in this version" " of breezy.", str(error)
+            "The tree hook 'bar' is unknown in this version of breezy.", str(error)
         )
 
 

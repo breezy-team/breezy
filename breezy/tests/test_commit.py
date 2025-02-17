@@ -722,7 +722,7 @@ create_signatures=when-possible
         tree.commit("added world", rev_id=b"world_id")
         self.assertContainsRe(
             log.getvalue(),
-            b'Ignoring "foo" as symlinks are not ' b"supported on this filesystem\\.",
+            b'Ignoring "foo" as symlinks are not supported on this filesystem\\.',
         )
 
     def test_commit_kind_changes(self):
@@ -851,7 +851,7 @@ create_signatures=when-possible
         )
         self.assertEqual(["bar", "baz"], err.files)
         self.assertEqual(
-            "Selected-file commit of merges is not supported" " yet: files bar, baz",
+            "Selected-file commit of merges is not supported yet: files bar, baz",
             str(err),
         )
 
@@ -902,7 +902,7 @@ create_signatures=when-possible
         )
         rev = tree.branch.repository.get_revision(rev_id)
         self.assertEqual(
-            "John Doe <jdoe@example.com>\n" "Jane Rey <jrey@example.com>",
+            "John Doe <jdoe@example.com>\nJane Rey <jrey@example.com>",
             rev.properties["authors"],
         )
         self.assertNotIn("author", rev.properties)

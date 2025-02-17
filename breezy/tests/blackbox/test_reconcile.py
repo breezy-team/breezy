@@ -52,7 +52,7 @@ class TrivialTest(tests.TestCaseWithTransport):
             repo.add_inventory(b"missing", inv, [])
         (out, err) = self.run_bzr("reconcile")
         if repo._reconcile_backsup_inventory:
-            does_backup_text = "Backup Inventory created.\n" "Inventory regenerated.\n"
+            does_backup_text = "Backup Inventory created.\nInventory regenerated.\n"
         else:
             does_backup_text = ""
         expected = (

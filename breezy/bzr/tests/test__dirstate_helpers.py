@@ -102,7 +102,7 @@ class TestBisectPathMixin:
         self.assertEqual(
             bisect_split_idx,
             bisect_path_idx,
-            "{} disagreed. {} != {}" " for key {!r}".format(
+            "{} disagreed. {} != {} for key {!r}".format(
                 bisect_path.__name__, bisect_split_idx, bisect_path_idx, path
             ),
         )

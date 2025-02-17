@@ -52,7 +52,7 @@ class TestNormalize(tests.TestCase):
         self.assertEqual(export_pot._normalize(s), e)
 
         s = "\nfoo\nbar\n"
-        e = '""\n' '"\\n"\n' '"foo\\n"\n' '"bar\\n"'
+        e = '""\n"\\n"\n"foo\\n"\n"bar\\n"'
         self.assertEqual(export_pot._normalize(s), e)
 
 
@@ -242,7 +242,7 @@ class TestWriteOption(tests.TestCase):
         opt = option.Option("helpful", help="Info.")
         self.assertContainsString(
             self.pot_from_option(opt),
-            "\n" "# help of 'helpful' test\n" 'msgid "Info."\n',
+            "\n# help of 'helpful' test\nmsgid \"Info.\"\n",
         )
 
     def test_option_hidden(self):
@@ -254,7 +254,7 @@ class TestWriteOption(tests.TestCase):
         opt = option.Option("metaphor", help="Not a literal in the source.")
         self.assertContainsString(
             self.pot_from_option(opt, context),
-            "#: remote.py:3\n" "# help of 'metaphor' test\n",
+            "#: remote.py:3\n# help of 'metaphor' test\n",
         )
 
     def test_option_context_string(self):
@@ -263,7 +263,7 @@ class TestWriteOption(tests.TestCase):
         opt = option.Option("example", help=s)
         self.assertContainsString(
             self.pot_from_option(opt, context),
-            "#: local.py:17\n" "# help of 'example' test\n",
+            "#: local.py:17\n# help of 'example' test\n",
         )
 
     def test_registry_option_title(self):
@@ -271,11 +271,9 @@ class TestWriteOption(tests.TestCase):
             "group", help="Pick one.", title="Choose!"
         )
         pot = self.pot_from_option(opt)
+        self.assertContainsString(pot, "\n# title of 'group' test\nmsgid \"Choose!\"\n")
         self.assertContainsString(
-            pot, "\n" "# title of 'group' test\n" 'msgid "Choose!"\n'
-        )
-        self.assertContainsString(
-            pot, "\n" "# help of 'group' test\n" 'msgid "Pick one."\n'
+            pot, "\n# help of 'group' test\nmsgid \"Pick one.\"\n"
         )
 
     def test_registry_option_title_context_missing(self):
@@ -283,7 +281,7 @@ class TestWriteOption(tests.TestCase):
         opt = option.RegistryOption.from_kwargs("abstract", title="Unfounded!")
         self.assertContainsString(
             self.pot_from_option(opt, context),
-            "#: theory.py:3\n" "# title of 'abstract' test\n",
+            "#: theory.py:3\n# title of 'abstract' test\n",
         )
 
     def test_registry_option_title_context_string(self):
@@ -292,7 +290,7 @@ class TestWriteOption(tests.TestCase):
         opt = option.RegistryOption.from_kwargs("concrete", title=s)
         self.assertContainsString(
             self.pot_from_option(opt, context),
-            "#: practice.py:144\n" "# title of 'concrete' test\n",
+            "#: practice.py:144\n# title of 'concrete' test\n",
         )
 
     def test_registry_option_value_switches(self):
@@ -306,13 +304,13 @@ class TestWriteOption(tests.TestCase):
         )
         pot = self.pot_from_option(opt)
         self.assertContainsString(
-            pot, "\n" "# help of 'switch' test\n" 'msgid "Flip one."\n'
+            pot, "\n# help of 'switch' test\nmsgid \"Flip one.\"\n"
         )
         self.assertContainsString(
-            pot, "\n" "# help of 'switch=red' test\n" 'msgid "Big."\n'
+            pot, "\n# help of 'switch=red' test\nmsgid \"Big.\"\n"
         )
         self.assertContainsString(
-            pot, "\n" "# help of 'switch=green' test\n" 'msgid "Small."\n'
+            pot, "\n# help of 'switch=green' test\nmsgid \"Small.\"\n"
         )
 
     def test_registry_option_value_switches_hidden(self):
@@ -328,10 +326,10 @@ class TestWriteOption(tests.TestCase):
         )
         pot = self.pot_from_option(opt)
         self.assertContainsString(
-            pot, "\n" "# help of 'protocol' test\n" 'msgid "Talking."\n'
+            pot, "\n# help of 'protocol' test\nmsgid \"Talking.\"\n"
         )
         self.assertContainsString(
-            pot, "\n" "# help of 'protocol=new' test\n" 'msgid "Current."\n'
+            pot, "\n# help of 'protocol=new' test\nmsgid \"Current.\"\n"
         )
         self.assertNotContainsString(pot, "'protocol=old'")
 

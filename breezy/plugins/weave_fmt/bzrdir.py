@@ -407,8 +407,7 @@ class ConvertBzrDir4To5(Converter):
             self.pb.clear()
             ui.ui_factory.note(
                 gettext(
-                    "revision {%s} not present in branch; "
-                    "will be converted as a ghost"
+                    "revision {%s} not present in branch; will be converted as a ghost"
                 )
                 % rev_id
             )

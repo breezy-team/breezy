@@ -302,7 +302,7 @@ class TestTrace(TestCase):
             tmp1.seek(0)
             self.assertContainsRe(
                 tmp1.read(),
-                b"\\d+\\.\\d+  comment to file1\n" b"\\d+\\.\\d+  again to file1\n",
+                b"\\d+\\.\\d+  comment to file1\n\\d+\\.\\d+  again to file1\n",
             )
             tmp2.seek(0)
             self.assertContainsRe(tmp2.read(), b"\\d+\\.\\d+  comment to file2\n")

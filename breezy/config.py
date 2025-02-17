@@ -192,7 +192,7 @@ class ParseConfigError(errors.BzrError):
 
 
 class ConfigOptionValueError(errors.BzrError):
-    _fmt = 'Bad value "%(value)s" for option "%(name)s".\n' "See ``brz help %(name)s``"
+    _fmt = 'Bad value "%(value)s" for option "%(name)s".\nSee ``brz help %(name)s``'
 
     def __init__(self, name, value):
         errors.BzrError.__init__(self, name=name, value=value)
@@ -613,12 +613,12 @@ class _ConfigHooks(hooks.Hooks):
         super().__init__("breezy.config", "ConfigHooks")
         self.add_hook(
             "load",
-            "Invoked when a config store is loaded." " The signature is (store).",
+            "Invoked when a config store is loaded. The signature is (store).",
             (2, 4),
         )
         self.add_hook(
             "save",
-            "Invoked when a config store is saved." " The signature is (store).",
+            "Invoked when a config store is saved. The signature is (store).",
             (2, 4),
         )
         # The hooks for config options
@@ -636,8 +636,7 @@ class _ConfigHooks(hooks.Hooks):
         )
         self.add_hook(
             "remove",
-            "Invoked when a config option is removed."
-            " The signature is (stack, name).",
+            "Invoked when a config option is removed. The signature is (stack, name).",
             (2, 4),
         )
 
@@ -657,12 +656,12 @@ class _OldConfigHooks(hooks.Hooks):
         super().__init__("breezy.config", "OldConfigHooks")
         self.add_hook(
             "load",
-            "Invoked when a config store is loaded." " The signature is (config).",
+            "Invoked when a config store is loaded. The signature is (config).",
             (2, 4),
         )
         self.add_hook(
             "save",
-            "Invoked when a config store is saved." " The signature is (config).",
+            "Invoked when a config store is saved. The signature is (config).",
             (2, 4),
         )
         # The hooks for config options
@@ -680,8 +679,7 @@ class _OldConfigHooks(hooks.Hooks):
         )
         self.add_hook(
             "remove",
-            "Invoked when a config option is removed."
-            " The signature is (config, name).",
+            "Invoked when a config option is removed. The signature is (config, name).",
             (2, 4),
         )
 
@@ -1374,7 +1372,7 @@ class BranchConfig(Config):
             mask_value = self._get_location_config().get_user_option(name)
             if mask_value is not None:
                 trace.warning(
-                    'Value "%s" is masked by "%s" from' " locations.conf",
+                    'Value "%s" is masked by "%s" from locations.conf',
                     value,
                     mask_value,
                 )
@@ -1384,7 +1382,7 @@ class BranchConfig(Config):
                     mask_value = branch_config.get_user_option(name)
                     if mask_value is not None:
                         trace.warning(
-                            'Value "%s" is masked by "%s" from' " branch.conf",
+                            'Value "%s" is masked by "%s" from branch.conf',
                             value,
                             mask_value,
                         )
@@ -1787,8 +1785,9 @@ class AuthenticationConfig:
             password = credentials["password"]
             if password is not None and scheme == "ssh":
                 trace.warning(
-                    "password ignored in section [{}],"
-                    " use an ssh agent instead".format(credentials["name"])
+                    "password ignored in section [{}], use an ssh agent instead".format(
+                        credentials["name"]
+                    )
                 )
                 password = None
         else:
@@ -2066,7 +2065,7 @@ class TransportConfig:
             return BytesIO()
         except errors.PermissionDenied:
             trace.warning(
-                "Permission denied while trying to open " "configuration file %s.",
+                "Permission denied while trying to open configuration file %s.",
                 urlutils.unescape_for_display(
                     urlutils.join(self._transport.base, self._filename), "utf-8"
                 ),
@@ -2703,7 +2702,7 @@ option_registry.register_lazy("mail_client", "breezy.mail_client", "opt_mail_cli
 option_registry.register(
     Option(
         "output_encoding",
-        help="Unicode encoding for output" " (terminal encoding if not specified).",
+        help="Unicode encoding for output (terminal encoding if not specified).",
     )
 )
 option_registry.register(
@@ -3290,7 +3289,7 @@ class TransportIniFileStore(IniFileStore):
             return self.transport.get_bytes(self.file_name)
         except errors.PermissionDenied:
             trace.warning(
-                "Permission denied while trying to load " "configuration store %s.",
+                "Permission denied while trying to load configuration store %s.",
                 self.external_url(),
             )
             raise
@@ -4094,16 +4093,14 @@ class cmd_config(commands.Command):
         # http://pad.lv/788991 -- vila 20101115
         CommandOption(
             "scope",
-            help="Reduce the scope to the specified" " configuration file.",
+            help="Reduce the scope to the specified configuration file.",
             type=str,
         ),
         CommandOption(
             "all",
             help="Display all the defined values for the matching options.",
         ),
-        CommandOption(
-            "remove", help="Remove the option from" " the configuration file."
-        ),
+        CommandOption("remove", help="Remove the option from the configuration file."),
     ]
 
     _see_also = ["configuration"]

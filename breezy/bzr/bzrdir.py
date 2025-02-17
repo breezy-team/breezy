@@ -1536,7 +1536,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
             found_format = controldir.ControlDirFormat.find_format(transport)
             if not isinstance(found_format, self.__class__):
                 raise AssertionError(
-                    "{} was asked to open {}, but it seems to need " "format {}".format(
+                    "{} was asked to open {}, but it seems to need format {}".format(
                         self, transport, found_format
                     )
                 )

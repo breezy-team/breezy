@@ -187,13 +187,13 @@ class TestSource(TestSourceHelper):
 
         if incorrect:
             help_text = [
-                "Some files have missing or incorrect copyright" " statements.",
+                "Some files have missing or incorrect copyright statements.",
                 "",
                 "Please either add them to the list of"
                 " COPYRIGHT_EXCEPTIONS in"
                 " breezy/tests/test_source.py",
                 # this is broken to prevent a false match
-                "or add '# Copyright (C)" " 2023 Breezy developers ' to these files:",
+                "or add '# Copyright (C) 2023 Breezy developers ' to these files:",
                 "",
             ]
             for fname, comment in incorrect:
@@ -330,7 +330,9 @@ class TestSource(TestSourceHelper):
                     break
         if badfiles:
             self.fail(
-                "these files contain an assert statement and should not:\n{}".format("\n".join(badfiles))
+                "these files contain an assert statement and should not:\n{}".format(
+                    "\n".join(badfiles)
+                )
             )
 
     def test_extension_exceptions(self):
@@ -380,8 +382,7 @@ class TestSource(TestSourceHelper):
             error_msg.extend(("", ""))
         if missing_except:
             error_msg.append(
-                "The following functions have fixed return types,"
-                " but no except clause."
+                "The following functions have fixed return types, but no except clause."
             )
             error_msg.append('Either add an except or append "# cannot_raise".')
             for fname, func in missing_except:

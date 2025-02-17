@@ -172,9 +172,7 @@ class TestCheckout(TestCaseWithTransport):
         source.add("file1")
         source.commit("added file")
         source.controldir.sprout("second")
-        out, err = self.run_bzr(
-            "checkout source target --hardlink" " --files-from second"
-        )
+        out, err = self.run_bzr("checkout source target --hardlink --files-from second")
         second_stat = os.stat("second/file1")
         target_stat = os.stat("target/file1")
         self.assertEqual(second_stat, target_stat)

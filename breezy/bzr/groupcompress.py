@@ -554,7 +554,7 @@ class _LazyGroupContentManager:
         # located in an identical place. Just that some of the unreferenced
         # trailing bytes are stripped
         trace.mutter(
-            "stripping trailing bytes from groupcompress block" " %d => %d",
+            "stripping trailing bytes from groupcompress block %d => %d",
             self._block._content_length,
             last_byte,
         )
@@ -598,7 +598,7 @@ class _LazyGroupContentManager:
         delta = time.time() - tstart
         self._block = new_block
         trace.mutter(
-            "creating new compressed block on-the-fly in %.3fs" " %d bytes => %d bytes",
+            "creating new compressed block on-the-fly in %.3fs %d bytes => %d bytes",
             delta,
             old_length,
             self._block._content_length,
@@ -800,7 +800,7 @@ class _LazyGroupContentManager:
         del header
         last = header_lines.pop()
         if last != b"":
-            raise ValueError("header lines did not end with a trailing" " newline")
+            raise ValueError("header lines did not end with a trailing newline")
         if len(header_lines) % 4 != 0:
             raise ValueError("The header was not an even multiple of 4 lines")
         block = GroupCompressBlock.from_bytes(block_bytes)
@@ -2081,7 +2081,7 @@ class _GCGraphIndex:
                     if ref:
                         raise knit.KnitCorrupt(
                             self,
-                            "attempt to add node with parents " "in parentless index.",
+                            "attempt to add node with parents in parentless index.",
                         )
                 refs = ()
                 changed = True
@@ -2097,11 +2097,12 @@ class _GCGraphIndex:
                     details = f"{key} {value, node_refs} {passed}"
                     if self._inconsistency_fatal:
                         raise knit.KnitCorrupt(
-                            self, "inconsistent details" " in add_records: {}".format(details)
+                            self,
+                            "inconsistent details in add_records: {}".format(details),
                         )
                     else:
                         trace.warning(
-                            "inconsistent details in skipped" " record: %s", details
+                            "inconsistent details in skipped record: %s", details
                         )
                 del keys[key]
                 changed = True

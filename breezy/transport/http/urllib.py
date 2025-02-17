@@ -1592,7 +1592,7 @@ class DigestAuthHandler(AbstractAuthHandler):
         if opaque:
             header += f', opaque="{opaque}"'
         if auth.get("algorithm", None):
-            header += f", algorithm=\"{auth.get('algorithm')}\""
+            header += f', algorithm="{auth.get("algorithm")}"'
 
         # We have used the nonce once more, update the count
         auth["nonce_count"] = nonce_count
@@ -1736,8 +1736,9 @@ class HTTPDefaultErrorHandler(urllib.request.HTTPDefaultErrorHandler):
     def http_error_default(self, req, fp, code, msg, hdrs):
         if code == 403:
             raise errors.TransportError(
-                "Server refuses to fulfill the request (403 Forbidden)"
-                " for {}".format(req.get_full_url())
+                "Server refuses to fulfill the request (403 Forbidden) for {}".format(
+                    req.get_full_url()
+                )
             )
         else:
             raise errors.UnexpectedHttpStatus(

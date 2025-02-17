@@ -131,14 +131,16 @@ def report_bug_to_apport(exc_info, stderr):
     crash_filename = _write_apport_report_to_file(exc_info)
 
     if crash_filename is None:
-        stderr.write("\n" "apport is set to ignore crashes in this version of brz.\n")
+        stderr.write("\napport is set to ignore crashes in this version of brz.\n")
     else:
         trace.print_exception(exc_info, stderr)
         stderr.write(
             "\n"
             "You can report this problem to Breezy's developers by running\n"
             "    apport-bug {}\n"
-            "if a bug-reporting window does not automatically appear.\n".format(crash_filename)
+            "if a bug-reporting window does not automatically appear.\n".format(
+                crash_filename
+            )
         )
         # XXX: on Windows, Mac, and other platforms where we might have the
         # apport libraries but not have an apport always running, we could

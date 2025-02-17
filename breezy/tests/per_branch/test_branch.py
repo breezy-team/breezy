@@ -205,9 +205,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         """Branches should support having ghosts."""
         wt = self.make_branch_and_tree(".")
         if not wt.branch.repository._format.supports_ghosts:
-            raise tests.TestNotApplicable(
-                "repository format does not " "support ghosts"
-            )
+            raise tests.TestNotApplicable("repository format does not support ghosts")
         wt.set_parent_ids(
             [b"non:existent@rev--ision--0--2"], allow_leftmost_as_ghost=True
         )
@@ -220,9 +218,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         """Recording with all ghosts works."""
         wt = self.make_branch_and_tree(".")
         if not wt.branch.repository._format.supports_ghosts:
-            raise tests.TestNotApplicable(
-                "repository format does not " "support ghosts"
-            )
+            raise tests.TestNotApplicable("repository format does not support ghosts")
         wt.set_parent_ids(
             [
                 b"foo@azkhazan-123123-abcabc",
@@ -318,7 +314,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.assertEqual(0, len(repo.controldir.list_branches()))
         if not self.bzrdir_format.colocated_branches:
             raise tests.TestNotApplicable(
-                "control dir format does not support " "colocated branches"
+                "control dir format does not support colocated branches"
             )
         try:
             self.branch_format.initialize(repo.controldir, name="branch1")

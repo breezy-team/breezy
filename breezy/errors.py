@@ -166,7 +166,7 @@ class IncompatibleVersion(BzrError):
 
 
 class InProcessTransport(BzrError):
-    _fmt = "The transport '%(transport)s' is only accessible within this " "process."
+    _fmt = "The transport '%(transport)s' is only accessible within this process."
 
     def __init__(self, transport):
         self.transport = transport
@@ -495,7 +495,7 @@ class BranchExistsWithoutWorkingTree(PathError):
 
 
 class InaccessibleParent(PathError):
-    _fmt = 'Parent not accessible given base "%(base)s" and' ' relative path "%(path)s"'
+    _fmt = 'Parent not accessible given base "%(base)s" and relative path "%(path)s"'
 
     def __init__(self, path, base):
         PathError.__init__(self, path)
@@ -556,7 +556,7 @@ class IncompatibleRepositories(BzrError):
     repository the client hasn't opened.
     """
 
-    _fmt = "%(target)s\n" "is not compatible with\n" "%(source)s\n" "%(details)s"
+    _fmt = "%(target)s\nis not compatible with\n%(source)s\n%(details)s"
 
     def __init__(self, source, target, details=None):
         if details is None:
@@ -715,8 +715,7 @@ class LockFailed(LockError):
 
 class OutSideTransaction(BzrError):
     _fmt = (
-        "A transaction related operation was attempted after"
-        " the transaction finished."
+        "A transaction related operation was attempted after the transaction finished."
     )
 
 
@@ -757,7 +756,7 @@ class LockContention(LockError):
 
 
 class LockBroken(LockError):
-    _fmt = "Lock was broken while still open: %(lock)s" " - check storage consistency!"
+    _fmt = "Lock was broken while still open: %(lock)s - check storage consistency!"
 
     internal_error = False
 
@@ -896,13 +895,11 @@ class NotLefthandHistory(InternalBzrError):
 
 
 class UnrelatedBranches(BzrError):
-    _fmt = (
-        "Branches have no common ancestor, and" " no merge base revision was specified."
-    )
+    _fmt = "Branches have no common ancestor, and no merge base revision was specified."
 
 
 class CannotReverseCherrypick(BzrError):
-    _fmt = "Selected merge cannot perform reverse cherrypicks.  Try merge3" " or diff3."
+    _fmt = "Selected merge cannot perform reverse cherrypicks.  Try merge3 or diff3."
 
 
 class NoCommonAncestor(BzrError):
@@ -915,8 +912,7 @@ class NoCommonAncestor(BzrError):
 
 class NoCommonRoot(BzrError):
     _fmt = (
-        "Revisions are not derived from the same root: "
-        "%(revision_a)s %(revision_b)s."
+        "Revisions are not derived from the same root: %(revision_a)s %(revision_b)s."
     )
 
     def __init__(self, revision_a, revision_b):
@@ -1261,7 +1257,7 @@ class BundleNotSupported(BzrError):
 
 
 class MissingText(BzrError):
-    _fmt = "Branch %(base)s is missing revision" " %(text_revision)s of %(file_id)s"
+    _fmt = "Branch %(base)s is missing revision %(text_revision)s of %(file_id)s"
 
     def __init__(self, branch, text_revision, file_id):
         BzrError.__init__(self)
@@ -1298,9 +1294,7 @@ class BzrBadParameterNotUnicode(BzrBadParameter):
 
 
 class BzrMoveFailedError(BzrError):
-    _fmt = (
-        "Could not move %(from_path)s%(operator)s %(to_path)s" "%(_has_extra)s%(extra)s"
-    )
+    _fmt = "Could not move %(from_path)s%(operator)s %(to_path)s%(_has_extra)s%(extra)s"
 
     def __init__(self, from_path="", to_path="", extra=None):
         from .osutils import splitpath
@@ -1336,8 +1330,7 @@ class BzrMoveFailedError(BzrError):
 
 class BzrRenameFailedError(BzrMoveFailedError):
     _fmt = (
-        "Could not rename %(from_path)s%(operator)s %(to_path)s"
-        "%(_has_extra)s%(extra)s"
+        "Could not rename %(from_path)s%(operator)s %(to_path)s%(_has_extra)s%(extra)s"
     )
 
     def __init__(self, from_path, to_path, extra=None):
@@ -1353,7 +1346,7 @@ class BzrBadParameterMissing(BzrBadParameter):
 
 
 class BzrBadParameterUnicode(BzrBadParameter):
-    _fmt = "Parameter %(param)s is unicode but" " only byte-strings are permitted."
+    _fmt = "Parameter %(param)s is unicode but only byte-strings are permitted."
 
 
 class BzrBadParameterContainsNewline(BzrBadParameter):
@@ -1454,7 +1447,7 @@ class OutOfDateTree(BzrError):
 
 
 class PublicBranchOutOfDate(BzrError):
-    _fmt = 'Public branch "%(public_location)s" lacks revision ' '"%(revstring)s".'
+    _fmt = 'Public branch "%(public_location)s" lacks revision "%(revstring)s".'
 
     def __init__(self, public_location, revstring):
         import breezy.urlutils as urlutils
@@ -1500,7 +1493,7 @@ class InconsistentDelta(BzrError):
 class InconsistentDeltaDelta(InconsistentDelta):
     """Used when we get a delta that is not valid."""
 
-    _fmt = "An inconsistent delta was supplied: %(delta)r" "\nreason: %(reason)s"
+    _fmt = "An inconsistent delta was supplied: %(delta)r\nreason: %(reason)s"
 
     def __init__(self, delta, reason):
         BzrError.__init__(self)
@@ -1532,7 +1525,7 @@ class LocalRequiresBoundBranch(BzrError):
 
 
 class UnsupportedOperation(BzrError):
-    _fmt = "The method %(mname)s is not supported on" " objects of type %(tname)s."
+    _fmt = "The method %(mname)s is not supported on objects of type %(tname)s."
 
     def __init__(self, method, method_self):
         self.method = method
@@ -1693,9 +1686,7 @@ class NotAMergeDirective(BzrError):
 class NoMergeSource(BzrError):
     """Raise if no merge source was specified for a merge directive."""
 
-    _fmt = (
-        "A merge directive must provide either a bundle or a public" " branch location."
-    )
+    _fmt = "A merge directive must provide either a bundle or a public branch location."
 
 
 class PatchVerificationFailed(BzrError):
@@ -1822,7 +1813,7 @@ class UncommittedChanges(BzrError):
 
 
 class StoringUncommittedNotSupported(BzrError):
-    _fmt = 'Branch "%(display_url)s" does not support storing uncommitted' " changes."
+    _fmt = 'Branch "%(display_url)s" does not support storing uncommitted changes.'
 
     def __init__(self, branch):
         import breezy.urlutils as urlutils
@@ -1843,9 +1834,7 @@ class ShelvedChanges(UncommittedChanges):
 
 
 class UnableEncodePath(BzrError):
-    _fmt = (
-        "Unable to encode %(kind)s path %(path)r in " "user encoding %(user_encoding)s"
-    )
+    _fmt = "Unable to encode %(kind)s path %(path)r in user encoding %(user_encoding)s"
 
     def __init__(self, path, kind):
         from .osutils import get_user_encoding

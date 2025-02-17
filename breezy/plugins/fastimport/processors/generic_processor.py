@@ -148,7 +148,7 @@ class GenericProcessor(processor.ImportProcessor):
             self.skip_total = self._init_id_map()
             if self.skip_total:
                 self.note(
-                    "Found %d commits already loaded - " "skipping over these ...",
+                    "Found %d commits already loaded - skipping over these ...",
                     self.skip_total,
                 )
         self._revision_count = 0
@@ -313,9 +313,7 @@ class GenericProcessor(processor.ImportProcessor):
         # Tell the user about branches that were not created
         if branches_lost:
             if not self.repo.is_shared():
-                self.warning(
-                    "Cannot import multiple branches into " "a standalone branch"
-                )
+                self.warning("Cannot import multiple branches into a standalone branch")
             self.warning("Not creating branches for these head revisions:")
             for lost_info in branches_lost:
                 head_revision = lost_info[1]

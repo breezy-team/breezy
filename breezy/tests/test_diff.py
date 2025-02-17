@@ -589,7 +589,7 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
         self.assertContainsRe(d, b"=== modified file 'file'\n")
         self.assertContainsRe(d, b"--- old/file\t")
         self.assertContainsRe(d, b"\\+\\+\\+ new/file\t")
-        self.assertContainsRe(d, b"-contents\n" b"\\+new contents\n")
+        self.assertContainsRe(d, b"-contents\n\\+new contents\n")
 
     def test_modified_file_in_renamed_dir(self):
         """Test when a file is modified in a renamed directory."""
@@ -608,7 +608,7 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
         # location. What to do?
         self.assertContainsRe(d, b"--- old/dir/file\t")
         self.assertContainsRe(d, b"\\+\\+\\+ new/other/file\t")
-        self.assertContainsRe(d, b"-contents\n" b"\\+new contents\n")
+        self.assertContainsRe(d, b"-contents\n\\+new contents\n")
 
     def test_renamed_directory(self):
         """Test when only a directory is only renamed."""
@@ -651,7 +651,7 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
         self.assertContainsRe(d, b"=== renamed file 'file' => 'newname'\n")
         self.assertContainsRe(d, b"--- old/file\t")
         self.assertContainsRe(d, b"\\+\\+\\+ new/newname\t")
-        self.assertContainsRe(d, b"-contents\n" b"\\+new contents\n")
+        self.assertContainsRe(d, b"-contents\n\\+new contents\n")
 
     def test_internal_diff_exec_property(self):
         tree = self.make_branch_and_tree("tree")
@@ -1046,7 +1046,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         self.addCleanup(diff_obj.finish)
         e = self.assertRaises(errors.ExecutableMissing, diff_obj._execute, "old", "new")
         self.assertEqual(
-            "a-tool-which-is-unlikely-to-exist could not be found" " on this machine",
+            "a-tool-which-is-unlikely-to-exist could not be found on this machine",
             str(e),
         )
 

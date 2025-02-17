@@ -338,9 +338,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         repo = self.make_repository(
             ".", format=controldir.format_registry.get("knit")()
         )
-        inv_xml = (
-            b'<inventory format="5" revision_id="other-rev-id">\n' b"</inventory>\n"
-        )
+        inv_xml = b'<inventory format="5" revision_id="other-rev-id">\n</inventory>\n'
         # Arguably, the deserialise_inventory should detect a mismatch, and
         # raise an error, rather than silently using one revision_id over the
         # other.
