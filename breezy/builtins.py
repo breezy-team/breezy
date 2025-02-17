@@ -4629,10 +4629,7 @@ class cmd_selftest(Command):
 
             brz --no-plugins selftest -v
     """
-    # NB: this is used from the class without creating an instance, which is
-    # why it does not have a self parameter.
 
-    @staticmethod
     def get_transport_type(typestring):
         """Parse and return a transport specifier."""
         if typestring == "sftp":
