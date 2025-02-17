@@ -17,6 +17,7 @@
 import os
 from io import StringIO
 
+from . import features
 from .. import branchbuilder, errors, gpg, log, registry, revision, revisionspec, tests
 
 
@@ -327,6 +328,7 @@ class TestFormatSignatureValidity(tests.TestCaseWithTransport):
         """Check that GPG signatures containing UTF-8 names are formatted
         correctly.
         """
+        self.requireFeature(features.gpg)
         wt = self.make_branch_and_tree(".")
         revid = wt.commit("empty commit")
         repo = wt.branch.repository
