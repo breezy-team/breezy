@@ -763,9 +763,15 @@ def local_time_offset(t=None):
     except ImportError:
         offset = datetime.fromtimestamp(t) - datetime.utcfromtimestamp(t)
     else:
-        from tzlocal import get_localzone
+        from zoneinfo import ZoneInfo
 
-        offset = datetime.fromtimestamp(t, get_localzone()) - datetime.fromtimestamp(
+        now = datetime.now()
+        tzinfo = now.astimezone().tzinfo
+        if tzinfo is None:
+            raise errors.BzrError("No timezone information available")
+        zoneinfo = ZoneInfo(tzinfo.tzname(now))
+
+        offset = datetime.fromtimestamp(t, zoneinfo) - datetime.fromtimestamp(
             t, UTC
         )
 

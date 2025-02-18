@@ -24,7 +24,7 @@ from ...tests import TestCaseWithTransport
 from ..transportgit import TransportObjectStore, TransportRefsContainer
 
 
-class TransportObjectStoreTests(PackBasedObjectStoreTests, TestCaseWithTransport):
+class TransportObjectStoreTests(PackBasedObjectStoreTests, TestCaseWithTransport):  # type: ignore
     def setUp(self):
         TestCaseWithTransport.setUp(self)
         self.store = TransportObjectStore.init(self.get_transport())
