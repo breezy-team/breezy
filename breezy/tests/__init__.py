@@ -47,6 +47,7 @@ import threading
 import time
 import traceback
 import unittest
+from unittest import SkipTest as TestSkipped
 import warnings
 from io import BytesIO, StringIO, TextIOWrapper
 from typing import Callable, Set
@@ -833,9 +834,6 @@ def iter_suite_tests(suite):
             yield from iter_suite_tests(item)
     else:
         raise Exception("unknown type %r for object %r" % (type(suite), suite))
-
-
-from testtools.testcase import TestSkipped
 
 
 class TestNotApplicable(TestSkipped):
