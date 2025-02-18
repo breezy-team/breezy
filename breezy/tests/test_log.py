@@ -29,6 +29,7 @@ from .. import (
     tests,
     trace,
 )
+from . import features
 
 
 class TestLogMixin:
@@ -337,6 +338,7 @@ class TestFormatSignatureValidity(tests.TestCaseWithTransport):
     def test_format_signature_validity_utf(self):
         """Check that GPG signatures containing UTF-8 names are formatted
         correctly."""
+        self.requireFeature(features.gpg)
         wt = self.make_branch_and_tree(".")
         revid = wt.commit("empty commit")
         repo = wt.branch.repository
