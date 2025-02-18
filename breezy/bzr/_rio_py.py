@@ -51,9 +51,11 @@ def _read_stanza_utf8(line_iter: Iterator[bytes]) -> Optional[Stanza]:
         if line[0] == "\t":  # continues previous value
             if tag is None:
                 raise ValueError("invalid continuation line %r" % real_l)
+            assert accum_value is not None
             accum_value.append("\n" + line[1:-1])
         else:  # new tag:value line
             if tag is not None:
+                assert accum_value is not None
                 stanza.add(tag, "".join(accum_value))
             try:
                 colon_index = line.index(": ")
@@ -65,6 +67,7 @@ def _read_stanza_utf8(line_iter: Iterator[bytes]) -> Optional[Stanza]:
             accum_value = [line[colon_index + 2 : -1]]
 
     if tag is not None:  # add last tag-value
+        assert accum_value is not None
         stanza.add(tag, "".join(accum_value))  # type: ignore
         return stanza
     else:  # didn't see any content
