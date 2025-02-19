@@ -136,9 +136,7 @@ class TestFastExport(ExternalBase):
         data = self.run_bzr("fast-export br")[0]
         self.assertTrue(
             data.startswith(
-                "reset refs/heads/master\n"
-                "commit refs/heads/master\n"
-                "mark :1\ncommitter"
+                "reset refs/heads/master\ncommit refs/heads/master\nmark :1\ncommitter"
             ),
             data,
         )

@@ -190,7 +190,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
             #       correct this test - its not a bug.
             if sys.platform == "win32":
                 raise tests.TestSkipped(
-                    "Old repository formats do not" " support file ids with <> on win32"
+                    "Old repository formats do not support file ids with <> on win32"
                 )
             # This is not a known error condition
             raise
@@ -410,7 +410,7 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
             #       correct this test - its not a bug.
             if sys.platform == "win32":
                 raise tests.TestSkipped(
-                    "Old repository formats do not" " support file ids with <> on win32"
+                    "Old repository formats do not support file ids with <> on win32"
                 )
             # This is not a known error condition
             raise

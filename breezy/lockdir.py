@@ -267,11 +267,9 @@ class LockDir(lock.Lock):
         info = self.peek()
         self._trace("after locking, info=%r", info)
         if info is None:
-            raise LockFailed(
-                self, "lock was renamed into place, but " "now is missing!"
-            )
+            raise LockFailed(self, "lock was renamed into place, but now is missing!")
         if info.nonce != self.nonce:
-            self._trace("rename succeeded, " "but lock is still held by someone else")
+            self._trace("rename succeeded, but lock is still held by someone else")
             raise LockContention(self)
         self._lock_held = True
         self._trace("... lock succeeded after %dms", (time.time() - start_time) * 1000)
@@ -368,7 +366,7 @@ class LockDir(lock.Lock):
                 # deletion where we list the directory and remove everything
                 # within it.
                 self._trace(
-                    "doing recursive deletion of non-empty directory " "%s", tmpname
+                    "doing recursive deletion of non-empty directory %s", tmpname
                 )
                 self.transport.delete_tree(tmpname)
             self._trace(
@@ -612,7 +610,7 @@ class LockDir(lock.Lock):
                     msg += (
                         "\n"
                         + gettext(
-                            "Will continue to try until %s, unless " "you press Ctrl-C."
+                            "Will continue to try until %s, unless you press Ctrl-C."
                         )
                         % deadline_str
                     )

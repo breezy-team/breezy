@@ -181,8 +181,7 @@ class KnitIndexUnknownMethod(KnitError):
     """
 
     _fmt = (
-        "Knit index %(filename)s does not have a known method"
-        " in options: %(options)r"
+        "Knit index %(filename)s does not have a known method in options: %(options)r"
     )
 
     def __init__(self, filename, options):
@@ -3043,7 +3042,7 @@ class _KnitGraphIndex:
             # XXX: TODO: Delta tree and parent graph should be conceptually
             # separate.
             raise KnitCorrupt(
-                self, "Cannot do delta compression without " "parent tracking."
+                self, "Cannot do delta compression without parent tracking."
             )
         self.has_graph = parents
         self._is_locked = is_locked
@@ -3110,7 +3109,7 @@ class _KnitGraphIndex:
             else:
                 if parents:
                     raise KnitCorrupt(
-                        self, "attempt to add node with parents " "in parentless index."
+                        self, "attempt to add node with parents in parentless index."
                     )
                 node_refs = ()
             keys[key] = (value, node_refs)

@@ -69,7 +69,7 @@ def lookup_service_root(root):
 
     # It's not an alias or a valid URL.
     raise ValueError(
-        "%s is not a valid URL or an alias for any Launchpad " "server" % root
+        "%s is not a valid URL or an alias for any Launchpad server" % root
     )
 
 

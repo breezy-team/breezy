@@ -240,7 +240,7 @@ class BisectTestCase(TestCaseWithTransport):
     def testRunScript(self):
         """Make a test script and run it."""
         with open("test_script", "w") as test_script:
-            test_script.write("#!/bin/sh\n" "grep -q '^four' test_file_append\n")
+            test_script.write("#!/bin/sh\ngrep -q '^four' test_file_append\n")
         os.chmod("test_script", stat.S_IRWXU)
         self.run_bzr(["bisect", "start"])
         self.run_bzr(["bisect", "yes"])
@@ -253,7 +253,7 @@ class BisectTestCase(TestCaseWithTransport):
         if sys.platform == "win32":
             raise TestSkipped("Unable to run shell script on windows")
         with open("test_script", "w") as test_script:
-            test_script.write("#!/bin/sh\n" "grep -q '^two' test_file_append\n")
+            test_script.write("#!/bin/sh\ngrep -q '^two' test_file_append\n")
         os.chmod("test_script", stat.S_IRWXU)
         self.run_bzr(["bisect", "start"])
         self.run_bzr(["bisect", "yes"])
@@ -272,7 +272,7 @@ class BisectTestCase(TestCaseWithTransport):
         if sys.platform == "win32":
             raise TestSkipped("Unable to run shell script on windows")
         with open("test_script", "w") as test_script:
-            test_script.write("#!/bin/sh\n" "grep -q '^one dot two' test_file_append\n")
+            test_script.write("#!/bin/sh\ngrep -q '^one dot two' test_file_append\n")
         os.chmod("test_script", stat.S_IRWXU)
         self.run_bzr(["bisect", "start"])
         self.run_bzr(["bisect", "yes"])

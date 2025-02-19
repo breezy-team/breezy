@@ -241,7 +241,7 @@ def _win32_local_path_from_url(url):
     # check for UNC path: //HOST/path
     if not win32_url.startswith("///"):
         if win32_url[2] == "/" or win32_url[3] in "|:":
-            raise InvalidURL(url, "Win32 UNC path urls" " have form file://HOST/path")
+            raise InvalidURL(url, "Win32 UNC path urls have form file://HOST/path")
         return unescape(win32_url)
 
     # allow empty paths so we can serve all roots
@@ -251,15 +251,13 @@ def _win32_local_path_from_url(url):
     # usual local path with drive letter
     if (
         len(win32_url) < 6
-        or win32_url[3]
-        not in ("abcdefghijklmnopqrstuvwxyz" "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+        or win32_url[3] not in ("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
         or win32_url[4] not in "|:"
         or win32_url[5] != "/"
     ):
         raise InvalidURL(
             url,
-            "Win32 file urls start with"
-            " file:///x:/, where x is a valid drive letter",
+            "Win32 file urls start with file:///x:/, where x is a valid drive letter",
         )
     return win32_url[3].upper() + ":" + unescape(win32_url[5:])
 
@@ -344,7 +342,7 @@ def normalize_url(url):
             if c not in _url_safe_characters:
                 raise InvalidURL(
                     url,
-                    "URLs can only contain specific" " safe characters (not %r)" % c,
+                    "URLs can only contain specific safe characters (not %r)" % c,
                 )
         path = _url_hex_escapes_re.sub(_unescape_safe_chars, path)
         return str(prefix + "".join(path))

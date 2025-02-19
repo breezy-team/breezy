@@ -40,7 +40,7 @@ class TestIterSearchRules(TestCaseWithTree):
 
     def test_iter_search_rules_no_tree(self):
         per_user = self.make_per_user_searcher(
-            "[name ./a.txt]\nfoo=baz\n" "[name *.txt]\nfoo=bar\na=True\n"
+            "[name ./a.txt]\nfoo=baz\n[name *.txt]\nfoo=bar\na=True\n"
         )
         tree = self.make_tree_with_rules(None)
         result = list(
@@ -52,7 +52,7 @@ class TestIterSearchRules(TestCaseWithTree):
     def _disabled_test_iter_search_rules_just_tree(self):
         per_user = self.make_per_user_searcher("")
         tree = self.make_tree_with_rules(
-            "[name ./a.txt]\n" "foo=baz\n" "[name *.txt]\n" "foo=bar\n" "a=True\n"
+            "[name ./a.txt]\nfoo=baz\n[name *.txt]\nfoo=bar\na=True\n"
         )
         result = list(
             tree.iter_search_rules(["a.txt", "dir/a.txt"], _default_searcher=per_user)
@@ -62,9 +62,9 @@ class TestIterSearchRules(TestCaseWithTree):
 
     def _disabled_test_iter_search_rules_tree_and_per_user(self):
         per_user = self.make_per_user_searcher(
-            "[name ./a.txt]\nfoo=baz\n" "[name *.txt]\nfoo=bar\na=True\n"
+            "[name ./a.txt]\nfoo=baz\n[name *.txt]\nfoo=bar\na=True\n"
         )
-        tree = self.make_tree_with_rules("[name ./a.txt]\n" "foo=qwerty\n")
+        tree = self.make_tree_with_rules("[name ./a.txt]\nfoo=qwerty\n")
         result = list(
             tree.iter_search_rules(["a.txt", "dir/a.txt"], _default_searcher=per_user)
         )

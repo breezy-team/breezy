@@ -217,7 +217,7 @@ class TestCommands(TestCaseWithTransport):
             f.write(b"Hello, world")
         self.run_bzr("mv answer question")
         with open("question", "wb") as f:
-            f.write(b"What do you get when you multiply six" b"times nine?")
+            f.write(b"What do you get when you multiply sixtimes nine?")
         self.run_bzr("commit -m this")
 
     def test_status(self):
@@ -254,9 +254,7 @@ class TestCommands(TestCaseWithTransport):
         self.assertTrue("|||||||" not in conflict_text)
         self.assertTrue("hi world" not in conflict_text)
         result = self.run_bzr("conflicts")[0]
-        self.assertEqual(
-            result, "Text conflict in hello\nText conflict in" " question\n"
-        )
+        self.assertEqual(result, "Text conflict in hello\nText conflict in question\n")
         result = self.run_bzr("status")[0]
         self.assertTrue(
             "conflicts:\n  Text conflict in hello\n"
@@ -390,16 +388,16 @@ class OldTests(TestCaseWithTransport):
         self.assertEqual(out, "unknown:\n  test.txt\n")
 
         out = self.run_bzr("status")[0]
-        self.assertEqual(out, ("unknown:\n" "  test.txt\n" "  test2.txt\n"))
+        self.assertEqual(out, ("unknown:\n  test.txt\n  test2.txt\n"))
 
         os.unlink("test2.txt")
 
         progress("command aliases")
         out = self.run_bzr("st")[0]
-        self.assertEqual(out, ("unknown:\n" "  test.txt\n"))
+        self.assertEqual(out, ("unknown:\n  test.txt\n"))
 
         out = self.run_bzr("stat")[0]
-        self.assertEqual(out, ("unknown:\n" "  test.txt\n"))
+        self.assertEqual(out, ("unknown:\n  test.txt\n"))
 
         progress("command help")
         self.run_bzr("help st")

@@ -140,7 +140,7 @@ def warn_escaped(commit, num_escaped):
 
 def warn_unusual_mode(commit, path, mode):
     trace.mutter(
-        "Unusual file mode %o for %s in %s. Storing as revision " "property. ",
+        "Unusual file mode %o for %s in %s. Storing as revision property. ",
         mode,
         path,
         commit,

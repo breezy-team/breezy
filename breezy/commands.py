@@ -914,12 +914,12 @@ class CommandHooks(Hooks):
         )
         self.add_hook(
             "pre_command",
-            "Called prior to executing a command. Called with the command " "object.",
+            "Called prior to executing a command. Called with the command object.",
             (2, 6),
         )
         self.add_hook(
             "post_command",
-            "Called after executing a command. Called with the command " "object.",
+            "Called after executing a command. Called with the command object.",
             (2, 6),
         )
 

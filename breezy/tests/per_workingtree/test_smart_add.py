@@ -55,7 +55,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         except transport.NoSuchFile:
             if sys.platform == "win32":
                 raise tests.TestNotApplicable(
-                    "Cannot create files named %r on" " win32" % (filename,)
+                    "Cannot create files named %r on win32" % (filename,)
                 )
         tree.smart_add(["tree"])
         self.assertFalse(tree.is_versioned(filename))
@@ -380,7 +380,7 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
         osutils.normalized_filename = osutils._accessible_normalized_filename
         if self.workingtree_format.requires_normalized_unicode_filenames:
             raise tests.TestNotApplicable(
-                "Working tree format smart_add requires normalized unicode " "filenames"
+                "Working tree format smart_add requires normalized unicode filenames"
             )
         self.wt.smart_add(["a\u030a"])
         self.wt.lock_read()
@@ -394,7 +394,7 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
         osutils.normalized_filename = osutils._accessible_normalized_filename
         if self.workingtree_format.requires_normalized_unicode_filenames:
             raise tests.TestNotApplicable(
-                "Working tree format smart_add requires normalized unicode " "filenames"
+                "Working tree format smart_add requires normalized unicode filenames"
             )
         self.wt.smart_add([])
         self.wt.lock_read()

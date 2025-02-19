@@ -250,7 +250,7 @@ class InventoryDeltaSerializer:
                 # xml5 serializer.
                 if last_modified != new_version:
                     raise InventoryDeltaError(
-                        "Version present for / in %(fileid)r" " (%(last)r != %(new)r)",
+                        "Version present for / in %(fileid)r (%(last)r != %(new)r)",
                         fileid=file_id,
                         last=last_modified,
                         new=new_version,

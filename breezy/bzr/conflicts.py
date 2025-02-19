@@ -597,7 +597,7 @@ class DeletingParent(HandledConflict):
 
     typestring = "deleting parent"
 
-    format = "Conflict: can't delete %(path)s because it is not empty.  " "%(action)s."
+    format = "Conflict: can't delete %(path)s because it is not empty.  %(action)s."
 
     # FIXME: It's a bit strange that the default action is not coherent with
     # MissingParent from the *user* pov.
@@ -617,9 +617,7 @@ class NonDirectoryParent(HandledConflict):
 
     typestring = "non-directory parent"
 
-    format = (
-        "Conflict: %(path)s is not a directory, but has files in it." "  %(action)s."
-    )
+    format = "Conflict: %(path)s is not a directory, but has files in it.  %(action)s."
 
     # FIXME: .OTHER should be used instead of .new when the conflict is created
 

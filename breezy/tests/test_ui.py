@@ -168,7 +168,7 @@ class TestTextUIFactory(tests.TestCase):
             self.assertEqual("foo\n", factory.stdin.read())
 
     def test_text_ui_get_integer(self):
-        stdin_text = "1\n" "  -2  \n" "hmmm\nwhat else ?\nCome on\nok 42\n4.24\n42\n"
+        stdin_text = "1\n  -2  \nhmmm\nwhat else ?\nCome on\nok 42\n4.24\n42\n"
         with ui_testing.TextUIFactory(stdin_text) as factory:
             self.assertEqual(1, factory.get_integer(""))
             self.assertEqual(-2, factory.get_integer(""))
@@ -293,7 +293,7 @@ class TestTextUIOutputStream(tests.TestCase):
         stream.writelines(["1\n", "2\n", "3\n"])
 
         self.assertEqual(
-            uif.stdout.getvalue(), "Hello world!\n" "there's more...\n" "1\n2\n3\n"
+            uif.stdout.getvalue(), "Hello world!\nthere's more...\n1\n2\n3\n"
         )
         self.assertEqual(["clear", "clear", "clear"], clear_calls)
 

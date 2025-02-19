@@ -151,12 +151,8 @@ class _PotExporter:
         else:
             comment = "# %s\n" % comment
         mutter("Exporting msg %r at line %d in %r", s[:20], lineno, path)
-        line = (
-            "#: {path}:{lineno}\n"
-            "{comment}"
-            "msgid {msg}\n"
-            'msgstr ""\n'
-            "\n".format(path=path, lineno=lineno, comment=comment, msg=_normalize(s))
+        line = '#: {path}:{lineno}\n{comment}msgid {msg}\nmsgstr ""\n\n'.format(
+            path=path, lineno=lineno, comment=comment, msg=_normalize(s)
         )
         self.outf.write(line)
 

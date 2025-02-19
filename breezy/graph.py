@@ -749,7 +749,7 @@ class Graph:
             if len(unique_tip_searchers) != len(next_unique_searchers):
                 if "graph" in debug.debug_flags:
                     trace.mutter(
-                        "Collapsed %d unique searchers => %d" " at %s iterations",
+                        "Collapsed %d unique searchers => %d at %s iterations",
                         len(unique_tip_searchers),
                         len(next_unique_searchers),
                         all_unique_searcher._iterations,
@@ -1386,7 +1386,7 @@ class _BreadthFirstSearcher:
         else:
             prefix = "starting"
         search = "{}={!r}".format(prefix, list(self._next_query))
-        return "_BreadthFirstSearcher(iterations=%d, %s," " seen=%r)" % (
+        return "_BreadthFirstSearcher(iterations=%d, %s, seen=%r)" % (
             self._iterations,
             search,
             list(self.seen),

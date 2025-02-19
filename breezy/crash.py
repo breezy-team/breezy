@@ -130,7 +130,7 @@ def report_bug_to_apport(exc_info, stderr):
     crash_filename = _write_apport_report_to_file(exc_info)
 
     if crash_filename is None:
-        stderr.write("\n" "apport is set to ignore crashes in this version of brz.\n")
+        stderr.write("\napport is set to ignore crashes in this version of brz.\n")
     else:
         trace.print_exception(exc_info, stderr)
         stderr.write(

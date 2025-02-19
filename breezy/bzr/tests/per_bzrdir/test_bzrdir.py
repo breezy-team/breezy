@@ -698,7 +698,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         :return: the resulting repo, control dir tuple.
         """
         if not self.bzrdir_format.is_initializable():
-            raise TestNotApplicable("control dir format is not " "initializable")
+            raise TestNotApplicable("control dir format is not initializable")
         repo, control, require_stacking, repo_policy = (
             self.bzrdir_format.initialize_on_transport_ex(t, **kwargs)
         )

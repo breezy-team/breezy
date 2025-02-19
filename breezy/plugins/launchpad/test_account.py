@@ -44,7 +44,7 @@ class LaunchpadAccountTests(TestCaseInTempDir):
         # Test formatting of UnknownLaunchpadUsername exception
         error = account.UnknownLaunchpadUsername(user="test-user")
         self.assertEqualDiff(
-            "The user name test-user is not registered " "on Launchpad.", str(error)
+            "The user name test-user is not registered on Launchpad.", str(error)
         )
 
     def test_no_registered_ssh_keys(self):

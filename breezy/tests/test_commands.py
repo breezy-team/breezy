@@ -123,16 +123,14 @@ class TestGetAlias(tests.TestCase):
         return my_config
 
     def test_simple(self):
-        my_config = self._get_config("[ALIASES]\n" "diff=diff -r -2..-1\n")
+        my_config = self._get_config("[ALIASES]\ndiff=diff -r -2..-1\n")
         self.assertEqual(
             ["diff", "-r", "-2..-1"], commands.get_alias("diff", config=my_config)
         )
 
     def test_single_quotes(self):
         my_config = self._get_config(
-            "[ALIASES]\n"
-            "diff=diff -r -2..-1 --diff-options "
-            "'--strip-trailing-cr -wp'\n"
+            "[ALIASES]\ndiff=diff -r -2..-1 --diff-options '--strip-trailing-cr -wp'\n"
         )
         self.assertEqual(
             ["diff", "-r", "-2..-1", "--diff-options", "--strip-trailing-cr -wp"],
@@ -141,9 +139,7 @@ class TestGetAlias(tests.TestCase):
 
     def test_double_quotes(self):
         my_config = self._get_config(
-            "[ALIASES]\n"
-            "diff=diff -r -2..-1 --diff-options "
-            '"--strip-trailing-cr -wp"\n'
+            '[ALIASES]\ndiff=diff -r -2..-1 --diff-options "--strip-trailing-cr -wp"\n'
         )
         self.assertEqual(
             ["diff", "-r", "-2..-1", "--diff-options", "--strip-trailing-cr -wp"],
@@ -152,7 +148,7 @@ class TestGetAlias(tests.TestCase):
 
     def test_unicode(self):
         my_config = self._get_config(
-            "[ALIASES]\n" 'iam=whoami "Erik B\u00e5gfors <erik@bagfors.nu>"\n'
+            '[ALIASES]\niam=whoami "Erik B\u00e5gfors <erik@bagfors.nu>"\n'
         )
         self.assertEqual(
             ["whoami", "Erik B\u00e5gfors <erik@bagfors.nu>"],

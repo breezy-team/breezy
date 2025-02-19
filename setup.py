@@ -98,10 +98,9 @@ except ModuleNotFoundError:
     # try to build the extension from the prior generated source.
     print("")
     print(
-        "The python package 'Cython' is not available."
-        " If the .c files are available,"
+        "The python package 'Cython' is not available. If the .c files are available,"
     )
-    print("they will be built," " but modifying the .pyx files will not rebuild them.")
+    print("they will be built, but modifying the .pyx files will not rebuild them.")
     print("")
     from distutils.command.build_ext import build_ext
 else:

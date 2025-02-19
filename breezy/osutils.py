@@ -771,9 +771,7 @@ def local_time_offset(t=None):
             raise errors.BzrError("No timezone information available")
         zoneinfo = ZoneInfo(tzinfo.tzname(now))
 
-        offset = datetime.fromtimestamp(t, zoneinfo) - datetime.fromtimestamp(
-            t, UTC
-        )
+        offset = datetime.fromtimestamp(t, zoneinfo) - datetime.fromtimestamp(t, UTC)
 
     return offset.days * 86400 + offset.seconds
 

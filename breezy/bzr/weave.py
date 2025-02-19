@@ -679,7 +679,7 @@ class Weave(VersionedFile):
 
         if istack:
             raise WeaveFormatError(
-                "unclosed insertion blocks " "at end of weave: %s" % istack
+                "unclosed insertion blocks at end of weave: %s" % istack
             )
         if dset:
             raise WeaveFormatError(
@@ -804,7 +804,7 @@ class Weave(VersionedFile):
             lineno += 1
         if istack:
             raise WeaveFormatError(
-                "unclosed insertion blocks " "at end of weave: %s" % istack
+                "unclosed insertion blocks at end of weave: %s" % istack
             )
         if dset:
             raise WeaveFormatError(
@@ -954,8 +954,7 @@ class Weave(VersionedFile):
             n2 = {other._names[i] for i in other_parents}
             if not self._compatible_parents(n1, n2):
                 raise WeaveParentMismatch(
-                    "inconsistent parents "
-                    "for version {%s}: %s vs %s" % (name, n1, n2)
+                    "inconsistent parents for version {%s}: %s vs %s" % (name, n1, n2)
                 )
             else:
                 return True  # ok!

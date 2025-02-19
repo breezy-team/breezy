@@ -249,7 +249,7 @@ class HashCache:
             hdr = inf.readline()
             if hdr != CACHE_HEADER:
                 trace.mutter(
-                    "cache header marker not found at top of %s;" " discarding cache",
+                    "cache header marker not found at top of %s; discarding cache",
                     fn,
                 )
                 self.needs_write = True

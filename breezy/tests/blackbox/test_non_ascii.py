@@ -463,7 +463,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         self.wt.commit("Renamed {} => {}".format(fname, fname2))
 
         txt = self.run_bzr_decode(["touching-revisions", fname2])
-        expected_txt = "     3 added %s\n" "     4 renamed %s => %s\n" % (
+        expected_txt = "     3 added %s\n     4 renamed %s => %s\n" % (
             fname,
             fname,
             fname2,

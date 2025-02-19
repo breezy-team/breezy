@@ -1401,7 +1401,7 @@ Location:
             # in the different process -- either on win32 or on linux).
             # This should be removed when the locking errors are fixed.
             self.expectFailure(
-                "OS locks are exclusive " "for different processes (Bug #174055)",
+                "OS locks are exclusive for different processes (Bug #174055)",
                 self.run_brz_subprocess,
                 "info " + command_string,
             )
@@ -1450,13 +1450,9 @@ Location:
                 friendly_location(lco_tree.branch.controldir.root_transport.base),
             )
         if shared_repo is not None:
-            branch_data = (
-                "   checkout of branch: %s\n"
-                "    shared repository: %s\n"
-                % (
-                    friendly_location(repo_branch.controldir.root_transport.base),
-                    friendly_location(shared_repo.controldir.root_transport.base),
-                )
+            branch_data = "   checkout of branch: %s\n    shared repository: %s\n" % (
+                friendly_location(repo_branch.controldir.root_transport.base),
+                friendly_location(shared_repo.controldir.root_transport.base),
             )
         elif repo_branch is not None:
             branch_data = "%s  checkout of branch: %s\n" % (
@@ -1605,7 +1601,11 @@ Repository:
                 verbose=True,
             )
         # L U L
-        with lco_tree.lock_write(), lco_tree.branch.unlock(), lco_tree.branch.repository.lock_write():
+        with (
+            lco_tree.lock_write(),
+            lco_tree.branch.unlock(),
+            lco_tree.branch.repository.lock_write(),
+        ):
             self.assertCheckoutStatusOutput(
                 "-v tree/lightcheckout",
                 lco_tree,
@@ -1625,7 +1625,7 @@ Repository:
             )
 
         if sys.platform == "win32":
-            self.knownFailure('Win32 cannot run "brz info"' " when the tree is locked.")
+            self.knownFailure('Win32 cannot run "brz info" when the tree is locked.')
 
     def test_info_stacked(self):
         # We have a mainline

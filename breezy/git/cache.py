@@ -455,7 +455,7 @@ class SqliteGitShaMap(GitShaMap):
         """
         found = False
         cursor = self.db.execute(
-            "select revid, tree_sha, testament3_sha1 from commits where " "sha1 = ?",
+            "select revid, tree_sha, testament3_sha1 from commits where sha1 = ?",
             (sha,),
         )
         for row in cursor.fetchall():
@@ -567,8 +567,7 @@ class TdbGitCacheFormat(BzrGitCacheFormat):
             return TdbBzrGitCache(os.path.join(basepath, "idmap.tdb"))
         except ImportError:
             raise ImportError(
-                "Unable to open existing bzr-git cache because 'tdb' is not "
-                "installed."
+                "Unable to open existing bzr-git cache because 'tdb' is not installed."
             )
 
 

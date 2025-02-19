@@ -77,7 +77,7 @@ class TestOSLock(tests.TestCaseInTempDir):
                 else:
                     w_lock.unlock()
                     self.knownFailure(
-                        "fcntl read locks don't" " block write locks without -Dlock"
+                        "fcntl read locks don't block write locks without -Dlock"
                     )
             else:
                 self.assertRaises(errors.LockContention, self.write_lock, "a-lock-file")
@@ -103,7 +103,7 @@ class TestOSLock(tests.TestCaseInTempDir):
                 else:
                     r_lock.unlock()
                     self.knownFailure(
-                        "fcntl write locks don't" " block read locks without -Dlock"
+                        "fcntl write locks don't block read locks without -Dlock"
                     )
             else:
                 self.assertRaises(errors.LockContention, self.read_lock, "a-lock-file")

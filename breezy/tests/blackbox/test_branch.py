@@ -268,9 +268,7 @@ class TestBranch(tests.TestCaseWithTransport):
         source.add("file1")
         source.commit("added file")
         source.controldir.sprout("second")
-        out, err = self.run_bzr(
-            "branch source target --files-from second" " --hardlink"
-        )
+        out, err = self.run_bzr("branch source target --files-from second --hardlink")
         source_stat = os.stat("source/file1")
         second_stat = os.stat("second/file1")
         target_stat = os.stat("target/file1")

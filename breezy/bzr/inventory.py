@@ -1920,7 +1920,7 @@ class CHKInventory(CommonInventory):
                     raise errors.InconsistentDelta(
                         self.id2path(child.file_id),
                         child.file_id,
-                        "Child not deleted or reparented when " "parent deleted.",
+                        "Child not deleted or reparented when parent deleted.",
                     )
         result.id_to_entry.apply_delta(id_to_entry_delta)
         if parent_id_basename_delta:
@@ -2000,9 +2000,7 @@ class CHKInventory(CommonInventory):
             )
         id_to_entry = info[b"id_to_entry"]
         if not id_to_entry.startswith(b"sha1:"):
-            raise ValueError(
-                "id_to_entry should be a sha1" " key not %r" % (id_to_entry,)
-            )
+            raise ValueError("id_to_entry should be a sha1 key not %r" % (id_to_entry,))
 
         result = CHKInventory(search_key_name)
         result.revision_id = revision_id

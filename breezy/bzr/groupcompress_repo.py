@@ -348,8 +348,7 @@ class GCCHKPacker(Packer):
             yield stream
         if remaining_keys:
             trace.mutter(
-                "There were %d keys in the chk index, %d of which"
-                " were not referenced",
+                "There were %d keys in the chk index, %d of which were not referenced",
                 total_keys,
                 len(remaining_keys),
             )
@@ -467,7 +466,7 @@ class GCCHKPacker(Packer):
         #       remove it
         total_keys = source_vf.keys()
         trace.mutter(
-            "repacking chk: %d id_to_entry roots," " %d p_id_map roots, %d total keys",
+            "repacking chk: %d id_to_entry roots, %d p_id_map roots, %d total keys",
             len(self._chk_id_roots),
             len(self._chk_p_id_roots),
             len(total_keys),
@@ -1513,8 +1512,7 @@ class RepositoryFormat2a(RepositoryFormatPack):
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return (
-            "Repository format 2a - rich roots, group compression"
-            " and chk inventories"
+            "Repository format 2a - rich roots, group compression and chk inventories"
         )
 
 

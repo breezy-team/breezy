@@ -216,7 +216,7 @@ class LaunchpadBranch:
             return False
         if url.startswith("lp:"):
             return True
-        regex = re.compile("([a-z]*\\+)*(bzr\\+ssh|http)" "://bazaar.*.launchpad.net")
+        regex = re.compile("([a-z]*\\+)*(bzr\\+ssh|http)://bazaar.*.launchpad.net")
         return bool(regex.match(url))
 
     def get_target(self):
