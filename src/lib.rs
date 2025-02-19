@@ -33,6 +33,7 @@ pub mod location;
 pub mod lockdir;
 pub mod progress;
 pub mod repository;
+pub mod revspec;
 pub mod tags;
 pub mod trace;
 
