@@ -1,0 +1,13 @@
+tag-name = "brz-$VERSION"
+news-file = "doc/en/release-notes/brz-3.3.txt"
+verify-command = "make check"
+tarball-location = []
+release-timeout = 5
+
+[[update_version]]
+path = "breezy/__init__.py"
+match = "^version_info = ((.*))$"
+new-line = "__version__ = $STATUS_TUPLED_VERSION"
+
+[launchpad]
+project = "brz"
